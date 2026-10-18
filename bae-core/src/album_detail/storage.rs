@@ -21,8 +21,9 @@ pub struct ReleaseStorageSummary {
     /// device — the orthogonal coven-cache property. Meaningful only when
     /// `storage_state` is `Remote`. Kept SEPARATE from `storage_state`.
     pub pinned: bool,
-    /// The storage transitions this release allows now, gated on cloud-home
-    /// only. The in-flight-uploads gate lives in the UI: it suppresses these
+    /// The storage transitions this release allows now, gated on the cloud
+    /// home and, for an upload, on this device holding the release's
+    /// originals. The in-flight-uploads gate lives in the UI: it suppresses these
     /// actions when the outbox snapshot has a group for this release.
     pub storage_actions: Vec<ReleaseStorageAction>,
     pub file_count: i64,
@@ -38,7 +39,12 @@ impl ReleaseStorageSummary {
         pinned: bool,
     ) -> ReleaseStorageSummary {
         let storage_state = storage_state(raw.remote);
-        let storage_actions = available_storage_actions(storage_state, pinned, has_cloud_home);
+        let storage_actions = available_storage_actions(
+            storage_state,
+            release_playability(&raw.unattached_audio),
+            pinned,
+            has_cloud_home,
+        );
         ReleaseStorageSummary {
             storage_state,
             pinned,

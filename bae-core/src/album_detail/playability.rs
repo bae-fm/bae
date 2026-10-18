@@ -1,6 +1,6 @@
 //! Whether this device can play a release now, decided from what it holds.
 
-use crate::db::{DbFile, DbLocalOriginal};
+use crate::db::DbUnattachedAudio;
 
 /// Whether this device can play a release now, and why not.
 ///
@@ -21,29 +21,14 @@ pub enum ReleasePlayability {
     OriginalMissing,
 }
 
-/// The playability of a release with these files, given the originals this
-/// device holds for them. Only audio files decide it; a release on another
-/// device is reported before a missing original, since only uploading it
-/// makes it playable here.
-pub(crate) fn release_playability(
-    files: &[DbFile],
-    originals: &[DbLocalOriginal],
-) -> ReleasePlayability {
-    let mut original_missing = false;
-    for file in files
-        .iter()
-        .filter(|file| file.content_type.is_audio() && !file.attached)
-    {
-        match originals
-            .iter()
-            .find(|original| original.file_id == file.id)
-        {
-            None => return ReleasePlayability::NotUploaded,
-            Some(original) if !original.readable => original_missing = true,
-            Some(_) => {}
-        }
-    }
-    if original_missing {
+/// The playability of a release from what this device holds for each of its
+/// audio files not attached to its row. A release on another device is
+/// reported before a changed original, since only uploading it makes it
+/// playable here.
+pub(crate) fn release_playability(unattached_audio: &[DbUnattachedAudio]) -> ReleasePlayability {
+    if unattached_audio.contains(&DbUnattachedAudio::Elsewhere) {
+        ReleasePlayability::NotUploaded
+    } else if unattached_audio.contains(&DbUnattachedAudio::Changed) {
         ReleasePlayability::OriginalMissing
     } else {
         ReleasePlayability::Playable

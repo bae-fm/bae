@@ -676,3 +676,64 @@ async fn the_storage_view_moves_one_subscription() {
         manager.get_storage_total_size(local).await.unwrap()
     );
 }
+
+/// Uploading reads this device's originals, so every surface that offers it —
+/// the release detail, its storage summary, and the Storage Manager row —
+/// offers it only for a release whose originals are here and unchanged: not
+/// for a release another device imported, nor once an original is gone.
+#[tokio::test]
+async fn upload_is_offered_only_where_this_device_holds_the_originals() {
+    use crate::album_detail::ReleaseStorageAction;
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let originals = temp_dir.path().join("originals");
+    let here = insert_local_release_with_files(
+        &manager,
+        &originals,
+        "Album A",
+        &[("track.flac", b"track-bytes")],
+    )
+    .await;
+    let mut album = create_test_album();
+    album.title = "Album B".to_string();
+    manager.database.insert_album(&album).await.unwrap();
+    let elsewhere = insert_local_release_without_local_files(&manager, &album.id).await;
+
+    let offered = |release_id: String| {
+        let manager = &manager;
+        async move {
+            let detail = manager
+                .find_release_detail(&release_id)
+                .await
+                .unwrap()
+                .expect("the release exists")
+                .summary
+                .storage_actions;
+            let summary = manager
+                .find_release_storage_summary(&release_id)
+                .await
+                .unwrap()
+                .expect("the release exists")
+                .storage_actions;
+            let row = storage_page(manager, crate::db::StorageFilter::All, 0, 10)
+                .await
+                .rows
+                .into_iter()
+                .find(|row| row.release.id == release_id)
+                .expect("the release is listed")
+                .release
+                .storage_actions;
+            assert_eq!(detail, summary, "the detail and summary agree");
+            assert_eq!(detail, row, "the detail and the storage row agree");
+            detail
+        }
+    };
+
+    assert_eq!(
+        offered(here.id.clone()).await,
+        vec![ReleaseStorageAction::MakeRemote]
+    );
+    assert_eq!(offered(elsewhere.id.clone()).await, Vec::new());
+    std::fs::remove_file(originals.join("track.flac")).unwrap();
+    assert_eq!(offered(here.id.clone()).await, Vec::new());
+}

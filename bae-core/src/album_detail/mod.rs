@@ -139,9 +139,12 @@ pub enum ReleaseStorageAction {
 
 /// Remote requires a cloud home, so without one there are no transitions at all.
 ///
-/// `MakeRemote` admits work to coven's durable outbox. A stopped loop leaves that
-/// work truthfully queued until a cycle can drain it; it does not remove the
-/// action. Pin / Unpin / MakeLocal also gate on the connected cloud home alone.
+/// `MakeRemote` uploads from this device's originals, so it is offered only
+/// where the release plays from them: not for a release another device
+/// imported, nor one whose originals are gone or changed since import. It
+/// admits work to coven's durable outbox; a stopped loop leaves that work
+/// truthfully queued until a cycle can drain it, and does not remove the
+/// action. Pin / Unpin / MakeLocal gate on the connected cloud home alone.
 ///
 /// The in-flight-uploads gate lives in the UI, which suppresses
 /// these actions when the outbox snapshot has work for the release. That stays
@@ -149,6 +152,7 @@ pub enum ReleaseStorageAction {
 /// would bake a stale value into each cached `ReleaseDetail`.
 pub fn available_storage_actions(
     state: ReleaseStorageState,
+    playability: ReleasePlayability,
     pinned: bool,
     has_cloud_home: bool,
 ) -> Vec<ReleaseStorageAction> {
@@ -157,7 +161,10 @@ pub fn available_storage_actions(
         return Vec::new();
     }
     match state {
-        ReleaseStorageState::Local => vec![MakeRemote],
+        ReleaseStorageState::Local if playability == ReleasePlayability::Playable => {
+            vec![MakeRemote]
+        }
+        ReleaseStorageState::Local => Vec::new(),
         ReleaseStorageState::Remote if pinned => vec![Unpin, MakeLocal],
         ReleaseStorageState::Remote => vec![Pin, MakeLocal],
     }
@@ -365,6 +372,7 @@ pub struct GalleryItem {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ReleasePlayability::*;
     use ReleaseStorageAction::*;
     use ReleaseStorageState::*;
 
@@ -379,7 +387,7 @@ mod tests {
         for state in [Local, Remote] {
             for pinned in [false, true] {
                 assert_eq!(
-                    available_storage_actions(state, pinned, false),
+                    available_storage_actions(state, Playable, pinned, false),
                     Vec::<ReleaseStorageAction>::new(),
                     "no cloud home blocks all actions for {state:?} (pinned={pinned})"
                 );
@@ -391,13 +399,26 @@ mod tests {
     fn local_with_cloud_offers_make_remote() {
         // `pinned` is irrelevant for a local release.
         assert_eq!(
-            available_storage_actions(Local, false, true),
+            available_storage_actions(Local, Playable, false, true),
             vec![MakeRemote]
         );
         assert_eq!(
-            available_storage_actions(Local, true, true),
+            available_storage_actions(Local, Playable, true, true),
             vec![MakeRemote]
         );
+    }
+
+    /// Uploading reads this device's originals, so a release another device
+    /// imported, or one whose originals are gone, offers nothing to upload.
+    #[test]
+    fn local_without_its_originals_here_offers_nothing() {
+        for playability in [NotUploaded, OriginalMissing] {
+            assert_eq!(
+                available_storage_actions(Local, playability, false, true),
+                Vec::<ReleaseStorageAction>::new(),
+                "{playability:?} offers no upload"
+            );
+        }
     }
 
     /// A stopped loop delays the upload; it does not prevent admitting the work.
@@ -407,7 +428,7 @@ mod tests {
     fn local_without_a_running_loop_still_offers_make_remote() {
         for pinned in [false, true] {
             assert_eq!(
-                available_storage_actions(Local, pinned, true),
+                available_storage_actions(Local, Playable, pinned, true),
                 vec![MakeRemote],
                 "MakeRemote queues durably even with the sync loop stopped (pinned={pinned})"
             );
@@ -419,11 +440,11 @@ mod tests {
     #[test]
     fn remote_actions_do_not_need_a_running_loop() {
         assert_eq!(
-            available_storage_actions(Remote, true, true),
+            available_storage_actions(Remote, Playable, true, true),
             vec![Unpin, MakeLocal]
         );
         assert_eq!(
-            available_storage_actions(Remote, false, true),
+            available_storage_actions(Remote, Playable, false, true),
             vec![Pin, MakeLocal]
         );
     }
@@ -431,7 +452,7 @@ mod tests {
     #[test]
     fn remote_pinned_offers_unpin_and_make_local() {
         assert_eq!(
-            available_storage_actions(Remote, true, true),
+            available_storage_actions(Remote, Playable, true, true),
             vec![Unpin, MakeLocal]
         );
     }
@@ -439,7 +460,7 @@ mod tests {
     #[test]
     fn remote_unpinned_offers_pin_and_make_local() {
         assert_eq!(
-            available_storage_actions(Remote, false, true),
+            available_storage_actions(Remote, Playable, false, true),
             vec![Pin, MakeLocal]
         );
     }

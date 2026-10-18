@@ -150,6 +150,8 @@ pub struct DbReleaseStorageSummary {
     pub any_file_id: Option<String>,
     pub file_count: i64,
     pub total_size: i64,
+    /// What this device holds for each audio file not attached to its row.
+    pub unattached_audio: Vec<DbUnattachedAudio>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -232,16 +234,21 @@ pub struct DbReleaseDetail {
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<crate::import::ReleaseRecord>,
-    /// The originals this device holds for the release's unattached files.
-    pub originals: Vec<DbLocalOriginal>,
+    /// What this device holds for each audio file not attached to its row.
+    pub unattached_audio: Vec<DbUnattachedAudio>,
 }
 
-/// An original file this device imported a release file from, and whether it
-/// is still there unchanged, read from the disk when the release was read.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DbLocalOriginal {
-    pub file_id: String,
-    pub readable: bool,
+/// What this device holds for one of a release's audio files that isn't
+/// attached to its row, read from the disk when the release was read.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DbUnattachedAudio {
+    /// No original here: another device imported the release.
+    Elsewhere,
+    /// This device's original, with the size and modification time recorded
+    /// at import.
+    Unchanged,
+    /// This device's original, gone or changed since import.
+    Changed,
 }
 
 /// A track row with its resolved artist rows (many-to-many join from the DB).
@@ -270,6 +277,8 @@ pub struct DbReleaseSummary {
     pub any_file_id: Option<String>,
     pub file_count: i64,
     pub total_size: i64,
+    /// What this device holds for each audio file not attached to its row.
+    pub unattached_audio: Vec<DbUnattachedAudio>,
 }
 
 /// Raw storage-page row: a release summary joined with its parent album summary,

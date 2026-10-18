@@ -43,8 +43,8 @@ pub struct ReleaseSummary {
     /// are never confused.
     pub pinned: bool,
     /// The transitions available right now, derived by the core from
-    /// `storage_state`, `pinned`, and whether a cloud home exists; empty without
-    /// one. The UI renders these and never re-derives availability, but does apply
+    /// `storage_state`, whether this device holds the originals an upload reads,
+    /// `pinned`, and whether a cloud home exists; empty without one. The UI renders these and never re-derives availability, but does apply
     /// the in-flight-uploads gate from its outbox snapshot.
     pub storage_actions: Vec<ReleaseStorageAction>,
     pub transfer_action: Option<ReleaseStorageAction>,
@@ -69,6 +69,7 @@ impl ReleaseSummary {
             pinned: ctx.pinned,
             storage_actions: available_storage_actions(
                 storage_state,
+                release_playability(&raw.unattached_audio),
                 ctx.pinned,
                 ctx.has_cloud_home,
             ),
@@ -316,7 +317,7 @@ impl ReleaseDetail {
         let track_groups: Vec<TrackGroup> = crate::util::format::group_tracks_by_side(&tracks);
 
         let remote = !raw.files.is_empty() && raw.files.iter().all(|file| file.attached);
-        let playability = release_playability(&raw.files, &raw.originals);
+        let playability = release_playability(&raw.unattached_audio);
         let mut cover_files = Vec::new();
         let files: Vec<FileDetail> = raw
             .files
@@ -390,6 +391,7 @@ impl ReleaseDetail {
                 any_file_id: files.first().map(|f| f.id.clone()),
                 file_count,
                 total_size,
+                unattached_audio: raw.unattached_audio,
             },
             ctx,
         );
@@ -460,7 +462,7 @@ mod release_edit_display_tests {
                 created_at: now,
             }],
             records: Vec::new(),
-            originals: Vec::new(),
+            unattached_audio: Vec::new(),
         };
 
         assert!(matches!(

@@ -43,9 +43,11 @@ impl Database {
         let release_id = release_id.to_string();
         let query = Self::release_storage_summary_query();
         self.read(move |sql| {
-            sql.query_row(&query, [release_id], row_to_release_storage_summary)
-                .optional()
-                .map_err(DbError::from)
+            sql.query_row(&query, [release_id], |row| {
+                row_to_release_storage_summary(&sql, row)
+            })
+            .optional()
+            .map_err(DbError::from)
         })
         .await
     }

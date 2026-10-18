@@ -14,7 +14,7 @@ pub(super) fn storage_page_on(
     binds.push(Box::new(limit as i64));
     binds.push(Box::new(offset as i64));
     sql.query(query, rusqlite::params_from_iter(binds.iter()), |row| {
-        let release = row_to_release_summary(row)?;
+        let release = row_to_release_summary(sql, row)?;
         Ok((release, AlbumSummaryRow::read(row)?))
     })
     .map_err(DbError::from)

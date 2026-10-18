@@ -497,9 +497,14 @@ pub(super) fn row_to_work_release_summary(row: &Row<'_>) -> rusqlite::Result<DbW
     })
 }
 
-pub(super) fn row_to_release_summary(row: &Row<'_>) -> rusqlite::Result<DbReleaseSummary> {
+pub(super) fn row_to_release_summary(
+    sql: &SqlReadContext<'_>,
+    row: &Row<'_>,
+) -> rusqlite::Result<DbReleaseSummary> {
+    let id: String = row.get("release_id")?;
     Ok(DbReleaseSummary {
-        id: row.get("release_id")?,
+        unattached_audio: super::read::unattached_audio_in_row(sql, &id)?,
+        id,
         album_id: row.get("album_id")?,
         media: super::pressing_columns::read_media(row, "release_media")?,
         remote: row.get("remote")?,

@@ -84,7 +84,7 @@ pub(super) fn build_release_detail_on(
     let audio_formats = get_audio_formats_for_release_on(sql, &release.id)?;
     let audio_segments = get_audio_segments_for_release_on(sql, &release.id)?;
     let records = get_release_records_on(sql, &release.id)?;
-    let originals = get_local_originals_for_release_on(sql, &release.id)?;
+    let unattached_audio = unattached_audio_on(sql, &release.id)?;
 
     Ok(ReleaseDetailRows {
         release,
@@ -93,29 +93,35 @@ pub(super) fn build_release_detail_on(
         audio_formats,
         audio_segments,
         records,
-        originals,
+        unattached_audio,
     })
 }
 
-/// The originals this device holds for a release's unattached files, each
-/// checked on disk against the size and modification time recorded at import.
-fn get_local_originals_for_release_on(
+/// What this device holds for each of a release's audio files that isn't
+/// attached to its row: no original (another device imported it), or its
+/// original checked on disk against the size and modification time recorded
+/// at import.
+pub(super) fn unattached_audio_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
-) -> Result<Vec<DbLocalOriginal>, DbError> {
-    let rows: Vec<(String, String, String, i64)> = sql.query(
-        "SELECT l.file_id, l.path, l.modified_at, f.file_size \
-         FROM local_release_files l JOIN release_files f ON f.id = l.file_id \
-         WHERE f.release_id = ?",
+) -> Result<Vec<DbUnattachedAudio>, DbError> {
+    let rows: Vec<(String, i64, Option<String>, Option<String>)> = sql.query(
+        "SELECT f.content_type, f.file_size, l.path, l.modified_at \
+         FROM release_files f LEFT JOIN local_release_files l ON l.file_id = f.id \
+         WHERE f.release_id = ? AND f.hash IS NULL",
         params![release_id],
         |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
     )?;
     rows.into_iter()
-        .map(|(file_id, path, modified_at, size)| {
+        .filter(|(content_type, ..)| ContentType::from_mime(content_type).is_audio())
+        .map(|(_, size, path, modified_at)| {
+            let (Some(path), Some(modified_at)) = (path, modified_at) else {
+                return Ok(DbUnattachedAudio::Elsewhere);
+            };
             let modified_at = DateTime::parse_from_rfc3339(&modified_at).map_err(|error| {
                 DbError::Message(format!("invalid original modification time: {error}"))
             })?;
-            let readable = match std::fs::metadata(&path) {
+            let unchanged = match std::fs::metadata(&path) {
                 Ok(metadata) => {
                     i64::try_from(metadata.len()) == Ok(size)
                         && metadata.modified()? == std::time::SystemTime::from(modified_at)
@@ -125,9 +131,23 @@ fn get_local_originals_for_release_on(
                     false
                 }
             };
-            Ok(DbLocalOriginal { file_id, readable })
+            Ok(if unchanged {
+                DbUnattachedAudio::Unchanged
+            } else {
+                DbUnattachedAudio::Changed
+            })
         })
         .collect()
+}
+
+/// [`unattached_audio_on`] for a row mapper reading a release's summary, its
+/// failure carried as the mapper's error.
+pub(super) fn unattached_audio_in_row(
+    sql: &SqlReadContext<'_>,
+    release_id: &str,
+) -> rusqlite::Result<Vec<DbUnattachedAudio>> {
+    unattached_audio_on(sql, release_id)
+        .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))
 }
 
 #[derive(Clone, PartialEq)]
@@ -138,7 +158,7 @@ pub(super) struct ReleaseDetailRows {
     audio_formats: Vec<DbAudioFormat>,
     audio_segments: Vec<DbAudioSegment>,
     records: Vec<crate::import::ReleaseRecord>,
-    originals: Vec<DbLocalOriginal>,
+    unattached_audio: Vec<DbUnattachedAudio>,
 }
 
 impl ReleaseDetailRows {
@@ -150,7 +170,7 @@ impl ReleaseDetailRows {
             audio_formats: self.audio_formats,
             audio_segments: self.audio_segments,
             records: self.records,
-            originals: self.originals,
+            unattached_audio: self.unattached_audio,
         }
     }
 }
@@ -567,10 +587,13 @@ pub(super) fn row_to_audio_segment(row: &Row) -> rusqlite::Result<DbAudioSegment
 }
 
 pub(super) fn row_to_release_storage_summary(
+    sql: &SqlReadContext<'_>,
     row: &Row,
 ) -> rusqlite::Result<DbReleaseStorageSummary> {
+    let release_id: String = row.get("release_id")?;
     Ok(DbReleaseStorageSummary {
-        release_id: row.get("release_id")?,
+        unattached_audio: unattached_audio_in_row(sql, &release_id)?,
+        release_id,
         album_id: row.get("album_id")?,
         album_title: row.get("album_title")?,
         artist_names: row.get("artist_names")?,
