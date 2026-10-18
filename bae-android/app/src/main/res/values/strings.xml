@@ -143,25 +143,16 @@
     <string name="settings_pause_uploads">Pause uploads</string>
     <string name="settings_pause_uploads_footer">While paused, changes wait on this device and upload when you resume.</string>
 
-    <!-- Devices (membership) -->
-    <string name="members_title">Devices</string>
-    <string name="members_explanation">These devices can read and play this library. Add a device by approving its request from an existing device; removing a device locks it out.</string>
+    <!-- People and devices (membership) -->
+    <string name="members_title">People and devices</string>
+    <string name="members_explanation">Everyone in this library and their devices. Each person adds their own devices with their restore code. Admins invite people and can remove anyone’s device.</string>
     <string name="members_this_device">This device</string>
-    <string name="members_role_owner">Owner</string>
     <string name="members_role_member">Member</string>
-    <string name="members_role_follower">Follower</string>
-    <string name="members_add_device">Add a device</string>
     <string name="members_remove">Remove</string>
-    <string name="members_load_failed">Couldn\'t load your devices.</string>
-    <string name="members_remove_failed">Couldn\'t remove that device.</string>
     <string name="members_remove_confirm_title">Remove this device?</string>
-    <!-- %1$s = the device fingerprint -->
-    <string name="members_remove_confirm_body">Device %1$s will lose access to this library and the library key will be rotated.</string>
-    <string name="members_pairing_scan_instructions">Scan this code on the device joining your library.</string>
-    <string name="members_pairing_confirm">Check that this matches the fingerprint shown on the new device before approving.</string>
-    <string name="members_pairing_approve">Approve</string>
-    <string name="members_pairing_failed">Couldn\'t approve this device.</string>
-    <string name="members_pairing_waiting">Waiting for the device…</string>
+    <!-- %1$s = the device's name -->
+    <string name="members_remove_confirm_body">%1$s loses access to this library.</string>
+    <string name="join_request_approve">Approve</string>
 
     <!-- Onboarding -->
     <string name="onboarding_tagline">Restore your library with a code from one of your devices, or join one with an invite.</string>
@@ -307,4 +298,29 @@
     <string name="settings_restore_code_explanation">Scan or type this code on a new device to add it to this library as you.</string>
     <string name="settings_show_restore_code">Show restore code</string>
     <string name="settings_people">People</string>
+    <string name="members_you">You</string>
+    <string name="members_unnamed">No name yet</string>
+    <string name="members_role_admin">Admin</string>
+    <string name="members_make_admin">Make admin</string>
+    <string name="members_make_member">Make member</string>
+    <string name="members_remove_person">Remove person</string>
+    <!-- %1$s = the person's name -->
+    <string name="members_remove_person_confirm_title">Remove %1$s?</string>
+    <string name="members_remove_person_confirm_body">They lose access to this library. Their private history and playlists are deleted; what they shared with the household stays.</string>
+    <string name="device_state_removed">Removed</string>
+    <string name="device_state_replaced">Replaced</string>
+    <string name="device_removed_title">Device removed</string>
+    <string name="members_invite">Invite a person</string>
+    <string name="invite_s3_explanation">The access key they’ll use for this bucket.</string>
+    <!-- %1$s = the provider's name (Dropbox, OneDrive) -->
+    <string name="invite_email_explanation">The %1$s account they’ll sign in with.</string>
+    <string name="invite_email">Email</string>
+    <string name="invite_create">Create invite</string>
+    <string name="invite_title">Invite</string>
+    <string name="invite_instructions">Show this to the person joining. They scan it in bae, or enter the code.</string>
+    <!-- %1$s = the date and time the invite expires -->
+    <string name="invite_expires">Expires %1$s</string>
+    <string name="invite_cancel">Cancel invite</string>
+    <string name="join_requests_title">Requests to join</string>
+    <string name="join_request_decline">Decline</string>
 </resources>

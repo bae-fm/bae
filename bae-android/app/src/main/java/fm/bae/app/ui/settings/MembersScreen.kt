@@ -6,10 +6,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,6 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +24,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,73 +38,155 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
+import fm.bae.app.LocaleErrorLines
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.coreString
+import fm.bae.app.localizedLine
+import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.ErrorText
+import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.components.LabeledValueRow
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.StatusChip
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgeDevice
+import uniffi.bae_bridge.BridgeDeviceState
+import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeJoinRequest
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMembership
+import uniffi.bae_bridge.BridgePerson
+import uniffi.bae_bridge.BridgePersonProfile
+import uniffi.bae_bridge.BridgeProviderSignOut
+import uniffi.bae_bridge.BridgeStorageLocation
+import uniffi.bae_bridge.JoinRequestsCallback
+import uniffi.bae_bridge.MembershipCallback
+import uniffi.bae_bridge.ProfilesCallback
+import uniffi.bae_bridge.bridgeProviderSignOutKey
 
 private const val TAG = "bae.MembersScreen"
 private val logger = BaeLogger(TAG)
 
-/** Loads and holds the library's membership: its devices and whether this device is the owner. */
-private class MembersModel(
+/**
+ * The library's people as core joins them: each member with their profile.
+ * Membership and profiles each arrive live; either change reads the joined
+ * list again.
+ */
+internal class MembersModel(
     private val session: OpenLibrary,
     private val appContext: Context,
+    private val scope: CoroutineScope,
 ) {
-    var membership by mutableStateOf<BridgeMembership?>(null)
+    var people by mutableStateOf<List<BridgePerson>?>(null)
         private set
-    var loading by mutableStateOf(true)
+    var selfIsAdmin by mutableStateOf(false)
+        private set
+    var joinRequests by mutableStateOf<List<BridgeJoinRequest>>(emptyList())
+        private set
+    var storage by mutableStateOf<BridgeStorageLocation?>(null)
         private set
     var error by mutableStateOf<String?>(null)
-        private set
+    private var reloading: Job? = null
 
-    // A remove failure, shown above the list.
-    var actionError by mutableStateOf<String?>(null)
-        private set
+    /** Read the joined list again; a newer read replaces one still running. */
+    fun reload() {
+        reloading?.cancel()
+        reloading =
+            scope.launch {
+                try {
+                    people = session.appHandle.people()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: BridgeException) {
+                    logger.error("reading the library's people failed", e)
+                    error = appContext.localizedLine(e) ?: e.toString()
+                }
+            }
+    }
 
-    suspend fun load() {
-        loading = true
-        error = null
-        try {
-            membership = session.appHandle.getMembers()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("Failed to load members", e)
-            error = e.message ?: appContext.getString(R.string.members_load_failed)
-        } finally {
-            loading = false
+    suspend fun loadStorage() {
+        performBridgeAction(logger, "read the library's cloud home", LocaleErrorLines(appContext), { error = it }) {
+            storage = session.appHandle.storageLocation()
         }
     }
 
-    suspend fun remove(member: BridgeMember) {
-        actionError = null
-        try {
-            session.appHandle.removeMember(member.pubkey)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error(
-                "Failed to remove member ${member.fingerprint}",
-                e,
+    fun subscribe(): () -> Unit {
+        val members =
+            session.appHandle.subscribeMembers(
+                object : MembershipCallback {
+                    override fun onValue(value: BridgeMembership) {
+                        scope.launch(Dispatchers.Main.immediate) {
+                            selfIsAdmin = value.selfIsAdmin
+                            reload()
+                        }
+                    }
+
+                    override fun onError(error: BridgeException) {
+                        logger.error("reading the library's members failed", error)
+                        scope.launch(Dispatchers.Main.immediate) {
+                            this@MembersModel.error = appContext.localizedLine(error)
+                        }
+                    }
+                },
             )
-            actionError = e.message ?: appContext.getString(R.string.members_remove_failed)
-        } finally {
-            load()
+        val profiles =
+            session.appHandle.subscribeProfiles(
+                object : ProfilesCallback {
+                    override fun onValue(value: List<BridgePersonProfile>) {
+                        scope.launch(Dispatchers.Main.immediate) { reload() }
+                    }
+
+                    override fun onError(error: BridgeException) {
+                        logger.error("reading the library's profiles failed", error)
+                        scope.launch(Dispatchers.Main.immediate) {
+                            this@MembersModel.error = appContext.localizedLine(error)
+                        }
+                    }
+                },
+            )
+        val requests =
+            session.appHandle.subscribeJoinRequests(
+                object : JoinRequestsCallback {
+                    override fun onValue(value: List<BridgeJoinRequest>) {
+                        scope.launch(Dispatchers.Main.immediate) { joinRequests = value }
+                    }
+                },
+            )
+        return {
+            members.cancel()
+            profiles.cancel()
+            requests.cancel()
+        }
+    }
+
+    /** Run a membership change, showing its failure above the list; the subscriptions show its effect. */
+    fun perform(
+        operation: String,
+        action: suspend () -> Unit,
+    ) {
+        error = null
+        scope.launch {
+            performBridgeAction(logger, operation, LocaleErrorLines(appContext), { error = it }, action)
         }
     }
 }
 
+/**
+ * Everyone in the library and their devices. Admins invite people, approve
+ * their join requests, change roles and remove people; each person removes
+ * their own devices, and an admin anyone's.
+ */
 @Composable
 fun MembersScreen(
     session: OpenLibrary,
@@ -112,85 +194,63 @@ fun MembersScreen(
 ) {
     val appContext = LocalContext.current.applicationContext
     val scope = rememberCoroutineScope()
-    val model = remember { MembersModel(session, appContext) }
-    LaunchedEffect(Unit) { model.load() }
-
-    var showAddDevice by remember { mutableStateOf(false) }
-    var pendingRemoval by remember { mutableStateOf<BridgeMember?>(null) }
+    val model = remember(session) { MembersModel(session, appContext, scope) }
+    DisposableEffect(model) { onDispose(model.subscribe()) }
+    LaunchedEffect(model) { model.loadStorage() }
+    val dialogs = remember { MembersDialogs() }
 
     Column(modifier = Modifier.fillMaxSize()) {
         MembersTopBar(onBack = onBack)
-        model.actionError?.let { msg ->
+        model.error?.let { msg ->
             ErrorText(
                 message = msg,
                 modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
             )
         }
-        MembersBody(
-            model = model,
-            onReload = { scope.launch { model.load() } },
-            onAddDevice = { showAddDevice = true },
-            onRemove = { pendingRemoval = it },
-        )
-    }
-
-    if (showAddDevice) {
-        AddDeviceSheet(
-            session = session,
-            onDismiss = { showAddDevice = false },
-            onInvited = { scope.launch { model.load() } },
-        )
-    }
-
-    pendingRemoval?.let { member ->
-        RemoveDeviceDialog(
-            member = member,
-            onConfirm = {
-                pendingRemoval = null
-                scope.launch { model.remove(member) }
-            },
-            onDismiss = { pendingRemoval = null },
-        )
-    }
-}
-
-@Composable
-private fun MembersBody(
-    model: MembersModel,
-    onReload: () -> Unit,
-    onAddDevice: () -> Unit,
-    onRemove: (BridgeMember) -> Unit,
-) {
-    val membership = model.membership
-    when {
-        model.loading && membership == null -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        }
-
-        model.error != null && membership == null -> {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(ThemeSpace.page),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                ErrorText(model.error!!)
-                TextButton(onClick = onReload) {
-                    Text(stringResource(R.string.retry))
+        when (val people = model.people) {
+            null -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
             }
-        }
 
-        membership != null -> {
-            MembersList(
-                membership = membership,
-                onAddDevice = onAddDevice,
-                onRemove = onRemove,
-            )
+            else -> {
+                MembersList(
+                    people = people,
+                    selfIsAdmin = model.selfIsAdmin,
+                    joinRequests = model.joinRequests,
+                    callbacks = memberCallbacks(session, model, dialogs),
+                )
+            }
         }
     }
+    MembersDialogsShown(session = session, model = model, dialogs = dialogs)
 }
+
+private fun memberCallbacks(
+    session: OpenLibrary,
+    model: MembersModel,
+    dialogs: MembersDialogs,
+): MemberCallbacks {
+    val handle = session.appHandle
+    return MemberCallbacks(
+        onInvite = { dialogs.inviting = true },
+        onApprove = { model.perform("approve a join request") { handle.approveJoinRequest(it) } },
+        onDecline = { model.perform("decline a join request") { handle.declineJoinRequest(it) } },
+        onSetRole = { member, role -> model.perform("set member role") { handle.setMemberRole(member.id, role) } },
+        onRemovePerson = { member, name -> dialogs.pendingRemoval = PendingRemoval.Person(member, name) },
+        onRemoveDevice = { dialogs.pendingRemoval = PendingRemoval.Device(it) },
+    )
+}
+
+private class MemberCallbacks(
+    val onInvite: () -> Unit,
+    val onApprove: (BridgeJoinRequest) -> Unit,
+    val onDecline: (BridgeJoinRequest) -> Unit,
+    val onSetRole: (BridgeMember, BridgeMemberRole) -> Unit,
+    val onRemovePerson: (BridgeMember, String) -> Unit,
+    val onRemoveDevice: (BridgeDevice) -> Unit,
+)
 
 @Composable
 private fun MembersTopBar(onBack: () -> Unit) {
@@ -212,10 +272,13 @@ private fun MembersTopBar(onBack: () -> Unit) {
 
 @Composable
 private fun MembersList(
-    membership: BridgeMembership,
-    onAddDevice: () -> Unit,
-    onRemove: (BridgeMember) -> Unit,
+    people: List<BridgePerson>,
+    selfIsAdmin: Boolean,
+    joinRequests: List<BridgeJoinRequest>,
+    callbacks: MemberCallbacks,
 ) {
+    // A removed person's profile stays, read-only, without a membership; only members are listed.
+    val members = people.mapNotNull { person -> person.membership?.let { person to it } }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(ThemeSpace.edge),
@@ -228,17 +291,99 @@ private fun MembersList(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        items(membership.members, key = { it.pubkey }) { member ->
+        if (joinRequests.isNotEmpty()) {
+            item { Eyebrow(text = stringResource(R.string.join_requests_title)) }
+            items(joinRequests) { request ->
+                JoinRequestRow(request = request, callbacks = callbacks)
+            }
+        }
+        items(members, key = { (person, _) -> person.id }) { (person, member) ->
+            HorizontalDivider()
             MemberRow(
+                name = person.profile?.name,
                 member = member,
-                onRemove = { onRemove(member) },
+                selfIsAdmin = selfIsAdmin,
+                callbacks = callbacks,
             )
         }
-        if (membership.selfIsOwner) {
+        if (selfIsAdmin) {
             item {
-                Spacer(modifier = Modifier.height(ThemeSpace.related))
-                PrimaryButton(onClick = onAddDevice) {
-                    Text(stringResource(R.string.members_add_device))
+                PrimaryButton(onClick = callbacks.onInvite) {
+                    Text(stringResource(R.string.members_invite))
+                }
+            }
+        }
+    }
+}
+
+/** A device asking to join with an invite: its name and account, to approve or decline. */
+@Composable
+private fun JoinRequestRow(
+    request: BridgeJoinRequest,
+    callbacks: MemberCallbacks,
+) {
+    val info = remember(request) { request.info() }
+    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
+        Text(text = info.deviceName, style = ThemeText.strong.style)
+        info.providerAccountEmail?.let { LabeledValueRow(stringResource(R.string.settings_account), it) }
+        Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+            TextButton(onClick = { callbacks.onApprove(request) }) {
+                Text(stringResource(R.string.join_request_approve))
+            }
+            TextButton(
+                onClick = { callbacks.onDecline(request) },
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) {
+                Text(stringResource(R.string.join_request_decline))
+            }
+        }
+    }
+}
+
+/** One person: their name and role, their devices, and what this device's person may change. */
+@Composable
+private fun MemberRow(
+    name: String?,
+    member: BridgeMember,
+    selfIsAdmin: Boolean,
+    callbacks: MemberCallbacks,
+) {
+    val shownName = name ?: stringResource(R.string.members_unnamed)
+    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+        ) {
+            Text(text = shownName, style = ThemeText.strong.style, modifier = Modifier.weight(1f, fill = false))
+            StatusChip(stringResource(member.role.labelRes()))
+            if (member.isSelf) {
+                StatusChip(stringResource(R.string.members_you))
+            }
+        }
+        member.devices.forEach { device ->
+            DeviceRow(
+                device = device,
+                canRemove = member.canRemoveDevices,
+                onRemove = { callbacks.onRemoveDevice(device) },
+            )
+        }
+        if (selfIsAdmin && !member.isSelf) {
+            Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+                val (nextRole, label) =
+                    when (member.role) {
+                        BridgeMemberRole.ADMIN -> BridgeMemberRole.MEMBER to R.string.members_make_member
+                        BridgeMemberRole.MEMBER -> BridgeMemberRole.ADMIN to R.string.members_make_admin
+                    }
+                TextButton(onClick = { callbacks.onSetRole(member, nextRole) }) {
+                    Text(stringResource(label))
+                }
+                if (member.canRemove) {
+                    TextButton(
+                        onClick = { callbacks.onRemovePerson(member, shownName) },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    ) {
+                        Text(stringResource(R.string.members_remove_person))
+                    }
                 }
             }
         }
@@ -246,34 +391,34 @@ private fun MembersList(
 }
 
 @Composable
-private fun MemberRow(
-    member: BridgeMember,
+private fun DeviceRow(
+    device: BridgeDevice,
+    canRemove: Boolean,
     onRemove: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(start = ThemeSpace.edge),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-            ) {
+            Text(text = device.name)
+            val state =
+                when {
+                    device.isSelf -> R.string.members_this_device
+                    device.state == BridgeDeviceState.REMOVED -> R.string.device_state_removed
+                    device.state == BridgeDeviceState.REPLACED -> R.string.device_state_replaced
+                    else -> null
+                }
+            state?.let {
                 Text(
-                    text = member.fingerprint,
-                    style = ThemeText.mono.style,
-                )
-                StatusChip(stringResource(member.role.labelRes()))
-            }
-            if (member.isSelf) {
-                Text(
-                    text = stringResource(R.string.members_this_device),
+                    text = stringResource(it),
                     style = ThemeText.detail.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
-        if (member.canRemove) {
+        // This device leaves by removing the library from it, which also deletes its copy.
+        if (canRemove && device.state == BridgeDeviceState.ACTIVE && !device.isSelf) {
             TextButton(
                 onClick = onRemove,
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
@@ -286,60 +431,19 @@ private fun MemberRow(
 
 private fun BridgeMemberRole.labelRes(): Int =
     when (this) {
-        BridgeMemberRole.OWNER -> R.string.members_role_owner
+        BridgeMemberRole.ADMIN -> R.string.members_role_admin
         BridgeMemberRole.MEMBER -> R.string.members_role_member
-        BridgeMemberRole.FOLLOWER -> R.string.members_role_follower
     }
-
-@Composable
-private fun RemoveDeviceDialog(
-    member: BridgeMember,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.members_remove_confirm_title)) },
-        text = {
-            Text(stringResource(R.string.members_remove_confirm_body, member.fingerprint))
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.members_remove)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
-        },
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun MembersTopBarPreview() {
-    BaeTheme {
-        MembersTopBar(onBack = {})
-    }
-}
 
 @Preview(showBackground = true)
 @Composable
 private fun MembersListPreview() {
     BaeTheme {
-        MembersList(membership = PreviewData.membership(), onAddDevice = {}, onRemove = {})
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun MemberRowPreview() {
-    BaeTheme {
-        MemberRow(member = PreviewData.member(), onRemove = {})
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun RemoveDeviceDialogPreview() {
-    BaeTheme {
-        RemoveDeviceDialog(member = PreviewData.member(), onConfirm = {}, onDismiss = {})
+        MembersList(
+            people = listOf(PreviewData.person()),
+            selfIsAdmin = true,
+            joinRequests = emptyList(),
+            callbacks = MemberCallbacks({}, {}, {}, { _, _ -> }, { _, _ -> }, {}),
+        )
     }
 }

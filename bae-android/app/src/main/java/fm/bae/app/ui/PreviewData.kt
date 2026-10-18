@@ -6,8 +6,9 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeArtistDetail
 import uniffi.bae_bridge.BridgeArtistSummary
-import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeComposerSummary
+import uniffi.bae_bridge.BridgeDevice
+import uniffi.bae_bridge.BridgeDeviceState
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadProgress
 import uniffi.bae_bridge.BridgeDownloadSnapshot
@@ -24,9 +25,11 @@ import uniffi.bae_bridge.BridgeLibraryImageType
 import uniffi.bae_bridge.BridgeMediaCount
 import uniffi.bae_bridge.BridgeMedium
 import uniffi.bae_bridge.BridgeMember
+import uniffi.bae_bridge.BridgeMemberPublicKeys
 import uniffi.bae_bridge.BridgeMemberRole
-import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgePauseBoundary
+import uniffi.bae_bridge.BridgePerson
+import uniffi.bae_bridge.BridgePersonProfile
 import uniffi.bae_bridge.BridgePressingFacts
 import uniffi.bae_bridge.BridgeQueuedRelease
 import uniffi.bae_bridge.BridgeRelease
@@ -34,9 +37,8 @@ import uniffi.bae_bridge.BridgeReleaseArea
 import uniffi.bae_bridge.BridgeReleaseName
 import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.BridgeSearchResults
+import uniffi.bae_bridge.BridgeSharing
 import uniffi.bae_bridge.BridgeSidePausePrompt
-import uniffi.bae_bridge.BridgeSyncConfig
-import uniffi.bae_bridge.BridgeSyncProvider
 import uniffi.bae_bridge.BridgeTermLabel
 import uniffi.bae_bridge.BridgeTrack
 import uniffi.bae_bridge.BridgeTrackGroup
@@ -44,16 +46,15 @@ import uniffi.bae_bridge.BridgeTrackSearchResult
 import uniffi.bae_bridge.BridgeTrackSide
 import uniffi.bae_bridge.BridgeWorkSummary
 
+/** A member's signing and sealing public keys are each 32 bytes. */
+private const val PUBLIC_KEY_BYTES = 32
+
 /**
  * `Bridge*` fixtures for `@Preview`s, in the main source set so previews need no
  * native library or `AppHandle`. Names are generic placeholders, never real
  * artists, albums or tracks.
  */
 object PreviewData {
-    // Placeholder 64-hex-character device public keys.
-    private val placeholderPubkey = "0".repeat(64)
-    private val placeholderPubkeyAlt = "1".repeat(64)
-
     // Preview track length (3:34) and the same value as a clock, built here
     // rather than through `bridgeClock` because the preview renderer cannot
     // call the native bridge.
@@ -283,9 +284,8 @@ object PreviewData {
             id = id,
             name = name,
             path = "/tmp/$id",
-            cloudProvider = null,
+            storage = null,
             isActive = isActive,
-            error = null,
         )
 
     fun downloadTransferProgress(
@@ -341,38 +341,35 @@ object PreviewData {
     ): BridgeArtistDetail = BridgeArtistDetail(artist = artist, albums = albums)
 
     fun member(
-        pubkey: String = placeholderPubkey,
-        role: BridgeMemberRole = BridgeMemberRole.OWNER,
+        id: String = "00000000-0000-4000-8000-000000000001",
+        role: BridgeMemberRole = BridgeMemberRole.ADMIN,
         isSelf: Boolean = true,
-        fingerprint: String = "0a1b2c3d",
-        canRemove: Boolean = false,
     ): BridgeMember =
         BridgeMember(
-            pubkey = pubkey,
+            id = id,
+            keys = BridgeMemberPublicKeys(signing = ByteArray(PUBLIC_KEY_BYTES), sealing = ByteArray(PUBLIC_KEY_BYTES)),
             role = role,
+            devices =
+                listOf(
+                    BridgeDevice(id = 1uL, name = "Phone", state = BridgeDeviceState.ACTIVE, isSelf = isSelf),
+                    BridgeDevice(id = 2uL, name = "Laptop", state = BridgeDeviceState.ACTIVE, isSelf = false),
+                ),
             isSelf = isSelf,
-            fingerprint = fingerprint,
-            canRemove = canRemove,
+            canRemove = !isSelf,
+            canRemoveDevices = true,
         )
 
-    fun membership(
-        members: List<BridgeMember> =
-            listOf(
-                member(),
-                member(
-                    pubkey = placeholderPubkeyAlt,
-                    role = BridgeMemberRole.MEMBER,
-                    isSelf = false,
-                    fingerprint = "1a2b3c4d",
-                    canRemove = true,
+    fun person(member: BridgeMember = member()): BridgePerson =
+        BridgePerson(
+            id = member.id,
+            profile =
+                BridgePersonProfile(
+                    id = member.id,
+                    name = "Person Name",
+                    privateCircle = "circle-1",
+                    historySharing = BridgeSharing.PRIVATE,
+                    avatarId = null,
                 ),
-            ),
-        selfIsOwner: Boolean = true,
-    ): BridgeMembership = BridgeMembership(members = members, selfIsOwner = selfIsOwner)
-
-    fun syncConfig(
-        provider: BridgeSyncProvider =
-            BridgeSyncProvider.S3(bucket = "bucket-name", region = "us-east-1", endpoint = null),
-        cloudAccountDisplay: String? = "s3://bucket-name",
-    ): BridgeSyncConfig = BridgeSyncConfig(provider = provider, cloudAccountDisplay = cloudAccountDisplay)
+            membership = member,
+        )
 }
