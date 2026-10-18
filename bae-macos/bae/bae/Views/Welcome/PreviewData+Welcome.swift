@@ -11,12 +11,14 @@
                 id: "lib-01",
                 name: "My Library",
                 path: "/Users/preview/Music/bae/My Library",
-                storage: .s3(
-                    bucket: "music-library",
-                    region: "us-east-1",
-                    endpoint: nil,
-                    profile: nil,
-                    prefix: ""
+                settings: .readable(
+                    storage: .s3(
+                        bucket: "music-library",
+                        region: "us-east-1",
+                        endpoint: nil,
+                        profile: nil,
+                        prefix: ""
+                    )
                 ),
                 isActive: false
             ),
@@ -24,7 +26,19 @@
                 id: "lib-02",
                 name: "Local Library",
                 path: "/Users/preview/Music/bae/Local Library",
-                storage: nil,
+                settings: .readable(storage: nil),
+                isActive: false
+            ),
+            BridgeLibrary(
+                id: "lib-03",
+                name: "Broken Library",
+                path: "/Users/preview/Music/bae/Broken Library",
+                settings: .unreadable(
+                    error: .Diagnostic(
+                        category: .internal,
+                        detail: "storage.json: expected value at line 1"
+                    )
+                ),
                 isActive: false
             ),
         ]

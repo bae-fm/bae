@@ -30,7 +30,8 @@ struct LocalLibrariesSection: View {
 }
 
 /// One library row: its name, its provider and account when it has a cloud
-/// home, Open and Remove.
+/// home, Open and Remove. A library whose settings can't be read says why,
+/// and doesn't open.
 private struct LibraryRow: View {
     let library: BridgeLibrary
     let disabled: Bool
@@ -45,13 +46,17 @@ private struct LibraryRow: View {
                 Text(library.name)
                     .themeText(.rowTitle)
                 // Every row keeps the detail line so rows share one height.
-                Text(library.storage?.accountLine ?? "")
+                Text(library.detailLine)
                     .themeText(.detail)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(
+                        library.isOpenable
+                            ? Color.secondary : StatusTone.danger.color
+                    )
             }
             Spacer(minLength: ThemeSpace.group)
             Button("Open") { onOpen(library) }
                 .buttonStyle(.bordered)
+                .disabled(!library.isOpenable)
             ZStack {
                 Button("Remove", systemImage: "trash", role: .destructive) {
                     onRemove(library)

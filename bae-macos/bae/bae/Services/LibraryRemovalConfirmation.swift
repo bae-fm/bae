@@ -30,8 +30,16 @@ enum LibraryRemovalConfirmation {
 
     static func message(for library: BridgeLibrary) -> String {
         message(
-            hasCloudHome: library.storage != nil,
+            hasCloudHome: hasCloudHome(library.settings),
             hasPendingCloudWork: false
         )
+    }
+
+    /// Settings that can't be read may name a cloud home, so the warning
+    /// assumes one.
+    private static func hasCloudHome(_ settings: BridgeLibrarySettings) -> Bool
+    {
+        if case .readable(storage: nil) = settings { return false }
+        return true
     }
 }

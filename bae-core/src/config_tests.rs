@@ -502,7 +502,9 @@ async fn discovery_uses_coven_names_and_sorts_the_active_store_first() {
             (first_id.to_string().as_str(), "First", false)
         ]
     );
-    assert!(libraries.iter().all(|l| l.cloud_provider.is_none()));
+    assert!(libraries
+        .iter()
+        .all(|l| matches!(l.settings, LibrarySettings::Readable(None))));
     assert_eq!(
         libraries[0].path,
         app_dir.registered_library(&second_id.to_string())
@@ -520,6 +522,50 @@ async fn discovery_reports_a_broken_store_instead_of_omitting_it() {
         .unwrap();
     let error = Config::discover_libraries(&app_dir).await.unwrap_err();
     assert!(error.to_string().contains(&id.to_string()), "{error}");
+}
+
+/// A library whose storage settings can't be read is listed with why, and
+/// the others still list as they are.
+#[tokio::test]
+async fn discovery_lists_a_library_whose_settings_cant_be_read() {
+    let tmp = TempDir::new().unwrap();
+    let app_dir = AppDir::at(tmp.path());
+    let installation = coven::TestCoven::new();
+    let mut ids = Vec::new();
+    for name in ["Readable", "Unreadable"] {
+        let handle = crate::library::configure_store(installation.builder(app_dir.store_layout()))
+            .create_store(name)
+            .await
+            .unwrap();
+        ids.push(handle.store_id());
+        handle.close().await.unwrap();
+    }
+    std::fs::write(
+        tmp.path()
+            .join("stores")
+            .join(ids[1].to_string())
+            .join("storage.json"),
+        "{not settings",
+    )
+    .unwrap();
+
+    let libraries = Config::discover_libraries(&app_dir).await.unwrap();
+    let settings = |name: &str| {
+        &libraries
+            .iter()
+            .find(|library| library.name == name)
+            .expect("every store is listed")
+            .settings
+    };
+    assert!(matches!(
+        settings("Readable"),
+        LibrarySettings::Readable(None)
+    ));
+    assert!(
+        matches!(settings("Unreadable"), LibrarySettings::Unreadable(_)),
+        "{:?}",
+        settings("Unreadable")
+    );
 }
 
 #[tokio::test]

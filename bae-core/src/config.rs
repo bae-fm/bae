@@ -367,14 +367,22 @@ impl Default for Preferences {
 }
 
 /// A store discovered through coven, with its current committed name.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct LibraryInfo {
     pub id: String,
     pub name: String,
     pub path: PathBuf,
     pub is_active: bool,
-    pub cloud_provider: Option<CloudProvider>,
-    pub storage: Option<StorageConfig>,
+    pub settings: LibrarySettings,
+}
+
+/// What a library's storage settings say: where it is stored, or why they
+/// can't be read, which keeps the library from opening.
+#[derive(Clone, Debug)]
+pub enum LibrarySettings {
+    /// The library's cloud home, or none for a library on this device only.
+    Readable(Option<StorageConfig>),
+    Unreadable(crate::ui::UiError),
 }
 
 /// Device-local preferences and the store they belong to. Store names, device
@@ -441,15 +449,24 @@ impl Config {
         let layout = app_dir.store_layout();
         let mut libraries = Vec::new();
         for store in layout.stores().await? {
-            let storage = coven::Coven::storage_config(&layout.store_dir(&store.id)).await?;
+            let settings = match coven::Coven::storage_config(&layout.store_dir(&store.id)).await {
+                Ok(storage) => LibrarySettings::Readable(storage),
+                Err(error) => {
+                    tracing::warn!(store = %store.id, %error, "a library's settings can't be read");
+                    let error = crate::library::LibraryError::CloudHome(error);
+                    LibrarySettings::Unreadable(crate::ui::UiError::diagnostic(
+                        error.category(),
+                        error,
+                    ))
+                }
+            };
             let id = store.id.to_string();
             libraries.push(LibraryInfo {
                 is_active: active_id.as_deref() == Some(id.as_str()),
                 path: app_dir.registered_library(&id),
                 id,
                 name: store.name,
-                cloud_provider: storage.as_ref().map(StorageConfig::provider),
-                storage,
+                settings,
             });
         }
         libraries.sort_by(|a, b| {

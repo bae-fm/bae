@@ -129,8 +129,21 @@ pub struct BridgeLibrary {
     pub id: String,
     pub name: String,
     pub path: String,
-    pub storage: Option<super::BridgeStorageLocation>,
+    pub settings: BridgeLibrarySettings,
     pub is_active: bool,
+}
+
+/// Where a library is stored, or why its settings can't be read, which keeps
+/// it from opening. Mirrors `LibrarySettings`.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeLibrarySettings {
+    /// The library's cloud home, or none for a library on this device only.
+    Readable {
+        storage: Option<super::BridgeStorageLocation>,
+    },
+    Unreadable {
+        error: super::BridgeError,
+    },
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]

@@ -18,6 +18,7 @@ import uniffi.bae_bridge.BridgeFile
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeImportStorage
 import uniffi.bae_bridge.BridgeLibrary
+import uniffi.bae_bridge.BridgeLibrarySettings
 import uniffi.bae_bridge.BridgeLookupCatalogSetting
 import uniffi.bae_bridge.BridgeMcpConfig
 import uniffi.bae_bridge.BridgeOutboxPauseState
@@ -266,7 +267,7 @@ object BridgeFixtures {
             id = id,
             name = name,
             path = "/tmp/$id",
-            storage = null,
+            settings = BridgeLibrarySettings.Readable(storage = null),
             isActive = false,
         )
 

@@ -31,6 +31,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.LocaleErrorLines
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.localizedLine
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
@@ -42,6 +43,7 @@ import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibrary
+import uniffi.bae_bridge.BridgeLibrarySettings
 import uniffi.bae_bridge.LibraryNameCallback
 
 private val logger = BaeLogger("bae.LibraryNameRow")
@@ -88,17 +90,15 @@ private fun LibrarySwitcher(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .clickable(enabled = !isActive) { onSwitchLibrary(library) },
+                    .clickable(enabled = !isActive && library.settings is BridgeLibrarySettings.Readable) {
+                        onSwitchLibrary(library)
+                    },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = library.name)
                 // Every row keeps the detail line so rows share one height.
-                Text(
-                    text = library.storage?.let { storageLocationLabel(it) } ?: "",
-                    style = ThemeText.detail.style,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                LibraryDetailLine(library.settings)
             }
             // Always present but alpha-toggled so switching the active row
             // never re-measures the row heights.
@@ -254,6 +254,32 @@ private fun LibrarySwitcherPreview() {
                 activeLibraryId = "lib-1",
                 onSwitchLibrary = {},
             )
+        }
+    }
+}
+
+/**
+ * The line under a library's name: its provider and account when it has a
+ * cloud home, nothing when it doesn't, or why its settings can't be read,
+ * which keeps it from opening.
+ */
+@Composable
+private fun LibraryDetailLine(settings: BridgeLibrarySettings) {
+    when (settings) {
+        is BridgeLibrarySettings.Readable -> {
+            Text(
+                text = settings.storage?.let { location -> storageLocationLabel(location) } ?: "",
+                style = ThemeText.detail.style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        is BridgeLibrarySettings.Unreadable -> {
+            val line =
+                checkNotNull(LocalContext.current.localizedLine(settings.error)) {
+                    "unreadable settings are a diagnostic, never a cancellation"
+                }
+            Text(text = line, style = ThemeText.detail.style, color = MaterialTheme.colorScheme.error)
         }
     }
 }

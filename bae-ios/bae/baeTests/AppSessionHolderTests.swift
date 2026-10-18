@@ -33,7 +33,7 @@ struct AppSessionHolderTests {
             id: id,
             name: "Library \(id)",
             path: "/tmp/\(id)",
-            storage: nil,
+            settings: .readable(storage: nil),
             isActive: false
         )
     }

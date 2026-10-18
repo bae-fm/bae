@@ -25,8 +25,7 @@ impl BridgeLibrary {
             name,
             path,
             is_active,
-            cloud_provider: _,
-            storage,
+            settings,
         } = info;
         let path = path
             .to_str()
@@ -39,7 +38,18 @@ impl BridgeLibrary {
             name,
             path,
             is_active,
-            storage: storage.map(BridgeStorageLocation::from_core),
+            settings: match settings {
+                bae_core::config::LibrarySettings::Readable(storage) => {
+                    crate::types::BridgeLibrarySettings::Readable {
+                        storage: storage.map(BridgeStorageLocation::from_core),
+                    }
+                }
+                bae_core::config::LibrarySettings::Unreadable(error) => {
+                    crate::types::BridgeLibrarySettings::Unreadable {
+                        error: BridgeError::from_core(error),
+                    }
+                }
+            },
         })
     }
 }

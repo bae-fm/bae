@@ -207,7 +207,7 @@ private struct LibrarySwitcherSection: View {
                             Text(library.name)
                             // Every row keeps the detail line so rows share
                             // one height.
-                            Text(library.storage?.accountLine ?? "")
+                            Text(library.detailLine)
                                 .themeText(.detail)
                                 .foregroundStyle(.secondary)
                         }
