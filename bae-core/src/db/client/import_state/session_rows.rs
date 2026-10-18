@@ -3,8 +3,8 @@
 
 use super::*;
 use crate::import::{
-    CandidateSession, FindOnlineSection, MetadataPresentation, PaneCommand, PaneFailure,
-    PaneMove, SearchForm, SearchTab,
+    CandidateSession, FindOnlineSection, MetadataPresentation, PaneCommand, PaneFailure, PaneMove,
+    SearchForm, SearchTab,
 };
 use crate::ui::{GroupingBlockReason, UiError, UiErrorCategory};
 
@@ -112,6 +112,7 @@ fn category_column(category: UiErrorCategory) -> String {
         C::Database => "database".to_string(),
         C::Config => "config".to_string(),
         C::Internal => "internal".to_string(),
+        C::DeviceResetRequired => "device_reset_required".into(),
         C::SyncUpdateRequired => "sync_update_required".to_string(),
         C::Import => "import".to_string(),
         C::ImportData => "import_data".to_string(),
@@ -124,7 +125,23 @@ fn category_column(category: UiErrorCategory) -> String {
         C::GroupingBlocked(reason) => format!("grouping_blocked.{}", block_column(reason)),
         C::Export => "export".to_string(),
         C::Save => "save".to_string(),
-        C::CloudSetup(failure) => format!("cloud_setup.{}", serde_json::to_string(&failure).expect("storage failure serializes")),
+        C::CloudSetup(failure) => format!(
+            "cloud_setup.{}",
+            serde_json::to_string(&failure).expect("storage failure serializes")
+        ),
+        C::StorageCheck { check, failure } => format!(
+            "storage_check.{}.{}",
+            check_column(check),
+            serde_json::to_string(&failure).expect("storage failure serializes")
+        ),
+        C::S3VersioningUnknown(failure) => format!(
+            "versioning_unknown.{}",
+            serde_json::to_string(&failure).expect("storage failure serializes")
+        ),
+        C::S3VersioningUnsupported(state) => {
+            format!("versioning_unsupported.{}", versioning_column(state))
+        }
+        C::StorageLocationChangeUnsupported => "storage_location_change".into(),
         C::DeviceIdentityMissing => "device_identity_missing".to_string(),
         C::Credentials => "credentials".to_string(),
         C::Network => "network".to_string(),
@@ -132,6 +149,53 @@ fn category_column(category: UiErrorCategory) -> String {
         C::KeyringLocked => "keyring_locked".to_string(),
         C::Membership => "membership".to_string(),
     }
+}
+
+fn check_column(value: coven::StorageCheck) -> &'static str {
+    match value {
+        coven::StorageCheck::Create => "Create",
+        coven::StorageCheck::CreateOnce => "CreateOnce",
+        coven::StorageCheck::ConditionalReplace => "ConditionalReplace",
+        coven::StorageCheck::Read => "Read",
+        coven::StorageCheck::ReadRange => "ReadRange",
+        coven::StorageCheck::List => "List",
+        coven::StorageCheck::Delete => "Delete",
+        coven::StorageCheck::MultipartCreateOnce => "MultipartCreateOnce",
+        coven::StorageCheck::PublicationTime => "PublicationTime",
+        coven::StorageCheck::Behavior => "Behavior",
+    }
+}
+fn check_of(value: &str) -> Option<coven::StorageCheck> {
+    Some(match value {
+        "Create" => coven::StorageCheck::Create,
+        "CreateOnce" => coven::StorageCheck::CreateOnce,
+        "ConditionalReplace" => coven::StorageCheck::ConditionalReplace,
+        "Read" => coven::StorageCheck::Read,
+        "ReadRange" => coven::StorageCheck::ReadRange,
+        "List" => coven::StorageCheck::List,
+        "Delete" => coven::StorageCheck::Delete,
+        "MultipartCreateOnce" => coven::StorageCheck::MultipartCreateOnce,
+        "PublicationTime" => coven::StorageCheck::PublicationTime,
+        "Behavior" => coven::StorageCheck::Behavior,
+        _ => return None,
+    })
+}
+fn versioning_column(value: coven::S3BucketVersioning) -> &'static str {
+    match value {
+        coven::S3BucketVersioning::Disabled => "Disabled",
+        coven::S3BucketVersioning::Enabled => "Enabled",
+        coven::S3BucketVersioning::Suspended => "Suspended",
+        coven::S3BucketVersioning::Unavailable => "Unavailable",
+    }
+}
+fn versioning_of(value: &str) -> Option<coven::S3BucketVersioning> {
+    Some(match value {
+        "Disabled" => coven::S3BucketVersioning::Disabled,
+        "Enabled" => coven::S3BucketVersioning::Enabled,
+        "Suspended" => coven::S3BucketVersioning::Suspended,
+        "Unavailable" => coven::S3BucketVersioning::Unavailable,
+        _ => return None,
+    })
 }
 
 fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
@@ -151,9 +215,22 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
             .find(|reason| block_column(*reason) == stored)
             .ok_or_else(unreadable)?,
         ),
-        Some(("cloud_setup", stored)) => C::CloudSetup(
-            serde_json::from_str(stored).map_err(|_| unreadable())?,
-        ),
+        Some(("cloud_setup", stored)) => {
+            C::CloudSetup(serde_json::from_str(stored).map_err(|_| unreadable())?)
+        }
+        Some(("storage_check", stored)) => {
+            let (check, failure) = stored.split_once('.').ok_or_else(unreadable)?;
+            C::StorageCheck {
+                check: check_of(check).ok_or_else(unreadable)?,
+                failure: serde_json::from_str(failure).map_err(|_| unreadable())?,
+            }
+        }
+        Some(("versioning_unknown", stored)) => {
+            C::S3VersioningUnknown(serde_json::from_str(stored).map_err(|_| unreadable())?)
+        }
+        Some(("versioning_unsupported", stored)) => {
+            C::S3VersioningUnsupported(versioning_of(stored).ok_or_else(unreadable)?)
+        }
         Some(("metadata_track_count", stored)) => {
             let (folder_tracks, release_tracks) = stored.split_once('.').ok_or_else(unreadable)?;
             C::MetadataTrackCount {
@@ -166,6 +243,7 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
             "database" => C::Database,
             "config" => C::Config,
             "internal" => C::Internal,
+            "device_reset_required" => C::DeviceResetRequired,
             "sync_update_required" => C::SyncUpdateRequired,
             "import" => C::Import,
             "import_data" => C::ImportData,
@@ -173,6 +251,7 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
             "candidate_being_identified" => C::CandidateBeingIdentified,
             "export" => C::Export,
             "save" => C::Save,
+            "storage_location_change" => C::StorageLocationChangeUnsupported,
             "device_identity_missing" => C::DeviceIdentityMissing,
             "credentials" => C::Credentials,
             "network" => C::Network,
@@ -401,6 +480,7 @@ mod tests {
             C::Config,
             C::Internal,
             C::SyncUpdateRequired,
+            C::DeviceResetRequired,
             C::Import,
             C::ImportData,
             C::CandidateImportInProgress,
@@ -416,6 +496,13 @@ mod tests {
             C::GroupingBlocked(B::FolderFilesDownloading),
             C::Export,
             C::Save,
+            C::StorageCheck {
+                check: coven::StorageCheck::CreateOnce,
+                failure: F::Protocol,
+            },
+            C::S3VersioningUnsupported(coven::S3BucketVersioning::Enabled),
+            C::S3VersioningUnknown(F::PermissionDenied),
+            C::StorageLocationChangeUnsupported,
             C::CloudSetup(F::Authentication),
             C::CloudSetup(F::PermissionDenied),
             C::CloudSetup(F::ContainerNotFound),

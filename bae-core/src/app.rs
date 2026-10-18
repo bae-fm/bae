@@ -61,6 +61,8 @@ pub enum BootstrapError {
     #[error("{0}")]
     Database(String),
     #[error("{0}")]
+    DeviceResetRequired(String),
+    #[error("{0}")]
     Internal(String),
     /// The OS keychain refused the read *right now* — the session is locked, the
     /// display is asleep, or there is no UI session to prompt in. The key is not
@@ -84,6 +86,18 @@ pub(crate) fn classify_key_state_error(error: crate::library::LibraryError) -> B
             _,
         )) => BootstrapError::KeyringUnavailable,
         error => BootstrapError::Config(error.to_string()),
+    }
+}
+
+fn classify_open_error(error: crate::db::DbError) -> BootstrapError {
+    match error {
+        crate::db::DbError::Coven(coven::CovenError::Key(
+            coven::KeyError::KeychainTemporarilyUnavailable(_),
+        )) => BootstrapError::KeyringUnavailable,
+        error @ crate::db::DbError::Coven(coven::CovenError::Database(
+            coven::DbError::DamagedDatabase,
+        )) => BootstrapError::DeviceResetRequired(error.to_string()),
+        error => BootstrapError::Database(format!("Failed to open database: {error}")),
     }
 }
 
@@ -336,7 +350,7 @@ where
                 providers,
             ))
         })
-        .map_err(|e| BootstrapError::Database(format!("Failed to open database: {e}")))?;
+        .map_err(classify_open_error)?;
 
     let provider_configured = runtime
         .block_on(library_manager.is_sync_configured())
@@ -488,6 +502,27 @@ mod tests {
 
         assert!(matches!(
             classify_key_state_error(error),
+            BootstrapError::KeyringUnavailable
+        ));
+    }
+
+    #[tokio::test]
+    async fn opening_with_a_locked_keychain_remains_retryable() {
+        let temp = tempfile::tempdir().unwrap();
+        let installation = coven::TestCoven::new();
+        installation.fail_next_keychain_operation();
+        let failure = crate::library::configure_store(
+            installation.builder(coven::StoreLayout::new(temp.path().into())),
+        )
+        .create_store("Keychain test")
+        .await
+        .err()
+        .unwrap();
+        let coven::StoreCreationError::Store(error) = failure else {
+            panic!("unexpected failure: {failure}")
+        };
+        assert!(matches!(
+            super::classify_open_error(error.into()),
             BootstrapError::KeyringUnavailable
         ));
     }

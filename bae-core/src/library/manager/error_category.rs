@@ -23,11 +23,14 @@ pub(super) fn cloud_home_category(error: &coven::StorageError) -> C {
 pub(super) fn cloud_setup_category(error: &coven::StorageSetupError) -> C {
     use coven::StorageSetupError as E;
     match error {
-        E::Storage(error) | E::ProviderCheck { source: error, .. } => {
-            C::CloudSetup(error.failure())
-        }
-        E::S3VersioningUnknown { source } => C::CloudSetup(source.failure()),
-        E::S3VersioningUnsupported { .. } | E::LocationChangeUnsupported => C::Config,
+        E::Storage(error) => C::CloudSetup(error.failure()),
+        E::ProviderCheck { check, source } => C::StorageCheck {
+            check: *check,
+            failure: source.failure(),
+        },
+        E::S3VersioningUnknown { source } => C::S3VersioningUnknown(source.failure()),
+        E::S3VersioningUnsupported { state } => C::S3VersioningUnsupported(*state),
+        E::LocationChangeUnsupported => C::StorageLocationChangeUnsupported,
         E::OAuth(_) => C::Credentials,
         E::SecureStorage(error) => key_category(error),
         E::Internal(_) => C::Internal,

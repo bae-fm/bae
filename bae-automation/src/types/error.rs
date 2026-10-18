@@ -109,10 +109,15 @@ impl From<bae_core::ui::UiError> for AutomationError {
             | UiErrorCategory::GroupingBlocked(_) => Self::Import(detail),
             UiErrorCategory::Config => Self::Validation(detail),
             UiErrorCategory::Internal => Self::Internal(detail),
-            UiErrorCategory::SyncUpdateRequired
+            UiErrorCategory::DeviceResetRequired
+            | UiErrorCategory::SyncUpdateRequired
             | UiErrorCategory::Export
             | UiErrorCategory::Save
             | UiErrorCategory::CloudSetup(_)
+            | UiErrorCategory::StorageCheck { .. }
+            | UiErrorCategory::S3VersioningUnknown(_)
+            | UiErrorCategory::S3VersioningUnsupported(_)
+            | UiErrorCategory::StorageLocationChangeUnsupported
             | UiErrorCategory::DeviceIdentityMissing
             | UiErrorCategory::Credentials
             | UiErrorCategory::Network

@@ -77,6 +77,29 @@ impl SyncStatusSnapshot {
         )
     }
 
+    pub fn failure(&self) -> Option<UiError> {
+        if let Some(error) = &self.error {
+            return Some(error.clone());
+        }
+        use crate::ui::UiErrorCategory as C;
+        match &self.status {
+            coven::SyncStatus::Offline { error } => Some(UiError::diagnostic(C::Network, error)),
+            coven::SyncStatus::Failed { error } => {
+                let category = match error {
+                    coven::SyncFailure::UpdateRequired(_) => C::SyncUpdateRequired,
+                    coven::SyncFailure::DeviceIdInUse(_) => C::DeviceResetRequired,
+                    coven::SyncFailure::Removed => C::Membership,
+                    coven::SyncFailure::Storage(error) => {
+                        super::error_category::cloud_home_category(error)
+                    }
+                    coven::SyncFailure::Operation(_) | coven::SyncFailure::Other(_) => C::Internal,
+                };
+                Some(UiError::diagnostic(category, error))
+            }
+            _ => None,
+        }
+    }
+
     pub fn indicator(&self) -> SyncIndicator {
         if !self.connected() {
             return SyncIndicator::Unconnected;
@@ -86,7 +109,13 @@ impl SyncStatusSnapshot {
             Some(Ok(pending)) if !pending.is_empty() => SyncIndicator::Waiting {
                 items: pending.len(),
             },
-            Some(Ok(_)) => SyncIndicator::Synced,
+            Some(Ok(_))
+                if matches!(self.status, coven::SyncStatus::Synced { .. })
+                    && self.error.is_none() =>
+            {
+                SyncIndicator::Synced
+            }
+            Some(Ok(_)) => SyncIndicator::Loading,
         }
     }
 }
@@ -199,6 +228,27 @@ mod tests {
             pending_action(&record),
             PendingAction::SignIn(coven::CloudProvider::Dropbox)
         );
+    }
+
+    #[test]
+    fn a_failed_pass_with_no_pending_records_does_not_claim_synced() {
+        let snapshot = SyncStatusSnapshot {
+            status: coven::SyncStatus::Failed {
+                error: coven::SyncFailure::Storage(Arc::new(
+                    coven::StorageFailure::PermissionDenied.into(),
+                )),
+            },
+            pending: Some(Ok(Vec::new())),
+            error: None,
+        };
+        assert_eq!(snapshot.indicator(), SyncIndicator::Loading);
+        assert!(matches!(
+            snapshot.failure(),
+            Some(UiError::Diagnostic {
+                category: crate::ui::UiErrorCategory::Credentials,
+                ..
+            })
+        ));
     }
 
     #[test]

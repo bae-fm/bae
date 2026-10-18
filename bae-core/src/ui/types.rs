@@ -9,6 +9,7 @@ pub enum UiErrorCategory {
     Internal,
     /// Sync encountered data written by a newer app schema.
     SyncUpdateRequired,
+    DeviceResetRequired,
     Import,
     /// Source metadata or artwork could not be parsed or decoded.
     ImportData,
@@ -30,6 +31,13 @@ pub enum UiErrorCategory {
     /// A failed storage setup keeps coven's exact provider reason so every UI
     /// can tell the user what must change before retrying.
     CloudSetup(coven::StorageFailure),
+    StorageCheck {
+        check: coven::StorageCheck,
+        failure: coven::StorageFailure,
+    },
+    S3VersioningUnknown(coven::StorageFailure),
+    S3VersioningUnsupported(coven::S3BucketVersioning),
+    StorageLocationChangeUnsupported,
     /// The local store has no device identity. Create, join, and restore establish
     /// that identity before exposing a library.
     DeviceIdentityMissing,
