@@ -85,25 +85,17 @@ struct WelcomeView: View {
     // MARK: - Previews
 
     /// The flows the switcher lands on, each in the welcome window's chrome
-    /// with the populated `LibrarySetup` so no flow touches the real library
-    /// directory or keychain.
+    /// with the populated `LibrarySetup` and `LibraryRemovals` so no flow
+    /// touches the real library directory or keychain.
     #Preview("Choose") {
-        PreviewScenes.welcome()
+        PreviewScenes.welcome(initialMode: .choose)
     }
 
     #Preview("Restore") {
-        PreviewScenes.welcomeRestore()
+        PreviewScenes.welcome(initialMode: .restore(nil))
     }
 
     #Preview("Join") {
-        WelcomeWindowChrome {
-            WelcomeView(
-                onLibraryReady: { _, _ in },
-                onOpenLibrary: { _ in },
-                initialMode: .join,
-                canDeleteActiveLibrary: true
-            )
-        }
-        .environment(PreviewData.welcomeSetup())
+        PreviewScenes.welcome(initialMode: .join)
     }
 #endif

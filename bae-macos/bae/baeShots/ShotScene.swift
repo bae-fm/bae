@@ -43,7 +43,7 @@ struct ShotScene {
             AnyView(CoverPickerPreviewScene())
         },
         ShotScene(id: "story-1-first-run", size: WelcomeWindow.size) {
-            AnyView(PreviewScenes.welcome())
+            AnyView(PreviewScenes.welcome(initialMode: .choose))
         },
         ShotScene(
             id: "cover-picker-unlinked",

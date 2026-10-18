@@ -8,31 +8,20 @@
     /// and the previews render one path and can't drift.
     @MainActor
     enum PreviewScenes {
-        /// First-run welcome: the chooser landing screen in the welcome window's
-        /// fixed 900x600 chrome, over the populated `LibrarySetup` fixture.
-        static func welcome() -> some View {
+        /// The welcome window entered at `initialMode`, in its fixed 900x600
+        /// chrome, over the populated `LibrarySetup` and `LibraryRemovals`
+        /// fixtures. Every flow can go back to the chooser, which reads both.
+        static func welcome(initialMode: WelcomeView.Mode) -> some View {
             WelcomeWindowChrome {
                 WelcomeView(
                     onLibraryReady: { _, _ in },
                     onOpenLibrary: { _ in },
+                    initialMode: initialMode,
                     canDeleteActiveLibrary: true
                 )
             }
             .environment(PreviewData.welcomeSetup())
             .environment(PreviewData.welcomeRemovals())
-        }
-
-        /// The restore-from-cloud flow, entered directly, in the welcome chrome.
-        static func welcomeRestore() -> some View {
-            WelcomeWindowChrome {
-                WelcomeView(
-                    onLibraryReady: { _, _ in },
-                    onOpenLibrary: { _ in },
-                    initialMode: .restore(nil),
-                    canDeleteActiveLibrary: true
-                )
-            }
-            .environment(PreviewData.welcomeSetup())
         }
 
         /// The album grid backed by the fixture albums, wired with the same live
