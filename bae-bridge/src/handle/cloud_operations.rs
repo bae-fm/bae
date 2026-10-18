@@ -19,29 +19,31 @@ forward! { async this => {
 forward! {
     #[cfg(feature = "cloudkit")]
     async this => {
-        fn use_cloudkit(storage: BridgeHomeStorage) -> () {
-            this.services
-                .use_cloudkit(crate::types::BridgeHomeStorage::into_core(storage))
-                .await?;
-            Ok(())
+        fn use_cloudkit(device_name: String) -> crate::types::BridgeStorageSetup {
+            Ok(crate::types::BridgeStorageSetup::from_core(this.services.use_cloudkit(&device_name).await?))
         }
     }
 }
-
 forward! {
     #[cfg(feature = "oauth-providers")]
     async this => {
-        fn sign_in_cloud_provider(
-            provider: BridgeCloudProvider,
-            storage: BridgeHomeStorage,
-        ) -> () {
-            this.services
-                .sign_in_cloud_provider(
-                    crate::types::BridgeCloudProvider::into_core(provider),
-                    crate::types::BridgeHomeStorage::into_core(storage),
-                )
-                .await?;
-            Ok(())
+        fn authenticate(access: crate::BridgeOAuthAccess) -> () {
+            Ok(this.services.authenticate(access.into_core()).await?)
+        }
+        fn setup_oauth_storage(location: crate::types::BridgeStorageLocation, device_name: String) -> crate::types::BridgeStorageSetup {
+            Ok(crate::types::BridgeStorageSetup::from_core(this.services.setup_oauth_storage(location.into_core()?, &device_name).await?))
+        }
+        fn onedrive_root() -> crate::types::BridgeStorageFolder {
+            Ok(crate::types::BridgeStorageFolder::from_core(this.services.onedrive_root().await?))
+        }
+        fn onedrive_folders(parent: crate::types::BridgeStorageLocation) -> Vec<crate::types::BridgeStorageFolder> {
+            Ok(this.services.onedrive_folders(&parent.into_core()?).await?.into_iter().map(crate::types::BridgeStorageFolder::from_core).collect())
+        }
+        fn create_onedrive_folder(parent: crate::types::BridgeStorageLocation, name: String) -> crate::types::BridgeStorageFolder {
+            Ok(crate::types::BridgeStorageFolder::from_core(this.services.create_onedrive_folder(&parent.into_core()?, &name).await?))
+        }
+        fn dropbox_shared_folders() -> Vec<crate::types::BridgeStorageFolder> {
+            Ok(this.services.dropbox_shared_folders().await?.into_iter().map(crate::types::BridgeStorageFolder::from_core).collect())
         }
     }
 }
