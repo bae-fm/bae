@@ -39,7 +39,7 @@ fn wrapped_library_failures_preserve_the_library_category() {
     use bae_core::library::LibraryError;
     let cases: [(fn() -> LibraryError, BridgeErrorCategory); 3] = [
         (
-            || LibraryError::Database(coven::DbError::Message("read failed".into())),
+            || LibraryError::Database(bae_core::db::DbError::Message("read failed".into())),
             BridgeErrorCategory::Database,
         ),
         (

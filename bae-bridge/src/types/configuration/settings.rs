@@ -20,80 +20,6 @@ pub struct BridgeSortCriterion {
     pub direction: BridgeSortDirection,
 }
 
-/// Decoded restore code info for UI preview (before the actual restore).
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeRestoreCodeInfo {
-    pub library_id: String,
-    pub library_name: String,
-    pub cloud_provider: BridgeCloudProvider,
-    pub needs_oauth: bool,
-}
-
-/// A device in the library's membership chain.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeMember {
-    /// Hex-encoded Ed25519 public key — the device's stable identity.
-    pub pubkey: String,
-    pub role: BridgeMemberRole,
-    /// True for the device this app is running on.
-    pub is_self: bool,
-    /// Short display identity — the first 8 characters of the pubkey.
-    pub fingerprint: String,
-    /// Whether the running device may remove this one (owner-only, never self).
-    pub can_remove: bool,
-}
-
-/// The library's membership: its devices and whether the running device is an
-/// owner (the gate the UI uses to show inviting and removal controls).
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeMembership {
-    pub members: Vec<BridgeMember>,
-    pub self_is_owner: bool,
-}
-
-/// A member's role. Mirrors coven's `MemberRole`. bae adds devices as `Member`;
-/// the founding device is `Owner`. `Follower` (read-only) exists in coven's model
-/// but bae does not create it — it is mapped through so the conversion stays total.
-#[derive(Debug, Clone, Copy, PartialEq, uniffi::Enum)]
-pub enum BridgeMemberRole {
-    Owner,
-    Member,
-    Follower,
-}
-
-/// The existing device's pairing offer, decoded before provider authorization.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeDevicePairingOffer {
-    pub library_name: String,
-    pub cloud_provider: BridgeCloudProvider,
-    pub needs_oauth: bool,
-    pub expires_at_unix_seconds: i64,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeDevicePairingPhase {
-    AwaitingInvitation,
-    ProviderAccessPending,
-    LibraryInstallationPending,
-}
-
-/// A pairing attempt retained on this device and available to resume after an
-/// app restart.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgePendingDevicePairingJoin {
-    pub pairing_code: String,
-    pub offer: BridgeDevicePairingOffer,
-    pub fingerprint: String,
-    pub phase: BridgeDevicePairingPhase,
-}
-
-/// The exact joining identity waiting for approval on the existing device.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgePairingDevice {
-    pub fingerprint: String,
-    pub email: Option<String>,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSaveBitDepth {
     Source,
@@ -148,37 +74,6 @@ pub struct BridgeSavePreset {
     pub embed_cover: bool,
 }
 
-/// A cloud-home setup failure mirrored across UniFFI. Coven's original enum is
-/// used inside bae-core; this mirror exists only for the language boundary.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeCloudHomeSetupFailure {
-    Authentication,
-    PermissionDenied,
-    ContainerNotFound,
-    RegionMismatch,
-    QuotaExceeded,
-    InvalidConfiguration,
-    LocationOccupied,
-    Network,
-    DeviceIdentityMissing,
-    SecureStorage,
-    Internal,
-}
-
-/// How a device-pairing join ended without joining. Each one is a different
-/// thing for the user to do next, so each carries its own line rather than
-/// sharing the membership category's generic one.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeDeviceJoinFailure {
-    /// The code's deadline passed. A retry needs a fresh code.
-    Expired,
-    /// The inviting device never took its next step — both sides have to be
-    /// running the join at once.
-    OwnerOffline,
-    /// The inviting device ended the attempt.
-    OwnerEnded,
-}
-
 /// Why a release read from several folders cannot be worked on as it stands,
 /// or cannot be made. Each is its own line: what the person does next differs
 /// — combine the folders again, separate the release in the way, or wait for
@@ -226,6 +121,7 @@ pub enum BridgeErrorCategory {
     Config,
     Internal,
     SyncUpdateRequired,
+    DeviceResetRequired,
     Import,
     /// Source metadata or artwork could not be parsed or decoded.
     ImportData,
@@ -241,8 +137,19 @@ pub enum BridgeErrorCategory {
     Export,
     Save,
     CloudSetup {
-        failure: BridgeCloudHomeSetupFailure,
+        failure: BridgeStorageFailure,
     },
+    StorageCheck {
+        check: BridgeStorageCheck,
+        failure: BridgeStorageFailure,
+    },
+    S3VersioningUnknown {
+        failure: BridgeStorageFailure,
+    },
+    S3VersioningUnsupported {
+        state: BridgeS3BucketVersioning,
+    },
+    StorageLocationChangeUnsupported,
     DeviceIdentityMissing,
     /// A cloud provider rejected the request or the setup is misconfigured (bad
     /// credentials, denied permission, a bucket/folder that isn't set).
@@ -259,11 +166,6 @@ pub enum BridgeErrorCategory {
     /// A library-sharing membership operation failed (the membership chain, an
     /// invite, or cross-device key rotation).
     Membership,
-    /// A device-pairing join ended without joining, for a reason the user can
-    /// act on. Carries which end it was so the line can say what to do next.
-    DeviceJoin {
-        failure: BridgeDeviceJoinFailure,
-    },
     /// A release read from several folders cannot be worked on as it stands,
     /// or cannot be made, for a reason the person can act on.
     GroupingBlocked {
@@ -379,6 +281,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::Database => "core.error.category.database",
         BridgeErrorCategory::Config => "core.error.category.config",
         BridgeErrorCategory::Internal => "core.error.category.internal",
+        BridgeErrorCategory::DeviceResetRequired => "core.error.device_reset_required",
         BridgeErrorCategory::SyncUpdateRequired => "core.error.sync_update_required",
         BridgeErrorCategory::Import | BridgeErrorCategory::ImportData => {
             "core.error.category.import"
@@ -392,38 +295,23 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::MetadataTrackCount { .. } => "core.import.error.metadata_track_count",
         BridgeErrorCategory::Export => "core.error.category.export",
         BridgeErrorCategory::Save => "core.error.category.save",
-        BridgeErrorCategory::CloudSetup { failure } => match failure {
-            BridgeCloudHomeSetupFailure::Authentication => "core.error.category.credentials",
-            BridgeCloudHomeSetupFailure::PermissionDenied => {
-                "core.error.cloud_setup.permission_denied"
-            }
-            BridgeCloudHomeSetupFailure::ContainerNotFound => {
-                "core.error.cloud_setup.container_not_found"
-            }
-            BridgeCloudHomeSetupFailure::RegionMismatch => "core.error.cloud_setup.region_mismatch",
-            BridgeCloudHomeSetupFailure::QuotaExceeded => "core.error.cloud_setup.quota_exceeded",
-            BridgeCloudHomeSetupFailure::InvalidConfiguration => {
-                "core.error.cloud_setup.invalid_configuration"
-            }
-            BridgeCloudHomeSetupFailure::LocationOccupied => {
-                "core.error.cloud_setup.location_occupied"
-            }
-            BridgeCloudHomeSetupFailure::Network => "core.error.category.network",
-            BridgeCloudHomeSetupFailure::DeviceIdentityMissing => "core.error.identity_missing",
-            BridgeCloudHomeSetupFailure::SecureStorage => "core.error.category.keyring",
-            BridgeCloudHomeSetupFailure::Internal => "core.error.category.internal",
-        },
+        BridgeErrorCategory::CloudSetup { failure } => {
+            super::super::storage_failure::storage_failure_key(failure)
+        }
+        BridgeErrorCategory::StorageCheck { .. } => "core.error.storage.check",
+        BridgeErrorCategory::S3VersioningUnknown { .. } => "core.error.storage.versioning_unknown",
+        BridgeErrorCategory::S3VersioningUnsupported { .. } => {
+            "core.error.storage.versioning_unsupported"
+        }
+        BridgeErrorCategory::StorageLocationChangeUnsupported => {
+            "core.error.storage.location_change"
+        }
         BridgeErrorCategory::DeviceIdentityMissing => "core.error.identity_missing",
         BridgeErrorCategory::Credentials => "core.error.category.credentials",
         BridgeErrorCategory::Network => "core.error.category.network",
         BridgeErrorCategory::Keyring => "core.error.category.keyring",
         BridgeErrorCategory::KeyringLocked => "core.error.keyring.locked",
         BridgeErrorCategory::Membership => "core.error.category.membership",
-        BridgeErrorCategory::DeviceJoin { failure } => match failure {
-            BridgeDeviceJoinFailure::Expired => "core.error.join.expired",
-            BridgeDeviceJoinFailure::OwnerOffline => "core.error.join.owner_offline",
-            BridgeDeviceJoinFailure::OwnerEnded => "core.error.join.owner_ended",
-        },
         BridgeErrorCategory::GroupingBlocked { reason } => match reason {
             BridgeGroupingBlock::SourceChanged => "core.import.grouping.source_changed",
             BridgeGroupingBlock::SourceGone => "core.import.grouping.source_gone",
@@ -460,11 +348,10 @@ pub(crate) trait DatabaseFault {
 
 /// The message a `DbError` carries, without its own "database error:" prefix.
 ///
-/// A catch-all arm rather than an exhaustive match on purpose: `DbError` is
-/// coven's, and a variant added there must not stop this from rendering.
-fn db_fault(error: coven::DbError) -> String {
+/// Non-message failures retain their complete diagnostic chain.
+fn db_fault(error: bae_core::db::DbError) -> String {
     match error {
-        coven::DbError::Message(message) => message,
+        bae_core::db::DbError::Message(message) => message,
         other => other.to_string(),
     }
 }
@@ -472,7 +359,7 @@ fn db_fault(error: coven::DbError) -> String {
 impl DatabaseFault for coven::CovenError {
     fn database_fault(self) -> String {
         match self {
-            coven::CovenError::Database(inner) => db_fault(*inner),
+            coven::CovenError::Database(inner) => inner.to_string(),
             other => other.to_string(),
         }
     }
@@ -521,15 +408,6 @@ pub fn bridge_playback_error_reason_key(reason: &BridgePlaybackErrorReason) -> O
     }
 }
 
-#[cfg(feature = "cloudkit")]
-#[derive(Debug, thiserror::Error, uniffi::Error)]
-pub enum CloudKitError {
-    #[error("not found: {msg}")]
-    NotFound { msg: String },
-    #[error("CloudKit error: {msg}")]
-    Storage { msg: String },
-}
-
 // =========================================================================
 // Core <-> Bridge conversions
 //
@@ -544,13 +422,13 @@ pub enum CloudKitError {
 // any struct or enum-variant pattern — so a new bae-core field fails the build
 // here instead of silently never crossing the bridge. A dropped field is named
 // explicitly (`field: _`), with a comment when the drop isn't obvious. Fields of
-// external-crate types (coven's `Config`/`CloudHomeConfig`, …) are exempt — the
+// external-crate types (coven's `StorageConfig`, …) are exempt — the
 // bridge can't police a pinned crate's field list — and stay dotted reads.
 // =========================================================================
 
 mirror_enum! {
     /// The bridge enum carries variants core's has no counterpart for — a
-    /// device-join failure, an AirPlay receiver bae cannot drive — so only the
+    /// an AirPlay receiver bae cannot drive — so only the
     /// outward direction is a mirror.
     BridgeErrorCategory = bae_core::ui::UiErrorCategory,
     from_core: pub(crate) fn,
@@ -559,6 +437,7 @@ mirror_enum! {
         Config,
         Internal,
         SyncUpdateRequired,
+        DeviceResetRequired,
         Import,
         ImportData,
         CandidateImportInProgress,
@@ -567,31 +446,17 @@ mirror_enum! {
         GroupingBlocked(reason: (BridgeGroupingBlock)),
         Export,
         Save,
-        CloudSetup(failure: (BridgeCloudHomeSetupFailure)),
+        CloudSetup(failure: (BridgeStorageFailure)),
+        StorageCheck {check:(BridgeStorageCheck),failure:(BridgeStorageFailure)},
+        S3VersioningUnknown(failure:(BridgeStorageFailure)),
+        S3VersioningUnsupported(state:(BridgeS3BucketVersioning)),
+        StorageLocationChangeUnsupported,
         DeviceIdentityMissing,
         Credentials,
         Network,
         Keyring,
         KeyringLocked,
         Membership,
-    },
-}
-
-mirror_enum! {
-    BridgeCloudHomeSetupFailure = coven::CloudHomeSetupFailure,
-    from_core: fn,
-    variants: {
-        Authentication,
-        PermissionDenied,
-        ContainerNotFound,
-        RegionMismatch,
-        QuotaExceeded,
-        InvalidConfiguration,
-        LocationOccupied,
-        Network,
-        DeviceIdentityMissing,
-        SecureStorage,
-        Internal,
     },
 }
 
@@ -630,9 +495,10 @@ impl From<bae_core::import::ImportError> for BridgeError {
 impl From<bae_core::library::LibraryError> for BridgeError {
     fn from(error: bae_core::library::LibraryError) -> Self {
         if matches!(
-            &error,
-            bae_core::library::LibraryError::DevicePairingApproval(inner)
-                if matches!(**inner, coven::ApproveDevicePairingError::Cancelled)
+            error,
+            bae_core::library::LibraryError::CloudSetup(coven::StorageSetupError::OAuth(
+                coven::OAuthError::Cancelled
+            ))
         ) {
             return BridgeError::Cancelled;
         }
@@ -690,42 +556,8 @@ impl BridgeCloudProvider {
             CloudProvider::Dropbox => BridgeCloudProvider::Dropbox,
             CloudProvider::OneDrive => BridgeCloudProvider::OneDrive,
             CloudProvider::CloudKit => BridgeCloudProvider::CloudKit,
-            unsupported => panic!("unsupported cloud provider: {unsupported:?}"),
         }
     }
-}
-
-mirror_enum! {
-    BridgeMemberRole = bae_core::sync::membership::MemberRole,
-    from_core: pub(crate) fn,
-    variants: { Owner, Member, Follower },
-}
-
-mirror_struct! {
-    BridgeMember = bae_core::sync::membership::MembershipMember,
-    from_core: fn,
-    fields: { pubkey, role: (BridgeMemberRole), is_self, fingerprint, can_remove },
-}
-
-mirror_struct! {
-    BridgeMembership = bae_core::sync::membership::Membership,
-    from_core: pub(crate) fn,
-    fields: { members: (each BridgeMember), self_is_owner },
-}
-
-mirror_enum! {
-    /// Only the OAuth sign-in and authorize flows map a bare bridge provider back
-    /// to core; gated so non-OAuth builds don't carry a dead mapping.
-    #[cfg(feature = "oauth-providers")]
-    BridgeCloudProvider = bae_core::config::CloudProvider,
-    into_core: pub(crate) fn,
-    variants: { S3, Dropbox, OneDrive, CloudKit },
-}
-
-mirror_enum! {
-    BridgeHomeStorage = bae_core::config::HomeStorage,
-    into_core: pub(crate) fn,
-    variants: { Opaque, Browsable },
 }
 
 mirror_enum! {

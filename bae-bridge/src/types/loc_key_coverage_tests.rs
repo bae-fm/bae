@@ -22,29 +22,16 @@ const DIRECT_KEYS: &[&str] = &[
     // A queue row whose release the library no longer holds.
     "core.queue.release_missing",
     "core.download.bytes_progress",
+    "core.outbox.bytes.uploading",
     // Status records carry these keys themselves.
-    "core.artwork_cache.scanning",
     "core.artwork_cache.downloading",
     "core.artwork_cache.cancelled",
-    "core.artwork_cache.failed",
-    "core.outbox.preparing",
-    "core.outbox.prepared",
-    "core.outbox.uploaded",
-    "core.outbox.publishing",
-    "core.outbox.cancelling",
-    "core.outbox.retrying",
-    "core.outbox.source_unavailable",
     "core.outbox.throughput",
     "core.outbox.eta",
-    // Cancelling is the command being awaited, not a pairing phase, so no
-    // phase enum produces it.
-    "core.pairing.cancelling",
     // Upload rows word their non-filename labels with these. The cover uses
     // the import role key directly because no file role names a cover: the
     // cover is a release's choice, not a file's property.
-    "core.outbox.file.artist_image",
-    "core.outbox.file.unwinding",
-    "core.import.role.cover",
+    "core.sync.reset_device.warning",
     // Album total playing time: the UI switches on `BridgeDurationUnits` and
     // composes the hours and minutes words through the join pattern.
     "core.duration.hours",
@@ -62,9 +49,6 @@ const DIRECT_KEYS: &[&str] = &[
     "core.audio.bit_depth",
     "core.audio.channels.count",
     "core.release.media",
-    // Disconnect-sync confirmation: releases that live only in the cloud (the
-    // UI composes the count into its own base sentence).
-    "core.sync.cloud_only_releases",
     // The accessibility label of the arrow on a row whose facts came from a
     // catalog record.
     "core.identity.identified",
@@ -81,26 +65,20 @@ const DIRECT_KEYS: &[&str] = &[
 /// loops check what neither catalog direction can see: that a value names no
 /// key, or that two values share one.
 fn produced_keys() -> Vec<String> {
-    let mut keys = super::device_pairing_progress_tests::progress_keys();
+    let mut keys = Vec::new();
 
     // bridge_transfer_action_key — every variant carries a key.
     for a in [
-        BridgeReleaseStorageAction::MakeRemote,
+        BridgeReleaseStorageAction::Upload,
         BridgeReleaseStorageAction::Pin,
         BridgeReleaseStorageAction::Unpin,
-        BridgeReleaseStorageAction::MakeLocal,
+        BridgeReleaseStorageAction::DetachAudio,
     ] {
         keys.push(bridge_transfer_action_key(a));
     }
 
     // bridge_sheet_refused_codec_key — one key, no variants to walk.
     keys.push(bridge_sheet_refused_codec_key());
-
-    // bridge_upload_phase_bytes_key — each phase names itself beside the
-    // bar it labels.
-    for phase in [BridgeUploadPhase::Preparing, BridgeUploadPhase::Uploading] {
-        keys.push(bridge_upload_phase_bytes_key(phase));
-    }
 
     // bridge_network_folder_watch_key — one key, no variants to walk.
     keys.push(bridge_network_folder_watch_key());
@@ -252,54 +230,24 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::CandidateBeingIdentified,
         BridgeErrorCategory::Export,
         BridgeErrorCategory::Save,
-        BridgeErrorCategory::CloudSetup {
-            failure: BridgeCloudHomeSetupFailure::Authentication,
+        BridgeErrorCategory::DeviceResetRequired,
+        BridgeErrorCategory::StorageCheck {
+            check: BridgeStorageCheck::Read,
+            failure: BridgeStorageFailure::Network,
         },
-        BridgeErrorCategory::CloudSetup {
-            failure: BridgeCloudHomeSetupFailure::PermissionDenied,
+        BridgeErrorCategory::S3VersioningUnknown {
+            failure: BridgeStorageFailure::Network,
         },
-        BridgeErrorCategory::CloudSetup {
-            failure: BridgeCloudHomeSetupFailure::ContainerNotFound,
+        BridgeErrorCategory::S3VersioningUnsupported {
+            state: BridgeS3BucketVersioning::Enabled,
         },
-        BridgeErrorCategory::CloudSetup {
-            failure: BridgeCloudHomeSetupFailure::RegionMismatch,
-        },
-        BridgeErrorCategory::CloudSetup {
-            failure: BridgeCloudHomeSetupFailure::QuotaExceeded,
-        },
-        BridgeErrorCategory::CloudSetup {
-            failure: BridgeCloudHomeSetupFailure::InvalidConfiguration,
-        },
-        BridgeErrorCategory::CloudSetup {
-            failure: BridgeCloudHomeSetupFailure::LocationOccupied,
-        },
-        BridgeErrorCategory::CloudSetup {
-            failure: BridgeCloudHomeSetupFailure::Network,
-        },
-        BridgeErrorCategory::CloudSetup {
-            failure: BridgeCloudHomeSetupFailure::DeviceIdentityMissing,
-        },
-        BridgeErrorCategory::CloudSetup {
-            failure: BridgeCloudHomeSetupFailure::SecureStorage,
-        },
-        BridgeErrorCategory::CloudSetup {
-            failure: BridgeCloudHomeSetupFailure::Internal,
-        },
+        BridgeErrorCategory::StorageLocationChangeUnsupported,
         BridgeErrorCategory::DeviceIdentityMissing,
         BridgeErrorCategory::Credentials,
         BridgeErrorCategory::Network,
         BridgeErrorCategory::Keyring,
         BridgeErrorCategory::KeyringLocked,
         BridgeErrorCategory::Membership,
-        BridgeErrorCategory::DeviceJoin {
-            failure: BridgeDeviceJoinFailure::Expired,
-        },
-        BridgeErrorCategory::DeviceJoin {
-            failure: BridgeDeviceJoinFailure::OwnerOffline,
-        },
-        BridgeErrorCategory::DeviceJoin {
-            failure: BridgeDeviceJoinFailure::OwnerEnded,
-        },
         BridgeErrorCategory::GroupingBlocked {
             reason: BridgeGroupingBlock::SourceChanged,
         },
@@ -320,6 +268,136 @@ fn produced_keys() -> Vec<String> {
         keys.push(bridge_error_category_key(c));
     }
 
+    for failure in [
+        BridgeStorageFailure::ProviderUnavailable,
+        BridgeStorageFailure::AccessNotRegistered {
+            required: crate::BridgeOAuthAccess::OneDrive,
+        },
+        BridgeStorageFailure::AccessNotGranted {
+            required: crate::BridgeOAuthAccess::OneDrive,
+        },
+        BridgeStorageFailure::DropboxAppFolderNotShareable,
+        BridgeStorageFailure::Network,
+        BridgeStorageFailure::Authentication,
+        BridgeStorageFailure::PermissionDenied,
+        BridgeStorageFailure::NotFound,
+        BridgeStorageFailure::AlreadyExists,
+        BridgeStorageFailure::Conflict,
+        BridgeStorageFailure::ContainerNotFound,
+        BridgeStorageFailure::RegionMismatch,
+        BridgeStorageFailure::OwnBucketRequired {
+            reason: BridgeOwnBucketReason::Prefix,
+        },
+        BridgeStorageFailure::KeyBeyondStore,
+        BridgeStorageFailure::StoreExists,
+        BridgeStorageFailure::ClockSkew,
+        BridgeStorageFailure::QuotaExceeded,
+        BridgeStorageFailure::RateLimited,
+        BridgeStorageFailure::InvalidConfiguration,
+        BridgeStorageFailure::Refused,
+        BridgeStorageFailure::Protocol,
+        BridgeStorageFailure::InvalidPath,
+        BridgeStorageFailure::InvalidRange,
+        BridgeStorageFailure::NotStoreOwner,
+        BridgeStorageFailure::InviteeIsStoreOwner,
+        BridgeStorageFailure::AccountIdUnavailable,
+        BridgeStorageFailure::InvitationMismatch,
+        BridgeStorageFailure::SessionMismatch,
+        BridgeStorageFailure::SessionIdentityUnknown,
+        BridgeStorageFailure::SessionExpired,
+        BridgeStorageFailure::InvalidPart,
+        BridgeStorageFailure::SingleRequestTooLarge {
+            size: 200,
+            limit: 100,
+        },
+        BridgeStorageFailure::CopyTooLarge {
+            size: 200,
+            limit: 100,
+        },
+        BridgeStorageFailure::Encoding,
+        BridgeStorageFailure::File,
+        BridgeStorageFailure::MemberKeysMissing,
+        BridgeStorageFailure::CatchUpRequired,
+    ] {
+        keys.push(bridge_error_category_key(BridgeErrorCategory::CloudSetup {
+            failure,
+        }));
+    }
+    for reason in [
+        BridgePendingReasonKind::Missing,
+        BridgePendingReasonKind::Waits,
+        BridgePendingReasonKind::KeyUnavailable,
+        BridgePendingReasonKind::UpdateRequired,
+        BridgePendingReasonKind::NoStorage,
+        BridgePendingReasonKind::Storage,
+        BridgePendingReasonKind::Refused,
+        BridgePendingReasonKind::WritesRefused,
+        BridgePendingReasonKind::ProviderPending,
+        BridgePendingReasonKind::PendingOwner,
+        BridgePendingReasonKind::AccountInUse,
+        BridgePendingReasonKind::AccessRemains,
+        BridgePendingReasonKind::DeleteAccessKey,
+        BridgePendingReasonKind::FileUnavailable,
+        BridgePendingReasonKind::Failed,
+        BridgePendingReasonKind::Rejected,
+        BridgePendingReasonKind::Cleanup,
+        BridgePendingReasonKind::Paused,
+        BridgePendingReasonKind::AdminAccessRequired,
+        BridgePendingReasonKind::Removed,
+        BridgePendingReasonKind::MemberKeysReplaced,
+    ] {
+        keys.push(bridge_pending_reason_key(reason));
+    }
+    for action in [
+        BridgePendingAction::Wait,
+        BridgePendingAction::UpdateApp,
+        BridgePendingAction::SignIn {
+            provider: BridgeCloudProvider::Dropbox,
+        },
+        BridgePendingAction::Reconnect,
+        BridgePendingAction::RestoreFile,
+        BridgePendingAction::ResumeUploads,
+        BridgePendingAction::RetryOperation { id: 1 },
+        BridgePendingAction::ResetDevice,
+        BridgePendingAction::ProvideAdminAccess { id: 1 },
+        BridgePendingAction::DeleteAccessKey {
+            operation: 1,
+            access_key_id: "key".into(),
+        },
+        BridgePendingAction::Review,
+    ] {
+        keys.extend(bridge_pending_action_key(&action));
+    }
+    assert!(bridge_pending_action_key(&BridgePendingAction::Wait).is_none());
+    for indicator in [
+        BridgeSyncIndicator::Unconnected,
+        BridgeSyncIndicator::Loading,
+        BridgeSyncIndicator::Synced,
+        BridgeSyncIndicator::Waiting { items: 2 },
+    ] {
+        keys.extend(bridge_sync_indicator_key(&indicator));
+    }
+
+    for instruction in [
+        BridgeProviderSignOut::RemoveAppAccess {
+            provider: BridgeCloudProvider::Dropbox,
+        },
+        BridgeProviderSignOut::RemoveFromAppleAccount,
+        BridgeProviderSignOut::ReplaceAccessKey,
+    ] {
+        keys.push(bridge_provider_sign_out_key(instruction));
+    }
+    for label in [
+        BridgeUploadFileLabel::Filename {
+            name: "track.flac".into(),
+        },
+        BridgeUploadFileLabel::Cover,
+        BridgeUploadFileLabel::ArtistImage,
+        BridgeUploadFileLabel::Avatar,
+        BridgeUploadFileLabel::DeletedReleaseFile,
+    ] {
+        keys.extend(bridge_upload_file_label_key(&label));
+    }
     // bridge_entity_not_found_key — every variant carries a key.
     keys.push(bridge_entity_not_found_key(BridgeEntityKind::Library));
 
@@ -428,14 +506,13 @@ fn no_orphan_core_keys() {
     let mut accounted: std::collections::HashSet<String> = produced_keys().into_iter().collect();
     accounted.extend(DIRECT_KEYS.iter().map(|k| k.to_string()));
 
-    for key in cat.messages.keys() {
-        if !key.starts_with("core.") {
-            continue;
-        }
-        assert!(
-            accounted.contains(key),
-            "catalog key `{key}` has no producer — delete it or add a producer \
-             (a bridge_*_key fn) or list it in DIRECT_KEYS"
-        );
-    }
+    let orphans: Vec<_> = cat
+        .messages
+        .keys()
+        .filter(|key| key.starts_with("core.") && !accounted.contains(*key))
+        .collect();
+    assert!(
+        orphans.is_empty(),
+        "catalog keys without a producer: {orphans:?}"
+    );
 }

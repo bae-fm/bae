@@ -11,16 +11,6 @@ fn pregap_clock_crosses_the_bridge_in_both_time_modes() {
     assert_eq!(elapsed_mode.leading.seconds, 2);
 }
 
-#[test]
-fn pairing_cancellation_crosses_the_bridge_as_cancellation() {
-    assert!(matches!(
-        BridgeError::from(bae_core::library::LibraryError::from(
-            coven::ApproveDevicePairingError::Cancelled
-        )),
-        BridgeError::Cancelled
-    ));
-}
-
 #[cfg(all(test, feature = "desktop"))]
 mod triage_tests {
     use super::*;
@@ -118,10 +108,8 @@ mod conversion_roundtrip {
 
         for identify_automatically in [true, false] {
             let mut config = Config::with_defaults(
-                "library".to_string(),
-                "device".to_string(),
-                std::path::PathBuf::from("/library"),
-                "Library".to_string(),
+                coven::StoreId("00000000-0000-4000-8000-000000000001".parse().unwrap()),
+                "/library",
             );
             config.prefs.identification.automatic = identify_automatically;
 
@@ -135,10 +123,8 @@ mod conversion_roundtrip {
         use bae_core::config::Config;
 
         let mut config = Config::with_defaults(
-            "library".to_string(),
-            "device".to_string(),
-            std::path::PathBuf::from("/library"),
-            "Library".to_string(),
+            coven::StoreId("00000000-0000-4000-8000-000000000001".parse().unwrap()),
+            "/library",
         );
         config.prefs.identification.import_when_identified = true;
         config.prefs.import_storage.pinned = false;
@@ -167,10 +153,8 @@ mod conversion_roundtrip {
             (Core::Seconds60, BridgeSidePauseCountdown::Seconds60),
         ] {
             let mut config = Config::with_defaults(
-                "library".to_string(),
-                "device".to_string(),
-                std::path::PathBuf::from("/library"),
-                "Library".to_string(),
+                coven::StoreId("00000000-0000-4000-8000-000000000001".parse().unwrap()),
+                "/library",
             );
             config.prefs.side_pause_countdown = core;
 
@@ -212,47 +196,25 @@ mod conversion_roundtrip {
     #[test]
     fn cloud_setup_failure_reason_crosses_the_bridge_unchanged() {
         use bae_core::ui::UiErrorCategory;
-        use coven::CloudHomeSetupFailure as Core;
+        use coven::StorageFailure as Core;
 
         for (core, bridge) in [
-            (
-                Core::Authentication,
-                BridgeCloudHomeSetupFailure::Authentication,
-            ),
+            (Core::Authentication, BridgeStorageFailure::Authentication),
             (
                 Core::PermissionDenied,
-                BridgeCloudHomeSetupFailure::PermissionDenied,
+                BridgeStorageFailure::PermissionDenied,
             ),
             (
                 Core::ContainerNotFound,
-                BridgeCloudHomeSetupFailure::ContainerNotFound,
+                BridgeStorageFailure::ContainerNotFound,
             ),
-            (
-                Core::RegionMismatch,
-                BridgeCloudHomeSetupFailure::RegionMismatch,
-            ),
-            (
-                Core::QuotaExceeded,
-                BridgeCloudHomeSetupFailure::QuotaExceeded,
-            ),
+            (Core::RegionMismatch, BridgeStorageFailure::RegionMismatch),
+            (Core::QuotaExceeded, BridgeStorageFailure::QuotaExceeded),
             (
                 Core::InvalidConfiguration,
-                BridgeCloudHomeSetupFailure::InvalidConfiguration,
+                BridgeStorageFailure::InvalidConfiguration,
             ),
-            (
-                Core::LocationOccupied,
-                BridgeCloudHomeSetupFailure::LocationOccupied,
-            ),
-            (Core::Network, BridgeCloudHomeSetupFailure::Network),
-            (
-                Core::DeviceIdentityMissing,
-                BridgeCloudHomeSetupFailure::DeviceIdentityMissing,
-            ),
-            (
-                Core::SecureStorage,
-                BridgeCloudHomeSetupFailure::SecureStorage,
-            ),
-            (Core::Internal, BridgeCloudHomeSetupFailure::Internal),
+            (Core::Network, BridgeStorageFailure::Network),
         ] {
             assert_eq!(
                 BridgeErrorCategory::from_core(UiErrorCategory::CloudSetup(core)),
@@ -610,43 +572,29 @@ fn every_kind_of_fact() -> bae_core::pressing::PressingFacts {
 /// already names the kind of failure, so the detail carries only the fault.
 #[test]
 fn a_database_fault_is_not_prefixed_twice() {
-    let inner =
-        coven::DbError::Message("folder scan column verdict_kind holds \"conflict\"".to_string());
-    // Both wrappers, rendered the way the UI receives them.
-    for detail in [
-        match BridgeError::database_query(coven::CovenError::Database(Box::new(
-            coven::DbError::Message(
-                "folder scan column verdict_kind holds \"conflict\"".to_string(),
-            ),
-        ))) {
-            BridgeError::Diagnostic { detail, .. } => detail,
-            other => panic!("expected a diagnostic, got {other:?}"),
-        },
-        match BridgeError::database_query(bae_core::library::LibraryError::Database(inner)) {
-            BridgeError::Diagnostic { detail, .. } => detail,
-            other => panic!("expected a diagnostic, got {other:?}"),
-        },
-    ] {
-        assert_eq!(
-            detail, "folder scan column verdict_kind holds \"conflict\"",
-            "the fault crosses without either wrapper's prefix"
-        );
-    }
+    let error = bae_core::library::LibraryError::Database(bae_core::db::DbError::Message(
+        "invalid folder scan value".into(),
+    ));
+    let BridgeError::Diagnostic { detail, .. } = BridgeError::database_query(error) else {
+        panic!("diagnostic")
+    };
+    assert_eq!(detail, "invalid folder scan value");
+    let error = coven::CovenError::Database(coven::DbError::DamagedDatabase);
+    let expected = coven::DbError::DamagedDatabase.to_string();
+    let BridgeError::Diagnostic { detail, .. } = BridgeError::database_query(error) else {
+        panic!("diagnostic")
+    };
+    assert_eq!(detail, expected);
 }
 
-/// A failure that is not a wrapped database error still renders whole.
 #[test]
 fn a_non_database_coven_error_keeps_its_own_text() {
-    let detail = match BridgeError::database_query(coven::CovenError::Sqlite(
-        coven::rusqlite::Error::QueryReturnedNoRows,
-    )) {
-        BridgeError::Diagnostic { detail, .. } => detail,
-        other => panic!("expected a diagnostic, got {other:?}"),
+    let error = coven::CovenError::Key(coven::KeyError::Unsupported);
+    let expected = error.to_string();
+    let BridgeError::Diagnostic { detail, .. } = BridgeError::database_query(error) else {
+        panic!("diagnostic")
     };
-    assert!(
-        detail.contains("sqlite error"),
-        "an unwrapped variant keeps its own rendering, got {detail:?}"
-    );
+    assert_eq!(detail, expected);
 }
 
 /// A release read from several folders crosses as its folders, in play order,
