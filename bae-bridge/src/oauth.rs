@@ -43,12 +43,13 @@ pub enum BridgeOAuthPresentationError {
     Failed { detail: String },
 }
 
-/// Redirects registered with the provider for the native app.
+/// Redirects registered with the provider for the native app. Google admin
+/// sign-in has none: it is a desktop admin source (`BridgeAdminAccess`), so
+/// coven never asks a mobile presenter for its redirect.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeOAuthRedirects {
     pub dropbox: String,
     pub onedrive: String,
-    pub google_admin: String,
 }
 
 #[cfg(any(
@@ -76,7 +77,9 @@ impl coven::OAuthPresenter for NativeOAuthPresenter {
         match provider {
             coven::CloudProvider::Dropbox => &self.redirects.dropbox,
             coven::CloudProvider::OneDrive => &self.redirects.onedrive,
-            coven::CloudProvider::S3 => &self.redirects.google_admin,
+            coven::CloudProvider::S3 => {
+                unreachable!("Google admin sign-in is a desktop admin source")
+            }
             coven::CloudProvider::CloudKit => unreachable!("CloudKit uses the system account"),
         }
     }
@@ -129,7 +132,6 @@ mod tests {
             redirects: BridgeOAuthRedirects {
                 dropbox: "bae://dropbox".into(),
                 onedrive: "bae://onedrive".into(),
-                google_admin: "bae://google".into(),
             },
             callback: Box::new(Cancelled),
         };
@@ -159,7 +161,6 @@ mod tests {
             redirects: BridgeOAuthRedirects {
                 dropbox: "bae://dropbox".into(),
                 onedrive: "bae://onedrive".into(),
-                google_admin: "bae://google".into(),
             },
             callback: Box::new(Redirect),
         };
