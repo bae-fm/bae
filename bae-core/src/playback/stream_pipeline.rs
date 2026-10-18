@@ -18,7 +18,7 @@ use crate::playback::error::PlaybackError;
 use crate::playback::progress::{emit_progress, PlaybackProgress};
 use crate::playback::service::log_streaming_decode_failure;
 use crate::playback::source::{PlaybackSource, TrackFmt};
-use crate::playback::sparse_buffer::SharedSparseBuffer;
+use crate::playback::sparse_buffer::{BufferStop, SharedSparseBuffer};
 use crate::playback::track_stream::{
     create_track_stream_pair, ReadyReceiver, TrackSink, TrackStream,
 };
@@ -174,6 +174,19 @@ impl StreamDecodeParams {
     #[cfg(test)]
     pub(crate) fn segment_seek_to_byte(&self, index: usize) -> Option<u64> {
         self.segments[index].seek_to_byte(self.byte_seekable)
+    }
+
+    /// Block until each segment's file has delivered its first bytes — the
+    /// ones the decoder's probe reads first — or return why one can't be read.
+    /// A caller that commits to its output before decoding (a transcode writes
+    /// its header at once) learns of an unreadable file here rather than
+    /// partway through. The bytes land in the segments' own buffers, so the
+    /// decode reads them from there.
+    pub(crate) fn wait_readable(&self) -> Result<(), BufferStop> {
+        for segment in &self.segments {
+            segment.buffer.new_reader().read(&mut [0u8; 1])?;
+        }
+        Ok(())
     }
 
     /// Run the streaming decoder for each segment in turn: FFmpeg seeks (by byte

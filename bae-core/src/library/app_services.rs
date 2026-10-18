@@ -25,6 +25,14 @@ impl TrackDecode {
         self.decode
             .run_to_sink(self.sample_rate, self.channels, sink, cancel)
     }
+
+    /// Block until every file the decode reads has delivered its first bytes,
+    /// or return why one can't be read, so a caller learns of an unreadable
+    /// file before it commits to output. Blocking; run it off the async
+    /// runtime.
+    pub fn wait_readable(&self) -> Result<(), crate::playback::sparse_buffer::BufferStop> {
+        self.decode.wait_readable()
+    }
 }
 
 macro_rules! delegate_sync {
