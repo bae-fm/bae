@@ -281,7 +281,6 @@
     <string name="settings_history_private">Jen já</string>
     <string name="settings_history_household">Domácnost</string>
     <string name="settings_history_explanation">Kdo vidí, co přehráváte. Změna platí pro přehrávání od teď; dřívější přehrávání si ponechá, kdo je mohl vidět.</string>
-    <string name="release_not_uploaded">Zatím nenahráno. Bude se tu přehrávat, jakmile ho nahraje zařízení, které ho importovalo.</string>
     <string name="downloads_concurrency_label">Souběžná stahování</string>
     <string name="settings_stored_in">Uloženo v</string>
     <string name="storage_location_account">%1$s: %2$s</string>

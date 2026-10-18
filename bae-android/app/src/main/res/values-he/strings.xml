@@ -279,7 +279,6 @@
     <string name="settings_history_private">רק אני</string>
     <string name="settings_history_household">בני הבית</string>
     <string name="settings_history_explanation">מי רואה מה אתם מנגנים. שינוי חל על השמעות מעכשיו והלאה; השמעות קודמות נשארות גלויות למי שראה אותן.</string>
-    <string name="release_not_uploaded">עדיין לא הועלה. אפשר יהיה לנגן אותו כאן אחרי שיועלה מהמכשיר שייבא אותו.</string>
     <string name="downloads_concurrency_label">הורדות בו־זמנית</string>
     <string name="settings_stored_in">מאוחסן ב</string>
     <string name="storage_location_account">%1$s: %2$s</string>

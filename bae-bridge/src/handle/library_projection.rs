@@ -91,6 +91,7 @@ impl BridgeRelease {
             image_files,
             cover_files,
             gallery_items,
+            playability,
             records,
         } = rel;
         // Single-source the summary-derived fields through BridgeReleaseSummary,
@@ -144,6 +145,7 @@ impl BridgeRelease {
                 .into_iter()
                 .map(BridgeGalleryItem::from_core)
                 .collect(),
+            playability: crate::types::BridgeReleasePlayability::from_core(playability),
             records: records
                 .into_iter()
                 .map(crate::types::BridgeReleaseRecord::from_core)

@@ -202,6 +202,34 @@ mirror_enum! {
     variants: { Local, Remote },
 }
 
+/// Whether this device can play a release now, and why not. Mirrors
+/// `bae_core::album_detail::ReleasePlayability`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeReleasePlayability {
+    Playable,
+    NotUploaded,
+    OriginalMissing,
+}
+
+mirror_enum! {
+    BridgeReleasePlayability = bae_core::album_detail::ReleasePlayability,
+    from_core: pub fn,
+    variants: { Playable, NotUploaded, OriginalMissing },
+}
+
+/// The line a release shows when this device can't play it, or `None` when
+/// it can. Playing it anyway reports the same reason.
+#[uniffi::export]
+pub fn bridge_release_playability_key(playability: BridgeReleasePlayability) -> Option<String> {
+    match playability {
+        BridgeReleasePlayability::Playable => None,
+        BridgeReleasePlayability::NotUploaded => Some("core.release.not_uploaded".to_string()),
+        BridgeReleasePlayability::OriginalMissing => {
+            Some("core.release.original_missing".to_string())
+        }
+    }
+}
+
 /// A storage transition available from the release "Storage…" sheet.
 /// Mirrors `bae_core::album_detail::ReleaseStorageAction`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -330,6 +358,8 @@ pub struct BridgeRelease {
     /// `fetch_release_image_bytes`, which takes the item's `source` and
     /// dispatches the read. Consumers render this as-is.
     pub gallery_items: Vec<BridgeGalleryItem>,
+    /// Whether this device can play the release now, and why not.
+    pub playability: BridgeReleasePlayability,
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<BridgeReleaseRecord>,

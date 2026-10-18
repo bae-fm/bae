@@ -261,6 +261,7 @@
                 imageFiles: [previewReleaseCoverFile],
                 coverFiles: [previewReleaseCoverFile],
                 galleryItems: [],
+                playability: .playable,
                 // Every catalog, so the expansion's facts-line popover shows
                 // what a release a MusicBrainz pick linked all the way out
                 // reads like.

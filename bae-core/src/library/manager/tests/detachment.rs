@@ -160,7 +160,7 @@ async fn check_release_detachment(uploaded: bool) {
         ));
         assert!(matches!(
             playback_error_reason_for_file(devices.b().manager(), file).await,
-            crate::ui::PlaybackErrorReason::UploadPending
+            crate::ui::PlaybackErrorReason::NotUploaded
         ));
     }
     devices.a().manager().close().await.unwrap();

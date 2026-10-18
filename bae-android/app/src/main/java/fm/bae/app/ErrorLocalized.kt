@@ -46,15 +46,17 @@ fun Context.localizedLine(error: BridgeException): String? =
     }
 
 /**
- * The localized, user-facing line for a [BridgePlaybackErrorReason]. The two
- * actionable cloud cases resolve their own keyed line (core returns a key for
- * exactly those); everything else renders through the shared [BridgeException]
- * path.
+ * The localized, user-facing line for a [BridgePlaybackErrorReason]. The
+ * actionable cases, where this device can't reach the audio, resolve their own
+ * keyed line (core returns a key for exactly those); everything else renders
+ * through the shared [BridgeException] path.
  */
 fun Context.localizedLine(reason: BridgePlaybackErrorReason): String? =
     when (reason) {
         is BridgePlaybackErrorReason.SyncDisconnected,
         is BridgePlaybackErrorReason.UploadPending,
+        is BridgePlaybackErrorReason.NotUploaded,
+        is BridgePlaybackErrorReason.OriginalMissing,
         -> {
             // Core owns a key for exactly the actionable cases; non-null here.
             coreString(bridgePlaybackErrorReasonKey(reason)!!)

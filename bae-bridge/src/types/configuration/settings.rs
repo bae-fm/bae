@@ -254,8 +254,8 @@ impl BridgeError {
     }
 }
 
-/// Why playback couldn't start or continue. The two cloud-only "not playable
-/// yet" cases are user-actionable and keyed (`bridge_playback_error_reason_key`);
+/// Why playback couldn't start or continue. The cases where this device can't
+/// reach the audio are user-actionable and keyed (`bridge_playback_error_reason_key`);
 /// every in-core failure is un-enumerable and rides in `Diagnostic` — the UI
 /// renders it through the same `BridgeError` path (generic per-category line +
 /// copyable diagnostic detail).
@@ -264,9 +264,13 @@ pub enum BridgePlaybackErrorReason {
     /// A remote cloud-only track isn't downloaded and sync is disconnected —
     /// the user reconnects to play it.
     SyncDisconnected,
-    /// A remote track's cloud upload is still queued — the user waits for it
-    /// to finish.
+    /// Another device attached the track and its upload hasn't reached
+    /// storage yet — the user waits for it to finish.
     UploadPending,
+    /// A local release imported on another device, which hasn't uploaded it.
+    NotUploaded,
+    /// A local release's original files are gone or changed on this device.
+    OriginalMissing,
     /// Any other failure. Carries the underlying `BridgeError`; the UI renders
     /// its generic per-category line plus the opaque diagnostic detail.
     Diagnostic { error: BridgeError },
@@ -404,6 +408,12 @@ pub fn bridge_playback_error_reason_key(reason: &BridgePlaybackErrorReason) -> O
         BridgePlaybackErrorReason::UploadPending => {
             Some("core.playback.error.upload_pending".to_string())
         }
+        BridgePlaybackErrorReason::NotUploaded => {
+            bridge_release_playability_key(BridgeReleasePlayability::NotUploaded)
+        }
+        BridgePlaybackErrorReason::OriginalMissing => {
+            bridge_release_playability_key(BridgeReleasePlayability::OriginalMissing)
+        }
         BridgePlaybackErrorReason::Diagnostic { .. } => None,
     }
 }
@@ -524,6 +534,8 @@ mirror_enum! {
     variants: {
         SyncDisconnected,
         UploadPending,
+        NotUploaded,
+        OriginalMissing,
         Diagnostic { error: (BridgeError) },
     },
 }

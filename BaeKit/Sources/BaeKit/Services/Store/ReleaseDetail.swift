@@ -35,6 +35,9 @@ public struct ReleaseDetail: Identifiable {
     /// Every catalog that describes this release, in the order core lists
     /// them. Empty when no catalog does.
     public var records: [BridgeReleaseRecord]
+    /// Why this device can't play the release, in the current locale, or nil
+    /// when it can.
+    public var unplayableLine: String?
 
     public var id: String {
         summary.id
@@ -72,6 +75,10 @@ public struct ReleaseDetail: Identifiable {
         coverFiles = bridge.coverFiles
         galleryItems = bridge.galleryItems
         records = bridge.records
+        unplayableLine = bridgeReleasePlayabilityKey(
+            playability: bridge.playability
+        )
+        .map(localizedCoreString)
     }
 
     /// Each line core grouped: its names, then the catalog numbers they

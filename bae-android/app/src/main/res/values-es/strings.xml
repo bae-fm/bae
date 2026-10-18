@@ -278,7 +278,6 @@
     <string name="settings_history_private">Solo yo</string>
     <string name="settings_history_household">Hogar</string>
     <string name="settings_history_explanation">Quién ve lo que reproduces. Un cambio se aplica a las reproducciones desde ahora; las anteriores mantienen quién podía verlas.</string>
-    <string name="release_not_uploaded">Aún no se ha subido. Se podrá reproducir aquí cuando se suba desde el dispositivo que la importó.</string>
     <string name="downloads_concurrency_label">Descargas simultáneas</string>
     <string name="settings_stored_in">Guardado en</string>
     <string name="storage_location_account">%1$s: %2$s</string>

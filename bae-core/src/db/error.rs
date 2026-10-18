@@ -7,6 +7,8 @@ pub enum DbError {
     FileNotUploaded(String),
     #[error("local file changed since import: {0}")]
     LocalFileChanged(std::path::PathBuf),
+    #[error("local file missing since import: {0}")]
+    LocalFileMissing(std::path::PathBuf),
     #[error(transparent)]
     FileRead(#[from] coven::FileReadError),
     #[error(transparent)]

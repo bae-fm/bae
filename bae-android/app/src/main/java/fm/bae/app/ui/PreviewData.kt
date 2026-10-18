@@ -35,6 +35,7 @@ import uniffi.bae_bridge.BridgeQueuedRelease
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseArea
 import uniffi.bae_bridge.BridgeReleaseName
+import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSharing
@@ -153,6 +154,7 @@ object PreviewData {
             imageFiles = emptyList(),
             coverFiles = emptyList(),
             galleryItems = emptyList(),
+            playability = BridgeReleasePlayability.PLAYABLE,
             records = emptyList(),
             totalDuration = null,
             fileCount = trackGroups.sumOf { it.tracks.size }.toLong(),

@@ -107,6 +107,8 @@ pub struct ReleaseDetail {
     /// The cover, then every image file the release has — including cloud-only ones,
     /// which the lightbox fetches on demand.
     pub gallery_items: Vec<GalleryItem>,
+    /// Whether this device can play the release now, and why not.
+    pub playability: ReleasePlayability,
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<crate::import::ReleaseRecord>,
@@ -314,6 +316,7 @@ impl ReleaseDetail {
         let track_groups: Vec<TrackGroup> = crate::util::format::group_tracks_by_side(&tracks);
 
         let remote = !raw.files.is_empty() && raw.files.iter().all(|file| file.attached);
+        let playability = release_playability(&raw.files, &raw.originals);
         let mut cover_files = Vec::new();
         let files: Vec<FileDetail> = raw
             .files
@@ -405,6 +408,7 @@ impl ReleaseDetail {
             image_files,
             cover_files,
             gallery_items: gallery,
+            playability,
             records: raw.records,
         };
         (detail, audio_format_orphans)
@@ -456,6 +460,7 @@ mod release_edit_display_tests {
                 created_at: now,
             }],
             records: Vec::new(),
+            originals: Vec::new(),
         };
 
         assert!(matches!(

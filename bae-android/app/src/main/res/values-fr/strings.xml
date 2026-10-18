@@ -278,7 +278,6 @@
     <string name="settings_history_private">Moi uniquement</string>
     <string name="settings_history_household">Foyer</string>
     <string name="settings_history_explanation">Qui voit ce que vous écoutez. Un changement s’applique aux écoutes à partir de maintenant ; les écoutes précédentes restent visibles par les mêmes personnes.</string>
-    <string name="release_not_uploaded">Pas encore envoyée. Elle pourra être lue ici une fois envoyée depuis l’appareil qui l’a importée.</string>
     <string name="downloads_concurrency_label">Téléchargements simultanés</string>
     <string name="settings_stored_in">Stocké dans</string>
     <string name="storage_location_account">%1$s : %2$s</string>

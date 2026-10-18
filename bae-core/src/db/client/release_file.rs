@@ -63,7 +63,13 @@ impl Database {
             .external_blob(id)
             .await?
             .ok_or_else(|| DbError::FileNotUploaded(id.to_string()))?;
-        let file = tokio::fs::File::open(&source.path).await?;
+        let file = match tokio::fs::File::open(&source.path).await {
+            Ok(file) => file,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return Err(DbError::LocalFileMissing(source.path.clone()));
+            }
+            Err(error) => return Err(error.into()),
+        };
         check_source(&file.metadata().await?, &source)?;
         Ok(ReleaseFileStream::Local {
             file: tokio::sync::Mutex::new(file),

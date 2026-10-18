@@ -232,6 +232,16 @@ pub struct DbReleaseDetail {
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<crate::import::ReleaseRecord>,
+    /// The originals this device holds for the release's unattached files.
+    pub originals: Vec<DbLocalOriginal>,
+}
+
+/// An original file this device imported a release file from, and whether it
+/// is still there unchanged, read from the disk when the release was read.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DbLocalOriginal {
+    pub file_id: String,
+    pub readable: bool,
 }
 
 /// A track row with its resolved artist rows (many-to-many join from the DB).

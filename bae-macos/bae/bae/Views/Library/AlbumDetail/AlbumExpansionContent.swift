@@ -75,6 +75,13 @@ struct AlbumExpansionContent: View {
                         labelsLine: selectedRelease.labelsLine,
                         records: selectedRelease.records
                     )
+                    // Why this Mac can't play the release; playing it says
+                    // the same.
+                    if let unplayable = selectedRelease.unplayableLine {
+                        Text(unplayable)
+                            .themeText(.detail)
+                            .foregroundStyle(.secondary)
+                    }
                     HStack(spacing: ThemeSpace.related) {
                         Button(action: onPlay) {
                             Label("Play", systemImage: "play.fill")

@@ -421,6 +421,8 @@ fn produced_keys() -> Vec<String> {
     for r in [
         BridgePlaybackErrorReason::SyncDisconnected,
         BridgePlaybackErrorReason::UploadPending,
+        BridgePlaybackErrorReason::NotUploaded,
+        BridgePlaybackErrorReason::OriginalMissing,
         BridgePlaybackErrorReason::Diagnostic {
             error: BridgeError::internal(""),
         },
@@ -433,6 +435,14 @@ fn produced_keys() -> Vec<String> {
         })
         .is_none()
     );
+
+    for playability in [
+        BridgeReleasePlayability::Playable,
+        BridgeReleasePlayability::NotUploaded,
+        BridgeReleasePlayability::OriginalMissing,
+    ] {
+        keys.extend(bridge_release_playability_key(playability));
+    }
 
     for boundary in [BridgePauseBoundary::Side, BridgePauseBoundary::Disc] {
         keys.push(bridge_pause_boundary_title_key(boundary));

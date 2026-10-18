@@ -588,6 +588,7 @@
                 imageFiles: [imageFile],
                 coverFiles: [imageFile],
                 galleryItems: [],
+                playability: .playable,
                 records: [],
                 totalDuration: nil,
                 fileCount: Int64(files.count),

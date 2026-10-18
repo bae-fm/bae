@@ -72,6 +72,14 @@ struct AlbumDetailHeader: View {
                     .foregroundStyle(.secondary)
                     .padding(.top, ThemeSpace.inline)
                 }
+                // Why this device can't play the release; playing it says
+                // the same.
+                if let unplayable = detail.unplayableLine {
+                    Text(unplayable)
+                        .themeText(.detail)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, ThemeSpace.inline)
+                }
             }
             Spacer(minLength: 0)
         }

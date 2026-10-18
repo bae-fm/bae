@@ -276,7 +276,6 @@
     <string name="settings_history_private">Μόνο εγώ</string>
     <string name="settings_history_household">Νοικοκυριό</string>
     <string name="settings_history_explanation">Ποιος βλέπει τι παίζετε. Μια αλλαγή ισχύει για τις αναπαραγωγές από εδώ και πέρα· οι προηγούμενες κρατούν όσους μπορούσαν να τις δουν.</string>
-    <string name="release_not_uploaded">Δεν έχει μεταφορτωθεί ακόμη. Θα παίζει εδώ μόλις μεταφορτωθεί από τη συσκευή που την εισήγαγε.</string>
     <string name="settings_stored_in">Αποθηκεύεται σε</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

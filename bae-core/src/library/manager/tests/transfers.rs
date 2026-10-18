@@ -63,17 +63,17 @@ async fn pending_upload_with_missing_source_reports_the_missing_original() {
         .expect("the un-uploaded file whose source was removed");
     let reason = playback_error_reason_for_file(&manager, file).await;
     assert!(
-        matches!(reason, PlaybackErrorReason::Diagnostic { .. }),
+        matches!(reason, PlaybackErrorReason::OriginalMissing),
         "got {reason:?}"
     );
     assert!(manager.pending().await.unwrap().iter().any(|record|
         crate::library::pending_action(record) == crate::library::PendingAction::RestoreFile));
 }
 
-/// A shared local release with no path on this device waits for its importer
-/// to attach the files.
+/// A shared local release with no path on this device says it isn't uploaded:
+/// nobody started an upload, so there is nothing to wait for.
 #[tokio::test]
-async fn an_unattached_file_on_another_device_waits_for_upload() {
+async fn an_unattached_file_on_another_device_is_not_uploaded() {
     use crate::ui::PlaybackErrorReason;
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
@@ -84,7 +84,7 @@ async fn an_unattached_file_on_another_device_waits_for_upload() {
     let file = files.first().expect("the release has a file");
     let reason = playback_error_reason_for_file(&manager, file).await;
     assert!(
-        matches!(reason, PlaybackErrorReason::UploadPending),
+        matches!(reason, PlaybackErrorReason::NotUploaded),
         "got {reason:?}"
     );
 }
@@ -687,4 +687,58 @@ async fn close_waits_for_a_file_operations_rollback_and_refuses_new_work() {
     release.send(()).unwrap();
     operation.await.unwrap().unwrap();
     close.await.unwrap().unwrap();
+}
+
+/// Each device says whether it can play a release: the importing device plays
+/// its own originals, another device says the audio isn't uploaded, and an
+/// original removed on the importing device reads as missing, at play time
+/// as well.
+#[tokio::test]
+async fn a_release_says_whether_this_device_can_play_it() {
+    use crate::album_detail::ReleasePlayability;
+    use crate::ui::PlaybackErrorReason;
+    let (manager, temp_dir) = setup_test_manager().await;
+    let originals = temp_dir.path().join("originals");
+    let here = insert_local_release_with_files(
+        &manager,
+        &originals,
+        "Album Title",
+        &[("track.flac", b"track-bytes")],
+    )
+    .await;
+    let playability = |release_id: String| {
+        let manager = &manager;
+        async move {
+            manager
+                .find_release_detail(&release_id)
+                .await
+                .unwrap()
+                .expect("the release exists")
+                .playability
+        }
+    };
+    assert_eq!(
+        playability(here.id.clone()).await,
+        ReleasePlayability::Playable
+    );
+
+    let album = create_test_album();
+    manager.database.insert_album(&album).await.unwrap();
+    let elsewhere = insert_local_release_without_local_files(&manager, &album.id).await;
+    assert_eq!(
+        playability(elsewhere.id.clone()).await,
+        ReleasePlayability::NotUploaded
+    );
+
+    std::fs::remove_file(originals.join("track.flac")).unwrap();
+    assert_eq!(
+        playability(here.id.clone()).await,
+        ReleasePlayability::OriginalMissing
+    );
+    let file = release_files(&manager, &here.id).await.remove(0);
+    let reason = playback_error_reason_for_file(&manager, &file).await;
+    assert!(
+        matches!(reason, PlaybackErrorReason::OriginalMissing),
+        "got {reason:?}"
+    );
 }

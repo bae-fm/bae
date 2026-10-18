@@ -84,6 +84,7 @@ pub(super) fn build_release_detail_on(
     let audio_formats = get_audio_formats_for_release_on(sql, &release.id)?;
     let audio_segments = get_audio_segments_for_release_on(sql, &release.id)?;
     let records = get_release_records_on(sql, &release.id)?;
+    let originals = get_local_originals_for_release_on(sql, &release.id)?;
 
     Ok(ReleaseDetailRows {
         release,
@@ -92,7 +93,41 @@ pub(super) fn build_release_detail_on(
         audio_formats,
         audio_segments,
         records,
+        originals,
     })
+}
+
+/// The originals this device holds for a release's unattached files, each
+/// checked on disk against the size and modification time recorded at import.
+fn get_local_originals_for_release_on(
+    sql: &SqlReadContext<'_>,
+    release_id: &str,
+) -> Result<Vec<DbLocalOriginal>, DbError> {
+    let rows: Vec<(String, String, String, i64)> = sql.query(
+        "SELECT l.file_id, l.path, l.modified_at, f.file_size \
+         FROM local_release_files l JOIN release_files f ON f.id = l.file_id \
+         WHERE f.release_id = ?",
+        params![release_id],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+    )?;
+    rows.into_iter()
+        .map(|(file_id, path, modified_at, size)| {
+            let modified_at = DateTime::parse_from_rfc3339(&modified_at).map_err(|error| {
+                DbError::Message(format!("invalid original modification time: {error}"))
+            })?;
+            let readable = match std::fs::metadata(&path) {
+                Ok(metadata) => {
+                    i64::try_from(metadata.len()) == Ok(size)
+                        && metadata.modified()? == std::time::SystemTime::from(modified_at)
+                }
+                Err(error) => {
+                    tracing::debug!(path, %error, "a release's original is not readable");
+                    false
+                }
+            };
+            Ok(DbLocalOriginal { file_id, readable })
+        })
+        .collect()
 }
 
 #[derive(Clone, PartialEq)]
@@ -103,6 +138,7 @@ pub(super) struct ReleaseDetailRows {
     audio_formats: Vec<DbAudioFormat>,
     audio_segments: Vec<DbAudioSegment>,
     records: Vec<crate::import::ReleaseRecord>,
+    originals: Vec<DbLocalOriginal>,
 }
 
 impl ReleaseDetailRows {
@@ -114,6 +150,7 @@ impl ReleaseDetailRows {
             audio_formats: self.audio_formats,
             audio_segments: self.audio_segments,
             records: self.records,
+            originals: self.originals,
         }
     }
 }

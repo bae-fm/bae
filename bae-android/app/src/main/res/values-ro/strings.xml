@@ -278,7 +278,6 @@
     <string name="settings_history_private">Doar eu</string>
     <string name="settings_history_household">Gospodăria</string>
     <string name="settings_history_explanation">Cine vede ce asculți. O schimbare se aplică redărilor de acum înainte; redările anterioare rămân vizibile pentru aceleași persoane.</string>
-    <string name="release_not_uploaded">Încă neîncărcat. Se va putea reda aici după ce este încărcat de pe dispozitivul care l-a importat.</string>
     <string name="settings_stored_in">Stocat în</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

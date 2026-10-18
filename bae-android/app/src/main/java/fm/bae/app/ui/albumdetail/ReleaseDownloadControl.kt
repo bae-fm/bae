@@ -36,6 +36,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.LocaleErrorLines
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.coreString
 import fm.bae.app.localizedLine
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
@@ -51,24 +52,26 @@ import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
-import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.bridgeReleaseDownloadStatus
+import uniffi.bae_bridge.bridgeReleasePlayabilityKey
 
 private val logger = BaeLogger("bae.ReleaseDownloadControl")
 
 /**
  * The shown release's download control; nothing when core offers none for the
- * release. A release whose audio isn't uploaded says so instead: its files are
- * on the device that imported it, and it plays here once uploaded.
+ * release. A release this device can't play says why instead, as core words
+ * it: its audio is on the device that imported it, or its originals are gone.
  */
 @Composable
 internal fun ReleaseDownloadControl(
     session: OpenLibrary,
     release: BridgeRelease,
 ) {
-    if (release.storageState == BridgeReleaseStorageState.LOCAL) {
+    val context = LocalContext.current
+    val unplayable = bridgeReleasePlayabilityKey(release.playability)
+    if (unplayable != null) {
         Text(
-            text = stringResource(R.string.release_not_uploaded),
+            text = context.coreString(unplayable),
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -82,7 +85,6 @@ internal fun ReleaseDownloadControl(
             downloads = snapshot,
             releaseId = release.id,
         ) ?: return
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var unpinning by remember(release.id) { mutableStateOf(false) }
     var unpinError by remember(release.id) { mutableStateOf<String?>(null) }

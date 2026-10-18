@@ -330,7 +330,6 @@
     <string name="settings_history_private">Only me</string>
     <string name="settings_history_household">Household</string>
     <string name="settings_history_explanation">Who sees what you play. A change applies to plays from now on; earlier plays keep who could see them.</string>
-    <string name="release_not_uploaded">Not uploaded yet. It plays here once it’s uploaded from the device that imported it.</string>
     <string name="settings_stored_in">Stored in</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>

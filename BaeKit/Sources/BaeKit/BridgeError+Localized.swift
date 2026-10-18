@@ -69,12 +69,13 @@ extension BridgeError {
 
 extension BridgePlaybackErrorReason {
     /// The localized, user-facing line for this playback failure, or `nil` when
-    /// there is none. The two actionable cloud-only cases resolve their own keyed
-    /// line; everything else renders through the shared `BridgeError` path, which
-    /// is also where "no line at all" comes from.
+    /// there is none. The actionable cases, where this device can't reach the
+    /// audio, resolve their own keyed line; everything else renders through the
+    /// shared `BridgeError` path, which is also where "no line at all" comes
+    /// from.
     public var localizedLine: String? {
         switch self {
-        case .syncDisconnected, .uploadPending:
+        case .syncDisconnected, .uploadPending, .notUploaded, .originalMissing:
             return bridgePlaybackErrorReasonKey(reason: self)
                 .map(localizedCoreString)
         case .diagnostic(let error):
@@ -88,7 +89,7 @@ extension BridgePlaybackErrorReason {
         switch self {
         case .diagnostic(let error):
             return error.detail
-        case .syncDisconnected, .uploadPending:
+        case .syncDisconnected, .uploadPending, .notUploaded, .originalMissing:
             return nil
         }
     }

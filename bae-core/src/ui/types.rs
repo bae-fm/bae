@@ -123,18 +123,24 @@ impl UiError {
     }
 }
 
-/// Why playback couldn't start or continue. The two cloud-only "not playable
-/// yet" cases are user-actionable and keyed; every in-core failure (decode,
-/// audio output, IO, missing file) is un-enumerable and routes to `Diagnostic`.
+/// Why playback couldn't start or continue. The cases where this device can't
+/// reach the release's audio are user-actionable and keyed; every in-core
+/// failure (decode, audio output, IO) is un-enumerable and routes to
+/// `Diagnostic`.
 #[derive(Debug, Clone)]
 pub enum PlaybackErrorReason {
     /// A remote cloud-only track has no local copy and sync is disconnected —
     /// the user reconnects cloud sync to play it. Actionable, keyed.
     SyncDisconnected,
-    /// A track's cloud upload is still queued and its source file is gone, so
-    /// there's nothing to play yet — the user waits for the upload.
-    /// Actionable, keyed.
+    /// Another device attached the release and its upload hasn't reached
+    /// storage yet — the user waits for the upload. Actionable, keyed.
     UploadPending,
+    /// A local release imported on another device, which hasn't uploaded it.
+    /// Actionable, keyed.
+    NotUploaded,
+    /// A local release's original files are gone or changed on this device.
+    /// Actionable, keyed.
+    OriginalMissing,
     /// Any other failure (decode, audio output, IO, DB, missing file). Carries
     /// the underlying `UiError`; the UI renders its generic per-category line
     /// plus the opaque, log-only detail.

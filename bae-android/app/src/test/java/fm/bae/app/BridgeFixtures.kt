@@ -26,6 +26,7 @@ import uniffi.bae_bridge.BridgePressingFacts
 import uniffi.bae_bridge.BridgeQueuedRelease
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseName
+import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.BridgeRendererKind
 import uniffi.bae_bridge.BridgeSaveBitDepth
@@ -102,6 +103,7 @@ object BridgeFixtures {
             imageFiles = emptyList(),
             coverFiles = emptyList(),
             galleryItems = galleryItems,
+            playability = BridgeReleasePlayability.PLAYABLE,
             records = emptyList(),
             totalDuration = null,
             fileCount = 0,

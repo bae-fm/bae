@@ -28,19 +28,25 @@ pub enum PlaybackError {
     /// audio can't be fetched. The user needs to reconnect cloud sync.
     #[error("Sync is disconnected — reconnect to play this release")]
     SyncDisconnected,
-    /// A track's cloud upload is still queued (its release is mid-move to the
-    /// cloud, so it is still gated Local) and its source file is no longer
-    /// readable — there are no bytes to play anywhere yet, and the cloud object
-    /// may not exist until the upload lands. Keyed so the user waits for the
+    /// Another device attached the track's file and storage doesn't hold it
+    /// yet: its upload is still under way. Keyed so the user waits for the
     /// upload instead of getting a missing-file diagnostic.
     #[error(
         "This release is still uploading to the cloud home — try again when the upload finishes"
     )]
     UploadPending,
+    /// A local release imported on another device: its audio stays there
+    /// until that device uploads it, so this device has nothing to read.
+    #[error("This release's audio is on the device that imported it and isn't uploaded yet")]
+    NotUploaded,
+    /// A local release's original file on this device is gone or changed
+    /// since import.
+    #[error("This release's original files are missing or changed on this device")]
+    OriginalMissing,
 }
 impl PlaybackError {
-    /// Project this domain error onto the UI-facing reason. The two cloud-only
-    /// "not playable yet" cases are user-actionable and keyed; every other mode
+    /// Project this domain error onto the UI-facing reason. The cases where
+    /// this device can't reach the audio are user-actionable and keyed; every other mode
     /// is un-enumerable for the UI and goes to the diagnostic arm with the error
     /// chain as opaque, log-only detail.
     pub fn ui_reason(&self) -> crate::ui::PlaybackErrorReason {
@@ -48,6 +54,8 @@ impl PlaybackError {
         match self {
             PlaybackError::SyncDisconnected => PlaybackErrorReason::SyncDisconnected,
             PlaybackError::UploadPending => PlaybackErrorReason::UploadPending,
+            PlaybackError::NotUploaded => PlaybackErrorReason::NotUploaded,
+            PlaybackError::OriginalMissing => PlaybackErrorReason::OriginalMissing,
             other => PlaybackErrorReason::internal(other),
         }
     }

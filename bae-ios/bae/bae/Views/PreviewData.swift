@@ -140,6 +140,7 @@ enum PreviewData {
             imageFiles: [],
             coverFiles: [],
             galleryItems: [],
+            playability: .playable,
             records: [],
             totalDuration: .minutesOnly(minutes: 39),
             fileCount: 0,
