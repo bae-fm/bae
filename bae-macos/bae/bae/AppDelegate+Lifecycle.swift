@@ -49,6 +49,21 @@ extension AppDelegate {
         // for any failure it reports.
         BaeCrashReporting.configure(edition: baeAppEdition)
         baeAppLogger.info("application launched")
+        #if BAE_OAUTH_PROVIDERS
+            // The build's provider applications, before anything can restore,
+            // join or sign in; coven's desktop sign-in presents them. Without
+            // a bundled config, provider sign-in stays unavailable.
+            do {
+                try OAuthLinking.load()?
+                    .register(host: requiredApplicationServices.host)
+            }
+            catch {
+                baeAppLogger.error(
+                    "OAuth registration failed: \(error.localizedDescription)"
+                )
+                loadError = DisplayError(error)
+            }
+        #endif
         do {
             try initializeKeyring()
         }

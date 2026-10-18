@@ -96,7 +96,9 @@ bae-android/local.properties
 bae-bridge/csharp-bindings-full/
 bae-bridge/csharp-bindings-baeium/
 
-# The app's own OAuth client credentials; see notes/mobile-oauth.md.
+# Each app's own OAuth client credentials; OAuthLinking (macOS, iOS) and
+# OAuthSignIn (Android) describe the file each reads.
+bae-macos/bae/bae/oauth-creds.json
 bae-ios/bae/bae/oauth-creds.json
 bae-android/app/src/full/assets/oauth-creds.json
 bae-android/.gradle/
