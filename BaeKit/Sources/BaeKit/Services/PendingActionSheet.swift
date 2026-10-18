@@ -45,25 +45,21 @@ public enum PendingActionSheet: Identifiable {
 }
 
 /// How a library signs in to its storage again when a pending record asks:
-/// a new S3 access key, the provider's sign-in for the access the library's
-/// folder needs, or the system account iCloud uses.
+/// a new S3 access key, the provider's sign-in (core picks the access the
+/// library's location needs), or the system account iCloud uses.
 public enum StorageReauthorization {
     case s3Key
-    case oauth(BridgeOAuthAccess)
+    case accountSignIn
     /// iCloud signs in through the system's settings; reconnecting picks the
     /// account up.
     case systemAccount
 
-    public init(location: BridgeStorageLocation) {
-        switch location {
+    public init(provider: BridgeCloudProvider) {
+        switch provider {
         case .s3:
             self = .s3Key
-        case .dropbox(.appFolder, _):
-            self = .oauth(.dropbox(access: .appFolder))
-        case .dropbox(.sharedFolder, _):
-            self = .oauth(.dropbox(access: .fullDropbox))
-        case .oneDrive:
-            self = .oauth(.oneDrive)
+        case .dropbox, .oneDrive:
+            self = .accountSignIn
         case .cloudKit:
             self = .systemAccount
         }

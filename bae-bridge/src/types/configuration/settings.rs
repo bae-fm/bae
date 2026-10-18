@@ -573,6 +573,17 @@ impl BridgeCloudProvider {
             CloudProvider::CloudKit => BridgeCloudProvider::CloudKit,
         }
     }
+
+    #[cfg(feature = "oauth-providers")]
+    pub(crate) fn into_core(self) -> bae_core::config::CloudProvider {
+        use bae_core::config::CloudProvider;
+        match self {
+            BridgeCloudProvider::S3 => CloudProvider::S3,
+            BridgeCloudProvider::Dropbox => CloudProvider::Dropbox,
+            BridgeCloudProvider::OneDrive => CloudProvider::OneDrive,
+            BridgeCloudProvider::CloudKit => CloudProvider::CloudKit,
+        }
+    }
 }
 
 mirror_enum! {

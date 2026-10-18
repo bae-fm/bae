@@ -168,3 +168,32 @@ async fn restoring_over_this_devices_copy_needs_that_librarys_code() {
     assert_eq!(restored.store_name().await.unwrap(), "Household");
     restored.close().await.unwrap();
 }
+
+#[tokio::test]
+async fn saved_codes_for_libraries_on_this_device_are_not_offered() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let layout = AppDir::at(temp.path()).store_layout();
+    let here = coven::TestCoven::new()
+        .create_closed_store(
+            &layout,
+            "On This Device",
+            std::sync::Arc::new(coven::UuidIds),
+        )
+        .await
+        .unwrap()
+        .id();
+    let elsewhere = coven::StoreId(uuid::Uuid::new_v4());
+    let code = |store_id| coven::SavedRestoreCode {
+        store_id,
+        location: coven::StorageConfig::CloudKit {
+            container: "iCloud.fm.bae.desktop".into(),
+            owner: "owner".into(),
+            zone: "zone".into(),
+        },
+        has_s3_credentials: false,
+    };
+    let offered = restorable_codes(vec![code(here), code(elsewhere)], &layout)
+        .await
+        .unwrap();
+    assert_eq!(offered, vec![code(elsewhere)]);
+}

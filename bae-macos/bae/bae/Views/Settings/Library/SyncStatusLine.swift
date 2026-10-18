@@ -8,7 +8,7 @@ private let logger = Logger.bae("SyncStatusLine")
 /// and, opened, each thing coven is waiting on with its action where the
 /// person can act.
 struct SyncStatusLine: View {
-    /// The library's cloud home, which a sign-in reconnects to.
+    /// The library's cloud home, whose S3 access key the key sheet replaces.
     let location: BridgeStorageLocation
     /// Offered when sync found another copy of this device.
     let onResetDevice: () -> Void
@@ -104,17 +104,14 @@ struct SyncStatusLine: View {
     /// Sign in to the provider again and reconnect this library's location with
     /// the new sign-in. An S3 library takes a new access key instead.
     private func signIn(_ provider: BridgeCloudProvider) async throws {
-        switch StorageReauthorization(location: location) {
+        switch StorageReauthorization(provider: provider) {
         case .s3Key:
             sheet = .s3Key
-        case .oauth(let access):
+        case .accountSignIn:
             #if BAE_OAUTH_PROVIDERS
-                try await cloudSyncSetup.authenticate(access)
-                _ = try await cloudSyncSetup.connect(location)
+                _ = try await cloudSyncSetup.signInAgain()
             #else
-                preconditionFailure(
-                    "\(provider) sign-in for \(access) needs the OAuth build"
-                )
+                preconditionFailure("\(provider) sign-in needs the OAuth build")
             #endif
         case .systemAccount:
             try await sync.reconnectSync()

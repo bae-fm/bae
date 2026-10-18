@@ -7,7 +7,11 @@
     /// so the shared package never compiles against APIs absent from the
     /// baeium bridge. coven presents the sign-in and keeps the tokens.
     final class CloudSyncSetup: Sendable, Observable {
-        let authenticate: @Sendable (BridgeOAuthAccess) async throws -> Void
+        let signIn: @Sendable (BridgeCloudProvider) async throws -> Void
+        /// Sign in again to the open library's provider, with the access its
+        /// location needs, and reconnect that location under this device's
+        /// name.
+        let signInAgain: @Sendable () async throws -> BridgeStorageSetup
         /// Connect a signed-in provider location, registering this device under
         /// its name.
         let connect:
@@ -28,7 +32,10 @@
         #endif
 
         init(handle: any AppHandleProtocol, deviceName: String) {
-            authenticate = { try await handle.authenticate(access: $0) }
+            signIn = { try await handle.signIn(provider: $0) }
+            signInAgain = {
+                try await handle.signInAgain(deviceName: deviceName)
+            }
             connect = {
                 try await handle.setupOauthStorage(
                     location: $0,
@@ -57,7 +64,7 @@
             StorageFolderBrowser(
                 provider: provider,
                 operations: StorageFolderBrowser.Operations(
-                    authenticate: authenticate,
+                    signIn: signIn,
                     dropboxSharedFolders: dropboxSharedFolders,
                     oneDriveRoot: oneDriveRoot,
                     oneDriveFolders: oneDriveFolders,
@@ -69,7 +76,8 @@
         #if DEBUG
             /// Previews: every operation throws.
             init() {
-                authenticate = { _ in throw StubError.notImplemented }
+                signIn = { _ in throw StubError.notImplemented }
+                signInAgain = { throw StubError.notImplemented }
                 connect = { _ in throw StubError.notImplemented }
                 oneDriveRoot = { throw StubError.notImplemented }
                 oneDriveFolders = { _ in throw StubError.notImplemented }

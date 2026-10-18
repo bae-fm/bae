@@ -328,13 +328,45 @@ impl SyncController {
         Ok(setup)
     }
 
+    /// Sign in to an account provider before choosing a new location on it.
+    /// bae registers a Full Dropbox app, since a household's library lives in
+    /// a folder its members share.
     #[cfg(feature = "oauth-providers")]
-    pub(crate) async fn authenticate(
-        &self,
-        access: coven::OAuthAccess,
-    ) -> Result<(), LibraryError> {
+    pub(crate) async fn sign_in(&self, provider: CloudProvider) -> Result<(), LibraryError> {
+        let access = match provider {
+            CloudProvider::Dropbox => {
+                coven::OAuthAccess::Dropbox(coven::DropboxAccess::FullDropbox)
+            }
+            CloudProvider::OneDrive => coven::OAuthAccess::OneDrive,
+            CloudProvider::S3 | CloudProvider::CloudKit => {
+                return Err(LibraryError::Internal(format!(
+                    "{provider:?} has no account sign-in"
+                )))
+            }
+        };
         self.database.authenticate(access).await?;
         Ok(())
+    }
+
+    /// Sign in again to the provider this library's location is on, with the
+    /// access that location needs, and reconnect the location with the new
+    /// sign-in.
+    #[cfg(feature = "oauth-providers")]
+    pub(crate) async fn sign_in_again(
+        &self,
+        device_name: &str,
+    ) -> Result<coven::StorageSetup, LibraryError> {
+        let storage = self.database.storage_config().await?.ok_or_else(|| {
+            LibraryError::Internal("signing in again needs a library with storage".into())
+        })?;
+        let access = storage.oauth_access().ok_or_else(|| {
+            LibraryError::Internal(format!(
+                "{:?} storage has no account sign-in",
+                storage.provider()
+            ))
+        })?;
+        self.database.authenticate(access).await?;
+        self.setup_oauth_storage(storage, device_name).await
     }
 
     #[cfg(feature = "oauth-providers")]

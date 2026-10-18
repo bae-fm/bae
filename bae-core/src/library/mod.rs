@@ -171,15 +171,19 @@ impl Keychain {
         }
     }
 
-    /// The restore codes saved in this keychain (iCloud Keychain on Apple).
+    /// The restore codes saved in this keychain (iCloud Keychain on Apple)
+    /// for libraries not already on this device: a library this device has
+    /// is opened, not restored.
     pub async fn saved_restore_codes(
         &self,
-    ) -> Result<Vec<coven::SavedRestoreCode>, coven::BootstrapError> {
-        match self {
-            Self::System => coven::saved_restore_codes().await,
+        app_dir: &AppDir,
+    ) -> Result<Vec<coven::SavedRestoreCode>, SavedRestoreCodesError> {
+        let codes = match self {
+            Self::System => coven::saved_restore_codes().await?,
             #[cfg(any(test, feature = "test-utils"))]
-            Self::InMemory(installation) => installation.saved_restore_codes().await,
-        }
+            Self::InMemory(installation) => installation.saved_restore_codes().await?,
+        };
+        restorable_codes(codes, &app_dir.store_layout()).await
     }
 }
 
@@ -343,6 +347,39 @@ pub async fn restore_replacing_device(
         cancel,
     )
     .await
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum SavedRestoreCodesError {
+    #[error(transparent)]
+    Keychain(#[from] coven::BootstrapError),
+    #[error(transparent)]
+    Stores(#[from] coven::StoreLayoutError),
+}
+
+impl SavedRestoreCodesError {
+    pub fn category(&self) -> crate::ui::UiErrorCategory {
+        match self {
+            Self::Keychain(error) => manager::bootstrap_category(error),
+            Self::Stores(_) => crate::ui::UiErrorCategory::Config,
+        }
+    }
+}
+
+async fn restorable_codes(
+    codes: Vec<coven::SavedRestoreCode>,
+    layout: &coven::StoreLayout,
+) -> Result<Vec<coven::SavedRestoreCode>, SavedRestoreCodesError> {
+    let here: std::collections::HashSet<_> = layout
+        .stores()
+        .await?
+        .into_iter()
+        .map(|store| store.id)
+        .collect();
+    Ok(codes
+        .into_iter()
+        .filter(|code| !here.contains(&code.store_id))
+        .collect())
 }
 
 fn restore_error(error: coven::BootstrapError) -> RestoreFromCodeError {

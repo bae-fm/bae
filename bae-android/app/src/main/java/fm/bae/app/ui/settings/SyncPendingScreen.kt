@@ -44,6 +44,7 @@ import fm.bae.app.LocaleErrorLines
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.deviceName
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.SessionActions
@@ -145,7 +146,7 @@ private class PendingActionRunner(
         if (providers == null) {
             error = context.getString(R.string.oauth_unconfigured)
         } else {
-            perform("sign in to $provider") { providers.signIn(session.appHandle, provider) }
+            perform("sign in to $provider again") { providers.signInAgain(session.appHandle, deviceName(context)) }
         }
     }
 

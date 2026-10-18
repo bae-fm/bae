@@ -70,8 +70,19 @@ impl LibraryManager {
     }
 
     #[cfg(feature = "oauth-providers")]
-    pub async fn authenticate(&self, access: coven::OAuthAccess) -> Result<(), LibraryError> {
-        self.sync.authenticate(access).await
+    pub async fn sign_in(
+        &self,
+        provider: crate::config::CloudProvider,
+    ) -> Result<(), LibraryError> {
+        self.sync.sign_in(provider).await
+    }
+
+    #[cfg(feature = "oauth-providers")]
+    pub async fn sign_in_again(
+        &self,
+        device_name: &str,
+    ) -> Result<coven::StorageSetup, LibraryError> {
+        self.sync.sign_in_again(device_name).await
     }
 
     #[cfg(feature = "oauth-providers")]

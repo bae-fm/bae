@@ -34,7 +34,7 @@ struct WelcomeChooseView: View {
     @State
     private var localLibraries: SectionLoad<[BridgeLibrary]> = .loading
 
-    /// Restore codes coven saved in iCloud Keychain.
+    /// Restore codes saved in iCloud Keychain for libraries not on this Mac.
     @State
     private var savedCodes: SectionLoad<[SavedRestoreEntry]> = .loading
 
@@ -42,12 +42,8 @@ struct WelcomeChooseView: View {
         localLibraries.value ?? []
     }
 
-    /// Saved restore codes whose library isn't already on this device.
-    private var restorableEntries: [SavedRestoreEntry] {
-        (savedCodes.value ?? [])
-            .filter { entry in
-                !discoveredLibraries.contains { $0.id == entry.info.libraryId }
-            }
+    private var savedEntries: [SavedRestoreEntry] {
+        savedCodes.value ?? []
     }
 
     /// Lead with "Create new library" only when both lookups finished and found
@@ -136,9 +132,9 @@ struct WelcomeChooseView: View {
                     error: failure
                 )
             }
-            else if !restorableEntries.isEmpty {
+            else if !savedEntries.isEmpty {
                 KeychainRestoreSection(
-                    entries: restorableEntries,
+                    entries: savedEntries,
                     disabled: isBusy,
                     onRestore: { onRestoreSaved($0.code) }
                 )

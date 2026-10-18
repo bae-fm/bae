@@ -27,8 +27,11 @@ forward! {
 forward! {
     #[cfg(feature = "oauth-providers")]
     async this => {
-        fn authenticate(access: crate::BridgeOAuthAccess) -> () {
-            Ok(this.services.authenticate(access.into_core()).await?)
+        fn sign_in(provider: crate::types::BridgeCloudProvider) -> () {
+            Ok(this.services.sign_in(provider.into_core()).await?)
+        }
+        fn sign_in_again(device_name: String) -> crate::types::BridgeStorageSetup {
+            Ok(crate::types::BridgeStorageSetup::from_core(this.services.sign_in_again(&device_name).await?))
         }
         fn setup_oauth_storage(location: crate::types::BridgeStorageLocation, device_name: String) -> crate::types::BridgeStorageSetup {
             Ok(crate::types::BridgeStorageSetup::from_core(this.services.setup_oauth_storage(location.into_core()?, &device_name).await?))

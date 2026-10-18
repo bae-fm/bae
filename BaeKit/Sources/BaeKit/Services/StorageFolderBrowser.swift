@@ -21,20 +21,11 @@ public final class StorageFolderBrowser {
             case .oneDrive: .oneDrive
             }
         }
-
-        /// The sign-in setup asks for: Full Dropbox, whose shared folders
-        /// households use, or OneDrive.
-        var access: BridgeOAuthAccess {
-            switch self {
-            case .dropbox: .dropbox(access: .fullDropbox)
-            case .oneDrive: .oneDrive
-            }
-        }
     }
 
     /// The signed-in provider calls folder choice runs on.
     public struct Operations: Sendable {
-        let authenticate: @Sendable (BridgeOAuthAccess) async throws -> Void
+        let signIn: @Sendable (BridgeCloudProvider) async throws -> Void
         let dropboxSharedFolders:
             @Sendable () async throws -> [BridgeStorageFolder]
         let oneDriveRoot: @Sendable () async throws -> BridgeStorageFolder
@@ -46,8 +37,8 @@ public final class StorageFolderBrowser {
                 BridgeStorageFolder
 
         public init(
-            authenticate:
-                @escaping @Sendable (BridgeOAuthAccess) async throws -> Void,
+            signIn:
+                @escaping @Sendable (BridgeCloudProvider) async throws -> Void,
             dropboxSharedFolders:
                 @escaping @Sendable () async throws -> [BridgeStorageFolder],
             oneDriveRoot:
@@ -59,7 +50,7 @@ public final class StorageFolderBrowser {
                 @escaping @Sendable (BridgeStorageLocation, String) async throws
                 -> BridgeStorageFolder
         ) {
-            self.authenticate = authenticate
+            self.signIn = signIn
             self.dropboxSharedFolders = dropboxSharedFolders
             self.oneDriveRoot = oneDriveRoot
             self.oneDriveFolders = oneDriveFolders
@@ -114,7 +105,7 @@ public final class StorageFolderBrowser {
         let operations = operations
         let provider = provider
         run {
-            try await operations.authenticate(provider.access)
+            try await operations.signIn(provider.cloudProvider)
             switch provider {
             case .dropbox:
                 return Listing(

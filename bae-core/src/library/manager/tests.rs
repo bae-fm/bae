@@ -204,6 +204,8 @@ include!("tests/storage.rs");
 include!("tests/storage_sorting.rs");
 include!("tests/transfers.rs");
 mod detachment;
+#[cfg(feature = "oauth-providers")]
+mod sign_in;
 include!("tests/transfer_order.rs");
 include!("tests/upload_pin.rs");
 include!("tests/downloads.rs");

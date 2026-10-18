@@ -24,11 +24,20 @@ interface OAuthProviders {
      */
     fun register(host: BridgeHost)
 
-    /** Sign the open library's device in to [provider] — when setting it up, or when its sync asks. */
+    /** Sign the open library's device in to [provider] before choosing a folder on it. */
     suspend fun signIn(
         handle: AppHandle,
         provider: BridgeCloudProvider,
     )
+
+    /**
+     * Sign in again to the open library's provider when its sync asks, with the
+     * access its location needs, and reconnect that location under [deviceName].
+     */
+    suspend fun signInAgain(
+        handle: AppHandle,
+        deviceName: String,
+    ): BridgeStorageSetup
 
     /** The Dropbox folders shared with the signed-in account, each a place a library can live. */
     suspend fun dropboxSharedFolders(handle: AppHandle): List<BridgeStorageFolder>

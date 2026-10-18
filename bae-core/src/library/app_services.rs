@@ -410,7 +410,9 @@ impl AppServices {
     delegate_async!(manager, enqueue_pins => enqueue_pins(release_ids: Vec<String>) -> ());
     delegate_async!(manager, use_cloudkit => use_cloudkit(device_name: &str) -> Result<coven::StorageSetup, crate::library::LibraryError>);
     #[cfg(feature = "oauth-providers")]
-    delegate_async!(manager, authenticate => authenticate(access: coven::OAuthAccess) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, sign_in => sign_in(provider: crate::config::CloudProvider) -> Result<(), crate::library::LibraryError>);
+    #[cfg(feature = "oauth-providers")]
+    delegate_async!(manager, sign_in_again => sign_in_again(device_name: &str) -> Result<coven::StorageSetup, crate::library::LibraryError>);
     #[cfg(feature = "oauth-providers")]
     delegate_async!(manager, setup_oauth_storage => setup_oauth_storage(storage: coven::StorageConfig, device_name: &str) -> Result<coven::StorageSetup, crate::library::LibraryError>);
     #[cfg(feature = "oauth-providers")]

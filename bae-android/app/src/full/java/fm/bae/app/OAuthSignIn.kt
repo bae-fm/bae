@@ -11,9 +11,7 @@ import org.json.JSONException
 import org.json.JSONObject
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeCloudProvider
-import uniffi.bae_bridge.BridgeDropboxAccess
 import uniffi.bae_bridge.BridgeHost
-import uniffi.bae_bridge.BridgeOAuthAccess
 import uniffi.bae_bridge.BridgeOAuthClients
 import uniffi.bae_bridge.BridgeOAuthPresentationException
 import uniffi.bae_bridge.BridgeOAuthRedirects
@@ -87,8 +85,13 @@ class OAuthSignIn private constructor(
         handle: AppHandle,
         provider: BridgeCloudProvider,
     ) {
-        handle.authenticate(access(provider))
+        handle.signIn(provider)
     }
+
+    override suspend fun signInAgain(
+        handle: AppHandle,
+        deviceName: String,
+    ): BridgeStorageSetup = handle.signInAgain(deviceName)
 
     override suspend fun dropboxSharedFolders(handle: AppHandle): List<BridgeStorageFolder> = handle.dropboxSharedFolders()
 
@@ -120,27 +123,6 @@ class OAuthSignIn private constructor(
          */
         @Volatile
         var pendingRedirect: CompletableDeferred<String>? = null
-
-        /**
-         * The access bae signs in with: the Full Dropbox registration, since a
-         * household's library lives in a folder its members share.
-         */
-        private fun access(provider: BridgeCloudProvider): BridgeOAuthAccess =
-            when (provider) {
-                BridgeCloudProvider.DROPBOX -> {
-                    BridgeOAuthAccess.Dropbox(BridgeDropboxAccess.FULL_DROPBOX)
-                }
-
-                BridgeCloudProvider.ONE_DRIVE -> {
-                    BridgeOAuthAccess.OneDrive
-                }
-
-                BridgeCloudProvider.S3,
-                BridgeCloudProvider.CLOUD_KIT,
-                -> {
-                    error("$provider has no account sign-in")
-                }
-            }
 
         /** Load the bundled registrations; null when no `assets/oauth-creds.json`. */
         fun load(context: Context): OAuthSignIn? {

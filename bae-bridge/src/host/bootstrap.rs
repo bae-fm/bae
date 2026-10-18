@@ -62,7 +62,7 @@ impl BridgeHost {
                 .clone(),
             move || async move {
                 self.keychain
-                    .saved_restore_codes()
+                    .saved_restore_codes(&self.app_dir)
                     .await
                     .map(|codes| {
                         codes
@@ -71,8 +71,6 @@ impl BridgeHost {
                             .collect()
                     })
                     .map_err(|error| {
-                        let error =
-                            bae_core::library::RestoreFromCodeError::Restore(Box::new(error));
                         BridgeError::diagnostic(
                             BridgeErrorCategory::from_core(error.category()),
                             error,
