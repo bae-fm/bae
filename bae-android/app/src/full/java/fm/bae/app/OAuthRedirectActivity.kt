@@ -5,14 +5,14 @@ import android.os.Bundle
 
 /**
  * Receives the OAuth provider redirect (custom scheme) from the system browser,
- * hands the redirect Uri to the in-flight link flow via
- * [OAuthLinking.pendingRedirect], then re-surfaces [MainActivity] so the user
- * returns to bae (popping the Custom Tab) and finishes.
+ * hands the complete redirect to the sign-in waiting in
+ * [OAuthSignIn.pendingRedirect], then re-surfaces [MainActivity] so the person
+ * returns to bae (popping the Custom Tab).
  */
 class OAuthRedirectActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        intent?.data?.let { OAuthLinking.pendingRedirect?.complete(it) }
+        intent?.data?.let { OAuthSignIn.pendingRedirect?.complete(it.toString()) }
         startActivity(mainActivityIntent(this))
         finish()
     }

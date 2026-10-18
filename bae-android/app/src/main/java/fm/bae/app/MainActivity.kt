@@ -49,8 +49,8 @@ class MainActivity : ComponentActivity() {
         val app = application as BaeApp
         setContent {
             ContentView(
-                oauthLinking = app.oauthLinking,
-                oauthLinkingError = app.oauthLinkingError,
+                oauthProviders = app.oauthProviders,
+                oauthProvidersError = app.oauthProvidersError,
                 startupError =
                     app.platformStartupError
                         ?: app.startupError?.let { localizedLine(it) ?: it.toString() },
@@ -66,6 +66,16 @@ class MainActivity : ComponentActivity() {
         // A relaunch without a shortcut extra (e.g. the launcher icon) leaves any
         // still-pending shortcut alone rather than clearing it mid-handle.
         shortcutActionFromIntent(intent)?.let { pendingShortcut = it }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        ForegroundActivity.resumed(this)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        ForegroundActivity.paused(this)
     }
 
     override fun onStop() {

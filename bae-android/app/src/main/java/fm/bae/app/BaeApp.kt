@@ -30,10 +30,10 @@ class BaeApp : Application() {
     lateinit var host: BridgeHost
         private set
 
-    var oauthLinking: OAuthLinker? = null
+    var oauthProviders: OAuthProviders? = null
         private set
 
-    var oauthLinkingError: String? = null
+    var oauthProvidersError: String? = null
         private set
 
     var startupError: BridgeException? = null
@@ -75,16 +75,17 @@ class BaeApp : Application() {
             logger.error("Failed to start the bridge host or secure storage", error)
             return
         }
-        // Register the host's OAuth client creds (if a creds file is bundled) so
-        // coven can build authorization URLs and refresh provider tokens during
-        // sync. Null in the baeium edition (no OAuth) or when no creds file is
-        // bundled (full) → cloud providers that need OAuth stay unavailable.
+        // Register the app's OAuth clients and sign-in presenter (if a creds
+        // file is bundled) so coven can sign in to a provider and refresh its
+        // access during sync. Null in the baeium edition (no OAuth) or when no
+        // creds file is bundled (full) → providers that need a sign-in stay
+        // unavailable.
         try {
-            oauthLinking = OAuthLinker.load(this)
-            oauthLinking?.register(host)
-        } catch (e: Exception) {
-            oauthLinkingError = e.toString()
-            logger.error("Failed to register OAuth client creds", e)
+            oauthProviders = OAuthProviders.load(this)
+            oauthProviders?.register(host)
+        } catch (e: IllegalStateException) {
+            oauthProvidersError = e.toString()
+            logger.error("Failed to register OAuth clients", e)
         }
     }
 }

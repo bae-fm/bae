@@ -4,7 +4,7 @@
     <application>
 
         <!-- Captures the OAuth provider redirect (custom scheme) back from the
-             system browser and hands the code to the in-flight link flow. Only
+             system browser and hands it to the waiting sign-in. Only
              the full edition does OAuth, so the activity and its scheme filter
              ship only here; the baeium edition has neither. The scheme is
              injected from oauth-creds.json at build time; an inert placeholder
