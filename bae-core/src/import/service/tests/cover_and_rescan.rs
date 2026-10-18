@@ -204,6 +204,82 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
     }
 }
 
+/// A pass that finds a folder unchanged stamps its file-tag reading with the
+/// pass's generation. An import queued against that reading before the pass
+/// still commits: what the files say did not change.
+#[tokio::test]
+async fn an_import_commits_after_a_pass_finds_its_folder_unchanged() {
+    let test = setup_import_service().await;
+    let root = test.temp.path().join("watched");
+    let folder = root.join("Album");
+    std::fs::create_dir_all(&folder).unwrap();
+    std::fs::write(folder.join("01.flac"), flac()).unwrap();
+    let root_text = root.to_string_lossy().into_owned();
+    let key = folder.to_string_lossy().into_owned();
+    test.service
+        .library_manager
+        .add_watched_import_folder(&root_text)
+        .await
+        .unwrap();
+    let (scan, _) = test.scan();
+    scan.rescan(&root).await.unwrap();
+    let candidate = test
+        .service
+        .library_manager
+        .load_release_candidate(&key)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    let hash = candidate.files.content_hash();
+    let revision = prepare_named_candidate(
+        &test.service,
+        &test.preparations,
+        &hash,
+        &root_text,
+        &key,
+        "Album Title",
+    )
+    .await;
+    let reading = async || {
+        test.service
+            .library_manager
+            .load_candidate_file_tag_snapshot(&root_text, &key)
+            .await
+            .unwrap()
+            .unwrap()
+            .snapshot
+            .unwrap()
+    };
+    let queued = reading().await;
+
+    scan.rescan(&root).await.unwrap();
+    assert_ne!(
+        reading().await.scan_generation,
+        queued.scan_generation,
+        "the pass stamps the reading it kept"
+    );
+
+    test.service.import_cancels.register(&key, "import-1");
+    test.service
+        .prepare_and_run_folder_import(
+            "import-1".to_string(),
+            key,
+            candidate.source(),
+            super::ImportExpectation {
+                candidate: crate::import::CandidateAsRead {
+                    content_hash: hash,
+                    file_edit_revision: candidate.file_edit_revision,
+                    metadata_revision: revision,
+                },
+                file_tag_snapshot: Some(queued),
+            },
+            ImportDestination::Local,
+        )
+        .await
+        .expect("the reading the import was queued against still stands");
+}
+
 #[tokio::test]
 async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
     let test = setup_import_service().await;

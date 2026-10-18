@@ -170,7 +170,11 @@ impl ImportExpectation {
             ));
         }
         if let Some(snapshot) = &self.file_tag_snapshot {
-            if current.file_tag_snapshot.as_ref() != Some(snapshot) {
+            if !current
+                .file_tag_snapshot
+                .as_ref()
+                .is_some_and(|current| current.same_reading(snapshot))
+            {
                 return Err(format!(
                     "{candidate_key}'s file-tag reading changed before its import committed"
                 ));

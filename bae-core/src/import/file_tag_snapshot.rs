@@ -84,6 +84,21 @@ impl FileTagSnapshot {
         facts.next().is_none()
     }
 
+    /// Whether `other` says what this reading says about the same files at the
+    /// same file edit revision. The scan stamp is left out: a pass that finds
+    /// the candidate unchanged moves its stamp onto the reading it keeps.
+    pub(crate) fn same_reading(&self, other: &Self) -> bool {
+        let Self {
+            scan_generation: _,
+            file_edit_revision,
+            files,
+            embedded_cover,
+        } = self;
+        *file_edit_revision == other.file_edit_revision
+            && *files == other.files
+            && *embedded_cover == other.embedded_cover
+    }
+
     /// Each file's ISRC, as [`crate::isrc::code`] reads its tag, in the files'
     /// order; a file whose tag holds none, or none that reads as one, adds
     /// nothing.
