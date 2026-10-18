@@ -190,22 +190,16 @@ final class WebAuthPresenter: OAuthPresenterCallback, Sendable {
     }
 }
 
-/// Drives one `ASWebAuthenticationSession` to completion. The session holds its
-/// presentation-context provider weakly and is easy to let deallocate mid-flow,
-/// so this pins itself and the session alive from `start()` until the callback
-/// fires — exactly one continuation resume.
+/// Drives one `ASWebAuthenticationSession` to completion — exactly one
+/// continuation resume. The session holds its presentation-context provider
+/// (this object) weakly; `run` keeps this object alive until it returns, which
+/// is after the callback fires, and this object keeps the session alive.
 @MainActor
 final class WebAuthSession: NSObject,
     ASWebAuthenticationPresentationContextProviding
 {
-    private struct ActiveSession {
-        let session: ASWebAuthenticationSession
-        /// Keeps the presentation provider alive until the callback runs.
-        let owner: WebAuthSession
-    }
-
     private let anchor: ASPresentationAnchor
-    private var active: ActiveSession?
+    private var active: ASWebAuthenticationSession?
 
     init(anchor: ASPresentationAnchor) {
         self.anchor = anchor
@@ -235,7 +229,7 @@ final class WebAuthSession: NSObject,
                 }
                 session.presentationContextProvider = self
                 session.prefersEphemeralWebBrowserSession = false
-                active = ActiveSession(session: session, owner: self)
+                active = session
                 if !session.start() {
                     active = nil
                     continuation.resume(
@@ -245,7 +239,7 @@ final class WebAuthSession: NSObject,
             }
         } onCancel: {
             Task { @MainActor [weak self] in
-                self?.active?.session.cancel()
+                self?.active?.cancel()
             }
         }
     }

@@ -9,8 +9,4 @@ index_exclude:
   # subset of BaeKit's members, so re-checking it here only surfaces
   # macOS-only code as false iOS dead code.
   - "**/BaeKit/**"
-# The web-auth presentation-context coordinator is held only to keep the auth
-# session's provider alive until its callback runs — assigned, never read.
-retain_assign_only_property_types:
-  - WebAuthCoordinator
 disable_update_check: true
