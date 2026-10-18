@@ -37,12 +37,12 @@ fun loadOAuthProviders(context: Context): OAuthProviders? = OAuthSignIn.load(con
 /**
  * The app's OAuth registrations and the Custom Tab sign-in coven presents.
  * Read from a gitignored `assets/oauth-creds.json` — bae and coven ship no
- * credentials. The file has one entry per provider coven can sign in to,
- * `dropbox`, `onedrive` and `google_admin`, each with the `redirect_uri`
- * registered for this app (a custom scheme, which the manifest routes to
- * [OAuthRedirectActivity]) and, for a provider this build offers, its
- * `client_id`. A provider without a client id is not registered, and coven
- * says so when it is asked for.
+ * credentials. The file has one entry per provider a phone signs in to,
+ * `dropbox` and `onedrive`, each with the `redirect_uri` registered for this
+ * app (a custom scheme, which the manifest routes to [OAuthRedirectActivity])
+ * and, for a provider this build offers, its `client_id`. A provider without a
+ * client id is not registered, and coven says so when it is asked for. Google
+ * admin sign-in is a desktop admin source, so it has no entry.
  */
 class OAuthSignIn private constructor(
     private val clients: BridgeOAuthClients,
@@ -164,19 +164,17 @@ class OAuthSignIn private constructor(
                 }
             val dropbox = provider(root, "dropbox")
             val oneDrive = provider(root, "onedrive")
-            val googleAdmin = provider(root, "google_admin")
             return OAuthSignIn(
                 clients =
                     BridgeOAuthClients(
                         dropboxAppKey = dropbox.clientId,
                         onedriveClientId = oneDrive.clientId,
-                        googleAdminClientId = googleAdmin.clientId,
+                        googleAdminClientId = null,
                     ),
                 redirects =
                     BridgeOAuthRedirects(
                         dropbox = dropbox.redirectUri,
                         onedrive = oneDrive.redirectUri,
-                        googleAdmin = googleAdmin.redirectUri,
                     ),
             )
         }
