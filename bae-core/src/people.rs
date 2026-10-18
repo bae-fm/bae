@@ -72,3 +72,16 @@ impl From<coven::CovenError> for ProfileError {
         Self::Database(error.into())
     }
 }
+
+impl ProfileError {
+    pub fn category(&self) -> crate::ui::UiErrorCategory {
+        use crate::ui::UiErrorCategory as C;
+        match self {
+            Self::NotRegistered | Self::Missing | Self::EmptyName | Self::AlreadyExists => {
+                C::Config
+            }
+            Self::InvalidPrivateCircle | Self::CirclePending(_) | Self::Sync(_) => C::Membership,
+            Self::Database(_) => C::Database,
+        }
+    }
+}

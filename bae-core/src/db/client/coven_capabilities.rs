@@ -404,3 +404,20 @@ impl Database {
         self.inner.handle.cancel_invite(invite).await
     }
 }
+
+impl Database {
+    pub(crate) async fn detect_s3_settings(
+        &self,
+        storage: coven::StorageConfig,
+        credentials: coven::S3Credentials,
+    ) -> Result<coven::S3Detection, coven::StorageSetupError> {
+        self.inner
+            .handle
+            .detect_s3_settings(
+                storage,
+                credentials.access_key_id,
+                credentials.secret_access_key,
+            )
+            .await
+    }
+}

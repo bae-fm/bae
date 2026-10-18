@@ -1,5 +1,6 @@
 mod album_selection;
 pub mod app_services;
+mod bootstrap_auth;
 mod browse;
 mod detail;
 pub mod download_snapshot;
@@ -95,7 +96,7 @@ impl RestoreFromCodeError {
     /// credentials, or the keyring, or retry once the cloud is reachable.
     pub fn category(&self) -> crate::ui::UiErrorCategory {
         match self {
-            Self::Profile(_) => crate::ui::UiErrorCategory::Internal,
+            Self::Profile(error) => error.category(),
             Self::Cancelled => crate::ui::UiErrorCategory::Internal,
             Self::Restore(error) => manager::bootstrap_category(error),
         }
@@ -149,13 +150,14 @@ pub async fn create_library_default(
 /// The returned handle retains session custody; the caller keeps it for the
 /// running library instead of reopening from a second configuration copy.
 pub async fn restore_from_code(
-    builder: coven::CovenBuilder,
+    mut builder: coven::CovenBuilder,
     code: &str,
     s3_credentials: Option<coven::S3Credentials>,
     device_name: &str,
     on_status: impl Fn(coven::BootstrapStatus),
     cancel: &watch::Receiver<bool>,
 ) -> Result<coven::CovenHandle, RestoreFromCodeError> {
+    bootstrap_auth::authenticate(&mut builder, bootstrap_auth::code_access(code)?, cancel).await?;
     coven::restore_from_code(
         configure_store(builder),
         code,
@@ -169,13 +171,14 @@ pub async fn restore_from_code(
 }
 
 pub async fn restore_from_keychain(
-    builder: coven::CovenBuilder,
+    mut builder: coven::CovenBuilder,
     saved: &coven::SavedRestoreCode,
     s3_credentials: Option<coven::S3Credentials>,
     device_name: &str,
     on_status: impl Fn(coven::BootstrapStatus),
     cancel: &watch::Receiver<bool>,
 ) -> Result<Option<coven::CovenHandle>, RestoreFromCodeError> {
+    bootstrap_auth::authenticate(&mut builder, saved.location.oauth_access(), cancel).await?;
     coven::restore_from_keychain(
         configure_store(builder),
         saved,
@@ -196,7 +199,7 @@ pub type JoinedLibrary = (
 );
 
 pub async fn join_with_invite(
-    builder: coven::CovenBuilder,
+    mut builder: coven::CovenBuilder,
     code: &str,
     device_name: &str,
     person_name: &str,
@@ -207,6 +210,7 @@ pub async fn join_with_invite(
     if person_name.trim().is_empty() {
         return Err(crate::people::ProfileError::EmptyName.into());
     }
+    bootstrap_auth::authenticate(&mut builder, bootstrap_auth::code_access(code)?, cancel).await?;
     let Some(handle) = Box::pin(coven::join_with_invite(
         configure_store(builder),
         code,

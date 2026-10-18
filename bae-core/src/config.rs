@@ -8,6 +8,7 @@ mod handle;
 mod identification;
 mod import_storage;
 mod keyring;
+mod presentation;
 mod save;
 mod server;
 
@@ -16,6 +17,7 @@ pub use handle::ConfigHandle;
 pub use identification::{IdentificationPreferences, LookupCatalogPreferences};
 pub use import_storage::ImportStoragePreferences;
 pub use keyring::init_keyring;
+pub use presentation::LookupCatalogSetting;
 pub use save::{SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset};
 pub use server::{
     McpConfig, SubsonicConfig, SubsonicCredential, MCP_DEFAULT_PORT, SUBSONIC_DEFAULT_PORT,
@@ -372,6 +374,7 @@ pub struct LibraryInfo {
     pub path: PathBuf,
     pub is_active: bool,
     pub cloud_provider: Option<CloudProvider>,
+    pub storage: Option<StorageConfig>,
 }
 
 /// Device-local preferences and the store they belong to. Store names, device
@@ -446,6 +449,7 @@ impl Config {
                 id,
                 name: store.name,
                 cloud_provider: storage.as_ref().map(StorageConfig::provider),
+                storage,
             });
         }
         libraries.sort_by(|a, b| {

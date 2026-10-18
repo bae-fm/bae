@@ -129,6 +129,11 @@ impl AppServices {
     /// order is the one dropping the last handle to these services keeps;
     /// whichever runs first stops each worker, and the other finds it stopped.
     pub async fn close(&self) -> Result<(), crate::library::LibraryError> {
+        self.stop_workers().await;
+        self.inner.manager.close().await
+    }
+
+    async fn stop_workers(&self) {
         self.inner.playback.shutdown().await;
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         {
@@ -147,7 +152,6 @@ impl AppServices {
                 std::panic::resume_unwind(error.into_panic());
             }
         }
-        self.inner.manager.close().await
     }
 
     #[cfg(all(
@@ -401,6 +405,14 @@ impl AppServices {
     delegate_async!(manager, authenticate => authenticate(access: coven::OAuthAccess) -> Result<(), crate::library::LibraryError>);
     #[cfg(feature = "oauth-providers")]
     delegate_async!(manager, setup_oauth_storage => setup_oauth_storage(storage: coven::StorageConfig, device_name: &str) -> Result<coven::StorageSetup, crate::library::LibraryError>);
+    #[cfg(feature = "oauth-providers")]
+    delegate_async!(manager, onedrive_root => onedrive_root() -> Result<coven::StorageFolder, crate::library::LibraryError>);
+    #[cfg(feature = "oauth-providers")]
+    delegate_async!(manager, onedrive_folders => onedrive_folders(parent: &coven::StorageConfig) -> Result<Vec<coven::StorageFolder>, crate::library::LibraryError>);
+    #[cfg(feature = "oauth-providers")]
+    delegate_async!(manager, create_onedrive_folder => create_onedrive_folder(parent: &coven::StorageConfig, name: &str) -> Result<coven::StorageFolder, crate::library::LibraryError>);
+    #[cfg(feature = "oauth-providers")]
+    delegate_async!(manager, dropbox_shared_folders => dropbox_shared_folders() -> Result<Vec<coven::StorageFolder>, crate::library::LibraryError>);
     delegate_async!(manager, get_album_id_for_release => get_album_id_for_release(release_id: &str) -> Result<String, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, release_edit_seed => release_edit_seed(release_id: &str) -> Result<crate::import::ReleaseEditSeed, crate::library::LibraryError>);
@@ -611,3 +623,15 @@ use shown_transfers::ShownTransfers;
 #[cfg(test)]
 #[path = "app_services_tests.rs"]
 mod tests;
+
+mod personal;
+
+mod removal;
+
+impl AppServices {
+    delegate_async!(manager, detect_s3_settings => detect_s3_settings(storage:coven::StorageConfig, credentials:coven::S3Credentials) -> Result<coven::S3Detection, crate::library::LibraryError>);
+    delegate_async!(manager, storage_location => storage_location() -> Result<Option<coven::StorageConfig>, crate::library::LibraryError>);
+    delegate_async!(manager, retry_with_admin_access => retry_with_admin_access(operation:coven::OperationId,source:coven::AdminAccessSource) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, delete_access_key => delete_access_key(operation:coven::OperationId,source:coven::AdminAccessSource) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, confirm_access_key_deleted => confirm_access_key_deleted(key:&str) -> Result<(), crate::library::LibraryError>);
+}

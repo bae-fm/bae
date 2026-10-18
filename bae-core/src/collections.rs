@@ -10,10 +10,6 @@ pub enum Stars {
 }
 
 impl Stars {
-    pub fn is_favorite(self) -> bool {
-        self == Self::Five
-    }
-
     pub(crate) fn from_sql(value: i64) -> rusqlite::Result<Self> {
         match value {
             1 => Ok(Self::One),
@@ -67,4 +63,16 @@ pub enum CollectionError {
     Profile(#[from] crate::people::ProfileError),
     #[error(transparent)]
     Database(#[from] crate::db::DbError),
+}
+
+impl CollectionError {
+    pub fn category(&self) -> crate::ui::UiErrorCategory {
+        use crate::ui::UiErrorCategory as C;
+        match self {
+            Self::EmptyName | Self::Missing | Self::OrderChanged => C::Config,
+            Self::NotOwner => C::Membership,
+            Self::Profile(error) => error.category(),
+            Self::Database(_) => C::Database,
+        }
+    }
 }

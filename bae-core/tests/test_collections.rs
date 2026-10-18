@@ -25,7 +25,7 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     let ratings = db.ratings().await.unwrap();
     assert_eq!(ratings.len(), 1);
     assert_eq!(ratings[0].person, person.id);
-    assert!(ratings[0].stars.is_favorite());
+    assert_eq!(ratings[0].stars, Stars::Five);
     db.set_rating(target, None).await.unwrap();
     assert!(db.ratings().await.unwrap().is_empty());
     db.set_rating(

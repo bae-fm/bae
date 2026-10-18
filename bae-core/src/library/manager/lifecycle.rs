@@ -44,3 +44,12 @@ impl LibraryManager {
         Ok(self.database.store_key_state()?)
     }
 }
+
+impl LibraryManager {
+    pub async fn finish_removed_library(
+        &self,
+        library: crate::library::RemovedLibrary,
+    ) -> Result<(), crate::library::LibraryRemovalError> {
+        library.finish(&self.app_dir).await
+    }
+}
