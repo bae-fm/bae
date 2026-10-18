@@ -47,6 +47,12 @@ impl AppDir {
         self.path.join("removals")
     }
 
+    /// The file a removal, or a lookup of unfinished removals, holds locked
+    /// for its whole run, in every process using this directory.
+    pub(crate) fn removal_lock(&self) -> PathBuf {
+        self.path.join("removals.lock")
+    }
+
     /// coven owns store directories under the app directory.
     pub(crate) fn store_layout(&self) -> coven::StoreLayout {
         coven::StoreLayout::new(self.path.clone())

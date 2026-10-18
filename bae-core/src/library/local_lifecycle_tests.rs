@@ -346,3 +346,45 @@ async fn files_without_a_removal_record_are_left_alone() {
     assert!(home.directory(kept.store_id()).exists());
     assert_eq!(home.unfinished().await, None);
 }
+
+/// A lookup started while a removal waits on coven's delete waits for the
+/// removal and sees it finished, rather than reading its record mid-way.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_lookup_during_a_removal_waits_for_it() {
+    let home = Arc::new(Home::new());
+    let handle = home.library("Library").await;
+    let id = handle.store_id();
+    home.point_at(id);
+    let deleting = Arc::new(tokio::sync::Notify::new());
+    let delete_may_finish = Arc::new(tokio::sync::Notify::new());
+
+    let removal = tokio::spawn({
+        let home = home.clone();
+        let deleting = deleting.clone();
+        let delete_may_finish = delete_may_finish.clone();
+        async move {
+            super::local_lifecycle::remove_recorded(&home.app_dir, id, async {
+                deleting.notify_one();
+                delete_may_finish.notified().await;
+                handle.delete_store(coven::IfUnsent::Refuse).await
+            })
+            .await
+        }
+    });
+    deleting.notified().await;
+    assert!(home.record(id).exists());
+
+    let lookup = tokio::spawn({
+        let home = home.clone();
+        async move { home.unfinished().await }
+    });
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    assert!(!lookup.is_finished(), "the lookup waits for the removal");
+
+    delete_may_finish.notify_one();
+    removal.await.unwrap().unwrap();
+    assert_eq!(lookup.await.unwrap(), None);
+    assert_eq!(home.stores().await, 0);
+    assert!(!home.record(id).exists());
+    assert!(!home.directory(id).exists());
+}

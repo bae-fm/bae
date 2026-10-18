@@ -5,7 +5,9 @@
 //! coven can't commit together, so the record is what says a removal started:
 //! a removal that stops partway is found from its record, never from bae
 //! files that coven's store list lacks, and finished with
-//! [`finish_removals`]. Every step succeeds when already done.
+//! [`finish_removals`]. Every step succeeds when already done. A removal,
+//! a lookup and finishing each hold the removal lock for their whole run, so
+//! a lookup never sees a removal that is still waiting on coven.
 
 use crate::config::{AppDir, ConfigError};
 use crate::library::LibraryError;
@@ -92,6 +94,7 @@ impl UnfinishedRemoval {
     /// still lists is a removal that stopped before the delete: it is cleared
     /// here and reported, and the library can be removed again.
     pub async fn find(app_dir: &AppDir) -> Result<Option<Self>, LibraryError> {
+        let _lock = RemovalLock::acquire(app_dir).await?;
         let records = removal_records(app_dir).await?;
         if records.is_empty() {
             return Ok(None);
@@ -122,6 +125,7 @@ impl UnfinishedRemoval {
 /// bae's files for it, then its record; for one coven still lists, only the
 /// record, since the delete never happened.
 pub async fn finish_removals(app_dir: &AppDir) -> Result<(), LibraryError> {
+    let _lock = RemovalLock::acquire(app_dir).await?;
     let records = removal_records(app_dir).await?;
     if records.is_empty() {
         return Ok(());
@@ -154,6 +158,9 @@ pub(crate) async fn remove_recorded(
     store_id: coven::StoreId,
     delete_store: impl std::future::Future<Output = Result<(), coven::StoreDeletionError>>,
 ) -> Result<(), LibraryRemovalError> {
+    let _lock = RemovalLock::acquire(app_dir)
+        .await
+        .map_err(LibraryRemovalError::Record)?;
     write_record(app_dir, store_id)
         .await
         .map_err(LibraryRemovalError::Record)?;
@@ -169,6 +176,34 @@ pub(crate) async fn remove_recorded(
     delete_record(app_dir, store_id)
         .await
         .map_err(LibraryRemovalError::Unfinished)
+}
+
+/// The removal lock: an exclusive OS lock on one file in the app directory,
+/// released when dropped. Separate opens of the file exclude each other, so
+/// it orders removals and lookups within this process and across processes.
+struct RemovalLock {
+    _file: std::fs::File,
+}
+
+impl RemovalLock {
+    /// Wait for the lock.
+    async fn acquire(app_dir: &AppDir) -> Result<Self, LibraryError> {
+        let path = app_dir.removal_lock();
+        tokio::task::spawn_blocking(move || {
+            let parent = path.parent().expect("the lock file has a parent");
+            std::fs::create_dir_all(parent).map_err(|error| io_at(parent, error))?;
+            let file = std::fs::OpenOptions::new()
+                .create(true)
+                .truncate(false)
+                .write(true)
+                .open(&path)
+                .map_err(|error| io_at(&path, error))?;
+            file.lock().map_err(|error| io_at(&path, error))?;
+            Ok(Self { _file: file })
+        })
+        .await
+        .map_err(unfinished_work)?
+    }
 }
 
 async fn listed_stores(app_dir: &AppDir) -> Result<HashSet<coven::StoreId>, LibraryError> {
