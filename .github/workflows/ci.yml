@@ -179,7 +179,8 @@ jobs:
         # a rename fails here instead of leaving the guard checking nothing.
         gated=(
           useCloudkit:use_cloudkit
-          authenticate:authenticate
+          signIn:sign_in
+          signInAgain:sign_in_again
           setupOauthStorage:setup_oauth_storage
           onedriveRoot:onedrive_root
           onedriveFolders:onedrive_folders
