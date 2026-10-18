@@ -263,6 +263,7 @@ key that spells the fact.
 | work credit | the work, the artist and the position |
 | work part | the parent and child works |
 | release record | the release and the catalog |
+| cover | the release |
 | artist image | the artist |
 
 coven merges two devices' rows that share a table and key, so two devices
@@ -612,8 +613,10 @@ Ana clicks Import. bae:
 1. **Checks the files** are the ones the scan saw: same paths, sizes and
    modification times. A folder that changed since is refused, to be read
    again.
-2. **Reads and hashes each file** where it sits. The hash is the file's SHA-256,
-   which coven later checks every download against.
+2. **Reads each file** where it sits, for a cloud import: coven hashes it, and
+   checks every later download against that hash. A local import records each
+   file's path, size and modification time; its bytes are read when the release
+   is uploaded (§4.2).
 3. **Measures loudness** by decoding every track: its EBU R128 integrated
    loudness and true peak, and the album's over all its tracks. A near-silent
    track stores no loudness and plays unchanged.
@@ -688,7 +691,7 @@ A library is metadata plus files. The metadata is small and syncs whole. The
 files are large, belong partly to the person and partly to bae, and some
 devices can't hold them all. This section says which files are whose (§4.1),
 how a release reaches other devices (§4.2), how a device keeps them (§4.3), how
-a release comes back to one device (§4.4), where files sit in storage (§4.5),
+a release comes back to one device (§4.4), how files sit in storage (§4.5),
 and how files go back out to disk (§4.6). coven stores and moves the files;
 its [§17](https://github.com/bae-fm/coven/blob/main/spec/coven.md#17-files)
 explains how.
@@ -699,14 +702,16 @@ Two kinds of file, matching coven's
 [two kinds](https://github.com/bae-fm/coven/blob/main/spec/coven.md#171-two-kinds-of-file):
 
 - **Audio: the household's own files.** Every file of a release's folder,
-  audio or not, is the person's file at its path. coven records its path, size
-  and modification time and never changes it.
-- **Covers and artist images: bae's own.** bae makes them, downscaled to at
-  most 600 pixels as JPEG, and hands the bytes to coven, which keeps them.
+  audio or not, is the person's file at its path. bae and coven record its
+  path, size and modification time and never change, move or delete it.
+- **Covers, artist images and avatars: bae's own.** bae makes them, covers and
+  artist images downscaled to at most 600 pixels as JPEG, and hands the bytes
+  to coven, which keeps them.
 
-A cover belongs to one release, an artist image to one artist. Changing a
-cover stores a new image with a new id and deletes the old one; coven never
-rewrites a stored file.
+A cover belongs to one release, an artist image to one artist, an avatar to one
+person. Changing a cover stores a new image with a new id; coven never rewrites
+a stored file, and deletes the old one once nothing refers to it
+([coven §17.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#178-deleting-stored-files)).
 
 ### 4.2 Local and uploaded releases
 
@@ -719,20 +724,42 @@ moves it to the cloud. bae attaches each file to its `release_files` row, and
 coven uploads it from where it sits; from then on every device can play it.
 Ana's files stay where they are, untouched.
 
-A local release's audio stays on the importing device. Its paths sit in a
-device-local table, not in the synced rows, because attaching a file to a
-synced row queues its upload in the same write
+A local release's audio stays on the importing device. Its paths sit in the
+device-local table `local_release_files`, one row per file with its path and
+modification time, not in the synced rows. Attaching a file to a synced row
+queues its upload in the same write
 ([coven §17.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#172-attaching-a-file)),
 and uploading is the person's choice. The rows sync anyway, so every device
 knows what the household owns, and a rating or playlist entry pointing at a
 local release's track points at a row every device can read
 ([coven §15.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#153-references-stay-readable)).
 
+**Uploading attaches the audio.** Moving a release to the cloud attaches every
+one of its files in one write, and the same write removes their
+`local_release_files` rows. A release is never half attached. Before that
+write, bae checks each file still has the size and modification time it
+recorded; a file that changed since import refuses the upload. The rows
+describe the file as imported, and a changed file would give every device audio
+that doesn't match them.
+
+**Detaching keeps local playback.** Two actions take a release's audio back off
+its rows. Each clears the attachment of every file and records this device's
+path for it in `local_release_files`, in one write, so the release plays from
+this device's disk the moment the write lands:
+
+- **Cancelling an upload** while any of its files is still queued puts the
+  release back at its original paths. The originals must still be unchanged.
+- **Making a release local again** (§4.4) copies its files into a folder the
+  person picks, then points the release at the copies.
+
+Other devices again show the release but can't play it. What already reached
+storage stays until nothing refers to it; coven then deletes it
+([coven §17.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#178-deleting-stored-files)).
+
 - **A cloud import** (§3.7) attaches its files in the same write as its rows.
 - **Uploads queue.** Files go up three at a time by default, a setting from
-  one to eight. The queue can be paused; a paused upload keeps its place.
-  Cancelling an upload in progress keeps the release local, and takes back
-  out anything already stored.
+  one to eight. The queue can be paused, and stays paused across restarts; a
+  paused upload keeps its place.
 
 ### 4.3 Pinning and the cache
 
@@ -751,6 +778,7 @@ pushes the covers out:
 | Audio and the folder's other files | 20 GiB | as read |
 | Covers | 512 MiB | as soon as the row arrives |
 | Artist images | 256 MiB | as soon as the row arrives |
+| Avatars | 64 MiB | as soon as the row arrives |
 
 Over budget, the least recently used go first. Covers are never pinned; an
 evicted one shows a placeholder until fetched again.
@@ -767,33 +795,30 @@ Making an uploaded release local again copies its files into a folder the
 person picks.
 
 Carol wants her box set off the cloud. She picks a folder on her drive. Every
-file is copied there, each checked at its new path, before the release is
-marked local in one commit; the stored copies are then deleted. A cancel
-before that commit removes the partial copies and leaves the release uploaded.
+file is copied there from the cache or storage, and each copy's SHA-256 is
+checked against its row's content hash. Then one write detaches every file and
+records its new path (§4.2). A cancel or failure before that write removes the
+partial copies and leaves the release uploaded. The cover stays attached: it is
+bae's own, and every device shows it.
 
 The file names come from the release's rows, which another device may have
 written. Each is checked to be a plain relative path before it is joined to
 Carol's folder, so no row can make a device write outside the folder chosen.
 One bad name copies out nothing at all.
 
-### 4.5 Where files sit in storage
+### 4.5 How files sit in storage
 
-A cloud home stores its files one of two ways, chosen when it is set up:
+Storage holds encrypted objects under random names. Ana's FLAC files are not a
+folder anyone can browse in Dropbox: each is one object, encrypted with a key
+of its own that travels only inside the row's encrypted writes, at a path coven
+fixes when the file is attached
+([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-how-a-file-is-stored)).
+The provider sees no album, artist or file name.
 
-- **Opaque**: encrypted, at paths that hash each file's id.
-- **Browsable**: in the clear, at paths a person can follow:
-
-```
-release_files/{album}/{release}/{source folder}/{file name}
-covers/{album}/{release}/cover-{image id}.{ext}
-artist_images/{artist}/artist-{image id}.{ext}
-```
-
-The path is fixed when the file is first stored and kept in its row, so
-renaming an album never moves a file. An image's path carries its image id, so
-a new cover is a new object. Two devices replacing one cover then never write
-the same object, and a device applying an older write still finds the bytes
-that write names.
+The path is fixed when the file is attached and kept in its row, so renaming an
+album never moves a file. A new cover is a new object with a new id. Two
+devices replacing one cover then never write the same object, and a device
+applying an older write still finds the bytes that write names.
 
 ### 4.6 Export and save
 
@@ -811,7 +836,7 @@ files from wherever they are: the person's own path, the cache, or storage.
 
 **Edge cases.**
 
-- **Deleting a release** deletes its rows and bae's copies of its files. The
+- **Deleting a release** deletes its rows and coven's copies of its files. The
   person's own files are never deleted.
 - **A device with no cloud home** has only local releases; moving to the cloud
   needs one.
@@ -859,8 +884,9 @@ gain library editing because their devices can write.
 
 ### 5.3 Each person's own data
 
-Each person has a circle with only themselves in it. Private rows live there,
-household rows in the store. bae makes no other circles.
+Each person has a circle with only themselves in it, made when their profile is
+(§5.4). Private rows live there, household rows in the store. bae makes no
+other circles.
 
 Each person's own data:
 
@@ -871,8 +897,11 @@ Each person's own data:
 | `playlists` | playlist | each one private or household |
 | `playlist_entries` | place in a playlist | where its playlist is |
 
-A rating is one to five stars. A track's
-rating belongs to one release's track, so the tracks of two copies of a
+**Ratings.** A rating is one to five stars, given by one person to an album or
+to a track. Ana gives *Album Title* four stars; Ben gives it two. They are two
+rows, one per person, keyed by the person and the album, so Ana rating it again
+from her phone changes her one row. Clearing a rating deletes the row. A
+track's rating belongs to one release's track, so the tracks of two copies of a
 pressing (§2.7) are rated apart.
 
 Ben keeps his history private. Carol's devices never see what he played. He
@@ -887,21 +916,46 @@ of it he heard. He skips track 4 after ten seconds: nothing is recorded. A play
 counts once 30 seconds of the track, or half of it, whichever comes first, has
 played; a 40-second interlude counts after 20. A skip isn't a listen.
 
+How much he heard counts only audio that played: not pauses, not waiting for
+the network, not what a seek jumped over. The row is written when the play
+counts and updated as he keeps listening. Its start time is the playing
+device's clock when the play began, stored as UTC.
+
 Each play is its own row, with a fresh id. A play count kept in one cell would
 lose plays: two devices adding to it at once merge cell by cell, and the later
 write wins
 ([coven §8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#8-merging)).
 
-**Changing the history setting** applies to new plays only. Each play keeps the
-audience it was recorded in. Ben switches his history to household on Friday;
-what he played before Friday stays in his circle. Moving old plays would
-publish what he played in private, and switching back couldn't take from the
-household what its devices have already read.
+**Changing the history setting** applies to new plays only. A play takes its
+audience from the setting when it begins, and keeps it. Ben switches his history
+to household on Friday; what he played before Friday stays in his circle.
+Moving old plays would publish what he played in private, and switching back
+couldn't take from the household what its devices have already read. A new
+profile starts private.
+
+**Plays before a profile.** A device can play before its person has a profile:
+Ana's new library has no cloud home yet, so she is no member and has no circle
+(§5.4). Her plays are kept in the device-local table `local_history`. When her
+profile is created, the same write moves every one of them into her private
+circle. They never go to the household on their own: she hadn't chosen to share
+them.
+
+**Playlists.** A playlist belongs to the person who made it, and is private or
+household, each playlist on its own. Its entries are rows keyed by the playlist
+and a *position id*, a fresh id per entry, so the same track can sit in a
+playlist twice. Each entry also has a position number that orders it.
+
+Ben's phone and laptop each add a track to his party playlist while offline.
+Both take the next position, 7. When they sync, both entries stay; equal
+positions order by position id, so every device shows the same order. A
+reorder names every entry it read, and is refused if an entry arrived or went
+in between, so it never drops an entry it didn't see.
 
 ### 5.4 Profiles
 
 coven owns identity: members, roles and devices. bae keeps a synced `people`
-table, in the store, holding each person's name and avatar.
+table, in the store, holding each person's name, avatar, private circle and
+history setting.
 
 - **A person is keyed by their coven `MemberId`**, which is stable: replacing
   keys, or re-inviting someone who lost every device, keeps the same id
@@ -910,7 +964,13 @@ table, in the store, holding each person's name and avatar.
 - **The joining person's own device writes their `people` row** as part of
   joining, with the name they typed, so every member has a profile. Someone
   re-invited after losing every device keeps their row, since their
-  `MemberId` is the same.
+  `MemberId` is the same. If the write fails, the person has joined anyway,
+  and Settings offers to create the profile again.
+- **The person who made the library** becomes a member when it gets a cloud
+  home. Until then there is no member to credit. Settings then asks for their
+  name and creates their profile.
+- **Making a profile makes the person's circle**, the one only they are in
+  (§5.3), and moves any plays waiting in `local_history` into it.
 - **A removed person invited again is a new member.** coven gives them a fresh
   `MemberId`, and they start with an empty new profile. Their old `people`
   row, ratings and household playlists stay under the old identity, read-only:
@@ -942,9 +1002,13 @@ editable by every member.
 | Remove a person | an admin | their circle goes, with its rows |
 | Rename the library | an admin | every device shows the new name (§5.1) |
 
-Dan joins. Ana invites him; his phone scans the invite, he types "Dan", and his
-phone writes his `people` row while it joins. Everyone's devices show Dan by
-name.
+Dan joins. Ana invites him with his Dropbox email and a role; her laptop shares
+the store's folder with his account and shows the invite. His phone scans it,
+he types "Dan", and his phone asks to join. Ana's laptop shows the request and
+she approves it. His phone then writes his `people` row while it joins.
+Everyone's devices show Dan by name. On S3, Ana makes an access key for Dan
+instead of sharing with an account. An invite carries the library's current
+name and expires within a day.
 
 Removing a person deletes their circle and its rows: their private history and
 private playlists. Their household ratings, history and playlists stay,
@@ -959,15 +1023,28 @@ tablet gets the code one of three ways:
 
 - **scanning** the QR code another of her devices shows;
 - **iCloud Keychain**, on Apple devices: bae lists the restore codes coven saved
-  there, each showing its provider and account, and Carol picks one;
+  there, and Carol picks one;
 - **typing** it in.
 
-A code carries no name (§5.1), so the restoring tablet shows the provider and
-account until it has loaded the library, then the library's current name.
+A code carries no name (§5.1), so bae shows a code by where its library is
+stored: the provider and account. Dropbox and OneDrive show the account's
+email; S3 shows the bucket and endpoint; iCloud shows iCloud. The restoring
+tablet shows that until it has loaded the library, then the library's current
+name.
+
+**The S3 key.** On S3 a restore code doesn't reach the bucket alone: the device
+also needs Carol's S3 access key. The QR code one of her own devices shows
+carries that key beside the code, so scanning it is enough. A typed code asks
+for the key separately.
 
 **Removing a device.** Ben's old phone is lost. He removes it from his laptop.
-Had he lost every device, Ana, an admin, could remove it for him. Removing
-this library from a device is the device leaving on its own; §6.4 covers it.
+Had he lost every device, Ana, an admin, could remove it for him: admins can
+remove any person's device, and everyone else only their own. Removing a device
+shows what is left to do at the provider, such as signing that device out of
+the account
+([coven §14.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#142-provider-access)).
+Removing this library from a device is the device leaving on its own; §6.4
+covers it.
 
 ---
 
@@ -987,6 +1064,7 @@ declares it (§6.3), and what a person sees when sync stops (§6.4).
 | Fetched catalog data (§3.4) | Ratings, history and playlists (§5.3) |
 | Settings (Appendix C) | |
 | A local release's audio and its paths (§4.2) | |
+| Plays from before the person had a profile (§5.3) | |
 
 Each reason is the same: the data is one device's, and another device would be
 wrong to follow it. Ana's queue is what she is listening to, not Ben. A scan is
@@ -1002,8 +1080,8 @@ A library's *cloud home* is where coven stores it: an S3-compatible bucket,
 Dropbox, OneDrive, or iCloud on Apple devices. A library can
 also have none and stay on one device. The baeium edition offers S3 only.
 
-Setting up a cloud home chooses opaque or browsable storage (§4.5). For the
-account providers, the person signs in. coven's
+Every cloud home holds the same thing: encrypted objects under random names
+(§4.5). coven's
 [Part VI](https://github.com/bae-fm/coven/blob/main/spec/coven.md#part-vi-storage)
 says what each provider needs.
 
@@ -1012,12 +1090,23 @@ bucket. The form asks for the bucket, region, endpoint and access key, and
 nothing else. coven knows R2 by its endpoint's host and fills in how to talk to
 it
 ([coven E.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#e3-s3-settings-and-profiles)).
-An Advanced section shows those detected settings and the profile they came
-from, and holds the optional key prefix; a person opens it only for a service
-coven doesn't know. When coven refuses a setup, bae says why in plain words.
+An Advanced section holds the optional key prefix and a choice of profile,
+automatic by default. For a service coven doesn't know, *Detect Settings*
+probes the bucket with the key and shows what it found, which the person can
+then use. When coven refuses a setup, bae says why in plain words.
 
-A device can hold several libraries, each its own coven store under
-`~/.bae/libraries/<library id>/`, and remembers which it last opened.
+**Dropbox and OneDrive setup.** The person signs in through the browser, then
+picks the folder the library lives in. On Dropbox that is a shared folder, so
+the household can be invited to it; with none yet, bae says to share one in
+Dropbox and look again. On OneDrive it is any folder, browsed from the top,
+and the person can make a new one there. coven holds the sign-in; bae never
+sees its tokens.
+
+**iCloud setup** uses the Apple Account the device is signed in to.
+
+A device can hold several libraries, each its own coven store, and remembers
+which it last opened. coven keeps each store under `~/.bae/stores/`; bae keeps
+a library's settings in `~/.bae/libraries/<library id>/`.
 
 ### 6.3 How bae declares its tables
 
@@ -1027,7 +1116,8 @@ with:
 - **its row identity**: a *shared key*, an id computed from the fact the row
   states (§2.6), or an *independent* id minted fresh for each row: releases,
   tracks, files, audio formats and segments, track credits and works, role
-  credits, covers, plays and playlists;
+  credits, plays and playlists. A cover takes its release's id, and a rating
+  its person and what it rates;
 - **its audience**: every library table is in the store; `history` and
   `playlists` name theirs per row, and `playlist_entries` take their
   playlist's (§5.3,
@@ -1038,9 +1128,10 @@ with:
   the release is uploaded and read on first use; `covers`, `artist_images` and
   the avatars on `people` bae's own, fetched as soon as their rows arrive.
 
-Appendix B lists every declaration. A test holds the declared set to exactly
-the tables that carry an `_updated_at` column, so a device-local table can't
-start syncing by accident, and a new library table can't be forgotten.
+Appendix B lists every declaration. A test holds the declarations to exactly
+that list, each table with its identity, audience, owner flag and files, so a
+device-local table such as `local_release_files` or `local_history` can't start
+syncing by accident.
 
 Two devices' edits merge cell by cell: an edit to a column the other left alone
 survives, and of two edits to one column the later wins
@@ -1052,21 +1143,31 @@ Sync runs in the background. A library opens and plays from its own copy
 whether or not the cloud is reachable.
 
 **The status line.** Settings shows one line for sync: "Synced", or "Waiting: 3
-items". Tapping it lists each thing coven is waiting on, one of its pending
+items". Opening it lists each thing coven is waiting on, one of its pending
 records
 ([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)),
-in plain words, with an action wherever the person can act. Ben's laptop shows
-"Waiting: 2 items": Dropbox wants him to sign in again, and a file of his
-vinyl rip moved before it uploaded. The list offers *Sign in* for the first and
-*Reattach* for the second. A write coven can retry offers *Retry*; a wait the
-person can't help, such as for another device to come online, offers nothing.
+in plain words, with an action wherever the person can act. The details coven
+recorded sit behind a disclosure, to copy. This list replaces any banner of
+blocked work: there is one place to look.
+
+Ben's laptop shows "Waiting: 2 items": Dropbox wants him to sign in again, and
+a file of his vinyl rip moved before it uploaded. The list offers *Sign In* for
+the first. For the second it offers to reattach the file: put it back where it
+was imported from, then retry the upload. Other records offer *Retry*,
+*Reconnect*, *Resume Uploads*, *Update App* or *Reset Device*, or ask for an
+administrator's access to storage. A wait the person can't help, such as for
+another device to come online, offers nothing.
+
+"Synced" means coven finished a pass and nothing is pending. Until the pending
+list has been read, or after a pass failed, the line says it is checking
+rather than claim the library is synced.
 
 - **Launching offline.** A failed connect at start-up opens the library
   unconnected, and the status line says so. *Reconnect* connects again, or
   runs the next cycle now when already connected.
 - **A newer schema.** Data written by a newer app needs an update;
   reconnecting can't fix it.
-- **Pausing** stops uploads and keeps their place.
+- **Pausing** stops uploads and keeps their place, across restarts too.
 - **Covers after opening.** A device fetches the covers it doesn't hold yet;
   the progress shows as a banner and can be cancelled.
 
@@ -1098,6 +1199,14 @@ is an admin entry, so it needs storage. Offline, removal says so and waits
 rather than deleting the local copy and leaving a device listed that will
 never come back. A library with no cloud home has no members to leave, and is
 deleted at once.
+
+- **Unsent edits.** Dan's laptop still holds edits it hasn't sent. Before
+  removing, bae warns that those edits will be lost. If Dan goes ahead, the
+  laptop leaves without sending them. Refusing instead would tie his removal
+  to uploads that may be stuck; the warning lets him decide.
+- **Settings left behind.** If leaving succeeds but deleting bae's settings
+  for the library fails, the library is already gone from the store. A retry
+  deletes only what is left on the device; it never tries to leave again.
 
 ---
 ## 7. Playback
@@ -1333,12 +1442,18 @@ library is registered there by id.
 
 | Call | What it does |
 |---|---|
-| `create_library` | registers a new library and gives this device its identity; with no name given, one is generated |
-| `restore_from_code` | opens a library on a new device from a restore code (§5.6) |
+| `create_library` | creates a new library's store and gives this device its identity; `create_library_default` generates the name |
+| `restore_from_code`, `restore_from_keychain` | opens a library on a new device from a restore code, typed or scanned, or saved in iCloud Keychain (§5.6) |
+| `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain |
+| `join_with_invite` | joins a library from an invite and writes the person's profile (§5.6) |
+| `reset_device` | loads a library again under a fresh device id, after the warning (§6.4) |
 | `Config::discover_libraries` | lists registered libraries, including any that can't be opened, with why |
 | `app::bootstrap` | opens a library and starts its services: the store, sync, playback, and on desktops import and identification |
 | `AppServices::close` | stops playback, saving where it was, then identification and import, then closes the store |
-| `remove_local_library` | leaves the store, then deletes the library from this device (§6.4) |
+| `AppServices::remove_library` | stops the library's services, leaves the store, then deletes the library from this device (§6.4) |
+
+Creating, restoring and joining each return coven's open handle, and bae
+starts the library on that same handle rather than opening it again.
 
 `bootstrap` returns `AppServices`, the running library. Every later call goes
 through it. A store is opened once per process; closing waits for every worker
@@ -1384,11 +1499,13 @@ its position, the queue — are live subscriptions.
 
 ### 9.5 Storage and sync
 
-Through `AppServices`: move releases to the cloud and back, pin and unpin,
-cancel a transition, export and save; set up a cloud home, reconnect, pause,
-read the pending list and act on its records, reset the device; list people
-and their devices, invite a person, remove a person or a device, rename the
-library; make a restore code, and list those saved in iCloud Keychain.
+Through `AppServices`: move releases to the cloud and make them local again,
+pin and unpin, cancel a transition, export and save; set up a cloud home,
+reconnect, pause, read the pending list and act on its records; list people
+and their devices, invite a person, approve or decline their request to join,
+change a role, remove a person or a device, rename the library; make a restore
+code; create and rename a profile, set its avatar and history setting, rate,
+and make and edit playlists.
 
 ### 9.6 Settings
 
@@ -1430,9 +1547,10 @@ to compile in the bridge until it is carried across.
 ### 10.2 The handle and the host
 
 - **`BridgeHost`** is built once per process. It holds bae's directory, the
-  OAuth applications, the iCloud driver, any sign-in in flight, and a runtime
-  for the calls that run before a library is open: create, restore, join, sign
-  in.
+  OAuth applications, on phones the app's sign-in presenter, and a runtime for
+  the calls that run before a library is open: create, restore, join, reset,
+  sign in. A call that creates or opens a store hands back coven's handle, and
+  the app starts the library on it.
 - **`init_app`** opens a library and returns an **`AppHandle`**, which wraps
   `AppServices` and, on desktop, the MCP and Subsonic servers and the cast
   controller.
@@ -1440,8 +1558,10 @@ to compile in the bridge until it is carried across.
   mid-call cancels the Rust work it started.
 - **Subscriptions** take a callback object the app implements, and return a
   `LiveSubscription`; cancelling or dropping it stops the delivery.
-- **Callbacks the app provides**: UI events, the artwork reader, and on Apple
-  devices the iCloud driver.
+- **Callbacks the app provides**: UI events, the artwork reader, and on phones
+  the sign-in presenter, which shows the provider's page and returns where it
+  redirected. Desktops sign in through coven's own browser flow; iCloud runs in
+  coven.
 
 ### 10.3 Generated bindings
 
@@ -1553,9 +1673,9 @@ All sync.
 | `works` | MusicBrainz work |
 | `work_artists` | work's credited artist, in order |
 | `work_parts` | work inside a larger work, in order |
-| `releases` | pressing: name, year, labels, barcode, country or region, media, status, packaging, Discogs details, local or uploaded, source folder name, content hash, album loudness and peak, where its metadata came from |
+| `releases` | pressing: name, year, labels, barcode, country or region, media, status, packaging, Discogs details, source folder name, content hash, album loudness and peak, where its metadata came from |
 | `covers` | release's cover, keyed by the release; carries a file |
-| `release_files` | file of a release: name, size, type, storage path, SHA-256, and the audio facts the scan read; carries a file |
+| `release_files` | file of a release: name, size, type, and the audio facts the scan read; carries a file once attached, whose hash and location coven writes |
 | `release_artist_roles` | credit on a release, as the catalog stated it |
 | `release_records` | catalog record of a release: pressing or album, key, album key, URL |
 | `tracks` | track: title, number, duration, Discogs position, playing order, side |
@@ -1565,20 +1685,27 @@ All sync.
 | `audio_formats` | track's format, pregap, loudness and peak |
 | `audio_format_segments` | span of a file a track reads: pregap or main, samples and bytes |
 
-A local release's file paths stay on the importing device, in a device-local
-table beside these, until its files are attached on upload (§4.2).
-
-### A.2 People
-
-All sync (§5).
+Beside them, one device-local table:
 
 | Table | One row per |
 |---|---|
-| `people` | person: name and avatar, keyed by their `MemberId` |
-| `ratings` | rating by a person of an album or of a track |
-| `history` | play: person, track, release, when it started, how much was played |
-| `playlists` | playlist: whose it is, and its audience |
-| `playlist_entries` | place in a playlist, and the track there |
+| `local_release_files` | file of a local release on this device: its path and modification time (§4.2). Attaching the file deletes the row in the same write; detaching it writes one |
+
+Whether a release is local or uploaded is not a column: it is whether its files
+are attached.
+
+### A.2 People
+
+All sync (§5), except `local_history`.
+
+| Table | One row per |
+|---|---|
+| `people` | person, keyed by their `MemberId`: name, private circle, history setting (private or household), avatar |
+| `ratings` | rating by a person of an album or of a track, one to five stars |
+| `history` | play: person, track, release, when it started, how much was played, audience |
+| `playlists` | playlist: whose it is, its name and its audience |
+| `playlist_entries` | place in a playlist, keyed by the playlist and a position id: the track there and its position |
+| `local_history` | play on this device before the person had a profile: track, release, when it started, how much was played (§5.3) |
 
 ### A.3 Playback
 
@@ -1649,7 +1776,8 @@ From `bae_core::sync::synced_tables`. *Shared key* rows take an id computed
 from their fact (§2.6); *independent* rows a fresh id. Every synced table's
 rows reach every device that can read their audience: a local release's rows
 too (§4.2). *Audience* is the store unless the table names one (§5.3); *owner*
-tables are changed only by their author's devices (§5.5).
+tables are changed only by their author's devices (§5.5). `local_release_files`
+and `local_history` are not declared, so they never sync.
 
 | Table | Identity | Audience | Owner | File |
 |---|---|---|---|---|
@@ -1670,9 +1798,9 @@ tables are changed only by their author's devices (§5.5).
 | `release_files` | independent | store | | the person's own; attached on upload; read on first use; detached to return to local paths |
 | `audio_formats` | independent | store | | |
 | `audio_format_segments` | independent | store | | |
-| `covers` | independent | store | | bae's own; fetched with the row |
-| `artist_images` | shared key | store | | bae's own; fetched with the row |
-| `people` | the person's `MemberId` | store | yes | the avatar: bae's own; fetched with the row |
+| `covers` | shared key: the release | store | | bae's own; fetched with the row |
+| `artist_images` | shared key: the artist | store | | bae's own; fetched with the row |
+| `people` | shared key: the person's `MemberId` | store | yes | the avatar: bae's own; fetched with the row |
 | `ratings` | shared key: the person, and the album or track | store | yes | |
 | `history` | independent, one per play | per row: the person's circle or the store, by their setting | yes | |
 | `playlists` | independent | per row: the person's circle or the store | yes | |
@@ -1682,8 +1810,9 @@ tables are changed only by their author's devices (§5.5).
 
 ## Appendix C. Settings
 
-Each library's settings are `preferences.toml` in its directory, beside
-coven's `config.yaml`. They are device-local. Every key is written; a file
+Each library's settings are `preferences.toml` in
+`~/.bae/libraries/<library id>/`, apart from coven's store (§6.2). They are
+device-local. Every key is written; a file
 missing one fails to load, and only a missing file means every default.
 Unknown keys are ignored. The file can be edited by hand; enum values use
 their Rust spelling, such as `replay_gain_mode = "Album"`. TOML has no null
@@ -1811,12 +1940,15 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 |---|---|
 | `Database`, `Config`, `Internal` | reports it |
 | `SyncUpdateRequired` | updates the app |
+| `DeviceResetRequired` | resets the device, after its warning (§6.4) |
 | `Import`, `ImportData` | reads the detail; the source couldn't be read |
-| `CandidateImportInProgress`, `CandidateBeingIdentified`, `CandidateAlreadyImported` | waits, or nothing is needed |
+| `CandidateImportInProgress`, `CandidateBeingIdentified` | waits |
 | `MetadataTrackCount` | picks another release: it lists another number of tracks |
 | `GroupingBlocked` | combines again, separates, or waits for a download |
 | `Export`, `Save` | reads the detail |
-| `CloudSetup` | changes what the setup names |
+| `CloudSetup`, `StorageCheck` | changes what the setup, or the check of the storage it failed, names |
+| `S3VersioningUnknown`, `S3VersioningUnsupported` | uses a bucket whose versioning coven can read and work with |
+| `StorageLocationChangeUnsupported` | keeps the library's storage location; it can't move |
 | `DeviceIdentityMissing` | creates, joins or restores |
 | `Credentials` | fixes the cloud settings |
 | `Network` | retries |
