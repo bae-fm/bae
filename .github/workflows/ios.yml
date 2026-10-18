@@ -87,13 +87,13 @@ jobs:
       # Only the full cell runs the dead-code + lint checks (below): they read
       # every .swift file's text regardless of which #if branch this edition
       # compiles, so the result is edition-invariant — running them once is
-      # enough, and it keeps the baeium cell off the extra brew install. This
+      # enough, and it keeps the baeium cell off the extra download. This
       # step's implicit success() gate is fine for periphery: its check step
       # additionally requires the iOS build to have succeeded, which can only
       # happen if this earlier install ran. swiftlint is not so lucky (see the
       # lint step) — its check runs on !cancelled(), so it installs its own tool.
       if: ${{ inputs.edition == 'full' }}
-      run: brew install peripheryapp/periphery/periphery
+      uses: ./.github/actions/install-periphery
 
     - name: Build Rust bridge (iOS xcframework)
       run: ./bae-bridge/build-ios.sh

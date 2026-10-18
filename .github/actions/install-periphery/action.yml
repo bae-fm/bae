@@ -1,0 +1,35 @@
+name: 'Install Periphery'
+description: 'Install the pinned Periphery release binary, checked against its SHA-256'
+
+# The release zip holds one universal (arm64 + x86_64) binary. The checksum is
+# the one Periphery's own Homebrew cask records for this version.
+inputs:
+  version:
+    description: 'Periphery release tag'
+    required: false
+    default: '2.21.2'
+  sha256:
+    description: 'SHA-256 of periphery-<version>.zip'
+    required: false
+    default: 'e5b4e802f794df230a2e4b9d5bb176626b3a9fd74ea6cf7d0d42c20ebe57fd4a'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Download and verify Periphery
+      shell: bash
+      env:
+        PERIPHERY_VERSION: ${{ inputs.version }}
+        PERIPHERY_SHA256: ${{ inputs.sha256 }}
+      run: |
+        set -euo pipefail
+        dir="$RUNNER_TEMP/periphery"
+        archive="$dir/periphery-${PERIPHERY_VERSION}.zip"
+        mkdir -p "$dir"
+        curl -fsSL --retry 5 --retry-delay 3 \
+          "https://github.com/peripheryapp/periphery/releases/download/${PERIPHERY_VERSION}/periphery-${PERIPHERY_VERSION}.zip" \
+          -o "$archive"
+        echo "${PERIPHERY_SHA256}  ${archive}" | shasum -a 256 -c -
+        unzip -q -o "$archive" periphery -d "$dir"
+        echo "$dir" >> "$GITHUB_PATH"
+        "$dir/periphery" version

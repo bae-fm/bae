@@ -30,10 +30,13 @@ jobs:
     - name: Setup Rust environment
       uses: ./.github/actions/setup-rust
 
+    - name: Install periphery
+      uses: ./.github/actions/install-periphery
+
     - name: Build macOS app
       id: build_macos
       run: |
-        brew install xcodegen peripheryapp/periphery/periphery
+        brew install xcodegen
         ./bae-bridge/build-macos.sh
         ./bae-bridge/install-swift-bindings.sh macos
         cd bae-macos/bae && xcodegen
