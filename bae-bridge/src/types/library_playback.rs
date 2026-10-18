@@ -118,7 +118,6 @@ impl BridgeMetadataRef {
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum BridgeCloudProvider {
     S3,
-    GoogleDrive,
     Dropbox,
     OneDrive,
     CloudKit,
@@ -752,8 +751,8 @@ pub fn bridge_audio_channels_key(channels: i64) -> Option<String> {
 }
 
 /// Localization key for a cloud provider's display name, or `None` for the
-/// brand-name providers the UI passes through verbatim (iCloud, Google Drive,
-/// Dropbox, OneDrive). `None` provider means local-only. One source of these
+/// brand-name providers the UI passes through verbatim (iCloud, Dropbox,
+/// OneDrive). `None` provider means local-only. One source of these
 /// keys for every platform; the UI resolves the key through its string catalog.
 #[uniffi::export]
 pub fn bridge_cloud_provider_label_key(provider: Option<BridgeCloudProvider>) -> Option<String> {
@@ -762,7 +761,6 @@ pub fn bridge_cloud_provider_label_key(provider: Option<BridgeCloudProvider>) ->
         Some(BridgeCloudProvider::S3) => Some("core.cloud.s3_compatible".to_string()),
         Some(
             BridgeCloudProvider::CloudKit
-            | BridgeCloudProvider::GoogleDrive
             | BridgeCloudProvider::Dropbox
             | BridgeCloudProvider::OneDrive,
         ) => None,

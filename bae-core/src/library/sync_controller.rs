@@ -432,7 +432,7 @@ impl SyncController {
     ) -> Result<(), LibraryError> {
         let (_cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
         match provider {
-            CloudProvider::GoogleDrive | CloudProvider::Dropbox | CloudProvider::OneDrive => {}
+            CloudProvider::Dropbox | CloudProvider::OneDrive => {}
             _ => {
                 return Err(LibraryError::Internal(
                     "provider does not use OAuth sign-in".to_string(),

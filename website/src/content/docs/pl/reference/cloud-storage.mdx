@@ -10,7 +10,6 @@ Dom w chmurze to jedno miejsce w przechowywaniu, które użytkownik już posiada
 | Dostawca | Uwierzytelnianie | Dostęp dla nowego urządzenia |
 |---|---|---|
 | Zgodny z S3 | Access key + secret | Dane uwierzytelniające przypisane do zatwierdzonego urządzenia podczas parowania |
-| Google Drive | OAuth (PKCE) | Konto nowego urządzenia zostało zatwierdzone, następnie folder jest udostępniany |
 | Dropbox | OAuth (PKCE) | Konto nowego urządzenia zostało zatwierdzone, następnie folder jest udostępniany |
 | OneDrive | OAuth (PKCE) | Konto nowego urządzenia zostało zatwierdzone, następnie folder jest udostępniany |
 | iCloud (CloudKit) | Apple ID, bez logowania | Udział CloudKit zaakceptowany podczas parowania |
@@ -19,7 +18,7 @@ Zgodność z S3 obejmuje AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO i wszys
 
 ## OAuth
 
-Logowanie jest przepływem authorization-code z PKCE, jako klient publiczny. Na desktopie przekierowanie trafia na serwer loopback podpięty do lokalnego portu dla jednego wywołania zwrotnego; na mobile aplikacja przechwytuje zamiast tego przekierowanie z własnym schematem. bae prosi o najwęższy zakres, jaki dostawca oferuje dla zadania; w Google Drive jest to dostęp tylko do plików tworzonych przez samą aplikację. Tokeny są przechowywane w pęku kluczy systemu operacyjnego, odświeżane grantem odświeżania dostawcy, a odrzucone odświeżenie pojawia się jako prośba o ponowne połączenie, nie jako cicha pętla ponowień.
+Logowanie jest przepływem authorization-code z PKCE, jako klient publiczny. Na desktopie przekierowanie trafia na serwer loopback podpięty do lokalnego portu dla jednego wywołania zwrotnego; na mobile aplikacja przechwytuje zamiast tego przekierowanie z własnym schematem. bae prosi o najwęższy zakres, jaki dostawca oferuje dla zadania. Tokeny są przechowywane w pęku kluczy systemu operacyjnego, odświeżane grantem odświeżania dostawcy, a odrzucone odświeżenie pojawia się jako prośba o ponowne połączenie, nie jako cicha pętla ponowień.
 
 CloudKit nie potrzebuje żadnego przepływu: platformowy sterownik CloudKit, zaimplementowany w aplikacji i przekazany rdzeniowi, działa jako zalogowany Apple ID.
 

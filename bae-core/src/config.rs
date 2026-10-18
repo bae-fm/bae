@@ -257,9 +257,8 @@ impl Config {
                 .as_ref()
                 .map(|b| format!("s3://{b}")),
             CloudProvider::CloudKit => Some("iCloud".to_string()),
-            CloudProvider::GoogleDrive | CloudProvider::Dropbox | CloudProvider::OneDrive => {
-                Some("Connected".to_string())
-            }
+            CloudProvider::Dropbox | CloudProvider::OneDrive => Some("Connected".to_string()),
+            unsupported => panic!("unsupported cloud provider: {unsupported:?}"),
         }
     }
 

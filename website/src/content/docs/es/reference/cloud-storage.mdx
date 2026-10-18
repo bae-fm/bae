@@ -10,7 +10,6 @@ El hogar en la nube es una ubicación en almacenamiento que el usuario ya posee.
 | Proveedor | Auth | Acceso para un dispositivo nuevo |
 |---|---|---|
 | Compatible con S3 | Access key + secret | Credenciales selladas al dispositivo aprobado durante el emparejamiento |
-| Google Drive | OAuth (PKCE) | Se aprueba la cuenta del nuevo dispositivo y luego se comparte la carpeta |
 | Dropbox | OAuth (PKCE) | Se aprueba la cuenta del nuevo dispositivo y luego se comparte la carpeta |
 | OneDrive | OAuth (PKCE) | Se aprueba la cuenta del nuevo dispositivo y luego se comparte la carpeta |
 | iCloud (CloudKit) | Apple ID, sin inicio de sesión | Compartir CloudKit aceptado durante el emparejamiento |
@@ -19,7 +18,7 @@ Compatible con S3 cubre AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO y cualqu
 
 ## OAuth
 
-El inicio de sesión es un flujo de código de autorización con PKCE, como cliente público. En escritorio la redirección llega a un servidor loopback enlazado a un puerto local para la única llamada de retorno; en móvil la app captura en su lugar una redirección de esquema personalizado. bae solicita el alcance más estrecho que ofrece el proveedor para el trabajo; en Google Drive eso es acceso solo a los archivos que la app crea. Los tokens se guardan en el llavero del sistema operativo, se actualizan con la concesión de actualización del proveedor, y una actualización rechazada aparece como solicitud de reconexión en vez de un bucle silencioso de reintentos.
+El inicio de sesión es un flujo de código de autorización con PKCE, como cliente público. En escritorio la redirección llega a un servidor loopback enlazado a un puerto local para la única llamada de retorno; en móvil la app captura en su lugar una redirección de esquema personalizado. bae solicita el alcance más estrecho que ofrece el proveedor para el trabajo. Los tokens se guardan en el llavero del sistema operativo, se actualizan con la concesión de actualización del proveedor, y una actualización rechazada aparece como solicitud de reconexión en vez de un bucle silencioso de reintentos.
 
 CloudKit no necesita ningún flujo: el controlador CloudKit de la plataforma, implementado en la app y entregado al núcleo, opera como el Apple ID con sesión iniciada.
 

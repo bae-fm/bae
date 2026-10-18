@@ -31,12 +31,6 @@ private let providerDisplay: [BridgeCloudProvider: ProviderOption] = [
         description: String(localized: "Sync via your iCloud account"),
         icon: "icloud"
     ),
-    .googleDrive: ProviderOption(
-        id: .googleDrive,
-        name: String(localized: "Google Drive"),
-        description: String(localized: "Sync via Google Drive"),
-        icon: "externaldrive"
-    ),
     .dropbox: ProviderOption(
         id: .dropbox,
         name: String(localized: "Dropbox"),
@@ -226,7 +220,7 @@ struct SyncSetupWizard: View {
                 switch provider {
                 case .s3:
                     s3Fields
-                case .googleDrive, .dropbox, .oneDrive:
+                case .dropbox, .oneDrive:
                     #if BAE_OAUTH_PROVIDERS
                         oauthExplanation(provider: provider)
                     #else
@@ -282,7 +276,7 @@ struct SyncSetupWizard: View {
         switch provider {
         case .s3:
             return "Connect"
-        case .googleDrive, .dropbox, .oneDrive:
+        case .dropbox, .oneDrive:
             return "Connect \(provider.displayName)"
         case .cloudKit:
             return "Use iCloud"
@@ -295,7 +289,7 @@ struct SyncSetupWizard: View {
         case .s3:
             !bucket.isEmpty && !region.isEmpty && !accessKey.isEmpty
                 && !secretKey.isEmpty
-        case .googleDrive, .dropbox, .oneDrive, .cloudKit:
+        case .dropbox, .oneDrive, .cloudKit:
             true
         }
     }
@@ -386,7 +380,7 @@ extension SyncSetupWizard {
         switch provider {
         case .s3:
             connectS3()
-        case .googleDrive, .dropbox, .oneDrive:
+        case .dropbox, .oneDrive:
             #if BAE_OAUTH_PROVIDERS
                 connectOAuth(provider: provider)
             #else

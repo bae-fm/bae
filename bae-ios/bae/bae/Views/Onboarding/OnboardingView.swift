@@ -546,7 +546,7 @@ extension OnboardingView {
 
     /// The cloud token for a library that needs OAuth, or `nil` after setting
     /// `error` when this build / config can't satisfy it. Only called when the
-    /// decoded code reports `needsOauth`: a provider like Google Drive runs the
+    /// decoded code reports `needsOauth`: a provider like Dropbox runs the
     /// system auth session; CloudKit and S3 need none.
     private func oauthToken(
         provider: BridgeCloudProvider

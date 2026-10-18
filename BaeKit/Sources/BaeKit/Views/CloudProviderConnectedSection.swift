@@ -41,7 +41,7 @@ public struct CloudProviderConnectedSection: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-            case .googleDrive, .dropbox, .oneDrive, .cloudKit:
+            case .dropbox, .oneDrive, .cloudKit:
                 EmptyView()
             }
 

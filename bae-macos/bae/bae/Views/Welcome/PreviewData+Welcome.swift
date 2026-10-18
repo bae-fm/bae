@@ -43,7 +43,7 @@
                     info: BridgeRestoreCodeInfo(
                         libraryId: "lib-04",
                         libraryName: "Shared Library",
-                        cloudProvider: .googleDrive,
+                        cloudProvider: .dropbox,
                         needsOauth: true,
                     )
                 ),

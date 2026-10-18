@@ -157,7 +157,6 @@
     <string name="onboarding_join_title">Aan een bibliotheek deelnemen</string>
     <string name="pairing_authorizing">Aanmelden…</string>
     <string name="pairing_waiting_for_approval">Wachten op goedkeuring…</string>
-    <string name="cloud_provider_google_drive">Google Drive</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>

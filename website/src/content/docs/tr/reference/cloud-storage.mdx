@@ -10,7 +10,6 @@ Bulut evi, kullanıcının zaten sahip olduğu depolamadaki tek konumdur. Her sa
 | Sağlayıcı | Auth | Yeni aygıt için erişim |
 |---|---|---|
 | S3 uyumlu | Access key + secret | Eşleştirme sırasında onaylı cihaza mühürlenen kimlik bilgileri |
-| Google Drive | OAuth (PKCE) | Yeni cihazın hesabı onaylandı ve ardından klasör paylaşıldı |
 | Dropbox | OAuth (PKCE) | Yeni cihazın hesabı onaylandı ve ardından klasör paylaşıldı |
 | OneDrive | OAuth (PKCE) | Yeni cihazın hesabı onaylandı ve ardından klasör paylaşıldı |
 | iCloud (CloudKit) | Apple ID, giriş yok | Eşleştirme sırasında CloudKit paylaşımı kabul edildi |
@@ -19,7 +18,7 @@ S3 uyumlu; AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO ve API'yi konuşan ba
 
 ## OAuth
 
-Giriş, public client olarak PKCE'li authorization-code akışıdır. Masaüstünde yönlendirme tek callback için yerel bir bağlantı noktasına bağlı loopback sunucusuna gelir; mobilde uygulama bunun yerine custom-scheme yönlendirmesini yakalar. bae iş için sağlayıcının sunduğu en dar kapsamı ister; Google Drive'da bu yalnızca uygulamanın kendi oluşturduğu dosyalara erişimdir. Token'lar OS keyring içinde saklanır, sağlayıcının refresh grant'iyle yenilenir ve reddedilen yenileme sessiz yeniden deneme döngüsü yerine yeniden bağlanma istemi olarak görünür.
+Giriş, public client olarak PKCE'li authorization-code akışıdır. Masaüstünde yönlendirme tek callback için yerel bir bağlantı noktasına bağlı loopback sunucusuna gelir; mobilde uygulama bunun yerine custom-scheme yönlendirmesini yakalar. bae iş için sağlayıcının sunduğu en dar kapsamı ister. Token'lar OS keyring içinde saklanır, sağlayıcının refresh grant'iyle yenilenir ve reddedilen yenileme sessiz yeniden deneme döngüsü yerine yeniden bağlanma istemi olarak görünür.
 
 CloudKit hiç akış gerektirmez: uygulamada uygulanıp çekirdeğe verilen platformun CloudKit sürücüsü, giriş yapılmış Apple ID olarak çalışır.
 

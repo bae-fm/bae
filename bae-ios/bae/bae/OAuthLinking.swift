@@ -50,8 +50,8 @@ enum OAuthLinkingError: Error, LocalizedError {
     }
 }
 
-/// Per-device OAuth client config for providers that need it (Google Drive,
-/// Dropbox, OneDrive). Loaded from a gitignored `oauth-creds.json` in the app
+/// Per-device OAuth client config for providers that need it (Dropbox,
+/// OneDrive). Loaded from a gitignored `oauth-creds.json` in the app
 /// bundle — bae and coven ship no credentials; you register your own OAuth
 /// app's client id and the redirect URI from its console (an installed-app
 /// client, so the redirect is a custom scheme, not a localhost loopback). When
@@ -60,9 +60,9 @@ enum OAuthLinkingError: Error, LocalizedError {
 /// File shape:
 /// ```json
 /// {
-///   "google_drive": {
-///     "client_id": "<id>.apps.googleusercontent.com",
-///     "redirect_uri": "com.googleusercontent.apps.<id>:/oauth2redirect"
+///   "dropbox": {
+///     "client_id": "<app-key>",
+///     "redirect_uri": "bae://oauth"
 ///   }
 /// }
 /// ```
@@ -188,7 +188,6 @@ struct OAuthLinking {
     /// coven keys OAuth client creds by provider name.
     private static func providerKey(_ provider: BridgeCloudProvider) -> String? {
         switch provider {
-        case .googleDrive: "google_drive"
         case .dropbox: "dropbox"
         case .oneDrive: "onedrive"
         case .s3, .cloudKit: nil

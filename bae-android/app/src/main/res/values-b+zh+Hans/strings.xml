@@ -157,7 +157,6 @@
     <string name="onboarding_join_title">加入曲库</string>
     <string name="pairing_authorizing">正在登录…</string>
     <string name="pairing_waiting_for_approval">正在等待批准…</string>
-    <string name="cloud_provider_google_drive">Google Drive</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>

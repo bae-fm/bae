@@ -161,7 +161,6 @@
     <string name="onboarding_join_title">Liity kirjastoon</string>
     <string name="pairing_authorizing">Kirjaudutaan sisään…</string>
     <string name="pairing_waiting_for_approval">Odotetaan hyväksyntää…</string>
-    <string name="cloud_provider_google_drive">Google Drive</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-yhteensopiva</string>

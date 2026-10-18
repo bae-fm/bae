@@ -10,7 +10,6 @@ description: ಒದಗಿಸುವವರು, ದೃಢೀಕರಣ, ಮತ್ತ
 | ಒದಗಿಸುವವರು | ದೃಢೀಕರಣ | ಹೊಸ ಸಾಧನಕ್ಕೆ ಪ್ರವೇಶ |
 |---|---|---|
 | S3-compatible | Access ಕೀ + secret | ಜೋಡಣೆಯ ಸಮಯದಲ್ಲಿ ಅನುಮೋದಿತ ಸಾಧನಕ್ಕೆ ರುಜುವಾತುಗಳನ್ನು ಮುಚ್ಚಲಾಗಿದೆ |
-| Google Drive | OAuth (PKCE) | ಹೊಸ ಸಾಧನದ ಖಾತೆಯನ್ನು ಅನುಮೋದಿಸಲಾಗಿದೆ, ನಂತರ ಫೋಲ್ಡರ್ ಅನ್ನು ಹಂಚಿಕೊಳ್ಳಲಾಗಿದೆ |
 | Dropbox | OAuth (PKCE) | ಹೊಸ ಸಾಧನದ ಖಾತೆಯನ್ನು ಅನುಮೋದಿಸಲಾಗಿದೆ, ನಂತರ ಫೋಲ್ಡರ್ ಅನ್ನು ಹಂಚಿಕೊಳ್ಳಲಾಗಿದೆ |
 | OneDrive | OAuth (PKCE) | ಹೊಸ ಸಾಧನದ ಖಾತೆಯನ್ನು ಅನುಮೋದಿಸಲಾಗಿದೆ, ನಂತರ ಫೋಲ್ಡರ್ ಅನ್ನು ಹಂಚಿಕೊಳ್ಳಲಾಗಿದೆ |
 | iCloud (CloudKit) | Apple ID, sign-in ಇಲ್ಲ | ಜೋಡಿಸುವಾಗ ಕ್ಲೌಡ್‌ಕಿಟ್ ಹಂಚಿಕೆಯನ್ನು ಸ್ವೀಕರಿಸಲಾಗಿದೆ |
@@ -19,7 +18,7 @@ S3-compatible AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ಮತ್ತು A
 
 ## OAuth
 
-Sign-in public client ಆಗಿ PKCE ಹೊಂದಿರುವ authorization-code ಹರಿವು. ಡೆಸ್ಕ್‌ಟಾಪ್‌ನಲ್ಲಿ redirect ಒಂದು callback ಗಾಗಿ ಸ್ಥಳೀಯ ಪೋರ್ಟ್‌ಗೆ bound ಆಗಿರುವ loopback ಸರ್ವರ್‌ಗೆ ಬರುತ್ತದೆ; mobile ನಲ್ಲಿ ಆಪ್ custom-scheme redirect ಹಿಡಿಯುತ್ತದೆ. ಕೆಲಸಕ್ಕೆ ಒದಗಿಸುವವರು ನೀಡುವ ಅತ್ಯಂತ ಸೀಮಿತ scope ಅನ್ನು bae ಕೇಳುತ್ತದೆ; Google Drive ನಲ್ಲಿ ಅದು ಆಪ್ ತಾನೇ ರಚಿಸುವ ಕಡತಗಳಿಗೆ ಮಾತ್ರ ಪ್ರವೇಶ. Token ಗಳು OS ಕೀ ಸಂಗ್ರಹ ನಲ್ಲಿ ಇಡಲಾಗುತ್ತವೆ, ಒದಗಿಸುವವರ refresh grant ಬಳಸಿ ಹೊಸಗೊಳ್ಳುತ್ತವೆ, ಮತ್ತು rejected refresh silent retry loop ಆಗದೆ reconnect ಸೂಚನೆ ಆಗಿ ಕಾಣುತ್ತದೆ.
+Sign-in public client ಆಗಿ PKCE ಹೊಂದಿರುವ authorization-code ಹರಿವು. ಡೆಸ್ಕ್‌ಟಾಪ್‌ನಲ್ಲಿ redirect ಒಂದು callback ಗಾಗಿ ಸ್ಥಳೀಯ ಪೋರ್ಟ್‌ಗೆ bound ಆಗಿರುವ loopback ಸರ್ವರ್‌ಗೆ ಬರುತ್ತದೆ; mobile ನಲ್ಲಿ ಆಪ್ custom-scheme redirect ಹಿಡಿಯುತ್ತದೆ. ಕೆಲಸಕ್ಕೆ ಒದಗಿಸುವವರು ನೀಡುವ ಅತ್ಯಂತ ಸೀಮಿತ scope ಅನ್ನು bae ಕೇಳುತ್ತದೆ. Token ಗಳು OS ಕೀ ಸಂಗ್ರಹ ನಲ್ಲಿ ಇಡಲಾಗುತ್ತವೆ, ಒದಗಿಸುವವರ refresh grant ಬಳಸಿ ಹೊಸಗೊಳ್ಳುತ್ತವೆ, ಮತ್ತು rejected refresh silent retry loop ಆಗದೆ reconnect ಸೂಚನೆ ಆಗಿ ಕಾಣುತ್ತದೆ.
 
 CloudKit ಗೆ ಹರಿವು ಬೇಕಿಲ್ಲ: ಆಪ್‌ನಲ್ಲಿ ಅನುಷ್ಠಾನಗೊಂಡು core ಗೆ ನೀಡಿದ ವೇದಿಕೆಯ CloudKit driver signed-in Apple ID ಆಗಿಯೇ ಕೆಲಸ ಮಾಡುತ್ತದೆ.
 

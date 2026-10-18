@@ -274,7 +274,7 @@ pub struct BridgeOAuthRequest {
 #[uniffi::export]
 impl BridgeHost {
     /// Register the host's OAuth client credentials, keyed by provider name
-    /// (`"google_drive"`, `"dropbox"`, `"onedrive"`). Call once at startup,
+    /// (`"dropbox"`, `"onedrive"`). Call once at startup,
     /// before any OAuth flow and before opening a library whose cloud home is
     /// one of those providers — a library opens over the set registered at
     /// that moment. `creds_json` is an object of
@@ -434,13 +434,12 @@ impl BridgeHost {
     }
 }
 
-/// The provider a `set_oauth_client_creds` JSON key names. Only the three
+/// The provider a `set_oauth_client_creds` JSON key names. Only the supported
 /// account-based clouds run an OAuth flow, so any other key is a host mistake
 /// worth naming rather than silently dropping.
 #[cfg(feature = "oauth-providers")]
 fn oauth_provider_by_name(name: &str) -> Result<coven::CloudProvider, BridgeError> {
     match name {
-        "google_drive" => Ok(coven::CloudProvider::GoogleDrive),
         "dropbox" => Ok(coven::CloudProvider::Dropbox),
         "onedrive" => Ok(coven::CloudProvider::OneDrive),
         other => Err(BridgeError::config(format!(
@@ -583,7 +582,7 @@ mod tests {
 
         let (host, _home) = test_host();
         host.set_oauth_client_creds(
-            r#"{ "google_drive": { "client_id": "test-client-id", "client_secret": null } }"#
+            r#"{ "dropbox": { "client_id": "test-client-id", "client_secret": null } }"#
                 .to_string(),
         )
         .expect("register test OAuth client creds");
@@ -591,10 +590,10 @@ mod tests {
         let redirect_uri = "bae://oauth".to_string();
 
         // A second begin supersedes the first: at most one pending exchange.
-        host.oauth_begin(BridgeCloudProvider::GoogleDrive, redirect_uri.clone())
+        host.oauth_begin(BridgeCloudProvider::Dropbox, redirect_uri.clone())
             .expect("first begin builds an authorize request");
         let second = host
-            .oauth_begin(BridgeCloudProvider::GoogleDrive, redirect_uri.clone())
+            .oauth_begin(BridgeCloudProvider::Dropbox, redirect_uri.clone())
             .expect("second begin builds an authorize request");
         assert_eq!(
             host.oauth_requests.lock().expect(HOST_LOCK).len(),
@@ -612,7 +611,7 @@ mod tests {
         // Completing the cancelled flow's request finds nothing to exchange.
         let err = host
             .oauth_complete(
-                BridgeCloudProvider::GoogleDrive,
+                BridgeCloudProvider::Dropbox,
                 "auth-code".to_string(),
                 "callback-state".to_string(),
                 second.request_id,
@@ -635,7 +634,7 @@ mod tests {
 
         let (host, _home) = test_host();
 
-        match host.oauth_begin(BridgeCloudProvider::GoogleDrive, "bae://oauth".to_string()) {
+        match host.oauth_begin(BridgeCloudProvider::Dropbox, "bae://oauth".to_string()) {
             Err(BridgeError::Diagnostic { category, detail }) => {
                 assert_eq!(category, BridgeErrorCategory::Config);
                 assert!(detail.contains("OAuth begin failed"));

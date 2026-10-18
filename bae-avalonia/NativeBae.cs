@@ -90,8 +90,7 @@ internal static class NativeBae
     /// provider — the full (bae) edition, as opposed to the S3-only baeium.</summary>
     internal static bool SupportsOAuthProviders() =>
         BaeBridgeMethods.AvailableCloudProviders().Any(provider =>
-            provider is BridgeCloudProvider.GoogleDrive
-                or BridgeCloudProvider.Dropbox
+            provider is BridgeCloudProvider.Dropbox
                 or BridgeCloudProvider.OneDrive);
 
     /// <summary>The number of libraries registered on this device, read by the

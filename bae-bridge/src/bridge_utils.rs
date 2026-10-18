@@ -316,10 +316,10 @@ impl BridgeSyncProvider {
                 region: cloud_home.s3_region.clone(),
                 endpoint: cloud_home.s3_endpoint.clone(),
             },
-            CloudProvider::GoogleDrive => BridgeSyncProvider::GoogleDrive,
             CloudProvider::Dropbox => BridgeSyncProvider::Dropbox,
             CloudProvider::OneDrive => BridgeSyncProvider::OneDrive,
             CloudProvider::CloudKit => BridgeSyncProvider::CloudKit,
+            unsupported => panic!("unsupported cloud provider: {unsupported:?}"),
         }
     }
 }

@@ -10,7 +10,6 @@ L’emplacement cloud est un emplacement unique dans un stockage que l’utilisa
 | Provider | Auth | Access for a new device |
 |---|---|---|
 | S3-compatible | Access key + secret | Informations d'identification scellées sur l'appareil approuvé lors du couplage |
-| Google Drive | OAuth (PKCE) | Le compte du nouvel appareil est approuvé, puis le dossier est partagé |
 | Dropbox | OAuth (PKCE) | Le compte du nouvel appareil est approuvé, puis le dossier est partagé |
 | OneDrive | OAuth (PKCE) | Le compte du nouvel appareil est approuvé, puis le dossier est partagé |
 | iCloud (CloudKit) | Apple ID, no sign-in | Partage CloudKit accepté lors du couplage |
@@ -19,7 +18,7 @@ Compatible S3 couvre AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO et tout aut
 
 ## OAuth
 
-La connexion est un flux de code d’autorisation avec PKCE, en tant que client public. Sur ordinateur, la redirection arrive sur un serveur loopback lié à un port local pour l’unique callback ; sur mobile, l’application capture plutôt une redirection de schéma personnalisé. bae demande la portée la plus étroite que le fournisseur offre pour le travail ; sur Google Drive, c’est seulement l’accès aux fichiers créés par l’application elle-même. Les jetons sont stockés dans le trousseau du système d’exploitation, actualisés avec l’autorisation d’actualisation du fournisseur, et un refus d’actualisation apparaît comme une invite de reconnexion plutôt qu’une boucle de nouvel essai silencieuse.
+La connexion est un flux de code d’autorisation avec PKCE, en tant que client public. Sur ordinateur, la redirection arrive sur un serveur loopback lié à un port local pour l’unique callback ; sur mobile, l’application capture plutôt une redirection de schéma personnalisé. bae demande la portée la plus étroite que le fournisseur offre pour le travail. Les jetons sont stockés dans le trousseau du système d’exploitation, actualisés avec l’autorisation d’actualisation du fournisseur, et un refus d’actualisation apparaît comme une invite de reconnexion plutôt qu’une boucle de nouvel essai silencieuse.
 
 CloudKit n’a besoin d’aucun flux : le pilote CloudKit de la plateforme, implémenté dans l’application et remis au cœur, fonctionne comme l’Apple ID connecté.
 

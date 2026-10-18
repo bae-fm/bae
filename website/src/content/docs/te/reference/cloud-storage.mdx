@@ -10,7 +10,6 @@ description: సేవలు, ధృవీకరణ, మేఘ నిల్వ �
 | సేవ | ధృవీకరణ | కొత్త పరికరానికి ప్రాప్యత |
 |---|---|---|
 | S3-compatible | Access కీ + secret | జత చేసే సమయంలో ఆమోదించబడిన పరికరానికి ఆధారాలు సీలు చేయబడ్డాయి |
-| Google Drive | OAuth (PKCE) | కొత్త పరికరం ఖాతా ఆమోదించబడింది, ఆపై ఫోల్డర్ భాగస్వామ్యం చేయబడుతుంది |
 | Dropbox | OAuth (PKCE) | కొత్త పరికరం ఖాతా ఆమోదించబడింది, ఆపై ఫోల్డర్ భాగస్వామ్యం చేయబడుతుంది |
 | OneDrive | OAuth (PKCE) | కొత్త పరికరం ఖాతా ఆమోదించబడింది, ఆపై ఫోల్డర్ భాగస్వామ్యం చేయబడుతుంది |
 | iCloud (CloudKit) | Apple ID, sign-in లేదు | జత చేసే సమయంలో క్లౌడ్‌కిట్ భాగస్వామ్యం ఆమోదించబడింది |
@@ -19,7 +18,7 @@ S3-compatible అంటే AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, API 
 
 ## OAuth
 
-Sign-in PKCE తో authorization-code flow, public client గా. Desktop లో redirect ఒక్క callback కోసం స్థానిక port కు bound అయిన loopback server మీద landing అవుతుంది; mobile లో app custom-scheme redirect ను capture చేస్తుంది. bae పనికి provider ఇచ్చే అత్యల్ప scope నే అడుగుతుంది, Google Drive లో అది app సృష్టించిన ఫైల్లకే access. Tokens OS keyring లో నిల్వ అవుతాయి, provider refresh grant తో refresh అవుతాయి, rejected refresh silent retry loop కాకుండా reconnect prompt గా బయటపడుతుంది.
+Sign-in PKCE తో authorization-code flow, public client గా. Desktop లో redirect ఒక్క callback కోసం స్థానిక port కు bound అయిన loopback server మీద landing అవుతుంది; mobile లో app custom-scheme redirect ను capture చేస్తుంది. bae పనికి provider ఇచ్చే అత్యల్ప scope నే అడుగుతుంది. Tokens OS keyring లో నిల్వ అవుతాయి, provider refresh grant తో refresh అవుతాయి, rejected refresh silent retry loop కాకుండా reconnect prompt గా బయటపడుతుంది.
 
 CloudKit కు flow అవసరం లేదు: app అమలు చేసి core కు ఇచ్చే వేదిక CloudKit driver signed-in Apple ID గా పనిచేస్తుంది.
 

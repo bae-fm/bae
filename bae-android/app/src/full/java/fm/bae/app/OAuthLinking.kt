@@ -25,7 +25,7 @@ fun loadOAuthLinker(context: Context): OAuthLinker? = OAuthLinking.load(context)
 
 /**
  * Per-device OAuth client config + the system-browser auth flow for providers
- * that need it (Google Drive, Dropbox, OneDrive). Loaded from a gitignored
+ * that need it (Dropbox, OneDrive). Loaded from a gitignored
  * `assets/oauth-creds.json` — bae and coven ship no credentials; register your
  * own OAuth app's client id and the redirect URI from its console (an
  * installed-app client, so the redirect is a custom scheme). When the file is
@@ -157,8 +157,6 @@ class OAuthLinking private constructor(
         /** coven keys OAuth client creds by provider name. */
         private fun providerKey(provider: BridgeCloudProvider): String? =
             when (provider) {
-                BridgeCloudProvider.GOOGLE_DRIVE -> "google_drive"
-
                 BridgeCloudProvider.DROPBOX -> "dropbox"
 
                 BridgeCloudProvider.ONE_DRIVE -> "onedrive"

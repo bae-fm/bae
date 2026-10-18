@@ -10,7 +10,6 @@ description: فراہم کنندگان، تصدیق، اور کلاؤڈ گھر �
 | فراہم کنندہ | Auth | Access for a new آلہ |
 |---|---|---|
 | S3-compatible | Access کلید + secret | جوڑا بنانے کے دوران منظور شدہ ڈیوائس پر اسناد سیل کر دی گئیں۔ |
-| Google Drive | OAuth (PKCE) | نئے آلے کے اکاؤنٹ کی منظوری دی گئی، پھر فولڈر کا اشتراک کیا جاتا ہے۔ |
 | Dropbox | OAuth (PKCE) | نئے آلے کے اکاؤنٹ کی منظوری دی گئی، پھر فولڈر کا اشتراک کیا جاتا ہے۔ |
 | OneDrive | OAuth (PKCE) | نئے آلے کے اکاؤنٹ کی منظوری دی گئی، پھر فولڈر کا اشتراک کیا جاتا ہے۔ |
 | iCloud (CloudKit) | Apple ID, no sign-in | جوڑا بنانے کے دوران CloudKit کا حصہ قبول کر لیا گیا۔ |
@@ -19,7 +18,7 @@ S3-compatible میں AWS، Backblaze B2، Cloudflare R2، Wasabi، MinIO، او�
 
 ## OAuth
 
-Sign-in PKCE کے ساتھ authorization-code flow ہے، عوامی کلائنٹ کے طور پر۔ Desktop پر redirect ایک loopback server پر آتا ہے جو ایک callback کے لیے مقامی port سے بندھا ہوتا ہے؛ mobile پر ایپ custom-scheme redirect پکڑتی ہے۔ bae کام کے لیے فراہم کنندہ کی پیش کردہ سب سے تنگ scope مانگتا ہے، Google Drive پر یہ صرف ان فائلوں تک رسائی ہے جو ایپ خود بناتی ہے۔ Tokens OS کلید خانہ میں محفوظ ہوتے ہیں، فراہم کنندہ کے refresh grant سے تازہ ہوتے ہیں، اور رد refresh خاموش دوبارہ کوشش کے دور کے بجائے reconnect اشارہ کے طور پر سامنے لانا ہوتا ہے۔
+Sign-in PKCE کے ساتھ authorization-code flow ہے، عوامی کلائنٹ کے طور پر۔ Desktop پر redirect ایک loopback server پر آتا ہے جو ایک callback کے لیے مقامی port سے بندھا ہوتا ہے؛ mobile پر ایپ custom-scheme redirect پکڑتی ہے۔ bae کام کے لیے فراہم کنندہ کی پیش کردہ سب سے تنگ scope مانگتا ہے۔ Tokens OS کلید خانہ میں محفوظ ہوتے ہیں، فراہم کنندہ کے refresh grant سے تازہ ہوتے ہیں، اور رد refresh خاموش دوبارہ کوشش کے دور کے بجائے reconnect اشارہ کے طور پر سامنے لانا ہوتا ہے۔
 
 CloudKit کو flow کی ضرورت نہیں: ایپ میں بنا ہوا اور مرکز کو دیا گیا پلیٹ فارم کا CloudKit driver signed-in Apple ID کے طور پر کام کرتا ہے۔
 

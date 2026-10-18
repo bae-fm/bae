@@ -227,7 +227,7 @@ required-features = ["test-utils"]
 
 [features]
 default = []
-# Enables coven's OAuth cloud providers (Google Drive, Dropbox, OneDrive). Off
+# Enables OAuth cloud providers (Dropbox, OneDrive) through coven. Off
 # by default → S3-only, matching the baeium build; the bae build turns it
 # on. bae-core's own oauth call sites (sign_in_cloud_provider) gate on this.
 oauth-providers = ["coven/oauth-providers"]

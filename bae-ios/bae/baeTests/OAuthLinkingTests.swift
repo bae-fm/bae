@@ -22,7 +22,7 @@ struct OAuthLinkingParseTests {
             data(
                 """
                 {
-                  "google_drive": {
+                  "dropbox": {
                     "client_id": "client-123",
                     "redirect_uri": "com.example.app:/oauth2redirect"
                   }
@@ -32,7 +32,7 @@ struct OAuthLinkingParseTests {
         )
 
         #expect(linking.providers.count == 1)
-        let config = try #require(linking.providers["google_drive"])
+        let config = try #require(linking.providers["dropbox"])
         #expect(config.clientId == "client-123")
         #expect(config.redirectUri == "com.example.app:/oauth2redirect")
         #expect(config.clientSecret == nil)

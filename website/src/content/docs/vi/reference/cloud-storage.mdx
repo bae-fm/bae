@@ -10,7 +10,6 @@ Nhà trên đám mây là một vị trí trong lưu trữ mà người dùng đ
 | Nhà cung cấp | Xác thực | Truy cập cho thiết bị mới |
 |---|---|---|
 | Tương thích S3 | Access key + secret | Thông tin xác thực được niêm phong cho thiết bị được phê duyệt trong quá trình ghép nối |
-| Google Drive | OAuth (PKCE) | Tài khoản của thiết bị mới đã được phê duyệt, sau đó thư mục sẽ được chia sẻ |
 | Dropbox | OAuth (PKCE) | Tài khoản của thiết bị mới đã được phê duyệt, sau đó thư mục sẽ được chia sẻ |
 | OneDrive | OAuth (PKCE) | Tài khoản của thiết bị mới đã được phê duyệt, sau đó thư mục sẽ được chia sẻ |
 | iCloud (CloudKit) | Apple ID, không đăng nhập | Chia sẻ CloudKit được chấp nhận trong quá trình ghép nối |
@@ -19,7 +18,7 @@ Tương thích S3 bao phủ AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, và
 
 ## OAuth
 
-Đăng nhập là luồng authorization-code với PKCE, dưới dạng public client. Trên desktop, redirect đi tới một loopback server gắn với cổng cục bộ cho một callback; trên mobile, ứng dụng bắt redirect custom-scheme thay vào đó. bae yêu cầu scope hẹp nhất mà nhà cung cấp đưa ra cho công việc; trên Google Drive, đó là quyền truy cập chỉ tới tệp do chính ứng dụng tạo. Token được lưu trong keyring của hệ điều hành, được làm mới bằng refresh grant của nhà cung cấp, và refresh bị từ chối hiện ra như lời nhắc kết nối lại thay vì vòng thử lại im lặng.
+Đăng nhập là luồng authorization-code với PKCE, dưới dạng public client. Trên desktop, redirect đi tới một loopback server gắn với cổng cục bộ cho một callback; trên mobile, ứng dụng bắt redirect custom-scheme thay vào đó. bae yêu cầu scope hẹp nhất mà nhà cung cấp đưa ra cho công việc. Token được lưu trong keyring của hệ điều hành, được làm mới bằng refresh grant của nhà cung cấp, và refresh bị từ chối hiện ra như lời nhắc kết nối lại thay vì vòng thử lại im lặng.
 
 CloudKit không cần luồng nào: driver CloudKit của nền tảng, được triển khai trong ứng dụng và đưa cho lõi, hoạt động như Apple ID đã đăng nhập.
 

@@ -42,7 +42,7 @@ import SwiftUI
     #if DEBUG
         #Preview("Disconnected") {
             OauthConnectRow(
-                provider: .googleDrive,
+                provider: .dropbox,
                 isConnected: false,
                 isAuthorizing: false,
                 onConnect: {},
@@ -53,7 +53,7 @@ import SwiftUI
 
         #Preview("Authorizing") {
             OauthConnectRow(
-                provider: .googleDrive,
+                provider: .dropbox,
                 isConnected: false,
                 isAuthorizing: true,
                 onConnect: {},
@@ -64,7 +64,7 @@ import SwiftUI
 
         #Preview("Connected") {
             OauthConnectRow(
-                provider: .googleDrive,
+                provider: .dropbox,
                 isConnected: true,
                 isAuthorizing: false,
                 onConnect: {},

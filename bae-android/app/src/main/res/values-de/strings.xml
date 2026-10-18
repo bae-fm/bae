@@ -157,7 +157,6 @@
     <string name="onboarding_join_title">Mediathek beitreten</string>
     <string name="pairing_authorizing">Anmeldung läuft…</string>
     <string name="pairing_waiting_for_approval">Warten auf Bestätigung…</string>
-    <string name="cloud_provider_google_drive">Google Drive</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>

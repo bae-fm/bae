@@ -70,7 +70,7 @@ impl TelemetryValue for crate::playback::TrackTime {
 
 /// Declare a closed, field-less enum and implement [`TelemetryValue`] for it,
 /// recording each variant as an explicit snake_case string. The impl-only arm
-/// wires a foreign type (e.g. coven's `CloudProvider`) whose definition lives
+/// wires an existing type (e.g. `ReleaseStorageAction`) whose definition lives
 /// elsewhere — the local trait makes that legal here.
 macro_rules! telemetry_value_enum {
     (
@@ -234,13 +234,16 @@ telemetry_value_enum! {
     }
 }
 
-telemetry_value_enum! {
-    impl CloudProvider {
-        CloudProvider::S3 => "s3",
-        CloudProvider::GoogleDrive => "google_drive",
-        CloudProvider::Dropbox => "dropbox",
-        CloudProvider::OneDrive => "onedrive",
-        CloudProvider::CloudKit => "cloudkit",
+impl TelemetryValue for CloudProvider {
+    fn record(&self) -> serde_json::Value {
+        let value = match self {
+            CloudProvider::S3 => "s3",
+            CloudProvider::Dropbox => "dropbox",
+            CloudProvider::OneDrive => "onedrive",
+            CloudProvider::CloudKit => "cloudkit",
+            unsupported => panic!("unsupported cloud provider: {unsupported:?}"),
+        };
+        serde_json::Value::String(value.to_string())
     }
 }
 
@@ -496,13 +499,13 @@ mod tests {
     }
 
     #[test]
-    fn cloud_provider_records_snake_case() {
+    fn cloud_provider_records_provider_key() {
         let event = TelemetryEvent::SyncFailed {
-            provider: CloudProvider::GoogleDrive,
+            provider: CloudProvider::OneDrive,
             operation: SyncOperation::Cycle,
         };
         let fields = event.fields();
-        assert_eq!(fields["provider"], serde_json::json!("google_drive"));
+        assert_eq!(fields["provider"], serde_json::json!("onedrive"));
         assert_eq!(fields["operation"], serde_json::json!("cycle"));
     }
 

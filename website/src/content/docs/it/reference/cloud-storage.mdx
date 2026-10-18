@@ -10,7 +10,6 @@ La home cloud è una posizione nello spazio che l'utente possiede già. Ogni pro
 | Provider | Auth | Accesso per un nuovo dispositivo |
 |---|---|---|
 | Compatibile con S3 | Access key + secret | Credenziali sigillate sul dispositivo approvato durante l'associazione |
-| Google Drive | OAuth (PKCE) | L'account del nuovo dispositivo viene approvato, quindi la cartella viene condivisa |
 | Dropbox | OAuth (PKCE) | L'account del nuovo dispositivo viene approvato, quindi la cartella viene condivisa |
 | OneDrive | OAuth (PKCE) | L'account del nuovo dispositivo viene approvato, quindi la cartella viene condivisa |
 | iCloud (CloudKit) | Apple ID, nessun accesso | Condivisione CloudKit accettata durante l'associazione |
@@ -19,7 +18,7 @@ Compatibile con S3 copre AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO e qualu
 
 ## OAuth
 
-L'accesso è un flusso authorization-code con PKCE, come client pubblico. Su desktop il redirect arriva su un server loopback legato a una porta locale per l'unico callback; su mobile l'app cattura invece un redirect con schema personalizzato. bae richiede l'ambito più stretto offerto dal provider per il lavoro, su Google Drive è l'accesso solo ai file creati dall'app stessa. I token sono conservati nel portachiavi del sistema operativo, aggiornati con il refresh grant del provider, e un refresh rifiutato emerge come richiesta di riconnessione invece che come ciclo silenzioso di tentativi.
+L'accesso è un flusso authorization-code con PKCE, come client pubblico. Su desktop il redirect arriva su un server loopback legato a una porta locale per l'unico callback; su mobile l'app cattura invece un redirect con schema personalizzato. bae richiede l'ambito più stretto offerto dal provider per il lavoro. I token sono conservati nel portachiavi del sistema operativo, aggiornati con il refresh grant del provider, e un refresh rifiutato emerge come richiesta di riconnessione invece che come ciclo silenzioso di tentativi.
 
 CloudKit non richiede alcun flusso: il driver CloudKit della piattaforma, implementato nell'app e passato al core, opera come l'ID Apple collegato.
 

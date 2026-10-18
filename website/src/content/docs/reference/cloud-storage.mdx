@@ -10,7 +10,6 @@ The cloud home is one location in storage the user already owns. Every provider 
 | Provider | Auth | Access for a new device |
 |---|---|---|
 | S3-compatible | Access key + secret | Credentials sealed to the approved device during pairing |
-| Google Drive | OAuth (PKCE) | New device's account approved, then the folder is shared |
 | Dropbox | OAuth (PKCE) | New device's account approved, then the folder is shared |
 | OneDrive | OAuth (PKCE) | New device's account approved, then the folder is shared |
 | iCloud (CloudKit) | Apple ID, no sign-in | CloudKit share accepted during pairing |
@@ -19,7 +18,7 @@ S3-compatible covers AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, and anythi
 
 ## OAuth
 
-Sign-in is an authorization-code flow with PKCE, as a public client. On desktop the redirect lands on a loopback server bound to a local port for the one callback; on mobile the app captures a custom-scheme redirect instead. bae requests the narrowest scope the provider offers for the job, on Google Drive that's access only to files the app itself creates. Tokens are stored in the OS keyring, refreshed with the provider's refresh grant, and a rejected refresh surfaces as a reconnect prompt rather than a silent retry loop.
+Sign-in is an authorization-code flow with PKCE, as a public client. On desktop the redirect lands on a loopback server bound to a local port for the one callback; on mobile the app captures a custom-scheme redirect instead. bae requests the narrowest scope the provider offers for the job. Tokens are stored in the OS keyring, refreshed with the provider's refresh grant, and a rejected refresh surfaces as a reconnect prompt rather than a silent retry loop.
 
 CloudKit needs no flow at all: the platform's CloudKit driver, implemented in the app and handed to the core, operates as the signed-in Apple ID.
 

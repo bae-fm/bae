@@ -157,7 +157,6 @@
     <string name="onboarding_join_title">Připojit se ke knihovně</string>
     <string name="pairing_authorizing">Přihlašuje se…</string>
     <string name="pairing_waiting_for_approval">Čeká se na schválení…</string>
-    <string name="cloud_provider_google_drive">Google Drive</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>

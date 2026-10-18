@@ -13,13 +13,13 @@ You pick releases from MusicBrainz or Discogs, point bae at your files, and it h
 
 **Import and play.** Import from local folders (file-per-track or CUE/FLAC). Match to a MusicBrainz or Discogs release for metadata, cover art, credits, label info. Browse and play with native audio, CUE pregap support, and media key integration.
 
-**Sync across devices.** Sign in with a cloud provider (Google Drive, Dropbox, OneDrive) or configure an S3-compatible bucket. This creates your cloud home -- one encrypted location that holds everything. bae runs no server of its own; your devices sync directly through the cloud home, incrementally via changesets. Same user, multiple devices, one library. When sync hits a snag (storage full, access revoked, network out), the banner names the cause and the recovery step; transient failures back off and retry.
+**Sync across devices.** Sign in with a cloud provider (Dropbox, OneDrive) or configure an S3-compatible bucket. This creates your cloud home -- one encrypted location that holds everything. bae runs no server of its own; your devices sync directly through the cloud home, incrementally via changesets. Same user, multiple devices, one library. When sync hits a snag (storage full, access revoked, network out), the banner names the cause and the recovery step; transient failures back off and retry.
 
 ## Architecture
 
 - **Identity**: each device has a locally generated Ed25519/X25519 keypair. Public keys are identities. No central identity server.
 - **Encryption**: one symmetric key per library, shared across your devices. Everything in the cloud home is encrypted before it leaves the device.
-- **Storage**: pluggable via a `CloudHome` trait -- Google Drive, Dropbox, OneDrive, iCloud Drive, any S3-compatible bucket, or local-only.
+- **Storage**: pluggable via a `CloudHome` trait -- Dropbox, OneDrive, iCloud Drive, any S3-compatible bucket, or local-only.
 - **Sync**: SQLite session extension captures changesets automatically. Concurrent edits merge column by column; edits to the same column are ordered by a hybrid logical clock. Deterministic merge.
 - **Membership**: append-only chain of signed membership entries. Each changeset is signed by its author and verified against the membership chain on pull.
 

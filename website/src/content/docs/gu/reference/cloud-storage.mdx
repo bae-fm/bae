@@ -10,7 +10,6 @@ Cloud home એ user પાસે પહેલેથી હોય તે storage 
 | Provider | Auth | નવા device માટે access |
 |---|---|---|
 | S3-compatible | Access key + secret | જોડી બનાવવા દરમિયાન માન્ય ઉપકરણ પર ઓળખપત્રો સીલ કરવામાં આવ્યા છે |
-| Google Drive | OAuth (PKCE) | નવા ઉપકરણનું એકાઉન્ટ મંજૂર થયું, પછી ફોલ્ડર શેર કરવામાં આવે છે |
 | Dropbox | OAuth (PKCE) | નવા ઉપકરણનું એકાઉન્ટ મંજૂર થયું, પછી ફોલ્ડર શેર કરવામાં આવે છે |
 | OneDrive | OAuth (PKCE) | નવા ઉપકરણનું એકાઉન્ટ મંજૂર થયું, પછી ફોલ્ડર શેર કરવામાં આવે છે |
 | iCloud (CloudKit) | Apple ID, sign-in નહીં | જોડી બનાવતી વખતે CloudKit શેર સ્વીકારવામાં આવ્યો |
@@ -19,7 +18,7 @@ S3-compatible માં AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, અન�
 
 ## OAuth
 
-Sign-in public client તરીકે PKCE સાથે authorization-code flow છે. Desktop પર redirect એક callback માટે local port સાથે bound loopback server પર lands થાય છે; mobile પર app તેના બદલે custom-scheme redirect capture કરે છે. bae કામ માટે provider આપે તે narrowest scope માગે છે, Google Drive પર તે ફક્ત app પોતે બનાવે તે files નો access છે. Tokens OS keyring માં stored છે, provider ના refresh grant થી refreshed થાય છે, અને rejected refresh silent retry loop કરતાં reconnect prompt તરીકે surface થાય છે.
+Sign-in public client તરીકે PKCE સાથે authorization-code flow છે. Desktop પર redirect એક callback માટે local port સાથે bound loopback server પર lands થાય છે; mobile પર app તેના બદલે custom-scheme redirect capture કરે છે. bae કામ માટે provider આપે તે narrowest scope માગે છે. Tokens OS keyring માં stored છે, provider ના refresh grant થી refreshed થાય છે, અને rejected refresh silent retry loop કરતાં reconnect prompt તરીકે surface થાય છે.
 
 CloudKit ને flow જોઈએ નહીં: app માં implemented અને core ને આપેલો platform નો CloudKit driver signed-in Apple ID તરીકે operate કરે છે.
 

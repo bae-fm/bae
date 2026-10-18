@@ -10,7 +10,6 @@ description: Providers, authentication, மேகம் home இன் வடி
 | Provider | Auth | Access for a new சாதனம் |
 |---|---|---|
 | S3-compatible | Access விசை + secret | இணைக்கும் போது அங்கீகரிக்கப்பட்ட சாதனத்திற்குச் சான்றுகள் சீல் வைக்கப்பட்டுள்ளன |
-| Google Drive | OAuth (PKCE) | புதிய சாதனத்தின் கணக்கு அங்கீகரிக்கப்பட்டது, பின்னர் கோப்புறை பகிரப்பட்டது |
 | Dropbox | OAuth (PKCE) | புதிய சாதனத்தின் கணக்கு அங்கீகரிக்கப்பட்டது, பின்னர் கோப்புறை பகிரப்பட்டது |
 | OneDrive | OAuth (PKCE) | புதிய சாதனத்தின் கணக்கு அங்கீகரிக்கப்பட்டது, பின்னர் கோப்புறை பகிரப்பட்டது |
 | iCloud (CloudKit) | Apple ID, no sign-in | இணைக்கும் போது CloudKit பகிர்வு ஏற்றுக்கொள்ளப்பட்டது |
@@ -19,7 +18,7 @@ S3-compatible என்பது AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO
 
 ## OAuth
 
-Sign-in என்பது public client ஆக PKCE உடன் authorization-code flow. desktop இல் redirect ஒரு callback க்காக உள்ளூர் port இல் bound loopback server க்கு வரும்; mobile இல் app custom-scheme redirect ஐ capture செய்கிறது. provider job க்கு வழங்கும் மிகச் சுருக்கமான scope ஐ bae கேட்கும்; Google Drive இல் அது app தானே உருவாக்கும் கோப்புகள் க்கு மட்டும் access. Tokens OS keyring இல் stored, provider இன் refresh grant கொண்டு refreshed, rejected refresh silent retry loop ஆகாமல் reconnect prompt ஆகத் தெரியும்.
+Sign-in என்பது public client ஆக PKCE உடன் authorization-code flow. desktop இல் redirect ஒரு callback க்காக உள்ளூர் port இல் bound loopback server க்கு வரும்; mobile இல் app custom-scheme redirect ஐ capture செய்கிறது. provider job க்கு வழங்கும் மிகச் சுருக்கமான scope ஐ bae கேட்கும். Tokens OS keyring இல் stored, provider இன் refresh grant கொண்டு refreshed, rejected refresh silent retry loop ஆகாமல் reconnect prompt ஆகத் தெரியும்.
 
 CloudKit க்கு flow தேவையில்லை: app இல் implemented ஆகி core க்கு handed ஆன தளம் CloudKit driver, signed-in Apple ID ஆக இயங்கும்.
 

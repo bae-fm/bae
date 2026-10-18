@@ -161,7 +161,6 @@
     <string name="onboarding_join_title">Σύνδεση σε βιβλιοθήκη</string>
     <string name="pairing_authorizing">Σύνδεση…</string>
     <string name="pairing_waiting_for_approval">Αναμονή έγκρισης…</string>
-    <string name="cloud_provider_google_drive">Google Drive</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">Συμβατό με S3</string>

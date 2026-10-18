@@ -10,7 +10,6 @@ Mjesto u oblaku jedna je lokacija u pohrani koju korisnik već posjeduje. Svaki 
 | Pružatelj | Autentifikacija | Pristup za novi uređaj |
 |---|---|---|
 | S3-kompatibilno | Pristupni ključ + tajna | Vjerodajnice su zapečaćene na odobrenom uređaju tijekom uparivanja |
-| Google Drive | OAuth (PKCE) | Račun novog uređaja odobren je, a zatim se mapa dijeli |
 | Dropbox | OAuth (PKCE) | Račun novog uređaja odobren je, a zatim se mapa dijeli |
 | OneDrive | OAuth (PKCE) | Račun novog uređaja odobren je, a zatim se mapa dijeli |
 | iCloud (CloudKit) | Apple ID, bez prijave | CloudKit dijeljenje prihvaćeno tijekom uparivanja |
@@ -19,7 +18,7 @@ S3-kompatibilno pokriva AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO i sve dr
 
 ## OAuth
 
-Prijava je tijek autorizacijskog koda s PKCE-om, kao javni klijent. Na desktopu preusmjeravanje stiže na povratni poslužitelj vezan za lokalni port za taj jedan povratni poziv; na mobilnom aplikacija umjesto toga hvata preusmjeravanje vlastite sheme. bae traži najuži opseg koji pružatelj nudi za posao; na Google Driveu to je pristup samo datotekama koje aplikacija sama stvori. Tokeni se spremaju u privjesak ključeva OS-a, osvježavaju se pružateljevim refresh grantom, a odbijeno osvježavanje prikazuje upit za ponovno povezivanje umjesto tihe petlje ponovnog pokušaja.
+Prijava je tijek autorizacijskog koda s PKCE-om, kao javni klijent. Na desktopu preusmjeravanje stiže na povratni poslužitelj vezan za lokalni port za taj jedan povratni poziv; na mobilnom aplikacija umjesto toga hvata preusmjeravanje vlastite sheme. bae traži najuži opseg koji pružatelj nudi za posao. Tokeni se spremaju u privjesak ključeva OS-a, osvježavaju se pružateljevim refresh grantom, a odbijeno osvježavanje prikazuje upit za ponovno povezivanje umjesto tihe petlje ponovnog pokušaja.
 
 CloudKit ne treba tijek: platformin CloudKit upravljački sloj, implementiran u aplikaciji i predan jezgri, radi kao prijavljeni Apple ID.
 

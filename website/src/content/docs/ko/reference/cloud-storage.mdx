@@ -10,7 +10,6 @@ description: 제공자, 인증, 클라우드 홈의 형태
 | 제공자 | 인증 | 새 기기의 접근 |
 |---|---|---|
 | S3-compatible | Access key + secret | 페어링 중에 승인된 장치에 자격 증명이 봉인됩니다. |
-| Google Drive | OAuth (PKCE) | 새 장치의 계정이 승인되면 폴더가 공유됩니다. |
 | Dropbox | OAuth (PKCE) | 새 장치의 계정이 승인되면 폴더가 공유됩니다. |
 | OneDrive | OAuth (PKCE) | 새 장치의 계정이 승인되면 폴더가 공유됩니다. |
 | iCloud (CloudKit) | Apple ID, 로그인 없음 | 페어링 중에 CloudKit 공유가 허용됨 |
@@ -19,7 +18,7 @@ S3 호환은 AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, 그리고 API를 �
 
 ## OAuth
 
-로그인은 public client로서 PKCE를 쓰는 authorization-code flow입니다. 데스크톱에서는 한 번의 callback을 위해 로컬 포트에 묶인 loopback server로 redirect가 도착합니다. 모바일에서는 앱이 custom-scheme redirect를 받습니다. bae는 작업에 필요한 가장 좁은 scope를 요청합니다. Google Drive에서는 앱이 직접 만든 파일에만 접근합니다. Token은 OS keyring에 저장되고, 제공자의 refresh grant로 갱신됩니다. refresh가 거부되면 조용한 재시도 loop가 아니라 다시 연결하라는 prompt로 드러납니다.
+로그인은 public client로서 PKCE를 쓰는 authorization-code flow입니다. 데스크톱에서는 한 번의 callback을 위해 로컬 포트에 묶인 loopback server로 redirect가 도착합니다. 모바일에서는 앱이 custom-scheme redirect를 받습니다. bae는 작업에 필요한 가장 좁은 scope를 요청합니다. Token은 OS keyring에 저장되고, 제공자의 refresh grant로 갱신됩니다. refresh가 거부되면 조용한 재시도 loop가 아니라 다시 연결하라는 prompt로 드러납니다.
 
 CloudKit은 flow가 전혀 필요 없습니다. 앱에서 구현해 코어에 넘긴 플랫폼의 CloudKit driver가 로그인된 Apple ID로 동작합니다.
 

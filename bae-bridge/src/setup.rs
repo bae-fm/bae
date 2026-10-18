@@ -22,8 +22,6 @@ pub fn available_cloud_providers() -> Vec<BridgeCloudProvider> {
         #[cfg(feature = "cloudkit")]
         BridgeCloudProvider::CloudKit,
         #[cfg(feature = "oauth-providers")]
-        BridgeCloudProvider::GoogleDrive,
-        #[cfg(feature = "oauth-providers")]
         BridgeCloudProvider::Dropbox,
         #[cfg(feature = "oauth-providers")]
         BridgeCloudProvider::OneDrive,

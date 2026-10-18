@@ -161,7 +161,6 @@
     <string name="onboarding_join_title">Aderir a uma biblioteca</string>
     <string name="pairing_authorizing">A iniciar sessão…</string>
     <string name="pairing_waiting_for_approval">À espera de aprovação…</string>
-    <string name="cloud_provider_google_drive">Google Drive</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">Compatível com S3</string>

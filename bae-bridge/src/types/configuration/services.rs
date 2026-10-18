@@ -347,7 +347,6 @@ pub enum BridgeSyncProvider {
         region: Option<String>,
         endpoint: Option<String>,
     },
-    GoogleDrive,
     Dropbox,
     OneDrive,
     CloudKit,

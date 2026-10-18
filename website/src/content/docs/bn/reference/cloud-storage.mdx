@@ -10,7 +10,6 @@ description: Provider, authentication, এবং মেঘ-ঘরের আক�
 | Provider | Auth | নতুন ডিভাইসের প্রবেশাধিকার |
 |---|---|---|
 | S3-compatible | Access কী + secret | পেয়ারিংয়ের সময় অনুমোদিত ডিভাইসে শংসাপত্রগুলি সিল করা হয়েছে |
-| Google Drive | OAuth (PKCE) | নতুন ডিভাইসের অ্যাকাউন্ট অনুমোদিত, তারপর ফোল্ডার ভাগ করা হয় |
 | Dropbox | OAuth (PKCE) | নতুন ডিভাইসের অ্যাকাউন্ট অনুমোদিত, তারপর ফোল্ডার ভাগ করা হয় |
 | OneDrive | OAuth (PKCE) | নতুন ডিভাইসের অ্যাকাউন্ট অনুমোদিত, তারপর ফোল্ডার ভাগ করা হয় |
 | iCloud (CloudKit) | Apple ID, sign-in নেই | পেয়ার করার সময় ক্লাউডকিট শেয়ার গ্রহণ করা হয়েছে |
@@ -19,7 +18,7 @@ S3-compatible AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, এবং API ব
 
 ## OAuth
 
-Sign-in হলো PKCE সহ authorization-code flow, public client হিসেবে। ডেস্কটপে redirect এক callback-এর জন্য স্থানীয় port-এ bound loopback server-এ আসে; mobile-এ app custom-scheme redirect ধরে। bae কাজের জন্য provider যে সবচেয়ে সরু scope দেয় সেটিই চায়, Google Drive-এ সেটি শুধু app নিজে যে ফাইল তৈরি করে তাতে access। Token OS keyring-এ stored হয়, provider-এর refresh grant দিয়ে refresh হয়, আর rejected refresh silent retry loop না হয়ে reconnect prompt হিসেবে দেখা যায়।
+Sign-in হলো PKCE সহ authorization-code flow, public client হিসেবে। ডেস্কটপে redirect এক callback-এর জন্য স্থানীয় port-এ bound loopback server-এ আসে; mobile-এ app custom-scheme redirect ধরে। bae কাজের জন্য provider যে সবচেয়ে সরু scope দেয় সেটিই চায়। Token OS keyring-এ stored হয়, provider-এর refresh grant দিয়ে refresh হয়, আর rejected refresh silent retry loop না হয়ে reconnect prompt হিসেবে দেখা যায়।
 
 CloudKit-এর কোনো flow লাগে না: প্ল্যাটফর্মের CloudKit driver, app-এ implemented এবং core-কে দেওয়া, signed-in Apple ID হিসেবেই কাজ করে।
 

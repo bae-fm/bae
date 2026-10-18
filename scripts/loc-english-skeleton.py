@@ -101,7 +101,7 @@ URL_RE = re.compile(r"\bhttps?://\S+", re.IGNORECASE)
 
 TECHNICAL_PROPER_NOUNS = {
     "bae", "discogs", "musicbrainz", "oauth", "icloud", "itunes", "dropbox",
-    "onedrive", "google", "drive", "mcp", "api", "id", "url", "s3", "finder",
+    "onedrive", "mcp", "api", "id", "url", "s3", "finder",
     "mac", "macos", "ios", "android", "windows", "cloudkit", "json", "xml",
     "http", "https", "www", "com", "flac", "mp3", "m4a", "aac", "wav", "cue",
     # Formats, units, and protocol names: identical in every locale by nature,

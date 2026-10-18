@@ -262,7 +262,6 @@ private fun rememberDisconnectSyncFlow(session: OpenLibrary): DisconnectSyncFlow
 private fun syncProviderLabel(provider: BridgeSyncProvider): String =
     when (provider) {
         is BridgeSyncProvider.S3 -> stringResource(R.string.cloud_provider_s3)
-        BridgeSyncProvider.GoogleDrive -> stringResource(R.string.cloud_provider_google_drive)
         BridgeSyncProvider.Dropbox -> stringResource(R.string.cloud_provider_dropbox)
         BridgeSyncProvider.OneDrive -> stringResource(R.string.cloud_provider_onedrive)
         BridgeSyncProvider.CloudKit -> stringResource(R.string.cloud_provider_icloud)

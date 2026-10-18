@@ -101,7 +101,7 @@ window; the desktop views are ported from the macOS app later.
 
 bae builds in two editions from one source:
 
-- **bae** signs in to Google Drive, Dropbox and OneDrive, uses iCloud on Apple
+- **bae** signs in to Dropbox and OneDrive, uses iCloud on Apple
   devices, and sends typed telemetry (§11.2).
 - **baeium** uses S3-compatible storage only, sends no telemetry, and needs
   nothing proprietary to build or run. On iOS it works with a free personal
@@ -999,7 +999,7 @@ it sits at, stay on the importing device until the person uploads it (§4.2).
 ### 6.2 Cloud homes
 
 A library's *cloud home* is where coven stores it: an S3-compatible bucket,
-Google Drive, Dropbox, OneDrive, or iCloud on Apple devices. A library can
+Dropbox, OneDrive, or iCloud on Apple devices. A library can
 also have none and stay on one device. The baeium edition offers S3 only.
 
 Setting up a cloud home chooses opaque or browsable storage (§4.5). For the
@@ -1453,7 +1453,7 @@ Build features choose what a build exports:
 
 | Feature | Adds |
 |---|---|
-| `oauth-providers` | Google Drive, Dropbox and OneDrive sign-in |
+| `oauth-providers` | Dropbox and OneDrive sign-in |
 | `cloudkit` | iCloud |
 | `cast` | the receiver picker and casting |
 | `desktop` | casting, plus import, identification, metadata editing, export and save, and the MCP and Subsonic servers |

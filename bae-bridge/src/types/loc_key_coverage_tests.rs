@@ -154,7 +154,6 @@ fn produced_keys() -> Vec<String> {
     }
     // The brand-name providers render their own names, so they name no key.
     for p in [
-        BridgeCloudProvider::GoogleDrive,
         BridgeCloudProvider::Dropbox,
         BridgeCloudProvider::OneDrive,
         BridgeCloudProvider::CloudKit,

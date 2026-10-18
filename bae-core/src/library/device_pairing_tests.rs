@@ -23,7 +23,7 @@ fn pairing_offer_preview_comes_from_the_scanned_offer() {
         &pairing_key,
         vec!["192.0.2.10:24821".parse().expect("pairing endpoint")],
         "Shared Library".to_string(),
-        coven::CloudProvider::GoogleDrive,
+        coven::CloudProvider::Dropbox,
         1_900_000_000,
     )
     .expect("pairing offer");
@@ -31,7 +31,7 @@ fn pairing_offer_preview_comes_from_the_scanned_offer() {
     let preview = inspect_device_pairing_offer(&offer.encode()).expect("inspect pairing offer");
 
     assert_eq!(preview.library_name, "Shared Library");
-    assert_eq!(preview.cloud_provider, coven::CloudProvider::GoogleDrive);
+    assert_eq!(preview.cloud_provider, coven::CloudProvider::Dropbox);
     assert!(preview.needs_oauth);
     assert_eq!(preview.expires_at_unix_seconds, 1_900_000_000);
 }

@@ -161,7 +161,6 @@
     <string name="onboarding_join_title">Anslut dig till ett bibliotek</string>
     <string name="pairing_authorizing">Loggar in…</string>
     <string name="pairing_waiting_for_approval">Väntar på godkännande…</string>
-    <string name="cloud_provider_google_drive">Google Drive</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-kompatibel</string>

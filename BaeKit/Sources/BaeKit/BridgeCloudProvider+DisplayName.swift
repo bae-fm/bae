@@ -8,7 +8,6 @@ extension BridgeCloudProvider {
     public var displayName: String {
         switch self {
         case .cloudKit: return "iCloud"
-        case .googleDrive: return "Google Drive"
         case .dropbox: return "Dropbox"
         case .oneDrive: return "OneDrive"
         case .s3:
@@ -27,7 +26,6 @@ extension BridgeSyncProvider {
     public var displayName: String {
         switch self {
         case .s3: return BridgeCloudProvider.s3.displayName
-        case .googleDrive: return BridgeCloudProvider.googleDrive.displayName
         case .dropbox: return BridgeCloudProvider.dropbox.displayName
         case .oneDrive: return BridgeCloudProvider.oneDrive.displayName
         case .cloudKit: return BridgeCloudProvider.cloudKit.displayName

@@ -35,7 +35,7 @@ Secrets never live in these files. Identity keys, the library encryption key, cl
 
 ## Editions
 
-Two build-time editions exist on every platform. **bae** compiles in the OAuth providers (Google Drive, Dropbox, OneDrive), CloudKit, and telemetry. **baeium** compiles all of that out: S3-compatible storage only, and no telemetry, nothing proprietary in the dependency tree. The editions are the same source and the same core; a feature flag decides the provider list and the diagnostics wiring.
+Two build-time editions exist on every platform. **bae** compiles in the OAuth providers (Dropbox, OneDrive), CloudKit, and telemetry. **baeium** compiles all of that out: S3-compatible storage only, and no telemetry, nothing proprietary in the dependency tree. The editions are the same source and the same core; a feature flag decides the provider list and the diagnostics wiring.
 
 ## Versioning
 

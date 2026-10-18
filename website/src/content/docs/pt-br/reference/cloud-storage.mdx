@@ -10,7 +10,6 @@ O local na nuvem é uma localização no armazenamento que o usuário já possui
 | Provedor | Autenticação | Acesso para um dispositivo novo |
 |---|---|---|
 | Compatível com S3 | Chave de acesso + segredo | Credenciais seladas ao dispositivo aprovado durante o emparelhamento |
-| Google Drive | OAuth (PKCE) | A conta do novo dispositivo é aprovada e a pasta é compartilhada |
 | Dropbox | OAuth (PKCE) | A conta do novo dispositivo é aprovada e a pasta é compartilhada |
 | OneDrive | OAuth (PKCE) | A conta do novo dispositivo é aprovada e a pasta é compartilhada |
 | iCloud (CloudKit) | Apple ID, sem login | Compartilhamento do CloudKit aceito durante o emparelhamento |
@@ -19,7 +18,7 @@ Compatível com S3 cobre AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO e qualq
 
 ## OAuth
 
-O login é um fluxo de código de autorização com PKCE, como cliente público. No desktop, o redirecionamento chega a um servidor loopback vinculado a uma porta local para o único callback; no mobile, o app captura um redirecionamento de esquema personalizado. bae solicita o escopo mais estreito que o provedor oferece para o trabalho; no Google Drive, é acesso só aos arquivos que o próprio app cria. Tokens são armazenados no chaveiro do sistema operacional, renovados com a concessão de atualização do provedor, e uma atualização rejeitada aparece como pedido de reconexão em vez de loop silencioso de nova tentativa.
+O login é um fluxo de código de autorização com PKCE, como cliente público. No desktop, o redirecionamento chega a um servidor loopback vinculado a uma porta local para o único callback; no mobile, o app captura um redirecionamento de esquema personalizado. bae solicita o escopo mais estreito que o provedor oferece para o trabalho. Tokens são armazenados no chaveiro do sistema operacional, renovados com a concessão de atualização do provedor, e uma atualização rejeitada aparece como pedido de reconexão em vez de loop silencioso de nova tentativa.
 
 CloudKit não precisa de fluxo: o driver CloudKit da plataforma, implementado no app e entregue ao núcleo, opera como o Apple ID conectado.
 

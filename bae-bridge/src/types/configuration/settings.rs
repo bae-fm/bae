@@ -687,10 +687,10 @@ impl BridgeCloudProvider {
         use bae_core::config::CloudProvider;
         match p {
             CloudProvider::S3 => BridgeCloudProvider::S3,
-            CloudProvider::GoogleDrive => BridgeCloudProvider::GoogleDrive,
             CloudProvider::Dropbox => BridgeCloudProvider::Dropbox,
             CloudProvider::OneDrive => BridgeCloudProvider::OneDrive,
             CloudProvider::CloudKit => BridgeCloudProvider::CloudKit,
+            unsupported => panic!("unsupported cloud provider: {unsupported:?}"),
         }
     }
 }
@@ -719,7 +719,7 @@ mirror_enum! {
     #[cfg(feature = "oauth-providers")]
     BridgeCloudProvider = bae_core::config::CloudProvider,
     into_core: pub(crate) fn,
-    variants: { S3, GoogleDrive, Dropbox, OneDrive, CloudKit },
+    variants: { S3, Dropbox, OneDrive, CloudKit },
 }
 
 mirror_enum! {

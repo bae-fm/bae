@@ -187,7 +187,6 @@ private fun cloudProviderLabel(provider: BridgeCloudProvider): String =
     when (provider) {
         BridgeCloudProvider.S3 -> stringResource(R.string.cloud_provider_s3)
         BridgeCloudProvider.CLOUD_KIT -> stringResource(R.string.cloud_provider_icloud)
-        BridgeCloudProvider.GOOGLE_DRIVE -> stringResource(R.string.cloud_provider_google_drive)
         BridgeCloudProvider.DROPBOX -> stringResource(R.string.cloud_provider_dropbox)
         BridgeCloudProvider.ONE_DRIVE -> stringResource(R.string.cloud_provider_onedrive)
     }

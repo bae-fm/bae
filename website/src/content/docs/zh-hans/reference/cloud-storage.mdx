@@ -10,7 +10,6 @@ description: 提供商、认证，以及云端主目录的形态
 | Provider | Auth | Access for a new device |
 |---|---|---|
 | S3-compatible | Access key + secret | 配对期间将凭证密封到批准的设备上 |
-| Google Drive | OAuth (PKCE) | 新设备的帐户获得批准，然后共享文件夹 |
 | Dropbox | OAuth (PKCE) | 新设备的帐户获得批准，然后共享文件夹 |
 | OneDrive | OAuth (PKCE) | 新设备的帐户获得批准，然后共享文件夹 |
 | iCloud (CloudKit) | Apple ID, no sign-in | 配对期间接受 CloudKit 共享 |
@@ -19,7 +18,7 @@ S3-compatible 覆盖 AWS、Backblaze B2、Cloudflare R2、Wasabi、MinIO，以�
 
 ## OAuth
 
-登录是带 PKCE 的 authorization-code flow，作为 public client。桌面端的 redirect 会落到绑定本地端口的 loopback server，仅用于一次 callback；移动端则由应用捕获 custom-scheme redirect。bae 请求提供商为该工作提供的最窄 scope；在 Google Drive 上，这意味着只访问应用自己创建的文件。token 保存在 OS keyring 中，通过提供商的 refresh grant 刷新；被拒绝的刷新会表现为重新连接提示，而不是静默重试循环。
+登录是带 PKCE 的 authorization-code flow，作为 public client。桌面端的 redirect 会落到绑定本地端口的 loopback server，仅用于一次 callback；移动端则由应用捕获 custom-scheme redirect。bae 请求提供商为该工作提供的最窄 scope。token 保存在 OS keyring 中，通过提供商的 refresh grant 刷新；被拒绝的刷新会表现为重新连接提示，而不是静默重试循环。
 
 CloudKit 完全不需要流程：平台的 CloudKit driver 由应用实现并交给核心，以已登录 Apple ID 的身份运行。
 

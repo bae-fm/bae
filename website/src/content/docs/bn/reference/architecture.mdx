@@ -35,7 +35,7 @@ Secret কখনও এই ফাইলগুলোতে থাকে না।
 
 ## সংস্করণ
 
-প্রতিটি প্ল্যাটফর্মে build-time দুই edition আছে। **bae** OAuth provider (Google Drive, Dropbox, OneDrive), CloudKit, এবং telemetry compile করে। **baeium** এগুলো বাদ দিয়ে compile হয়: শুধু S3-compatible সংরক্ষণ, এবং telemetry নেই, dependency tree-তে proprietary কিছু নেই। Edition দুটি একই উৎস ও একই core; একটি feature flag provider list ও diagnostics wiring ঠিক করে।
+প্রতিটি প্ল্যাটফর্মে build-time দুই edition আছে। **bae** OAuth provider (Dropbox, OneDrive), CloudKit, এবং telemetry compile করে। **baeium** এগুলো বাদ দিয়ে compile হয়: শুধু S3-compatible সংরক্ষণ, এবং telemetry নেই, dependency tree-তে proprietary কিছু নেই। Edition দুটি একই উৎস ও একই core; একটি feature flag provider list ও diagnostics wiring ঠিক করে।
 
 ## Versioning
 

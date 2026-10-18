@@ -10,7 +10,6 @@ Das Cloud-Zuhause ist ein Ort in Speicher, den der Benutzer bereits besitzt. Jed
 | Anbieter | Auth | Zugriff für ein neues Gerät |
 |---|---|---|
 | S3-kompatibel | Access key + secret | Anmeldedaten werden während der Kopplung an das zugelassene Gerät versiegelt |
-| Google Drive | OAuth (PKCE) | Das Konto des neuen Geräts wurde genehmigt, dann wird der Ordner freigegeben |
 | Dropbox | OAuth (PKCE) | Das Konto des neuen Geräts wurde genehmigt, dann wird der Ordner freigegeben |
 | OneDrive | OAuth (PKCE) | Das Konto des neuen Geräts wurde genehmigt, dann wird der Ordner freigegeben |
 | iCloud (CloudKit) | Apple-ID, keine Anmeldung | CloudKit-Freigabe während der Kopplung akzeptiert |
@@ -19,7 +18,7 @@ S3-kompatibel umfasst AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO und alles 
 
 ## OAuth
 
-Die Anmeldung ist ein Authorization-Code-Ablauf mit PKCE als Public Client. Auf dem Desktop landet die Umleitung auf einem Loopback-Server, der für den einen Callback an einen lokalen Port gebunden ist; auf Mobilgeräten fängt die App stattdessen eine Umleitung mit eigenem Schema ab. bae fordert den engsten Scope an, den der Anbieter für die Aufgabe anbietet; bei Google Drive ist das nur Zugriff auf Dateien, die die App selbst erstellt. Tokens werden im OS-Schlüsselbund gespeichert, mit dem Refresh Grant des Anbieters erneuert, und ein abgelehnter Refresh erscheint als Aufforderung zum erneuten Verbinden statt als stille Wiederholungsschleife.
+Die Anmeldung ist ein Authorization-Code-Ablauf mit PKCE als Public Client. Auf dem Desktop landet die Umleitung auf einem Loopback-Server, der für den einen Callback an einen lokalen Port gebunden ist; auf Mobilgeräten fängt die App stattdessen eine Umleitung mit eigenem Schema ab. bae fordert den engsten Scope an, den der Anbieter für die Aufgabe anbietet. Tokens werden im OS-Schlüsselbund gespeichert, mit dem Refresh Grant des Anbieters erneuert, und ein abgelehnter Refresh erscheint als Aufforderung zum erneuten Verbinden statt als stille Wiederholungsschleife.
 
 CloudKit braucht gar keinen Ablauf: Der CloudKit-Treiber der Plattform, in der App implementiert und an den Kern übergeben, arbeitet als die angemeldete Apple-ID.
 
