@@ -276,4 +276,5 @@
     <string name="settings_history_household">家人</string>
     <string name="settings_history_explanation">誰能看到你播放的內容。變更只對今後的播放生效；先前的播放仍維持原本的可見範圍。</string>
     <string name="release_not_uploaded">尚未上傳。從匯入它的裝置上傳後，即可在這裡播放。</string>
+    <string name="downloads_concurrency_label">同時下載數</string>
 </resources>

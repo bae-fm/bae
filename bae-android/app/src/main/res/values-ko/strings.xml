@@ -276,4 +276,5 @@
     <string name="settings_history_household">가족</string>
     <string name="settings_history_explanation">내가 재생한 내용을 볼 수 있는 사람입니다. 변경은 앞으로의 재생에만 적용되며, 이전 재생은 원래 볼 수 있던 사람에게 그대로 보입니다.</string>
     <string name="release_not_uploaded">아직 업로드되지 않았습니다. 가져온 기기에서 업로드하면 여기에서 재생할 수 있습니다.</string>
+    <string name="downloads_concurrency_label">동시 다운로드</string>
 </resources>

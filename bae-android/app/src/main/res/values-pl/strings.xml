@@ -282,4 +282,5 @@
     <string name="settings_history_household">Domownicy</string>
     <string name="settings_history_explanation">Kto widzi, czego słuchasz. Zmiana dotyczy odtworzeń od teraz; wcześniejsze odtworzenia pozostają widoczne dla tych samych osób.</string>
     <string name="release_not_uploaded">Jeszcze nieprzesłane. Będzie można odtworzyć tutaj, gdy urządzenie, które je zaimportowało, je prześle.</string>
+    <string name="downloads_concurrency_label">Jednoczesne pobierania</string>
 </resources>

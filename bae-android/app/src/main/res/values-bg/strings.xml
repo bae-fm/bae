@@ -278,4 +278,5 @@
     <string name="settings_history_household">Домакинството</string>
     <string name="settings_history_explanation">Кой вижда какво пускате. Промяната важи за пусканията отсега нататък; по-ранните запазват кой е можел да ги вижда.</string>
     <string name="release_not_uploaded">Още не е качено. Ще се възпроизвежда тук, след като бъде качено от устройството, което го е импортирало.</string>
+    <string name="downloads_concurrency_label">Едновременни изтегляния</string>
 </resources>

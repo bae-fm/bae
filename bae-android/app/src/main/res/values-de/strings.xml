@@ -278,4 +278,5 @@
     <string name="settings_history_household">Haushalt</string>
     <string name="settings_history_explanation">Wer sieht, was du abspielst. Eine Änderung gilt für Wiedergaben ab jetzt; frühere Wiedergaben behalten, wer sie sehen konnte.</string>
     <string name="release_not_uploaded">Noch nicht hochgeladen. Sie lässt sich hier abspielen, sobald das Gerät, das sie importiert hat, sie hochlädt.</string>
+    <string name="downloads_concurrency_label">Gleichzeitige Downloads</string>
 </resources>
