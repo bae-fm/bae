@@ -41,12 +41,16 @@ impl BridgeStorageLocation {
                 profile: profile.map(BridgeS3Profile::from_core),
                 prefix,
             },
-            coven::StorageConfig::Dropbox { location } => Self::Dropbox {
+            coven::StorageConfig::Dropbox {
+                location,
+                account_label: _,
+            } => Self::Dropbox {
                 location: BridgeDropboxLocation::from_core(location),
             },
             coven::StorageConfig::OneDrive {
                 drive_id,
                 folder_id,
+                account_label: _,
             } => Self::OneDrive {
                 drive_id,
                 folder_id,
@@ -83,6 +87,7 @@ impl BridgeStorageLocation {
             },
             Self::Dropbox { location } => coven::StorageConfig::Dropbox {
                 location: location.into_core(),
+                account_label: None,
             },
             Self::OneDrive {
                 drive_id,
@@ -90,6 +95,7 @@ impl BridgeStorageLocation {
             } => coven::StorageConfig::OneDrive {
                 drive_id,
                 folder_id,
+                account_label: None,
             },
             Self::CloudKit {
                 container,

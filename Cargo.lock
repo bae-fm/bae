@@ -1520,7 +1520,7 @@ dependencies = [
 [[package]]
 name = "coven"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=a29df02518671440a834e9737c5a26120fda377a#a29df02518671440a834e9737c5a26120fda377a"
+source = "git+https://github.com/bae-fm/coven?rev=87b62f6fa99e12d17e72e2b938cb6f44ccb3705f#87b62f6fa99e12d17e72e2b938cb6f44ccb3705f"
 dependencies = [
  "coven-crypto",
  "coven-database",
@@ -1536,7 +1536,7 @@ dependencies = [
 [[package]]
 name = "coven-crypto"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=a29df02518671440a834e9737c5a26120fda377a#a29df02518671440a834e9737c5a26120fda377a"
+source = "git+https://github.com/bae-fm/coven?rev=87b62f6fa99e12d17e72e2b938cb6f44ccb3705f#87b62f6fa99e12d17e72e2b938cb6f44ccb3705f"
 dependencies = [
  "android-native-keyring-store",
  "apple-native-keyring-store",
@@ -1565,7 +1565,7 @@ dependencies = [
 [[package]]
 name = "coven-database"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=a29df02518671440a834e9737c5a26120fda377a#a29df02518671440a834e9737c5a26120fda377a"
+source = "git+https://github.com/bae-fm/coven?rev=87b62f6fa99e12d17e72e2b938cb6f44ccb3705f#87b62f6fa99e12d17e72e2b938cb6f44ccb3705f"
 dependencies = [
  "coven-crypto",
  "coven-format",
@@ -1584,7 +1584,7 @@ dependencies = [
 [[package]]
 name = "coven-format"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=a29df02518671440a834e9737c5a26120fda377a#a29df02518671440a834e9737c5a26120fda377a"
+source = "git+https://github.com/bae-fm/coven?rev=87b62f6fa99e12d17e72e2b938cb6f44ccb3705f#87b62f6fa99e12d17e72e2b938cb6f44ccb3705f"
 dependencies = [
  "coven-crypto",
  "coven-foundation",
@@ -1598,7 +1598,7 @@ dependencies = [
 [[package]]
 name = "coven-foundation"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=a29df02518671440a834e9737c5a26120fda377a#a29df02518671440a834e9737c5a26120fda377a"
+source = "git+https://github.com/bae-fm/coven?rev=87b62f6fa99e12d17e72e2b938cb6f44ccb3705f#87b62f6fa99e12d17e72e2b938cb6f44ccb3705f"
 dependencies = [
  "rusqlite",
  "rustix 1.1.5",
@@ -1615,7 +1615,7 @@ dependencies = [
 [[package]]
 name = "coven-merge"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=a29df02518671440a834e9737c5a26120fda377a#a29df02518671440a834e9737c5a26120fda377a"
+source = "git+https://github.com/bae-fm/coven?rev=87b62f6fa99e12d17e72e2b938cb6f44ccb3705f#87b62f6fa99e12d17e72e2b938cb6f44ccb3705f"
 dependencies = [
  "coven-foundation",
  "rusqlite",
@@ -1625,7 +1625,7 @@ dependencies = [
 [[package]]
 name = "coven-storage"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=a29df02518671440a834e9737c5a26120fda377a#a29df02518671440a834e9737c5a26120fda377a"
+source = "git+https://github.com/bae-fm/coven?rev=87b62f6fa99e12d17e72e2b938cb6f44ccb3705f#87b62f6fa99e12d17e72e2b938cb6f44ccb3705f"
 dependencies = [
  "async-trait",
  "aws-credential-types",
@@ -1659,7 +1659,7 @@ dependencies = [
 [[package]]
 name = "coven-sync"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=a29df02518671440a834e9737c5a26120fda377a#a29df02518671440a834e9737c5a26120fda377a"
+source = "git+https://github.com/bae-fm/coven?rev=87b62f6fa99e12d17e72e2b938cb6f44ccb3705f#87b62f6fa99e12d17e72e2b938cb6f44ccb3705f"
 dependencies = [
  "async-trait",
  "coven-crypto",
@@ -6020,7 +6020,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
