@@ -52,7 +52,6 @@ final class ApplicationServices {
     let libraryRemovals: LibraryRemovals
     let updaterController: SPUStandardUpdaterController
     let checkForUpdatesViewModel: CheckForUpdatesViewModel
-    let firstResponderActions = FirstResponderActions()
 
     init() {
         let appDir = baeAppDir(environment: baeAppProcessEnvironment)
