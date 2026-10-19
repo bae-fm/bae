@@ -14,8 +14,10 @@ struct AlbumGrid {
     }
 
     /// Where each text reading `text` is drawn wholly inside the grid's
-    /// visible area, top to bottom.
+    /// visible area, top to bottom: nowhere while the library has not
+    /// mounted the grid, as while the app is still opening it.
     func frames(of text: String) -> [CGRect] {
+        guard scrollView.exists else { return [] }
         let visible = scrollView.frame
         return laidOutFrames(of: text).filter { visible.contains($0) }
     }
