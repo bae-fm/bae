@@ -886,21 +886,22 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
     );
 
     // Delete B: current (A) survives, the preloaded next (B) is cleared and its
-    // queued entry purged — no stop.
+    // queued entry purged — no stop. A read sent after the deletion returns
+    // sees it applied.
     lib.library_manager
         .delete_release(&b_release_id)
         .await
         .expect("delete release B");
+    let after = handle.queue_projection().await.expect("queue projection");
+    assert!(
+        !after.manual.iter().any(|e| e.track_id == b_first),
+        "the deleted release's queued track is purged"
+    );
     let still_playing =
         wait_for_track_position(&mut progress, &first, Duration::from_secs(5)).await;
     assert!(
         still_playing.is_some(),
         "deleting only the preloaded-next release leaves the current track playing"
-    );
-    let after = handle.queue_projection().await.expect("queue projection");
-    assert!(
-        !after.manual.iter().any(|e| e.track_id == b_first),
-        "the deleted release's queued track is purged"
     );
 
     // Delete A: the current track is deleted → playback stops.
