@@ -2,7 +2,7 @@
 //! recognizes it, with why it waits and what they can do about it.
 
 use super::*;
-use crate::library::UploadFileLabel;
+use crate::library::UploadSubject;
 
 /// What a pending record is about. A file this device is uploading is named
 /// by its place in the library; every other subject by what it is.
@@ -101,22 +101,24 @@ impl PendingItem {
     }
 }
 
-/// The name of a file in this device's upload queue, from the queue's label
-/// and the album title of the release it belongs to, when that release is
-/// still in the library.
-fn upload_name(label: UploadFileLabel, album_title: Option<String>) -> PendingSubjectName {
-    match (label, album_title) {
-        (UploadFileLabel::Filename(file_name), Some(album_title)) => {
+/// The name of a file in this device's upload queue, from what it is and the
+/// album title of the release it belongs to, when that release is still in the
+/// library.
+fn upload_name(subject: UploadSubject, album_title: Option<String>) -> PendingSubjectName {
+    match (subject, album_title) {
+        (UploadSubject::ReleaseFile { name, .. }, Some(album_title)) => {
             PendingSubjectName::ReleaseFile {
-                file_name,
+                file_name: name,
                 album_title,
             }
         }
-        (UploadFileLabel::Cover, Some(album_title)) => PendingSubjectName::Cover { album_title },
-        (UploadFileLabel::Filename(_) | UploadFileLabel::Cover, None)
-        | (UploadFileLabel::DeletedReleaseFile, _) => PendingSubjectName::DeletedReleaseFile,
-        (UploadFileLabel::ArtistImage, _) => PendingSubjectName::ArtistImage,
-        (UploadFileLabel::Avatar, _) => PendingSubjectName::Avatar,
+        (UploadSubject::Cover { .. }, Some(album_title)) => {
+            PendingSubjectName::Cover { album_title }
+        }
+        (UploadSubject::ReleaseFile { .. } | UploadSubject::Cover { .. }, None)
+        | (UploadSubject::DeletedReleaseFile, _) => PendingSubjectName::DeletedReleaseFile,
+        (UploadSubject::ArtistImage, _) => PendingSubjectName::ArtistImage,
+        (UploadSubject::Avatar, _) => PendingSubjectName::Avatar,
     }
 }
 
@@ -162,7 +164,7 @@ impl LibraryManager {
                 queue
                     .uploads
                     .iter()
-                    .filter_map(|upload| upload.release_id.clone())
+                    .filter_map(|upload| upload.subject.release().map(str::to_string))
                     .collect(),
             )
             .await?;
@@ -171,13 +173,13 @@ impl LibraryManager {
             .into_iter()
             .map(|upload| {
                 let album_title = upload
-                    .release_id
-                    .as_ref()
+                    .subject
+                    .release()
                     .and_then(|release| releases.get(release))
                     .map(|release| release.title.clone());
                 (
                     (upload.upload.file.uploader(), upload.upload.file.id()),
-                    upload_name(upload.label, album_title),
+                    upload_name(upload.subject, album_title),
                 )
             })
             .collect())

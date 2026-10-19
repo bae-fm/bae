@@ -310,8 +310,15 @@ async fn outbox_snapshot_identifies_the_cover_blob() {
         .iter()
         .find(|group| group.release_id == release.id)
         .expect("the release upload group");
-    let cover_upload = group
-        .files
+    assert!(
+        group
+            .files
+            .iter()
+            .all(|file| file.label != crate::library::UploadFileLabel::Cover),
+        "the release's upload is its own files"
+    );
+    let cover_upload = snapshot
+        .other_files
         .iter()
         .find(|file| file.label == crate::library::UploadFileLabel::Cover)
         .expect("the cover is a typed upload row");

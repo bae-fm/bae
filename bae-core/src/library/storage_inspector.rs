@@ -16,7 +16,7 @@ pub enum StorageInspectorTransfer<Download, Output, Upload> {
     Upload { group: Upload, paused: bool },
 }
 
-/// Queued uploads and their release-file row keys; artwork has no release-file key.
+/// Queued uploads and their release-file row keys, where they have one.
 pub type InspectorUploads<Upload> = Vec<(Option<coven::RowKey>, Upload)>;
 
 fn selected_release<T>(release_id: &str, records: Vec<(String, T)>) -> Option<T> {
@@ -67,8 +67,8 @@ pub fn storage_inspector_release_files<File, Upload>(
 }
 
 /// Release files retain their order and identity when transfers start or end.
-/// Uploads outside the imported file set (including generated artwork and
-/// uploads whose rows were deleted) remain visible after the release files.
+/// Uploads matching none of the release's file rows remain visible after the
+/// release files.
 fn storage_inspector_files<File, Upload>(
     files: Vec<(String, File)>,
     mut uploads: InspectorUploads<Upload>,
@@ -98,13 +98,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn joins_release_rows_and_keeps_images_separate() {
+    fn joins_release_rows_and_keeps_unmatched_uploads_separate() {
         let rows = storage_inspector_files(
             vec![
                 ("audio".into(), "track.flac"),
                 ("notes".into(), "notes.txt"),
             ],
-            vec![(None, "cover"), (Some("audio".into()), "progress")],
+            vec![(None, "unmatched"), (Some("audio".into()), "progress")],
         );
         assert_eq!(
             rows,
@@ -117,7 +117,9 @@ mod tests {
                     file: "notes.txt",
                     uploads: vec![]
                 },
-                StorageInspectorFile::Upload { upload: "cover" },
+                StorageInspectorFile::Upload {
+                    upload: "unmatched"
+                },
             ]
         );
     }
@@ -147,12 +149,14 @@ mod tests {
     fn uploads_survive_an_empty_file_set_in_queue_order() {
         let rows = storage_inspector_files::<(), _>(
             vec![],
-            vec![(None, "cover"), (Some("a".into()), "queued")],
+            vec![(None, "unmatched"), (Some("a".into()), "queued")],
         );
         assert_eq!(
             rows,
             vec![
-                StorageInspectorFile::Upload { upload: "cover" },
+                StorageInspectorFile::Upload {
+                    upload: "unmatched"
+                },
                 StorageInspectorFile::Upload { upload: "queued" },
             ]
         );

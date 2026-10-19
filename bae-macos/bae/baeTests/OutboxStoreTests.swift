@@ -90,7 +90,7 @@ struct CloudImportQueuePresentationTests {
             throughputBps: 3_200_000
         )
 
-        #expect(observation.progressBar.fraction == 0.32)
+        #expect(observation.progressBar?.fraction == 0.32)
         #expect(
             observation.throughputText
                 == QueueSummary.throughputText(bytesPerSecond: 3_200_000)
@@ -162,6 +162,29 @@ struct CloudImportQueuePresentationTests {
             UploadObservation.active(progress).progressBar
                 == .determinate(0.25)
         )
+    }
+
+    /// Queued files nothing is moving, as with no storage connected, would
+    /// otherwise draw a bar that never ends.
+    @Test("files that are only waiting draw no bar")
+    func waitingFilesDrawNoBar() {
+        var progress = OutboxStore.emptySnapshot.total
+        progress.queued = 2
+        progress.activity = .queued
+
+        #expect(UploadObservation.active(progress).progressBar == nil)
+        #expect(
+            UploadObservation.active(progress).statusText
+                == QueueSummary.countLabel("core.queue.queued", 2)
+        )
+        #expect(
+            StorageUploadObservation.active(
+                progress: progress,
+                throughputBps: 0
+            )
+            .progressBar == nil
+        )
+        #expect(StorageUploadObservation.queueing.progressBar == .indeterminate)
     }
 }
 

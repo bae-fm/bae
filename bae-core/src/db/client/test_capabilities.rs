@@ -72,7 +72,7 @@ impl Database {
             .await?
             .uploads
             .into_iter()
-            .filter(|entry| entry.release_id.as_deref() == Some(root_id))
+            .filter(|entry| entry.subject.release() == Some(root_id))
             .map(|entry| {
                 Ok((
                     entry.upload.file.table().to_string(),

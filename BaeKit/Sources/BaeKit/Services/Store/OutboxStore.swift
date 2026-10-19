@@ -247,15 +247,16 @@ public enum UploadObservation: Equatable {
         }
     }
 
-    /// Whether the transition has work with no phase counting bytes for it
-    /// yet, or exact progress through the phase it is in.
-    public var progressBar: CloudTransitionProgress {
+    /// The bar the transition draws: exact progress through the phase
+    /// counting bytes, or an indeterminate one while the queue's first value
+    /// is awaited. Files that are only waiting draw none: nothing is moving
+    /// them, and with no storage connected nothing will until one is.
+    public var progressBar: CloudTransitionProgress? {
         switch self {
         case .awaiting:
             return .indeterminate
         case .active(let progress):
             return progress.bar.map { .determinate($0.fraction) }
-                ?? .indeterminate
         }
     }
 }
@@ -310,13 +311,15 @@ public enum StorageUploadObservation: Equatable {
         }
     }
 
-    public var progressBar: CloudTransitionProgress {
+    /// The bar the transition draws: indeterminate while the command hands
+    /// off, exact progress through the phase counting bytes, and none for
+    /// files that are only waiting (see `UploadObservation.progressBar`).
+    public var progressBar: CloudTransitionProgress? {
         switch self {
         case .queueing, .awaiting:
             return .indeterminate
         case .active(let progress, _):
             return progress.bar.map { .determinate($0.fraction) }
-                ?? .indeterminate
         }
     }
 

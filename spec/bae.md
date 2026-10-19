@@ -750,6 +750,13 @@ knows what the household owns, and a rating or playlist entry pointing at a
 local release's track points at a row every device can read
 ([coven §15.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#153-references-stay-readable)).
 
+A local release's cover still uploads, so other devices can show it. coven
+queues it as soon as the cover row is written, with or without storage
+connected. That upload is bae's own file, not the release's: until its audio is
+attached the release reads as local everywhere, and nothing about it reads as
+uploading. Waiting files draw no progress bar; a bar appears only while a
+file's bytes are moving.
+
 **Uploading attaches the audio.** Moving a release to the cloud attaches every
 one of its files in one write, and the same write removes their
 `local_release_files` rows. A release is never half attached. Before that

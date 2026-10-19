@@ -324,10 +324,9 @@ pub struct DbOutboxQueue {
     pub uploads: Vec<DbOutboxUpload>,
 }
 
-/// One queued file and its label. Artist images have no release parent.
+/// One queued file and what it is.
 #[derive(Debug, Clone)]
 pub struct DbOutboxUpload {
-    pub release_id: Option<String>,
     pub upload: coven::QueuedUpload,
-    pub label: crate::library::UploadFileLabel,
+    pub subject: crate::library::UploadSubject,
 }

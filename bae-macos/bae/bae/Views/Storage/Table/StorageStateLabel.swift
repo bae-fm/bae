@@ -21,15 +21,21 @@ struct StorageStateLabel: View {
         ) {
             switch observation {
             case .active(let progress, _):
-                ProgressLine(
-                    progress: observation.progressBar.fraction,
-                    detail: observation.throughputText
-                ) {
+                if let bar = observation.progressBar {
+                    ProgressLine(
+                        progress: bar.fraction,
+                        detail: observation.throughputText
+                    ) {
+                        UploadActivityLabel(progress: progress)
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(observation.transitionStatusText)
+                    .accessibilityValue(observation.throughputText ?? "")
+                }
+                else {
+                    // Files only waiting: nothing is moving to measure.
                     UploadActivityLabel(progress: progress)
                 }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(observation.transitionStatusText)
-                .accessibilityValue(observation.throughputText ?? "")
             case .queueing, .awaiting:
                 StatusChip(
                     verbatim: observation.transitionStatusText,

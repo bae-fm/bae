@@ -44,7 +44,7 @@ pub use local_lifecycle::{
 pub use manager::*;
 pub use outbox_snapshot::{
     OutboxPauseState, OutboxSnapshot, UploadActivity, UploadBar, UploadFileLabel, UploadFileOp,
-    UploadProgress, UploadReleaseGroup, UploadState,
+    UploadProgress, UploadReleaseGroup, UploadState, UploadSubject,
 };
 pub use output_snapshot::{
     OutputKind, OutputOp, OutputProgress, OutputQueueContents, OutputRow, OutputSnapshot,

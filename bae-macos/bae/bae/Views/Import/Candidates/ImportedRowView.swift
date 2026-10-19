@@ -78,11 +78,18 @@ private struct ImportedReleaseRowView: View {
                 EmptyView()
             case nil:
                 if let uploadObservation {
-                    ProgressLine(
-                        uploadObservation.phaseText,
-                        progress: uploadObservation.progressBar.fraction
-                    )
-                    .themeText(.detail)
+                    if let bar = uploadObservation.progressBar {
+                        ProgressLine(
+                            uploadObservation.phaseText,
+                            progress: bar.fraction
+                        )
+                        .themeText(.detail)
+                    }
+                    else {
+                        Text(verbatim: uploadObservation.statusText)
+                            .themeText(.detail)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }

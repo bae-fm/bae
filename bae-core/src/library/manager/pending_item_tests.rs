@@ -38,33 +38,34 @@ fn subjects_name_what_they_are_before_a_library_opens() {
 /// it is a file of a deleted release, never a name made up for it.
 #[test]
 fn an_upload_is_named_by_its_release_while_the_release_exists() {
+    let track = || UploadSubject::ReleaseFile {
+        release_id: "release".into(),
+        name: "01 Track.flac".into(),
+    };
+    let cover = || UploadSubject::Cover {
+        release_id: "release".into(),
+    };
     assert_eq!(
-        upload_name(
-            UploadFileLabel::Filename("01 Track.flac".into()),
-            Some("Album Title".into())
-        ),
+        upload_name(track(), Some("Album Title".into())),
         PendingSubjectName::ReleaseFile {
             file_name: "01 Track.flac".into(),
             album_title: "Album Title".into(),
         }
     );
     assert_eq!(
-        upload_name(UploadFileLabel::Cover, Some("Album Title".into())),
+        upload_name(cover(), Some("Album Title".into())),
         PendingSubjectName::Cover {
             album_title: "Album Title".into()
         }
     );
-    for label in [
-        UploadFileLabel::Filename("01 Track.flac".into()),
-        UploadFileLabel::Cover,
-    ] {
+    for subject in [track(), cover()] {
         assert_eq!(
-            upload_name(label, None),
+            upload_name(subject, None),
             PendingSubjectName::DeletedReleaseFile
         );
     }
     assert_eq!(
-        upload_name(UploadFileLabel::ArtistImage, None),
+        upload_name(UploadSubject::ArtistImage, None),
         PendingSubjectName::ArtistImage
     );
 }

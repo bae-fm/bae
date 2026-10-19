@@ -23,13 +23,20 @@ struct StorageStatusBand: View {
             // A cloud transition in flight is the release's storage state
             // while it runs: its phase, bar, and count are one line.
             if let observation = uploadObservation {
-                ProgressLine(
-                    progress: observation.progressBar.fraction,
-                    detail: observation.progressDetailText
-                ) {
-                    uploadLabel(observation)
+                if let bar = observation.progressBar {
+                    ProgressLine(
+                        progress: bar.fraction,
+                        detail: observation.progressDetailText
+                    ) {
+                        uploadLabel(observation)
+                    }
+                    .themeText(.body)
                 }
-                .themeText(.body)
+                else {
+                    // Files only waiting: nothing is moving to measure.
+                    uploadLabel(observation)
+                        .themeText(.body)
+                }
             }
             else {
                 storageStatus

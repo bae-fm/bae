@@ -56,15 +56,15 @@ async fn queued_files() -> (
     (handle, directory, files)
 }
 
-fn labelled(
-    upload: coven::QueuedUpload,
-    release: Option<&str>,
-    label: UploadFileLabel,
-) -> DbOutboxUpload {
-    DbOutboxUpload {
-        upload,
-        release_id: release.map(str::to_string),
-        label,
+fn queued(upload: coven::QueuedUpload, subject: UploadSubject) -> DbOutboxUpload {
+    DbOutboxUpload { upload, subject }
+}
+
+/// One of `release`'s own files, named `name`.
+fn release_file(release: &str, name: &str) -> UploadSubject {
+    UploadSubject::ReleaseFile {
+        release_id: release.into(),
+        name: name.into(),
     }
 }
 
@@ -112,8 +112,10 @@ fn progress_cannot_exceed_its_denominator() {
     });
 }
 
+/// A release's own files group under it, sorted naturally; its cover, which
+/// uploads whether or not the release does, waits among the other files.
 #[tokio::test]
-async fn files_group_by_release_and_sort_naturally_with_artwork_first() {
+async fn release_files_group_by_release_and_its_cover_waits_apart() {
     let (handle, _directory, files) = queued_files().await;
     let mut uploads = Vec::new();
     let audio = files
@@ -125,20 +127,17 @@ async fn files_group_by_release_and_sort_naturally_with_artwork_first() {
         .into_iter()
         .zip(["Disc 1/18 Track.flac", "disc 1/05 Track.flac"])
     {
-        uploads.push(labelled(
-            file,
-            Some("release"),
-            UploadFileLabel::Filename(name.into()),
-        ));
+        uploads.push(queued(file, release_file("release", name)));
     }
-    uploads.push(labelled(
+    uploads.push(queued(
         files
             .iter()
             .find(|file| file.file.table() == "covers")
             .unwrap()
             .clone(),
-        Some("release"),
-        UploadFileLabel::Cover,
+        UploadSubject::Cover {
+            release_id: "release".into(),
+        },
     ));
     let snapshot = OutboxSnapshot::from_queue(
         DbOutboxQueue {
@@ -155,12 +154,23 @@ async fn files_group_by_release_and_sort_naturally_with_artwork_first() {
             .map(|file| file.label.clone())
             .collect::<Vec<_>>(),
         vec![
-            UploadFileLabel::Cover,
             UploadFileLabel::Filename("disc 1/05 Track.flac".into()),
             UploadFileLabel::Filename("Disc 1/18 Track.flac".into())
         ]
     );
-    assert_eq!(snapshot.total.queued, 3);
+    assert_eq!(snapshot.upload_groups[0].progress.queued, 2);
+    assert_eq!(
+        snapshot
+            .other_files
+            .iter()
+            .map(|file| file.label.clone())
+            .collect::<Vec<_>>(),
+        vec![UploadFileLabel::Cover]
+    );
+    assert_eq!(
+        snapshot.total.queued, 3,
+        "the cover still counts in the queue"
+    );
     assert_eq!(snapshot.total.upload_bytes_total, 0);
     assert_eq!(snapshot.total.bar(), None);
     handle.close().await.unwrap();
@@ -179,13 +189,7 @@ async fn provider_bytes_and_file_bytes_stay_distinct() {
     };
     let uploads = audio
         .into_iter()
-        .map(|file| {
-            labelled(
-                file,
-                Some("release"),
-                UploadFileLabel::Filename("Track.flac".into()),
-            )
-        })
+        .map(|file| queued(file, release_file("release", "Track.flac")))
         .collect();
     let snapshot = OutboxSnapshot::from_queue(
         DbOutboxQueue {
@@ -226,15 +230,14 @@ async fn rates_belong_to_exact_files_and_pausing_removes_rates_and_eta() {
             bytes_confirmed: 100,
             bytes_total: 111,
         };
-        let (release, label) = match file.file.table() {
-            "covers" => (Some("first"), UploadFileLabel::Cover),
-            "artist_images" => (None, UploadFileLabel::ArtistImage),
-            _ => (
-                Some("second"),
-                UploadFileLabel::Filename("Track.flac".into()),
-            ),
+        let subject = match file.file.table() {
+            "covers" => UploadSubject::Cover {
+                release_id: "first".into(),
+            },
+            "artist_images" => UploadSubject::ArtistImage,
+            _ => release_file("second", "Track.flac"),
         };
-        uploads.push(labelled(file, release, label));
+        uploads.push(queued(file, subject));
     }
     for paused in [false, true] {
         let snapshot = OutboxSnapshot::from_queue(
@@ -244,8 +247,12 @@ async fn rates_belong_to_exact_files_and_pausing_removes_rates_and_eta() {
             },
             &rates,
         );
-        assert_eq!(snapshot.other_files.len(), 1);
-        assert_eq!(snapshot.upload_groups.len(), 2);
+        assert_eq!(
+            snapshot.other_files.len(),
+            2,
+            "the cover and the artist image"
+        );
+        assert_eq!(snapshot.upload_groups.len(), 1);
         assert_eq!(snapshot.total.uploading, 4, "artist images also count");
         assert_eq!(
             snapshot.pause_state,
@@ -327,16 +334,19 @@ async fn display_names_join_by_table_and_row_while_rates_use_object_identity() {
         release.files[2].label,
         UploadFileLabel::Filename("Renamed.flac".into())
     );
-    let cover = snapshot
-        .upload_groups
-        .iter()
-        .find(|group| group.release_id == "first")
-        .unwrap();
-    assert_eq!(cover.files[0].label, UploadFileLabel::Cover);
-    assert_ne!(
-        cover.files[0].upload.file.id(),
-        release.files[0].upload.file.id()
+    assert!(
+        !snapshot
+            .upload_groups
+            .iter()
+            .any(|group| group.release_id == "first"),
+        "a cover alone is no release uploading"
     );
+    let cover = snapshot
+        .other_files
+        .iter()
+        .find(|file| file.label == UploadFileLabel::Cover)
+        .unwrap();
+    assert_ne!(cover.upload.file.id(), release.files[0].upload.file.id());
     let rows = crate::library::storage_inspector::storage_inspector_release_files(
         "release",
         vec![
@@ -396,11 +406,7 @@ async fn pending_reasons_belong_to_the_exact_uploading_device_and_file() {
     let snapshot = OutboxSnapshot::from_queue(
         DbOutboxQueue {
             paused: true,
-            uploads: vec![labelled(
-                upload,
-                Some("release"),
-                UploadFileLabel::Filename("Track.flac".into()),
-            )],
+            uploads: vec![queued(upload, release_file("release", "Track.flac"))],
         },
         &HashMap::new(),
     )
@@ -431,11 +437,7 @@ async fn uploading(
                 bytes_total: total,
             };
             rates.insert(file.file.id(), rate);
-            labelled(
-                file,
-                Some("release"),
-                UploadFileLabel::Filename("Track.flac".into()),
-            )
+            queued(file, release_file("release", "Track.flac"))
         })
         .collect();
     let snapshot = OutboxSnapshot::from_queue(
@@ -484,11 +486,7 @@ async fn queue_eta_is_hidden_while_a_file_waits_for_its_provider_size() {
                 };
                 rates.insert(file.file.id(), 20);
             }
-            labelled(
-                file,
-                Some("release"),
-                UploadFileLabel::Filename("Track.flac".into()),
-            )
+            queued(file, release_file("release", "Track.flac"))
         })
         .collect();
     let snapshot = OutboxSnapshot::from_queue(

@@ -15,30 +15,55 @@ pub enum UploadFileLabel {
     DeletedReleaseFile,
 }
 
-impl UploadFileLabel {
-    /// The order a release's files are listed in: the release's own artwork
-    /// leads, then the files by name. The artwork's name is localized by each
-    /// platform and core has no locale to sort it by, so its place is fixed;
-    /// the filenames sort the way every other list of names in the app does,
-    /// naturally and ignoring case, so "Disc 1/05" precedes "Disc 1/18".
-    fn display_order(&self, other: &Self) -> std::cmp::Ordering {
-        fn rank(label: &UploadFileLabel) -> u8 {
-            match label {
-                UploadFileLabel::Cover => 0,
-                UploadFileLabel::ArtistImage | UploadFileLabel::Avatar => 1,
-                UploadFileLabel::Filename(_) => 2,
-                // Nameless, so there is nothing to sort it among the names by.
-                UploadFileLabel::DeletedReleaseFile => 3,
+/// What one queued upload is, read from the table that declares its file.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UploadSubject {
+    /// One of a release's own files, attached when the person moved the
+    /// release to the cloud: its upload is the release's.
+    ReleaseFile {
+        release_id: String,
+        name: String,
+    },
+    /// A release's cover. It is bae's own image, which coven queues whenever
+    /// the cover row changes, a local release's included, so it is never the
+    /// release uploading.
+    Cover {
+        release_id: String,
+    },
+    ArtistImage,
+    Avatar,
+    /// A committed upload whose release-file row was deleted.
+    DeletedReleaseFile,
+}
+
+impl UploadSubject {
+    /// The release this upload moves to the cloud: the release of one of its
+    /// own files, and nothing else.
+    pub fn uploading_release(&self) -> Option<&str> {
+        match self {
+            Self::ReleaseFile { release_id, .. } => Some(release_id),
+            Self::Cover { .. } | Self::ArtistImage | Self::Avatar | Self::DeletedReleaseFile => {
+                None
             }
         }
-        rank(self)
-            .cmp(&rank(other))
-            .then_with(|| match (self, other) {
-                (Self::Filename(left), Self::Filename(right)) => {
-                    natord::compare_ignore_case(left, right)
-                }
-                _ => std::cmp::Ordering::Equal,
-            })
+    }
+
+    /// The release the uploaded file belongs to, which names it.
+    pub fn release(&self) -> Option<&str> {
+        match self {
+            Self::ReleaseFile { release_id, .. } | Self::Cover { release_id } => Some(release_id),
+            Self::ArtistImage | Self::Avatar | Self::DeletedReleaseFile => None,
+        }
+    }
+
+    pub fn label(&self) -> UploadFileLabel {
+        match self {
+            Self::ReleaseFile { name, .. } => UploadFileLabel::Filename(name.clone()),
+            Self::Cover { .. } => UploadFileLabel::Cover,
+            Self::ArtistImage => UploadFileLabel::ArtistImage,
+            Self::Avatar => UploadFileLabel::Avatar,
+            Self::DeletedReleaseFile => UploadFileLabel::DeletedReleaseFile,
+        }
     }
 }
 
@@ -155,7 +180,9 @@ pub struct ReleaseUploadProgress {
 pub struct OutboxSnapshot {
     pub revision: u64,
     pub upload_groups: Vec<UploadReleaseGroup>,
-    /// Images without a release, and uploads whose release rows were deleted.
+    /// The library's images (covers, artist images, avatars), which upload
+    /// whether or not any release does, and uploads whose release-file rows
+    /// were deleted.
     pub other_files: Vec<UploadFileOp>,
     pub total: UploadProgress,
     pub pause_state: OutboxPauseState,
@@ -215,6 +242,8 @@ impl OutboxSnapshot {
             ..Self::default()
         };
         let mut indices = HashMap::new();
+        // Each release's files beside the names they sort by.
+        let mut named_files: Vec<Vec<(String, UploadFileOp)>> = Vec::new();
         for entry in queue.uploads {
             let file = &entry.upload.file;
             let throughput_bps = if queue.paused {
@@ -225,7 +254,7 @@ impl OutboxSnapshot {
             let op = UploadFileOp {
                 upload: entry.upload,
                 pending: None,
-                label: entry.label,
+                label: entry.subject.label(),
                 throughput_bps,
             };
             snapshot.total.add(op.upload.phase);
@@ -233,31 +262,38 @@ impl OutboxSnapshot {
                 .throughput_bps
                 .checked_add(throughput_bps)
                 .expect("upload rate overflow");
-            if let Some(release_id) = entry.release_id {
-                let index = *indices.entry(release_id.clone()).or_insert_with(|| {
-                    snapshot.upload_groups.push(UploadReleaseGroup {
-                        release_id,
-                        files: Vec::new(),
-                        progress: UploadProgress::default(),
-                        throughput_bps: 0,
+            match entry.subject {
+                UploadSubject::ReleaseFile { release_id, name } => {
+                    let index = *indices.entry(release_id.clone()).or_insert_with(|| {
+                        snapshot.upload_groups.push(UploadReleaseGroup {
+                            release_id,
+                            files: Vec::new(),
+                            progress: UploadProgress::default(),
+                            throughput_bps: 0,
+                        });
+                        named_files.push(Vec::new());
+                        snapshot.upload_groups.len() - 1
                     });
-                    snapshot.upload_groups.len() - 1
-                });
-                let group = &mut snapshot.upload_groups[index];
-                group.progress.add(op.upload.phase);
-                group.throughput_bps = group
-                    .throughput_bps
-                    .checked_add(throughput_bps)
-                    .expect("upload rate overflow");
-                group.files.push(op);
-            } else {
-                snapshot.other_files.push(op);
+                    let group = &mut snapshot.upload_groups[index];
+                    group.progress.add(op.upload.phase);
+                    group.throughput_bps = group
+                        .throughput_bps
+                        .checked_add(throughput_bps)
+                        .expect("upload rate overflow");
+                    named_files[index].push((name, op));
+                }
+                UploadSubject::Cover { .. }
+                | UploadSubject::ArtistImage
+                | UploadSubject::Avatar
+                | UploadSubject::DeletedReleaseFile => snapshot.other_files.push(op),
             }
         }
-        for group in &mut snapshot.upload_groups {
-            group
-                .files
-                .sort_by(|left, right| left.label.display_order(&right.label));
+        // A release's files are listed the way every other list of names in
+        // the app sorts, naturally and ignoring case, so "Disc 1/05" precedes
+        // "Disc 1/18".
+        for (group, mut files) in snapshot.upload_groups.iter_mut().zip(named_files) {
+            files.sort_by(|(left, _), (right, _)| natord::compare_ignore_case(left, right));
+            group.files = files.into_iter().map(|(_, op)| op).collect();
         }
         let remaining = snapshot.total.upload_bytes_total - snapshot.total.upload_bytes_done;
         if snapshot.total.queued == 0 && remaining > 0 && snapshot.throughput_bps > 0 {

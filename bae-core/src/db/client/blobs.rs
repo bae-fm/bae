@@ -233,15 +233,16 @@ impl Database {
             }))
     }
 
-    /// Release ids in upload queue order; image uploads without a release remain
-    /// visible in the queue but do not enter the release storage filter.
+    /// The releases whose own files are queued, in upload queue order. Image
+    /// uploads, a release's cover among them, remain visible in the queue but
+    /// are no release uploading.
     pub async fn uploading_releases(&self) -> Result<Vec<String>, DbError> {
         let queue = self.outbox_queue().await?;
         let mut seen = HashSet::new();
         Ok(queue
             .uploads
             .into_iter()
-            .filter_map(|entry| entry.release_id)
+            .filter_map(|entry| entry.subject.uploading_release().map(str::to_string))
             .filter(|id| seen.insert(id.clone()))
             .collect())
     }
@@ -336,28 +337,27 @@ impl Database {
         let mut uploads = Vec::with_capacity(snapshot.files.len());
         for upload in snapshot.files {
             let id = file_row_id(&upload.file)?;
-            let (release_id, label) = match upload.file.table() {
+            use crate::library::UploadSubject;
+            let subject = match upload.file.table() {
                 "release_files" => match context.file_names.get(id) {
-                    Some((release, name)) => (
-                        Some(release.clone()),
-                        crate::library::UploadFileLabel::Filename(name.clone()),
-                    ),
-                    None => (None, crate::library::UploadFileLabel::DeletedReleaseFile),
+                    Some((release_id, name)) => UploadSubject::ReleaseFile {
+                        release_id: release_id.clone(),
+                        name: name.clone(),
+                    },
+                    None => UploadSubject::DeletedReleaseFile,
                 },
-                "covers" => (Some(id.to_string()), crate::library::UploadFileLabel::Cover),
-                "artist_images" => (None, crate::library::UploadFileLabel::ArtistImage),
-                "people" => (None, crate::library::UploadFileLabel::Avatar),
+                "covers" => UploadSubject::Cover {
+                    release_id: id.to_string(),
+                },
+                "artist_images" => UploadSubject::ArtistImage,
+                "people" => UploadSubject::Avatar,
                 table => {
                     return Err(DbError::Message(format!(
                         "upload names undeclared file table {table:?}"
                     )))
                 }
             };
-            uploads.push(DbOutboxUpload {
-                release_id,
-                upload,
-                label,
-            });
+            uploads.push(DbOutboxUpload { upload, subject });
         }
         Ok(DbOutboxQueue {
             paused: snapshot.paused,

@@ -102,3 +102,63 @@ async fn import_outcome(f: &ImportFixture, key: &str) -> bae_core::import::Impor
         outcome => outcome,
     }
 }
+
+/// A local import's cover is bae's own image, which coven queues for upload
+/// even with no storage connected. It is not the release uploading: with
+/// several local releases imported and nothing connected, no release has an
+/// upload, none sorts or filters as uploading, and the covers wait among the
+/// library's other files.
+#[tokio::test]
+async fn a_local_import_s_queued_cover_is_not_its_release_uploading() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    let collection = f.temp_path().join("Collection");
+    let mut release_ids = Vec::new();
+    for title in ["Album One", "Album Two", "Album Three"] {
+        let album = collection.join(format!("Artist - {title}"));
+        fs::create_dir_all(&album).unwrap();
+        generate_tagged_album_files_with_embedded_cover(
+            &album,
+            title,
+            "Artist",
+            &[TaggedTrack {
+                filename: "01 Track.flac",
+                title: "Track",
+                track_number: 1,
+            }],
+        );
+        let (id, _) = import_folder(
+            &f,
+            &album,
+            None,
+            ImportDestination::Local,
+            support::DraftSource::FileTags,
+        )
+        .await
+        .expect("a local import commits with no storage connected");
+        assert!(
+            f.db.cover_version(&id).await.unwrap().is_some(),
+            "the import stores the embedded cover"
+        );
+        release_ids.push(id);
+    }
+
+    let outbox = f.library_manager.outbox_snapshot().await.unwrap();
+    assert!(
+        outbox.upload_groups.is_empty(),
+        "no release is uploading: {:?}",
+        outbox.upload_groups
+    );
+    assert!(outbox.per_release_progress().is_empty());
+    assert!(bae_core::import::list::UploadStanding::of_outbox(&outbox).is_empty());
+    assert_eq!(
+        outbox
+            .other_files
+            .iter()
+            .filter(|file| file.label == bae_core::library::UploadFileLabel::Cover)
+            .count(),
+        release_ids.len(),
+        "each cover waits among the library's other files"
+    );
+    assert!(f.db.uploading_releases().await.unwrap().is_empty());
+}
