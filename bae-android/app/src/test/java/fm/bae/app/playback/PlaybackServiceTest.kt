@@ -2,7 +2,6 @@ package fm.bae.app.playback
 
 import android.os.Looper
 import androidx.media3.common.Player
-import fm.bae.app.AppSessionHolder
 import fm.bae.app.BridgeFixtures
 import fm.bae.app.OpenLibrary
 import fm.bae.app.data.ArtworkLoadingStore
@@ -18,15 +17,16 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.android.controller.ServiceController
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AlbumBrowseSubscription
 import uniffi.bae_bridge.AlbumDetailSubscription
@@ -75,19 +75,13 @@ import uniffi.bae_bridge.WorkDetailSubscription
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class PlaybackServiceTest {
-    @After
-    fun tearDown() {
-        setCurrentSession(null)
-    }
-
     @Test
     fun onCreateAddsMediaSessionForPlaybackPlayer() {
         val context = RuntimeEnvironment.getApplication()
         val looper = Looper.getMainLooper()
         val session = openLibrary(context, looper)
-        setCurrentSession(session)
 
-        val controller = Robolectric.buildService(PlaybackService::class.java).create()
+        val controller = playbackService(session).create()
         val service = controller.get()
 
         assertEquals(1, service.sessions.size)
@@ -97,13 +91,20 @@ class PlaybackServiceTest {
     }
 
     @Test
+    fun serviceTheSystemCreatesWithNoLibraryOpenStopsItself() {
+        val service = Robolectric.buildService(PlaybackService::class.java).create().get()
+
+        assertEquals(0, service.sessions.size)
+        assertTrue(shadowOf(service).isStoppedBySelf)
+    }
+
+    @Test
     fun destroyingTheServiceDoesNotReleaseThePlayer() {
         val context = RuntimeEnvironment.getApplication()
         val looper = Looper.getMainLooper()
         val session = openLibrary(context, looper)
-        setCurrentSession(session)
 
-        Robolectric.buildService(PlaybackService::class.java).create().destroy()
+        playbackService(session).create().destroy()
 
         // The player is owned by OpenLibrary and must outlive the service: the
         // service can stop and restart (a fresh session over the same player) or
@@ -171,11 +172,9 @@ class PlaybackServiceTest {
         )
     }
 
-    private fun setCurrentSession(session: OpenLibrary?) {
-        val field = AppSessionHolder::class.java.getDeclaredField("current")
-        field.isAccessible = true
-        field.set(AppSessionHolder, session)
-    }
+    /** The service over [session], driven through the lifecycle the system gives it. */
+    private fun playbackService(session: OpenLibrary): ServiceController<PlaybackService> =
+        ServiceController.of(PlaybackService { session }, null)
 }
 
 internal class FakeAppHandle(

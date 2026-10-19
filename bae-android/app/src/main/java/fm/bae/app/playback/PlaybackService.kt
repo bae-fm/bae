@@ -5,6 +5,7 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BaeLogger
+import fm.bae.app.OpenLibrary
 import fm.bae.app.mainActivityIntent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,11 +31,17 @@ private const val SESSION_ACTIVITY_REQUEST_CODE = 1
  *
  * The player itself is a pure projection of bae-core's playback state and is
  * owned by the open [fm.bae.app.OpenLibrary] (where the bridge handle, library,
- * and event subscription live). The service reads it from the session holder so
- * there's a single player instance: the in-app UI, the OS media controls, the
- * browse tree, and the core event stream all drive the same one.
+ * and event subscription live). The service reads it from [openSession] — the
+ * session holder's, when the system creates the service — so there's a single
+ * player instance: the in-app UI, the OS media controls, the browse tree, and
+ * the core event stream all drive the same one.
  */
-class PlaybackService : MediaLibraryService() {
+class PlaybackService(
+    private val openSession: () -> OpenLibrary?,
+) : MediaLibraryService() {
+    /** The constructor the system creates the service with. */
+    constructor() : this(AppSessionHolder::currentSession)
+
     private var mediaSession: MediaLibrarySession? = null
     private var browseTree: LibraryBrowseTree<MediaSession.ControllerInfo>? = null
 
@@ -44,7 +51,7 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onCreate() {
         super.onCreate()
-        val open = AppSessionHolder.currentSession()
+        val open = openSession()
         val player = open?.playback
         if (open == null || player == null) {
             // PlaybackSystemHooks starts this service once playback begins; a

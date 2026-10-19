@@ -1,13 +1,12 @@
 package fm.bae.app.ui.playback
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableSharedFlow
+import android.app.Activity
+import android.view.ViewGroup
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotSame
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
@@ -81,46 +80,43 @@ class PlaybackProgressViewTest {
     }
 
     @Test
-    fun rebindCancelsPreviousPositionScope() {
+    fun rebindStopsShowingThePreviousPositions() {
         val view = PlaybackProgressView(RuntimeEnvironment.getApplication())
-        val firstState = MutableSharedFlow<SeekBarState>()
-        val secondState = MutableSharedFlow<SeekBarState>()
+        val firstState = MutableStateFlow(SeekBarState(0.10, "0:10", "4:00"))
+        val secondState = MutableStateFlow(SeekBarState(0.50, "2:00", "4:00"))
 
         view.bind(firstState, onSeekRatio = {}, onToggleRemaining = {})
-        val firstScopeJob = view.positionScopeJob()
-
+        ShadowLooper.idleMainLooper()
         view.bind(secondState, onSeekRatio = {}, onToggleRemaining = {})
-        val secondScopeJob = view.positionScopeJob()
+        ShadowLooper.idleMainLooper()
 
-        assertEquals(false, firstScopeJob?.isActive)
-        assertEquals(true, secondScopeJob?.isActive)
-        assertNotSame(firstScopeJob, secondScopeJob)
+        firstState.value = SeekBarState(0.20, "0:20", "4:00")
+        ShadowLooper.idleMainLooper()
+
+        assertEquals(0, firstState.subscriptionCount.value)
+        assertEquals("2:00", view.leadingTextView.text.toString())
+        assertEquals(5_000, view.seekBar.progress)
+
+        secondState.value = SeekBarState(0.75, "3:00", "4:00")
+        ShadowLooper.idleMainLooper()
+
+        assertEquals("3:00", view.leadingTextView.text.toString())
+        assertEquals(7_500, view.seekBar.progress)
     }
 
     @Test
-    fun detachCancelsPositionScope() {
-        val view = PlaybackProgressView(RuntimeEnvironment.getApplication())
-        val state = MutableSharedFlow<SeekBarState>()
-
+    fun leavingTheWindowStopsCollectingPositions() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val view = PlaybackProgressView(activity)
+        val state = MutableStateFlow(SeekBarState(0.10, "0:10", "4:00"))
+        activity.setContentView(view)
         view.bind(state, onSeekRatio = {}, onToggleRemaining = {})
-        val scopeJob = view.positionScopeJob()
+        ShadowLooper.idleMainLooper()
+        assertEquals(1, state.subscriptionCount.value)
 
-        view.detachFromWindow()
+        (view.parent as ViewGroup).removeView(view)
+        ShadowLooper.idleMainLooper()
 
-        assertEquals(false, scopeJob?.isActive)
-        assertEquals(null, view.positionScopeJob())
-    }
-
-    private fun PlaybackProgressView.positionScopeJob(): Job? {
-        val field = PlaybackProgressView::class.java.getDeclaredField("positionScope")
-        field.isAccessible = true
-        val scope = field.get(this) as CoroutineScope?
-        return scope?.coroutineContext?.get(Job)
-    }
-
-    private fun PlaybackProgressView.detachFromWindow() {
-        val method = PlaybackProgressView::class.java.getDeclaredMethod("onDetachedFromWindow")
-        method.isAccessible = true
-        method.invoke(this)
+        assertEquals(0, state.subscriptionCount.value)
     }
 }
