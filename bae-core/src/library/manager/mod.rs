@@ -112,7 +112,8 @@ mod storage;
 mod sync;
 mod sync_status;
 use error_category::{
-    blob_category, cloud_home_category, cloud_setup_category, cloud_unlock_category, sync_category,
+    blob_category, cloud_home_category, cloud_setup_category, cloud_unlock_category, key_category,
+    sync_category,
 };
 pub(crate) use error_category::{bootstrap_category, creation_category, deletion_category};
 mod track;
@@ -294,13 +295,7 @@ impl LibraryError {
         match self {
             LibraryError::Database(_) => C::Database,
             LibraryError::Config(_) | LibraryError::Validation(_) => C::Config,
-            // A keychain that refused this second is not a broken keyring. It
-            // is the one keyring failure a host should wait out, so it keeps
-            // its own class all the way to the UI.
-            LibraryError::Keyring(coven::KeyError::KeychainTemporarilyUnavailable(_)) => {
-                C::KeyringLocked
-            }
-            LibraryError::Keyring(_) => C::Keyring,
+            LibraryError::Keyring(error) => key_category(error),
             LibraryError::CloudHome(e) => cloud_home_category(e),
             LibraryError::CloudSetup(error) => cloud_setup_category(error),
             LibraryError::CloudUnlock(error) => cloud_unlock_category(error),

@@ -321,6 +321,8 @@ fn setup_failure_classes_retain_the_actionable_category() {
         (coven::SyncError::Storage(F::Network.into()).into(), C::Network),
         (coven::SyncError::NoStorage.into(), C::Config),
         (coven::SyncError::Removed.into(), C::DeviceRemoved),
+        (coven::KeyError::Left.into(), C::DeviceRemoved),
+        (coven::SyncError::SecureStorage(coven::KeyError::Left).into(), C::DeviceRemoved),
         (LibraryError::Storage("pin ended without completion".into()), C::Internal),
         (LibraryError::Validation("library name cannot be empty".into()), C::Config),
     ];

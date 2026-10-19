@@ -64,9 +64,15 @@ pub(super) fn sync_category(error: &coven::SyncError) -> C {
     }
 }
 
-fn key_category(error: &coven::KeyError) -> C {
+pub(super) fn key_category(error: &coven::KeyError) -> C {
     match error {
+        // A keychain that refused this second is not a broken keyring. It is
+        // the one keyring failure a host should wait out, so it keeps its own
+        // class all the way to the UI.
         coven::KeyError::KeychainTemporarilyUnavailable(_) => C::KeyringLocked,
+        // The person left the store, so coven refuses to write their synced
+        // restore code or S3 key again: the removal, not the keychain, failed it.
+        coven::KeyError::Left => C::DeviceRemoved,
         _ => C::Keyring,
     }
 }
