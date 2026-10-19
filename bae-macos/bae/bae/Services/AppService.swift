@@ -26,8 +26,8 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     /// gets a new `UiStore`.
     private let uiStore: UiStore
 
-    /// The focused receiver for menu commands that act on this library.
-    /// It holds the same service and store instances installed in the view tree.
+    /// What the main menu's commands for this library act through. It holds
+    /// the same service and store instances installed in the view tree.
     let mainAppMenuTarget: MainAppMenuTarget
 
     /// In-memory export queue mirror — per-release state and summary. The export

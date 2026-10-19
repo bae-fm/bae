@@ -71,7 +71,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Presents the welcome sheet over an open library.
     var showAddLibrarySheet: Bool = false
     /// Every library on this device, for the File → Open Library submenu.
-    var libraries: [BridgeLibrary] = []
+    var libraries: [BridgeLibrary] = [] {
+        didSet { openLibraryMenu.show(libraries) }
+    }
     /// The Rename Library sheet's state while it is open.
     var renameLibrarySheet: RenameLibrarySheetState?
     /// The shared open sequence; each open ends in an `Outcome` this delegate
@@ -145,6 +147,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var settingsWindow: HostingWindowController?
     @ObservationIgnored
     var storageManagerWindow: HostingWindowController?
+    /// The main menu's File ▸ Open Library.
+    @ObservationIgnored
+    let openLibraryMenu = OpenLibraryMenu()
+    /// The main menu's Edit ▸ Select All's target, which the item holds
+    /// weakly.
+    @ObservationIgnored
+    let selectAllTarget = SelectAllTarget()
 
     override convenience init() {
         self.init(runtime: AppRuntime(environment: baeAppProcessEnvironment))

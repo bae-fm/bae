@@ -1,10 +1,11 @@
 import BaeKit
+import Combine
 import SwiftUI
 
-extension FocusedValues {
-    /// Focus the key window's search field.
+extension EnvironmentValues {
+    /// View ▸ Search's requests to focus the window's search field.
     @Entry
-    var focusSearch: FocusedCommand?
+    var searchFocusRequests = PassthroughSubject<Void, Never>()
 }
 
 private let titleBarLeadingPadding: CGFloat = 80
@@ -22,11 +23,10 @@ struct TitleBar: View {
     /// Told the search field's frame in `SearchOverlaySpace` whenever it
     /// moves, so the search dropdown can hang under it.
     let onSearchFieldFrame: (CGRect) -> Void
+    @Environment(\.searchFocusRequests)
+    private var searchFocusRequests
     @FocusState
     private var searchFocused: Bool
-    /// View ▸ Search, offered to the menu bar.
-    @State
-    private var focusSearch = FocusedCommand()
     var body: some View {
         ZStack {
             SectionSegmentedControl(
@@ -103,8 +103,7 @@ struct TitleBar: View {
         .onDisappear {
             libraryProjections.deactivateSearch()
         }
-        .focusedSceneValue(\.focusSearch, focusSearch)
-        .onChange(of: focusSearch.sends) {
+        .onReceive(searchFocusRequests) {
             searchFocused = true
         }
         .onChange(of: uiStore.searchResults != nil) { _, hasResults in

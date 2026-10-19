@@ -211,9 +211,10 @@ struct ImportListSelectionTests {
         return PreviewData.candidateItem(row)
     }
 
-    /// Edit ▸ Select All and Command-A run the command the focused list
-    /// publishes, and the list's asks core for every row its view shows
-    /// rather than the table's loaded rows.
+    /// While the list has focus it offers the window its Select All, which
+    /// Edit ▸ Select All and Command-A run, and which asks core for every
+    /// row the list's view shows rather than selecting the table's loaded
+    /// rows; it takes the offer back once focus leaves.
     @MainActor
     @Test("the focused list's Select All asks core for every shown row")
     func focusedListSelectAllAsksCore() async throws {
@@ -230,44 +231,29 @@ struct ImportListSelectionTests {
                 operations: .stub(selectAll: { selectAlls.record($0) })
             )
         )
-        let focused = FocusedSelectAll()
+        let shownRowsSelectAll = ShownRowsSelectAll()
         let size = NSSize(width: 400, height: 320)
         try await SnapshotTestSupport.withHostedWindow(
             Self.selectableList(store: store, slot: slot, uiStore: uiStore)
-                .background { FocusedSelectAllReader(focused: focused) }
+                .environment(\.shownRowsSelectAll, shownRowsSelectAll)
                 .frame(width: size.width, height: size.height),
             size: size
         ) { window, host in
             try await SnapshotTestSupport.settle(host)
-            #expect(focused.selectAll == nil)
+            #expect(shownRowsSelectAll.offered == nil)
             let tableView = try Self.table(in: host)
             #expect(window.makeFirstResponder(tableView))
-            try await Wait.until { focused.selectAll != nil }
+            try await Wait.until { shownRowsSelectAll.offered != nil }
 
-            let selectAll = try #require(focused.selectAll)
-            selectAll.send()
+            let selectAll = try #require(shownRowsSelectAll.offered)
+            selectAll()
 
             try await Wait.until { !selectAlls.all.isEmpty }
             #expect(selectAlls.all.count == 1)
             #expect(tableView.selectedRowIndexes.isEmpty)
-        }
-    }
-}
 
-/// The Select All the focused view publishes, as the menu command reads it.
-@MainActor
-private final class FocusedSelectAll {
-    var selectAll: FocusedCommand?
-}
-
-private struct FocusedSelectAllReader: View {
-    let focused: FocusedSelectAll
-    @FocusedValue(\.selectAllShownRows)
-    private var selectAll
-
-    var body: some View {
-        Color.clear.onChange(of: selectAll == nil, initial: true) {
-            focused.selectAll = selectAll
+            #expect(window.makeFirstResponder(nil))
+            try await Wait.until { shownRowsSelectAll.offered == nil }
         }
     }
 }

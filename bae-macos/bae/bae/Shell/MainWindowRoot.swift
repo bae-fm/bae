@@ -1,10 +1,15 @@
 import BaeKit
+import Combine
 import SwiftUI
 
 /// The primary window's content. It changes content and content-driven size
 /// as the library opens and closes; the window itself is never replaced.
 struct MainWindowRoot: View {
     let appDelegate: AppDelegate
+    /// View ▸ Search, for the title bar's search field.
+    let searchFocusRequests: PassthroughSubject<Void, Never>
+    /// Edit ▸ Select All, for the import list.
+    let shownRowsSelectAll: ShownRowsSelectAll
 
     private var applicationServices: ApplicationServices {
         appDelegate.requiredApplicationServices
@@ -45,6 +50,8 @@ struct MainWindowRoot: View {
             \.openSettingsWindow,
             OpenSettingsWindowAction { appDelegate.showSettingsWindow(nil) }
         )
+        .environment(\.searchFocusRequests, searchFocusRequests)
+        .environment(\.shownRowsSelectAll, shownRowsSelectAll)
     }
 
     /// The welcome flow in the mode a menu item asked for, showing

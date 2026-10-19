@@ -58,6 +58,7 @@ nl	Releases
 nl	S3-compatible
 nl	Shuffle
 nl	Status
+nl	Transformations
 nl	Volume
 tr	Bucket
 tr	Disc ID

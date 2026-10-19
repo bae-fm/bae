@@ -8,9 +8,13 @@ extension AppDelegate {
     func showMainWindow() {
         let controller =
             mainWindow
-            ?? MainWindowController(appDelegate: self) { [weak self] in
-                self?.mainWindow = nil
-            }
+            ?? MainWindowController(
+                appDelegate: self,
+                library: { [unowned self] in
+                    self.hasShell ? self.appService?.mainAppMenuTarget : nil
+                },
+                onClose: { [weak self] in self?.mainWindow = nil }
+            )
         mainWindow = controller
         controller.showWindow(nil)
     }

@@ -276,11 +276,12 @@ struct ImportCandidateListContent: View {
     private var viewport = ImportCandidateListViewport()
     @State
     private var revealOperation: ImportCandidateRevealOperation?
-    /// Edit ▸ Select All while the list has focus, offered to the menu bar.
-    @State
-    private var selectAllShownRows = FocusedCommand()
     @FocusState
     private var filterFocused: Bool
+    @FocusState
+    private var listFocused: Bool
+    @Environment(\.shownRowsSelectAll)
+    private var shownRowsSelectAll
 
     private var filterTextBinding: Binding<String> {
         Binding(
@@ -503,18 +504,33 @@ struct ImportCandidateListContent: View {
     private func tabList(_ proxy: ScrollViewProxy) -> some View {
         if let list = listSlot.list {
             entryList(list, proxy: proxy)
-                // Select All covers every row the list shows, loaded or not.
-                .focusedValue(\.selectAllShownRows, selectAllShownRows)
-                .onChange(of: selectAllShownRows.sends) {
-                    cancelReveal()
-                    listSlot.selectAllShown()
+                // Edit ▸ Select All and Command-A cover every row the list
+                // shows while it has focus, loaded or not, rather than the
+                // rows its table holds.
+                .focused($listFocused)
+                .onChange(of: listFocused, initial: true) { _, focused in
+                    offerSelectAll(focused)
                 }
+                .onDisappear { offerSelectAll(false) }
         }
     }
 }
 
 /// The list itself.
 extension ImportCandidateListContent {
+    /// Offer the window's Select All while the list has focus, or take it
+    /// back.
+    private func offerSelectAll(_ focused: Bool) {
+        guard focused else {
+            shownRowsSelectAll?.offered = nil
+            return
+        }
+        shownRowsSelectAll?.offered = {
+            cancelReveal()
+            listSlot.selectAllShown()
+        }
+    }
+
     /// Rows over the paged list; each visible position holds its page.
     private func entryList(
         _ list: PaginatedList<BridgeImportListItem>,

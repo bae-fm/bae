@@ -1,9 +1,7 @@
 import SwiftUI
 
-/// One menu button per browser mode, the selected one checkmarked. The header
-/// heading dropdown and the View-menu commands share this list; they differ
-/// in where the selected mode is read from (the View menu reads it through
-/// `MenuBar`) and in what selecting a mode does, so both are passed in.
+/// One menu button per browser mode, the selected one checkmarked, for the
+/// header heading's dropdown.
 struct LibraryModeButtons: View {
     let selected: LibraryBrowserMode
     let select: (LibraryBrowserMode) -> Void
