@@ -1206,11 +1206,15 @@ online, offers nothing.
   closes the library and asks for the person's current restore code, warning
   that restoring loads the library from storage again and discards edits on
   this device that haven't synced. Core checks first that the code restores
-  this library; another library's code changes nothing. Then it discards this
-  device's copy and restores the library from the code under a new device id.
-  A restore that fails after the discard leaves the library off this device
-  and says so; restoring again with the same code finishes it. Going back
-  opens the library again as it was.
+  this library; another library's code, or an invite, changes nothing. coven
+  then loads the library from the code under a new device id beside this
+  device's copy, which stays as it was until the load is complete and only
+  then is replaced
+  ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
+  A restore that fails, such as with a code the replaced keys made or with
+  storage out of reach, leaves the library on this device: the code screen
+  shows why and the person can restore again, and going back opens the
+  library as it was.
 
 "Synced" means coven finished a pass and nothing is pending. Until the pending
 list has been read, or after a pass failed, the line says it is checking
@@ -1514,7 +1518,7 @@ library is registered there by id.
 | `create_library` | creates a new library's store and gives this device its identity; `create_library_default` generates the name |
 | `restore_from_code`, `restore_from_keychain` | opens a library on a new device from a restore code, typed or scanned, or saved in iCloud Keychain (§5.6) |
 | `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain for libraries not already on this device |
-| `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, discards this device's copy and restores it under a new device id (§6.4) |
+| `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, which a failed restore leaves as it was (§6.4) |
 | `join_with_invite` | joins a library from an invite and writes the person's profile (§5.6) |
 | `reset_device` | loads a library again under a fresh device id, after the warning (§6.4) |
 | `Config::discover_libraries` | lists registered libraries, including any that can't be opened, with why |

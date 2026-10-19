@@ -47,7 +47,9 @@ public final class LibraryBootstrap {
 
     /// Restore a library this device holds with the person's current restore
     /// code, after another of their devices replaced their keys. The library
-    /// is closed and its warning shown before this runs.
+    /// is closed and its warning shown before this runs. A failed restore
+    /// leaves the library on this device as it was, to open again or to
+    /// restore again.
     public func restoreReplacing(
         libraryId: String,
         code: String,

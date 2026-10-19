@@ -92,14 +92,6 @@ pub enum RestoreFromCodeError {
     Cancelled,
     #[error("restore failed: {0}")]
     Restore(#[source] Box<coven::BootstrapError>),
-    /// Restoring over this device's copy needs the person's restore code for
-    /// that library; this code is an invite, or restores another library.
-    #[error("this code doesn't restore library {library}")]
-    OtherLibrary { library: coven::StoreId },
-    /// Discarding this device's copy before restoring it failed; the copy
-    /// stays as it was.
-    #[error("discarding this device's copy failed: {0}")]
-    Discard(#[source] coven::StoreDeletionError),
 }
 
 impl RestoreFromCodeError {
@@ -110,8 +102,6 @@ impl RestoreFromCodeError {
             Self::Profile(error) => error.category(),
             Self::Cancelled => crate::ui::UiErrorCategory::Internal,
             Self::Restore(error) => manager::bootstrap_category(error),
-            Self::OtherLibrary { .. } => crate::ui::UiErrorCategory::Config,
-            Self::Discard(error) => manager::deletion_category(error),
         }
     }
 }
@@ -156,22 +146,6 @@ impl Keychain {
             #[cfg(any(test, feature = "test-utils"))]
             Self::InMemory(installation) => installation.builder(layout),
         })
-    }
-
-    /// Delete a closed store from this device without opening it: its
-    /// directory and every entry coven keeps for it in this keychain. A store
-    /// already gone deletes nothing more.
-    async fn discard_store(
-        &self,
-        app_dir: &AppDir,
-        store: coven::StoreId,
-    ) -> Result<(), coven::StoreDeletionError> {
-        let directory = app_dir.store_layout().store_dir(&store);
-        match self {
-            Self::System => coven::Coven::discard_store(&directory).await,
-            #[cfg(any(test, feature = "test-utils"))]
-            Self::InMemory(installation) => installation.discard_store(&directory).await,
-        }
     }
 
     /// The restore codes saved in this keychain (iCloud Keychain on Apple)
@@ -313,17 +287,15 @@ pub async fn reset_device(
 
 /// Restore a library this device holds but can no longer send for, because
 /// another of the person's devices replaced their keys. The code must be the
-/// person's restore code for this library, checked before anything changes;
-/// then this device's copy is discarded and the library restored from the
-/// code under a new device id. The caller closed the library and warned that
-/// edits on this device that haven't synced are discarded. A restore that
-/// fails after the discard leaves the library off this device and says so;
-/// restoring again with the same code finishes it.
-#[allow(clippy::too_many_arguments)]
+/// person's current restore code for this library. Coven loads the library
+/// from storage under a new device id beside this device's copy, which stays
+/// and opens as before until the load is complete, then takes its place. A
+/// restore that fails leaves this device's copy, and calling again with the
+/// same code retries it, or finishes one that stopped after the swap. The
+/// caller closed the library and warned that edits on this device that haven't
+/// synced are discarded.
 pub async fn restore_replacing_device(
-    keychain: &Keychain,
-    app_dir: &AppDir,
-    builder: coven::CovenBuilder,
+    mut builder: coven::CovenBuilder,
     store: coven::StoreId,
     code: &str,
     s3_credentials: Option<coven::S3Credentials>,
@@ -331,25 +303,30 @@ pub async fn restore_replacing_device(
     on_status: impl Fn(coven::BootstrapStatus),
     cancel: &watch::Receiver<bool>,
 ) -> Result<coven::CovenHandle, RestoreFromCodeError> {
-    match coven::decode_code_info(code)
-        .map_err(|error| restore_error(coven::BootstrapError::Code(error)))?
-    {
-        coven::CodeInfo::Restore(metadata) if metadata.store_id == store => {}
-        _ => return Err(RestoreFromCodeError::OtherLibrary { library: store }),
-    }
-    keychain
-        .discard_store(app_dir, store)
+    // Coven refuses an invite or another library's code too, but only after
+    // the provider sign-in below; refusing it first asks for no sign-in the
+    // restore would never use.
+    let refused = |error| restore_error(coven::BootstrapError::Code(error));
+    let access = match coven::decode_code_info(code).map_err(refused)? {
+        coven::CodeInfo::Restore(metadata) if metadata.store_id == store => metadata.oauth_access,
+        coven::CodeInfo::Restore(metadata) => {
+            return Err(refused(coven::CodeError::WrongStore {
+                expected: store,
+                actual: metadata.store_id,
+            }))
+        }
+        coven::CodeInfo::Invite { .. } => {
+            return Err(refused(coven::CodeError::WrongKind {
+                expected: coven::CodeKind::Restore,
+                actual: coven::CodeKind::Invite,
+            }))
+        }
+    };
+    bootstrap_auth::authenticate(&mut builder, access, cancel).await?;
+    configure_store(builder)
+        .restore_device(store, code, s3_credentials, device_name, on_status, cancel)
         .await
-        .map_err(RestoreFromCodeError::Discard)?;
-    restore_from_code(
-        builder,
-        code,
-        s3_credentials,
-        device_name,
-        on_status,
-        cancel,
-    )
-    .await
+        .map_err(restore_error)
 }
 
 #[derive(Debug, thiserror::Error)]

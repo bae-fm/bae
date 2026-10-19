@@ -118,7 +118,9 @@ impl BridgeHost {
     }
     /// Restore a library this device holds with the person's current restore
     /// code, after another of their devices replaced their keys. The caller
-    /// closed the library and showed the restore's warning before calling.
+    /// closed the library and showed the restore's warning before calling. A
+    /// failed restore leaves the library on this device as it was, to open
+    /// again or to retry.
     pub async fn restore_replacing_device(
         self: Arc<Self>,
         library_id: String,
@@ -141,8 +143,6 @@ impl BridgeHost {
             "restore library over this device",
             move || async move {
                 match bae_core::library::restore_replacing_device(
-                    &self.keychain,
-                    &self.app_dir,
                     self.builder(),
                     store,
                     &code,
