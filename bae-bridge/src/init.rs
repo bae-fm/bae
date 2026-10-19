@@ -240,6 +240,7 @@ fn app_start_failure_kind(error: &BootstrapError) -> AppStartFailureKind {
         }
         BootstrapError::Internal(_) => AppStartFailureKind::Internal,
         BootstrapError::KeyringUnavailable => AppStartFailureKind::KeyringUnavailable,
+        BootstrapError::ReplacementUnfinished(_) => AppStartFailureKind::ReplacementUnfinished,
     }
 }
 
@@ -311,6 +312,14 @@ fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
         BootstrapError::DeviceResetRequired(msg) => {
             BridgeError::diagnostic(crate::BridgeErrorCategory::DeviceResetRequired, msg)
         }
+        // The category names the one call that finishes the replacement, so
+        // the host offers that call and never the other.
+        error @ BootstrapError::ReplacementUnfinished(by) => BridgeError::diagnostic(
+            crate::BridgeErrorCategory::ReplacementUnfinished {
+                by: crate::BridgeReplacedBy::from_core(by),
+            },
+            error,
+        ),
         BootstrapError::Internal(msg) => BridgeError::internal(msg),
         // Its own category, not `Keyring`: that one reads as "the keyring
         // broke", and this one is "it is locked this second, try again after
@@ -597,6 +606,43 @@ mod tests {
             app_start_failure_kind(&BootstrapError::KeyringUnavailable),
             AppStartFailureKind::KeyringUnavailable
         );
+        assert_eq!(
+            app_start_failure_kind(&BootstrapError::ReplacementUnfinished(
+                coven::ReplacedBy::Restore
+            )),
+            AppStartFailureKind::ReplacementUnfinished
+        );
+    }
+
+    /// An open that stopped on an unfinished replacement crosses as the call
+    /// that finishes it, each to its own line.
+    #[test]
+    fn an_unfinished_replacement_crosses_as_the_call_that_finishes_it() {
+        for (core, bridge, key) in [
+            (
+                coven::ReplacedBy::Restore,
+                crate::BridgeReplacedBy::Restore,
+                "core.error.replacement_unfinished.restore",
+            ),
+            (
+                coven::ReplacedBy::Reset,
+                crate::BridgeReplacedBy::Reset,
+                "core.error.replacement_unfinished.reset",
+            ),
+        ] {
+            let error = bootstrap_error_to_bridge(BootstrapError::ReplacementUnfinished(core));
+            let BridgeError::Diagnostic { category, .. } = &error else {
+                panic!("an unfinished replacement is a diagnostic: {error:?}");
+            };
+            assert_eq!(
+                *category,
+                crate::BridgeErrorCategory::ReplacementUnfinished { by: bridge }
+            );
+            assert_eq!(
+                crate::types::bridge_error_line_key(&error).as_deref(),
+                Some(key)
+            );
+        }
     }
 
     #[test]

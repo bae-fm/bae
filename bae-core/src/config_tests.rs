@@ -504,7 +504,7 @@ async fn discovery_uses_coven_names_and_sorts_the_active_store_first() {
     );
     assert!(libraries
         .iter()
-        .all(|l| matches!(l.settings, LibrarySettings::Readable(None))));
+        .all(|l| matches!(l.state, LibraryState::Openable(None))));
     assert_eq!(
         libraries[0].path,
         app_dir.registered_library(&second_id.to_string())
@@ -532,7 +532,7 @@ async fn discovery_lists_a_library_whose_settings_cant_be_read() {
     let app_dir = AppDir::at(tmp.path());
     let installation = coven::TestCoven::new();
     let mut ids = Vec::new();
-    for name in ["Readable", "Unreadable"] {
+    for name in ["Openable", "Unreadable"] {
         let handle = crate::library::configure_store(installation.builder(app_dir.store_layout()))
             .create_store(name)
             .await
@@ -550,21 +550,18 @@ async fn discovery_lists_a_library_whose_settings_cant_be_read() {
     .unwrap();
 
     let libraries = Config::discover_libraries(&app_dir).await.unwrap();
-    let settings = |name: &str| {
+    let state = |name: &str| {
         &libraries
             .iter()
             .find(|library| library.name == name)
             .expect("every store is listed")
-            .settings
+            .state
     };
-    assert!(matches!(
-        settings("Readable"),
-        LibrarySettings::Readable(None)
-    ));
+    assert!(matches!(state("Openable"), LibraryState::Openable(None)));
     assert!(
-        matches!(settings("Unreadable"), LibrarySettings::Unreadable(_)),
+        matches!(state("Unreadable"), LibraryState::Unreadable(_)),
         "{:?}",
-        settings("Unreadable")
+        state("Unreadable")
     );
 }
 

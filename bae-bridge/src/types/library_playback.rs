@@ -124,26 +124,45 @@ pub enum BridgeCloudProvider {
 }
 
 /// A coven store registered on this device, with its current committed name.
+/// Mirrors `LibraryInfo`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeLibrary {
     pub id: String,
     pub name: String,
     pub path: String,
-    pub settings: BridgeLibrarySettings,
+    pub state: BridgeLibraryState,
     pub is_active: bool,
 }
 
-/// Where a library is stored, or why its settings can't be read, which keeps
-/// it from opening. Mirrors `LibrarySettings`.
+/// Whether a library on this device opens, and where it is stored. Mirrors
+/// `LibraryState`.
 #[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeLibrarySettings {
-    /// The library's cloud home, or none for a library on this device only.
-    Readable {
+pub enum BridgeLibraryState {
+    /// It opens: stored at its cloud home, or on this device only (`None`).
+    Openable {
         storage: Option<super::BridgeStorageLocation>,
     },
-    Unreadable {
-        error: super::BridgeError,
-    },
+    /// Its storage settings can't be read, which keeps it from opening.
+    Unreadable { error: super::BridgeError },
+    /// A reset or a restore of this device's copy stopped partway; it opens
+    /// once the call `by` names runs again and finishes it.
+    ReplacementUnfinished { by: BridgeReplacedBy },
+}
+
+/// The call that began replacing this device's copy of a library, and the
+/// only one that finishes it: `Reset` is `reset_device`, `Restore` is
+/// `restore_replacing_device` with the person's current restore code.
+/// Mirrors coven's `ReplacedBy`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeReplacedBy {
+    Reset,
+    Restore,
+}
+
+mirror_enum! {
+    BridgeReplacedBy = coven::ReplacedBy,
+    from_core: pub(crate) fn,
+    variants: { Reset, Restore },
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]

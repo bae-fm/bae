@@ -62,6 +62,11 @@ pub enum BootstrapError {
     Database(String),
     #[error("{0}")]
     DeviceResetRequired(String),
+    /// A reset or a restore of this device's copy stopped after the new copy
+    /// took the old one's place. Only running the named call again finishes
+    /// it; until then the library doesn't open.
+    #[error("the library opens once {0} finishes replacing this device's copy")]
+    ReplacementUnfinished(coven::ReplacedBy),
     #[error("{0}")]
     Internal(String),
     /// The OS keychain refused the read *right now* — the session is locked, the
@@ -97,6 +102,9 @@ fn classify_open_error(error: crate::db::DbError) -> BootstrapError {
         error @ crate::db::DbError::Coven(coven::CovenError::Database(
             coven::DbError::DamagedDatabase,
         )) => BootstrapError::DeviceResetRequired(error.to_string()),
+        crate::db::DbError::Coven(coven::CovenError::Lock(
+            coven::StoreLockError::ReplacementUnfinished { by, .. },
+        )) => BootstrapError::ReplacementUnfinished(by),
         error => BootstrapError::Database(format!("Failed to open database: {error}")),
     }
 }

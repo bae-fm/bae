@@ -120,7 +120,8 @@ impl BridgeHost {
     /// code, after another of their devices replaced their keys. The caller
     /// closed the library and showed the restore's warning before calling. A
     /// failed restore leaves the library on this device as it was, to open
-    /// again or to retry.
+    /// again or to retry. Called again, it finishes a restore that stopped
+    /// partway.
     pub async fn restore_replacing_device(
         self: Arc<Self>,
         library_id: String,
@@ -240,7 +241,9 @@ impl BridgeHost {
         .await
     }
 
-    /// The caller closes the active library and shows the reset warning before confirming.
+    /// The caller closes the active library and shows the reset warning before
+    /// confirming. Confirming again finishes a reset that stopped partway,
+    /// whose warning the person already saw.
     pub fn prepare_device_reset(
         self: Arc<Self>,
         library_id: String,

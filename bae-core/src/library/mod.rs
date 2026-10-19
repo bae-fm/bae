@@ -272,8 +272,11 @@ pub async fn join_with_invite(
 }
 
 /// Replace this device after the caller has warned that unsent edits are discarded.
-/// Coven checks storage and custody before replacing the installation. The
-/// returned handle is ready to open in bae; there is no post-reset notification.
+/// Coven checks storage and custody before replacing the installation. Calling
+/// it again finishes a reset that stopped after the new copy took the old
+/// one's place; for a restore that stopped there, coven refuses it and changes
+/// nothing. The returned handle is ready to open in bae; there is no post-reset
+/// notification.
 pub async fn reset_device(
     builder: coven::CovenBuilder,
     store: coven::StoreId,
@@ -291,8 +294,9 @@ pub async fn reset_device(
 /// from storage under a new device id beside this device's copy, which stays
 /// and opens as before until the load is complete, then takes its place. A
 /// restore that fails leaves this device's copy, and calling again with the
-/// same code retries it, or finishes one that stopped after the swap. The
-/// caller closed the library and warned that edits on this device that haven't
+/// same code retries it, or finishes one that stopped after the swap; for a
+/// reset that stopped there, coven refuses it and changes nothing. The caller
+/// closed the library and warned that edits on this device that haven't
 /// synced are discarded.
 pub async fn restore_replacing_device(
     mut builder: coven::CovenBuilder,

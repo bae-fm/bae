@@ -366,23 +366,30 @@ impl Default for Preferences {
     }
 }
 
-/// A store discovered through coven, with its current committed name.
+/// A store discovered through coven, with its current committed name, or
+/// while a replacement of this device's copy is unfinished, the name the new
+/// copy loaded.
 #[derive(Clone, Debug)]
 pub struct LibraryInfo {
     pub id: String,
     pub name: String,
     pub path: PathBuf,
     pub is_active: bool,
-    pub settings: LibrarySettings,
+    pub state: LibraryState,
 }
 
-/// What a library's storage settings say: where it is stored, or why they
-/// can't be read, which keeps the library from opening.
+/// Whether a library on this device opens, and where it is stored.
 #[derive(Clone, Debug)]
-pub enum LibrarySettings {
-    /// The library's cloud home, or none for a library on this device only.
-    Readable(Option<StorageConfig>),
+pub enum LibraryState {
+    /// It opens: stored at its cloud home, or on this device only (`None`).
+    Openable(Option<StorageConfig>),
+    /// Its storage settings can't be read, which keeps it from opening.
     Unreadable(crate::ui::UiError),
+    /// A reset or a restore of this device's copy put the new copy in place
+    /// of the old one but stopped before it finished. The library opens once
+    /// the call named here runs again and finishes it; coven refuses the
+    /// other call.
+    ReplacementUnfinished(coven::ReplacedBy),
 }
 
 /// Device-local preferences and the store they belong to. Store names, device
@@ -449,16 +456,20 @@ impl Config {
         let layout = app_dir.store_layout();
         let mut libraries = Vec::new();
         for store in layout.stores().await? {
-            let settings = match coven::Coven::storage_config(&layout.store_dir(&store.id)).await {
-                Ok(storage) => LibrarySettings::Readable(storage),
-                Err(error) => {
-                    tracing::warn!(store = %store.id, %error, "a library's settings can't be read");
-                    let error = crate::library::LibraryError::CloudHome(error);
-                    LibrarySettings::Unreadable(crate::ui::UiError::diagnostic(
-                        error.category(),
-                        error,
-                    ))
-                }
+            let state = match store.unfinished_replacement {
+                // Whatever its settings say, only finishing the call opens it.
+                Some(by) => LibraryState::ReplacementUnfinished(by),
+                None => match coven::Coven::storage_config(&layout.store_dir(&store.id)).await {
+                    Ok(storage) => LibraryState::Openable(storage),
+                    Err(error) => {
+                        tracing::warn!(store = %store.id, %error, "a library's settings can't be read");
+                        let error = crate::library::LibraryError::CloudHome(error);
+                        LibraryState::Unreadable(crate::ui::UiError::diagnostic(
+                            error.category(),
+                            error,
+                        ))
+                    }
+                },
             };
             let id = store.id.to_string();
             libraries.push(LibraryInfo {
@@ -466,7 +477,7 @@ impl Config {
                 path: app_dir.registered_library(&id),
                 id,
                 name: store.name,
-                settings,
+                state,
             });
         }
         libraries.sort_by(|a, b| {

@@ -175,6 +175,12 @@ pub enum BridgeErrorCategory {
     /// An AirPlay receiver can't be driven — it demands a PIN, or offers only
     /// audio encryption the sender doesn't implement.
     AirPlayUnsupported,
+    /// The library didn't open because a reset or a restore of this device's
+    /// copy stopped partway; only running the call `by` names again finishes
+    /// it.
+    ReplacementUnfinished {
+        by: BridgeReplacedBy,
+    },
 }
 
 /// What a `NotFound` was looking for, so the UI can localize "… not found".
@@ -330,6 +336,10 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
             }
         },
         BridgeErrorCategory::AirPlayUnsupported => "core.error.category.airplay_unsupported",
+        BridgeErrorCategory::ReplacementUnfinished { by } => match by {
+            BridgeReplacedBy::Reset => "core.error.replacement_unfinished.reset",
+            BridgeReplacedBy::Restore => "core.error.replacement_unfinished.restore",
+        },
     }
     .to_string()
 }
@@ -439,9 +449,10 @@ pub fn bridge_playback_error_reason_key(reason: &BridgePlaybackErrorReason) -> O
 // =========================================================================
 
 mirror_enum! {
-    /// The bridge enum carries variants core's has no counterpart for — a
-    /// an AirPlay receiver bae cannot drive — so only the
-    /// outward direction is a mirror.
+    /// The bridge enum carries variants core's has no counterpart for — an
+    /// AirPlay receiver bae cannot drive, and a library whose replacement of
+    /// this device's copy is unfinished, which the bootstrap reports — so
+    /// only the outward direction is a mirror.
     BridgeErrorCategory = bae_core::ui::UiErrorCategory,
     from_core: pub(crate) fn,
     variants: {

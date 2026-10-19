@@ -25,7 +25,7 @@ impl BridgeLibrary {
             name,
             path,
             is_active,
-            settings,
+            state,
         } = info;
         let path = path
             .to_str()
@@ -38,15 +38,20 @@ impl BridgeLibrary {
             name,
             path,
             is_active,
-            settings: match settings {
-                bae_core::config::LibrarySettings::Readable(storage) => {
-                    crate::types::BridgeLibrarySettings::Readable {
+            state: match state {
+                bae_core::config::LibraryState::Openable(storage) => {
+                    crate::types::BridgeLibraryState::Openable {
                         storage: storage.map(BridgeStorageLocation::from_core),
                     }
                 }
-                bae_core::config::LibrarySettings::Unreadable(error) => {
-                    crate::types::BridgeLibrarySettings::Unreadable {
+                bae_core::config::LibraryState::Unreadable(error) => {
+                    crate::types::BridgeLibraryState::Unreadable {
                         error: BridgeError::from_core(error),
+                    }
+                }
+                bae_core::config::LibraryState::ReplacementUnfinished(by) => {
+                    crate::types::BridgeLibraryState::ReplacementUnfinished {
+                        by: crate::types::BridgeReplacedBy::from_core(by),
                     }
                 }
             },
@@ -134,5 +139,37 @@ impl OpenedLibrary {
             position_update_interval_ms,
             restore_playback,
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A library whose replacement of this device's copy is unfinished
+    /// crosses with the call that finishes it.
+    #[test]
+    fn a_library_waiting_on_a_replacement_crosses_with_the_call_that_finishes_it() {
+        for (core, bridge) in [
+            (coven::ReplacedBy::Restore, crate::BridgeReplacedBy::Restore),
+            (coven::ReplacedBy::Reset, crate::BridgeReplacedBy::Reset),
+        ] {
+            let library = BridgeLibrary::from_core_info(bae_core::config::LibraryInfo {
+                id: "library".into(),
+                name: "Household".into(),
+                path: "/libraries/library".into(),
+                is_active: true,
+                state: bae_core::config::LibraryState::ReplacementUnfinished(core),
+            })
+            .unwrap();
+            assert!(
+                matches!(
+                    library.state,
+                    crate::BridgeLibraryState::ReplacementUnfinished { by } if by == bridge
+                ),
+                "{:?}",
+                library.state
+            );
+        }
     }
 }

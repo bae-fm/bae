@@ -308,6 +308,130 @@ async fn restoring_with_the_current_code_leaves_the_restored_copy() {
     opens_as(builder(), replaced.store, device).await;
 }
 
+/// A restore that stops right after the restored copy took the place of this
+/// device's copy, as when the app quits there, leaves the library listed as
+/// waiting for that restore, and opening it says that only restoring again
+/// finishes it. Restoring again with the code finishes it, and the library
+/// opens as the restored device.
+#[tokio::test]
+async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_again() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let app_dir = AppDir::at(temp.path());
+    let installation = coven::TestCoven::new();
+    let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
+    let replaced = keys_replaced_elsewhere(&installation, &app_dir, &storage).await;
+    let builder = || {
+        configure_store(installation.builder(app_dir.store_layout()))
+            .storage_connector(std::sync::Arc::new(storage.for_device()))
+    };
+    let (_sender, cancel) = watch::channel(false);
+    let store = replaced.store;
+    let restore = || {
+        let builder = builder();
+        let cancel = cancel.clone();
+        let code = replaced.current_code.clone();
+        async move {
+            restore_replacing_device(
+                builder,
+                store,
+                &code,
+                Some(owner_key()),
+                "Laptop",
+                |_| {},
+                &cancel,
+            )
+            .await
+        }
+    };
+
+    // The restore is polled one step at a time and dropped at the first step
+    // after which coven lists its replacement as unfinished: the swap.
+    let layout = app_dir.store_layout();
+    let mut restoring = Box::pin(restore());
+    loop {
+        let step = std::future::poll_fn(|cx| {
+            std::task::Poll::Ready(std::future::Future::poll(restoring.as_mut(), cx))
+        })
+        .await;
+        assert!(
+            step.is_pending(),
+            "the restore finished before its swap was seen"
+        );
+        let listed = layout.stores().await.unwrap();
+        if listed
+            .iter()
+            .any(|listed| listed.unfinished_replacement.is_some())
+        {
+            break;
+        }
+        tokio::task::yield_now().await;
+    }
+    drop(restoring);
+
+    let libraries = crate::config::Config::discover_libraries(&app_dir)
+        .await
+        .unwrap();
+    assert_eq!(libraries.len(), 1);
+    assert_eq!(libraries[0].id, store.to_string());
+    assert_eq!(libraries[0].name, "Household");
+    assert!(
+        matches!(
+            libraries[0].state,
+            crate::config::LibraryState::ReplacementUnfinished(coven::ReplacedBy::Restore)
+        ),
+        "{:?}",
+        libraries[0].state
+    );
+
+    let opening = {
+        let app_dir = app_dir.clone();
+        let builder = builder();
+        tokio::task::spawn_blocking(move || {
+            crate::app::bootstrap(
+                app_dir,
+                store.to_string(),
+                200,
+                false,
+                crate::diagnostics::Diagnostics::noop(),
+                builder,
+                |_, _| -> Result<(), crate::app::BootstrapError> {
+                    panic!("a library whose restore is unfinished doesn't open")
+                },
+            )
+        })
+        .await
+        .unwrap()
+    };
+    assert!(
+        matches!(
+            opening,
+            Err(crate::app::BootstrapError::ReplacementUnfinished(
+                coven::ReplacedBy::Restore
+            ))
+        ),
+        "{opening:?}"
+    );
+
+    let restored = restore().await.unwrap();
+    let device = restored.device_id();
+    assert_ne!(device, replaced.device);
+    restored.close().await.unwrap();
+    let libraries = crate::config::Config::discover_libraries(&app_dir)
+        .await
+        .unwrap();
+    assert!(
+        matches!(
+            libraries[..],
+            [crate::config::LibraryInfo {
+                state: crate::config::LibraryState::Openable(Some(_)),
+                ..
+            }]
+        ),
+        "{libraries:?}"
+    );
+    opens_as(builder(), store, device).await;
+}
+
 #[tokio::test]
 async fn saved_codes_for_libraries_on_this_device_are_not_offered() {
     let temp = tempfile::TempDir::new().unwrap();

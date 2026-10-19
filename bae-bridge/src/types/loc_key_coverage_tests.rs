@@ -271,6 +271,12 @@ fn produced_keys() -> Vec<String> {
             reason: BridgeGroupingBlock::FolderFilesDownloading,
         },
         BridgeErrorCategory::AirPlayUnsupported,
+        BridgeErrorCategory::ReplacementUnfinished {
+            by: BridgeReplacedBy::Reset,
+        },
+        BridgeErrorCategory::ReplacementUnfinished {
+            by: BridgeReplacedBy::Restore,
+        },
     ] {
         keys.push(bridge_error_category_key(c));
     }

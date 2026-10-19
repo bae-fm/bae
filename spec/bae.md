@@ -1242,6 +1242,19 @@ device id. Before it does, a warning says that edits on this device
 that haven't synced will be discarded. The person was told before choosing, so
 nothing is shown after; bae doesn't present coven's reset notice.
 
+**A reset or restore that stops partway.** A reset, or a restore with the
+person's current code, loads the new copy beside this device's copy, then
+swaps it into place. If the app stops after the swap, such as when it quits,
+the library waits for that same call to finish it
+([coven §19.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#193-another-copy-of-the-same-device)).
+bae still lists the library, under the name the new copy loaded, with the
+call that finishes it, and opening it fails with that call's own line:
+"Restoring this library on this device did not finish." or "Resetting this
+device for this library did not finish." Only that call finishes it. A reset
+would load a restore's library under the keys the restore replaced, and a
+restore would delete the copy a reset keeps, so coven refuses the other call
+before anything changes.
+
 **Lost values.** When two devices edit one cell and one edit is replaced
 unseen, coven records a lost value
 ([coven §8.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#82-lost-values)).
@@ -1530,11 +1543,11 @@ library is registered there by id.
 | `create_library` | creates a new library's store and gives this device its identity; `create_library_default` generates the name |
 | `restore_from_code`, `restore_from_keychain` | opens a library on a new device from a restore code, typed or scanned, or saved in iCloud Keychain (§5.6) |
 | `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain for libraries not already on this device |
-| `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, which a failed restore leaves as it was (§6.4) |
+| `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, which a failed restore leaves as it was; called again, finishes a restore that stopped after the restored copy took this one's place (§6.4) |
 | `join_with_invite` | joins a library from an invite and writes the person's profile (§5.6) |
-| `reset_device` | loads a library again under a fresh device id, after the warning (§6.4) |
-| `Config::discover_libraries` | lists registered libraries, including any that can't be opened, with why |
-| `app::bootstrap` | opens a library and starts its services: the store, sync, playback, and on desktops import and identification |
+| `reset_device` | loads a library again under a fresh device id, after the warning; called again, finishes a reset that stopped after the new copy took the old one's place (§6.4) |
+| `Config::discover_libraries` | lists registered libraries, including any that can't be opened, with why: storage settings that can't be read, or a reset or restore of this device's copy that didn't finish, with the call that finishes it |
+| `app::bootstrap` | opens a library and starts its services: the store, sync, playback, and on desktops import and identification; a library whose reset or restore didn't finish fails with the call that finishes it |
 | `AppServices::close` | stops playback, saving where it was, then identification and import, then closes the store |
 | `unsent_before_removal` | counts what removing a library would discard: the edits and files this device hasn't sent, for the open library or, opening its store briefly, one that isn't open (§6.4) |
 | `AppServices::remove_library` | stops the library's services, records the removal, leaves the store discarding what this device hasn't sent, then deletes the library from this device and the record last (§6.4) |
@@ -2043,6 +2056,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `Keyring`, `KeyringLocked` | fixes the keyring, or unlocks and is asked again |
 | `Membership` | retries the membership step, with the advice it carries |
 | `AirPlayUnsupported` | uses another receiver |
+| `ReplacementUnfinished` | finishes the reset or the restore of this device's copy that stopped partway: the one the category names, never the other (§6.4) |
 
 ### G.2 Why a found release isn't picked
 
