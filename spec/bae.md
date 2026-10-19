@@ -1293,6 +1293,16 @@ deleted at once.
   opens its store just long enough to count. If Dan confirms, the laptop
   leaves without sending them. Refusing instead would tie his removal to
   uploads that may be stuck; the counts let him decide.
+- **A library that can't open.** A library whose settings can't be read, or
+  whose reset or restore stopped partway, can't be opened to count what it
+  hasn't sent, nor to leave. Its confirmation says it can't be opened, so any
+  changes on this device that weren't sent are lost. Removing it deletes it
+  from this device without opening it, through coven's delete of a closed
+  store: the secrets this device keeps for it and its directory, then bae's
+  files and the record, as in any removal. The device stays among the
+  library's members until it is removed from them (§5.6). coven refuses that
+  delete while a reset or restore is unfinished; finishing it opens the
+  library, which then leaves as above.
 - **A removal that stops partway.** bae and coven can't commit together, so
   bae writes a record of the removal in its own directory before coven
   deletes the store, and deletes the record last. A removal that stopped is
@@ -1561,6 +1571,7 @@ library is registered there by id.
 | `AppServices::close` | stops playback, saving where it was, then identification and import, then closes the store |
 | `unsent_before_removal` | counts what removing a library would discard: the edits and files this device hasn't sent, for the open library or, opening its store briefly, one that isn't open (§6.4) |
 | `AppServices::remove_library` | stops the library's services, records the removal, leaves the store discarding what this device hasn't sent, then deletes the library from this device and the record last (§6.4) |
+| `remove_unopenable_library` | records the removal of a library that can't open, deletes its store from this device without opening it, losing what it hasn't sent, then its files and the record last (§6.4) |
 | `UnfinishedRemoval::find`, `finish_removals` | report recorded removals that stopped partway, and finish them (§6.4) |
 
 Creating, restoring and joining each return coven's open handle, and bae

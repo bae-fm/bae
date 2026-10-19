@@ -308,6 +308,32 @@ async fn restoring_with_the_current_code_leaves_the_restored_copy() {
     opens_as(builder(), replaced.store, device).await;
 }
 
+/// Poll `replacing` one step at a time and drop it at the first step after
+/// which coven lists its replacement as unfinished: the swap, as when the app
+/// quits there.
+async fn stop_at_swap<T>(app_dir: &AppDir, replacing: impl std::future::Future<Output = T>) {
+    let layout = app_dir.store_layout();
+    let mut replacing = std::pin::pin!(replacing);
+    loop {
+        let step = std::future::poll_fn(|cx| {
+            std::task::Poll::Ready(std::future::Future::poll(replacing.as_mut(), cx))
+        })
+        .await;
+        assert!(
+            step.is_pending(),
+            "the replacement finished before its swap was seen"
+        );
+        let listed = layout.stores().await.unwrap();
+        if listed
+            .iter()
+            .any(|listed| listed.unfinished_replacement.is_some())
+        {
+            return;
+        }
+        tokio::task::yield_now().await;
+    }
+}
+
 /// A restore that stops right after the restored copy took the place of this
 /// device's copy, as when the app quits there, leaves the library listed as
 /// waiting for that restore, and opening it says that only restoring again
@@ -344,29 +370,7 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
         }
     };
 
-    // The restore is polled one step at a time and dropped at the first step
-    // after which coven lists its replacement as unfinished: the swap.
-    let layout = app_dir.store_layout();
-    let mut restoring = Box::pin(restore());
-    loop {
-        let step = std::future::poll_fn(|cx| {
-            std::task::Poll::Ready(std::future::Future::poll(restoring.as_mut(), cx))
-        })
-        .await;
-        assert!(
-            step.is_pending(),
-            "the restore finished before its swap was seen"
-        );
-        let listed = layout.stores().await.unwrap();
-        if listed
-            .iter()
-            .any(|listed| listed.unfinished_replacement.is_some())
-        {
-            break;
-        }
-        tokio::task::yield_now().await;
-    }
-    drop(restoring);
+    stop_at_swap(&app_dir, restore()).await;
 
     let libraries = crate::config::Config::discover_libraries(&app_dir)
         .await
@@ -430,6 +434,86 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
         "{libraries:?}"
     );
     opens_as(builder(), store, device).await;
+}
+
+/// A library whose restore stopped after its swap can't open, so removing it
+/// can't count what it hasn't sent and goes to coven's delete of a closed
+/// store. coven refuses that delete while the replacement is unfinished, so
+/// the removal changes nothing: the library stays listed as waiting for its
+/// restore, the pointer still names it, and no removal record is left.
+#[tokio::test]
+async fn removing_a_library_whose_restore_stopped_after_its_swap_is_refused_unchanged() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let app_dir = AppDir::at(temp.path());
+    let installation = std::sync::Arc::new(coven::TestCoven::new());
+    let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
+    let replaced = keys_replaced_elsewhere(&installation, &app_dir, &storage).await;
+    let builder = || {
+        configure_store(installation.builder(app_dir.store_layout()))
+            .storage_connector(std::sync::Arc::new(storage.for_device()))
+    };
+    let store = replaced.store;
+    crate::config::Config::with_defaults(store, app_dir.registered_library(&store.to_string()))
+        .save_active_library(&app_dir)
+        .unwrap();
+    let (_sender, cancel) = watch::channel(false);
+    stop_at_swap(
+        &app_dir,
+        restore_replacing_device(
+            builder(),
+            store,
+            &replaced.current_code,
+            Some(owner_key()),
+            "Laptop",
+            |_| {},
+            &cancel,
+        ),
+    )
+    .await;
+    let counted = unsent_before_removal(builder(), store)
+        .await
+        .expect_err("counting opens the library, which only finishing the restore allows");
+    assert!(
+        format!("{counted:?}").contains("ReplacementUnfinished"),
+        "{counted:?}"
+    );
+
+    let removal =
+        remove_unopenable_library(&app_dir, &Keychain::InMemory(installation.clone()), store)
+            .await
+            .expect_err("coven refuses deleting a store whose replacement is unfinished");
+    assert!(
+        matches!(
+            removal,
+            LibraryRemovalError::Store(coven::StoreDeletionError::Lock(
+                coven::StoreLockError::ReplacementUnfinished {
+                    by: coven::ReplacedBy::Restore,
+                    ..
+                }
+            ))
+        ),
+        "{removal:?}"
+    );
+    let libraries = crate::config::Config::discover_libraries(&app_dir)
+        .await
+        .unwrap();
+    assert!(
+        matches!(
+            libraries[..],
+            [crate::config::LibraryInfo {
+                state: crate::config::LibraryState::ReplacementUnfinished(
+                    coven::ReplacedBy::Restore
+                ),
+                ..
+            }]
+        ),
+        "{libraries:?}"
+    );
+    assert_eq!(
+        crate::config::Config::active_library_id(&app_dir).unwrap(),
+        Some(store.to_string())
+    );
+    assert!(UnfinishedRemoval::find(&app_dir).await.unwrap().is_none());
 }
 
 #[tokio::test]

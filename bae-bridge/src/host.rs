@@ -193,6 +193,35 @@ impl BridgeHost {
         .await
     }
 
+    /// Remove the library `library_id`, which can't open, without opening it,
+    /// losing whatever this device hadn't sent.
+    pub async fn remove_unopenable_library(
+        self: Arc<Self>,
+        library_id: String,
+    ) -> Result<crate::BridgeLibraryRemoval, BridgeError> {
+        let store = coven::StoreId(library_id.parse().map_err(BridgeError::config)?);
+        crate::operation_runtime::run_to_completion(
+            self.runtime
+                .as_ref()
+                .expect("host runtime exists until drop")
+                .handle()
+                .clone(),
+            self.clone(),
+            "remove a library that can't open",
+            move || async move {
+                crate::BridgeLibraryRemoval::from_core(
+                    bae_core::library::remove_unopenable_library(
+                        &self.app_dir,
+                        &self.keychain,
+                        store,
+                    )
+                    .await,
+                )
+            },
+        )
+        .await
+    }
+
     /// Complete every recorded removal. Safe to retry after any failure.
     pub async fn finish_removals(self: Arc<Self>) -> Result<(), BridgeError> {
         crate::operation_runtime::run_to_completion(

@@ -68,6 +68,7 @@ enum PreviewData {
         LibraryRemovals(
             unsentOfClosed: { _ in throw StubError.notImplemented },
             removeClosed: { _ in throw StubError.notImplemented },
+            removeUnopenable: { _ in throw StubError.notImplemented },
             findUnfinished: { nil },
             finishUnfinished: {}
         )

@@ -121515,6 +121515,180 @@
           }
         }
       }
+    },
+    "This library can't be opened, so any changes on this Mac that weren't sent are lost. Its copy on this Mac is deleted; any copy in the cloud is untouched." : {
+      "comment" : "Remove-library confirmation for a library that can't open: what it hasn't sent can't be counted and is lost, and only this Mac's copy is deleted.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا يمكن فتح هذه المكتبة، لذا تُفقد أي تغييرات على هذا الـ Mac لم تُرسل. تُحذف نسختها على هذا الـ Mac؛ وتبقى أي نسخة في السحابة دون تغيير."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тази библиотека не може да бъде отворена, затова всички промени на този Mac, които не са изпратени, се губят. Копието ѝ на този Mac се изтрива; копие в облака, ако има такова, остава незасегнато."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tuto knihovnu nelze otevřít, takže všechny změny na tomto Macu, které nebyly odeslány, budou ztraceny. Její kopie na tomto Macu se smaže; případná kopie v cloudu zůstane nedotčená."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette bibliotek kan ikke åbnes, så alle ændringer på denne Mac, der ikke er sendt, går tabt. Dets kopi på denne Mac slettes; en eventuel kopi i skyen forbliver uberørt."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Bibliothek lässt sich nicht öffnen, daher gehen alle nicht gesendeten Änderungen auf diesem Mac verloren. Ihre Kopie auf diesem Mac wird gelöscht; eine Kopie in der Cloud bleibt unverändert."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Αυτή η βιβλιοθήκη δεν μπορεί να ανοίξει, οπότε όσες αλλαγές σε αυτόν τον Mac δεν στάλθηκαν χάνονται. Το αντίγραφό της σε αυτόν τον Mac διαγράφεται· τυχόν αντίγραφο στο cloud μένει ανέπαφο."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This library can't be opened, so any changes on this Mac that weren't sent are lost. Its copy on this Mac is deleted; any copy in the cloud is untouched."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta biblioteca no se puede abrir, así que se pierden los cambios de este Mac que no se enviaron. Se elimina su copia en este Mac; cualquier copia en la nube no se modifica."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tätä kirjastoa ei voi avata, joten kaikki tämän Macin muutokset, joita ei ole lähetetty, menetetään. Sen kopio poistetaan tältä Macilta; mahdollinen kopio pilvessä säilyy ennallaan."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette bibliothèque ne peut pas être ouverte : les modifications de ce Mac qui n’ont pas été envoyées sont donc perdues. Sa copie sur ce Mac est supprimée ; toute copie dans le cloud reste intacte."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן לפתוח את הספרייה הזו, ולכן שינויים ב‑Mac הזה שלא נשלחו יאבדו. העותק שלה ב‑Mac הזה יימחק; עותק בענן, אם יש, לא נפגע."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ova se fonoteka ne može otvoriti pa se gube sve promjene na ovom Macu koje nisu poslane. Njezina se kopija na ovom Macu briše; eventualna kopija u oblaku ostaje netaknuta."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ez a könyvtár nem nyitható meg, ezért a Mac gépen lévő, el nem küldött módosítások elvesznek. A könyvtár másolata törlődik erről a Mac gépről; a felhőben lévő esetleges másolat érintetlen marad."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questa libreria non può essere aperta, quindi le modifiche su questo Mac non inviate vanno perse. La sua copia su questo Mac viene eliminata; un’eventuale copia nel cloud resta intatta."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このライブラリは開けないため、この Mac 上で送信されていない変更はすべて失われます。この Mac 上のコピーは削除されます。クラウド上のコピーはそのままです。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 라이브러리를 열 수 없으므로 이 Mac에서 전송되지 않은 변경 사항은 모두 사라집니다. 이 Mac의 사본은 삭제되며, 클라우드의 사본은 그대로 유지됩니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette biblioteket kan ikke åpnes, så endringer på denne Macen som ikke er sendt, går tapt. Kopien på denne Macen slettes; en eventuell kopi i skyen forblir urørt."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deze bibliotheek kan niet worden geopend, dus wijzigingen op deze Mac die niet zijn verzonden, gaan verloren. De kopie op deze Mac wordt verwijderd; een eventuele kopie in de cloud blijft onaangeroerd."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie można otworzyć tej biblioteki, więc wszystkie niewysłane zmiany na tym Macu zostaną utracone. Jej kopia na tym Macu zostanie usunięta; ewentualna kopia w chmurze pozostanie nietknięta."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta biblioteca não pode ser aberta, então as alterações deste Mac que não foram enviadas são perdidas. A cópia dela neste Mac é excluída; qualquer cópia na nuvem não é alterada."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta biblioteca não pode ser aberta, por isso as alterações deste Mac que não foram enviadas perdem-se. A sua cópia neste Mac é eliminada; qualquer cópia na nuvem não é alterada."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Această bibliotecă nu poate fi deschisă, așa că modificările de pe acest Mac care nu au fost trimise se pierd. Copia ei de pe acest Mac este ștearsă; o eventuală copie din cloud rămâne neatinsă."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Túto knižnicu nemožno otvoriť, takže všetky zmeny na tomto Macu, ktoré neboli odoslané, sa stratia. Jej kópia na tomto Macu sa vymaže; prípadná kópia v cloude zostane nedotknutá."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det här biblioteket kan inte öppnas, så ändringar på den här Macen som inte har skickats går förlorade. Dess kopia på den här Macen raderas; en eventuell kopia i molnet påverkas inte."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu kitaplık açılamıyor, bu nedenle bu Mac'te gönderilmemiş tüm değişiklikler kaybolur. Bu Mac'teki kopyası silinir; buluttaki olası bir kopyaya dokunulmaz."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цю бібліотеку не вдається відкрити, тому всі не надіслані зміни на цьому Mac буде втрачено. Її копію на цьому Mac буде видалено; можлива копія в хмарі залишається недоторканою."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此库无法打开，因此此 Mac 上尚未发送的更改都会丢失。此 Mac 上的副本将被删除；云端的副本（如有）不受影响。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此資料庫無法開啟，因此此 Mac 上尚未傳送的變更都會遺失。此 Mac 上的副本將被刪除；雲端的副本（如有）不受影響。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

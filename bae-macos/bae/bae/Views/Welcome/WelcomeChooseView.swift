@@ -86,6 +86,7 @@ struct WelcomeChooseView: View {
                 Task {
                     await listings.remove(
                         closedLibrary: pending.library.id,
+                        losing: pending.loss,
                         with: removals,
                         from: setup
                     )
@@ -94,11 +95,9 @@ struct WelcomeChooseView: View {
             Button("Cancel", role: .cancel) {}
         } message: { pending in
             Text(
-                pending.unsent.confirmation(
-                    consequence: LibraryRemovalConfirmation.consequence,
-                    message: LibraryRemovalConfirmation.message(
-                        for: pending.library
-                    )
+                LibraryRemovalConfirmation.text(
+                    for: pending.library,
+                    losing: pending.loss
                 )
             )
         }
@@ -108,12 +107,8 @@ struct WelcomeChooseView: View {
     /// the removal's error.
     private func askToRemove(_ library: BridgeLibrary) {
         Task {
-            if let unsent = await removals.unsentWork(closedLibrary: library.id)
-            {
-                pendingRemoval = PendingRemoval(
-                    library: library,
-                    unsent: unsent
-                )
+            if let loss = await removals.loss(closedLibrary: library) {
+                pendingRemoval = PendingRemoval(library: library, loss: loss)
             }
         }
     }
@@ -297,7 +292,7 @@ private struct WelcomeLoadErrorCallout: View {
 /// A library the person is asked to remove, with what removing it loses.
 private struct PendingRemoval {
     let library: BridgeLibrary
-    let unsent: BridgeUnsentWork
+    let loss: RemovalLoss
 }
 
 /// A removal that failed, or left this Mac's files for a library it already

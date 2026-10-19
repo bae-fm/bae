@@ -142,6 +142,27 @@ pub async fn remove_local_library(
     .await
 }
 
+/// Remove a library that can't open, its settings unreadable or a reset or
+/// restore of its copy unfinished, without opening it: coven deletes this
+/// device's keychain entries for it and its directory, and bae's files and
+/// the record follow as in any removal. Whatever this device hadn't sent is
+/// lost uncounted, since counting needs the library open, and this device
+/// stays among the library's members, since leaving needs it open too.
+/// coven refuses the delete while a reset or restore is unfinished, and the
+/// refusal changes nothing.
+pub async fn remove_unopenable_library(
+    app_dir: &AppDir,
+    keychain: &super::Keychain,
+    store_id: coven::StoreId,
+) -> Result<(), LibraryRemovalError> {
+    remove_recorded(
+        app_dir,
+        store_id,
+        keychain.discard_store(&app_dir.store_layout().store_dir(&store_id)),
+    )
+    .await
+}
+
 /// What removing a library that isn't open would lose, read by opening its
 /// store just long enough to count, as
 /// [`crate::library::LibraryManager::unsent_before_removal`] does for an open

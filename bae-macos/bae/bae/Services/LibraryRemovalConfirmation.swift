@@ -23,14 +23,29 @@ enum LibraryRemovalConfirmation {
         )
     }
 
-    static func message(for library: BridgeLibrary) -> String {
-        message(hasCloudHome: hasCloudHome(library.state))
-    }
-
-    /// A library that doesn't open may have a cloud home, so the warning
-    /// assumes one.
-    private static func hasCloudHome(_ state: BridgeLibraryState) -> Bool {
-        if case .openable(storage: nil) = state { return false }
-        return true
+    /// The confirmation for removing `library`, which isn't open, losing
+    /// `loss`. A library that can't open is deleted from this Mac without
+    /// leaving, so storage plays no part, and whether it has a cloud copy
+    /// can't be read.
+    static func text(for library: BridgeLibrary, losing loss: RemovalLoss)
+        -> String
+    {
+        switch loss {
+        case .unsent(let unsent):
+            guard case .openable(let storage) = library.state else {
+                preconditionFailure(
+                    "only a library that opens has its unsent changes counted"
+                )
+            }
+            return unsent.confirmation(
+                consequence: consequence,
+                message: message(hasCloudHome: storage != nil)
+            )
+        case .uncounted:
+            return String(
+                localized:
+                    "This library can't be opened, so any changes on this Mac that weren't sent are lost. Its copy on this Mac is deleted; any copy in the cloud is untouched."
+            )
+        }
     }
 }

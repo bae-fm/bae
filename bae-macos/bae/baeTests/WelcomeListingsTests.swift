@@ -49,6 +49,7 @@ struct WelcomeListingsTests {
         return LibraryRemovals(
             unsentOfClosed: { _ in throw WelcomeTestError.notUsed },
             removeClosed: { await bridge.remove($0) },
+            removeUnopenable: { _ in throw WelcomeTestError.notUsed },
             findUnfinished: { nil },
             finishUnfinished: {}
         )
@@ -66,6 +67,7 @@ struct WelcomeListingsTests {
 
         await listings.remove(
             closedLibrary: "library-1",
+            losing: .unsent(BridgeUnsentWork(writes: 0, files: 0)),
             with: removals,
             from: setup
         )

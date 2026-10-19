@@ -29,6 +29,9 @@ public final class LibraryRemovals {
     private let removeClosed:
         @Sendable (String) async throws -> BridgeLibraryRemoval
     @ObservationIgnored
+    private let removeUnopenable:
+        @Sendable (String) async throws -> BridgeLibraryRemoval
+    @ObservationIgnored
     private let findUnfinished:
         @Sendable () async throws -> BridgeUnfinishedRemoval?
     @ObservationIgnored
@@ -41,12 +44,15 @@ public final class LibraryRemovals {
             @escaping @Sendable (String) async throws -> BridgeUnsentWork,
         removeClosed:
             @escaping @Sendable (String) async throws -> BridgeLibraryRemoval,
+        removeUnopenable:
+            @escaping @Sendable (String) async throws -> BridgeLibraryRemoval,
         findUnfinished:
             @escaping @Sendable () async throws -> BridgeUnfinishedRemoval?,
         finishUnfinished: @escaping @Sendable () async throws -> Void
     ) {
         self.unsentOfClosed = unsentOfClosed
         self.removeClosed = removeClosed
+        self.removeUnopenable = removeUnopenable
         self.findUnfinished = findUnfinished
         self.finishUnfinished = finishUnfinished
     }
@@ -59,6 +65,9 @@ public final class LibraryRemovals {
             },
             removeClosed: { libraryId in
                 try await removeClosedLibrary(libraryId, host: host)
+            },
+            removeUnopenable: { libraryId in
+                try await host.removeUnopenableLibrary(libraryId: libraryId)
             },
             findUnfinished: { try await host.unfinishedRemoval() },
             finishUnfinished: { try await host.finishRemovals() }
@@ -117,28 +126,37 @@ public final class LibraryRemovals {
         }
     }
 
-    /// What removing `libraryId`, which isn't open, would lose, for the
-    /// person to confirm first; nil after a failure, shown as `error`.
-    public func unsentWork(closedLibrary libraryId: String) async
-        -> BridgeUnsentWork?
+    /// What removing `library`, which isn't open, would lose, for the
+    /// person to confirm first; nil after a failure, shown as `error`. A
+    /// library that can't open isn't opened to count.
+    public func loss(closedLibrary library: BridgeLibrary) async
+        -> RemovalLoss?
     {
         error = nil
+        guard library.isOpenable else {
+            logger.info(
+                "\(library.id) can't open; removing it loses what it hasn't sent, uncounted"
+            )
+            return .uncounted
+        }
         do {
-            return try await unsentOfClosed(libraryId)
+            return .unsent(try await unsentOfClosed(library.id))
         }
         catch {
             logger.error(
-                "Couldn't read what removing \(libraryId) loses: \(error.localizedDescription)"
+                "Couldn't read what removing \(library.id) loses: \(error.localizedDescription)"
             )
             self.error = DisplayError(error)
             return nil
         }
     }
 
-    /// Remove a library that isn't open, once the person confirmed what it
-    /// loses, then report the list changed.
+    /// Remove a library that isn't open, once the person confirmed `loss`,
+    /// then report the list changed. A library that opens is opened to leave
+    /// its store; one that can't is removed without opening.
     public func remove(
         closedLibrary libraryId: String,
+        losing loss: RemovalLoss,
         onFinished: @escaping () -> Void
     ) {
         precondition(task == nil, "one library removal at a time")
@@ -150,7 +168,12 @@ public final class LibraryRemovals {
                 task = nil
             }
             do {
-                record(try await removeClosed(libraryId))
+                switch loss {
+                case .unsent:
+                    record(try await removeClosed(libraryId))
+                case .uncounted:
+                    record(try await removeUnopenable(libraryId))
+                }
             }
             catch {
                 logger.error(

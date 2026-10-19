@@ -38,8 +38,8 @@ pub use library_status::{
 };
 pub use live_read::{LiveRead, LiveReadError};
 pub use local_lifecycle::{
-    finish_removals, remove_local_library, unsent_before_removal, LibraryRemovalError,
-    UnfinishedRemoval,
+    finish_removals, remove_local_library, remove_unopenable_library, unsent_before_removal,
+    LibraryRemovalError, UnfinishedRemoval,
 };
 pub use manager::*;
 pub use outbox_snapshot::{
@@ -146,6 +146,19 @@ impl Keychain {
             #[cfg(any(test, feature = "test-utils"))]
             Self::InMemory(installation) => installation.builder(layout),
         })
+    }
+
+    /// Delete a closed store without opening it: this keychain's entries for
+    /// it, then its directory.
+    async fn discard_store(
+        &self,
+        directory: &coven::StoreDir,
+    ) -> Result<(), coven::StoreDeletionError> {
+        match self {
+            Self::System => coven::Coven::discard_store(directory).await,
+            #[cfg(any(test, feature = "test-utils"))]
+            Self::InMemory(installation) => installation.discard_store(directory).await,
+        }
     }
 
     /// The restore codes saved in this keychain (iCloud Keychain on Apple)

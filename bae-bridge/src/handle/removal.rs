@@ -37,6 +37,26 @@ pub struct BridgeUnfinishedRemoval {
     pub files_remain: bool,
 }
 
+impl BridgeLibraryRemoval {
+    /// How a removal ended: done, stopped after the store was deleted with
+    /// this device's files left, or failed with nothing deleted.
+    pub(crate) fn from_core(
+        removal: Result<(), bae_core::library::LibraryRemovalError>,
+    ) -> Result<Self, BridgeError> {
+        use bae_core::library::LibraryRemovalError as E;
+        match removal {
+            Ok(()) => Ok(Self::Removed),
+            Err(error @ E::Unfinished(_)) => Ok(Self::Unfinished {
+                removal: BridgeUnfinishedRemoval::new(error.category(), &error, true),
+            }),
+            Err(error @ (E::Record(_) | E::Store(_))) => Err(BridgeError::diagnostic(
+                crate::BridgeErrorCategory::from_core(error.category()),
+                &error,
+            )),
+        }
+    }
+}
+
 impl BridgeUnfinishedRemoval {
     pub(crate) fn new(
         category: bae_core::ui::UiErrorCategory,
@@ -77,17 +97,7 @@ impl AppHandle {
             move || async move {
                 #[cfg(feature = "desktop")]
                 self.desktop.shutdown().await;
-                use bae_core::library::LibraryRemovalError as E;
-                match self.services.remove_library().await {
-                    Ok(()) => Ok(BridgeLibraryRemoval::Removed),
-                    Err(error @ E::Unfinished(_)) => Ok(BridgeLibraryRemoval::Unfinished {
-                        removal: BridgeUnfinishedRemoval::new(error.category(), &error, true),
-                    }),
-                    Err(error @ (E::Record(_) | E::Store(_))) => Err(BridgeError::diagnostic(
-                        crate::BridgeErrorCategory::from_core(error.category()),
-                        &error,
-                    )),
-                }
+                BridgeLibraryRemoval::from_core(self.services.remove_library().await)
             },
         )
         .await

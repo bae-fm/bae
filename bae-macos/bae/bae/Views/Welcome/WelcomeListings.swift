@@ -24,15 +24,18 @@ final class WelcomeListings {
         _ = await (libraries, codes)
     }
 
-    /// Remove a library that isn't open, once the person confirmed what it
-    /// loses, then read both lists again.
+    /// Remove a library that isn't open, once the person confirmed `loss`,
+    /// then read both lists again.
     func remove(
         closedLibrary libraryId: String,
+        losing loss: RemovalLoss,
         with removals: LibraryRemovals,
         from setup: LibrarySetup
     ) async {
         await withCheckedContinuation { finished in
-            removals.remove(closedLibrary: libraryId) { finished.resume() }
+            removals.remove(closedLibrary: libraryId, losing: loss) {
+                finished.resume()
+            }
         }
         await load(from: setup)
     }

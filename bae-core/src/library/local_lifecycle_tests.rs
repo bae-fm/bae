@@ -1,5 +1,6 @@
 use super::local_lifecycle::{
-    finish_removals, remove_local_library, LibraryRemovalError, UnfinishedRemoval,
+    finish_removals, remove_local_library, remove_unopenable_library, LibraryRemovalError,
+    UnfinishedRemoval,
 };
 use crate::config::{AppDir, Config};
 use coven::Storage;
@@ -432,4 +433,77 @@ async fn unsent_work_of_a_closed_library_leaves_it_closed() {
         .await
         .unwrap();
     assert_eq!(reopened.store_name().await.unwrap(), "Library");
+}
+
+/// A library whose settings can't be read doesn't open, so what it hasn't
+/// sent can't be counted. It is removed without opening: its store, its
+/// directory and the pointer naming it are gone, and the library beside it
+/// stays.
+#[tokio::test]
+async fn a_library_whose_settings_cant_be_read_is_removed_without_opening() {
+    let home = Home::new();
+    let kept = home.library("Kept").await;
+    let handle = home.library("Unreadable").await;
+    home.connect(&handle).await;
+    let id = handle.store_id();
+    handle.close().await.unwrap();
+    drop(handle);
+    home.point_at(id);
+    std::fs::write(
+        home._temp
+            .path()
+            .join(".bae")
+            .join("stores")
+            .join(id.to_string())
+            .join("storage.json"),
+        "{not settings",
+    )
+    .unwrap();
+    let listed = Config::discover_libraries(&home.app_dir).await.unwrap();
+    assert!(
+        listed.iter().any(|library| library.id == id.to_string()
+            && matches!(library.state, crate::config::LibraryState::Unreadable(_))),
+        "{listed:?}"
+    );
+    super::unsent_before_removal(home.installation.builder(home.app_dir.store_layout()), id)
+        .await
+        .expect_err("counting opens the library, and its settings can't be read");
+
+    remove_unopenable_library(
+        &home.app_dir,
+        &super::Keychain::InMemory(home.installation.clone()),
+        id,
+    )
+    .await
+    .unwrap();
+    assert_eq!(home.stores().await, 1);
+    assert!(!home.directory(id).exists());
+    assert_eq!(home.pointer(), None);
+    assert!(!home.record(id).exists());
+    assert_eq!(home.unfinished().await, None);
+    assert_eq!(kept.store_name().await.unwrap(), "Kept");
+    assert!(home.directory(kept.store_id()).exists());
+}
+
+/// coven refusing the delete, here because the library is open, removes
+/// nothing and leaves no record to report.
+#[tokio::test]
+async fn an_unopenable_removal_coven_refuses_removes_nothing() {
+    let home = Home::new();
+    let handle = home.library("Library").await;
+    let id = handle.store_id();
+    home.point_at(id);
+    let error = remove_unopenable_library(
+        &home.app_dir,
+        &super::Keychain::InMemory(home.installation.clone()),
+        id,
+    )
+    .await
+    .expect_err("an open library holds its lock");
+    assert!(matches!(error, LibraryRemovalError::Store(_)), "{error}");
+    assert_eq!(handle.store_name().await.unwrap(), "Library");
+    assert!(home.directory(id).exists());
+    assert_eq!(home.pointer(), Some(id.to_string()));
+    assert!(!home.record(id).exists());
+    assert_eq!(home.unfinished().await, None);
 }
