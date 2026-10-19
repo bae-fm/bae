@@ -1274,9 +1274,10 @@ deleted at once.
   bae writes a record of the removal in its own directory before coven
   deletes the store, and deletes the record last. A removal that stopped is
   found from its record, never from bae files that coven's store list lacks:
-  a library hidden from that list, by unreadable settings or a reset cut off
-  partway, still exists. At launch bae shows a recorded removal whose store
-  coven no longer lists, with *Retry*, and opens no library while it shows.
+  a library hidden from that list, by unreadable settings or a first restore
+  or join cut off partway, still exists. At launch bae shows a recorded
+  removal whose store coven no longer lists, with *Retry*, and opens no
+  library while it shows.
   *Retry* deletes only what is left on this device; it never tries to leave
   again. A record whose store coven still lists stopped before the delete: it
   is cleared, and bae says the library is still on this device, with nothing
