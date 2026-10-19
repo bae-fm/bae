@@ -4,7 +4,6 @@ import SwiftUI
 /// The primary window's sizes while a library is open; it contracts to
 /// `WelcomeWindow.size` when the library closes.
 enum MainWindow {
-    static let sceneID = "main"
     static let minSize = CGSize(width: 900, height: 600)
     /// The size a library opens at on a display with room for it.
     static let defaultSize = CGSize(width: 1350, height: 850)

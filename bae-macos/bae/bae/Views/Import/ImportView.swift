@@ -65,7 +65,7 @@ struct ImportView: View {
     /// choices.
     @State
     var candidateActionConfirmation: ImportCandidateActionOffer?
-    @Environment(\.openSettings)
+    @Environment(\.openSettingsWindow)
     var openSettings
     @Environment(UiStore.self)
     var uiStore

@@ -96,7 +96,7 @@ private struct ImportOnlineMetadataBrowser: View {
     private var importer
     @Environment(ImportStore.self)
     private var importStore
-    @Environment(\.openSettings)
+    @Environment(\.openSettingsWindow)
     private var openSettings
     @Environment(SettingsNavigation.self)
     private var settingsNavigation

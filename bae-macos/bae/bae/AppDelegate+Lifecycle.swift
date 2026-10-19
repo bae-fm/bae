@@ -84,6 +84,24 @@ extension AppDelegate {
         }
         startWatchingForKeychainUnlock()
         loadInitialState(canOpenLibraries: keyringReady)
+        showMainWindow()
+        #if !DEBUG
+            requiredApplicationServices.updaterController.updater
+                .checkForUpdatesInBackground()
+        #endif
+    }
+
+    /// A Dock click with no window open presents the primary window, as
+    /// launch does.
+    func applicationShouldHandleReopen(
+        _: NSApplication,
+        hasVisibleWindows: Bool
+    ) -> Bool {
+        guard runtime.startsApplicationServices, !hasVisibleWindows else {
+            return true
+        }
+        showMainWindow()
+        return false
     }
 
     private func initializeKeyring() throws {

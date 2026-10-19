@@ -30,7 +30,7 @@ struct ReIdentifySheet: View {
     private var importStore
     @Environment(UiStore.self)
     private var uiStore
-    @Environment(\.openSettings)
+    @Environment(\.openSettingsWindow)
     private var openSettings
     @Environment(SettingsNavigation.self)
     private var settingsNavigation

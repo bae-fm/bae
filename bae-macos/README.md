@@ -1,6 +1,8 @@
 # bae-macos
 
-Native macOS app for bae, built with SwiftUI.
+Native macOS app for bae: SwiftUI views in an AppKit app shell. An
+`NSApplicationDelegate` owns startup, the main menu is an `NSMenu` built at
+launch, and each window is an `NSWindow` hosting a SwiftUI root view.
 
 ## Requirements
 

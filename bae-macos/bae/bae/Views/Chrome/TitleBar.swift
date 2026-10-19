@@ -15,7 +15,7 @@ struct TitleBar: View {
     private var libraryProjections
     @Environment(UiStore.self)
     var uiStore
-    @Environment(\.openSettings)
+    @Environment(\.openSettingsWindow)
     private var openSettings
     @Binding
     var searchText: String
