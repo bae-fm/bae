@@ -198,11 +198,11 @@ struct BaeApp: App {
         }
     }
 
-    /// Loading takes the library window's size; everything else the welcome
-    /// size.
+    /// Loading takes the library window's size, fitted to the screen;
+    /// everything else the welcome size.
     private var bootstrapWindowSize: CGSize {
         if case .loading = appDelegate.screen {
-            return MainWindow.defaultSize
+            return MainWindow.sizeOnMainScreen
         }
         return WelcomeWindow.size
     }
@@ -268,10 +268,7 @@ extension BaeApp {
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
-        .defaultSize(
-            width: MainWindow.defaultSize.width,
-            height: MainWindow.defaultSize.height
-        )
+        .defaultSize(MainWindow.sizeOnMainScreen)
         .restorationBehavior(.disabled)
         // Launch and Dock reopen always present the primary app surface.
         .defaultLaunchBehavior(.presented)

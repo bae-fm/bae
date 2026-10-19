@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 
 final class MainMenuTests: XCTestCase {
@@ -26,7 +27,13 @@ final class MainMenuTests: XCTestCase {
         // Launch presents the primary window.
         let primaryWindow = app.windows.firstMatch
         XCTAssertTrue(primaryWindow.waitForExistence(timeout: 20))
-        XCTAssertEqual(primaryWindow.frame.width, 1_350, accuracy: 2)
+        // At the library's width, or the screen's on one narrower than that.
+        let screen = try XCTUnwrap(NSScreen.main)
+        XCTAssertEqual(
+            primaryWindow.frame.width,
+            min(1_350, screen.visibleFrame.width),
+            accuracy: 2
+        )
 
         let fileMenu = app.menuBars.menuBarItems["File"]
         XCTAssertTrue(fileMenu.waitForExistence(timeout: 20))
