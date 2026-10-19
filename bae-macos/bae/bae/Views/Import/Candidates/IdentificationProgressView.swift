@@ -77,7 +77,6 @@ struct IdentificationProgressIndicator: View {
             )
             .frame(width: 220)
             .padding(ThemeSpace.group)
-            .background { PopoverBehavior() }
         }
     }
 
@@ -144,7 +143,6 @@ struct FolderScanProgressIndicator: View {
             .themeText(.body)
             .frame(width: 240)
             .padding(ThemeSpace.group)
-            .background { PopoverBehavior() }
         }
     }
 }

@@ -525,17 +525,7 @@ extension ImportMappingTracksLayoutTests {
         recording recorder: MappingTrackActionRecorder
     ) -> ImportMappingActions {
         ImportMappingActions(
-            bindSheet: { sheet, reference, audio in
-                MainActor.assumeIsolated {
-                    recorder.sheetBindings.append(
-                        SheetAssignmentChange(
-                            sheet: sheet,
-                            reference: reference,
-                            audio: audio
-                        )
-                    )
-                }
-            },
+            bindSheet: { _, _, _ in },
             setSheetDisc: { _, _ in },
             openDocument: { _, _ in },
             openImages: { _, _ in },
@@ -556,11 +546,4 @@ extension ImportMappingTracksLayoutTests {
 final class MappingTrackActionRecorder {
     var previewed: [BridgePreviewTarget] = []
     var stops = 0
-    var sheetBindings: [SheetAssignmentChange] = []
-}
-
-struct SheetAssignmentChange: Equatable {
-    let sheet: String
-    let reference: String
-    let audio: String?
 }

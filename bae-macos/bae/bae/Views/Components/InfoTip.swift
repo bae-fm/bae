@@ -25,7 +25,6 @@ struct InfoTip: View {
                 .padding(ThemeSpace.group)
                 .frame(width: width)
                 .popoverEntrance(anchor: entranceAnchor)
-                .background { PopoverBehavior() }
             }
     }
 

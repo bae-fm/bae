@@ -19,7 +19,7 @@ struct ImportSheetCaptionRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             caption
-            ForEach(unbound, id: \.fileReference) { reference in
+            ForEach(layout.unbound, id: \.fileReference) { reference in
                 HStack(spacing: ThemeSpace.related) {
                     Text(verbatim: reference.fileReference)
                         .themeText(.mono)
@@ -38,14 +38,8 @@ struct ImportSheetCaptionRow: View {
         }
     }
 
-    /// The references with no audio bound, in the sheet's order.
-    private var unbound: [BridgeSheetReferenceOptions] {
-        sheet.referenceOptions.filter { $0.fileId == nil }
-    }
-
-    /// The references with audio bound, in the sheet's order.
-    private var bound: [BridgeSheetReferenceOptions] {
-        sheet.referenceOptions.filter { $0.fileId != nil }
+    private var layout: ImportSheetBindingLayout {
+        ImportSheetBindingLayout(sheet: sheet)
     }
 
     private func bind(
@@ -69,11 +63,29 @@ struct ImportSheetCaptionRow: View {
                 .themeText(.detail)
                 .foregroundStyle(.tertiary)
                 .fixedSize()
-            if bound.isEmpty {
+            switch layout.summary {
+            case .text:
                 boundText
-            }
-            else {
-                boundMenu
+            case .choices(let reference):
+                boundMenu {
+                    ImportSheetBindingItems(
+                        reference: reference,
+                        onBind: { bind(reference, to: $0) }
+                    )
+                }
+            case .submenus(let references):
+                boundMenu {
+                    ForEach(references, id: \.fileReference) { reference in
+                        Menu {
+                            ImportSheetBindingItems(
+                                reference: reference,
+                                onBind: { bind(reference, to: $0) }
+                            )
+                        } label: {
+                            Text(verbatim: referenceTitle(reference))
+                        }
+                    }
+                }
             }
             ForEach(ImportEvidence.badges(evidence)) { badge in
                 ImportEvidenceChip(signal: badge.signal)
@@ -93,28 +105,12 @@ struct ImportSheetCaptionRow: View {
             .help(sheet.bound.descriptionText)
     }
 
-    /// The summary as a menu for changing a bound reference's audio, with a
-    /// submenu per reference when the sheet names several files.
-    private var boundMenu: some View {
+    /// The summary as a menu for changing a bound reference's audio.
+    private func boundMenu(
+        @ViewBuilder _ items: () -> some View
+    ) -> some View {
         Menu {
-            if bound.count == 1, let only = bound.first {
-                ImportSheetBindingItems(
-                    reference: only,
-                    onBind: { bind(only, to: $0) }
-                )
-            }
-            else {
-                ForEach(bound, id: \.fileReference) { reference in
-                    Menu {
-                        ImportSheetBindingItems(
-                            reference: reference,
-                            onBind: { bind(reference, to: $0) }
-                        )
-                    } label: {
-                        Text(verbatim: referenceTitle(reference))
-                    }
-                }
-            }
+            items()
         } label: {
             boundText
                 .padding(.horizontal, ThemeSpace.compact)
@@ -161,6 +157,41 @@ struct ImportSheetCaptionRow: View {
         .onHover { hoveringName = $0 }
     }
 
+}
+
+/// Where a sheet caption offers its FILE references' audio: a reference
+/// with none bound is a row of its own, under the summary, with its own menu;
+/// bound ones are changed from the summary's menu.
+struct ImportSheetBindingLayout: Equatable {
+    /// What the summary offers.
+    let summary: Summary
+    /// The references with no audio bound, in the sheet's order.
+    let unbound: [BridgeSheetReferenceOptions]
+
+    enum Summary: Equatable {
+        /// Nothing is bound, so the summary is text, not a menu.
+        case text
+        /// One reference is bound: its choices sit directly in the summary's
+        /// menu.
+        case choices(BridgeSheetReferenceOptions)
+        /// Several are bound: the summary's menu has a submenu per
+        /// reference, in the sheet's order.
+        case submenus([BridgeSheetReferenceOptions])
+    }
+
+    init(sheet: BridgeSheetGroup) {
+        let bound = sheet.referenceOptions.filter { $0.fileId != nil }
+        unbound = sheet.referenceOptions.filter { $0.fileId == nil }
+        if bound.isEmpty {
+            summary = .text
+        }
+        else if bound.count == 1, let only = bound.first {
+            summary = .choices(only)
+        }
+        else {
+            summary = .submenus(bound)
+        }
+    }
 }
 
 /// The sheet's disc assignment: which of the release's discs its entries are,

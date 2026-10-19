@@ -38,50 +38,69 @@ struct ImportSheetBindingMenu: View {
     }
 }
 
-/// The items of one FILE reference's binding menu: each audio file core
-/// offers or refuses for it, and clearing the binding.
+/// One entry of a FILE reference's binding menu. A reference's entries are
+/// each audio file core offers or refuses for it, in core's order, then
+/// binding none.
+enum ImportSheetBindingChoice: Hashable {
+    /// A file core offers; choosing it binds it to the reference.
+    case offered(fileId: String, isBound: Bool)
+    /// A file core refuses, with core's reason. It is listed, dimmed, so the
+    /// menu explains itself instead of being empty, and is never chosen.
+    case refused(fileId: String, reason: String)
+    /// Binding no audio to the reference.
+    case describesNothing(isBound: Bool)
+
+    static func choices(
+        for reference: BridgeSheetReferenceOptions
+    ) -> [Self] {
+        reference.options.map { option in
+            if let reason = option.refusalLine {
+                return .refused(fileId: option.fileId, reason: reason)
+            }
+            return .offered(
+                fileId: option.fileId,
+                isBound: reference.fileId == option.fileId
+            )
+        } + [.describesNothing(isBound: reference.fileId == nil)]
+    }
+}
+
+/// The items of one FILE reference's binding menu, one per
+/// `ImportSheetBindingChoice`.
 struct ImportSheetBindingItems: View {
     let reference: BridgeSheetReferenceOptions
     let onBind: (String?) -> Void
 
     var body: some View {
-        ForEach(reference.options, id: \.fileId) { option in
-            bindButton(option)
-        }
-        Divider()
-        Button {
-            onBind(nil)
-        } label: {
-            checkable(
-                coreString("ui.import.sheet.describes_nothing"),
-                selected: reference.fileId == nil
-            )
-        }
-    }
-
-    /// An offered file, or a refused one shown disabled with core's reason so
-    /// the menu explains itself instead of being empty.
-    @ViewBuilder
-    private func bindButton(
-        _ option: BridgeSheetBindingOption
-    ) -> some View {
-        if let refusal = option.refusalLine {
-            Button {
-            } label: {
-                Text(verbatim: "\(option.fileId): \(refusal)")
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-            .disabled(true)
-        }
-        else {
-            Button {
-                onBind(option.fileId)
-            } label: {
-                checkable(
-                    option.fileId,
-                    selected: reference.fileId == option.fileId
-                )
+        ForEach(
+            ImportSheetBindingChoice.choices(for: reference),
+            id: \.self
+        ) { choice in
+            switch choice {
+            case .offered(let fileId, let isBound):
+                Button {
+                    onBind(fileId)
+                } label: {
+                    checkable(fileId, selected: isBound)
+                }
+            case .refused(let fileId, let reason):
+                Button {
+                } label: {
+                    Text(verbatim: "\(fileId): \(reason)")
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                .disabled(true)
+            case .describesNothing(let isBound):
+                Divider()
+                Button {
+                    onBind(nil)
+                } label: {
+                    checkable(
+                        coreString("ui.import.sheet.describes_nothing"),
+                        selected: isBound
+                    )
+                }
             }
         }
     }

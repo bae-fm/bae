@@ -44,7 +44,6 @@ struct ImportActivityIndicator: View {
             .themeText(.body)
             .frame(width: 220)
             .padding(ThemeSpace.group)
-            .background { PopoverBehavior() }
         }
     }
 }

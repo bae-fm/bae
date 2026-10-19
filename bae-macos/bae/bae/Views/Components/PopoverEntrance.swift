@@ -2,7 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// Springs a popover's content in from `anchor` on appear, in place of the
-/// `NSPopover` animation that `PopoverBehavior` turns off because it stutters.
+/// `NSPopover` animation that `PopoverAnimation` turns off because it stutters.
 struct PopoverEntrance: ViewModifier {
     let anchor: UnitPoint
 

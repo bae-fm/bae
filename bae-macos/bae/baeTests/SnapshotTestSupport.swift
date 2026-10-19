@@ -221,30 +221,6 @@ enum SnapshotTestSupport {
         view.subviews.flatMap { [$0] + descendants(of: $0) }
     }
 
-    /// Have a SwiftUI-backed pop-up menu build its current items, without
-    /// showing it.
-    ///
-    /// SwiftUI fills the menu in the pop-up cell's delegate call that comes
-    /// just before the menu is shown, and in no earlier hook: neither the
-    /// menu delegate's update and open calls nor the will-pop-up
-    /// notification add an item. Opening the menu for real puts it on the
-    /// screen of the person running the suite, pulled in from wherever the
-    /// hosting window sits, so the helper makes that one call itself. A
-    /// system that stops making it leaves the menu empty, and the test
-    /// reading it fails on the missing items.
-    @MainActor
-    static func populateMenu(_ button: NSPopUpButton) {
-        guard let menu = button.menu,
-            let cell = button.cell as? NSPopUpButtonCell,
-            let delegate = cell.value(forKey: "delegate") as? NSObject
-        else { return }
-        _ = delegate.perform(
-            NSSelectorFromString("popUpButtonCell:willShowMenu:"),
-            with: cell,
-            with: menu
-        )
-    }
-
     /// One line of text Vision read off a capture: the words, and where on
     /// the image they sit (Vision's normalized box, origin at the bottom left).
     struct RecognizedLine: Sendable {

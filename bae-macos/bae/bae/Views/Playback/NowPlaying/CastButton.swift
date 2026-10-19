@@ -40,9 +40,9 @@ struct CastButton: View {
                 }
             )
             // Discovery grows the list while open, and NSPopover's animated
-            // resize can crash; the popover grows up from the bar.
+            // resize can crash, so `PopoverAnimation` keeps it from
+            // animating; the popover grows up from the bar.
             .popoverEntrance(anchor: .bottom)
-            .background { PopoverBehavior() }
         }
         // Discovery is not always-on: browse only while the picker is open.
         .onChange(of: showPicker) { _, isOpen in

@@ -32,6 +32,65 @@ struct ImportReleaseSourceActions {
     let unlink: () -> Void
 }
 
+/// A command in the card's metadata menu. Each replaces what the person has,
+/// so the card asks before running it.
+enum ImportDraftCommand: CaseIterable, Identifiable {
+    /// Restore the initial source tracks, audio assignments, cover, and
+    /// metadata.
+    case reset
+    /// Replace the draft with what the candidate's own files say.
+    case resetToFileMetadata
+    case clearMetadata
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .reset: String(localized: "Reset")
+        case .resetToFileMetadata: String(localized: "Reset to file metadata")
+        case .clearMetadata: String(localized: "Clear metadata")
+        }
+    }
+
+    /// What the confirmation asks.
+    var question: String {
+        switch self {
+        case .reset: String(localized: "Reset?")
+        case .resetToFileMetadata: String(localized: "Reset to file metadata?")
+        case .clearMetadata: String(localized: "Clear metadata?")
+        }
+    }
+
+    /// What the confirmation says the command changes and keeps.
+    var consequence: String {
+        switch self {
+        case .reset:
+            String(
+                localized:
+                    "Restore all tracks, automatic audio assignments, artwork, and initial metadata. Your files will not be changed."
+            )
+        case .resetToFileMetadata:
+            String(
+                localized:
+                    "Replace metadata with what the files, sheets and folder say about the release. Tracks and audio assignments will remain unchanged."
+            )
+        case .clearMetadata:
+            String(
+                localized:
+                    "The candidate files and mapping choices will remain unchanged."
+            )
+        }
+    }
+
+    func run(with actions: ImportReleaseSourceActions) {
+        switch self {
+        case .reset: actions.reset()
+        case .resetToFileMetadata: actions.resetToFileMetadata()
+        case .clearMetadata: actions.clearMetadata()
+        }
+    }
+}
+
 /// The editable metadata draft card: the action row, the cover beside the
 /// release fields, and the catalogs that describe the release.
 struct ImportReleaseHeader: View {
@@ -65,12 +124,9 @@ struct ImportReleaseHeader: View {
 
     @Environment(ConfigStore.self)
     private var configStore
+    /// The metadata menu's command the card is asking about.
     @State
-    private var confirmsClear = false
-    @State
-    private var confirmsReset = false
-    @State
-    private var confirmsResetToTags = false
+    private var confirming: ImportDraftCommand?
 
     var body: some View {
         VStack(alignment: .leading, spacing: ReleaseMetadataLayout.blockSpacing)
@@ -130,47 +186,25 @@ struct ImportReleaseHeader: View {
         .padding(.vertical, ThemeSpace.edge)
         .padding(.horizontal, ThemeSpace.section)
         .card()
-        .confirmationDialog(
-            "Clear metadata?",
-            isPresented: $confirmsClear,
-            titleVisibility: .visible
-        ) {
-            Button("Clear metadata", role: .destructive) {
-                sourceActions.clearMetadata()
+        .background {
+            ForEach(ImportDraftCommand.allCases) { command in
+                Color.clear
+                    .confirmationDialog(
+                        command.question,
+                        isPresented: Binding(
+                            get: { confirming == command },
+                            set: { if !$0 { confirming = nil } }
+                        ),
+                        titleVisibility: .visible
+                    ) {
+                        Button(command.title, role: .destructive) {
+                            command.run(with: sourceActions)
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text(command.consequence)
+                    }
             }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(
-                "The candidate files and mapping choices will remain unchanged."
-            )
-        }
-        .confirmationDialog(
-            "Reset to file metadata?",
-            isPresented: $confirmsResetToTags,
-            titleVisibility: .visible
-        ) {
-            Button("Reset to file metadata", role: .destructive) {
-                sourceActions.resetToFileMetadata()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(
-                "Replace metadata with what the files, sheets and folder say about the release. Tracks and audio assignments will remain unchanged."
-            )
-        }
-        .confirmationDialog(
-            "Reset?",
-            isPresented: $confirmsReset,
-            titleVisibility: .visible
-        ) {
-            Button("Reset", role: .destructive) {
-                sourceActions.reset()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(
-                "Restore all tracks, automatic audio assignments, artwork, and initial metadata. Your files will not be changed."
-            )
         }
     }
 
@@ -239,14 +273,10 @@ struct ImportReleaseHeader: View {
     /// Commands that replace metadata or restore the whole import setup.
     private var candidateMenu: some View {
         Menu {
-            Button("Reset", role: .destructive) {
-                confirmsReset = true
-            }
-            Button("Reset to file metadata", role: .destructive) {
-                confirmsResetToTags = true
-            }
-            Button("Clear metadata", role: .destructive) {
-                confirmsClear = true
+            ForEach(ImportDraftCommand.allCases) { command in
+                Button(command.title, role: .destructive) {
+                    confirming = command
+                }
             }
         } label: {
             Image(systemName: "ellipsis")

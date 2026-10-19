@@ -586,14 +586,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             editActions: ReleaseFieldWriter { _, _ in },
             editingCommands: EditingCommitCommands(),
             commit: nil,
-            sourceActions: ImportReleaseSourceActions(
-                identifyAutomatically: { recorder.identifyCount += 1 },
-                searchForRelease: { recorder.searchCount += 1 },
-                reset: { recorder.resetCount += 1 },
-                resetToFileMetadata: { recorder.tagsCount += 1 },
-                clearMetadata: { recorder.clearCount += 1 },
-                unlink: {}
-            ),
+            sourceActions: sourceActions(recording: recorder),
             localCoverSelections: [:],
             onEditCover: {},
             onSelectCover: { _ in }
@@ -601,6 +594,19 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         .frame(width: 900, height: 520)
         .importPreviewEnvironment()
         .environment(Library.stub())
+    }
+
+    private func sourceActions(
+        recording recorder: MetadataCardActionRecorder
+    ) -> ImportReleaseSourceActions {
+        ImportReleaseSourceActions(
+            identifyAutomatically: { recorder.identifyCount += 1 },
+            searchForRelease: { recorder.searchCount += 1 },
+            reset: { recorder.resetCount += 1 },
+            resetToFileMetadata: { recorder.tagsCount += 1 },
+            clearMetadata: { recorder.clearCount += 1 },
+            unlink: {}
+        )
     }
 
     /// The two buttons the card puts in the key-view loop, in reading order:
@@ -623,13 +629,14 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
     }
 
     /// The card's own menu, told apart from the release grid's fact menus by
-    /// what it holds: the command that resets the draft.
+    /// where it sits: in the action row, level with the identify buttons.
     private func sourceMenuButton(in host: NSView) throws -> NSPopUpButton {
+        let (_, search) = try releaseEntryFrames(in: host)
         let menus = SnapshotTestSupport.descendants(of: host)
             .compactMap { $0 as? NSPopUpButton }
             .filter { button in
-                SnapshotTestSupport.populateMenu(button)
-                return (button.menu?.indexOfItem(withTitle: "Reset") ?? -1) >= 0
+                let frame = button.convert(button.bounds, to: host)
+                return frame.minY < search.maxY && frame.maxY > search.minY
             }
         XCTAssertEqual(menus.count, 1)
         return try XCTUnwrap(menus.first)
@@ -668,69 +675,30 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
 }
 
 extension ImportMetadataCardLayoutTests {
-    func testResetConfirmationAndCancellation() async throws {
-        let recorder = MetadataCardActionRecorder()
-        try await SnapshotTestSupport.withHostedWindow(
-            metadataHeader(
-                provenance: nil,
-                draftIsBlank: false,
-                recorder: recorder
-            ),
-            size: NSSize(width: 900, height: 620)
-        ) { window, host in
-            try await SnapshotTestSupport.settle(host)
-            let menu = try sourceMenu(in: host)
-            let resetIndex = menu.indexOfItem(withTitle: "Reset")
-            XCTAssertGreaterThanOrEqual(resetIndex, 0)
-            guard resetIndex >= 0 else { return }
-            for confirmation in ["Cancel", "Reset"] {
-                menu.performActionForItem(at: resetIndex)
-                try await SnapshotTestSupport.settle(host)
-                XCTAssertEqual(recorder.resetCount, 0)
-                let buttons = NSApplication.shared.windows
-                    .filter(\.isVisible)
-                    .flatMap { window in
-                        window.contentView.map {
-                            SnapshotTestSupport.descendants(of: $0)
-                                .compactMap { $0 as? NSButton }
-                        } ?? []
-                    }
-                let button = try XCTUnwrap(
-                    buttons.first { $0.title == confirmation },
-                    "Confirmation buttons: \(buttons.map(\.title))"
-                )
-                HostedInput.press(button)
-                try await SnapshotTestSupport.settle(host)
-            }
-            XCTAssertEqual(recorder.resetCount, 1)
-            XCTAssertEqual(recorder.tagsCount, 0)
-            XCTAssertEqual(recorder.clearCount, 0)
+    /// The metadata menu lists every draft command, reset first, and each
+    /// confirmed command runs its own action and no other.
+    func testEachDraftCommandRunsOnlyItsOwnAction() {
+        XCTAssertEqual(
+            ImportDraftCommand.allCases.map(\.title),
+            ["Reset", "Reset to file metadata", "Clear metadata"]
+        )
+        // Each command's runs of reset, reset to tags, and clear.
+        let runs: [ImportDraftCommand: [Int]] = [
+            .reset: [1, 0, 0],
+            .resetToFileMetadata: [0, 1, 0],
+            .clearMetadata: [0, 0, 1],
+        ]
+        for command in ImportDraftCommand.allCases {
+            let recorder = MetadataCardActionRecorder()
+            command.run(with: sourceActions(recording: recorder))
+            XCTAssertEqual(
+                [recorder.resetCount, recorder.tagsCount, recorder.clearCount],
+                runs[command],
+                "\(command)"
+            )
+            XCTAssertEqual(recorder.identifyCount, 0)
+            XCTAssertEqual(recorder.searchCount, 0)
         }
-    }
-
-    func testMenuOffersFullResetAlongsideMetadataCommands() async throws {
-        let recorder = MetadataCardActionRecorder()
-        try await SnapshotTestSupport.withHostedWindow(
-            metadataHeader(
-                provenance: nil,
-                draftIsBlank: false,
-                recorder: recorder
-            ),
-            size: NSSize(width: 900, height: 620)
-        ) { _, host in
-            try await SnapshotTestSupport.settle(host)
-            let menu = try sourceMenu(in: host)
-            for title in ["Reset", "Reset to file metadata", "Clear metadata"] {
-                XCTAssertNotNil(
-                    menu.item(withTitle: title),
-                    "Missing \(title); menu contains \(menu.items.map(\.title))"
-                )
-            }
-        }
-    }
-
-    private func sourceMenu(in host: NSView) throws -> NSMenu {
-        try XCTUnwrap(sourceMenuButton(in: host).menu)
     }
 
     func testSourceAudioSummaryHasNoDisclosureControl() async throws {

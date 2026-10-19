@@ -6,89 +6,34 @@ import Testing
 @testable import bae
 
 // The sheet caption's audio assignments: which references are listed, and
-// how a bound one is changed through the summary's menu.
+// where a bound one is changed.
 extension ImportMappingTracksLayoutTests {
-    /// A bound reference is changed through the summary's menu, one submenu
-    /// per reference, and each submenu commands only its own reference.
-    @MainActor
-    @Test(
-        "the summary menu assigns and clears only the chosen reference",
-        arguments: [0, 1]
-    )
-    func cueReferenceCommands(referenceIndex: Int) async throws {
-        let recorder = MappingTrackActionRecorder()
-        let size = NSSize(width: 900, height: 180)
-        try await withHostedSheet(
-            assignmentSheet(secondAssigned: true),
-            recorder: recorder,
-            size: size
-        ) { _, host in
-            try await SnapshotTestSupport.settle(host)
-            let buttons = SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSPopUpButton }
-            try #require(buttons.count == 1, "the summary is the one menu")
-            let button = buttons[0]
-            #expect(button.isEnabled)
-            let reference = referenceIndex == 0 ? "First.wav" : "Second.wav"
-            let audio = referenceIndex == 0 ? "Replacement.flac" : "Second.flac"
-            SnapshotTestSupport.populateMenu(button)
-            let summary = try #require(button.menu)
-            let references = summary.items.filter { $0.submenu != nil }
-            try #require(
-                references.count == 2,
-                "one submenu per bound reference"
-            )
-            #expect(references[0].title.hasPrefix("First.wav"))
-            #expect(references[1].title.hasPrefix("Second.wav"))
-            let menu = try #require(references[referenceIndex].submenu)
-            if referenceIndex == 0 { try checkRefusedAudioChoices(menu) }
-            let replacement = try #require(
-                menu.items.first { $0.title == audio }
-            )
-            menu.performActionForItem(at: menu.index(of: replacement))
-            try await Wait.until { recorder.sheetBindings.count == 1 }
-            var expected = [
-                SheetAssignmentChange(
-                    sheet: "Collection.cue",
-                    reference: reference,
-                    audio: audio
-                )
-            ]
-            #expect(recorder.sheetBindings == expected)
-            try await clearBinding(
-                referenceIndex,
-                through: button,
-                recorder: recorder
-            )
-            expected.append(
-                SheetAssignmentChange(
-                    sheet: "Collection.cue",
-                    reference: reference,
-                    audio: nil
-                )
-            )
-            #expect(recorder.sheetBindings == expected)
-        }
-    }
-
-    /// Reopen the summary and clear one bound reference through its submenu.
-    @MainActor
-    private func clearBinding(
-        _ referenceIndex: Int,
-        through button: NSPopUpButton,
-        recorder: MappingTrackActionRecorder
-    ) async throws {
-        SnapshotTestSupport.populateMenu(button)
-        let reopened = try #require(button.menu).items.compactMap(\.submenu)
-        try #require(reopened.count == 2)
-        let menu = reopened[referenceIndex]
-        let clear = try #require(
-            menu.items.first {
-                $0.title == coreString("ui.import.sheet.describes_nothing")
-            }
+    /// With every reference bound, the summary's menu has a submenu per
+    /// reference, each holding only that reference's choices.
+    @Test("each bound reference has its own submenu of its own choices")
+    func boundReferencesHaveTheirOwnSubmenus() throws {
+        let sheet = assignmentSheet(secondAssigned: true)
+        let references = sheet.referenceOptions
+        let layout = ImportSheetBindingLayout(sheet: sheet)
+        #expect(layout.summary == .submenus(references))
+        #expect(layout.unbound.isEmpty)
+        #expect(
+            ImportSheetBindingChoice.choices(for: references[0])
+                == [
+                    .offered(fileId: "First.flac", isBound: true),
+                    .offered(fileId: "Replacement.flac", isBound: false),
+                    try refusal(of: "Wrong.mp3", in: references[0]),
+                    try refusal(of: "Short.flac", in: references[0]),
+                    .describesNothing(isBound: false),
+                ]
         )
-        menu.performActionForItem(at: menu.index(of: clear))
-        try await Wait.until { recorder.sheetBindings.count == 2 }
+        #expect(
+            ImportSheetBindingChoice.choices(for: references[1])
+                == [
+                    .offered(fileId: "Second.flac", isBound: true),
+                    .describesNothing(isBound: false),
+                ]
+        )
     }
 
     /// The one reference with nothing bound is the one thing left to do, so
@@ -97,12 +42,9 @@ extension ImportMappingTracksLayoutTests {
     @MainActor
     @Test("a partial CUE lists only its missing reference")
     func partialCueAssignments() async throws {
+        let sheet = assignmentSheet(secondAssigned: false)
         let size = NSSize(width: 900, height: 180)
-        try await withHostedSheet(
-            assignmentSheet(secondAssigned: false),
-            recorder: MappingTrackActionRecorder(),
-            size: size
-        ) { _, host in
+        try await withHostedSheet(sheet, size: size) { _, host in
             try await SnapshotTestSupport.settle(host)
             let png = try await SnapshotTestSupport.capturePNG(host, size: size)
             let text = try await SnapshotTestSupport.recognizedText(in: png)
@@ -113,22 +55,33 @@ extension ImportMappingTracksLayoutTests {
             #expect(!text.carrying("Second.flac"))
             let menus = SnapshotTestSupport.descendants(of: host)
                 .compactMap { $0 as? NSPopUpButton }
-            try #require(menus.count == 2, "the summary, then the missing row")
-            SnapshotTestSupport.populateMenu(menus[0])
-            let summary = try #require(menus[0].menu)
-            #expect(summary.items.allSatisfy { $0.submenu == nil })
-            #expect(
-                summary.items.contains {
-                    $0.title == "Replacement.flac" && $0.isEnabled
-                }
-            )
-            try checkRefusedAudioChoices(summary)
-            SnapshotTestSupport.populateMenu(menus[1])
-            let row = try #require(menus[1].menu)
-            #expect(
-                row.items.contains { $0.title == "Second.flac" && $0.isEnabled }
-            )
+            #expect(menus.count == 2, "the summary, then the missing row")
         }
+        let references = sheet.referenceOptions
+        let layout = ImportSheetBindingLayout(sheet: sheet)
+        #expect(layout.summary == .choices(references[0]))
+        #expect(layout.unbound == [references[1]])
+        #expect(
+            ImportSheetBindingChoice.choices(for: references[1])
+                == [
+                    .offered(fileId: "Second.flac", isBound: false),
+                    .describesNothing(isBound: true),
+                ]
+        )
+    }
+
+    /// A file core refuses for `reference`, listed with core's reason.
+    private func refusal(
+        of fileId: String,
+        in reference: BridgeSheetReferenceOptions
+    ) throws -> ImportSheetBindingChoice {
+        let option = try #require(
+            reference.options.first { $0.fileId == fileId }
+        )
+        return .refused(
+            fileId: fileId,
+            reason: try #require(option.refusalLine)
+        )
     }
 
     private func assignmentSheet(secondAssigned: Bool) -> BridgeSheetGroup {
@@ -216,11 +169,7 @@ extension ImportMappingTracksLayoutTests {
             discOptions: [1]
         )
         let size = NSSize(width: 900, height: 180)
-        try await withHostedSheet(
-            group,
-            recorder: MappingTrackActionRecorder(),
-            size: size
-        ) { _, host in
+        try await withHostedSheet(group, size: size) { _, host in
             try await SnapshotTestSupport.settle(host)
             let png = try await SnapshotTestSupport.capturePNG(host, size: size)
             let text = try await SnapshotTestSupport.recognizedText(in: png)
@@ -242,7 +191,6 @@ extension ImportMappingTracksLayoutTests {
     @MainActor
     private func withHostedSheet<Value>(
         _ sheet: BridgeSheetGroup,
-        recorder: MappingTrackActionRecorder,
         size: NSSize,
         _ body: (NSWindow, NSView) async throws -> Value
     ) async throws -> Value {
@@ -251,7 +199,7 @@ extension ImportMappingTracksLayoutTests {
                 sheet: sheet,
                 evidence: [],
                 showsDiscMenu: false,
-                actions: actions(recording: recorder)
+                actions: actions(recording: MappingTrackActionRecorder())
             )
             .padding(20)
             .frame(
@@ -262,18 +210,6 @@ extension ImportMappingTracksLayoutTests {
             size: size
         ) {
             try await body($0, $1)
-        }
-    }
-}
-
-extension ImportMappingTracksLayoutTests {
-    @MainActor
-    private func checkRefusedAudioChoices(_ menu: NSMenu) throws {
-        for refusedFile in ["Wrong.mp3", "Short.flac"] {
-            let refused = try #require(
-                menu.items.first { $0.title.contains(refusedFile) }
-            )
-            #expect(!refused.isEnabled)
         }
     }
 }

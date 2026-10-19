@@ -511,7 +511,6 @@ struct ArtistAssignmentsField: View {
             editor
                 .frame(width: 320)
                 .padding(ThemeSpace.group)
-                .background { PopoverBehavior() }
         }
     }
 
