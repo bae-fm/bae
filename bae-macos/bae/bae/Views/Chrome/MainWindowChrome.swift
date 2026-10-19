@@ -45,7 +45,7 @@ enum WelcomeWindow {
     static let size = CGSize(width: 900, height: 600)
 }
 
-/// The main window's chrome around the shell: its minimum size, the themed
+/// The main window's chrome around the shell: its size limits, the themed
 /// background, and the bottom line for a library load error.
 struct MainWindowChrome<Content: View>: View {
     let loadError: DisplayError?
@@ -53,16 +53,53 @@ struct MainWindowChrome<Content: View>: View {
     let content: Content
 
     var body: some View {
-        content
-            .frame(
-                minWidth: MainWindow.minSize.width,
-                minHeight: MainWindow.minSize.height
+        MainWindowFrame {
+            content
+        }
+        .windowBackground()
+        .overlay(alignment: .bottom) {
+            LoadErrorLine(loadError: loadError)
+        }
+    }
+}
+
+/// The library window's size limits: never under `MainWindow.minSize`, and
+/// as large as the person makes it. The limits never depend on the content,
+/// so the window hosting the shell, which measures its content's minimum,
+/// maximum and ideal sizes whenever the content changes, measures only this
+/// layout and never the shell, whatever in the shell changed: during
+/// playback, the position it shows changes several times a second.
+private struct MainWindowFrame: Layout {
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews _: Subviews,
+        cache _: inout Void
+    ) -> CGSize {
+        CGSize(
+            width: max(
+                proposal.width ?? MainWindow.minSize.width,
+                MainWindow.minSize.width
+            ),
+            height: max(
+                proposal.height ?? MainWindow.minSize.height,
+                MainWindow.minSize.height
             )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .windowBackground()
-            .overlay(alignment: .bottom) {
-                LoadErrorLine(loadError: loadError)
-            }
+        )
+    }
+
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal _: ProposedViewSize,
+        subviews: Subviews,
+        cache _: inout Void
+    ) {
+        for subview in subviews {
+            subview.place(
+                at: CGPoint(x: bounds.midX, y: bounds.midY),
+                anchor: .center,
+                proposal: ProposedViewSize(bounds.size)
+            )
+        }
     }
 }
 
