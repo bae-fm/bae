@@ -300,6 +300,15 @@ CREATE TABLE IF NOT EXISTS local_release_files (
     modified_at TEXT NOT NULL
 ) STRICT;
 
+-- The candidate (its folder path, or its grouping's key) this device imported
+-- each release from. Another device's folders mean nothing here, so it never
+-- syncs. The import list reads it to tell a folder's own import from another
+-- release that only carries the folder's hash.
+CREATE TABLE IF NOT EXISTS local_release_origin (
+    release_id    TEXT NOT NULL PRIMARY KEY REFERENCES releases(id) ON DELETE CASCADE,
+    candidate_key TEXT NOT NULL
+) STRICT;
+
 
 -- Who is credited on a release, and in what role, as the catalog stated it.
 CREATE TABLE IF NOT EXISTS release_artist_roles (

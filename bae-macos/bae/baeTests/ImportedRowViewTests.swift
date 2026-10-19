@@ -16,7 +16,8 @@ struct ImportedRowViewTests {
             title: "Album",
             artist: "Artist",
             year: 1952,
-            records: []
+            records: [],
+            probablyInLibrary: false
         )
         let lines = try await renderedLines(row)
         #expect(lines.carrying("Album"))
@@ -28,9 +29,10 @@ struct ImportedRowViewTests {
     }
 
     @MainActor
-    @Test("a Done row draws every matching copy and the duplicate hint")
-    func aDoneRowDrawsEveryCopy() async throws {
+    @Test("a folder only another release's hash matches draws the hint")
+    func aFolderOnlyAHashMatchesDrawsTheHint() async throws {
         var row = PreviewData.importedRowIdentified
+        row.probablyInLibrary = true
         var copy = row.releases[0]
         copy.releaseId = "second-copy"
         copy.title = "Second Album"
@@ -40,6 +42,32 @@ struct ImportedRowViewTests {
         #expect(lines.carrying(row.releases[0].title))
         #expect(lines.carrying(copy.title))
         #expect(lines.carrying(coreString("ui.import.probably_in_library")))
+    }
+
+    /// Every one of several imported folders is its own import, so none of
+    /// their rows says the library probably has it.
+    @MainActor
+    @Test("a folder's own import draws no hint")
+    func aFoldersOwnImportDrawsNoHint() async throws {
+        let rows = [
+            PreviewData.importedRowIdentified,
+            PreviewData.importedRowFromTags,
+            PreviewData.importedRow(
+                for: PreviewData.folderCandidates[1],
+                title: "Third Album",
+                year: 2001,
+                records: [],
+                probablyInLibrary: false
+            ),
+        ]
+        for row in rows {
+            let lines = try await renderedLines(row)
+            #expect(lines.carrying(row.releases[0].title))
+            #expect(
+                !lines.carrying(coreString("ui.import.probably_in_library")),
+                "\(row.releases[0].title) is its own import"
+            )
+        }
     }
 
     @Test("a release with no year names its artist alone")

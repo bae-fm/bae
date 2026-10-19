@@ -156,11 +156,15 @@ impl crate::types::BridgeCandidateImportStatus {
             bae_core::import::CandidateImportStatus::Importing { standing } => Self::Importing {
                 standing: crate::types::BridgeImportStanding::from_core(standing),
             },
-            bae_core::import::CandidateImportStatus::Complete { releases } => Self::Complete {
+            bae_core::import::CandidateImportStatus::Complete {
+                releases,
+                probably_in_library,
+            } => Self::Complete {
                 releases: releases
                     .into_iter()
                     .map(crate::types::BridgeImportedRelease::from_core)
                     .collect(),
+                probably_in_library,
             },
             bae_core::import::CandidateImportStatus::Error { failure } => Self::Error {
                 error: crate::types::BridgeError::from_core(failure.ui_error()),
@@ -221,10 +225,20 @@ impl crate::types::BridgeTriageRow {
     }
 }
 
-mirror_struct! {
-    crate::types::BridgeImportedRelease = bae_core::import::ImportedRelease,
-    from_core: fn,
-    fields: { release_id, album_id },
+impl crate::types::BridgeImportedRelease {
+    fn from_core(release: bae_core::import::ImportedRelease) -> Self {
+        let bae_core::import::ImportedRelease {
+            release_id,
+            album_id,
+            // Which folder a release came from is core's to compare; a
+            // surface reads the verdict, `probably_in_library`.
+            imported_from: _,
+        } = release;
+        Self {
+            release_id,
+            album_id,
+        }
+    }
 }
 
 mirror_struct! {
@@ -254,6 +268,7 @@ impl crate::types::BridgeImportedRow {
             // decided.
             action_basis: _,
             releases,
+            probably_in_library,
             selected,
         } = row;
         Self {
@@ -264,6 +279,7 @@ impl crate::types::BridgeImportedRow {
                 .into_iter()
                 .map(crate::types::BridgeImportedReleaseSummary::from_core)
                 .collect(),
+            probably_in_library,
             selected,
         }
     }

@@ -173,6 +173,7 @@ fn done_honors_selected_order_within_upload_standings() {
     rows.imported.get_mut("hash-A").unwrap().push(ImportedRelease {
         release_id: "rel-a-copy".to_string(),
         album_id: "album-rel-a".to_string(),
+        imported_from: None,
     });
     for (order, expected) in [
         (

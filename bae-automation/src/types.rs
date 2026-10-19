@@ -645,6 +645,9 @@ pub enum AutomationImportStatus {
     },
     Complete {
         releases: Vec<AutomationImportedRelease>,
+        /// No listed release was imported from this folder on this device:
+        /// only its hash matches.
+        probably_in_library: bool,
     },
     Error {
         error: String,

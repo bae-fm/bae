@@ -196,8 +196,9 @@ pub(super) fn load_import_queue_on(
     let mut imported: HashMap<String, Vec<ImportedRelease>> = HashMap::new();
     let mut imported_at: HashMap<String, i64> = HashMap::new();
     for (content_hash, release, created_at) in sql.query(
-        "SELECT content_hash, id, album_id, created_at \
-         FROM releases WHERE content_hash IS NOT NULL ORDER BY created_at, id",
+        "SELECT r.content_hash, r.id, r.album_id, r.created_at, o.candidate_key \
+         FROM releases r LEFT JOIN local_release_origin o ON o.release_id = r.id \
+         WHERE r.content_hash IS NOT NULL ORDER BY r.created_at, r.id",
         [],
         |row| {
             Ok((
@@ -205,6 +206,7 @@ pub(super) fn load_import_queue_on(
                 ImportedRelease {
                     release_id: row.get(1)?,
                     album_id: row.get(2)?,
+                    imported_from: row.get(4)?,
                 },
                 super::read::rfc3339_column(row, "created_at")?,
             ))

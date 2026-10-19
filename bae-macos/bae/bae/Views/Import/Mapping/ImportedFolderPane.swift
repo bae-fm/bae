@@ -4,6 +4,9 @@ import SwiftUI
 /// Every matching copy is listed; one copy owns the active metadata editor.
 struct ImportedFolderPane<Content: View>: View {
     let releases: [BridgeImportedRelease]
+    /// None of `releases` was imported from this folder; only its hash
+    /// matches.
+    let probablyInLibrary: Bool
     @ViewBuilder
     let content: (BridgeImportedRelease) -> Content
 
@@ -20,9 +23,11 @@ struct ImportedFolderPane<Content: View>: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: ThemeSpace.section) {
-                Text(verbatim: coreString("ui.import.probably_in_library"))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, ThemeSpace.section)
+                if probablyInLibrary {
+                    Text(verbatim: coreString("ui.import.probably_in_library"))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, ThemeSpace.section)
+                }
                 Picker(
                     "Release",
                     selection: Binding(

@@ -81,10 +81,20 @@ pub(crate) fn automation_candidate_from_folder(
     }
 }
 
-mirror_struct! {
-    AutomationImportedRelease = bae_core::import::ImportedRelease,
-    from_core: fn,
-    fields: { release_id, album_id },
+impl AutomationImportedRelease {
+    fn from_core(release: bae_core::import::ImportedRelease) -> Self {
+        let bae_core::import::ImportedRelease {
+            release_id,
+            album_id,
+            // Core compares it; the status states the verdict,
+            // `probably_in_library`.
+            imported_from: _,
+        } = release;
+        Self {
+            release_id,
+            album_id,
+        }
+    }
 }
 
 mirror_enum! {
@@ -197,12 +207,16 @@ pub(crate) fn automation_import_status(
             progress_percent: None,
             step: None,
         },
-        CandidateImportStatus::Complete { releases } => AutomationImportStatus::Complete {
+        CandidateImportStatus::Complete {
+            releases,
+            probably_in_library,
+        } => AutomationImportStatus::Complete {
             releases: releases
                 .iter()
                 .cloned()
                 .map(AutomationImportedRelease::from_core)
                 .collect(),
+            probably_in_library: *probably_in_library,
         },
         CandidateImportStatus::Error { failure } => AutomationImportStatus::Error {
             error: failure.detail.clone(),

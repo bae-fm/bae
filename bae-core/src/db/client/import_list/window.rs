@@ -157,6 +157,10 @@ fn imported_row(
         display_path: placed.display_path.clone(),
         action_basis: placed.action_basis.clone(),
         selected: placed.selected,
+        probably_in_library: ImportedRelease::probably_in_library(
+            releases,
+            &placed.candidate_key,
+        ),
         releases: releases.iter().map(|release| imported_release_summary(sql, release)).collect::<Result<_, _>>()?,
     })
 }
@@ -485,12 +489,15 @@ pub(super) fn load_candidate_detail_on(
 
     let imported_releases = sql
         .query(
-            "SELECT id, album_id FROM releases WHERE content_hash = ? ORDER BY created_at, id",
+            "SELECT r.id, r.album_id, o.candidate_key \
+             FROM releases r LEFT JOIN local_release_origin o ON o.release_id = r.id \
+             WHERE r.content_hash = ? ORDER BY r.created_at, r.id",
             params![content_hash],
             |row| {
                 Ok(ImportedRelease {
                     release_id: row.get(0)?,
                     album_id: row.get(1)?,
+                    imported_from: row.get(2)?,
                 })
             },
         )?;

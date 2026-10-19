@@ -290,9 +290,11 @@ mod tests {
     /// is either declared in `synced_tables()` or named here, so a new table
     /// is a decision rather than a row that silently stays on one device.
     const DEVICE_LOCAL_TABLES: &[&str] = &[
-        // This device's own copies: original paths of local releases, plays
-        // before a person exists, and what this device was playing.
+        // This device's own copies: original paths of local releases, the
+        // folder each release was imported from, plays before a person
+        // exists, and what this device was playing.
         "local_release_files",
+        "local_release_origin",
         "local_history",
         "playback_state",
         // Import: the folders this device watches, what scanning found in

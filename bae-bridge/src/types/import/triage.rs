@@ -135,6 +135,9 @@ pub enum BridgeCandidateImportStatus {
     },
     Complete {
         releases: Vec<BridgeImportedRelease>,
+        /// No listed release was imported from this folder on this device:
+        /// only its hash matches.
+        probably_in_library: bool,
     },
     Error {
         error: BridgeError,
@@ -705,6 +708,10 @@ pub struct BridgeImportedRow {
     /// wrote the release can still own it for a moment.
     pub live: BridgeCandidateLiveState,
     pub releases: Vec<BridgeImportedReleaseSummary>,
+    /// No listed release was imported from this folder on this device: only
+    /// its hash matches, so the folder is probably one the library already
+    /// has.
+    pub probably_in_library: bool,
     /// Whether the person has selected the row.
     pub selected: bool,
 }

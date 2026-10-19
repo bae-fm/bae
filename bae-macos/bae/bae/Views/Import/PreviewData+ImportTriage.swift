@@ -512,7 +512,8 @@
             for: importTabDoneCandidate,
             title: importTabDoneCandidate.displayName,
             year: 1997,
-            records: identifiedFromBothCatalogs
+            records: identifiedFromBothCatalogs,
+            probablyInLibrary: false
         )
 
         /// A Done row whose release was read off its files' tags.
@@ -520,7 +521,8 @@
             for: folderCandidates[0],
             title: "Album Title",
             year: nil,
-            records: []
+            records: [],
+            probablyInLibrary: false
         )
 
         static func importedRow(
@@ -528,7 +530,8 @@
             title: String,
             artist: String? = "Artist Name",
             year: Int32?,
-            records: [BridgeReleaseRecord]
+            records: [BridgeReleaseRecord],
+            probablyInLibrary: Bool
         ) -> BridgeImportedRow {
             BridgeImportedRow(
                 candidateKey: candidate.key,
@@ -545,6 +548,7 @@
                         records: records
                     )
                 ],
+                probablyInLibrary: probablyInLibrary,
                 selected: false
             )
         }

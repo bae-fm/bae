@@ -134,6 +134,10 @@ async fn import_list_done_row_reads_the_library_release() {
         db.subscribe_import_list(list_request(crate::import::TriageTab::Done, [(0, 50)]));
     let initial = imported_rows(&live.next().await.result.unwrap());
     assert_eq!(initial.len(), 1);
+    assert!(
+        initial[0].probably_in_library,
+        "the release carries the folder's hash, but no import from the folder wrote it"
+    );
     let release = &initial[0].releases[0];
     assert_eq!(release.release_id, RELEASE_ID);
     assert_eq!(release.album_id, ALBUM_ID);

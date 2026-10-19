@@ -660,7 +660,8 @@ impl ImportCandidateDetailProjection {
         let metadata_draft_is_blank = metadata_draft.is_blank();
         let import_status = match facts.import {
             Some(standing) => Some(CandidateImportStatus::Importing { standing }),
-            None => import_status.map(CandidateImportStatus::of),
+            None => import_status
+                .map(|status| CandidateImportStatus::of(status, &candidate.key())),
         };
         ImportCandidateDetail {
             candidate,
@@ -728,6 +729,9 @@ pub enum CandidateImportStatus {
     },
     Complete {
         releases: Vec<super::ImportedRelease>,
+        /// No listed release was imported from this folder on this device:
+        /// only its hash matches.
+        probably_in_library: bool,
     },
     Error {
         failure: super::ImportFailureReason,
@@ -740,9 +744,15 @@ pub enum CandidateImportStatus {
 }
 
 impl CandidateImportStatus {
-    fn of(stored: TriageImportStatus) -> Self {
+    fn of(stored: TriageImportStatus, candidate_key: &str) -> Self {
         match stored {
-            TriageImportStatus::Complete { releases } => Self::Complete { releases },
+            TriageImportStatus::Complete { releases } => Self::Complete {
+                probably_in_library: super::ImportedRelease::probably_in_library(
+                    &releases,
+                    candidate_key,
+                ),
+                releases,
+            },
             TriageImportStatus::Error { failure } => Self::Error { failure },
             TriageImportStatus::Blocked { reason } => Self::Blocked { reason },
         }

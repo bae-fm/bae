@@ -850,3 +850,124 @@ async fn next_imported_row(
     .await
     .unwrap_or_else(|_| panic!("timed out waiting for the Done row for {key}"))
 }
+
+/// Each Done row says "you probably already have this" only for a folder no
+/// listed release was imported from: never on a folder's own import, and on a
+/// copy of an imported folder whose files hash alike.
+#[tokio::test]
+async fn only_a_folder_another_release_carries_the_hash_of_is_probably_in_the_library() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+
+    let collection = f.temp_path().join("Collection");
+    let titles = ["First", "Second", "Third"];
+    let mut keys = Vec::new();
+    for title in titles {
+        let album = collection.join(format!("Artist - {title}"));
+        fs::create_dir_all(&album).unwrap();
+        generate_tagged_album_files(
+            &album,
+            title,
+            "Artist",
+            None,
+            &[TaggedTrack {
+                filename: "01 Track.flac",
+                title: "Track",
+                track_number: 1,
+            }],
+        );
+        keys.push(album.to_string_lossy().into_owned());
+    }
+    // A copy that keeps the modification times hashes like the original.
+    let original = collection.join("Artist - First");
+    let copy = collection.join("Backup of Artist - First");
+    fs::create_dir_all(&copy).unwrap();
+    for entry in fs::read_dir(&original).unwrap() {
+        let source = entry.unwrap().path();
+        let target = copy.join(source.file_name().unwrap());
+        fs::copy(&source, &target).unwrap();
+        fs::File::options()
+            .write(true)
+            .open(&target)
+            .unwrap()
+            .set_times(
+                fs::FileTimes::new()
+                    .set_modified(fs::metadata(&source).unwrap().modified().unwrap()),
+            )
+            .unwrap();
+    }
+    let copy_key = copy.to_string_lossy().into_owned();
+
+    f.handle
+        .add_watched_folder(collection.to_string_lossy().into_owned())
+        .await
+        .unwrap();
+    wait_for_candidates(&f, "every scanned candidate", |projection| {
+        candidate_rows(projection).len() == 4
+    })
+    .await;
+
+    let mut release_ids = Vec::new();
+    for key in &keys {
+        f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
+        let import_id = f.handle.start_import(key).await.unwrap();
+        let mut progress_rx = f.handle.subscribe_import(import_id);
+        release_ids.push(support::wait_for_import_complete(&mut progress_rx).await.0);
+    }
+
+    // One read of the Done tab holding all four folders.
+    let done = wait_for_tab(&f, "every folder Done", bae_core::import::TriageTab::Done, |list| {
+        imported_rows(list).len() == 4
+    })
+    .await;
+    let done_row = |key: &str| {
+        imported_rows(&done)
+            .into_iter()
+            .find(|row| row.candidate_key == key)
+            .unwrap_or_else(|| panic!("{key} is Done"))
+    };
+    for (key, release_id) in keys.iter().zip(&release_ids) {
+        let row = done_row(key);
+        assert_eq!(row.releases.len(), 1);
+        assert_eq!(&row.releases[0].release_id, release_id);
+        assert!(!row.probably_in_library, "{key} is its own import");
+        let pane = f.handle.candidate_pane(key).await.unwrap().unwrap();
+        assert!(
+            matches!(
+                pane.import_status,
+                Some(bae_core::import::CandidateImportStatus::Complete {
+                    probably_in_library: false,
+                    ..
+                })
+            ),
+            "{key}'s pane is its own import"
+        );
+    }
+    let row = done_row(&copy_key);
+    assert_eq!(row.releases.len(), 1);
+    assert_eq!(row.releases[0].release_id, release_ids[0]);
+    assert!(row.probably_in_library, "the copy was never imported");
+    let pane = f.handle.candidate_pane(&copy_key).await.unwrap().unwrap();
+    assert!(matches!(
+        pane.import_status,
+        Some(bae_core::import::CandidateImportStatus::Complete {
+            probably_in_library: true,
+            ..
+        })
+    ));
+}
+
+/// The Done rows one read of the list holds.
+fn imported_rows(
+    projection: &bae_core::import::ImportListSnapshot,
+) -> Vec<bae_core::import::ImportedRow> {
+    projection
+        .windows
+        .iter()
+        .flat_map(|window| &window.items)
+        .filter_map(|item| match item {
+            bae_core::import::ImportListItem::Imported { row, .. } => Some(row.clone()),
+            _ => None,
+        })
+        .collect()
+}

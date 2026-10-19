@@ -16,7 +16,9 @@ mod watched_folder_removal;
 
 use edit_rows::{delete_file_edits, insert_file_edits};
 use failure_rows::{delete_failure_on, load_failure_on};
-pub(super) use import_commit::{end_import_attempt_of_commit, require_import_commit_guard};
+pub(super) use import_commit::{
+    end_import_attempt_of_commit, record_import_origin_on, require_import_commit_guard,
+};
 pub(super) use pane_rows::{
     author_of, insert_draft, load_album_artist_assignments_on, load_covers_on, load_pane_rows_on,
 };

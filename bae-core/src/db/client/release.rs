@@ -1,5 +1,7 @@
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use super::import_state::{end_import_attempt_of_commit, require_import_commit_guard};
+use super::import_state::{
+    end_import_attempt_of_commit, record_import_origin_on, require_import_commit_guard,
+};
 use super::*;
 mod storage;
 
@@ -535,6 +537,7 @@ impl Database {
                 }
 
                 insert_release_row(tx, &release)?;
+                record_import_origin_on(tx, &guard, &release.id)?;
 
                 // One row per catalog that describes the release, empty when
                 // none does. The records are uniquely keyed on

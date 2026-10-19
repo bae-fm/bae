@@ -325,6 +325,10 @@ pub struct ImportedRow {
     /// release can still own the candidate for a moment.
     pub action_basis: CandidateActionBasis,
     pub releases: Vec<ImportedReleaseSummary>,
+    /// No listed release was imported from this folder on this device: only
+    /// its hash matches, so the folder is probably one the library already
+    /// has.
+    pub probably_in_library: bool,
     /// Whether the person has selected the row.
     pub selected: bool,
 }

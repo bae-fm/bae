@@ -214,6 +214,7 @@ fn imported(rows: &mut ImportQueueRows, display_path: &str, release_id: &str, im
         vec![ImportedRelease {
             release_id: release_id.to_string(),
             album_id: format!("album-{release_id}"),
+            imported_from: None,
         }],
     );
     rows.imported_at.insert(hash, imported_at);

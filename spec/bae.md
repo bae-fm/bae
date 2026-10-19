@@ -427,6 +427,11 @@ copies Ana's rip folder to his laptop, keeping the modification times. His scan
 finds it, and Ana's release carries its hash, so the folder lands in Done
 beside her release: Ben probably already has it.
 
+The row says so only for a folder none of its releases was imported from. Each
+device records, for itself alone, which folder each of its imports read
+(`local_release_origin`), so Ana's own folder lists her release without the
+hint, uploaded or not.
+
 Done offers no re-import. A second copy comes from importing another folder,
 such as a copy whose modification times changed.
 

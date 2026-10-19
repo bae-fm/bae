@@ -55,10 +55,13 @@ extension ImportView {
         runtime: BridgeCandidateRuntimeSnapshot?
     ) -> some View {
         switch candidate.importStatus {
-        case .complete(let releases):
+        case .complete(let releases, let probablyInLibrary):
             let releaseEditor = releaseEditor
             let mappingActions = mappingActions(for: candidate)
-            ImportedFolderPane(releases: releases) { release in
+            ImportedFolderPane(
+                releases: releases,
+                probablyInLibrary: probablyInLibrary
+            ) { release in
                 ImportedReleasePane(
                     candidate: candidate,
                     releaseId: release.releaseId,

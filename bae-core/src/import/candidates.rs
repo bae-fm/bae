@@ -203,11 +203,25 @@ pub struct ImportInFlight {
     pub step: ImportStep,
 }
 
-/// The library release one candidate's bytes were imported as.
+/// A library release carrying one candidate's folder hash.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportedRelease {
     pub release_id: String,
     pub album_id: String,
+    /// The candidate key this device imported the release from; `None` for a
+    /// release another device imported.
+    pub imported_from: Option<String>,
+}
+
+impl ImportedRelease {
+    /// Whether the folder at `candidate_key` is probably one the library
+    /// already has: some release carries its hash, but none of `releases` was
+    /// imported from it.
+    pub(crate) fn probably_in_library(releases: &[Self], candidate_key: &str) -> bool {
+        !releases
+            .iter()
+            .any(|release| release.imported_from.as_deref() == Some(candidate_key))
+    }
 }
 
 /// Whether reading the folder at `key` as `decision` is something the stored

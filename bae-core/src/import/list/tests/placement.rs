@@ -64,6 +64,7 @@ fn an_imported_content_hash_puts_its_row_in_done() {
         vec![ImportedRelease {
             release_id: "rel-1".to_string(),
             album_id: "alb-1".to_string(),
+            imported_from: None,
         }],
     );
 
@@ -180,6 +181,7 @@ fn retrying_a_failed_import_moves_it_back_to_pending_then_to_done() {
         vec![ImportedRelease {
             release_id: "rel-1".to_string(),
             album_id: "alb-1".to_string(),
+            imported_from: None,
         }],
     );
 
@@ -204,6 +206,7 @@ fn an_imported_release_outranks_a_leftover_failure() {
         vec![ImportedRelease {
             release_id: "rel-1".to_string(),
             album_id: "alb-1".to_string(),
+            imported_from: None,
         }],
     );
 
@@ -311,6 +314,7 @@ fn a_pick_does_not_outrank_skipped_or_done() {
         vec![ImportedRelease {
             release_id: "rel-1".to_string(),
             album_id: "alb-1".to_string(),
+            imported_from: None,
         }],
     );
     assert_eq!(

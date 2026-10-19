@@ -46,6 +46,27 @@ pub(crate) fn end_import_attempt_of_commit(
     }
 }
 
+/// Record, inside the commit, which candidate this device imported the
+/// release from, so the import list tells the folder's own import from a
+/// release that only carries its hash.
+pub(crate) fn record_import_origin_on(
+    sql: &SqlContext<'_, '_>,
+    guard: &ImportCommitGuard,
+    release_id: &str,
+) -> Result<(), DbError> {
+    match guard {
+        ImportCommitGuard::Candidate { candidate_key, .. } => {
+            sql.execute(
+                "INSERT INTO local_release_origin (release_id, candidate_key) VALUES (?1, ?2)",
+                params![release_id, candidate_key],
+            )?;
+            Ok(())
+        }
+        #[cfg(test)]
+        ImportCommitGuard::UncheckedTestSetup => Ok(()),
+    }
+}
+
 /// The stored candidate at `candidate_key` as the commit sees it, or `None`
 /// when the scan no longer lists one there.
 fn load_committing_candidate(

@@ -1,7 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// A Done folder and every library copy carrying its content hash.
+/// A Done folder and every library copy carrying its content hash, with the
+/// hint that the library probably has it when none was imported from it.
 struct ImportedRowView: View {
     let row: BridgeImportedRow
     let uploadObservations: [String: UploadObservation]
@@ -9,10 +10,15 @@ struct ImportedRowView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            Text(verbatim: coreString("ui.import.probably_in_library"))
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
+            if row.probablyInLibrary {
+                Text(verbatim: coreString("ui.import.probably_in_library"))
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+                    .padding(
+                        .horizontal,
+                        ImportListHierarchyLayout.rowEdgePadding
+                    )
+            }
             ForEach(row.releases, id: \.releaseId) { release in
                 ImportedReleaseRowView(
                     release: release,
