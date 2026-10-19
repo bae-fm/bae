@@ -39,64 +39,38 @@ final class SearchRevealTests: XCTestCase {
             )
         )
 
+        let grid = AlbumGrid(app: app)
         // The newest album's card, on top of the grid.
         let newest = near[near.count - 1].title
-        let gridView = app.scrollViews
-            .containing(.staticText, identifier: newest)
-            .firstMatch
-        XCTAssertTrue(gridView.waitForExistence(timeout: 30))
-        // Its frame now: the query finds it by a card a far scroll takes away.
-        let grid = gridView.frame
-        XCTAssertFalse(shown(Self.farAlbum, in: grid, of: app))
+        XCTAssertTrue(waitUntil(timeout: 30) { grid.shows(newest) })
+        XCTAssertFalse(grid.shows(Self.farAlbum))
 
         pickSearchResult(Self.farAlbum, in: app)
         XCTAssertTrue(
-            waitUntil(timeout: 10) {
-                self.shown(Self.farAlbum, in: grid, of: app)
-            },
+            waitUntil(timeout: 10) { grid.shows(Self.farAlbum) },
             "the picked album is scrolled into view"
         )
 
         // Back to the top, with the album's detail left open down there.
-        scrollToTop(grid, in: app)
-        XCTAssertTrue(
-            app.staticTexts[newest].waitForExistence(timeout: 10)
-        )
+        scrollToTop(grid)
+        XCTAssertTrue(waitUntil(timeout: 10) { grid.shows(newest) })
         let farTrack = Self.farTracks[10]
-        XCTAssertFalse(shown(farTrack, in: grid, of: app))
+        XCTAssertFalse(grid.shows(farTrack))
 
         pickSearchResult(farTrack, in: app)
         XCTAssertTrue(
-            waitUntil(timeout: 10) {
-                self.shown(farTrack, in: grid, of: app)
-            },
+            waitUntil(timeout: 10) { grid.shows(farTrack) },
             "the picked track's row is scrolled into view"
         )
     }
 
-    /// Scroll the grid at `grid` all the way up.
+    /// Scroll the grid all the way up, by twice the height of everything it
+    /// lays out, open detail included: the scroll wheel moves the grid less
+    /// than the points it is given, and the height grows with the rows a
+    /// narrower window wraps the albums into.
     @MainActor
-    private func scrollToTop(_ grid: CGRect, in app: XCUIApplication) {
-        let window = app.windows.firstMatch
-        window.coordinate(withNormalizedOffset: .zero)
-            .withOffset(
-                CGVector(
-                    dx: grid.midX - window.frame.minX,
-                    dy: grid.midY - window.frame.minY
-                )
-            )
-            .scroll(byDeltaX: 0, deltaY: 20_000)
-    }
-
-    /// Whether text reading `text` is drawn inside the visible part of
-    /// `grid`: an album's title is on its card and atop its open detail.
-    @MainActor
-    private func shown(
-        _ text: String,
-        in grid: CGRect,
-        of app: XCUIApplication
-    ) -> Bool {
-        app.staticTexts.matching(identifier: text).allElementsBoundByIndex
-            .contains { grid.contains($0.frame) }
+    private func scrollToTop(_ grid: AlbumGrid) {
+        let content = grid.scrollView.children(matching: .other).firstMatch
+        grid.scroll(by: 2 * content.frame.height)
     }
 }
