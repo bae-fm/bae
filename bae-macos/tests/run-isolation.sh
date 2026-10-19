@@ -48,11 +48,11 @@ require_argument "-configuration"
 require_argument "Debug"
 require_argument "-derivedDataPath"
 require_argument "$run_derived_data"
-require_argument "BAE_RUN_APP_BUNDLE_IDENTIFIER=fm.bae.desktop"
-require_argument "BAE_RUN_APP_PRODUCT_NAME=bae"
-require_argument "BAE_RUN_APP_GENERATE_INFOPLIST_FILE=NO"
-require_argument "BAE_RUN_APP_INFOPLIST_FILE=bae/Info.plist"
-require_argument "BAE_RUN_APP_LSUIELEMENT=NO"
+require_argument "BAE_APP_BUNDLE_IDENTIFIER=fm.bae.desktop"
+require_argument "BAE_APP_PRODUCT_NAME=bae"
+require_argument "BAE_APP_GENERATE_INFOPLIST_FILE=NO"
+require_argument "BAE_APP_INFOPLIST_FILE=bae/Info.plist"
+require_argument "BAE_APP_LSUIELEMENT=NO"
 require_argument "BAE_SKIP_RUST_BRIDGE=YES"
 
 reject_setting() {
@@ -174,11 +174,11 @@ if ! debug_settings="$(show_build_settings Debug)"; then
 fi
 
 if ! run_settings="$(show_build_settings Debug \
-    BAE_RUN_APP_BUNDLE_IDENTIFIER=fm.bae.desktop \
-    BAE_RUN_APP_PRODUCT_NAME=bae \
-    BAE_RUN_APP_GENERATE_INFOPLIST_FILE=NO \
-    BAE_RUN_APP_INFOPLIST_FILE=bae/Info.plist \
-    BAE_RUN_APP_LSUIELEMENT=NO)"
+    BAE_APP_BUNDLE_IDENTIFIER=fm.bae.desktop \
+    BAE_APP_PRODUCT_NAME=bae \
+    BAE_APP_GENERATE_INFOPLIST_FILE=NO \
+    BAE_APP_INFOPLIST_FILE=bae/Info.plist \
+    BAE_APP_LSUIELEMENT=NO)"
 then
     echo "$run_settings" >&2
     exit 1

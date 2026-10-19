@@ -10,6 +10,10 @@ configs:
 settings:
   base:
     DEAD_CODE_STRIPPING: YES
+    # bae-bridge/build-macos.sh builds the Rust bridge for aarch64-apple-darwin
+    # only, so there is no x86_64 bridge to link. Release would otherwise build
+    # the standard arm64 + x86_64 pair and fail to link the x86_64 slice.
+    ARCHS: arm64
 packages:
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
@@ -80,19 +84,21 @@ targets:
       - sdk: SystemConfiguration.framework
     settings:
       base:
-        # Only this target maps the private run.sh inputs to standard Xcode
-        # settings. Passing the standard names on xcodebuild's command line
-        # would also override Swift package resource-bundle targets.
-        PRODUCT_BUNDLE_IDENTIFIER: $(BAE_RUN_APP_BUNDLE_IDENTIFIER)
+        # Only this target maps the private BAE_APP_* inputs (passed by run.sh
+        # and the release workflow) to standard Xcode settings. Passing the
+        # standard names on xcodebuild's command line would also override the
+        # Swift package targets: BaeKit's resource bundle would be built as
+        # bae.bundle while the app copies BaeKit_BaeKit.bundle.
+        PRODUCT_BUNDLE_IDENTIFIER: $(BAE_APP_BUNDLE_IDENTIFIER)
         # DEVELOPMENT_TEAM comes from the gitignored Signing.local.xcconfig (via
         # configFiles above), not from here, so the team isn't committed.
         CODE_SIGN_STYLE: Automatic
         DEAD_CODE_STRIPPING: YES
         ENABLE_USER_SCRIPT_SANDBOXING: NO
-        PRODUCT_NAME: $(BAE_RUN_APP_PRODUCT_NAME)
-        GENERATE_INFOPLIST_FILE: $(BAE_RUN_APP_GENERATE_INFOPLIST_FILE)
-        INFOPLIST_FILE: $(BAE_RUN_APP_INFOPLIST_FILE)
-        INFOPLIST_KEY_LSUIElement: $(BAE_RUN_APP_LSUIELEMENT)
+        PRODUCT_NAME: $(BAE_APP_PRODUCT_NAME)
+        GENERATE_INFOPLIST_FILE: $(BAE_APP_GENERATE_INFOPLIST_FILE)
+        INFOPLIST_FILE: $(BAE_APP_INFOPLIST_FILE)
+        INFOPLIST_KEY_LSUIElement: $(BAE_APP_LSUIELEMENT)
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: 1
         SWIFT_VERSION: "6.2"
@@ -135,22 +141,22 @@ targets:
           - /opt/bae-ffmpeg/lib
       configs:
         Debug:
-          BAE_RUN_APP_BUNDLE_IDENTIFIER: fm.bae.desktop.xcode
-          BAE_RUN_APP_PRODUCT_NAME: bae
-          BAE_RUN_APP_GENERATE_INFOPLIST_FILE: YES
-          BAE_RUN_APP_INFOPLIST_FILE: ""
-          BAE_RUN_APP_LSUIELEMENT: YES
+          BAE_APP_BUNDLE_IDENTIFIER: fm.bae.desktop.xcode
+          BAE_APP_PRODUCT_NAME: bae
+          BAE_APP_GENERATE_INFOPLIST_FILE: YES
+          BAE_APP_INFOPLIST_FILE: ""
+          BAE_APP_LSUIELEMENT: YES
           # Xcode previews run an app process; a separate identity lets that
           # process coexist with the app launched by run.sh.
           # XCTest suspends its app host before injecting the test bundle. A
           # generated agent-app plist keeps that pre-start process out of the
           # Dock; run.sh supplies runnable values through the private inputs.
         Release:
-          BAE_RUN_APP_BUNDLE_IDENTIFIER: fm.bae.desktop
-          BAE_RUN_APP_PRODUCT_NAME: bae
-          BAE_RUN_APP_GENERATE_INFOPLIST_FILE: NO
-          BAE_RUN_APP_INFOPLIST_FILE: bae/Info.plist
-          BAE_RUN_APP_LSUIELEMENT: NO
+          BAE_APP_BUNDLE_IDENTIFIER: fm.bae.desktop
+          BAE_APP_PRODUCT_NAME: bae
+          BAE_APP_GENERATE_INFOPLIST_FILE: NO
+          BAE_APP_INFOPLIST_FILE: bae/Info.plist
+          BAE_APP_LSUIELEMENT: NO
   baeTests:
     type: bundle.unit-test
     platform: macOS

@@ -142,18 +142,20 @@ jobs:
 
     - name: Build app
       run: |
-        # PRODUCT_BUNDLE_IDENTIFIER + PRODUCT_NAME overrides on the xcodebuild
-        # command line win over the pbxproj, giving the baeium build its sibling
-        # identity (fm.bae.desktop.baeium) and app name (baeium.app). Signing is
-        # CODE_SIGNING_ALLOWED=NO here; the bundle is codesigned by hand below
-        # with the edition's entitlements.
+        # The app target maps BAE_APP_BUNDLE_IDENTIFIER + BAE_APP_PRODUCT_NAME
+        # to its own PRODUCT_BUNDLE_IDENTIFIER and PRODUCT_NAME, giving the
+        # baeium build its sibling identity (fm.bae.desktop.baeium) and app name
+        # (baeium.app). Passing the standard names here would rename every Swift
+        # package target too, so BaeKit's resource bundle would no longer be
+        # BaeKit_BaeKit.bundle. Signing is CODE_SIGNING_ALLOWED=NO here; the
+        # bundle is codesigned by hand below with the edition's entitlements.
         xcodebuild -project bae-macos/bae/bae.xcodeproj \
           -scheme bae \
           -configuration Release \
           -derivedDataPath bae-macos/bae/.build/derivedData \
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-          PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
-          PRODUCT_NAME="$PRODUCT_NAME" \
+          BAE_APP_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+          BAE_APP_PRODUCT_NAME="$PRODUCT_NAME" \
           DEBUG_INFORMATION_FORMAT=dwarf-with-dsym \
           LIBRARY_SEARCH_PATHS="${FFMPEG_DIR}/lib /opt/bae-ffmpeg/lib /opt/homebrew/lib" \
           build
