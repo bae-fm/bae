@@ -1300,9 +1300,10 @@ deleted at once.
   from this device without opening it, through coven's delete of a closed
   store: the secrets this device keeps for it and its directory, then bae's
   files and the record, as in any removal. The device stays among the
-  library's members until it is removed from them (§5.6). coven refuses that
-  delete while a reset or restore is unfinished; finishing it opens the
-  library, which then leaves as above.
+  library's members until it is removed from them (§5.6). For a reset or
+  restore that stopped partway, the delete takes both copies, the one the
+  call loaded and the one it replaced, so giving up on the call is the other
+  way out of it.
 - **A removal that stops partway.** bae and coven can't commit together, so
   bae writes a record of the removal in its own directory before coven
   deletes the store, and deletes the record last. A removal that stopped is

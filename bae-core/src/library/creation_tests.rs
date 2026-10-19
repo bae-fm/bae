@@ -438,11 +438,11 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
 
 /// A library whose restore stopped after its swap can't open, so removing it
 /// can't count what it hasn't sent and goes to coven's delete of a closed
-/// store. coven refuses that delete while the replacement is unfinished, so
-/// the removal changes nothing: the library stays listed as waiting for its
-/// restore, the pointer still names it, and no removal record is left.
+/// store. That delete takes both copies, the one the restore loaded and the
+/// one it replaced: nothing of the library is left listed, its files and the
+/// pointer naming it are gone, and no removal record is left.
 #[tokio::test]
-async fn removing_a_library_whose_restore_stopped_after_its_swap_is_refused_unchanged() {
+async fn removing_a_library_whose_restore_stopped_after_its_swap_deletes_both_copies() {
     let temp = tempfile::TempDir::new().unwrap();
     let app_dir = AppDir::at(temp.path());
     let installation = std::sync::Arc::new(coven::TestCoven::new());
@@ -478,40 +478,29 @@ async fn removing_a_library_whose_restore_stopped_after_its_swap_is_refused_unch
         "{counted:?}"
     );
 
-    let removal =
-        remove_unopenable_library(&app_dir, &Keychain::InMemory(installation.clone()), store)
-            .await
-            .expect_err("coven refuses deleting a store whose replacement is unfinished");
-    assert!(
-        matches!(
-            removal,
-            LibraryRemovalError::Store(coven::StoreDeletionError::Lock(
-                coven::StoreLockError::ReplacementUnfinished {
-                    by: coven::ReplacedBy::Restore,
-                    ..
-                }
-            ))
-        ),
-        "{removal:?}"
-    );
-    let libraries = crate::config::Config::discover_libraries(&app_dir)
+    // The restored copy waits in a hidden directory inside the store's.
+    let store_files = || {
+        std::fs::read_dir(temp.path().join("stores"))
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .filter(|name| name.contains(&store.to_string()))
+            .collect::<Vec<_>>()
+    };
+    assert!(store_files().contains(&store.to_string()));
+
+    remove_unopenable_library(&app_dir, &Keychain::InMemory(installation.clone()), store)
         .await
         .unwrap();
-    assert!(
-        matches!(
-            libraries[..],
-            [crate::config::LibraryInfo {
-                state: crate::config::LibraryState::ReplacementUnfinished(
-                    coven::ReplacedBy::Restore
-                ),
-                ..
-            }]
-        ),
-        "{libraries:?}"
-    );
+    assert!(app_dir.store_layout().stores().await.unwrap().is_empty());
+    assert_eq!(store_files(), Vec::<String>::new());
+    assert!(!app_dir.registered_library(&store.to_string()).exists());
+    assert!(crate::config::Config::discover_libraries(&app_dir)
+        .await
+        .unwrap()
+        .is_empty());
     assert_eq!(
         crate::config::Config::active_library_id(&app_dir).unwrap(),
-        Some(store.to_string())
+        None
     );
     assert!(UnfinishedRemoval::find(&app_dir).await.unwrap().is_none());
 }

@@ -148,8 +148,8 @@ pub async fn remove_local_library(
 /// the record follow as in any removal. Whatever this device hadn't sent is
 /// lost uncounted, since counting needs the library open, and this device
 /// stays among the library's members, since leaving needs it open too.
-/// coven refuses the delete while a reset or restore is unfinished, and the
-/// refusal changes nothing.
+/// For a reset or restore that stopped after its swap, coven deletes both
+/// copies, the one it loaded and the one it replaced.
 pub async fn remove_unopenable_library(
     app_dir: &AppDir,
     keychain: &super::Keychain,
