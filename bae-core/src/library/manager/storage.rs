@@ -190,6 +190,13 @@ impl LibraryManager {
             .collect();
         let covers = self.cover_refs(&cover_ids).await?;
         let pin_states = self.page_pin_states(&raw_rows).await?;
+        let originals = self
+            .look_at_originals(crate::album_detail::recorded_originals(
+                raw_rows
+                    .iter()
+                    .flat_map(|row| &row.release.unattached_audio),
+            ))
+            .await?;
         let mut rows = Vec::with_capacity(raw_rows.len());
         for (raw, pinned) in raw_rows.into_iter().zip(pin_states) {
             let transfer_action = self.current_transfer_action(&raw.release.id);
@@ -198,6 +205,7 @@ impl LibraryManager {
                 has_cloud_home,
                 pinned,
                 transfer_action,
+                &originals,
                 |rid| covers.get(rid).cloned(),
             ));
         }
@@ -239,12 +247,29 @@ impl LibraryManager {
             .collect()
     }
 
+    /// The originals the library records this device holding for the
+    /// releases a Storage Manager delivery shows: what the disk is asked about.
+    pub(crate) fn storage_browse_originals(
+        projection: &crate::db::StorageBrowseProjection,
+    ) -> Vec<crate::db::RecordedOriginal> {
+        crate::album_detail::recorded_originals(
+            projection
+                .windows
+                .iter()
+                .flat_map(|window| &window.rows)
+                .flat_map(|row| &row.release.unattached_audio),
+        )
+    }
+
     /// Resolve a Storage Manager delivery with its rows' pin markers, one per
-    /// row in the order [`Self::storage_browse_pin_files`] lists them.
+    /// row in the order [`Self::storage_browse_pin_files`] lists them, and what
+    /// the disk has said of its originals (see
+    /// [`Self::storage_browse_originals`]).
     pub(crate) fn resolve_storage_browse(
         &self,
         projection: crate::db::StorageBrowseProjection,
         pin_states: Vec<bool>,
+        originals: &crate::album_detail::OriginalsSeen,
     ) -> crate::library::StorageBrowseSnapshot {
         let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
         let has_cloud_home = self.has_cloud_home();
@@ -264,6 +289,7 @@ impl LibraryManager {
                             has_cloud_home,
                             pin_states.next().expect("one pin state per row"),
                             transfer_action,
+                            originals,
                             |release_id| covers.get(release_id).cloned(),
                         )
                     })

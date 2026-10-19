@@ -506,11 +506,15 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
     );
 
     support::connect_storage(&mgr, &cloud).await;
-    let after = next_storage_release(&values, &release_id).await;
-    assert!(
-        after
+    // The disk's answer for the release's originals is a value of its own,
+    // and may land before or after the cloud home's.
+    tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        while !next_storage_release(&values, &release_id)
+            .await
             .storage_actions
-            .contains(&ReleaseStorageAction::Upload),
-        "cloud home present → upload available"
-    );
+            .contains(&ReleaseStorageAction::Upload)
+        {}
+    })
+    .await
+    .expect("cloud home present → upload available");
 }

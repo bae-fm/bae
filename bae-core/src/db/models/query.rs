@@ -150,7 +150,8 @@ pub struct DbReleaseStorageSummary {
     pub any_file_id: Option<String>,
     pub file_count: i64,
     pub total_size: i64,
-    /// What this device holds for each audio file not attached to its row.
+    /// What the library records this device holding for each audio file not
+    /// attached to its row.
     pub unattached_audio: Vec<DbUnattachedAudio>,
 }
 
@@ -234,21 +235,29 @@ pub struct DbReleaseDetail {
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<crate::import::ReleaseRecord>,
-    /// What this device holds for each audio file not attached to its row.
+    /// What the library records this device holding for each audio file not
+    /// attached to its row.
     pub unattached_audio: Vec<DbUnattachedAudio>,
 }
 
-/// What this device holds for one of a release's audio files that isn't
-/// attached to its row, read from the disk when the release was read.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// What the library records this device holding for one of a release's audio
+/// files that isn't attached to its row. Whether that original is still on the
+/// disk is the disk's to say, not the database's.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DbUnattachedAudio {
     /// No original here: another device imported the release.
     Elsewhere,
-    /// This device's original, with the size and modification time recorded
-    /// at import.
-    Unchanged,
-    /// This device's original, gone or changed since import.
-    Changed,
+    /// This device's original, as it was recorded at import.
+    Original(RecordedOriginal),
+}
+
+/// Where one of a release's original audio files sat on this device when it
+/// was imported, and the size and modification time it had then.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RecordedOriginal {
+    pub path: std::path::PathBuf,
+    pub size: i64,
+    pub modified_at: std::time::SystemTime,
 }
 
 /// A track row with its resolved artist rows (many-to-many join from the DB).
@@ -277,7 +286,8 @@ pub struct DbReleaseSummary {
     pub any_file_id: Option<String>,
     pub file_count: i64,
     pub total_size: i64,
-    /// What this device holds for each audio file not attached to its row.
+    /// What the library records this device holding for each audio file not
+    /// attached to its row.
     pub unattached_audio: Vec<DbUnattachedAudio>,
 }
 

@@ -142,6 +142,24 @@ impl LibraryManager {
             .unwrap_or_default()
     }
 
+    /// The originals the library records this device holding for the
+    /// releases an album-detail delivery shows: what the disk is asked about.
+    pub(crate) fn album_detail_originals(
+        projection: &crate::db::AlbumDetailProjection,
+    ) -> Vec<crate::db::RecordedOriginal> {
+        projection
+            .detail
+            .as_ref()
+            .map(|raw| {
+                crate::album_detail::recorded_originals(
+                    raw.releases
+                        .iter()
+                        .flat_map(|release| &release.unattached_audio),
+                )
+            })
+            .unwrap_or_default()
+    }
+
     /// The ids of the releases an album-detail delivery shows.
     pub(crate) fn album_detail_release_ids(
         projection: &crate::db::AlbumDetailProjection,
@@ -159,17 +177,19 @@ impl LibraryManager {
     }
 
     /// Resolve an album-detail delivery with its releases' pin markers, one per
-    /// release in order (see [`Self::album_detail_pin_files`]).
+    /// release in order (see [`Self::album_detail_pin_files`]), and what the
+    /// disk has said of its originals (see [`Self::album_detail_originals`]).
     pub(crate) fn resolve_album_detail_projection(
         &self,
         projection: crate::db::AlbumDetailProjection,
         pinned: Vec<bool>,
+        originals: &crate::album_detail::OriginalsSeen,
     ) -> Result<Option<AlbumDetail>, LibraryError> {
         let Some(raw) = projection.detail else {
             return Ok(None);
         };
         let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
-        self.resolve_album_detail_with_covers(raw, covers, pinned)
+        self.resolve_album_detail_with_covers(raw, covers, pinned, originals)
             .map(Some)
     }
 
@@ -299,7 +319,14 @@ impl LibraryManager {
         let pinned = self
             .releases_pinned(&album_pin_files(&raw).collect::<Vec<_>>())
             .await?;
-        self.resolve_album_detail_with_covers(raw, covers, pinned)
+        let originals = self
+            .look_at_originals(crate::album_detail::recorded_originals(
+                raw.releases
+                    .iter()
+                    .flat_map(|release| &release.unattached_audio),
+            ))
+            .await?;
+        self.resolve_album_detail_with_covers(raw, covers, pinned, &originals)
     }
 
     fn resolve_album_detail_with_covers(
@@ -307,6 +334,7 @@ impl LibraryManager {
         raw: crate::db::DbAlbumDetail,
         covers: HashMap<String, ImageRef>,
         pin_states: Vec<bool>,
+        originals: &crate::album_detail::OriginalsSeen,
     ) -> Result<AlbumDetail, LibraryError> {
         let artist_names = join_artist_names(&raw.artists);
         let primary_release_id = crate::db::resolve_primary_release_id(
@@ -327,6 +355,7 @@ impl LibraryManager {
             let ctx = ReleaseResolveCtx {
                 has_cloud_home,
                 pinned,
+                originals,
                 cover: release_cover,
                 transfer_action: self.current_transfer_action(&r.release.id),
                 is_compilation: raw.album.is_compilation,

@@ -222,20 +222,22 @@ pub enum BridgeReleasePlayability {
     Playable,
     NotUploaded,
     OriginalMissing,
+    CheckingOriginals,
 }
 
 mirror_enum! {
     BridgeReleasePlayability = bae_core::album_detail::ReleasePlayability,
     from_core: pub fn,
-    variants: { Playable, NotUploaded, OriginalMissing },
+    variants: { Playable, NotUploaded, OriginalMissing, CheckingOriginals },
 }
 
 /// The line a release shows when this device can't play it, or `None` when
-/// it can. Playing it anyway reports the same reason.
+/// it can, or when its originals have not been answered for yet. Playing it
+/// anyway reports the same reason.
 #[uniffi::export]
 pub fn bridge_release_playability_key(playability: BridgeReleasePlayability) -> Option<String> {
     match playability {
-        BridgeReleasePlayability::Playable => None,
+        BridgeReleasePlayability::Playable | BridgeReleasePlayability::CheckingOriginals => None,
         BridgeReleasePlayability::NotUploaded => Some("core.release.not_uploaded".to_string()),
         BridgeReleasePlayability::OriginalMissing => {
             Some("core.release.original_missing".to_string())

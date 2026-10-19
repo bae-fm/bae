@@ -32,16 +32,19 @@ pub struct ReleaseStorageSummary {
 
 impl ReleaseStorageSummary {
     /// `storage_state` derives from `remote` alone; `pinned` is the orthogonal
-    /// coven-cache property the caller reads separately.
+    /// coven-cache property the caller reads separately, and `originals` what
+    /// the disk has said of the originals the library records this device
+    /// holding.
     pub(crate) fn from_raw(
         raw: DbReleaseStorageSummary,
         has_cloud_home: bool,
         pinned: bool,
+        originals: &OriginalsSeen,
     ) -> ReleaseStorageSummary {
         let storage_state = storage_state(raw.remote);
         let storage_actions = available_storage_actions(
             storage_state,
-            release_playability(&raw.unattached_audio),
+            release_playability(&raw.unattached_audio, originals),
             pinned,
             has_cloud_home,
         );
@@ -77,11 +80,13 @@ impl StorageRow {
         has_cloud_home: bool,
         pinned: bool,
         transfer_action: Option<ReleaseStorageAction>,
+        originals: &OriginalsSeen,
         resolve_cover: impl Fn(&str) -> Option<ImageRef>,
     ) -> StorageRow {
         let ctx = ReleaseResolveCtx {
             has_cloud_home,
             pinned,
+            originals,
             cover: resolve_cover(&raw.release.id),
             transfer_action,
             // A storage row projects a `ReleaseSummary`, which has no tracks, so

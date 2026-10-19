@@ -162,6 +162,8 @@ impl LibraryManager {
             downloads: crate::library::Downloads::new(),
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             outputs: crate::library::Outputs::new(),
+            #[cfg(test)]
+            disk_hold: Arc::default(),
         };
         manager
             .start_queue_workers()

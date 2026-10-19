@@ -507,6 +507,7 @@ fn produced_keys() -> Vec<String> {
         BridgeReleasePlayability::Playable,
         BridgeReleasePlayability::NotUploaded,
         BridgeReleasePlayability::OriginalMissing,
+        BridgeReleasePlayability::CheckingOriginals,
     ] {
         keys.extend(bridge_release_playability_key(playability));
     }

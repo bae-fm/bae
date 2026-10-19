@@ -626,9 +626,11 @@ mod queue_reads;
 mod release_queue_reads;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod selection;
+mod shown_originals;
 mod shown_transfers;
 mod storage_reads;
 use live_query_events::reconfigurable_live_query_events;
+use shown_originals::ShownOriginals;
 use shown_transfers::ShownTransfers;
 #[cfg(test)]
 #[path = "app_services_tests.rs"]

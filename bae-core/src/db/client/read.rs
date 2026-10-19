@@ -97,10 +97,11 @@ pub(super) fn build_release_detail_on(
     })
 }
 
-/// What this device holds for each of a release's audio files that isn't
-/// attached to its row: no original (another device imported it), or its
-/// original checked on disk against the size and modification time recorded
-/// at import.
+/// What the library records this device holding for each of a release's audio
+/// files that isn't attached to its row: no original (another device imported
+/// it), or the original's path with the size and modification time recorded at
+/// import. The disk is not read here: a read holds one of the database's
+/// readers, and the disk an original sits on can be slow to answer.
 pub(super) fn unattached_audio_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
@@ -121,21 +122,11 @@ pub(super) fn unattached_audio_on(
             let modified_at = DateTime::parse_from_rfc3339(&modified_at).map_err(|error| {
                 DbError::Message(format!("invalid original modification time: {error}"))
             })?;
-            let unchanged = match std::fs::metadata(&path) {
-                Ok(metadata) => {
-                    i64::try_from(metadata.len()) == Ok(size)
-                        && metadata.modified()? == std::time::SystemTime::from(modified_at)
-                }
-                Err(error) => {
-                    tracing::debug!(path, %error, "a release's original is not readable");
-                    false
-                }
-            };
-            Ok(if unchanged {
-                DbUnattachedAudio::Unchanged
-            } else {
-                DbUnattachedAudio::Changed
-            })
+            Ok(DbUnattachedAudio::Original(RecordedOriginal {
+                path: path.into(),
+                size,
+                modified_at: modified_at.into(),
+            }))
         })
         .collect()
 }

@@ -1,6 +1,8 @@
-//! Whether this device can play a release now, decided from what it holds.
+//! Whether this device can play a release now, decided from what the library
+//! records it holding and what its disk has said about those originals.
 
-use crate::db::DbUnattachedAudio;
+use crate::db::{DbUnattachedAudio, RecordedOriginal};
+use std::collections::HashMap;
 
 /// Whether this device can play a release now, and why not.
 ///
@@ -19,17 +21,81 @@ pub enum ReleasePlayability {
     /// A local release imported on this device whose original files are gone
     /// or changed since import.
     OriginalMissing,
+    /// A local release imported on this device whose originals the disk has
+    /// not answered for yet.
+    CheckingOriginals,
 }
 
-/// The playability of a release from what this device holds for each of its
-/// audio files not attached to its row. A release on another device is
-/// reported before a changed original, since only uploading it makes it
-/// playable here.
-pub(crate) fn release_playability(unattached_audio: &[DbUnattachedAudio]) -> ReleasePlayability {
-    if unattached_audio.contains(&DbUnattachedAudio::Elsewhere) {
-        ReleasePlayability::NotUploaded
-    } else if unattached_audio.contains(&DbUnattachedAudio::Changed) {
+/// What this device's disk said about one recorded original.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum OriginalOnDisk {
+    /// The file recorded at import: the same size and modification time.
+    Unchanged,
+    /// Gone, unreadable, or changed since import.
+    Changed,
+}
+
+/// What this device's disk said about each original it was asked about.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct OriginalsSeen(HashMap<RecordedOriginal, OriginalOnDisk>);
+
+impl OriginalsSeen {
+    /// Take in a newer answer for each original `newer` covers.
+    pub(crate) fn extend(&mut self, newer: OriginalsSeen) {
+        self.0.extend(newer.0);
+    }
+
+    /// Forget every original `kept` doesn't name.
+    pub(crate) fn retain(&mut self, kept: &[RecordedOriginal]) {
+        self.0.retain(|original, _| kept.contains(original));
+    }
+}
+
+impl FromIterator<(RecordedOriginal, OriginalOnDisk)> for OriginalsSeen {
+    fn from_iter<I: IntoIterator<Item = (RecordedOriginal, OriginalOnDisk)>>(iter: I) -> Self {
+        Self(iter.into_iter().collect())
+    }
+}
+
+/// The originals the library records this device holding among
+/// `unattached_audio`: what the disk is asked about.
+pub(crate) fn recorded_originals<'a>(
+    unattached_audio: impl IntoIterator<Item = &'a DbUnattachedAudio>,
+) -> Vec<RecordedOriginal> {
+    unattached_audio
+        .into_iter()
+        .filter_map(|audio| match audio {
+            DbUnattachedAudio::Original(original) => Some(original.clone()),
+            DbUnattachedAudio::Elsewhere => None,
+        })
+        .collect()
+}
+
+/// The playability of a release from what the library records this device
+/// holding for each of its audio files not attached to its row, and what the
+/// disk has said of those originals. A release on another device is reported
+/// before a changed original, since only uploading it makes it playable here;
+/// a changed original is reported before one the disk hasn't answered for.
+pub(crate) fn release_playability(
+    unattached_audio: &[DbUnattachedAudio],
+    seen: &OriginalsSeen,
+) -> ReleasePlayability {
+    let mut changed = false;
+    let mut unanswered = false;
+    for audio in unattached_audio {
+        match audio {
+            DbUnattachedAudio::Elsewhere => return ReleasePlayability::NotUploaded,
+            DbUnattachedAudio::Original(original) => match seen.0.get(original) {
+                Some(OriginalOnDisk::Unchanged) => {}
+                Some(OriginalOnDisk::Changed) => changed = true,
+                None => unanswered = true,
+            },
+        }
+    }
+    if changed {
         ReleasePlayability::OriginalMissing
+    } else if unanswered {
+        ReleasePlayability::CheckingOriginals
     } else {
         ReleasePlayability::Playable
     }

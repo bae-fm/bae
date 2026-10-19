@@ -4,15 +4,17 @@
 use super::*;
 use crate::db::{DbArtist, DbReleaseDetail, DbReleaseSummary};
 
-/// The per-release inputs `LibraryManager` reads from the DB and coven's cache and
-/// threads into the release projections: whether a cloud home exists at all (which
-/// gates `storage_actions`), whether this release's blobs are pinned on this device,
-/// and its own cover reference. Bundled so the constructors take one context rather
-/// than a pile of parameters.
+/// The per-release inputs `LibraryManager` reads from the DB, coven's cache and
+/// this device's disk and threads into the release projections: whether a cloud
+/// home exists at all (which gates `storage_actions`), whether this release's
+/// blobs are pinned on this device, what the disk has said of the originals the
+/// library records this device holding, and the release's own cover reference.
+/// Bundled so the constructors take one context rather than a pile of parameters.
 #[derive(Debug, Clone)]
-pub(crate) struct ReleaseResolveCtx {
+pub(crate) struct ReleaseResolveCtx<'a> {
     pub(crate) has_cloud_home: bool,
     pub(crate) pinned: bool,
+    pub(crate) originals: &'a OriginalsSeen,
     pub(crate) cover: Option<ImageRef>,
     pub(crate) transfer_action: Option<ReleaseStorageAction>,
     /// Whether the owning album is a compilation. Decides `TrackDetail::display_artist`
@@ -59,7 +61,7 @@ pub struct ReleaseSummary {
 impl ReleaseSummary {
     /// The one place `storage_actions` is derived: [`ReleaseDetail::from_raw`]
     /// projects its fat aggregate down to a slim row and routes through here too.
-    pub(crate) fn from_raw(raw: DbReleaseSummary, ctx: &ReleaseResolveCtx) -> ReleaseSummary {
+    pub(crate) fn from_raw(raw: DbReleaseSummary, ctx: &ReleaseResolveCtx<'_>) -> ReleaseSummary {
         let storage_state = storage_state(raw.remote);
         ReleaseSummary {
             id: raw.id,
@@ -69,7 +71,7 @@ impl ReleaseSummary {
             pinned: ctx.pinned,
             storage_actions: available_storage_actions(
                 storage_state,
-                release_playability(&raw.unattached_audio),
+                release_playability(&raw.unattached_audio, ctx.originals),
                 ctx.pinned,
                 ctx.has_cloud_home,
             ),
@@ -267,7 +269,7 @@ impl ReleaseDetail {
         raw: DbReleaseDetail,
         album_artists: &[DbArtist],
         release_index: usize,
-        ctx: &ReleaseResolveCtx,
+        ctx: &ReleaseResolveCtx<'_>,
     ) -> (ReleaseDetail, u32) {
         let release = raw.release;
         let audio_format_orphans = 0u32;
@@ -317,7 +319,7 @@ impl ReleaseDetail {
         let track_groups: Vec<TrackGroup> = crate::util::format::group_tracks_by_side(&tracks);
 
         let remote = !raw.files.is_empty() && raw.files.iter().all(|file| file.attached);
-        let playability = release_playability(&raw.unattached_audio);
+        let playability = release_playability(&raw.unattached_audio, ctx.originals);
         let mut cover_files = Vec::new();
         let files: Vec<FileDetail> = raw
             .files

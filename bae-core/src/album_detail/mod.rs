@@ -44,8 +44,10 @@ mod storage;
 pub use album::*;
 pub use artist::*;
 pub use composer::*;
-pub(crate) use playability::release_playability;
 pub use playability::ReleasePlayability;
+pub(crate) use playability::{
+    recorded_originals, release_playability, OriginalOnDisk, OriginalsSeen,
+};
 pub use release::*;
 pub use search::*;
 pub use source_audio::*;

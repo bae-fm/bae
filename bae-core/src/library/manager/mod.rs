@@ -106,6 +106,7 @@ mod release_edit;
 mod save;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use save::SaveWindow;
+mod originals;
 mod pending_item;
 mod storage;
 mod sync;
@@ -720,6 +721,9 @@ pub struct LibraryManager {
     /// The one writer of import candidates' stored state.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     preparations: crate::import::CandidatePreparations,
+    /// Where a test holds every look at this device's originals.
+    #[cfg(test)]
+    disk_hold: Arc<originals::DiskHold>,
 }
 
 pub fn generate_mcp_token() -> String {
