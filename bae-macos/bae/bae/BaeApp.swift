@@ -881,9 +881,10 @@ extension AppDelegate {
 
 extension AppDelegate {
     /// Remove the open library from this Mac, once the person confirmed what
-    /// it loses: it leaves the store's members, then its local copy is
-    /// deleted, discarding what this Mac hasn't sent. A failed removal opens
-    /// the library again.
+    /// it loses: this Mac leaves the store, then its local copy is deleted,
+    /// discarding what this Mac hasn't sent. The person's restore code stays
+    /// in iCloud Keychain, so the welcome offers restoring the library again.
+    /// A failed removal opens the library again.
     func forgetActiveLibrary() {
         guard let service = appService else {
             baeAppLogger.warning(

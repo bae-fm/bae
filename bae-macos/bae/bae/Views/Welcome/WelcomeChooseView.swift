@@ -32,27 +32,24 @@ struct WelcomeChooseView: View {
     @State
     private var pendingRemoval: PendingRemoval?
 
-    /// Libraries on this device, discovered on appear.
+    /// Libraries on this Mac and the restore codes saved for others, read on
+    /// appear.
     @State
-    private var localLibraries: SectionLoad<[BridgeLibrary]> = .loading
-
-    /// Restore codes saved in iCloud Keychain for libraries not on this Mac.
-    @State
-    private var savedCodes: SectionLoad<[SavedRestoreEntry]> = .loading
+    private var listings = WelcomeListings()
 
     private var discoveredLibraries: [BridgeLibrary] {
-        localLibraries.value ?? []
+        listings.localLibraries.value ?? []
     }
 
     private var savedEntries: [SavedRestoreEntry] {
-        savedCodes.value ?? []
+        listings.savedCodes.value ?? []
     }
 
     /// Lead with "Create new library" only when both lookups finished and found
     /// nothing; a loading or failed lookup doesn't mean there are no libraries.
     private var isFirstRun: Bool {
-        localLibraries.value?.isEmpty == true
-            && savedCodes.value?.isEmpty == true
+        listings.localLibraries.value?.isEmpty == true
+            && listings.savedCodes.value?.isEmpty == true
     }
 
     private var isBusy: Bool {
@@ -72,8 +69,7 @@ struct WelcomeChooseView: View {
             }
             .scrollBounceBehavior(.basedOnSize)
         }
-        .task { await loadLocalLibraries() }
-        .task { await loadSavedRestoreCodes() }
+        .task { await listings.load(from: setup) }
         .onDisappear { createTask?.cancel() }
         .alert(
             "Remove this library from this Mac?",
@@ -84,8 +80,12 @@ struct WelcomeChooseView: View {
             presenting: pendingRemoval
         ) { pending in
             Button("Remove", role: .destructive) {
-                removals.remove(closedLibrary: pending.library.id) {
-                    Task { await loadLocalLibraries() }
+                Task {
+                    await listings.remove(
+                        closedLibrary: pending.library.id,
+                        with: removals,
+                        from: setup
+                    )
                 }
             }
             Button("Cancel", role: .cancel) {}
@@ -133,7 +133,7 @@ struct WelcomeChooseView: View {
             if let removalError = removals.error {
                 RemovalErrorCallout(error: removalError, removals: removals)
             }
-            if let failure = localLibraries.failure {
+            if let failure = listings.localLibraries.failure {
                 WelcomeLoadErrorCallout(
                     title: "Couldn't list the libraries on this Mac",
                     error: failure
@@ -149,7 +149,7 @@ struct WelcomeChooseView: View {
                     onRemove: { askToRemove($0) }
                 )
             }
-            if let failure = savedCodes.failure {
+            if let failure = listings.savedCodes.failure {
                 WelcomeLoadErrorCallout(
                     title: "Couldn't read restore codes from your keychain",
                     error: failure
@@ -233,54 +233,6 @@ struct WelcomeChooseView: View {
 // MARK: - Actions
 
 extension WelcomeChooseView {
-    private func loadLocalLibraries() async {
-        do {
-            let discovered = try await setup.listLibraries()
-            try Task.checkCancellation()
-            localLibraries = .loaded(discovered)
-        }
-        catch is CancellationError {
-            logger.debug("Local library discovery cancelled")
-        }
-        catch {
-            // A failure, not an empty list, so it doesn't read as first run.
-            // No line means core reported a cancellation.
-            guard let failure = DisplayError(error) else {
-                logger.debug("Local library discovery cancelled")
-                return
-            }
-            logger.error(
-                "Local library discovery failed: \(error.localizedDescription)"
-            )
-            localLibraries = .failed(failure)
-        }
-    }
-
-    private func loadSavedRestoreCodes() async {
-        do {
-            let saved = try await setup.savedRestoreCodes()
-            try Task.checkCancellation()
-            savedCodes = .loaded(
-                saved.map { SavedRestoreEntry(code: $0) }
-            )
-        }
-        catch is CancellationError {
-            logger.debug("Saved restore code lookup cancelled")
-        }
-        catch {
-            // A refused lookup (such as a locked keychain) isn't the same as
-            // no restore codes. No line means core reported a cancellation.
-            guard let failure = DisplayError(error) else {
-                logger.debug("Saved restore code lookup cancelled")
-                return
-            }
-            logger.error(
-                "Saved restore code lookup failed: \(error.localizedDescription)"
-            )
-            savedCodes = .failed(failure)
-        }
-    }
-
     private func doCreate() {
         createTask?.cancel()
         isCreating = true
@@ -299,24 +251,6 @@ extension WelcomeChooseView {
                 self.error = DisplayError(error)
             }
         }
-    }
-}
-
-/// A welcome-screen lookup's state; a failure is kept apart from an empty
-/// result because they show different screens.
-private enum SectionLoad<Value> {
-    case loading
-    case loaded(Value)
-    case failed(DisplayError)
-
-    var value: Value? {
-        if case .loaded(let value) = self { return value }
-        return nil
-    }
-
-    var failure: DisplayError? {
-        if case .failed(let failure) = self { return failure }
-        return nil
     }
 }
 

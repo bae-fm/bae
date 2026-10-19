@@ -1047,7 +1047,10 @@ tablet gets the code one of three ways:
 - **scanning** the QR code another of her devices shows;
 - **iCloud Keychain**, on Apple devices: bae lists the restore codes coven saved
   there for libraries not already on this device, and Carol picks one; a
-  library the device already holds is opened, not restored;
+  library the device already holds is opened, not restored. A code there is
+  Carol's, not one device's: it stays while she is a member, so removing the
+  library from one of her devices leaves it offered there (§6.4), and it goes
+  only when she leaves the library;
 - **typing** it in.
 
 A code carries no name (§5.1), so bae shows a code by where its library is
@@ -1252,8 +1255,8 @@ reporting the library unusable. A device can forget the key, which locks the
 library until it is unlocked again.
 
 **Removing a library from a device.** Dan stops using his old laptop. Removing
-Household from it first removes the laptop from the store's members, then
-deletes its directory and every secret it holds; the cloud copy stays. Leaving
+Household from it first removes the laptop from the library, then deletes its
+directory and the secrets the laptop keeps for it; the cloud copy stays. Leaving
 is an admin entry, so it needs storage. Offline, removal says so and waits
 rather than deleting the local copy and leaving a device listed that will
 never come back. A library with no cloud home has no members to leave, and is
@@ -1280,6 +1283,14 @@ deleted at once.
   to retry. Removals, finishing them and looking for them each hold one
   removal lock, an OS file lock that excludes other processes too, so a
   lookup never sees a removal still waiting on coven.
+- **The restore code stays.** The restore code and S3 key coven saved in iCloud
+  Keychain are Dan's, not the laptop's, and every one of his Apple devices sees
+  them. Removing Household from the laptop keeps them: his other devices still
+  offer restoring it, and so does the laptop, now that it no longer holds the
+  library (§5.6). They are deleted only when Dan leaves the library: one of his
+  devices deletes them as it applies his removal, whether an admin removed him
+  or he removed himself
+  ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
 
 ---
 ## 7. Playback

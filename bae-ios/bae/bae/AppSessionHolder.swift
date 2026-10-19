@@ -333,9 +333,11 @@ extension AppSessionHolder {
 
 extension AppSessionHolder {
     /// Remove the open library from this device, once the person confirmed
-    /// what it loses: it leaves the store's members, then its local copy is
+    /// what it loses: this device leaves the store, then its local copy is
     /// deleted, discarding what this device hasn't sent, and the next library
-    /// opens. A failed removal opens the library again.
+    /// opens. The person's restore code stays in iCloud Keychain, so
+    /// onboarding offers restoring the library again. A failed removal opens
+    /// the library again.
     func removeActiveLibrary() {
         guard let service = appService else {
             preconditionFailure("Remove shows only while a library is open")

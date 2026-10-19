@@ -9,7 +9,7 @@ use tempfile::TempDir;
 struct Home {
     _temp: TempDir,
     app_dir: AppDir,
-    installation: coven::TestCoven,
+    installation: Arc<coven::TestCoven>,
     storage: Arc<coven::MemoryStorage>,
 }
 
@@ -20,7 +20,7 @@ impl Home {
         Self {
             _temp: temp,
             app_dir,
-            installation: coven::TestCoven::new(),
+            installation: Arc::new(coven::TestCoven::new()),
             storage: Arc::new(
                 coven::MemoryStorage::builder()
                     .clock(Arc::new(coven::SystemClock))
@@ -41,6 +41,39 @@ impl Home {
             .save_preferences()
             .unwrap();
         handle
+    }
+
+    /// Give `handle`'s library its cloud home, which saves the person's
+    /// restore code, and wait for it to sync.
+    async fn connect(&self, handle: &coven::CovenHandle) {
+        handle
+            .setup_s3_storage(
+                self.storage.config(),
+                "Device",
+                "key".into(),
+                coven::SecretText::new("secret".into()),
+            )
+            .await
+            .unwrap();
+        let mut status = handle.subscribe_sync_status();
+        tokio::time::timeout(
+            std::time::Duration::from_secs(20),
+            status.wait_for(|s| matches!(s, coven::SyncStatus::Synced { .. })),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    }
+
+    /// The libraries whose saved restore codes this device offers.
+    async fn offered_codes(&self) -> Vec<coven::StoreId> {
+        super::Keychain::InMemory(self.installation.clone())
+            .saved_restore_codes(&self.app_dir)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|code| code.store_id)
+            .collect()
     }
 
     fn directory(&self, id: coven::StoreId) -> std::path::PathBuf {
@@ -134,23 +167,7 @@ async fn removing_the_active_library_clears_its_pointer() {
 async fn offline_removal_keeps_the_store_preferences_and_active_pointer() {
     let home = Home::new();
     let handle = home.library("Library").await;
-    handle
-        .setup_s3_storage(
-            home.storage.config(),
-            "Device",
-            "key".into(),
-            coven::SecretText::new("secret".into()),
-        )
-        .await
-        .unwrap();
-    let mut status = handle.subscribe_sync_status();
-    tokio::time::timeout(
-        std::time::Duration::from_secs(20),
-        status.wait_for(|s| matches!(s, coven::SyncStatus::Synced { .. })),
-    )
-    .await
-    .unwrap()
-    .unwrap();
+    home.connect(&handle).await;
     let id = handle.store_id();
     home.point_at(id);
     home.storage.set_online(false);
@@ -172,6 +189,20 @@ async fn offline_removal_keeps_the_store_preferences_and_active_pointer() {
     assert_eq!(home.pointer(), None);
     assert!(!home.directory(id).exists());
     assert_eq!(home.unfinished().await, None);
+}
+
+/// The restore code saved for a library is the person's, not this device's:
+/// removing the library from this device keeps it, and once the library is
+/// gone from here this device offers restoring it again.
+#[tokio::test]
+async fn removing_a_library_keeps_its_saved_restore_code_to_offer_again() {
+    let home = Home::new();
+    let handle = home.library("Library").await;
+    home.connect(&handle).await;
+    let id = handle.store_id();
+    assert_eq!(home.offered_codes().await, Vec::new());
+    remove_local_library(&home.app_dir, &handle).await.unwrap();
+    assert_eq!(home.offered_codes().await, vec![id]);
 }
 
 #[tokio::test]
