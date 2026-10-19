@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.AppScreen
 import fm.bae.app.AppSessionHolder
@@ -30,6 +31,7 @@ import fm.bae.app.OAuthProviders
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ShortcutAction
+import fm.bae.app.coreString
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.ErrorText
@@ -41,7 +43,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgeDeviceReset
+import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeLibrary
+import uniffi.bae_bridge.BridgeLibraryState
+import uniffi.bae_bridge.BridgeReplacedBy
+import uniffi.bae_bridge.bridgeErrorCategoryKey
 
 /** App root: opens an existing library or onboards, then shows the library once open. */
 @Composable
@@ -134,18 +141,8 @@ private fun AppScreenRouter(
             )
         }
 
-        is AppScreen.ResetOffered -> {
-            ResetOfferedScreen(
-                libraryId = current.libraryId,
-                message = current.message,
-                onReset = { reset ->
-                    scope.launch { AppSessionHolder.resetDevice(context, current.libraryId, reset, onScreen) }
-                },
-            )
-        }
-
-        is AppScreen.RestoreOffered -> {
-            RestoreOfferedScreen(libraryId = current.libraryId, oauthProvidersError, onScreen)
+        is AppScreen.Recovery -> {
+            RecoveryScreen(current, oauthProvidersError, onScreen)
         }
 
         is AppScreen.ProfileRequired -> {
@@ -169,13 +166,87 @@ private fun AppScreenRouter(
     }
 }
 
+/** The screen that recovers a library that didn't open or can't sync, with its one call. */
+@Composable
+private fun RecoveryScreen(
+    screen: AppScreen.Recovery,
+    oauthProvidersError: String?,
+    onScreen: (AppScreen) -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val libraryId = screen.libraryId
+
+    // A failed reset shows [failed], the screen it started from, with why.
+    fun reset(
+        prepared: BridgeDeviceReset,
+        failed: (message: String) -> AppScreen,
+    ) {
+        scope.launch { AppSessionHolder.resetDevice(context, libraryId, prepared, onScreen, failed) }
+    }
+    when (val current = screen) {
+        is AppScreen.ResetOffered -> {
+            ResetOfferedScreen(
+                libraryId = libraryId,
+                message = current.message,
+                onReset = { prepared -> reset(prepared) { AppScreen.ResetOffered(libraryId, it) } },
+            )
+        }
+
+        is AppScreen.RestoreOffered -> {
+            RestoreOverScreen(
+                RestoreOver(
+                    libraryId = libraryId,
+                    title = stringResource(R.string.restore_device_title),
+                    message = context.coreString("core.sync.restore_device.warning"),
+                    // Going back opens the library again as it was.
+                    onBack = { scope.launch { AppSessionHolder.openLibrary(context, libraryId, onScreen) } },
+                ),
+                oauthProvidersError,
+                onScreen,
+            )
+        }
+
+        is AppScreen.ResetUnfinished -> {
+            ResetUnfinishedScreen(
+                error = current.error,
+                onFinish = {
+                    reset(AppSessionHolder.prepareDeviceReset(context, libraryId)) {
+                        AppScreen.ResetUnfinished(libraryId, it)
+                    }
+                },
+                onLeave = { AppSessionHolder.leaveFinishing(onScreen) },
+            )
+        }
+
+        is AppScreen.RestoreUnfinished -> {
+            RestoreOverScreen(
+                RestoreOver(
+                    libraryId = libraryId,
+                    title = stringResource(R.string.finish_restore_title),
+                    message =
+                        context.coreString(
+                            bridgeErrorCategoryKey(BridgeErrorCategory.ReplacementUnfinished(BridgeReplacedBy.RESTORE)),
+                        ),
+                    // The library opens only once the restore finishes, so
+                    // going back leaves it waiting.
+                    onBack = { AppSessionHolder.leaveFinishing(onScreen) },
+                ),
+                oauthProvidersError,
+                onScreen,
+            )
+        }
+    }
+}
+
 /**
- * The person's current restore code restores [libraryId] over this device's
- * copy; going back opens the library again as it was.
+ * The person's current restore code restores a library over this device's
+ * copy, or finishes such a restore that stopped partway, as [restoreOver]
+ * says; the restored library opens.
  */
 @Composable
-private fun RestoreOfferedScreen(
-    libraryId: String,
+private fun RestoreOverScreen(
+    restoreOver: RestoreOver,
     oauthProvidersError: String?,
     onScreen: (AppScreen) -> Unit,
 ) {
@@ -186,11 +257,7 @@ private fun RestoreOfferedScreen(
         onBootstrapped = { result ->
             scope.launch { AppSessionHolder.openBootstrapped(context, result, onScreen) }
         },
-        restoreOver =
-            RestoreOver(
-                libraryId = libraryId,
-                onBack = { scope.launch { AppSessionHolder.openLibrary(context, libraryId, onScreen) } },
-            ),
+        restoreOver = restoreOver,
     )
 }
 
@@ -204,13 +271,25 @@ private fun sessionActions(
 ) = SessionActions(
     oauthProviders = oauthProviders,
     switchLibrary = { library ->
-        scope.launch { AppSessionHolder.openLibrary(context, library.id, onScreen) }
+        when (val state = library.state) {
+            is BridgeLibraryState.ReplacementUnfinished -> {
+                onScreen(AppScreen.finishing(library.id, state.by))
+            }
+
+            is BridgeLibraryState.Openable, is BridgeLibraryState.Unreadable -> {
+                scope.launch { AppSessionHolder.openLibrary(context, library.id, onScreen) }
+            }
+        }
     },
     removeLibrary = {
         scope.launch { AppSessionHolder.removeActiveLibrary(context, onScreen) }
     },
     resetDevice = { reset ->
-        scope.launch { AppSessionHolder.resetDevice(context, session.libraryId, reset, onScreen) }
+        scope.launch {
+            AppSessionHolder.resetDevice(context, session.libraryId, reset, onScreen) { message ->
+                AppScreen.ResetOffered(session.libraryId, message)
+            }
+        }
     },
     restoreFromCode = { scope.launch { AppSessionHolder.presentDeviceRestore(onScreen) } },
 )

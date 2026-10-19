@@ -93,6 +93,7 @@ struct BootstrapCodeView: View {
         case .restore: "Restore from cloud"
         case .join: "Join a library"
         case .restoreOver: "Restore this library"
+        case .finishRestore: "Finish restoring this library"
         }
     }
 
@@ -108,11 +109,17 @@ struct BootstrapCodeView: View {
             )
         case .restoreOver:
             Text(localizedCoreString("core.sync.restore_device.warning"))
+        case .finishRestore:
+            Text(
+                BridgeErrorCategory.replacementUnfinished(by: .restore)
+                    .localizedLine
+            )
         }
     }
 
     private var primaryTitle: LocalizedStringKey {
         if case .join = form.attempt { return "Join" }
+        if case .finishRestore = form.entry { return "Finish Restoring" }
         return "Restore"
     }
 

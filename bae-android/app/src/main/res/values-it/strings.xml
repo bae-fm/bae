@@ -191,6 +191,8 @@
     <string name="reset_device_confirm_title">Reimpostare questo dispositivo?</string>
     <string name="reset_device_confirm">Reimposta</string>
     <string name="restore_device_title">Ripristina questa libreria</string>
+    <string name="finish_restore_title">Completa il ripristino di questa libreria</string>
+    <string name="finish_reset">Completa la reimpostazione di questo dispositivo</string>
     <string name="profile_required_title">Inserisci il tuo nome per completare l’ingresso in questa libreria.</string>
     <string name="save">Salva</string>
     <string name="onboarding_scan_code">Scansiona un codice</string>

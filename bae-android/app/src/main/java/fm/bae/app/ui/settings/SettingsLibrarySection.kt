@@ -31,6 +31,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.LocaleErrorLines
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.coreString
 import fm.bae.app.localizedLine
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
@@ -41,10 +42,12 @@ import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibrary
-import uniffi.bae_bridge.BridgeLibrarySettings
+import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.LibraryNameCallback
+import uniffi.bae_bridge.bridgeErrorCategoryKey
 
 private val logger = BaeLogger("bae.LibraryNameRow")
 
@@ -90,7 +93,9 @@ private fun LibrarySwitcher(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .clickable(enabled = !isActive && library.settings is BridgeLibrarySettings.Readable) {
+                    // A library whose settings can't be read offers nothing; one
+                    // whose reset or restore stopped partway offers to finish it.
+                    .clickable(enabled = !isActive && library.state !is BridgeLibraryState.Unreadable) {
                         onSwitchLibrary(library)
                     },
             verticalAlignment = Alignment.CenterVertically,
@@ -98,7 +103,7 @@ private fun LibrarySwitcher(
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = library.name)
                 // Every row keeps the detail line so rows share one height.
-                LibraryDetailLine(library.settings)
+                LibraryDetailLine(library.state)
             }
             // Always present but alpha-toggled so switching the active row
             // never re-measures the row heights.
@@ -260,26 +265,37 @@ private fun LibrarySwitcherPreview() {
 
 /**
  * The line under a library's name: its provider and account when it has a
- * cloud home, nothing when it doesn't, or why its settings can't be read,
- * which keeps it from opening.
+ * cloud home, nothing when it doesn't, or why it doesn't open: its settings
+ * can't be read, or a reset or restore of this device's copy stopped partway.
  */
 @Composable
-private fun LibraryDetailLine(settings: BridgeLibrarySettings) {
-    when (settings) {
-        is BridgeLibrarySettings.Readable -> {
+private fun LibraryDetailLine(state: BridgeLibraryState) {
+    when (state) {
+        is BridgeLibraryState.Openable -> {
             Text(
-                text = settings.storage?.let { location -> storageLocationLabel(location) } ?: "",
+                text = state.storage?.let { location -> storageLocationLabel(location) } ?: "",
                 style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        is BridgeLibrarySettings.Unreadable -> {
+        is BridgeLibraryState.Unreadable -> {
             val line =
-                checkNotNull(LocalContext.current.localizedLine(settings.error)) {
+                checkNotNull(LocalContext.current.localizedLine(state.error)) {
                     "unreadable settings are a diagnostic, never a cancellation"
                 }
             Text(text = line, style = ThemeText.detail.style, color = MaterialTheme.colorScheme.error)
+        }
+
+        is BridgeLibraryState.ReplacementUnfinished -> {
+            Text(
+                text =
+                    LocalContext.current.coreString(
+                        bridgeErrorCategoryKey(BridgeErrorCategory.ReplacementUnfinished(state.by)),
+                    ),
+                style = ThemeText.detail.style,
+                color = MaterialTheme.colorScheme.error,
+            )
         }
     }
 }

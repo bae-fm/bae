@@ -194,6 +194,8 @@
     <string name="reset_device_confirm_title">Resetovat toto zařízení?</string>
     <string name="reset_device_confirm">Resetovat</string>
     <string name="restore_device_title">Obnovit tuto knihovnu</string>
+    <string name="finish_restore_title">Dokončit obnovení této knihovny</string>
+    <string name="finish_reset">Dokončit resetování tohoto zařízení</string>
     <string name="profile_required_title">Zadejte své jméno a dokončete připojení k této knihovně.</string>
     <string name="save">Uložit</string>
     <string name="onboarding_scan_code">Naskenovat kód</string>

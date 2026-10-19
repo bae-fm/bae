@@ -1255,6 +1255,16 @@ would load a restore's library under the keys the restore replaced, and a
 restore would delete the copy a reset keeps, so coven refuses the other call
 before anything changes.
 
+The apps show such a library with that line, in red, where they list
+libraries that can't open: the Mac's library list, and the library switcher
+on phones. They offer only its call. *Finish Restoring* asks for the person's
+current restore code, and the S3 key for a library on S3, then restores
+again. *Finish Resetting* resets again, without the warning the person
+already accepted. Opening the library, such as at launch, lands on the same
+screen. Going back leaves the library waiting and returns to the open
+library, to the Mac's library list, or on a phone with no library open, to
+onboarding.
+
 **Lost values.** When two devices edit one cell and one edit is replaced
 unseen, coven records a lost value
 ([coven §8.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#82-lost-values)).

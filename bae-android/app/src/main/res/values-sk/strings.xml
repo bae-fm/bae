@@ -193,6 +193,8 @@
     <string name="reset_device_confirm_title">Obnoviť toto zariadenie?</string>
     <string name="reset_device_confirm">Obnoviť</string>
     <string name="restore_device_title">Obnoviť túto knižnicu</string>
+    <string name="finish_restore_title">Dokončiť obnovenie tejto knižnice</string>
+    <string name="finish_reset">Dokončiť obnovenie tohto zariadenia</string>
     <string name="profile_required_title">Zadaj svoje meno a dokonči pripojenie k tejto knižnici.</string>
     <string name="save">Uložiť</string>
     <string name="onboarding_scan_code">Naskenovať kód</string>

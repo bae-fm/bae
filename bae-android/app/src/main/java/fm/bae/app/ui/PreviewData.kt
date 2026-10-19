@@ -22,7 +22,7 @@ import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLabelLine
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryImageType
-import uniffi.bae_bridge.BridgeLibrarySettings
+import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeMediaCount
 import uniffi.bae_bridge.BridgeMedium
 import uniffi.bae_bridge.BridgeMember
@@ -287,7 +287,7 @@ object PreviewData {
             id = id,
             name = name,
             path = "/tmp/$id",
-            settings = BridgeLibrarySettings.Readable(storage = null),
+            state = BridgeLibraryState.Openable(storage = null),
             isActive = isActive,
         )
 

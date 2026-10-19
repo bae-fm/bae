@@ -16,6 +16,7 @@
                 WelcomeView(
                     onLibraryReady: { _, _ in },
                     onOpenLibrary: { _ in },
+                    onFinishReplacement: { _, _ in },
                     initialMode: initialMode,
                     canDeleteActiveLibrary: true
                 )

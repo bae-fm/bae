@@ -33,8 +33,35 @@ enum AppScreen {
     /// Another of the person's devices replaced their keys: the library is
     /// closed, and the person restores it with their current restore code.
     case restoreRequired(libraryId: String)
+    /// A reset of this device's copy stopped partway; resetting again
+    /// finishes it. `error` is why the last attempt failed.
+    case resetUnfinished(libraryId: String, error: DisplayError?)
+    /// A restore of this device's copy stopped partway; restoring again with
+    /// the person's current restore code finishes it.
+    case restoreUnfinished(libraryId: String)
     case library(AppService)
     case failed(message: String)
+
+    /// The screen that finishes a reset or restore of `libraryId` that
+    /// stopped partway: the one call `by` names.
+    static func finishing(libraryId: String, by: BridgeReplacedBy) -> Self {
+        switch by {
+        case .reset: .resetUnfinished(libraryId: libraryId, error: nil)
+        case .restore: .restoreUnfinished(libraryId: libraryId)
+        }
+    }
+
+    /// This reset screen again, showing why the last reset failed.
+    func showingResetFailure(_ error: DisplayError?) -> Self {
+        switch self {
+        case .resetRequired(let libraryId, _):
+            .resetRequired(libraryId: libraryId, error: error)
+        case .resetUnfinished(let libraryId, _):
+            .resetUnfinished(libraryId: libraryId, error: error)
+        default:
+            preconditionFailure("a reset starts only from a reset screen")
+        }
+    }
 }
 
 /// Drives the `AppScreen` lifecycle and owns the open `AppService`. Mirrors the
@@ -211,6 +238,14 @@ final class AppSessionHolder {
                     error: DisplayError(error)
                 )
             }
+            else if case BridgeError.Diagnostic(
+                .replacementUnfinished(let by),
+                _
+            ) = error {
+                // The finishing screen says what stopped; its call is the
+                // only one offered.
+                screen = .finishing(libraryId: libraryId, by: by)
+            }
             else if let message = error.displayLine {
                 screen = .failed(message: message)
             }
@@ -270,10 +305,32 @@ extension AppSessionHolder {
         }
     }
 
-    /// Reset this device for a library: close it if it is open, then load it
-    /// from storage again under a fresh device id. The person saw the warning
-    /// before choosing, so nothing is shown after.
+    /// Show the one call that finishes a reset or restore of a library's
+    /// copy on this device that stopped partway, from the library switcher.
+    /// The open library stays open behind it.
+    func presentFinishing(libraryId: String, by: BridgeReplacedBy) {
+        screen = .finishing(libraryId: libraryId, by: by)
+    }
+
+    /// Leave a finishing screen without running its call: back to the open
+    /// library, or, with none open, to onboarding, since the library on that
+    /// screen opens only once its call finishes.
+    func leaveFinishing() {
+        if let appService {
+            screen = .library(appService)
+        }
+        else {
+            screen = .onboarding
+        }
+    }
+
+    /// Reset this device for a library, or finish a reset that stopped
+    /// partway: close it if it is open, then load it from storage again under
+    /// a fresh device id. The person saw the warning before choosing, so
+    /// nothing is shown after. A failed reset returns to the screen it was
+    /// started from, with why.
     func resetDevice(libraryId: String) {
+        let startedFrom = screen
         let open = appService.flatMap { $0.libraryId == libraryId ? $0 : nil }
         opener.cancel()
         screen = .loading
@@ -294,9 +351,8 @@ extension AppSessionHolder {
             }
             catch {
                 logger.error("Device reset failed: \(error.localizedDescription)")
-                self.screen = .resetRequired(
-                    libraryId: libraryId,
-                    error: DisplayError(error)
+                self.screen = startedFrom.showingResetFailure(
+                    DisplayError(error)
                 )
             }
         }

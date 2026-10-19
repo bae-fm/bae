@@ -93,9 +93,18 @@ struct ContentView: View {
 
         case .resetRequired(let libraryId, let error):
             DeviceResetScreen(
+                prompt: .offered,
                 error: error,
                 onReset: { holder.resetDevice(libraryId: libraryId) },
                 onCancel: holder.cancelDeviceReset
+            )
+
+        case .resetUnfinished(let libraryId, let error):
+            DeviceResetScreen(
+                prompt: .unfinished,
+                error: error,
+                onReset: { holder.resetDevice(libraryId: libraryId) },
+                onCancel: holder.leaveFinishing
             )
 
         case .restoreRequired(let libraryId):
@@ -105,6 +114,16 @@ struct ContentView: View {
                     onLibraryReady: holder.openOpenedLibrary
                 ),
                 onBack: { holder.openLibrary(id: libraryId) }
+            )
+            .id(libraryId)
+
+        case .restoreUnfinished(let libraryId):
+            BootstrapCodeScreen(
+                form: holder.setup.bootstrapForm(
+                    entry: .finishRestore(libraryId: libraryId),
+                    onLibraryReady: holder.openOpenedLibrary
+                ),
+                onBack: holder.leaveFinishing
             )
             .id(libraryId)
 

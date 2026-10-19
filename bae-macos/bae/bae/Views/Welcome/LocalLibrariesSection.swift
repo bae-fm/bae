@@ -1,13 +1,15 @@
 import BaeKit
 import SwiftUI
 
-/// Libraries on this device, each with Open and Remove.
+/// Libraries on this device, each with Open, or with what finishes the reset
+/// or restore of its copy that stopped partway, and Remove.
 struct LocalLibrariesSection: View {
     let libraries: [BridgeLibrary]
     let disabled: Bool
     let canDeleteActiveLibrary: Bool
     let removingLibraryId: String?
     let onOpen: (BridgeLibrary) -> Void
+    let onFinish: (BridgeLibrary, BridgeReplacedBy) -> Void
     let onRemove: (BridgeLibrary) -> Void
 
     var body: some View {
@@ -21,6 +23,7 @@ struct LocalLibrariesSection: View {
                         && !canDeleteActiveLibrary,
                     isRemoving: removingLibraryId == library.id,
                     onOpen: onOpen,
+                    onFinish: onFinish,
                     onRemove: onRemove,
                 )
             }
@@ -31,13 +34,15 @@ struct LocalLibrariesSection: View {
 
 /// One library row: its name, its provider and account when it has a cloud
 /// home, Open and Remove. A library whose settings can't be read says why,
-/// and doesn't open.
+/// and doesn't open. One whose reset or restore stopped partway says which,
+/// and offers to finish it in place of Open.
 private struct LibraryRow: View {
     let library: BridgeLibrary
     let disabled: Bool
     let deleteDisabled: Bool
     let isRemoving: Bool
     let onOpen: (BridgeLibrary) -> Void
+    let onFinish: (BridgeLibrary, BridgeReplacedBy) -> Void
     let onRemove: (BridgeLibrary) -> Void
 
     var body: some View {
@@ -54,9 +59,9 @@ private struct LibraryRow: View {
                     )
             }
             Spacer(minLength: ThemeSpace.group)
-            Button("Open") { onOpen(library) }
+            Button(primaryTitle, action: primaryAction)
                 .buttonStyle(.bordered)
-                .disabled(!library.isOpenable)
+                .disabled(!canAct)
             ZStack {
                 Button("Remove", systemImage: "trash", role: .destructive) {
                     onRemove(library)
@@ -77,6 +82,28 @@ private struct LibraryRow: View {
         .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.control))
         .disabled(disabled)
     }
+
+    private var primaryTitle: LocalizedStringKey {
+        switch library.state {
+        case .openable, .unreadable: "Open"
+        case .replacementUnfinished(.restore): "Finish Restoring"
+        case .replacementUnfinished(.reset): "Finish Resetting"
+        }
+    }
+
+    /// Open, or finish the reset or restore that stopped; a library whose
+    /// settings can't be read offers neither.
+    private var canAct: Bool {
+        if case .unreadable = library.state { return false }
+        return true
+    }
+
+    private func primaryAction() {
+        switch library.state {
+        case .openable, .unreadable: onOpen(library)
+        case .replacementUnfinished(let by): onFinish(library, by)
+        }
+    }
 }
 
 #if DEBUG
@@ -87,6 +114,7 @@ private struct LibraryRow: View {
             canDeleteActiveLibrary: true,
             removingLibraryId: nil,
             onOpen: { _ in },
+            onFinish: { _, _ in },
             onRemove: { _ in },
         )
         .padding()

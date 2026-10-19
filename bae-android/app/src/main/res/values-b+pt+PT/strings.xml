@@ -189,6 +189,8 @@
     <string name="reset_device_confirm_title">Repor este dispositivo?</string>
     <string name="reset_device_confirm">Repor</string>
     <string name="restore_device_title">Restaurar esta biblioteca</string>
+    <string name="finish_restore_title">Concluir o restauro desta biblioteca</string>
+    <string name="finish_reset">Concluir a reposição deste dispositivo</string>
     <string name="profile_required_title">Introduza o seu nome para concluir a adesão a esta biblioteca.</string>
     <string name="save">Guardar</string>
     <string name="onboarding_scan_code">Ler um código</string>

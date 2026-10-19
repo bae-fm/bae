@@ -190,6 +190,8 @@
     <string name="reset_device_confirm_title">Нулиране на това устройство?</string>
     <string name="reset_device_confirm">Нулиране</string>
     <string name="restore_device_title">Възстановяване на тази библиотека</string>
+    <string name="finish_restore_title">Завършване на възстановяването на тази библиотека</string>
+    <string name="finish_reset">Завършване на нулирането на това устройство</string>
     <string name="profile_required_title">Въведете името си, за да завършите присъединяването към тази библиотека.</string>
     <string name="save">Запазване</string>
     <string name="onboarding_scan_code">Сканиране на код</string>

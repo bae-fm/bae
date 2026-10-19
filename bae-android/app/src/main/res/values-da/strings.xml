@@ -189,6 +189,8 @@
     <string name="reset_device_confirm_title">Nulstil denne enhed?</string>
     <string name="reset_device_confirm">Nulstil</string>
     <string name="restore_device_title">Gendan dette bibliotek</string>
+    <string name="finish_restore_title">Fuldfør gendannelsen af dette bibliotek</string>
+    <string name="finish_reset">Fuldfør nulstillingen af denne enhed</string>
     <string name="profile_required_title">Skriv dit navn for at gøre tilmeldingen til dette bibliotek færdig.</string>
     <string name="save">Gem</string>
     <string name="onboarding_scan_code">Scan en kode</string>

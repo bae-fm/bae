@@ -220,7 +220,7 @@ struct SettingsView: View {
 }
 
 /// The libraries on this device, the open one checked; tapping another opens
-/// it.
+/// it, or, when its reset or restore stopped partway, offers to finish it.
 private struct LibrarySwitcherSection: View {
     @Environment(AppSessionHolder.self)
     private var holder
@@ -229,7 +229,7 @@ private struct LibrarySwitcherSection: View {
         Section("Library") {
             ForEach(holder.libraries, id: \.id) { library in
                 Button {
-                    holder.openLibrary(id: library.id)
+                    select(library)
                 } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: ThemeSpace.line) {
@@ -238,7 +238,10 @@ private struct LibrarySwitcherSection: View {
                             // one height.
                             Text(library.detailLine)
                                 .themeText(.detail)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(
+                                    library.isOpenable
+                                        ? Color.secondary : Theme.danger
+                                )
                         }
                         Spacer()
                         // Hidden, not removed, so switching libraries doesn't
@@ -253,6 +256,15 @@ private struct LibrarySwitcherSection: View {
                 .foregroundStyle(.primary)
                 .disabled(holder.isActive(library))
             }
+        }
+    }
+
+    private func select(_ library: BridgeLibrary) {
+        switch library.state {
+        case .openable, .unreadable:
+            holder.openLibrary(id: library.id)
+        case .replacementUnfinished(let by):
+            holder.presentFinishing(libraryId: library.id, by: by)
         }
     }
 }

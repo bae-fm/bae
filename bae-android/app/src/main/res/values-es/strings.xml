@@ -191,6 +191,8 @@
     <string name="reset_device_confirm_title">¿Restablecer este dispositivo?</string>
     <string name="reset_device_confirm">Restablecer</string>
     <string name="restore_device_title">Restaurar esta biblioteca</string>
+    <string name="finish_restore_title">Terminar de restaurar esta biblioteca</string>
+    <string name="finish_reset">Terminar de restablecer este dispositivo</string>
     <string name="profile_required_title">Escribe tu nombre para terminar de unirte a esta biblioteca.</string>
     <string name="save">Guardar</string>
     <string name="onboarding_scan_code">Escanear un código</string>

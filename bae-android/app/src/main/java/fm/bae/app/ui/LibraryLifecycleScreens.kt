@@ -1,5 +1,6 @@
 package fm.bae.app.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,6 +35,9 @@ import fm.bae.app.ui.components.PersonNameField
 import fm.bae.app.ui.components.PrimaryButton
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDeviceReset
+import uniffi.bae_bridge.BridgeErrorCategory
+import uniffi.bae_bridge.BridgeReplacedBy
+import uniffi.bae_bridge.bridgeErrorCategoryKey
 
 private val logger = BaeLogger("bae.LibraryLifecycleScreens")
 
@@ -83,6 +87,28 @@ internal fun ResetOfferedScreen(
             },
             onDismiss = { reset = null },
         )
+    }
+}
+
+/**
+ * A reset of this device's copy stopped partway; finishing resets again,
+ * without the warning the person already accepted. Leaving keeps the library
+ * waiting for it.
+ */
+@Composable
+internal fun ResetUnfinishedScreen(
+    error: String?,
+    onFinish: () -> Unit,
+    onLeave: () -> Unit,
+) {
+    val context = LocalContext.current
+    BackHandler(onBack = onLeave)
+    LifecycleMessage(
+        context.coreString(bridgeErrorCategoryKey(BridgeErrorCategory.ReplacementUnfinished(BridgeReplacedBy.RESET))),
+    ) {
+        error?.let { ErrorText(it) }
+        PrimaryButton(onClick = onFinish) { Text(stringResource(R.string.finish_reset)) }
+        TextButton(onClick = onLeave) { Text(stringResource(R.string.cancel)) }
     }
 }
 

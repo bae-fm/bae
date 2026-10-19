@@ -33,6 +33,7 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryRemoval
+import uniffi.bae_bridge.BridgeReplacedBy
 import uniffi.bae_bridge.BridgeScreen
 import uniffi.bae_bridge.BridgeStoreKeyState
 import uniffi.bae_bridge.BridgeTelemetryEvent
@@ -74,14 +75,23 @@ sealed interface AppScreen {
     ) : AppScreen
 
     /**
+     * A library that didn't open, or can't sync, and the one call that
+     * recovers it: resetting this device, restoring it with the person's
+     * current restore code, or finishing either when it stopped partway.
+     */
+    sealed interface Recovery : AppScreen {
+        val libraryId: String
+    }
+
+    /**
      * Opening failed because this device's copy can't be used as it stands —
      * a damaged database, or another copy of this device. Resetting loads the
      * library from storage again under a new device id.
      */
     data class ResetOffered(
-        val libraryId: String,
+        override val libraryId: String,
         val message: String,
-    ) : AppScreen
+    ) : Recovery
 
     /**
      * Another of the person's devices replaced their keys, so this copy can't
@@ -89,8 +99,27 @@ sealed interface AppScreen {
      * current restore code, which registers this device again.
      */
     data class RestoreOffered(
-        val libraryId: String,
-    ) : AppScreen
+        override val libraryId: String,
+    ) : Recovery
+
+    /**
+     * A reset of this device's copy of the library stopped partway; only
+     * resetting again finishes it, and the library opens once it does.
+     * [error] is why the last attempt failed.
+     */
+    data class ResetUnfinished(
+        override val libraryId: String,
+        val error: String?,
+    ) : Recovery
+
+    /**
+     * A restore of this device's copy of the library stopped partway; only
+     * restoring again with the person's current restore code finishes it,
+     * and the library opens once it does.
+     */
+    data class RestoreUnfinished(
+        override val libraryId: String,
+    ) : Recovery
 
     /**
      * Joining made this device a member, but writing the person's profile
@@ -113,6 +142,34 @@ sealed interface AppScreen {
     data class Failed(
         val message: String,
     ) : AppScreen
+
+    companion object {
+        /** The screen that finishes a reset or restore of [libraryId] that stopped partway: the one call [by] names. */
+        fun finishing(
+            libraryId: String,
+            by: BridgeReplacedBy,
+        ): AppScreen =
+            when (by) {
+                BridgeReplacedBy.RESET -> ResetUnfinished(libraryId, error = null)
+                BridgeReplacedBy.RESTORE -> RestoreUnfinished(libraryId)
+            }
+
+        /**
+         * The screen a failed open of [libraryId] lands on: resetting the
+         * device, finishing the reset or restore that stopped partway, or
+         * the failure's [message].
+         */
+        fun openFailed(
+            libraryId: String,
+            error: BridgeException,
+            message: String,
+        ): AppScreen =
+            when (val category = (error as? BridgeException.Diagnostic)?.category) {
+                is BridgeErrorCategory.DeviceResetRequired -> ResetOffered(libraryId, message)
+                is BridgeErrorCategory.ReplacementUnfinished -> finishing(libraryId, category.by)
+                else -> Failed(message)
+            }
+    }
 }
 
 /**
@@ -238,14 +295,7 @@ object AppSessionHolder {
             throw e
         } catch (e: BridgeException) {
             logger.error("opening library $libraryId failed", e)
-            val category = (e as? BridgeException.Diagnostic)?.category
-            onScreen(
-                if (category is BridgeErrorCategory.DeviceResetRequired) {
-                    AppScreen.ResetOffered(libraryId, errorMessage(context, e))
-                } else {
-                    AppScreen.Failed(errorMessage(context, e))
-                },
-            )
+            onScreen(AppScreen.openFailed(libraryId, e, errorMessage(context, e)))
         }
     }
 
@@ -323,15 +373,18 @@ object AppSessionHolder {
     }
 
     /**
-     * Reset this device after the person accepted [reset]'s warning: the open
-     * session of that library closes first, then coven loads the library from
-     * storage again under a new device id.
+     * Reset this device after the person accepted [reset]'s warning, or
+     * finish a reset that stopped partway: the open session of that library
+     * closes first, then coven loads the library from storage again under a
+     * new device id. A failed reset shows [failed] with why, the screen it
+     * was started from.
      */
     suspend fun resetDevice(
         context: Context,
         libraryId: String,
         reset: BridgeDeviceReset,
         onScreen: (AppScreen) -> Unit,
+        failed: (message: String) -> AppScreen,
     ) {
         onScreen(AppScreen.Loading)
         current?.takeIf { it.libraryId == libraryId }?.let { open ->
@@ -345,10 +398,19 @@ object AppSessionHolder {
                 throw e
             } catch (e: BridgeException) {
                 logger.error("resetting the device for $libraryId failed", e)
-                onScreen(AppScreen.ResetOffered(libraryId, errorMessage(context, e)))
+                onScreen(failed(errorMessage(context, e)))
                 return
             }
         openBootstrapped(context, result, onScreen)
+    }
+
+    /**
+     * Leave a screen that finishes a reset or restore without running its
+     * call: back to the open library, or, with none open, to onboarding,
+     * since that library opens only once its call finishes.
+     */
+    fun leaveFinishing(onScreen: (AppScreen) -> Unit) {
+        onScreen(current?.let { AppScreen.LibraryOpen(it) } ?: AppScreen.Onboarding)
     }
 
     /**

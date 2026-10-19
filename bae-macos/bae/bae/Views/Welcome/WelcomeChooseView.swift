@@ -12,6 +12,9 @@ struct WelcomeChooseView: View {
     let canDeleteActiveLibrary: Bool
     let onLibraryReady: (OpenedLibrary, BridgeError?) -> Void
     let onOpenLibrary: (String) -> Void
+    /// Finish the reset or restore of a library's copy on this Mac that
+    /// stopped partway, with the one call that finishes it.
+    let onFinishReplacement: (String, BridgeReplacedBy) -> Void
     let onRestoreSaved: (BridgeSavedRestoreCode) -> Void
     let onJoin: () -> Void
     let onRestore: () -> Void
@@ -146,6 +149,7 @@ struct WelcomeChooseView: View {
                     canDeleteActiveLibrary: canDeleteActiveLibrary,
                     removingLibraryId: removals.removingLibraryId,
                     onOpen: { onOpenLibrary($0.id) },
+                    onFinish: { onFinishReplacement($0.id, $1) },
                     onRemove: { askToRemove($0) }
                 )
             }
@@ -332,6 +336,7 @@ private struct RemovalErrorCallout: View {
                 canDeleteActiveLibrary: true,
                 onLibraryReady: { _, _ in },
                 onOpenLibrary: { _ in },
+                onFinishReplacement: { _, _ in },
                 onRestoreSaved: { _ in },
                 onJoin: {},
                 onRestore: {}
@@ -348,6 +353,7 @@ private struct RemovalErrorCallout: View {
                 canDeleteActiveLibrary: true,
                 onLibraryReady: { _, _ in },
                 onOpenLibrary: { _ in },
+                onFinishReplacement: { _, _ in },
                 onRestoreSaved: { _ in },
                 onJoin: {},
                 onRestore: {}
@@ -364,6 +370,7 @@ private struct RemovalErrorCallout: View {
                 canDeleteActiveLibrary: true,
                 onLibraryReady: { _, _ in },
                 onOpenLibrary: { _ in },
+                onFinishReplacement: { _, _ in },
                 onRestoreSaved: { _ in },
                 onJoin: {},
                 onRestore: {}

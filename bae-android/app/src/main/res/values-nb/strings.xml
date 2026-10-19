@@ -189,6 +189,8 @@
     <string name="reset_device_confirm_title">Vil du tilbakestille denne enheten?</string>
     <string name="reset_device_confirm">Tilbakestill</string>
     <string name="restore_device_title">Gjenopprett dette biblioteket</string>
+    <string name="finish_restore_title">Fullfør gjenopprettingen av dette biblioteket</string>
+    <string name="finish_reset">Fullfør tilbakestillingen av denne enheten</string>
     <string name="profile_required_title">Skriv inn navnet ditt for å fullføre innmeldingen i dette biblioteket.</string>
     <string name="save">Lagre</string>
     <string name="onboarding_scan_code">Skann en kode</string>

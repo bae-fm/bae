@@ -84,6 +84,7 @@ struct BaeApp: App {
                 WelcomeView(
                     onLibraryReady: appDelegate.openOpenedLibrary,
                     onOpenLibrary: appDelegate.openLocalLibrary(id:),
+                    onFinishReplacement: appDelegate.presentFinishing,
                     initialMode: mode,
                     canDeleteActiveLibrary: !appDelegate.hasShell
                 )
@@ -92,6 +93,7 @@ struct BaeApp: App {
                 WelcomeView(
                     onLibraryReady: appDelegate.openOpenedLibrary,
                     onOpenLibrary: appDelegate.openLocalLibrary(id:),
+                    onFinishReplacement: appDelegate.presentFinishing,
                     loadError: loadError,
                     canDeleteActiveLibrary: !appDelegate.hasShell
                 )
@@ -110,9 +112,13 @@ struct BaeApp: App {
         case .welcome:
             ProgressView()
         case .resetRequired(let libraryId):
-            deviceResetView(libraryId: libraryId)
+            deviceResetView(libraryId: libraryId, prompt: .offered)
         case .restoreRequired(let libraryId):
             deviceRestoreView(libraryId: libraryId)
+        case .resetUnfinished(let libraryId):
+            deviceResetView(libraryId: libraryId, prompt: .unfinished)
+        case .restoreUnfinished(let libraryId):
+            finishRestoreView(libraryId: libraryId)
         case .keychainLocked:
             KeychainLockedView(onRetry: appDelegate.retryKeychainOpen)
         case .library:
@@ -120,11 +126,15 @@ struct BaeApp: App {
         }
     }
 
-    private func deviceResetView(libraryId: String) -> some View {
+    private func deviceResetView(
+        libraryId: String,
+        prompt: DeviceResetView.Prompt
+    ) -> some View {
         DeviceResetView(
+            prompt: prompt,
             error: appDelegate.loadError,
             onReset: { appDelegate.resetDevice(libraryId: libraryId) },
-            onCancel: appDelegate.cancelDeviceReset
+            onCancel: appDelegate.leaveRecovery
         )
     }
 
@@ -137,6 +147,20 @@ struct BaeApp: App {
                 onLibraryReady: appDelegate.openOpenedLibrary
             ),
             onBack: { appDelegate.openLocalLibrary(id: libraryId) }
+        )
+        .id(libraryId)
+    }
+
+    /// The person's current restore code, to finish a restore of this
+    /// device's copy that stopped partway; the library can't open until it
+    /// finishes, so going back leaves it as it is.
+    private func finishRestoreView(libraryId: String) -> some View {
+        BootstrapCodeView(
+            form: applicationServices.librarySetup.bootstrapForm(
+                entry: .finishRestore(libraryId: libraryId),
+                onLibraryReady: appDelegate.openOpenedLibrary
+            ),
+            onBack: appDelegate.leaveRecovery
         )
         .id(libraryId)
     }
@@ -185,9 +209,13 @@ struct BaeApp: App {
         case .welcome:
             welcomeView(loadError: appDelegate.loadError)
         case .resetRequired(let libraryId):
-            deviceResetView(libraryId: libraryId)
+            deviceResetView(libraryId: libraryId, prompt: .offered)
         case .restoreRequired(let libraryId):
             deviceRestoreView(libraryId: libraryId)
+        case .resetUnfinished(let libraryId):
+            deviceResetView(libraryId: libraryId, prompt: .unfinished)
+        case .restoreUnfinished(let libraryId):
+            finishRestoreView(libraryId: libraryId)
         case .keychainLocked:
             KeychainLockedView(onRetry: appDelegate.retryKeychainOpen)
         case .library:
@@ -645,13 +673,22 @@ extension AppDelegate {
                 "Library open superseded before it could land; skipping"
             )
         case .failed(let error):
-            loadError = DisplayError(error)
-            if case BridgeError.Diagnostic(.deviceResetRequired, _) = error {
-                screen = .resetRequired(libraryId: libraryId)
+            if let recovery = AppScreen.recovering(
+                libraryId: libraryId,
+                from: error
+            ) {
+                screen = recovery
+                // A screen that finishes a reset or restore says so itself.
+                if case .resetRequired = recovery {
+                    loadError = DisplayError(error)
+                }
             }
-            else if !hasShell {
-                // A failed bootstrap open returns to the welcome.
-                screen = .welcome
+            else {
+                loadError = DisplayError(error)
+                if !hasShell {
+                    // A failed bootstrap open returns to the welcome.
+                    screen = .welcome
+                }
             }
         }
     }
@@ -692,18 +729,29 @@ extension AppDelegate {
         }
     }
 
-    /// Leave the reset warning without resetting.
-    func cancelDeviceReset() {
+    /// Show the one call that finishes a reset or restore of a library's
+    /// copy on this Mac that stopped partway, from the welcome's list.
+    func presentFinishing(libraryId: String, by: BridgeReplacedBy) {
+        loadError = nil
+        showAddLibrarySheet = false
+        screen = .finishing(libraryId: libraryId, by: by)
+    }
+
+    /// Leave a reset or a finishing screen without running it.
+    func leaveRecovery() {
         loadError = nil
         screen = hasShell ? .library : .welcome
     }
 
-    /// Reset this device for a library: close it if it is open, then load it
-    /// from storage again under a fresh device id. The person saw the warning
-    /// before choosing, so nothing is shown after.
+    /// Reset this device for a library, or finish a reset that stopped
+    /// partway: close it if it is open, then load it from storage again under
+    /// a fresh device id. The person saw the warning before choosing, so
+    /// nothing is shown after. A failed reset returns to the screen it was
+    /// started from, with why.
     func resetDevice(libraryId: String) {
         let host = requiredApplicationServices.host
         let deviceName = requiredApplicationServices.deviceName
+        let startedFrom = screen
         let open = appService.flatMap { $0.libraryId == libraryId ? $0 : nil }
         if open != nil {
             prepareForLibraryShutdown()
@@ -729,7 +777,7 @@ extension AppDelegate {
                     "Device reset failed: \(error.localizedDescription)"
                 )
                 self.loadError = DisplayError(error)
-                self.screen = .resetRequired(libraryId: libraryId)
+                self.screen = startedFrom
             }
         }
     }

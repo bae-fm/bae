@@ -49,6 +49,10 @@ public final class BootstrapCodeForm {
         /// current restore code, after another of their devices replaced
         /// their keys. Core refuses any other code.
         case restoreOver(libraryId: String)
+        /// The same restore again, to finish one that stopped after the
+        /// restored copy took the place of this device's copy. Core refuses
+        /// any other code.
+        case finishRestore(libraryId: String)
     }
 
     public let entry: Entry
@@ -106,7 +110,8 @@ public final class BootstrapCodeForm {
         case (.restore(let metadata), _):
             .restore(code: code, metadata: metadata, s3Key: s3Key)
         // Restoring over this device's copy takes no invite; core says so.
-        case (.invite(let metadata, _), .restoreOver):
+        case (.invite(let metadata, _), .restoreOver),
+            (.invite(let metadata, _), .finishRestore):
             .restore(code: code, metadata: metadata, s3Key: s3Key)
         case (.invite(let metadata, let libraryName), _):
             .join(code: code, metadata: metadata, libraryName: libraryName)
@@ -219,7 +224,8 @@ public final class BootstrapCodeForm {
                 saved: saved.code,
                 credentials: credentials
             )
-        case (.restore(let code, _, _), .restoreOver(let libraryId)):
+        case (.restore(let code, _, _), .restoreOver(let libraryId)),
+            (.restore(let code, _, _), .finishRestore(let libraryId)):
             try await bootstrap.restoreReplacing(
                 libraryId: libraryId,
                 code: code,

@@ -1,4 +1,5 @@
 import AppKit
+import BaeKit
 import Testing
 
 @testable import bae
@@ -90,6 +91,88 @@ struct AppDelegateTests {
 
         guard case .loading = delegate.screen else {
             Issue.record("screen should stay .loading with no library open")
+            return
+        }
+    }
+
+    /// An open that stopped on a reset or restore left partway lands on the
+    /// one call that finishes it, never the other.
+    @Test("an unfinished replacement opens the call that finishes it")
+    func unfinishedReplacementLandsOnItsCall() {
+        let restore = AppScreen.recovering(
+            libraryId: "lib-01",
+            from: BridgeError.Diagnostic(
+                category: .replacementUnfinished(by: .restore),
+                detail: "restore_device"
+            )
+        )
+        guard case .restoreUnfinished(let restoring) = restore else {
+            Issue.record(
+                "an unfinished restore lands on \(String(describing: restore))"
+            )
+            return
+        }
+        #expect(restoring == "lib-01")
+
+        let reset = AppScreen.recovering(
+            libraryId: "lib-02",
+            from: BridgeError.Diagnostic(
+                category: .replacementUnfinished(by: .reset),
+                detail: "reset_device"
+            )
+        )
+        guard case .resetUnfinished(let resetting) = reset else {
+            Issue.record(
+                "an unfinished reset lands on \(String(describing: reset))"
+            )
+            return
+        }
+        #expect(resetting == "lib-02")
+    }
+
+    @Test("a failed open with no recovery here lands on none")
+    func otherOpenFailuresHaveNoRecovery() {
+        let damaged = AppScreen.recovering(
+            libraryId: "lib-01",
+            from: BridgeError.Diagnostic(
+                category: .deviceResetRequired,
+                detail: "damaged database"
+            )
+        )
+        guard case .resetRequired = damaged else {
+            Issue.record(
+                "a damaged database lands on \(String(describing: damaged))"
+            )
+            return
+        }
+        #expect(
+            AppScreen.recovering(
+                libraryId: "lib-01",
+                from: BridgeError.Diagnostic(
+                    category: .network,
+                    detail: "offline"
+                )
+            ) == nil
+        )
+    }
+
+    /// Finishing from the welcome's list, then leaving, returns to the
+    /// welcome while no library is open.
+    @Test(
+        "leaving a finishing screen with no library open returns to the welcome"
+    )
+    func leavingFinishingReturnsToWelcome() {
+        let delegate = AppDelegate()
+
+        delegate.presentFinishing(libraryId: "lib-01", by: .restore)
+        guard case .restoreUnfinished("lib-01") = delegate.screen else {
+            Issue.record("finishing a restore shows \(delegate.screen)")
+            return
+        }
+        delegate.leaveRecovery()
+
+        guard case .welcome = delegate.screen else {
+            Issue.record("leaving shows \(delegate.screen)")
             return
         }
     }

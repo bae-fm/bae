@@ -12,6 +12,9 @@ struct WelcomeView: View {
     let onLibraryReady: @MainActor (OpenedLibrary, BridgeError?) -> Void
     /// Open one of this Mac's libraries by id.
     let onOpenLibrary: (String) -> Void
+    /// Finish the reset or restore of a library's copy on this Mac that
+    /// stopped partway, with the one call that finishes it.
+    let onFinishReplacement: (String, BridgeReplacedBy) -> Void
     /// A failed library open, shown as the chooser's inline callout. Only the
     /// first-run bootstrap carries it; a flow a menu item opens directly shows
     /// its own errors.
@@ -36,12 +39,14 @@ struct WelcomeView: View {
         onLibraryReady:
             @escaping @MainActor (OpenedLibrary, BridgeError?) -> Void,
         onOpenLibrary: @escaping (String) -> Void,
+        onFinishReplacement: @escaping (String, BridgeReplacedBy) -> Void,
         loadError: DisplayError? = nil,
         initialMode: Mode = .choose,
         canDeleteActiveLibrary: Bool
     ) {
         self.onLibraryReady = onLibraryReady
         self.onOpenLibrary = onOpenLibrary
+        self.onFinishReplacement = onFinishReplacement
         self.loadError = loadError
         self.canDeleteActiveLibrary = canDeleteActiveLibrary
         _mode = State(initialValue: initialMode)
@@ -55,6 +60,7 @@ struct WelcomeView: View {
                 canDeleteActiveLibrary: canDeleteActiveLibrary,
                 onLibraryReady: onLibraryReady,
                 onOpenLibrary: onOpenLibrary,
+                onFinishReplacement: onFinishReplacement,
                 onRestoreSaved: { mode = .restore($0) },
                 onJoin: { mode = .join },
                 onRestore: { mode = .restore(nil) }

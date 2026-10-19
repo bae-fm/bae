@@ -1,8 +1,8 @@
 #if DEBUG
     import BaeKit
 
-    // Preview fixtures for the Welcome flow: a library with a cloud home and
-    // one without. Saved restore codes are opaque bridge objects a preview
+    // Preview fixtures for the Welcome flow: a library with a cloud home, one
+    // without, one that can't be read, and one whose restore stopped partway. Saved restore codes are opaque bridge objects a preview
     // can't make, so the populated previews show none. Generic placeholder
     // names throughout.
     extension PreviewData {
@@ -11,7 +11,7 @@
                 id: "lib-01",
                 name: "My Library",
                 path: "/Users/preview/Music/bae/My Library",
-                settings: .readable(
+                state: .openable(
                     storage: .s3(
                         bucket: "music-library",
                         region: "us-east-1",
@@ -26,19 +26,26 @@
                 id: "lib-02",
                 name: "Local Library",
                 path: "/Users/preview/Music/bae/Local Library",
-                settings: .readable(storage: nil),
+                state: .openable(storage: nil),
                 isActive: false
             ),
             BridgeLibrary(
                 id: "lib-03",
                 name: "Broken Library",
                 path: "/Users/preview/Music/bae/Broken Library",
-                settings: .unreadable(
+                state: .unreadable(
                     error: .Diagnostic(
                         category: .internal,
                         detail: "storage.json: expected value at line 1"
                     )
                 ),
+                isActive: false
+            ),
+            BridgeLibrary(
+                id: "lib-04",
+                name: "Restored Library",
+                path: "/Users/preview/Music/bae/Restored Library",
+                state: .replacementUnfinished(by: .restore),
                 isActive: false
             ),
         ]

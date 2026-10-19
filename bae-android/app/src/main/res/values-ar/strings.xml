@@ -198,6 +198,8 @@
     <string name="reset_device_confirm_title">هل تريد إعادة تعيين هذا الجهاز؟</string>
     <string name="reset_device_confirm">إعادة تعيين</string>
     <string name="restore_device_title">استعادة هذه المكتبة</string>
+    <string name="finish_restore_title">إنهاء استعادة هذه المكتبة</string>
+    <string name="finish_reset">إنهاء إعادة تعيين هذا الجهاز</string>
     <string name="profile_required_title">أدخل اسمك لإكمال الانضمام إلى هذه المكتبة.</string>
     <string name="save">حفظ</string>
     <string name="onboarding_scan_code">مسح رمز</string>

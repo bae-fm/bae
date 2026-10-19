@@ -71,9 +71,14 @@ private val logger = BaeLogger(TAG)
 
 private val actionWidth = 220.dp
 
-/** Restoring a library over this device's copy, and going back to the library as it was. */
+/**
+ * Restoring a library over this device's copy: what the start screen says
+ * about it, and where going back leaves the person.
+ */
 data class RestoreOver(
     val libraryId: String,
+    val title: String,
+    val message: String,
     val onBack: () -> Unit,
 )
 
@@ -96,7 +101,8 @@ private class OnboardingStartCallbacks(
  * First run on a device: a restore code from one of the person's devices, or
  * an invite to someone's library, scanned or typed, restores or joins here.
  * With [restoreOver], the person's current restore code restores that library
- * over this device's copy, after another of their devices replaced their keys.
+ * over this device's copy, after another of their devices replaced their
+ * keys, or finishes such a restore that stopped partway.
  */
 @Composable
 fun OnboardingScreen(
@@ -117,8 +123,8 @@ fun OnboardingScreen(
             OnboardingIntro(title = null, message = stringResource(R.string.onboarding_tagline), onBack = null)
         } else {
             OnboardingIntro(
-                title = stringResource(R.string.restore_device_title),
-                message = context.coreString("core.sync.restore_device.warning"),
+                title = restoreOver.title,
+                message = restoreOver.message,
                 onBack = restoreOver.onBack,
             )
         }

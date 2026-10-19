@@ -1,18 +1,18 @@
 import Foundation
 
 extension BridgeLibrary {
-    /// Whether the library's settings can be read, so it can open.
+    /// Whether the library opens.
     public var isOpenable: Bool {
-        if case .readable = settings { return true }
+        if case .openable = state { return true }
         return false
     }
 
     /// The line under the library's name: its provider and account when it
-    /// has a cloud home, nothing when it doesn't, or why its settings can't be
-    /// read.
+    /// has a cloud home, nothing when it doesn't, why its settings can't be
+    /// read, or which reset or restore of this device's copy didn't finish.
     public var detailLine: String {
-        switch settings {
-        case .readable(let storage):
+        switch state {
+        case .openable(let storage):
             return storage?.accountLine ?? ""
         case .unreadable(let error):
             guard let line = error.localizedLine else {
@@ -21,6 +21,9 @@ extension BridgeLibrary {
                 )
             }
             return line
+        case .replacementUnfinished(let by):
+            return BridgeErrorCategory.replacementUnfinished(by: by)
+                .localizedLine
         }
     }
 }

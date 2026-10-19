@@ -194,6 +194,8 @@
     <string name="reset_device_confirm_title">Zresetować to urządzenie?</string>
     <string name="reset_device_confirm">Zresetuj</string>
     <string name="restore_device_title">Przywróć tę bibliotekę</string>
+    <string name="finish_restore_title">Dokończ przywracanie tej biblioteki</string>
+    <string name="finish_reset">Dokończ resetowanie tego urządzenia</string>
     <string name="profile_required_title">Wpisz swoje imię, aby dokończyć dołączanie do tej biblioteki.</string>
     <string name="save">Zapisz</string>
     <string name="onboarding_scan_code">Zeskanuj kod</string>
