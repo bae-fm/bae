@@ -40,8 +40,11 @@ final class ImportListFixtureTests: XCTestCase {
         )
 
         let window = app.windows.firstMatch
-        XCTAssertTrue(window.waitForExistence(timeout: 20))
-        window.buttons["Import"].click()
+        // The section switch, which the window shows once the library is
+        // open, not while it opens it.
+        let importSection = window.buttons["Import"]
+        XCTAssertTrue(importSection.waitForExistence(timeout: 20))
+        importSection.click()
         let list = app.outlines.firstMatch
         for (folder, _) in states {
             XCTAssertTrue(

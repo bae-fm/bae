@@ -28,9 +28,11 @@ final class EditMenuSelectAllTests: XCTestCase {
         )
         let selectedAll = app.staticTexts["\(Self.albumCount) selected"]
 
-        let window = app.windows.firstMatch
-        XCTAssertTrue(window.waitForExistence(timeout: 20))
-        window.buttons["Import"].click()
+        // The section switch, which the window shows once the library is
+        // open, not while it opens it.
+        let importSection = app.windows.firstMatch.buttons["Import"]
+        XCTAssertTrue(importSection.waitForExistence(timeout: 20))
+        importSection.click()
         let list = app.outlines.firstMatch
         // The first and the last of the folder's candidates: then every one is
         // in the list, whichever order it lists them in.
