@@ -29,7 +29,9 @@ final class SearchAlbumPickTests: XCTestCase {
         XCTAssertTrue(grid.scrollView.waitForNonExistence(timeout: 10))
         pickSearchResult(Self.picked, in: app)
         XCTAssertTrue(
-            waitUntil(timeout: 10) { grid.showsOpen(Self.picked) },
+            waitUntil(timeout: 10) {
+                grid.shows(Self.picked) && grid.isOpen(Self.picked)
+            },
             "the album is in view, open"
         )
         XCTAssertTrue(window.buttons["Library"].isSelected)

@@ -36,22 +36,25 @@ struct AlbumGrid {
         !frames(of: text).isEmpty
     }
 
-    /// Whether `album`'s detail is open with its card: its title shows on
-    /// both.
-    func showsOpen(_ album: String) -> Bool {
-        frames(of: album).count >= 2
+    /// Whether `album`'s detail is open under its card: its title is laid out
+    /// on both, the detail's below the visible area when the grid is short.
+    func isOpen(_ album: String) -> Bool {
+        laidOutFrames(of: album).count >= 2
     }
 
-    /// The titles of the album cards drawn wholly inside the visible area,
-    /// row by row from the top, each row left to right. Every title begins
+    /// The titles of the album cards from the top of the visible area down,
+    /// row by row, each row left to right: the top row is the first whose
+    /// titles are not scrolled above the visible area, and the rows the grid
+    /// lays out below the visible area follow it, so a grid shorter than
+    /// two rows still lists the row under its top one. Every title begins
     /// with `prefix`.
-    func visibleRows(titledFrom prefix: String) -> [[String]] {
-        let visible = scrollView.frame
+    func rowsFromTop(titledFrom prefix: String) -> [[String]] {
+        let top = scrollView.frame.minY
         let titles = scrollView.staticTexts
             .matching(NSPredicate(format: "value BEGINSWITH %@", prefix))
             .allElementsBoundByIndex
             .map { (text: $0.value as? String ?? "", frame: $0.frame) }
-            .filter { visible.contains($0.frame) }
+            .filter { $0.frame.minY >= top }
             .sorted {
                 ($0.frame.minY, $0.frame.minX) < ($1.frame.minY, $1.frame.minX)
             }

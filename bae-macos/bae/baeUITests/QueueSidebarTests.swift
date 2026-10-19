@@ -19,7 +19,7 @@ final class QueueSidebarTests: XCTestCase {
 
         grid.scroll(by: -4_000)
         XCTAssertTrue(waitUntil(timeout: 10) { !grid.shows(newest) })
-        let before = grid.visibleRows(titledFrom: "Album ")
+        let before = grid.rowsFromTop(titledFrom: "Album ")
         XCTAssertGreaterThanOrEqual(before.count, 2, "\(before)")
 
         let queueButton = app.windows.firstMatch.buttons["Queue"]
@@ -28,7 +28,7 @@ final class QueueSidebarTests: XCTestCase {
         var opened: [[String]] = []
         XCTAssertTrue(
             waitUntil(timeout: 10) {
-                opened = grid.visibleRows(titledFrom: "Album ")
+                opened = grid.rowsFromTop(titledFrom: "Album ")
                 return opened.first.map { $0.count < before[0].count }
                     ?? false
             },
@@ -45,7 +45,7 @@ final class QueueSidebarTests: XCTestCase {
         var closed: [[String]] = []
         XCTAssertTrue(
             waitUntil(timeout: 10) {
-                closed = grid.visibleRows(titledFrom: "Album ")
+                closed = grid.rowsFromTop(titledFrom: "Album ")
                 return closed.first?.count == before[0].count
             },
             "the grid widens: \(opened) then \(closed)"
@@ -68,7 +68,7 @@ final class QueueSidebarTests: XCTestCase {
             .firstMatch
             .click()
         XCTAssertTrue(
-            waitUntil(timeout: 10) { grid.showsOpen(album) },
+            waitUntil(timeout: 10) { grid.isOpen(album) },
             "\(album) opens"
         )
     }

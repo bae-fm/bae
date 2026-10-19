@@ -31,15 +31,15 @@ final class AlbumDetailSwapTests: XCTestCase {
         let grid = AlbumGrid(app: app)
         let newest = Self.albums[Self.albums.count - 1].title
         XCTAssertTrue(waitUntil(timeout: 30) { grid.shows(newest) })
-        let rows = grid.visibleRows(titledFrom: "Album ")
+        let rows = grid.rowsFromTop(titledFrom: "Album ")
         XCTAssertGreaterThanOrEqual(rows.count, 2, "\(rows)")
         XCTAssertGreaterThanOrEqual(rows[0].count, 2, "\(rows)")
         let first = rows[0][0]
         let sameRow = rows[0][rows[0].count - 1]
         let nextRow = rows[1][0]
         // How far one row of cards is below the one above it.
-        let firstTop = try XCTUnwrap(grid.frames(of: first).first).minY
-        let nextTop = try XCTUnwrap(grid.frames(of: nextRow).first).minY
+        let firstTop = try XCTUnwrap(grid.laidOutFrames(of: first).first).minY
+        let nextTop = try XCTUnwrap(grid.laidOutFrames(of: nextRow).first).minY
         let rowPitch = nextTop - firstTop
 
         open(first, in: grid)
