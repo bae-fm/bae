@@ -7,8 +7,9 @@
     /// the lightbox, ImportSelection for the list and the pane a selection
     /// opens, Library for artist search, OutboxStore + ConfigStore for
     /// the commit bar, Importer for the Find online header's source
-    /// checkboxes, and `windowBackground()` so the preview reproduces the shell
-    /// the panes are transparent over.
+    /// checkboxes, the primary window's values the Import tab reads (Settings
+    /// for the metadata sources), and `windowBackground()` so the preview
+    /// reproduces the shell the panes are transparent over.
     extension View {
         func importPreviewEnvironment() -> some View {
             self
@@ -22,6 +23,7 @@
                 .environment(Playback.stub())
                 .environment(PreviewData.releaseEditor())
                 .environment(SettingsNavigation())
+                .mainWindowPreviewEnvironment()
                 .windowBackground()
         }
     }

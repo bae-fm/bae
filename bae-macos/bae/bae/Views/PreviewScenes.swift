@@ -77,6 +77,7 @@
                 .environment(CastStore())
                 .environment(ArtworkLoadingStore(cancel: {}))
                 .albumDetailPreviewEnvironment(store: libraryStore)
+                .mainWindowPreviewEnvironment()
                 .windowBackground()
         }
 
@@ -136,6 +137,7 @@
             .environment(ImportSelection())
             .environment(PreviewData.artImageStore())
             .environment(uiStore)
+            .mainWindowPreviewEnvironment()
             .windowBackground()
         }
 

@@ -391,6 +391,7 @@ extension ReIdentifySheet {
         .environment(SettingsNavigation())
         .albumDetailPreviewEnvironment(store: PreviewData.seededLibraryStore())
         .candidateReaderPreviewEnvironment()
+        .mainWindowPreviewEnvironment()
         .preferredColorScheme(.dark)
     }
 #endif

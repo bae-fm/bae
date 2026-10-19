@@ -201,5 +201,6 @@ private struct SectionSegmentedControl: View {
             .environment(library)
             .environment(LibraryProjectionStore(library: library))
             .environment(UiStore())
+            .mainWindowPreviewEnvironment()
     }
 #endif

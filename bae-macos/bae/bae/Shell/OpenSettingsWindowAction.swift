@@ -15,7 +15,7 @@ struct OpenSettingsWindowAction {
 }
 
 extension EnvironmentValues {
-    /// A preview or a test hosts views without the application's windows.
+    /// A test hosts views without the application's windows.
     @Entry
     var openSettingsWindow = OpenSettingsWindowAction {
         openSettingsLogger.warning(

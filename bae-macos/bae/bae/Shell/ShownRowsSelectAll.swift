@@ -14,8 +14,7 @@ final class ShownRowsSelectAll {
 }
 
 extension EnvironmentValues {
-    /// The primary window's; a preview or a test hosting a list without one
-    /// has none.
+    /// The primary window's; a test hosting a list without one has none.
     @Entry
     var shownRowsSelectAll: ShownRowsSelectAll?
 }

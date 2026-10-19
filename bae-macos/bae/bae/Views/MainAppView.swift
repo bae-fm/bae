@@ -295,6 +295,7 @@ struct MainAppView: View {
                 \.previewProgressPublisher,
                 Empty<PlaybackPositionEvent, Never>().eraseToAnyPublisher()
             )
+            .mainWindowPreviewEnvironment()
             .padding(.top, 1)
             .frame(width: 1280, height: 800)
             .windowBackground()

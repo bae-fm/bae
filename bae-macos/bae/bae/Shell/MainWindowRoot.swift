@@ -46,12 +46,13 @@ struct MainWindowRoot: View {
         }
         .appAppearance()
         .navigationTitle(appDelegate.hasShell ? windowTitle : "bae")
-        .environment(
-            \.openSettingsWindow,
-            OpenSettingsWindowAction { appDelegate.showSettingsWindow(nil) }
+        .mainWindowEnvironment(
+            openSettingsWindow: OpenSettingsWindowAction {
+                appDelegate.showSettingsWindow(nil)
+            },
+            searchFocusRequests: searchFocusRequests,
+            shownRowsSelectAll: shownRowsSelectAll
         )
-        .environment(\.searchFocusRequests, searchFocusRequests)
-        .environment(\.shownRowsSelectAll, shownRowsSelectAll)
     }
 
     /// The welcome flow in the mode a menu item asked for, showing
@@ -214,3 +215,42 @@ struct MainWindowRoot: View {
         return WelcomeWindow.size
     }
 }
+
+extension View {
+    /// What the primary window gives its content beyond the library's
+    /// services: the shell's Settings window, View ▸ Search, and Edit ▸
+    /// Select All.
+    fileprivate func mainWindowEnvironment(
+        openSettingsWindow: OpenSettingsWindowAction,
+        searchFocusRequests: PassthroughSubject<Void, Never>,
+        shownRowsSelectAll: ShownRowsSelectAll
+    ) -> some View {
+        self
+            .environment(\.openSettingsWindow, openSettingsWindow)
+            .environment(\.searchFocusRequests, searchFocusRequests)
+            .environment(\.shownRowsSelectAll, shownRowsSelectAll)
+    }
+}
+
+#if DEBUG
+    import os.log
+
+    private let mainWindowPreviewLogger = Logger.bae("MainWindowPreview")
+
+    extension View {
+        /// The primary window's values for a preview of its content, which
+        /// has no Settings window to open and no menu to search or select
+        /// all from.
+        func mainWindowPreviewEnvironment() -> some View {
+            self.mainWindowEnvironment(
+                openSettingsWindow: OpenSettingsWindowAction {
+                    mainWindowPreviewLogger.info(
+                        "Settings asked for in a preview"
+                    )
+                },
+                searchFocusRequests: PassthroughSubject(),
+                shownRowsSelectAll: ShownRowsSelectAll()
+            )
+        }
+    }
+#endif

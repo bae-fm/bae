@@ -867,6 +867,7 @@ extension ImportCandidateListContent {
         .environment(ImportSelection())
         .environment(uiStore)
         .environment(PreviewData.artImageStore())
+        .mainWindowPreviewEnvironment()
         .frame(width: 500, height: 900)
         .windowBackground()
     }
@@ -896,6 +897,7 @@ extension ImportCandidateListContent {
         .environment(ImportSelection())
         .environment(uiStore)
         .environment(PreviewData.artImageStore())
+        .mainWindowPreviewEnvironment()
         .frame(width: 280, height: 560)
         .windowBackground()
     }
