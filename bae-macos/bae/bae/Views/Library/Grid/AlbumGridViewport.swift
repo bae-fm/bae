@@ -25,7 +25,8 @@ struct PlacedTrackRow: Equatable {
     let frame: CGRect
     let scroll: AlbumGridScroll
 
-    /// The offset showing the whole row, or nil if it is already visible.
+    /// The offset showing the whole row, or nil if it is already visible, or
+    /// as far into view as the scroll can bring it.
     var scrollOffset: CGFloat? {
         let height = scroll.visibleHeight
         if frame.minY > scroll.offset - 0.5,
@@ -35,7 +36,8 @@ struct PlacedTrackRow: Equatable {
         }
         let target =
             frame.height > height ? frame.minY : frame.midY - height / 2
-        return target.clamped(to: scroll.offsets)
+        let clamped = target.clamped(to: scroll.offsets)
+        return abs(clamped - scroll.offset) < 0.5 ? nil : clamped
     }
 }
 
@@ -61,20 +63,17 @@ final class AlbumGridViewport {
     private var frames: [Placement: (slot: AlbumGridSlot, frame: CGRect)] =
         [:]
     private var scroll = AlbumGridScroll()
-    /// The slot the last change of column count put on top, held there
-    /// until the grid scrolls another way, so changes back and forth return
-    /// to the same place.
+    /// The slot the last change of column count, or the last reveal, put on
+    /// top, held there until the grid scrolls another way, so changes back
+    /// and forth return to the same place.
     private(set) var held: AlbumGridSlot?
     /// The row of the track the pending reveal names, while it is laid out.
     private var revealRow: PlacedTrackRow?
-    /// The reveal whose row last measured itself in full view.
-    private var rowInView: Int?
-    /// How far the reveal's scrolls have come: to its album, so its row's
-    /// place is measured where that scroll stops, not on the way there; then
-    /// to its row, so the row flashes where that scroll stops.
+    /// How far the pending reveal's scroll to its album has come, so its
+    /// row's place is measured where that scroll stops, not on the way there.
     private var revealScroll: RevealScroll?
-    /// What the scroll view is doing: an animated scroll is on its way until
-    /// this is idle again.
+    /// What the scroll view is doing: a scroll is on its way until this is
+    /// idle again.
     private var phase: ScrollPhase = .idle
 
     private enum RevealScroll {
@@ -117,28 +116,16 @@ final class AlbumGridViewport {
         return revealArrivedInPlace()
     }
 
-    /// Takes the scroll view's new phase. Returns the reveal whose scroll to
-    /// its album this brings to rest: its animated scroll ended, or it came
-    /// to rest with the album's card on top.
-    func setPhase(from old: ScrollPhase, to new: ScrollPhase) -> Int? {
+    /// Takes the scroll view's new phase. Returns the reveal this brings to
+    /// its album: the scroll view comes to rest with the album's card on top.
+    func setPhase(_ new: ScrollPhase) -> Int? {
         phase = new
-        // The person scrolling takes over from a scroll to a row.
-        if case .toRow = revealScroll, new != .idle, new != .animating {
-            revealScroll = nil
-        }
-        guard new == .idle, case .toAlbum(let seq, _) = revealScroll else {
-            return nil
-        }
-        if old == .animating {
-            revealScroll = .atAlbum(seq: seq)
-            return seq
-        }
         return revealArrivedInPlace()
     }
 
-    /// Returns the reveal a scroll that moved without animating, or did not
-    /// need to move, has brought to its album: the album's card sits on top
-    /// while the scroll view is idle.
+    /// Returns the reveal its scroll, or a scroll it did not need, has
+    /// brought to its album: the album's card sits on top while the scroll
+    /// view is idle.
     func revealArrivedInPlace() -> Int? {
         guard phase == .idle,
             case .toAlbum(let seq, let card) = revealScroll,
@@ -148,41 +135,29 @@ final class AlbumGridViewport {
         return seq
     }
 
-    /// Reveal `seq` scrolls its track's row into view.
-    func revealScrollsRow(seq: Int) {
+    /// The row reveal `seq` names, laid out; `arrived` asks only once the
+    /// reveal has scrolled to its album, from then on through its scroll to
+    /// the row.
+    func revealedRow(seq: Int, arrived: Bool = false) -> PlacedTrackRow? {
+        guard let revealRow, revealRow.seq == seq else { return nil }
+        guard arrived else { return revealRow }
+        switch revealScroll {
+        case .atAlbum(seq), .toRow(seq):
+            return revealRow
+        default:
+            return nil
+        }
+    }
+
+    /// Reveal `seq` scrolls its track's row into view, and measures the row
+    /// again wherever the grid lays it out next.
+    func revealScrollsToRow(seq: Int) {
         revealScroll = .toRow(seq: seq)
     }
 
-    /// Takes whether the row reveal `seq` names measures itself in full
-    /// view.
-    func setRevealedRow(seq: Int, inView: Bool) {
-        if inView {
-            rowInView = seq
-        }
-        else if rowInView == seq {
-            rowInView = nil
-        }
-    }
-
-    /// Returns the reveal whose scroll has brought its row into view, once:
-    /// the row measures itself in full view, with the scroll view idle.
-    func rowArrived() -> Int? {
-        guard phase == .idle,
-            case .toRow(let seq) = revealScroll,
-            rowInView == seq
-        else { return nil }
-        revealScroll = nil
-        return seq
-    }
-
-    /// The row reveal `seq` names, laid out; `atAlbum` asks only once the
-    /// reveal has scrolled to its album.
-    func revealedRow(seq: Int, atAlbum: Bool = false) -> PlacedTrackRow? {
-        guard let revealRow, revealRow.seq == seq else { return nil }
-        if atAlbum {
-            guard case .atAlbum(seq) = revealScroll else { return nil }
-        }
-        return revealRow
+    /// Holds `slot` on top until the hold ends.
+    func hold(_ slot: AlbumGridSlot) {
+        held = slot
     }
 
     /// Ends the hold, for a scroll or a change in what the grid shows; the

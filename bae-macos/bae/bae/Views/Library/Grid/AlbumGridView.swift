@@ -87,25 +87,28 @@ struct AlbumGridView<ExpansionContent: View>: View {
                         selection.clear()
                     }
                 }
+                // The row's place as each layout leaves it. An onChange of
+                // it acts at most once a frame and loses a later place laid
+                // out in the same frame, which the reveal measures the row at.
                 .overlayPreferenceValue(RevealedTrackRowKey.self) { row in
-                    GeometryReader { proxy in
-                        Color.clear.onChange(
-                            of: placedTrackRow(row, in: proxy),
-                            initial: true
-                        ) { _, placed in
+                    Color.clear
+                        .onGeometryChange(
+                            for: PlacedTrackRow?.self
+                        ) { proxy in
+                            Self.placedTrackRow(row, in: proxy)
+                        } action: { placed in
                             viewport.placeRevealedRow(placed)
                             if let placed,
                                 viewport.revealedRow(
                                     seq: placed.seq,
-                                    atAlbum: true
+                                    arrived: true
                                 )
                                     != nil
                             {
                                 showRevealedRow(placed)
                             }
                         }
-                    }
-                    .allowsHitTesting(false)
+                        .allowsHitTesting(false)
                 }
             }
             .accessibilityIdentifier("album-grid")
@@ -145,12 +148,9 @@ struct AlbumGridView<ExpansionContent: View>: View {
             // The person scrolling, or opening another album, also ends a
             // reveal still on its way: what it would scroll to is no longer
             // what they look at.
-            .onScrollPhaseChange { old, phase in
-                if let seq = viewport.setPhase(from: old, to: phase) {
+            .onScrollPhaseChange { _, phase in
+                if let seq = viewport.setPhase(phase) {
                     revealArrived(seq: seq)
-                }
-                if let seq = viewport.rowArrived() {
-                    flashRevealedRow(seq: seq)
                 }
                 if phase != .idle {
                     viewport.release()
@@ -169,12 +169,6 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 viewport.release()
                 if uiStore.pendingAlbumReveal?.albumId != albumId {
                     endReveal()
-                }
-            }
-            .environment(\.revealedTrackRowInView) { seq, inView in
-                viewport.setRevealedRow(seq: seq, inView: inView)
-                if let seq = viewport.rowArrived() {
-                    flashRevealedRow(seq: seq)
                 }
             }
             .reportsHeaderScroll(id: "albumGrid")
@@ -236,14 +230,14 @@ private struct AlbumGridMetrics {
 
 extension AlbumGridView {
     /// Read the row and viewport from the same layout. Scroll callbacks can
-    /// arrive after an animation completion and must not position the row.
+    /// arrive from another layout and must not position the row.
     ///
     /// The lazy grid places a cell it has just drawn before it grows to hold
     /// it, so a row near the end can sit below the content's bottom for a
     /// layout. The scroll bounds that layout gives stop short of the row, and
     /// a scroll to it would go nowhere; the row counts as placed once the
     /// content holds it.
-    private func placedTrackRow(
+    private nonisolated static func placedTrackRow(
         _ row: RevealedTrackRow?,
         in proxy: GeometryProxy
     ) -> PlacedTrackRow? {
@@ -466,8 +460,13 @@ extension AlbumGridView {
     }
 
     /// Scrolls the card of the album `reveal` names, at list position
-    /// `index`, to the top. The scroll view's phase says when it comes to
-    /// rest: an animated scroll's end is the reveal's arrival at the album.
+    /// `index`, to the top. The reveal arrives at the album once the card is
+    /// laid out on top.
+    ///
+    /// The scroll does not animate. An animated scroll to the card left the
+    /// scroll view's position on the card after the scroll stopped, so the
+    /// scroll to the track's row that followed was undone: the grid went back
+    /// to the card with the row below the visible area.
     private func scrollToAlbum(of reveal: PendingAlbumReveal, at index: Int) {
         // The list moved under the reveal between core placing the album and
         // its page answering: there is no card to scroll to.
@@ -489,9 +488,11 @@ extension AlbumGridView {
             revealArrived(seq: seq)
             return
         }
-        withAnimation(.easeInOut(duration: 0.3)) {
-            scrollPosition.scrollTo(id: card, anchor: .top)
-        }
+        // The scroll lands where the lazy grid estimated the card, and the
+        // grid moves the card as it draws the rows around it; the hold puts
+        // the card back on top each time.
+        viewport.hold(.position(index))
+        scrollPosition.scrollTo(id: card, anchor: .top)
     }
 
     /// The pending reveal `seq` has scrolled to its album, and come to rest
@@ -505,40 +506,30 @@ extension AlbumGridView {
             uiStore.consumeAlbumReveal(seq: seq)
             return
         }
-        if let row = viewport.revealedRow(seq: seq, atAlbum: true) {
+        if let row = viewport.revealedRow(seq: seq, arrived: true) {
             showRevealedRow(row)
         }
     }
 
-    /// Scrolls the row the pending reveal names into full view, if it is not
-    /// there already. The row flashes, ending the reveal, once it measures
-    /// itself in full view: a scroll's completion can come before the scroll
-    /// view has applied the scroll.
+    /// Flashes the row the pending reveal names where it is in full view, as
+    /// far as the scroll can bring it, and ends the reveal; otherwise
+    /// scrolls it there. The reveal stays pending through that scroll and
+    /// measures the row again where the grid lays it out next: a far scroll
+    /// lands over several layouts of the lazy grid, and the header above the
+    /// grid folds away as the grid leaves its top, resizing the grid under
+    /// the scroll.
     private func showRevealedRow(_ row: PlacedTrackRow) {
         guard uiStore.pendingAlbumReveal?.seq == row.seq else {
             return
         }
         guard let offset = row.scrollOffset else {
-            flashRevealedRow(seq: row.seq)
+            uiStore.consumeAlbumReveal(seq: row.seq)
+            uiStore.flashTrack(row.trackId, seq: row.seq)
             return
         }
+        viewport.revealScrollsToRow(seq: row.seq)
         viewport.release()
-        viewport.revealScrollsRow(seq: row.seq)
-        withAnimation(.easeInOut(duration: 0.3)) {
-            scrollPosition.scrollTo(y: offset)
-        }
-    }
-
-    /// Ends the pending reveal `seq`, whose row is in view, by flashing the
-    /// row.
-    private func flashRevealedRow(seq: Int) {
-        guard let reveal = uiStore.pendingAlbumReveal, reveal.seq == seq,
-            let trackId = reveal.trackId
-        else {
-            return
-        }
-        uiStore.consumeAlbumReveal(seq: seq)
-        uiStore.flashTrack(trackId, seq: seq)
+        scrollPosition.scrollTo(y: offset)
     }
 
     /// Gives up the pending reveal: the person moved on before it was shown.

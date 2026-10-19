@@ -228,6 +228,16 @@ struct AlbumGridViewportTests {
         )
     }
 
+    @Test("a view the scroll already shows as far as it can stays")
+    func viewShownAsFarAsItGoesStays() {
+        // Taller than the visible area, with its top already on top.
+        #expect(
+            placedRow(CGRect(x: 0, y: 1000, width: 300, height: 900))
+                .scrollOffset
+                == nil
+        )
+    }
+
     @Test("a view taller than the visible area goes to the top")
     func tallViewToTop() {
         #expect(
@@ -251,29 +261,28 @@ struct AlbumGridViewportRevealTests {
         viewport.placeRevealedRow(row)
         #expect(viewport.revealedRow(seq: 2) == row)
         #expect(viewport.revealedRow(seq: 1) == nil)
-        // Laid out on the way to the album, it waits for the scroll to stop.
+        // Laid out on the way to the album, it waits for the album's card to
+        // be on top.
         #expect(viewport.revealScrolls(seq: 2, to: .album("a9")) == nil)
-        #expect(viewport.revealedRow(seq: 2, atAlbum: true) == nil)
-        #expect(viewport.setPhase(from: .idle, to: .animating) == nil)
-        #expect(viewport.setPhase(from: .animating, to: .idle) == 2)
-        #expect(viewport.revealedRow(seq: 2, atAlbum: true) == row)
+        #expect(viewport.revealedRow(seq: 2, arrived: true) == nil)
+        place(.album("a9"), at: 0, in: viewport)
+        #expect(viewport.revealArrivedInPlace() == 2)
+        #expect(viewport.revealedRow(seq: 2, arrived: true) == row)
 
         viewport.placeRevealedRow(nil)
         #expect(viewport.revealedRow(seq: 2) == nil)
     }
 
-    @Test("a reveal arrives when its animated scroll comes to rest")
+    @Test("a reveal arrives once the scroll view comes to rest on its album")
     func revealArrivesWhenScrollEnds() {
         let viewport = scrolled()
         #expect(viewport.revealScrolls(seq: 3, to: .album("a9")) == nil)
-        #expect(viewport.setPhase(from: .idle, to: .animating) == nil)
-        // Its card passes the top on the way: still on its way.
+        #expect(viewport.setPhase(.decelerating) == nil)
+        // Its card on top while the scroll view still moves.
         place(.album("a9"), at: 0, in: viewport)
         #expect(viewport.revealArrivedInPlace() == nil)
 
-        // Wherever the lazy grid settled the card, the scroll has stopped.
-        place(.album("a9"), at: 12, in: viewport)
-        #expect(viewport.setPhase(from: .animating, to: .idle) == 3)
+        #expect(viewport.setPhase(.idle) == 3)
         // Once.
         #expect(viewport.revealArrivedInPlace() == nil)
     }
@@ -314,62 +323,32 @@ struct AlbumGridViewportRevealTests {
         #expect(viewport.revealScrolls(seq: 6, to: .album("a9")) == 6)
     }
 
-    @Test("a row arrives once it measures itself in full view")
-    func rowArrivesInView() {
+    @Test("a reveal scrolling to its row measures it wherever it is laid out")
+    func rowMeasuredThroughItsScroll() {
         let viewport = scrolled()
-        viewport.revealScrollsRow(seq: 2)
+        place(.album("a9"), at: 0, in: viewport)
+        #expect(viewport.revealScrolls(seq: 2, to: .album("a9")) == 2)
+        let below = placedRow(CGRect(x: 0, y: 1900, width: 300, height: 40))
+        viewport.placeRevealedRow(below)
 
-        // The scroll asked for has not put the row in view yet.
-        viewport.setRevealedRow(seq: 2, inView: false)
-        #expect(viewport.rowArrived() == nil)
-        viewport.setRevealedRow(seq: 2, inView: true)
-        #expect(viewport.rowArrived() == 2)
-        // Once.
-        #expect(viewport.rowArrived() == nil)
-    }
-
-    @Test("a row arrives when its animated scroll comes to rest")
-    func rowArrivesWhenScrollEnds() {
-        let viewport = scrolled()
-        viewport.revealScrollsRow(seq: 2)
-        _ = viewport.setPhase(from: .idle, to: .animating)
-        viewport.setRevealedRow(seq: 2, inView: true)
-        #expect(viewport.rowArrived() == nil)
-
-        _ = viewport.setPhase(from: .animating, to: .idle)
-        #expect(viewport.rowArrived() == 2)
-    }
-
-    @Test("a row in view for another reveal does not arrive")
-    func otherRevealsRowDoesNotArrive() {
-        let viewport = scrolled()
-        viewport.revealScrollsRow(seq: 3)
-        viewport.setRevealedRow(seq: 2, inView: true)
-
-        #expect(viewport.rowArrived() == nil)
-    }
-
-    @Test("a row that left the view before the scroll ended does not arrive")
-    func rowOutOfViewDoesNotArrive() {
-        let viewport = scrolled()
-        viewport.revealScrollsRow(seq: 2)
-        _ = viewport.setPhase(from: .idle, to: .animating)
-        viewport.setRevealedRow(seq: 2, inView: true)
-        viewport.setRevealedRow(seq: 2, inView: false)
-        _ = viewport.setPhase(from: .animating, to: .idle)
-
-        #expect(viewport.rowArrived() == nil)
-    }
-
-    @Test("the person scrolling gives up the scroll to a row")
-    func personScrollingEndsRowScroll() {
-        let viewport = scrolled()
-        viewport.revealScrollsRow(seq: 2)
-        _ = viewport.setPhase(from: .idle, to: .interacting)
-        viewport.setRevealedRow(seq: 2, inView: true)
-        _ = viewport.setPhase(from: .interacting, to: .idle)
-
-        #expect(viewport.rowArrived() == nil)
+        viewport.revealScrollsToRow(seq: 2)
+        #expect(viewport.revealedRow(seq: 2, arrived: true) == below)
+        // Laid out again, after the visible area grew under the scroll.
+        let moved = PlacedTrackRow(
+            trackId: "t1",
+            seq: 2,
+            frame: CGRect(x: 0, y: 1900, width: 300, height: 40),
+            scroll: AlbumGridScroll(
+                offset: 1300,
+                visibleHeight: 800,
+                offsets: 0...4200
+            )
+        )
+        viewport.placeRevealedRow(moved)
+        #expect(viewport.revealedRow(seq: 2, arrived: true) == moved)
+        #expect(moved.scrollOffset == nil, "in full view")
+        // Not for a later reveal.
+        #expect(viewport.revealedRow(seq: 3, arrived: true) == nil)
     }
 
     /// Lays out `cell`'s 200-point card `y` points below the top.
