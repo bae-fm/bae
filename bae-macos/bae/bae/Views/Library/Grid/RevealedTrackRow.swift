@@ -11,6 +11,19 @@ struct RevealedTrackRow: Equatable {
     let bounds: Anchor<CGRect>
 }
 
+extension EnvironmentValues {
+    /// Takes whether the row a pending reveal names sits in full view, as the
+    /// row measures itself, with the reveal's `seq`. The row's own geometry
+    /// follows a programmatic scroll in the layout that applies it, where the
+    /// grid's scroll measurements and a scroll's completion can come before
+    /// the scroll view has applied it. Outside a grid, nothing scrolls to the
+    /// row.
+    @Entry
+    var revealedTrackRowInView:
+        @MainActor (_ seq: Int, _ inView: Bool) -> Void =
+            { _, _ in }
+}
+
 struct RevealedTrackRowKey: PreferenceKey {
     static let defaultValue: RevealedTrackRow? = nil
 
@@ -33,13 +46,29 @@ extension View {
 private struct RevealsAsTrackRow: ViewModifier {
     @Environment(UiStore.self)
     private var uiStore
+    @Environment(\.revealedTrackRowInView)
+    private var reportInView
     let trackId: String
 
     func body(content: Content) -> some View {
         let seq = uiStore.pendingAlbumReveal.flatMap { reveal in
             reveal.trackId == trackId ? reveal.seq : nil
         }
-        content.anchorPreference(
+        content.onGeometryChange(for: RowVisibility?.self) { geometry in
+            // Only a row in a scroll view is scrolled to.
+            guard let seq, let visible = geometry.bounds(of: .scrollView)
+            else { return nil }
+            return RowVisibility(
+                seq: seq,
+                inView: visible.minY < 0.5
+                    && visible.maxY > geometry.size.height - 0.5
+            )
+        } action: { visibility in
+            if let visibility {
+                reportInView(visibility.seq, visibility.inView)
+            }
+        }
+        .anchorPreference(
             key: RevealedTrackRowKey.self,
             value: .bounds
         ) { bounds in
@@ -48,4 +77,10 @@ private struct RevealsAsTrackRow: ViewModifier {
             }
         }
     }
+}
+
+/// Whether the row reveal `seq` names sits in full view.
+private struct RowVisibility: Equatable {
+    let seq: Int
+    let inView: Bool
 }

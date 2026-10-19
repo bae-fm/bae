@@ -67,8 +67,11 @@ final class AlbumGridViewport {
     private(set) var held: AlbumGridSlot?
     /// The row of the track the pending reveal names, while it is laid out.
     private var revealRow: PlacedTrackRow?
-    /// How far the pending reveal's scroll to its album has come, so its
-    /// row's place is measured where that scroll stops, not on the way there.
+    /// The reveal whose row last measured itself in full view.
+    private var rowInView: Int?
+    /// How far the reveal's scrolls have come: to its album, so its row's
+    /// place is measured where that scroll stops, not on the way there; then
+    /// to its row, so the row flashes where that scroll stops.
     private var revealScroll: RevealScroll?
     /// What the scroll view is doing: an animated scroll is on its way until
     /// this is idle again.
@@ -79,6 +82,8 @@ final class AlbumGridViewport {
         case toAlbum(seq: Int, card: AlbumGridCell.Identity)
         /// The scroll has come to rest at the album.
         case atAlbum(seq: Int)
+        /// Scrolling the track's row into view.
+        case toRow(seq: Int)
     }
 
     func place(
@@ -117,6 +122,10 @@ final class AlbumGridViewport {
     /// to rest with the album's card on top.
     func setPhase(from old: ScrollPhase, to new: ScrollPhase) -> Int? {
         phase = new
+        // The person scrolling takes over from a scroll to a row.
+        if case .toRow = revealScroll, new != .idle, new != .animating {
+            revealScroll = nil
+        }
         guard new == .idle, case .toAlbum(let seq, _) = revealScroll else {
             return nil
         }
@@ -136,6 +145,33 @@ final class AlbumGridViewport {
             sitsOnTop(card)
         else { return nil }
         revealScroll = .atAlbum(seq: seq)
+        return seq
+    }
+
+    /// Reveal `seq` scrolls its track's row into view.
+    func revealScrollsRow(seq: Int) {
+        revealScroll = .toRow(seq: seq)
+    }
+
+    /// Takes whether the row reveal `seq` names measures itself in full
+    /// view.
+    func setRevealedRow(seq: Int, inView: Bool) {
+        if inView {
+            rowInView = seq
+        }
+        else if rowInView == seq {
+            rowInView = nil
+        }
+    }
+
+    /// Returns the reveal whose scroll has brought its row into view, once:
+    /// the row measures itself in full view, with the scroll view idle.
+    func rowArrived() -> Int? {
+        guard phase == .idle,
+            case .toRow(let seq) = revealScroll,
+            rowInView == seq
+        else { return nil }
+        revealScroll = nil
         return seq
     }
 

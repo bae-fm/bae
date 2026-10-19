@@ -149,6 +149,9 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 if let seq = viewport.setPhase(from: old, to: phase) {
                     revealArrived(seq: seq)
                 }
+                if let seq = viewport.rowArrived() {
+                    flashRevealedRow(seq: seq)
+                }
                 if phase != .idle {
                     viewport.release()
                 }
@@ -166,6 +169,12 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 viewport.release()
                 if uiStore.pendingAlbumReveal?.albumId != albumId {
                     endReveal()
+                }
+            }
+            .environment(\.revealedTrackRowInView) { seq, inView in
+                viewport.setRevealedRow(seq: seq, inView: inView)
+                if let seq = viewport.rowArrived() {
+                    flashRevealedRow(seq: seq)
                 }
             }
             .reportsHeaderScroll(id: "albumGrid")
@@ -502,22 +511,34 @@ extension AlbumGridView {
     }
 
     /// Scrolls the row the pending reveal names into full view, if it is not
-    /// there already, then flashes it. The reveal ends when its scroll starts.
+    /// there already. The row flashes, ending the reveal, once it measures
+    /// itself in full view: a scroll's completion can come before the scroll
+    /// view has applied the scroll.
     private func showRevealedRow(_ row: PlacedTrackRow) {
         guard uiStore.pendingAlbumReveal?.seq == row.seq else {
             return
         }
-        uiStore.consumeAlbumReveal(seq: row.seq)
         guard let offset = row.scrollOffset else {
-            uiStore.flashTrack(row.trackId, seq: row.seq)
+            flashRevealedRow(seq: row.seq)
             return
         }
         viewport.release()
+        viewport.revealScrollsRow(seq: row.seq)
         withAnimation(.easeInOut(duration: 0.3)) {
             scrollPosition.scrollTo(y: offset)
-        } completion: {
-            uiStore.flashTrack(row.trackId, seq: row.seq)
         }
+    }
+
+    /// Ends the pending reveal `seq`, whose row is in view, by flashing the
+    /// row.
+    private func flashRevealedRow(seq: Int) {
+        guard let reveal = uiStore.pendingAlbumReveal, reveal.seq == seq,
+            let trackId = reveal.trackId
+        else {
+            return
+        }
+        uiStore.consumeAlbumReveal(seq: seq)
+        uiStore.flashTrack(trackId, seq: seq)
     }
 
     /// Gives up the pending reveal: the person moved on before it was shown.

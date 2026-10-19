@@ -314,6 +314,64 @@ struct AlbumGridViewportRevealTests {
         #expect(viewport.revealScrolls(seq: 6, to: .album("a9")) == 6)
     }
 
+    @Test("a row arrives once it measures itself in full view")
+    func rowArrivesInView() {
+        let viewport = scrolled()
+        viewport.revealScrollsRow(seq: 2)
+
+        // The scroll asked for has not put the row in view yet.
+        viewport.setRevealedRow(seq: 2, inView: false)
+        #expect(viewport.rowArrived() == nil)
+        viewport.setRevealedRow(seq: 2, inView: true)
+        #expect(viewport.rowArrived() == 2)
+        // Once.
+        #expect(viewport.rowArrived() == nil)
+    }
+
+    @Test("a row arrives when its animated scroll comes to rest")
+    func rowArrivesWhenScrollEnds() {
+        let viewport = scrolled()
+        viewport.revealScrollsRow(seq: 2)
+        _ = viewport.setPhase(from: .idle, to: .animating)
+        viewport.setRevealedRow(seq: 2, inView: true)
+        #expect(viewport.rowArrived() == nil)
+
+        _ = viewport.setPhase(from: .animating, to: .idle)
+        #expect(viewport.rowArrived() == 2)
+    }
+
+    @Test("a row in view for another reveal does not arrive")
+    func otherRevealsRowDoesNotArrive() {
+        let viewport = scrolled()
+        viewport.revealScrollsRow(seq: 3)
+        viewport.setRevealedRow(seq: 2, inView: true)
+
+        #expect(viewport.rowArrived() == nil)
+    }
+
+    @Test("a row that left the view before the scroll ended does not arrive")
+    func rowOutOfViewDoesNotArrive() {
+        let viewport = scrolled()
+        viewport.revealScrollsRow(seq: 2)
+        _ = viewport.setPhase(from: .idle, to: .animating)
+        viewport.setRevealedRow(seq: 2, inView: true)
+        viewport.setRevealedRow(seq: 2, inView: false)
+        _ = viewport.setPhase(from: .animating, to: .idle)
+
+        #expect(viewport.rowArrived() == nil)
+    }
+
+    @Test("the person scrolling gives up the scroll to a row")
+    func personScrollingEndsRowScroll() {
+        let viewport = scrolled()
+        viewport.revealScrollsRow(seq: 2)
+        _ = viewport.setPhase(from: .idle, to: .interacting)
+        viewport.setRevealedRow(seq: 2, inView: true)
+        _ = viewport.setPhase(from: .interacting, to: .idle)
+
+        #expect(viewport.rowArrived() == nil)
+    }
+
     /// Lays out `cell`'s 200-point card `y` points below the top.
     private func place(
         _ cell: AlbumGridCell.Identity,
