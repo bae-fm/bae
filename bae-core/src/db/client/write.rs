@@ -70,6 +70,7 @@ pub(super) fn insert_album_row(conn: &SqlContext<'_, '_>, album: &DbAlbum) -> Re
 /// Write `album` whether or not its row is here: a group's album (whose id is
 /// the group's) can be here already, emptied, when a release is filed under it
 /// again.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn upsert_album_row(conn: &SqlContext<'_, '_>, album: &DbAlbum) -> Result<(), DbError> {
     conn.execute(
         r#"
@@ -660,6 +661,11 @@ pub(super) fn upsert_library_image_row(
 /// `insert_release_records`. Each row's id is its `(release, catalog)`, so a
 /// device that writes the same record set another device wrote writes the same
 /// rows.
+#[cfg(any(
+    test,
+    feature = "test-utils",
+    not(any(target_os = "ios", target_os = "android"))
+))]
 pub(super) fn write_release_records(
     conn: &SqlContext<'_, '_>,
     release_id: &str,

@@ -194,13 +194,10 @@ impl LibraryManager {
     ///   picked document inferred about that catalog. Album/release/track row
     ///   data is not touched: the records change; the rows stay as the user
     ///   last had them.
-    /// - **File metadata** — no records, and the draft reads what the folder's own files say; the release always
-    ///   lands on a fresh album. The old source's album/release/track rows would
-    ///   still show its metadata, so the same call reseeds them from the local file
-    ///   tags, projecting through the new `FileMetadata` seed with
-    ///   [`Self::reset_metadata_to_source`] and writing the result with
-    ///   [`Self::apply_release_metadata_user_edit`]. A tag-sparse rip reseeds to a
-    ///   blank-but-editable title/artist rather than erroring.
+    /// - **File metadata** — no records, and the draft reads what the folder's
+    ///   own files say; the release always lands on a fresh album, and its rows
+    ///   are reseeded from the local file tags in the same write (see
+    ///   `reseed_release_from_file_metadata`).
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn re_identify_release(
         &self,
@@ -258,27 +255,52 @@ impl LibraryManager {
 
                 crate::import::service::records_for_commit(&release, &prepared_partners)
             }
-            ReleaseReseed::FileMetadata => Vec::new(),
+            ReleaseReseed::FileMetadata => {
+                return self.reseed_release_from_file_metadata(release_id).await;
+            }
         };
 
-        self.set_records(
-            release_id,
-            new_records,
-            matches!(reseed, ReleaseReseed::FileMetadata),
+        self.set_records(release_id, new_records, false).await
+    }
+
+    /// Re-point a release at what its own files say, and reseed its rows from
+    /// their tags, in one write. Without the reseed the old source's rows
+    /// would still show its metadata under a claim that the files' tags are
+    /// the source. The tags are read and projected before anything is
+    /// written; a release whose tags cannot be read, or cannot be written over
+    /// its rows, keeps its records and rows as they were.
+    ///
+    /// A tag-sparse rip projects to a blank-but-editable title/artist — the
+    /// prompt the user answers in the editor — so this is not held to the
+    /// user-edit gate, which would reject the blank.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    async fn reseed_release_from_file_metadata(
+        &self,
+        release_id: &str,
+    ) -> Result<(), LibraryError> {
+        let release = self
+            .database
+            .find_release_by_id(release_id)
+            .await?
+            .ok_or_else(|| LibraryError::Import(format!("Release '{release_id}' not found")))?;
+        let parsed = project_file_metadata(
+            &self.database,
+            &release,
+            self.clock.clone(),
+            self.ids.clone(),
         )
         .await?;
-
-        // File metadata changes the seed but leaves the old source's rows
-        // in place, still showing the prior metadata. Reseed them here by projecting
-        // through the new file-metadata seed. A tag-sparse rip projects to a
-        // blank-but-editable title/artist — the prompt the user answers in the
-        // editor — so this writes through the ungated path. The blank is not a user
-        // edit, and the user-edit gate would reject it.
-        if matches!(reseed, ReleaseReseed::FileMetadata) {
-            let edit = self.reset_metadata_to_source(release_id).await?;
-            self.write_release_metadata(release_id, &edit).await?;
-        }
-
+        let edit = crate::import::parsed_album_to_user_edit(&parsed);
+        let change = self.records_change(release_id, Vec::new(), true).await?;
+        let album = change
+            .new_album
+            .clone()
+            .expect("a release no catalog describes lands on a fresh album");
+        let existing_tracks = self.database.get_tracks_for_release(release_id).await?;
+        let metadata = self.release_metadata_rows(album, release, &existing_tracks, &edit)?;
+        self.database
+            .reseed_release_atomic(change, metadata)
+            .await?;
         Ok(())
     }
 
@@ -348,8 +370,8 @@ impl LibraryManager {
     /// album is rejected, and surrounding whitespace is trimmed, no matter which
     /// surface it came from.
     ///
-    /// Writes only what `write_release_metadata` writes; see it for the row-level
-    /// contract.
+    /// Writes only the rows `release_metadata_rows` describes; see it
+    /// for the row-level contract.
     pub async fn apply_release_metadata_user_edit(
         &self,
         release_id: &str,
@@ -357,11 +379,17 @@ impl LibraryManager {
     ) -> Result<(), LibraryError> {
         let edit = edit.clone().normalized();
         edit.validate()?;
-        self.write_release_metadata(release_id, &edit).await
+        let (_, release, album, existing_tracks) = self.load_release_for_edit(release_id).await?;
+        let metadata = self.release_metadata_rows(album, release, &existing_tracks, &edit)?;
+        self.database
+            .update_release_metadata_user_edit(metadata)
+            .await?;
+        Ok(())
     }
 
-    /// Write a release's metadata rows: album title and artists, release pressing
-    /// fields, and per-track titles, sides, track numbers, and artists. A picked
+    /// The rows `edit` leaves `release`, filed under `album`, with: album title
+    /// and artists, release pressing fields, and per-track titles, sides,
+    /// track numbers, and artists. A picked
     /// library artist is linked as itself; every other credit is resolved by the
     /// artist rule (`db::artist_resolution`) inside the commit that writes the
     /// album/release/track rows and replaces the `album_artists` /
@@ -382,15 +410,15 @@ impl LibraryManager {
     /// blank-but-editable title and artist, which the user fills in the editor.
     /// A *user's* edit is held to [`crate::import::ReleaseUserEdit::validate`] —
     /// it arrives through [`Self::apply_release_metadata_user_edit`].
-    async fn write_release_metadata(
+    fn release_metadata_rows(
         &self,
-        release_id: &str,
+        album: DbAlbum,
+        release: DbRelease,
+        existing_tracks: &[DbTrack],
         edit: &crate::import::ReleaseUserEdit,
-    ) -> Result<(), LibraryError> {
+    ) -> Result<crate::db::ReleaseMetadataRows, LibraryError> {
         use crate::db::{DbAlbumArtist, DbTrackArtist};
 
-        let (album_id, release, album, existing_tracks) =
-            self.load_release_for_edit(release_id).await?;
         if existing_tracks.len() != edit.tracks.len() {
             return Err(LibraryError::Import(format!(
                 "Track count mismatch: release has {} tracks, edit supplies {}",
@@ -424,7 +452,8 @@ impl LibraryManager {
             .collect();
         let primary_album_artist_id = album_credit_ids.first().ok_or_else(|| {
             LibraryError::Internal(format!(
-                "release {release_id} metadata carries no album artist"
+                "release {} metadata carries no album artist",
+                release.id
             ))
         })?;
 
@@ -432,12 +461,12 @@ impl LibraryManager {
             title: edit.album_title.clone(),
             artist_id: primary_album_artist_id.clone(),
             year: edit.album_year,
-            ..album.clone()
+            ..album
         };
 
         let updated_release = DbRelease {
             pressing: edit.pressing.clone(),
-            ..release.clone()
+            ..release
         };
 
         let track_updates: Vec<(String, DbTrack)> = existing_tracks
@@ -458,7 +487,7 @@ impl LibraryManager {
             .iter()
             .enumerate()
             .skip(1)
-            .map(|(i, artist_id)| DbAlbumArtist::new(&album_id, artist_id, i as i32, now))
+            .map(|(i, artist_id)| DbAlbumArtist::new(&updated_album.id, artist_id, i as i32, now))
             .collect();
 
         // Track artists have no FK on `tracks` — every artist (primary or
@@ -480,23 +509,15 @@ impl LibraryManager {
             }
         }
 
-        self.database
-            .update_release_metadata_user_edit(
-                &album_id,
-                release_id,
-                &updated_album,
-                &updated_release,
-                &track_updates,
-                crate::db::ArtistCredits {
-                    credits: &credits,
-                    picked: &picked,
-                },
-                &album_artists,
-                &track_artists,
-            )
-            .await?;
-
-        Ok(())
+        Ok(crate::db::ReleaseMetadataRows {
+            album: updated_album,
+            release: updated_release,
+            track_updates,
+            credits,
+            picked,
+            album_artists,
+            track_artists,
+        })
     }
 
     /// The storage summary for one release, or `None` if it doesn't exist. The

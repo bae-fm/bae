@@ -50,31 +50,40 @@ impl LibraryManager {
         new_records: Vec<crate::import::ReleaseRecord>,
         draft_from_tags: bool,
     ) -> Result<(), LibraryError> {
+        let change = self
+            .records_change(release_id, new_records, draft_from_tags)
+            .await?;
+        // The atomic call does all source-album bookkeeping inside its transaction
+        // (empty-check, primary_release_id repair, album_artists copy) — those
+        // decisions live there so a separate read and write can't race.
+        self.database.set_records_atomic(change).await?;
+        Ok(())
+    }
+
+    /// The write that gives a release `new_records`: the records, and the
+    /// album they file it under (policy in [`Self::set_records`]).
+    pub(super) async fn records_change(
+        &self,
+        release_id: &str,
+        new_records: Vec<crate::import::ReleaseRecord>,
+        draft_from_tags: bool,
+    ) -> Result<crate::db::RecordsChange, LibraryError> {
         let current_album_id = self
             .database
             .find_album_id_for_release(release_id)
             .await?
             .ok_or_else(|| LibraryError::Import(format!("Release '{release_id}' not found")))?;
-
         let target = self
             .resolve_records_target_album(release_id, &current_album_id, &new_records)
             .await?;
-
-        // The atomic call does all source-album bookkeeping inside its transaction
-        // (empty-check, primary_release_id repair, album_artists copy) — those
-        // decisions live there so a separate read and write can't race.
-        self.database
-            .set_records_atomic(
-                release_id,
-                &new_records,
-                draft_from_tags,
-                &current_album_id,
-                &target.album_id,
-                target.new_album.as_ref(),
-            )
-            .await?;
-
-        Ok(())
+        Ok(crate::db::RecordsChange {
+            release_id: release_id.to_string(),
+            records: new_records,
+            draft_from_tags,
+            current_album_id,
+            target_album_id: target.album_id,
+            new_album: target.new_album,
+        })
     }
 
     /// Pick the album a release lands in after a `set_records` (policy in

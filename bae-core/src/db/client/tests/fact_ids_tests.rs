@@ -62,14 +62,14 @@ async fn fact_rows_take_their_ids_from_their_facts() {
     // Moving the release to a fresh album copies its credits under the new
     // album's ids.
     let target = DbAlbum::new_test("Target Album", &artist.id);
-    db.set_records_atomic(
-        &release.id,
-        &[record(Catalog::MusicBrainz, "mb-release-1")],
-        false,
-        &album.id,
-        &target.id,
-        Some(&target),
-    )
+    db.set_records_atomic(crate::db::RecordsChange {
+        release_id: release.id.clone(),
+        records: vec![record(Catalog::MusicBrainz, "mb-release-1")],
+        draft_from_tags: false,
+        current_album_id: album.id.clone(),
+        target_album_id: target.id.clone(),
+        new_album: Some(target.clone()),
+    })
     .await
     .unwrap();
 

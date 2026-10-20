@@ -573,14 +573,14 @@ async fn set_records_atomic_rechecks_the_source_count_inside_the_transaction() {
 
     manager
         .database
-        .set_records_atomic(
-            &release_alpha.id,
-            &[mb_identity("g2", "g2-rel")],
-            false,
-            &album_a.id,
-            &fresh_album.id,
-            Some(&fresh_album),
-        )
+        .set_records_atomic(crate::db::RecordsChange {
+            release_id: release_alpha.id.clone(),
+            records: vec![mb_identity("g2", "g2-rel")],
+            draft_from_tags: false,
+            current_album_id: album_a.id.clone(),
+            target_album_id: fresh_album.id.clone(),
+            new_album: Some(fresh_album.clone()),
+        })
         .await
         .unwrap();
 

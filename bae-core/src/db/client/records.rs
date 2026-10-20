@@ -107,102 +107,28 @@ impl Database {
 
     /// Replace a release's record rows, set whether its draft was read off
     /// the files' own tags, and move the release between albums when the
-    /// target differs from the source.
-    ///
-    /// Everything below runs in one transaction:
-    ///
-    /// 1. Write the destination album when `new_album` is `Some` and that
-    ///    album holds no release, plus copies of `current_album_id`'s
-    ///    `album_artists` rows (so it lands fully populated, not a bare row
-    ///    that drops the artist links the source already had).
-    /// 2. Replace the release's records.
-    /// 3. UPDATE the release's `album_id` and `draft_from_tags`.
-    /// 4. If the release vacated `current_album_id` (the source), clear its
-    ///    `primary_release_id` if it pointed at the moved release (read paths
-    ///    fall back to the first release). An emptied source stays.
-    ///
-    /// Metadata columns (pressing fields, album fields, tracks) are
-    /// deliberately untouched. Caller decides whether to reseed the
-    /// metadata.
-    ///
-    /// Nothing is done to the stored catalog releases: they are keyed by the
-    /// *catalog's* release, so re-pointing the records at a different one
-    /// already reads a different row. There is nothing stale to wipe, and the
-    /// rows this release used may be another candidate's.
-    pub async fn set_records_atomic(
+    /// target differs from the source, in one transaction (see
+    /// [`set_records_on`]).
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn set_records_atomic(&self, change: RecordsChange) -> Result<(), DbError> {
+        let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
+        self.call_sql(move |sql| set_records_on(&sql, &change, now))
+            .await
+    }
+
+    /// Re-point a release at what its files' tags say and write the metadata
+    /// those tags project, in one transaction: the release's records change
+    /// and its rows are reseeded together, or neither is.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn reseed_release_atomic(
         &self,
-        release_id: &str,
-        new_records: &[crate::import::ReleaseRecord],
-        draft_from_tags: bool,
-        current_album_id: &str,
-        target_album_id: &str,
-        new_album: Option<&DbAlbum>,
-    ) -> Result<(), DbError> {
-        let release_id = release_id.to_string();
-        let new_records = new_records.to_vec();
-        let current_album_id = current_album_id.to_string();
-        let target_album_id = target_album_id.to_string();
-        let new_album = new_album.cloned();
-        let now_dt = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
-        let now = now_dt.to_rfc3339();
-
-        self.call_sql(move |sql| {
-            let tx = &sql;
-
-            // 1. Write the destination album when it is new to this release's
-            //    history: absent, or here but empty (a group's album another
-            //    release vacated). Must come before the release UPDATE so the FK
-            //    on `releases.album_id` points at an existing row. The album
-            //    takes the source's fields and credits; one that holds releases
-            //    by the time this transaction runs is left as it is.
-            if let Some(album) = &new_album {
-                let holds_releases: bool = tx.query_row(
-                    "SELECT EXISTS (SELECT 1 FROM releases WHERE album_id = ?)",
-                    params![album.id],
-                    |row| row.get(0),
-                )?;
-                if !holds_releases {
-                    upsert_album_row(tx, album)?;
-                    let source_artists: Vec<DbAlbumArtist> = tx.query(
-                        "SELECT artist_id, position FROM album_artists \
-                                 WHERE album_id = ? ORDER BY position",
-                        params![current_album_id],
-                        |row| {
-                            Ok(DbAlbumArtist::new(
-                                &album.id,
-                                &row.get::<_, String>("artist_id")?,
-                                row.get::<_, i32>("position")?,
-                                now_dt,
-                            ))
-                        },
-                    )?;
-                    replace_album_artists(tx, &album.id, &source_artists, &now)?;
-                }
-            }
-
-            // 2. Replace the records and the catalog the draft was read from.
-            write_release_records(tx, &release_id, &new_records, &now)?;
-
-            // 3. Update release: album and where its draft was read.
-            tx.execute(
-                r#"
-                    UPDATE releases SET
-                        album_id = ?,
-                        draft_from_tags = ?
-                    WHERE id = ?
-                    "#,
-                params![target_album_id, draft_from_tags, release_id],
-            )?;
-
-            // 4. Source-album cleanup. Only runs when the release actually
-            //    moved; same-album updates don't vacate anything. Recheck
-            //    inside the transaction (TOCTOU: a writer may have added a
-            //    release to the source since the manager's pre-flight read).
-            if target_album_id != current_album_id {
-                vacate_album_on(tx, &current_album_id, &release_id)?;
-            }
-
-            Ok(())
+        change: RecordsChange,
+        metadata: ReleaseMetadataRows,
+    ) -> Result<(), ArtistWriteError> {
+        let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
+        self.write_resolving_artists(move |sql| {
+            set_records_on(&sql, &change, now)?;
+            write_release_metadata_on(&sql, &metadata, &now.to_rfc3339())
         })
         .await
     }
@@ -250,6 +176,113 @@ impl Database {
             })
             .process(Ok)
     }
+}
+
+/// A release's new records and the album they file it under: what
+/// [`set_records_on`] writes.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) struct RecordsChange {
+    pub release_id: String,
+    pub records: Vec<crate::import::ReleaseRecord>,
+    /// Whether the release's draft is read off its files' own tags.
+    pub draft_from_tags: bool,
+    /// The album the release is in now.
+    pub current_album_id: String,
+    /// The album the release lands in.
+    pub target_album_id: String,
+    /// The target album's row, when the release is the first to land in it.
+    pub new_album: Option<DbAlbum>,
+}
+
+/// Write `change`:
+///
+/// 1. Write the destination album when `new_album` is `Some` and that album
+///    holds no release, plus copies of `current_album_id`'s `album_artists`
+///    rows (so it lands fully populated, not a bare row that drops the artist
+///    links the source already had).
+/// 2. Replace the release's records.
+/// 3. UPDATE the release's `album_id` and `draft_from_tags`.
+/// 4. If the release vacated `current_album_id` (the source), clear its
+///    `primary_release_id` if it pointed at the moved release (read paths fall
+///    back to the first release). An emptied source stays.
+///
+/// Metadata columns (pressing fields, album fields, tracks) are deliberately
+/// untouched. Caller decides whether to reseed the metadata.
+///
+/// Nothing is done to the stored catalog releases: they are keyed by the
+/// *catalog's* release, so re-pointing the records at a different one already
+/// reads a different row. There is nothing stale to wipe, and the rows this
+/// release used may be another candidate's.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(super) fn set_records_on(
+    tx: &SqlContext<'_, '_>,
+    change: &RecordsChange,
+    now_dt: chrono::DateTime<chrono::Utc>,
+) -> Result<(), DbError> {
+    let now = now_dt.to_rfc3339();
+    let RecordsChange {
+        release_id,
+        records,
+        draft_from_tags,
+        current_album_id,
+        target_album_id,
+        new_album,
+    } = change;
+
+    // 1. Write the destination album when it is new to this release's
+    //    history: absent, or here but empty (a group's album another release
+    //    vacated). Must come before the release UPDATE so the FK on
+    //    `releases.album_id` points at an existing row. The album takes the
+    //    source's fields and credits; one that holds releases by the time this
+    //    transaction runs is left as it is.
+    if let Some(album) = new_album {
+        let holds_releases: bool = tx.query_row(
+            "SELECT EXISTS (SELECT 1 FROM releases WHERE album_id = ?)",
+            params![album.id],
+            |row| row.get(0),
+        )?;
+        if !holds_releases {
+            upsert_album_row(tx, album)?;
+            let source_artists: Vec<DbAlbumArtist> = tx.query(
+                "SELECT artist_id, position FROM album_artists \
+                         WHERE album_id = ? ORDER BY position",
+                params![current_album_id],
+                |row| {
+                    Ok(DbAlbumArtist::new(
+                        &album.id,
+                        &row.get::<_, String>("artist_id")?,
+                        row.get::<_, i32>("position")?,
+                        now_dt,
+                    ))
+                },
+            )?;
+            replace_album_artists(tx, &album.id, &source_artists, &now)?;
+        }
+    }
+
+    // 2. Replace the records and the catalog the draft was read from.
+    write_release_records(tx, release_id, records, &now)?;
+
+    // 3. Update release: album and where its draft was read.
+    tx.execute(
+        r#"
+            UPDATE releases SET
+                album_id = ?,
+                draft_from_tags = ?
+            WHERE id = ?
+            "#,
+        params![target_album_id, draft_from_tags, release_id],
+    )?;
+
+    // 4. Source-album cleanup. Only runs when the release actually moved;
+    //    same-album updates don't vacate anything. Recheck inside the
+    //    transaction (TOCTOU: a writer may have added a release to the source
+    //    since the manager's pre-flight read).
+    if target_album_id != current_album_id {
+        vacate_album_on(tx, current_album_id, release_id)?;
+    }
+
+    Ok(())
 }
 
 /// The shared body of the two record lookups above: match `pairs` against

@@ -752,3 +752,78 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
         "the partner's own release is stored by the re-identify"
     );
 }
+
+/// Re-identifying a release as read from its files writes its records and the
+/// rows its file tags reseed together. When the reseed cannot be written —
+/// the files list fewer tracks than the release holds — neither is: the
+/// release keeps the records, album and provenance it had.
+#[tokio::test]
+async fn re_identify_with_file_metadata_that_cannot_reseed_changes_nothing() {
+    use lofty::config::WriteOptions;
+    use lofty::prelude::*;
+    use lofty::tag::{Tag, TagType};
+
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let media = TempDir::new().unwrap();
+    let dest = media.path().join("01.flac");
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("fixtures")
+            .join("flac")
+            .join("01 Test Track 1.flac"),
+        &dest,
+    )
+    .unwrap();
+    let mut tagged = lofty::read_from_path(&dest).unwrap();
+    let mut tag = Tag::new(TagType::VorbisComments);
+    tag.set_title("Tagged One".to_string());
+    tag.set_artist("Tagged Artist".to_string());
+    tag.set_album("Tagged Album".to_string());
+    tagged.insert_tag(tag);
+    tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
+
+    let album = create_test_album();
+    let mut release = create_test_release(&album.id);
+    release.draft_from_tags = false;
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+    let records = vec![mb_identity("g1", "mb-rel-1")];
+    manager
+        .database
+        .insert_release_records(&release.id, &records)
+        .await
+        .unwrap();
+    // Two track rows, one audio file: the tags describe one track.
+    insert_n_tracks(&manager.database, &release.id, 2).await;
+    let file = crate::db::DbFile::new(
+        &release.id,
+        "01.flac",
+        std::fs::metadata(&dest).unwrap().len() as i64,
+        crate::util::content_type::ContentType::Flac,
+        Uuid::new_v4().to_string(),
+        Utc::now(),
+    );
+    manager
+        .database
+        .insert_external_file_for_test(&file, &dest)
+        .await
+        .unwrap();
+    let before = manager.database.every_row_for_test().await.unwrap();
+
+    let error = manager
+        .re_identify_release(&release.id, crate::import::ReleaseReseed::FileMetadata)
+        .await
+        .expect_err("one track's tags cannot reseed a two-track release");
+
+    assert!(error.to_string().contains("Track count mismatch"), "{error}");
+    assert_eq!(
+        manager
+            .database
+            .get_release_records(&release.id)
+            .await
+            .unwrap(),
+        records
+    );
+    assert_eq!(manager.database.every_row_for_test().await.unwrap(), before);
+}

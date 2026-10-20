@@ -51,6 +51,9 @@ mod candidate_state_rows;
 mod coven_capabilities;
 mod database_read;
 mod records;
+// Only identifying a release, a desktop operation, changes its records.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) use records::RecordsChange;
 // Watched folders, folder scans and the import candidate queue. Read
 // `import::watched_folder` and `import::FolderScanStatus`, both desktop-only,
 // and every caller is a gated import module — the mobile builds are sync and
@@ -85,8 +88,12 @@ mod playback;
 pub(crate) use blobs::{OutboxDisplayContext, OutboxDisplayRequest};
 pub(crate) use playback::{QueueCatalogProjection, QueueCatalogRequest};
 mod release;
+pub(crate) use release::ReleaseMetadataRows;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use release::{ImportRows, NewArtistImages};
+// Only re-identifying from file tags writes metadata alongside records.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+use release::write_release_metadata_on;
 mod release_file;
 mod release_locality;
 mod release_pins;

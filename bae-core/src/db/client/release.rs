@@ -47,6 +47,107 @@ pub(crate) struct NewArtistImages<'a> {
     pub images: &'a [(&'a DbLibraryImage, &'a [u8])],
 }
 
+/// A release's metadata as an edit leaves it: album fields, release pressing
+/// fields, the track rows named by `track_updates` (existing track ID → edited
+/// row), and the album's and tracks' artist links.
+///
+/// The album's artist and every link name their artist by the id of one of
+/// `credits`; the credits are resolved to library artists inside the write
+/// and each link is written to the artist its credit resolved to.
+pub(crate) struct ReleaseMetadataRows {
+    pub album: DbAlbum,
+    pub release: DbRelease,
+    pub track_updates: Vec<(String, DbTrack)>,
+    pub credits: Vec<DbArtist>,
+    /// The credits that are library artists a person picked.
+    pub picked: Vec<String>,
+    pub album_artists: Vec<DbAlbumArtist>,
+    pub track_artists: Vec<DbTrackArtist>,
+}
+
+/// Write `metadata`: the album's title, artist, year and compilation flag,
+/// the release's pressing fields, each named track's title, side and number,
+/// and the album's and those tracks' artist links, which are made exactly the
+/// edit's.
+///
+/// Deliberately untouched: the stored catalog release (what the source said,
+/// independent of a user edit) and the release's records and where the draft
+/// was read (a record is orthogonal to editable metadata).
+pub(super) fn write_release_metadata_on(
+    tx: &SqlContext<'_, '_>,
+    metadata: &ReleaseMetadataRows,
+    now: &str,
+) -> Result<(), ArtistWriteError> {
+    let ReleaseMetadataRows {
+        album,
+        release,
+        track_updates,
+        credits,
+        picked,
+        album_artists,
+        track_artists,
+    } = metadata;
+
+    // Decide every credit against the library as it stands now, then insert
+    // new artist rows and fill empty source-ID fields on linked artists before
+    // the album/track links below point at them.
+    let resolved = ArtistCredits { credits, picked }.resolve_on(tx)?;
+    resolved.write_on(tx)?;
+    let artist_ids = resolved.id_map(credits);
+    let album_artists = relink_album_artists(Some(album), album_artists, &artist_ids)?;
+    let album = relinked_album(album, &artist_ids)?;
+    let track_artists = relink_track_artists(track_artists, &artist_ids)?;
+
+    tx.execute(
+        r#"UPDATE albums SET title = ?, artist_id = ?, year = ?, is_compilation = ? WHERE id = ?"#,
+        params![
+            album.title,
+            album.artist_id,
+            album.year,
+            album.is_compilation,
+            album.id,
+        ],
+    )?;
+
+    let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
+    tx.execute(
+        r#"UPDATE releases SET year = ?, labels = ?, barcode = ?,
+            country = ?, region = ?, media = ?, status = ?, packaging = ?,
+            discogs_details = ? WHERE id = ?"#,
+        params![
+            release.pressing.year,
+            super::pressing_columns::labels_column(&release.pressing.labels),
+            release.pressing.barcode,
+            facts.country,
+            facts.region,
+            facts.media,
+            facts.status,
+            facts.packaging,
+            facts.discogs_details,
+            release.id,
+        ],
+    )?;
+
+    for (existing_id, new_track) in track_updates {
+        tx.execute(
+            r#"UPDATE tracks SET title = ?, side = ?, track_number = ? WHERE id = ?"#,
+            params![
+                new_track.title,
+                new_track.side,
+                new_track.track_number,
+                existing_id,
+            ],
+        )?;
+    }
+
+    replace_album_artists(tx, &album.id, &album_artists, now)?;
+
+    let track_ids: Vec<&str> = track_updates.iter().map(|(id, _)| id.as_str()).collect();
+    replace_track_artists(tx, &track_ids, &track_artists, now)?;
+
+    Ok(())
+}
+
 impl Database {
     pub async fn insert_release(&self, release: &DbRelease) -> Result<(), DbError> {
         let release = release.clone();
@@ -135,121 +236,15 @@ impl Database {
         Ok(())
     }
 
-    /// Write a user's metadata edit (from the EditMetadataSheet) in one
-    /// transaction: album fields, release pressing fields, and the track rows named
-    /// by `track_updates` (existing track ID → edited row), plus a full replace of
-    /// the `album_artists` and `track_artists` links.
-    ///
-    /// The album's artist and every link name their artist by the id of one of
-    /// `artists.credits`; the credits are resolved to library artists inside
-    /// this transaction and each link is written to the artist its credit
-    /// resolved to.
-    ///
-    /// Deliberately untouched: the stored catalog release (what the source
-    /// said, independent of a user edit) and the release's records and where
-    /// the draft was read (a record is orthogonal to editable metadata).
-    #[allow(clippy::too_many_arguments)]
+    /// Write a release's metadata rows in one transaction (see
+    /// [`write_release_metadata_on`]).
     pub(crate) async fn update_release_metadata_user_edit(
         &self,
-        album_id: &str,
-        release_id: &str,
-        album: &DbAlbum,
-        release: &DbRelease,
-        track_updates: &[(String, DbTrack)],
-        artists: ArtistCredits<'_>,
-        album_artists: &[DbAlbumArtist],
-        track_artists: &[DbTrackArtist],
+        metadata: ReleaseMetadataRows,
     ) -> Result<(), ArtistWriteError> {
-        let (
-            album_id,
-            release_id,
-            album,
-            release,
-            track_updates,
-            artist_credits,
-            picked_artists,
-            album_artists,
-            track_artists,
-        ) = (
-            album_id.to_string(),
-            release_id.to_string(),
-            album.clone(),
-            release.clone(),
-            track_updates.to_vec(),
-            artists.credits.to_vec(),
-            artists.picked.to_vec(),
-            album_artists.to_vec(),
-            track_artists.to_vec(),
-        );
         let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).to_rfc3339();
-        self.write_resolving_artists(move |sql| {
-            let tx = &sql;
-
-
-            // Decide every credit against the library as it stands now, then
-            // insert new artist rows and fill empty source-ID fields on linked
-            // artists before the album/track links below point at them.
-            let resolved = ArtistCredits {
-                credits: &artist_credits,
-                picked: &picked_artists,
-            }
-            .resolve_on(tx)?;
-            resolved.write_on(tx)?;
-            let artist_ids = resolved.id_map(&artist_credits);
-            let album_artists = relink_album_artists(Some(&album), &album_artists, &artist_ids)?;
-            let album = relinked_album(&album, &artist_ids)?;
-            let track_artists = relink_track_artists(&track_artists, &artist_ids)?;
-
-            tx.execute(
-                r#"UPDATE albums SET title = ?, artist_id = ?, year = ?, is_compilation = ? WHERE id = ?"#,
-                params![
-                    album.title,
-                    album.artist_id,
-                    album.year,
-                    album.is_compilation,
-                    album_id,
-                ],
-            )?;
-
-            let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
-            tx.execute(
-                r#"UPDATE releases SET year = ?, labels = ?, barcode = ?,
-                    country = ?, region = ?, media = ?, status = ?, packaging = ?,
-                    discogs_details = ? WHERE id = ?"#,
-                params![
-                    release.pressing.year,
-                    super::pressing_columns::labels_column(&release.pressing.labels),
-                    release.pressing.barcode,
-                    facts.country,
-                    facts.region,
-                    facts.media,
-                    facts.status,
-                    facts.packaging,
-                    facts.discogs_details,
-                    release_id,
-                ],
-            )?;
-
-            for (existing_id, new_track) in &track_updates {
-                tx.execute(
-                    r#"UPDATE tracks SET title = ?, side = ?, track_number = ? WHERE id = ?"#,
-                    params![
-                        new_track.title,
-                        new_track.side,
-                        new_track.track_number,
-                            existing_id,
-                    ],
-                )?;
-            }
-
-            replace_album_artists(tx, &album_id, &album_artists, &now)?;
-
-            let track_ids: Vec<&str> = track_updates.iter().map(|(id, _)| id.as_str()).collect();
-            replace_track_artists(tx, &track_ids, &track_artists, &now)?;
-
-            Ok(())
-        })
-        .await
+        self.write_resolving_artists(move |sql| write_release_metadata_on(&sql, &metadata, &now))
+            .await
     }
 
     /// Follow `DbTrack.release_id` → `DbRelease`. FK navigation — the row must
