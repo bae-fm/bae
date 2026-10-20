@@ -74,6 +74,17 @@ impl Database {
             .collect())
     }
 
+    /// How many writes this device committed and has not yet sent to storage.
+    pub async fn unsent_writes_for_test(&self) -> Result<u64, DbError> {
+        Ok(self
+            .inner
+            .handle
+            .unsent_work()
+            .await
+            .map_err(DbError::from)?
+            .writes)
+    }
+
     pub async fn queued_upload_count_for_test(&self) -> Result<usize, DbError> {
         Ok(self.inner.handle.uploads().await?.files.len())
     }

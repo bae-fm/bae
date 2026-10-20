@@ -185,9 +185,13 @@ impl TwoDevices {
         .await;
     }
 
-    /// Wait for `condition`, then for two more completed cycles on each
-    /// device — so the verdict is a cycle that began after the condition held
-    /// — and require the condition still holds and nothing is held back.
+    /// Wait until `condition` holds and neither device has a write left to
+    /// send, then for two more completed cycles on each device — so the
+    /// verdict is a cycle that began after every write either device made was
+    /// in storage — and require all of it still holds and nothing is held back.
+    /// A device's write leaves its queue only once its slot is in storage, so
+    /// a condition can hold on one device while the other's write that
+    /// changes the outcome is still on its way out.
     async fn settle_on<F, Fut>(&self, what: &str, condition: F)
     where
         F: Fn() -> Fut,
@@ -198,8 +202,11 @@ impl TwoDevices {
         loop {
             self.a.database().sync_now();
             self.b.database().sync_now();
+            let quiet = self.a.database.unsent_writes_for_test().await.unwrap() == 0
+                && self.b.database.unsent_writes_for_test().await.unwrap() == 0
+                && condition().await;
             let (completed_a, completed_b) = (self.a.completed(), self.b.completed());
-            if !condition().await {
+            if !quiet {
                 settling = None;
             } else {
                 match settling {
@@ -218,10 +225,13 @@ impl TwoDevices {
             }
             if tokio::time::Instant::now() >= deadline {
                 panic!(
-                    "{what} never settled.\nA held {:?} after {}\nB held {:?} after {}",
+                    "{what} never settled.\nA held {:?} with {} unsent writes after {}\n\
+                     B held {:?} with {} unsent writes after {}",
                     self.a.database.pending().await.unwrap(),
+                    self.a.database.unsent_writes_for_test().await.unwrap(),
                     self.a.last(),
                     self.b.database.pending().await.unwrap(),
+                    self.b.database.unsent_writes_for_test().await.unwrap(),
                     self.b.last(),
                 );
             }
