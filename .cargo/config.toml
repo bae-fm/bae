@@ -18,3 +18,8 @@ PKG_CONFIG_PATH = { value = "bae-ffmpeg/dist/lib/pkgconfig", relative = true, fo
 # (its per-ABI cross-builds override this inline with the android prefix, which
 # wins as a real env var over this force=false value).
 FFMPEG_DIR = { value = "bae-ffmpeg/dist", relative = true, force = false }
+# bae reads none of SQLite's process-wide allocation counters or heap limits.
+# Left on, they serialize every allocation across bae's otherwise independent
+# connections through one mutex. coven sets the same for its own builds; the
+# workspace that builds libsqlite3-sys decides, so bae sets it here.
+LIBSQLITE3_FLAGS = { value = "SQLITE_DEFAULT_MEMSTATUS=0", force = true }

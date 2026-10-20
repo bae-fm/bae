@@ -37,3 +37,21 @@ pub(crate) use client::{
 ))]
 pub(crate) use client::{SeededAlbum, SeededAudio};
 pub use models::*;
+
+#[cfg(test)]
+mod tests {
+    /// `.cargo/config.toml` builds SQLite without its process-wide memory
+    /// statistics, which would serialize every allocation through one mutex.
+    #[test]
+    fn sqlite_is_built_without_memory_statistics() {
+        let connection = rusqlite::Connection::open_in_memory().unwrap();
+        let built_without: bool = connection
+            .query_row(
+                "SELECT sqlite_compileoption_used('DEFAULT_MEMSTATUS=0')",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(built_without, "SQLite was built with memory statistics on");
+    }
+}
