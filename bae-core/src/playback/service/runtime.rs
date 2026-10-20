@@ -495,7 +495,7 @@ impl PlaybackService {
             position = position.saturating_sub(latency);
         }
         self.observe_listening_position(fmt.clone(), position);
-        self.persist_listening().await;
+        self.checkpoint_listening().await;
         if let PlaybackSlot::Active(cur) = &mut self.slot {
             if cur.prepared.track_id == fmt.track_id {
                 cur.position = position;
@@ -776,7 +776,7 @@ impl PlaybackService {
                 }
                 _ = audio_event_tick.tick(), if self.output.is_some() || !self.buffered_listening.is_empty() || self.audible_completion.is_some() => {
                     self.drain_current_audio_events().await;
-                    self.persist_listening().await;
+                    self.checkpoint_listening().await;
                     self.publish_audible_completion();
                 }
                 deadline = countdown.elapsed(), if countdown.is_armed() => {

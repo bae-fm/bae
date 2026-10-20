@@ -77,6 +77,75 @@ async fn listening_counts_consumed_audio_across_decoder_replacement_and_pause() 
     assert!(!drained_a_playback_error(&mut progress));
 }
 
+/// Each save is a synced library write. Once a play counts as played, audio
+/// progress alone must not save it again; the next boundary saves it.
+#[tokio::test]
+async fn a_counted_play_is_saved_again_only_at_its_next_boundary() {
+    use std::time::Duration;
+    const RELEASE: &str = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
+    let (_home, mut service, mut progress) =
+        seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
+    let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
+    prepared.release_id = RELEASE.to_string();
+    prepared.duration = Some(Duration::from_secs(40));
+    prepared.timeline = TrackTimeline::new(Duration::from_secs(40), None);
+    prepared.sample_rate = 100;
+    prepared.channels = 1;
+    let fmt = prepared.track_fmt(StreamPosition::START);
+    let (mut sink, stream, _) =
+        crate::playback::create_track_stream_pair_with_capacity(100, 1, 4000);
+    sink.push_samples(&vec![0.25; 4000]);
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, fmt)));
+    let (mut audio_tx, audio_rx) = audio_event_channel();
+    service.output = Some(test_output(source.clone(), audio_rx));
+    let generation = service.next_load_generation();
+    service.slot = active_slot(
+        prepared,
+        TrackPhase::Loading {
+            generation,
+            target: PlayTarget::Playing,
+        },
+    );
+    service
+        .resolve_track_ready(TRACK_T.to_string(), generation)
+        .await;
+    let mut hear = |samples: usize| {
+        source
+            .lock()
+            .unwrap()
+            .pull_samples(&mut vec![0.0; samples], &mut audio_tx);
+        source.lock().unwrap().position_event()
+    };
+    let (fmt, position) = hear(2100);
+    service.handle_position_event(fmt, position).await;
+    let saved = |rows: Vec<crate::history::HistoryEntry>| {
+        assert_eq!(rows.len(), 1);
+        rows[0].played
+    };
+    assert_eq!(
+        saved(service.library_manager.history().await.unwrap()),
+        Duration::from_secs(21)
+    );
+    for _ in 0..5 {
+        let (fmt, position) = hear(100);
+        service.handle_position_event(fmt, position).await;
+        service.checkpoint_listening().await;
+    }
+    assert_eq!(
+        saved(service.library_manager.history().await.unwrap()),
+        Duration::from_secs(21),
+        "progress after the play counted must not write it again"
+    );
+    service.pause();
+    service.capture_listening_position();
+    service.persist_listening().await;
+    assert_eq!(
+        saved(service.library_manager.history().await.unwrap()),
+        Duration::from_secs(26)
+    );
+    assert!(!drained_a_playback_error(&mut progress));
+}
+
 #[tokio::test]
 async fn gapless_crossing_records_the_finishing_play_and_starts_a_distinct_one() {
     use std::time::Duration;

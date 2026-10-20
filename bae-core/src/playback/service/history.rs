@@ -39,6 +39,15 @@ impl BufferedListening {
     }
 }
 
+/// Which plays a save writes.
+#[derive(Clone, Copy)]
+enum ListeningSave {
+    /// Every play whose played time changed since its last save.
+    Changed,
+    /// Only plays that newly count as played or whose audio has finished.
+    Due,
+}
+
 enum ListeningMeter {
     Local(Option<(Arc<TrackFmt>, Duration)>),
     Remote {
@@ -178,25 +187,40 @@ impl PlaybackService {
         }
     }
 
+    /// Save plays at a boundary: pause, seek, finish. Each save is a synced
+    /// library write, so audio progress between boundaries goes through
+    /// `checkpoint_listening` instead.
     pub(super) async fn persist_listening(&mut self) -> bool {
+        self.save_listening(ListeningSave::Changed).await
+    }
+
+    /// Save what audio progress alone makes due: a play that has just come
+    /// to count as played, and a finished play whose audio has now been
+    /// heard. Saving every change would write continuously while audio plays.
+    pub(super) async fn checkpoint_listening(&mut self) -> bool {
+        self.save_listening(ListeningSave::Due).await
+    }
+
+    async fn save_listening(&mut self, save: ListeningSave) -> bool {
         let now = self.clock.now();
         let mut failures = Vec::new();
         if let Some(listening) = &mut self.listening {
-            if let Err(error) = persist(&self.library_manager, listening).await {
-                failures.push(error);
+            let due = match save {
+                ListeningSave::Changed => true,
+                ListeningSave::Due => listening.saved.is_zero(),
+            };
+            if due {
+                if let Err(error) = persist(&self.library_manager, listening).await {
+                    failures.push(error);
+                }
             }
         }
         for buffered in &mut self.buffered_listening {
             buffered.advance(now);
-            let due = buffered.tail.is_none()
-                || buffered.listening.saved.is_zero()
-                || buffered
-                    .listening
-                    .play
-                    .entry()
-                    .played
-                    .saturating_sub(buffered.listening.saved)
-                    >= Duration::from_secs(1);
+            let due = match save {
+                ListeningSave::Changed => true,
+                ListeningSave::Due => buffered.tail.is_none() || buffered.listening.saved.is_zero(),
+            };
             if due {
                 if let Err(error) = persist(&self.library_manager, &mut buffered.listening).await {
                     failures.push(error);

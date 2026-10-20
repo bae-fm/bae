@@ -437,7 +437,7 @@ impl PlaybackService {
         }
         if let Some(position) = status.position.map(StreamPosition::from_duration) {
             self.observe_remote_listening(position, was_playing);
-            self.persist_listening().await;
+            self.checkpoint_listening().await;
         }
         match status.player_state {
             RendererPlayerState::Finished => {
