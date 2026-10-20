@@ -213,7 +213,7 @@ pub(crate) async fn remove_recorded(
 /// released when dropped. Separate opens of the file exclude each other, so
 /// it orders removals and lookups within this process and across processes.
 struct RemovalLock {
-    _file: std::fs::File,
+    _file: coven::FileLock,
 }
 
 impl RemovalLock {
@@ -229,7 +229,8 @@ impl RemovalLock {
                 .write(true)
                 .open(&path)
                 .map_err(|error| io_at(&path, error))?;
-            file.lock().map_err(|error| io_at(&path, error))?;
+            let file = coven::FileLock::lock(file, coven::LockMode::Exclusive)
+                .map_err(|error| io_at(&path, error))?;
             Ok(Self { _file: file })
         })
         .await
