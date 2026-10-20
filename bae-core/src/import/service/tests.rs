@@ -187,6 +187,9 @@ async fn store_scanned_candidate(
 struct FakeScanStarter {
     scans: Arc<Mutex<Vec<FakeStartedScan>>>,
     started: Arc<tokio::sync::Notify>,
+    /// Taken by every start before anything else: while a test holds it, a
+    /// coordinator starting a pass waits there, taking nothing else.
+    start_gate: Arc<Mutex<()>>,
 }
 
 struct FakeStartedScan {
@@ -210,9 +213,11 @@ impl FakeScanStarter {
         let fake = Self {
             scans: Arc::new(Mutex::new(Vec::new())),
             started: Arc::new(tokio::sync::Notify::new()),
+            start_gate: Arc::new(Mutex::new(())),
         };
         let captured = fake.clone();
         let starter: RootScanStarter = Arc::new(move |id, path, pass, completion| {
+            drop(captured.start_gate.lock().unwrap());
             let cancellation = crate::import::folder_scanner::ScanCancellation::new();
             let (finish, finished) = tokio::sync::oneshot::channel();
             let started_path = path.clone();
@@ -238,6 +243,11 @@ impl FakeScanStarter {
             RootScanTask { cancellation, task }
         });
         (fake, starter)
+    }
+
+    /// Hold every pass start until the guard drops.
+    fn hold_starts(&self) -> std::sync::MutexGuard<'_, ()> {
+        self.start_gate.lock().unwrap()
     }
 
     async fn wait_for_count(&self, count: usize) {

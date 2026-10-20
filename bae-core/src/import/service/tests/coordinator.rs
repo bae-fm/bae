@@ -502,22 +502,56 @@ fn lost_track(path: Option<PathBuf>) -> notify::Event {
     }
 }
 
+/// A pass's end is taken ahead of watch reports that are already waiting.
+/// A rescan of another root is taken ahead of both, and the coordinator is
+/// held starting its pass while a hundred reports, each naming a folder of its
+/// own under `/music`, queue up ahead of `/music`'s pass end. Had it taken any
+/// report first, that folder would wait on the running pass and be read by the
+/// pass its end starts; it takes the end first, leaving the root idle, so the
+/// first report starts a pass that reads its folder alone.
 #[tokio::test]
 async fn coordinator_completes_scan_while_filesystem_batches_remain_ready() {
-    let harness = CoordinatorHarness::new().await;
+    let harness = CoordinatorHarness::with_roots(&["/music", "/other"]).await;
+    let music = root_path("/music");
     let result = request_refresh(&harness, "/music");
     harness.scans.wait_for_count(1).await;
-    for _ in 0..10_000 {
-        harness.fs_events.send(Ok(Vec::new())).unwrap();
+
+    let held = harness.scans.hold_starts();
+    harness
+        .commands
+        .send(WatcherCommand::Rescan(root_path("/other")))
+        .unwrap();
+    for folder in 0..100 {
+        harness
+            .fs_events
+            .send(Ok(vec![watch_event(
+                notify::EventKind::Create(notify::event::CreateKind::File),
+                music.join(format!("Folder {folder:03}")).join("01.flac"),
+            )]))
+            .unwrap();
     }
     harness.scans.complete(0);
+    drop(held);
+
     assert_eq!(
-        tokio::time::timeout(Duration::from_secs(2), result)
+        tokio::time::timeout(HANG_GUARD, result)
             .await
-            .expect("ready filesystem batches starved scan completion")
+            .expect("the refresh is answered")
             .unwrap(),
         Ok(())
     );
+    harness.scans.wait_for_count(3).await;
+    assert_eq!(harness.scans.path(1), root_path("/other"));
+    assert_eq!(harness.scans.path(2), music);
+    assert_eq!(
+        harness.scans.folders(2),
+        Some(vec!["Folder 000".to_string()]),
+        "no report was taken ahead of the pass end"
+    );
+    // Ended without telling the coordinator, so the reports still waiting
+    // start no further pass for the shutdown to wait on.
+    harness.scans.abort(1);
+    harness.scans.abort(2);
     harness.shutdown().await;
 }
 
