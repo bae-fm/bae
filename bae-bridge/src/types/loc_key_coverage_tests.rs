@@ -149,9 +149,6 @@ fn produced_keys() -> Vec<String> {
         BridgeInvalidReason::CorruptAudioFile {
             path: String::new(),
         },
-        BridgeInvalidReason::CorruptImage {
-            path: String::new(),
-        },
         BridgeInvalidReason::NoValidAudio,
     ] {
         keys.push(bridge_invalid_reason_key(r));

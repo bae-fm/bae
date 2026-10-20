@@ -13,7 +13,7 @@ extension BridgeInvalidReason {
             comment: ""
         )
         switch self {
-        case .corruptAudioFile(let path), .corruptImage(let path):
+        case .corruptAudioFile(let path):
             return String(format: format, path)
         case .noValidAudio:
             return format

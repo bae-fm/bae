@@ -29,7 +29,6 @@ pub struct BridgeFolderReleaseDecisionKey {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeInvalidReason {
     CorruptAudioFile { path: String },
-    CorruptImage { path: String },
     NoValidAudio,
 }
 
@@ -37,7 +36,6 @@ impl BridgeInvalidReason {
     pub(crate) fn loc_key(&self) -> &'static str {
         match self {
             Self::CorruptAudioFile { .. } => "core.import.invalid.corrupt_audio",
-            Self::CorruptImage { .. } => "core.import.invalid.corrupt_image",
             Self::NoValidAudio => "core.import.invalid.no_valid_audio",
         }
     }
@@ -49,7 +47,6 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         CorruptAudioFile { path },
-        CorruptImage { path },
         NoValidAudio,
     },
 }

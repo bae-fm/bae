@@ -48,11 +48,39 @@ async fn explicit_bmp_cover_is_rejected() {
     std::fs::write(&bmp, b"bmp bytes").unwrap();
     std::fs::write(&jpg, b"jpg bytes").unwrap();
     let discovered = vec![
-        ScannedFile::new(bmp.clone(), "cover.bmp".to_string(), 9, 1),
-        ScannedFile::new(jpg.clone(), "front.jpg".to_string(), 9, 1),
+        artwork(ScannedFile::new(bmp.clone(), "cover.bmp".to_string(), 9, 1)),
+        artwork(ScannedFile::new(jpg.clone(), "front.jpg".to_string(), 9, 1)),
     ];
 
     let error = ImportService::pick_folder_cover(&discovered, "cover.bmp")
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        error,
+        crate::import::ImportError::LocalCover { .. }
+    ));
+}
+
+fn artwork(file: ScannedFile) -> crate::import::folder_scanner::CandidateFile {
+    crate::import::folder_scanner::CandidateFile {
+        file,
+        role: crate::import::folder_scanner::FileRole::Artwork,
+    }
+}
+
+/// A damaged image is never a cover, even under the name a selection gives:
+/// the pick names the artwork the folder offers, and this file is not any.
+#[tokio::test]
+async fn a_damaged_image_is_never_picked_as_the_cover() {
+    let test = setup_import_service().await;
+    let front = test.temp.path().join("front.png");
+    std::fs::write(&front, [0u8; 64]).unwrap();
+    let discovered = vec![crate::import::folder_scanner::CandidateFile {
+        file: ScannedFile::new(front, "front.png".to_string(), 64, 1),
+        role: crate::import::folder_scanner::FileRole::DamagedImage,
+    }];
+
+    let error = ImportService::pick_folder_cover(&discovered, "front.png")
         .await
         .unwrap_err();
     assert!(matches!(
@@ -285,12 +313,12 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
     let test = setup_import_service().await;
     let fallback = test.temp.path().join("front.jpg");
     std::fs::write(&fallback, b"jpg bytes").unwrap();
-    let discovered = vec![ScannedFile::new(
+    let discovered = vec![artwork(ScannedFile::new(
         fallback.clone(),
         "front.jpg".to_string(),
         9,
         1,
-    )];
+    ))];
 
     let err = ImportService::pick_folder_cover(&discovered, "cover.bmp")
         .await
@@ -449,12 +477,12 @@ async fn unreadable_selected_cover_is_an_error() {
     let cover = test.temp.path().join("cover.jpg");
     std::fs::write(&cover, b"jpg bytes").unwrap();
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o000)).unwrap();
-    let discovered = vec![ScannedFile::new(
+    let discovered = vec![artwork(ScannedFile::new(
         cover.clone(),
         "cover.jpg".to_string(),
         9,
         1,
-    )];
+    ))];
 
     let result = ImportService::pick_folder_cover(&discovered, "cover.jpg").await;
 
@@ -632,11 +660,12 @@ fn resolve_file_content_type_uses_scan_facts_for_new_audio_formats() {
             crate::util::content_type::ContentType::Dsd,
         ),
     ] {
-        let file = files
-            .release_files()
-            .find(|file| file.relative_path == name)
+        let entry = files
+            .files
+            .iter()
+            .find(|entry| entry.file.relative_path == name)
             .expect("fixture is present in the scan");
-        assert_eq!(resolve_file_content_type(file).unwrap(), expected, "{name}");
+        assert_eq!(resolve_file_content_type(entry).unwrap(), expected, "{name}");
     }
 }
 

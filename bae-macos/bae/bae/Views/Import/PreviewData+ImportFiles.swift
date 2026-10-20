@@ -111,6 +111,13 @@
             role: .document
         )
 
+        /// An image whose bytes do not decode: carried, never artwork.
+        static let damagedFrontImage = previewFile(
+            name: "front.png",
+            size: 512,
+            role: .damagedImage
+        )
+
         static let supplementalVideo = previewFile(
             name: "video.mkv",
             size: 24_000_000,

@@ -118,8 +118,8 @@ pub(super) fn is_partial_marker_file(path: &Path) -> bool {
 
 /// The result of categorizing a leaf folder's files: a valid release, or an
 /// invalid one carrying the reason it failed validation (corrupt/zero-byte
-/// audio, corrupt image, no audio at all). `Err` is reserved for genuine I/O
-/// faults, which are not the same as a failed-validation leaf.
+/// audio, no audio at all). `Err` is reserved for genuine I/O faults, which
+/// are not the same as a failed-validation leaf.
 #[derive(Debug)]
 pub(super) enum CategorizeOutcome {
     Valid(CategorizedFiles),
@@ -133,6 +133,8 @@ pub(super) enum ProposedRole {
     Audio,
     Cue,
     Image,
+    /// Named as an image, and its bytes do not decode as one.
+    DamagedImage,
     Document,
     Other,
 }
@@ -487,7 +489,9 @@ impl DiscLayout {
 
 /// One file under `release_root` as its name proposes it — and, for an image,
 /// as its bytes do — or the defect that makes any release holding it
-/// unimportable: a zero-byte track, or an image that will not decode.
+/// unimportable: a zero-byte track. An image that will not decode is no such
+/// defect: the release is its audio, and the image is carried as a damaged
+/// one, never its artwork.
 fn propose_file(
     entry: &FileEntry,
     release_root: &Path,
@@ -534,12 +538,11 @@ fn propose_file(
             ))
         })?;
         if entry.size == 0 || !valid {
-            info!("Invalid candidate: corrupt or zero-byte image {relative_path}");
-            return Ok(Err(InvalidReason::CorruptImage {
-                path: relative_path,
-            }));
+            info!("{relative_path} is a damaged image; it is carried, and never offered as artwork");
+            ProposedRole::DamagedImage
+        } else {
+            ProposedRole::Image
         }
-        ProposedRole::Image
     } else if is_document_file(&entry.path) {
         ProposedRole::Document
     } else {
@@ -583,6 +586,7 @@ pub(super) fn categorize_sidecar(
             // A sheet with no audio beside it names nothing here to play.
             ProposedRole::Cue | ProposedRole::Document => FileRole::Document,
             ProposedRole::Image => FileRole::Artwork,
+            ProposedRole::DamagedImage => FileRole::DamagedImage,
             ProposedRole::Other => FileRole::Other,
         };
         files.push(CandidateFile { file, role });
@@ -598,7 +602,8 @@ pub(super) fn categorize_sidecar(
 /// Every file gets exactly one role, and the roles are *proposals*: a sheet
 /// whose `FILE` directive names audio that is not here simply stays unbound,
 /// and a `.cue` that will not parse is a document. Only a real defect —
-/// unreadable audio or an unreadable image — returns `Invalid(reason)`.
+/// audio bae cannot read — returns `Invalid(reason)`; an image that will not
+/// decode is carried as a damaged image.
 ///
 /// A sheet's binding and disc are what the user also writes, so `stored` is
 /// applied over the proposals before anything downstream reads them: the
@@ -686,6 +691,7 @@ pub(super) fn categorize_files_from_tree(
                 disc: SheetDisc::Disc { number: 1 },
             },
             ProposedRole::Image => FileRole::Artwork,
+            ProposedRole::DamagedImage => FileRole::DamagedImage,
             ProposedRole::Document => FileRole::Document,
             ProposedRole::Other => FileRole::Other,
         };

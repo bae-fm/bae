@@ -60,8 +60,8 @@ async fn a_fixed_folder_is_not_found_again() {
         watched_folder_path: root.clone(),
         display_path: candidate.display_path.clone(),
         grouping: None,
-        reason: InvalidReason::CorruptImage {
-            path: "front.jpg".to_string(),
+        reason: InvalidReason::CorruptAudioFile {
+            path: "02.flac".to_string(),
         },
     });
     db.add_watched_import_folder(root).await.unwrap();

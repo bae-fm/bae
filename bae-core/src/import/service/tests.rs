@@ -1,6 +1,7 @@
 use super::*;
 use crate::config::{Config, ConfigHandle};
 use crate::db::Database;
+use crate::import::folder_scanner::ScannedFile;
 use crate::import::import_cancel::ImportStop;
 use crate::import::watched_folder::host_root;
 use bae_test_support::HANG_GUARD;

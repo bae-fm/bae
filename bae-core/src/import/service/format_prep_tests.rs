@@ -3,17 +3,23 @@ use crate::audio_codec::ProbeResult;
 use crate::import::types::{CueAnalyzedAudioFile, CueFlacAnalysis, TrackFile};
 use std::sync::Arc;
 
-fn scanned_non_audio(path: &str) -> crate::import::folder_scanner::ScannedFile {
-    crate::import::folder_scanner::ScannedFile::new(
-        PathBuf::from(path),
-        Path::new(path)
-            .file_name()
-            .expect("test path has a file name")
-            .to_string_lossy()
-            .into_owned(),
-        1,
-        0,
-    )
+fn scanned_non_audio(
+    path: &str,
+    role: crate::import::folder_scanner::FileRole,
+) -> crate::import::folder_scanner::CandidateFile {
+    crate::import::folder_scanner::CandidateFile {
+        file: crate::import::folder_scanner::ScannedFile::new(
+            PathBuf::from(path),
+            Path::new(path)
+                .file_name()
+                .expect("test path has a file name")
+                .to_string_lossy()
+                .into_owned(),
+            1,
+            0,
+        ),
+        role,
+    }
 }
 
 fn scanned_flac() -> crate::import::folder_scanner::ScannedAudio {
@@ -43,25 +49,42 @@ fn admitted_audio_content_type_gates_unlisted_codecs() {
 fn resolve_file_content_type_maps_non_audio_by_extension() {
     // Non-audio files map straight from the extension hint — no probe, so
     // the paths need not exist.
+    use crate::import::folder_scanner::FileRole;
     assert_eq!(
-        resolve_file_content_type(&scanned_non_audio("/x/cover.jpg")).unwrap(),
+        resolve_file_content_type(&scanned_non_audio("/x/cover.jpg", FileRole::Artwork)).unwrap(),
         ContentType::Jpeg
     );
     assert_eq!(
-        resolve_file_content_type(&scanned_non_audio("/x/back.png")).unwrap(),
+        resolve_file_content_type(&scanned_non_audio("/x/back.png", FileRole::Artwork)).unwrap(),
         ContentType::Png
     );
     assert_eq!(
-        resolve_file_content_type(&scanned_non_audio("/x/notes.txt")).unwrap(),
+        resolve_file_content_type(&scanned_non_audio("/x/notes.txt", FileRole::Document))
+            .unwrap(),
         ContentType::PlainText
     );
     assert_eq!(
-        resolve_file_content_type(&scanned_non_audio("/x/booklet.pdf")).unwrap(),
+        resolve_file_content_type(&scanned_non_audio("/x/booklet.pdf", FileRole::Document))
+            .unwrap(),
         ContentType::Pdf
     );
     // An extension the hint can't classify becomes opaque binary.
     assert_eq!(
-        resolve_file_content_type(&scanned_non_audio("/x/data.bin")).unwrap(),
+        resolve_file_content_type(&scanned_non_audio("/x/data.bin", FileRole::Other)).unwrap(),
+        ContentType::OctetStream
+    );
+}
+
+/// A damaged image keeps its bytes but not its extension's claim: the library
+/// reads a file stored as an image as a picture, and this one is not.
+#[test]
+fn a_damaged_image_is_stored_as_plain_bytes() {
+    assert_eq!(
+        resolve_file_content_type(&scanned_non_audio(
+            "/x/front.png",
+            crate::import::folder_scanner::FileRole::DamagedImage
+        ))
+        .unwrap(),
         ContentType::OctetStream
     );
 }
@@ -72,7 +95,11 @@ fn resolve_file_content_type_maps_non_audio_by_extension() {
 #[test]
 fn resolve_file_content_type_without_an_extension_is_opaque_binary() {
     assert_eq!(
-        resolve_file_content_type(&scanned_non_audio("/x/README")).unwrap(),
+        resolve_file_content_type(&scanned_non_audio(
+            "/x/README",
+            crate::import::folder_scanner::FileRole::Other
+        ))
+        .unwrap(),
         ContentType::OctetStream
     );
 }

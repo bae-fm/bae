@@ -406,8 +406,6 @@ impl ImportService {
             }
         };
 
-        let discovered_files = crate::import::handle::flatten_categorized_files(&categorized);
-
         // Each DbTrack moves into a TrackFile, bound to the audio its
         // slot named and carrying the `duration_ms` that audio yields. Past here
         // the DbTracks live in `tracks_to_files`.
@@ -479,7 +477,7 @@ impl ImportService {
             destination,
             &mut prepared,
             ImportFiles {
-                discovered: &discovered_files,
+                discovered: &categorized.files,
                 tracks: &tracks_to_files,
             },
         )
@@ -588,7 +586,7 @@ impl ImportService {
         }
         let total_bytes: u128 = discovered_files
             .iter()
-            .map(|file| u128::from(file.size))
+            .map(|entry| u128::from(entry.file.size))
             .sum();
         if total_bytes == 0 {
             return Err(crate::import::ImportError::Internal {
@@ -599,7 +597,8 @@ impl ImportService {
         self.emit_phase_progress(run, &db_release.id, Some(0), ImportPhase::ReadingFiles);
         let mut bytes_read = 0u128;
         let mut last_release_percent = 0u8;
-        for (idx, file) in discovered_files.iter().enumerate() {
+        for (idx, entry) in discovered_files.iter().enumerate() {
+            let file = &entry.file;
             // The scan identity for every file was validated once before any
             // byte was read. Coven streams the file here and keeps the
             // resulting content identity opaque to bae.
@@ -651,7 +650,7 @@ impl ImportService {
                 &db_release.id,
                 &file.relative_path,
                 file.size as i64,
-                resolve_file_content_type(file)?,
+                resolve_file_content_type(entry)?,
                 library_manager.new_id(),
                 files_now,
             );
@@ -695,7 +694,7 @@ impl ImportService {
         };
         let source_file_sizes: HashMap<PathBuf, u64> = discovered_files
             .iter()
-            .map(|file| (file.path.clone(), file.size))
+            .map(|entry| (entry.file.path.clone(), entry.file.size))
             .collect();
 
         // Measured from the source decode: bae stores originals verbatim (no

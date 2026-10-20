@@ -371,16 +371,20 @@ import list says so.
 
 **What a scan stores.** Everything a scan reads is device-local: the
 candidates, their files and the role each plays (audio, track sheet, artwork,
-document, other), the parsed CUE sheets, the tags each audio file carried, and
+damaged image, document, other), the parsed CUE sheets, the tags each audio file carried, and
 when each folder was first seen. A scan writes as it finds; completing removes
 what it didn't see, in the same transaction that marks it complete. A failed or
 interrupted scan keeps both old and new entries.
 
 **Edge cases.**
 
-- **A broken folder.** A folder with corrupt or zero-byte audio or images, or
-  no valid audio at all, is listed as skipped with its reason. It can't be
-  imported.
+- **A broken folder.** A folder with corrupt or zero-byte audio, or no valid
+  audio at all, is listed as skipped with its reason. It can't be imported.
+- **A damaged image** — zero bytes, or bytes that don't decode as the picture
+  its name says — doesn't skip the folder: the release is its audio. The image
+  is never artwork, so it is never the cover, and it imports as plain bytes the
+  library never shows as a picture. It is still carried, so it comes back on
+  export.
 - **A CUE sheet that disagrees with the disk** — naming absent audio, failing
   to parse, or naming a codec bae can't play from one file — is left unbound,
   and the folder stays importable.

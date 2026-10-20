@@ -949,12 +949,3 @@ pub fn parsed_album_to_user_edit(parsed: &super::ParsedAlbum) -> crate::import::
         tracks,
     }
 }
-
-/// The files the import writes rows for and counts bytes against, in
-/// `relative_path` order: the same set [`CategorizedFiles::content_hash`]
-/// covers.
-pub(crate) fn flatten_categorized_files(
-    categorized: &crate::import::folder_scanner::CategorizedFiles,
-) -> Vec<crate::import::folder_scanner::ScannedFile> {
-    categorized.release_files().cloned().collect()
-}

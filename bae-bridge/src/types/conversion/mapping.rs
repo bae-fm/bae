@@ -49,6 +49,7 @@ impl BridgeCandidateFile {
             FileRole::Artwork => BridgeFileRole::Artwork {
                 choice: cover_choice,
             },
+            FileRole::DamagedImage => BridgeFileRole::DamagedImage,
             FileRole::Document => BridgeFileRole::Document,
             FileRole::Other => BridgeFileRole::Other,
         };
@@ -153,7 +154,7 @@ mirror_enum! {
 mirror_enum! {
     BridgeMappingRole = bae_core::import::MappingRole,
     from_core: fn,
-    variants: { Audio, Document, Other },
+    variants: { Audio, Document, DamagedImage, Other },
 }
 
 impl BridgeMappingFile {

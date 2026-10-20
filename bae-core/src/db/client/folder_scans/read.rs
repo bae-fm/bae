@@ -576,6 +576,7 @@ pub(crate) fn load_files_rows(
             let role = match row.role.as_str() {
                 "audio" => FileRole::Audio,
                 "artwork" => FileRole::Artwork,
+                "damaged_image" => FileRole::DamagedImage,
                 "document" => FileRole::Document,
                 "other" => FileRole::Other,
                 "track_sheet" => {

@@ -45,6 +45,12 @@ struct ImportMappingSourceCell: View {
                     // size mid-digit.
                     .fixedSize()
             }
+            if file.role == .damagedImage {
+                Text(coreString("ui.import.mapping.damaged_image"))
+                    .themeText(.fine)
+                    .foregroundStyle(Theme.warning)
+                    .fixedSize()
+            }
             ForEach(ImportEvidence.badges(evidence)) { badge in
                 ImportEvidenceChip(signal: badge.signal)
                     .fixedSize()

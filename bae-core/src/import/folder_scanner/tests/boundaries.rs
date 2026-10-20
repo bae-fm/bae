@@ -554,7 +554,7 @@ fn an_invalid_folder_beside_an_album_folder_still_carries_the_reading() {
     let child = parent.join("Album");
     std::fs::create_dir_all(&child).unwrap();
     std::fs::write(parent.join("parent.flac"), fake_flac()).unwrap();
-    std::fs::write(parent.join("broken.jpg"), b"not an image").unwrap();
+    std::fs::write(parent.join("broken.flac"), b"").unwrap();
     std::fs::write(child.join("child.flac"), fake_flac()).unwrap();
 
     let items = scan_items(&root);

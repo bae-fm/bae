@@ -293,11 +293,11 @@ async fn releases_in_one_folder_read_its_files_and_only_one_grouping_does() {
         ["Album/Disc 3/01.flac", "Other/Disc 1/01.flac"]
     );
 
-    // A broken cover makes the release that reads it one that cannot be
-    // imported, as a folder holding it would be.
+    // A zero-byte track among the folder's files makes the release that
+    // reads them one that cannot be imported, as a folder holding it would be.
     let broken = FolderSidecar {
-        files: SidecarFiles::Invalid(InvalidReason::CorruptImage {
-            path: "cover.jpg".into(),
+        files: SidecarFiles::Invalid(InvalidReason::CorruptAudioFile {
+            path: "bonus.flac".into(),
         }),
         ..sidecar_of("Album", &[])
     };
@@ -305,7 +305,7 @@ async fn releases_in_one_folder_read_its_files_and_only_one_grouping_does() {
     assert!(matches!(
         stored(&db, "grouping:discs").await,
         Some(ScanItem::Invalid(InvalidCandidate {
-            reason: InvalidReason::CorruptImage { .. },
+            reason: InvalidReason::CorruptAudioFile { .. },
             ..
         }))
     ));

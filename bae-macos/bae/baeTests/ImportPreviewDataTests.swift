@@ -201,7 +201,7 @@ struct ImportPreviewDataTests {
                 if case .invalid = $0 { return true }
                 return false
             }
-            .count == 3
+            .count == 2
         )
     }
 }

@@ -119,6 +119,9 @@ pub enum MappingRole {
     /// Readable evidence: a rip log, a tracklist, a playlist, or a CUE that
     /// could not be parsed as a sheet.
     Document,
+    /// Named as an image, but its bytes do not decode as one: carried with
+    /// the release, and kept out of the gallery the cover is picked from.
+    DamagedImage,
     /// In the folder and carried with the release, unrecognized.
     Other,
 }
@@ -326,6 +329,7 @@ pub(crate) fn mapping_table(
             // carried.
             FileRole::Artwork => images.push(mapping_image(entry)),
             FileRole::Document => file_rows.push(carried(entry, MappingRole::Document)),
+            FileRole::DamagedImage => file_rows.push(carried(entry, MappingRole::DamagedImage)),
             FileRole::Other => file_rows.push(carried(entry, MappingRole::Other)),
         }
     }

@@ -69,14 +69,19 @@ fn unexpected_file_types_silently_ignored() {
     );
 }
 
-/// Zero-byte cover art is an incompleteness signal, so the release is
-/// suppressed.
+/// Zero-byte cover art is a damaged image, not a damaged release: the release
+/// surfaces, carrying the image as damaged and never as its artwork.
 #[test]
-fn zero_byte_cover_art_does_not_surface() {
+fn zero_byte_cover_art_is_carried_as_a_damaged_image() {
     let mut entries = flat_audio("Album", 3, FileKind::Flac);
     entries.push(file("Album/cover.jpg", FileKind::ZeroByteJpeg));
     let result = run_scenario(entries);
-    assert!(result.top_level_paths().is_empty());
+    assert_eq!(result.top_level_paths(), ["Album"]);
+    let album = result.candidate("Album");
+    assert!(album.files.files.iter().any(|entry| {
+        entry.file.relative_path == "cover.jpg" && entry.role == FileRole::DamagedImage
+    }));
+    assert_eq!(album.files.artwork().count(), 0);
 }
 
 // ── Files carry roles ───────────────────────────────────────────────────
@@ -315,10 +320,10 @@ fn an_unrecognized_sidecar_is_carried_and_hashed() {
         "each sidecar is listed under the role for what the scan doesn't recognize",
     );
 
-    // The rows the import writes come from the same iterator the hash covers.
-    let carried: Vec<_> = crate::import::handle::flatten_categorized_files(&sidecar_files)
-        .into_iter()
-        .map(|file| file.file_name)
+    // The import writes a row for every file the hash covers.
+    let carried: Vec<_> = sidecar_files
+        .release_files()
+        .map(|file| file.file_name.clone())
         .collect();
     for sidecar in SIDECARS {
         assert!(

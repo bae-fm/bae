@@ -594,23 +594,46 @@ fn test_mix_of_real_and_zero_byte_files_skips_candidate() {
     );
 }
 
+/// A folder whose only defect is a damaged image is its audio: it is found,
+/// not skipped, and the damaged image is carried as one — never its artwork,
+/// so never its cover — while the image that decodes is.
 #[test]
-fn test_corrupt_image_skips_entire_candidate() {
+fn a_damaged_image_leaves_the_release_found_without_it_as_cover() {
     let temp_dir = tempfile::tempdir().unwrap();
-    let root = temp_dir.path().join("Bad Images");
+    let root = temp_dir.path().join("Bad Front");
     std::fs::create_dir(&root).unwrap();
 
     std::fs::write(root.join("track.flac"), fake_flac()).unwrap();
-    std::fs::write(root.join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]).unwrap();
-    std::fs::write(root.join("back.jpg"), b"not a jpeg").unwrap();
-    std::fs::write(root.join("inlay.png"), b"").unwrap();
+    // Zero-filled, the way an interrupted copy leaves it.
+    std::fs::write(root.join("front.png"), [0u8; 512]).unwrap();
+    std::fs::write(root.join("back.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
 
-    let candidates = scan_valid(root);
-
+    let items = scan_items(root);
+    let [ScanItem::Valid(candidate)] = items.as_slice() else {
+        panic!("the folder is one found release, not a skipped one: {items:?}");
+    };
+    let roles: Vec<_> = candidate
+        .files
+        .files
+        .iter()
+        .map(|entry| (entry.file.relative_path.as_str(), &entry.role))
+        .collect();
+    assert!(roles.contains(&("front.png", &FileRole::DamagedImage)), "{roles:?}");
+    assert!(
+        candidate.files.artwork().all(|file| file.relative_path != "front.png"),
+        "a damaged image is no artwork"
+    );
+    assert!(
+        candidate
+            .files
+            .cover_files()
+            .all(|entry| entry.file.relative_path != "front.png"),
+        "a damaged image is offered to no cover picker"
+    );
     assert_eq!(
-        candidates.len(),
-        0,
-        "Candidate with corrupt images should be skipped entirely"
+        crate::import::local_artwork::folder_cover(None, candidate.files.artwork()),
+        Some(crate::import::CoverSelection::Local("back.jpg".to_string())),
+        "the folder's cover is the image that decodes, though the damaged one is named front"
     );
 }
 

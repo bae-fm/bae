@@ -1,7 +1,7 @@
 //! Pick an import's cover image from the folder's own files.
 
 use super::ImportService;
-use crate::import::folder_scanner::ScannedFile;
+use crate::import::folder_scanner::CandidateFile;
 
 /// A candidate cover's bytes as they came from their source, with the provenance
 /// the `covers` row records. The bytes here are NOT the stored ones: the import
@@ -25,24 +25,23 @@ impl ImportService {
     /// The path is the candidate's stored selection, so a folder that no
     /// longer holds that image is a candidate whose selection no longer
     /// describes it, and that is stated rather than replaced by some other
-    /// image.
+    /// image. Only the artwork the folder offers as a cover can be it: a
+    /// damaged image of the same name is no cover.
     ///
     /// The read runs on a blocking thread, so a cover on a slow volume does not
     /// stall the import worker's runtime.
     pub(super) async fn pick_folder_cover(
-        discovered_files: &[ScannedFile],
+        discovered_files: &[CandidateFile],
         selected_cover_path: &str,
     ) -> Result<Option<CoverCandidate>, crate::import::ImportError> {
         use crate::import::ImportError;
 
         let cover_file = discovered_files
             .iter()
-            .find(|file| {
-                file.relative_path == selected_cover_path
-                    && crate::util::content_type_hint::ContentTypeHint::path_is_supported_cover(
-                        &file.path,
-                    )
+            .find(|entry| {
+                entry.file.relative_path == selected_cover_path && entry.cover_choice().is_some()
             })
+            .map(|entry| &entry.file)
             .ok_or_else(|| ImportError::LocalCover {
                 detail: format!(
                     "Selected cover {selected_cover_path} not found among discovered images"

@@ -167,10 +167,10 @@ fn a_folder_still_downloading_says_so() {
     );
 }
 
-/// A broken image among a folder's files is said as the defect it is, the
-/// way a release holding it would be.
+/// A damaged image among a folder's files is carried as one, never as its
+/// artwork: the release that takes the files in is still its audio.
 #[test]
-fn a_broken_file_makes_the_sidecar_invalid() {
+fn a_damaged_image_is_carried_in_the_sidecar_as_one() {
     let (_temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
     std::fs::write(album.join("cover.jpg"), b"not an image").unwrap();
     let found = sidecars(
@@ -181,10 +181,42 @@ fn a_broken_file_makes_the_sidecar_invalid() {
             FolderReleaseDecisionAuthor::User,
         )]),
     );
+    let [sidecar] = found.as_slice() else {
+        panic!("one sidecar: {found:?}");
+    };
+    let SidecarFiles::Valid(files) = &sidecar.files else {
+        panic!("a damaged image leaves the files readable: {:?}", sidecar.files);
+    };
+    assert_eq!(
+        files
+            .iter()
+            .map(|entry| (entry.file.relative_path.as_str(), &entry.role))
+            .collect::<Vec<_>>(),
+        [
+            ("cover.jpg", &FileRole::DamagedImage),
+            ("Scans/booklet.txt", &FileRole::Document)
+        ]
+    );
+}
+
+/// A zero-byte track among a folder's files is said as the defect it is, the
+/// way a release holding it would be.
+#[test]
+fn a_zero_byte_track_makes_the_sidecar_invalid() {
+    let (_temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
+    std::fs::write(album.join("bonus.flac"), b"").unwrap();
+    let found = sidecars(
+        &root,
+        readings(&[(
+            "Artist/Album",
+            FolderReleaseDecision::KeepAsSeparateReleases,
+            FolderReleaseDecisionAuthor::User,
+        )]),
+    );
     assert_eq!(
         found.iter().map(|sidecar| &sidecar.files).collect::<Vec<_>>(),
-        [&SidecarFiles::Invalid(InvalidReason::CorruptImage {
-            path: "cover.jpg".into()
+        [&SidecarFiles::Invalid(InvalidReason::CorruptAudioFile {
+            path: "bonus.flac".into()
         })]
     );
 }

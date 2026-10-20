@@ -117,6 +117,9 @@ pub enum BridgeFileRole {
         /// Absent for previewable artwork the cover decoder does not support.
         choice: Option<BridgeCoverChoice>,
     },
+    /// Named as an image, but its bytes do not decode as one: carried with
+    /// the release, never artwork.
+    DamagedImage,
     Document,
     /// In the folder and carried with the release, unrecognized — a scene
     /// sidecar, a stray video, a file with no extension.

@@ -11,8 +11,6 @@ use super::*;
 pub enum InvalidReason {
     #[error("corrupt or zero-byte audio file: {path}")]
     CorruptAudioFile { path: String },
-    #[error("corrupt or zero-byte image: {path}")]
-    CorruptImage { path: String },
     #[error("no valid audio files")]
     NoValidAudio,
 }
@@ -102,7 +100,7 @@ pub enum SidecarFiles {
     /// another file. A track sheet with no audio beside it describes nothing
     /// here to play, so it is carried as the document it is.
     Valid(Vec<CandidateFile>),
-    /// A file among them is broken — an unreadable image — so a release that
+    /// A file among them is broken — a zero-byte track — so a release that
     /// takes them in cannot be imported.
     Invalid(InvalidReason),
     /// A download into the folder is still running, so what it will hold is

@@ -61,6 +61,7 @@ pub(crate) fn load_sidecar(
                     ),
                     role: match role.as_str() {
                         "artwork" => FileRole::Artwork,
+                        "damaged_image" => FileRole::DamagedImage,
                         "document" => FileRole::Document,
                         "other" => FileRole::Other,
                         other => return Err(unreadable("scan_sidecar_file.role", other)),
@@ -162,6 +163,7 @@ pub(super) fn write_sidecar(
     for (position, entry) in files.iter().enumerate() {
         let role = match entry.role {
             FileRole::Artwork => "artwork",
+            FileRole::DamagedImage => "damaged_image",
             FileRole::Document => "document",
             FileRole::Other => "other",
             FileRole::Audio | FileRole::TrackSheet { .. } => {

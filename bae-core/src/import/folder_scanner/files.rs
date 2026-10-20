@@ -113,6 +113,12 @@ pub enum FileRole {
     /// property of the file: it is the cover choice, answered by the stored
     /// row, then the picked release's own art, then these ranked by name.
     Artwork,
+    /// A file named as an image whose bytes do not decode as one: zero bytes,
+    /// truncated, or overwritten. It never leads the release or sits among
+    /// its artwork, and the import stores it as plain bytes, so nothing in the
+    /// library reads it as a picture. The folder is the release, so it is
+    /// carried and comes back on export like every other file.
+    DamagedImage,
     /// Readable evidence: a rip log, a tracklist, a playlist, or a CUE that
     /// could not be parsed as a sheet.
     Document,

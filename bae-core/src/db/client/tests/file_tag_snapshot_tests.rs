@@ -348,8 +348,8 @@ async fn stored_reading_rows(db: &Database, root: &str, key: &str) -> (i64, i64)
     .unwrap()
 }
 
-/// A folder that fails validation on a later pass — a corrupt image beside its
-/// audio — is stored as an invalid candidate, which carries no files at all.
+/// A folder that fails validation on a later pass — a zero-byte track among
+/// its audio — is stored as an invalid candidate, which carries no files at all.
 /// The reading stored for the release it used to be was taken from files that
 /// row does not have, so it goes with the row it belonged to.
 #[tokio::test]
@@ -375,8 +375,8 @@ async fn a_candidate_that_turns_invalid_drops_the_reading_it_carried() {
             watched_folder_path: root.clone(),
             display_path: candidate.display_path.clone(),
             grouping: None,
-            reason: InvalidReason::CorruptImage {
-                path: "front.jpg".to_string(),
+            reason: InvalidReason::CorruptAudioFile {
+                path: "02.flac".to_string(),
             },
         }),
     )

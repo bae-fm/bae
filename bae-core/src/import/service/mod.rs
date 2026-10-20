@@ -11,7 +11,7 @@ use {
         DbAlbum, DbAlbumArtist, DbFile, DbRelease, DbReleaseArtistRole, DbTrack, DbTrackArtist,
         DbTrackArtistRole,
     },
-    crate::import::folder_scanner::{ScanItem, ScannedFile},
+    crate::import::folder_scanner::ScanItem,
     crate::import::audio_layout::resolve_track_files,
     crate::import::types::{
         AudioFile, Catalog, CoverSelection, ImportPhase, PrepareStep, TrackFile,
@@ -61,7 +61,7 @@ pub(super) struct ImportRun<'a> {
 /// read from the same folder.
 #[derive(Clone, Copy)]
 pub(super) struct ImportFiles<'a> {
-    pub(super) discovered: &'a [ScannedFile],
+    pub(super) discovered: &'a [crate::import::folder_scanner::CandidateFile],
     pub(super) tracks: &'a [TrackFile],
 }
 

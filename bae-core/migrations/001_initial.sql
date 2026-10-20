@@ -641,7 +641,7 @@ CREATE TABLE IF NOT EXISTS scan_candidate (
     content_hash                   TEXT,
     file_edit_revision             INTEGER NOT NULL DEFAULT 0 CHECK (file_edit_revision >= 0),
     grouping_key                   TEXT CHECK (grouping_key IS NULL OR grouping_key = path),
-    invalid_reason                 TEXT CHECK (invalid_reason IS NULL OR invalid_reason IN ('corrupt_audio', 'corrupt_image', 'no_valid_audio')),
+    invalid_reason                 TEXT CHECK (invalid_reason IS NULL OR invalid_reason IN ('corrupt_audio', 'no_valid_audio')),
     invalid_reason_path            TEXT,
     -- 'grouping' for a release a grouping with no anchor builds from its
     -- members.
@@ -651,7 +651,7 @@ CREATE TABLE IF NOT EXISTS scan_candidate (
     CHECK ((kind = 'invalid') = (invalid_reason IS NOT NULL)),
     CHECK ((kind = 'invalid') = (content_hash IS NULL)),
     CHECK ((source_kind = 'grouping') <= (grouping_key IS NOT NULL)),
-    CHECK ((invalid_reason IN ('corrupt_audio', 'corrupt_image')) = (invalid_reason_path IS NOT NULL))
+    CHECK ((invalid_reason = 'corrupt_audio') = (invalid_reason_path IS NOT NULL))
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_scan_candidate_path ON scan_candidate (path);
@@ -677,7 +677,7 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file (
     audio_channels        INTEGER CHECK (audio_channels IS NULL OR audio_channels > 0),
     file_name             TEXT NOT NULL,
     dir_prefix            TEXT,
-    role                  TEXT NOT NULL CHECK (role IN ('audio', 'track_sheet', 'artwork', 'document', 'other')),
+    role                  TEXT NOT NULL CHECK (role IN ('audio', 'track_sheet', 'artwork', 'damaged_image', 'document', 'other')),
     sheet_binding         TEXT CHECK (sheet_binding IS NULL OR sheet_binding IN ('resolved', 'unresolved', 'refused_timing', 'refused_codec')),
     sheet_binding_codec   TEXT,
     sheet_disc            TEXT CHECK (sheet_disc IS NULL OR sheet_disc IN ('disc', 'ignored')),
@@ -786,7 +786,7 @@ CREATE TABLE IF NOT EXISTS scan_sidecar (
     -- 'invalid' when one of its files is broken, so a release taking them in
     -- cannot be imported; 'downloading' while a download into the folder runs.
     state               TEXT NOT NULL CHECK (state IN ('valid', 'invalid', 'downloading')),
-    invalid_reason      TEXT CHECK (invalid_reason IS NULL OR invalid_reason IN ('corrupt_audio', 'corrupt_image')),
+    invalid_reason      TEXT CHECK (invalid_reason IS NULL OR invalid_reason = 'corrupt_audio'),
     invalid_reason_path TEXT,
     FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE,
     CHECK ((state = 'invalid') = (invalid_reason IS NOT NULL)),
@@ -803,7 +803,7 @@ CREATE TABLE IF NOT EXISTS scan_sidecar_file (
     absolute_path       TEXT NOT NULL UNIQUE,
     size                INTEGER NOT NULL CHECK (size >= 0),
     modified_at_ns      INTEGER NOT NULL CHECK (modified_at_ns >= 0),
-    role                TEXT NOT NULL CHECK (role IN ('artwork', 'document', 'other')),
+    role                TEXT NOT NULL CHECK (role IN ('artwork', 'damaged_image', 'document', 'other')),
     PRIMARY KEY (folder, position),
     UNIQUE (folder, relative_path)
 ) STRICT;

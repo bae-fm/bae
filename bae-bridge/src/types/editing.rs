@@ -312,6 +312,9 @@ pub enum BridgeSheetDisc {
 pub enum BridgeMappingRole {
     Audio,
     Document,
+    /// Named as an image, but its bytes do not decode as one; carried, never
+    /// in the gallery.
+    DamagedImage,
     Other,
 }
 

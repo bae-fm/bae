@@ -204,15 +204,6 @@
                 reason: .corruptAudioFile(path: "03.flac")
             ),
             BridgeInvalidCandidate(
-                candidateKey: "/Music/Downloads/Damaged Artwork",
-                folderPath: "/Music/Downloads/Damaged Artwork",
-                sourceFolderName: "Damaged Artwork",
-                watchedFolderPath: "/Music/Downloads",
-                displayPath: "Damaged Artwork",
-                separable: false,
-                reason: .corruptImage(path: "Back.png")
-            ),
-            BridgeInvalidCandidate(
                 candidateKey: "/Music/Downloads/Documents Only",
                 folderPath: "/Music/Downloads/Documents Only",
                 sourceFolderName: "Documents Only",

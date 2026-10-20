@@ -295,7 +295,8 @@
         /// Every row kind the table draws, with the folder's gallery beside it:
         /// the sheet heading the nine entries it carves, the two documents
         /// carried with the release, the diagnostic logs collapsed to the one
-        /// row their shared role makes of them, and one non-audio video. What
+        /// row their shared role makes of them, a damaged image, and one
+        /// non-audio video. What
         /// the Import-tab preview reads, so a change to any row kind shows up
         /// in the canvas without hunting for the fixture that has it.
         static let everyRowKindMappingTable = BridgeMappingTable(
@@ -318,7 +319,8 @@
                     carriedRow($0, role: .document)
                 }
                 + [
-                    carriedRow(supplementalVideo, role: .other)
+                    carriedRow(damagedFrontImage, role: .damagedImage),
+                    carriedRow(supplementalVideo, role: .other),
                 ]
         )
 

@@ -45,7 +45,6 @@ pub(super) fn scope_of(stored: &str) -> Result<ReleaseFileScope, DbError> {
 pub(super) fn invalid_reason_columns(reason: &InvalidReason) -> (&'static str, Option<&str>) {
     match reason {
         InvalidReason::CorruptAudioFile { path } => ("corrupt_audio", Some(path.as_str())),
-        InvalidReason::CorruptImage { path } => ("corrupt_image", Some(path.as_str())),
         InvalidReason::NoValidAudio => ("no_valid_audio", None),
     }
 }
@@ -62,7 +61,6 @@ pub(crate) fn invalid_reason_of(
     };
     match stored {
         "corrupt_audio" => Ok(InvalidReason::CorruptAudioFile { path: named(path)? }),
-        "corrupt_image" => Ok(InvalidReason::CorruptImage { path: named(path)? }),
         "no_valid_audio" => Ok(InvalidReason::NoValidAudio),
         other => Err(unreadable("invalid_reason", other)),
     }
@@ -90,6 +88,7 @@ pub(super) fn role_columns(role: &FileRole) -> RoleColumns<'_> {
     match role {
         FileRole::Audio => plain("audio"),
         FileRole::Artwork => plain("artwork"),
+        FileRole::DamagedImage => plain("damaged_image"),
         FileRole::Document => plain("document"),
         FileRole::Other => plain("other"),
         FileRole::TrackSheet { binding, disc, .. } => {
