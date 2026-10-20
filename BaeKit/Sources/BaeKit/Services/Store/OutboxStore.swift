@@ -222,18 +222,14 @@ public enum UploadObservation: Equatable {
     }
 
     /// The dominant phase alone, for a line that puts the bar between the
-    /// phase and its count.
+    /// phase and its count. It names the release's phase, not how many of
+    /// its files are in it.
     public var phaseText: String {
         switch self {
         case .awaiting:
-            return QueueSummary.countLabel("core.queue.queued", 1)
+            BridgeUploadActivity.queued.phaseText
         case .active(let progress):
-            guard let phase = progress.activityText else {
-                preconditionFailure(
-                    "an active cloud upload has no projected activity"
-                )
-            }
-            return phase
+            progress.heldActivity.phaseText
         }
     }
 

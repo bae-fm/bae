@@ -469,6 +469,20 @@ fn produced_keys() -> Vec<String> {
     ] {
         keys.extend(bridge_upload_file_label_key(&label));
     }
+    // bridge_upload_activity_key and bridge_upload_file_state_key — each
+    // variant carries a key, and the two enums share the phase words.
+    for activity in [
+        BridgeUploadActivity::Uploading,
+        BridgeUploadActivity::Queued,
+    ] {
+        keys.push(bridge_upload_activity_key(activity));
+    }
+    for state in [
+        BridgeUploadFileState::Uploading,
+        BridgeUploadFileState::Waiting,
+    ] {
+        keys.push(bridge_upload_file_state_key(state));
+    }
     // bridge_entity_not_found_key — every variant carries a key.
     keys.push(bridge_entity_not_found_key(BridgeEntityKind::Library));
 

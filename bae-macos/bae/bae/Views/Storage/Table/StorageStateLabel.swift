@@ -26,7 +26,7 @@ struct StorageStateLabel: View {
                         progress: bar.fraction,
                         detail: observation.throughputText
                     ) {
-                        UploadActivityLabel(progress: progress)
+                        UploadActivityLabel(phaseOf: progress)
                     }
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(observation.transitionStatusText)
@@ -34,7 +34,7 @@ struct StorageStateLabel: View {
                 }
                 else {
                     // Files only waiting: nothing is moving to measure.
-                    UploadActivityLabel(progress: progress)
+                    UploadActivityLabel(phaseOf: progress)
                 }
             case .queueing, .awaiting:
                 StatusChip(

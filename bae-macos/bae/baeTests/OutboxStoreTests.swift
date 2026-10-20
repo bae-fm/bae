@@ -114,22 +114,24 @@ struct CloudImportQueuePresentationTests {
         }
     }
 
-    @Test("an active upload line includes its activity and encrypted bytes")
-    func activeUploadIncludesActivityAndBytes() {
+    /// A release's own line names its phase; how many of its files are in
+    /// that phase belongs to the list of those files.
+    @Test("an active upload line is its phase and encrypted bytes, no count")
+    func activeUploadIncludesPhaseAndBytes() {
         var progress = OutboxStore.emptySnapshot.total
-        progress.uploading = 1
+        progress.uploading = 2
+        progress.queued = 3
         progress.bar = BridgeUploadBar(bytesDone: 600, bytesTotal: 1016)
         progress.activity = .uploading
 
-        let line = UploadObservation.active(progress).statusText
+        let observation = UploadObservation.active(progress)
         let done = Int64(600).formatted(.byteCount(style: .file))
         let total = Int64(1016).formatted(.byteCount(style: .file))
 
-        #expect(
-            line.contains(QueueSummary.countLabel("core.queue.uploading", 1))
-        )
-        #expect(line.contains(done))
-        #expect(line.contains(total))
+        #expect(observation.phaseText == "Uploading")
+        #expect(observation.statusText.hasPrefix("Uploading \u{00B7} "))
+        #expect(observation.statusText.contains(done))
+        #expect(observation.statusText.contains(total))
     }
 
     @Test("a waiting upload is presented as queued")
@@ -138,17 +140,24 @@ struct CloudImportQueuePresentationTests {
         progress.queued = 2
         progress.activity = .queued
 
-        #expect(
-            progress.activityText
-                == QueueSummary.countLabel("core.queue.queued", 2)
-        )
+        #expect(UploadObservation.active(progress).phaseText == "Queued")
+    }
+
+    @Test("a release's file list summary counts the files in its phase")
+    func fileListSummaryCountsFiles() {
+        var progress = OutboxStore.emptySnapshot.total
+        progress.uploading = 2
+        progress.queued = 3
+        progress.activity = .uploading
+
+        #expect(progress.fileCountText == "2 uploading")
     }
 
     @Test("waiting for the first retained queue value is still queued")
     func awaitingQueueIsQueued() {
+        #expect(UploadObservation.awaiting.statusText == "Queued")
         #expect(
-            UploadObservation.awaiting.statusText
-                == QueueSummary.countLabel("core.queue.queued", 1)
+            StorageUploadObservation.awaiting.transitionStatusText == "Queued"
         )
     }
 
@@ -173,10 +182,7 @@ struct CloudImportQueuePresentationTests {
         progress.activity = .queued
 
         #expect(UploadObservation.active(progress).progressBar == nil)
-        #expect(
-            UploadObservation.active(progress).statusText
-                == QueueSummary.countLabel("core.queue.queued", 2)
-        )
+        #expect(UploadObservation.active(progress).statusText == "Queued")
         #expect(
             StorageUploadObservation.active(
                 progress: progress,

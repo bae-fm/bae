@@ -76,10 +76,9 @@ private struct UploadOperationLine: View {
                 bridgePendingReasonKey(reason: pending.reason.kind)
             )
         }
-        return switch operation.state {
-        case .waiting: QueueSummary.countLabel("core.queue.queued", 1)
-        case .uploading: QueueSummary.countLabel("core.queue.uploading", 1)
-        }
+        return localizedCoreString(
+            bridgeUploadFileStateKey(state: operation.state)
+        )
     }
 
     private var symbol: String {

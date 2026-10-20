@@ -392,6 +392,28 @@ pub struct BridgeOutboxSnapshot {
     pub eta_seconds: Option<u64>,
 }
 
+/// Localization key for one release's upload phase alone, the word beside
+/// its progress bar. The UI resolves it against the `Core` table.
+#[uniffi::export]
+pub fn bridge_upload_activity_key(activity: BridgeUploadActivity) -> String {
+    match activity {
+        BridgeUploadActivity::Uploading => "core.outbox.phase.uploading",
+        BridgeUploadActivity::Queued => "core.outbox.phase.queued",
+    }
+    .to_string()
+}
+
+/// Localization key for one file's upload state, worded as the release phase
+/// it shares.
+#[uniffi::export]
+pub fn bridge_upload_file_state_key(state: BridgeUploadFileState) -> String {
+    match state {
+        BridgeUploadFileState::Uploading => "core.outbox.phase.uploading",
+        BridgeUploadFileState::Waiting => "core.outbox.phase.queued",
+    }
+    .to_string()
+}
+
 #[uniffi::export]
 pub fn bridge_upload_file_label_key(label: &BridgeUploadFileLabel) -> Option<String> {
     Some(

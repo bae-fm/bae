@@ -9,7 +9,7 @@ struct StorageUploadSummary: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             HStack {
-                UploadActivityLabel(progress: group.progress)
+                UploadActivityLabel(fileCountOf: group.progress)
                 Spacer()
                 Text(
                     StorageUploadObservation.active(

@@ -1,14 +1,31 @@
 import Foundation
 
+extension BridgeUploadActivity {
+    /// The phase alone ("Uploading"), for a line that is one release's own.
+    public var phaseText: String {
+        localizedCoreString(bridgeUploadActivityKey(activity: self))
+    }
+}
+
 extension BridgeUploadProgress {
-    /// Localized count for the activity core chose: uploading while any file
-    /// moves bytes, queued otherwise. Nil while nothing is queued.
-    public var activityText: String? {
-        switch activity {
+    /// The phase core chose for files it holds: uploading while any file
+    /// moves bytes, queued otherwise. Only an idle total has none.
+    public var heldActivity: BridgeUploadActivity {
+        guard let activity else {
+            preconditionFailure(
+                "an active cloud upload has no projected activity"
+            )
+        }
+        return activity
+    }
+
+    /// The phase with how many files are in it ("2 uploading"), for a line
+    /// that summarizes a list of those files.
+    public var fileCountText: String {
+        switch heldActivity {
         case .uploading:
             QueueSummary.countLabel("core.queue.uploading", uploading)
         case .queued: QueueSummary.countLabel("core.queue.queued", queued)
-        case nil: nil
         }
     }
 }

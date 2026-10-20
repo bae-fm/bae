@@ -69,7 +69,7 @@ struct StorageStatusBand: View {
     ) -> some View {
         switch observation {
         case .active(let progress, _):
-            UploadActivityLabel(progress: progress)
+            UploadActivityLabel(phaseOf: progress)
         case .queueing, .awaiting:
             Label(
                 observation.transitionPhaseText,

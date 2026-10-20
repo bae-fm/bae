@@ -139,4 +139,32 @@ private struct ImportedReleaseRowView: View {
         .candidateReaderPreviewEnvironment()
         .windowBackground()
     }
+
+    // A release's line names its upload phase, never how many of its files
+    // are in that phase.
+    #Preview("Done rows uploading") {
+        let uploading = PreviewData.importedRowIdentified
+        let awaiting = PreviewData.importedRowFromTags
+        VStack(alignment: .leading, spacing: 0) {
+            ImportedRowView(
+                row: uploading,
+                uploadObservations: [
+                    uploading.releases[0].releaseId: .active(
+                        PreviewData.uploadProgress(activity: .uploading)
+                    )
+                ],
+                onReveal: {}
+            )
+            ImportedRowView(
+                row: awaiting,
+                uploadObservations: [awaiting.releases[0].releaseId: .awaiting],
+                onReveal: {}
+            )
+        }
+        .padding()
+        .frame(width: 340)
+        .environment(PreviewData.artImageStore())
+        .candidateReaderPreviewEnvironment()
+        .windowBackground()
+    }
 #endif
