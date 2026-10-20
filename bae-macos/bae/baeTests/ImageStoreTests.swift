@@ -505,3 +505,54 @@ struct DecodedImageCacheTests {
         #expect(cache.image(for: "cover-b") === secondImage)
     }
 }
+
+/// A handle-less `AppHandle` whose one library image is still arriving until
+/// the first wait for its file ends.
+private final class ArrivingImageHandle: AppHandle, @unchecked Sendable {
+    let file = BridgeArrivingFile(noHandle: BridgeArrivingFile.NoHandle())
+    let bytes: Data
+    private(set) var waits = 0
+    private var arrived = false
+
+    init(bytes: Data) {
+        self.bytes = bytes
+        super.init(noHandle: AppHandle.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        bytes = Data()
+        super.init(unsafeFromHandle: handle)
+    }
+
+    override func fetchLibraryImage(
+        image _: BridgeImageRef
+    ) async throws -> BridgeImageRead? {
+        arrived ? .bytes(bytes: bytes) : .arriving(file: file)
+    }
+
+    override func waitForArrival(file: BridgeArrivingFile) async throws {
+        #expect(file === self.file)
+        waits += 1
+        arrived = true
+    }
+}
+
+@Suite("ImageStore arrivals")
+struct ImageStoreArrivalTests {
+    /// A cover another device is still uploading is no failure: the load
+    /// waits for its file to arrive, then reads and decodes it.
+    @Test("an image still arriving loads once its file arrives")
+    func arrivingImageLoads() async throws {
+        let handle = ArrivingImageHandle(
+            bytes: try makePngBytes(width: 8, height: 8)
+        )
+        let store = ImageStore(handle: handle)
+        let image = try await store.image(
+            .libraryImage(coverRef(version: "1")),
+            pointSize: 56,
+            displayScale: 2
+        )
+        #expect(image != nil)
+        #expect(handle.waits == 1)
+    }
+}

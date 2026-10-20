@@ -180,7 +180,7 @@ mirror_enum! {
 
 /// A reference to a curated library image (a release cover or an artist
 /// portrait): the image kind, subject id, and content version. The UI passes the
-/// whole ref to `fetch_library_image_bytes`, so core dispatches to the known
+/// whole ref to `fetch_library_image`, so core dispatches to the known
 /// image namespace.
 /// `version` is the image row's `blob_id`, which names one immutable byte
 /// string, so it moves exactly when the bytes change. Mirrors `bae_core::album_detail::ImageRef`.
@@ -389,7 +389,7 @@ pub struct BridgeRelease {
     pub cover_files: Vec<BridgeFile>,
     /// Cover slot first (if the release has one), then every image file the
     /// release has. Each item's bytes are read through
-    /// `fetch_release_image_bytes`, which takes the item's `source` and
+    /// `fetch_release_image`, which takes the item's `source` and
     /// dispatches the read. Consumers render this as-is.
     pub gallery_items: Vec<BridgeGalleryItem>,
     /// Whether this device can play the release now, and why not.
@@ -822,7 +822,7 @@ pub fn bridge_cloud_provider_label_key(provider: Option<BridgeCloudProvider>) ->
 /// Which byte source a gallery slot is read from — each variant self-contained.
 /// `Cover` carries the cover's `BridgeImageRef` (id + version); `ReleaseFile`
 /// carries its file id. The UI passes the whole value to
-/// `fetch_release_image_bytes` and never inspects it to pick a fetch.
+/// `fetch_release_image` and never inspects it to pick a fetch.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeGallerySource {
     Cover { image: BridgeImageRef },

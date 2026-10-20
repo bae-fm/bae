@@ -1,3 +1,4 @@
+mod arrivals;
 mod configuration;
 #[cfg(feature = "desktop")]
 mod conversion;
@@ -16,6 +17,7 @@ mod storage;
 mod storage_failure;
 mod storage_inspector;
 
+pub use arrivals::*;
 pub use configuration::*;
 #[cfg(feature = "desktop")]
 pub use cover::*;

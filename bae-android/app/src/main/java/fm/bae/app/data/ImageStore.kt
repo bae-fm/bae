@@ -11,7 +11,9 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.BridgeArrivingFile
 import uniffi.bae_bridge.BridgeGallerySource
+import uniffi.bae_bridge.BridgeImageRead
 import uniffi.bae_bridge.BridgeImageRef
 import java.io.ByteArrayInputStream
 
@@ -130,13 +132,19 @@ data class ImageByteBudgets(
  * re-import mints new ones rather than repointing an existing row).
  */
 class ImageStore(
-    /** Bytes of a curated library image, or null when no such image exists. */
-    private val fetchLibraryImageBytes: suspend (image: BridgeImageRef) -> ByteArray? = { null },
-    /** Bytes of one of a release's image-strip slots, downloaded from the
-     *  release's cloud home (and decrypted) when it isn't on disk here. */
-    private val fetchReleaseImageBytes:
-        suspend (releaseId: String, source: BridgeGallerySource) -> ByteArray =
+    /** A curated library image's bytes, or its file still arriving from another
+     *  device; null when no such image exists. */
+    private val fetchLibraryImage: suspend (image: BridgeImageRef) -> BridgeImageRead? = { null },
+    /** One of a release's image-strip slots, downloaded from the release's cloud
+     *  home (and decrypted) when it isn't on disk here, or its file still
+     *  arriving from another device. */
+    private val fetchReleaseImage:
+        suspend (releaseId: String, source: BridgeGallerySource) -> BridgeImageRead =
         { _, _ -> throw ImageStoreUnavailable() },
+    /** Returns once a file still arriving has arrived, so its image reads again. */
+    private val waitForArrival: suspend (file: BridgeArrivingFile) -> Unit = {
+        throw ImageStoreUnavailable()
+    },
     decodedBudgets: DecodedImageBudgets = DecodedImageBudgets(),
     byteBudgets: ImageByteBudgets = ImageByteBudgets(),
     /** Where fetches and decodes run. Injected so tests drive them on their own
@@ -144,8 +152,9 @@ class ImageStore(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     constructor(handle: AppHandle) : this(
-        fetchLibraryImageBytes = { handle.fetchLibraryImageBytes(it) },
-        fetchReleaseImageBytes = { releaseId, source -> handle.fetchReleaseImageBytes(releaseId, source) },
+        fetchLibraryImage = { handle.fetchLibraryImage(it) },
+        fetchReleaseImage = { releaseId, source -> handle.fetchReleaseImage(releaseId, source) },
+        waitForArrival = { handle.waitForArrival(it) },
     )
 
     private val decoded = DecodedCaches(decodedBudgets)
@@ -170,9 +179,11 @@ class ImageStore(
     /**
      * Decoded bitmap for [content] at [size]: the cached decode when there is one,
      * otherwise fetch the bytes, decode off the main thread at that size, and
-     * store the result. Returns null when no such image exists (a library image
-     * with no bytes); a fetch or decode failure throws rather than resolving to a
-     * blank slot.
+     * store the result. An image whose file another device is still uploading
+     * waits for it to arrive and reads again, so a slot shows its placeholder
+     * until the image lands, and leaving the slot ends the wait. Returns null
+     * when no such image exists (a library image with no bytes); a fetch or
+     * decode failure throws rather than resolving to a blank slot.
      */
     suspend fun image(
         content: ImageContent,
@@ -183,7 +194,7 @@ class ImageStore(
         if (cached != null) return cached
         val bitmap =
             withContext(dispatcher) {
-                imageBytes(content)?.let { decodeBytes(it, size) }
+                heldOrFetchedBytes(content, Arrival.WAIT)?.let { decodeBytes(it, size) }
             }
         if (bitmap != null) {
             decoded[content.bucket].put(key, bitmap)
@@ -198,40 +209,68 @@ class ImageStore(
      *
      * Consumers that hand encoded bytes to something else — the artwork
      * `ContentProvider` streaming to a media-browse client — read them here rather
-     * than opening a second path to core.
+     * than opening a second path to core. Such a reader answers now, so an image
+     * still arriving from another device is null here, not a wait.
      */
-    suspend fun imageBytes(content: ImageContent): ByteArray? = heldOrFetchedBytes(content)
+    suspend fun imageBytes(content: ImageContent): ByteArray? = heldOrFetchedBytes(content, Arrival.ANSWER_NOW)
+
+    /** Whether a read of an image still arriving waits for it or answers null now. */
+    private enum class Arrival { WAIT, ANSWER_NOW }
 
     /** The bytes held for [content] in the byte cache, else the ones core hands
      *  back — held under the content's token when there is one. */
-    private suspend fun heldOrFetchedBytes(content: ImageContent): ByteArray? {
+    private suspend fun heldOrFetchedBytes(
+        content: ImageContent,
+        arrival: Arrival,
+    ): ByteArray? {
         val token = token(content)
         val cache = bytes[content.bucket]
         val held = cache.get(token)
         if (held != null) return held
-        val fetched = withContext(dispatcher) { fetchBytes(content) }
+        val fetched = withContext(dispatcher) { fetchBytes(content, arrival) }
         if (fetched != null) {
             cache.put(token, fetched)
         }
         return fetched
     }
 
-    /** Read [content]'s bytes from core. Null when core reports no such image. */
-    private suspend fun fetchBytes(content: ImageContent): ByteArray? =
-        when (content) {
-            is ImageContent.LibraryImage -> {
-                fetchLibraryImageBytes(content.image).also {
-                    if (it == null) {
-                        // Core handed us an image reference but its blob read
-                        // returned nothing — note it rather than blanking silently.
-                        logger.warning("no bytes for ${content.description}")
-                    }
-                }
+    /** Read [content]'s bytes from core. Null when core reports no such image, or
+     *  when it is still arriving and [arrival] answers now. */
+    private suspend fun fetchBytes(
+        content: ImageContent,
+        arrival: Arrival,
+    ): ByteArray? {
+        var read = fetchRead(content)
+        while (read is BridgeImageRead.Arriving && arrival == Arrival.WAIT) {
+            logger.debug("${content.description} is still arriving")
+            waitForArrival(read.file)
+            read = fetchRead(content)
+        }
+        return when (read) {
+            null -> {
+                // Core handed us an image reference but its blob read
+                // returned nothing — note it rather than blanking silently.
+                logger.warning("no bytes for ${content.description}")
+                null
             }
 
-            is ImageContent.ReleaseImage -> {
-                fetchReleaseImageBytes(content.releaseId, content.source)
+            is BridgeImageRead.Bytes -> {
+                read.bytes
             }
+
+            is BridgeImageRead.Arriving -> {
+                logger.debug("${content.description} is still arriving")
+                null
+            }
+        }
+    }
+
+    /** One read of [content] from core: its bytes, its file still arriving, or
+     *  null when no such image exists. */
+    private suspend fun fetchRead(content: ImageContent): BridgeImageRead? =
+        when (content) {
+            is ImageContent.LibraryImage -> fetchLibraryImage(content.image)
+            is ImageContent.ReleaseImage -> fetchReleaseImage(content.releaseId, content.source)
         }
 
     /**

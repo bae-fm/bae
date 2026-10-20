@@ -12,13 +12,42 @@ impl LibraryManager {
         &self,
         release_id: &str,
         source: &GallerySource,
-    ) -> Result<Vec<u8>, LibraryError> {
+    ) -> Result<ImageRead, LibraryError> {
         match source {
-            GallerySource::Cover(image) => self.read_image_blob(image).await?.ok_or_else(|| {
+            GallerySource::Cover(image) => self.read_image(image).await?.ok_or_else(|| {
                 LibraryError::Storage(format!("gallery cover image {} has no bytes", image.id))
             }),
             GallerySource::ReleaseFile { file_id } => {
-                self.load_gallery_image(release_id, file_id).await
+                match self.load_gallery_image(release_id, file_id).await {
+                    Ok(bytes) => Ok(ImageRead::Bytes(bytes)),
+                    Err(LibraryError::Database(crate::db::DbError::FileRead(
+                        coven::FileReadError::Uploading { .. },
+                    ))) => {
+                        let file = self.release_file_row_blob_ref(file_id).await?;
+                        Ok(ImageRead::Arriving(super::coven_blobs::arriving(
+                            file_id, &file,
+                        )))
+                    }
+                    Err(error) => Err(error),
+                }
+            }
+        }
+    }
+
+    /// Wait until `file` no longer arrives: coven fetched it once its uploader
+    /// uploaded it, or its wait turned into another condition. The image that
+    /// named it reads again then. A file coven fetches by itself, as every
+    /// cover, artist image and avatar, ends its wait on its own; any file
+    /// ends it on the person's retry.
+    pub async fn wait_for_arrival(&self, file: ArrivingFile) -> Result<(), LibraryError> {
+        let mut pending = self.database.subscribe_pending();
+        loop {
+            let records = pending.next().await?;
+            if !records
+                .iter()
+                .any(|record| ArrivingFile::of(record) == Some(file))
+            {
+                return Ok(());
             }
         }
     }
@@ -26,7 +55,7 @@ impl LibraryManager {
     /// Bytes of one of a release's image files, read from the local copy when it
     /// exists here and otherwise downloaded from the release's cloud home (and
     /// decrypted). The `ReleaseFile` arm of [`read_gallery_bytes`](Self::read_gallery_bytes).
-    pub async fn load_gallery_image(
+    async fn load_gallery_image(
         &self,
         release_id: &str,
         file_id: &str,
@@ -41,9 +70,7 @@ impl LibraryManager {
                     "Image file {file_id} is not part of release {release_id}"
                 ))
             })?;
-        crate::storage::transfer::read_release_file_bytes(&file, self)
-            .await
-            .map_err(|e| LibraryError::Import(e.to_string()))
+        crate::storage::transfer::read_release_file_bytes(&file, self).await
     }
 
     /// Test-only: seed a bare image row. Production writes cover/artist images

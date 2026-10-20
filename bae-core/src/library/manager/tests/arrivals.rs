@@ -47,17 +47,13 @@ async fn wait_for_cover_row(devices: &crate::sync::test_devices::TwoDevices, rel
     .expect("B receives the cover's row");
 }
 
-/// Device A attaches a release and its cover while its uploads are paused.
-/// Device B receives the rows and tries to fetch the cover, which storage
-/// doesn't hold yet: the cover arrives from A, named by A's device name and
-/// placed on its release, and is no pending work at all. Once A uploads it,
-/// B's next download fetches it and the arrival is gone.
-async fn check_cover_arrival() {
-    let devices = crate::sync::test_devices::TwoDevices::new().await;
+/// A release with a cover on device A, whose uploads are paused, so the
+/// cover's row syncs while its file stays on A. Sync is paused on both
+/// devices; the caller resumes it.
+async fn held_cover_on_a(devices: &crate::sync::test_devices::TwoDevices) -> (DbAlbum, DbRelease) {
     devices.pause().await;
     let a = devices.a().manager();
     a.database.set_uploads_paused(true).await.unwrap();
-    let original = TempDir::new().unwrap();
     let album = create_test_album();
     a.database
         .insert_artist(&DbArtist {
@@ -71,10 +67,34 @@ async fn check_cover_arrival() {
         .await
         .unwrap();
     a.database.insert_album(&album).await.unwrap();
-    let release =
-        insert_local_release_in_album(a, &album.id, original.path(), &[("a.flac", b"first audio")])
-            .await;
+    let release = create_test_release(&album.id);
+    insert_release(a, &release).await;
     store_test_cover(a, &release.id, b"cover").await;
+    (album, release)
+}
+
+/// Wait until A's upload queue is empty: the cover is in storage.
+async fn uploaded_on_a(devices: &crate::sync::test_devices::TwoDevices) {
+    let a = devices.a().manager();
+    a.database.set_uploads_paused(false).await.unwrap();
+    tokio::time::timeout(std::time::Duration::from_secs(30), async {
+        while !a.database.outbox_queue().await.unwrap().uploads.is_empty() {
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+    })
+    .await
+    .expect("A uploads the cover");
+}
+
+/// Device A attaches a release and its cover while its uploads are paused.
+/// Device B receives the rows and tries to fetch the cover, which storage
+/// doesn't hold yet: the cover arrives from A, named by A's device name and
+/// placed on its release, and is no pending work at all. Once A uploads it,
+/// B's next download fetches it and the arrival is gone.
+async fn check_cover_arrival() {
+    let devices = crate::sync::test_devices::TwoDevices::new().await;
+    let a = devices.a().manager();
+    let (album, release) = held_cover_on_a(&devices).await;
     let b = devices.b().manager();
     b.start().unwrap();
     devices.resume().await;
@@ -123,14 +143,7 @@ async fn check_cover_arrival() {
         "an arriving file is no pending work: {pending:?}"
     );
 
-    a.database.set_uploads_paused(false).await.unwrap();
-    tokio::time::timeout(std::time::Duration::from_secs(30), async {
-        while !a.database.outbox_queue().await.unwrap().uploads.is_empty() {
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        }
-    })
-    .await
-    .expect("A uploads the cover");
+    uploaded_on_a(&devices).await;
     // The cover is in storage now; B's next fetch of it, here the cover's
     // own read, ends its arrival.
     assert_eq!(
@@ -158,25 +171,8 @@ fn retrying_now_ends_a_download_waiting_for_its_upload() {
 /// instead of after that backoff.
 async fn check_retry_now_ends_the_wait() {
     let devices = crate::sync::test_devices::TwoDevices::new().await;
-    devices.pause().await;
     let a = devices.a().manager();
-    a.database.set_uploads_paused(true).await.unwrap();
-    let album = create_test_album();
-    a.database
-        .insert_artist(&DbArtist {
-            id: album.artist_id.clone(),
-            name: "Artist Name".into(),
-            sort_name: None,
-            discogs_artist_id: None,
-            musicbrainz_artist_id: None,
-            created_at: album.created_at,
-        })
-        .await
-        .unwrap();
-    a.database.insert_album(&album).await.unwrap();
-    let release = create_test_release(&album.id);
-    insert_release(a, &release).await;
-    store_test_cover(a, &release.id, b"cover").await;
+    let (_album, release) = held_cover_on_a(&devices).await;
     let b = devices.b().manager();
     b.start().unwrap();
     devices.resume().await;
@@ -193,14 +189,7 @@ async fn check_retry_now_ends_the_wait() {
         b.retry_now();
         tokio::time::sleep(std::time::Duration::from_millis(300)).await;
     }
-    a.database.set_uploads_paused(false).await.unwrap();
-    tokio::time::timeout(std::time::Duration::from_secs(30), async {
-        while !a.database.outbox_queue().await.unwrap().uploads.is_empty() {
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        }
-    })
-    .await
-    .expect("A uploads the cover");
+    uploaded_on_a(&devices).await;
     b.network_changed();
     b.retry_now();
     let mut values = b.subscribe_sync_status_values();
@@ -214,5 +203,63 @@ async fn check_retry_now_ends_the_wait() {
     .expect("retrying now fetches the cover")
     .unwrap();
     a.close().await.unwrap();
+    b.close().await.unwrap();
+}
+
+#[test]
+fn a_cover_still_arriving_reads_once_its_file_lands() {
+    crate::sync::test_devices::run_two_device_test(check_image_arrival);
+}
+
+/// The image read the UI makes: a cover another device hasn't uploaded is
+/// arriving, never a failure, and names its file; waiting for that file ends
+/// once B fetches it after A uploads, and the read then has the bytes.
+async fn check_image_arrival() {
+    let devices = crate::sync::test_devices::TwoDevices::new().await;
+    let (_album, release) = held_cover_on_a(&devices).await;
+    let b = devices.b().manager();
+    devices.resume().await;
+    wait_for_cover_row(&devices, &release.id).await;
+    let image = b
+        .cover_ref(&release.id)
+        .await
+        .unwrap()
+        .expect("the cover row");
+    let Some(ImageRead::Arriving(file)) = b.read_image(&image).await.unwrap() else {
+        panic!("the cover is still arriving from A");
+    };
+    let a_device = devices
+        .a()
+        .database()
+        .members()
+        .await
+        .unwrap()
+        .into_iter()
+        .flat_map(|member| member.devices)
+        .find(|device| device.is_self)
+        .expect("A's own device")
+        .id;
+    assert_eq!(file.uploader, a_device);
+    let arrived = tokio::spawn({
+        let b = b.clone();
+        async move { b.wait_for_arrival(file).await }
+    });
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    assert!(
+        !arrived.is_finished(),
+        "the file has not arrived while A holds it"
+    );
+    uploaded_on_a(&devices).await;
+    b.retry_now();
+    tokio::time::timeout(std::time::Duration::from_secs(10), arrived)
+        .await
+        .expect("the wait ends once B fetches the cover")
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        b.read_image(&image).await.unwrap(),
+        Some(ImageRead::Bytes(b"cover".to_vec()))
+    );
+    devices.a().manager().close().await.unwrap();
     b.close().await.unwrap();
 }

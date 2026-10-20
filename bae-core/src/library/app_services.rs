@@ -375,7 +375,9 @@ impl AppServices {
     delegate_async!(manager, file_local_path => file_local_path(file_id: &str) -> Result<Option<std::path::PathBuf>, crate::library::LibraryError>);
     delegate_async!(manager, get_library_image => get_library_image(id: &str, image_type: &crate::db::LibraryImageType) -> Result<Option<crate::db::DbLibraryImage>, crate::library::LibraryError>);
     delegate_async!(manager, read_image_blob => read_image_blob(image: &crate::album_detail::ImageRef) -> Result<Option<Vec<u8>>, crate::library::LibraryError>);
-    delegate_async!(manager, read_gallery_bytes => read_gallery_bytes(release_id: &str, source: &crate::album_detail::GallerySource) -> Result<Vec<u8>, crate::library::LibraryError>);
+    delegate_async!(manager, read_gallery_bytes => read_gallery_bytes(release_id: &str, source: &crate::album_detail::GallerySource) -> Result<crate::library::ImageRead, crate::library::LibraryError>);
+    delegate_async!(manager, read_image => read_image(image: &crate::album_detail::ImageRef) -> Result<Option<crate::library::ImageRead>, crate::library::LibraryError>);
+    delegate_async!(manager, wait_for_arrival => wait_for_arrival(file: crate::library::ArrivingFile) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, read_cover_image_blob => read_cover_image_blob(release_id: &str) -> Result<Option<Vec<u8>>, crate::library::LibraryError>);
     delegate_async!(manager, get_artists_for_track => get_artists_for_track(track_id: &str) -> Result<Vec<crate::db::DbArtist>, crate::library::LibraryError>);
     delegate_async!(manager, get_all_track_ids => get_all_track_ids() -> Result<Vec<String>, crate::library::LibraryError>);

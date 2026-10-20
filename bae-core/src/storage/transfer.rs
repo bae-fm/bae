@@ -27,16 +27,15 @@ type ProgressTx = mpsc::UnboundedSender<TransferProgress>;
 pub async fn read_release_file_bytes(
     file: &DbFile,
     mgr: &LibraryManager,
-) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<Vec<u8>, LibraryError> {
     let bytes = mgr.read_release_blob(file).await?;
     if bytes.len() as i64 != file.file_size {
-        return Err(format!(
+        return Err(LibraryError::Storage(format!(
             "File {} short read: got {} bytes, expected {}",
             file.id,
             bytes.len(),
             file.file_size
-        )
-        .into());
+        )));
     }
     Ok(bytes)
 }

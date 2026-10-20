@@ -1290,6 +1290,13 @@ registered under. Once the Mac uploads it, the phone's next fetch of the file
 ends its arrival. A file whose uploader was removed, or whose request failed,
 stays a pending record.
 
+A cover or other picture still arriving is no failure either. Reading it
+names its file instead of failing, and the picture shows its placeholder
+until the file lands; the request waits for that and then reads the picture,
+so it appears by itself. Nothing about it is logged above debug. A reader
+that has to answer at once, such as the artwork a car's media browser asks
+for, gets no picture rather than waiting.
+
 Ben's laptop shows "Waiting: 2 items": Dropbox wants him to sign in again, and
 a file of his vinyl rip moved before it uploaded. The list offers *Sign In* for
 the first: core signs in with the access the library's folder needs, then

@@ -60,6 +60,7 @@ mod collections;
 mod composer;
 mod config;
 mod coven_blobs;
+pub use coven_blobs::ImageRead;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod discogs;
 mod error_category;

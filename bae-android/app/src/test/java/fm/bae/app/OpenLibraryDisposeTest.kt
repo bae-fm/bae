@@ -26,6 +26,7 @@ import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeImageRead
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.NoHandle
@@ -154,6 +155,6 @@ class OpenLibraryDisposeTest {
 
         override suspend fun savePlaybackState() {}
 
-        override suspend fun fetchLibraryImageBytes(image: BridgeImageRef): ByteArray? = null
+        override suspend fun fetchLibraryImage(image: BridgeImageRef): BridgeImageRead? = null
     }
 }

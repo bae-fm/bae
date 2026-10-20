@@ -126,8 +126,24 @@ impl LibraryManager {
         id: &str,
         image_type: &LibraryImageType,
     ) -> Result<Option<Vec<u8>>, LibraryError> {
-        // The image row must exist for coven to bind its row blob ref; absent =
-        // no stored image to read.
+        let Some(blob) = self.library_image_file(id, image_type).await? else {
+            return Ok(None);
+        };
+        let bytes = self
+            .database
+            .read_file(&blob)
+            .await
+            .map_err(|e| LibraryError::blob(format!("read image {id}"), e))?;
+        Ok(Some(bytes))
+    }
+
+    /// A library image's file, or `None` when no image is stored: the image
+    /// row must exist for coven to bind its row's file.
+    async fn library_image_file(
+        &self,
+        id: &str,
+        image_type: &LibraryImageType,
+    ) -> Result<Option<coven::FileRef>, LibraryError> {
         if self
             .database
             .find_library_image(id, image_type)
@@ -136,13 +152,31 @@ impl LibraryManager {
         {
             return Ok(None);
         }
-        let blob = self.image_row_blob_ref(image_type.namespace(), id).await?;
-        let bytes = self
-            .database
-            .read_file(&blob)
-            .await
-            .map_err(|e| LibraryError::blob(format!("read image {id}"), e))?;
-        Ok(Some(bytes))
+        Ok(Some(
+            self.image_row_blob_ref(image_type.namespace(), id).await?,
+        ))
+    }
+
+    /// A library image to show: its bytes, or the file another device is
+    /// still uploading, which arrives by itself (`wait_for_arrival`).
+    /// `None` when no image is stored.
+    pub async fn read_image(&self, image: &ImageRef) -> Result<Option<ImageRead>, LibraryError> {
+        let Some(file) = self
+            .library_image_file(&image.id, &image.image_type)
+            .await?
+        else {
+            return Ok(None);
+        };
+        match self.database.read_file(&file).await {
+            Ok(bytes) => Ok(Some(ImageRead::Bytes(bytes))),
+            Err(coven::FileReadError::Uploading { .. }) => {
+                Ok(Some(ImageRead::Arriving(arriving(&image.id, &file))))
+            }
+            Err(error) => Err(LibraryError::blob(
+                format!("read image {}", image.id),
+                error,
+            )),
+        }
     }
 
     /// A release is pinned only when every one of its files is pinned.
@@ -258,6 +292,26 @@ impl LibraryManager {
         self.database.write_library_image_blob(image, bytes).await?;
         Ok(())
     }
+}
+
+/// An image to show, read now or still on its way from another device.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ImageRead {
+    Bytes(Vec<u8>),
+    /// Another device hasn't uploaded the image's file yet; it is no failure,
+    /// and the image can be read once the file arrives.
+    Arriving(super::ArrivingFile),
+}
+
+/// The file `image` names as arriving, noted once at debug: an image another
+/// device is still uploading is the library arriving, not a failure.
+pub(super) fn arriving(image: &str, file: &coven::FileRef) -> super::ArrivingFile {
+    let arriving = super::ArrivingFile {
+        uploader: file.uploader(),
+        file: file.id(),
+    };
+    debug!(image, ?arriving, "image still arriving from its uploader");
+    arriving
 }
 
 /// One blob of a release's pinned set, with the plaintext byte size its row
