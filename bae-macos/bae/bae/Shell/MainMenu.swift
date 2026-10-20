@@ -112,7 +112,7 @@ enum MainMenu {
                     [.command, .option]
                 ),
                 item(
-                    "Join a Library...",
+                    "Join Library...",
                     #selector(AppDelegate.joinLibrary(_:))
                 ),
                 item(

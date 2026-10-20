@@ -29292,7 +29292,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Başka bir kitaplık seçin veya “Aygıt ekle” ile geri yükleyin."
+            "value" : "Başka bir kitaplık seçin veya “Cihaz ekle” ile geri yükleyin."
           }
         },
         "uk" : {
@@ -51148,7 +51148,7 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Σύνδεση"
+            "value" : "Συμμετοχή"
           }
         },
         "es" : {
@@ -51226,7 +51226,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Participar"
+            "value" : "Entrar"
           }
         },
         "pt-PT" : {
@@ -51315,7 +51315,7 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Σύνδεση σε βιβλιοθήκη"
+            "value" : "Συμμετοχή σε βιβλιοθήκη"
           }
         },
         "en" : {
@@ -51399,7 +51399,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Participar de uma biblioteca"
+            "value" : "Entrar em uma biblioteca"
           }
         },
         "pt-PT" : {
@@ -51452,7 +51452,7 @@
         }
       }
     },
-    "Join a Library..." : {
+    "Join Library..." : {
       "comment" : "File menu: opens the join-a-library flow",
       "localizations" : {
         "ar" : {
@@ -51482,7 +51482,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Join a Library..."
+            "value" : "Join Library..."
           }
         },
         "de" : {
@@ -51494,7 +51494,7 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Σύνδεση σε βιβλιοθήκη..."
+            "value" : "Συμμετοχή σε βιβλιοθήκη..."
           }
         },
         "es" : {
@@ -51524,7 +51524,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pridruži se knjižnici..."
+            "value" : "Pridruži se fonoteci..."
           }
         },
         "hu" : {
@@ -51548,7 +51548,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "보관함 참여..."
+            "value" : "라이브러리 참여..."
           }
         },
         "nb" : {
@@ -51572,7 +51572,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Participar de uma biblioteca..."
+            "value" : "Entrar em uma biblioteca..."
           }
         },
         "pt-PT" : {
@@ -51596,13 +51596,13 @@
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Anslut dig till ett bibliotek..."
+            "value" : "Gå med i ett bibliotek..."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bir kitaplığa katıl..."
+            "value" : "Kitaplığa katıl..."
           }
         },
         "uk" : {
@@ -51614,7 +51614,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "加入资料库..."
+            "value" : "加入库..."
           }
         },
         "zh-Hant" : {
@@ -73463,7 +73463,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aygıt ekle"
+            "value" : "Cihaz ekle"
           }
         },
         "uk" : {
@@ -112641,7 +112641,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu Apple Hesabı'nda oturum açmış diğer aygıtlarınızın kaydettiği kurtarma kodları."
+            "value" : "Bu Apple Hesabı'nda oturum açmış diğer cihazlarınızın kaydettiği kurtarma kodları."
           }
         },
         "uk" : {
@@ -113656,7 +113656,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aygıtlarınızdan birinde “Aygıt ekle…” seçeneğinin gösterdiği kodu tarayın veya yapıştırın. Tüm aygıtlarınızı kaybettiyseniz kurtarma kodunuzu kullanın."
+            "value" : "Cihazlarınızdan birinde “Cihaz ekle…” seçeneğinin gösterdiği kodu tarayın veya yapıştırın. Tüm cihazlarınızı kaybettiyseniz kurtarma kodunuzu kullanın."
           }
         },
         "uk" : {
@@ -129326,7 +129326,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aygıt ekle..."
+            "value" : "Cihaz ekle..."
           }
         },
         "uk" : {
@@ -129499,7 +129499,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aygıt ekle"
+            "value" : "Cihaz ekle"
           }
         },
         "uk" : {
@@ -129672,7 +129672,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yeni aygıtta “Aygıt ekle” seçeneğini seçin, ardından bunu tarayın ya da şunu yazın:"
+            "value" : "Yeni cihazda “Cihaz ekle” seçeneğini seçin, ardından bunu tarayın ya da şunu yazın:"
           }
         },
         "uk" : {

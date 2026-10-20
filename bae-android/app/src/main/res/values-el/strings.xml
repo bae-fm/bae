@@ -135,7 +135,7 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">Συμβατό με S3</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="onboarding_join_action">Σύνδεση</string>
+    <string name="onboarding_join_action">Συμμετοχή</string>
     <string name="qr_scanner_instructions">Σαρώστε έναν κωδικό ανάκτησης που εμφανίζει το bae σε μία από τις συσκευές σας ή μια πρόσκληση.</string>
     <string name="downloads">Λήψεις</string>
     <string name="download">Λήψη</string>

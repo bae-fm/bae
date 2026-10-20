@@ -21676,7 +21676,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Participar"
+            "value" : "Entrar"
           }
         },
         "ja" : {
@@ -21784,7 +21784,7 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Σύνδεση"
+            "value" : "Συμμετοχή"
           }
         },
         "pt-PT" : {
@@ -21855,7 +21855,7 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Σύνδεση σε βιβλιοθήκη"
+            "value" : "Συμμετοχή σε βιβλιοθήκη"
           }
         },
         "en" : {
@@ -21939,7 +21939,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Participar de uma biblioteca"
+            "value" : "Entrar em uma biblioteca"
           }
         },
         "pt-PT" : {
@@ -34903,7 +34903,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu Apple Hesabı'nda oturum açmış diğer aygıtlarınızın kaydettiği kurtarma kodları."
+            "value" : "Bu Apple Hesabı'nda oturum açmış diğer cihazlarınızın kaydettiği kurtarma kodları."
           }
         },
         "uk" : {
@@ -35422,7 +35422,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aygıt ekle"
+            "value" : "Cihaz ekle"
           }
         },
         "uk" : {
@@ -36099,7 +36099,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aygıtlarınızdan birinde “Aygıt ekle…” seçeneğinin gösterdiği kodu tarayın veya yapıştırın. Tüm aygıtlarınızı kaybettiyseniz kurtarma kodunuzu kullanın."
+            "value" : "Cihazlarınızdan birinde “Cihaz ekle…” seçeneğinin gösterdiği kodu tarayın veya yapıştırın. Tüm cihazlarınızı kaybettiyseniz kurtarma kodunuzu kullanın."
           }
         },
         "uk" : {
@@ -44166,7 +44166,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aygıt ekle…"
+            "value" : "Cihaz ekle…"
           }
         },
         "uk" : {
@@ -44339,7 +44339,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aygıt ekle"
+            "value" : "Cihaz ekle"
           }
         },
         "uk" : {
@@ -44512,7 +44512,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yeni aygıtta “Aygıt ekle” seçeneğini seçin, ardından bunu tarayın ya da şunu yazın:"
+            "value" : "Yeni cihazda “Cihaz ekle” seçeneğini seçin, ardından bunu tarayın ya da şunu yazın:"
           }
         },
         "uk" : {
