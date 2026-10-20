@@ -57,6 +57,8 @@ struct TitleBar: View {
                     onSearchFieldFrame(frame)
                 }
 
+                SyncActivityButton()
+
                 Button(action: { openSettings() }) {
                     Image(systemName: "gearshape")
                         .themeIcon(.large)
@@ -201,6 +203,8 @@ private struct SectionSegmentedControl: View {
             .environment(library)
             .environment(LibraryProjectionStore(library: library))
             .environment(UiStore())
+            .environment(SyncActivityStore.preview())
+            .environment(SettingsNavigation())
             .mainWindowPreviewEnvironment()
     }
 #endif

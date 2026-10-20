@@ -28,15 +28,14 @@ private final class SyncStatusValueSink: SyncStatusCallback,
     }
 }
 
-private final class ArtworkLoadingValueSink: EagerCacheFillStatusCallback,
+private final class SyncActivityValueSink: SyncActivityCallback,
     @unchecked Sendable
 {
-    private let apply: @MainActor @Sendable (BridgeEagerCacheFillStatus) -> Void
+    private let apply: @MainActor @Sendable (BridgeSyncActivity) -> Void
     private let fail: @MainActor @Sendable (any Error) -> Void
 
     init(
-        apply:
-            @escaping @MainActor @Sendable (BridgeEagerCacheFillStatus) -> Void,
+        apply: @escaping @MainActor @Sendable (BridgeSyncActivity) -> Void,
         fail: @escaping @MainActor @Sendable (any Error) -> Void
     ) {
         self.apply = apply
@@ -45,7 +44,7 @@ private final class ArtworkLoadingValueSink: EagerCacheFillStatusCallback,
 
     func onError(error: BridgeError) { Task { @MainActor in fail(error) } }
 
-    func onValue(value: BridgeEagerCacheFillStatus) {
+    func onValue(value: BridgeSyncActivity) {
         Task { @MainActor in apply(value) }
     }
 }
@@ -158,7 +157,7 @@ final class CommonSubscriptions {
     private let appHandle: AppHandle
     private let configStore: ConfigStore
     private let syncStatusStore: SyncStatusStore
-    private let artworkLoadingStore: ArtworkLoadingStore
+    private let syncActivityStore: SyncActivityStore
     private let outboxStore: OutboxStore
     private let downloadStore: DownloadStore
     private let castStore: CastStore
@@ -168,7 +167,7 @@ final class CommonSubscriptions {
         appHandle: AppHandle,
         configStore: ConfigStore,
         syncStatusStore: SyncStatusStore,
-        artworkLoadingStore: ArtworkLoadingStore,
+        syncActivityStore: SyncActivityStore,
         outboxStore: OutboxStore,
         downloadStore: DownloadStore,
         castStore: CastStore
@@ -176,7 +175,7 @@ final class CommonSubscriptions {
         self.appHandle = appHandle
         self.configStore = configStore
         self.syncStatusStore = syncStatusStore
-        self.artworkLoadingStore = artworkLoadingStore
+        self.syncActivityStore = syncActivityStore
         self.outboxStore = outboxStore
         self.downloadStore = downloadStore
         self.castStore = castStore
@@ -249,13 +248,13 @@ final class CommonSubscriptions {
                     syncStatusStore.apply(value)
                 }
             ),
-            appHandle.subscribeEagerCacheFillStatus(
-                callback: ArtworkLoadingValueSink(
-                    apply: { [artworkLoadingStore] value in
-                        artworkLoadingStore.apply(value)
+            appHandle.subscribeSyncActivity(
+                callback: SyncActivityValueSink(
+                    apply: { [syncActivityStore] value in
+                        syncActivityStore.apply(value)
                     },
-                    fail: { [artworkLoadingStore] error in
-                        artworkLoadingStore.fail(error)
+                    fail: { [syncActivityStore] error in
+                        syncActivityStore.fail(error)
                     }
                 )
             ),

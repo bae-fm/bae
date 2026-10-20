@@ -83,29 +83,45 @@ impl BridgeSyncActivity {
 /// The files this device is sending now, out of its whole upload queue.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeUploadsInFlight {
-    pub sending: u32,
-    pub waiting: u32,
+    /// The list's line: the counts sending and waiting, a zero dropped.
+    pub summary_parts: Vec<super::BridgeCountLabel>,
     /// Provider-confirmed bytes of the files sent in parts; zero of zero when
     /// every file goes in one request.
     pub bytes_done: u64,
     pub bytes_total: u64,
 }
-mirror_struct! {
-    BridgeUploadsInFlight = bae_core::library::UploadsInFlight,
-    from_core: fn,
-    fields: { sending, waiting, bytes_done, bytes_total },
+
+impl BridgeUploadsInFlight {
+    fn from_core(uploads: bae_core::library::UploadsInFlight) -> Self {
+        Self {
+            summary_parts: uploads
+                .summary_parts()
+                .into_iter()
+                .map(super::BridgeCountLabel::from_core)
+                .collect(),
+            bytes_done: uploads.bytes_done,
+            bytes_total: uploads.bytes_total,
+        }
+    }
 }
 
 /// The releases downloading to keep offline.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeDownloadsInFlight {
-    pub active: u32,
-    pub queued: u32,
+    /// The list's line: the counts downloading and waiting, a zero dropped.
+    pub summary_parts: Vec<super::BridgeCountLabel>,
 }
-mirror_struct! {
-    BridgeDownloadsInFlight = bae_core::library::DownloadsInFlight,
-    from_core: fn,
-    fields: { active, queued },
+
+impl BridgeDownloadsInFlight {
+    fn from_core(downloads: bae_core::library::DownloadsInFlight) -> Self {
+        Self {
+            summary_parts: downloads
+                .summary_parts()
+                .into_iter()
+                .map(super::BridgeCountLabel::from_core)
+                .collect(),
+        }
+    }
 }
 
 /// The files still arriving from other devices, grouped for the activity

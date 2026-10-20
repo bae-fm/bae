@@ -285,6 +285,7 @@ struct MainAppView: View {
             .environment(PreviewAudio.stub())
             .environment(Cast.stub())
             .environment(CastStore())
+            .environment(SyncActivityStore.preview())
             .albumDetailPreviewEnvironment(store: libraryStore)
             .environment(
                 \.playbackPositionPublisher,

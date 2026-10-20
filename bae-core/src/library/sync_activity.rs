@@ -1,6 +1,8 @@
 //! Everything sync is doing on this device at once, for the activity
 //! indicator in the app's title bar and the list it opens.
 
+use crate::library::release_queue::ReleaseQueueProgress;
+use crate::library::CountLabel;
 use crate::library::{
     Arrivals, DownloadQueueContents, EagerCacheFillStatus, OutboxPauseState, OutboxSnapshot,
     PendingItem, PinProgress, SyncStatusSnapshot,
@@ -47,6 +49,32 @@ pub struct DownloadsInFlight {
     pub active: u32,
     /// Releases queued behind them.
     pub queued: u32,
+}
+
+impl UploadsInFlight {
+    /// The list's line: how many files are being sent, then how many wait
+    /// behind them, a zero dropped.
+    pub fn summary_parts(&self) -> Vec<CountLabel> {
+        ReleaseQueueProgress {
+            queued: self.waiting,
+            active: self.sending,
+            failed: 0,
+        }
+        .summary_parts("core.queue.uploading")
+    }
+}
+
+impl DownloadsInFlight {
+    /// The list's line: how many releases are downloading, then how many
+    /// wait behind them, a zero dropped.
+    pub fn summary_parts(&self) -> Vec<CountLabel> {
+        ReleaseQueueProgress {
+            queued: self.queued,
+            active: self.active,
+            failed: 0,
+        }
+        .summary_parts("core.queue.downloading")
+    }
 }
 
 impl SyncActivity {

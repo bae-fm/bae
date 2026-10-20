@@ -119,11 +119,8 @@ struct AppSessionView: View {
 
         case .library(let service):
             service.installEnvironment(
-                VStack(spacing: 0) {
-                    ArtworkLoadingBanner()
-                    LibraryView()
-                }
-                .environment(holder)
+                LibraryView()
+                    .environment(holder)
             )
 
         case .keychainLocked:

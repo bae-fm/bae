@@ -80,9 +80,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         )
         let syncStatusStore = SyncStatusStore()
         let membershipStore = MembershipStore(handle: appHandle)
-        let artworkLoadingStore = ArtworkLoadingStore {
-            try await appHandle.cancelEagerCacheFill()
-        }
+        let syncActivityStore = SyncActivityStore(
+            cancelArtwork: { try await appHandle.cancelEagerCacheFill() },
+            retryNow: { appHandle.retryNow() }
+        )
         let libraryStore = LibraryStore()
         let downloadStore = DownloadStore(snapshot: seed.downloads)
         let castStore = CastStore()
@@ -152,7 +153,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             configStore: configStore,
             syncStatusStore: syncStatusStore,
             membershipStore: membershipStore,
-            artworkLoadingStore: artworkLoadingStore,
+            syncActivityStore: syncActivityStore,
             libraryStore: libraryStore,
             downloadStore: downloadStore,
             castStore: castStore,

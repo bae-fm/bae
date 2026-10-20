@@ -12,7 +12,7 @@ public struct AppServiceComponents {
     fileprivate let configStore: ConfigStore
     fileprivate let membershipStore: MembershipStore
     fileprivate let syncStatusStore: SyncStatusStore
-    fileprivate let artworkLoadingStore: ArtworkLoadingStore
+    fileprivate let syncActivityStore: SyncActivityStore
     fileprivate let libraryStore: LibraryStore
     fileprivate let downloadStore: DownloadStore
     fileprivate let castStore: CastStore
@@ -31,7 +31,7 @@ public struct AppServiceComponents {
         configStore: ConfigStore,
         syncStatusStore: SyncStatusStore,
         membershipStore: MembershipStore,
-        artworkLoadingStore: ArtworkLoadingStore,
+        syncActivityStore: SyncActivityStore,
         libraryStore: LibraryStore,
         downloadStore: DownloadStore,
         castStore: CastStore,
@@ -49,7 +49,7 @@ public struct AppServiceComponents {
         self.configStore = configStore
         self.syncStatusStore = syncStatusStore
         self.membershipStore = membershipStore
-        self.artworkLoadingStore = artworkLoadingStore
+        self.syncActivityStore = syncActivityStore
         self.libraryStore = libraryStore
         self.downloadStore = downloadStore
         self.castStore = castStore
@@ -113,7 +113,7 @@ open class AppService: @unchecked Sendable, Observable {
     private let playbackStore: PlaybackStore
     private let configStore: ConfigStore
     private let syncStatusStore: SyncStatusStore
-    private let artworkLoadingStore: ArtworkLoadingStore
+    private let syncActivityStore: SyncActivityStore
     private let libraryStore: LibraryStore
     /// In-memory download (pin) queue mirror — per-release state and summary.
     private let downloadStore: DownloadStore
@@ -172,7 +172,7 @@ open class AppService: @unchecked Sendable, Observable {
         playbackStore = components.playbackStore
         configStore = components.configStore
         syncStatusStore = components.syncStatusStore
-        artworkLoadingStore = components.artworkLoadingStore
+        syncActivityStore = components.syncActivityStore
         libraryStore = components.libraryStore
         downloadStore = components.downloadStore
         castStore = components.castStore
@@ -181,7 +181,7 @@ open class AppService: @unchecked Sendable, Observable {
             appHandle: appHandle,
             configStore: components.configStore,
             syncStatusStore: components.syncStatusStore,
-            artworkLoadingStore: components.artworkLoadingStore,
+            syncActivityStore: components.syncActivityStore,
             outboxStore: components.outboxStore,
             downloadStore: components.downloadStore,
             castStore: components.castStore
@@ -408,7 +408,7 @@ extension AppService {
             .environment(configStore)
             .environment(syncStatusStore)
             .environment(membershipStore)
-            .environment(artworkLoadingStore)
+            .environment(syncActivityStore)
             .environment(libraryStore)
             .environment(libraryProjectionStore)
             .environment(libraryListsStore)

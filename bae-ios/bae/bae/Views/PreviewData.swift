@@ -319,6 +319,7 @@ extension View {
         let resolvedLibraryStore = libraryStore ?? PreviewData.libraryStore()
         return environment(PreviewData.configStore())
             .environment(SyncStatusStore())
+            .environment(SyncActivityStore.preview(needsAttention: false))
             .environment(MembershipStore.stub(people: [], selfIsAdmin: false))
             .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
             .environment(PreviewData.removals())

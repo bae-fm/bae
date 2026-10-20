@@ -1,4 +1,5 @@
 use super::*;
+use crate::library::CountLabel;
 use crate::library::{DeviceArrivals, OutboxSnapshot, ReleaseArrival, UploadProgress};
 
 fn status() -> SyncStatusSnapshot {
@@ -161,4 +162,35 @@ fn failures_and_pending_records_need_attention() {
     let mut unread = status();
     unread.arrivals = Some(Err(UiError::internal("no devices")));
     assert!(new(&unread).needs_attention());
+}
+
+/// The list's lines name what is sending or downloading, then what waits,
+/// and drop a zero.
+#[test]
+fn transfer_lines_name_the_moving_count_first() {
+    let label = |key: &str, count| CountLabel {
+        key: key.into(),
+        count,
+    };
+    assert_eq!(
+        UploadsInFlight {
+            sending: 2,
+            waiting: 4,
+            bytes_done: 0,
+            bytes_total: 0,
+        }
+        .summary_parts(),
+        vec![
+            label("core.queue.uploading", 2),
+            label("core.queue.queued", 4)
+        ]
+    );
+    assert_eq!(
+        DownloadsInFlight {
+            active: 1,
+            queued: 0
+        }
+        .summary_parts(),
+        vec![label("core.queue.downloading", 1)]
+    );
 }

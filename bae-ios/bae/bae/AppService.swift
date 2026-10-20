@@ -35,9 +35,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             ),
             syncStatusStore: SyncStatusStore(),
             membershipStore: MembershipStore(handle: appHandle),
-            artworkLoadingStore: ArtworkLoadingStore {
-                try await appHandle.cancelEagerCacheFill()
-            },
+            syncActivityStore: SyncActivityStore(
+                cancelArtwork: { try await appHandle.cancelEagerCacheFill() },
+                retryNow: { appHandle.retryNow() }
+            ),
             libraryStore: LibraryStore(),
             downloadStore: DownloadStore(snapshot: seed.downloads),
             castStore: CastStore(),

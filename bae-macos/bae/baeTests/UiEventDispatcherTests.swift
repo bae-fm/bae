@@ -282,6 +282,12 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         NoopLiveSubscription()
     }
 
+    override func subscribeSyncActivity(
+        callback _: any SyncActivityCallback
+    ) -> LiveSubscription {
+        NoopLiveSubscription()
+    }
+
     override func subscribePlaybackValues(
         callback: any PlaybackValuesCallback
     ) -> LiveSubscription {

@@ -75,7 +75,7 @@ struct DownloadsView: View {
 
     @ViewBuilder
     private func header(_ snapshot: BridgeDownloadSnapshot) -> some View {
-        DownloadQueueSummaryLine(snapshot: snapshot, compact: false)
+        DownloadQueueSummaryLine(snapshot: snapshot)
     }
 }
 

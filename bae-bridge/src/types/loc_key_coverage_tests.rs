@@ -27,6 +27,16 @@ const DIRECT_KEYS: &[&str] = &[
     "core.artwork_cache.cancelled",
     "core.outbox.throughput",
     "core.outbox.eta",
+    // The sync activity list and the quiet lines for files still arriving.
+    "core.activity.title",
+    "core.activity.attention",
+    "core.activity.open_settings",
+    "core.activity.syncing",
+    "core.activity.idle",
+    "core.activity.retry_now",
+    "core.arrival.from",
+    "core.arrival.other_pictures",
+    "core.arrival.track",
     // Returned by the device-reset confirmation object.
     "core.sync.reset_device.warning",
     // The device-reset screens' confirm button.

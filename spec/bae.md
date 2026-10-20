@@ -1259,6 +1259,29 @@ survives, and of two edits to one column the later wins
 Sync runs in the background. A library opens and plays from its own copy
 whether or not the cloud is reachable.
 
+**The activity indicator.** Sync takes one small control in the window's
+title bar on macOS and in the library's toolbar on iOS, never a bar across the
+content. While bytes move it is a spinner: files this device is sending,
+covers or offline copies downloading, or files still arriving from another
+device. While something needs the person, a sync failure or a pending record,
+it shows a small warning symbol, beside the spinner when both hold. With
+neither it is absent. A pass alone doesn't spin it: an idle library runs one
+every half minute, and the indicator would blink for nothing.
+
+Clicking it opens what sync is doing, a popover on macOS and a sheet on iOS,
+updating as it changes. What needs the person comes first, under *Needs
+Attention*: the failure's line and each pending record in plain words, with
+*Open Sync Settings*, where each record offers its action. Then one row per
+thing moving: a pass syncing the library's changes, the uploads ("2
+uploading · 10 queued", with the bytes their providers confirmed), the
+artwork downloading with its bytes and *Cancel*, and the offline downloads,
+which on iOS open the downloads list. Then the files still arriving, one
+section per device, "Arriving from Studio Mac", listing the albums by title
+and counting other pictures. With nothing to show it says everything is up
+to date. *Retry Now* is always there; it retries everything at once, as
+pulling to refresh does. On Android the library still shows the Waiting bar
+and the artwork banner.
+
 **The status line.** Settings shows one line for sync: "Synced", or "Waiting: 3
 items". Opening it lists each thing coven is waiting on, one of its pending
 records
@@ -1358,8 +1381,8 @@ rather than claim the library is synced.
   reconnecting can't fix it.
 - **Pausing** stops uploads and keeps their place, across restarts too.
 - **Covers after opening.** A device fetches the covers it doesn't hold yet.
-  On iOS and Android the progress shows as a banner and can be cancelled;
-  macOS puts no bar over its window for it.
+  Its progress is a row of the sync activity list, with *Cancel*; on Android
+  it still shows as a banner over the library.
 
 **Resetting a device.** Opening can fail because the database is damaged, and
 sync can find that this installation is another copy of the device, such as

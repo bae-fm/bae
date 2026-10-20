@@ -17,7 +17,7 @@ private enum LibraryRoute: Hashable {
     case composer(String)
     case work(String)
     case artist(String)
-    /// What sync is waiting on, opened from the library's status line.
+    /// What sync is waiting on, opened from the sync activity list.
     case syncPending
 }
 
@@ -137,9 +137,8 @@ struct LibraryView: View {
     var body: some View {
         NavigationStack(path: $routePath) {
             VStack(spacing: 0) {
-                LibraryBanner { routePath.append(.syncPending) }
+                LibraryBanner()
                 LibraryModePicker(mode: $mode)
-                DownloadsStrip { showDownloads = true }
                 content
             }
             .background(Theme.background)
@@ -182,7 +181,10 @@ struct LibraryView: View {
                     .accessibilityLabel(Text("Shuffle Library"))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    LibrarySyncToolbarStatus()
+                    SyncActivityToolbarButton(
+                        onOpenSettings: { routePath.append(.syncPending) },
+                        onOpenDownloads: { showDownloads = true }
+                    )
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -256,98 +258,9 @@ extension LibraryView {
 
 }
 
-/// Sync's state at a glance for a library with a cloud home: a spinner while a
-/// cycle runs, otherwise a symbol for core's indicator, read aloud as the
-/// status line Settings shows.
-private struct LibrarySyncToolbarStatus: View {
-    @Environment(SyncStatusStore.self)
-    private var syncStatusStore
-    @Environment(ConfigStore.self)
-    private var configStore
-
-    var body: some View {
-        Group {
-            if syncStatusStore.syncing
-                || syncStatusStore.indicator == .loading
-            {
-                ProgressView()
-                    .controlSize(.small)
-            }
-            else {
-                Image(systemName: symbol)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .accessibilityElement()
-        .accessibilityLabel(Text(syncStatusStore.statusText))
-        .opacity(configStore.hasCloudHome ? 1 : 0)
-        .accessibilityHidden(!configStore.hasCloudHome)
-    }
-
-    private var symbol: String {
-        switch syncStatusStore.indicator {
-        case .synced, .loading: "checkmark.icloud"
-        case .waiting: "arrow.clockwise.icloud"
-        case .unconnected: "icloud.slash"
-        }
-    }
-}
-
-/// A one-line download summary that opens the Downloads sheet; hidden when the
-/// queue is empty.
-private struct DownloadsStrip: View {
-    let onTap: () -> Void
-
-    @Environment(DownloadStore.self)
-    private var downloadStore
-
-    var body: some View {
-        let snapshot = downloadStore.snapshot
-        if !snapshot.downloads.isEmpty {
-            Button(action: onTap) {
-                HStack(spacing: ThemeSpace.group) {
-                    Image(systemName: "arrow.down.circle")
-                        .foregroundStyle(.secondary)
-                    VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                        DownloadQueueSummaryLine(snapshot: snapshot, compact: true)
-                        if let progress = activeProgress(snapshot) {
-                            ProgressView(value: progress.fraction)
-                                .progressViewStyle(.linear)
-                        }
-                    }
-                    Image(systemName: "chevron.right")
-                        .themeIcon(.small)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, ThemeSpace.edge)
-                .padding(.vertical, ThemeSpace.related)
-                .contentShape(Rectangle())
-                .background(Theme.surface)
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    private func activeProgress(
-        _ snapshot: BridgeDownloadSnapshot
-    ) -> BridgeDownloadTransferProgress? {
-        for op in snapshot.downloads {
-            if case .active(let progress) = op.state {
-                return progress
-            }
-        }
-        return nil
-    }
-}
-
 private struct LibraryBanner: View {
-    /// Opens what sync is waiting on.
-    let onOpenSyncStatus: () -> Void
-
     @Environment(ConfigStore.self)
     private var configStore
-    @Environment(SyncStatusStore.self)
-    private var syncStatusStore
 
     // Group, so with nothing to show nothing takes the padding.
     var body: some View {
@@ -366,48 +279,10 @@ private struct LibraryBanner: View {
                 }
                 .notice(.danger)
             }
-            // Disconnecting leaves the recorded sync error behind, so show the
-            // line only while the library has a cloud home.
-            else if configStore.hasCloudHome, syncStatusStore.needsAttention {
-                SyncStatusRow(onOpen: onOpenSyncStatus)
-            }
             LibraryRemovalNotice()
         }
         .padding(.horizontal, ThemeSpace.edge)
         .padding(.vertical, ThemeSpace.related)
-    }
-}
-
-/// The sync status line — "Waiting: 3 items", or that sync is failing and
-/// why — that opens what sync is waiting on, where each record has its
-/// action.
-private struct SyncStatusRow: View {
-    let onOpen: () -> Void
-
-    @Environment(SyncStatusStore.self)
-    private var syncStatusStore
-
-    var body: some View {
-        Button(action: onOpen) {
-            HStack(spacing: ThemeSpace.related) {
-                VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                    Text(syncStatusStore.statusText)
-                        .themeText(.strong)
-                    if let error = syncStatusStore.error {
-                        Text(error.line)
-                            .themeText(.detail)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .themeIcon(.small)
-                    .foregroundStyle(.secondary)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .notice(.warning)
     }
 }
 
