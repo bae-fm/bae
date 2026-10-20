@@ -1,10 +1,10 @@
 use super::*;
 
 fn named(subject: coven::PendingSubject) -> PendingSubjectName {
-    PendingItem::before_open(coven::PendingRecord {
+    PendingItem::before_open(coven::PendingRecord::new(
         subject,
-        reason: coven::PendingReason::NoStorage,
-    })
+        coven::PendingReason::NoStorage,
+    ))
     .subject
 }
 

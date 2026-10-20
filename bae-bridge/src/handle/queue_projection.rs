@@ -31,9 +31,7 @@ impl crate::types::BridgeUploadFileOp {
             bar,
             state: match upload.phase {
                 coven::UploadPhase::Waiting => crate::types::BridgeUploadFileState::Waiting,
-                coven::UploadPhase::Uploading { .. } => {
-                    crate::types::BridgeUploadFileState::Uploading
-                }
+                coven::UploadPhase::Uploading => crate::types::BridgeUploadFileState::Uploading,
             },
         }
     }

@@ -105,31 +105,33 @@ impl UploadProgress {
             None
         }
     }
-    fn add(&mut self, state: UploadState) {
-        match state {
+    /// Count one queued file: waiting, or being sent now. The bytes are
+    /// those the provider confirmed for the files being sent; a file sent in
+    /// one request has none to count.
+    fn add(&mut self, upload: &coven::QueuedUpload) {
+        match upload.phase {
             UploadState::Waiting => {
                 self.queued = self.queued.checked_add(1).expect("upload count overflow")
             }
-            UploadState::Uploading {
-                bytes_confirmed,
-                bytes_total,
-            } => {
-                assert!(
-                    bytes_confirmed <= bytes_total,
-                    "provider progress exceeds file size"
-                );
+            UploadState::Uploading => {
                 self.uploading = self
                     .uploading
                     .checked_add(1)
                     .expect("upload count overflow");
-                self.upload_bytes_done = self
-                    .upload_bytes_done
-                    .checked_add(bytes_confirmed)
-                    .expect("upload bytes overflow");
-                self.upload_bytes_total = self
-                    .upload_bytes_total
-                    .checked_add(bytes_total)
-                    .expect("upload bytes overflow");
+                if let Some(progress) = &upload.progress {
+                    assert!(
+                        progress.bytes_confirmed <= progress.bytes_total,
+                        "provider progress exceeds file size"
+                    );
+                    self.upload_bytes_done = self
+                        .upload_bytes_done
+                        .checked_add(progress.bytes_confirmed)
+                        .expect("upload bytes overflow");
+                    self.upload_bytes_total = self
+                        .upload_bytes_total
+                        .checked_add(progress.bytes_total)
+                        .expect("upload bytes overflow");
+                }
             }
         }
     }
@@ -149,17 +151,13 @@ impl UploadFileOp {
         (self.upload.file.table() == "release_files").then(|| self.upload.file.key())
     }
 
+    /// The bytes the provider confirmed, which a paused upload keeps; a file
+    /// sent in one request has none.
     pub fn bar(&self) -> Option<UploadBar> {
-        match self.upload.phase {
-            UploadState::Waiting => None,
-            UploadState::Uploading {
-                bytes_confirmed,
-                bytes_total,
-            } => Some(UploadBar {
-                bytes_done: bytes_confirmed,
-                bytes_total,
-            }),
-        }
+        self.upload.progress.as_ref().map(|progress| UploadBar {
+            bytes_done: progress.bytes_confirmed,
+            bytes_total: progress.bytes_total,
+        })
     }
 }
 
@@ -242,6 +240,8 @@ impl OutboxSnapshot {
             ..Self::default()
         };
         let mut indices = HashMap::new();
+        // A file sent in one request has no provider size to count down.
+        let mut unmeasured = false;
         // Each release's files beside the names they sort by.
         let mut named_files: Vec<Vec<(String, UploadFileOp)>> = Vec::new();
         for entry in queue.uploads {
@@ -257,7 +257,8 @@ impl OutboxSnapshot {
                 label: entry.subject.label(),
                 throughput_bps,
             };
-            snapshot.total.add(op.upload.phase);
+            snapshot.total.add(&op.upload);
+            unmeasured |= op.upload.phase == UploadState::Uploading && op.upload.progress.is_none();
             snapshot.throughput_bps = snapshot
                 .throughput_bps
                 .checked_add(throughput_bps)
@@ -275,7 +276,7 @@ impl OutboxSnapshot {
                         snapshot.upload_groups.len() - 1
                     });
                     let group = &mut snapshot.upload_groups[index];
-                    group.progress.add(op.upload.phase);
+                    group.progress.add(&op.upload);
                     group.throughput_bps = group
                         .throughput_bps
                         .checked_add(throughput_bps)
@@ -296,7 +297,8 @@ impl OutboxSnapshot {
             group.files = files.into_iter().map(|(_, op)| op).collect();
         }
         let remaining = snapshot.total.upload_bytes_total - snapshot.total.upload_bytes_done;
-        if snapshot.total.queued == 0 && remaining > 0 && snapshot.throughput_bps > 0 {
+        if snapshot.total.queued == 0 && !unmeasured && remaining > 0 && snapshot.throughput_bps > 0
+        {
             snapshot.eta_seconds = Some(remaining.div_ceil(snapshot.throughput_bps));
         }
         snapshot

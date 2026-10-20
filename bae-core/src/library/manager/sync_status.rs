@@ -30,14 +30,15 @@ impl SyncStatusState {
     }
 
     /// Every change goes through here, so the connection's record always
-    /// carries the error the status holds, and a failure is logged once, as
-    /// it appears or changes, rather than on every value published.
+    /// carries the error the status holds, and a failure coven doesn't log
+    /// itself is logged once, as it appears or changes, rather than on every
+    /// value published.
     fn apply(&self, change: impl FnOnce(&mut SyncStatusSnapshot)) {
         let mut state = self.state.lock().unwrap();
-        let failure = state.failure();
+        let failure = state.failure_coven_does_not_log();
         change(&mut state);
         state.name_connection_cause();
-        let changed = state.failure();
+        let changed = state.failure_coven_does_not_log();
         if changed != failure {
             if let Some(UiError::Diagnostic { category, detail }) = &changed {
                 tracing::warn!(?category, "sync failure: {detail}");
@@ -91,11 +92,11 @@ impl SyncStatusSnapshot {
         matches!(self.status, coven::SyncStatus::Syncing)
     }
 
-    /// Give the connection's record the error behind it. coven's record
-    /// keeps only the failure's class; the status this process published
-    /// holds the error itself, with its cause, until the next pass replaces
-    /// it. An error rebuilt from the record after a restart has no cause, and
-    /// names nothing the record doesn't.
+    /// Give the connection's record the error behind it. coven holds the
+    /// error behind every other record, but a connection's failure goes to
+    /// the status this process published, which holds it, with its cause,
+    /// until the next pass replaces it. An error rebuilt from the record after
+    /// a restart has no cause, and names nothing the record doesn't.
     fn name_connection_cause(&mut self) {
         use std::error::Error as _;
         let error = match &self.status {
@@ -108,13 +109,16 @@ impl SyncStatusSnapshot {
         let Some(Ok(items)) = &mut self.pending else {
             return;
         };
-        for item in items {
-            item.cause = match (&item.subject, &item.wait.reason, error) {
-                (
-                    super::PendingSubjectName::Connection,
-                    coven::PendingReason::Storage { failure, .. },
-                    Some(error),
-                ) if error.failure() == *failure => Some(error.clone()),
+        let connection = items
+            .iter_mut()
+            .filter(|item| item.subject == super::PendingSubjectName::Connection);
+        for item in connection {
+            item.wait.cause = match (&item.wait.reason, error) {
+                (coven::PendingReason::Storage { failure, .. }, Some(error))
+                    if error.failure() == *failure =>
+                {
+                    Some(error.clone() as Arc<dyn std::error::Error + Send + Sync>)
+                }
                 _ => None,
             };
         }
@@ -139,8 +143,40 @@ impl SyncStatusSnapshot {
                 };
                 Some(UiError::diagnostic(category, error))
             }
-            _ => None,
+            // A device that opened already blocked has only the slot's
+            // reason, which its pending record shows.
+            coven::SyncStatus::Blocked {
+                reason,
+                error: Some(error),
+                ..
+            } => Some(UiError::diagnostic(
+                super::error_category::pending_reason_category(reason),
+                error,
+            )),
+            coven::SyncStatus::Blocked { error: None, .. }
+            | coven::SyncStatus::Disconnected
+            | coven::SyncStatus::Stopped
+            | coven::SyncStatus::Syncing
+            | coven::SyncStatus::Synced { .. } => None,
         }
+    }
+
+    /// The failure, unless coven logs it itself: coven logs the error that
+    /// blocked a slot and each failed attempt of its own operations, once per
+    /// change, so logging them here would repeat its line.
+    fn failure_coven_does_not_log(&self) -> Option<UiError> {
+        let logged_by_coven = self.error.is_none()
+            && matches!(
+                self.status,
+                coven::SyncStatus::Blocked { .. }
+                    | coven::SyncStatus::Failed {
+                        error: coven::SyncFailure::Operation(_)
+                    }
+            );
+        if logged_by_coven {
+            return None;
+        }
+        self.failure()
     }
 
     pub fn indicator(&self) -> SyncIndicator {
@@ -262,10 +298,10 @@ mod tests {
                 finished_at: std::time::UNIX_EPOCH,
             },
             pending: Some(Ok(vec![super::super::PendingItem::before_open(
-                coven::PendingRecord {
-                    subject: coven::PendingSubject::Connection,
-                    reason: coven::PendingReason::NoStorage,
-                },
+                coven::PendingRecord::new(
+                    coven::PendingSubject::Connection,
+                    coven::PendingReason::NoStorage,
+                ),
             )])),
             error: None,
         };
@@ -274,14 +310,14 @@ mod tests {
 
     #[test]
     fn pending_authentication_offers_the_provider_sign_in() {
-        let record = coven::PendingRecord {
-            subject: coven::PendingSubject::Connection,
-            reason: coven::PendingReason::Storage {
+        let record = coven::PendingRecord::new(
+            coven::PendingSubject::Connection,
+            coven::PendingReason::Storage {
                 provider: coven::CloudProvider::Dropbox,
                 failure: coven::StorageFailure::Authentication,
                 answered: true,
             },
-        };
+        );
         assert_eq!(
             pending_action(&record),
             PendingAction::SignIn(coven::CloudProvider::Dropbox)
@@ -290,16 +326,16 @@ mod tests {
 
     #[test]
     fn missing_provider_permission_offers_sign_in() {
-        let record = coven::PendingRecord {
-            subject: coven::PendingSubject::Connection,
-            reason: coven::PendingReason::Storage {
+        let record = coven::PendingRecord::new(
+            coven::PendingSubject::Connection,
+            coven::PendingReason::Storage {
                 provider: coven::CloudProvider::Dropbox,
                 failure: coven::StorageFailure::AccessNotGranted {
                     required: coven::OAuthAccess::Dropbox(coven::DropboxAccess::FullDropbox),
                 },
                 answered: true,
             },
-        };
+        );
         assert_eq!(
             pending_action(&record),
             PendingAction::SignIn(coven::CloudProvider::Dropbox)
@@ -349,6 +385,7 @@ mod tests {
         assert!(!syncing(coven::SyncStatus::Blocked {
             slot: coven::Slot(3),
             reason: coven::PendingReason::NoStorage,
+            error: None,
         }));
         assert!(!syncing(coven::SyncStatus::Failed {
             error: coven::SyncFailure::Removed,
@@ -368,10 +405,7 @@ mod tests {
     }
 
     fn record(reason: coven::PendingReason) -> coven::PendingRecord {
-        coven::PendingRecord {
-            subject: coven::PendingSubject::Connection,
-            reason,
-        }
+        coven::PendingRecord::new(coven::PendingSubject::Connection, reason)
     }
 
     fn failed(error: coven::SyncFailure) -> SyncStatusSnapshot {
@@ -488,7 +522,7 @@ mod tests {
             let Some(Ok(items)) = state.snapshot().pending else {
                 panic!("the pending records were read");
             };
-            items[0].cause.as_ref().map(ToString::to_string)
+            items[0].wait.cause.as_ref().map(ToString::to_string)
         };
 
         let status_first = state(offline.clone());
@@ -523,7 +557,7 @@ mod tests {
             let Some(Ok(items)) = state.snapshot().pending else {
                 panic!("the pending records were read");
             };
-            assert!(items[0].cause.is_none());
+            assert!(items[0].wait.cause.is_none());
         }
     }
 
@@ -549,5 +583,79 @@ mod tests {
             state.set_status(offline);
         });
         assert_eq!(logs.matches(UNREACHABLE_S3).count(), 1, "{logs}");
+    }
+
+    /// A blocked slot surfaces the error that blocked it, in the class of its
+    /// reason; a device that opened already blocked has no error to show.
+    #[test]
+    fn a_blocked_slot_surfaces_the_error_that_blocked_it() {
+        let blocked = |error| SyncStatusSnapshot {
+            status: coven::SyncStatus::Blocked {
+                slot: coven::Slot(3),
+                reason: coven::PendingReason::Storage {
+                    provider: coven::CloudProvider::S3,
+                    failure: coven::StorageFailure::Network,
+                    answered: false,
+                },
+                error,
+            },
+            pending: Some(Ok(Vec::new())),
+            error: None,
+        };
+        assert_eq!(
+            blocked(Some(
+                unreachable_s3() as Arc<dyn std::error::Error + Send + Sync>
+            ))
+            .failure(),
+            Some(UiError::Diagnostic {
+                category: crate::ui::UiErrorCategory::Network,
+                detail: UNREACHABLE_S3.to_string(),
+            })
+        );
+        assert_eq!(blocked(None).failure(), None);
+    }
+
+    /// coven logs the error that blocked a slot itself, so publishing it
+    /// here logs nothing more.
+    #[test]
+    fn a_blocked_slot_is_not_logged_again() {
+        let state = state(coven::SyncStatus::Syncing);
+        let logs = crate::test_logs::capture_warn_logs(|| {
+            state.set_status(coven::SyncStatus::Blocked {
+                slot: coven::Slot(3),
+                reason: coven::PendingReason::NoStorage,
+                error: Some(unreachable_s3()),
+            });
+        });
+        assert!(!logs.contains(UNREACHABLE_S3), "{logs}");
+        assert!(state.snapshot().failure().is_some());
+    }
+
+    /// coven holds the error behind every record but the connection's; naming
+    /// the connection's from the status leaves the others' as coven gave them.
+    #[test]
+    fn a_record_keeps_the_error_coven_holds_for_it() {
+        let state = state(coven::SyncStatus::Syncing);
+        let mut record = coven::PendingRecord::new(
+            coven::PendingSubject::Audience(coven::Audience::Store),
+            coven::PendingReason::Failed(coven::LocalFailure::Disk),
+        );
+        record.cause = Some(Arc::new(std::io::Error::other("disk full")));
+        state.set_pending(Ok(vec![super::super::PendingItem::before_open(record)]));
+        state.set_status(coven::SyncStatus::Offline {
+            error: unreachable_s3(),
+        });
+        let Some(Ok(items)) = state.snapshot().pending else {
+            panic!("the pending records were read");
+        };
+        assert_eq!(
+            items[0]
+                .wait
+                .cause
+                .as_ref()
+                .map(ToString::to_string)
+                .as_deref(),
+            Some("disk full")
+        );
     }
 }

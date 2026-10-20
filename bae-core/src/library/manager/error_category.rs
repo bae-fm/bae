@@ -3,8 +3,12 @@
 use crate::ui::UiErrorCategory as C;
 
 pub(super) fn cloud_home_category(error: &coven::StorageError) -> C {
+    storage_failure_category(error.failure())
+}
+
+fn storage_failure_category(failure: coven::StorageFailure) -> C {
     use coven::StorageFailure as F;
-    match error.failure() {
+    match failure {
         F::Network | F::RateLimited => C::Network,
         F::Authentication
         | F::PermissionDenied
@@ -33,6 +37,8 @@ pub(super) fn cloud_setup_category(error: &coven::StorageSetupError) -> C {
         E::LocationChangeUnsupported => C::StorageLocationChangeUnsupported,
         E::OAuth(_) => C::Credentials,
         E::SecureStorage(error) => key_category(error),
+        E::Removed => C::DeviceRemoved,
+        E::UpdateRequired(_) => C::SyncUpdateRequired,
         E::Internal(_) => C::Internal,
     }
 }
@@ -43,7 +49,42 @@ pub(super) fn cloud_unlock_category(error: &coven::StoreKeyUnlockError) -> C {
         E::NoStorage => C::Config,
         E::Storage(error) => cloud_home_category(error),
         E::SecureStorage(error) => key_category(error),
+        E::Removed => C::DeviceRemoved,
+        E::UpdateRequired(_) => C::SyncUpdateRequired,
         E::Crypto(_) | E::Other(_) => C::Internal,
+    }
+}
+
+/// The class of the condition that blocked a slot or holds a record.
+pub(super) fn pending_reason_category(reason: &coven::PendingReason) -> C {
+    use coven::PendingReason as R;
+    match reason {
+        R::Storage { failure, .. } => storage_failure_category(*failure),
+        R::NoStorage => C::Config,
+        R::UpdateRequired(_) | R::Refused(_) => C::SyncUpdateRequired,
+        R::Removed => C::DeviceRemoved,
+        R::KeyUnavailable { .. }
+        | R::WritesRefused { .. }
+        | R::MemberKeysReplaced { .. }
+        | R::PendingOwner { .. }
+        | R::ProviderPending { .. }
+        | R::AccountInUse { .. }
+        | R::AccessRemains { .. }
+        | R::DeleteAccessKey(_)
+        | R::AdminAccessRequired
+        | R::Rejected(_) => C::Membership,
+        R::Failed(coven::LocalFailure::Database) => C::Database,
+        R::Failed(coven::LocalFailure::KeyCustody) => C::Keyring,
+        R::Failed(
+            coven::LocalFailure::Disk
+            | coven::LocalFailure::Crypto
+            | coven::LocalFailure::Operation,
+        )
+        | R::Missing { .. }
+        | R::Waits(_)
+        | R::FileUnavailable(_)
+        | R::Paused => C::Internal,
+        R::Cleanup { operation, .. } => pending_reason_category(operation),
     }
 }
 

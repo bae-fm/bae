@@ -1263,9 +1263,12 @@ whether or not the cloud is reachable.
 items". Opening it lists each thing coven is waiting on, one of its pending
 records
 ([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)),
-in plain words, with an action wherever the person can act. The details coven
-recorded sit behind a disclosure, to copy. This list replaces any banner of
-blocked work: there is one place to look.
+in plain words, with an action wherever the person can act. The error behind
+a record sits behind a disclosure, to copy: its text names every cause below
+it, with secrets and URLs already cut by coven. Only the process that met the
+failure holds that error, so a record read after a restart has no details and
+offers none. The details are never the record's internal debug text. This list
+replaces any banner of blocked work: there is one place to look.
 
 Each record names what it is about in plain words. A file this device is
 uploading is named by its file name and album, read from the upload queue it

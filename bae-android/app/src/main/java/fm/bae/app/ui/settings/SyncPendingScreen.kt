@@ -324,7 +324,7 @@ internal fun pendingSubjectText(
     }
 }
 
-/** One record: what it is about, why it waits, what its causes were, its action, and its details on request. */
+/** One record: what it is about, why it waits, what its causes were, its action, and the error behind it on request. */
 @Composable
 private fun PendingRow(
     record: BridgePendingRecord,
@@ -332,6 +332,7 @@ private fun PendingRow(
 ) {
     val context = LocalContext.current
     var showDetails by remember(record) { mutableStateOf(false) }
+    val detail = record.reason.detail
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
         Text(text = pendingSubjectText(context, record.subject), style = ThemeText.strong.style)
         Text(text = context.coreString(bridgePendingReasonKey(record.reason.kind)))
@@ -367,14 +368,17 @@ private fun PendingRow(
                     }
                 }
             }
-            TextButton(onClick = { showDetails = !showDetails }) {
-                Text(stringResource(R.string.details))
+            // Only an error held behind the reason has details to show.
+            if (detail != null) {
+                TextButton(onClick = { showDetails = !showDetails }) {
+                    Text(stringResource(R.string.details))
+                }
             }
         }
-        if (showDetails) {
+        if (detail != null && showDetails) {
             SelectionContainer {
                 Text(
-                    text = record.reason.detail,
+                    text = detail,
                     style = ThemeText.mono.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -395,14 +399,19 @@ private fun PendingListPreview() {
                         reason =
                             BridgePendingReason(
                                 kind = BridgePendingReasonKind.PROVIDER_PENDING,
-                                detail = "ProviderPending",
+                                detail = null,
                                 causes = emptyList(),
                             ),
                         action = BridgePendingAction.SignIn(BridgeCloudProvider.DROPBOX),
                     ),
                     BridgePendingRecord(
                         subject = BridgePendingSubject.Operation(BridgeOperationKind.INVITE),
-                        reason = BridgePendingReason(BridgePendingReasonKind.FAILED, "Failed(Storage)", emptyList()),
+                        reason =
+                            BridgePendingReason(
+                                BridgePendingReasonKind.FAILED,
+                                "S3: Network: S3 request failed: dispatch failure: io error: connection refused",
+                                emptyList(),
+                            ),
                         action = BridgePendingAction.RetryOperation(id = 7L),
                     ),
                 ),

@@ -26,9 +26,7 @@ impl BridgePendingRecords {
 }
 
 /// One thing coven is waiting on: what it is about, why, and what the person
-/// can do about it. When core holds the error behind a record, the reason's
-/// detail is that error's message: it names the cause the record's class
-/// leaves out.
+/// can do about it.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePendingRecord {
     pub subject: BridgePendingSubject,
@@ -37,10 +35,7 @@ pub struct BridgePendingRecord {
 }
 impl BridgePendingRecord {
     pub(crate) fn from_core(item: bae_core::library::PendingItem) -> Self {
-        let BridgePendingWait { mut reason, action } = BridgePendingWait::from_core(item.wait);
-        if let Some(cause) = item.cause {
-            reason.detail = cause.to_string();
-        }
+        let BridgePendingWait { reason, action } = BridgePendingWait::from_core(item.wait);
         Self {
             subject: BridgePendingSubject::from_core(item.subject),
             reason,
@@ -58,7 +53,7 @@ pub struct BridgePendingWait {
 impl BridgePendingWait {
     pub(crate) fn from_core(wait: bae_core::library::PendingWait) -> Self {
         Self {
-            reason: BridgePendingReason::from_core(wait.reason),
+            reason: BridgePendingReason::from_core(wait.reason, wait.cause),
             action: BridgePendingAction::from_core(wait.action),
         }
     }
@@ -176,11 +171,15 @@ mirror_enum! {
     },
 }
 
-/// A localized reason kind with the original diagnostics and nested cleanup causes.
+/// A localized reason kind, the error behind it, and nested cleanup causes.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePendingReason {
     pub kind: BridgePendingReasonKind,
-    pub detail: String,
+    /// The text of the error behind the reason, with every cause below it,
+    /// while core holds that error: it names what the reason's class leaves
+    /// out, already redacted by coven. None when no error is held, as after a
+    /// restart; the UI then offers no details.
+    pub detail: Option<String>,
     pub causes: Vec<BridgePendingReason>,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -208,8 +207,11 @@ pub enum BridgePendingReasonKind {
     MemberKeysReplaced,
 }
 impl BridgePendingReason {
-    pub(crate) fn from_core(reason: coven::PendingReason) -> Self {
-        let detail = format!("{reason:?}");
+    pub(crate) fn from_core(
+        reason: coven::PendingReason,
+        cause: Option<std::sync::Arc<dyn std::error::Error + Send + Sync>>,
+    ) -> Self {
+        let detail = cause.map(|cause| cause.to_string());
         use coven::PendingReason as R;
         use BridgePendingReasonKind as K;
         let kind = match &reason {
@@ -237,7 +239,10 @@ impl BridgePendingReason {
         };
         let causes = match reason {
             R::Cleanup { operation, cleanup } => {
-                vec![Self::from_core(*operation), Self::from_core(*cleanup)]
+                vec![
+                    Self::from_core(*operation, None),
+                    Self::from_core(*cleanup, None),
+                ]
             }
             _ => Vec::new(),
         };

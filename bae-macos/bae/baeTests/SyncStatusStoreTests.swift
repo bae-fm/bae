@@ -61,7 +61,7 @@ struct SyncStatusStoreTests {
             subject: .operation(kind: .invite),
             reason: BridgePendingReason(
                 kind: .failed,
-                detail: "Failed(write refused)",
+                detail: nil,
                 causes: []
             ),
             action: .retryOperation(id: 7)

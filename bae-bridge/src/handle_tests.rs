@@ -401,10 +401,11 @@ async fn upload_file_op_preserves_object_and_row_identity() {
         .unwrap();
     let mut upload = handle.uploads().await.unwrap().files.pop().unwrap();
     let id = upload.file.id().to_string();
-    upload.phase = coven::UploadPhase::Uploading {
+    upload.phase = coven::UploadPhase::Uploading;
+    upload.progress = Some(coven::UploadProgress {
         bytes_confirmed: 40,
         bytes_total: 116,
-    };
+    });
     let bridge = crate::types::BridgeUploadFileOp::from_core(bae_core::library::UploadFileOp {
         upload,
         pending: None,

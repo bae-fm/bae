@@ -22,20 +22,20 @@ impl UploadThroughput {
             self.files.clear();
             return;
         }
-        self.files.retain(|id, _| {
-            queue.files.iter().any(|upload| {
-                upload.file.id() == *id && matches!(upload.phase, UploadPhase::Uploading { .. })
-            })
-        });
-        for upload in &queue.files {
-            let UploadPhase::Uploading {
-                bytes_confirmed,
-                bytes_total,
-            } = upload.phase
-            else {
-                continue;
-            };
-            self.record(upload.file.id(), bytes_confirmed, bytes_total, now);
+        // Only a file being sent in parts has confirmed bytes to measure.
+        let measured = || {
+            queue
+                .files
+                .iter()
+                .filter_map(|upload| match (&upload.phase, &upload.progress) {
+                    (UploadPhase::Uploading, Some(progress)) => Some((upload.file.id(), progress)),
+                    (UploadPhase::Uploading, None) | (UploadPhase::Waiting, _) => None,
+                })
+        };
+        self.files
+            .retain(|id, _| measured().any(|(file, _)| file == *id));
+        for (file, progress) in measured() {
+            self.record(file, progress.bytes_confirmed, progress.bytes_total, now);
         }
     }
     fn record(&mut self, id: FileId, confirmed: u64, total: u64, now: Duration) {

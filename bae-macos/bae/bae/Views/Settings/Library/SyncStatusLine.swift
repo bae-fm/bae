@@ -164,9 +164,11 @@ private struct RestoreFileSheet: View {
             )
             .themeText(.body)
             .foregroundStyle(.secondary)
-            Text(record.reason.detail)
-                .themeText(.mono)
-                .textSelection(.enabled)
+            if let detail = record.reason.detail {
+                Text(detail)
+                    .themeText(.mono)
+                    .textSelection(.enabled)
+            }
             if let error {
                 ErrorDetailDisclosure(error: error)
             }
@@ -204,7 +206,8 @@ private struct RestoreFileSheet: View {
 }
 
 /// Everything coven recorded about a pending record the person can only
-/// read: the reason, its diagnostic, and any causes behind it.
+/// read: the reason, the error behind it while one is held, and any causes
+/// behind it.
 private struct PendingReviewSheet: View {
     let record: BridgePendingRecord
     let onDismiss: () -> Void
@@ -233,10 +236,12 @@ private struct PendingReviewSheet: View {
                 localizedCoreString(bridgePendingReasonKey(reason: reason.kind))
             )
             .themeText(.heading)
-            Text(reason.detail)
-                .themeText(.mono)
-                .foregroundStyle(.secondary)
-                .textSelection(.enabled)
+            if let detail = reason.detail {
+                Text(detail)
+                    .themeText(.mono)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
         }
     }
 }

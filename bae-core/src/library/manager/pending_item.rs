@@ -51,6 +51,11 @@ pub enum PendingSubjectName {
 pub struct PendingWait {
     /// The record's first unmet condition, kept as coven typed it.
     pub reason: coven::PendingReason,
+    /// The error behind `reason`, with every cause below it, while this
+    /// process holds it; a record read after a restart has none. coven holds
+    /// it for every record but the connection's, whose error the sync status
+    /// carries instead (`SyncStatusSnapshot::name_connection_cause`).
+    pub cause: Option<Arc<dyn std::error::Error + Send + Sync>>,
     pub action: PendingAction,
 }
 
@@ -58,6 +63,7 @@ impl PendingWait {
     pub(crate) fn of(record: &coven::PendingRecord) -> Self {
         Self {
             reason: record.reason.clone(),
+            cause: record.cause.clone(),
             action: pending_action(record),
         }
     }
@@ -68,11 +74,6 @@ impl PendingWait {
 pub struct PendingItem {
     pub subject: PendingSubjectName,
     pub wait: PendingWait,
-    /// The error behind the record, while this process holds it with its
-    /// cause. coven's record keeps only the failure's class, which is all
-    /// that survives a restart; the sync status carries the error this
-    /// process received, and the connection's record is named with it.
-    pub cause: Option<Arc<coven::StorageError>>,
 }
 
 impl PendingItem {
@@ -102,11 +103,7 @@ impl PendingItem {
             S::JoinRequest(_) => PendingSubjectName::JoinRequest,
             S::Connection => PendingSubjectName::Connection,
         };
-        Self {
-            subject,
-            wait,
-            cause: None,
-        }
+        Self { subject, wait }
     }
 }
 

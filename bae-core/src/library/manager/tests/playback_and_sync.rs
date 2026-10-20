@@ -330,6 +330,20 @@ fn setup_failure_classes_retain_the_actionable_category() {
         (coven::SyncError::SecureStorage(coven::KeyError::Left).into(), C::DeviceRemoved),
         (missing_entitlement().into(), C::KeychainEntitlementMissing),
         (coven::SyncError::SecureStorage(missing_entitlement()).into(), C::KeychainEntitlementMissing),
+        (LibraryError::CloudSetup(coven::StorageSetupError::Removed), C::DeviceRemoved),
+        (LibraryError::CloudUnlock(coven::StoreKeyUnlockError::Removed), C::DeviceRemoved),
+        (
+            LibraryError::CloudSetup(coven::StorageSetupError::UpdateRequired(
+                coven::RequiredUpdate::AppSchema { version: 9 },
+            )),
+            C::SyncUpdateRequired,
+        ),
+        (
+            LibraryError::CloudUnlock(coven::StoreKeyUnlockError::UpdateRequired(
+                coven::RequiredUpdate::CovenFormat { version: 9 },
+            )),
+            C::SyncUpdateRequired,
+        ),
         (LibraryError::Storage("pin ended without completion".into()), C::Internal),
         (LibraryError::Validation("library name cannot be empty".into()), C::Config),
     ];
