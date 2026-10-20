@@ -18,6 +18,10 @@ ignore = [
     "RUSTSEC-2026-0370",
     "RUSTSEC-2026-0371",
     "RUSTSEC-2026-0372",
+    # basic-toml: unmaintained TOML parser, read only by askama's proc macro,
+    # which uniffi_bindgen uses to template the generated bindings. Compile-time
+    # only; no runtime exposure. No upgrade path until askama drops it.
+    "RUSTSEC-2026-0374",
 ]
 
 [licenses]
