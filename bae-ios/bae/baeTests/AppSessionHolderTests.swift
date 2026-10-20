@@ -1,6 +1,5 @@
 import BaeKit
 import Foundation
-import Observation
 import Testing
 
 @testable import bae
@@ -11,7 +10,7 @@ import Testing
 /// derived getters once one is open — need a real opened core and aren't
 /// unit-tested here.
 @MainActor
-@Suite("AppSessionHolder")
+@Suite("AppSessionHolder", .timeLimit(.minutes(1)))
 struct AppSessionHolderTests {
     /// A holder wired to a no-op telemetry sink and a host with nothing
     /// registered, over a throwaway directory.
@@ -39,25 +38,6 @@ struct AppSessionHolderTests {
         )
     }
 
-    /// Return once `holder.screen` satisfies `condition`, checking it again
-    /// each time the screen changes: the wait ends on the change itself,
-    /// however long the work behind it runs. A screen that never arrives
-    /// holds the test until its time limit fails it.
-    private func screen(
-        of holder: AppSessionHolder,
-        becomes condition: (AppScreen) -> Bool
-    ) async {
-        while !condition(holder.screen) {
-            await withCheckedContinuation { continuation in
-                withObservationTracking {
-                    _ = holder.screen
-                } onChange: {
-                    continuation.resume()
-                }
-            }
-        }
-    }
-
     @Test("a fresh holder starts on the loading screen with no open library")
     func freshHolderIsLoading() {
         let holder = makeHolder()
@@ -77,13 +57,13 @@ struct AppSessionHolderTests {
         #expect(!holder.isActive(makeLibrary(id: "lib-1")))
     }
 
-    @Test("a device with no libraries onboards", .timeLimit(.minutes(1)))
+    @Test("a device with no libraries onboards")
     func noLibrariesOnboards() async {
         let holder = makeHolder()
 
         holder.start()
-        await screen(of: holder) {
-            if case .onboarding = $0 { return true }
+        await Observed.until {
+            if case .onboarding = holder.screen { return true }
             return false
         }
         #expect(holder.libraries.isEmpty)

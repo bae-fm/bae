@@ -9,7 +9,7 @@ import Testing
 /// warning-append composition, that the confirmation opens even when the
 /// at-risk check fails, and that a failed disconnect says so inline.
 @MainActor
-@Suite("DisconnectSyncFlow")
+@Suite("DisconnectSyncFlow", .timeLimit(.minutes(1)))
 struct DisconnectSyncFlowTests {
     /// Thread-safe call recorder for the injected closures. `@unchecked
     /// Sendable` because the `disconnect` closure crosses the async bridge
@@ -54,14 +54,6 @@ struct DisconnectSyncFlowTests {
         )
     }
 
-    private func waitUntil(_ condition: @MainActor () -> Bool) async {
-        for _ in 0..<10_000 {
-            if condition() { return }
-            await Task.yield()
-        }
-        Issue.record("condition never became true")
-    }
-
     @Test("prompt appends the at-risk warning after a single space")
     func promptAppendsWarning() async {
         let warning = "2 at risk."
@@ -69,7 +61,7 @@ struct DisconnectSyncFlowTests {
         let base = flow.message
 
         flow.promptDisconnect()
-        await waitUntil { flow.showConfirm }
+        await Observed.until { flow.showConfirm }
 
         #expect(flow.extraWarning == warning)
         #expect(flow.message == "\(base) \(warning)")
@@ -81,7 +73,7 @@ struct DisconnectSyncFlowTests {
         let base = flow.message
 
         flow.promptDisconnect()
-        await waitUntil { flow.showConfirm }
+        await Observed.until { flow.showConfirm }
 
         #expect(flow.extraWarning == nil)
         #expect(flow.message == base)
@@ -94,7 +86,7 @@ struct DisconnectSyncFlowTests {
         })
 
         flow.promptDisconnect()
-        await waitUntil { flow.showConfirm }
+        await Observed.until { flow.showConfirm }
 
         #expect(flow.extraWarning == nil)
         #expect(flow.error != nil)
@@ -139,7 +131,7 @@ struct DisconnectSyncFlowTests {
 
         flow.promptDisconnect()
         flow.promptDisconnect()
-        await waitUntil { flow.showConfirm }
+        await Observed.until { flow.showConfirm }
 
         #expect(flow.extraWarning == "2 at risk.")
         #expect(flow.message.hasSuffix("2 at risk."))
