@@ -14,7 +14,7 @@ description: 提供者、登入，以及雲端主目錄的形狀
 | OneDrive | OAuth，由 coven 保管 | 還原碼，然後登入你的 OneDrive | 資料庫的資料夾分享給對方的帳號 |
 | iCloud (CloudKit) | Apple Account，無需登入 | 還原碼，也可從 iCloud 鑰匙圈選取 | 資料庫的 CloudKit 區域分享給對方的 Apple Account |
 
-S3-compatible 涵蓋 AWS、Backblaze B2、Cloudflare R2、Wasabi、MinIO，以及任何使用該 API 的服務。設定表單只詢問 bucket、region、endpoint 與存取金鑰；coven 會依 endpoint 的主機辨識已知服務，並補上與它們溝通的方式。**進階** 中有選用的 key prefix 與服務設定檔選項，預設為自動。對於 coven 不認識的服務，**偵測設定** 會用該金鑰探測 bucket 並顯示它找到的結果。設定會在儲存任何內容前檢查提供者，讓打字錯誤在設定時失敗，而不是第一次同步時才失敗，bae 也會用淺白的文字說明 coven 給出的原因。Dropbox、OneDrive 與 iCloud 只存在於完整 **bae** 版本；**baeium** 建置會把它們編譯出去。
+S3-compatible 涵蓋 AWS、Backblaze B2、Cloudflare R2、Wasabi，以及任何使用該 API 的服務。設定表單只詢問 bucket、region、endpoint 與存取金鑰；coven 會依 endpoint 的主機辨識已知服務，並補上與它們溝通的方式。**進階** 中有選用的 key prefix 與服務設定檔選項，預設為自動。對於 coven 不認識的服務，**偵測設定** 會用該金鑰探測 bucket 並顯示它找到的結果。設定會在儲存任何內容前檢查提供者，讓打字錯誤在設定時失敗，而不是第一次同步時才失敗，bae 也會用淺白的文字說明 coven 給出的原因。Dropbox、OneDrive 與 iCloud 只存在於完整 **bae** 版本；**baeium** 建置會把它們編譯出去。
 
 ## 登入與資料夾
 

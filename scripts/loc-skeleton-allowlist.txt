@@ -195,12 +195,12 @@ de	Separate discs
 de	cloud_provider_s3
 de	e.g. 4943674251780
 de	e.g. WPCR-80001
-es	Any S3-compatible storage (AWS, Backblaze, Minio, ...)
+es	Any S3-compatible storage (AWS, Backblaze, Cloudflare R2, ...)
 es	S3-compatible
 es	cloud_provider_s3
 es	e.g. 4943674251780
 es	e.g. WPCR-80001
-fr	Any S3-compatible storage (AWS, Backblaze, Minio, ...)
+fr	Any S3-compatible storage (AWS, Backblaze, Cloudflare R2, ...)
 fr	S3-compatible
 fr	cloud_provider_s3
 fr	e.g. 4943674251780

@@ -14,7 +14,7 @@ description: 提供商、登录，以及云端主目录的形态
 | OneDrive | OAuth，由 coven 保管 | 恢复码，然后登录你的 OneDrive | 资料库的文件夹共享给对方的账户 |
 | iCloud (CloudKit) | Apple Account，无需登录 | 恢复码，也可从 iCloud 钥匙串中选取 | 资料库的 CloudKit 区域共享给对方的 Apple Account |
 
-S3-compatible 覆盖 AWS、Backblaze B2、Cloudflare R2、Wasabi、MinIO，以及任何使用该 API 的其他服务。设置表单只询问 bucket、region、endpoint 和访问密钥；coven 会根据 endpoint 的主机识别已知服务，并补全与它们通信的方式。**高级** 中有可选的 key prefix 和服务配置选项，默认为自动。对于 coven 不认识的服务，**检测设置** 会用该密钥探测 bucket 并显示它找到的结果。设置会在保存任何内容之前检查提供商，因此拼写错误会在设置时失败，而不是第一次同步时失败，bae 也会用通俗的话说明 coven 给出的原因。Dropbox、OneDrive 和 iCloud 只存在于完整 **bae** 版本；**baeium** 构建会编译掉它们。
+S3-compatible 覆盖 AWS、Backblaze B2、Cloudflare R2、Wasabi，以及任何使用该 API 的其他服务。设置表单只询问 bucket、region、endpoint 和访问密钥；coven 会根据 endpoint 的主机识别已知服务，并补全与它们通信的方式。**高级** 中有可选的 key prefix 和服务配置选项，默认为自动。对于 coven 不认识的服务，**检测设置** 会用该密钥探测 bucket 并显示它找到的结果。设置会在保存任何内容之前检查提供商，因此拼写错误会在设置时失败，而不是第一次同步时失败，bae 也会用通俗的话说明 coven 给出的原因。Dropbox、OneDrive 和 iCloud 只存在于完整 **bae** 版本；**baeium** 构建会编译掉它们。
 
 ## 登录和文件夹
 

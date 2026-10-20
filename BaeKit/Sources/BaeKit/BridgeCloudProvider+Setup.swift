@@ -10,7 +10,7 @@ extension BridgeCloudProvider {
         case .s3:
             String(
                 localized:
-                    "Any S3-compatible storage (AWS, Backblaze, Minio, ...)"
+                    "Any S3-compatible storage (AWS, Backblaze, Cloudflare R2, ...)"
             )
         }
     }

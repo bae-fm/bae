@@ -24380,175 +24380,175 @@
         }
       }
     },
-    "Any S3-compatible storage (AWS, Backblaze, Minio, ...)" : {
+    "Any S3-compatible storage (AWS, Backblaze, Cloudflare R2, ...)" : {
       "comment" : "Sync wizard: S3 provider blurb (example service names are brands)",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "أي تخزين متوافق مع S3 (AWS، Backblaze، Minio، ...)"
+            "value" : "أي تخزين متوافق مع S3 (AWS، Backblaze، Cloudflare R2، ...)"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Всяко S3-съвместимо хранилище (AWS, Backblaze, Minio, ...)"
+            "value" : "Всяко S3-съвместимо хранилище (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Libovolné úložiště kompatibilní s S3 (AWS, Backblaze, Minio, …)"
+            "value" : "Libovolné úložiště kompatibilní s S3 (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enhver S3-kompatibel lagring (AWS, Backblaze, Minio, ...)"
+            "value" : "Enhver S3-kompatibel lagring (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Any S3-compatible storage (AWS, Backblaze, Minio, ...)"
+            "value" : "Any S3-compatible storage (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Jeder S3-kompatible Speicher (AWS, Backblaze, Minio, …)"
+            "value" : "Jeder S3-kompatible Speicher (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Οποιοσδήποτε αποθηκευτικός χώρος συμβατός με S3 (AWS, Backblaze, Minio, ...)"
+            "value" : "Οποιοσδήποτε αποθηκευτικός χώρος συμβατός με S3 (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cualquier almacenamiento compatible con S3 (AWS, Backblaze, Minio, ...)"
+            "value" : "Cualquier almacenamiento compatible con S3 (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mikä tahansa S3-yhteensopiva tallennustila (AWS, Backblaze, Minio, ...)"
+            "value" : "Mikä tahansa S3-yhteensopiva tallennustila (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tout stockage compatible S3 (AWS, Backblaze, Minio, ...)"
+            "value" : "Tout stockage compatible S3 (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "כל אחסון תואם S3 ‏(AWS, Backblaze, Minio, ...)"
+            "value" : "כל אחסון תואם S3 ‏(AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bilo koja pohrana kompatibilna s S3 (AWS, Backblaze, Minio, ...)"
+            "value" : "Bilo koja pohrana kompatibilna s S3 (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bármilyen S3-kompatibilis tárhely (AWS, Backblaze, Minio, ...)"
+            "value" : "Bármilyen S3-kompatibilis tárhely (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Qualsiasi archiviazione compatibile con S3 (AWS, Backblaze, Minio, ...)"
+            "value" : "Qualsiasi archiviazione compatibile con S3 (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "S3互換ストレージ全般（AWS、Backblaze、Minio など）"
+            "value" : "S3互換ストレージ全般（AWS、Backblaze、Cloudflare R2 など）"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "S3 호환 저장소(AWS, Backblaze, Minio 등)"
+            "value" : "S3 호환 저장소(AWS, Backblaze, Cloudflare R2 등)"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hvilken som helst S3-kompatibel lagring (AWS, Backblaze, Minio, ...)"
+            "value" : "Hvilken som helst S3-kompatibel lagring (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elke S3-compatibele opslag (AWS, Backblaze, Minio, ...)"
+            "value" : "Elke S3-compatibele opslag (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dowolny magazyn zgodny z S3 (AWS, Backblaze, Minio, ...)"
+            "value" : "Dowolny magazyn zgodny z S3 (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Qualquer armazenamento compatível com S3 (AWS, Backblaze, Minio, ...)"
+            "value" : "Qualquer armazenamento compatível com S3 (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Qualquer armazenamento compatível com S3 (AWS, Backblaze, Minio, ...)"
+            "value" : "Qualquer armazenamento compatível com S3 (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Orice stocare compatibilă cu S3 (AWS, Backblaze, Minio, ...)"
+            "value" : "Orice stocare compatibilă cu S3 (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ľubovoľné úložisko kompatibilné s S3 (AWS, Backblaze, Minio, ...)"
+            "value" : "Ľubovoľné úložisko kompatibilné s S3 (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Valfri S3-kompatibel lagring (AWS, Backblaze, Minio, ...)"
+            "value" : "Valfri S3-kompatibel lagring (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "S3 uyumlu herhangi bir depolama (AWS, Backblaze, Minio, ...)"
+            "value" : "S3 uyumlu herhangi bir depolama (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Будь-яке S3-сумісне сховище (AWS, Backblaze, Minio, ...)"
+            "value" : "Будь-яке S3-сумісне сховище (AWS, Backblaze, Cloudflare R2, ...)"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "任何 S3 兼容存储（AWS、Backblaze、Minio 等）"
+            "value" : "任何 S3 兼容存储（AWS、Backblaze、Cloudflare R2 等）"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "任何 S3 相容儲存空間 (AWS, Backblaze, Minio, ...)"
+            "value" : "任何 S3 相容儲存空間 (AWS, Backblaze, Cloudflare R2, ...)"
           }
         }
       }

@@ -14,7 +14,7 @@ description: সেবা-দাতা, সাইন-ইন, এবং মেঘ
 | OneDrive | OAuth, coven রাখে | রিস্টোর কোড, তারপর আপনার OneDrive-এ সাইন ইন | লাইব্রেরির ফোল্ডার তাঁর অ্যাকাউন্টের সঙ্গে ভাগ হয় |
 | iCloud (CloudKit) | Apple Account, সাইন-ইন নেই | রিস্টোর কোড, iCloud Keychain থেকেও পাওয়া যায় | লাইব্রেরির CloudKit জোন তাঁর Apple Account-এর সঙ্গে ভাগ হয় |
 
-S3-compatible AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, এবং এই API বলা অন্য সবকিছু কভার করে। সেটআপ ফর্ম শুধু bucket, region, endpoint ও অ্যাক্সেস কী চায়; coven পরিচিত সার্ভিসগুলো endpoint-এর host দেখে চেনে এবং তাদের সঙ্গে কথা বলার পদ্ধতি পূরণ করে। **Advanced**-এ ঐচ্ছিক key prefix এবং সার্ভিস প্রোফাইল বাছাই থাকে, যা ডিফল্টে স্বয়ংক্রিয়। যে সার্ভিস coven চেনে না তার জন্য **Detect Settings** কী দিয়ে bucket যাচাই করে যা পেয়েছে তা দেখায়। কিছু সংরক্ষণের আগে সেটআপ সেবা-দাতা যাচাই করে, যাতে typo প্রথম সিঙ্কে নয়, সেটআপেই ব্যর্থ হয়, আর bae coven-এর কারণ সহজ ভাষায় জানায়। Dropbox, OneDrive ও iCloud শুধু পূর্ণ **bae** edition-এ থাকে; **baeium** build সেগুলো compile করে না।
+S3-compatible AWS, Backblaze B2, Cloudflare R2, Wasabi, এবং এই API বলা অন্য সবকিছু কভার করে। সেটআপ ফর্ম শুধু bucket, region, endpoint ও অ্যাক্সেস কী চায়; coven পরিচিত সার্ভিসগুলো endpoint-এর host দেখে চেনে এবং তাদের সঙ্গে কথা বলার পদ্ধতি পূরণ করে। **Advanced**-এ ঐচ্ছিক key prefix এবং সার্ভিস প্রোফাইল বাছাই থাকে, যা ডিফল্টে স্বয়ংক্রিয়। যে সার্ভিস coven চেনে না তার জন্য **Detect Settings** কী দিয়ে bucket যাচাই করে যা পেয়েছে তা দেখায়। কিছু সংরক্ষণের আগে সেটআপ সেবা-দাতা যাচাই করে, যাতে typo প্রথম সিঙ্কে নয়, সেটআপেই ব্যর্থ হয়, আর bae coven-এর কারণ সহজ ভাষায় জানায়। Dropbox, OneDrive ও iCloud শুধু পূর্ণ **bae** edition-এ থাকে; **baeium** build সেগুলো compile করে না।
 
 ## সাইন-ইন ও ফোল্ডার
 
