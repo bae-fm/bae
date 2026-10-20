@@ -609,6 +609,7 @@ fn a_failed_sync_status_crosses_with_its_fault() {
         error: Some(bae_core::ui::UiError::internal(fault)),
         status: coven::SyncStatus::Disconnected,
         pending: None,
+        arrivals: None,
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
@@ -636,6 +637,7 @@ fn a_healthy_sync_status_crosses_without_an_error() {
             finished_at: std::time::UNIX_EPOCH,
         },
         pending: Some(Ok(Vec::new())),
+        arrivals: Some(Ok(Default::default())),
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
@@ -653,6 +655,7 @@ fn a_pass_in_progress_crosses_as_syncing() {
         error: None,
         status: coven::SyncStatus::Syncing,
         pending: Some(Ok(Vec::new())),
+        arrivals: Some(Ok(Default::default())),
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);

@@ -53,6 +53,8 @@ mod storage_operations;
 use storage_operations::*;
 
 mod album;
+mod arrivals;
+pub use arrivals::{Arrivals, ArrivingFile, DeviceArrivals, ReleaseArrival};
 mod artist;
 mod collections;
 mod composer;
@@ -338,11 +340,14 @@ impl From<crate::import::ImportError> for LibraryError {
     }
 }
 
-/// Sync activity and the complete list of things coven is waiting on.
+/// Sync activity, the things coven is waiting on that need attention, and
+/// the files still arriving from other devices. Each list is `None` until
+/// first read.
 #[derive(Debug, Clone)]
 pub struct SyncStatusSnapshot {
     pub status: coven::SyncStatus,
     pub pending: Option<Result<Vec<PendingItem>, crate::ui::UiError>>,
+    pub arrivals: Option<Result<Arrivals, crate::ui::UiError>>,
     pub error: Option<crate::ui::UiError>,
 }
 

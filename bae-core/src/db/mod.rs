@@ -16,6 +16,7 @@ pub use client::{
     LibrarySearchProjection, ReleaseDetailProjection, StorageBrowseProjection,
     StorageBrowseRequest, WorkDetailProjection,
 };
+pub(crate) use client::{ArrivingReleaseRow, ArrivingReleaseRows, AttachedFileRow, FileTable};
 pub use client::{ArtistWriteError, Database, ReleaseDeletion};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use client::{

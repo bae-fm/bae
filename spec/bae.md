@@ -1276,6 +1276,20 @@ is in; any other subject, such as an operation or the connection, by what it
 is. In the upload list itself a file's row already names it, so its record
 there says only why it waits.
 
+**Files still arriving.** Rows arrive before their files. Ana's Mac imports
+an album and uploads its files over the next hour; her phone shows the album
+at once. When the phone asks for a file the Mac hasn't uploaded yet, storage
+confirms it absent while the Mac is still an active device, and coven records
+that the file waits for the Mac's upload
+([coven §17.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#174-a-files-status)).
+That is the library arriving, not something to fix: such a file is no record
+in the pending list and doesn't count toward "Waiting". bae finds the row each
+one belongs to (a release's cover or one of its files, an artist image, an
+avatar) and names the device it comes from by the name that device
+registered under. Once the Mac uploads it, the phone's next fetch of the file
+ends its arrival. A file whose uploader was removed, or whose request failed,
+stays a pending record.
+
 Ben's laptop shows "Waiting: 2 items": Dropbox wants him to sign in again, and
 a file of his vinyl rip moved before it uploaded. The list offers *Sign In* for
 the first: core signs in with the access the library's folder needs, then

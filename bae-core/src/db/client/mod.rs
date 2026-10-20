@@ -45,6 +45,10 @@ use artist_resolution::{relink_album_artists, relink_track_artists, relinked_alb
 // Only the import write resolves credits inside a release's own write.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use artist_resolution::{artist_write_failure, relink};
+mod arriving_files;
+pub(crate) use arriving_files::{
+    ArrivingReleaseRow, ArrivingReleaseRows, AttachedFileRow, FileTable,
+};
 mod blobs;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod candidate_state_rows;
