@@ -133,13 +133,6 @@ final class ImportListSlot {
         updateView { $0.filterText = text }
     }
 
-    /// Every entry of Found's filter, with how many of Found's rows it holds
-    /// now, as core counts them when asked: what the filter menu shows as it
-    /// opens. None before the list is read.
-    func pendingFilterEntries() -> [BridgePendingFilterEntry] {
-        pages?.pendingFilterEntries() ?? []
-    }
-
     /// Narrow Found's rows to one filter entry.
     func setPendingFilter(_ filter: BridgePendingFilter) {
         uiStore.setImportCandidatePendingFilter(filter)
@@ -296,13 +289,7 @@ final class ImportListSlot {
                 uiStore: uiStore,
                 selection: selection,
                 makeSource: { _ in
-                    ImportListPreviewPageSource(
-                        items: items,
-                        pendingFilterEntries:
-                            PreviewData
-                            .pendingFilterEntries()
-                    )
-                    .pages
+                    ImportListPreviewPageSource(items: items).pages
                 },
                 locateCandidate: { _, key in
                     items.firstIndex { $0.id == "candidate:\(key)" }
@@ -318,6 +305,9 @@ final class ImportListSlot {
                 firstIdentifyingCandidate: { _ in nil }
             )
             importStore.ingest(items)
+            importStore.applyPendingFilterEntries(
+                PreviewData.pendingFilterEntries()
+            )
             let list = PaginatedList<BridgeImportListItem>(
                 pageSource: ImportListPreviewPageSource(items: items),
                 ingest: { _ in },

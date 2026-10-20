@@ -64,7 +64,6 @@ struct ImportListPageSourceTests {
         private var views: [BridgeImportListView] = []
         private var setViewHook: (() -> Void)?
         private var askedCount = 0
-        private var countedEntries: [BridgePendingFilterEntry] = []
         private var waiter:
             CheckedContinuation<BridgeImportListSnapshot, any Error>?
 
@@ -108,15 +107,6 @@ struct ImportListPageSourceTests {
         }
 
         func cancel() async throws {}
-
-        /// What core counts under Found's filter entries from now on.
-        func count(_ entries: [BridgePendingFilterEntry]) {
-            lock.withLock { countedEntries = entries }
-        }
-
-        func pendingFilterEntries() -> [BridgePendingFilterEntry] {
-            lock.withLock { countedEntries }
-        }
 
         func deliver(_ snapshot: BridgeImportListSnapshot) {
             lock.lock()
@@ -164,7 +154,8 @@ struct ImportListPageSourceTests {
     private func snapshot(
         _ windows: [SnapshotWindow],
         totalCount: UInt64,
-        requestRevision: UInt64 = 0
+        requestRevision: UInt64 = 0,
+        pendingFilterEntries: [BridgePendingFilterEntry] = []
     ) -> BridgeImportListSnapshot {
         BridgeImportListSnapshot(
             windows: windows.map { fixture in
@@ -193,6 +184,7 @@ struct ImportListPageSourceTests {
                 ),
                 firstSelectedPosition: nil
             ),
+            pendingFilterEntries: pendingFilterEntries,
             selectionRevision: 0,
             requestRevision: requestRevision,
             cause: .request
@@ -201,18 +193,25 @@ struct ImportListPageSourceTests {
 }
 
 extension ImportListPageSourceTests {
-    /// The pages ask the subscription for Found's filter entries each time
-    /// they are asked, with no delivery between: the counts are core's as
-    /// they stand then.
-    @Test("the filter entries are the subscription's when asked")
-    func theFilterEntriesAreTheSubscriptionsWhenAsked() {
+    /// Each value's filter entries go out with it, so the counts a menu
+    /// shows are the ones the rows beside them were joined with.
+    @MainActor
+    @Test("each value's filter entries go out with it")
+    func eachValuesFilterEntriesGoOutWithIt() async throws {
         let subscription = StubListSubscription()
+        var delivered: [[BridgePendingFilterEntry]] = []
         let source = ImportListPageSource(
             subscription: subscription,
             onSummary: { _ in },
+            onPendingFilterEntries: { delivered.append($0) },
             onSelectionRevision: { _ in }
         )
-        let pages = source.pages
+        _ = source.subscribe(
+            offset: 0,
+            limit: 2,
+            onValue: { _, _ in },
+            onError: { _ in }
+        )
         let idle = [
             BridgePendingFilterEntry(filter: .all, count: 2, selectable: true),
             BridgePendingFilterEntry(
@@ -221,9 +220,6 @@ extension ImportListPageSourceTests {
                 selectable: false
             ),
         ]
-        subscription.count(idle)
-        #expect(pages.pendingFilterEntries() == idle)
-
         let running = [
             BridgePendingFilterEntry(filter: .all, count: 2, selectable: true),
             BridgePendingFilterEntry(
@@ -232,8 +228,19 @@ extension ImportListPageSourceTests {
                 selectable: true
             ),
         ]
-        subscription.count(running)
-        #expect(pages.pendingFilterEntries() == running)
+        let page = [SnapshotWindow(offset: 0, limit: 2, keys: ["/w/a"])]
+
+        subscription.deliver(
+            snapshot(page, totalCount: 2, pendingFilterEntries: idle)
+        )
+        try await Wait.until({ delivered.count == 1 })
+        // The same page again: a run started for a row off it.
+        subscription.deliver(
+            snapshot(page, totalCount: 2, pendingFilterEntries: running)
+        )
+        try await Wait.until({ delivered.count == 2 })
+
+        #expect(delivered == [idle, running])
     }
 
     @MainActor
@@ -243,6 +250,7 @@ extension ImportListPageSourceTests {
         let source = ImportListPageSource(
             subscription: subscription,
             onSummary: { _ in },
+            onPendingFilterEntries: { _ in },
             onSelectionRevision: { _ in }
         )
         let view = BridgeImportListView(
@@ -287,6 +295,7 @@ extension ImportListPageSourceTests {
         let source = ImportListPageSource(
             subscription: subscription,
             onSummary: { _ in },
+            onPendingFilterEntries: { _ in },
             onSelectionRevision: { _ in }
         )
         let task = Task {
@@ -320,6 +329,7 @@ extension ImportListPageSourceTests {
         let source = ImportListPageSource(
             subscription: subscription,
             onSummary: { _ in },
+            onPendingFilterEntries: { _ in },
             onSelectionRevision: { _ in }
         )
         let task = Task {
@@ -353,6 +363,7 @@ extension ImportListPageSourceTests {
         let source = ImportListPageSource(
             subscription: subscription,
             onSummary: { _ in },
+            onPendingFilterEntries: { _ in },
             onSelectionRevision: { _ in }
         )
         let failureDelivered = DispatchSemaphore(value: 0)
@@ -397,6 +408,7 @@ extension ImportListPageSourceTests {
         let source = ImportListPageSource(
             subscription: subscription,
             onSummary: { summaries.append($0) },
+            onPendingFilterEntries: { _ in },
             onSelectionRevision: { _ in }
         )
         var first: [String] = []
@@ -449,6 +461,7 @@ extension ImportListPageSourceTests {
         let source = ImportListPageSource(
             subscription: subscription,
             onSummary: { _ in },
+            onPendingFilterEntries: { _ in },
             onSelectionRevision: { _ in }
         )
         _ = source.subscribe(
@@ -483,6 +496,7 @@ extension ImportListPageSourceTests {
         let source = ImportListPageSource(
             subscription: subscription,
             onSummary: { _ in snapshots.count += 1 },
+            onPendingFilterEntries: { _ in },
             onSelectionRevision: { _ in }
         )
         let importStore = ImportStore()

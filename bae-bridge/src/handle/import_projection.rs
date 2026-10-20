@@ -515,7 +515,7 @@ mirror_enum! {
 
 mirror_struct! {
     crate::types::BridgePendingFilterEntry = bae_core::import::PendingFilterEntry,
-    from_core: pub(super) fn,
+    from_core: fn,
     fields: {
         filter: (crate::types::BridgePendingFilter),
         count,
@@ -689,6 +689,7 @@ impl crate::types::BridgeImportListSnapshot {
             windows,
             total_count,
             summary,
+            pending_filter_entries,
             folder_scans,
             selection_revision,
             request_revision,
@@ -701,6 +702,10 @@ impl crate::types::BridgeImportListSnapshot {
                 .collect(),
             total_count,
             summary: crate::types::BridgeImportQueueSummary::from_core(summary, folder_scans),
+            pending_filter_entries: pending_filter_entries
+                .into_iter()
+                .map(crate::types::BridgePendingFilterEntry::from_core)
+                .collect(),
             selection_revision,
             request_revision,
             cause: crate::types::BridgeLiveQueryCause::from_core(cause),

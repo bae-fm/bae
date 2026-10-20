@@ -478,7 +478,7 @@ pub struct ImportListProjection {
     /// The person's changes to the selection the rows' `selected` reflects.
     pub selection_revision: u64,
     /// The state the tables put each of Found's rows in, whatever the view
-    /// shows: what the filter menu counts from when it opens.
+    /// shows: what the filter's counts start from.
     pub found_states: FoundStates,
 }
 
@@ -495,6 +495,9 @@ pub struct ImportListSnapshot {
     pub windows: Vec<ImportListWindow<CandidateLiveState>>,
     pub total_count: u64,
     pub summary: ImportQueueSummary,
+    /// Every entry of Found's filter, in the menu's order, with how many of
+    /// Found's rows it holds as this snapshot's rows were joined.
+    pub pending_filter_entries: Vec<PendingFilterEntry>,
     pub folder_scans: FolderScanProgress,
     /// The person's changes to the selection the rows' `selected` reflects.
     pub selection_revision: u64,

@@ -46,8 +46,8 @@ pub enum BridgePendingFilter {
     NotLookedUp,
 }
 
-/// One entry of Found's filter menu and how many of Found's rows it holds,
-/// counted when the menu opens. An entry holding none cannot be chosen; one
+/// One entry of Found's filter menu and how many of Found's rows it holds, as
+/// the snapshot carrying it was joined. An entry holding none cannot be chosen; one
 /// already chosen stays chosen. Mirrors `bae_core::import::PendingFilterEntry`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgePendingFilterEntry {
@@ -166,6 +166,9 @@ pub struct BridgeImportListSnapshot {
     pub windows: Vec<BridgeImportListWindow>,
     pub total_count: u64,
     pub summary: BridgeImportQueueSummary,
+    /// Every entry of Found's filter, in the menu's order, with how many of
+    /// Found's rows it holds.
+    pub pending_filter_entries: Vec<BridgePendingFilterEntry>,
     /// The person's changes to the selection the rows' `selected` reflects.
     pub selection_revision: u64,
     pub request_revision: u64,

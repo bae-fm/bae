@@ -136,7 +136,6 @@ struct ImportListPageSourceFailureTests {
         func setWindows(windows _: [BridgeLibraryPageWindow]) throws {}
         func setView(view _: BridgeImportListView) throws -> UInt64 { 0 }
         func cancel() async throws {}
-        func pendingFilterEntries() -> [BridgePendingFilterEntry] { [] }
 
         func next() async throws -> BridgeImportListSnapshot {
             attempted.signal()
@@ -180,6 +179,7 @@ struct ImportListPageSourceFailureTests {
         let source = ImportListPageSource(
             subscription: subscription,
             onSummary: { _ in },
+            onPendingFilterEntries: { _ in },
             onSelectionRevision: { _ in }
         )
         // The read fails before anything subscribes, which is the launch race.

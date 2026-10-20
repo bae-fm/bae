@@ -1,15 +1,18 @@
 //! In Progress follows the candidate runtime: a row shows while its run or
 //! import is queued or going, and leaves when it ends — and leaves the entry
-//! the tables put it under for as long. The filter menu, opened at any
-//! point, counts what is running then.
+//! the tables put it under for as long. Every snapshot counts the filter's
+//! entries with what is running as its rows were joined, and a change that
+//! moves a count off the page delivers one.
 
 use super::*;
 use crate::import::{ImportListSubscription, ImportListView, PendingFilter};
 
-/// The list under one filter entry, and the keys its last snapshot showed.
+/// The list under one filter entry, and the keys and filter entries its last
+/// snapshot carried.
 struct LiveList {
     list: ImportListSubscription,
     shown: Option<Vec<String>>,
+    entries: Vec<crate::import::PendingFilterEntry>,
 }
 
 impl LiveList {
@@ -20,6 +23,7 @@ impl LiveList {
                 ..ImportListView::default()
             }),
             shown: None,
+            entries: Vec::new(),
         }
     }
 
@@ -40,35 +44,31 @@ impl LiveList {
         );
     }
 
-    /// How many rows the filter menu, opened now, counts under `filter`.
-    fn counted(&self, filter: PendingFilter) -> u32 {
-        self.list
-            .pending_filter_entries()
-            .into_iter()
-            .find(|entry| entry.filter == filter)
-            .expect("every entry is counted")
-            .count
+    /// How many rows the last snapshot counts under `filter`; none before
+    /// the first.
+    fn counted(&self, filter: PendingFilter) -> Option<u32> {
+        counted(&self.entries, filter)
     }
 
-    /// Wait until the filter menu counts `count` rows under `filter`. What is
-    /// running reaches the subscription before the page it changes is
-    /// delivered again, so each delivery is a point to open the menu at.
+    /// Wait until a snapshot counts `count` rows under `filter`; at once when
+    /// the last one does.
     async fn counts(&mut self, filter: PendingFilter, count: u32) {
         let reached = tokio::time::timeout(HANG_GUARD, async {
-            while self.counted(filter) != count {
+            while self.counted(filter) != Some(count) {
                 self.next().await;
             }
         })
         .await;
         assert!(
             reached.is_ok(),
-            "the menu counts {} under {filter:?}, not {count}",
+            "the list counts {:?} under {filter:?}, not {count}",
             self.counted(filter)
         );
     }
 
     async fn next(&mut self) {
         let snapshot = self.list.next().await.expect("the list answers");
+        self.entries = snapshot.pending_filter_entries.clone();
         self.shown = Some(
             snapshot
                 .windows
@@ -184,8 +184,8 @@ async fn a_row_leaves_its_stored_entry_while_an_import_owns_it() {
     shut_down(handle).await;
 }
 
-/// The filter menu counts what is running when it opens: a claimed import
-/// moves its row's count from the entry the tables put it under to In
+/// The filter's counts follow what is running: a claimed import moves its
+/// row's count from the entry the tables put it under to In
 /// Progress, and back once the import ends, with the list under All showing
 /// every row throughout.
 #[tokio::test(flavor = "multi_thread")]
@@ -209,5 +209,119 @@ async fn the_entry_counts_follow_what_is_running() {
     ));
     list.counts(PendingFilter::InProgress, 0).await;
     list.counts(PendingFilter::All, 1).await;
+    shut_down(handle).await;
+}
+
+/// A watched root holding two stored candidates, each with its draft read
+/// from its own tags, and the list under All through a window that holds the
+/// first item alone: the key on that page, and the key off it.
+async fn one_row_on_the_page() -> (ImportServiceHandle, TempDir, ImportListSubscription, String, String) {
+    let (manager, tmp) = setup_test_manager_with(crate::util::http::Http::for_test()).await;
+    let (first, first_key, _) = unscanned_candidate(&manager, &tmp, "Album").await;
+    let (second, second_key, _) = unscanned_candidate(&manager, &tmp, "Other Record").await;
+    let root = first.watched_folder_path.clone();
+    let generation = manager.begin_folder_scan(&root).await.unwrap();
+    for candidate in [first, second] {
+        manager
+            .save_folder_scan_item(
+                &root,
+                generation,
+                &crate::import::folder_scanner::ScanItem::Valid(candidate),
+            )
+            .await
+            .unwrap();
+    }
+    manager
+        .finish_folder_scan(&root, generation, None)
+        .await
+        .unwrap();
+    let handle = manager
+        .start_import_service(tokio::runtime::Handle::current())
+        .await
+        .unwrap();
+    for key in [&first_key, &second_key] {
+        handle.select_candidate_file_tags(key.clone()).await.unwrap();
+    }
+    let list = handle.subscribe_list_window(
+        ImportListView::default(),
+        crate::library::LibraryPageWindow {
+            offset: 0,
+            limit: 1,
+        },
+    );
+    let snapshot = delivered(&list).await;
+    let on_page: Vec<String> = snapshot
+        .windows
+        .iter()
+        .flat_map(|window| &window.items)
+        .filter_map(|item| item.candidate_key().map(str::to_string))
+        .collect();
+    assert_eq!(on_page.len(), 1, "the page holds one row: {on_page:?}");
+    let entries = &snapshot.pending_filter_entries;
+    assert_eq!(counted(entries, PendingFilter::All), Some(2));
+    assert_eq!(counted(entries, PendingFilter::InProgress), Some(0));
+    assert_eq!(counted(entries, PendingFilter::Identified), Some(0));
+    let on_page = on_page.into_iter().next().expect("one row");
+    let off_page = if on_page == first_key { second_key } else { first_key };
+    (handle, tmp, list, on_page, off_page)
+}
+
+/// The next snapshot the list delivers.
+async fn delivered(list: &ImportListSubscription) -> crate::import::ImportListSnapshot {
+    tokio::time::timeout(HANG_GUARD, list.next())
+        .await
+        .expect("the list delivers")
+        .expect("the list answers")
+}
+
+/// How many rows `entries` count under `filter`; `None` when they hold no
+/// entry for it, as before the list's first snapshot.
+fn counted(entries: &[crate::import::PendingFilterEntry], filter: PendingFilter) -> Option<u32> {
+    entries
+        .iter()
+        .find(|entry| entry.filter == filter)
+        .map(|entry| entry.count)
+}
+
+/// A run starting for a row off the page, under All, changes nothing on the
+/// page but moves the row's count to In Progress, so the list delivers it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_run_off_the_page_delivers_its_count() {
+    let (handle, _tmp, list, on_page, off_page) = one_row_on_the_page().await;
+
+    handle.admit_identification(vec![off_page], crate::import::Admission::Requested);
+    let moved = delivered(&list).await;
+
+    assert_eq!(counted(&moved.pending_filter_entries, PendingFilter::InProgress), Some(1));
+    assert_eq!(counted(&moved.pending_filter_entries, PendingFilter::All), Some(2));
+    assert_eq!(
+        moved
+            .windows
+            .iter()
+            .flat_map(|window| &window.items)
+            .filter_map(|item| item.candidate_key())
+            .collect::<Vec<_>>(),
+        vec![on_page.as_str()],
+        "the page holds the same row"
+    );
+    shut_down(handle).await;
+}
+
+/// A pick for a row off the page moves its count to Identified, so the list
+/// delivers it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_verdict_off_the_page_delivers_its_count() {
+    let (handle, _tmp, list, _on_page, off_page) = one_row_on_the_page().await;
+    super::lookup_choices::seed_mb_release_with_catalog(
+        handle.library_manager.providers(),
+        "off-the-page",
+        "CAT-1",
+    );
+
+    super::lookup_choices::pick(&handle, &off_page, "off-the-page").await;
+    let moved = delivered(&list).await;
+
+    assert_eq!(counted(&moved.pending_filter_entries, PendingFilter::Identified), Some(1));
+    assert_eq!(counted(&moved.pending_filter_entries, PendingFilter::All), Some(2));
     shut_down(handle).await;
 }

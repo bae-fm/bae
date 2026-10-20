@@ -44,8 +44,7 @@ private final class MutableImportListPageSource: PageSource,
         ImportListPages(
             source: self,
             setView: { _ in },
-            waitForView: { _ in },
-            pendingFilterEntries: { [] }
+            waitForView: { _ in }
         )
     }
 

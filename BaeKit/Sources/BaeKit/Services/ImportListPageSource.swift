@@ -26,27 +26,16 @@ import Foundation
         private let applyView: @Sendable (BridgeImportListView) -> Void
         private let awaitAppliedView:
             @Sendable (BridgeImportListView) async throws -> Void
-        private let countPendingFilterEntries:
-            @Sendable () -> [BridgePendingFilterEntry]
 
         public init(
             source: any PageSource<BridgeImportListItem>,
             setView: @escaping @Sendable (BridgeImportListView) -> Void,
             waitForView:
-                @escaping @Sendable (BridgeImportListView) async throws -> Void,
-            pendingFilterEntries:
-                @escaping @Sendable () -> [BridgePendingFilterEntry]
+                @escaping @Sendable (BridgeImportListView) async throws -> Void
         ) {
             self.source = source
             applyView = setView
             awaitAppliedView = waitForView
-            countPendingFilterEntries = pendingFilterEntries
-        }
-
-        /// Every entry of Found's filter, with how many of Found's rows it
-        /// holds now, as core counts them when asked.
-        public func pendingFilterEntries() -> [BridgePendingFilterEntry] {
-            countPendingFilterEntries()
         }
 
         public func setView(_ view: BridgeImportListView) {
@@ -66,8 +55,9 @@ import Foundation
     /// every one of them, so the pages a `PaginatedList` asks for are registered
     /// here and handed the window that matches them. The chrome around the list —
     /// the tab counts, Pending's covers, the group keys — rides on the same value and
-    /// goes to `onSummary`, and the selection revision the rows reflect goes to
-    /// `onSelectionRevision` once the rows have been handed out.
+    /// goes to `onSummary`, Found's filter entries with their counts go to
+    /// `onPendingFilterEntries`, and the selection revision the rows reflect goes
+    /// to `onSelectionRevision` once the rows have been handed out.
     public final class ImportListPageSource: PageSource, @unchecked Sendable {
         public typealias Row = BridgeImportListItem
 
@@ -103,6 +93,8 @@ import Foundation
         private let subscription: any ImportListSubscriptionProtocol
         private let onSummary:
             @MainActor @Sendable (BridgeImportQueueSummary) -> Void
+        private let onPendingFilterEntries:
+            @MainActor @Sendable ([BridgePendingFilterEntry]) -> Void
         private let onSelectionRevision: @MainActor @Sendable (UInt64) -> Void
         private let lock = NSLock()
         private var sinks: [WindowKey: Sink] = [:]
@@ -126,11 +118,15 @@ import Foundation
             onSummary:
                 @escaping @MainActor @Sendable (BridgeImportQueueSummary)
                 -> Void,
+            onPendingFilterEntries:
+                @escaping @MainActor @Sendable ([BridgePendingFilterEntry])
+                -> Void,
             onSelectionRevision:
                 @escaping @MainActor @Sendable (UInt64) -> Void
         ) {
             self.subscription = subscription
             self.onSummary = onSummary
+            self.onPendingFilterEntries = onPendingFilterEntries
             self.onSelectionRevision = onSelectionRevision
             deliveries = Task { [weak self] in
                 await self?.deliver()
@@ -158,9 +154,6 @@ import Foundation
                 },
                 waitForView: { [self] view in
                     _ = try await deliveredSummary(afterApplying: view)
-                },
-                pendingFilterEntries: { [subscription] in
-                    subscription.pendingFilterEntries()
                 }
             )
         }
@@ -239,10 +232,12 @@ import Foundation
                     let snapshot = try await subscription.next()
                     let sinks = registeredSinks()
                     let onSummary = self.onSummary
+                    let onPendingFilterEntries = self.onPendingFilterEntries
                     let onSelectionRevision = self.onSelectionRevision
                     let summary = snapshot.summary
                     await MainActor.run {
                         onSummary(summary)
+                        onPendingFilterEntries(snapshot.pendingFilterEntries)
                         for window in snapshot.windows {
                             let key = WindowKey(
                                 offset: window.window.offset,
@@ -479,26 +474,18 @@ import Foundation
     /// of a fixed item list and reports one fixed summary.
     public struct ImportListPreviewPageSource: PageSource {
         public let items: [BridgeImportListItem]
-        /// What Found's filter counts, fixed like the items.
-        public let pendingFilterEntries: [BridgePendingFilterEntry]
 
-        public init(
-            items: [BridgeImportListItem],
-            pendingFilterEntries: [BridgePendingFilterEntry] = []
-        ) {
+        public init(items: [BridgeImportListItem]) {
             self.items = items
-            self.pendingFilterEntries = pendingFilterEntries
         }
 
         /// This source's pages. A fixed list shows one view, so changing the view
         /// changes nothing.
         public var pages: ImportListPages {
-            let entries = pendingFilterEntries
-            return ImportListPages(
+            ImportListPages(
                 source: self,
                 setView: { _ in },
-                waitForView: { _ in },
-                pendingFilterEntries: { entries }
+                waitForView: { _ in }
             )
         }
 

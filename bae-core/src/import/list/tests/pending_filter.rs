@@ -308,8 +308,8 @@ fn every_row_shows_under_exactly_one_entry_past_all() {
 }
 
 /// Each entry counts the rows it holds, from a read of the list under All —
-/// which reads nothing of what is running — with what is running when the
-/// menu opens deciding a row's state over the tables: the count is the rows
+/// which reads nothing of what is running — with what is running as the
+/// snapshot is joined deciding a row's state over the tables: the count is the rows
 /// the list shows under that entry, All's is Found's total, and an entry
 /// holding a row can be chosen.
 #[test]

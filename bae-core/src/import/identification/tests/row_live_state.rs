@@ -3,8 +3,8 @@
 // Under Found's All the list reads the tables and nothing else; what is
 // running for each candidate is joined to its row on the page in memory, and a
 // change to it for a row on the page delivers the page again at the same
-// request revision. The filter menu counts what is running when it opens, so
-// a run or an import starting or ending reads nothing again for it either.
+// request revision. The filter's counts are joined the same way, so a run or
+// an import starting or ending reads nothing again for them either.
 
 /// A list subscription over the Pending tab, asking for `windows`.
 fn list_subscription(
@@ -41,14 +41,14 @@ async fn next_page(
         .expect("the list answers")
 }
 
-/// How many of Found's rows the filter menu, opened now, counts under
-/// `filter`.
+/// How many of Found's rows a snapshot counts under `filter`.
 fn counted(
-    list: &crate::import::ImportListSubscription,
+    snapshot: &crate::import::ImportListSnapshot,
     filter: crate::import::PendingFilter,
 ) -> u32 {
-    list.pending_filter_entries()
-        .into_iter()
+    snapshot
+        .pending_filter_entries
+        .iter()
         .find(|entry| entry.filter == filter)
         .expect("every entry is counted")
         .count
@@ -100,8 +100,8 @@ fn reported(key: &str, progress: crate::import::ImportProgress) -> ImportEvent {
 /// again: the page it already read is delivered again, at the same request
 /// revision, with the row saying the import owns it — waiting for the worker,
 /// then taken up, then writing — and what it offers at each. A progress tick
-/// within the running import changes neither and delivers nothing. The filter
-/// menu, opened while the import goes, counts the row In Progress.
+/// within the running import changes neither and delivers nothing. The page
+/// the claim delivers counts the row In Progress.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_claimed_import_reaches_its_row_on_the_page() {
     let fixture = Fixture::new("live-state-on-the-page").await;
@@ -116,8 +116,8 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
         .expect("the scanned candidate has a row");
     assert!(!idle.facts.importing());
     assert!(!idle.actions.is_empty(), "an idle row offers its commands");
-    assert_eq!(counted(&list, crate::import::PendingFilter::All), 1);
-    assert_eq!(counted(&list, crate::import::PendingFilter::InProgress), 0);
+    assert_eq!(counted(&initial, crate::import::PendingFilter::All), 1);
+    assert_eq!(counted(&initial, crate::import::PendingFilter::InProgress), 0);
 
     fixture.import.claim_candidate_for_import(&key, "import-1").await;
     let claimed = next_page(&list).await;
@@ -142,11 +142,11 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
         ],
         "a claimed import offers only its cancel, beside showing its folder"
     );
-    assert_eq!(counted(&list, crate::import::PendingFilter::All), 1);
+    assert_eq!(counted(&claimed, crate::import::PendingFilter::All), 1);
     assert_eq!(
-        counted(&list, crate::import::PendingFilter::InProgress),
+        counted(&claimed, crate::import::PendingFilter::InProgress),
         1,
-        "the menu counts the claimed import with no read of the list"
+        "the claimed import is counted with no read of the list"
     );
 
     fixture
@@ -196,11 +196,12 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     );
 }
 
-/// What is running for a candidate off the page delivers nothing; once a new
-/// window puts it on the page, the same subscription joins it and delivers its
+/// What is running for a candidate off the page reaches no row: it delivers
+/// the page again only for the count it moves. Once a new window puts the
+/// candidate on the page, the same subscription joins it and delivers its
 /// changes.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_row_off_the_page_delivers_nothing_until_the_window_holds_it() {
+async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
     let fixture = Fixture::new("live-state-off-the-page").await;
     let first = fixture.disc_id_candidate("First");
     let second = fixture.disc_id_candidate("Second");
@@ -222,6 +223,17 @@ async fn a_row_off_the_page_delivers_nothing_until_the_window_holds_it() {
         .import
         .claim_candidate_for_import(&off_key, "import-off")
         .await;
+    let counted_off = next_page(&list).await;
+    assert_eq!(counted_off.request_revision, initial.request_revision);
+    assert_eq!(
+        counted_off.windows, initial.windows,
+        "the claim off the page reached no row on it"
+    );
+    assert_eq!(
+        counted(&counted_off, crate::import::PendingFilter::InProgress),
+        1
+    );
+
     fixture
         .import
         .claim_candidate_for_import(&on_key, "import-on")
@@ -230,9 +242,9 @@ async fn a_row_off_the_page_delivers_nothing_until_the_window_holds_it() {
     assert_eq!(claimed.request_revision, initial.request_revision);
     assert_eq!(
         page_live(&claimed)[&on_key].facts.import,
-        Some(crate::import::ImportStanding::Queued),
-        "the claim off the page delivered a page of its own"
+        Some(crate::import::ImportStanding::Queued)
     );
+    assert_eq!(counted(&claimed, crate::import::PendingFilter::InProgress), 2);
 
     list.set_windows(page_window(0, 2)).unwrap();
     let widened = next_page(&list).await;
@@ -344,11 +356,10 @@ async fn a_batch_identify_shows_each_row_queued_then_running() {
     }
 }
 
-/// A verdict stored for a row off the page moves the filter menu's counts and
-/// delivers nothing: the next page the list delivers is the one a change on
-/// the page brings.
+/// A verdict stored for a row off the page reaches no row on it, but moves
+/// the filter's counts, so the list delivers the page again with them.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_verdict_off_the_page_moves_the_counts_and_delivers_nothing() {
+async fn a_verdict_off_the_page_delivers_the_counts_it_moves() {
     let fixture = Fixture::new("verdict-off-the-page").await;
     let first = fixture.disc_id_candidate("First");
     let second = fixture.disc_id_candidate("Second");
@@ -371,34 +382,23 @@ async fn a_verdict_off_the_page_moves_the_counts_and_delivers_nothing() {
         .find(|dir| dir.to_string_lossy() != on_key)
         .expect("the other candidate is off the page")
         .clone();
-    let before = list.pending_filter_entries();
 
     let probed = fixture.probed_total_ms(&off_dir);
     fixture
         .archive("mb-off-page", "rg-off-page", &[probed, 0])
         .await;
-    // The list reads while a caller waits on its next page, as the app always
-    // does; the verdict and the claim land while this one waits.
-    let (next, ()) = tokio::join!(next_page(&list), async {
-        fixture
-            .store_settled_verdict(&off_dir, "mb-off-page", "rg-off-page")
-            .await;
-        let deadline = tokio::time::Instant::now() + Duration::from_secs(20);
-        while list.pending_filter_entries() == before {
-            assert!(
-                tokio::time::Instant::now() < deadline,
-                "the verdict never reached the menu's counts"
-            );
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-        fixture
-            .import
-            .claim_candidate_for_import(&on_key, "import-on")
-            .await;
-    });
-    assert_eq!(
-        page_live(&next)[&on_key].facts.import,
-        Some(crate::import::ImportStanding::Queued),
-        "the verdict off the page delivered a page of its own"
+    fixture
+        .store_settled_verdict(&off_dir, "mb-off-page", "rg-off-page")
+        .await;
+    let moved = next_page(&list).await;
+    assert_ne!(
+        moved.pending_filter_entries, initial.pending_filter_entries,
+        "the verdict moved a count"
     );
+    assert_eq!(counted(&moved, crate::import::PendingFilter::All), 2);
+    assert_eq!(
+        moved.windows, initial.windows,
+        "the verdict off the page reached no row on it"
+    );
+    assert_eq!(page_live(&moved).into_keys().collect::<Vec<_>>(), vec![on_key]);
 }

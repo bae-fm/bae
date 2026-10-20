@@ -597,15 +597,28 @@ impl ImportServiceHandle {
         &self,
         view: crate::import::ImportListView,
     ) -> crate::import::ImportListSubscription {
+        self.subscribe_list_window(
+            view,
+            crate::library::LibraryPageWindow {
+                offset: 0,
+                limit: u64::MAX,
+            },
+        )
+    }
+
+    /// The import list for `view` through one window, for a test that
+    /// watches what changes off the page.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn subscribe_list_window(
+        &self,
+        view: crate::import::ImportListView,
+        window: crate::library::LibraryPageWindow,
+    ) -> crate::import::ImportListSubscription {
         let runtime_facts = self.watch_runtime_facts();
         let request = crate::import::ImportListRequest {
             live_standings: view.pending_filter.live_standings(runtime_facts.facts()),
             view,
-            windows: std::iter::once(crate::library::LibraryPageWindow {
-                offset: 0,
-                limit: u64::MAX,
-            })
-            .collect(),
+            windows: std::iter::once(window).collect(),
             upload_standing: Default::default(),
         };
         let query = self.library_manager.subscribe_import_list(request.clone());

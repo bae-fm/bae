@@ -21,9 +21,12 @@
 //! list: a scan moves its found count with every folder it walks, and that
 //! count moves no row, so it never reruns the list.
 //!
-//! Found's filter menu counts its entries when it opens, from the states the
-//! list's last read placed Found's rows in and what is running as the
-//! subscription holds it then: nothing the list reads is kept current for it.
+//! Every snapshot carries Found's filter entries with their counts: the
+//! states the list's last read placed Found's rows in, each overridden by what
+//! is running for its candidate, joined in the same read as the page's rows.
+//! A change that moves a count — a run starting for a row off the page under
+//! All, or a read that changed only rows off the page — delivers the snapshot
+//! again even though nothing on the page moved.
 
 use super::{
     FolderScanProgress, FoundStates, ImportListProjection, ImportListRequest, ImportListSnapshot,
@@ -53,15 +56,13 @@ struct StandingRequest {
     facts_changed: watch::Sender<()>,
 }
 
-/// The request, the revision the query was last handed it at, every
-/// candidate's runtime facts — what its live standings are read from, and what
-/// is joined to the rows it reads — and the states the list's last read placed
-/// Found's rows in.
+/// The request, the revision the query was last handed it at, and every
+/// candidate's runtime facts: what its live standings are read from, and what
+/// is joined to the rows it reads.
 struct Standing {
     request: ImportListRequest,
     revision: u64,
     runtime_facts: HashMap<String, TriageRuntimeFacts>,
-    found_states: FoundStates,
 }
 
 impl StandingRequest {
@@ -84,7 +85,6 @@ impl StandingRequest {
             request,
             revision,
             runtime_facts,
-            found_states: _,
         } = &mut *standing;
         request.live_standings = request
             .view
@@ -106,15 +106,6 @@ impl StandingRequest {
         let revision = self.update(|standing| standing.runtime_facts = facts)?;
         self.facts_changed.send_replace(());
         Ok(revision)
-    }
-
-    /// Keep the states a list read placed Found's rows in, for the filter
-    /// menu's counts.
-    fn set_found_states(&self, found_states: FoundStates) {
-        self.standing
-            .lock()
-            .expect("import list request mutex poisoned")
-            .found_states = found_states;
     }
 
     fn read<R>(&self, read: impl FnOnce(&Standing) -> R) -> R {
@@ -146,19 +137,32 @@ struct Delivered {
     /// The runtime facts of the candidates on the last snapshot's page that
     /// have any, by key: what its rows were joined with.
     page_facts: BTreeMap<String, TriageRuntimeFacts>,
+    /// The filter entries the last snapshot carried.
+    pending_filter_entries: Vec<PendingFilterEntry>,
     /// Told when the runtime facts change.
     facts_changed: watch::Receiver<()>,
 }
 
-/// The list's last value, the request revision it answered and why it was
-/// read.
+/// The list's last value, the states it placed Found's rows in, the request
+/// revision it answered and why it was read.
 struct AnsweredList {
     projection: ImportListProjection,
+    found_states: FoundStates,
     request_revision: u64,
     cause: coven::LiveQueryCause,
 }
 
 impl AnsweredList {
+    /// Every entry of Found's filter, with how many of Found's rows it holds:
+    /// each row in the state what is running for its candidate puts it in,
+    /// or else in the one this read placed it in.
+    fn pending_filter_entries(
+        &self,
+        facts: &HashMap<String, TriageRuntimeFacts>,
+    ) -> Vec<PendingFilterEntry> {
+        self.found_states.entries(&LiveStanding::of_each(facts.iter()))
+    }
+
     /// The runtime facts of the candidates on this read's page that have any.
     fn page_facts(
         &self,
@@ -176,9 +180,10 @@ impl AnsweredList {
 
 impl Delivered {
     /// The snapshot due once both queries have answered, its rows joined with
-    /// `facts`. A value beside the list's last read — the scans alone, or
-    /// what is running for its rows — is, after the first, the same request's
-    /// value changing.
+    /// `facts` and its filter entries counted with them. A value beside the
+    /// list's last read — the scans alone, what is running for its rows, or
+    /// counts that moved off the page — is, after the first, the same
+    /// request's value changing.
     fn snapshot(
         &mut self,
         beside_list: bool,
@@ -193,6 +198,7 @@ impl Delivered {
             list.cause
         };
         self.page_facts = list.page_facts(facts);
+        self.pending_filter_entries = list.pending_filter_entries(facts);
         let snapshot = ImportListSnapshot {
             windows: list
                 .projection
@@ -203,6 +209,7 @@ impl Delivered {
                 .collect(),
             total_count: list.projection.total_count,
             summary: list.projection.summary.clone(),
+            pending_filter_entries: self.pending_filter_entries.clone(),
             folder_scans: folder_scans.clone(),
             selection_revision: list.projection.selection_revision,
             request_revision: list.request_revision,
@@ -241,7 +248,6 @@ impl ImportListSubscription {
                 // A query starts at revision zero.
                 revision: 0,
                 runtime_facts: runtime_facts.facts().clone(),
-                found_states: FoundStates::default(),
             }),
             query: CancellableLiveQuery::new(query),
             facts_changed,
@@ -257,6 +263,7 @@ impl ImportListSubscription {
                 folder_scans: None,
                 sent: false,
                 page_facts: BTreeMap::new(),
+                pending_filter_entries: Vec::new(),
                 facts_changed: facts_changed_rx,
             }),
             merge,
@@ -278,23 +285,10 @@ impl ImportListSubscription {
             .map(|_| ())
     }
 
-    /// Every entry of Found's filter, in the menu's order, with how many of
-    /// Found's rows it holds now: each row in the state what is running for
-    /// its candidate puts it in as this subscription holds it, or else in the
-    /// one the tables put it in when the list was last read. Asked when the
-    /// menu opens; before the list's first read every entry holds none.
-    pub fn pending_filter_entries(&self) -> Vec<PendingFilterEntry> {
-        self.request.read(|standing| {
-            standing
-                .found_states
-                .entries(&LiveStanding::of_each(standing.runtime_facts.iter()))
-        })
-    }
-
     /// The next snapshot: the list's next value beside the scans as they
     /// stand, the scans' next value beside the list's last one, or the list's
-    /// last one again once what is running for a row on its page changed. The
-    /// first waits for both queries.
+    /// last one again once what is running for a row on its page, or the
+    /// filter's counts, changed. The first waits for both queries.
     ///
     /// A runtime change while the query owes a read of a newer request
     /// delivers nothing: that read is joined with the facts as they stand when
@@ -330,21 +324,36 @@ impl ImportListSubscription {
                             return Err(error.into());
                         }
                     };
-                    self.request
-                        .set_found_states(std::mem::take(&mut projection.found_states));
+                    let found_states = std::mem::take(&mut projection.found_states);
                     // A read that changed only the states of rows off the page
-                    // moves the menu's counts and nothing on screen.
-                    if delivered.list.as_ref().is_some_and(|list| {
+                    // moves nothing on screen: it is the same request's value
+                    // again, delivered only when it moves the filter's counts.
+                    let Delivered {
+                        list: answered,
+                        sent,
+                        pending_filter_entries: delivered_entries,
+                        ..
+                    } = &mut *delivered;
+                    if let Some(list) = answered.as_mut().filter(|list| {
                         list.request_revision == request_revision && list.projection == projection
                     }) {
-                        continue;
+                        list.found_states = found_states;
+                        let entries = self
+                            .request
+                            .read(|standing| list.pending_filter_entries(&standing.runtime_facts));
+                        if !*sent || entries == *delivered_entries {
+                            continue;
+                        }
+                        true
+                    } else {
+                        *answered = Some(AnsweredList {
+                            projection,
+                            found_states,
+                            request_revision,
+                            cause,
+                        });
+                        false
                     }
-                    delivered.list = Some(AnsweredList {
-                        projection,
-                        request_revision,
-                        cause,
-                    });
-                    false
                 }
                 Arrival::FolderScans(value) => {
                     let folder_scans = match value {
@@ -359,13 +368,18 @@ impl ImportListSubscription {
                 }
                 Arrival::RuntimeFacts => {
                     let Some(list) = &delivered.list else { continue };
-                    let (owed, page_facts) = self.request.read(|standing| {
+                    let (owed, page_facts, entries) = self.request.read(|standing| {
                         (
                             standing.revision != list.request_revision,
                             list.page_facts(&standing.runtime_facts),
+                            list.pending_filter_entries(&standing.runtime_facts),
                         )
                     });
-                    if !delivered.sent || owed || page_facts == delivered.page_facts {
+                    if !delivered.sent
+                        || owed
+                        || (page_facts == delivered.page_facts
+                            && entries == delivered.pending_filter_entries)
+                    {
                         continue;
                     }
                     true

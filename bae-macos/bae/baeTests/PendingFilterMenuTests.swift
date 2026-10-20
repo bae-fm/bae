@@ -1,12 +1,11 @@
 import AppKit
 import BaeKit
-import SwiftUI
 import Testing
 
 @testable import bae
 
-/// Found's filter in the candidate menu, as AppKit builds it from the SwiftUI
-/// menu content: core's entries in core's order, each with its count, the
+/// Found's filter in the candidate list's menu, as its controller builds it
+/// on opening: core's entries in core's order, each with its count, the
 /// chosen one checked.
 @MainActor
 @Suite("Found's filter menu")
@@ -38,19 +37,34 @@ struct PendingFilterMenuTests {
         ]
     }
 
-    private func menu(
+    /// The menu's controller, its menu as it opens with `selected` chosen.
+    private func opened(
         _ selected: BridgePendingFilter,
         recorder: Recorder = Recorder()
-    ) -> NSMenu {
-        let menu = NSHostingMenu(
-            rootView: PendingFilterSection(
-                entries: { entries },
-                selected: selected,
-                onSelect: { recorder.chosen.append($0) }
+    ) -> CandidateListMenuController {
+        let controller = CandidateListMenuController(
+            state: CandidateListMenuState(
+                watchedFolders: [],
+                refreshingFolders: [],
+                scanStatuses: [:],
+                networkFolders: [],
+                hasGroups: false,
+                sortOrder: .newestFirst,
+                pendingFilter: selected,
+                pendingFilterEntries: entries,
+                pendingFilterApplies: true
+            ),
+            actions: CandidateListMenuActions(
+                onSetSortOrder: { _ in },
+                onSetPendingFilter: { recorder.chosen.append($0) },
+                onAddFolder: {},
+                onSetAllGroupsExpanded: { _ in },
+                onRefreshFolder: { _ in },
+                onRemoveFolder: { _ in }
             )
         )
-        menu.update()
-        return menu
+        controller.menuNeedsUpdate(controller.menu)
+        return controller
     }
 
     private func title(_ entry: BridgePendingFilterEntry) -> String {
@@ -76,14 +90,17 @@ struct PendingFilterMenuTests {
     @Test("core's entries list in core's order, each with its count")
     func entriesListInCoreOrderWithCounts() {
         let expected = entries.map(title)
+        let controller = opened(.all)
         #expect(
-            menu(.all).items.map(\.title).filter(expected.contains) == expected
+            controller.menu.items.map(\.title).filter(expected.contains)
+                == expected
         )
     }
 
     @Test("the chosen entry is checked, and no other")
     func theChosenEntryIsChecked() throws {
-        let menu = menu(.identified)
+        let controller = opened(.identified)
+        let menu = controller.menu
         for entry in entries {
             let index = try #require(position(of: entry, in: menu))
             #expect(
@@ -95,7 +112,8 @@ struct PendingFilterMenuTests {
 
     @Test("an entry holding no row cannot be chosen")
     func anEmptyEntryIsDisabled() throws {
-        let menu = menu(.all)
+        let controller = opened(.all)
+        let menu = controller.menu
         for entry in entries {
             let index = try #require(position(of: entry, in: menu))
             #expect(menu.items[index].isEnabled == entry.selectable)
@@ -104,7 +122,8 @@ struct PendingFilterMenuTests {
 
     @Test("a chosen entry holding no row stays chosen")
     func aChosenEmptyEntryStaysChecked() throws {
-        let menu = menu(.inProgress)
+        let controller = opened(.inProgress)
+        let menu = controller.menu
         let index = try #require(
             position(of: .inProgress, in: menu)
         )
@@ -114,20 +133,26 @@ struct PendingFilterMenuTests {
     @Test("choosing an entry says which it is")
     func choosingAnEntrySendsIt() throws {
         let recorder = Recorder()
-        let menu = menu(.all, recorder: recorder)
+        let controller = opened(.all, recorder: recorder)
+        let menu = controller.menu
         let index = try #require(position(of: .needsYou, in: menu))
-        menu.performActionForItem(at: index)
+        withExtendedLifetime(controller) {
+            menu.performActionForItem(at: index)
+        }
         #expect(recorder.chosen == [.needsYou])
     }
 
     @Test("choosing the chosen entry again changes nothing")
     func choosingTheChosenEntryAgainSendsNothing() throws {
         let recorder = Recorder()
-        let menu = menu(.identified, recorder: recorder)
+        let controller = opened(.identified, recorder: recorder)
+        let menu = controller.menu
         let index = try #require(
             position(of: .identified, in: menu)
         )
-        menu.performActionForItem(at: index)
+        withExtendedLifetime(controller) {
+            menu.performActionForItem(at: index)
+        }
         #expect(recorder.chosen.isEmpty)
     }
 }

@@ -53,8 +53,8 @@ final class ImportListFixtureTests: XCTestCase {
             )
         }
 
-        // The list's menu: its trigger is the "More" symbol.
-        let menu = window.menuButtons["More"]
+        // The list's menu, named by what it holds.
+        let menu = window.menuButtons["Sorting, Filtering and Watched Folders"]
         XCTAssertTrue(menu.waitForExistence(timeout: 10))
         menu.click()
         // Lookup Error, Error and Import Error wait on the person as Needs

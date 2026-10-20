@@ -404,33 +404,32 @@ struct ImportCandidateListContent: View {
                             networkFolders: networkFolders,
                             hasGroups: !summary.groupKeys.isEmpty,
                             sortOrder: listSlot.sortOrder,
-                            onSetSortOrder: { order in
-                                cancelReveal()
-                                listSlot.setSortOrder(order)
-                            },
                             pendingFilter: uiStore
                                 .importCandidatePendingFilter,
-                            pendingFilterEntries: {
-                                listSlot.pendingFilterEntries()
-                            },
+                            importStore: importStore,
                             pendingFilterApplies: uiStore
                                 .importCandidateTab == .pending,
-                            onSetPendingFilter: { filter in
-                                cancelReveal()
-                                listSlot.setPendingFilter(filter)
-                            },
-                            onAddFolder: onAddFolder,
-                            onSetAllGroupsExpanded: { expanded in
-                                cancelReveal()
-                                listSlot.setGroupsExpanded(
-                                    summary.groupKeys,
-                                    expanded
-                                )
-                            },
-                            onRefreshFolder: onRefreshFolder,
-                            onRemoveFolder: onRemoveFolder
+                            actions: CandidateListMenuActions(
+                                onSetSortOrder: { order in
+                                    cancelReveal()
+                                    listSlot.setSortOrder(order)
+                                },
+                                onSetPendingFilter: { filter in
+                                    cancelReveal()
+                                    listSlot.setPendingFilter(filter)
+                                },
+                                onAddFolder: onAddFolder,
+                                onSetAllGroupsExpanded: { expanded in
+                                    cancelReveal()
+                                    listSlot.setGroupsExpanded(
+                                        summary.groupKeys,
+                                        expanded
+                                    )
+                                },
+                                onRefreshFolder: onRefreshFolder,
+                                onRemoveFolder: onRemoveFolder
+                            )
                         )
-                        .equatable()
                     }
                     .padding(.horizontal, ThemeSpace.group)
                     .frame(height: ImportFilterBarLayout.rowHeight)

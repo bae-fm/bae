@@ -205,6 +205,9 @@ final class DesktopSubscriptions {
                     onSummary: { summary in
                         importStore.applySummary(summary)
                     },
+                    onPendingFilterEntries: { entries in
+                        importStore.applyPendingFilterEntries(entries)
+                    },
                     onSelectionRevision: { revision in
                         importStore.applySelectionRevision(revision)
                     }

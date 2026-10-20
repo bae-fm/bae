@@ -5,10 +5,12 @@
 //! under exactly one entry past All, so those entries split Found's rows
 //! between them and All holds them all.
 //!
-//! The counts are worked out when the menu opens rather than on every read of
-//! the list: what is running for a candidate decides its state over the
-//! tables, and carrying it in the list's request for the counts' sake would
-//! read the whole list again each time a run or an import starts or ends.
+//! The counts are worked out as each snapshot of the list is delivered, from
+//! the states its last read placed Found's rows in and what is running then,
+//! joined in memory rather than carried in the list's request: what is running
+//! for a candidate decides its state over the tables, and carrying it in the
+//! request for the counts' sake would read the whole list again each time a
+//! run or an import starts or ends.
 
 use crate::import::triage::{LiveStanding, PendingState, TriageRow, TriageRuntimeFacts};
 use std::collections::{BTreeMap, HashMap};

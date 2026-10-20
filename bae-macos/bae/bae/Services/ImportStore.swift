@@ -90,6 +90,21 @@ class ImportStore {
         reportNewScanFailures()
     }
 
+    /// Every entry of Found's filter, in core's order, with how many of
+    /// Found's rows it holds, as the list's last delivery counted them. Empty
+    /// before the first delivery, when the list has nothing to count.
+    ///
+    /// Written through `applyPendingFilterEntries`, which drops a delivery
+    /// that counts the same as the one before it.
+    private(set) var pendingFilterEntries: [BridgePendingFilterEntry] = []
+
+    /// Take a delivery's filter entries, unless they count what the held ones
+    /// do.
+    func applyPendingFilterEntries(_ next: [BridgePendingFilterEntry]) {
+        guard next != pendingFilterEntries else { return }
+        pendingFilterEntries = next
+    }
+
     private func reportNewScanFailures() {
         var current: [String: String] = [:]
         for status in summary.folderScanStatuses {

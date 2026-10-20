@@ -1,12 +1,14 @@
+import AppKit
 import BaeKit
 import SwiftUI
 
-/// The candidate list's menu: sort order, Found's filter, watched folders,
-/// and expanding or collapsing every folder group.
+/// The candidate list's menu trigger: the "more" glyph, marked when a filter
+/// hides Found's rows or a scan failed, opening
+/// `CandidateListMenuController`'s menu on a press.
 ///
-/// `Equatable` over what the menu draws, and rendered through `.equatable()`,
-/// because a `Menu` rebuilt while open closes under the pointer.
-struct CandidateListMenu: View, Equatable {
+/// Found's filter entries are read here from `importStore`, so a count
+/// moving re-renders the trigger alone and reaches the menu, open or not.
+struct CandidateListMenu: View {
     let watchedFolders: [BridgeWatchedFolder]
     /// Roots with a refresh in flight; their Refresh entry is disabled.
     let refreshingFolders: Set<String>
@@ -19,228 +21,131 @@ struct CandidateListMenu: View, Equatable {
     /// Collapse All are disabled.
     let hasGroups: Bool
     let sortOrder: BridgeImportListOrder
-    let onSetSortOrder: (BridgeImportListOrder) -> Void
     /// The entry Found's rows are narrowed to.
     let pendingFilter: BridgePendingFilter
-    /// Every entry of Found's filter, with how many rows each holds, asked
-    /// of core when the menu opens rather than when it is drawn: what is
-    /// running decides a row's entry, and counts carried on every delivery
-    /// would rebuild the menu under the pointer.
-    let pendingFilterEntries: () -> [BridgePendingFilterEntry]
+    /// Holds Found's filter entries, with how many rows each holds.
+    let importStore: ImportStore
     /// Whether the tab on show is Found, the one tab the filter applies to.
     let pendingFilterApplies: Bool
-    let onSetPendingFilter: (BridgePendingFilter) -> Void
-    let onAddFolder: () -> Void
-    /// Fold every folder group in the queue open (`true`) or shut (`false`).
-    let onSetAllGroupsExpanded: (_ expanded: Bool) -> Void
-    let onRefreshFolder: (_ folder: BridgeWatchedFolder) -> Void
-    /// Stop watching `path`.
-    let onRemoveFolder: (_ path: String) -> Void
+    let actions: CandidateListMenuActions
 
-    /// Leaves out the closures, which are new on every render.
-    nonisolated static func == (
-        lhs: CandidateListMenu,
-        rhs: CandidateListMenu
-    ) -> Bool {
-        lhs.watchedFolders == rhs.watchedFolders
-            && lhs.refreshingFolders == rhs.refreshingFolders
-            && lhs.networkFolders == rhs.networkFolders
-            && lhs.hasGroups == rhs.hasGroups
-            && lhs.sortOrder == rhs.sortOrder
-            && lhs.pendingFilter == rhs.pendingFilter
-            && lhs.pendingFilterApplies == rhs.pendingFilterApplies
-            && hasFailedScan(in: lhs.scanStatuses)
-                == hasFailedScan(in: rhs.scanStatuses)
-            && lhs.watchedFolders.allSatisfy { folder in
-                scanPresentation(
-                    lhs.scanStatuses[folder.path],
-                    equals: rhs.scanStatuses[folder.path]
-                )
-            }
-    }
-
-    private var hasFailedScan: Bool {
-        Self.hasFailedScan(in: scanStatuses)
-    }
-
-    nonisolated private static func hasFailedScan(
-        in statuses: [String: BridgeFolderScanStatus]
-    ) -> Bool {
-        statuses.values.contains { status in
-            if case .failed = status { return true }
-            return false
-        }
-    }
-
-    /// Whether two scan states draw the same entry; a scan's found count is
-    /// ignored because the entry shows one spinner for the whole scan.
-    nonisolated private static func scanPresentation(
-        _ lhs: BridgeFolderScanStatus?,
-        equals rhs: BridgeFolderScanStatus?
-    ) -> Bool {
-        switch (lhs, rhs) {
-        case (.scanning, .scanning):
-            true
-        case (.failed(let lhsError), .failed(let rhsError)):
-            lhsError == rhsError
-        case (.complete, .complete), (.complete, nil), (nil, .complete),
-            (nil, nil):
-            true
-        default:
-            false
-        }
-    }
-
-    var body: some View {
-        Menu {
-            Picker(
-                "Sort",
-                selection: Binding(get: { sortOrder }, set: onSetSortOrder)
-            ) {
-                Text("Newest First").tag(BridgeImportListOrder.newestFirst)
-                Text("Oldest First").tag(BridgeImportListOrder.oldestFirst)
-                Text("Folder Name (A–Z)")
-                    .tag(BridgeImportListOrder.pathAscending)
-                Text("Folder Name (Z–A)")
-                    .tag(BridgeImportListOrder.pathDescending)
-            }
-            .pickerStyle(.inline)
-            PendingFilterSection(
-                entries: pendingFilterEntries,
-                selected: pendingFilter,
-                onSelect: onSetPendingFilter
-            )
-            .disabled(!pendingFilterApplies)
-            Section("Folders") {
-                Button {
-                    onAddFolder()
-                } label: {
-                    Label("Add a Folder\u{2026}", systemImage: "plus")
-                }
-                ForEach(watchedFolders, id: \.path) { folder in
-                    folderMenu(folder)
-                }
-            }
-            Section("Groups") {
-                Button {
-                    onSetAllGroupsExpanded(true)
-                } label: {
-                    Label("Expand All", systemImage: "chevron.down")
-                }
-                .disabled(!hasGroups)
-                Button {
-                    onSetAllGroupsExpanded(false)
-                } label: {
-                    Label("Collapse All", systemImage: "chevron.right")
-                }
-                .disabled(!hasGroups)
-            }
-        } label: {
-            Image(systemName: "ellipsis.circle")
-                .themeIcon(ImportFilterBarLayout.glyph)
-                .overlay(alignment: .topTrailing) {
-                    // A filter hiding Found's rows marks the trigger, so a
-                    // short list never reads as a short queue.
-                    if pendingFilter != .all && !hasFailedScan {
-                        Circle()
-                            .fill(Color.accentColor)
-                            .frame(width: 6, height: 6)
-                            .offset(x: 2, y: -2)
-                    }
-                    if hasFailedScan {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .themeIcon(.badge)
-                            .foregroundStyle(Theme.danger)
-                            .offset(x: 3, y: -3)
-                    }
-                }
-                .filterBarControl()
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
-        .help("Sorting, Filtering and Watched Folders")
-    }
-
-    /// One root's entry: its scan state is the icon, and a failed scan's error
-    /// is the tooltip.
-    @ViewBuilder
-    private func folderMenu(_ folder: BridgeWatchedFolder) -> some View {
-        let onNetwork = networkFolders.contains(folder.path)
-        switch scanStatuses[folder.path] {
-        case .scanning:
-            folderEntry(folder) {
-                ProgressView().controlSize(.small)
-            }
-            .help(networkLine(onNetwork) ?? "")
-        case .failed(let error):
-            folderEntry(folder) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(Theme.danger)
-            }
-            .help(
-                [error, networkLine(onNetwork)]
-                    .compactMap { $0 }
-                    .joined(separator: "\n")
-            )
-        case .complete, nil:
-            folderEntry(folder) {
-                if onNetwork {
-                    Image(systemName: "network")
-                        .foregroundStyle(.secondary)
-                }
-                else {
-                    EmptyView()
-                }
-            }
-            .help(networkLine(onNetwork) ?? "")
-        }
-    }
-
-    /// The tooltip line saying how a network folder is checked; `nil` for a
-    /// local folder.
-    private func networkLine(_ onNetwork: Bool) -> String? {
-        guard onNetwork else { return nil }
-        return coreString(
-            bridgeNetworkFolderWatchKey(),
-            Int(bridgeNetworkFolderCheckMinutes())
+    private var state: CandidateListMenuState {
+        CandidateListMenuState(
+            watchedFolders: watchedFolders,
+            refreshingFolders: refreshingFolders,
+            scanStatuses: scanStatuses,
+            networkFolders: networkFolders,
+            hasGroups: hasGroups,
+            sortOrder: sortOrder,
+            pendingFilter: pendingFilter,
+            pendingFilterEntries: importStore.pendingFilterEntries,
+            pendingFilterApplies: pendingFilterApplies
         )
     }
 
-    private func folderEntry<Icon: View>(
-        _ folder: BridgeWatchedFolder,
-        @ViewBuilder icon: () -> Icon
-    ) -> some View {
-        Menu {
-            let refreshing = refreshingFolders.contains(folder.path)
-            Button {
-                onRefreshFolder(folder)
-            } label: {
-                Label(
-                    refreshing ? "Refreshing\u{2026}" : "Refresh",
-                    systemImage: "arrow.clockwise"
-                )
+    var body: some View {
+        let state = state
+        Image(systemName: "ellipsis.circle")
+            .themeIcon(ImportFilterBarLayout.glyph)
+            .overlay(alignment: .topTrailing) {
+                // A filter hiding Found's rows marks the trigger, so a short
+                // list never reads as a short queue.
+                if pendingFilter != .all && !state.hasFailedScan {
+                    Circle()
+                        .fill(Color.accentColor)
+                        .frame(width: 6, height: 6)
+                        .offset(x: 2, y: -2)
+                }
+                if state.hasFailedScan {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .themeIcon(.badge)
+                        .foregroundStyle(Theme.danger)
+                        .offset(x: 3, y: -3)
+                }
             }
-            .disabled(refreshing)
-            Button("Reveal in Finder") {
-                SystemActions.revealInFinder(path: folder.path)
+            .filterBarControl()
+            .foregroundStyle(.secondary)
+            // The trigger above it is the element a person and VoiceOver
+            // press.
+            .accessibilityHidden(true)
+            .overlay {
+                CandidateListMenuTrigger(state: state, actions: actions)
             }
-            Divider()
-            Button("Remove Folder", role: .destructive) {
-                onRemoveFolder(folder.path)
-            }
-        } label: {
-            Label {
-                Text(folder.name)
-            } icon: {
-                icon()
-            }
+    }
+}
+
+/// The view a press on opens the menu from, below itself, keeping the menu's
+/// controller across renders and handing it each new state.
+private struct CandidateListMenuTrigger: NSViewRepresentable {
+    let state: CandidateListMenuState
+    let actions: CandidateListMenuActions
+
+    func makeCoordinator() -> CandidateListMenuController {
+        CandidateListMenuController(state: state, actions: actions)
+    }
+
+    func makeNSView(context: Context) -> TriggerView {
+        TriggerView(controller: context.coordinator)
+    }
+
+    func updateNSView(_: TriggerView, context: Context) {
+        context.coordinator.actions = actions
+        context.coordinator.show(state)
+    }
+
+    /// Opens the menu on mouse down, as a pull-down button does, and to
+    /// VoiceOver presents itself as one.
+    final class TriggerView: NSView {
+        private let controller: CandidateListMenuController
+
+        init(controller: CandidateListMenuController) {
+            self.controller = controller
+            super.init(frame: .zero)
+            let label = String(
+                localized: "Sorting, Filtering and Watched Folders"
+            )
+            toolTip = label
+            setAccessibilityElement(true)
+            setAccessibilityRole(.menuButton)
+            setAccessibilityLabel(label)
+        }
+
+        @available(*, unavailable)
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
+        override func mouseDown(with _: NSEvent) {
+            popUp()
+        }
+
+        override func accessibilityPerformPress() -> Bool {
+            popUp()
+            return true
+        }
+
+        override func accessibilityPerformShowMenu() -> Bool {
+            popUp()
+            return true
+        }
+
+        private func popUp() {
+            controller.menu.popUp(
+                positioning: nil,
+                at: NSPoint(x: 0, y: isFlipped ? bounds.maxY : bounds.minY),
+                in: self
+            )
         }
     }
 }
 
 #if DEBUG
     #Preview("Candidate list menu") {
-        CandidateListMenu(
+        let importStore = ImportStore()
+        importStore.applyPendingFilterEntries(
+            PreviewData.pendingFilterEntries()
+        )
+        return CandidateListMenu(
             watchedFolders: [
                 PreviewData.importWatchedFolder,
                 BridgeWatchedFolder(path: "/Music/Rips", name: "Rips"),
@@ -256,15 +161,17 @@ struct CandidateListMenu: View, Equatable {
             networkFolders: ["/Volumes/Vault"],
             hasGroups: true,
             sortOrder: .newestFirst,
-            onSetSortOrder: { _ in },
             pendingFilter: .needsYou,
-            pendingFilterEntries: { PreviewData.pendingFilterEntries() },
+            importStore: importStore,
             pendingFilterApplies: true,
-            onSetPendingFilter: { _ in },
-            onAddFolder: {},
-            onSetAllGroupsExpanded: { _ in },
-            onRefreshFolder: { _ in },
-            onRemoveFolder: { _ in }
+            actions: CandidateListMenuActions(
+                onSetSortOrder: { _ in },
+                onSetPendingFilter: { _ in },
+                onAddFolder: {},
+                onSetAllGroupsExpanded: { _ in },
+                onRefreshFolder: { _ in },
+                onRemoveFolder: { _ in }
+            )
         )
         .padding()
         .windowBackground()
