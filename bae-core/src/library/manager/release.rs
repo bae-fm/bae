@@ -475,7 +475,6 @@ impl LibraryManager {
                     &existing.id,
                     &credit_of(assignment),
                     i as i32,
-                    self.ids.new_id().to_string(),
                     now,
                 ));
             }

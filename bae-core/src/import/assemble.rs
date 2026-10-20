@@ -504,7 +504,6 @@ pub(crate) fn assemble_parsed_album(
                         &db_track.id,
                         &artist_id,
                         *position,
-                        ids.new_id().to_string(),
                         now,
                     ));
                 }

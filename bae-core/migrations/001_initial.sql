@@ -377,7 +377,8 @@ CREATE TABLE IF NOT EXISTS track_artists (
     position INTEGER NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
-    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE
+    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
+    UNIQUE(track_id, artist_id)
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_track_artists_track_id ON track_artists (track_id);

@@ -207,7 +207,7 @@ pub(super) fn insert_track_artist_row(
         VALUES (?, ?, ?, ?, ?)
         "#,
         params![
-            ta.id,
+            ta.id(),
             ta.track_id,
             ta.artist_id,
             ta.position,
@@ -714,56 +714,112 @@ pub(super) fn write_release_records(
     Ok(())
 }
 
-/// Replace every `album_artists` row for `album_id` with `artists` (delete then
-/// insert), so the `album_artists` schema is written in one place.
+/// Make `album_id`'s further artists exactly `artists`, touching only the
+/// rows that differ (see [`write_credits`]).
 pub(super) fn replace_album_artists(
     conn: &SqlContext<'_, '_>,
     album_id: &str,
     artists: &[DbAlbumArtist],
     now: &str,
 ) -> Result<(), DbError> {
-    conn.execute(
-        "DELETE FROM album_artists WHERE album_id = ?",
-        params![album_id],
-    )?;
-    for aa in artists {
-        conn.execute(
-            r#"INSERT INTO album_artists (id, album_id, artist_id, position, created_at)
-            VALUES (?, ?, ?, ?, ?)"#,
-            params![
-                crate::db::identity::album_artist_id(album_id, &aa.artist_id),
-                album_id,
-                aa.artist_id,
-                aa.position,
-                now
-            ],
-        )?;
-    }
-    Ok(())
+    let credits: Vec<Credit<'_>> = artists
+        .iter()
+        .map(|aa| Credit {
+            id: crate::db::identity::album_artist_id(album_id, &aa.artist_id),
+            artist_id: &aa.artist_id,
+            position: aa.position,
+        })
+        .collect();
+    write_credits(conn, "album_artists", "album_id", album_id, &credits, now)
 }
 
-/// Replace `track_artists` rows for every id in `track_ids`, then insert the
-/// new rows. Callers pass the affected track ids explicitly because `artists`
-/// may not cover every track (a track legitimately has no per-track artists
-/// when it inherits from the album).
+/// Make each track of `track_ids` credit exactly its `artists`, touching only
+/// the rows that differ (see [`write_credits`]). Callers pass the affected
+/// track ids explicitly because `artists` may not cover every track (a track
+/// legitimately has no per-track artists when it inherits from the album).
 pub(super) fn replace_track_artists(
     conn: &SqlContext<'_, '_>,
     track_ids: &[&str],
     artists: &[DbTrackArtist],
     now: &str,
 ) -> Result<(), DbError> {
-    for track_id in track_ids {
-        conn.execute(
-            "DELETE FROM track_artists WHERE track_id = ?",
-            params![track_id],
-        )?;
+    if let Some(stray) = artists
+        .iter()
+        .find(|ta| !track_ids.contains(&ta.track_id.as_str()))
+    {
+        return Err(DbError::Message(format!(
+            "a track artist names track {}, whose credits this write does not replace",
+            stray.track_id
+        )));
     }
-    for ta in artists {
-        conn.execute(
-            r#"INSERT INTO track_artists (id, track_id, artist_id, position, created_at)
-            VALUES (?, ?, ?, ?, ?)"#,
-            params![ta.id, ta.track_id, ta.artist_id, ta.position, now],
-        )?;
+    for track_id in track_ids {
+        let credits: Vec<Credit<'_>> = artists
+            .iter()
+            .filter(|ta| ta.track_id == *track_id)
+            .map(|ta| Credit {
+                id: ta.id(),
+                artist_id: &ta.artist_id,
+                position: ta.position,
+            })
+            .collect();
+        write_credits(conn, "track_artists", "track_id", track_id, &credits, now)?;
+    }
+    Ok(())
+}
+
+/// One artist's credit as an `album_artists` / `track_artists` row. Its id
+/// spells the credit, so the same credit given again names the same row.
+struct Credit<'a> {
+    id: String,
+    artist_id: &'a str,
+    position: i32,
+}
+
+/// Make `owner_id`'s rows of `table` exactly `credits`. A credit no longer
+/// given is deleted, a new one inserted, and one given again at another
+/// position moved; one given again at its position is not touched. So a write
+/// that keeps a credit leaves its row, and its `created_at`, as they were, and
+/// syncs nothing for it.
+fn write_credits(
+    conn: &SqlContext<'_, '_>,
+    table: &'static str,
+    owner_column: &'static str,
+    owner_id: &str,
+    credits: &[Credit<'_>],
+    now: &str,
+) -> Result<(), DbError> {
+    let stored: HashMap<String, i32> = conn
+        .query(
+            &format!("SELECT id, position FROM {table} WHERE {owner_column} = ?"),
+            params![owner_id],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, i32>(1)?)),
+        )?
+        .into_iter()
+        .collect();
+    for id in stored.keys() {
+        if !credits.iter().any(|credit| credit.id == *id) {
+            conn.execute(&format!("DELETE FROM {table} WHERE id = ?"), params![id])?;
+        }
+    }
+    for credit in credits {
+        match stored.get(&credit.id) {
+            Some(position) if *position == credit.position => {}
+            Some(_) => {
+                conn.execute(
+                    &format!("UPDATE {table} SET position = ? WHERE id = ?"),
+                    params![credit.position, credit.id],
+                )?;
+            }
+            None => {
+                conn.execute(
+                    &format!(
+                        "INSERT INTO {table} (id, {owner_column}, artist_id, position, created_at) \
+                         VALUES (?, ?, ?, ?, ?)"
+                    ),
+                    params![credit.id, owner_id, credit.artist_id, credit.position, now],
+                )?;
+            }
+        }
     }
     Ok(())
 }

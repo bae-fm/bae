@@ -74,7 +74,7 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         SyncedTable::new("releases", RowIdentity::IndependentUuid),
         SyncedTable::new("release_records", RowIdentity::SharedKey),
         SyncedTable::new("tracks", RowIdentity::IndependentUuid),
-        SyncedTable::new("track_artists", RowIdentity::IndependentUuid),
+        SyncedTable::new("track_artists", RowIdentity::SharedKey),
         SyncedTable::new("works", RowIdentity::SharedKey),
         SyncedTable::new("work_artists", RowIdentity::SharedKey),
         SyncedTable::new("work_parts", RowIdentity::SharedKey),
@@ -184,6 +184,7 @@ mod tests {
                     | "albums"
                     | "album_artists"
                     | "release_records"
+                    | "track_artists"
                     | "works"
                     | "work_artists"
                     | "work_parts"

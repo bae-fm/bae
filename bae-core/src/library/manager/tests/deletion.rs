@@ -169,7 +169,6 @@ async fn track_display_carries_the_cover_version() {
         &track.id,
         &bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
         0,
-        Uuid::new_v4().to_string(),
         Utc::now(),
     );
     manager.database.insert_album(&album).await.unwrap();

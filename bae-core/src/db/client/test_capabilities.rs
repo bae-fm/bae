@@ -43,6 +43,37 @@ impl Database {
         .await
     }
 
+    /// Every row each write still waiting to upload records, oldest write
+    /// first: a row it changes as its table's name, and a row its SQL touched
+    /// with no net change as `"<table> (unchanged)"`. Sorted within a write.
+    pub async fn queued_write_rows_for_test(&self) -> Result<Vec<Vec<String>>, DbError> {
+        Ok(self
+            .inner
+            .handle
+            .test_queued_writes()
+            .await?
+            .into_iter()
+            .map(|write| {
+                let mut tables: Vec<String> = write
+                    .parts
+                    .iter()
+                    .flat_map(|part| {
+                        part.rows
+                            .iter()
+                            .map(|change| change.row.table.clone())
+                            .chain(
+                                part.executions
+                                    .iter()
+                                    .map(|row| format!("{} (unchanged)", row.row.table)),
+                            )
+                    })
+                    .collect();
+                tables.sort();
+                tables
+            })
+            .collect())
+    }
+
     pub async fn queued_upload_count_for_test(&self) -> Result<usize, DbError> {
         Ok(self.inner.handle.uploads().await?.files.len())
     }

@@ -85,7 +85,6 @@ pub struct DbAlbumArtist {
 /// Links artists to tracks (many-to-many).
 #[derive(Debug, Clone)]
 pub struct DbTrackArtist {
-    pub id: String,
     pub track_id: String,
     pub artist_id: String,
     /// Order of this artist in multi-artist tracks (0-indexed)
@@ -510,15 +509,14 @@ impl DbAlbumArtist {
     }
 }
 impl DbTrackArtist {
-    pub fn new(
-        track_id: &str,
-        artist_id: &str,
-        position: i32,
-        id: String,
-        now: DateTime<Utc>,
-    ) -> Self {
+    /// The credit's row id: one artist's credit on one track is one row on
+    /// every device.
+    pub fn id(&self) -> String {
+        crate::db::identity::track_artist_id(&self.track_id, &self.artist_id)
+    }
+
+    pub fn new(track_id: &str, artist_id: &str, position: i32, now: DateTime<Utc>) -> Self {
         DbTrackArtist {
-            id,
             track_id: track_id.to_string(),
             artist_id: artist_id.to_string(),
             position,

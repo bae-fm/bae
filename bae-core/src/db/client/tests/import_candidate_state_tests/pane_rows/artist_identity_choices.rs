@@ -182,7 +182,6 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
                     &track.id,
                     &incoming.id,
                     0,
-                    bae_test_support::test_uuid("choice-track-credit"),
                     now,
                 )],
                 works: std::slice::from_ref(&work),

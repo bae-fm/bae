@@ -741,7 +741,6 @@ fn apply_user_edit_to_seed(
                     &track.id,
                     &artist_id,
                     position as i32,
-                    ids.new_id().to_string(),
                     now,
                 ));
             }

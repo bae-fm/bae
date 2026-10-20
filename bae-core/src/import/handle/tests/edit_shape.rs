@@ -31,7 +31,6 @@ fn validation_folds_validate_token_outcomes() {
 
 fn track_artist(artist_id: &str) -> crate::db::DbTrackArtist {
     crate::db::DbTrackArtist {
-        id: Uuid::new_v4().to_string(),
         track_id: TRACK_1.to_string(),
         artist_id: artist_id.to_string(),
         position: 3,
@@ -55,9 +54,9 @@ fn remap_links_rewrites_id_and_preserves_the_rest() {
     assert_eq!(remapped.len(), 1);
     assert_eq!(remapped[0].artist_id, "db-1");
     // Everything other than the remapped artist id carries through.
-    assert_eq!(remapped[0].id, ta.id);
     assert_eq!(remapped[0].track_id, TRACK_1);
     assert_eq!(remapped[0].position, 3);
+    assert_eq!(remapped[0].created_at, ta.created_at);
 }
 
 #[test]

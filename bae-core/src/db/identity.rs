@@ -2,7 +2,7 @@
 //!
 //! coven merges two devices' rows that share `(table, id)`. A row that names a
 //! catalog entity (an artist, a work, a release group's album) or a relation
-//! between rows (an album credit, a release's record in one catalog) must
+//! between rows (an album or track credit, a release's record in one catalog) must
 //! therefore get the same id on every device that writes the same fact, or the
 //! devices end up with duplicates and with pulls that collide on the table's
 //! natural `UNIQUE` key. Each id here is a name-based UUID over a text key that
@@ -54,6 +54,11 @@ pub fn album_id_for_records(records: &[ReleaseRecord]) -> Option<String> {
 /// One artist's credit on one album.
 pub fn album_artist_id(album_id: &str, artist_id: &str) -> String {
     id_for(&format!("album artist {album_id} {artist_id}"))
+}
+
+/// One artist's credit on one track.
+pub fn track_artist_id(track_id: &str, artist_id: &str) -> String {
+    id_for(&format!("track artist {track_id} {artist_id}"))
 }
 
 /// A release's record in one catalog.

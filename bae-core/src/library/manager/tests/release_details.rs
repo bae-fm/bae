@@ -406,7 +406,6 @@ async fn display_artist_is_set_only_for_a_compilation() {
             &track.id,
             &guest.id,
             0,
-            Uuid::new_v4().to_string(),
             Utc::now(),
         );
         manager.database.insert_album(&album).await.unwrap();

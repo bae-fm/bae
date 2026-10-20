@@ -307,7 +307,6 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
         &track.id,
         &seed_artist.id,
         0,
-        "track-artist-1".to_string(),
         now,
     );
 
