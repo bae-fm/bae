@@ -547,30 +547,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "aws-smithy-http-client"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51c89cc3f1f281d659a67a519a1b5c6d445b5ce09fa7e5aee40c2c2707e9509d"
-dependencies = [
- "aws-smithy-async",
- "aws-smithy-runtime-api",
- "aws-smithy-types",
- "h2",
- "http",
- "hyper",
- "hyper-rustls",
- "hyper-util",
- "pin-project-lite",
- "rustls",
- "rustls-native-certs",
- "rustls-pki-types",
- "tokio",
- "tokio-rustls",
- "tower",
- "tracing",
-]
-
-[[package]]
 name = "aws-smithy-json"
 version = "0.63.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -598,7 +574,6 @@ checksum = "d6e302ac1d88b99652489df31abdec6ac42a2ab2ac3982ad0ac49f64dfaf28ba"
 dependencies = [
  "aws-smithy-async",
  "aws-smithy-http",
- "aws-smithy-http-client",
  "aws-smithy-observability",
  "aws-smithy-runtime-api",
  "aws-smithy-schema",
@@ -1176,9 +1151,9 @@ checksum = "8f1fe948ff07f4bd06c30984e69f5b4899c516a3ef74f34df92a2df2ab535495"
 
 [[package]]
 name = "bytes"
-version = "1.11.1"
+version = "1.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
+checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
 name = "bytes-utils"
@@ -1520,7 +1495,7 @@ dependencies = [
 [[package]]
 name = "coven"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=4b3397190570ef989cd3f8d87502811fd62615a4#4b3397190570ef989cd3f8d87502811fd62615a4"
+source = "git+https://github.com/bae-fm/coven?rev=130d17967dce57f8c5ab1061831948f59e643cbc#130d17967dce57f8c5ab1061831948f59e643cbc"
 dependencies = [
  "coven-crypto",
  "coven-database",
@@ -1536,7 +1511,7 @@ dependencies = [
 [[package]]
 name = "coven-crypto"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=4b3397190570ef989cd3f8d87502811fd62615a4#4b3397190570ef989cd3f8d87502811fd62615a4"
+source = "git+https://github.com/bae-fm/coven?rev=130d17967dce57f8c5ab1061831948f59e643cbc#130d17967dce57f8c5ab1061831948f59e643cbc"
 dependencies = [
  "android-native-keyring-store",
  "apple-native-keyring-store",
@@ -1566,7 +1541,7 @@ dependencies = [
 [[package]]
 name = "coven-database"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=4b3397190570ef989cd3f8d87502811fd62615a4#4b3397190570ef989cd3f8d87502811fd62615a4"
+source = "git+https://github.com/bae-fm/coven?rev=130d17967dce57f8c5ab1061831948f59e643cbc#130d17967dce57f8c5ab1061831948f59e643cbc"
 dependencies = [
  "coven-crypto",
  "coven-format",
@@ -1585,7 +1560,7 @@ dependencies = [
 [[package]]
 name = "coven-format"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=4b3397190570ef989cd3f8d87502811fd62615a4#4b3397190570ef989cd3f8d87502811fd62615a4"
+source = "git+https://github.com/bae-fm/coven?rev=130d17967dce57f8c5ab1061831948f59e643cbc#130d17967dce57f8c5ab1061831948f59e643cbc"
 dependencies = [
  "coven-crypto",
  "coven-foundation",
@@ -1599,7 +1574,7 @@ dependencies = [
 [[package]]
 name = "coven-foundation"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=4b3397190570ef989cd3f8d87502811fd62615a4#4b3397190570ef989cd3f8d87502811fd62615a4"
+source = "git+https://github.com/bae-fm/coven?rev=130d17967dce57f8c5ab1061831948f59e643cbc#130d17967dce57f8c5ab1061831948f59e643cbc"
 dependencies = [
  "rusqlite",
  "rustix 1.1.5",
@@ -1616,7 +1591,7 @@ dependencies = [
 [[package]]
 name = "coven-merge"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=4b3397190570ef989cd3f8d87502811fd62615a4#4b3397190570ef989cd3f8d87502811fd62615a4"
+source = "git+https://github.com/bae-fm/coven?rev=130d17967dce57f8c5ab1061831948f59e643cbc#130d17967dce57f8c5ab1061831948f59e643cbc"
 dependencies = [
  "coven-foundation",
  "rusqlite",
@@ -1626,7 +1601,7 @@ dependencies = [
 [[package]]
 name = "coven-storage"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=4b3397190570ef989cd3f8d87502811fd62615a4#4b3397190570ef989cd3f8d87502811fd62615a4"
+source = "git+https://github.com/bae-fm/coven?rev=130d17967dce57f8c5ab1061831948f59e643cbc#130d17967dce57f8c5ab1061831948f59e643cbc"
 dependencies = [
  "async-trait",
  "aws-credential-types",
@@ -1635,11 +1610,14 @@ dependencies = [
  "aws-smithy-runtime-api",
  "base64 0.23.1",
  "block2",
+ "bytes",
  "coven-crypto",
  "coven-format",
  "coven-foundation",
  "coven-merge",
  "hex",
+ "http",
+ "http-body",
  "oauth2",
  "objc2",
  "objc2-cloud-kit",
@@ -1660,7 +1638,7 @@ dependencies = [
 [[package]]
 name = "coven-sync"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=4b3397190570ef989cd3f8d87502811fd62615a4#4b3397190570ef989cd3f8d87502811fd62615a4"
+source = "git+https://github.com/bae-fm/coven?rev=130d17967dce57f8c5ab1061831948f59e643cbc#130d17967dce57f8c5ab1061831948f59e643cbc"
 dependencies = [
  "async-trait",
  "coven-crypto",
@@ -2556,25 +2534,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "h2"
-version = "0.4.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d29020232d6aa3fb1daca64c1127cf662cf97f254ae16c18c05b8ab635fc118"
-dependencies = [
- "atomic-waker",
- "bytes",
- "fnv",
- "futures-core",
- "futures-sink",
- "http",
- "indexmap",
- "slab",
- "tokio",
- "tokio-util",
- "tracing",
-]
-
-[[package]]
 name = "hashbrown"
 version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2688,9 +2647,9 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "1.4.0"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3ba2a386d7f85a81f119ad7498ebe444d2e22c2af0b86b069416ace48b3311a"
+checksum = "918d3568bebf352712bc2ef3d46a8bcf1a75b373be6539de198e9105cbbf9ce0"
 dependencies = [
  "bytes",
  "itoa",
@@ -2698,9 +2657,9 @@ dependencies = [
 
 [[package]]
 name = "http-body"
-version = "1.0.1"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1efedce1fb8e6913f23e0c92de8e62cd5b772a67e7b3946df930a62566c93184"
+checksum = "ca2a8f2913ee65f60facd6a5905613afaa448497a0230cc41ce022d93290bc2c"
 dependencies = [
  "bytes",
  "http",
@@ -2750,7 +2709,6 @@ dependencies = [
  "bytes",
  "futures-channel",
  "futures-core",
- "h2",
  "http",
  "http-body",
  "httparse",
@@ -2773,7 +2731,6 @@ dependencies = [
  "hyper",
  "hyper-util",
  "rustls",
- "rustls-native-certs",
  "rustls-pki-types",
  "tokio",
  "tokio-rustls",
@@ -6021,7 +5978,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
