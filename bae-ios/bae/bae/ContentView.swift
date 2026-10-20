@@ -96,7 +96,7 @@ struct ContentView: View {
                 prompt: .offered,
                 error: error,
                 onReset: { holder.resetDevice(libraryId: libraryId) },
-                onCancel: holder.cancelDeviceReset
+                onCancel: holder.leaveRecovery
             )
 
         case .resetUnfinished(let libraryId, let error):
@@ -104,7 +104,7 @@ struct ContentView: View {
                 prompt: .unfinished,
                 error: error,
                 onReset: { holder.resetDevice(libraryId: libraryId) },
-                onCancel: holder.leaveFinishing
+                onCancel: holder.leaveRecovery
             )
 
         case .restoreRequired(let libraryId):
@@ -123,7 +123,7 @@ struct ContentView: View {
                     entry: .finishRestore(libraryId: libraryId),
                     onLibraryReady: holder.openOpenedLibrary
                 ),
-                onBack: holder.leaveFinishing
+                onBack: holder.leaveRecovery
             )
             .id(libraryId)
 

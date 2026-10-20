@@ -1,5 +1,6 @@
 import BaeKit
 import Foundation
+import Observation
 import Testing
 
 @testable import bae
@@ -38,12 +39,23 @@ struct AppSessionHolderTests {
         )
     }
 
-    private func waitUntil(_ condition: @MainActor () -> Bool) async {
-        for _ in 0..<10_000 {
-            if condition() { return }
-            await Task.yield()
+    /// Return once `holder.screen` satisfies `condition`, checking it again
+    /// each time the screen changes: the wait ends on the change itself,
+    /// however long the work behind it runs. A screen that never arrives
+    /// holds the test until its time limit fails it.
+    private func screen(
+        of holder: AppSessionHolder,
+        becomes condition: (AppScreen) -> Bool
+    ) async {
+        while !condition(holder.screen) {
+            await withCheckedContinuation { continuation in
+                withObservationTracking {
+                    _ = holder.screen
+                } onChange: {
+                    continuation.resume()
+                }
+            }
         }
-        Issue.record("condition never became true")
     }
 
     @Test("a fresh holder starts on the loading screen with no open library")
@@ -65,26 +77,29 @@ struct AppSessionHolderTests {
         #expect(!holder.isActive(makeLibrary(id: "lib-1")))
     }
 
-    @Test("a device with no libraries onboards")
+    @Test("a device with no libraries onboards", .timeLimit(.minutes(1)))
     func noLibrariesOnboards() async {
         let holder = makeHolder()
 
         holder.start()
-        await waitUntil {
-            if case .onboarding = holder.screen { return true }
+        await screen(of: holder) {
+            if case .onboarding = $0 { return true }
             return false
         }
         #expect(holder.libraries.isEmpty)
     }
 
-    @Test("leaving the reset warning with no open library lists libraries again")
-    func cancelResetWithoutServiceStartsOver() async {
+    /// With no library open, the reset warning came from opening a library
+    /// that would only fail the same way again, so leaving it opens nothing.
+    @Test("leaving the reset warning with no open library onboards")
+    func leaveResetWithoutServiceOnboards() {
         let holder = makeHolder()
 
-        holder.cancelDeviceReset()
-        await waitUntil {
-            if case .onboarding = holder.screen { return true }
-            return false
+        holder.leaveRecovery()
+
+        guard case .onboarding = holder.screen else {
+            Issue.record("Leaving with no open library should onboard")
+            return
         }
     }
 }

@@ -295,16 +295,6 @@ extension AppSessionHolder {
         screen = .resetRequired(libraryId: appService.libraryId, error: nil)
     }
 
-    /// Leave the reset warning without resetting.
-    func cancelDeviceReset() {
-        if let appService {
-            screen = .library(appService)
-        }
-        else {
-            start()
-        }
-    }
-
     /// Show the one call that finishes a reset or restore of a library's
     /// copy on this device that stopped partway, from the library switcher.
     /// The open library stays open behind it.
@@ -312,10 +302,11 @@ extension AppSessionHolder {
         screen = .finishing(libraryId: libraryId, by: by)
     }
 
-    /// Leave a finishing screen without running its call: back to the open
-    /// library, or, with none open, to onboarding, since the library on that
-    /// screen opens only once its call finishes.
-    func leaveFinishing() {
+    /// Leave the reset warning or a finishing screen without running its
+    /// call: back to the open library, or, with none open, to onboarding.
+    /// With none open, the screen came from opening its library, which fails
+    /// the same way until a reset, or the finishing call, runs.
+    func leaveRecovery() {
         if let appService {
             screen = .library(appService)
         }
