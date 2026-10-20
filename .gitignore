@@ -9,9 +9,9 @@
 
 # Rust build artifacts
 target/
-target-macos/
-target-ios/
-target-android/
+target-macos
+target-ios
+target-android
 target-windows/
 target-iso/
 **/*.rs.bk
@@ -48,7 +48,7 @@ plants/
 # scratch.
 BaeKit/Sources/BaeBridge/bae_bridge_*.swift
 BaeKit/Frameworks/
-BaeKit/.build/
+BaeKit/.build
 BaeKit/.swiftpm/
 BaeKit/Package.resolved
 
@@ -107,9 +107,9 @@ bae-android/build/
 
 # Build output
 bae-macos/bae/build/
-bae-macos/bae/.build/
+bae-macos/bae/.build
 # iOS derivedData (mirrors the macOS project dir; -derivedDataPath .build/derivedData)
-bae-ios/bae/.build/
+bae-ios/bae/.build
 
 # Local working files
 plans/
