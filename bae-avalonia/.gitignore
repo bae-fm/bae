@@ -1,6 +1,6 @@
 # .NET build output
-bin/
-obj/
+bin
+obj
 
 # Visual Studio / Rider
 .vs/

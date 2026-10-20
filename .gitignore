@@ -101,8 +101,8 @@ bae-bridge/csharp-bindings-baeium/
 bae-macos/bae/bae/oauth-creds.json
 bae-ios/bae/bae/oauth-creds.json
 bae-android/app/src/full/assets/oauth-creds.json
-bae-android/.gradle/
-bae-android/app/build/
+bae-android/.gradle
+bae-android/app/build
 bae-android/build/
 
 # Build output
