@@ -198,7 +198,7 @@ open class AppService: @unchecked Sendable, Observable {
         downloads = components.downloads
         cast = components.cast
         networkPathReports = NetworkPathReports { [sync = components.sync] in
-            sync.reportNetworkChange()
+            sync.nudges.reportNetworkChange()
         }
         playbackValues = PlaybackValueHandler(
             playbackStore: components.playbackStore,
@@ -242,7 +242,7 @@ open class AppService: @unchecked Sendable, Observable {
     }
 
     public func triggerSync() {
-        sync.triggerSync()
+        sync.nudges.triggerSync()
     }
 
     /// Tell sync the device's network may be back. The platform calls it on a
@@ -252,7 +252,7 @@ open class AppService: @unchecked Sendable, Observable {
     /// work cut off while the device slept or the app sat in the background
     /// resumes at once. It requests a pass as `triggerSync` does.
     public func reportNetworkChange() {
-        sync.reportNetworkChange()
+        sync.nudges.reportNetworkChange()
     }
 
     public nonisolated func renameLibrary(

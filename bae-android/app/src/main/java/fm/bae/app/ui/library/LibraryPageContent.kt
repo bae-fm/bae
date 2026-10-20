@@ -48,7 +48,7 @@ internal fun LibraryPageContent(
     var refreshing by remember { mutableStateOf(false) }
     val refreshScope = rememberCoroutineScope()
     val onRefresh: () -> Unit = {
-        session.appHandle.triggerSync()
+        session.appHandle.retryNow()
         refreshScope.launch {
             refreshing = true
             delay(PULL_REFRESH_SETTLE_MS)

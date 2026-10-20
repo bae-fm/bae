@@ -63,6 +63,16 @@ impl LibraryManager {
         self.database.network_changed();
     }
 
+    /// The person asked to retry everything now, such as by pulling to
+    /// refresh. coven ends every ordinary backoff, answered or not: the
+    /// connection's, operations', uploads' and downloads', each keeping its
+    /// failure count, and runs a pass. Provider cooldowns, failures that
+    /// never retry, and waits for new credentials hold. Automatic triggers
+    /// use [`Self::trigger_sync`], which leaves every backoff in place.
+    pub fn retry_now(&self) {
+        self.database.retry_now();
+    }
+
     pub fn subscribe_eager_cache_fill_status(
         &self,
     ) -> coven::LiveQuery<crate::library::EagerCacheFillStatus> {

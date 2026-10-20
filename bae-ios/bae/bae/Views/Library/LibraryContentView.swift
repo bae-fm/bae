@@ -34,7 +34,7 @@ struct LibraryContentView: View {
         else {
             browseContent
                 .refreshable {
-                    sync.triggerSync()
+                    sync.nudges.retryNow()
                     await settleAfterRefresh()
                 }
         }

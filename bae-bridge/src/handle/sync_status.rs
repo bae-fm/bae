@@ -95,6 +95,14 @@ forward! { sync this => {
         this.services.network_changed();
     }
 
+    /// The person asked to retry everything now: pulling to refresh, or
+    /// Retry Now in the sync activity list. Ends every ordinary backoff,
+    /// answered or not, and runs a pass; provider cooldowns and failures that
+    /// need the person's action hold. Automatic triggers call `trigger_sync`.
+    fn retry_now() {
+        this.services.retry_now();
+    }
+
     fn is_sync_ready() -> bool {
         this.services.is_sync_ready()
     }

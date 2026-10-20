@@ -1338,6 +1338,15 @@ rather than claim the library is synced.
   answer from storage and runs a pass at once; a wait after storage answered,
   such as with a server error, keeps its time
   ([coven §6.7](https://github.com/bae-fm/coven/blob/main/spec/coven.md#67-waiting-and-retrying)).
+- **Retrying now.** Pulling the library down to refresh on a phone asks to
+  retry everything now: every ordinary backoff ends, whether storage
+  answered the last attempt or not, and a pass runs
+  ([coven §6.7](https://github.com/bae-fm/coven/blob/main/spec/coven.md#67-waiting-and-retrying)).
+  A cover another device has just uploaded comes down at once instead of
+  after its download's backoff. Each wait keeps its count, so a retry that
+  fails again waits longer. Provider cooldowns, failures that never retry,
+  and waits for the person's own action hold. bae's own triggers, such as
+  opening a library, only ask for a pass.
 - **A newer schema.** Data written by a newer app needs an update;
   reconnecting can't fix it.
 - **Pausing** stops uploads and keeps their place, across restarts too.

@@ -42,10 +42,8 @@ public final class Sync: Sendable, Observable {
     public let deleteAccessKey:
         @Sendable (Int64, BridgeAdminAccess) async throws -> Void
     public let confirmAccessKeyDeleted: @Sendable (String) async throws -> Void
-    public let triggerSync: @Sendable () -> Void
-    /// Tell sync the device's network may be back; see
-    /// `AppService.reportNetworkChange`.
-    public let reportNetworkChange: @Sendable () -> Void
+    /// The requests that ask sync to run now, none of which waits for it.
+    public let nudges: SyncNudges
 
     public init(
         disconnectCloudProvider: @escaping @Sendable () async throws -> Void = {
@@ -137,8 +135,7 @@ public final class Sync: Sendable, Observable {
             @escaping @Sendable (String) async throws -> Void = { _ in
                 throw StubError.notImplemented
             },
-        triggerSync: @escaping @Sendable () -> Void = {},
-        reportNetworkChange: @escaping @Sendable () -> Void = {}
+        nudges: SyncNudges = SyncNudges()
     ) {
         self.disconnectCloudProvider = disconnectCloudProvider
         self.saveSyncConfig = saveSyncConfig
@@ -165,8 +162,7 @@ public final class Sync: Sendable, Observable {
         self.retryWithAdminAccess = retryWithAdminAccess
         self.deleteAccessKey = deleteAccessKey
         self.confirmAccessKeyDeleted = confirmAccessKeyDeleted
-        self.triggerSync = triggerSync
-        self.reportNetworkChange = reportNetworkChange
+        self.nudges = nudges
     }
 
     public convenience init(
@@ -230,12 +226,42 @@ public final class Sync: Sendable, Observable {
             confirmAccessKeyDeleted: {
                 try await handle.confirmAccessKeyDeleted(accessKeyId: $0)
             },
-            triggerSync: { handle.triggerSync() },
-            reportNetworkChange: { handle.reportNetworkChange() }
+            nudges: SyncNudges(handle: handle)
         )
     }
 
     #if DEBUG
         public static func stub() -> Sync { Sync() }
     #endif
+}
+
+/// The requests that ask sync to run now. None waits for the pass it asks
+/// for; the sync status reports what it did.
+public struct SyncNudges: Sendable {
+    /// Ask for a pass, leaving every backoff in place: bae's own triggers.
+    public let triggerSync: @Sendable () -> Void
+    /// The person asked to retry everything now: ends every ordinary backoff
+    /// and syncs. Pulling to refresh and Retry Now call it.
+    public let retryNow: @Sendable () -> Void
+    /// Tell sync the device's network may be back; see
+    /// `AppService.reportNetworkChange`.
+    public let reportNetworkChange: @Sendable () -> Void
+
+    public init(
+        triggerSync: @escaping @Sendable () -> Void = {},
+        retryNow: @escaping @Sendable () -> Void = {},
+        reportNetworkChange: @escaping @Sendable () -> Void = {}
+    ) {
+        self.triggerSync = triggerSync
+        self.retryNow = retryNow
+        self.reportNetworkChange = reportNetworkChange
+    }
+
+    public init(handle: any AppHandleProtocol) {
+        self.init(
+            triggerSync: { handle.triggerSync() },
+            retryNow: { handle.retryNow() },
+            reportNetworkChange: { handle.reportNetworkChange() }
+        )
+    }
 }
