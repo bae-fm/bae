@@ -2633,41 +2633,6 @@ da = "I kø"
 nb = "I kø"
 fi = "Jonossa"
 
-[messages."core.outbox.bytes.uploading"]
-comment = "Cloud upload queue: label beside a progress bar that is filling with provider bytes written while uploading ({done}/{total} are pre-formatted byte counts)."
-args = { done = "Str", total = "Str" }
-value = "Uploading {done} of {total}"
-
-[messages."core.outbox.bytes.uploading".translations]
-es = "Subiendo {done} de {total}"
-fr = "Envoi : {done} sur {total}"
-de = "Wird hochgeladen: {done} von {total}"
-"pt-BR" = "Enviando {done} de {total}"
-ja = "アップロード中 {total}中{done}"
-ko = "업로드 중 {done}/{total}"
-"zh-Hans" = "正在上传 {done}/{total}"
-ar = "قيد الرفع {done} من {total}"
-he = "מעלה {done} מתוך {total}"
-uk = "Вивантажується {done} з {total}"
-bg = "Качва се {done} от {total}"
-pl = "Przesyłanie {done} z {total}"
-cs = "Nahrává se {done} z {total}"
-hr = "Učitava se {done} od {total}"
-"zh-Hant" = "正在上傳 {done} / {total}"
-it = "In caricamento {done} di {total}"
-tr = "Yükleniyor {done} / {total}"
-nl = "Uploaden {done} van {total}"
-sk = "Odosiela sa {done} z {total}"
-hu = "Feltöltés: {done} / {total}"
-ro = "Se încarcă {done} din {total}"
-el = "Μεταφόρτωση {done} από {total}"
-pt-PT = "A enviar {done} de {total}"
-sv = "Laddar upp {done} av {total}"
-da = "Uploader {done} af {total}"
-nb = "Laster opp {done} av {total}"
-fi = "Lähetetään {done} / {total}"
-
-
 [messages."core.download.bytes_progress"]
 comment = "Download queue: bytes downloaded of the total ({done}/{total} are pre-formatted byte counts)."
 args = { done = "Str", total = "Str" }
