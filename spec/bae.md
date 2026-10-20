@@ -1025,13 +1025,19 @@ editable by every member.
 | Remove a person | an admin | their circle goes, with its rows |
 | Rename the library | an admin | every device shows the new name (§5.1) |
 
+A new device's first screen offers the two ways in: **Join library**, with an
+invite, and **Add device**, with the person's own restore code. Either one
+then scans or takes a typed code, and the code decides: an invite joins and a
+restore code restores, whichever was chosen. A Mac also offers **Create new
+library**.
+
 Dan joins. Ana invites him with his Dropbox email and a role; her laptop shares
-the store's folder with his account and shows the invite. His phone scans it,
-he types "Dan", and his phone asks to join. Ana's laptop shows the request and
-she approves it. His phone then writes his `people` row while it joins.
-Everyone's devices show Dan by name. On S3, Ana makes an access key for Dan
-instead of sharing with an account. An invite carries the library's current
-name and expires within a day.
+the store's folder with his account and shows the invite. On his phone he
+chooses **Join library**, scans the invite, types "Dan", and his phone asks to
+join. Ana's laptop shows the request and she approves it. His phone then
+writes his `people` row while it joins. Everyone's devices show Dan by name.
+On S3, Ana makes an access key for Dan instead of sharing with an account. An
+invite carries the library's current name and expires within a day.
 
 Removing a person deletes their circle and its rows: their private history and
 private playlists. Their household ratings, history and playlists stay,
@@ -1044,14 +1050,15 @@ tablet is hers
 and an approval would strand a person whose other devices are all lost. The
 tablet gets the code one of three ways:
 
-- **scanning** the QR code another of her devices shows;
-- **iCloud Keychain**, on Apple devices: bae lists the restore codes coven saved
-  there for libraries not already on this device, and Carol picks one; a
-  library the device already holds is opened, not restored. A code there is
-  Carol's, not one device's: it stays while she is a member, so removing the
-  library from one of her devices leaves it offered there (§6.4), and it goes
-  only when she leaves the library;
-- **typing** it in.
+- **scanning** the QR code another of her devices shows, after choosing **Add
+  device**;
+- **iCloud Keychain**, on Apple devices: the first screen lists the restore
+  codes coven saved there for libraries not already on this device, and Carol
+  picks one; a library the device already holds is opened, not restored. A
+  code there is Carol's, not one device's: it stays while she is a member, so
+  removing the library from one of her devices leaves it offered there (§6.4),
+  and it goes only when she leaves the library;
+- **typing** it in, after choosing **Add device**.
 
 A code carries no name (§5.1), so bae shows a code by where its library is
 stored: the provider and account. Dropbox and OneDrive show the account's
@@ -1066,13 +1073,13 @@ for the key separately.
 
 **Where the code shows.** The apps call the restore code the *recovery code*.
 Carol adds a device from **Add Device…** under her own row in People, shown
-only for a library with a cloud home. Its sheet shows the QR code to scan, and
-the code to type on the new device instead, naming the onboarding choice that
-takes it; on S3 it says the QR code carries her key. Settings keeps the code
-under **Your recovery code**, for the day she loses every device: hidden until
-she asks, then shown in place as coven formats it, to copy or hide, and hidden
-again when Settings closes. On S3 that section also says she will need her
-access key and secret.
+only for a library with a cloud home. Its sheet tells her to choose **Add
+device** on the new device, then scan its QR code or type the code it shows;
+on S3 it says the QR code carries her key. Settings keeps the code under **Your
+recovery code**, for the day she loses every device: hidden until she asks,
+then shown in place as coven formats it, to copy or hide, and hidden again
+when Settings closes. On S3 that section also says she will need her access
+key and secret.
 
 **Removing a device.** Ben's old phone is lost. He removes it from his laptop.
 Had he lost every device, Ana, an admin, could remove it for him: admins can
