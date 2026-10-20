@@ -204,7 +204,7 @@ pub(super) async fn finish(
                 "identification: stored the verdict for {}",
                 done.representative_key
             );
-            if job.admission() == Admission::Automatic && picked_unattended {
+            if picked_unattended {
                 import_when_identified(context, config, &done.representative_key).await;
             }
         }
@@ -240,19 +240,15 @@ pub(super) async fn finish(
     }
 }
 
-/// Import `key`, whose automatic run just stored an auto-importable verdict, when "Import
-/// automatically when identified" is on.
+/// Import `key`, whose run just stored an auto-importable verdict, when
+/// "Import automatically when identified" is on. Whether the run started on its
+/// own or a person asked for it does not matter.
 async fn import_when_identified(
     context: &Context,
     config: &watch::Receiver<crate::config::Config>,
     key: &str,
 ) {
-    if !config
-        .borrow()
-        .prefs
-        .identification
-        .imports_when_identified()
-    {
+    if !config.borrow().prefs.identification.import_when_identified {
         return;
     }
     match context.import.import_identified(key).await {

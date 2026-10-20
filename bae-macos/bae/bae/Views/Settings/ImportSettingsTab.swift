@@ -15,19 +15,19 @@ struct ImportSettingsTab: View {
         Form {
             Section {
                 Toggle("Identify automatically", isOn: identifyAutomatically)
-                // Only an automatic run imports on its own.
                 Toggle(
                     "Import automatically when identified",
                     isOn: importWhenIdentified
                 )
-                .disabled(!configStore.config.identifyAutomatically)
             } header: {
                 Text("Metadata")
             } footer: {
                 VStack(alignment: .leading, spacing: ThemeSpace.compact) {
-                    Text("New candidates are identified as they are added.")
                     Text(
-                        "A candidate identified from then on that needs nothing from you is imported right away, where your last import went."
+                        "Identify automatically: new candidates are identified as they are added."
+                    )
+                    Text(
+                        "Import automatically when identified: while this is on, a candidate whose identification needs nothing from you is imported right away, where your last import went — including identifications you start yourself."
                     )
                 }
                 .themeText(.detail)

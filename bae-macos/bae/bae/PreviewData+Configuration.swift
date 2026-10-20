@@ -55,7 +55,8 @@
         }
 
         /// A preview ConfigStore with the given library-width, side-pause,
-        /// casting, and Discogs settings — the previews that vary them build their own;
+        /// casting, identification, and Discogs settings — the previews that
+        /// vary them build their own;
         /// everything else creates the default through `configStore()` above.
         /// A configured Discogs key is the ordinary library, so the token
         /// stands validated unless a preview asks for the other case.
@@ -69,6 +70,7 @@
             libraryFullWidth: Bool,
             pauseBetweenSides: Bool = false,
             castEnabled: Bool = false,
+            identifyAutomatically: Bool = true,
             discogsUsable: Bool = true,
             musicBrainz: BridgeSourceAvailability = .on,
             discogs: BridgeSourceAvailability? = nil,
@@ -83,7 +85,7 @@
                         sidePauseCountdown: .off,
                         maxConcurrentUploads: 3,
                         maxConcurrentDownloads: 3,
-                        identifyAutomatically: true,
+                        identifyAutomatically: identifyAutomatically,
                         importWhenIdentified: false,
                         importStorage: BridgeImportStorage(
                             cloud: true,

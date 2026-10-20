@@ -1,8 +1,10 @@
 // ── Importing when identified ───────────────────────────────────────────────
 //
-// An automatic run that stores an auto-importable verdict, while "Import automatically
+// A run that stores an auto-importable verdict, while "Import automatically
 // when identified" is on, starts its candidate's import right then — the same
-// start a person's Import press makes. Nothing else imports on its own.
+// start a person's Import press makes — whether the run started on its own or
+// a person asked for it. A release a person picks themselves is theirs to
+// import. Nothing else imports on its own.
 
 /// Every import the worker reports on for `key` until one ends: the ids it
 /// reported under, and the error the ending one failed with, if it failed.
@@ -93,8 +95,8 @@ impl Fixture {
         );
     }
 
-    /// An automatic run's auto-importable verdict for `dir`, stored while importing when
-    /// identified is off.
+    /// An automatic run's auto-importable verdict for `dir`, stored while
+    /// importing when identified is off.
     async fn identify_ready(&self, dir: &Path, release_id: &str, group_id: &str) {
         self.route_disc_id_match(dir, release_id, group_id, 2);
         self.scan(1).await;
@@ -258,40 +260,121 @@ async fn a_candidate_auto_importable_before_the_setting_was_on_is_not_imported()
     assert_no_import(&fixture, &mut events, &key, "the setting was turned on").await;
 }
 
-/// A run a person asked for is theirs to act on, whatever the setting says.
+/// Identify or a retry is a run like an automatic one: what it picks
+/// unattended is imported, whether or not identification also runs on its own.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_run_a_person_asked_for_imports_nothing() {
-    let fixture = Fixture::new("auto-import-requested").await;
+async fn a_run_a_person_asked_for_imports_its_candidate_with_identifying_automatically_off() {
+    let fixture = Fixture::importing("auto-import-requested").await;
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.manager.set_import_when_identified(true).await.unwrap();
     let dir = fixture.disc_id_candidate("Album");
     let key = dir.to_string_lossy().into_owned();
     fixture.route_disc_id_match(&dir, "mb-requested", "rg-requested", 2);
-    // Found while identification waits to be asked, so the one run it gets is
-    // the person's; importing when identified is read only while it runs on
-    // its own, so it goes back on before they ask.
-    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
-    fixture.manager.set_identify_automatically(true).await.unwrap();
     let mut events = fixture.import.every_event();
 
     fixture.start_explicit_lookup(&dir);
-    fixture.await_identified_row(&dir).await;
-    // The queue takes the job off before it would start an import, and
-    // answers an empty cancel only once it is past that.
-    tokio::time::timeout(Duration::from_secs(10), async {
-        while fixture.identification_status(&key).is_some() {
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    })
+
+    let (imports, failure) = await_import_ending(&mut events, &key).await;
+    assert_eq!(imports.len(), 1, "one import of the candidate: {imports:?}");
+    assert_eq!(failure, None, "the import completes");
+}
+
+/// With the setting off, what a person's run picks unattended waits for them.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_run_a_person_asked_for_with_the_setting_off_imports_nothing() {
+    let fixture = Fixture::new("auto-import-requested-setting-off").await;
+    fixture.manager.set_identify_automatically(false).await.unwrap();
+    let dir = fixture.disc_id_candidate("Album");
+    let key = dir.to_string_lossy().into_owned();
+    fixture.route_disc_id_match(&dir, "mb-requested-off", "rg-requested-off", 2);
+    fixture.scan(1).await;
+    let mut events = fixture.import.every_event();
+
+    fixture.start_explicit_lookup(&dir);
+    tokio::time::timeout(
+        Duration::from_secs(30),
+        fixture.identification().drained_for_test(),
+    )
     .await
-    .expect("the person's run leaves the queue");
-    fixture.identification().cancel(Vec::new()).await.unwrap();
+    .expect("the person's run ends");
 
     assert_eq!(
         fixture.judgement_for(&dir).await,
         (true, None)
     );
-    assert_no_import(&fixture, &mut events, &key, "the person's run settled").await;
+    assert_no_import(&fixture, &mut events, &key, "the person's run settled with the setting off").await;
+}
+
+/// A release a person picks from their typed search is their choice, and
+/// theirs to import, whatever the setting says.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_release_picked_from_a_typed_search_is_not_imported() {
+    let fixture = Fixture::new("auto-import-typed-search").await;
+    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.manager.set_import_when_identified(true).await.unwrap();
+    let dir = fixture.disc_id_candidate("Album");
+    let key = dir.to_string_lossy().into_owned();
+    let probed = fixture.probed_total_ms(&dir);
+    fixture
+        .provider
+        .route("/release?", 200, search_json("mb-typed", "rg-typed"));
+    fixture.provider.route(
+        "/release/mb-typed?",
+        200,
+        release_json("mb-typed", "rg-typed", &[probed, 0]),
+    );
+    fixture.scan(1).await;
+    // The queue is running while the person searches and picks.
+    fixture.identification();
+    let mut events = fixture.import.every_event();
+
+    fixture.import.start_candidate_search(
+        key.clone(),
+        crate::import::search::SearchQuery::General {
+            artist: "Artist".to_string(),
+            album: "Album".to_string(),
+        },
+    );
+    tokio::time::timeout(Duration::from_secs(30), async {
+        loop {
+            let landed = fixture
+                .import
+                .candidate_runtime(&key)
+                .and_then(|runtime| runtime.search)
+                .is_some_and(|search| {
+                    matches!(
+                        search.source(crate::import::Catalog::MusicBrainz),
+                        Some(crate::import::SourceSearch::Done { .. })
+                    )
+                });
+            if landed {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("the typed search lands its MusicBrainz results");
+    fixture
+        .import
+        .select_candidate_release(key.clone(), crate::import::PressingLink {
+            record: crate::import::MetadataRef::new(
+                crate::import::Catalog::MusicBrainz,
+                "mb-typed".to_string(),
+            ),
+            partners: vec![],
+        })
+        .await
+        .expect("the person's pick applies");
+    tokio::time::timeout(
+        Duration::from_secs(30),
+        fixture.identification().drained_for_test(),
+    )
+    .await
+    .expect("the queue has nothing left to do");
+
+    assert_no_import(&fixture, &mut events, &key, "the person picked from their typed search").await;
 }
 
 /// An automatic start the import path refuses is the candidate's failed

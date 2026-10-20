@@ -667,9 +667,13 @@ lost, and needs no connection to record it.
 
 **Automatic identification and import.** By default, each release a scan finds
 for the first time is identified on its own, in the background, behind
-anything a person asks for. With "Import automatically when identified" on, a
-run that picks unattended imports straight away. Both are settings
-(Appendix C).
+anything a person asks for. With "Import automatically when identified" on,
+any run that picks unattended imports straight away: one bae started on its
+own, or one the person started with Identify, a retry, or a changed clue. A
+pressing the person picks themselves, from a run's list or their own search,
+waits for their Import. Both are settings (Appendix C), and each works without
+the other: with automatic identification off, the runs a person starts still
+import. Turning import on imports nothing already identified.
 
 **Edge cases.**
 
@@ -1976,7 +1980,7 @@ shows the complete TOML layout.
 | `verify_decode_on_import` | on | the decode check at import (§3.7) |
 | `import_storage.cloud`, `import_storage.pinned` | on, on | where an import goes, and whether it stays here |
 | `identification.automatic` | on | identifying found releases on their own |
-| `identification.import_when_identified` | off | importing what an automatic run picks |
+| `identification.import_when_identified` | off | importing what any run picks unattended |
 | `identification.catalogs` | both on | which catalogs are asked |
 | `cast_enabled` | off | casting to receivers |
 | `cast_transcode_format` | MP3 | what a receiver gets when a track needs converting |

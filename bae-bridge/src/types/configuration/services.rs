@@ -16,10 +16,10 @@ pub struct BridgeConfig {
     /// Whether a candidate found while this is on is identified on its own.
     /// Changing it affects no candidate already found or queued.
     pub identify_automatically: bool,
-    /// Whether what an automatic run settles on as needing nothing from anyone
-    /// is imported straight away, going where `import_storage` says. Read only
-    /// while `identify_automatically` is on, and kept while it is off: a
-    /// surface disables the switch then rather than clearing it.
+    /// Whether what an identification run settles on as needing nothing from
+    /// anyone is imported straight away, going where `import_storage` says —
+    /// whether the run started on its own or a person asked for it. Independent
+    /// of `identify_automatically`.
     pub import_when_identified: bool,
     /// The import storage choice, which core reads as each import starts.
     pub import_storage: BridgeImportStorage,

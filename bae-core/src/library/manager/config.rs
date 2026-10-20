@@ -67,10 +67,11 @@ impl LibraryManager {
             .await
     }
 
-    /// Whether what an automatic run settles on as needing nothing is imported
-    /// straight away. Read as each automatic run settles: turning it on imports
-    /// nothing identified before, and turning it off leaves an import already
-    /// started to run to its end.
+    /// Whether what an identification run settles on as needing nothing is
+    /// imported straight away, whether the run started on its own or a person
+    /// asked for it. Read as each run settles: turning it on imports nothing
+    /// identified before, and turning it off leaves an import already started
+    /// to run to its end.
     pub async fn set_import_when_identified(
         &self,
         enabled: bool,

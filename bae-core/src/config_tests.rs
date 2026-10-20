@@ -99,21 +99,6 @@ fn a_new_library_identifies_automatically() {
 fn a_new_library_imports_nothing_on_its_own() {
     let prefs = IdentificationPreferences::default();
     assert!(!prefs.import_when_identified);
-    assert!(!prefs.imports_when_identified());
-}
-
-/// Importing when identified is read only while identification runs on its
-/// own, and kept while it does not.
-#[test]
-fn importing_when_identified_needs_automatic_identification() {
-    let mut prefs = IdentificationPreferences {
-        import_when_identified: true,
-        ..IdentificationPreferences::default()
-    };
-    assert!(prefs.imports_when_identified());
-    prefs.automatic = false;
-    assert!(!prefs.imports_when_identified());
-    assert!(prefs.import_when_identified, "the choice is kept");
 }
 
 /// An import goes where the stored choice says, pinned as it says, and to the

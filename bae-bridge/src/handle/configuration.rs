@@ -41,9 +41,10 @@ forward! { async this => {
         Ok(this.services.set_identify_automatically(enabled).await?)
     }
 
-    /// Import what an automatic run settles on as needing nothing, or stop.
-    /// On, only runs that settle from now on import; off, an import already
-    /// started runs to its end.
+    /// Import what an identification run settles on as needing nothing, or
+    /// stop — any run, started on its own or by a person. On, only runs that
+    /// settle from now on import; off, an import already started runs to its
+    /// end.
     fn set_import_when_identified(enabled: bool) -> () {
         Ok(this.services.set_import_when_identified(enabled).await?)
     }

@@ -67,6 +67,38 @@ struct ImportSettingsTabTests {
         }
     }
 
+    /// The two settings are independent: importing when identified covers
+    /// identifications the person starts, so it can be turned on while
+    /// identification does not run on its own.
+    @Test("with identifying automatically off the import switch still writes")
+    func theImportSwitchWritesWithIdentifyingAutomaticallyOff() async throws {
+        let recorder = ImportSettingRecorder()
+        try await SnapshotTestSupport.withHostedWindow(
+            tab(
+                recorder: recorder,
+                configStore: PreviewData.makeConfigStore(
+                    libraryFullWidth: false,
+                    identifyAutomatically: false
+                )
+            ),
+            size: Self.size
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+
+            // The settings section draws its two switches first, identify
+            // automatically then importing when identified.
+            let importSwitch = try #require(
+                switches(in: host).dropFirst().first
+            )
+            #expect(importSwitch.isEnabled)
+            HostedInput.press(importSwitch)
+            try await SnapshotTestSupport.settle(host)
+
+            #expect(recorder.importWhenIdentifiedWrites == [true])
+            #expect(recorder.identifyWrites.isEmpty)
+        }
+    }
+
     /// The tab names each setting.
     @Test("the tab names its settings")
     func theTabNamesBothSettings() async throws {

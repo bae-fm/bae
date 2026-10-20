@@ -21,9 +21,9 @@ public struct Config: Equatable {
     /// Whether identification starts on its own: a newly added candidate is
     /// identified as it arrives.
     public let identifyAutomatically: Bool
-    /// Whether what an automatic run identifies as needing nothing is imported
-    /// straight away. Read only while `identifyAutomatically` is on; Settings
-    /// disables its switch then rather than clearing it.
+    /// Whether what an identification run settles on as needing nothing is
+    /// imported straight away, whether the run started on its own or a person
+    /// asked for it. Independent of `identifyAutomatically`.
     public let importWhenIdentified: Bool
     /// The import storage choice, shown and changed in the import pane and
     /// Settings; core reads it as each import starts.

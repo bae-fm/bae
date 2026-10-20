@@ -141,9 +141,9 @@ impl ImportServiceHandle {
         .await
     }
 
-    /// [`Self::start_import`] for a candidate its automatic run just settled as
-    /// auto-importable. Nobody sees a refusal, so it is recorded as the
-    /// candidate's failed import.
+    /// [`Self::start_import`] for a candidate an identification run just
+    /// settled as auto-importable. Nobody sees a refusal, so it is recorded as
+    /// the candidate's failed import.
     pub(crate) async fn import_identified(
         &self,
         candidate_key: &str,

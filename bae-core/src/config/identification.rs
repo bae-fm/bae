@@ -1,6 +1,8 @@
 //! How identification runs, as `preferences.toml`'s `identification` table
-//! carries it: whether it starts on its own, what a run it started on its own
-//! goes on to do, and which catalogs it asks.
+//! carries it: whether it starts on its own, whether what a run picks
+//! unattended is imported, and which catalogs it asks. The first two are
+//! independent: one decides which runs start, the other what any run's
+//! unattended pick goes on to do.
 
 use serde::{Deserialize, Serialize};
 
@@ -11,20 +13,15 @@ pub struct IdentificationPreferences {
     /// Changing it affects no candidate already found or queued. Defaults to
     /// `true`.
     pub automatic: bool,
-    /// Whether a candidate an automatic run settles as auto-importable is imported
-    /// straight away. Defaults to `false`, and is read only through
-    /// [`Self::imports_when_identified`].
+    /// Whether a candidate an identification run settles as auto-importable is
+    /// imported straight away — a run started on its own, or one a person
+    /// asked for. A release a person picks themselves is theirs to import.
+    /// Read as each run settles, so changing it affects no candidate already
+    /// settled. Defaults to `false`.
     pub import_when_identified: bool,
     /// Which catalogs identification asks — the automatic run, the typed
     /// search, and every retry.
     pub catalogs: LookupCatalogPreferences,
-}
-
-impl IdentificationPreferences {
-    /// Whether an automatic run imports what it settles as auto-importable.
-    pub fn imports_when_identified(&self) -> bool {
-        self.automatic && self.import_when_identified
-    }
 }
 
 impl Default for IdentificationPreferences {
