@@ -896,10 +896,15 @@ admin can rename it. Ana renames Household to Home; every device shows Home
 once it syncs the rename. Renaming is an admin entry in coven, so only admins
 can do it: the name is the household's, not one person's.
 
-The name lives only in the store. Restore codes and the iCloud Keychain entries
-that hold them carry no name: a code is kept for years, and a name inside it
-would go stale with the first rename. An invite carries the current name,
-since it expires within a day. So no device ever shows a stale or second name.
+The name lives in the store. A restore code carries no name: it is kept for
+years, written down, and a name inside it would go stale with the first
+rename. An invite carries the current name, since it expires within a day.
+The iCloud Keychain entry coven keeps a restore code in also saves the name,
+as one of the person's devices last saw it, so a new device's list can say
+which library each code is for (§5.6). It is only a label there: a rename made
+while none of the person's devices had the library open leaves the old name
+until one opens it, and the restore finds the library by its id, never its
+name. Once a device has loaded the library, it shows the store's name.
 
 ### 5.2 Everyone edits the library
 
@@ -1065,14 +1070,27 @@ tablet gets the code one of three ways:
   picks one; a library the device already holds is opened, not restored. A
   code there is Carol's, not one device's: it stays while she is a member, so
   removing the library from one of her devices leaves it offered there (§6.4),
-  and it goes only when she leaves the library;
+  and it goes when she leaves the library or deletes it from the list;
 - **typing** it in, after choosing **Add device**.
 
-A code carries no name (§5.1), so bae shows a code by where its library is
-stored: the provider and account. Dropbox and OneDrive show the account's
-email; S3 shows the bucket and endpoint; iCloud shows iCloud. The restoring
-tablet shows that until it has loaded the library, then the library's current
-name.
+The iCloud Keychain list shows each code under its library's name as Carol's
+devices last saw it (§5.1), over where the library is stored: the provider and
+account. Dropbox and OneDrive show the account's email; S3 shows the bucket and
+endpoint; iCloud shows iCloud. Two libraries can share a name, and a rename
+none of her devices has seen yet leaves the old one, so the location is what
+tells them apart. The restore screen for a saved code shows both. A typed or
+scanned code carries no name, so its screens show only where the library is
+stored until the tablet has loaded it, then the library's current name.
+
+**Deleting a saved code.** Carol once tried a library on S3, then deleted its
+bucket, and her new tablet still offers it. Each code in the iCloud Keychain
+list has **Delete**. It asks first, saying that it removes the saved code from
+iCloud Keychain on all her Apple devices and doesn't delete the library, or
+anything on this device or in her storage; then the code leaves the list. The
+S3 key saved beside it goes with it. A delete that fails says so, keeps the
+code listed, and deleting again finishes it. A later join, restore or reset on
+one of her devices saves the code again
+([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
 
 **The S3 key.** On S3 a restore code doesn't reach the bucket alone: the device
 also needs Carol's S3 access key. The QR code one of her own devices shows
@@ -1347,9 +1365,9 @@ deleted at once.
   Keychain are Dan's, not the laptop's, and every one of his Apple devices sees
   them. Removing Household from the laptop keeps them: his other devices still
   offer restoring it, and so does the laptop, now that it no longer holds the
-  library (§5.6). They are deleted only when Dan leaves the library: one of his
-  devices deletes them as it applies his removal, whether an admin removed him
-  or he removed himself
+  library (§5.6). They are deleted when Dan leaves the library, by one of his
+  devices as it applies his removal, whether an admin removed him or he removed
+  himself, or when he deletes the code from the iCloud Keychain list (§5.6)
   ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
 
 ---
@@ -1588,7 +1606,8 @@ library is registered there by id.
 |---|---|
 | `create_library` | creates a new library's store and gives this device its identity; `create_library_default` generates the name |
 | `restore_from_code`, `restore_from_keychain` | opens a library on a new device from a restore code, typed or scanned, or saved in iCloud Keychain (§5.6) |
-| `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain for libraries not already on this device |
+| `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain for libraries not already on this device, each with its library's saved name |
+| `forget_saved_restore_code` | deletes a saved restore code and the S3 key beside it from iCloud Keychain on all the person's Apple devices; no library, storage or device's copy changes, and an absent code succeeds (§5.6) |
 | `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, which a failed restore leaves as it was; called again, finishes a restore that stopped after the restored copy took this one's place (§6.4) |
 | `join_with_invite` | joins a library from an invite and writes the person's profile (§5.6) |
 | `reset_device` | loads a library again under a fresh device id, after the warning; called again, finishes a reset that stopped after the new copy took the old one's place (§6.4) |
@@ -2101,6 +2120,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `Credentials` | fixes the cloud settings |
 | `Network` | retries |
 | `Keyring`, `KeyringLocked` | fixes the keyring, or unlocks and is asked again |
+| `KeychainEntitlementMissing` | installs a build of bae signed with its keychain entitlement; retrying or unlocking doesn't help |
 | `Membership` | retries the membership step, with the advice it carries |
 | `AirPlayUnsupported` | uses another receiver |
 | `ReplacementUnfinished` | finishes the reset or the restore of this device's copy that stopped partway: the one the category names, never the other (§6.4) |
