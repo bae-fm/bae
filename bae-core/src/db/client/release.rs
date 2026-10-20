@@ -196,8 +196,8 @@ impl Database {
             .resolve_on(tx)?;
             resolved.write_on(tx)?;
             let artist_ids = resolved.id_map(&artist_credits);
-            let album = relinked_album(&album, &artist_ids)?;
             let album_artists = relink_album_artists(Some(&album), &album_artists, &artist_ids)?;
+            let album = relinked_album(&album, &artist_ids)?;
             let track_artists = relink_track_artists(&track_artists, &artist_ids)?;
 
             tx.execute(

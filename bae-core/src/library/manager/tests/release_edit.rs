@@ -322,3 +322,43 @@ async fn release_metadata_edit_preserves_records_and_audio() {
         vec!["Edited Track Artist"]
     );
 }
+
+/// Saving an edit whose album artist is named, not picked, links the library
+/// artist of that name when the library already holds one — as saving the
+/// same edit a second time does.
+#[tokio::test]
+async fn a_named_album_artist_already_in_the_library_is_linked() {
+    let (manager, _temp_dir, album, release) = manager_with_release().await;
+    let edit = crate::import::ReleaseUserEdit {
+        album_title: "Album Title".to_string(),
+        album_artist_assignments: vec![
+            crate::import::ArtistAssignment::named("Album Artist One"),
+            crate::import::ArtistAssignment::named("Album Artist Two"),
+        ],
+        album_year: None,
+        pressing: crate::pressing::Pressing::blank(),
+        tracks: Vec::new(),
+    };
+    manager
+        .apply_release_metadata_user_edit(&release.id, &edit)
+        .await
+        .unwrap();
+    let artists = manager.get_artists_for_album(&album.id).await.unwrap();
+
+    manager
+        .apply_release_metadata_user_edit(&release.id, &edit)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        manager.get_artists_for_album(&album.id).await.unwrap(),
+        artists
+    );
+    assert_eq!(
+        artists
+            .into_iter()
+            .map(|artist| artist.name)
+            .collect::<Vec<_>>(),
+        vec!["Album Artist One", "Album Artist Two"]
+    );
+}
