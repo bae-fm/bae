@@ -118,7 +118,11 @@
     <string name="members_remove_confirm_title">Bu cihaz kaldırılsın mı?</string>
     <string name="members_remove_confirm_body">%1$s bu kitaplığa erişimini kaybeder.</string>
     <string name="join_request_approve">Onayla</string>
-    <string name="onboarding_tagline">Kitaplığınızı cihazlarınızdan birindeki bir kodla geri yükleyin ya da bir davetle bir kitaplığa katılın.</string>
+    <string name="onboarding_tagline">Bu cihazı zaten sahip olduğunuz bir kitaplığa ya da davet edildiğiniz bir kitaplığa ekleyin.</string>
+    <string name="onboarding_add_device">Cihaz ekle</string>
+    <string name="onboarding_add_device_explanation">Cihazlarınızdan birinde “Cihaz ekle” seçeneğinin gösterdiği kodu tarayın ya da yazın. Tüm cihazlarınızı kaybettiyseniz kurtarma kodunuzu yazın.</string>
+    <string name="onboarding_join_library">Kitaplığa katıl</string>
+    <string name="onboarding_join_library_explanation">Kitaplığın bir yöneticisinin size gönderdiği daveti tarayın ya da yazın.</string>
     <string name="onboarding_icon_description">bae simgesi</string>
     <string name="onboarding_camera_permission_required">QR kodlarını taramak için kamera izni gerekli</string>
     <string name="oauth_unconfigured">Bu kitaplık, bu derlemede yapılandırılmamış bir bulut oturumu gerektirir.</string>
@@ -268,7 +272,7 @@
     <string name="members_invite">Bir kişiyi davet et</string>
     <string name="members_add_device">Cihaz ekle</string>
     <string name="add_device_title">Cihaz ekle</string>
-    <string name="add_device_instructions">Bunu yeni cihazla tarayın. Ya da yeni cihazda “Kod gir” seçeneğini seçip şunu yazın:</string>
+    <string name="add_device_instructions">Yeni cihazda “Cihaz ekle” seçeneğini seçin, ardından bunu tarayın ya da şunu yazın:</string>
     <string name="invite_s3_explanation">Kişinin bu kova için kullanacağı erişim anahtarı.</string>
     <string name="invite_email_explanation">Kişinin oturum açacağı %1$s hesabı.</string>
     <string name="invite_email">E-posta</string>

@@ -122,7 +122,11 @@
     <string name="members_remove_confirm_title">Fjerne denne enheten?</string>
     <string name="members_remove_confirm_body">%1$s mister tilgangen til dette biblioteket.</string>
     <string name="join_request_approve">Godkjenn</string>
-    <string name="onboarding_tagline">Gjenopprett biblioteket ditt med en kode fra en av enhetene dine, eller bli med i et med en invitasjon.</string>
+    <string name="onboarding_tagline">Legg til denne enheten i et bibliotek du allerede har, eller i et du er invitert til.</string>
+    <string name="onboarding_add_device">Legg til enhet</string>
+    <string name="onboarding_add_device_explanation">Skann eller skriv inn koden som «Legg til enhet» viser på en av enhetene dine. Har du mistet alle enhetene dine, skriver du inn gjenopprettingskoden din.</string>
+    <string name="onboarding_join_library">Bli med i et bibliotek</string>
+    <string name="onboarding_join_library_explanation">Skann eller skriv inn invitasjonen en administrator for biblioteket sendte deg.</string>
     <string name="onboarding_icon_description">bae-symbol</string>
     <string name="onboarding_camera_permission_required">Kameratillatelse kreves for å skanne QR-koder</string>
     <string name="oauth_unconfigured">Dette biblioteket krever skypålogging, som ikke er satt opp i denne versjonen.</string>
@@ -267,7 +271,7 @@
     <string name="members_invite">Inviter en person</string>
     <string name="members_add_device">Legg til enhet</string>
     <string name="add_device_title">Legg til en enhet</string>
-    <string name="add_device_instructions">Skann dette med den nye enheten. Eller velg «Skriv inn en kode» på den nye enheten, og skriv inn:</string>
+    <string name="add_device_instructions">Velg «Legg til enhet» på den nye enheten, og skann deretter dette eller skriv inn:</string>
     <string name="invite_s3_explanation">Tilgangsnøkkelen personen skal bruke for denne bøtten.</string>
     <string name="invite_email_explanation">%1$s-kontoen personen skal logge på med.</string>
     <string name="invite_email">E-post</string>

@@ -118,7 +118,11 @@
     <string name="members_remove_confirm_title">إزالة هذا الجهاز؟</string>
     <string name="members_remove_confirm_body">سيفقد %1$s الوصول إلى هذه المكتبة.</string>
     <string name="join_request_approve">موافقة</string>
-    <string name="onboarding_tagline">استعد مكتبتك برمز من أحد أجهزتك، أو انضم إلى مكتبة بدعوة.</string>
+    <string name="onboarding_tagline">أضف هذا الجهاز إلى مكتبة لديك بالفعل، أو إلى مكتبة دُعيت إليها.</string>
+    <string name="onboarding_add_device">إضافة جهاز</string>
+    <string name="onboarding_add_device_explanation">امسح أو اكتب الرمز الذي يعرضه «إضافة جهاز» على أحد أجهزتك. إذا فقدت كل أجهزتك، فاكتب رمز الاسترداد الخاص بك.</string>
+    <string name="onboarding_join_library">الانضمام إلى مكتبة</string>
+    <string name="onboarding_join_library_explanation">امسح الدعوة التي أرسلها إليك أحد مسؤولي المكتبة أو اكتبها.</string>
     <string name="onboarding_icon_description">أيقونة bae</string>
     <string name="onboarding_camera_permission_required">إذن الكاميرا مطلوب لمسح رموز QR</string>
     <string name="oauth_unconfigured">تحتاج هذه المكتبة إلى تسجيل دخول سحابي، وهو غير مُعدّ في هذه النسخة.</string>
@@ -276,7 +280,7 @@
     <string name="members_invite">دعوة شخص</string>
     <string name="members_add_device">إضافة جهاز</string>
     <string name="add_device_title">إضافة جهاز</string>
-    <string name="add_device_instructions">امسح هذا الرمز بالجهاز الجديد. أو اختر «إدخال رمز» على الجهاز الجديد واكتب:</string>
+    <string name="add_device_instructions">على الجهاز الجديد، اختر «إضافة جهاز»، ثم امسح هذا الرمز أو اكتب:</string>
     <string name="invite_s3_explanation">مفتاح الوصول الذي سيستخدمه لهذه الحاوية.</string>
     <string name="invite_email_explanation">حساب %1$s الذي سيسجّل الدخول به.</string>
     <string name="invite_email">البريد الإلكتروني</string>

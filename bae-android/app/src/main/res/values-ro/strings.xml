@@ -123,7 +123,11 @@
     <string name="members_remove_confirm_title">Elimini acest dispozitiv?</string>
     <string name="members_remove_confirm_body">%1$s pierde accesul la această bibliotecă.</string>
     <string name="join_request_approve">Aprobă</string>
-    <string name="onboarding_tagline">Restaurează-ți biblioteca cu un cod de pe unul dintre dispozitivele tale sau alătură-te uneia printr-o invitație.</string>
+    <string name="onboarding_tagline">Adaugă acest dispozitiv la o bibliotecă pe care o ai deja sau la una la care ai fost invitat.</string>
+    <string name="onboarding_add_device">Adaugă dispozitiv</string>
+    <string name="onboarding_add_device_explanation">Scanează sau tastează codul afișat de „Adaugă dispozitiv” pe unul dintre dispozitivele tale. Dacă ai pierdut toate dispozitivele, tastează codul tău de recuperare.</string>
+    <string name="onboarding_join_library">Alătură-te unei biblioteci</string>
+    <string name="onboarding_join_library_explanation">Scanează sau tastează invitația pe care ți-a trimis-o un administrator al bibliotecii.</string>
     <string name="onboarding_icon_description">pictograma bae</string>
     <string name="onboarding_camera_permission_required">Este necesară permisiunea camerei pentru a scana coduri QR</string>
     <string name="oauth_unconfigured">Această bibliotecă necesită conectare la cloud, care nu este configurată în această versiune.</string>
@@ -269,7 +273,7 @@
     <string name="members_invite">Invită o persoană</string>
     <string name="members_add_device">Adaugă dispozitiv</string>
     <string name="add_device_title">Adaugă un dispozitiv</string>
-    <string name="add_device_instructions">Scanează asta cu noul dispozitiv. Sau, pe noul dispozitiv, alege „Introdu un cod” și tastează:</string>
+    <string name="add_device_instructions">Pe noul dispozitiv, alege „Adaugă dispozitiv”, apoi scanează asta sau tastează:</string>
     <string name="invite_s3_explanation">Cheia de acces pe care o va folosi pentru acest bucket.</string>
     <string name="invite_email_explanation">Contul %1$s cu care se va conecta.</string>
     <string name="invite_email">E-mail</string>

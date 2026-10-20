@@ -118,7 +118,11 @@
     <string name="members_remove_confirm_title">Премахване на това устройство?</string>
     <string name="members_remove_confirm_body">%1$s губи достъп до тази библиотека.</string>
     <string name="join_request_approve">Одобряване</string>
-    <string name="onboarding_tagline">Възстановете библиотеката си с код от някое от устройствата си или се присъединете към библиотека с покана.</string>
+    <string name="onboarding_tagline">Добавете това устройство към библиотека, която вече имате, или към такава, в която сте поканени.</string>
+    <string name="onboarding_add_device">Добавяне на устройство</string>
+    <string name="onboarding_add_device_explanation">Сканирайте или въведете кода, който „Добавяне на устройство“ показва на някое от устройствата ви. Ако сте загубили всичките си устройства, въведете кода си за възстановяване.</string>
+    <string name="onboarding_join_library">Присъединяване към библиотека</string>
+    <string name="onboarding_join_library_explanation">Сканирайте или въведете поканата, която ви е изпратил администратор на библиотеката.</string>
     <string name="onboarding_icon_description">икона на bae</string>
     <string name="onboarding_camera_permission_required">Необходимо е разрешение за камерата, за да сканирате QR кодове</string>
     <string name="oauth_unconfigured">Тази библиотека изисква влизане в облака, което не е конфигурирано в тази версия.</string>
@@ -268,7 +272,7 @@
     <string name="members_invite">Поканване на човек</string>
     <string name="members_add_device">Добавяне на устройство</string>
     <string name="add_device_title">Добавяне на устройство</string>
-    <string name="add_device_instructions">Сканирайте това с новото устройство. Или на новото устройство изберете „Въвеждане на код“ и въведете:</string>
+    <string name="add_device_instructions">На новото устройство изберете „Добавяне на устройство“, след това сканирайте това или въведете:</string>
     <string name="invite_s3_explanation">Ключът за достъп, който човекът ще използва за този bucket.</string>
     <string name="invite_email_explanation">Акаунтът в %1$s, с който човекът ще влезе.</string>
     <string name="invite_email">Имейл</string>

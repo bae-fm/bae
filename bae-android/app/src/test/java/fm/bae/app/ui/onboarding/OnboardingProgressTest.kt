@@ -37,6 +37,7 @@ class OnboardingProgressTest {
                     oauthAccess = null,
                 ),
             libraryName = "Household",
+            entry = CodeEntry.JoinLibrary,
         )
 
     @Test

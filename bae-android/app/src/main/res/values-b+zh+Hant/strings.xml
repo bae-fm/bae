@@ -118,7 +118,11 @@
     <string name="members_remove_confirm_title">要移除此裝置嗎？</string>
     <string name="members_remove_confirm_body">%1$s 將無法存取此資料庫。</string>
     <string name="join_request_approve">核准</string>
-    <string name="onboarding_tagline">用你其他裝置上的代碼還原你的資料庫，或透過邀請加入一個資料庫。</string>
+    <string name="onboarding_tagline">將此裝置加入你已有的資料庫，或你受邀加入的資料庫。</string>
+    <string name="onboarding_add_device">新增裝置</string>
+    <string name="onboarding_add_device_explanation">掃描或輸入你的某部裝置上「新增裝置」顯示的代碼。如果你遺失了所有裝置，請輸入你的復原碼。</string>
+    <string name="onboarding_join_library">加入資料庫</string>
+    <string name="onboarding_join_library_explanation">掃描或輸入資料庫的管理員傳給你的邀請。</string>
     <string name="onboarding_icon_description">bae 圖示</string>
     <string name="onboarding_camera_permission_required">需要相機權限才能掃描 QR 碼</string>
     <string name="oauth_unconfigured">此資料庫需要雲端登入，但此建置尚未設定。</string>
@@ -266,7 +270,7 @@
     <string name="members_invite">邀請成員</string>
     <string name="members_add_device">新增裝置</string>
     <string name="add_device_title">新增裝置</string>
-    <string name="add_device_instructions">用新裝置掃描此代碼。或者，在新裝置上選擇「輸入代碼」，然後輸入：</string>
+    <string name="add_device_instructions">在新裝置上選擇「新增裝置」，然後掃描此代碼或輸入：</string>
     <string name="invite_s3_explanation">對方將用於此儲存貯體的存取金鑰。</string>
     <string name="invite_email_explanation">對方將用來登入的 %1$s 帳號。</string>
     <string name="invite_email">電子郵件</string>

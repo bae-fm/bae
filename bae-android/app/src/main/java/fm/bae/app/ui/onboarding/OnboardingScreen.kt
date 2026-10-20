@@ -1,28 +1,21 @@
 package fm.bae.app.ui.onboarding
 
-import android.Manifest
-import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,14 +29,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import fm.bae.app.BaeApp
-import fm.bae.app.BaeLogger
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.BaeAppChrome
@@ -66,46 +55,29 @@ import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.bridgePendingReasonKey
 
-private const val TAG = "bae.OnboardingScreen"
-private val logger = BaeLogger(TAG)
-
-private val actionWidth = 220.dp
+internal val actionWidth = 220.dp
 
 /**
- * Restoring a library over this device's copy: what the start screen says
+ * Restoring a library over this device's copy: what its code screen says
  * about it, and where going back leaves the person.
  */
-data class RestoreOver(
+internal data class RestoreOver(
     val libraryId: String,
     val title: String,
     val message: String,
     val onBack: () -> Unit,
-)
-
-/** What the start screen says: bae's welcome, or the warning before restoring over this device's copy. */
-private class OnboardingIntro(
-    val title: String?,
-    val message: String,
-    val onBack: (() -> Unit)?,
-)
-
-private class OnboardingStartCallbacks(
-    val onScan: () -> Unit,
-    val onShowCodeDialog: () -> Unit,
-    val onCodeInputChange: (String) -> Unit,
-    val onEnterCode: (String) -> Unit,
-    val onDismissCodeDialog: () -> Unit,
-)
+) : CodeEntry
 
 /**
- * First run on a device: a restore code from one of the person's devices, or
- * an invite to someone's library, scanned or typed, restores or joins here.
- * With [restoreOver], the person's current restore code restores that library
- * over this device's copy, after another of their devices replaced their
- * keys, or finishes such a restore that stopped partway.
+ * First run on a device: the person chooses to join someone's library or add
+ * this device to their own, then scans or types a code; a restore code from
+ * one of the person's devices restores here, and an invite joins. With
+ * [restoreOver], the person's current restore code restores that library over
+ * this device's copy, after another of their devices replaced their keys, or
+ * finishes such a restore that stopped partway.
  */
 @Composable
-fun OnboardingScreen(
+internal fun OnboardingScreen(
     oauthProvidersError: String?,
     onBootstrapped: (BridgeBootstrapResult) -> Unit,
     restoreOver: RestoreOver?,
@@ -116,54 +88,58 @@ fun OnboardingScreen(
     val host = (context.applicationContext as BaeApp).host
     val flow =
         remember(restoreOver?.libraryId) {
-            OnboardingFlow(scope, context, host, oauthProvidersError, restoreOver?.libraryId, onBootstrapped)
+            OnboardingFlow(scope, context, host, oauthProvidersError, restoreOver, onBootstrapped)
         }
-    val intro =
-        if (restoreOver == null) {
-            OnboardingIntro(title = null, message = stringResource(R.string.onboarding_tagline), onBack = null)
-        } else {
-            OnboardingIntro(
-                title = restoreOver.title,
-                message = restoreOver.message,
-                onBack = restoreOver.onBack,
-            )
-        }
+    OnboardingSteps(flow)
+}
+
+/** The screen for where [flow] stands. */
+@Composable
+internal fun OnboardingSteps(flow: OnboardingFlow) {
     var scanning by remember { mutableStateOf(false) }
     val requestScan = rememberScanRequest(onDenied = { flow.error = it }, onOpen = { scanning = true })
 
     when (val step = flow.step) {
-        OnboardingStep.Start -> {
+        OnboardingStep.Choose -> {
+            OnboardingChoices(
+                onJoinLibrary = { flow.choose(CodeEntry.JoinLibrary) },
+                onAddDevice = { flow.choose(CodeEntry.AddDevice) },
+            )
+        }
+
+        is OnboardingStep.EnterCode -> {
             if (scanning) {
                 QRScannerScreen(
                     onScanned = { code ->
                         scanning = false
-                        flow.enter(code)
+                        flow.enter(step, code)
                     },
                     onDismiss = { scanning = false },
                 )
             } else {
-                restoreOver?.let { BackHandler(onBack = it.onBack) }
-                OnboardingStart(flow = flow, intro = intro, onScan = requestScan)
+                val text = codeScreenText(step.entry, onChoices = flow::backToChoices)
+                BackHandler(onBack = text.onBack)
+                CodeScreen(flow = flow, step = step, text = text, onScan = requestScan)
             }
         }
 
         is OnboardingStep.Restore -> {
-            BackHandler { flow.back() }
+            BackHandler { flow.back(step) }
             RestoreForm(
                 step = step,
                 error = flow.error,
                 onRestore = { flow.restore(step, it) },
-                onBack = flow::back,
+                onBack = { flow.back(step) },
             )
         }
 
         is OnboardingStep.Invite -> {
-            BackHandler { flow.back() }
+            BackHandler { flow.back(step) }
             InviteForm(
                 step = step,
                 error = flow.error,
                 onJoin = { flow.join(step, it) },
-                onBack = flow::back,
+                onBack = { flow.back(step) },
             )
         }
 
@@ -174,74 +150,45 @@ fun OnboardingScreen(
     }
 }
 
-/** Returns a callback that opens the scanner, asking for camera permission first when needed. */
+/** A new device's first screen: bae's welcome and its two choices. */
 @Composable
-private fun rememberScanRequest(
-    onDenied: (String) -> Unit,
-    onOpen: () -> Unit,
-): () -> Unit {
-    val context = LocalContext.current
-    val permissionLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) {
-                onOpen()
-            } else {
-                logger.info("camera permission denied; the code can still be typed")
-                onDenied(context.getString(R.string.onboarding_camera_permission_required))
-            }
+private fun OnboardingChoices(
+    onJoinLibrary: () -> Unit,
+    onAddDevice: () -> Unit,
+) {
+    OnboardingStartColumn(title = null, message = stringResource(R.string.onboarding_tagline)) {
+        PrimaryButton(onClick = onAddDevice, modifier = Modifier.width(actionWidth)) {
+            Text(stringResource(R.string.onboarding_add_device))
         }
-    return {
-        val granted =
-            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-                PackageManager.PERMISSION_GRANTED
-        if (granted) onOpen() else permissionLauncher.launch(Manifest.permission.CAMERA)
+        Spacer(modifier = Modifier.height(ThemeSpace.related))
+        OutlinedButton(onClick = onJoinLibrary, modifier = Modifier.width(actionWidth)) {
+            Text(stringResource(R.string.onboarding_join_library))
+        }
     }
 }
 
+/**
+ * The start screens' column: bae's icon and wordmark, an optional title, the
+ * message, then [actions]. Centered when it fits, and scrolled when it
+ * doesn't, such as on a phone held sideways.
+ */
 @Composable
-private fun OnboardingStart(
-    flow: OnboardingFlow,
-    intro: OnboardingIntro,
-    onScan: () -> Unit,
+internal fun OnboardingStartColumn(
+    title: String?,
+    message: String,
+    actions: @Composable ColumnScope.() -> Unit,
 ) {
-    var showCodeDialog by remember { mutableStateOf(false) }
-    var codeInput by remember { mutableStateOf("") }
-    OnboardingStartContent(
-        intro = intro,
-        error = flow.error,
-        showCodeDialog = showCodeDialog,
-        codeInput = codeInput,
-        callbacks =
-            OnboardingStartCallbacks(
-                onScan = {
-                    flow.error = null
-                    onScan()
-                },
-                onShowCodeDialog = {
-                    flow.error = null
-                    codeInput = ""
-                    showCodeDialog = true
-                },
-                onCodeInputChange = { codeInput = it },
-                onEnterCode = { code ->
-                    showCodeDialog = false
-                    flow.enter(code)
-                },
-                onDismissCodeDialog = { showCodeDialog = false },
-            ),
-    )
-}
-
-@Composable
-private fun OnboardingStartContent(
-    intro: OnboardingIntro,
-    error: String?,
-    showCodeDialog: Boolean,
-    codeInput: String,
-    callbacks: OnboardingStartCallbacks,
-) {
-    OnboardingContainer {
-        Spacer(modifier = Modifier.weight(1f))
+    // The scroll keeps the screen's height as the column's minimum, so a
+    // column that fits is centered in it.
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(ThemeSpace.page),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
         Image(
             painter = painterResource(R.drawable.sheep_icon),
             contentDescription = stringResource(R.string.onboarding_icon_description),
@@ -249,51 +196,19 @@ private fun OnboardingStartContent(
         )
         Spacer(modifier = Modifier.height(ThemeSpace.related))
         Text(text = "bae", style = ThemeText.wordmark.style)
-        intro.title?.let {
+        title?.let {
             Spacer(modifier = Modifier.height(ThemeSpace.group))
-            Text(text = it, style = ThemeText.title.style)
+            Text(text = it, style = ThemeText.title.style, textAlign = TextAlign.Center)
         }
         Spacer(modifier = Modifier.height(ThemeSpace.group))
         Text(
-            text = intro.message,
+            text = message,
             style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(ThemeSpace.page))
-        PrimaryButton(onClick = callbacks.onScan, modifier = Modifier.width(actionWidth)) {
-            Text(stringResource(R.string.onboarding_scan_code))
-        }
-        Spacer(modifier = Modifier.height(ThemeSpace.related))
-        OutlinedButton(onClick = callbacks.onShowCodeDialog, modifier = Modifier.width(actionWidth)) {
-            Text(stringResource(R.string.onboarding_enter_code))
-        }
-        intro.onBack?.let { onBack ->
-            Spacer(modifier = Modifier.height(ThemeSpace.related))
-            TextButton(onClick = onBack, modifier = Modifier.width(actionWidth)) {
-                Text(stringResource(R.string.back))
-            }
-        }
-        if (error != null) {
-            Spacer(modifier = Modifier.height(ThemeSpace.related))
-            ErrorText(error)
-        }
-        Spacer(modifier = Modifier.weight(1f))
-    }
-    if (showCodeDialog) {
-        PasteCodeDialog(
-            text =
-                PasteDialogText(
-                    title = stringResource(R.string.onboarding_enter_code),
-                    instructions = stringResource(R.string.onboarding_enter_code_instructions),
-                    placeholder = stringResource(R.string.onboarding_code_placeholder),
-                    confirmLabel = stringResource(R.string.continue_action),
-                ),
-            pasteInput = codeInput,
-            onInputChange = callbacks.onCodeInputChange,
-            onConfirm = callbacks.onEnterCode,
-            onDismiss = callbacks.onDismissCodeDialog,
-        )
+        actions()
     }
 }
 
@@ -454,25 +369,7 @@ private fun OnboardingContainer(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 internal fun WelcomeScene() {
     BaeAppChrome {
-        OnboardingStartContent(
-            intro =
-                OnboardingIntro(
-                    title = null,
-                    message = stringResource(R.string.onboarding_tagline),
-                    onBack = null,
-                ),
-            error = null,
-            showCodeDialog = false,
-            codeInput = "",
-            callbacks =
-                OnboardingStartCallbacks(
-                    onScan = {},
-                    onShowCodeDialog = {},
-                    onCodeInputChange = {},
-                    onEnterCode = {},
-                    onDismissCodeDialog = {},
-                ),
-        )
+        OnboardingChoices(onJoinLibrary = {}, onAddDevice = {})
     }
 }
 
@@ -505,6 +402,7 @@ private fun OnboardingProgressWaitingPreview() {
                                     oauthAccess = null,
                                 ),
                             libraryName = "Household",
+                            entry = CodeEntry.JoinLibrary,
                         ),
                     status = BridgeBootstrapStatus.WaitingForApproval,
                 ),

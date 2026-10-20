@@ -137,7 +137,7 @@ class RecoveryCodeSectionTest {
         }
 
         compose
-            .onNodeWithText("Scan this with the new device. Or, on the new device, choose “Enter a code” and type:")
+            .onNodeWithText("On the new device, choose “Add device”, then scan this or type:")
             .assertIsDisplayed()
         compose.onNodeWithText(CODE).assertIsDisplayed()
         compose

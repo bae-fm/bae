@@ -122,7 +122,11 @@
     <string name="members_remove_confirm_title">Vil du fjerne denne enhed?</string>
     <string name="members_remove_confirm_body">%1$s mister adgangen til dette bibliotek.</string>
     <string name="join_request_approve">Godkend</string>
-    <string name="onboarding_tagline">Gendan dit bibliotek med en kode fra en af dine enheder, eller deltag i et med en invitation.</string>
+    <string name="onboarding_tagline">Føj denne enhed til et bibliotek, du allerede har, eller til et, du er inviteret til.</string>
+    <string name="onboarding_add_device">Tilføj enhed</string>
+    <string name="onboarding_add_device_explanation">Scan eller skriv koden, som »Tilføj enhed« viser på en af dine enheder. Hvis du har mistet alle dine enheder, så skriv din gendannelseskode.</string>
+    <string name="onboarding_join_library">Deltag i et bibliotek</string>
+    <string name="onboarding_join_library_explanation">Scan eller skriv den invitation, som en administrator af biblioteket har sendt dig.</string>
     <string name="onboarding_icon_description">bae-symbol</string>
     <string name="onboarding_camera_permission_required">Der kræves kameratilladelse for at scanne QR-koder</string>
     <string name="oauth_unconfigured">Dette bibliotek kræver skylogin, som ikke er konfigureret i denne version.</string>
@@ -267,7 +271,7 @@
     <string name="members_invite">Inviter en person</string>
     <string name="members_add_device">Tilføj enhed</string>
     <string name="add_device_title">Tilføj en enhed</string>
-    <string name="add_device_instructions">Scan dette med den nye enhed. Eller vælg »Indtast en kode« på den nye enhed, og skriv:</string>
+    <string name="add_device_instructions">Vælg »Tilføj enhed« på den nye enhed, og scan derefter dette, eller skriv:</string>
     <string name="invite_s3_explanation">Den adgangsnøgle, personen skal bruge til denne bucket.</string>
     <string name="invite_email_explanation">Den %1$s-konto, personen logger ind med.</string>
     <string name="invite_email">E-mail</string>

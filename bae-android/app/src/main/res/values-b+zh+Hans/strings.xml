@@ -118,7 +118,11 @@
     <string name="members_remove_confirm_title">移除此设备？</string>
     <string name="members_remove_confirm_body">%1$s 将无法访问此库。</string>
     <string name="join_request_approve">批准</string>
-    <string name="onboarding_tagline">用你其他设备上的代码恢复你的库，或通过邀请加入一个库。</string>
+    <string name="onboarding_tagline">将此设备添加到你已有的库，或你受邀加入的库。</string>
+    <string name="onboarding_add_device">添加设备</string>
+    <string name="onboarding_add_device_explanation">扫描或输入你的某台设备上“添加设备”显示的代码。如果你丢失了所有设备，请输入你的恢复码。</string>
+    <string name="onboarding_join_library">加入库</string>
+    <string name="onboarding_join_library_explanation">扫描或输入库的管理员发给你的邀请。</string>
     <string name="onboarding_icon_description">bae 图标</string>
     <string name="onboarding_camera_permission_required">扫描二维码需要相机权限</string>
     <string name="oauth_unconfigured">此库需要云登录，但此版本未配置。</string>
@@ -266,7 +270,7 @@
     <string name="members_invite">邀请成员</string>
     <string name="members_add_device">添加设备</string>
     <string name="add_device_title">添加设备</string>
-    <string name="add_device_instructions">用新设备扫描此代码。或者，在新设备上选择“输入代码”，然后输入：</string>
+    <string name="add_device_instructions">在新设备上选择“添加设备”，然后扫描此代码或输入：</string>
     <string name="invite_s3_explanation">对方将用于此存储桶的访问密钥。</string>
     <string name="invite_email_explanation">对方将用来登录的 %1$s 帐户。</string>
     <string name="invite_email">电子邮件</string>

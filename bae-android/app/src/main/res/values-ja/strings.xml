@@ -118,7 +118,11 @@
     <string name="members_remove_confirm_title">このデバイスを削除しますか？</string>
     <string name="members_remove_confirm_body">%1$s はこのライブラリにアクセスできなくなります。</string>
     <string name="join_request_approve">承認</string>
-    <string name="onboarding_tagline">お使いのデバイスのコードでライブラリを復元するか、招待でライブラリに参加します。</string>
+    <string name="onboarding_tagline">このデバイスを、すでに持っているライブラリか、招待されたライブラリに追加します。</string>
+    <string name="onboarding_add_device">デバイスを追加</string>
+    <string name="onboarding_add_device_explanation">いずれかのデバイスの「デバイスを追加」に表示されるコードをスキャンするか入力してください。すべてのデバイスを失った場合は、復旧コードを入力してください。</string>
+    <string name="onboarding_join_library">ライブラリに参加</string>
+    <string name="onboarding_join_library_explanation">ライブラリの管理者から送られた招待をスキャンするか入力してください。</string>
     <string name="onboarding_icon_description">bae アイコン</string>
     <string name="onboarding_camera_permission_required">QRコードをスキャンするにはカメラの許可が必要です</string>
     <string name="oauth_unconfigured">このライブラリにはクラウドサインインが必要ですが、このビルドでは設定されていません。</string>
@@ -266,7 +270,7 @@
     <string name="members_invite">メンバーを招待</string>
     <string name="members_add_device">デバイスを追加</string>
     <string name="add_device_title">デバイスを追加</string>
-    <string name="add_device_instructions">新しいデバイスでこれをスキャンしてください。または、新しいデバイスで「コードを入力」を選んで、次のコードを入力してください：</string>
+    <string name="add_device_instructions">新しいデバイスで「デバイスを追加」を選んでから、これをスキャンするか、次のコードを入力してください：</string>
     <string name="invite_s3_explanation">相手がこのバケットで使うアクセスキーです。</string>
     <string name="invite_email_explanation">相手がサインインに使う %1$s アカウントです。</string>
     <string name="invite_email">メールアドレス</string>

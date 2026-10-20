@@ -122,7 +122,11 @@
     <string name="members_remove_confirm_title">Poistetaanko tämä laite?</string>
     <string name="members_remove_confirm_body">%1$s menettää pääsyn tähän kirjastoon.</string>
     <string name="join_request_approve">Hyväksy</string>
-    <string name="onboarding_tagline">Palauta kirjastosi koodilla jostakin laitteestasi tai liity kirjastoon kutsulla.</string>
+    <string name="onboarding_tagline">Lisää tämä laite kirjastoon, joka sinulla jo on, tai kirjastoon, johon sinut on kutsuttu.</string>
+    <string name="onboarding_add_device">Lisää laite</string>
+    <string name="onboarding_add_device_explanation">Skannaa tai kirjoita koodi, jonka ”Lisää laite” näyttää jossakin laitteessasi. Jos olet menettänyt kaikki laitteesi, kirjoita palautuskoodisi.</string>
+    <string name="onboarding_join_library">Liity kirjastoon</string>
+    <string name="onboarding_join_library_explanation">Skannaa tai kirjoita kutsu, jonka kirjaston ylläpitäjä lähetti sinulle.</string>
     <string name="onboarding_icon_description">baen kuvake</string>
     <string name="onboarding_camera_permission_required">QR-koodien skannaaminen edellyttää kameran käyttöoikeutta</string>
     <string name="oauth_unconfigured">Tämä kirjasto vaatii pilvikirjautumisen, jota ei ole määritetty tässä versiossa.</string>
@@ -267,7 +271,7 @@
     <string name="members_invite">Kutsu henkilö</string>
     <string name="members_add_device">Lisää laite</string>
     <string name="add_device_title">Lisää laite</string>
-    <string name="add_device_instructions">Skannaa tämä uudella laitteella. Tai valitse uudella laitteella ”Syötä koodi” ja kirjoita:</string>
+    <string name="add_device_instructions">Valitse uudella laitteella ”Lisää laite” ja skannaa sitten tämä tai kirjoita:</string>
     <string name="invite_s3_explanation">Käyttöavain, jota hän käyttää tähän säilöön.</string>
     <string name="invite_email_explanation">%1$s-tili, jolla hän kirjautuu sisään.</string>
     <string name="invite_email">Sähköposti</string>

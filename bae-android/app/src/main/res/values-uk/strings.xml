@@ -118,7 +118,11 @@
     <string name="members_remove_confirm_title">Видалити цей пристрій?</string>
     <string name="members_remove_confirm_body">%1$s втрачає доступ до цієї бібліотеки.</string>
     <string name="join_request_approve">Схвалити</string>
-    <string name="onboarding_tagline">Відновіть свою бібліотеку кодом з одного зі своїх пристроїв або приєднайтеся до бібліотеки за запрошенням.</string>
+    <string name="onboarding_tagline">Додайте цей пристрій до бібліотеки, яку ви вже маєте, або до тієї, до якої вас запросили.</string>
+    <string name="onboarding_add_device">Додати пристрій</string>
+    <string name="onboarding_add_device_explanation">Відскануйте або введіть код, який показує «Додати пристрій» на одному з ваших пристроїв. Якщо ви втратили всі пристрої, введіть свій код відновлення.</string>
+    <string name="onboarding_join_library">Приєднатися до бібліотеки</string>
+    <string name="onboarding_join_library_explanation">Відскануйте або введіть запрошення, яке вам надіслав адміністратор бібліотеки.</string>
     <string name="onboarding_icon_description">значок bae</string>
     <string name="onboarding_camera_permission_required">Для сканування QR-кодів потрібен дозвіл на доступ до камери</string>
     <string name="oauth_unconfigured">Для цієї бібліотеки потрібен хмарний вхід, який не налаштовано в цій збірці.</string>
@@ -272,7 +276,7 @@
     <string name="members_invite">Запросити людину</string>
     <string name="members_add_device">Додати пристрій</string>
     <string name="add_device_title">Додати пристрій</string>
-    <string name="add_device_instructions">Відскануйте це новим пристроєм. Або на новому пристрої виберіть «Ввести код» і введіть:</string>
+    <string name="add_device_instructions">На новому пристрої виберіть «Додати пристрій», а потім відскануйте це або введіть:</string>
     <string name="invite_s3_explanation">Ключ доступу, який людина використовуватиме для цього бакета.</string>
     <string name="invite_email_explanation">Обліковий запис %1$s, з яким людина ввійде.</string>
     <string name="invite_email">Ел. пошта</string>

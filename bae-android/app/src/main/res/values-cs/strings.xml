@@ -118,7 +118,11 @@
     <string name="members_remove_confirm_title">Odebrat toto zařízení?</string>
     <string name="members_remove_confirm_body">%1$s ztratí přístup k této knihovně.</string>
     <string name="join_request_approve">Schválit</string>
-    <string name="onboarding_tagline">Obnovte svou knihovnu kódem z některého ze svých zařízení, nebo se připojte k jiné pomocí pozvánky.</string>
+    <string name="onboarding_tagline">Přidejte toto zařízení do knihovny, kterou už máte, nebo do té, do které vás někdo pozval.</string>
+    <string name="onboarding_add_device">Přidat zařízení</string>
+    <string name="onboarding_add_device_explanation">Naskenujte nebo zadejte kód, který zobrazí „Přidat zařízení“ na některém z vašich zařízení. Pokud jste přišli o všechna zařízení, zadejte svůj kód pro obnovení.</string>
+    <string name="onboarding_join_library">Připojit se ke knihovně</string>
+    <string name="onboarding_join_library_explanation">Naskenujte nebo zadejte pozvánku, kterou vám poslal správce knihovny.</string>
     <string name="onboarding_icon_description">ikona bae</string>
     <string name="onboarding_camera_permission_required">Pro skenování QR kódů je vyžadováno oprávnění ke kameře</string>
     <string name="oauth_unconfigured">Tato knihovna vyžaduje přihlášení k cloudu, které není v tomto sestavení nakonfigurováno.</string>
@@ -272,7 +276,7 @@
     <string name="members_invite">Pozvat osobu</string>
     <string name="members_add_device">Přidat zařízení</string>
     <string name="add_device_title">Přidat zařízení</string>
-    <string name="add_device_instructions">Naskenujte to novým zařízením. Nebo na novém zařízení zvolte „Zadat kód“ a zadejte:</string>
+    <string name="add_device_instructions">Na novém zařízení zvolte „Přidat zařízení“ a pak naskenujte toto nebo zadejte:</string>
     <string name="invite_s3_explanation">Přístupový klíč, který bude pro tento bucket používat.</string>
     <string name="invite_email_explanation">Účet %1$s, kterým se přihlásí.</string>
     <string name="invite_email">E-mail</string>

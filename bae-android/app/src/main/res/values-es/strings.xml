@@ -118,7 +118,11 @@
     <string name="members_remove_confirm_title">¿Eliminar este dispositivo?</string>
     <string name="members_remove_confirm_body">%1$s pierde el acceso a esta biblioteca.</string>
     <string name="join_request_approve">Aprobar</string>
-    <string name="onboarding_tagline">Restaura tu biblioteca con un código de uno de tus dispositivos o únete a una con una invitación.</string>
+    <string name="onboarding_tagline">Añade este dispositivo a una biblioteca que ya tienes o a una a la que te han invitado.</string>
+    <string name="onboarding_add_device">Añadir dispositivo</string>
+    <string name="onboarding_add_device_explanation">Escanea o escribe el código que muestra “Añadir dispositivo” en uno de tus dispositivos. Si has perdido todos tus dispositivos, escribe tu código de recuperación.</string>
+    <string name="onboarding_join_library">Unirse a una biblioteca</string>
+    <string name="onboarding_join_library_explanation">Escanea o escribe la invitación que te envió un administrador de la biblioteca.</string>
     <string name="onboarding_icon_description">icono de bae</string>
     <string name="onboarding_camera_permission_required">Se necesita permiso de cámara para escanear códigos QR</string>
     <string name="oauth_unconfigured">Esta biblioteca necesita iniciar sesión en la nube, que no está configurado en esta versión.</string>
@@ -269,7 +273,7 @@
     <string name="members_invite">Invitar a una persona</string>
     <string name="members_add_device">Añadir dispositivo</string>
     <string name="add_device_title">Añadir un dispositivo</string>
-    <string name="add_device_instructions">Escanea esto con el nuevo dispositivo. O bien, en el nuevo dispositivo, elige “Introducir un código” y escribe:</string>
+    <string name="add_device_instructions">En el nuevo dispositivo, elige “Añadir dispositivo” y luego escanea esto o escribe:</string>
     <string name="invite_s3_explanation">La clave de acceso que usará para este bucket.</string>
     <string name="invite_email_explanation">La cuenta de %1$s con la que iniciará sesión.</string>
     <string name="invite_email">Correo electrónico</string>
