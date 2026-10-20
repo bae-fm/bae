@@ -89,8 +89,9 @@
     <string name="settings_playback">Reproducción</string>
     <string name="settings_about">Acerca de</string>
     <string name="settings_version">Versión</string>
-    <string name="restore_code_secret_warning">Cualquiera con este código tiene acceso completo a tu biblioteca. Mantenlo privado.</string>
     <string name="copy_code">Copiar código</string>
+    <string name="copy">Copiar</string>
+    <string name="hide">Ocultar</string>
     <string name="settings_remove_library">Quitar esta biblioteca de este dispositivo</string>
     <string name="settings_remove_library_explanation">Quita esta biblioteca de este dispositivo: el dispositivo sale de la biblioteca y después se borran su copia y los archivos descargados. La biblioteca en su lugar en la nube no se toca.</string>
     <string name="settings_remove_library_confirm_title">¿Quitar esta biblioteca de este dispositivo?</string>
@@ -110,7 +111,7 @@
     <string name="settings_pause_uploads">Pausar subidas</string>
     <string name="settings_pause_uploads_footer">Mientras esté en pausa, los cambios esperan en este dispositivo y se suben cuando reanudes.</string>
     <string name="members_title">Personas y dispositivos</string>
-    <string name="members_explanation">Todas las personas de esta biblioteca y sus dispositivos. Cada persona añade sus propios dispositivos con su código de restauración. Los administradores invitan a personas y pueden quitar el dispositivo de cualquiera.</string>
+    <string name="members_explanation">Todas las personas de esta biblioteca y sus dispositivos. Cada persona añade sus propios dispositivos desde su fila. Los administradores invitan a personas y pueden quitar el dispositivo de cualquiera.</string>
     <string name="members_this_device">Este dispositivo</string>
     <string name="members_role_member">Miembro</string>
     <string name="members_remove">Eliminar</string>
@@ -127,7 +128,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="onboarding_join_action">Unirse</string>
-    <string name="qr_scanner_instructions">Escanea un código de restauración que muestre bae en uno de tus dispositivos, o una invitación.</string>
+    <string name="qr_scanner_instructions">Escanea un código de recuperación que muestre bae en uno de tus dispositivos, o una invitación.</string>
     <!-- Downloads -->
     <string name="downloads">Descargas</string>
     <string name="download">Descargar</string>
@@ -197,10 +198,10 @@
     <string name="save">Guardar</string>
     <string name="onboarding_scan_code">Escanear un código</string>
     <string name="onboarding_enter_code">Introducir un código</string>
-    <string name="onboarding_enter_code_instructions">Introduce un código de restauración de uno de tus dispositivos o una invitación a una biblioteca.</string>
-    <string name="onboarding_code_placeholder">Código de restauración o invitación</string>
+    <string name="onboarding_enter_code_instructions">Introduce tu código de recuperación o una invitación a una biblioteca.</string>
+    <string name="onboarding_code_placeholder">Código de recuperación o invitación</string>
     <string name="continue_action">Continuar</string>
-    <string name="onboarding_code_invalid">Esto no es un código de restauración ni una invitación.</string>
+    <string name="onboarding_code_invalid">Esto no es un código de recuperación ni una invitación.</string>
     <string name="onboarding_restore_title">Restaurar tu biblioteca</string>
     <string name="onboarding_s3_key_explanation">Esta biblioteca está en un bucket compatible con S3. Introduce la clave de acceso que usas para él.</string>
     <string name="s3_access_key_id">ID de clave de acceso</string>
@@ -247,11 +248,12 @@
     <string name="storage_onedrive_folder_name">Nombre de la carpeta</string>
     <string name="storage_onedrive_create">Crear</string>
     <string name="storage_onedrive_use_folder">Usar esta carpeta</string>
-    <string name="storage_setup_done">El lugar en la nube de esta biblioteca está configurado. Guarda tu código de restauración: tus otros dispositivos se unen con él.</string>
+    <string name="storage_setup_done">El lugar en la nube de esta biblioteca está configurado. Guarda tu código de recuperación en un lugar privado: si pierdes todos tus dispositivos, con él recuperas tu biblioteca.</string>
     <string name="done">Listo</string>
-    <string name="settings_restore_code">Código de restauración</string>
-    <string name="settings_restore_code_explanation">Escanea o escribe este código en un dispositivo nuevo para añadirlo a esta biblioteca como tuyo.</string>
-    <string name="settings_show_restore_code">Mostrar código de restauración</string>
+    <string name="recovery_code_title">Tu código de recuperación</string>
+    <string name="recovery_code_explanation">Si pierdes todos tus dispositivos, introduce este código en uno nuevo para recuperar tu biblioteca. Quien lo tenga y acceda a tu almacenamiento puede abrir la biblioteca, así que guárdalo en un lugar privado.</string>
+    <string name="recovery_code_s3_key">También necesitarás tu clave de acceso y tu clave secreta de S3.</string>
+    <string name="recovery_code_show">Mostrar código</string>
     <string name="settings_people">Personas</string>
     <string name="members_you">Tú</string>
     <string name="members_unnamed">Aún sin nombre</string>
@@ -265,6 +267,9 @@
     <string name="device_state_replaced">Sustituido</string>
     <string name="device_removed_title">Dispositivo quitado</string>
     <string name="members_invite">Invitar a una persona</string>
+    <string name="members_add_device">Añadir dispositivo</string>
+    <string name="add_device_title">Añadir un dispositivo</string>
+    <string name="add_device_instructions">Escanea esto con el nuevo dispositivo. O bien, en el nuevo dispositivo, elige “Introducir un código” y escribe:</string>
     <string name="invite_s3_explanation">La clave de acceso que usará para este bucket.</string>
     <string name="invite_email_explanation">La cuenta de %1$s con la que iniciará sesión.</string>
     <string name="invite_email">Correo electrónico</string>

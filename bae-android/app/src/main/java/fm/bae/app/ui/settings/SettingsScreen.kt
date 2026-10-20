@@ -19,7 +19,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -143,7 +142,6 @@ internal fun SettingsScreen(
     val config by session.configStore.config.collectAsState()
     val allLibraries by libraries.collectAsState()
     val model = remember(session) { SettingsLibraryModel(session, appContext) }
-    var showRestoreCode by remember { mutableStateOf(false) }
 
     LaunchedEffect(session) {
         session.diagnostics.event(BridgeTelemetryEvent.ScreenOpened(BridgeScreen.SETTINGS))
@@ -178,19 +176,17 @@ internal fun SettingsScreen(
             )
         }
         SettingsPlaybackSections(session = session, config = config, ioDispatcher = ioDispatcher)
-        // People, devices and restore codes live in the library's store, which only a cloud home has.
-        if (model.cloudHome is CloudHome.At) {
+        // People, devices and the recovery code live in the library's store, which only a cloud home has.
+        (model.cloudHome as? CloudHome.At)?.let { home ->
             SectionDivider()
-            SettingsPeopleSection(
-                onManagePeople = { onPush(LibraryDestination.Members) },
-                onShowRestoreCode = { showRestoreCode = true },
+            SettingsPeopleSection(onManagePeople = { onPush(LibraryDestination.Members) })
+            SectionDivider()
+            RecoveryCodeSection(
+                needsS3Key = home.location is BridgeStorageLocation.S3,
+                generate = { session.appHandle.generateRestoreCode().code },
             )
         }
         SettingsClosingSections(session = session, onRemove = actions.removeLibrary)
-    }
-
-    if (showRestoreCode) {
-        RestoreCodeDialog(session = session, onDismiss = { showRestoreCode = false })
     }
 }
 
@@ -332,12 +328,9 @@ private fun SettingsAboutSection() {
     }
 }
 
-/** The library's people and their devices, and this person's restore code for a new device. */
+/** The library's people and their devices, where this person also adds their own devices. */
 @Composable
-private fun SettingsPeopleSection(
-    onManagePeople: () -> Unit,
-    onShowRestoreCode: () -> Unit,
-) {
+private fun SettingsPeopleSection(onManagePeople: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
@@ -345,15 +338,6 @@ private fun SettingsPeopleSection(
         Eyebrow(text = stringResource(R.string.settings_people))
         PrimaryButton(onClick = onManagePeople) {
             Text(stringResource(R.string.members_title))
-        }
-        Eyebrow(text = stringResource(R.string.settings_restore_code))
-        Text(
-            text = stringResource(R.string.settings_restore_code_explanation),
-            style = ThemeText.detail.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        OutlinedButton(onClick = onShowRestoreCode) {
-            Text(stringResource(R.string.settings_show_restore_code))
         }
     }
 }
@@ -382,6 +366,6 @@ private fun SettingsRemoveSection(onRequestRemove: () -> Unit) {
 @Composable
 private fun SettingsPeopleSectionPreview() {
     BaeTheme {
-        SettingsPeopleSection(onManagePeople = {}, onShowRestoreCode = {})
+        SettingsPeopleSection(onManagePeople = {})
     }
 }

@@ -89,8 +89,9 @@
     <string name="settings_playback">Възпроизвеждане</string>
     <string name="settings_about">Относно</string>
     <string name="settings_version">Версия</string>
-    <string name="restore_code_secret_warning">Всеки с този код има пълен достъп до библиотеката ви. Пазете го поверителен.</string>
     <string name="copy_code">Копиране на кода</string>
+    <string name="copy">Копиране</string>
+    <string name="hide">Скриване</string>
     <string name="settings_remove_library">Премахване на тази библиотека от това устройство</string>
     <string name="settings_remove_library_explanation">Премахва тази библиотека от това устройство: устройството напуска библиотеката, след което копието му и изтеглените файлове се изтриват. Библиотеката в облачното хранилище остава непокътната.</string>
     <string name="settings_remove_library_confirm_title">Премахване на тази библиотека от това устройство?</string>
@@ -110,7 +111,7 @@
     <string name="settings_pause_uploads">Пауза на качванията</string>
     <string name="settings_pause_uploads_footer">Докато е на пауза, промените изчакват на това устройство и се качват, когато възобновите.</string>
     <string name="members_title">Хора и устройства</string>
-    <string name="members_explanation">Всички в тази библиотека и техните устройства. Всеки добавя своите устройства със своя код за възстановяване. Администраторите канят хора и могат да премахнат устройството на всеки.</string>
+    <string name="members_explanation">Всички в тази библиотека и техните устройства. Всеки добавя своите устройства от своя ред. Администраторите канят хора и могат да премахнат устройството на всеки.</string>
     <string name="members_this_device">Това устройство</string>
     <string name="members_role_member">Член</string>
     <string name="members_remove">Премахване</string>
@@ -196,7 +197,7 @@
     <string name="save">Запазване</string>
     <string name="onboarding_scan_code">Сканиране на код</string>
     <string name="onboarding_enter_code">Въвеждане на код</string>
-    <string name="onboarding_enter_code_instructions">Въведете код за възстановяване от някое от устройствата си или покана за библиотека.</string>
+    <string name="onboarding_enter_code_instructions">Въведете своя код за възстановяване или покана за библиотека.</string>
     <string name="onboarding_code_placeholder">Код за възстановяване или покана</string>
     <string name="continue_action">Продължаване</string>
     <string name="onboarding_code_invalid">Това не е код за възстановяване или покана.</string>
@@ -246,11 +247,12 @@
     <string name="storage_onedrive_folder_name">Име на папката</string>
     <string name="storage_onedrive_create">Създаване</string>
     <string name="storage_onedrive_use_folder">Използване на тази папка</string>
-    <string name="storage_setup_done">Облачното хранилище на тази библиотека е настроено. Запазете кода си за възстановяване: другите ви устройства се присъединяват с него.</string>
+    <string name="storage_setup_done">Облачното хранилище на тази библиотека е настроено. Пазете кода си за възстановяване на поверително място: ако загубите всичките си устройства, с него си връщате библиотеката.</string>
     <string name="done">Готово</string>
-    <string name="settings_restore_code">Код за възстановяване</string>
-    <string name="settings_restore_code_explanation">Сканирайте или въведете този код на ново устройство, за да го добавите към тази библиотека като ваше.</string>
-    <string name="settings_show_restore_code">Показване на кода за възстановяване</string>
+    <string name="recovery_code_title">Вашият код за възстановяване</string>
+    <string name="recovery_code_explanation">Ако загубите всичките си устройства, въведете този код на ново устройство, за да си върнете библиотеката. Всеки, който го има и има достъп до хранилището ви, може да отвори библиотеката, затова го пазете на поверително място.</string>
+    <string name="recovery_code_s3_key">Ще ви трябват и ключът за достъп, и тайният ключ за S3.</string>
+    <string name="recovery_code_show">Показване на кода</string>
     <string name="settings_people">Хора</string>
     <string name="members_you">Вие</string>
     <string name="members_unnamed">Още без име</string>
@@ -264,6 +266,9 @@
     <string name="device_state_replaced">Заменено</string>
     <string name="device_removed_title">Устройството е премахнато</string>
     <string name="members_invite">Поканване на човек</string>
+    <string name="members_add_device">Добавяне на устройство</string>
+    <string name="add_device_title">Добавяне на устройство</string>
+    <string name="add_device_instructions">Сканирайте това с новото устройство. Или на новото устройство изберете „Въвеждане на код“ и въведете:</string>
     <string name="invite_s3_explanation">Ключът за достъп, който човекът ще използва за този bucket.</string>
     <string name="invite_email_explanation">Акаунтът в %1$s, с който човекът ще влезе.</string>
     <string name="invite_email">Имейл</string>

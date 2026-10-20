@@ -89,8 +89,9 @@
     <string name="settings_playback">Afspelen</string>
     <string name="settings_about">Over</string>
     <string name="settings_version">Versie</string>
-    <string name="restore_code_secret_warning">Iedereen met deze code heeft volledige toegang tot je bibliotheek. Houd deze privé.</string>
     <string name="copy_code">Code kopiëren</string>
+    <string name="copy">Kopiëren</string>
+    <string name="hide">Verbergen</string>
     <string name="settings_remove_library">Verwijder deze bibliotheek van dit apparaat</string>
     <string name="settings_remove_library_explanation">Verwijdert deze bibliotheek van dit apparaat: het apparaat verlaat de bibliotheek, daarna worden de kopie en de gedownloade bestanden verwijderd. De bibliotheek op de cloudlocatie blijft ongewijzigd.</string>
     <string name="settings_remove_library_confirm_title">Deze bibliotheek van dit apparaat verwijderen?</string>
@@ -110,7 +111,7 @@
     <string name="settings_pause_uploads">Uploads pauzeren</string>
     <string name="settings_pause_uploads_footer">Terwijl gepauzeerd wachten wijzigingen op dit apparaat en worden ze geüpload wanneer je hervat.</string>
     <string name="members_title">Personen en apparaten</string>
-    <string name="members_explanation">Iedereen in deze bibliotheek en hun apparaten. Iedereen voegt zijn eigen apparaten toe met zijn herstelcode. Beheerders nodigen personen uit en kunnen ieders apparaat verwijderen.</string>
+    <string name="members_explanation">Iedereen in deze bibliotheek en hun apparaten. Iedereen voegt zijn eigen apparaten toe vanuit zijn eigen rij. Beheerders nodigen personen uit en kunnen ieders apparaat verwijderen.</string>
     <string name="members_this_device">Dit apparaat</string>
     <string name="members_role_member">Lid</string>
     <string name="members_remove">Verwijderen</string>
@@ -196,7 +197,7 @@
     <string name="save">Opslaan</string>
     <string name="onboarding_scan_code">Code scannen</string>
     <string name="onboarding_enter_code">Code invoeren</string>
-    <string name="onboarding_enter_code_instructions">Voer een herstelcode van een van je apparaten in, of een uitnodiging voor een bibliotheek.</string>
+    <string name="onboarding_enter_code_instructions">Voer je herstelcode in, of een uitnodiging voor een bibliotheek.</string>
     <string name="onboarding_code_placeholder">Herstelcode of uitnodiging</string>
     <string name="continue_action">Doorgaan</string>
     <string name="onboarding_code_invalid">Dit is geen herstelcode en geen uitnodiging.</string>
@@ -246,11 +247,12 @@
     <string name="storage_onedrive_folder_name">Mapnaam</string>
     <string name="storage_onedrive_create">Maken</string>
     <string name="storage_onedrive_use_folder">Deze map gebruiken</string>
-    <string name="storage_setup_done">De cloudlocatie van deze bibliotheek is ingesteld. Bewaar je herstelcode: je andere apparaten nemen ermee deel.</string>
+    <string name="storage_setup_done">De cloudlocatie van deze bibliotheek is ingesteld. Bewaar je herstelcode op een privéplek: als je al je apparaten kwijtraakt, krijg je er je bibliotheek mee terug.</string>
     <string name="done">Klaar</string>
-    <string name="settings_restore_code">Herstelcode</string>
-    <string name="settings_restore_code_explanation">Scan of typ deze code op een nieuw apparaat om het als jouw apparaat aan deze bibliotheek toe te voegen.</string>
-    <string name="settings_show_restore_code">Herstelcode tonen</string>
+    <string name="recovery_code_title">Je herstelcode</string>
+    <string name="recovery_code_explanation">Als je al je apparaten kwijtraakt, voer je deze code in op een nieuw apparaat om je bibliotheek terug te krijgen. Iedereen met deze code en toegang tot je opslag kan de bibliotheek openen, dus bewaar hem op een privéplek.</string>
+    <string name="recovery_code_s3_key">Je hebt ook je S3-toegangssleutel en geheime sleutel nodig.</string>
+    <string name="recovery_code_show">Code tonen</string>
     <string name="settings_people">Personen</string>
     <string name="members_you">Jij</string>
     <string name="members_unnamed">Nog geen naam</string>
@@ -264,6 +266,9 @@
     <string name="device_state_replaced">Vervangen</string>
     <string name="device_removed_title">Apparaat verwijderd</string>
     <string name="members_invite">Iemand uitnodigen</string>
+    <string name="members_add_device">Apparaat toevoegen</string>
+    <string name="add_device_title">Een apparaat toevoegen</string>
+    <string name="add_device_instructions">Scan dit met het nieuwe apparaat. Of kies op het nieuwe apparaat ‘Code invoeren’ en typ:</string>
     <string name="invite_s3_explanation">De toegangssleutel die deze persoon voor deze bucket gebruikt.</string>
     <string name="invite_email_explanation">Het %1$s-account waarmee deze persoon inlogt.</string>
     <string name="invite_email">E-mail</string>

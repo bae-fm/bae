@@ -89,8 +89,9 @@
     <string name="settings_playback">Wiedergabe</string>
     <string name="settings_about">Über</string>
     <string name="settings_version">Version</string>
-    <string name="restore_code_secret_warning">Jeder mit diesem Code hat vollen Zugriff auf deine Mediathek. Halte ihn geheim.</string>
     <string name="copy_code">Code kopieren</string>
+    <string name="copy">Kopieren</string>
+    <string name="hide">Ausblenden</string>
     <string name="settings_remove_library">Diese Bibliothek von diesem Gerät entfernen</string>
     <string name="settings_remove_library_explanation">Entfernt diese Bibliothek von diesem Gerät: Das Gerät verlässt die Bibliothek, dann werden seine Kopie und die geladenen Dateien gelöscht. Die Bibliothek am Cloud-Speicherort bleibt unberührt.</string>
     <string name="settings_remove_library_confirm_title">Diese Bibliothek von diesem Gerät entfernen?</string>
@@ -110,7 +111,7 @@
     <string name="settings_pause_uploads">Uploads pausieren</string>
     <string name="settings_pause_uploads_footer">Solange pausiert, warten Änderungen auf diesem Gerät und werden hochgeladen, wenn du fortsetzt.</string>
     <string name="members_title">Personen und Geräte</string>
-    <string name="members_explanation">Alle in dieser Bibliothek und ihre Geräte. Jede Person fügt ihre eigenen Geräte mit ihrem Wiederherstellungscode hinzu. Admins laden Personen ein und können das Gerät jeder Person entfernen.</string>
+    <string name="members_explanation">Alle in dieser Bibliothek und ihre Geräte. Jede Person fügt ihre eigenen Geräte in ihrer eigenen Zeile hinzu. Admins laden Personen ein und können das Gerät jeder Person entfernen.</string>
     <string name="members_this_device">Dieses Gerät</string>
     <string name="members_role_member">Mitglied</string>
     <string name="members_remove">Entfernen</string>
@@ -196,7 +197,7 @@
     <string name="save">Speichern</string>
     <string name="onboarding_scan_code">Code scannen</string>
     <string name="onboarding_enter_code">Code eingeben</string>
-    <string name="onboarding_enter_code_instructions">Gib einen Wiederherstellungscode von einem deiner Geräte oder eine Einladung zu einer Bibliothek ein.</string>
+    <string name="onboarding_enter_code_instructions">Gib deinen Wiederherstellungscode oder eine Einladung zu einer Bibliothek ein.</string>
     <string name="onboarding_code_placeholder">Wiederherstellungscode oder Einladung</string>
     <string name="continue_action">Weiter</string>
     <string name="onboarding_code_invalid">Das ist weder ein Wiederherstellungscode noch eine Einladung.</string>
@@ -246,11 +247,12 @@
     <string name="storage_onedrive_folder_name">Ordnername</string>
     <string name="storage_onedrive_create">Erstellen</string>
     <string name="storage_onedrive_use_folder">Diesen Ordner verwenden</string>
-    <string name="storage_setup_done">Der Cloud-Speicherort dieser Bibliothek ist eingerichtet. Bewahre deinen Wiederherstellungscode auf: Deine anderen Geräte treten damit bei.</string>
+    <string name="storage_setup_done">Der Cloud-Speicherort dieser Bibliothek ist eingerichtet. Bewahre deinen Wiederherstellungscode an einem privaten Ort auf: Wenn du alle deine Geräte verlierst, bekommst du damit deine Bibliothek zurück.</string>
     <string name="done">Fertig</string>
-    <string name="settings_restore_code">Wiederherstellungscode</string>
-    <string name="settings_restore_code_explanation">Scanne diesen Code auf einem neuen Gerät oder gib ihn dort ein, um es als dein Gerät zu dieser Bibliothek hinzuzufügen.</string>
-    <string name="settings_show_restore_code">Wiederherstellungscode zeigen</string>
+    <string name="recovery_code_title">Dein Wiederherstellungscode</string>
+    <string name="recovery_code_explanation">Wenn du alle deine Geräte verlierst, gib diesen Code auf einem neuen Gerät ein, um deine Bibliothek zurückzubekommen. Wer ihn hat und Zugriff auf deinen Speicher hat, kann die Bibliothek öffnen – bewahre ihn also an einem privaten Ort auf.</string>
+    <string name="recovery_code_s3_key">Du brauchst außerdem deinen S3-Zugriffsschlüssel und den geheimen Schlüssel.</string>
+    <string name="recovery_code_show">Code zeigen</string>
     <string name="settings_people">Personen</string>
     <string name="members_you">Du</string>
     <string name="members_unnamed">Noch kein Name</string>
@@ -264,6 +266,9 @@
     <string name="device_state_replaced">Ersetzt</string>
     <string name="device_removed_title">Gerät entfernt</string>
     <string name="members_invite">Person einladen</string>
+    <string name="members_add_device">Gerät hinzufügen</string>
+    <string name="add_device_title">Gerät hinzufügen</string>
+    <string name="add_device_instructions">Scanne dies mit dem neuen Gerät. Oder wähle auf dem neuen Gerät „Code eingeben“ und gib Folgendes ein:</string>
     <string name="invite_s3_explanation">Der Zugriffsschlüssel, den die Person für diesen Bucket verwendet.</string>
     <string name="invite_email_explanation">Das %1$s-Konto, mit dem sich die Person anmeldet.</string>
     <string name="invite_email">E-Mail</string>

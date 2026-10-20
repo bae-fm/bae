@@ -89,8 +89,9 @@
     <string name="settings_playback">Odtwarzanie</string>
     <string name="settings_about">O aplikacji</string>
     <string name="settings_version">Wersja</string>
-    <string name="restore_code_secret_warning">Każdy, kto ma ten kod, ma pełny dostęp do Twojej biblioteki. Zachowaj go dla siebie.</string>
     <string name="copy_code">Kopiuj kod</string>
+    <string name="copy">Kopiuj</string>
+    <string name="hide">Ukryj</string>
     <string name="settings_remove_library">Usuń tę bibliotekę z tego urządzenia</string>
     <string name="settings_remove_library_explanation">Usuwa tę bibliotekę z tego urządzenia: urządzenie opuszcza bibliotekę, a potem jego kopia i pobrane pliki są usuwane. Biblioteka w miejscu w chmurze pozostaje nienaruszona.</string>
     <string name="settings_remove_library_confirm_title">Usunąć tę bibliotekę z tego urządzenia?</string>
@@ -110,7 +111,7 @@
     <string name="settings_pause_uploads">Wstrzymaj przesyłanie</string>
     <string name="settings_pause_uploads_footer">Podczas wstrzymania zmiany czekają na tym urządzeniu i zostaną przesłane po wznowieniu.</string>
     <string name="members_title">Osoby i urządzenia</string>
-    <string name="members_explanation">Wszystkie osoby w tej bibliotece i ich urządzenia. Każda osoba dodaje własne urządzenia swoim kodem przywracania. Administratorzy zapraszają osoby i mogą usunąć urządzenie każdego.</string>
+    <string name="members_explanation">Wszystkie osoby w tej bibliotece i ich urządzenia. Każda osoba dodaje własne urządzenia ze swojego wiersza. Administratorzy zapraszają osoby i mogą usunąć urządzenie każdego.</string>
     <string name="members_this_device">To urządzenie</string>
     <string name="members_role_member">Członek</string>
     <string name="members_remove">Usuń</string>
@@ -127,7 +128,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="onboarding_join_action">Dołącz</string>
-    <string name="qr_scanner_instructions">Zeskanuj kod przywracania wyświetlony w bae na jednym z twoich urządzeń albo zaproszenie.</string>
+    <string name="qr_scanner_instructions">Zeskanuj kod odzyskiwania wyświetlony w bae na jednym z twoich urządzeń albo zaproszenie.</string>
     <!-- Downloads -->
     <string name="downloads">Pobieranie</string>
     <string name="download">Pobierz</string>
@@ -200,10 +201,10 @@
     <string name="save">Zapisz</string>
     <string name="onboarding_scan_code">Zeskanuj kod</string>
     <string name="onboarding_enter_code">Wpisz kod</string>
-    <string name="onboarding_enter_code_instructions">Wpisz kod przywracania z jednego ze swoich urządzeń albo zaproszenie do biblioteki.</string>
-    <string name="onboarding_code_placeholder">Kod przywracania lub zaproszenie</string>
+    <string name="onboarding_enter_code_instructions">Wpisz swój kod odzyskiwania albo zaproszenie do biblioteki.</string>
+    <string name="onboarding_code_placeholder">Kod odzyskiwania lub zaproszenie</string>
     <string name="continue_action">Dalej</string>
-    <string name="onboarding_code_invalid">To nie jest kod przywracania ani zaproszenie.</string>
+    <string name="onboarding_code_invalid">To nie jest kod odzyskiwania ani zaproszenie.</string>
     <string name="onboarding_restore_title">Przywróć swoją bibliotekę</string>
     <string name="onboarding_s3_key_explanation">Ta biblioteka jest przechowywana w zasobniku zgodnym z S3. Wpisz klucz dostępu, którego do niego używasz.</string>
     <string name="s3_access_key_id">Identyfikator klucza dostępu</string>
@@ -250,11 +251,12 @@
     <string name="storage_onedrive_folder_name">Nazwa folderu</string>
     <string name="storage_onedrive_create">Utwórz</string>
     <string name="storage_onedrive_use_folder">Użyj tego folderu</string>
-    <string name="storage_setup_done">Miejsce w chmurze dla tej biblioteki zostało skonfigurowane. Zachowaj kod przywracania: twoje inne urządzenia dołączają za jego pomocą.</string>
+    <string name="storage_setup_done">Miejsce w chmurze dla tej biblioteki zostało skonfigurowane. Przechowuj kod odzyskiwania w prywatnym miejscu: jeśli stracisz wszystkie swoje urządzenia, odzyskasz dzięki niemu bibliotekę.</string>
     <string name="done">Gotowe</string>
-    <string name="settings_restore_code">Kod przywracania</string>
-    <string name="settings_restore_code_explanation">Zeskanuj lub wpisz ten kod na nowym urządzeniu, aby dodać je do tej biblioteki jako swoje.</string>
-    <string name="settings_show_restore_code">Pokaż kod przywracania</string>
+    <string name="recovery_code_title">Twój kod odzyskiwania</string>
+    <string name="recovery_code_explanation">Jeśli stracisz wszystkie swoje urządzenia, wpisz ten kod na nowym urządzeniu, aby odzyskać bibliotekę. Każdy, kto go ma i ma dostęp do Twojego magazynu, może otworzyć bibliotekę, więc przechowuj go w prywatnym miejscu.</string>
+    <string name="recovery_code_s3_key">Potrzebny będzie też klucz dostępu i klucz tajny S3.</string>
+    <string name="recovery_code_show">Pokaż kod</string>
     <string name="settings_people">Osoby</string>
     <string name="members_you">Ty</string>
     <string name="members_unnamed">Jeszcze bez nazwy</string>
@@ -268,6 +270,9 @@
     <string name="device_state_replaced">Zastąpione</string>
     <string name="device_removed_title">Urządzenie usunięte</string>
     <string name="members_invite">Zaproś osobę</string>
+    <string name="members_add_device">Dodaj urządzenie</string>
+    <string name="add_device_title">Dodaj urządzenie</string>
+    <string name="add_device_instructions">Zeskanuj to nowym urządzeniem. Albo na nowym urządzeniu wybierz „Wpisz kod” i wpisz:</string>
     <string name="invite_s3_explanation">Klucz dostępu, którego ta osoba będzie używać do tego zasobnika.</string>
     <string name="invite_email_explanation">Konto %1$s, na które ta osoba się zaloguje.</string>
     <string name="invite_email">E-mail</string>

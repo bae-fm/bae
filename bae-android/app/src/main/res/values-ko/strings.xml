@@ -89,8 +89,9 @@
     <string name="settings_playback">재생</string>
     <string name="settings_about">정보</string>
     <string name="settings_version">버전</string>
-    <string name="restore_code_secret_warning">이 코드를 가진 사람은 누구나 라이브러리에 완전히 접근할 수 있습니다. 비공개로 보관하세요.</string>
     <string name="copy_code">코드 복사</string>
+    <string name="copy">복사</string>
+    <string name="hide">가리기</string>
     <string name="settings_remove_library">이 기기에서 이 라이브러리 제거</string>
     <string name="settings_remove_library_explanation">이 기기에서 라이브러리를 제거합니다. 기기가 라이브러리에서 나간 다음 복사본과 다운로드한 파일이 삭제됩니다. 클라우드 저장 위치의 라이브러리는 그대로입니다.</string>
     <string name="settings_remove_library_confirm_title">이 기기에서 이 라이브러리를 제거할까요?</string>
@@ -110,7 +111,7 @@
     <string name="settings_pause_uploads">업로드 일시정지</string>
     <string name="settings_pause_uploads_footer">일시정지된 동안 변경 사항은 이 기기에서 대기하며 다시 시작하면 업로드됩니다.</string>
     <string name="members_title">사람 및 기기</string>
-    <string name="members_explanation">이 라이브러리의 모든 사람과 그들의 기기입니다. 각자 자신의 복원 코드로 자신의 기기를 추가합니다. 관리자는 사람을 초대하고 누구의 기기든 제거할 수 있습니다.</string>
+    <string name="members_explanation">이 라이브러리의 모든 사람과 그들의 기기입니다. 각자 자신의 행에서 자신의 기기를 추가합니다. 관리자는 사람을 초대하고 누구의 기기든 제거할 수 있습니다.</string>
     <string name="members_this_device">이 기기</string>
     <string name="members_role_member">멤버</string>
     <string name="members_remove">제거</string>
@@ -127,7 +128,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="onboarding_join_action">참여</string>
-    <string name="qr_scanner_instructions">내 기기의 bae에 표시된 복원 코드나 초대를 스캔하세요.</string>
+    <string name="qr_scanner_instructions">내 기기의 bae에 표시된 복구 코드나 초대를 스캔하세요.</string>
     <!-- Downloads -->
     <string name="downloads">다운로드</string>
     <string name="download">다운로드</string>
@@ -194,10 +195,10 @@
     <string name="save">저장</string>
     <string name="onboarding_scan_code">코드 스캔</string>
     <string name="onboarding_enter_code">코드 입력</string>
-    <string name="onboarding_enter_code_instructions">내 기기의 복원 코드나 라이브러리 초대를 입력하세요.</string>
-    <string name="onboarding_code_placeholder">복원 코드 또는 초대</string>
+    <string name="onboarding_enter_code_instructions">내 복구 코드나 라이브러리 초대를 입력하세요.</string>
+    <string name="onboarding_code_placeholder">복구 코드 또는 초대</string>
     <string name="continue_action">계속</string>
-    <string name="onboarding_code_invalid">복원 코드나 초대가 아닙니다.</string>
+    <string name="onboarding_code_invalid">복구 코드나 초대가 아닙니다.</string>
     <string name="onboarding_restore_title">라이브러리 복원</string>
     <string name="onboarding_s3_key_explanation">이 라이브러리는 S3 호환 버킷에 저장되어 있습니다. 이 버킷에 사용하는 액세스 키를 입력하세요.</string>
     <string name="s3_access_key_id">액세스 키 ID</string>
@@ -244,11 +245,12 @@
     <string name="storage_onedrive_folder_name">폴더 이름</string>
     <string name="storage_onedrive_create">만들기</string>
     <string name="storage_onedrive_use_folder">이 폴더 사용</string>
-    <string name="storage_setup_done">이 라이브러리의 클라우드 저장 위치가 설정되었습니다. 복원 코드를 보관하세요. 다른 기기는 이 코드로 참여합니다.</string>
+    <string name="storage_setup_done">이 라이브러리의 클라우드 저장 위치가 설정되었습니다. 복구 코드를 다른 사람이 볼 수 없는 곳에 보관하세요. 모든 기기를 잃어버려도 이 코드로 라이브러리를 되찾을 수 있습니다.</string>
     <string name="done">완료</string>
-    <string name="settings_restore_code">복원 코드</string>
-    <string name="settings_restore_code_explanation">새 기기에서 이 코드를 스캔하거나 입력하면 내 기기로 이 라이브러리에 추가됩니다.</string>
-    <string name="settings_show_restore_code">복원 코드 보기</string>
+    <string name="recovery_code_title">내 복구 코드</string>
+    <string name="recovery_code_explanation">모든 기기를 잃어버린 경우 새 기기에서 이 코드를 입력하면 라이브러리를 되찾을 수 있습니다. 이 코드와 스토리지 접근 권한이 있으면 누구나 라이브러리를 열 수 있으니 다른 사람이 볼 수 없는 곳에 보관하세요.</string>
+    <string name="recovery_code_s3_key">S3 액세스 키와 비밀 키도 필요합니다.</string>
+    <string name="recovery_code_show">코드 보기</string>
     <string name="settings_people">사람</string>
     <string name="members_you">나</string>
     <string name="members_unnamed">아직 이름 없음</string>
@@ -262,6 +264,9 @@
     <string name="device_state_replaced">대체됨</string>
     <string name="device_removed_title">기기가 제거됨</string>
     <string name="members_invite">사람 초대</string>
+    <string name="members_add_device">기기 추가</string>
+    <string name="add_device_title">기기 추가</string>
+    <string name="add_device_instructions">새 기기로 이 코드를 스캔하세요. 또는 새 기기에서 ‘코드 입력’ 항목을 선택하고 다음을 입력하세요:</string>
     <string name="invite_s3_explanation">상대가 이 버킷에 사용할 액세스 키입니다.</string>
     <string name="invite_email_explanation">상대가 로그인할 %1$s 계정입니다.</string>
     <string name="invite_email">이메일</string>

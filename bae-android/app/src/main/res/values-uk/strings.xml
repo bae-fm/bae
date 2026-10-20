@@ -89,8 +89,9 @@
     <string name="settings_playback">Відтворення</string>
     <string name="settings_about">Про застосунок</string>
     <string name="settings_version">Версія</string>
-    <string name="restore_code_secret_warning">Будь-хто з цим кодом має повний доступ до вашої бібліотеки. Тримайте його в таємниці.</string>
     <string name="copy_code">Копіювати код</string>
+    <string name="copy">Копіювати</string>
+    <string name="hide">Сховати</string>
     <string name="settings_remove_library">Вилучити цю бібліотеку з цього пристрою</string>
     <string name="settings_remove_library_explanation">Вилучає цю бібліотеку з цього пристрою: пристрій виходить із бібліотеки, а потім його копію та завантажені файли видаляють. Бібліотека в хмарі залишається незмінною.</string>
     <string name="settings_remove_library_confirm_title">Вилучити цю бібліотеку з цього пристрою?</string>
@@ -110,7 +111,7 @@
     <string name="settings_pause_uploads">Призупинити вивантаження</string>
     <string name="settings_pause_uploads_footer">Під час паузи зміни очікують на цьому пристрої й вивантажуються, коли ви відновите.</string>
     <string name="members_title">Люди та пристрої</string>
-    <string name="members_explanation">Усі в цій бібліотеці та їхні пристрої. Кожен додає власні пристрої своїм кодом відновлення. Адміністратори запрошують людей і можуть вилучити пристрій будь-кого.</string>
+    <string name="members_explanation">Усі в цій бібліотеці та їхні пристрої. Кожен додає власні пристрої зі свого рядка. Адміністратори запрошують людей і можуть вилучити пристрій будь-кого.</string>
     <string name="members_this_device">Цей пристрій</string>
     <string name="members_role_member">Учасник</string>
     <string name="members_remove">Видалити</string>
@@ -200,7 +201,7 @@
     <string name="save">Зберегти</string>
     <string name="onboarding_scan_code">Сканувати код</string>
     <string name="onboarding_enter_code">Ввести код</string>
-    <string name="onboarding_enter_code_instructions">Введіть код відновлення з одного зі своїх пристроїв або запрошення до бібліотеки.</string>
+    <string name="onboarding_enter_code_instructions">Введіть свій код відновлення або запрошення до бібліотеки.</string>
     <string name="onboarding_code_placeholder">Код відновлення або запрошення</string>
     <string name="continue_action">Продовжити</string>
     <string name="onboarding_code_invalid">Це не код відновлення і не запрошення.</string>
@@ -250,11 +251,12 @@
     <string name="storage_onedrive_folder_name">Назва папки</string>
     <string name="storage_onedrive_create">Створити</string>
     <string name="storage_onedrive_use_folder">Використати цю папку</string>
-    <string name="storage_setup_done">Місце в хмарі для цієї бібліотеки налаштовано. Збережіть свій код відновлення: ваші інші пристрої приєднуються з ним.</string>
+    <string name="storage_setup_done">Місце в хмарі для цієї бібліотеки налаштовано. Зберігайте свій код відновлення в приватному місці: якщо ви втратите всі свої пристрої, з ним ви повернете свою бібліотеку.</string>
     <string name="done">Готово</string>
-    <string name="settings_restore_code">Код відновлення</string>
-    <string name="settings_restore_code_explanation">Відскануйте або введіть цей код на новому пристрої, щоб додати його до цієї бібліотеки як свій.</string>
-    <string name="settings_show_restore_code">Показати код відновлення</string>
+    <string name="recovery_code_title">Ваш код відновлення</string>
+    <string name="recovery_code_explanation">Якщо ви втратите всі свої пристрої, введіть цей код на новому, щоб повернути свою бібліотеку. Будь-хто, хто його має і має доступ до вашого сховища, може відкрити бібліотеку, тож зберігайте його в приватному місці.</string>
+    <string name="recovery_code_s3_key">Вам також знадобляться ключ доступу та секретний ключ S3.</string>
+    <string name="recovery_code_show">Показати код</string>
     <string name="settings_people">Люди</string>
     <string name="members_you">Ви</string>
     <string name="members_unnamed">Ще без імені</string>
@@ -268,6 +270,9 @@
     <string name="device_state_replaced">Замінено</string>
     <string name="device_removed_title">Пристрій вилучено</string>
     <string name="members_invite">Запросити людину</string>
+    <string name="members_add_device">Додати пристрій</string>
+    <string name="add_device_title">Додати пристрій</string>
+    <string name="add_device_instructions">Відскануйте це новим пристроєм. Або на новому пристрої виберіть «Ввести код» і введіть:</string>
     <string name="invite_s3_explanation">Ключ доступу, який людина використовуватиме для цього бакета.</string>
     <string name="invite_email_explanation">Обліковий запис %1$s, з яким людина ввійде.</string>
     <string name="invite_email">Ел. пошта</string>

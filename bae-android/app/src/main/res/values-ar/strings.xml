@@ -89,8 +89,9 @@
     <string name="settings_playback">التشغيل</string>
     <string name="settings_about">حول</string>
     <string name="settings_version">الإصدار</string>
-    <string name="restore_code_secret_warning">أي شخص لديه هذا الرمز يملك وصولًا كاملًا إلى مكتبتك. أبقه خاصًا.</string>
     <string name="copy_code">نسخ الرمز</string>
+    <string name="copy">نسخ</string>
+    <string name="hide">إخفاء</string>
     <string name="settings_remove_library">إزالة هذه المكتبة من هذا الجهاز</string>
     <string name="settings_remove_library_explanation">يزيل هذه المكتبة من هذا الجهاز: يغادر الجهاز المكتبة، ثم تُحذف نسخته والملفات التي نزّلها. لا تتأثر المكتبة في مكانها في السحابة.</string>
     <string name="settings_remove_library_confirm_title">إزالة هذه المكتبة من هذا الجهاز؟</string>
@@ -110,7 +111,7 @@
     <string name="settings_pause_uploads">إيقاف الرفع مؤقتًا</string>
     <string name="settings_pause_uploads_footer">أثناء الإيقاف المؤقت، تنتظر التغييرات على هذا الجهاز وتُرفع عند الاستئناف.</string>
     <string name="members_title">الأشخاص والأجهزة</string>
-    <string name="members_explanation">كل من في هذه المكتبة وأجهزتهم. يضيف كل شخص أجهزته برمز الاستعادة الخاص به. يدعو المسؤولون الأشخاص ويمكنهم إزالة جهاز أي شخص.</string>
+    <string name="members_explanation">كل من في هذه المكتبة وأجهزتهم. يضيف كل شخص أجهزته من صفّه. يدعو المسؤولون الأشخاص ويمكنهم إزالة جهاز أي شخص.</string>
     <string name="members_this_device">هذا الجهاز</string>
     <string name="members_role_member">عضو</string>
     <string name="members_remove">إزالة</string>
@@ -127,7 +128,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="onboarding_join_action">انضمام</string>
-    <string name="qr_scanner_instructions">امسح رمز استعادة معروضًا في bae على أحد أجهزتك، أو دعوة.</string>
+    <string name="qr_scanner_instructions">امسح رمز استرداد معروضًا في bae على أحد أجهزتك، أو دعوة.</string>
     <!-- Downloads -->
     <string name="downloads">التنزيلات</string>
     <string name="download">تنزيل</string>
@@ -204,10 +205,10 @@
     <string name="save">حفظ</string>
     <string name="onboarding_scan_code">مسح رمز</string>
     <string name="onboarding_enter_code">إدخال رمز</string>
-    <string name="onboarding_enter_code_instructions">أدخل رمز استعادة من أحد أجهزتك، أو دعوة إلى مكتبة.</string>
-    <string name="onboarding_code_placeholder">رمز الاستعادة أو الدعوة</string>
+    <string name="onboarding_enter_code_instructions">أدخل رمز الاسترداد الخاص بك، أو دعوة إلى مكتبة.</string>
+    <string name="onboarding_code_placeholder">رمز الاسترداد أو الدعوة</string>
     <string name="continue_action">متابعة</string>
-    <string name="onboarding_code_invalid">هذا ليس رمز استعادة ولا دعوة.</string>
+    <string name="onboarding_code_invalid">هذا ليس رمز استرداد ولا دعوة.</string>
     <string name="onboarding_restore_title">استعادة مكتبتك</string>
     <string name="onboarding_s3_key_explanation">هذه المكتبة مخزّنة في حاوية متوافقة مع S3. أدخل مفتاح الوصول الذي تستخدمه لها.</string>
     <string name="s3_access_key_id">معرّف مفتاح الوصول</string>
@@ -254,11 +255,12 @@
     <string name="storage_onedrive_folder_name">اسم المجلد</string>
     <string name="storage_onedrive_create">إنشاء</string>
     <string name="storage_onedrive_use_folder">استخدام هذا المجلد</string>
-    <string name="storage_setup_done">تم إعداد مكان هذه المكتبة في السحابة. احتفظ برمز الاستعادة: تنضم به أجهزتك الأخرى.</string>
+    <string name="storage_setup_done">تم إعداد مكان هذه المكتبة في السحابة. احتفظ برمز الاسترداد في مكان خاص: إذا فقدت جميع أجهزتك، فهو يعيد إليك مكتبتك.</string>
     <string name="done">تم</string>
-    <string name="settings_restore_code">رمز الاستعادة</string>
-    <string name="settings_restore_code_explanation">امسح هذا الرمز أو اكتبه على جهاز جديد لإضافته إلى هذه المكتبة باسمك.</string>
-    <string name="settings_show_restore_code">عرض رمز الاستعادة</string>
+    <string name="recovery_code_title">رمز الاسترداد الخاص بك</string>
+    <string name="recovery_code_explanation">إذا فقدت جميع أجهزتك، فأدخل هذا الرمز على جهاز جديد لاستعادة مكتبتك. يمكن لأي شخص لديه الرمز وإمكانية الوصول إلى التخزين فتح المكتبة، لذا احتفظ به في مكان خاص.</string>
+    <string name="recovery_code_s3_key">ستحتاج أيضًا إلى مفتاح الوصول والمفتاح السري لـ S3.</string>
+    <string name="recovery_code_show">عرض الرمز</string>
     <string name="settings_people">الأشخاص</string>
     <string name="members_you">أنت</string>
     <string name="members_unnamed">بلا اسم بعد</string>
@@ -272,6 +274,9 @@
     <string name="device_state_replaced">مُستبدَل</string>
     <string name="device_removed_title">تمت إزالة الجهاز</string>
     <string name="members_invite">دعوة شخص</string>
+    <string name="members_add_device">إضافة جهاز</string>
+    <string name="add_device_title">إضافة جهاز</string>
+    <string name="add_device_instructions">امسح هذا الرمز بالجهاز الجديد. أو اختر «إدخال رمز» على الجهاز الجديد واكتب:</string>
     <string name="invite_s3_explanation">مفتاح الوصول الذي سيستخدمه لهذه الحاوية.</string>
     <string name="invite_email_explanation">حساب %1$s الذي سيسجّل الدخول به.</string>
     <string name="invite_email">البريد الإلكتروني</string>

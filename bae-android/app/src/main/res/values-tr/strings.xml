@@ -89,8 +89,9 @@
     <string name="settings_playback">Oynatma</string>
     <string name="settings_about">Hakkında</string>
     <string name="settings_version">Sürüm</string>
-    <string name="restore_code_secret_warning">Bu koda sahip herkes arşivinize tam erişim sağlar. Gizli tutun.</string>
     <string name="copy_code">Kodu kopyala</string>
+    <string name="copy">Kopyala</string>
+    <string name="hide">Gizle</string>
     <string name="settings_remove_library">Bu kitaplığı bu cihazdan kaldır</string>
     <string name="settings_remove_library_explanation">Bu kitaplığı bu cihazdan kaldırır: cihaz önce kitaplıktan ayrılır, ardından kopyası ve indirilen dosyalar silinir. Bulut konumundaki kitaplığa dokunulmaz.</string>
     <string name="settings_remove_library_confirm_title">Bu kitaplık bu cihazdan kaldırılsın mı?</string>
@@ -110,7 +111,7 @@
     <string name="settings_pause_uploads">Yüklemeleri duraklat</string>
     <string name="settings_pause_uploads_footer">Duraklatıldığında değişiklikler bu cihazda bekler ve devam ettiğinizde yüklenir.</string>
     <string name="members_title">Kişiler ve cihazlar</string>
-    <string name="members_explanation">Bu kitaplıktaki herkes ve cihazları. Herkes kendi cihazlarını kendi geri yükleme koduyla ekler. Yöneticiler kişileri davet eder ve herkesin cihazını kaldırabilir.</string>
+    <string name="members_explanation">Bu kitaplıktaki herkes ve cihazları. Herkes kendi cihazlarını kendi satırından ekler. Yöneticiler kişileri davet eder ve herkesin cihazını kaldırabilir.</string>
     <string name="members_this_device">Bu cihaz</string>
     <string name="members_role_member">Üye</string>
     <string name="members_remove">Kaldır</string>
@@ -127,7 +128,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="onboarding_join_action">Katıl</string>
-    <string name="qr_scanner_instructions">Cihazlarınızdan birinde bae’nin gösterdiği bir geri yükleme kodunu ya da bir daveti tarayın.</string>
+    <string name="qr_scanner_instructions">Cihazlarınızdan birinde bae’nin gösterdiği bir kurtarma kodunu ya da bir daveti tarayın.</string>
     <!-- Downloads -->
     <string name="downloads">İndirilenler</string>
     <string name="download">İndir</string>
@@ -196,10 +197,10 @@
     <string name="save">Kaydet</string>
     <string name="onboarding_scan_code">Kod tara</string>
     <string name="onboarding_enter_code">Kod gir</string>
-    <string name="onboarding_enter_code_instructions">Cihazlarınızdan birindeki bir geri yükleme kodunu ya da bir kitaplık davetini girin.</string>
-    <string name="onboarding_code_placeholder">Geri yükleme kodu veya davet</string>
+    <string name="onboarding_enter_code_instructions">Kurtarma kodunuzu ya da bir kitaplık davetini girin.</string>
+    <string name="onboarding_code_placeholder">Kurtarma kodu veya davet</string>
     <string name="continue_action">Devam</string>
-    <string name="onboarding_code_invalid">Bu bir geri yükleme kodu ya da davet değil.</string>
+    <string name="onboarding_code_invalid">Bu bir kurtarma kodu ya da davet değil.</string>
     <string name="onboarding_restore_title">Kitaplığınızı geri yükleyin</string>
     <string name="onboarding_s3_key_explanation">Bu kitaplık S3 uyumlu bir kovada depolanıyor. Bunun için kullandığınız erişim anahtarını girin.</string>
     <string name="s3_access_key_id">Erişim anahtarı kimliği</string>
@@ -246,11 +247,12 @@
     <string name="storage_onedrive_folder_name">Klasör adı</string>
     <string name="storage_onedrive_create">Oluştur</string>
     <string name="storage_onedrive_use_folder">Bu klasörü kullan</string>
-    <string name="storage_setup_done">Bu kitaplığın bulut konumu ayarlandı. Geri yükleme kodunuzu saklayın: diğer cihazlarınız onunla katılır.</string>
+    <string name="storage_setup_done">Bu kitaplığın bulut konumu ayarlandı. Kurtarma kodunuzu gizli bir yerde saklayın: tüm cihazlarınızı kaybederseniz kitaplığınızı onunla geri alırsınız.</string>
     <string name="done">Bitti</string>
-    <string name="settings_restore_code">Geri yükleme kodu</string>
-    <string name="settings_restore_code_explanation">Yeni bir cihazı bu kitaplığa sizin cihazınız olarak eklemek için bu kodu o cihazda tarayın ya da yazın.</string>
-    <string name="settings_show_restore_code">Geri yükleme kodunu göster</string>
+    <string name="recovery_code_title">Kurtarma kodunuz</string>
+    <string name="recovery_code_explanation">Tüm cihazlarınızı kaybederseniz kitaplığınızı geri almak için bu kodu yeni bir cihaza girin. Kodu ve depolamanıza erişimi olan herkes kitaplığı açabilir, bu yüzden kodu gizli bir yerde saklayın.</string>
+    <string name="recovery_code_s3_key">S3 erişim anahtarınıza ve gizli anahtarınıza da ihtiyacınız olacak.</string>
+    <string name="recovery_code_show">Kodu göster</string>
     <string name="settings_people">Kişiler</string>
     <string name="members_you">Siz</string>
     <string name="members_unnamed">Henüz ad yok</string>
@@ -264,6 +266,9 @@
     <string name="device_state_replaced">Değiştirildi</string>
     <string name="device_removed_title">Cihaz kaldırıldı</string>
     <string name="members_invite">Bir kişiyi davet et</string>
+    <string name="members_add_device">Cihaz ekle</string>
+    <string name="add_device_title">Cihaz ekle</string>
+    <string name="add_device_instructions">Bunu yeni cihazla tarayın. Ya da yeni cihazda “Kod gir” seçeneğini seçip şunu yazın:</string>
     <string name="invite_s3_explanation">Kişinin bu kova için kullanacağı erişim anahtarı.</string>
     <string name="invite_email_explanation">Kişinin oturum açacağı %1$s hesabı.</string>
     <string name="invite_email">E-posta</string>

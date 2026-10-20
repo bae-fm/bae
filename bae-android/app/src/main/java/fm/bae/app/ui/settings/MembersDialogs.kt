@@ -37,6 +37,7 @@ internal sealed interface PendingRemoval {
 /** Which dialog the people screen shows, if any. */
 internal class MembersDialogs {
     var inviting by mutableStateOf(false)
+    var addingDevice by mutableStateOf(false)
     var pendingRemoval by mutableStateOf<PendingRemoval?>(null)
     var signOut by mutableStateOf<BridgeProviderSignOut?>(null)
 }
@@ -49,6 +50,9 @@ internal fun MembersDialogsShown(
 ) {
     if (dialogs.inviting) {
         InviteDialog(session = session, storage = model.storage, onDismiss = { dialogs.inviting = false })
+    }
+    if (dialogs.addingDevice) {
+        AddDeviceDialog(session = session, onDismiss = { dialogs.addingDevice = false })
     }
     dialogs.pendingRemoval?.let { removal ->
         RemovalConfirmDialog(

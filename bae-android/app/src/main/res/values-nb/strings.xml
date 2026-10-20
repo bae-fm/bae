@@ -93,8 +93,9 @@
     <string name="settings_playback">Avspilling</string>
     <string name="settings_about">Om</string>
     <string name="settings_version">Versjon</string>
-    <string name="restore_code_secret_warning">Alle som har denne koden, får full tilgang til biblioteket ditt. Hold den privat.</string>
     <string name="copy_code">Kopier koden</string>
+    <string name="copy">Kopier</string>
+    <string name="hide">Skjul</string>
     <string name="settings_remove_library">Fjern dette biblioteket fra denne enheten</string>
     <string name="settings_remove_library_explanation">Fjerner dette biblioteket fra denne enheten: enheten forlater biblioteket, og deretter slettes kopien og de nedlastede filene. Biblioteket på skyplasseringen er urørt.</string>
     <string name="settings_remove_library_confirm_title">Fjerne dette biblioteket fra denne enheten?</string>
@@ -114,7 +115,7 @@
     <string name="settings_pause_uploads">Sett opplastinger på pause</string>
     <string name="settings_pause_uploads_footer">Mens de er satt på pause, venter endringene på denne enheten og lastes opp når du fortsetter.</string>
     <string name="members_title">Personer og enheter</string>
-    <string name="members_explanation">Alle i dette biblioteket og enhetene deres. Hver person legger til sine egne enheter med sin gjenopprettingskode. Administratorer inviterer personer og kan fjerne hvem som helsts enhet.</string>
+    <string name="members_explanation">Alle i dette biblioteket og enhetene deres. Hver person legger til sine egne enheter fra sin egen rad. Administratorer inviterer personer og kan fjerne hvem som helsts enhet.</string>
     <string name="members_this_device">Denne enheten</string>
     <string name="members_role_member">Medlem</string>
     <string name="members_remove">Fjern</string>
@@ -195,7 +196,7 @@
     <string name="save">Lagre</string>
     <string name="onboarding_scan_code">Skann en kode</string>
     <string name="onboarding_enter_code">Skriv inn en kode</string>
-    <string name="onboarding_enter_code_instructions">Skriv inn en gjenopprettingskode fra en av enhetene dine, eller en invitasjon til et bibliotek.</string>
+    <string name="onboarding_enter_code_instructions">Skriv inn gjenopprettingskoden din, eller en invitasjon til et bibliotek.</string>
     <string name="onboarding_code_placeholder">Gjenopprettingskode eller invitasjon</string>
     <string name="continue_action">Fortsett</string>
     <string name="onboarding_code_invalid">Dette er verken en gjenopprettingskode eller en invitasjon.</string>
@@ -245,11 +246,12 @@
     <string name="storage_onedrive_folder_name">Mappenavn</string>
     <string name="storage_onedrive_create">Opprett</string>
     <string name="storage_onedrive_use_folder">Bruk denne mappen</string>
-    <string name="storage_setup_done">Bibliotekets skyplassering er konfigurert. Ta vare på gjenopprettingskoden din: de andre enhetene dine blir med ved hjelp av den.</string>
+    <string name="storage_setup_done">Bibliotekets skyplassering er konfigurert. Oppbevar gjenopprettingskoden din et privat sted: Hvis du mister alle enhetene dine, får du biblioteket tilbake med den.</string>
     <string name="done">Ferdig</string>
-    <string name="settings_restore_code">Gjenopprettingskode</string>
-    <string name="settings_restore_code_explanation">Skann eller skriv inn denne koden på en ny enhet for å legge den til i dette biblioteket som din.</string>
-    <string name="settings_show_restore_code">Vis gjenopprettingskode</string>
+    <string name="recovery_code_title">Gjenopprettingskoden din</string>
+    <string name="recovery_code_explanation">Hvis du mister alle enhetene dine, skriver du inn denne koden på en ny enhet for å få biblioteket tilbake. Alle som har koden og tilgang til lagringen din, kan åpne biblioteket, så oppbevar den et privat sted.</string>
+    <string name="recovery_code_s3_key">Du trenger også S3-tilgangsnøkkelen og den hemmelige nøkkelen.</string>
+    <string name="recovery_code_show">Vis kode</string>
     <string name="settings_people">Personer</string>
     <string name="members_you">Deg</string>
     <string name="members_unnamed">Ikke noe navn ennå</string>
@@ -263,6 +265,9 @@
     <string name="device_state_replaced">Erstattet</string>
     <string name="device_removed_title">Enheten er fjernet</string>
     <string name="members_invite">Inviter en person</string>
+    <string name="members_add_device">Legg til enhet</string>
+    <string name="add_device_title">Legg til en enhet</string>
+    <string name="add_device_instructions">Skann dette med den nye enheten. Eller velg «Skriv inn en kode» på den nye enheten, og skriv inn:</string>
     <string name="invite_s3_explanation">Tilgangsnøkkelen personen skal bruke for denne bøtten.</string>
     <string name="invite_email_explanation">%1$s-kontoen personen skal logge på med.</string>
     <string name="invite_email">E-post</string>

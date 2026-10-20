@@ -93,8 +93,9 @@
     <string name="settings_playback">Uppspelning</string>
     <string name="settings_about">Om</string>
     <string name="settings_version">Version</string>
-    <string name="restore_code_secret_warning">Alla som har den här koden får full åtkomst till ditt bibliotek. Håll den privat.</string>
     <string name="copy_code">Kopiera koden</string>
+    <string name="copy">Kopiera</string>
+    <string name="hide">Dölj</string>
     <string name="settings_remove_library">Ta bort det här biblioteket från den här enheten</string>
     <string name="settings_remove_library_explanation">Tar bort det här biblioteket från den här enheten: enheten lämnar biblioteket, sedan raderas dess kopia och nedladdade filer. Biblioteket på molnplatsen är orört.</string>
     <string name="settings_remove_library_confirm_title">Ta bort det här biblioteket från den här enheten?</string>
@@ -114,7 +115,7 @@
     <string name="settings_pause_uploads">Pausa uppladdningar</string>
     <string name="settings_pause_uploads_footer">Under pausen väntar ändringarna på den här enheten och skickas upp när du fortsätter.</string>
     <string name="members_title">Personer och enheter</string>
-    <string name="members_explanation">Alla i det här biblioteket och deras enheter. Var och en lägger till sina egna enheter med sin återställningskod. Administratörer bjuder in personer och kan ta bort vems enhet som helst.</string>
+    <string name="members_explanation">Alla i det här biblioteket och deras enheter. Var och en lägger till sina egna enheter från sin egen rad. Administratörer bjuder in personer och kan ta bort vems enhet som helst.</string>
     <string name="members_this_device">Den här enheten</string>
     <string name="members_role_member">Medlem</string>
     <string name="members_remove">Ta bort</string>
@@ -195,7 +196,7 @@
     <string name="save">Spara</string>
     <string name="onboarding_scan_code">Skanna en kod</string>
     <string name="onboarding_enter_code">Ange en kod</string>
-    <string name="onboarding_enter_code_instructions">Ange en återställningskod från en av dina enheter, eller en inbjudan till ett bibliotek.</string>
+    <string name="onboarding_enter_code_instructions">Ange din återställningskod, eller en inbjudan till ett bibliotek.</string>
     <string name="onboarding_code_placeholder">Återställningskod eller inbjudan</string>
     <string name="continue_action">Fortsätt</string>
     <string name="onboarding_code_invalid">Det här är varken en återställningskod eller en inbjudan.</string>
@@ -245,11 +246,12 @@
     <string name="storage_onedrive_folder_name">Mappnamn</string>
     <string name="storage_onedrive_create">Skapa</string>
     <string name="storage_onedrive_use_folder">Använd den här mappen</string>
-    <string name="storage_setup_done">Bibliotekets molnplats är konfigurerad. Spara din återställningskod: dina andra enheter går med med den.</string>
+    <string name="storage_setup_done">Bibliotekets molnplats är konfigurerad. Förvara din återställningskod på ett privat ställe: om du förlorar alla dina enheter får du tillbaka biblioteket med den.</string>
     <string name="done">Klar</string>
-    <string name="settings_restore_code">Återställningskod</string>
-    <string name="settings_restore_code_explanation">Skanna eller skriv in den här koden på en ny enhet för att lägga till den i biblioteket som din.</string>
-    <string name="settings_show_restore_code">Visa återställningskod</string>
+    <string name="recovery_code_title">Din återställningskod</string>
+    <string name="recovery_code_explanation">Om du förlorar alla dina enheter anger du den här koden på en ny enhet för att få tillbaka ditt bibliotek. Den som har koden och åtkomst till din lagring kan öppna biblioteket, så förvara den på ett privat ställe.</string>
+    <string name="recovery_code_s3_key">Du behöver också din S3-åtkomstnyckel och den hemliga nyckeln.</string>
+    <string name="recovery_code_show">Visa kod</string>
     <string name="settings_people">Personer</string>
     <string name="members_you">Du</string>
     <string name="members_unnamed">Inget namn än</string>
@@ -263,6 +265,9 @@
     <string name="device_state_replaced">Ersatt</string>
     <string name="device_removed_title">Enheten har tagits bort</string>
     <string name="members_invite">Bjud in en person</string>
+    <string name="members_add_device">Lägg till enhet</string>
+    <string name="add_device_title">Lägg till en enhet</string>
+    <string name="add_device_instructions">Skanna det här med den nya enheten. Eller välj ”Ange en kod” på den nya enheten och skriv:</string>
     <string name="invite_s3_explanation">Åtkomstnyckeln personen ska använda för den här bucketen.</string>
     <string name="invite_email_explanation">%1$s-kontot personen ska logga in med.</string>
     <string name="invite_email">E-post</string>

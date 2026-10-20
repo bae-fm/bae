@@ -89,8 +89,9 @@
     <string name="settings_playback">הפעלה</string>
     <string name="settings_about">אודות</string>
     <string name="settings_version">גרסה</string>
-    <string name="restore_code_secret_warning">לכל מי שיש את הקוד הזה יש גישה מלאה לספרייה שלך. שמרו עליו פרטי.</string>
     <string name="copy_code">העתק קוד</string>
+    <string name="copy">העתקה</string>
+    <string name="hide">הסתרה</string>
     <string name="settings_remove_library">הסר ספרייה זו מהמכשיר הזה</string>
     <string name="settings_remove_library_explanation">מסיר את הספרייה הזו מהמכשיר הזה: המכשיר עוזב את הספרייה, ואז העותק שלו והקבצים שהורדו נמחקים. הספרייה במיקום שלה בענן לא תיפגע.</string>
     <string name="settings_remove_library_confirm_title">להסיר ספרייה זו מהמכשיר הזה?</string>
@@ -110,7 +111,7 @@
     <string name="settings_pause_uploads">השהיית העלאות</string>
     <string name="settings_pause_uploads_footer">בזמן ההשהיה, השינויים ממתינים במכשיר הזה ומועלים כשתמשיך.</string>
     <string name="members_title">אנשים ומכשירים</string>
-    <string name="members_explanation">כל מי שבספרייה הזו והמכשירים שלהם. כל אחד מוסיף את המכשירים שלו עם קוד השחזור שלו. מנהלים מזמינים אנשים ויכולים להסיר מכשיר של כל אחד.</string>
+    <string name="members_explanation">כל מי שבספרייה הזו והמכשירים שלהם. כל אחד מוסיף את המכשירים שלו מהשורה שלו. מנהלים מזמינים אנשים ויכולים להסיר מכשיר של כל אחד.</string>
     <string name="members_this_device">המכשיר הזה</string>
     <string name="members_role_member">חבר</string>
     <string name="members_remove">הסר</string>
@@ -198,7 +199,7 @@
     <string name="save">שמירה</string>
     <string name="onboarding_scan_code">סריקת קוד</string>
     <string name="onboarding_enter_code">הזנת קוד</string>
-    <string name="onboarding_enter_code_instructions">הזינו קוד שחזור מאחד המכשירים שלכם, או הזמנה לספרייה.</string>
+    <string name="onboarding_enter_code_instructions">הזינו את קוד השחזור שלכם, או הזמנה לספרייה.</string>
     <string name="onboarding_code_placeholder">קוד שחזור או הזמנה</string>
     <string name="continue_action">המשך</string>
     <string name="onboarding_code_invalid">זה לא קוד שחזור וגם לא הזמנה.</string>
@@ -248,11 +249,12 @@
     <string name="storage_onedrive_folder_name">שם התיקייה</string>
     <string name="storage_onedrive_create">יצירה</string>
     <string name="storage_onedrive_use_folder">שימוש בתיקייה הזו</string>
-    <string name="storage_setup_done">המיקום בענן של הספרייה הזו הוגדר. שמרו את קוד השחזור שלכם: המכשירים האחרים שלכם מצטרפים איתו.</string>
+    <string name="storage_setup_done">המיקום בענן של הספרייה הזו הוגדר. שמרו את קוד השחזור שלכם במקום פרטי: אם תאבדו את כל המכשירים שלכם, הוא מחזיר לכם את הספרייה.</string>
     <string name="done">סיום</string>
-    <string name="settings_restore_code">קוד שחזור</string>
-    <string name="settings_restore_code_explanation">סרקו או הקלידו את הקוד הזה במכשיר חדש כדי להוסיף אותו לספרייה הזו בתור שלכם.</string>
-    <string name="settings_show_restore_code">הצגת קוד השחזור</string>
+    <string name="recovery_code_title">קוד השחזור שלכם</string>
+    <string name="recovery_code_explanation">אם תאבדו את כל המכשירים שלכם, הזינו את הקוד הזה במכשיר חדש כדי לקבל את הספרייה בחזרה. כל מי שיש לו את הקוד וגישה לאחסון שלכם יכול לפתוח את הספרייה, לכן שמרו אותו במקום פרטי.</string>
+    <string name="recovery_code_s3_key">תצטרכו גם את מפתח הגישה ואת המפתח הסודי של S3.</string>
+    <string name="recovery_code_show">הצגת הקוד</string>
     <string name="settings_people">אנשים</string>
     <string name="members_you">את/ה</string>
     <string name="members_unnamed">עדיין ללא שם</string>
@@ -266,6 +268,9 @@
     <string name="device_state_replaced">הוחלף</string>
     <string name="device_removed_title">המכשיר הוסר</string>
     <string name="members_invite">הזמנת אדם</string>
+    <string name="members_add_device">הוספת מכשיר</string>
+    <string name="add_device_title">הוספת מכשיר</string>
+    <string name="add_device_instructions">סרקו את זה במכשיר החדש. לחלופין, במכשיר החדש בחרו ב“הזנת קוד” והקלידו:</string>
     <string name="invite_s3_explanation">מפתח הגישה שבו האדם ישתמש עבור הדלי הזה.</string>
     <string name="invite_email_explanation">חשבון ה-%1$s שבו האדם יתחבר.</string>
     <string name="invite_email">אימייל</string>

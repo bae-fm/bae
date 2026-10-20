@@ -93,8 +93,9 @@
     <string name="settings_playback">Toisto</string>
     <string name="settings_about">Tietoja</string>
     <string name="settings_version">Versio</string>
-    <string name="restore_code_secret_warning">Kuka tahansa, jolla on tämä koodi, pääsee kirjastoosi täysin. Pidä se yksityisenä.</string>
     <string name="copy_code">Kopioi koodi</string>
+    <string name="copy">Kopioi</string>
+    <string name="hide">Piilota</string>
     <string name="settings_remove_library">Poista tämä kirjasto tältä laitteelta</string>
     <string name="settings_remove_library_explanation">Poistaa tämän kirjaston tästä laitteesta: laite eroaa kirjastosta, minkä jälkeen sen kopio ja ladatut tiedostot poistetaan. Pilvisijainnissa oleva kirjasto säilyy koskemattomana.</string>
     <string name="settings_remove_library_confirm_title">Poistetaanko tämä kirjasto tältä laitteelta?</string>
@@ -114,7 +115,7 @@
     <string name="settings_pause_uploads">Keskeytä lähetykset</string>
     <string name="settings_pause_uploads_footer">Kun lähetykset ovat tauolla, muutokset odottavat tällä laitteella ja lähtevät, kun jatkat.</string>
     <string name="members_title">Ihmiset ja laitteet</string>
-    <string name="members_explanation">Kaikki tämän kirjaston ihmiset ja heidän laitteensa. Jokainen lisää omat laitteensa omalla palautuskoodillaan. Ylläpitäjät kutsuvat ihmisiä ja voivat poistaa kenen tahansa laitteen.</string>
+    <string name="members_explanation">Kaikki tämän kirjaston ihmiset ja heidän laitteensa. Jokainen lisää omat laitteensa omalta riviltään. Ylläpitäjät kutsuvat ihmisiä ja voivat poistaa kenen tahansa laitteen.</string>
     <string name="members_this_device">Tämä laite</string>
     <string name="members_role_member">Jäsen</string>
     <string name="members_remove">Poista</string>
@@ -195,7 +196,7 @@
     <string name="save">Tallenna</string>
     <string name="onboarding_scan_code">Skannaa koodi</string>
     <string name="onboarding_enter_code">Syötä koodi</string>
-    <string name="onboarding_enter_code_instructions">Syötä palautuskoodi jostakin laitteestasi tai kutsu kirjastoon.</string>
+    <string name="onboarding_enter_code_instructions">Syötä palautuskoodisi tai kutsu kirjastoon.</string>
     <string name="onboarding_code_placeholder">Palautuskoodi tai kutsu</string>
     <string name="continue_action">Jatka</string>
     <string name="onboarding_code_invalid">Tämä ei ole palautuskoodi eikä kutsu.</string>
@@ -245,11 +246,12 @@
     <string name="storage_onedrive_folder_name">Kansion nimi</string>
     <string name="storage_onedrive_create">Luo</string>
     <string name="storage_onedrive_use_folder">Käytä tätä kansiota</string>
-    <string name="storage_setup_done">Tämän kirjaston pilvisijainti on määritetty. Säilytä palautuskoodisi: muut laitteesi liittyvät sillä.</string>
+    <string name="storage_setup_done">Tämän kirjaston pilvisijainti on määritetty. Säilytä palautuskoodisi yksityisessä paikassa: jos menetät kaikki laitteesi, saat sillä kirjastosi takaisin.</string>
     <string name="done">Valmis</string>
-    <string name="settings_restore_code">Palautuskoodi</string>
-    <string name="settings_restore_code_explanation">Skannaa tai syötä tämä koodi uudessa laitteessa, niin se lisätään tähän kirjastoon sinun laitteenasi.</string>
-    <string name="settings_show_restore_code">Näytä palautuskoodi</string>
+    <string name="recovery_code_title">Palautuskoodisi</string>
+    <string name="recovery_code_explanation">Jos menetät kaikki laitteesi, syötä tämä koodi uudella laitteella, niin saat kirjastosi takaisin. Kuka tahansa, jolla on koodi ja pääsy tallennustilaasi, voi avata kirjaston, joten säilytä se yksityisessä paikassa.</string>
+    <string name="recovery_code_s3_key">Tarvitset myös S3-käyttöavaimesi ja salaisen avaimen.</string>
+    <string name="recovery_code_show">Näytä koodi</string>
     <string name="settings_people">Ihmiset</string>
     <string name="members_you">Sinä</string>
     <string name="members_unnamed">Ei vielä nimeä</string>
@@ -263,6 +265,9 @@
     <string name="device_state_replaced">Korvattu</string>
     <string name="device_removed_title">Laite poistettu</string>
     <string name="members_invite">Kutsu henkilö</string>
+    <string name="members_add_device">Lisää laite</string>
+    <string name="add_device_title">Lisää laite</string>
+    <string name="add_device_instructions">Skannaa tämä uudella laitteella. Tai valitse uudella laitteella ”Syötä koodi” ja kirjoita:</string>
     <string name="invite_s3_explanation">Käyttöavain, jota hän käyttää tähän säilöön.</string>
     <string name="invite_email_explanation">%1$s-tili, jolla hän kirjautuu sisään.</string>
     <string name="invite_email">Sähköposti</string>

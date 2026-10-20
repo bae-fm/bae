@@ -89,8 +89,9 @@
     <string name="settings_playback">Riproduzione</string>
     <string name="settings_about">Informazioni</string>
     <string name="settings_version">Versione</string>
-    <string name="restore_code_secret_warning">Chiunque abbia questo codice ha accesso completo alla tua libreria. Tienilo privato.</string>
     <string name="copy_code">Copia codice</string>
+    <string name="copy">Copia</string>
+    <string name="hide">Nascondi</string>
     <string name="settings_remove_library">Rimuovi questa libreria da questo dispositivo</string>
     <string name="settings_remove_library_explanation">Rimuove questa libreria da questo dispositivo: il dispositivo lascia la libreria, poi la sua copia e i file scaricati vengono eliminati. La libreria nel suo spazio cloud rimane intatta.</string>
     <string name="settings_remove_library_confirm_title">Rimuovere questa libreria da questo dispositivo?</string>
@@ -110,7 +111,7 @@
     <string name="settings_pause_uploads">Sospendi i caricamenti</string>
     <string name="settings_pause_uploads_footer">In pausa, le modifiche restano in attesa su questo dispositivo e vengono caricate alla ripresa.</string>
     <string name="members_title">Persone e dispositivi</string>
-    <string name="members_explanation">Tutte le persone di questa libreria e i loro dispositivi. Ognuno aggiunge i propri dispositivi con il proprio codice di ripristino. Gli amministratori invitano persone e possono rimuovere il dispositivo di chiunque.</string>
+    <string name="members_explanation">Tutte le persone di questa libreria e i loro dispositivi. Ognuno aggiunge i propri dispositivi dalla propria riga. Gli amministratori invitano persone e possono rimuovere il dispositivo di chiunque.</string>
     <string name="members_this_device">Questo dispositivo</string>
     <string name="members_role_member">Membro</string>
     <string name="members_remove">Rimuovi</string>
@@ -127,7 +128,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="onboarding_join_action">Unisciti</string>
-    <string name="qr_scanner_instructions">Scansiona un codice di ripristino mostrato da bae su uno dei tuoi dispositivi, oppure un invito.</string>
+    <string name="qr_scanner_instructions">Scansiona un codice di recupero mostrato da bae su uno dei tuoi dispositivi, oppure un invito.</string>
     <!-- Downloads -->
     <string name="downloads">Download</string>
     <string name="download">Scarica</string>
@@ -197,10 +198,10 @@
     <string name="save">Salva</string>
     <string name="onboarding_scan_code">Scansiona un codice</string>
     <string name="onboarding_enter_code">Inserisci un codice</string>
-    <string name="onboarding_enter_code_instructions">Inserisci un codice di ripristino da uno dei tuoi dispositivi, oppure un invito a una libreria.</string>
-    <string name="onboarding_code_placeholder">Codice di ripristino o invito</string>
+    <string name="onboarding_enter_code_instructions">Inserisci il tuo codice di recupero, oppure un invito a una libreria.</string>
+    <string name="onboarding_code_placeholder">Codice di recupero o invito</string>
     <string name="continue_action">Continua</string>
-    <string name="onboarding_code_invalid">Questo non è un codice di ripristino né un invito.</string>
+    <string name="onboarding_code_invalid">Questo non è un codice di recupero né un invito.</string>
     <string name="onboarding_restore_title">Ripristina la tua libreria</string>
     <string name="onboarding_s3_key_explanation">Questa libreria è archiviata in un bucket compatibile con S3. Inserisci la chiave di accesso che usi per esso.</string>
     <string name="s3_access_key_id">ID chiave di accesso</string>
@@ -247,11 +248,12 @@
     <string name="storage_onedrive_folder_name">Nome della cartella</string>
     <string name="storage_onedrive_create">Crea</string>
     <string name="storage_onedrive_use_folder">Usa questa cartella</string>
-    <string name="storage_setup_done">Lo spazio cloud di questa libreria è configurato. Conserva il tuo codice di ripristino: i tuoi altri dispositivi entrano con quello.</string>
+    <string name="storage_setup_done">Lo spazio cloud di questa libreria è configurato. Conserva il tuo codice di recupero in un posto privato: se perdi tutti i tuoi dispositivi, con quello riavrai la tua libreria.</string>
     <string name="done">Fine</string>
-    <string name="settings_restore_code">Codice di ripristino</string>
-    <string name="settings_restore_code_explanation">Scansiona o digita questo codice su un nuovo dispositivo per aggiungerlo a questa libreria come tuo.</string>
-    <string name="settings_show_restore_code">Mostra codice di ripristino</string>
+    <string name="recovery_code_title">Il tuo codice di recupero</string>
+    <string name="recovery_code_explanation">Se perdi tutti i tuoi dispositivi, inserisci questo codice su un nuovo dispositivo per riavere la tua libreria. Chiunque lo abbia e acceda al tuo spazio di archiviazione può aprire la libreria, quindi conservalo in un posto privato.</string>
+    <string name="recovery_code_s3_key">Ti serviranno anche la chiave di accesso e la chiave segreta S3.</string>
+    <string name="recovery_code_show">Mostra codice</string>
     <string name="settings_people">Persone</string>
     <string name="members_you">Tu</string>
     <string name="members_unnamed">Ancora senza nome</string>
@@ -265,6 +267,9 @@
     <string name="device_state_replaced">Sostituito</string>
     <string name="device_removed_title">Dispositivo rimosso</string>
     <string name="members_invite">Invita una persona</string>
+    <string name="members_add_device">Aggiungi dispositivo</string>
+    <string name="add_device_title">Aggiungi un dispositivo</string>
+    <string name="add_device_instructions">Scansiona questo codice con il nuovo dispositivo. Oppure, sul nuovo dispositivo, scegli “Inserisci un codice” e digita:</string>
     <string name="invite_s3_explanation">La chiave di accesso che userà per questo bucket.</string>
     <string name="invite_email_explanation">L’account %1$s con cui accederà.</string>
     <string name="invite_email">Email</string>

@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
@@ -44,17 +45,16 @@ import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeRestoreCodeShare
 
-private val logger = BaeLogger("bae.RestoreCodeDialog")
+private val logger = BaeLogger("bae.AddDeviceDialog")
 
 private val qrSize = 220.dp
 
 /**
- * This person's restore code, generated on demand, as a QR another of their
- * devices scans and as text to type. It holds the person's keys: anyone
- * holding it can add a device as them.
+ * Adds another of this person's devices: their recovery code, generated on
+ * demand, as a QR the new device scans and as text to type there instead.
  */
 @Composable
-internal fun RestoreCodeDialog(
+internal fun AddDeviceDialog(
     session: OpenLibrary,
     onDismiss: () -> Unit,
 ) {
@@ -68,43 +68,32 @@ internal fun RestoreCodeDialog(
         } catch (e: CancellationException) {
             throw e
         } catch (e: BridgeException) {
-            logger.error("Failed to generate the restore code", e)
+            logger.error("Failed to generate the add-device code", e)
             error = context.localizedLine(e) ?: e.toString()
         }
     }
 
-    RestoreCodeDialogContent(share = share, error = error, onDismiss = onDismiss)
+    AddDeviceDialogContent(share = share, error = error, onDismiss = onDismiss)
 }
 
-/**
- * The dialog body: the secret warning plus the code in [share], its [error],
- * or a spinner. The QR carries the S3 key beside the code when this device
- * holds one.
- */
+/** The dialog body: the code in [share] to scan or type, its [error], or a spinner. */
 @Composable
-internal fun RestoreCodeDialogContent(
+internal fun AddDeviceDialogContent(
     share: BridgeRestoreCodeShare?,
     error: String?,
     onDismiss: () -> Unit,
 ) {
-    val clipboard = LocalClipboardManager.current
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_restore_code)) },
+        title = { Text(stringResource(R.string.add_device_title)) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(
-                    text = stringResource(R.string.restore_code_secret_warning),
-                    style = ThemeText.body.style,
-                    color = BaeTheme.colors.warning,
-                )
-                Spacer(modifier = Modifier.height(ThemeSpace.group))
                 when {
                     share != null -> {
-                        RestoreCodeShareContent(share)
+                        AddDeviceShareContent(share)
                     }
 
                     error != null -> {
@@ -118,55 +107,62 @@ internal fun RestoreCodeDialogContent(
             }
         },
         confirmButton = {
-            if (share != null) {
-                TextButton(onClick = { clipboard.setText(AnnotatedString(share.code)) }) {
-                    Icon(
-                        Icons.Filled.ContentCopy,
-                        contentDescription = null,
-                        modifier = Modifier.size(ThemeIcon.medium),
-                    )
-                    Spacer(modifier = Modifier.width(ThemeSpace.compact))
-                    Text(stringResource(R.string.copy_code))
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.done)) }
         },
     )
 }
 
-/** The QR, which carries the S3 key beside the code when this device holds one, and the code to type. */
+/**
+ * The QR, which carries the S3 key beside the code when this device holds
+ * one, then the code to type on the new device and copy.
+ */
 @Composable
-private fun RestoreCodeShareContent(share: BridgeRestoreCodeShare) {
+private fun AddDeviceShareContent(share: BridgeRestoreCodeShare) {
+    val clipboard = LocalClipboardManager.current
     QRCodeImage(
         text = share.qrText,
-        contentDescription = stringResource(R.string.settings_restore_code),
+        contentDescription = stringResource(R.string.recovery_code_title),
         modifier = Modifier.size(qrSize),
     )
     Spacer(modifier = Modifier.height(ThemeSpace.group))
+    Text(
+        text = stringResource(R.string.add_device_instructions),
+        style = ThemeText.body.style,
+        textAlign = TextAlign.Center,
+    )
+    Spacer(modifier = Modifier.height(ThemeSpace.related))
     SelectionContainer {
-        Text(text = share.code, style = ThemeText.mono.style)
+        Text(text = share.code, style = ThemeText.mono.style, textAlign = TextAlign.Center)
+    }
+    TextButton(onClick = { clipboard.setText(AnnotatedString(share.code)) }) {
+        Icon(
+            Icons.Filled.ContentCopy,
+            contentDescription = null,
+            modifier = Modifier.size(ThemeIcon.medium),
+        )
+        Spacer(modifier = Modifier.width(ThemeSpace.compact))
+        Text(stringResource(R.string.copy))
     }
     if (share.qrCarriesS3Key) {
-        Spacer(modifier = Modifier.height(ThemeSpace.group))
+        Spacer(modifier = Modifier.height(ThemeSpace.related))
         Text(
             text = stringResource(R.string.restore_code_carries_s3_key),
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
         )
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-private fun RestoreCodeDialogContentReadyPreview() {
+private fun AddDeviceDialogContentReadyPreview() {
     BaeTheme {
-        RestoreCodeDialogContent(
+        AddDeviceDialogContent(
             share =
                 BridgeRestoreCodeShare(
-                    code = "restore-code-preview",
-                    qrText = "restore-code-preview.key-preview",
+                    code = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
+                    qrText = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567.key-preview",
                     qrCarriesS3Key = true,
                 ),
             error = null,
@@ -177,8 +173,16 @@ private fun RestoreCodeDialogContentReadyPreview() {
 
 @Preview(showBackground = true)
 @Composable
-private fun RestoreCodeDialogContentLoadingPreview() {
+private fun AddDeviceDialogContentLoadingPreview() {
     BaeTheme {
-        RestoreCodeDialogContent(share = null, error = null, onDismiss = {})
+        AddDeviceDialogContent(share = null, error = null, onDismiss = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AddDeviceDialogContentFailedPreview() {
+    BaeTheme {
+        AddDeviceDialogContent(share = null, error = "Couldn’t reach your storage.", onDismiss = {})
     }
 }

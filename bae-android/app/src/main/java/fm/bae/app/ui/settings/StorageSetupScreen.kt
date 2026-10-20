@@ -72,7 +72,7 @@ private sealed interface SetupStep {
 
     data object OneDriveFolders : SetupStep
 
-    /** Set up: the restore code the person keeps for their other devices. */
+    /** Set up: the recovery code the person keeps in case they lose every device. */
     data class Done(
         val setup: BridgeStorageSetup,
     ) : SetupStep
@@ -81,7 +81,7 @@ private sealed interface SetupStep {
 /**
  * Give a library that lives on this device only a cloud home: an S3-compatible
  * bucket, or a folder in Dropbox or OneDrive after signing in. Once set up,
- * the person's restore code is shown for their other devices.
+ * the person's recovery code is shown for them to keep.
  */
 @Composable
 internal fun StorageSetupScreen(
@@ -255,7 +255,7 @@ private fun ProviderChoice(onChoose: (BridgeCloudProvider) -> Unit) {
     }
 }
 
-/** Set up: the restore code, as a QR and as text, which adds the person's other devices. */
+/** Set up: the recovery code, as a QR and as text, which gets the library back on a new device. */
 @Composable
 private fun ColumnScope.SetupDone(
     restoreCode: String,
@@ -264,7 +264,7 @@ private fun ColumnScope.SetupDone(
     Text(stringResource(R.string.storage_setup_done))
     QRCodeImage(
         text = restoreCode,
-        contentDescription = stringResource(R.string.settings_restore_code),
+        contentDescription = stringResource(R.string.recovery_code_title),
         modifier = Modifier.size(qrSize).align(Alignment.CenterHorizontally),
     )
     SelectionContainer {

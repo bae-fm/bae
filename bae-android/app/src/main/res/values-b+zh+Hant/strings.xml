@@ -89,8 +89,9 @@
     <string name="settings_playback">播放</string>
     <string name="settings_about">關於</string>
     <string name="settings_version">版本</string>
-    <string name="restore_code_secret_warning">任何持有此代碼的人都能完整存取你的資料庫。請妥善保密。</string>
     <string name="copy_code">複製代碼</string>
+    <string name="copy">複製</string>
+    <string name="hide">隱藏</string>
     <string name="settings_remove_library">從此裝置移除此資料庫</string>
     <string name="settings_remove_library_explanation">從此裝置移除此資料庫：此裝置先退出資料庫，然後刪除它的副本和已下載的檔案。雲端儲存位置中的資料庫不受影響。</string>
     <string name="settings_remove_library_confirm_title">要從此裝置移除此資料庫嗎？</string>
@@ -110,7 +111,7 @@
     <string name="settings_pause_uploads">暫停上傳</string>
     <string name="settings_pause_uploads_footer">暫停期間，變更會在此裝置上等待，恢復後上傳。</string>
     <string name="members_title">成員和裝置</string>
-    <string name="members_explanation">此資料庫中的所有成員及其裝置。每個人用自己的還原碼新增自己的裝置。管理員可以邀請成員，並可移除任何人的裝置。</string>
+    <string name="members_explanation">此資料庫中的所有成員及其裝置。每個人從自己的那一列新增自己的裝置。管理員可以邀請成員，並可移除任何人的裝置。</string>
     <string name="members_this_device">此裝置</string>
     <string name="members_role_member">成員</string>
     <string name="members_remove">移除</string>
@@ -127,7 +128,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="onboarding_join_action">加入</string>
-    <string name="qr_scanner_instructions">掃描你其他裝置上 bae 顯示的還原碼，或一個邀請。</string>
+    <string name="qr_scanner_instructions">掃描你其他裝置上 bae 顯示的復原碼，或一個邀請。</string>
     <!-- Downloads -->
     <string name="downloads">下載</string>
     <string name="download">下載</string>
@@ -194,10 +195,10 @@
     <string name="save">儲存</string>
     <string name="onboarding_scan_code">掃描代碼</string>
     <string name="onboarding_enter_code">輸入代碼</string>
-    <string name="onboarding_enter_code_instructions">輸入你其他裝置上的還原碼，或加入某個資料庫的邀請。</string>
-    <string name="onboarding_code_placeholder">還原碼或邀請</string>
+    <string name="onboarding_enter_code_instructions">輸入你的復原碼，或加入某個資料庫的邀請。</string>
+    <string name="onboarding_code_placeholder">復原碼或邀請</string>
     <string name="continue_action">繼續</string>
-    <string name="onboarding_code_invalid">這不是還原碼，也不是邀請。</string>
+    <string name="onboarding_code_invalid">這不是復原碼，也不是邀請。</string>
     <string name="onboarding_restore_title">還原你的資料庫</string>
     <string name="onboarding_s3_key_explanation">此資料庫儲存在相容 S3 的儲存貯體中。請輸入你用於該儲存貯體的存取金鑰。</string>
     <string name="s3_access_key_id">存取金鑰 ID</string>
@@ -244,11 +245,12 @@
     <string name="storage_onedrive_folder_name">資料夾名稱</string>
     <string name="storage_onedrive_create">建立</string>
     <string name="storage_onedrive_use_folder">使用此資料夾</string>
-    <string name="storage_setup_done">此資料庫的雲端儲存位置已設定。請保存你的還原碼：你的其他裝置將用它加入。</string>
+    <string name="storage_setup_done">此資料庫的雲端儲存位置已設定。請將你的復原碼保存在私密的地方：如果你遺失了所有裝置，可以用它找回你的資料庫。</string>
     <string name="done">完成</string>
-    <string name="settings_restore_code">還原碼</string>
-    <string name="settings_restore_code_explanation">在新裝置上掃描或輸入此代碼，即可以你的身分將其加入此資料庫。</string>
-    <string name="settings_show_restore_code">顯示還原碼</string>
+    <string name="recovery_code_title">你的復原碼</string>
+    <string name="recovery_code_explanation">如果你遺失了所有裝置，可在新裝置上輸入此代碼找回你的資料庫。任何擁有此代碼並能存取你的儲存空間的人都能打開該資料庫，因此請將它保存在私密的地方。</string>
+    <string name="recovery_code_s3_key">你還需要 S3 存取密鑰和私密密鑰。</string>
+    <string name="recovery_code_show">顯示代碼</string>
     <string name="settings_people">成員</string>
     <string name="members_you">你</string>
     <string name="members_unnamed">尚無名字</string>
@@ -262,6 +264,9 @@
     <string name="device_state_replaced">已取代</string>
     <string name="device_removed_title">裝置已移除</string>
     <string name="members_invite">邀請成員</string>
+    <string name="members_add_device">新增裝置</string>
+    <string name="add_device_title">新增裝置</string>
+    <string name="add_device_instructions">用新裝置掃描此代碼。或者，在新裝置上選擇「輸入代碼」，然後輸入：</string>
     <string name="invite_s3_explanation">對方將用於此儲存貯體的存取金鑰。</string>
     <string name="invite_email_explanation">對方將用來登入的 %1$s 帳號。</string>
     <string name="invite_email">電子郵件</string>

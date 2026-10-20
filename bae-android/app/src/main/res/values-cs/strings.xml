@@ -89,8 +89,9 @@
     <string name="settings_playback">Přehrávání</string>
     <string name="settings_about">O aplikaci</string>
     <string name="settings_version">Verze</string>
-    <string name="restore_code_secret_warning">Každý s tímto kódem má plný přístup k vaší knihovně. Uchovejte ho v soukromí.</string>
     <string name="copy_code">Kopírovat kód</string>
+    <string name="copy">Kopírovat</string>
+    <string name="hide">Skrýt</string>
     <string name="settings_remove_library">Odebrat tuto knihovnu z tohoto zařízení</string>
     <string name="settings_remove_library_explanation">Odebere tuto knihovnu z tohoto zařízení: zařízení knihovnu opustí a pak se smaže jeho kopie a stažené soubory. Knihovna v cloudovém úložišti zůstane nedotčena.</string>
     <string name="settings_remove_library_confirm_title">Odebrat tuto knihovnu z tohoto zařízení?</string>
@@ -110,7 +111,7 @@
     <string name="settings_pause_uploads">Pozastavit nahrávání</string>
     <string name="settings_pause_uploads_footer">Během pozastavení změny čekají na tomto zařízení a nahrají se, až budete pokračovat.</string>
     <string name="members_title">Lidé a zařízení</string>
-    <string name="members_explanation">Všichni v této knihovně a jejich zařízení. Každý si přidává svá zařízení svým kódem pro obnovení. Správci zvou další lidi a mohou odebrat zařízení komukoli.</string>
+    <string name="members_explanation">Všichni v této knihovně a jejich zařízení. Každý si přidává svá zařízení ze svého řádku. Správci zvou další lidi a mohou odebrat zařízení komukoli.</string>
     <string name="members_this_device">Toto zařízení</string>
     <string name="members_role_member">Člen</string>
     <string name="members_remove">Odebrat</string>
@@ -200,7 +201,7 @@
     <string name="save">Uložit</string>
     <string name="onboarding_scan_code">Naskenovat kód</string>
     <string name="onboarding_enter_code">Zadat kód</string>
-    <string name="onboarding_enter_code_instructions">Zadejte kód pro obnovení z některého ze svých zařízení, nebo pozvánku do knihovny.</string>
+    <string name="onboarding_enter_code_instructions">Zadejte svůj kód pro obnovení, nebo pozvánku do knihovny.</string>
     <string name="onboarding_code_placeholder">Kód pro obnovení nebo pozvánka</string>
     <string name="continue_action">Pokračovat</string>
     <string name="onboarding_code_invalid">Toto není kód pro obnovení ani pozvánka.</string>
@@ -250,11 +251,12 @@
     <string name="storage_onedrive_folder_name">Název složky</string>
     <string name="storage_onedrive_create">Vytvořit</string>
     <string name="storage_onedrive_use_folder">Použít tuto složku</string>
-    <string name="storage_setup_done">Cloudové úložiště této knihovny je nastavené. Uschovejte si kód pro obnovení: vaše další zařízení se s ním připojí.</string>
+    <string name="storage_setup_done">Cloudové úložiště této knihovny je nastavené. Uchovávejte kód pro obnovení v soukromí: pokud přijdete o všechna svá zařízení, získáte s ním knihovnu zpět.</string>
     <string name="done">Hotovo</string>
-    <string name="settings_restore_code">Kód pro obnovení</string>
-    <string name="settings_restore_code_explanation">Naskenujte nebo zadejte tento kód na novém zařízení, abyste ho přidali do této knihovny jako své.</string>
-    <string name="settings_show_restore_code">Zobrazit kód pro obnovení</string>
+    <string name="recovery_code_title">Váš kód pro obnovení</string>
+    <string name="recovery_code_explanation">Pokud přijdete o všechna svá zařízení, zadejte tento kód na novém zařízení a získáte knihovnu zpět. Kdokoli, kdo ho má a má přístup k vašemu úložišti, může knihovnu otevřít, proto ho uchovávejte v soukromí.</string>
+    <string name="recovery_code_s3_key">Budete také potřebovat přístupový klíč a tajný klíč S3.</string>
+    <string name="recovery_code_show">Zobrazit kód</string>
     <string name="settings_people">Lidé</string>
     <string name="members_you">Vy</string>
     <string name="members_unnamed">Zatím bez jména</string>
@@ -268,6 +270,9 @@
     <string name="device_state_replaced">Nahrazeno</string>
     <string name="device_removed_title">Zařízení bylo odebráno</string>
     <string name="members_invite">Pozvat osobu</string>
+    <string name="members_add_device">Přidat zařízení</string>
+    <string name="add_device_title">Přidat zařízení</string>
+    <string name="add_device_instructions">Naskenujte to novým zařízením. Nebo na novém zařízení zvolte „Zadat kód“ a zadejte:</string>
     <string name="invite_s3_explanation">Přístupový klíč, který bude pro tento bucket používat.</string>
     <string name="invite_email_explanation">Účet %1$s, kterým se přihlásí.</string>
     <string name="invite_email">E-mail</string>

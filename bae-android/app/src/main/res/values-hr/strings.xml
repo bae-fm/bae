@@ -89,8 +89,9 @@
     <string name="settings_playback">Reprodukcija</string>
     <string name="settings_about">O aplikaciji</string>
     <string name="settings_version">Verzija</string>
-    <string name="restore_code_secret_warning">Svatko s ovim kodom ima puni pristup vašoj fonoteci. Čuvajte ga privatnim.</string>
     <string name="copy_code">Kopiraj kod</string>
+    <string name="copy">Kopiraj</string>
+    <string name="hide">Sakrij</string>
     <string name="settings_remove_library">Ukloni ovu fonoteku s ovog uređaja</string>
     <string name="settings_remove_library_explanation">Uklanja ovu fonoteku s ovog uređaja: uređaj napušta fonoteku, a zatim se brišu njegova kopija i preuzete datoteke. Fonoteka u pohrani u oblaku ostaje netaknuta.</string>
     <string name="settings_remove_library_confirm_title">Ukloniti ovu fonoteku s ovog uređaja?</string>
@@ -110,7 +111,7 @@
     <string name="settings_pause_uploads">Pauziraj prijenose</string>
     <string name="settings_pause_uploads_footer">Dok je pauzirano, promjene čekaju na ovom uređaju i prenose se kada nastavite.</string>
     <string name="members_title">Osobe i uređaji</string>
-    <string name="members_explanation">Svi u ovoj fonoteci i njihovi uređaji. Svatko dodaje vlastite uređaje svojim kodom za vraćanje. Administratori pozivaju osobe i mogu ukloniti bilo čiji uređaj.</string>
+    <string name="members_explanation">Svi u ovoj fonoteci i njihovi uređaji. Svatko dodaje vlastite uređaje iz svog retka. Administratori pozivaju osobe i mogu ukloniti bilo čiji uređaj.</string>
     <string name="members_this_device">Ovaj uređaj</string>
     <string name="members_role_member">Član</string>
     <string name="members_remove">Ukloni</string>
@@ -127,7 +128,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="onboarding_join_action">Pridruži se</string>
-    <string name="qr_scanner_instructions">Skenirajte kod za vraćanje koji bae prikazuje na jednom od vaših uređaja ili pozivnicu.</string>
+    <string name="qr_scanner_instructions">Skenirajte kod za oporavak koji bae prikazuje na jednom od vaših uređaja ili pozivnicu.</string>
     <!-- Downloads -->
     <string name="downloads">Preuzimanja</string>
     <string name="download">Preuzmi</string>
@@ -198,10 +199,10 @@
     <string name="save">Spremi</string>
     <string name="onboarding_scan_code">Skeniraj kod</string>
     <string name="onboarding_enter_code">Unesi kod</string>
-    <string name="onboarding_enter_code_instructions">Unesite kod za vraćanje s jednog od svojih uređaja ili pozivnicu u fonoteku.</string>
-    <string name="onboarding_code_placeholder">Kod za vraćanje ili pozivnica</string>
+    <string name="onboarding_enter_code_instructions">Unesite svoj kod za oporavak ili pozivnicu u fonoteku.</string>
+    <string name="onboarding_code_placeholder">Kod za oporavak ili pozivnica</string>
     <string name="continue_action">Nastavi</string>
-    <string name="onboarding_code_invalid">Ovo nije kod za vraćanje ni pozivnica.</string>
+    <string name="onboarding_code_invalid">Ovo nije kod za oporavak ni pozivnica.</string>
     <string name="onboarding_restore_title">Vraćanje fonoteke</string>
     <string name="onboarding_s3_key_explanation">Ova je fonoteka pohranjena u S3-kompatibilnom bucketu. Unesite pristupni ključ koji za njega koristite.</string>
     <string name="s3_access_key_id">ID pristupnog ključa</string>
@@ -248,11 +249,12 @@
     <string name="storage_onedrive_folder_name">Naziv mape</string>
     <string name="storage_onedrive_create">Stvori</string>
     <string name="storage_onedrive_use_folder">Koristi ovu mapu</string>
-    <string name="storage_setup_done">Pohrana u oblaku za ovu fonoteku je postavljena. Sačuvajte svoj kod za vraćanje: vaši se drugi uređaji pridružuju njime.</string>
+    <string name="storage_setup_done">Pohrana u oblaku za ovu fonoteku je postavljena. Čuvajte svoj kod za oporavak na privatnom mjestu: ako izgubite sve svoje uređaje, njime vraćate svoju fonoteku.</string>
     <string name="done">Gotovo</string>
-    <string name="settings_restore_code">Kod za vraćanje</string>
-    <string name="settings_restore_code_explanation">Skenirajte ili upišite ovaj kod na novom uređaju kako biste ga dodali u ovu fonoteku kao svoj.</string>
-    <string name="settings_show_restore_code">Prikaži kod za vraćanje</string>
+    <string name="recovery_code_title">Vaš kod za oporavak</string>
+    <string name="recovery_code_explanation">Ako izgubite sve svoje uređaje, unesite ovaj kod na novom uređaju da biste vratili svoju fonoteku. Svatko tko ga ima i pristup vašoj pohrani može otvoriti fonoteku, zato ga čuvajte na privatnom mjestu.</string>
+    <string name="recovery_code_s3_key">Trebat će vam i S3 pristupni ključ i tajni ključ.</string>
+    <string name="recovery_code_show">Prikaži kod</string>
     <string name="settings_people">Osobe</string>
     <string name="members_you">Vi</string>
     <string name="members_unnamed">Još bez imena</string>
@@ -266,6 +268,9 @@
     <string name="device_state_replaced">Zamijenjeno</string>
     <string name="device_removed_title">Uređaj uklonjen</string>
     <string name="members_invite">Pozovi osobu</string>
+    <string name="members_add_device">Dodaj uređaj</string>
+    <string name="add_device_title">Dodaj uređaj</string>
+    <string name="add_device_instructions">Skenirajte ovo novim uređajem. Ili na novom uređaju odaberite „Unesi kod” i upišite:</string>
     <string name="invite_s3_explanation">Pristupni ključ koji će koristiti za ovaj bucket.</string>
     <string name="invite_email_explanation">Račun %1$s kojim će se prijaviti.</string>
     <string name="invite_email">E-pošta</string>

@@ -89,8 +89,9 @@
     <string name="settings_playback">再生</string>
     <string name="settings_about">情報</string>
     <string name="settings_version">バージョン</string>
-    <string name="restore_code_secret_warning">このコードを持つ人は誰でもライブラリへ完全にアクセスできます。非公開にしてください。</string>
     <string name="copy_code">コードをコピー</string>
+    <string name="copy">コピー</string>
+    <string name="hide">非表示</string>
     <string name="settings_remove_library">このライブラリをこのデバイスから削除</string>
     <string name="settings_remove_library_explanation">このデバイスからライブラリを削除します。デバイスがライブラリから退出したあと、そのコピーとダウンロード済みファイルが削除されます。クラウドの保存先にあるライブラリはそのまま残ります。</string>
     <string name="settings_remove_library_confirm_title">このライブラリをこのデバイスから削除しますか？</string>
@@ -110,7 +111,7 @@
     <string name="settings_pause_uploads">アップロードを一時停止</string>
     <string name="settings_pause_uploads_footer">一時停止中は、変更はこのデバイスで待機し、再開するとアップロードされます。</string>
     <string name="members_title">メンバーとデバイス</string>
-    <string name="members_explanation">このライブラリのメンバー全員とそのデバイスです。各メンバーは自分の復元コードで自分のデバイスを追加します。管理者はメンバーを招待でき、誰のデバイスでも削除できます。</string>
+    <string name="members_explanation">このライブラリのメンバー全員とそのデバイスです。各メンバーは自分の行から自分のデバイスを追加します。管理者はメンバーを招待でき、誰のデバイスでも削除できます。</string>
     <string name="members_this_device">このデバイス</string>
     <string name="members_role_member">メンバー</string>
     <string name="members_remove">削除</string>
@@ -127,7 +128,7 @@
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
     <string name="onboarding_join_action">参加</string>
-    <string name="qr_scanner_instructions">お使いのデバイスの bae に表示された復元コード、または招待をスキャンしてください。</string>
+    <string name="qr_scanner_instructions">お使いのデバイスの bae に表示された復旧コード、または招待をスキャンしてください。</string>
     <!-- Downloads -->
     <string name="downloads">ダウンロード</string>
     <string name="download">ダウンロード</string>
@@ -194,10 +195,10 @@
     <string name="save">保存</string>
     <string name="onboarding_scan_code">コードをスキャン</string>
     <string name="onboarding_enter_code">コードを入力</string>
-    <string name="onboarding_enter_code_instructions">お使いのデバイスの復元コード、またはライブラリへの招待を入力してください。</string>
-    <string name="onboarding_code_placeholder">復元コードまたは招待</string>
+    <string name="onboarding_enter_code_instructions">復旧コード、またはライブラリへの招待を入力してください。</string>
+    <string name="onboarding_code_placeholder">復旧コードまたは招待</string>
     <string name="continue_action">続ける</string>
-    <string name="onboarding_code_invalid">これは復元コードでも招待でもありません。</string>
+    <string name="onboarding_code_invalid">これは復旧コードでも招待でもありません。</string>
     <string name="onboarding_restore_title">ライブラリを復元</string>
     <string name="onboarding_s3_key_explanation">このライブラリは S3 互換のバケットに保存されています。そのバケットで使うアクセスキーを入力してください。</string>
     <string name="s3_access_key_id">アクセスキー ID</string>
@@ -244,11 +245,12 @@
     <string name="storage_onedrive_folder_name">フォルダ名</string>
     <string name="storage_onedrive_create">作成</string>
     <string name="storage_onedrive_use_folder">このフォルダを使用</string>
-    <string name="storage_setup_done">このライブラリのクラウドの保存先を設定しました。復元コードを保管してください。ほかのデバイスはこのコードで参加します。</string>
+    <string name="storage_setup_done">このライブラリのクラウドの保存先を設定しました。復旧コードは他人に見られない場所に保管してください。すべてのデバイスをなくしても、このコードでライブラリを取り戻せます。</string>
     <string name="done">完了</string>
-    <string name="settings_restore_code">復元コード</string>
-    <string name="settings_restore_code_explanation">新しいデバイスでこのコードをスキャンまたは入力すると、そのデバイスがあなたのものとしてこのライブラリに追加されます。</string>
-    <string name="settings_show_restore_code">復元コードを表示</string>
+    <string name="recovery_code_title">あなたの復旧コード</string>
+    <string name="recovery_code_explanation">すべてのデバイスをなくした場合は、新しいデバイスでこのコードを入力するとライブラリを取り戻せます。このコードとストレージへのアクセス権があれば誰でもライブラリを開けるため、他人に見られない場所に保管してください。</string>
+    <string name="recovery_code_s3_key">S3 のアクセスキーとシークレットキーも必要です。</string>
+    <string name="recovery_code_show">コードを表示</string>
     <string name="settings_people">メンバー</string>
     <string name="members_you">あなた</string>
     <string name="members_unnamed">名前はまだありません</string>
@@ -262,6 +264,9 @@
     <string name="device_state_replaced">置き換え済み</string>
     <string name="device_removed_title">デバイスを削除しました</string>
     <string name="members_invite">メンバーを招待</string>
+    <string name="members_add_device">デバイスを追加</string>
+    <string name="add_device_title">デバイスを追加</string>
+    <string name="add_device_instructions">新しいデバイスでこれをスキャンしてください。または、新しいデバイスで「コードを入力」を選んで、次のコードを入力してください：</string>
     <string name="invite_s3_explanation">相手がこのバケットで使うアクセスキーです。</string>
     <string name="invite_email_explanation">相手がサインインに使う %1$s アカウントです。</string>
     <string name="invite_email">メールアドレス</string>

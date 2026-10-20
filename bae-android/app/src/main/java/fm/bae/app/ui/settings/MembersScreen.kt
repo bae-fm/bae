@@ -184,8 +184,8 @@ internal class MembersModel(
 
 /**
  * Everyone in the library and their devices. Admins invite people, approve
- * their join requests, change roles and remove people; each person removes
- * their own devices, and an admin anyone's.
+ * their join requests, change roles and remove people; each person adds and
+ * removes their own devices, and an admin removes anyone's.
  */
 @Composable
 fun MembersScreen(
@@ -220,6 +220,7 @@ fun MembersScreen(
                     selfIsAdmin = model.selfIsAdmin,
                     joinRequests = model.joinRequests,
                     callbacks = memberCallbacks(session, model, dialogs),
+                    requestCallbacks = joinRequestCallbacks(session, model),
                 )
             }
         }
@@ -235,21 +236,37 @@ private fun memberCallbacks(
     val handle = session.appHandle
     return MemberCallbacks(
         onInvite = { dialogs.inviting = true },
-        onApprove = { model.perform("approve a join request") { handle.approveJoinRequest(it) } },
-        onDecline = { model.perform("decline a join request") { handle.declineJoinRequest(it) } },
         onSetRole = { member, role -> model.perform("set member role") { handle.setMemberRole(member.id, role) } },
         onRemovePerson = { member, name -> dialogs.pendingRemoval = PendingRemoval.Person(member, name) },
         onRemoveDevice = { dialogs.pendingRemoval = PendingRemoval.Device(it) },
+        onAddDevice = { dialogs.addingDevice = true },
     )
 }
 
+private fun joinRequestCallbacks(
+    session: OpenLibrary,
+    model: MembersModel,
+): JoinRequestCallbacks {
+    val handle = session.appHandle
+    return JoinRequestCallbacks(
+        onApprove = { model.perform("approve a join request") { handle.approveJoinRequest(it) } },
+        onDecline = { model.perform("decline a join request") { handle.declineJoinRequest(it) } },
+    )
+}
+
+/** What this device's person can do to the library's members and their devices. */
 private class MemberCallbacks(
     val onInvite: () -> Unit,
-    val onApprove: (BridgeJoinRequest) -> Unit,
-    val onDecline: (BridgeJoinRequest) -> Unit,
     val onSetRole: (BridgeMember, BridgeMemberRole) -> Unit,
     val onRemovePerson: (BridgeMember, String) -> Unit,
     val onRemoveDevice: (BridgeDevice) -> Unit,
+    val onAddDevice: () -> Unit,
+)
+
+/** An admin's answers to a device asking to join. */
+private class JoinRequestCallbacks(
+    val onApprove: (BridgeJoinRequest) -> Unit,
+    val onDecline: (BridgeJoinRequest) -> Unit,
 )
 
 @Composable
@@ -276,6 +293,7 @@ private fun MembersList(
     selfIsAdmin: Boolean,
     joinRequests: List<BridgeJoinRequest>,
     callbacks: MemberCallbacks,
+    requestCallbacks: JoinRequestCallbacks,
 ) {
     // A removed person's profile stays, read-only, without a membership; only members are listed.
     val members = people.mapNotNull { person -> person.membership?.let { person to it } }
@@ -294,7 +312,7 @@ private fun MembersList(
         if (joinRequests.isNotEmpty()) {
             item { Eyebrow(text = stringResource(R.string.join_requests_title)) }
             items(joinRequests) { request ->
-                JoinRequestRow(request = request, callbacks = callbacks)
+                JoinRequestRow(request = request, callbacks = requestCallbacks)
             }
         }
         items(members, key = { (person, _) -> person.id }) { (person, member) ->
@@ -320,7 +338,7 @@ private fun MembersList(
 @Composable
 private fun JoinRequestRow(
     request: BridgeJoinRequest,
-    callbacks: MemberCallbacks,
+    callbacks: JoinRequestCallbacks,
 ) {
     val info = remember(request) { request.info() }
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
@@ -340,7 +358,10 @@ private fun JoinRequestRow(
     }
 }
 
-/** One person: their name and role, their devices, and what this device's person may change. */
+/**
+ * One person: their name and role, their devices, and what this device's
+ * person may change, with Add device under this device's own person.
+ */
 @Composable
 private fun MemberRow(
     name: String?,
@@ -366,6 +387,11 @@ private fun MemberRow(
                 canRemove = member.canRemoveDevices,
                 onRemove = { callbacks.onRemoveDevice(device) },
             )
+        }
+        if (member.isSelf) {
+            TextButton(onClick = callbacks.onAddDevice, modifier = Modifier.padding(start = ThemeSpace.edge)) {
+                Text(stringResource(R.string.members_add_device))
+            }
         }
         if (selfIsAdmin && !member.isSelf) {
             Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
@@ -443,7 +469,8 @@ private fun MembersListPreview() {
             people = listOf(PreviewData.person()),
             selfIsAdmin = true,
             joinRequests = emptyList(),
-            callbacks = MemberCallbacks({}, {}, {}, { _, _ -> }, { _, _ -> }, {}),
+            callbacks = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, {}, {}),
+            requestCallbacks = JoinRequestCallbacks({}, {}),
         )
     }
 }

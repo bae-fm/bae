@@ -89,8 +89,9 @@
     <string name="settings_playback">播放</string>
     <string name="settings_about">关于</string>
     <string name="settings_version">版本</string>
-    <string name="restore_code_secret_warning">任何拥有此代码的人都能完全访问你的曲库。请妥善保密。</string>
     <string name="copy_code">复制代码</string>
+    <string name="copy">复制</string>
+    <string name="hide">隐藏</string>
     <string name="settings_remove_library">从此设备移除此库</string>
     <string name="settings_remove_library_explanation">从此设备移除此库：此设备先退出库，然后删除它的副本和已下载的文件。云端存储中的库不受影响。</string>
     <string name="settings_remove_library_confirm_title">从此设备移除此库？</string>
@@ -110,7 +111,7 @@
     <string name="settings_pause_uploads">暂停上传</string>
     <string name="settings_pause_uploads_footer">暂停期间，更改会在此设备上等待，恢复后上传。</string>
     <string name="members_title">成员和设备</string>
-    <string name="members_explanation">此库中的所有成员及其设备。每个人用自己的恢复码添加自己的设备。管理员可以邀请成员，并可移除任何人的设备。</string>
+    <string name="members_explanation">此库中的所有成员及其设备。每个人从自己的那一行添加自己的设备。管理员可以邀请成员，并可移除任何人的设备。</string>
     <string name="members_this_device">此设备</string>
     <string name="members_role_member">成员</string>
     <string name="members_remove">移除</string>
@@ -194,7 +195,7 @@
     <string name="save">保存</string>
     <string name="onboarding_scan_code">扫描代码</string>
     <string name="onboarding_enter_code">输入代码</string>
-    <string name="onboarding_enter_code_instructions">输入你其他设备上的恢复码，或加入某个库的邀请。</string>
+    <string name="onboarding_enter_code_instructions">输入你的恢复码，或加入某个库的邀请。</string>
     <string name="onboarding_code_placeholder">恢复码或邀请</string>
     <string name="continue_action">继续</string>
     <string name="onboarding_code_invalid">这不是恢复码，也不是邀请。</string>
@@ -244,11 +245,12 @@
     <string name="storage_onedrive_folder_name">文件夹名称</string>
     <string name="storage_onedrive_create">创建</string>
     <string name="storage_onedrive_use_folder">使用此文件夹</string>
-    <string name="storage_setup_done">此库的云端存储已设置。请保存你的恢复码：你的其他设备将用它加入。</string>
+    <string name="storage_setup_done">此库的云端存储已设置。请将你的恢复码保存在私密的地方：如果你丢失了所有设备，可以用它找回你的库。</string>
     <string name="done">完成</string>
-    <string name="settings_restore_code">恢复码</string>
-    <string name="settings_restore_code_explanation">在新设备上扫描或输入此代码，即可以你的身份将其加入此库。</string>
-    <string name="settings_show_restore_code">显示恢复码</string>
+    <string name="recovery_code_title">你的恢复码</string>
+    <string name="recovery_code_explanation">如果你丢失了所有设备，可在新设备上输入此代码找回你的资料库。任何拥有此代码并能访问你的存储的人都能打开该资料库，因此请将它保存在私密的地方。</string>
+    <string name="recovery_code_s3_key">你还需要 S3 访问密钥和私密密钥。</string>
+    <string name="recovery_code_show">显示代码</string>
     <string name="settings_people">成员</string>
     <string name="members_you">你</string>
     <string name="members_unnamed">尚无名字</string>
@@ -262,6 +264,9 @@
     <string name="device_state_replaced">已替换</string>
     <string name="device_removed_title">设备已移除</string>
     <string name="members_invite">邀请成员</string>
+    <string name="members_add_device">添加设备</string>
+    <string name="add_device_title">添加设备</string>
+    <string name="add_device_instructions">用新设备扫描此代码。或者，在新设备上选择“输入代码”，然后输入：</string>
     <string name="invite_s3_explanation">对方将用于此存储桶的访问密钥。</string>
     <string name="invite_email_explanation">对方将用来登录的 %1$s 帐户。</string>
     <string name="invite_email">电子邮件</string>

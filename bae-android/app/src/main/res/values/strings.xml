@@ -123,8 +123,9 @@
     <string name="settings_playback">Playback</string>
     <string name="settings_about">About</string>
     <string name="settings_version">Version</string>
-    <string name="restore_code_secret_warning">Anyone with this code has full access to your library. Keep it private.</string>
     <string name="copy_code">Copy code</string>
+    <string name="copy">Copy</string>
+    <string name="hide">Hide</string>
     <string name="settings_remove_library">Remove this library from this device</string>
     <string name="settings_remove_library_explanation">Removes this library from this device: this device leaves the library, then its copy and downloaded files are deleted. The library in its cloud home is untouched.</string>
     <string name="settings_remove_library_confirm_title">Remove this library from this device?</string>
@@ -146,7 +147,7 @@
 
     <!-- People and devices (membership) -->
     <string name="members_title">People and devices</string>
-    <string name="members_explanation">Everyone in this library and their devices. Each person adds their own devices with their restore code. Admins invite people and can remove anyone’s device.</string>
+    <string name="members_explanation">Everyone in this library and their devices. Each person adds their own devices from their own row. Admins invite people and can remove anyone’s device.</string>
     <string name="members_this_device">This device</string>
     <string name="members_role_member">Member</string>
     <string name="members_remove">Remove</string>
@@ -170,7 +171,7 @@
     <string name="onboarding_join_action">Join</string>
 
     <!-- QR scanner -->
-    <string name="qr_scanner_instructions">Scan a restore code shown in bae on one of your devices, or an invite.</string>
+    <string name="qr_scanner_instructions">Scan a recovery code shown in bae on one of your devices, or an invite.</string>
 
     <!-- Downloads -->
     <string name="downloads">Downloads</string>
@@ -243,10 +244,10 @@
     <string name="save">Save</string>
     <string name="onboarding_scan_code">Scan a code</string>
     <string name="onboarding_enter_code">Enter a code</string>
-    <string name="onboarding_enter_code_instructions">Enter a restore code from one of your devices, or an invite to a library.</string>
-    <string name="onboarding_code_placeholder">Restore code or invite</string>
+    <string name="onboarding_enter_code_instructions">Enter your recovery code, or an invite to a library.</string>
+    <string name="onboarding_code_placeholder">Recovery code or invite</string>
     <string name="continue_action">Continue</string>
-    <string name="onboarding_code_invalid">This isn’t a restore code or an invite.</string>
+    <string name="onboarding_code_invalid">This isn’t a recovery code or an invite.</string>
     <string name="onboarding_restore_title">Restore your library</string>
     <string name="onboarding_s3_key_explanation">This library is stored in an S3-compatible bucket. Enter the access key you use for it.</string>
     <string name="s3_access_key_id">Access key ID</string>
@@ -296,11 +297,12 @@
     <string name="storage_onedrive_folder_name">Folder name</string>
     <string name="storage_onedrive_create">Create</string>
     <string name="storage_onedrive_use_folder">Use this folder</string>
-    <string name="storage_setup_done">This library’s cloud home is set up. Keep your restore code: your other devices join with it.</string>
+    <string name="storage_setup_done">This library’s cloud home is set up. Keep your recovery code somewhere private: if you lose all your devices, it gets your library back.</string>
     <string name="done">Done</string>
-    <string name="settings_restore_code">Restore code</string>
-    <string name="settings_restore_code_explanation">Scan or type this code on a new device to add it to this library as you.</string>
-    <string name="settings_show_restore_code">Show restore code</string>
+    <string name="recovery_code_title">Your recovery code</string>
+    <string name="recovery_code_explanation">If you lose all your devices, enter this code on a new one to get your library back. Anyone who has it and access to your storage can open the library, so keep it somewhere private.</string>
+    <string name="recovery_code_s3_key">You’ll also need your S3 access key and secret.</string>
+    <string name="recovery_code_show">Show code</string>
     <string name="settings_people">People</string>
     <string name="members_you">You</string>
     <string name="members_unnamed">No name yet</string>
@@ -315,6 +317,9 @@
     <string name="device_state_replaced">Replaced</string>
     <string name="device_removed_title">Device removed</string>
     <string name="members_invite">Invite a person</string>
+    <string name="members_add_device">Add device</string>
+    <string name="add_device_title">Add a device</string>
+    <string name="add_device_instructions">Scan this with the new device. Or, on the new device, choose “Enter a code” and type:</string>
     <string name="invite_s3_explanation">The access key they’ll use for this bucket.</string>
     <!-- %1$s = the provider's name (Dropbox, OneDrive) -->
     <string name="invite_email_explanation">The %1$s account they’ll sign in with.</string>
