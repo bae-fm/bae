@@ -10,8 +10,6 @@ struct SettingsView: View {
     private var configStore
     @Environment(AppSessionHolder.self)
     private var holder
-    @Environment(Sync.self)
-    private var sync
     @Environment(Playback.self)
     private var playback
     @Environment(\.dismiss)
@@ -27,8 +25,10 @@ struct SettingsView: View {
     /// Why what removal would lose couldn't be read.
     @State
     private var removalError: DisplayError?
+    /// The recovery code section's reveal, hidden whenever Settings goes
+    /// away.
     @State
-    private var showRestoreCode = false
+    private var recoveryCode = RecoveryCodeReveal()
 
     var body: some View {
         NavigationStack {
@@ -63,15 +63,7 @@ struct SettingsView: View {
                         )
                     }
                     HistorySharingSection()
-                    Section {
-                        Button("Show restore code\u{2026}") {
-                            showRestoreCode = true
-                        }
-                    } footer: {
-                        Text(
-                            "Your restore code adds your other devices to this library. Anyone with it and access to your storage can open the library. Keep it secret."
-                        )
-                    }
+                    RecoveryCodeSection(reveal: recoveryCode)
                 }
 
                 Section {
@@ -120,6 +112,7 @@ struct SettingsView: View {
             }
             .scrollContentBackground(.hidden)
             .windowBackground()
+            .onDisappear { recoveryCode.hide() }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -150,12 +143,6 @@ struct SettingsView: View {
                         ),
                         message: removeMessage
                     )
-                )
-            }
-            .sheet(isPresented: $showRestoreCode) {
-                RestoreCodeView(
-                    generate: sync.generateRestoreCode,
-                    onDismiss: { showRestoreCode = false }
                 )
             }
             .alert(
@@ -439,5 +426,35 @@ extension SettingsView {
 #Preview {
     SettingsView()
         .previewStores()
+}
+
+/// The recovery code section with its reveal at `state`, in an S3 library.
+@MainActor
+private func recoveryCodeSectionPreview(
+    _ state: RecoveryCodeReveal.State
+) -> some View {
+    List {
+        RecoveryCodeSection(reveal: RecoveryCodeReveal(previewState: state))
+    }
+    .environment(PreviewData.connectedConfigStore())
+    .previewStores()
+}
+
+#Preview("Recovery code hidden") {
+    recoveryCodeSectionPreview(.hidden)
+}
+
+#Preview("Recovery code loading") {
+    recoveryCodeSectionPreview(.loading)
+}
+
+#Preview("Recovery code shown") {
+    recoveryCodeSectionPreview(.shown(code: PreviewData.recoveryCode))
+}
+
+#Preview("Recovery code failed") {
+    recoveryCodeSectionPreview(
+        .failed(DisplayError(line: "Couldn't reach your storage."))
+    )
 }
 #endif

@@ -30,6 +30,9 @@ struct LibrarySettingsTab: View {
     /// Why what removal would lose couldn't be read.
     @State
     private var removalError: DisplayError?
+    /// The recovery code section's reveal, hidden whenever this tab goes away.
+    @State
+    private var recoveryCode = RecoveryCodeReveal()
 
     var body: some View {
         Form {
@@ -79,7 +82,7 @@ struct LibrarySettingsTab: View {
             if configStore.hasCloudHome {
                 MembersSection()
                 HistorySharingSection()
-                RestoreCodeSection(generate: sync.generateRestoreCode)
+                RecoveryCodeSection(reveal: recoveryCode)
             }
 
             Section("Remove") {
@@ -98,6 +101,7 @@ struct LibrarySettingsTab: View {
             }
         }
         .formStyle(.grouped)
+        .onDisappear { recoveryCode.hide() }
         .sheet(isPresented: $showSyncSetup) {
             SyncSetupWizard(onDone: { showSyncSetup = false })
         }
@@ -261,56 +265,6 @@ private struct UploadPauseToggle: View {
     }
 }
 
-/// The "Restore code" section: the code that adds this person's other
-/// devices, shown only on request.
-private struct RestoreCodeSection: View {
-    let generate: @Sendable () async throws -> BridgeRestoreCodeShare
-
-    @State
-    private var show = false
-    @State
-    private var result: Result<BridgeRestoreCodeShare, Error>?
-
-    var body: some View {
-        Section("Restore code") {
-            Text(
-                "Your restore code adds your other devices to this library. Anyone with it and access to your storage can open the library. Keep it secret."
-            )
-            .themeText(.detail)
-            .foregroundStyle(.secondary)
-            Button("Show restore code...") {
-                result = nil
-                show = true
-            }
-        }
-        .sheet(isPresented: $show) {
-            CodeShareSheet(
-                result: $result,
-                onDismiss: { show = false },
-            )
-            .task { await runGenerate() }
-        }
-    }
-
-    private func runGenerate() async {
-        do {
-            let share = try await generate()
-            result = .success(share)
-        }
-        catch is CancellationError {
-            logger.debug("restore code generation cancelled")
-        }
-        catch {
-            logger.error(
-                "Failed to generate restore code: \(error.localizedDescription)"
-            )
-            // No line means core reported a cancellation; keep the spinner.
-            guard DisplayError(error) != nil else { return }
-            result = .failure(error)
-        }
-    }
-}
-
 #if DEBUG
     // MARK: - Previews
 
@@ -359,6 +313,34 @@ private struct RestoreCodeSection: View {
     #Preview("Connected") {
         librarySettingsTabPreview(
             configStore: PreviewData.connectedConfigStore()
+        )
+    }
+
+    /// The recovery code section with its reveal at `state`, in an S3 library.
+    @MainActor
+    private func recoveryCodeSectionPreview(
+        _ state: RecoveryCodeReveal.State
+    ) -> some View {
+        Form {
+            RecoveryCodeSection(reveal: RecoveryCodeReveal(previewState: state))
+        }
+        .formStyle(.grouped)
+        .frame(width: 500, height: 300)
+        .environment(PreviewData.previewSync())
+        .environment(PreviewData.connectedConfigStore())
+    }
+
+    #Preview("Recovery code loading") {
+        recoveryCodeSectionPreview(.loading)
+    }
+
+    #Preview("Recovery code shown") {
+        recoveryCodeSectionPreview(.shown(code: PreviewData.recoveryCode))
+    }
+
+    #Preview("Recovery code failed") {
+        recoveryCodeSectionPreview(
+            .failed(DisplayError(line: "Couldn't reach your storage."))
         )
     }
 #endif

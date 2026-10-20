@@ -28,7 +28,7 @@ struct WelcomeSectionHeader: View {
             title: "Restore from iCloud Keychain",
             infoTip: InfoTip(
                 text:
-                    "Libraries whose restore codes are saved in your keychain."
+                    "Libraries whose recovery codes are saved in your keychain."
             ),
         )
         .frame(width: WelcomeLayout.columnWidth)

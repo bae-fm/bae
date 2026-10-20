@@ -139,7 +139,7 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "يستخدم bae الكاميرا لمسح رموز الاستعادة والدعوات."
+            "value" : "يستخدم bae الكاميرا لمسح رموز الاسترداد والدعوات."
           }
         },
         "bg" : {
@@ -163,7 +163,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae uses the camera to scan restore codes and invitations."
+            "value" : "bae uses the camera to scan recovery codes and invitations."
           }
         },
         "de" : {
@@ -175,13 +175,13 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Το bae χρησιμοποιεί την κάμερα για τη σάρωση κωδικών επαναφοράς και προσκλήσεων."
+            "value" : "Το bae χρησιμοποιεί την κάμερα για τη σάρωση κωδικών ανάκτησης και προσκλήσεων."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae usa la cámara para escanear códigos de restauración e invitaciones."
+            "value" : "bae usa la cámara para escanear códigos de recuperación e invitaciones."
           }
         },
         "fi" : {
@@ -193,7 +193,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae utilise la caméra pour scanner les codes de restauration et les invitations."
+            "value" : "bae utilise la caméra pour scanner les codes de récupération et les invitations."
           }
         },
         "he" : {
@@ -205,31 +205,31 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae koristi kameru za skeniranje kodova za vraćanje i pozivnica."
+            "value" : "bae koristi kameru za skeniranje kodova za oporavak i pozivnica."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A bae a kamerával olvassa be a visszaállítási kódokat és a meghívókat."
+            "value" : "A bae a kamerával olvassa be a helyreállítási kódokat és a meghívókat."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae usa la fotocamera per scansionare codici di ripristino e inviti."
+            "value" : "bae usa la fotocamera per scansionare codici di recupero e inviti."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae は、復元コードや招待を読み取るためにカメラを使用します。"
+            "value" : "bae は、復旧コードや招待を読み取るためにカメラを使用します。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae는 복원 코드와 초대를 스캔하기 위해 카메라를 사용합니다."
+            "value" : "bae는 복구 코드와 초대를 스캔하기 위해 카메라를 사용합니다."
           }
         },
         "nb" : {
@@ -247,25 +247,25 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae używa aparatu do skanowania kodów przywracania i zaproszeń."
+            "value" : "bae używa aparatu do skanowania kodów odzyskiwania i zaproszeń."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O bae usa a câmera para escanear códigos de restauração e convites."
+            "value" : "O bae usa a câmera para escanear códigos de recuperação e convites."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O bae utiliza a câmara para digitalizar códigos de restauro e convites."
+            "value" : "O bae utiliza a câmara para digitalizar códigos de recuperação e convites."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae folosește camera pentru a scana coduri de restaurare și invitații."
+            "value" : "bae folosește camera pentru a scana coduri de recuperare și invitații."
           }
         },
         "sk" : {
@@ -283,7 +283,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae, geri yükleme kodlarını ve davetleri taramak için kamerayı kullanır."
+            "value" : "bae, kurtarma kodlarını ve davetleri taramak için kamerayı kullanır."
           }
         },
         "uk" : {
@@ -295,13 +295,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae 使用相机扫描恢复代码和邀请。"
+            "value" : "bae 使用相机扫描恢复码和邀请。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae 使用相機掃描還原碼和邀請。"
+            "value" : "bae 使用相機掃描復原碼和邀請。"
           }
         }
       }

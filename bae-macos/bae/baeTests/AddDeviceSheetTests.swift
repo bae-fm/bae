@@ -5,21 +5,21 @@ import Testing
 
 @testable import bae
 
-/// `CodeShareSheet` takes its `result` as a `@Binding` because the presenter
-/// generates the restore code off-main *after* the sheet is already up: the
+/// `AddDeviceSheet` takes its `result` as a `@Binding` because the presenter
+/// generates the code off-main *after* the sheet is already up: the
 /// sheet must re-render when that write lands rather than show the loading
 /// snapshot it opened with. This drives the real sheet through a state-backed
 /// binding, flipping `nil` (loading) → `.success(code)` while it stays mounted,
 /// and asserts the rendered pixels change — i.e. the body reacts to the binding.
-@Suite("CodeShareSheet binding")
-struct CodeShareSheetTests {
+@Suite("AddDeviceSheet binding")
+struct AddDeviceSheetTests {
     @MainActor
     @Test("the sheet re-renders when its result binding becomes .success")
     func sheetUpdatesWhenResultBindingResolves() async throws {
-        let holder = CodeShareResultHolder()
-        let size = NSSize(width: 400, height: 420)
+        let holder = AddDeviceResultHolder()
+        let size = NSSize(width: 400, height: 480)
         try await SnapshotTestSupport.withHostedWindow(
-            CodeShareHarness(holder: holder),
+            AddDeviceHarness(holder: holder),
             size: size
         ) { _, host in
 
@@ -47,19 +47,19 @@ struct CodeShareSheetTests {
 }
 
 /// Owns the `result` the sheet binds to, so flipping it propagates through
-/// SwiftUI to the live `CodeShareSheet` the same way the presenter's off-main
+/// SwiftUI to the live `AddDeviceSheet` the same way the presenter's off-main
 /// write does.
 @Observable
 @MainActor
-private final class CodeShareResultHolder {
+private final class AddDeviceResultHolder {
     var result: Result<BridgeRestoreCodeShare, Error>?
 }
 
-private struct CodeShareHarness: View {
+private struct AddDeviceHarness: View {
     @Bindable
-    var holder: CodeShareResultHolder
+    var holder: AddDeviceResultHolder
 
     var body: some View {
-        CodeShareSheet(result: $holder.result, onDismiss: {})
+        AddDeviceSheet(result: $holder.result, onDismiss: {})
     }
 }

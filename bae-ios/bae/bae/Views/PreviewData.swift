@@ -8,60 +8,6 @@ import SwiftUI
 /// service stubs through `.previewStores()`; leaf previews take fixture values
 /// directly.
 enum PreviewData {
-    // MARK: - Config
-
-    @MainActor
-    static func configStore() -> ConfigStore {
-        ConfigStore(
-            config: Config(
-                bridge: BridgeConfig(
-                    libraryId: "lib-preview",
-                    libraryPath: "/preview",
-                    pauseBetweenSides: false,
-                    sidePauseCountdown: .off,
-                    maxConcurrentUploads: 3,
-                    maxConcurrentDownloads: 3,
-                    identifyAutomatically: true,
-                    importWhenIdentified: false,
-                    importStorage: BridgeImportStorage(
-                        cloud: true,
-                        pinned: true
-                    ),
-                    lookupCatalogs: [
-                        BridgeLookupCatalogSetting(
-                            catalog: .musicBrainz,
-                            availability: .on,
-                            canChange: true
-                        ),
-                        BridgeLookupCatalogSetting(
-                            catalog: .discogs,
-                            availability: .on,
-                            canChange: true
-                        ),
-                    ],
-                    showRemainingTime: false,
-                    libraryFullWidth: false,
-                    savePresets: [],
-                    defaultTrackSavePreset: "flac",
-                    defaultReleaseSavePreset: "flac",
-                    castEnabled: false,
-                    castTranscodeFormat: .mp3,
-                    mcp: BridgeMcpConfig(enabled: false, port: 47777),
-                    subsonic: BridgeSubsonicConfig(
-                        enabled: false,
-                        port: 4533,
-                        username: "",
-                        bindAddress: "127.0.0.1"
-                    ),
-                    discogsTokenStatus: .notConfigured,
-                    discogsUsable: false
-                )
-            ),
-            libraryName: "Preview Library",
-            storage: nil
-        )
-    }
-
     /// Removals whose every attempt fails, for previews.
     @MainActor
     static func removals() -> LibraryRemovals {
@@ -397,5 +343,146 @@ extension View {
             .environment(CastStore())
             .environment(RendererBrowser.stub())
     }
+}
+
+// MARK: - Config and people
+
+extension PreviewData {
+    /// A library on this device only.
+    @MainActor
+    static func configStore() -> ConfigStore {
+        makeConfigStore(storage: nil)
+    }
+
+    @MainActor
+    private static func makeConfigStore(
+        storage: BridgeStorageLocation?
+    ) -> ConfigStore {
+        ConfigStore(
+            config: Config(
+                bridge: BridgeConfig(
+                    libraryId: "lib-preview",
+                    libraryPath: "/preview",
+                    pauseBetweenSides: false,
+                    sidePauseCountdown: .off,
+                    maxConcurrentUploads: 3,
+                    maxConcurrentDownloads: 3,
+                    identifyAutomatically: true,
+                    importWhenIdentified: false,
+                    importStorage: BridgeImportStorage(
+                        cloud: true,
+                        pinned: true
+                    ),
+                    lookupCatalogs: [
+                        BridgeLookupCatalogSetting(
+                            catalog: .musicBrainz,
+                            availability: .on,
+                            canChange: true
+                        ),
+                        BridgeLookupCatalogSetting(
+                            catalog: .discogs,
+                            availability: .on,
+                            canChange: true
+                        ),
+                    ],
+                    showRemainingTime: false,
+                    libraryFullWidth: false,
+                    savePresets: [],
+                    defaultTrackSavePreset: "flac",
+                    defaultReleaseSavePreset: "flac",
+                    castEnabled: false,
+                    castTranscodeFormat: .mp3,
+                    mcp: BridgeMcpConfig(enabled: false, port: 47777),
+                    subsonic: BridgeSubsonicConfig(
+                        enabled: false,
+                        port: 4533,
+                        username: "",
+                        bindAddress: "127.0.0.1"
+                    ),
+                    discogsTokenStatus: .notConfigured,
+                    discogsUsable: false
+                )
+            ),
+            libraryName: "Preview Library",
+            storage: storage
+        )
+    }
+
+    /// A library whose cloud home is an S3 bucket, so Settings shows the
+    /// people and the recovery code.
+    @MainActor
+    static func connectedConfigStore() -> ConfigStore {
+        makeConfigStore(storage: previewStorage)
+    }
+
+    static let previewStorage = BridgeStorageLocation.s3(
+        bucket: "preview-bucket",
+        region: "us-east-1",
+        endpoint: nil,
+        profile: nil,
+        prefix: ""
+    )
+
+    /// A recovery code shaped like coven's: `CVR1-` and uppercase base32.
+    static let recoveryCode =
+        "CVR1-"
+        + String(repeating: "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567", count: 6)
+
+    /// This device's person, an admin, and one other member with a
+    /// removable device. Ids are arbitrary UUIDs.
+    static let members: [BridgePerson] = [
+        BridgePerson(
+            id: "4a1f2c3d-0000-4000-8000-000000000001",
+            profile: BridgePersonProfile(
+                id: "4a1f2c3d-0000-4000-8000-000000000001",
+                name: "Person A",
+                privateCircle: "circle-a",
+                historySharing: .private,
+                avatarId: nil
+            ),
+            membership: BridgeMember(
+                id: "4a1f2c3d-0000-4000-8000-000000000001",
+                keys: BridgeMemberPublicKeys(signing: Data(), sealing: Data()),
+                role: .admin,
+                devices: [
+                    BridgeDevice(
+                        id: 1,
+                        name: "Person A's iPhone",
+                        state: .active,
+                        isSelf: true
+                    )
+                ],
+                isSelf: true,
+                canRemove: false,
+                canRemoveDevices: true
+            )
+        ),
+        BridgePerson(
+            id: "4a1f2c3d-0000-4000-8000-000000000002",
+            profile: BridgePersonProfile(
+                id: "4a1f2c3d-0000-4000-8000-000000000002",
+                name: "Person B",
+                privateCircle: "circle-b",
+                historySharing: .household,
+                avatarId: nil
+            ),
+            membership: BridgeMember(
+                id: "4a1f2c3d-0000-4000-8000-000000000002",
+                keys: BridgeMemberPublicKeys(signing: Data(), sealing: Data()),
+                role: .member,
+                devices: [
+                    BridgeDevice(
+                        id: 2,
+                        name: "Person B's Phone",
+                        state: .active,
+                        isSelf: false
+                    )
+                ],
+                isSelf: false,
+                canRemove: true,
+                canRemoveDevices: true
+            )
+        ),
+    ]
 }
 #endif

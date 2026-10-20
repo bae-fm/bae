@@ -150,7 +150,7 @@ struct WelcomeChooseView: View {
             }
             if let failure = listings.savedCodes.failure {
                 WelcomeLoadErrorCallout(
-                    title: "Couldn't read restore codes from your keychain",
+                    title: "Couldn't read recovery codes from your keychain",
                     error: failure
                 )
             }

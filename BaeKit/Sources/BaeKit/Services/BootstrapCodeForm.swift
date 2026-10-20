@@ -261,7 +261,7 @@ public final class BootstrapCodeForm {
             error = DisplayError(
                 line: String(
                     localized:
-                        "This restore code is no longer saved in iCloud Keychain."
+                        "This recovery code is no longer saved in iCloud Keychain."
                 )
             )
         }

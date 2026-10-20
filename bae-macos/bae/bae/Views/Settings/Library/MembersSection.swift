@@ -6,7 +6,7 @@ private let logger = Logger.bae("MembersSection")
 
 /// The library's people and their devices. Admins invite people, approve or
 /// decline their join requests, change roles and remove people; each person
-/// removes their own devices, and an admin can remove anyone's.
+/// adds and removes their own devices, and an admin can remove anyone's.
 struct MembersSection: View {
     @Environment(MembershipStore.self)
     private var store
@@ -15,6 +15,12 @@ struct MembersSection: View {
 
     @State
     private var showInvite = false
+    @State
+    private var showAddDevice = false
+    /// The QR code and recovery code the Add Device sheet shows; nil while
+    /// they generate.
+    @State
+    private var addDeviceShare: Result<BridgeRestoreCodeShare, Error>?
     @State
     private var removal: Removal?
     /// What the person still has to do in the provider after removing a
@@ -49,7 +55,11 @@ struct MembersSection: View {
                                         ?? String(localized: "This person")
                                 )
                             },
-                            onRemoveDevice: { removal = .device($0) }
+                            onRemoveDevice: { removal = .device($0) },
+                            onAddDevice: {
+                                addDeviceShare = nil
+                                showAddDevice = true
+                            }
                         )
                     }
                 }
@@ -70,6 +80,13 @@ struct MembersSection: View {
         }
         .sheet(isPresented: $showInvite) {
             InvitePersonSheet(onDismiss: { showInvite = false })
+        }
+        .sheet(isPresented: $showAddDevice) {
+            AddDeviceSheet(
+                result: $addDeviceShare,
+                onDismiss: { showAddDevice = false }
+            )
+            .task { await generateAddDeviceShare() }
         }
         .confirmationDialog(
             removalTitle,
@@ -151,6 +168,24 @@ struct MembersSection: View {
         }
     }
 
+    /// Closing the sheet cancels this task, and with it the Rust call.
+    private func generateAddDeviceShare() async {
+        do {
+            addDeviceShare = .success(try await sync.generateRestoreCode())
+        }
+        catch is CancellationError {
+            logger.debug("add-device code generation cancelled")
+        }
+        catch {
+            logger.error(
+                "Failed to generate the add-device code: \(error.localizedDescription)"
+            )
+            // No line means core reported a cancellation; keep the spinner.
+            guard DisplayError(error) != nil else { return }
+            addDeviceShare = .failure(error)
+        }
+    }
+
     private func run(_ operation: @escaping () async throws -> Void) {
         actionError = nil
         task = Task {
@@ -169,7 +204,8 @@ struct MembersSection: View {
     }
 }
 
-/// One member: name, role, the "You" marker, and each of their devices.
+/// One member: name, role, the "You" marker, and each of their devices, with
+/// Add Device under this device's own person.
 private struct MemberRow: View {
     let name: String?
     let member: BridgeMember
@@ -178,6 +214,7 @@ private struct MemberRow: View {
     let onSetRole: (BridgeMemberRole) -> Void
     let onRemove: () -> Void
     let onRemoveDevice: (BridgeDevice) -> Void
+    let onAddDevice: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
@@ -220,6 +257,13 @@ private struct MemberRow: View {
                     busy: busy,
                     onRemove: { onRemoveDevice(device) }
                 )
+            }
+            // A row's person never changes, so including this only in one's
+            // own row never changes a row's size after it first lays out.
+            if member.isSelf {
+                Button("Add Device...", action: onAddDevice)
+                    .buttonStyle(.link)
+                    .padding(.leading, ThemeSpace.group)
             }
         }
         .padding(.vertical, ThemeSpace.line)

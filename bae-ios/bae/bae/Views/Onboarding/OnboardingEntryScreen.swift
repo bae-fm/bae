@@ -71,7 +71,7 @@ struct OnboardingEntryScreen: View {
             EmptyView()
         case .failed(let error):
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                Text("Couldn't read restore codes from your keychain")
+                Text("Couldn't read recovery codes from your keychain")
                     .themeText(.strong)
                 ErrorDetailDisclosure(error: error, showIcon: false)
             }
@@ -125,7 +125,7 @@ private struct SavedRestoreCodesList: View {
             Text("Restore from iCloud Keychain")
                 .themeText(.heading)
             Text(
-                "Restore codes saved by your other devices signed in to this Apple Account."
+                "Recovery codes saved by your other devices signed in to this Apple Account."
             )
             .themeText(.detail)
             .foregroundStyle(.secondary)

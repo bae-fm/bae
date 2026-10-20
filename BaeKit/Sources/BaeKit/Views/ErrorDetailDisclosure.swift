@@ -1,11 +1,5 @@
 import SwiftUI
 
-#if canImport(AppKit)
-    import AppKit
-#else
-    import UIKit
-#endif
-
 /// A user-facing error: the localized line, the concrete fault with a copy
 /// action, and a disclosure for the rest of the chain.
 public struct ErrorDetailDisclosure: View {
@@ -49,7 +43,7 @@ public struct ErrorDetailDisclosure: View {
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Button {
-                        copyToPasteboard(detail)
+                        Pasteboard.copy(detail)
                     } label: {
                         Label("Copy details", systemImage: "doc.on.doc")
                     }
@@ -91,13 +85,4 @@ public struct ErrorDetailDisclosure: View {
             }
         }
     }
-}
-
-private func copyToPasteboard(_ value: String) {
-    #if canImport(AppKit)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(value, forType: .string)
-    #else
-        UIPasteboard.general.string = value
-    #endif
 }

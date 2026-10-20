@@ -34850,13 +34850,13 @@
         }
       }
     },
-    "Couldn't read restore codes from your keychain" : {
-      "comment" : "Welcome screen callout title when the keychain restore-code lookup fails",
+    "Couldn't read recovery codes from your keychain" : {
+      "comment" : "Welcome screen callout title when the keychain recovery-code lookup fails",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تعذّرت قراءة رموز الاستعادة من سلسلة المفاتيح لديك"
+            "value" : "تعذّرت قراءة رموز الاسترداد من سلسلة المفاتيح لديك"
           }
         },
         "bg" : {
@@ -34868,7 +34868,7 @@
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obnovovací kódy se nepodařilo přečíst z vaší klíčenky"
+            "value" : "Kódy pro obnovení se nepodařilo přečíst z vaší klíčenky"
           }
         },
         "da" : {
@@ -34880,7 +34880,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't read restore codes from your keychain"
+            "value" : "Couldn't read recovery codes from your keychain"
           }
         },
         "de" : {
@@ -34892,13 +34892,13 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Δεν ήταν δυνατή η ανάγνωση των κωδικών επαναφοράς από το μπρελόκ σας"
+            "value" : "Δεν ήταν δυνατή η ανάγνωση των κωδικών ανάκτησης από το μπρελόκ σας"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se pudieron leer los códigos de restauración de tu llavero"
+            "value" : "No se pudieron leer los códigos de recuperación de tu llavero"
           }
         },
         "fi" : {
@@ -34910,7 +34910,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de lire les codes de restauration dans votre trousseau"
+            "value" : "Impossible de lire les codes de récupération dans votre trousseau"
           }
         },
         "he" : {
@@ -34922,31 +34922,31 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nije moguće pročitati kodove za obnovu iz vašeg privjeska ključeva"
+            "value" : "Nije moguće pročitati kodove za oporavak iz vašeg privjeska ključeva"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nem sikerült beolvasni a visszaállítási kódokat a kulcstartódból"
+            "value" : "Nem sikerült beolvasni a helyreállítási kódokat a kulcstartódból"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossibile leggere i codici di ripristino dal tuo portachiavi"
+            "value" : "Impossibile leggere i codici di recupero dal tuo portachiavi"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "キーチェーンから復元コードを読み取れませんでした"
+            "value" : "キーチェーンから復旧コードを読み取れませんでした"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "키체인에서 복원 코드를 읽을 수 없습니다"
+            "value" : "키체인에서 복구 코드를 읽을 수 없습니다"
           }
         },
         "nb" : {
@@ -34964,25 +34964,25 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nie udało się odczytać kodów przywracania z pęku kluczy"
+            "value" : "Nie udało się odczytać kodów odzyskiwania z pęku kluczy"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foi possível ler os códigos de restauração das suas chaves"
+            "value" : "Não foi possível ler os códigos de recuperação das suas chaves"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foi possível ler os códigos de restauro do seu porta-chaves"
+            "value" : "Não foi possível ler os códigos de recuperação do seu porta-chaves"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Codurile de restaurare nu au putut fi citite din brelocul tău"
+            "value" : "Codurile de recuperare nu au putut fi citite din brelocul tău"
           }
         },
         "sk" : {
@@ -35000,7 +35000,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Geri yükleme kodları anahtar zincirinden okunamadı"
+            "value" : "Kurtarma kodları anahtar zincirinden okunamadı"
           }
         },
         "uk" : {
@@ -35018,7 +35018,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法從鑰匙圈讀取還原碼"
+            "value" : "無法從鑰匙圈讀取復原碼"
           }
         }
       }
@@ -52834,14 +52834,14 @@
         }
       }
     },
-    "Libraries whose restore codes are saved in your keychain." : {
+    "Libraries whose recovery codes are saved in your keychain." : {
       "comment" : "Welcome restore list: explains which libraries appear",
       "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "المكتبات التي حُفظت رموز استعادتها في سلسلة المفاتيح لديك."
+            "value" : "المكتبات التي حُفظت رموز استردادها في سلسلة المفاتيح لديك."
           }
         },
         "bg" : {
@@ -52853,7 +52853,7 @@
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Knihovny, jejichž obnovovací kódy jsou uložené ve vaší klíčence."
+            "value" : "Knihovny, jejichž kódy pro obnovení jsou uložené ve vaší klíčence."
           }
         },
         "da" : {
@@ -52865,7 +52865,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Libraries whose restore codes are saved in your keychain."
+            "value" : "Libraries whose recovery codes are saved in your keychain."
           }
         },
         "de" : {
@@ -52877,13 +52877,13 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Οι βιβλιοθήκες των οποίων οι κωδικοί επαναφοράς είναι αποθηκευμένοι στο μπρελόκ σας."
+            "value" : "Οι βιβλιοθήκες των οποίων οι κωδικοί ανάκτησης είναι αποθηκευμένοι στο μπρελόκ σας."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bibliotecas cuyos códigos de restauración están guardados en tu llavero."
+            "value" : "Bibliotecas cuyos códigos de recuperación están guardados en tu llavero."
           }
         },
         "fi" : {
@@ -52895,7 +52895,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bibliothèques dont les codes de restauration sont enregistrés dans votre trousseau."
+            "value" : "Bibliothèques dont les codes de récupération sont enregistrés dans votre trousseau."
           }
         },
         "he" : {
@@ -52907,31 +52907,31 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Knjižnice čiji su kodovi za obnovu spremljeni u vašem privjesku ključeva."
+            "value" : "Fonoteke čiji su kodovi za oporavak spremljeni u vašem privjesku ključeva."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Azok a könyvtárak, amelyek visszaállítási kódja a kulcstartódban van."
+            "value" : "Azok a könyvtárak, amelyek helyreállítási kódja a kulcstartódban van."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Librerie i cui codici di ripristino sono salvati nel tuo portachiavi."
+            "value" : "Librerie i cui codici di recupero sono salvati nel tuo portachiavi."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "復元コードがキーチェーンに保存されているライブラリ。"
+            "value" : "復旧コードがキーチェーンに保存されているライブラリ。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "복원 코드가 키체인에 저장된 보관함입니다."
+            "value" : "복구 코드가 키체인에 저장된 보관함입니다."
           }
         },
         "nb" : {
@@ -52949,25 +52949,25 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Biblioteki, których kody przywracania są zapisane w pęku kluczy."
+            "value" : "Biblioteki, których kody odzyskiwania są zapisane w pęku kluczy."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bibliotecas cujos códigos de restauração estão salvos nas suas chaves."
+            "value" : "Bibliotecas cujos códigos de recuperação estão salvos nas suas chaves."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bibliotecas cujos códigos de restauro estão guardados no seu porta-chaves."
+            "value" : "Bibliotecas cujos códigos de recuperação estão guardados no seu porta-chaves."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bibliotecile ale căror coduri de restaurare sunt salvate în brelocul tău."
+            "value" : "Bibliotecile ale căror coduri de recuperare sunt salvate în brelocul tău."
           }
         },
         "sk" : {
@@ -52985,7 +52985,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Geri yükleme kodları anahtar zincirinde kayıtlı olan kitaplıklar."
+            "value" : "Kurtarma kodları anahtar zincirinde kayıtlı olan kitaplıklar."
           }
         },
         "uk" : {
@@ -53003,7 +53003,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "還原碼已儲存於鑰匙圈的資料庫。"
+            "value" : "復原碼已儲存於鑰匙圈的資料庫。"
           }
         }
       }
@@ -73308,179 +73308,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "還原"
-          }
-        }
-      }
-    },
-    "Restore code" : {
-      "comment" : "Restore screen: section header for the restore-code field",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "رمز الاستعادة"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Код за възстановяване"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kód pro obnovení"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gendannelseskode"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restore code"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wiederherstellungscode"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Κωδικός επαναφοράς"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Código de restauración"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Palautuskoodi"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Code de restauration"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "קוד שחזור"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kod za vraćanje"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Visszaállítási kód"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Codice di ripristino"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "復元コード"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "복원 코드"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gjenopprettingskode"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Herstelcode"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kod przywracania"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Código de restauração"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Código de restauro"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cod de restaurare"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kód na obnovenie"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Återställningskod"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Geri yükleme kodu"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Код відновлення"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "恢复代码"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "還原碼"
           }
         }
       }
@@ -112670,12 +112497,12 @@
         }
       }
     },
-    "Restore codes saved by your other devices signed in to this Apple Account." : {
+    "Recovery codes saved by your other devices signed in to this Apple Account." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "رموز الاستعادة التي حفظتها أجهزتك الأخرى المسجّل دخولها إلى حساب Apple هذا."
+            "value" : "رموز الاسترداد التي حفظتها أجهزتك الأخرى المسجّل دخولها إلى حساب Apple هذا."
           }
         },
         "bg" : {
@@ -112705,13 +112532,13 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Κωδικοί επαναφοράς που αποθηκεύτηκαν από τις άλλες συσκευές σας συνδεδεμένες σε αυτόν τον λογαριασμό Apple."
+            "value" : "Κωδικοί ανάκτησης που αποθηκεύτηκαν από τις άλλες συσκευές σας συνδεδεμένες σε αυτόν τον λογαριασμό Apple."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Códigos de restauración guardados por tus otros dispositivos con sesión iniciada en esta cuenta de Apple."
+            "value" : "Códigos de recuperación guardados por tus otros dispositivos con sesión iniciada en esta cuenta de Apple."
           }
         },
         "fi" : {
@@ -112723,7 +112550,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Codes de restauration enregistrés par vos autres appareils connectés à ce compte Apple."
+            "value" : "Codes de récupération enregistrés par vos autres appareils connectés à ce compte Apple."
           }
         },
         "he" : {
@@ -112735,31 +112562,31 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kodovi za vraćanje koje su spremili vaši drugi uređaji prijavljeni na ovaj Apple račun."
+            "value" : "Kodovi za oporavak koje su spremili vaši drugi uređaji prijavljeni na ovaj Apple račun."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Visszaállítási kódok, amelyeket az ebbe az Apple-fiókba bejelentkezett többi eszközöd mentett."
+            "value" : "Helyreállítási kódok, amelyeket az ebbe az Apple-fiókba bejelentkezett többi eszközöd mentett."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Codici di ripristino salvati dagli altri dispositivi che hanno effettuato l’accesso a questo Account Apple."
+            "value" : "Codici di recupero salvati dagli altri dispositivi che hanno effettuato l’accesso a questo Account Apple."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "この Apple アカウントにサインインしているほかのデバイスが保存した復元コード。"
+            "value" : "この Apple アカウントにサインインしているほかのデバイスが保存した復旧コード。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 Apple 계정에 로그인된 다른 기기가 저장한 복원 코드입니다."
+            "value" : "이 Apple 계정에 로그인된 다른 기기가 저장한 복구 코드입니다."
           }
         },
         "nb" : {
@@ -112777,25 +112604,25 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kody przywracania zapisane przez Twoje inne urządzenia zalogowane na to konto Apple."
+            "value" : "Kody odzyskiwania zapisane przez Twoje inne urządzenia zalogowane na to konto Apple."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Códigos de restauração salvos pelos seus outros dispositivos conectados a esta Conta Apple."
+            "value" : "Códigos de recuperação salvos pelos seus outros dispositivos conectados a esta Conta Apple."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Códigos de restauro guardados pelos seus outros dispositivos com sessão iniciada nesta Conta Apple."
+            "value" : "Códigos de recuperação guardados pelos seus outros dispositivos com sessão iniciada nesta Conta Apple."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Coduri de restaurare salvate de celelalte dispozitive ale tale conectate la acest cont Apple."
+            "value" : "Coduri de recuperare salvate de celelalte dispozitive ale tale conectate la acest cont Apple."
           }
         },
         "sk" : {
@@ -112813,7 +112640,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu Apple Hesabı'nda oturum açmış diğer aygıtlarınızın kaydettiği geri yükleme kodları."
+            "value" : "Bu Apple Hesabı'nda oturum açmış diğer aygıtlarınızın kaydettiği kurtarma kodları."
           }
         },
         "uk" : {
@@ -112825,13 +112652,19 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "登录了此 Apple 账户的其他设备保存的恢复代码。"
+            "value" : "登录了此 Apple 账户的其他设备保存的恢复码。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "登入此 Apple 帳號的其他裝置所儲存的還原碼。"
+            "value" : "登入此 Apple 帳號的其他裝置所儲存的復原碼。"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recovery codes saved by your other devices signed in to this Apple Account."
           }
         }
       }
@@ -113168,12 +113001,12 @@
         }
       }
     },
-    "Saved restore code" : {
+    "Saved recovery code" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "رمز الاستعادة المحفوظ"
+            "value" : "رمز الاسترداد المحفوظ"
           }
         },
         "bg" : {
@@ -113203,13 +113036,13 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αποθηκευμένος κωδικός επαναφοράς"
+            "value" : "Αποθηκευμένος κωδικός ανάκτησης"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Código de restauración guardado"
+            "value" : "Código de recuperación guardado"
           }
         },
         "fi" : {
@@ -113221,7 +113054,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Code de restauration enregistré"
+            "value" : "Code de récupération enregistré"
           }
         },
         "he" : {
@@ -113233,31 +113066,31 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spremljeni kod za vraćanje"
+            "value" : "Spremljeni kod za oporavak"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mentett visszaállítási kód"
+            "value" : "Mentett helyreállítási kód"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Codice di ripristino salvato"
+            "value" : "Codice di recupero salvato"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "保存された復元コード"
+            "value" : "保存された復旧コード"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "저장된 복원 코드"
+            "value" : "저장된 복구 코드"
           }
         },
         "nb" : {
@@ -113275,25 +113108,25 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zapisany kod przywracania"
+            "value" : "Zapisany kod odzyskiwania"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Código de restauração salvo"
+            "value" : "Código de recuperação salvo"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Código de restauro guardado"
+            "value" : "Código de recuperação guardado"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cod de restaurare salvat"
+            "value" : "Cod de recuperare salvat"
           }
         },
         "sk" : {
@@ -113311,7 +113144,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kayıtlı geri yükleme kodu"
+            "value" : "Kayıtlı kurtarma kodu"
           }
         },
         "uk" : {
@@ -113323,13 +113156,19 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已保存的恢复代码"
+            "value" : "已保存的恢复码"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已儲存的還原碼"
+            "value" : "已儲存的復原碼"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved recovery code"
           }
         }
       }
@@ -113666,12 +113505,12 @@
         }
       }
     },
-    "Scan or paste your restore code." : {
+    "Scan or paste your recovery code." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "امسح رمز الاستعادة أو الصقه."
+            "value" : "امسح رمز الاسترداد أو الصقه."
           }
         },
         "bg" : {
@@ -113701,13 +113540,13 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Σαρώστε ή επικολλήστε τον κωδικό επαναφοράς σας."
+            "value" : "Σαρώστε ή επικολλήστε τον κωδικό ανάκτησής σας."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Escanea o pega tu código de restauración."
+            "value" : "Escanea o pega tu código de recuperación."
           }
         },
         "fi" : {
@@ -113719,7 +113558,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scannez ou collez votre code de restauration."
+            "value" : "Scannez ou collez votre code de récupération."
           }
         },
         "he" : {
@@ -113731,31 +113570,31 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skenirajte ili zalijepite svoj kod za vraćanje."
+            "value" : "Skenirajte ili zalijepite svoj kod za oporavak."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Olvasd be vagy illeszd be a visszaállítási kódodat."
+            "value" : "Olvasd be vagy illeszd be a helyreállítási kódodat."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scansiona o incolla il tuo codice di ripristino."
+            "value" : "Scansiona o incolla il tuo codice di recupero."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "復元コードをスキャンするか貼り付けてください。"
+            "value" : "復旧コードをスキャンするか貼り付けてください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "복원 코드를 스캔하거나 붙여넣으세요."
+            "value" : "복구 코드를 스캔하거나 붙여넣으세요."
           }
         },
         "nb" : {
@@ -113773,25 +113612,25 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeskanuj lub wklej swój kod przywracania."
+            "value" : "Zeskanuj lub wklej swój kod odzyskiwania."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Escaneie ou cole seu código de restauração."
+            "value" : "Escaneie ou cole seu código de recuperação."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Digitalize ou cole o seu código de restauro."
+            "value" : "Digitalize ou cole o seu código de recuperação."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scanează sau lipește codul tău de restaurare."
+            "value" : "Scanează sau lipește codul tău de recuperare."
           }
         },
         "sk" : {
@@ -113809,7 +113648,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Geri yükleme kodunuzu tarayın veya yapıştırın."
+            "value" : "Kurtarma kodunuzu tarayın veya yapıştırın."
           }
         },
         "uk" : {
@@ -113821,179 +113660,19 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "扫描或粘贴你的恢复代码。"
+            "value" : "扫描或粘贴你的恢复码。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "掃描或貼上你的還原碼。"
-          }
-        }
-      }
-    },
-    "Scan or type this code on your new device to add it to the library. Anyone with it and access to your storage can open the library. Keep it secret." : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "امسح هذا الرمز أو اكتبه على جهازك الجديد لإضافته إلى المكتبة. يمكن لأي شخص لديه الرمز وإمكانية الوصول إلى التخزين فتح المكتبة. احتفظ به سرًا."
+            "value" : "掃描或貼上你的復原碼。"
           }
         },
-        "bg" : {
+        "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сканирайте или въведете този код на новото си устройство, за да го добавите към библиотеката. Всеки, който го има и има достъп до хранилището ви, може да отвори библиотеката. Пазете го в тайна."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Naskenujte nebo zadejte tento kód na novém zařízení a přidejte ho do knihovny. Kdokoli s ním a s přístupem k vašemu úložišti může knihovnu otevřít. Uchovejte ho v tajnosti."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scan eller indtast denne kode på din nye enhed for at føje den til biblioteket. Alle med koden og adgang til dit lager kan åbne biblioteket. Hold den hemmelig."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scanne diesen Code auf deinem neuen Gerät oder tippe ihn ein, um es zur Bibliothek hinzuzufügen. Wer ihn hat und Zugriff auf deinen Speicher hat, kann die Bibliothek öffnen. Halte ihn geheim."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Σαρώστε ή πληκτρολογήστε αυτόν τον κωδικό στη νέα σας συσκευή για να την προσθέσετε στη βιβλιοθήκη. Όποιος τον έχει και έχει πρόσβαση στον χώρο αποθήκευσής σας μπορεί να ανοίξει τη βιβλιοθήκη. Κρατήστε τον μυστικό."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escanea o escribe este código en tu nuevo dispositivo para añadirlo a la biblioteca. Quien lo tenga y acceda a tu almacenamiento puede abrir la biblioteca. Mantenlo en secreto."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skannaa tai kirjoita tämä koodi uudella laitteellasi lisätäksesi sen kirjastoon. Kuka tahansa, jolla on koodi ja pääsy tallennustilaasi, voi avata kirjaston. Pidä se salassa."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scannez ou saisissez ce code sur votre nouvel appareil pour l’ajouter à la bibliothèque. Toute personne qui le possède et a accès à votre stockage peut ouvrir la bibliothèque. Gardez-le secret."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "סרקו או הקלידו את הקוד הזה במכשיר החדש כדי להוסיף אותו לספרייה. כל מי שיש לו את הקוד וגישה לאחסון שלכם יכול לפתוח את הספרייה. שמרו אותו בסוד."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skenirajte ili upišite ovaj kôd na novom uređaju da biste ga dodali u fonoteku. Svatko tko ga ima i pristup vašoj pohrani može otvoriti fonoteku. Čuvajte ga u tajnosti."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Olvasd be vagy írd be ezt a kódot az új eszközödön, hogy hozzáadd a könyvtárhoz. Bárki, akinél megvan, és hozzáfér a tárhelyedhez, megnyithatja a könyvtárat. Tartsd titokban."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scansiona o digita questo codice sul nuovo dispositivo per aggiungerlo alla libreria. Chiunque lo abbia e acceda al tuo spazio di archiviazione può aprire la libreria. Tienilo segreto."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "新しいデバイスでこのコードをスキャンまたは入力すると、そのデバイスがライブラリに追加されます。このコードとストレージへのアクセス権があれば誰でもライブラリを開けます。秘密にしてください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "새 기기에서 이 코드를 스캔하거나 입력하면 기기가 라이브러리에 추가됩니다. 이 코드와 스토리지 접근 권한이 있으면 누구나 라이브러리를 열 수 있습니다. 비밀로 유지하세요."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skann eller skriv inn denne koden på den nye enheten for å legge den til i biblioteket. Alle med koden og tilgang til lagringen din kan åpne biblioteket. Hold den hemmelig."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scan of typ deze code op je nieuwe apparaat om het aan de bibliotheek toe te voegen. Iedereen met deze code en toegang tot je opslag kan de bibliotheek openen. Houd hem geheim."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zeskanuj lub wpisz ten kod na nowym urządzeniu, aby dodać je do biblioteki. Każdy, kto go ma i ma dostęp do Twojego magazynu, może otworzyć bibliotekę. Zachowaj go w tajemnicy."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escaneie ou digite este código no seu novo dispositivo para adicioná-lo à biblioteca. Quem tiver o código e acesso ao seu armazenamento pode abrir a biblioteca. Mantenha-o em segredo."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Digitalize ou introduza este código no seu novo dispositivo para o adicionar à biblioteca. Quem tiver o código e acesso ao seu armazenamento pode abrir a biblioteca. Mantenha-o em segredo."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scanează sau tastează acest cod pe noul dispozitiv ca să-l adaugi în bibliotecă. Oricine îl are și are acces la stocarea ta poate deschide biblioteca. Păstrează-l secret."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Naskenujte alebo zadajte tento kód na novom zariadení a pridajte ho do knižnice. Ktokoľvek s ním a s prístupom k vášmu úložisku môže otvoriť knižnicu. Uchovajte ho v tajnosti."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skanna eller skriv in koden på din nya enhet för att lägga till den i biblioteket. Den som har koden och åtkomst till din lagring kan öppna biblioteket. Håll den hemlig."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitaplığa eklemek için bu kodu yeni aygıtınızda tarayın veya yazın. Kodu ve depolamanıza erişimi olan herkes kitaplığı açabilir. Gizli tutun."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Скануйте або введіть цей код на новому пристрої, щоб додати його до бібліотеки. Будь-хто, хто його має і має доступ до вашого сховища, може відкрити бібліотеку. Зберігайте його в таємниці."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在新设备上扫描或输入此代码，即可将其添加到库。任何拥有此代码并能访问你的存储的人都能打开该库。请妥善保密。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在新裝置上掃描或輸入此代碼，即可將其加入資料庫。任何擁有此代碼並能存取你的儲存空間的人都能打開該資料庫。請妥善保密。"
+            "value" : "Scan or paste your recovery code."
           }
         }
       }
@@ -114492,172 +114171,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "共享資料夾"
-          }
-        }
-      }
-    },
-    "Show restore code..." : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "إظهار رمز الاستعادة..."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Покажи кода за възстановяване..."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zobrazit kód pro obnovení…"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vis gendannelseskode..."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wiederherstellungscode anzeigen …"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Εμφάνιση κωδικού επαναφοράς..."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mostrar código de restauración..."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Näytä palautuskoodi..."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Afficher le code de restauration…"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "הצגת קוד השחזור…"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Prikaži kod za vraćanje..."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Visszaállítási kód megjelenítése..."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mostra codice di ripristino..."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "復元コードを表示…"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "복원 코드 보기…"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vis gjenopprettingskode..."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Herstelcode tonen..."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pokaż kod przywracania…"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mostrar código de restauração..."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mostrar código de restauro..."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Afișează codul de restaurare..."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zobraziť kód na obnovenie..."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Visa återställningskod..."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Geri yükleme kodunu göster..."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Показати код відновлення…"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "显示恢复代码…"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "顯示還原碼…"
           }
         }
       }
@@ -116986,12 +116499,12 @@
         }
       }
     },
-    "This restore code is no longer saved in iCloud Keychain." : {
+    "This recovery code is no longer saved in iCloud Keychain." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "لم يعد رمز الاستعادة هذا محفوظًا في سلسلة مفاتيح iCloud."
+            "value" : "لم يعد رمز الاسترداد هذا محفوظًا في سلسلة مفاتيح iCloud."
           }
         },
         "bg" : {
@@ -117021,13 +116534,13 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αυτός ο κωδικός επαναφοράς δεν είναι πλέον αποθηκευμένος στην Κλειδοθήκη iCloud."
+            "value" : "Αυτός ο κωδικός ανάκτησης δεν είναι πλέον αποθηκευμένος στην Κλειδοθήκη iCloud."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este código de restauración ya no está guardado en el llavero de iCloud."
+            "value" : "Este código de recuperación ya no está guardado en el llavero de iCloud."
           }
         },
         "fi" : {
@@ -117039,7 +116552,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce code de restauration n’est plus enregistré dans le trousseau iCloud."
+            "value" : "Ce code de récupération n’est plus enregistré dans le trousseau iCloud."
           }
         },
         "he" : {
@@ -117051,31 +116564,31 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ovaj kod za vraćanje više nije spremljen u iCloud privjesku."
+            "value" : "Ovaj kod za oporavak više nije spremljen u iCloud privjesku."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ez a visszaállítási kód már nincs mentve az iCloud-kulcskarikában."
+            "value" : "Ez a helyreállítási kód már nincs mentve az iCloud-kulcskarikában."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Questo codice di ripristino non è più salvato nel portachiavi iCloud."
+            "value" : "Questo codice di recupero non è più salvato nel portachiavi iCloud."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "この復元コードは iCloud キーチェーンに保存されていません。"
+            "value" : "この復旧コードは iCloud キーチェーンに保存されていません。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 복원 코드는 더 이상 iCloud 키체인에 저장되어 있지 않습니다."
+            "value" : "이 복구 코드는 더 이상 iCloud 키체인에 저장되어 있지 않습니다."
           }
         },
         "nb" : {
@@ -117093,25 +116606,25 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ten kod przywracania nie jest już zapisany w pęku kluczy iCloud."
+            "value" : "Ten kod odzyskiwania nie jest już zapisany w pęku kluczy iCloud."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este código de restauração não está mais salvo nas Chaves do iCloud."
+            "value" : "Este código de recuperação não está mais salvo nas Chaves do iCloud."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este código de restauro já não está guardado no Porta-chaves iCloud."
+            "value" : "Este código de recuperação já não está guardado no Porta-chaves iCloud."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Acest cod de restaurare nu mai este salvat în brelocul iCloud."
+            "value" : "Acest cod de recuperare nu mai este salvat în brelocul iCloud."
           }
         },
         "sk" : {
@@ -117129,7 +116642,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu geri yükleme kodu artık iCloud Anahtar Zinciri'nde kayıtlı değil."
+            "value" : "Bu kurtarma kodu artık iCloud Anahtar Zinciri'nde kayıtlı değil."
           }
         },
         "uk" : {
@@ -117141,13 +116654,19 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此恢复代码已不再保存在 iCloud 钥匙串中。"
+            "value" : "此恢复码已不再保存在 iCloud 钥匙串中。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此還原碼已不再儲存在 iCloud 鑰匙圈中。"
+            "value" : "此復原碼已不再儲存在 iCloud 鑰匙圈中。"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This recovery code is no longer saved in iCloud Keychain."
           }
         }
       }
@@ -118642,172 +118161,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你的名字"
-          }
-        }
-      }
-    },
-    "Your restore code adds your other devices to this library. Anyone with it and access to your storage can open the library. Keep it secret." : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "يضيف رمز الاستعادة أجهزتك الأخرى إلى هذه المكتبة. يمكن لأي شخص لديه الرمز وإمكانية الوصول إلى التخزين فتح المكتبة. احتفظ به سرًا."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Кодът ви за възстановяване добавя другите ви устройства към тази библиотека. Всеки, който го има и има достъп до хранилището ви, може да отвори библиотеката. Пазете го в тайна."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Váš kód pro obnovení přidá vaše další zařízení do této knihovny. Kdokoli s ním a s přístupem k vašemu úložišti může knihovnu otevřít. Uchovejte ho v tajnosti."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Din gendannelseskode føjer dine andre enheder til dette bibliotek. Alle med koden og adgang til dit lager kan åbne biblioteket. Hold den hemmelig."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dein Wiederherstellungscode fügt deine anderen Geräte zu dieser Bibliothek hinzu. Wer ihn hat und Zugriff auf deinen Speicher hat, kann die Bibliothek öffnen. Halte ihn geheim."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ο κωδικός επαναφοράς σας προσθέτει τις άλλες συσκευές σας σε αυτή τη βιβλιοθήκη. Όποιος τον έχει και έχει πρόσβαση στον χώρο αποθήκευσής σας μπορεί να ανοίξει τη βιβλιοθήκη. Κρατήστε τον μυστικό."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tu código de restauración añade tus otros dispositivos a esta biblioteca. Quien lo tenga y acceda a tu almacenamiento puede abrir la biblioteca. Mantenlo en secreto."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Palautuskoodisi lisää muut laitteesi tähän kirjastoon. Kuka tahansa, jolla on koodi ja pääsy tallennustilaasi, voi avata kirjaston. Pidä se salassa."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Votre code de restauration ajoute vos autres appareils à cette bibliothèque. Toute personne qui le possède et a accès à votre stockage peut ouvrir la bibliothèque. Gardez-le secret."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "קוד השחזור שלכם מוסיף את המכשירים האחרים שלכם לספרייה הזו. כל מי שיש לו את הקוד וגישה לאחסון שלכם יכול לפתוח את הספרייה. שמרו אותו בסוד."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vaš kod za vraćanje dodaje vaše druge uređaje u ovu fonoteku. Svatko tko ga ima i pristup vašoj pohrani može otvoriti fonoteku. Čuvajte ga u tajnosti."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A visszaállítási kódod hozzáadja a többi eszközödet ehhez a könyvtárhoz. Bárki, akinél megvan, és hozzáfér a tárhelyedhez, megnyithatja a könyvtárat. Tartsd titokban."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Il tuo codice di ripristino aggiunge gli altri tuoi dispositivi a questa libreria. Chiunque lo abbia e acceda al tuo spazio di archiviazione può aprire la libreria. Tienilo segreto."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "復元コードを使うと、ほかのデバイスをこのライブラリに追加できます。このコードとストレージへのアクセス権があれば誰でもライブラリを開けます。秘密にしてください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "복원 코드로 다른 기기를 이 라이브러리에 추가할 수 있습니다. 이 코드와 스토리지 접근 권한이 있으면 누구나 라이브러리를 열 수 있습니다. 비밀로 유지하세요."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gjenopprettingskoden din legger de andre enhetene dine til i dette biblioteket. Alle med koden og tilgang til lagringen din kan åpne biblioteket. Hold den hemmelig."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Je herstelcode voegt je andere apparaten toe aan deze bibliotheek. Iedereen met deze code en toegang tot je opslag kan de bibliotheek openen. Houd hem geheim."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Twój kod przywracania dodaje Twoje inne urządzenia do tej biblioteki. Każdy, kto go ma i ma dostęp do Twojego magazynu, może otworzyć bibliotekę. Zachowaj go w tajemnicy."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Seu código de restauração adiciona seus outros dispositivos a esta biblioteca. Quem tiver o código e acesso ao seu armazenamento pode abrir a biblioteca. Mantenha-o em segredo."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O seu código de restauro adiciona os seus outros dispositivos a esta biblioteca. Quem tiver o código e acesso ao seu armazenamento pode abrir a biblioteca. Mantenha-o em segredo."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Codul tău de restaurare adaugă celelalte dispozitive ale tale în această bibliotecă. Oricine îl are și are acces la stocarea ta poate deschide biblioteca. Păstrează-l secret."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Váš kód na obnovenie pridá vaše ďalšie zariadenia do tejto knižnice. Ktokoľvek s ním a s prístupom k vášmu úložisku môže otvoriť knižnicu. Uchovajte ho v tajnosti."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Din återställningskod lägger till dina andra enheter i biblioteket. Den som har koden och åtkomst till din lagring kan öppna biblioteket. Håll den hemlig."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Geri yükleme kodunuz diğer aygıtlarınızı bu kitaplığa ekler. Kodu ve depolamanıza erişimi olan herkes kitaplığı açabilir. Gizli tutun."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ваш код відновлення додає інші ваші пристрої до цієї бібліотеки. Будь-хто, хто його має і має доступ до вашого сховища, може відкрити бібліотеку. Зберігайте його в таємниці."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "你的恢复代码可将你的其他设备添加到此库。任何拥有此代码并能访问你的存储的人都能打开该库。请妥善保密。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "你的還原碼可將你的其他裝置加入此資料庫。任何擁有此代碼並能存取你的儲存空間的人都能打開該資料庫。請妥善保密。"
           }
         }
       }
@@ -120341,7 +119694,7 @@
       }
     },
     "The QR code also carries your S3 access key, so a device that scans it won't ask for the key." : {
-      "comment" : "Restore code sheet: the QR code shown on the person's own device also carries their S3 key",
+      "comment" : "Add a device sheet: the QR code shown on the person's own device also carries their S3 key",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
@@ -120677,7 +120030,7 @@
       }
     },
     "Restore this library" : {
-      "comment" : "Title of the screen that restores a library over this device's copy with the person's restore code, after another of their devices replaced their keys.",
+      "comment" : "Title of the screen that restores a library over this device's copy with the person's recovery code, after another of their devices replaced their keys.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
@@ -120845,7 +120198,7 @@
       }
     },
     "Finish Restoring" : {
-      "comment" : "Button: finishes restoring a library whose restore with the person's restore code stopped partway on this device.",
+      "comment" : "Button: finishes restoring a library whose restore with the person's recovery code stopped partway on this device.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
@@ -121181,7 +120534,7 @@
       }
     },
     "Finish restoring this library" : {
-      "comment" : "Title of the screen that asks for the person's current restore code to finish a restore of this device's copy that stopped partway.",
+      "comment" : "Title of the screen that asks for the person's current recovery code to finish a restore of this device's copy that stopped partway.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
@@ -129817,6 +129170,1390 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "bae 輔助說明"
+          }
+        }
+      }
+    },
+    "Add Device..." : {
+      "comment" : "People: button under this device's own person that opens Add a device, the sheet that adds another of their devices.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إضافة جهاز..."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавяне на устройство..."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Přidat zařízení…"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilføj enhed..."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gerät hinzufügen …"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Προσθήκη συσκευής..."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Device..."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añadir dispositivo..."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lisää laite..."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter un appareil…"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הוספת מכשיר…"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dodaj uređaj..."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eszköz hozzáadása..."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aggiungi dispositivo..."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デバイスを追加…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기 추가…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til enhet..."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apparaat toevoegen..."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dodaj urządzenie…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicionar dispositivo..."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicionar dispositivo..."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adaugă dispozitiv..."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pridať zariadenie..."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lägg till enhet..."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aygıt ekle..."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Додати пристрій…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加设备…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新增裝置…"
+          }
+        }
+      }
+    },
+    "Add a device" : {
+      "comment" : "Add a device sheet: title. The sheet shows a QR code another of the person's devices scans, and their recovery code to type there instead.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إضافة جهاز"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавяне на устройство"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Přidat zařízení"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilføj en enhed"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gerät hinzufügen"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Προσθήκη συσκευής"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a device"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añadir un dispositivo"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lisää laite"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter un appareil"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הוספת מכשיר"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dodaj uređaj"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eszköz hozzáadása"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aggiungi un dispositivo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デバイスを追加"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기 추가"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til en enhet"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Een apparaat toevoegen"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dodaj urządzenie"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicionar um dispositivo"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicionar um dispositivo"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adaugă un dispozitiv"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pridať zariadenie"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lägg till en enhet"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aygıt ekle"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Додати пристрій"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加设备"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新增裝置"
+          }
+        }
+      }
+    },
+    "Scan this with the new device. Or, on the new device, choose “Restore from cloud” and type:" : {
+      "comment" : "Add a device sheet: instructions between the QR code and the recovery code. The quoted label is the onboarding button the new device offers for typing a code.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "امسح هذا الرمز بالجهاز الجديد. أو اختر «استعادة من السحابة» على الجهاز الجديد واكتب:"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сканирайте това с новото устройство. Или на новото устройство изберете „Възстановяване от облака“ и въведете:"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Naskenujte to novým zařízením. Nebo na novém zařízení zvolte „Obnovit z cloudu“ a zadejte:"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scan dette med den nye enhed. Eller vælg »Gendan fra skyen« på den nye enhed, og skriv:"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scanne dies mit dem neuen Gerät. Oder wähle auf dem neuen Gerät „Aus der Cloud wiederherstellen“ und gib Folgendes ein:"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Σαρώστε αυτό με τη νέα συσκευή. Ή, στη νέα συσκευή, επιλέξτε «Επαναφορά από το cloud» και πληκτρολογήστε:"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scan this with the new device. Or, on the new device, choose “Restore from cloud” and type:"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escanea esto con el nuevo dispositivo. O bien, en el nuevo dispositivo, elige “Restaurar desde la nube” y escribe:"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skannaa tämä uudella laitteella. Tai valitse uudella laitteella ”Palauta pilvestä” ja kirjoita:"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scannez ceci avec le nouvel appareil. Ou, sur le nouvel appareil, choisissez « Restaurer depuis le cloud » et saisissez :"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סרקו את זה במכשיר החדש. לחלופין, במכשיר החדש בחרו ב“שחזר מהענן” והקלידו:"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skenirajte ovo novim uređajem. Ili na novom uređaju odaberite „Vrati iz oblaka” i upišite:"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Olvasd be ezt az új eszközzel. Vagy az új eszközön válaszd ezt: „Visszaállítás a felhőből”, majd írd be:"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scansiona questo codice con il nuovo dispositivo. Oppure, sul nuovo dispositivo, scegli “Ripristina dal cloud” e digita:"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新しいデバイスでこれをスキャンしてください。または、新しいデバイスで「クラウドから復元」を選んで、次のコードを入力してください："
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "새 기기로 이 코드를 스캔하세요. 또는 새 기기에서 ‘클라우드에서 복원’ 항목을 선택하고 다음을 입력하세요:"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skann dette med den nye enheten. Eller velg «Gjenopprett fra skyen» på den nye enheten, og skriv inn:"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scan dit met het nieuwe apparaat. Of kies op het nieuwe apparaat ‘Herstellen vanuit cloud’ en typ:"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeskanuj to nowym urządzeniem. Albo na nowym urządzeniu wybierz „Przywróć z chmury” i wpisz:"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escaneie isto com o novo dispositivo. Ou, no novo dispositivo, escolha “Restaurar da nuvem” e digite:"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leia isto com o novo dispositivo. Ou, no novo dispositivo, escolha «Restaurar a partir da nuvem» e escreva:"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scanează asta cu noul dispozitiv. Sau, pe noul dispozitiv, alege „Restaurează din cloud” și tastează:"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Naskenujte to novým zariadením. Alebo na novom zariadení vyberte „Obnoviť z cloudu“ a zadajte:"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skanna det här med den nya enheten. Eller välj ”Återställ från molnet” på den nya enheten och skriv:"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bunu yeni aygıtla tarayın. Ya da yeni aygıtta “Buluttan geri yükle” seçeneğini seçip şunu yazın:"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відскануйте це новим пристроєм. Або на новому пристрої виберіть «Відновити з хмари» і введіть:"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用新设备扫描此代码。或者，在新设备上选择“从云端恢复”，然后输入："
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用新裝置掃描此代碼。或者，在新裝置上選擇「從雲端還原」，然後輸入："
+          }
+        }
+      }
+    },
+    "Your recovery code" : {
+      "comment" : "Settings: section showing the person's recovery code, which gets their library back if they lose every device; also the QR code's accessibility label.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "رمز الاسترداد الخاص بك"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вашият код за възстановяване"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Váš kód pro obnovení"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Din gendannelseskode"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Wiederherstellungscode"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ο κωδικός ανάκτησής σας"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your recovery code"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu código de recuperación"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Palautuskoodisi"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre code de récupération"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קוד השחזור שלכם"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vaš kod za oporavak"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A helyreállítási kódod"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il tuo codice di recupero"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "あなたの復旧コード"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내 복구 코드"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenopprettingskoden din"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Je herstelcode"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Twój kod odzyskiwania"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seu código de recuperação"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O seu código de recuperação"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codul tău de recuperare"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Váš kód na obnovenie"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Din återställningskod"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kurtarma kodunuz"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваш код відновлення"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的恢复码"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的復原碼"
+          }
+        }
+      }
+    },
+    "If you lose all your devices, enter this code on a new one to get your library back. Anyone who has it and access to your storage can open the library, so keep it somewhere private." : {
+      "comment" : "Settings, Your recovery code section: what the code is for and why to keep it private.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إذا فقدت جميع أجهزتك، فأدخل هذا الرمز على جهاز جديد لاستعادة مكتبتك. يمكن لأي شخص لديه الرمز وإمكانية الوصول إلى التخزين فتح المكتبة، لذا احتفظ به في مكان خاص."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ако загубите всичките си устройства, въведете този код на ново устройство, за да си върнете библиотеката. Всеки, който го има и има достъп до хранилището ви, може да отвори библиотеката, затова го пазете на поверително място."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokud přijdete o všechna svá zařízení, zadejte tento kód na novém zařízení a získáte knihovnu zpět. Kdokoli, kdo ho má a má přístup k vašemu úložišti, může knihovnu otevřít, proto ho uchovávejte v soukromí."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hvis du mister alle dine enheder, kan du indtaste denne kode på en ny enhed for at få dit bibliotek tilbage. Alle, der har koden og adgang til dit lager, kan åbne biblioteket, så opbevar den et privat sted."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn du alle deine Geräte verlierst, gib diesen Code auf einem neuen Gerät ein, um deine Bibliothek zurückzubekommen. Wer ihn hat und Zugriff auf deinen Speicher hat, kann die Bibliothek öffnen – bewahre ihn also an einem privaten Ort auf."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Αν χάσετε όλες τις συσκευές σας, εισαγάγετε αυτόν τον κωδικό σε μια νέα συσκευή για να ανακτήσετε τη βιβλιοθήκη σας. Όποιος τον έχει και έχει πρόσβαση στον χώρο αποθήκευσής σας μπορεί να ανοίξει τη βιβλιοθήκη, γι’ αυτό φυλάξτε τον κάπου ιδιωτικά."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If you lose all your devices, enter this code on a new one to get your library back. Anyone who has it and access to your storage can open the library, so keep it somewhere private."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si pierdes todos tus dispositivos, introduce este código en uno nuevo para recuperar tu biblioteca. Quien lo tenga y acceda a tu almacenamiento puede abrir la biblioteca, así que guárdalo en un lugar privado."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jos menetät kaikki laitteesi, syötä tämä koodi uudella laitteella, niin saat kirjastosi takaisin. Kuka tahansa, jolla on koodi ja pääsy tallennustilaasi, voi avata kirjaston, joten säilytä se yksityisessä paikassa."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si vous perdez tous vos appareils, saisissez ce code sur un nouvel appareil pour récupérer votre bibliothèque. Toute personne qui le possède et a accès à votre stockage peut ouvrir la bibliothèque : conservez-le donc dans un endroit privé."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אם תאבדו את כל המכשירים שלכם, הזינו את הקוד הזה במכשיר חדש כדי לקבל את הספרייה בחזרה. כל מי שיש לו את הקוד וגישה לאחסון שלכם יכול לפתוח את הספרייה, לכן שמרו אותו במקום פרטי."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ako izgubite sve svoje uređaje, unesite ovaj kod na novom uređaju da biste vratili svoju fonoteku. Svatko tko ga ima i pristup vašoj pohrani može otvoriti fonoteku, zato ga čuvajte na privatnom mjestu."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ha az összes eszközödet elveszíted, írd be ezt a kódot egy új eszközön, és visszakapod a könyvtáradat. Bárki, akinél megvan, és hozzáfér a tárhelyedhez, megnyithatja a könyvtárat, ezért tartsd privát helyen."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se perdi tutti i tuoi dispositivi, inserisci questo codice su un nuovo dispositivo per riavere la tua libreria. Chiunque lo abbia e acceda al tuo spazio di archiviazione può aprire la libreria, quindi conservalo in un posto privato."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべてのデバイスをなくした場合は、新しいデバイスでこのコードを入力するとライブラリを取り戻せます。このコードとストレージへのアクセス権があれば誰でもライブラリを開けるため、他人に見られない場所に保管してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모든 기기를 잃어버린 경우 새 기기에서 이 코드를 입력하면 라이브러리를 되찾을 수 있습니다. 이 코드와 스토리지 접근 권한이 있으면 누구나 라이브러리를 열 수 있으니 다른 사람이 볼 수 없는 곳에 보관하세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hvis du mister alle enhetene dine, skriver du inn denne koden på en ny enhet for å få biblioteket tilbake. Alle som har koden og tilgang til lagringen din, kan åpne biblioteket, så oppbevar den et privat sted."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als je al je apparaten kwijtraakt, voer je deze code in op een nieuw apparaat om je bibliotheek terug te krijgen. Iedereen met deze code en toegang tot je opslag kan de bibliotheek openen, dus bewaar hem op een privéplek."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jeśli stracisz wszystkie swoje urządzenia, wpisz ten kod na nowym urządzeniu, aby odzyskać bibliotekę. Każdy, kto go ma i ma dostęp do Twojego magazynu, może otworzyć bibliotekę, więc przechowuj go w prywatnym miejscu."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se você perder todos os seus dispositivos, digite este código em um novo para recuperar sua biblioteca. Quem tiver o código e acesso ao seu armazenamento pode abrir a biblioteca, então guarde-o em um lugar privado."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se perder todos os seus dispositivos, introduza este código num novo para recuperar a sua biblioteca. Quem tiver o código e acesso ao seu armazenamento pode abrir a biblioteca, por isso guarde-o num local privado."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dacă pierzi toate dispozitivele, introdu acest cod pe unul nou ca să îți recuperezi biblioteca. Oricine îl are și are acces la stocarea ta poate deschide biblioteca, așa că păstrează-l într-un loc privat."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ak prídete o všetky svoje zariadenia, zadajte tento kód na novom zariadení a získate knižnicu späť. Ktokoľvek, kto ho má a má prístup k vášmu úložisku, môže knižnicu otvoriť, preto ho uchovávajte na súkromnom mieste."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Om du förlorar alla dina enheter anger du den här koden på en ny enhet för att få tillbaka ditt bibliotek. Den som har koden och åtkomst till din lagring kan öppna biblioteket, så förvara den på ett privat ställe."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tüm aygıtlarınızı kaybederseniz kitaplığınızı geri almak için bu kodu yeni bir aygıta girin. Kodu ve depolamanıza erişimi olan herkes kitaplığı açabilir, bu yüzden kodu gizli bir yerde saklayın."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Якщо ви втратите всі свої пристрої, введіть цей код на новому, щоб повернути свою бібліотеку. Будь-хто, хто його має і має доступ до вашого сховища, може відкрити бібліотеку, тож зберігайте його в приватному місці."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "如果你丢失了所有设备，可在新设备上输入此代码找回你的资料库。任何拥有此代码并能访问你的存储的人都能打开该资料库，因此请将它保存在私密的地方。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "如果你遺失了所有裝置，可在新裝置上輸入此代碼找回你的資料庫。任何擁有此代碼並能存取你的儲存空間的人都能打開該資料庫，因此請將它保存在私密的地方。"
+          }
+        }
+      }
+    },
+    "You'll also need your S3 access key and secret." : {
+      "comment" : "Settings, Your recovery code section, S3 libraries only: the code alone doesn't open the bucket.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ستحتاج أيضًا إلى مفتاح الوصول والمفتاح السري لـ S3."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ще ви трябват и ключът за достъп, и тайният ключ за S3."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Budete také potřebovat přístupový klíč a tajný klíč S3."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du skal også bruge din S3-adgangsnøgle og den hemmelige nøgle."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du brauchst außerdem deinen S3-Zugriffsschlüssel und den geheimen Schlüssel."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Θα χρειαστείτε επίσης το κλειδί πρόσβασης και το μυστικό κλειδί του S3."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You'll also need your S3 access key and secret."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "También necesitarás tu clave de acceso y tu clave secreta de S3."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarvitset myös S3-käyttöavaimesi ja salaisen avaimen."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vous aurez aussi besoin de votre clé d’accès et de votre clé secrète S3."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תצטרכו גם את מפתח הגישה ואת המפתח הסודי של S3."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trebat će vam i S3 pristupni ključ i tajni ključ."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Szükséged lesz az S3-hozzáférési kulcsodra és a titkos kulcsra is."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ti serviranno anche la chiave di accesso e la chiave segreta S3."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3 のアクセスキーとシークレットキーも必要です。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3 액세스 키와 비밀 키도 필요합니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du trenger også S3-tilgangsnøkkelen og den hemmelige nøkkelen."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Je hebt ook je S3-toegangssleutel en geheime sleutel nodig."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Potrzebny będzie też klucz dostępu i klucz tajny S3."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Você também vai precisar da sua chave de acesso e da chave secreta do S3."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Também vai precisar da sua chave de acesso e da chave secreta do S3."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vei avea nevoie și de cheia de acces și de cheia secretă S3."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Budete potrebovať aj prístupový kľúč a tajný kľúč S3."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du behöver också din S3-åtkomstnyckel och den hemliga nyckeln."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S3 erişim anahtarınıza ve gizli anahtarınıza da ihtiyacınız olacak."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вам також знадобляться ключ доступу та секретний ключ S3."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你还需要 S3 访问密钥和私密密钥。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你還需要 S3 存取密鑰和私密密鑰。"
+          }
+        }
+      }
+    },
+    "Show Code" : {
+      "comment" : "Settings, Your recovery code section: button revealing the code in place.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "عرض الرمز"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показване на кода"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zobrazit kód"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vis kode"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code zeigen"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Εμφάνιση κωδικού"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Code"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar código"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Näytä koodi"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher le code"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצגת הקוד"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prikaži kod"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kód megjelenítése"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostra codice"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コードを表示"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "코드 보기"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vis kode"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toon code"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokaż kod"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar código"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar código"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afișează codul"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zobraziť kód"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Visa kod"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kodu göster"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показати код"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示代码"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "顯示代碼"
+          }
+        }
+      }
+    },
+    "Hide" : {
+      "comment" : "Settings, Your recovery code section: button hiding the shown code again.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إخفاء"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скриване"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skrýt"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skjul"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausblenden"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Απόκρυψη"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Piilota"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Masquer"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הסתרה"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sakrij"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elrejtés"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nascondi"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "非表示"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "가리기"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skjul"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verberg"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukryj"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ascunde"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skryť"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dölj"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gizle"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сховати"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隱藏"
           }
         }
       }

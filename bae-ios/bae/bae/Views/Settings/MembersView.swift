@@ -6,7 +6,7 @@ private let logger = Logger.bae("MembersView")
 
 /// The library's people and their devices. Admins invite people, approve or
 /// decline their join requests, change roles and remove people; each person
-/// removes their own devices, and an admin can remove anyone's.
+/// adds and removes their own devices, and an admin can remove anyone's.
 struct MembersView: View {
     @Environment(MembershipStore.self)
     private var store
@@ -15,6 +15,8 @@ struct MembersView: View {
 
     @State
     private var showInvite = false
+    @State
+    private var showAddDevice = false
     @State
     private var removal: Removal?
     /// What the person still has to do in the provider after removing a
@@ -49,7 +51,8 @@ struct MembersView: View {
                                         ?? String(localized: "This person")
                                 )
                             },
-                            onRemoveDevice: { removal = .device($0) }
+                            onRemoveDevice: { removal = .device($0) },
+                            onAddDevice: { showAddDevice = true }
                         )
                     }
                 }
@@ -99,6 +102,12 @@ struct MembersView: View {
         .onDisappear { task?.cancel() }
         .sheet(isPresented: $showInvite) {
             InvitePersonView(onDismiss: { showInvite = false })
+        }
+        .sheet(isPresented: $showAddDevice) {
+            AddDeviceView(
+                generate: sync.generateRestoreCode,
+                onDismiss: { showAddDevice = false }
+            )
         }
         .confirmationDialog(
             removalTitle,
@@ -175,7 +184,8 @@ struct MembersView: View {
 }
 
 /// One member: name, role, the "You" marker, and each of their devices, each
-/// removable by swiping when this person may remove it.
+/// removable by swiping when this person may remove it, with Add Device under
+/// this device's own person.
 private struct PersonSection: View {
     let name: String?
     let member: BridgeMember
@@ -184,6 +194,7 @@ private struct PersonSection: View {
     let onSetRole: (BridgeMemberRole) -> Void
     let onRemove: () -> Void
     let onRemoveDevice: (BridgeDevice) -> Void
+    let onAddDevice: () -> Void
 
     var body: some View {
         Section {
@@ -225,6 +236,12 @@ private struct PersonSection: View {
                             .disabled(busy)
                         }
                     }
+            }
+            // A section's person never changes, so including this only in
+            // one's own section never changes a section's size after it first
+            // lays out.
+            if member.isSelf {
+                Button("Add Device\u{2026}", action: onAddDevice)
             }
         }
     }
@@ -280,6 +297,9 @@ private struct JoinRequestRow: View {
     NavigationStack {
         MembersView()
     }
+    .environment(
+        MembershipStore.stub(people: PreviewData.members, selfIsAdmin: true)
+    )
     .previewStores()
 }
 #endif

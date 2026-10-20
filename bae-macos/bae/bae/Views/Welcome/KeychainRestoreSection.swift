@@ -15,7 +15,7 @@ struct KeychainRestoreSection: View {
                 title: "Restore from iCloud Keychain",
                 infoTip: InfoTip(
                     text:
-                        "Restore codes saved by your other devices signed in to this Apple Account."
+                        "Recovery codes saved by your other devices signed in to this Apple Account."
                 )
             )
             ForEach(entries, id: \.info.libraryId) { entry in

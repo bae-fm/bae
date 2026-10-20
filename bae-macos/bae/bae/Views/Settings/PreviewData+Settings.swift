@@ -113,14 +113,19 @@
             ),
         ]
 
+        /// A recovery code shaped like coven's: `CVR1-` and uppercase base32.
+        static let recoveryCode =
+            "CVR1-"
+            + String(repeating: "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567", count: 6)
+
         /// A `Sync` whose reads serve preview values, so the library-settings
         /// previews never touch cloud storage.
         static func previewSync() -> Sync {
             Sync(
                 generateRestoreCode: {
                     BridgeRestoreCodeShare(
-                        code: "restore-code-preview",
-                        qrText: "restore-code-preview",
+                        code: recoveryCode,
+                        qrText: recoveryCode,
                         qrCarriesS3Key: false
                     )
                 },

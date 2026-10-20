@@ -89,7 +89,7 @@ struct BootstrapCodeScreen: View {
         case .restore(.some):
             Text("Restore with the code saved in iCloud Keychain.")
         case .restore(nil):
-            Text("Scan or paste your restore code.")
+            Text("Scan or paste your recovery code.")
         case .join:
             Text(
                 "Scan or paste the invitation an admin of the library sent you."
@@ -121,7 +121,7 @@ struct BootstrapCodeScreen: View {
                     value: saved.info.location.accountLine
                 )
             } header: {
-                Text("Saved restore code")
+                Text("Saved recovery code")
             } footer: {
                 subtitle
             }
