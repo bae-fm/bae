@@ -37,7 +37,7 @@ large_enum_variant = "allow"
 
 [workspace.dependencies]
 # Every consumer, including tests, uses coven's application facade.
-coven = { git = "https://github.com/bae-fm/coven", rev = "747e4204bb0c4244022e9081c2169708637e1935" }
+coven = { git = "https://github.com/bae-fm/coven", rev = "56c2bfc8cc2b29c7adbe2e24340197ae88024c96" }
 # OptionalExtension, dynamic parameters and SQLite callback errors are not
 # re-exported by coven. This is the version coven's SQL contexts use.
 rusqlite = { version = "0.40.2", features = ["functions"] }

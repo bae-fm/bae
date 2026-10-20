@@ -148,6 +148,8 @@ open class AppService: @unchecked Sendable, Observable {
     /// Cast transport: browse for devices, and move playback to or from one.
     private nonisolated let cast: Cast
     private let playbackValues: PlaybackValueHandler
+    /// Reports the network path becoming usable while this library is open.
+    private let networkPathReports: NetworkPathReports
 
     #if DEBUG
         private let testAccess: AppServiceTestAccess
@@ -195,6 +197,9 @@ open class AppService: @unchecked Sendable, Observable {
         sync = components.sync
         downloads = components.downloads
         cast = components.cast
+        networkPathReports = NetworkPathReports { [sync = components.sync] in
+            sync.reportNetworkChange()
+        }
         playbackValues = PlaybackValueHandler(
             playbackStore: components.playbackStore,
             castStore: components.castStore
@@ -228,12 +233,26 @@ open class AppService: @unchecked Sendable, Observable {
         try appHandle.closeLibrary()
     }
 
+    /// Save playback and stop the library's services. The network reports
+    /// stop once it has; a failed shutdown leaves the library open and
+    /// reporting.
     public func shutdown() async throws {
         try await appHandle.shutdown()
+        networkPathReports.stop()
     }
 
     public func triggerSync() {
         sync.triggerSync()
+    }
+
+    /// Tell sync the device's network may be back. The platform calls it on a
+    /// transition: the app coming to the foreground, or the device waking;
+    /// the session reports the network path itself. Sync ends every backoff
+    /// that followed an attempt no provider answered and runs a pass now, so
+    /// work cut off while the device slept or the app sat in the background
+    /// resumes at once. It requests a pass as `triggerSync` does.
+    public func reportNetworkChange() {
+        sync.reportNetworkChange()
     }
 
     public nonisolated func renameLibrary(
@@ -251,7 +270,10 @@ open class AppService: @unchecked Sendable, Observable {
     /// Remove this library from this device, discarding what it hasn't
     /// uploaded.
     public func removeLibrary() async throws -> BridgeLibraryRemoval {
-        try await appHandle.removeLibrary()
+        // Whatever the outcome this session ends: a failed removal closes
+        // the library and opens it again in a new session.
+        defer { networkPathReports.stop() }
+        return try await appHandle.removeLibrary()
     }
 
     #if os(iOS)
@@ -335,6 +357,7 @@ open class AppService: @unchecked Sendable, Observable {
 
     public func startCommonSubscriptions() {
         membershipStore.start()
+        networkPathReports.start()
         commonSubscriptions.start(
             applyPlayback: { [weak self] values in
                 guard let self else { return }

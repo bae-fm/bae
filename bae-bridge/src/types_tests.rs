@@ -670,12 +670,13 @@ fn a_pending_record_with_its_error_crosses_with_that_error_as_its_details() {
         reason: coven::PendingReason::Storage {
             provider: coven::CloudProvider::S3,
             failure: coven::StorageFailure::Network,
+            answered: false,
         },
     });
     let without = BridgePendingRecord::from_core(item.clone());
     assert_eq!(
         without.reason.detail,
-        "Storage { provider: S3, failure: Network }"
+        "Storage { provider: S3, failure: Network, answered: false }"
     );
 
     item.cause = Some(std::sync::Arc::new(coven::StorageError::Provider {

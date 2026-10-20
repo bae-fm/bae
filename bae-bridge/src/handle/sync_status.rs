@@ -81,6 +81,20 @@ forward! { sync this => {
         this.services.trigger_sync();
     }
 
+    /// Report that the device's network may be back. Apps call it on a
+    /// transition, not continuously: when the platform's network monitor
+    /// reports the network became available or changed, when the app returns
+    /// to the foreground, and when the device wakes. While the network was
+    /// cut off (Android blocks a locked phone's background network), every
+    /// attempt failed without a provider answer and backed off up to five
+    /// minutes; this ends those backoffs — the connection's, operations',
+    /// uploads' and downloads' — and runs a pass at once. Backoffs after a
+    /// provider's answer and provider cooldowns hold. It also requests a pass,
+    /// so a caller need not also call `trigger_sync`.
+    fn report_network_change() {
+        this.services.network_changed();
+    }
+
     fn is_sync_ready() -> bool {
         this.services.is_sync_ready()
     }

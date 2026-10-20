@@ -94,6 +94,10 @@ impl Database {
         self.inner.handle.sync_now();
     }
 
+    pub(crate) fn network_changed(&self) {
+        self.inner.handle.network_changed();
+    }
+
     pub(crate) async fn retry_pending_operation(
         &self,
         operation: coven::OperationId,

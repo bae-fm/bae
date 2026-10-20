@@ -215,6 +215,7 @@ pub fn pending_action(record: &coven::PendingRecord) -> PendingAction {
             provider,
             failure:
                 coven::StorageFailure::Authentication | coven::StorageFailure::AccessNotGranted { .. },
+            ..
         } => PendingAction::SignIn(*provider),
         R::FileUnavailable(coven::FileMissingReason::Source(_)) => PendingAction::RestoreFile,
         R::UpdateRequired(_) | R::Refused(_) => PendingAction::UpdateApp,
@@ -278,6 +279,7 @@ mod tests {
             reason: coven::PendingReason::Storage {
                 provider: coven::CloudProvider::Dropbox,
                 failure: coven::StorageFailure::Authentication,
+                answered: true,
             },
         };
         assert_eq!(
@@ -295,6 +297,7 @@ mod tests {
                 failure: coven::StorageFailure::AccessNotGranted {
                     required: coven::OAuthAccess::Dropbox(coven::DropboxAccess::FullDropbox),
                 },
+                answered: true,
             },
         };
         assert_eq!(
@@ -454,6 +457,7 @@ mod tests {
     fn connection_record(failure: coven::StorageFailure) -> super::super::PendingItem {
         super::super::PendingItem::before_open(record(coven::PendingReason::Storage {
             provider: coven::CloudProvider::S3,
+            answered: failure != coven::StorageFailure::Network,
             failure,
         }))
     }

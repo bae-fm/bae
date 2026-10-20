@@ -610,6 +610,30 @@ async fn startup_and_retry_publish_the_native_connection_status() {
     manager.close().await.unwrap();
 }
 
+/// Android blocked the network while the phone was locked, so the pass found
+/// no network and backs off. Once the network is back, a sync request still
+/// waits out that backoff; the app's network report ends it and a pass runs
+/// at once. The fixed clock never moves, so no backoff ends by itself.
+#[tokio::test]
+async fn a_network_report_ends_the_offline_backoff_and_syncs() {
+    let clock = Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
+    let (manager, _temp) = setup_test_manager_with_clock(clock).await;
+    connect_test_cloud_with_sync_loop(&manager).await;
+    let mut status = manager.database.subscribe_sync_status();
+    manager.storage.set_online(false);
+    manager.trigger_sync();
+    tokio::time::timeout(std::time::Duration::from_secs(20), status.wait_for(|status| matches!(status, coven::SyncStatus::Offline { .. }))).await.unwrap().unwrap();
+    manager.storage.set_online(true);
+    let requests = manager.storage.request_trace().len();
+    manager.trigger_sync();
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    assert_eq!(manager.storage.request_trace().len(), requests, "a sync request ran a pass inside the offline backoff");
+    assert!(matches!(*status.borrow(), coven::SyncStatus::Offline { .. }));
+    manager.network_changed();
+    tokio::time::timeout(std::time::Duration::from_secs(20), status.wait_for(|status| matches!(status, coven::SyncStatus::Synced { .. }))).await.unwrap().unwrap();
+    manager.close().await.unwrap();
+}
+
 /// A launch whose connect failed records why in the failure's own category —
 /// a keychain locked for this session reads as locked, not as an internal
 /// failure —

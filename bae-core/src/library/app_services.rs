@@ -349,6 +349,7 @@ impl AppServices {
     delegate_async!(manager, disconnect_cloud_provider => disconnect_cloud_provider() -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, unlock_store_key => unlock_store_key() -> Result<(), crate::library::LibraryError>);
     delegate_sync!(manager, trigger_sync => trigger_sync() -> ());
+    delegate_sync!(manager, network_changed => network_changed() -> ());
     delegate_async!(manager, reconnect_sync => reconnect_sync() -> Result<(), crate::library::LibraryError>);
     delegate_sync!(manager, is_sync_ready => is_sync_ready() -> bool);
     delegate_sync!(manager, set_downloads_paused => set_downloads_paused(paused: bool) -> ());

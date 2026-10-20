@@ -2,7 +2,9 @@ package fm.bae.app
 
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
 import androidx.glance.appwidget.updateAll
+import androidx.lifecycle.ProcessLifecycleOwner
 import fm.bae.app.data.ArtworkLoadingStore
 import fm.bae.app.data.BrowserPageStores
 import fm.bae.app.data.Cast
@@ -83,12 +85,14 @@ class OpenLibrary internal constructor(
     private var eventChannel: Channel<BridgeUiEvent>? = null
     private var eventJob: Job? = null
     private var widgetJob: Job? = null
+    private var networkReports: NetworkChangeReporter? = null
     private val valueSubscriptions = mutableListOf<LiveSubscription>()
     private val widgetSnapshotStore = WidgetSnapshotStore(appContext)
 
     /**
      * Subscribe to retained values first, then route transient notifications
-     * through the event adapter.
+     * through the event adapter, and report to the handle each time its
+     * network may be back ([NetworkChangeReporter]).
      *
      * The [PlaybackService] is not started here: Android starts a service only
      * from the foreground, so `PlaybackSystemHooks` starts it when playback
@@ -117,6 +121,12 @@ class OpenLibrary internal constructor(
             },
         )
         appHandle.triggerSync()
+        networkReports =
+            NetworkChangeReporter(
+                connectivity = checkNotNull(appContext.getSystemService(ConnectivityManager::class.java)),
+                lifecycle = ProcessLifecycleOwner.get().lifecycle,
+                report = appHandle::reportNetworkChange,
+            ).also(NetworkChangeReporter::start)
         observeNowPlayingForWidget(scope)
     }
 
@@ -287,6 +297,9 @@ class OpenLibrary internal constructor(
     }
 
     private fun stopSessionServices() {
+        // First: a report must never reach the handle once it closes.
+        networkReports?.stop()
+        networkReports = null
         browserPages.cancel()
         libraryQueries.cancel()
         // Detach the audio-focus listener + becoming-noisy receiver: they call

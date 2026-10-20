@@ -51,6 +51,18 @@ impl LibraryManager {
         self.database.sync_now();
     }
 
+    /// The device's network may be back: the platform reported the network
+    /// became available or changed, the app came to the foreground, or the
+    /// device woke. coven ends every backoff that followed an attempt no
+    /// provider answered — the connection's, operations', uploads' and
+    /// downloads' — and runs a pass, so work blocked while the OS cut the
+    /// network off resumes at once instead of sitting out a backoff of up to
+    /// five minutes. Backoffs after a provider's answer and provider
+    /// cooldowns hold. It requests a pass as [`Self::trigger_sync`] does.
+    pub fn network_changed(&self) {
+        self.database.network_changed();
+    }
+
     pub fn subscribe_eager_cache_fill_status(
         &self,
     ) -> coven::LiveQuery<crate::library::EagerCacheFillStatus> {

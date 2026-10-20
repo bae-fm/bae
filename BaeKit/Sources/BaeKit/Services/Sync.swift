@@ -43,6 +43,9 @@ public final class Sync: Sendable, Observable {
         @Sendable (Int64, BridgeAdminAccess) async throws -> Void
     public let confirmAccessKeyDeleted: @Sendable (String) async throws -> Void
     public let triggerSync: @Sendable () -> Void
+    /// Tell sync the device's network may be back; see
+    /// `AppService.reportNetworkChange`.
+    public let reportNetworkChange: @Sendable () -> Void
 
     public init(
         disconnectCloudProvider: @escaping @Sendable () async throws -> Void = {
@@ -134,7 +137,8 @@ public final class Sync: Sendable, Observable {
             @escaping @Sendable (String) async throws -> Void = { _ in
                 throw StubError.notImplemented
             },
-        triggerSync: @escaping @Sendable () -> Void = {}
+        triggerSync: @escaping @Sendable () -> Void = {},
+        reportNetworkChange: @escaping @Sendable () -> Void = {}
     ) {
         self.disconnectCloudProvider = disconnectCloudProvider
         self.saveSyncConfig = saveSyncConfig
@@ -162,6 +166,7 @@ public final class Sync: Sendable, Observable {
         self.deleteAccessKey = deleteAccessKey
         self.confirmAccessKeyDeleted = confirmAccessKeyDeleted
         self.triggerSync = triggerSync
+        self.reportNetworkChange = reportNetworkChange
     }
 
     public convenience init(
@@ -225,7 +230,8 @@ public final class Sync: Sendable, Observable {
             confirmAccessKeyDeleted: {
                 try await handle.confirmAccessKeyDeleted(accessKeyId: $0)
             },
-            triggerSync: { handle.triggerSync() }
+            triggerSync: { handle.triggerSync() },
+            reportNetworkChange: { handle.reportNetworkChange() }
         )
     }
 

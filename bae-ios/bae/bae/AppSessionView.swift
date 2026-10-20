@@ -45,6 +45,10 @@ struct AppSessionView: View {
                     holder.retryOpenIfKeychainWasLocked(
                         trigger: "the scene becoming active"
                     )
+                    // The network may be back after the app sat in the
+                    // background or the device slept: sync's offline backoffs
+                    // end now rather than run out.
+                    holder.appService?.reportNetworkChange()
                 }
                 // The only playback save point on iOS, since core keeps running for
                 // background audio; the background task keeps iOS from suspending
