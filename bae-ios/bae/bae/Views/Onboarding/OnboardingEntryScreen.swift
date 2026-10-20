@@ -4,12 +4,13 @@ import os.log
 
 private let logger = Logger.bae("OnboardingEntryScreen")
 
-/// The first-run chooser: restore a library with your restore code, join one
-/// by invitation, or restore from a code coven saved in iCloud Keychain.
+/// The first-run chooser: add this device to one of your own libraries with
+/// its code, join someone's library by invitation, or restore from a code
+/// coven saved in iCloud Keychain.
 struct OnboardingEntryScreen: View {
     let savedRestoreCodes: @Sendable () async throws -> [BridgeSavedRestoreCode]
     let onJoin: () -> Void
-    let onRestore: () -> Void
+    let onAddDevice: () -> Void
     let onRestoreSaved: (SavedRestoreEntry) -> Void
 
     @Environment(LibraryRemovals.self)
@@ -42,14 +43,14 @@ struct OnboardingEntryScreen: View {
                 )
 
                 VStack(spacing: ThemeSpace.group) {
-                    Button(action: onRestore) {
-                        Text("Restore with your code")
+                    Button(action: onAddDevice) {
+                        Text("Add device")
                             .frame(maxWidth: Self.buttonWidth)
                     }
                     .buttonStyle(PrimaryButtonStyle())
 
                     Button(action: onJoin) {
-                        Text("Join a library")
+                        Text("Join library")
                             .frame(maxWidth: Self.buttonWidth)
                     }
                     .buttonStyle(.bordered)

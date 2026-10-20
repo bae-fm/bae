@@ -63,7 +63,7 @@ struct WelcomeView: View {
                 onFinishReplacement: onFinishReplacement,
                 onRestoreSaved: { mode = .restore($0) },
                 onJoin: { mode = .join },
-                onRestore: { mode = .restore(nil) }
+                onAddDevice: { mode = .restore(nil) }
             )
         case .restore(let saved):
             BootstrapCodeView(

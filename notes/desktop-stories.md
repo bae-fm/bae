@@ -9,7 +9,7 @@ as verification scripts: each story is checkable against a running app.
 On first launch the welcome screen finds no library on this device and nothing
 restorable. It shows the bae wordmark and the subtitle "Get started with your
 music library." Three stacked actions appear: create new library (prominent,
-the default action), join a library, restore from cloud.
+the default action), join library, add device.
 
 ## 2. Creating the first library
 

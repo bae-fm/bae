@@ -13,7 +13,7 @@ enum PreviewScenes {
         OnboardingEntryScreen(
             savedRestoreCodes: { [] },
             onJoin: {},
-            onRestore: {},
+            onAddDevice: {},
             onRestoreSaved: { _ in }
         )
         .background(Theme.background)

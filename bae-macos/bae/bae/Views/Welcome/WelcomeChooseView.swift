@@ -5,7 +5,8 @@ import os.log
 private let logger = Logger.bae("WelcomeChooseView")
 
 /// The first screen: open a library on this device, restore one from a code
-/// saved in iCloud Keychain, or create, join, or restore by code.
+/// saved in iCloud Keychain, create one, join someone's library with an
+/// invite, or add this Mac to one of the person's own libraries with its code.
 struct WelcomeChooseView: View {
     /// A failed library open, shown as a callout under the subtitle.
     let loadError: DisplayError?
@@ -17,7 +18,7 @@ struct WelcomeChooseView: View {
     let onFinishReplacement: (String, BridgeReplacedBy) -> Void
     let onRestoreSaved: (BridgeSavedRestoreCode) -> Void
     let onJoin: () -> Void
-    let onRestore: () -> Void
+    let onAddDevice: () -> Void
 
     @Environment(LibrarySetup.self)
     private var setup
@@ -125,7 +126,8 @@ struct WelcomeChooseView: View {
                 WelcomeLoadErrorCallout(
                     title: "Library failed to open",
                     error: loadError,
-                    guidance: "Choose another library or restore from cloud."
+                    guidance:
+                        "Choose another library, or restore it with “Add device”."
                 )
             }
             if let removalError = removals.error {
@@ -198,11 +200,11 @@ struct WelcomeChooseView: View {
                 .frame(width: Self.firstRunButtonWidth)
                 .disabled(isBusy)
                 .keyboardShortcut(.defaultAction)
-            Button("Join a library", action: onJoin)
+            Button("Join library", action: onJoin)
                 .buttonStyle(.bordered)
                 .frame(width: Self.firstRunButtonWidth)
                 .disabled(isBusy)
-            Button("Restore from cloud", action: onRestore)
+            Button("Add device", action: onAddDevice)
                 .buttonStyle(.bordered)
                 .frame(width: Self.firstRunButtonWidth)
                 .disabled(isBusy)
@@ -218,9 +220,9 @@ struct WelcomeChooseView: View {
             HStack(spacing: ThemeSpace.group) {
                 Button(action: doCreate) { createButtonLabel }
                     .disabled(isBusy)
-                Button("Join a library", action: onJoin)
+                Button("Join library", action: onJoin)
                     .disabled(isBusy)
-                Button("Restore from cloud", action: onRestore)
+                Button("Add device", action: onAddDevice)
                     .disabled(isBusy)
             }
             .buttonStyle(.bordered)
@@ -334,7 +336,7 @@ private struct RemovalErrorCallout: View {
                 onFinishReplacement: { _, _ in },
                 onRestoreSaved: { _ in },
                 onJoin: {},
-                onRestore: {}
+                onAddDevice: {}
             )
         }
         .environment(LibrarySetup.stub())
@@ -351,7 +353,7 @@ private struct RemovalErrorCallout: View {
                 onFinishReplacement: { _, _ in },
                 onRestoreSaved: { _ in },
                 onJoin: {},
-                onRestore: {}
+                onAddDevice: {}
             )
         }
         .environment(PreviewData.welcomeSetup())
@@ -368,7 +370,7 @@ private struct RemovalErrorCallout: View {
                 onFinishReplacement: { _, _ in },
                 onRestoreSaved: { _ in },
                 onJoin: {},
-                onRestore: {}
+                onAddDevice: {}
             )
         }
         .environment(PreviewData.welcomeSetup())

@@ -21819,66 +21819,13 @@
         }
       }
     },
-    "Join a library" : {
+    "Join library" : {
+      "comment" : "First screen on a new device: the choice, and the title of its screen, to join someone's library with an invite.",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Join a library"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unirse a una biblioteca"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rejoindre une bibliothèque"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bibliothek beitreten"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Participar de uma biblioteca"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ライブラリに参加"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "加入资料库"
-          }
-        },
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "الانضمام إلى مكتبة"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "הצטרפות לספרייה"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Приєднатися до бібліотеки"
           }
         },
         "bg" : {
@@ -21887,88 +21834,10 @@
             "value" : "Присъединяване към библиотека"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dołącz do biblioteki"
-          }
-        },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Připojit se ke knihovně"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pridruži se knjižnici"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "보관함 참여"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "加入資料庫"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unisciti a una libreria"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bir kitaplığa katıl"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deelnemen aan bibliotheek"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pripojiť sa ku knižnici"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Csatlakozás könyvtárhoz"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alătură-te unei biblioteci"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Σύνδεση σε βιβλιοθήκη"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aderir a uma biblioteca"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anslut dig till ett bibliotek"
           }
         },
         "da" : {
@@ -21977,16 +21846,148 @@
             "value" : "Deltag i et bibliotek"
           }
         },
-        "nb" : {
+        "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bli med i et bibliotek"
+            "value" : "Bibliothek beitreten"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Σύνδεση σε βιβλιοθήκη"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Join library"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unirse a una biblioteca"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Liity kirjastoon"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rejoindre une bibliothèque"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצטרפות לספרייה"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pridruži se fonoteci"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Csatlakozás könyvtárhoz"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unisciti a una libreria"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ライブラリに参加"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "라이브러리 참여"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bli med i et bibliotek"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deelnemen aan bibliotheek"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dołącz do biblioteki"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Participar de uma biblioteca"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aderir a uma biblioteca"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alătură-te unei biblioteci"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pripojiť sa ku knižnici"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gå med i ett bibliotek"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kitaplığa katıl"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приєднатися до бібліотеки"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加入库"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加入資料庫"
           }
         }
       }
@@ -23542,7 +23543,7 @@
       }
     },
     "Add this device to a library you already have, or to one you were invited to." : {
-      "comment" : "Onboarding: the first screen's explanation under the bae wordmark, above Restore with your code and Join a library.",
+      "comment" : "Onboarding: the first screen's explanation under the bae wordmark, above Add device and Join library.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
@@ -34931,179 +34932,6 @@
         }
       }
     },
-    "Restore from cloud" : {
-      "comment" : "Welcome screen: button/title to restore a library from cloud",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "استعادة من السحابة"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Възстановяване от облака"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Obnovit z cloudu"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gendan fra skyen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restore from cloud"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aus der Cloud wiederherstellen"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Επαναφορά από το cloud"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restaurar desde la nube"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Palauta pilvestä"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restaurer depuis le cloud"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "שחזר מהענן"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vrati iz oblaka"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Visszaállítás a felhőből"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ripristina dal cloud"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "クラウドから復元"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "클라우드에서 복원"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gjenopprett fra skyen"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Herstellen vanuit cloud"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Przywróć z chmury"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restaurar da nuvem"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restaurar a partir da nuvem"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restaurează din cloud"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Obnoviť z cloudu"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Återställ från molnet"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Buluttan geri yükle"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Відновити з хмари"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "从云端恢复"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "從雲端還原"
-          }
-        }
-      }
-    },
     "Restore from iCloud Keychain" : {
       "comment" : "Welcome screen: restore option reading saved codes from the user's iCloud Keychain",
       "extractionState" : "stale",
@@ -35444,170 +35272,175 @@
         }
       }
     },
-    "Restore with your code" : {
-      "comment" : "Onboarding: the first screen's primary button, which opens the screen to scan or paste a recovery code.",
-      "extractionState" : "manual",
+    "Add device" : {
+      "comment" : "First screen on a new device: the choice, and the title of its screen, to add this device to the person's own library with the code Add Device… shows on another of their devices.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "الاستعادة باستخدام رمزك"
+            "value" : "إضافة جهاز"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Възстановяване с вашия код"
+            "value" : "Добавяне на устройство"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obnovit pomocí vašeho kódu"
+            "value" : "Přidat zařízení"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gendan med din kode"
+            "value" : "Tilføj enhed"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mit deinem Code wiederherstellen"
+            "value" : "Gerät hinzufügen"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Επαναφορά με τον κωδικό σας"
+            "value" : "Προσθήκη συσκευής"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add device"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaurar con tu código"
+            "value" : "Añadir dispositivo"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Palauta koodillasi"
+            "value" : "Lisää laite"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaurer avec votre code"
+            "value" : "Ajouter un appareil"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "שחזור באמצעות הקוד שלכם"
+            "value" : "הוספת מכשיר"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vrati pomoću svog koda"
+            "value" : "Dodaj uređaj"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Visszaállítás a kódoddal"
+            "value" : "Eszköz hozzáadása"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ripristina con il tuo codice"
+            "value" : "Aggiungi dispositivo"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自分のコードで復元"
+            "value" : "デバイスを追加"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "내 코드로 복원"
+            "value" : "기기 추가"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gjenopprett med koden din"
+            "value" : "Legg til enhet"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Herstellen met je code"
+            "value" : "Apparaat toevoegen"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Przywróć za pomocą swojego kodu"
+            "value" : "Dodaj urządzenie"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaurar com seu código"
+            "value" : "Adicionar dispositivo"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaurar com o seu código"
+            "value" : "Adicionar dispositivo"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaurează cu codul tău"
+            "value" : "Adaugă dispozitiv"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obnoviť pomocou vášho kódu"
+            "value" : "Pridať zariadenie"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Återställ med din kod"
+            "value" : "Lägg till enhet"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kodunuzla geri yükleyin"
+            "value" : "Aygıt ekle"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Відновити за своїм кодом"
+            "value" : "Додати пристрій"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "使用你的代码恢复"
+            "value" : "添加设备"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "使用你的代碼還原"
+            "value" : "新增裝置"
           }
         }
       }
@@ -36116,174 +35949,175 @@
         }
       }
     },
-    "Scan or paste your recovery code." : {
+    "Scan or paste the code shown by Add Device… on one of your devices. If you've lost every device, use your recovery code." : {
+      "comment" : "Add device screen: explanation under the code field. Add Device… is the People button on another of the person's devices that shows the code.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "امسح رمز الاسترداد أو الصقه."
+            "value" : "امسح أو الصق الرمز الذي يعرضه «إضافة جهاز…» على أحد أجهزتك. إذا فقدت كل أجهزتك، فاستخدم رمز الاسترداد."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сканирайте или поставете кода си за възстановяване."
+            "value" : "Сканирайте или поставете кода, който „Добавяне на устройство…“ показва на някое от устройствата ви. Ако сте загубили всичките си устройства, използвайте кода си за възстановяване."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Naskenujte nebo vložte svůj kód pro obnovení."
+            "value" : "Naskenujte nebo vložte kód, který zobrazí „Přidat zařízení…“ na některém z vašich zařízení. Pokud jste přišli o všechna zařízení, použijte svůj kód pro obnovení."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scan eller indsæt din gendannelseskode."
+            "value" : "Scan eller indsæt koden, som »Tilføj enhed…« viser på en af dine enheder. Hvis du har mistet alle dine enheder, så brug din gendannelseskode."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scanne deinen Wiederherstellungscode oder füge ihn ein."
+            "value" : "Scanne den Code, den „Gerät hinzufügen …“ auf einem deiner Geräte zeigt, oder füge ihn ein. Wenn du alle Geräte verloren hast, verwende deinen Wiederherstellungscode."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Σαρώστε ή επικολλήστε τον κωδικό ανάκτησής σας."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escanea o pega tu código de recuperación."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skannaa tai liitä palautuskoodisi."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scannez ou collez votre code de récupération."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "סרקו או הדביקו את קוד השחזור שלכם."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skenirajte ili zalijepite svoj kod za oporavak."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Olvasd be vagy illeszd be a helyreállítási kódodat."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scansiona o incolla il tuo codice di recupero."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "復旧コードをスキャンするか貼り付けてください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "복구 코드를 스캔하거나 붙여넣으세요."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skann eller lim inn gjenopprettingskoden din."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scan of plak je herstelcode."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zeskanuj lub wklej swój kod odzyskiwania."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escaneie ou cole seu código de recuperação."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Digitalize ou cole o seu código de recuperação."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scanează sau lipește codul tău de recuperare."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Naskenujte alebo vložte svoj kód na obnovenie."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skanna eller klistra in din återställningskod."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kurtarma kodunuzu tarayın veya yapıştırın."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Скануйте або вставте свій код відновлення."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "扫描或粘贴你的恢复码。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "掃描或貼上你的復原碼。"
+            "value" : "Σαρώστε ή επικολλήστε τον κωδικό που εμφανίζει το «Προσθήκη συσκευής…» σε μία από τις συσκευές σας. Αν χάσατε όλες τις συσκευές σας, χρησιμοποιήστε τον κωδικό ανάκτησής σας."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scan or paste your recovery code."
+            "value" : "Scan or paste the code shown by Add Device… on one of your devices. If you've lost every device, use your recovery code."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escanea o pega el código que muestra “Añadir dispositivo…” en uno de tus dispositivos. Si has perdido todos tus dispositivos, usa tu código de recuperación."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skannaa tai liitä koodi, jonka ”Lisää laite…” näyttää jossakin laitteessasi. Jos olet menettänyt kaikki laitteesi, käytä palautuskoodiasi."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scannez ou collez le code qu’affiche « Ajouter un appareil… » sur l’un de vos appareils. Si vous avez perdu tous vos appareils, utilisez votre code de récupération."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סרקו או הדביקו את הקוד ש“הוספת מכשיר…” מציג באחד המכשירים שלכם. אם איבדתם את כל המכשירים, השתמשו בקוד השחזור שלכם."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skenirajte ili zalijepite kod koji „Dodaj uređaj…” prikazuje na jednom od vaših uređaja. Ako ste izgubili sve uređaje, upotrijebite svoj kod za oporavak."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Olvasd be vagy illeszd be a kódot, amelyet az „Eszköz hozzáadása…” mutat az egyik eszközödön. Ha minden eszközödet elvesztetted, használd a helyreállítási kódodat."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scansiona o incolla il codice che “Aggiungi dispositivo…” mostra su uno dei tuoi dispositivi. Se hai perso tutti i dispositivi, usa il tuo codice di recupero."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "いずれかのデバイスの「デバイスを追加…」に表示されるコードをスキャンするか貼り付けてください。すべてのデバイスを失った場合は、復旧コードを使用してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내 기기 중 하나의 ‘기기 추가…’에 표시되는 코드를 스캔하거나 붙여넣으세요. 모든 기기를 잃어버렸다면 복구 코드를 사용하세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skann eller lim inn koden som «Legg til enhet…» viser på en av enhetene dine. Har du mistet alle enhetene dine, bruker du gjenopprettingskoden din."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scan of plak de code die ‘Apparaat toevoegen…’ op een van je apparaten toont. Ben je al je apparaten kwijt, gebruik dan je herstelcode."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeskanuj lub wklej kod, który pokazuje „Dodaj urządzenie…” na jednym z twoich urządzeń. Jeśli nie masz już żadnego urządzenia, użyj swojego kodu odzyskiwania."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escaneie ou cole o código que “Adicionar dispositivo…” mostra em um dos seus dispositivos. Se você perdeu todos os seus dispositivos, use seu código de recuperação."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Digitalize ou cole o código que «Adicionar dispositivo…» mostra num dos seus dispositivos. Se perdeu todos os seus dispositivos, use o seu código de recuperação."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scanează sau lipește codul afișat de „Adaugă dispozitiv…” pe unul dintre dispozitivele tale. Dacă ai pierdut toate dispozitivele, folosește codul tău de recuperare."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Naskenujte alebo vložte kód, ktorý zobrazí „Pridať zariadenie…“ na niektorom z vašich zariadení. Ak ste prišli o všetky zariadenia, použite svoj kód na obnovenie."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skanna eller klistra in koden som ”Lägg till enhet…” visar på en av dina enheter. Om du har förlorat alla dina enheter använder du din återställningskod."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aygıtlarınızdan birinde “Aygıt ekle…” seçeneğinin gösterdiği kodu tarayın veya yapıştırın. Tüm aygıtlarınızı kaybettiyseniz kurtarma kodunuzu kullanın."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відскануйте або вставте код, який показує «Додати пристрій…» на одному з ваших пристроїв. Якщо ви втратили всі пристрої, скористайтеся своїм кодом відновлення."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "扫描或粘贴你的某台设备上“添加设备…”显示的代码。如果你丢失了所有设备，请使用你的恢复码。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "掃描或貼上你的某部裝置上「新增裝置…」顯示的代碼。如果你遺失了所有裝置，請使用你的復原碼。"
           }
         }
       }
@@ -44528,175 +44362,175 @@
         }
       }
     },
-    "Scan this with the new device. Or, on the new device, choose “Restore with your code” and type:" : {
-      "comment" : "Add a device sheet: instructions between the QR code and the recovery code. The quoted label is the onboarding button the new device offers for typing a code.",
+    "On the new device, choose “Add device”, then scan this or type:" : {
+      "comment" : "Add a device sheet: instructions between the QR code and the recovery code. The quoted label is the Add device choice on the new device's first screen.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "امسح هذا الرمز بالجهاز الجديد. أو اختر «الاستعادة باستخدام رمزك» على الجهاز الجديد واكتب:"
+            "value" : "على الجهاز الجديد، اختر «إضافة جهاز»، ثم امسح هذا الرمز أو اكتب:"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сканирайте това с новото устройство. Или на новото устройство изберете „Възстановяване с вашия код“ и въведете:"
+            "value" : "На новото устройство изберете „Добавяне на устройство“, след това сканирайте това или въведете:"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Naskenujte to novým zařízením. Nebo na novém zařízení zvolte „Obnovit pomocí vašeho kódu“ a zadejte:"
+            "value" : "Na novém zařízení zvolte „Přidat zařízení“ a pak naskenujte toto nebo zadejte:"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scan dette med den nye enhed. Eller vælg »Gendan med din kode« på den nye enhed, og skriv:"
+            "value" : "Vælg »Tilføj enhed« på den nye enhed, og scan derefter dette, eller skriv:"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scanne dies mit dem neuen Gerät. Oder wähle auf dem neuen Gerät „Mit deinem Code wiederherstellen“ und gib Folgendes ein:"
+            "value" : "Wähle auf dem neuen Gerät „Gerät hinzufügen“ und scanne dann dies oder gib Folgendes ein:"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Σαρώστε αυτό με τη νέα συσκευή. Ή, στη νέα συσκευή, επιλέξτε «Επαναφορά με τον κωδικό σας» και πληκτρολογήστε:"
+            "value" : "Στη νέα συσκευή, επιλέξτε «Προσθήκη συσκευής» και μετά σαρώστε αυτό ή πληκτρολογήστε:"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scan this with the new device. Or, on the new device, choose “Restore with your code” and type:"
+            "value" : "On the new device, choose “Add device”, then scan this or type:"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Escanea esto con el nuevo dispositivo. O bien, en el nuevo dispositivo, elige “Restaurar con tu código” y escribe:"
+            "value" : "En el nuevo dispositivo, elige “Añadir dispositivo” y luego escanea esto o escribe:"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skannaa tämä uudella laitteella. Tai valitse uudella laitteella ”Palauta koodillasi” ja kirjoita:"
+            "value" : "Valitse uudella laitteella ”Lisää laite” ja skannaa sitten tämä tai kirjoita:"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scannez ceci avec le nouvel appareil. Ou, sur le nouvel appareil, choisissez « Restaurer avec votre code » et saisissez :"
+            "value" : "Sur le nouvel appareil, choisissez « Ajouter un appareil », puis scannez ceci ou saisissez :"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "סרקו את זה במכשיר החדש. לחלופין, במכשיר החדש בחרו ב“שחזור באמצעות הקוד שלכם” והקלידו:"
+            "value" : "במכשיר החדש בחרו ב“הוספת מכשיר”, ואז סרקו את זה או הקלידו:"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skenirajte ovo novim uređajem. Ili na novom uređaju odaberite „Vrati pomoću svog koda” i upišite:"
+            "value" : "Na novom uređaju odaberite „Dodaj uređaj”, a zatim skenirajte ovo ili upišite:"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Olvasd be ezt az új eszközzel. Vagy az új eszközön válaszd ezt: „Visszaállítás a kódoddal”, majd írd be:"
+            "value" : "Az új eszközön válaszd ezt: „Eszköz hozzáadása”, majd olvasd be ezt, vagy írd be:"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scansiona questo codice con il nuovo dispositivo. Oppure, sul nuovo dispositivo, scegli “Ripristina con il tuo codice” e digita:"
+            "value" : "Sul nuovo dispositivo, scegli “Aggiungi dispositivo”, poi scansiona questo codice o digita:"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新しいデバイスでこれをスキャンしてください。または、新しいデバイスで「自分のコードで復元」を選んで、次のコードを入力してください："
+            "value" : "新しいデバイスで「デバイスを追加」を選んでから、これをスキャンするか、次のコードを入力してください："
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새 기기로 이 코드를 스캔하세요. 또는 새 기기에서 ‘내 코드로 복원’ 항목을 선택하고 다음을 입력하세요:"
+            "value" : "새 기기에서 ‘기기 추가’ 항목을 선택한 다음, 이 코드를 스캔하거나 다음을 입력하세요:"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skann dette med den nye enheten. Eller velg «Gjenopprett med koden din» på den nye enheten, og skriv inn:"
+            "value" : "Velg «Legg til enhet» på den nye enheten, og skann deretter dette eller skriv inn:"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scan dit met het nieuwe apparaat. Of kies op het nieuwe apparaat ‘Herstellen met je code’ en typ:"
+            "value" : "Kies op het nieuwe apparaat ‘Apparaat toevoegen’ en scan dan dit of typ:"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeskanuj to nowym urządzeniem. Albo na nowym urządzeniu wybierz „Przywróć za pomocą swojego kodu” i wpisz:"
+            "value" : "Na nowym urządzeniu wybierz „Dodaj urządzenie”, a potem zeskanuj to albo wpisz:"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Escaneie isto com o novo dispositivo. Ou, no novo dispositivo, escolha “Restaurar com seu código” e digite:"
+            "value" : "No novo dispositivo, escolha “Adicionar dispositivo” e depois escaneie isto ou digite:"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Leia isto com o novo dispositivo. Ou, no novo dispositivo, escolha «Restaurar com o seu código» e escreva:"
+            "value" : "No novo dispositivo, escolha «Adicionar dispositivo» e depois leia isto ou escreva:"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scanează asta cu noul dispozitiv. Sau, pe noul dispozitiv, alege „Restaurează cu codul tău” și tastează:"
+            "value" : "Pe noul dispozitiv, alege „Adaugă dispozitiv”, apoi scanează asta sau tastează:"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Naskenujte to novým zariadením. Alebo na novom zariadení vyberte „Obnoviť pomocou vášho kódu“ a zadajte:"
+            "value" : "Na novom zariadení vyberte „Pridať zariadenie“ a potom naskenujte toto alebo zadajte:"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skanna det här med den nya enheten. Eller välj ”Återställ med din kod” på den nya enheten och skriv:"
+            "value" : "Välj ”Lägg till enhet” på den nya enheten och skanna sedan det här eller skriv:"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bunu yeni aygıtla tarayın. Ya da yeni aygıtta “Kodunuzla geri yükleyin” seçeneğini seçip şunu yazın:"
+            "value" : "Yeni aygıtta “Aygıt ekle” seçeneğini seçin, ardından bunu tarayın ya da şunu yazın:"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Відскануйте це новим пристроєм. Або на новому пристрої виберіть «Відновити за своїм кодом» і введіть:"
+            "value" : "На новому пристрої виберіть «Додати пристрій», а потім відскануйте це або введіть:"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "用新设备扫描此代码。或者，在新设备上选择“使用你的代码恢复”，然后输入："
+            "value" : "在新设备上选择“添加设备”，然后扫描此代码或输入："
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "用新裝置掃描此代碼。或者，在新裝置上選擇「使用你的代碼還原」，然後輸入："
+            "value" : "在新裝置上選擇「新增裝置」，然後掃描此代碼或輸入："
           }
         }
       }

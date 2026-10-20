@@ -77,8 +77,9 @@ struct BootstrapCodeScreen: View {
 
     private var title: LocalizedStringKey {
         switch form.entry {
-        case .restore: "Restore from cloud"
-        case .join: "Join a library"
+        case .restore(.some): "Restore from iCloud Keychain"
+        case .restore(nil): "Add device"
+        case .join: "Join library"
         case .restoreOver: "Restore this library"
         case .finishRestore: "Finish restoring this library"
         }
@@ -89,7 +90,9 @@ struct BootstrapCodeScreen: View {
         case .restore(.some):
             Text("Restore with the code saved in iCloud Keychain.")
         case .restore(nil):
-            Text("Scan or paste your recovery code.")
+            Text(
+                "Scan or paste the code shown by Add Device… on one of your devices. If you've lost every device, use your recovery code."
+            )
         case .join:
             Text(
                 "Scan or paste the invitation an admin of the library sent you."

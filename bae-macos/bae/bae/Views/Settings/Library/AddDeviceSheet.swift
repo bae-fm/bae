@@ -61,7 +61,7 @@ struct AddDeviceSheet: View {
             }
 
             Text(
-                "Scan this with the new device. Or, on the new device, choose “Restore from cloud” and type:"
+                "On the new device, choose “Add device”, then scan this or type:"
             )
             .themeText(.detail)
             .foregroundStyle(.secondary)

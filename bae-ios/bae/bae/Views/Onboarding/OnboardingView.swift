@@ -1,10 +1,11 @@
 import BaeKit
 import SwiftUI
 
-/// First-run onboarding. Two ways to put a library on this device: restore
-/// it with your restore code — scanned from another of your devices, typed,
-/// or one coven saved in iCloud Keychain — or join someone's library with the
-/// invitation an admin sent you.
+/// First-run onboarding. Two ways to put a library on this device: add this
+/// device to your own library with its recovery code — scanned from Add
+/// Device on another of your devices, typed, or one coven saved in iCloud
+/// Keychain — or join someone's library with the invitation an admin sent
+/// you.
 struct OnboardingView: View {
     let setup: LibrarySetup
     /// The restored or joined library's open store, with the error a partly
@@ -25,7 +26,7 @@ struct OnboardingView: View {
             OnboardingEntryScreen(
                 savedRestoreCodes: setup.savedRestoreCodes,
                 onJoin: { show(.join) },
-                onRestore: { show(.restore(nil)) },
+                onAddDevice: { show(.restore(nil)) },
                 onRestoreSaved: { show(.restore($0.code)) }
             )
         case .code(let form):
