@@ -51,7 +51,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
 
     let manager = LibraryManager::new(
         database,
-        crate::config::AppDir::under_home(temp_dir.path()),
+        crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
         config_handle,
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidIds),

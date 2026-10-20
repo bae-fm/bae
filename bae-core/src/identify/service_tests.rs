@@ -17,7 +17,7 @@ async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
 
     let manager = LibraryManager::new(
         database,
-        crate::config::AppDir::under_home(temp_dir.path()),
+        crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
         Arc::new(ConfigHandle::new(config)),
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidIds),

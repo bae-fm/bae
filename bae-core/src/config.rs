@@ -424,7 +424,6 @@ impl Config {
     }
 
     pub fn save_active_library(&self, app_dir: &AppDir) -> Result<(), ConfigError> {
-        app_dir.create()?;
         write_atomic(
             &app_dir.active_library_pointer(),
             self.store_id.to_string().as_bytes(),

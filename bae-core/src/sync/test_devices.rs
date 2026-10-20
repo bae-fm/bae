@@ -79,7 +79,7 @@ impl TwoDevices {
                 .unwrap(),
         );
         let dir_a = TempDir::new().unwrap();
-        let app_a = AppDir::at(dir_a.path());
+        let app_a = AppDir::at(dir_a.path()).unwrap();
         let installation_a = coven::TestCoven::new();
         let handle_a =
             crate::library::configure_store(installation_a.builder(app_a.store_layout()))
@@ -112,7 +112,7 @@ impl TwoDevices {
         let a = device(dir_a, app_a, config_a, handle_a);
 
         let dir_b = TempDir::new().unwrap();
-        let app_b = AppDir::at(dir_b.path());
+        let app_b = AppDir::at(dir_b.path()).unwrap();
         let installation_b = coven::TestCoven::new();
         let builder = crate::library::configure_store(installation_b.builder(app_b.store_layout()))
             .storage_connector(Arc::new(storage.for_device()));

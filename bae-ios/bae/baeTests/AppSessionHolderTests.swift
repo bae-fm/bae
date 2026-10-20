@@ -14,8 +14,8 @@ import Testing
 struct AppSessionHolderTests {
     /// A holder wired to a no-op telemetry sink and a host with nothing
     /// registered, over a throwaway directory.
-    private func makeHolder() -> AppSessionHolder {
-        let appDir = BridgeAppDir(
+    private func makeHolder() throws -> AppSessionHolder {
+        let appDir = try BridgeAppDir(
             home: FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString)
                 .path
@@ -39,8 +39,8 @@ struct AppSessionHolderTests {
     }
 
     @Test("a fresh holder starts on the loading screen with no open library")
-    func freshHolderIsLoading() {
-        let holder = makeHolder()
+    func freshHolderIsLoading() throws {
+        let holder = try makeHolder()
 
         guard case .loading = holder.screen else {
             Issue.record("A fresh holder should start on .loading")
@@ -52,14 +52,14 @@ struct AppSessionHolderTests {
     }
 
     @Test("no library is active before one is opened")
-    func nothingActiveBeforeOpen() {
-        let holder = makeHolder()
+    func nothingActiveBeforeOpen() throws {
+        let holder = try makeHolder()
         #expect(!holder.isActive(makeLibrary(id: "lib-1")))
     }
 
     @Test("a device with no libraries onboards")
-    func noLibrariesOnboards() async {
-        let holder = makeHolder()
+    func noLibrariesOnboards() async throws {
+        let holder = try makeHolder()
 
         holder.start()
         await Observed.until {
@@ -72,8 +72,8 @@ struct AppSessionHolderTests {
     /// With no library open, the reset warning came from opening a library
     /// that would only fail the same way again, so leaving it opens nothing.
     @Test("leaving the reset warning with no open library onboards")
-    func leaveResetWithoutServiceOnboards() {
-        let holder = makeHolder()
+    func leaveResetWithoutServiceOnboards() throws {
+        let holder = try makeHolder()
 
         holder.leaveRecovery()
 

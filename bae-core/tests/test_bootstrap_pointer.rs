@@ -16,8 +16,8 @@ struct Home {
 impl Home {
     fn new() -> Self {
         let directory = TempDir::new().unwrap();
-        let app_dir = AppDir::under_home(directory.path());
-        let layout = coven::StoreLayout::new(directory.path().join(".bae"));
+        let app_dir = AppDir::under_home(directory.path()).unwrap();
+        let layout = app_dir.store_layout();
         Self {
             _directory: directory,
             app_dir,

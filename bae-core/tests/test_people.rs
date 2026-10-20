@@ -112,7 +112,11 @@ fn joining_creates_a_separate_profile_and_cannot_edit_another_person() {
             );
             let owner = bae_core::library::create_library(
                 owner_installation
-                    .builder(coven::StoreLayout::new(owner_dir.path().into()))
+                    .builder(
+                        bae_core::config::AppDir::at(owner_dir.path())
+                            .unwrap()
+                            .store_layout(),
+                    )
                     .storage_connector(storage.clone()),
                 bae_core::library_name::LibraryName::parse("Household").unwrap(),
             )
@@ -143,7 +147,11 @@ fn joining_creates_a_separate_profile_and_cannot_edit_another_person() {
             let (_keep_open, cancel) = tokio::sync::watch::channel(false);
             let joining = bae_core::library::join_with_invite(
                 guest_installation
-                    .builder(coven::StoreLayout::new(guest_dir.path().into()))
+                    .builder(
+                        bae_core::config::AppDir::at(guest_dir.path())
+                            .unwrap()
+                            .store_layout(),
+                    )
                     .storage_connector(Arc::new(storage.for_device())),
                 &invite.code,
                 "Guest Device",

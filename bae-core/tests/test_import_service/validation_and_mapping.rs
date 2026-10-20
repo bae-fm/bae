@@ -35,7 +35,7 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
         .expect("set verify_decode_on_import");
     let library_manager = LibraryManager::new(
         db.clone(),
-        bae_core::config::AppDir::under_home(temp.path()),
+        bae_core::config::AppDir::under_home(temp.path()).unwrap(),
         config_handle,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),

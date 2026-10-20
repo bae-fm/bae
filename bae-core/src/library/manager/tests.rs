@@ -47,7 +47,7 @@ async fn setup_test_manager() -> (TestManager, TempDir) {
 
 async fn setup_test_manager_with_clock(clock: coven::ClockRef) -> (TestManager, TempDir) {
     let temp_dir = TempDir::new().unwrap();
-    let app_dir = crate::config::AppDir::at(temp_dir.path());
+    let app_dir = crate::config::AppDir::at(temp_dir.path()).unwrap();
     let installation = coven::TestCoven::new();
     let storage = Arc::new(
         MemoryStorage::builder()

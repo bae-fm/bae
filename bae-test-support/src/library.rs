@@ -86,7 +86,7 @@ fn manager_for_database(
     let config_handle = test_config(&database, &dir.join("preferences"));
     let library_manager = bae_core::library::LibraryManager::new(
         database.clone(),
-        bae_core::config::AppDir::under_home(dir),
+        bae_core::config::AppDir::under_home(dir).unwrap(),
         config_handle,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),
@@ -133,12 +133,12 @@ pub fn setup_fresh_library(
     runtime: &tokio::runtime::Runtime,
 ) -> (bae_core::library::LibraryManager, tempfile::TempDir) {
     let tmp = tempfile::TempDir::new().unwrap();
-    let app_dir = bae_core::config::AppDir::under_home(tmp.path());
+    let app_dir = bae_core::config::AppDir::under_home(tmp.path()).unwrap();
     let installation = coven::TestCoven::new();
     let handle = runtime
         .block_on(
             installation
-                .builder(coven::StoreLayout::new(tmp.path().join(".bae")))
+                .builder(app_dir.store_layout())
                 .synced_tables(bae_core::sync::synced_tables())
                 .migrations(bae_core::migrations::all())
                 .create_store("Test Library"),

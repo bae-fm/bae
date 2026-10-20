@@ -501,7 +501,11 @@ mod tests {
         let installation = coven::TestCoven::new();
         installation.fail_next_keychain_operation();
         let failure = crate::library::configure_store(
-            installation.builder(coven::StoreLayout::new(temp.path().into())),
+            installation.builder(
+                crate::config::AppDir::at(temp.path())
+                    .unwrap()
+                    .store_layout(),
+            ),
         )
         .create_store("Unavailable Keychain")
         .await
@@ -524,7 +528,11 @@ mod tests {
         let installation = coven::TestCoven::new();
         installation.fail_next_keychain_operation();
         let failure = crate::library::configure_store(
-            installation.builder(coven::StoreLayout::new(temp.path().into())),
+            installation.builder(
+                crate::config::AppDir::at(temp.path())
+                    .unwrap()
+                    .store_layout(),
+            ),
         )
         .create_store("Keychain test")
         .await

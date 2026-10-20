@@ -66,16 +66,15 @@ public sealed partial class App : Application
     }
 
     // Telemetry first (so the sink exists for every later step and any failure it
-    // reports), then crash reporting, then the host every bridge call runs over.
-    // The update check is silent and fire-and-forget: it logs every failure and
-    // never blocks startup.
+    // reports), then crash reporting, then bae's directory and the host every
+    // bridge call runs over. The update check is silent and fire-and-forget: it
+    // logs every failure and never blocks startup.
     private static BridgeHost StartSession()
     {
-        var appDir = NativeBae.UserAppDir();
         BaeDiagnostics.Configure();
         BaeCrashReporting.Configure();
         BaeDiagnostics.Logger.Info("application launched");
-        var host = NativeBae.CreateHost(BaeDiagnostics.Handle, appDir);
+        var host = NativeBae.CreateHost(BaeDiagnostics.Handle, NativeBae.UserAppDir());
         _ = UpdateService.StageInBackgroundAsync();
         return host;
     }

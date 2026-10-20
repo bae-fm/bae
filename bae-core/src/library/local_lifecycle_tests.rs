@@ -17,7 +17,7 @@ struct Home {
 impl Home {
     fn new() -> Self {
         let temp = TempDir::new().unwrap();
-        let app_dir = AppDir::under_home(temp.path());
+        let app_dir = AppDir::under_home(temp.path()).unwrap();
         Self {
             _temp: temp,
             app_dir,

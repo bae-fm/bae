@@ -247,7 +247,7 @@ mod tests {
 
         let manager = LibraryManager::new(
             database.clone(),
-            crate::config::AppDir::under_home(temp.path()),
+            crate::config::AppDir::under_home(temp.path()).unwrap(),
             config_handle,
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidIds),
@@ -380,7 +380,7 @@ mod tests {
 
         let manager = LibraryManager::new(
             database.clone(),
-            crate::config::AppDir::under_home(temp.path()),
+            crate::config::AppDir::under_home(temp.path()).unwrap(),
             config_handle,
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidIds),

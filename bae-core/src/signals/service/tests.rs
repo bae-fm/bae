@@ -152,7 +152,7 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
 
     let manager = crate::library::LibraryManager::new(
         database,
-        crate::config::AppDir::under_home(tmp.path()),
+        crate::config::AppDir::under_home(tmp.path()).unwrap(),
         config_handle,
         clock,
         Arc::new(coven::UuidIds),

@@ -263,7 +263,7 @@ impl Database {
             })?;
         let installation = coven::TestCoven::new();
         let handle = installation
-            .builder(coven::StoreLayout::new(root.into()))
+            .builder(crate::config::AppDir::at(root)?.store_layout())
             .synced_tables(crate::sync::synced_tables())
             .migrations(crate::migrations::all())
             .clock(clock.clone())

@@ -123,7 +123,7 @@ async fn seeded_library_manager_with_diagnostics(
 
     let manager = LibraryManager::new(
         database,
-        crate::config::AppDir::under_home(home.path()),
+        crate::config::AppDir::under_home(home.path()).unwrap(),
         Arc::new(crate::config::ConfigHandle::new(config)),
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidIds),

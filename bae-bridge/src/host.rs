@@ -347,7 +347,7 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let host = BridgeHost::with_test_keyring(
             BridgeDiagnostics::noop(),
-            BridgeAppDir::new(root.path().to_str().unwrap().into()),
+            BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
         )
         .unwrap();
         let caller = tokio::runtime::Runtime::new().unwrap();

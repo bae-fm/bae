@@ -29,12 +29,12 @@ fn library_with_fixture(
     json: serde_json::Value,
 ) -> (TempDir, AppDir, String, std::path::PathBuf, TestCoven) {
     let dir = TempDir::new().unwrap();
-    let app_dir = AppDir::under_home(dir.path());
+    let app_dir = AppDir::under_home(dir.path()).unwrap();
     let installation = TestCoven::new();
     let runtime = bae_test_support::multi_thread_runtime();
     let id = runtime.block_on(async {
         let handle = create_library(
-            installation.builder(coven::StoreLayout::new(dir.path().join(".bae"))),
+            installation.builder(app_dir.store_layout()),
             bae_core::library_name::LibraryName::parse("Fixture Library").unwrap(),
         )
         .await
@@ -54,9 +54,7 @@ fn open(
     fixture: std::path::PathBuf,
     installation: &TestCoven,
 ) -> TestApp {
-    let builder = installation.builder(coven::StoreLayout::new(
-        fixture.parent().unwrap().join(".bae"),
-    ));
+    let builder = installation.builder(app_dir.store_layout());
     bootstrap_on_fixture(
         fixture,
         app_dir.clone(),
@@ -146,7 +144,7 @@ fn a_fixture_that_cannot_be_read_fails_the_open() {
         200,
         true,
         bae_core::diagnostics::Diagnostics::noop(),
-        installation.builder(coven::StoreLayout::new(dir.path().join(".bae"))),
+        installation.builder(app_dir.store_layout()),
         TestApp::start,
     );
 

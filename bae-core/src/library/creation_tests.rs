@@ -4,7 +4,7 @@ use coven::Storage as _;
 #[tokio::test]
 async fn creating_a_library_establishes_its_identity_without_marking_it_active() {
     let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path());
+    let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = coven::TestCoven::new();
     let handle = create_library(
         installation.builder(app_dir.store_layout()),
@@ -29,7 +29,7 @@ async fn creating_a_library_establishes_its_identity_without_marking_it_active()
 #[tokio::test]
 async fn failed_creation_removes_the_partial_library() {
     let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path());
+    let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = coven::TestCoven::new();
     installation.fail_next_keychain_operation();
     let error = create_library(
@@ -47,7 +47,7 @@ async fn failed_creation_removes_the_partial_library() {
 #[tokio::test]
 async fn resetting_an_unconnected_store_replaces_the_device_and_keeps_its_name() {
     let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path());
+    let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = coven::TestCoven::new();
     let handle = create_library(
         installation.builder(app_dir.store_layout()),
@@ -130,7 +130,7 @@ async fn keys_replaced_elsewhere(
     let phone = restore_from_code(
         installation
             .another_device()
-            .builder(AppDir::at(phone_dir.path()).store_layout())
+            .builder(AppDir::at(phone_dir.path()).unwrap().store_layout())
             .storage_connector(std::sync::Arc::new(storage.for_device())),
         &stale_code,
         Some(owner_key()),
@@ -185,7 +185,7 @@ async fn opens_as(builder: coven::CovenBuilder, store: coven::StoreId, device: c
 #[tokio::test]
 async fn a_failed_restore_over_this_devices_copy_leaves_it_to_open_or_retry() {
     let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path());
+    let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = coven::TestCoven::new();
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let other_storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
@@ -258,7 +258,7 @@ async fn a_failed_restore_over_this_devices_copy_leaves_it_to_open_or_retry() {
 #[tokio::test]
 async fn restoring_with_the_current_code_leaves_the_restored_copy() {
     let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path());
+    let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = coven::TestCoven::new();
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let replaced = keys_replaced_elsewhere(&installation, &app_dir, &storage).await;
@@ -342,7 +342,7 @@ async fn stop_at_swap<T>(app_dir: &AppDir, replacing: impl std::future::Future<O
 #[tokio::test]
 async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_again() {
     let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path());
+    let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = coven::TestCoven::new();
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let replaced = keys_replaced_elsewhere(&installation, &app_dir, &storage).await;
@@ -444,7 +444,7 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
 #[tokio::test]
 async fn removing_a_library_whose_restore_stopped_after_its_swap_deletes_both_copies() {
     let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path());
+    let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = std::sync::Arc::new(coven::TestCoven::new());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let replaced = keys_replaced_elsewhere(&installation, &app_dir, &storage).await;
@@ -508,7 +508,7 @@ async fn removing_a_library_whose_restore_stopped_after_its_swap_deletes_both_co
 #[tokio::test]
 async fn saved_codes_for_libraries_on_this_device_are_not_offered() {
     let temp = tempfile::TempDir::new().unwrap();
-    let layout = AppDir::at(temp.path()).store_layout();
+    let layout = AppDir::at(temp.path()).unwrap().store_layout();
     let here = coven::TestCoven::new()
         .create_closed_store(
             &layout,

@@ -75,18 +75,27 @@ public final class LibrarySetup: Sendable, Observable {
                             diagnostics: configureDiagnostics(
                                 config: .disabled
                             ),
-                            appDir: BridgeAppDir(
-                                home: FileManager.default.temporaryDirectory
-                                    .appendingPathComponent(
-                                        "bae-preview-\(UUID().uuidString)"
-                                    )
-                                    .path
-                            )
+                            appDir: previewAppDir()
                         ),
                         deviceName: "Preview Device"
                     )
                 }
             )
+        }
+
+        /// A fresh bae directory under the temporary directory.
+        private static func previewAppDir() -> BridgeAppDir {
+            let home = FileManager.default.temporaryDirectory
+                .appendingPathComponent("bae-preview-\(UUID().uuidString)")
+                .path
+            do {
+                return try BridgeAppDir(home: home)
+            }
+            catch {
+                preconditionFailure(
+                    "The preview's bae directory could not be created: \(error)"
+                )
+            }
         }
     #endif
 }

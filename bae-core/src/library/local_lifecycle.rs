@@ -221,8 +221,6 @@ impl RemovalLock {
     async fn acquire(app_dir: &AppDir) -> Result<Self, LibraryError> {
         let path = app_dir.removal_lock();
         tokio::task::spawn_blocking(move || {
-            let parent = path.parent().expect("the lock file has a parent");
-            std::fs::create_dir_all(parent).map_err(|error| io_at(parent, error))?;
             let file = std::fs::OpenOptions::new()
                 .create(true)
                 .truncate(false)

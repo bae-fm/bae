@@ -11,8 +11,9 @@ internal static class NativeBae
 {
     /// <summary>
     /// bae's directory under the user's profile directory — the home directory
-    /// on Windows and Linux alike. Throws when the platform names no profile
-    /// directory, since no library can be found or created without one.
+    /// on Windows and Linux alike, created if missing. Throws when the platform
+    /// names no profile directory or the directory cannot be created, since no
+    /// library can be found or created without it.
     /// </summary>
     internal static BridgeAppDir UserAppDir()
     {

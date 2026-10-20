@@ -44,9 +44,6 @@ class BaeApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // bae's directory lives under the app's private files dir: Android app
-        // processes have no home directory of their own to put it under.
-        val appDir = BridgeAppDir(filesDir.absolutePath)
         // Telemetry first, from compiled-in values only, so the sink exists for
         // every later launch step (crash reporter, keyring, library open) and
         // any failure it reports.
@@ -64,15 +61,17 @@ class BaeApp : Application() {
             logger.error("Failed to initialize Android TLS", error)
             return
         }
-        // The host's one failure is the OS refusing its onboarding runtime's
-        // worker threads; either failure stops the launch at the startup
-        // error, and the exception names which one it was.
+        // bae's directory lives under the app's private files dir: Android app
+        // processes have no home directory of their own to put it under.
+        // Building it creates it. The host's one failure is the OS refusing its
+        // onboarding runtime's worker threads. Any of these failing stops the
+        // launch at the startup error, and the exception names which one it was.
         try {
-            host = BridgeHost(diagnostics, appDir)
+            host = BridgeHost(diagnostics, BridgeAppDir(filesDir.absolutePath))
             initKeyring(diagnostics)
         } catch (error: BridgeException) {
             startupError = error
-            logger.error("Failed to start the bridge host or secure storage", error)
+            logger.error("Failed to create bae's directory or start the bridge host or secure storage", error)
             return
         }
         // Register the app's OAuth clients and sign-in presenter (if a creds

@@ -335,7 +335,7 @@ impl Fixture {
         // `use_discogs`.
         let manager = LibraryManager::new(
             database,
-            crate::config::AppDir::under_home(temp.path()),
+            crate::config::AppDir::under_home(temp.path()).unwrap(),
             Arc::new(ConfigHandle::new(config)),
             clock,
             ids,

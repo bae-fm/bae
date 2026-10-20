@@ -232,7 +232,7 @@ fn release_pick(release_id: &str) -> crate::import::MetadataProvenance {
 async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     let tmp = tempfile::TempDir::new().unwrap();
     let installation = coven::TestCoven::new();
-    let layout = coven::StoreLayout::new(tmp.path().into());
+    let layout = crate::config::AppDir::at(tmp.path()).unwrap().store_layout();
     let clock: coven::ClockRef = Arc::new(FixedClock::new(fixed_now().into()));
     let handle = crate::library::configure_store(installation.builder(layout.clone()))
         .clock(clock.clone()).create_store("Test Library").await.unwrap();

@@ -47,8 +47,8 @@ impl TestApp {
 #[test]
 fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
     let home = TempDir::new().unwrap();
-    let app_dir = AppDir::under_home(home.path());
-    let layout = coven::StoreLayout::new(home.path().join(".bae"));
+    let app_dir = AppDir::under_home(home.path()).unwrap();
+    let layout = app_dir.store_layout();
     let installation = coven::TestCoven::new();
     let clock = Arc::new(StorageClock {
         time: coven::FixedClock::new(coven::SystemClock.now()),

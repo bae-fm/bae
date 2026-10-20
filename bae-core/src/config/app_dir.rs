@@ -6,24 +6,36 @@ const LIBRARIES_DIRNAME: &str = "libraries";
 /// bae's own directory: `.bae` under the home directory the host passes in.
 /// Every registered library and the active-library pointer live under it. Built once at process start and passed to whatever reads or
 /// writes under it.
+///
+/// Building one creates the directory, so everything under it — coven's
+/// stores, which coven creates only inside an existing app directory, and
+/// bae's own files — can rely on it existing.
 #[derive(Debug, Clone)]
 pub struct AppDir {
     path: PathBuf,
 }
 
 impl AppDir {
-    /// The app directory under `home`: `home/.bae`.
-    pub fn under_home(home: &Path) -> Self {
-        Self {
-            path: home.join(".bae"),
-        }
+    /// The app directory under `home`, `home/.bae`, created if missing.
+    pub fn under_home(home: &Path) -> std::io::Result<Self> {
+        Self::create(home.join(".bae"))
     }
 
-    /// An app directory at exactly `path`, for tests that treat a temp dir as
-    /// the app directory itself.
+    /// An app directory at exactly `path`, created if missing, for tests that
+    /// treat a temp dir as the app directory itself.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn at(path: impl Into<PathBuf>) -> Self {
-        Self { path: path.into() }
+    pub fn at(path: impl Into<PathBuf>) -> std::io::Result<Self> {
+        Self::create(path.into())
+    }
+
+    fn create(path: PathBuf) -> std::io::Result<Self> {
+        std::fs::create_dir_all(&path).map_err(|error| {
+            std::io::Error::new(
+                error.kind(),
+                format!("create app directory {}: {error}", path.display()),
+            )
+        })?;
+        Ok(Self { path })
     }
 
     /// The directory every registered library's own directory is in.
@@ -54,7 +66,7 @@ impl AppDir {
     }
 
     /// coven owns store directories under the app directory.
-    pub(crate) fn store_layout(&self) -> coven::StoreLayout {
+    pub fn store_layout(&self) -> coven::StoreLayout {
         coven::StoreLayout::new(self.path.clone())
     }
 
@@ -65,7 +77,6 @@ impl AppDir {
         ids: &dyn coven::IdSource,
     ) -> Result<String, super::ConfigError> {
         use std::io::Write;
-        self.create()?;
         let path = self.path.join("install-id");
         let read = || -> Result<String, super::ConfigError> {
             let text = std::fs::read_to_string(&path)?;
@@ -91,10 +102,5 @@ impl AppDir {
             Err(error) if error.error.kind() == std::io::ErrorKind::AlreadyExists => read(),
             Err(error) => Err(error.error.into()),
         }
-    }
-
-    /// Create the app directory itself if it does not exist yet.
-    pub(crate) fn create(&self) -> std::io::Result<()> {
-        std::fs::create_dir_all(&self.path)
     }
 }

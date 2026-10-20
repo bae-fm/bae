@@ -6,7 +6,11 @@ async fn real_schema_opens_with_the_declarations_and_unattached_files() {
     let directory = tempfile::tempdir().unwrap();
     let installation = coven::TestCoven::new();
     let handle = installation
-        .builder(coven::StoreLayout::new(directory.path().into()))
+        .builder(
+            bae_core::config::AppDir::at(directory.path())
+                .unwrap()
+                .store_layout(),
+        )
         .synced_tables(bae_core::sync::synced_tables())
         .migrations(bae_core::migrations::all())
         .create_store("Schema Test")
@@ -71,7 +75,11 @@ async fn upload_cancellation_detaches_the_file_and_restores_its_original() {
     let directory = tempfile::tempdir().unwrap();
     let installation = coven::TestCoven::new();
     let handle = installation
-        .builder(coven::StoreLayout::new(directory.path().into()))
+        .builder(
+            bae_core::config::AppDir::at(directory.path())
+                .unwrap()
+                .store_layout(),
+        )
         .synced_tables(bae_core::sync::synced_tables())
         .migrations(bae_core::migrations::all())
         .create_store("Upload Test")

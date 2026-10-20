@@ -1,5 +1,6 @@
 //! bae's own directory, as the host names it.
 
+use crate::BridgeError;
 use std::sync::Arc;
 
 /// bae's own directory, built from the home directory the host passes in. The
@@ -19,11 +20,12 @@ impl BridgeAppDir {
 #[uniffi::export]
 impl BridgeAppDir {
     /// bae's directory under `home`: the platform's home directory on the
-    /// desktop, the app's private data directory on mobile.
+    /// desktop, the app's private data directory on mobile. Creates it, and
+    /// fails when it cannot.
     #[uniffi::constructor]
-    pub fn new(home: String) -> Arc<Self> {
-        Arc::new(Self {
-            inner: bae_core::config::AppDir::under_home(std::path::Path::new(&home)),
-        })
+    pub fn new(home: String) -> Result<Arc<Self>, BridgeError> {
+        let inner = bae_core::config::AppDir::under_home(std::path::Path::new(&home))
+            .map_err(BridgeError::config)?;
+        Ok(Arc::new(Self { inner }))
     }
 }

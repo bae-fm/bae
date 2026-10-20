@@ -3,12 +3,20 @@ import Foundation
 import Sparkle
 
 /// bae's directory under the launch environment's `HOME`, which a UI test
-/// sets to get a fresh one.
+/// sets to get a fresh one. Building it creates it; without it no library can
+/// be found or created, so a failure stops the launch with the reason.
 private func baeAppDir(environment: [String: String]) -> BridgeAppDir {
     guard let home = environment["HOME"], !home.isEmpty else {
         preconditionFailure("HOME is unset, so bae's directory has no location")
     }
-    return BridgeAppDir(home: home)
+    do {
+        return try BridgeAppDir(home: home)
+    }
+    catch {
+        preconditionFailure(
+            "bae's directory under \(home) could not be created: \(error)"
+        )
+    }
 }
 
 /// The process's host. A UI test's launch keeps its keys and credentials in
@@ -54,12 +62,14 @@ final class ApplicationServices {
     let checkForUpdatesViewModel: CheckForUpdatesViewModel
 
     init() {
-        let appDir = baeAppDir(environment: baeAppProcessEnvironment)
         diagnostics = BaeDiagnostics.configure(
             source: "macos",
             edition: baeAppEdition
         )
-        host = makeHost(diagnostics: diagnostics, appDir: appDir)
+        host = makeHost(
+            diagnostics: diagnostics,
+            appDir: baeAppDir(environment: baeAppProcessEnvironment)
+        )
         mediaControlService = MediaControlService()
         deviceName = currentDeviceName()
         librarySetup = LibrarySetup.live(host: host, deviceName: deviceName)

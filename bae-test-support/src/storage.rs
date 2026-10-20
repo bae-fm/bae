@@ -19,7 +19,11 @@ pub async fn storage_library(
             .unwrap(),
     );
     let handle = installation
-        .builder(coven::StoreLayout::new(directory.join(".bae")))
+        .builder(
+            bae_core::config::AppDir::under_home(directory)
+                .unwrap()
+                .store_layout(),
+        )
         .synced_tables(bae_core::sync::synced_tables())
         .migrations(bae_core::migrations::all())
         .storage_connector(storage.clone())

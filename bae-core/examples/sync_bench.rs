@@ -47,7 +47,13 @@ fn main() {
             std::process::exit(2);
         }),
     };
-    let app_dir = bae_core::config::AppDir::under_home(&home);
+    let app_dir = match bae_core::config::AppDir::under_home(&home) {
+        Ok(app_dir) => app_dir,
+        Err(error) => {
+            eprintln!("{error}");
+            std::process::exit(1);
+        }
+    };
 
     let format = tracing_subscriber::fmt()
         .with_env_filter(
@@ -84,7 +90,7 @@ fn main() {
 
     let runtime = tokio::runtime::Runtime::new().expect("build tokio runtime");
     let result: Result<(), String> = runtime.block_on(async {
-        let handle = coven::Coven::builder(coven::StoreLayout::new(home.join(".bae")))
+        let handle = coven::Coven::builder(app_dir.store_layout())
             .synced_tables(bae_core::sync::synced_tables())
             .migrations(bae_core::migrations::all())
             .open(store_id)

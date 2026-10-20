@@ -18,7 +18,13 @@ fn main() {
         eprintln!("could not determine the home directory");
         std::process::exit(1);
     };
-    let app_dir = bae_core::config::AppDir::under_home(&home);
+    let app_dir = match bae_core::config::AppDir::under_home(&home) {
+        Ok(app_dir) => app_dir,
+        Err(error) => {
+            eprintln!("{error}");
+            std::process::exit(1);
+        }
+    };
 
     let library_id = match bae_core::config::Config::active_library_id(&app_dir) {
         Ok(Some(id)) => id,
@@ -44,7 +50,7 @@ fn main() {
     };
     let runtime = tokio::runtime::Runtime::new().expect("build tokio runtime");
     let result: Result<String, String> = runtime.block_on(async {
-        let handle = coven::Coven::builder(coven::StoreLayout::new(home.join(".bae")))
+        let handle = coven::Coven::builder(app_dir.store_layout())
             .synced_tables(bae_core::sync::synced_tables())
             .migrations(bae_core::migrations::all())
             .open(store_id)

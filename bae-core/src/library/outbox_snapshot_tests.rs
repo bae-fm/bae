@@ -27,7 +27,11 @@ async fn queued_files() -> (
         CREATE TABLE covers(id TEXT PRIMARY KEY NOT NULL,size INTEGER,hash BLOB,location TEXT);\n\
         CREATE TABLE artist_images(id TEXT PRIMARY KEY NOT NULL,size INTEGER,hash BLOB,location TEXT);";
     let handle = installation
-        .builder(coven::StoreLayout::new(directory.path().into()))
+        .builder(
+            crate::config::AppDir::at(directory.path())
+                .unwrap()
+                .store_layout(),
+        )
         .synced_tables(tables)
         .migrations(vec![coven::Migration::addition(
             1,

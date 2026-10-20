@@ -428,7 +428,7 @@ mod preferences;
 #[test]
 fn preferences_load_by_store_id_without_duplicating_store_settings() {
     let tmp = TempDir::new().unwrap();
-    let app_dir = AppDir::at(tmp.path());
+    let app_dir = AppDir::at(tmp.path()).unwrap();
     let id = coven::StoreId(uuid::Uuid::new_v4());
     let mut config = Config::with_defaults(id, app_dir.registered_library(&id.to_string()));
     config.prefs.cast_enabled = true;
@@ -442,7 +442,7 @@ fn preferences_load_by_store_id_without_duplicating_store_settings() {
 #[test]
 fn load_registered_library_rejects_a_path_or_non_uuid() {
     let tmp = TempDir::new().unwrap();
-    let app_dir = AppDir::at(tmp.path());
+    let app_dir = AppDir::at(tmp.path()).unwrap();
     for id in ["../outside", "invalid"] {
         assert!(matches!(
             Config::load_registered_library(&app_dir, id),
@@ -454,7 +454,7 @@ fn load_registered_library_rejects_a_path_or_non_uuid() {
 #[test]
 fn missing_preferences_are_defaults_and_invalid_preferences_are_errors() {
     let tmp = TempDir::new().unwrap();
-    let app_dir = AppDir::at(tmp.path());
+    let app_dir = AppDir::at(tmp.path()).unwrap();
     let id = coven::StoreId(uuid::Uuid::new_v4()).to_string();
     assert_eq!(
         Config::load_registered_library(&app_dir, &id)
@@ -471,7 +471,7 @@ fn missing_preferences_are_defaults_and_invalid_preferences_are_errors() {
 #[tokio::test]
 async fn discovery_uses_coven_names_and_sorts_the_active_store_first() {
     let tmp = TempDir::new().unwrap();
-    let app_dir = AppDir::at(tmp.path());
+    let app_dir = AppDir::at(tmp.path()).unwrap();
     let installation = coven::TestCoven::new();
     let first = crate::library::configure_store(installation.builder(app_dir.store_layout()))
         .create_store("First")
@@ -514,7 +514,7 @@ async fn discovery_uses_coven_names_and_sorts_the_active_store_first() {
 #[tokio::test]
 async fn discovery_reports_a_broken_store_instead_of_omitting_it() {
     let tmp = TempDir::new().unwrap();
-    let app_dir = AppDir::at(tmp.path());
+    let app_dir = AppDir::at(tmp.path()).unwrap();
     let id = coven::StoreId(uuid::Uuid::new_v4());
     app_dir
         .store_layout()
@@ -529,7 +529,7 @@ async fn discovery_reports_a_broken_store_instead_of_omitting_it() {
 #[tokio::test]
 async fn discovery_lists_a_library_whose_settings_cant_be_read() {
     let tmp = TempDir::new().unwrap();
-    let app_dir = AppDir::at(tmp.path());
+    let app_dir = AppDir::at(tmp.path()).unwrap();
     let installation = coven::TestCoven::new();
     let mut ids = Vec::new();
     for name in ["Openable", "Unreadable"] {
@@ -568,7 +568,7 @@ async fn discovery_lists_a_library_whose_settings_cant_be_read() {
 #[tokio::test]
 async fn discovery_reports_invalid_or_unreadable_active_pointers() {
     let tmp = TempDir::new().unwrap();
-    let app_dir = AppDir::at(tmp.path());
+    let app_dir = AppDir::at(tmp.path()).unwrap();
     std::fs::write(app_dir.active_library_pointer(), " \n").unwrap();
     assert!(Config::discover_libraries(&app_dir).await.is_err());
     std::fs::remove_file(app_dir.active_library_pointer()).unwrap();
@@ -630,11 +630,27 @@ fn concurrent_preference_edits_preserve_both_changes() {
 #[test]
 fn installation_id_is_shared_by_libraries_and_survives_reopening() {
     let tmp = TempDir::new().unwrap();
-    let app_dir = AppDir::at(tmp.path());
+    let app_dir = AppDir::at(tmp.path()).unwrap();
     let ids = coven::SequentialIds::new();
     let first = app_dir.install_id(&ids).unwrap();
     assert_eq!(app_dir.install_id(&ids).unwrap(), first);
-    assert_eq!(AppDir::at(tmp.path()).install_id(&ids).unwrap(), first);
+    assert_eq!(
+        AppDir::at(tmp.path()).unwrap().install_id(&ids).unwrap(),
+        first
+    );
     std::fs::write(tmp.path().join("install-id"), "invalid").unwrap();
     assert!(app_dir.install_id(&ids).is_err());
+}
+
+#[tokio::test]
+async fn an_app_dir_under_a_fresh_home_exists_and_holds_a_new_store() {
+    let home = TempDir::new().unwrap();
+    let app_dir = AppDir::under_home(home.path()).unwrap();
+    assert!(home.path().join(".bae").is_dir());
+    let installation = coven::TestCoven::new();
+    let handle = crate::library::configure_store(installation.builder(app_dir.store_layout()))
+        .create_store("First")
+        .await
+        .unwrap();
+    handle.close().await.unwrap();
 }

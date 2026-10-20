@@ -152,11 +152,11 @@ pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, st
         .build()
         .expect("test runtime");
     let installation = coven::TestCoven::new();
-    let app_dir = bae_core::config::AppDir::under_home(&root);
+    let app_dir = bae_core::config::AppDir::under_home(&root).unwrap();
     let handle = runtime
         .block_on(
             installation
-                .builder(coven::StoreLayout::new(root.join(".bae")))
+                .builder(app_dir.store_layout())
                 .synced_tables(bae_core::sync::synced_tables())
                 .migrations(bae_core::migrations::all())
                 .create_store("Test Library"),
@@ -381,7 +381,7 @@ fn extracted_signals_cross_with_their_key() {
 #[tokio::test]
 async fn upload_file_op_preserves_object_and_row_identity() {
     let directory = tempfile::tempdir().unwrap();
-    let handle=coven::TestCoven::new().builder(coven::StoreLayout::new(directory.path().into()))
+    let handle=coven::TestCoven::new().builder(bae_core::config::AppDir::at(directory.path()).unwrap().store_layout())
         .synced_tables(vec![coven::SyncedTable::new("release_files",coven::RowIdentity::SharedKey)
             .carries_files(coven::FileDecl::new("release_files",1024,coven::Provenance::AppProvided,coven::CacheFill::CacheLazy))])
         .migrations(vec![coven::Migration::addition(1,"file fixture","CREATE TABLE release_files(id TEXT PRIMARY KEY NOT NULL,size INTEGER,hash BLOB,location TEXT);")])

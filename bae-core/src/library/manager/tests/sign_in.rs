@@ -30,7 +30,7 @@ async fn manager_signing_in_with(
     presenter: Arc<RecordingPresenter>,
 ) -> (LibraryManager, Arc<MemoryStorage>, TempDir) {
     let temp_dir = TempDir::new().unwrap();
-    let app_dir = crate::config::AppDir::at(temp_dir.path());
+    let app_dir = crate::config::AppDir::at(temp_dir.path()).unwrap();
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
     let storage = Arc::new(
         MemoryStorage::builder()
