@@ -1056,6 +1056,10 @@ Removing a person deletes their circle and its rows: their private history and
 private playlists. Their household ratings, history and playlists stay,
 credited to them.
 
+People lists each person's active devices. Their removed and replaced
+devices, whose records coven keeps, sit under them in a **Removed devices**
+list that starts closed, each marked removed or replaced, with no actions.
+
 **Adding a device.** Carol's new tablet joins with her restore code alone; no
 other device approves it. The code holds Carol's keys, so it already proves the
 tablet is hers
