@@ -161,7 +161,7 @@ impl DecisionFixture {
             .all(|name| seen.last().unwrap().contains(name))
         {
             seen.push(
-                tokio::time::timeout(Duration::from_secs(5), seen_rx.recv())
+                tokio::time::timeout(HANG_GUARD, seen_rx.recv())
                     .await
                     .expect("the list shows the new reading")
                     .expect("the list is still delivering"),
@@ -319,7 +319,7 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
             .await
         })
     };
-    tokio::time::timeout(Duration::from_secs(5), async {
+    tokio::time::timeout(HANG_GUARD, async {
         while fixture.listing.take().is_empty() {
             tokio::time::sleep(Duration::from_millis(5)).await;
         }

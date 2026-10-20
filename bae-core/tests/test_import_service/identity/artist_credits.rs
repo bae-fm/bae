@@ -253,7 +253,7 @@ async fn next_resolution(
     name: &str,
     mut accept: impl FnMut(&bae_core::import::CreditResolution) -> bool,
 ) -> bae_core::import::CreditResolution {
-    tokio::time::timeout(std::time::Duration::from_secs(20), async {
+    tokio::time::timeout(HANG_GUARD, async {
         loop {
             let projection = pane
                 .next()

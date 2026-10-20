@@ -94,7 +94,7 @@ async fn import_progress_names_every_operation_before_loudness() {
 
     let mut steps = Vec::new();
     loop {
-        let event = tokio::time::timeout(std::time::Duration::from_secs(20), events.recv())
+        let event = tokio::time::timeout(HANG_GUARD, events.recv())
             .await
             .expect("import progress arrives")
             .expect("import event stream remains open");

@@ -6,6 +6,7 @@ const TRACK_1: &str = "f2f77437-aa03-4583-8b1c-d12bcf984967";
 use super::*;
 use crate::db::{Database, DbArtist};
 use crate::library::LibraryError;
+use bae_test_support::HANG_GUARD;
 use chrono::Utc;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -59,7 +60,7 @@ async fn await_import_outcome(
     import_id: &str,
 ) -> Result<(String, String), String> {
     loop {
-        let event = tokio::time::timeout(std::time::Duration::from_secs(30), events.recv())
+        let event = tokio::time::timeout(HANG_GUARD, events.recv())
             .await
             .expect("the import reports its result")
             .expect("the import event stream remains open");

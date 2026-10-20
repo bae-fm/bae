@@ -21,7 +21,7 @@ use bae_core::pressing::ReleaseLabel;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
-use support::seed_discogs_test_release;
+use support::{seed_discogs_test_release, HANG_GUARD};
 use tempfile::TempDir;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

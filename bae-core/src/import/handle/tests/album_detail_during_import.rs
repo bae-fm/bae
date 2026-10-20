@@ -6,7 +6,6 @@
 //! volume answers.
 
 use super::*;
-use std::time::Duration;
 
 /// A candidate ready to import into an album of its own.
 async fn importable(handle: &ImportServiceHandle, key: &str) {
@@ -45,7 +44,7 @@ async fn next_for(
     waiting_for: &str,
 ) -> crate::album_detail::AlbumDetail {
     loop {
-        let snapshot = tokio::time::timeout(Duration::from_secs(10), values.next())
+        let snapshot = tokio::time::timeout(HANG_GUARD, values.next())
             .await
             .unwrap_or_else(|_| panic!("{waiting_for}"))
             .expect("the album detail resolves");
@@ -91,7 +90,7 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
     );
     let volume = manager.hold_disk();
     let importing = handle.start_import(&importing_key).await.unwrap();
-    tokio::time::timeout(Duration::from_secs(10), handle.event_tx.send_held())
+    tokio::time::timeout(HANG_GUARD, handle.event_tx.send_held())
         .await
         .expect("the import reaches its measurement");
 

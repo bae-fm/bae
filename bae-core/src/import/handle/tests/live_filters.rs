@@ -27,7 +27,7 @@ impl LiveList {
     /// does, since a change that moves no row delivers nothing.
     async fn shows(&mut self, expected: &[&str]) {
         let wanted: Vec<String> = expected.iter().map(|key| key.to_string()).collect();
-        let reached = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        let reached = tokio::time::timeout(HANG_GUARD, async {
             while self.shown.as_ref() != Some(&wanted) {
                 self.next().await;
             }
@@ -54,7 +54,7 @@ impl LiveList {
     /// running reaches the subscription before the page it changes is
     /// delivered again, so each delivery is a point to open the menu at.
     async fn counts(&mut self, filter: PendingFilter, count: u32) {
-        let reached = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        let reached = tokio::time::timeout(HANG_GUARD, async {
             while self.counted(filter) != count {
                 self.next().await;
             }

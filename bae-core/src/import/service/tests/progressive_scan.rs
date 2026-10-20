@@ -105,7 +105,7 @@ async fn a_candidate_is_announced_while_the_walk_still_reads_the_next_folder() {
 
     let observe = async {
         let _opens_on_failure = OpensOnDrop(&reader);
-        let held = tokio::time::timeout(Duration::from_secs(5), entered.recv())
+        let held = tokio::time::timeout(HANG_GUARD, entered.recv())
             .await
             .expect("the walk reaches a second folder")
             .expect("the reader is still held");
@@ -115,7 +115,7 @@ async fn a_candidate_is_announced_while_the_walk_still_reads_the_next_folder() {
             .unwrap()
             .clone()
             .expect("a folder was read before the held one");
-        let announced = tokio::time::timeout(Duration::from_secs(5), async {
+        let announced = tokio::time::timeout(HANG_GUARD, async {
             loop {
                 if let crate::import::handle::ImportEvent::Scan(
                     ScanEvent::FolderCandidate { candidate, .. }

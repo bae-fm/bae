@@ -165,7 +165,7 @@ async fn coordinator_blocked_root_removal_does_not_block_another_roots_refresh()
     harness.scans.wait_for_count(2).await;
     harness.scans.complete(1);
     assert_eq!(
-        tokio::time::timeout(Duration::from_secs(2), refresh_result)
+        tokio::time::timeout(HANG_GUARD, refresh_result)
             .await
             .expect("another root's refresh was blocked by removal")
             .unwrap(),
@@ -252,7 +252,7 @@ async fn coordinator_blocked_reinstall_does_not_block_another_roots_persistence(
     let remove_result = removal_awaiting_its_cancelled_scan(&harness, "/music/one").await;
     harness.scans.complete(0);
     tokio::time::timeout(
-        Duration::from_secs(2),
+        HANG_GUARD,
         harness.removal_backend.reinstall_started.notified(),
     )
     .await
@@ -272,7 +272,7 @@ async fn coordinator_blocked_reinstall_does_not_block_another_roots_persistence(
     harness.removal_backend.release_reinstall.notify_one();
     harness.scans.complete(1);
     assert_eq!(
-        tokio::time::timeout(Duration::from_secs(2), refresh_result)
+        tokio::time::timeout(HANG_GUARD, refresh_result)
             .await
             .expect("another root's refresh did not complete")
             .unwrap(),
@@ -554,7 +554,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
         completion_tx,
     );
     scan.cancellation.cancel();
-    tokio::time::timeout(Duration::from_secs(2), completion_rx.recv())
+    tokio::time::timeout(HANG_GUARD, completion_rx.recv())
         .await
         .expect("cancelled scan did not report task completion")
         .expect("scan task completion channel closed");

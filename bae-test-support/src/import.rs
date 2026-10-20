@@ -42,9 +42,6 @@ pub async fn configure_test_discogs(library_manager: &bae_core::library::Library
         .expect("test Discogs key is stored through the library manager");
 }
 
-/// How long a test waits for an import to end before failing instead of hanging.
-const IMPORT_END_GUARD: std::time::Duration = std::time::Duration::from_secs(300);
-
 /// Wait for the import worker to finish, returning (release_id, album_id).
 ///
 /// Local imports emit `Complete`; remote imports emit `RemoteUploadQueued`,
@@ -72,7 +69,7 @@ pub async fn try_wait_for_import_complete(
 }
 
 /// The import's first `Complete`, `RemoteUploadQueued` or `Failed`. Panics if
-/// the progress ends without one or none comes within five minutes.
+/// the progress ends without one or none comes before [`crate::HANG_GUARD`].
 pub async fn wait_for_import_end(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_core::import::ImportProgress>,
 ) -> bae_core::import::ImportProgress {
@@ -86,9 +83,9 @@ pub async fn wait_for_import_end(
         }
         panic!("Progress channel closed without completion");
     };
-    tokio::time::timeout(IMPORT_END_GUARD, ended)
+    tokio::time::timeout(crate::HANG_GUARD, ended)
         .await
-        .unwrap_or_else(|_| panic!("import did not end within {IMPORT_END_GUARD:?}"))
+        .unwrap_or_else(|_| panic!("import did not end within {:?}", crate::HANG_GUARD))
 }
 
 /// What a test import reads the candidate's draft from before importing it.

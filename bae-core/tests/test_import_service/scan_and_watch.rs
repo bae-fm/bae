@@ -19,20 +19,16 @@ async fn folder_scan_produces_candidates() {
         .unwrap();
 
     let mut candidates = vec![];
-    support::next_matching(
-        &mut scan_rx,
-        std::time::Duration::from_secs(5),
-        |event| match event {
-            ScanEvent::FolderCandidate { candidate, .. } => {
-                candidates.push(candidate);
-                None
-            }
-            ScanEvent::Finished => Some(()),
-            _ => None,
-        },
-    )
+    support::next_matching(&mut scan_rx, HANG_GUARD, |event| match event {
+        ScanEvent::FolderCandidate { candidate, .. } => {
+            candidates.push(candidate);
+            None
+        }
+        ScanEvent::Finished => Some(()),
+        _ => None,
+    })
     .await
-    .expect("Scan did not finish within 5s");
+    .expect("the scan finishes");
 
     // `Collection/` has no disc-named subfolders, so it only holds albums.
     assert_eq!(candidates.len(), 2, "each album should be a candidate");
@@ -110,7 +106,7 @@ struct ScanBatch {
 }
 
 /// Read scan events until one matching `done` arrives, collecting the
-/// candidates added and removed along the way; panics after the deadline.
+/// candidates added and removed along the way; panics at the hang guard.
 async fn scan_batch_until(
     rx: &mut tokio::sync::mpsc::UnboundedReceiver<ScanEvent>,
     what: &str,
@@ -118,7 +114,7 @@ async fn scan_batch_until(
 ) -> ScanBatch {
     let mut added = Vec::new();
     let mut removed = Vec::new();
-    support::next_matching(rx, std::time::Duration::from_secs(10), |event| {
+    support::next_matching(rx, HANG_GUARD, |event| {
         let finished = done(&event);
         match &event {
             ScanEvent::FolderCandidate { candidate: c, .. } => {
@@ -130,11 +126,11 @@ async fn scan_batch_until(
         finished.then_some(())
     })
     .await
-    .unwrap_or_else(|| panic!("timed out after 10s waiting for {what}"));
+    .unwrap_or_else(|| panic!("timed out waiting for {what}"));
     ScanBatch { added, removed }
 }
 
-/// The first candidate list `accept` admits, within the test deadline.
+/// The first candidate list `accept` admits; panics at the hang guard.
 async fn wait_for_candidates(
     f: &ImportFixture,
     what: &str,
@@ -143,7 +139,7 @@ async fn wait_for_candidates(
     wait_for_tab(f, what, bae_core::import::TriageTab::Pending, accept).await
 }
 
-/// The first read of one tab that `accept` admits, within the test deadline.
+/// The first read of one tab that `accept` admits; panics at the hang guard.
 async fn wait_for_tab(
     f: &ImportFixture,
     what: &str,
@@ -154,12 +150,9 @@ async fn wait_for_tab(
         tab,
         ..bae_core::import::ImportListView::default()
     };
-    tokio::time::timeout(
-        std::time::Duration::from_secs(10),
-        f.handle.wait_for_list(view, accept),
-    )
-    .await
-    .unwrap_or_else(|_| panic!("timed out waiting for {what}"))
+    tokio::time::timeout(HANG_GUARD, f.handle.wait_for_list(view, accept))
+        .await
+        .unwrap_or_else(|_| panic!("timed out waiting for {what}"))
 }
 
 /// The candidate rows one read of the list holds.
@@ -177,17 +170,15 @@ fn candidate_rows(
         .collect()
 }
 
-/// Wait for a scan event matching `pred`; panics after the deadline.
+/// Wait for a scan event matching `pred`; panics at the hang guard.
 async fn wait_for_scan_event(
     rx: &mut tokio::sync::mpsc::UnboundedReceiver<ScanEvent>,
     what: &str,
     mut pred: impl FnMut(&ScanEvent) -> bool,
 ) {
-    support::next_matching(rx, std::time::Duration::from_secs(10), |event| {
-        pred(&event).then_some(())
-    })
-    .await
-    .unwrap_or_else(|| panic!("timed out after 10s waiting for {what}"));
+    support::next_matching(rx, HANG_GUARD, |event| pred(&event).then_some(()))
+        .await
+        .unwrap_or_else(|| panic!("timed out waiting for {what}"));
 }
 
 /// `remove_watched_folder` drops the folder from the stored list and its
@@ -353,7 +344,7 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
     )).await.unwrap();
     let mut events = f.handle.every_scan_event_for_test();
     f.handle.add_watched_folder(root_key.clone()).await.unwrap();
-    let error = support::next_matching(&mut events, std::time::Duration::from_secs(10), |event| {
+    let error = support::next_matching(&mut events, HANG_GUARD, |event| {
         match event {
             ScanEvent::FolderScanStatusChanged { status } if status.watched_folder_path == root_key => {
                 match status.status {
@@ -826,7 +817,7 @@ async fn next_imported_row(
     key: &str,
     mut accept: impl FnMut(&bae_core::import::ImportedRow) -> bool,
 ) -> bae_core::import::ImportedRow {
-    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    tokio::time::timeout(HANG_GUARD, async {
         loop {
             let snapshot = subscription
                 .next()

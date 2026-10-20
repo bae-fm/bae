@@ -3,6 +3,7 @@ use crate::config::{Config, ConfigHandle};
 use crate::db::Database;
 use crate::import::import_cancel::ImportStop;
 use crate::import::watched_folder::host_root;
+use bae_test_support::HANG_GUARD;
 use coven::FixedClock;
 use coven::SequentialIds;
 use std::sync::Mutex;
@@ -241,7 +242,7 @@ impl FakeScanStarter {
 
     async fn wait_for_count(&self, count: usize) {
         while self.scans.lock().unwrap().len() < count {
-            tokio::time::timeout(Duration::from_secs(2), self.started.notified())
+            tokio::time::timeout(HANG_GUARD, self.started.notified())
                 .await
                 .expect("scan coordinator did not start the expected scan");
         }
@@ -304,7 +305,7 @@ impl FakeScanStarter {
     }
 
     async fn wait_for_cancellation(&self, index: usize) {
-        tokio::time::timeout(Duration::from_secs(2), async {
+        tokio::time::timeout(HANG_GUARD, async {
             while !self.cancellation(index).is_cancelled() {
                 tokio::task::yield_now().await;
             }
@@ -461,7 +462,7 @@ impl CoordinatorHarness {
         self.commands
             .send(WatcherCommand::WatchReport { report, taken })
             .unwrap();
-        tokio::time::timeout(Duration::from_secs(10), wait)
+        tokio::time::timeout(HANG_GUARD, wait)
             .await
             .expect("the coordinator takes the watch report")
             .expect("the coordinator is running");

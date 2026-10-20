@@ -28,6 +28,12 @@ macro_rules! fixture_dir {
     };
 }
 
+/// How long a test waits on an event before failing instead of hanging.
+/// Every wait it bounds ends on the code's own event, so only code that never
+/// sends it reaches this. It is not a measure of speed, so it sits far above
+/// what any step takes on a loaded machine.
+pub const HANG_GUARD: std::time::Duration = std::time::Duration::from_secs(300);
+
 mod audio;
 mod discogs;
 mod files;

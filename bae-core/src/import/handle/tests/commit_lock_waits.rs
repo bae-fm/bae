@@ -6,7 +6,6 @@
 
 use super::*;
 use std::sync::{Arc, Condvar, Mutex};
-use std::time::Duration;
 
 /// Reads tags as the app does, except that once the test holds a folder, a
 /// read of any file under it reports itself and then waits until the test
@@ -144,12 +143,12 @@ async fn a_pane_edit_lands_while_a_scan_reads_another_folders_tags() {
         .add_watched_folder(slow_root.to_string_lossy().into_owned())
         .await
         .unwrap();
-    tokio::time::timeout(Duration::from_secs(10), entered.recv())
+    tokio::time::timeout(HANG_GUARD, entered.recv())
         .await
         .expect("the scan reads the new folder's tags")
         .expect("the reader reports its reads");
 
-    let landed = tokio::time::timeout(Duration::from_secs(5), retitle(&handle, &key)).await;
+    let landed = tokio::time::timeout(HANG_GUARD, retitle(&handle, &key)).await;
     reader.open();
     shut_down(handle).await;
     landed.expect("the edit lands without waiting for the scan's tag reads");
@@ -216,12 +215,12 @@ async fn a_pane_edit_lands_while_a_pick_reads_another_folders_tags() {
                 .await
         }
     });
-    tokio::time::timeout(Duration::from_secs(10), entered.recv())
+    tokio::time::timeout(HANG_GUARD, entered.recv())
         .await
         .expect("the pick reads the folder's tags")
         .expect("the reader reports its reads");
 
-    let landed = tokio::time::timeout(Duration::from_secs(5), retitle(&handle, &edited_key)).await;
+    let landed = tokio::time::timeout(HANG_GUARD, retitle(&handle, &edited_key)).await;
     reader.open();
     let picked = pick.await.unwrap();
     shut_down(handle).await;
@@ -254,12 +253,12 @@ async fn a_pane_edit_lands_while_a_file_decision_reads_another_folders_tags() {
                 .await
         }
     });
-    tokio::time::timeout(Duration::from_secs(10), entered.recv())
+    tokio::time::timeout(HANG_GUARD, entered.recv())
         .await
         .expect("the decision reads the folder's tags")
         .expect("the reader reports its reads");
 
-    let landed = tokio::time::timeout(Duration::from_secs(5), retitle(&handle, &edited_key)).await;
+    let landed = tokio::time::timeout(HANG_GUARD, retitle(&handle, &edited_key)).await;
     reader.open();
     let decided = decision.await.unwrap();
     shut_down(handle).await;

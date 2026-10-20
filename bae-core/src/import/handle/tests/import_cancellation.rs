@@ -41,7 +41,7 @@ async fn await_cancelled(
     let mut pending: std::collections::HashSet<String> =
         import_ids.iter().map(|id| id.to_string()).collect();
     while !pending.is_empty() {
-        let event = tokio::time::timeout(std::time::Duration::from_secs(10), events.recv())
+        let event = tokio::time::timeout(HANG_GUARD, events.recv())
             .await
             .expect("the import reports its end")
             .expect("the import event stream remains open");
@@ -203,7 +203,7 @@ async fn await_progress_of(
     phase: crate::import::ImportPhase,
 ) {
     loop {
-        let event = tokio::time::timeout(std::time::Duration::from_secs(10), events.recv())
+        let event = tokio::time::timeout(HANG_GUARD, events.recv())
             .await
             .expect("the progress arrives")
             .expect("the import event stream remains open");
@@ -308,12 +308,9 @@ async fn cancelled_mid_run_leaves_the_store_as_it_was_and_starts_over() {
     let held = HeldProgress::at(&handle.event_tx, crate::import::ImportPhase::MeasuringLoudness);
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap();
-    tokio::time::timeout(
-        std::time::Duration::from_secs(10),
-        handle.event_tx.send_held(),
-    )
-    .await
-    .expect("the import reaches its measurement");
+    tokio::time::timeout(HANG_GUARD, handle.event_tx.send_held())
+        .await
+        .expect("the import reaches its measurement");
 
     handle.cancel_import(&key).unwrap();
     await_cancelled(&mut events, &[&import_id]).await;
@@ -434,7 +431,7 @@ async fn an_import_asked_for_again_after_a_waiting_cancel_is_the_one_that_runs()
 
     let mut outcomes = std::collections::HashMap::new();
     while !(outcomes.contains_key(&running_id) && outcomes.contains_key(&again_id)) {
-        let event = tokio::time::timeout(std::time::Duration::from_secs(30), events.recv())
+        let event = tokio::time::timeout(HANG_GUARD, events.recv())
             .await
             .expect("both imports end")
             .expect("the import event stream remains open");

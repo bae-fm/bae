@@ -2,7 +2,6 @@
 async fn removing_a_watched_folder_cancels_in_flight_extraction() {
     use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer, ExtractionSource, TextSignal};
     use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::time::Duration;
 
     // Counts calls and holds the first until the gate opens, so the removal
     // lands mid-pass.
@@ -62,7 +61,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         .unwrap();
 
     // Take the key from the scanned candidate's path, however it is canonicalized.
-    let candidate_path = tokio::time::timeout(Duration::from_secs(10), async {
+    let candidate_path = tokio::time::timeout(HANG_GUARD, async {
         loop {
             let event = events.recv().await.expect("event channel closed");
             if let ImportEvent::Scan(ScanEvent::FolderCandidate { candidate, .. }) = event {
@@ -74,7 +73,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
     .expect("timed out waiting for the folder candidate");
     let key = candidate_path.to_string_lossy().to_string();
     tokio::time::timeout(
-        Duration::from_secs(10),
+        HANG_GUARD,
         import_handle.wait_for_list(crate::import::ImportListView::default(), |projection| {
             projection.windows.iter().any(|window| {
                 window.items.iter().any(|item| match item {
@@ -102,7 +101,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         crate::util::rate_limiter::CallPriority::Interactive,
     );
     reached
-        .recv_timeout(Duration::from_secs(10))
+        .recv_timeout(HANG_GUARD)
         .expect("the OCR pass reaches its first image");
     import_handle
         .remove_watched_folder(root.to_string_lossy().to_string())
@@ -110,7 +109,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         .unwrap();
     gate.open();
     // The extraction drops its end of the watch when it stops.
-    tokio::time::timeout(Duration::from_secs(10), async {
+    tokio::time::timeout(HANG_GUARD, async {
         while extraction.changed().await.is_ok() {}
     })
     .await
@@ -195,11 +194,10 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
         .unwrap();
 
     let removal = handle.remove_watched_folder(root.to_string_lossy().into_owned());
-    let (decision, removal) = tokio::time::timeout(std::time::Duration::from_secs(10), async {
-        tokio::join!(decision_result, removal)
-    })
-    .await
-    .expect("queued decision and removal deadlocked");
+    let (decision, removal) =
+        tokio::time::timeout(HANG_GUARD, async { tokio::join!(decision_result, removal) })
+            .await
+            .expect("queued decision and removal deadlocked");
 
     // Whichever the coordinator reaches first, the decision is answered, and
     // not with success.

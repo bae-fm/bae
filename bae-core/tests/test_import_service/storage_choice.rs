@@ -57,7 +57,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
     f.library_manager.set_downloads_paused(false);
     let mut downloads = f.library_manager.subscribe_download_queue();
     let settled = tokio::time::timeout(
-        std::time::Duration::from_secs(10),
+        HANG_GUARD,
         downloads.wait_for(|queue| {
             queue.ops.iter().all(|op| {
                 op.release_id != id

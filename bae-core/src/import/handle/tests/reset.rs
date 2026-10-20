@@ -304,11 +304,9 @@ async fn reset_setup_prepared_before_an_edit_cannot_replace_it_or_its_snapshot()
         let key = key.clone();
         async move { handle.reset_candidate_setup(&key).await }
     });
-    reached
-        .recv_timeout(std::time::Duration::from_secs(10))
-        .expect("reset reads tags");
+    reached.recv_timeout(HANG_GUARD).expect("reset reads tags");
     let editing = tokio::time::timeout(
-        std::time::Duration::from_secs(10),
+        HANG_GUARD,
         handle.set_candidate_edit_field(
             &key,
             crate::import::DraftFieldEdit::Text {
@@ -805,15 +803,13 @@ async fn reset_setup_prepared_before_a_lookup_choice_cannot_erase_it() {
         let key = key.clone();
         async move { handle.reset_candidate_setup(&key).await }
     });
-    reached
-        .recv_timeout(std::time::Duration::from_secs(10))
-        .expect("reset reads tags");
+    reached.recv_timeout(HANG_GUARD).expect("reset reads tags");
     let choices = crate::import::LookupChoices {
         disc_id_excluded: true,
         ..crate::import::LookupChoices::default()
     };
     let editing = tokio::time::timeout(
-        std::time::Duration::from_secs(10),
+        HANG_GUARD,
         handle.edit_candidate_lookup_choices(&key, crate::import::LookupChoiceEdit::ToggleDiscId),
     )
     .await;

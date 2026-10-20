@@ -850,7 +850,7 @@ async fn a_scan_that_moves_during_tag_reading_makes_the_pick_read_again() {
         }
     });
     reached
-        .recv_timeout(std::time::Duration::from_secs(10))
+        .recv_timeout(HANG_GUARD)
         .expect("the tag reader reached the first audio file");
 
     rescan_into(&manager, candidate.clone()).await;
@@ -908,7 +908,7 @@ async fn a_pick_lands_and_is_announced_when_its_caller_is_torn_down() {
         );
     }
 
-    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    tokio::time::timeout(HANG_GUARD, async {
         loop {
             match events.recv().await {
                 Some(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key }))
