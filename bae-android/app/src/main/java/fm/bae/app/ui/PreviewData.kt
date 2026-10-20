@@ -1,14 +1,13 @@
 package fm.bae.app.ui
 
 import fm.bae.app.playback.SidePausePrompt
+import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeArtistDetail
 import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeComposerSummary
-import uniffi.bae_bridge.BridgeDevice
-import uniffi.bae_bridge.BridgeDeviceState
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadProgress
 import uniffi.bae_bridge.BridgeDownloadSnapshot
@@ -16,6 +15,8 @@ import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeFactTerm
+import uniffi.bae_bridge.BridgeFormerDevice
+import uniffi.bae_bridge.BridgeFormerDeviceState
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
@@ -352,14 +353,18 @@ object PreviewData {
             id = id,
             keys = BridgeMemberPublicKeys(signing = ByteArray(PUBLIC_KEY_BYTES), sealing = ByteArray(PUBLIC_KEY_BYTES)),
             role = role,
-            devices =
-                listOf(
-                    BridgeDevice(id = 1uL, name = "Phone", state = BridgeDeviceState.ACTIVE, isSelf = isSelf),
-                    BridgeDevice(id = 2uL, name = "Laptop", state = BridgeDeviceState.ACTIVE, isSelf = false),
-                ),
             isSelf = isSelf,
             canRemove = !isSelf,
-            canRemoveDevices = true,
+            activeDevices =
+                listOf(
+                    BridgeActiveDevice(id = 1uL, name = "Phone", isSelf = isSelf, canRemove = !isSelf),
+                    BridgeActiveDevice(id = 2uL, name = "Laptop", isSelf = false, canRemove = true),
+                ),
+            formerDevices =
+                listOf(
+                    BridgeFormerDevice(id = 3uL, name = "Old Phone", state = BridgeFormerDeviceState.REPLACED),
+                    BridgeFormerDevice(id = 4uL, name = "Tablet", state = BridgeFormerDeviceState.REMOVED),
+                ),
         )
 
     fun person(member: BridgeMember = member()): BridgePerson =

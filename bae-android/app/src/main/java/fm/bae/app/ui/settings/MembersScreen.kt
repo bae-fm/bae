@@ -35,6 +35,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.collapse
+import androidx.compose.ui.semantics.expand
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
@@ -59,8 +63,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.BridgeDevice
-import uniffi.bae_bridge.BridgeDeviceState
+import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeJoinRequest
 import uniffi.bae_bridge.BridgeMember
@@ -259,7 +262,7 @@ private class MemberCallbacks(
     val onInvite: () -> Unit,
     val onSetRole: (BridgeMember, BridgeMemberRole) -> Unit,
     val onRemovePerson: (BridgeMember, String) -> Unit,
-    val onRemoveDevice: (BridgeDevice) -> Unit,
+    val onRemoveDevice: (BridgeActiveDevice) -> Unit,
     val onAddDevice: () -> Unit,
 )
 
@@ -359,8 +362,9 @@ private fun JoinRequestRow(
 }
 
 /**
- * One person: their name and role, their devices, and what this device's
- * person may change, with Add device under this device's own person.
+ * One person: their name and role, their active devices, and what this
+ * device's person may change, with Add device under this device's own person
+ * and their removed devices collapsed below.
  */
 @Composable
 private fun MemberRow(
@@ -381,17 +385,16 @@ private fun MemberRow(
                 StatusChip(stringResource(R.string.members_you))
             }
         }
-        member.devices.forEach { device ->
-            DeviceRow(
-                device = device,
-                canRemove = member.canRemoveDevices,
-                onRemove = { callbacks.onRemoveDevice(device) },
-            )
+        member.activeDevices.forEach { device ->
+            DeviceRow(device = device, onRemove = { callbacks.onRemoveDevice(device) })
         }
         if (member.isSelf) {
             TextButton(onClick = callbacks.onAddDevice, modifier = Modifier.padding(start = ThemeSpace.edge)) {
                 Text(stringResource(R.string.members_add_device))
             }
+        }
+        if (member.formerDevices.isNotEmpty()) {
+            FormerDevices(devices = member.formerDevices)
         }
         if (selfIsAdmin && !member.isSelf) {
             Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
@@ -416,10 +419,10 @@ private fun MemberRow(
     }
 }
 
+/** A device that can sync, removable when this device's person may remove it. */
 @Composable
 private fun DeviceRow(
-    device: BridgeDevice,
-    canRemove: Boolean,
+    device: BridgeActiveDevice,
     onRemove: () -> Unit,
 ) {
     Row(
@@ -428,23 +431,15 @@ private fun DeviceRow(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = device.name)
-            val state =
-                when {
-                    device.isSelf -> R.string.members_this_device
-                    device.state == BridgeDeviceState.REMOVED -> R.string.device_state_removed
-                    device.state == BridgeDeviceState.REPLACED -> R.string.device_state_replaced
-                    else -> null
-                }
-            state?.let {
+            if (device.isSelf) {
                 Text(
-                    text = stringResource(it),
+                    text = stringResource(R.string.members_this_device),
                     style = ThemeText.detail.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
-        // This device leaves by removing the library from it, which also deletes its copy.
-        if (canRemove && device.state == BridgeDeviceState.ACTIVE && !device.isSelf) {
+        if (device.canRemove) {
             TextButton(
                 onClick = onRemove,
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),

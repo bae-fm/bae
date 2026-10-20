@@ -24,7 +24,7 @@ async fn profile_requires_membership_and_is_idempotent_after_setup() {
     let people = manager.people().await.unwrap();
     assert_eq!(people.len(), 1);
     assert_eq!(people[0].profile.as_ref(), Some(&profile));
-    assert!(people[0].membership.as_ref().unwrap().member.is_self);
+    assert!(people[0].membership.as_ref().unwrap().is_self);
     manager.rename_profile("New Name").await.unwrap();
     manager
         .set_history_sharing(Sharing::Household)

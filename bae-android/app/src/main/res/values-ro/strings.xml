@@ -271,6 +271,11 @@
     <string name="members_remove_person_confirm_body">Persoana pierde accesul la această bibliotecă. Istoricul și playlisturile ei private se șterg; ce a partajat cu gospodăria rămâne.</string>
     <string name="device_state_removed">Eliminat</string>
     <string name="device_state_replaced">Înlocuit</string>
+    <plurals name="members_former_devices">
+        <item quantity="one">Dispozitiv eliminat (%1$d)</item>
+        <item quantity="few">Dispozitive eliminate (%1$d)</item>
+        <item quantity="other">Dispozitive eliminate (%1$d)</item>
+    </plurals>
     <string name="device_removed_title">Dispozitiv eliminat</string>
     <string name="members_invite">Invită o persoană</string>
     <string name="members_add_device">Adaugă dispozitiv</string>

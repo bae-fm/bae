@@ -30,7 +30,7 @@ struct MembersView: View {
 
     private enum Removal {
         case person(BridgeMember, name: String)
-        case device(BridgeDevice)
+        case device(BridgeActiveDevice)
     }
 
     var body: some View {
@@ -183,9 +183,9 @@ struct MembersView: View {
     }
 }
 
-/// One member: name, role, the "You" marker, and each of their devices, each
-/// removable by swiping when this person may remove it, with Add Device under
-/// this device's own person.
+/// One member: name, role, the "You" marker, and each of their active devices,
+/// each removable by swiping when this person may remove it, with Add Device
+/// under this device's own person and their removed devices collapsed below.
 private struct PersonSection: View {
     let name: String?
     let member: BridgeMember
@@ -193,7 +193,7 @@ private struct PersonSection: View {
     let busy: Bool
     let onSetRole: (BridgeMemberRole) -> Void
     let onRemove: () -> Void
-    let onRemoveDevice: (BridgeDevice) -> Void
+    let onRemoveDevice: (BridgeActiveDevice) -> Void
     let onAddDevice: () -> Void
 
     var body: some View {
@@ -224,12 +224,10 @@ private struct PersonSection: View {
                         .disabled(busy)
                 }
             }
-            ForEach(member.devices, id: \.id) { device in
+            ForEach(member.activeDevices, id: \.id) { device in
                 DeviceRow(device: device)
                     .swipeActions {
-                        if member.canRemoveDevices, device.state == .active,
-                            !device.isSelf
-                        {
+                        if device.canRemove {
                             Button("Remove", role: .destructive) {
                                 onRemoveDevice(device)
                             }
@@ -243,12 +241,17 @@ private struct PersonSection: View {
             if member.isSelf {
                 Button("Add Device\u{2026}", action: onAddDevice)
             }
+            // Like the device rows above, this changes only when the person's
+            // devices do: their first device loses access.
+            if !member.formerDevices.isEmpty {
+                FormerDevicesDisclosure(devices: member.formerDevices)
+            }
         }
     }
 }
 
 private struct DeviceRow: View {
-    let device: BridgeDevice
+    let device: BridgeActiveDevice
 
     var body: some View {
         HStack(spacing: ThemeSpace.related) {
@@ -258,11 +261,45 @@ private struct DeviceRow: View {
             Text(device.name)
                 .themeText(.body)
             Spacer()
-            Text(device.stateLabel(thisDevice: String(localized: "This device")))
+            // Hidden rather than removed so every row has the same layout.
+            Text("This device")
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
+                .opacity(device.isSelf ? 1 : 0)
+                .accessibilityHidden(!device.isSelf)
         }
         .padding(.leading, ThemeSpace.group)
+    }
+}
+
+/// A person's removed and replaced devices, collapsed until opened. They no
+/// longer have access, so they offer no actions.
+private struct FormerDevicesDisclosure: View {
+    let devices: [BridgeFormerDevice]
+
+    var body: some View {
+        DisclosureGroup {
+            ForEach(devices, id: \.id) { device in
+                HStack(spacing: ThemeSpace.related) {
+                    Image(systemName: "laptopcomputer.and.iphone")
+                        .themeIcon(.small)
+                        .foregroundStyle(.secondary)
+                    Text(device.name)
+                        .themeText(.body)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(device.state.label)
+                        .themeText(.detail)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.leading, ThemeSpace.group)
+            }
+        } label: {
+            Text("Removed devices (\(devices.count))")
+                .themeText(.detail)
+                .foregroundStyle(.secondary)
+                .padding(.leading, ThemeSpace.group)
+        }
     }
 }
 

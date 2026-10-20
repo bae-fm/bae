@@ -53,14 +53,13 @@ impl LibraryManager {
             );
         }
         for membership in self.get_members().await?.members {
-            let person =
-                people
-                    .entry(membership.member.id)
-                    .or_insert_with(|| crate::people::Person {
-                        id: membership.member.id,
-                        profile: None,
-                        membership: None,
-                    });
+            let person = people
+                .entry(membership.id)
+                .or_insert_with(|| crate::people::Person {
+                    id: membership.id,
+                    profile: None,
+                    membership: None,
+                });
             person.membership = Some(membership);
         }
         Ok(people.into_values().collect())

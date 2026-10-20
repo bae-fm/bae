@@ -9,13 +9,12 @@ mirror_enum! { BridgeMemberRole = coven::MemberRole,
     from_core: pub(crate) fn, into_core: pub(crate) fn, variants: { Admin, Member },
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeDeviceState {
-    Active,
+pub enum BridgeFormerDeviceState {
     Removed,
     Replaced,
 }
-mirror_enum! { BridgeDeviceState = coven::DeviceState,
-    from_core: fn, variants: { Active, Removed, Replaced },
+mirror_enum! { BridgeFormerDeviceState = bae_core::sync::membership::FormerDeviceState,
+    from_core: fn, variants: { Removed, Replaced },
 }
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeMemberPublicKeys {
@@ -30,20 +29,44 @@ impl BridgeMemberPublicKeys {
         }
     }
 }
+/// A device that can still sync.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeDevice {
+pub struct BridgeActiveDevice {
     pub id: u64,
     pub name: String,
-    pub state: BridgeDeviceState,
     pub is_self: bool,
+    pub can_remove: bool,
 }
-impl BridgeDevice {
-    fn from_core(device: coven::DeviceInfo) -> Self {
+impl BridgeActiveDevice {
+    fn from_core(device: bae_core::sync::membership::ActiveDevice) -> Self {
+        let bae_core::sync::membership::ActiveDevice {
+            id,
+            name,
+            is_self,
+            can_remove,
+        } = device;
         Self {
-            id: device.id.0,
-            name: device.name,
-            state: BridgeDeviceState::from_core(device.state),
-            is_self: device.is_self,
+            id: id.0,
+            name,
+            is_self,
+            can_remove,
+        }
+    }
+}
+/// A removed or replaced device, which no longer has access.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeFormerDevice {
+    pub id: u64,
+    pub name: String,
+    pub state: BridgeFormerDeviceState,
+}
+impl BridgeFormerDevice {
+    fn from_core(device: bae_core::sync::membership::FormerDevice) -> Self {
+        let bae_core::sync::membership::FormerDevice { id, name, state } = device;
+        Self {
+            id: id.0,
+            name,
+            state: BridgeFormerDeviceState::from_core(state),
         }
     }
 }
@@ -52,30 +75,36 @@ pub struct BridgeMember {
     pub id: String,
     pub keys: BridgeMemberPublicKeys,
     pub role: BridgeMemberRole,
-    pub devices: Vec<BridgeDevice>,
     pub is_self: bool,
     pub can_remove: bool,
-    pub can_remove_devices: bool,
+    pub active_devices: Vec<BridgeActiveDevice>,
+    pub former_devices: Vec<BridgeFormerDevice>,
 }
 impl BridgeMember {
     fn from_core(value: bae_core::sync::membership::MembershipMember) -> Self {
         let bae_core::sync::membership::MembershipMember {
-            member,
+            id,
+            keys,
+            role,
+            is_self,
             can_remove,
-            can_remove_devices,
+            active_devices,
+            former_devices,
         } = value;
         Self {
-            id: member.id.0.to_string(),
-            keys: BridgeMemberPublicKeys::from_core(member.keys),
-            role: BridgeMemberRole::from_core(member.role),
-            devices: member
-                .devices
-                .into_iter()
-                .map(BridgeDevice::from_core)
-                .collect(),
-            is_self: member.is_self,
+            id: id.0.to_string(),
+            keys: BridgeMemberPublicKeys::from_core(keys),
+            role: BridgeMemberRole::from_core(role),
+            is_self,
             can_remove,
-            can_remove_devices,
+            active_devices: active_devices
+                .into_iter()
+                .map(BridgeActiveDevice::from_core)
+                .collect(),
+            former_devices: former_devices
+                .into_iter()
+                .map(BridgeFormerDevice::from_core)
+                .collect(),
         }
     }
 }

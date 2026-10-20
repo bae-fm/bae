@@ -268,6 +268,9 @@
     <string name="members_remove_person_confirm_body">このライブラリにアクセスできなくなります。非公開の履歴とプレイリストは削除され、家族と共有したものは残ります。</string>
     <string name="device_state_removed">削除済み</string>
     <string name="device_state_replaced">置き換え済み</string>
+    <plurals name="members_former_devices">
+        <item quantity="other">削除済みのデバイス（%1$d）</item>
+    </plurals>
     <string name="device_removed_title">デバイスを削除しました</string>
     <string name="members_invite">メンバーを招待</string>
     <string name="members_add_device">デバイスを追加</string>

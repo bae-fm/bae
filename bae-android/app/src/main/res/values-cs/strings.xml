@@ -274,6 +274,12 @@
     <string name="members_remove_person_confirm_body">Ztratí přístup k této knihovně. Jejich soukromá historie a playlisty se smažou; co sdíleli s domácností, zůstane.</string>
     <string name="device_state_removed">Odebráno</string>
     <string name="device_state_replaced">Nahrazeno</string>
+    <plurals name="members_former_devices">
+        <item quantity="one">Odebrané zařízení (%1$d)</item>
+        <item quantity="few">Odebraná zařízení (%1$d)</item>
+        <item quantity="many">Odebraná zařízení (%1$d)</item>
+        <item quantity="other">Odebraná zařízení (%1$d)</item>
+    </plurals>
     <string name="device_removed_title">Zařízení bylo odebráno</string>
     <string name="members_invite">Pozvat osobu</string>
     <string name="members_add_device">Přidat zařízení</string>

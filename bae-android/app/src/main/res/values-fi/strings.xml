@@ -269,6 +269,10 @@
     <string name="members_remove_person_confirm_body">Hän menettää pääsyn tähän kirjastoon. Hänen yksityinen historiansa ja soittolistansa poistetaan; kotitalouden kanssa jaettu jää.</string>
     <string name="device_state_removed">Poistettu</string>
     <string name="device_state_replaced">Korvattu</string>
+    <plurals name="members_former_devices">
+        <item quantity="one">Poistettu laite (%1$d)</item>
+        <item quantity="other">Poistetut laitteet (%1$d)</item>
+    </plurals>
     <string name="device_removed_title">Laite poistettu</string>
     <string name="members_invite">Kutsu henkilö</string>
     <string name="members_add_device">Lisää laite</string>

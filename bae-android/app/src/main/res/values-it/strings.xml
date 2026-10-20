@@ -271,6 +271,10 @@
     <string name="members_remove_person_confirm_body">Perde l’accesso a questa libreria. La sua cronologia e le sue playlist private vengono eliminate; ciò che ha condiviso con la famiglia resta.</string>
     <string name="device_state_removed">Rimosso</string>
     <string name="device_state_replaced">Sostituito</string>
+    <plurals name="members_former_devices">
+        <item quantity="one">Dispositivo rimosso (%1$d)</item>
+        <item quantity="other">Dispositivi rimossi (%1$d)</item>
+    </plurals>
     <string name="device_removed_title">Dispositivo rimosso</string>
     <string name="members_invite">Invita una persona</string>
     <string name="members_add_device">Aggiungi dispositivo</string>

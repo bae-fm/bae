@@ -268,6 +268,9 @@
     <string name="members_remove_person_confirm_body">此人将无法访问此库。其私人记录和播放列表会被删除；与家人共享的内容会保留。</string>
     <string name="device_state_removed">已移除</string>
     <string name="device_state_replaced">已替换</string>
+    <plurals name="members_former_devices">
+        <item quantity="other">已移除的设备（%1$d）</item>
+    </plurals>
     <string name="device_removed_title">设备已移除</string>
     <string name="members_invite">邀请成员</string>
     <string name="members_add_device">添加设备</string>

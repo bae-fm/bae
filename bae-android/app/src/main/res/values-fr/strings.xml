@@ -271,6 +271,10 @@
     <string name="members_remove_person_confirm_body">Cette personne perd l’accès à cette bibliothèque. Son historique et ses playlists privés sont supprimés ; ce qu’elle a partagé avec le foyer reste.</string>
     <string name="device_state_removed">Retiré</string>
     <string name="device_state_replaced">Remplacé</string>
+    <plurals name="members_former_devices">
+        <item quantity="one">Appareil retiré (%1$d)</item>
+        <item quantity="other">Appareils retirés (%1$d)</item>
+    </plurals>
     <string name="device_removed_title">Appareil retiré</string>
     <string name="members_invite">Inviter une personne</string>
     <string name="members_add_device">Ajouter un appareil</string>

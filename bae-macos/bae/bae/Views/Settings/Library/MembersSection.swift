@@ -34,7 +34,7 @@ struct MembersSection: View {
 
     private enum Removal {
         case person(BridgeMember, name: String)
-        case device(BridgeDevice)
+        case device(BridgeActiveDevice)
     }
 
     var body: some View {
@@ -204,8 +204,9 @@ struct MembersSection: View {
     }
 }
 
-/// One member: name, role, the "You" marker, and each of their devices, with
-/// Add Device under this device's own person.
+/// One member: name, role, the "You" marker, and each of their active devices,
+/// with Add Device under this device's own person and their removed devices
+/// collapsed below.
 private struct MemberRow: View {
     let name: String?
     let member: BridgeMember
@@ -213,7 +214,7 @@ private struct MemberRow: View {
     let busy: Bool
     let onSetRole: (BridgeMemberRole) -> Void
     let onRemove: () -> Void
-    let onRemoveDevice: (BridgeDevice) -> Void
+    let onRemoveDevice: (BridgeActiveDevice) -> Void
     let onAddDevice: () -> Void
 
     var body: some View {
@@ -249,11 +250,9 @@ private struct MemberRow: View {
                 .allowsHitTesting(member.canRemove && !busy)
                 .accessibilityHidden(!member.canRemove)
             }
-            ForEach(member.devices, id: \.id) { device in
+            ForEach(member.activeDevices, id: \.id) { device in
                 DeviceRow(
                     device: device,
-                    canRemove: member.canRemoveDevices
-                        && device.state == .active && !device.isSelf,
                     busy: busy,
                     onRemove: { onRemoveDevice(device) }
                 )
@@ -265,14 +264,19 @@ private struct MemberRow: View {
                     .buttonStyle(.link)
                     .padding(.leading, ThemeSpace.group)
             }
+            // Like the device rows above, this changes only when the person's
+            // devices do: their first device loses access.
+            if !member.formerDevices.isEmpty {
+                FormerDevicesDisclosure(devices: member.formerDevices)
+            }
         }
         .padding(.vertical, ThemeSpace.line)
     }
 }
 
+/// A device that can sync, removable by this device's person when allowed.
 private struct DeviceRow: View {
-    let device: BridgeDevice
-    let canRemove: Bool
+    let device: BridgeActiveDevice
     let busy: Bool
     let onRemove: () -> Void
 
@@ -283,9 +287,12 @@ private struct DeviceRow: View {
                 .foregroundStyle(.secondary)
             Text(device.name)
                 .themeText(.body)
-            Text(device.stateLabel(thisDevice: String(localized: "This Mac")))
+            // Hidden rather than removed so every row has the same layout.
+            Text("This Mac")
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
+                .opacity(device.isSelf ? 1 : 0)
+                .accessibilityHidden(!device.isSelf)
             Spacer()
             Button(role: .destructive, action: onRemove) {
                 Image(systemName: "minus.circle")
@@ -293,9 +300,39 @@ private struct DeviceRow: View {
             }
             .buttonStyle(.borderless)
             .help("Remove this device")
-            .opacity(canRemove ? 1 : 0)
-            .allowsHitTesting(canRemove && !busy)
-            .accessibilityHidden(!canRemove)
+            .opacity(device.canRemove ? 1 : 0)
+            .allowsHitTesting(device.canRemove && !busy)
+            .accessibilityHidden(!device.canRemove)
+        }
+        .padding(.leading, ThemeSpace.group)
+    }
+}
+
+/// A person's removed and replaced devices, collapsed until opened. They no
+/// longer have access, so they offer no actions.
+private struct FormerDevicesDisclosure: View {
+    let devices: [BridgeFormerDevice]
+
+    var body: some View {
+        DisclosureGroup {
+            ForEach(devices, id: \.id) { device in
+                HStack(spacing: ThemeSpace.related) {
+                    Image(systemName: "laptopcomputer.and.iphone")
+                        .themeIcon(.small)
+                        .foregroundStyle(.secondary)
+                    Text(device.name)
+                        .themeText(.body)
+                        .foregroundStyle(.secondary)
+                    Text(device.state.label)
+                        .themeText(.detail)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+            }
+        } label: {
+            Text("Removed devices (\(devices.count))")
+                .themeText(.detail)
+                .foregroundStyle(.secondary)
         }
         .padding(.leading, ThemeSpace.group)
     }

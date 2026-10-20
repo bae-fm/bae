@@ -278,6 +278,14 @@
     <string name="members_remove_person_confirm_body">سيفقد الوصول إلى هذه المكتبة. يُحذف سجله الخاص وقوائم التشغيل الخاصة؛ ويبقى ما شاركه مع أهل البيت.</string>
     <string name="device_state_removed">مُزال</string>
     <string name="device_state_replaced">مُستبدَل</string>
+    <plurals name="members_former_devices">
+        <item quantity="zero">الأجهزة المُزالة (%1$d)</item>
+        <item quantity="one">الجهاز المُزال (%1$d)</item>
+        <item quantity="two">الجهازان المُزالان (%1$d)</item>
+        <item quantity="few">الأجهزة المُزالة (%1$d)</item>
+        <item quantity="many">الأجهزة المُزالة (%1$d)</item>
+        <item quantity="other">الأجهزة المُزالة (%1$d)</item>
+    </plurals>
     <string name="device_removed_title">تمت إزالة الجهاز</string>
     <string name="members_invite">دعوة شخص</string>
     <string name="members_add_device">إضافة جهاز</string>

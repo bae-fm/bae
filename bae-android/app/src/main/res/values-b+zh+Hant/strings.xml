@@ -268,6 +268,9 @@
     <string name="members_remove_person_confirm_body">此人將無法存取此資料庫。其私人紀錄和播放清單會被刪除；與家人共享的內容會保留。</string>
     <string name="device_state_removed">已移除</string>
     <string name="device_state_replaced">已取代</string>
+    <plurals name="members_former_devices">
+        <item quantity="other">已移除的裝置（%1$d）</item>
+    </plurals>
     <string name="device_removed_title">裝置已移除</string>
     <string name="members_invite">邀請成員</string>
     <string name="members_add_device">新增裝置</string>

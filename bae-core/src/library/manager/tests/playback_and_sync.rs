@@ -351,7 +351,7 @@ async fn membership_reads_committed_local_state_without_a_provider() {
     let (manager, _temp) = setup_test_manager().await;
     let membership = manager.get_members().await.unwrap();
     assert!(!manager.is_sync_configured().await.unwrap());
-    assert!(membership.members.iter().all(|member| member.member.is_self));
+    assert!(membership.members.iter().all(|member| member.is_self));
 }
 
 // ── Queue windowing tests ───────────────────────────────────────────

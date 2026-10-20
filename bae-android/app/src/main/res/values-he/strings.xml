@@ -272,6 +272,11 @@
     <string name="members_remove_person_confirm_body">האדם יאבד גישה לספרייה הזו. ההיסטוריה ורשימות ההשמעה הפרטיות שלו יימחקו; מה ששיתף עם בני הבית יישאר.</string>
     <string name="device_state_removed">הוסר</string>
     <string name="device_state_replaced">הוחלף</string>
+    <plurals name="members_former_devices">
+        <item quantity="one">מכשיר שהוסר (%1$d)</item>
+        <item quantity="two">מכשירים שהוסרו (%1$d)</item>
+        <item quantity="other">מכשירים שהוסרו (%1$d)</item>
+    </plurals>
     <string name="device_removed_title">המכשיר הוסר</string>
     <string name="members_invite">הזמנת אדם</string>
     <string name="members_add_device">הוספת מכשיר</string>

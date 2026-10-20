@@ -270,6 +270,10 @@
     <string name="members_remove_person_confirm_body">Човекът губи достъп до тази библиотека. Личната му история и плейлисти се изтриват; споделеното с домакинството остава.</string>
     <string name="device_state_removed">Премахнато</string>
     <string name="device_state_replaced">Заменено</string>
+    <plurals name="members_former_devices">
+        <item quantity="one">Премахнато устройство (%1$d)</item>
+        <item quantity="other">Премахнати устройства (%1$d)</item>
+    </plurals>
     <string name="device_removed_title">Устройството е премахнато</string>
     <string name="members_invite">Поканване на човек</string>
     <string name="members_add_device">Добавяне на устройство</string>

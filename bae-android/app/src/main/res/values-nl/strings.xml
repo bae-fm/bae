@@ -270,6 +270,10 @@
     <string name="members_remove_person_confirm_body">Deze persoon verliest de toegang tot deze bibliotheek. Persoonlijke geschiedenis en afspeellijsten worden verwijderd; wat met het huishouden is gedeeld, blijft.</string>
     <string name="device_state_removed">Verwijderd</string>
     <string name="device_state_replaced">Vervangen</string>
+    <plurals name="members_former_devices">
+        <item quantity="one">Verwijderd apparaat (%1$d)</item>
+        <item quantity="other">Verwijderde apparaten (%1$d)</item>
+    </plurals>
     <string name="device_removed_title">Apparaat verwijderd</string>
     <string name="members_invite">Iemand uitnodigen</string>
     <string name="members_add_device">Apparaat toevoegen</string>

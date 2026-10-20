@@ -112,8 +112,10 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         assert!(app.clone().history().await.unwrap().is_empty());
         let members = app.clone().get_members().await.unwrap();
         assert!(members.self_is_admin);
-        assert!(members.members[0].can_remove_devices);
-        assert!(members.members[0].devices[0].is_self);
+        let device = &members.members[0].active_devices[0];
+        assert!(device.is_self);
+        assert!(!device.can_remove);
+        assert!(members.members[0].former_devices.is_empty());
         assert_eq!(app.clone().people().await.unwrap()[0].id, profile.id);
     });
     app.close_library().unwrap();

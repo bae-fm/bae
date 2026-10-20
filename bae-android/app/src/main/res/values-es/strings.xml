@@ -271,6 +271,10 @@
     <string name="members_remove_person_confirm_body">Pierde el acceso a esta biblioteca. Su historial y sus listas privados se borran; lo que compartió con el hogar se queda.</string>
     <string name="device_state_removed">Quitado</string>
     <string name="device_state_replaced">Sustituido</string>
+    <plurals name="members_former_devices">
+        <item quantity="one">Dispositivo quitado (%1$d)</item>
+        <item quantity="other">Dispositivos quitados (%1$d)</item>
+    </plurals>
     <string name="device_removed_title">Dispositivo quitado</string>
     <string name="members_invite">Invitar a una persona</string>
     <string name="members_add_device">Añadir dispositivo</string>

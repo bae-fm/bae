@@ -50,8 +50,9 @@
             prefix: ""
         )
 
-        /// This device's person, an admin, and one other member with a
-        /// removable device. Ids are arbitrary UUIDs.
+        /// This device's person, an admin, whose earlier registration of this
+        /// device was replaced, and one other member with a removable device
+        /// and two removed ones. Ids are arbitrary UUIDs.
         static let members: [BridgePerson] = [
             BridgePerson(
                 id: "4a1f2c3d-0000-4000-8000-000000000001",
@@ -69,17 +70,23 @@
                         sealing: Data()
                     ),
                     role: .admin,
-                    devices: [
-                        BridgeDevice(
-                            id: 1,
-                            name: "Person A's Mac",
-                            state: .active,
-                            isSelf: true
-                        )
-                    ],
                     isSelf: true,
                     canRemove: false,
-                    canRemoveDevices: true
+                    activeDevices: [
+                        BridgeActiveDevice(
+                            id: 3,
+                            name: "Person A's Mac",
+                            isSelf: true,
+                            canRemove: false
+                        )
+                    ],
+                    formerDevices: [
+                        BridgeFormerDevice(
+                            id: 1,
+                            name: "Person A's Mac",
+                            state: .replaced
+                        )
+                    ]
                 )
             ),
             BridgePerson(
@@ -98,17 +105,28 @@
                         sealing: Data()
                     ),
                     role: .member,
-                    devices: [
-                        BridgeDevice(
-                            id: 2,
-                            name: "Person B's Phone",
-                            state: .active,
-                            isSelf: false
-                        )
-                    ],
                     isSelf: false,
                     canRemove: true,
-                    canRemoveDevices: true
+                    activeDevices: [
+                        BridgeActiveDevice(
+                            id: 2,
+                            name: "Person B's Phone",
+                            isSelf: false,
+                            canRemove: true
+                        )
+                    ],
+                    formerDevices: [
+                        BridgeFormerDevice(
+                            id: 4,
+                            name: "Person B's Old Laptop",
+                            state: .removed
+                        ),
+                        BridgeFormerDevice(
+                            id: 5,
+                            name: "Person B's Tablet",
+                            state: .removed
+                        ),
+                    ]
                 )
             ),
         ]

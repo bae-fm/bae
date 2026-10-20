@@ -272,6 +272,11 @@
     <string name="members_remove_person_confirm_body">Gubi pristup ovoj fonoteci. Privatna povijest i popisi za reprodukciju brišu se; ono što je podijeljeno s kućanstvom ostaje.</string>
     <string name="device_state_removed">Uklonjeno</string>
     <string name="device_state_replaced">Zamijenjeno</string>
+    <plurals name="members_former_devices">
+        <item quantity="one">Uklonjeni uređaj (%1$d)</item>
+        <item quantity="few">Uklonjeni uređaji (%1$d)</item>
+        <item quantity="other">Uklonjeni uređaji (%1$d)</item>
+    </plurals>
     <string name="device_removed_title">Uređaj uklonjen</string>
     <string name="members_invite">Pozovi osobu</string>
     <string name="members_add_device">Dodaj uređaj</string>

@@ -17,7 +17,7 @@ import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.LabeledValueRow
-import uniffi.bae_bridge.BridgeDevice
+import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeProviderSignOut
 import uniffi.bae_bridge.bridgeProviderSignOutKey
@@ -30,7 +30,7 @@ internal sealed interface PendingRemoval {
     ) : PendingRemoval
 
     data class Device(
-        val device: BridgeDevice,
+        val device: BridgeActiveDevice,
     ) : PendingRemoval
 }
 

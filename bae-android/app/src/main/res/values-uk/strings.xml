@@ -274,6 +274,12 @@
     <string name="members_remove_person_confirm_body">Людина втрачає доступ до цієї бібліотеки. Її приватна історія та списки відтворення видаляються; те, чим вона поділилася з домівкою, лишається.</string>
     <string name="device_state_removed">Вилучено</string>
     <string name="device_state_replaced">Замінено</string>
+    <plurals name="members_former_devices">
+        <item quantity="one">Вилучений пристрій (%1$d)</item>
+        <item quantity="few">Вилучені пристрої (%1$d)</item>
+        <item quantity="many">Вилучені пристрої (%1$d)</item>
+        <item quantity="other">Вилучені пристрої (%1$d)</item>
+    </plurals>
     <string name="device_removed_title">Пристрій вилучено</string>
     <string name="members_invite">Запросити людину</string>
     <string name="members_add_device">Додати пристрій</string>

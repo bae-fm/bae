@@ -268,6 +268,9 @@
     <string name="members_remove_person_confirm_body">이 라이브러리에 접근할 수 없게 됩니다. 비공개 기록과 재생목록은 삭제되고, 가족과 공유한 내용은 남습니다.</string>
     <string name="device_state_removed">제거됨</string>
     <string name="device_state_replaced">대체됨</string>
+    <plurals name="members_former_devices">
+        <item quantity="other">제거된 기기 (%1$d)</item>
+    </plurals>
     <string name="device_removed_title">기기가 제거됨</string>
     <string name="members_invite">사람 초대</string>
     <string name="members_add_device">기기 추가</string>
