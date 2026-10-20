@@ -282,6 +282,7 @@ struct MainAppView: View {
             .environment(importScene.store)
             .environment(importScene.slot(uiStore: uiStore))
             .environment(ImportSelection())
+            .environment(SettingsNavigation())
             .environment(PreviewAudio.stub())
             .environment(Cast.stub())
             .environment(CastStore())
