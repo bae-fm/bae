@@ -58,6 +58,9 @@ bae-test-support = { path = "../bae-test-support" }
 bae-loc = { path = "../bae-loc" }
 bae-core = { path = "../bae-core", features = ["test-utils"] }
 tempfile = "3"
+# Builds the native keychain refusal coven wraps in `KeychainError`, for the
+# tests of how a missing keychain entitlement is reported.
+keyring-core = "1.0.1"
 
 [features]
 default = []

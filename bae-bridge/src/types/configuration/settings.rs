@@ -164,6 +164,9 @@ pub enum BridgeErrorCategory {
     /// same read succeeds after unlock, so the host retries rather than
     /// reporting the library as broken.
     KeyringLocked,
+    /// This build was signed without its keychain entitlement, so no keychain
+    /// call succeeds; neither retrying nor unlocking fixes it.
+    KeychainEntitlementMissing,
     /// A library-sharing membership operation failed (the membership chain, an
     /// invite, or cross-device key rotation).
     Membership,
@@ -323,6 +326,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::Network => "core.error.category.network",
         BridgeErrorCategory::Keyring => "core.error.category.keyring",
         BridgeErrorCategory::KeyringLocked => "core.error.keyring.locked",
+        BridgeErrorCategory::KeychainEntitlementMissing => "core.error.keyring.entitlement_missing",
         BridgeErrorCategory::Membership => "core.error.category.membership",
         BridgeErrorCategory::GroupingBlocked { reason } => match reason {
             BridgeGroupingBlock::SourceChanged => "core.import.grouping.source_changed",
@@ -480,6 +484,7 @@ mirror_enum! {
         Network,
         Keyring,
         KeyringLocked,
+        KeychainEntitlementMissing,
         Membership,
     },
 }

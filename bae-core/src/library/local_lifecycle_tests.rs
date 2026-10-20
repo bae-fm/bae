@@ -66,15 +66,20 @@ impl Home {
         .unwrap();
     }
 
-    /// The libraries whose saved restore codes this device offers.
-    async fn offered_codes(&self) -> Vec<coven::StoreId> {
-        super::Keychain::InMemory(self.installation.clone())
+    /// The libraries whose saved restore codes this device offers, with the
+    /// name each is offered under.
+    async fn offered_codes(&self) -> Vec<(coven::StoreId, String)> {
+        self.keychain()
             .saved_restore_codes(&self.app_dir)
             .await
             .unwrap()
             .into_iter()
-            .map(|code| code.store_id)
+            .map(|code| (code.store_id, code.name))
             .collect()
+    }
+
+    fn keychain(&self) -> super::Keychain {
+        super::Keychain::InMemory(self.installation.clone())
     }
 
     fn directory(&self, id: coven::StoreId) -> std::path::PathBuf {
@@ -203,7 +208,53 @@ async fn removing_a_library_keeps_its_saved_restore_code_to_offer_again() {
     let id = handle.store_id();
     assert_eq!(home.offered_codes().await, Vec::new());
     remove_local_library(&home.app_dir, &handle).await.unwrap();
-    assert_eq!(home.offered_codes().await, vec![id]);
+    assert_eq!(
+        home.offered_codes().await,
+        vec![(id, "Library".to_string())]
+    );
+}
+
+/// Forgetting a saved restore code deletes it from the person's keychain, so
+/// no device offers it, and a second forget finds nothing to delete and
+/// succeeds.
+#[tokio::test]
+async fn a_forgotten_restore_code_is_no_longer_offered() {
+    let home = Home::new();
+    let kept = home.library("Kept").await;
+    home.connect(&kept).await;
+    let forgotten = home.library("Forgotten").await;
+    home.connect(&forgotten).await;
+    let (kept_id, forgotten_id) = (kept.store_id(), forgotten.store_id());
+    remove_local_library(&home.app_dir, &kept).await.unwrap();
+    remove_local_library(&home.app_dir, &forgotten)
+        .await
+        .unwrap();
+    let mut offered = home.offered_codes().await;
+    offered.sort_by(|a, b| a.1.cmp(&b.1));
+    assert_eq!(
+        offered,
+        vec![
+            (forgotten_id, "Forgotten".to_string()),
+            (kept_id, "Kept".to_string()),
+        ]
+    );
+
+    home.keychain()
+        .forget_saved_restore_code(forgotten_id)
+        .await
+        .unwrap();
+    assert_eq!(
+        home.offered_codes().await,
+        vec![(kept_id, "Kept".to_string())]
+    );
+    home.keychain()
+        .forget_saved_restore_code(forgotten_id)
+        .await
+        .unwrap();
+    assert_eq!(
+        home.offered_codes().await,
+        vec![(kept_id, "Kept".to_string())]
+    );
 }
 
 #[tokio::test]

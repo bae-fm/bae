@@ -148,6 +148,7 @@ fn category_column(category: UiErrorCategory) -> String {
         C::Network => "network".to_string(),
         C::Keyring => "keyring".to_string(),
         C::KeyringLocked => "keyring_locked".to_string(),
+        C::KeychainEntitlementMissing => "keychain_entitlement_missing".to_string(),
         C::Membership => "membership".to_string(),
     }
 }
@@ -259,6 +260,7 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
             "network" => C::Network,
             "keyring" => C::Keyring,
             "keyring_locked" => C::KeyringLocked,
+            "keychain_entitlement_missing" => C::KeychainEntitlementMissing,
             "membership" => C::Membership,
             _ => return Err(unreadable()),
         },
@@ -522,6 +524,7 @@ mod tests {
             C::Network,
             C::Keyring,
             C::KeyringLocked,
+            C::KeychainEntitlementMissing,
             C::Membership,
         ];
         for class in classes {

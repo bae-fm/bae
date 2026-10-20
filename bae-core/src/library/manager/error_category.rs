@@ -70,6 +70,9 @@ pub(super) fn key_category(error: &coven::KeyError) -> C {
         // the one keyring failure a host should wait out, so it keeps its own
         // class all the way to the UI.
         coven::KeyError::KeychainTemporarilyUnavailable(_) => C::KeyringLocked,
+        // The build lacks its keychain entitlement: no keyring the person
+        // could fix, and no retry that helps.
+        coven::KeyError::MissingKeychainEntitlement(_) => C::KeychainEntitlementMissing,
         // The person left the store, so coven refuses to write their synced
         // restore code or S3 key again: the removal, not the keychain, failed it.
         coven::KeyError::Left => C::DeviceRemoved,

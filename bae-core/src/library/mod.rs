@@ -175,6 +175,23 @@ impl Keychain {
         };
         restorable_codes(codes, &app_dir.store_layout()).await
     }
+
+    /// Delete a library's saved restore code, and the S3 key saved beside it,
+    /// from this keychain: on Apple, from iCloud Keychain, and so from every
+    /// one of the person's Apple devices. It changes no library, storage or
+    /// device's copy, and needs no open library. An entry already gone
+    /// succeeds, and calling again finishes one that failed partway.
+    pub async fn forget_saved_restore_code(
+        &self,
+        store: coven::StoreId,
+    ) -> Result<(), ForgetSavedRestoreCodeError> {
+        match self {
+            Self::System => coven::forget_saved_restore_code(store).await?,
+            #[cfg(any(test, feature = "test-utils"))]
+            Self::InMemory(installation) => installation.forget_saved_restore_code(store).await?,
+        }
+        Ok(())
+    }
 }
 
 pub(crate) fn configure_store(builder: coven::CovenBuilder) -> coven::CovenBuilder {
@@ -360,6 +377,17 @@ impl SavedRestoreCodesError {
             Self::Keychain(error) => manager::bootstrap_category(error),
             Self::Stores(_) => crate::ui::UiErrorCategory::Config,
         }
+    }
+}
+
+/// Why a saved restore code couldn't be deleted from the keychain.
+#[derive(Debug, thiserror::Error)]
+#[error(transparent)]
+pub struct ForgetSavedRestoreCodeError(#[from] coven::BootstrapError);
+
+impl ForgetSavedRestoreCodeError {
+    pub fn category(&self) -> crate::ui::UiErrorCategory {
+        manager::bootstrap_category(&self.0)
     }
 }
 

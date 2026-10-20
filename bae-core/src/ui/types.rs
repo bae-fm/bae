@@ -59,6 +59,11 @@ pub enum UiErrorCategory {
     /// broken and nothing is missing: the same read succeeds after unlock, so
     /// the host retries instead of reporting the library as unusable.
     KeyringLocked,
+    /// This build of the app was signed without its keychain entitlement
+    /// (Apple's errSecMissingEntitlement), so every keychain call fails the
+    /// same way. A packaging fault, not the person's keyring or storage:
+    /// retrying or unlocking changes nothing until the app is signed with it.
+    KeychainEntitlementMissing,
     /// A library-sharing membership operation failed: the membership chain, an
     /// invite, or key rotation across devices.
     Membership,

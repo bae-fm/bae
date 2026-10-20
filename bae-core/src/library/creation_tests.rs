@@ -520,6 +520,7 @@ async fn saved_codes_for_libraries_on_this_device_are_not_offered() {
         .id();
     let elsewhere = coven::StoreId(uuid::Uuid::new_v4());
     let code = |store_id| coven::SavedRestoreCode {
+        name: "Library".into(),
         store_id,
         location: coven::StorageConfig::CloudKit {
             container: "iCloud.fm.bae.desktop".into(),

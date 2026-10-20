@@ -76,6 +76,13 @@ pub enum BootstrapError {
     /// retry rather than report as broken.
     #[error("the OS keychain is not available right now")]
     KeyringUnavailable,
+    /// The app was signed without its keychain entitlement, so no keychain
+    /// read succeeds. A packaging fault that neither retrying nor unlocking
+    /// fixes.
+    #[error(
+        "the app lacks its keychain-access-groups entitlement (errSecMissingEntitlement): {0}"
+    )]
+    KeychainEntitlementMissing(coven::KeychainError),
 }
 
 /// Why reading the cloud-home key state failed, as a bootstrap outcome.
@@ -90,6 +97,9 @@ pub(crate) fn classify_key_state_error(error: crate::library::LibraryError) -> B
         crate::library::LibraryError::Keyring(coven::KeyError::KeychainTemporarilyUnavailable(
             _,
         )) => BootstrapError::KeyringUnavailable,
+        crate::library::LibraryError::Keyring(coven::KeyError::MissingKeychainEntitlement(
+            error,
+        )) => BootstrapError::KeychainEntitlementMissing(error),
         error => BootstrapError::Config(error.to_string()),
     }
 }
@@ -99,6 +109,9 @@ fn classify_open_error(error: crate::db::DbError) -> BootstrapError {
         crate::db::DbError::Coven(coven::CovenError::Key(
             coven::KeyError::KeychainTemporarilyUnavailable(_),
         )) => BootstrapError::KeyringUnavailable,
+        crate::db::DbError::Coven(coven::CovenError::Key(
+            coven::KeyError::MissingKeychainEntitlement(error),
+        )) => BootstrapError::KeychainEntitlementMissing(error),
         error @ crate::db::DbError::Coven(coven::CovenError::Database(
             coven::DbError::DamagedDatabase,
         )) => BootstrapError::DeviceResetRequired(error.to_string()),
@@ -544,6 +557,29 @@ mod tests {
         assert!(matches!(
             super::classify_open_error(error.into()),
             BootstrapError::KeyringUnavailable
+        ));
+    }
+
+    fn missing_entitlement() -> coven::KeyError {
+        coven::KeyError::MissingKeychainEntitlement(
+            keyring_core::Error::BadStoreFormat("errSecMissingEntitlement".into()).into(),
+        )
+    }
+
+    /// A build signed without its keychain entitlement fails every keychain
+    /// read the same way. Opening reports that, not a broken library or a
+    /// locked keychain to wait out.
+    #[test]
+    fn a_missing_keychain_entitlement_is_reported_as_itself() {
+        assert!(matches!(
+            classify_key_state_error(LibraryError::Keyring(missing_entitlement())),
+            BootstrapError::KeychainEntitlementMissing(_)
+        ));
+        assert!(matches!(
+            super::classify_open_error(crate::db::DbError::Coven(coven::CovenError::Key(
+                missing_entitlement()
+            ))),
+            BootstrapError::KeychainEntitlementMissing(_)
         ));
     }
 

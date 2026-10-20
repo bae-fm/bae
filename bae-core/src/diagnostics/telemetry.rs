@@ -231,6 +231,7 @@ telemetry_value_enum! {
         Database => "database",
         Internal => "internal",
         KeyringUnavailable => "keyring_unavailable",
+        KeychainEntitlementMissing => "keychain_entitlement_missing",
         ReplacementUnfinished => "replacement_unfinished",
     }
 }

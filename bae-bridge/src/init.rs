@@ -240,6 +240,9 @@ fn app_start_failure_kind(error: &BootstrapError) -> AppStartFailureKind {
         }
         BootstrapError::Internal(_) => AppStartFailureKind::Internal,
         BootstrapError::KeyringUnavailable => AppStartFailureKind::KeyringUnavailable,
+        BootstrapError::KeychainEntitlementMissing(_) => {
+            AppStartFailureKind::KeychainEntitlementMissing
+        }
         BootstrapError::ReplacementUnfinished(_) => AppStartFailureKind::ReplacementUnfinished,
     }
 }
@@ -328,6 +331,10 @@ fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
         BootstrapError::KeyringUnavailable => BridgeError::diagnostic(
             crate::types::BridgeErrorCategory::KeyringLocked,
             "the OS keychain refused the read while the session is locked",
+        ),
+        error @ BootstrapError::KeychainEntitlementMissing(_) => BridgeError::diagnostic(
+            crate::types::BridgeErrorCategory::KeychainEntitlementMissing,
+            error,
         ),
     }
 }
@@ -607,10 +614,36 @@ mod tests {
             AppStartFailureKind::KeyringUnavailable
         );
         assert_eq!(
+            app_start_failure_kind(&BootstrapError::KeychainEntitlementMissing(
+                keyring_core::Error::BadStoreFormat("errSecMissingEntitlement".into()).into()
+            )),
+            AppStartFailureKind::KeychainEntitlementMissing
+        );
+        assert_eq!(
             app_start_failure_kind(&BootstrapError::ReplacementUnfinished(
                 coven::ReplacedBy::Restore
             )),
             AppStartFailureKind::ReplacementUnfinished
+        );
+    }
+
+    /// A build without its keychain entitlement crosses as its own line, not
+    /// as a broken keyring or a locked one.
+    #[test]
+    fn a_missing_keychain_entitlement_crosses_as_its_own_category() {
+        let error = bootstrap_error_to_bridge(BootstrapError::KeychainEntitlementMissing(
+            keyring_core::Error::BadStoreFormat("errSecMissingEntitlement".into()).into(),
+        ));
+        let BridgeError::Diagnostic { category, .. } = &error else {
+            panic!("a missing entitlement is a diagnostic: {error:?}");
+        };
+        assert_eq!(
+            *category,
+            crate::BridgeErrorCategory::KeychainEntitlementMissing
+        );
+        assert_eq!(
+            crate::bridge_error_category_key(*category),
+            "core.error.keyring.entitlement_missing"
         );
     }
 

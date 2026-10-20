@@ -311,6 +311,11 @@ async fn test_playback_state_source_column_round_trips_both_kinds() {
 fn setup_failure_classes_retain_the_actionable_category() {
     use crate::ui::UiErrorCategory as C;
     use coven::StorageFailure as F;
+    let missing_entitlement = || {
+        coven::KeyError::MissingKeychainEntitlement(
+            keyring_core::Error::BadStoreFormat("errSecMissingEntitlement".into()).into(),
+        )
+    };
     let cases: Vec<(LibraryError, C)> = vec![
         (coven::StorageError::from(F::Authentication).into(), C::Credentials),
         (coven::StorageError::from(F::ContainerNotFound).into(), C::Credentials),
@@ -323,6 +328,8 @@ fn setup_failure_classes_retain_the_actionable_category() {
         (coven::SyncError::Removed.into(), C::DeviceRemoved),
         (coven::KeyError::Left.into(), C::DeviceRemoved),
         (coven::SyncError::SecureStorage(coven::KeyError::Left).into(), C::DeviceRemoved),
+        (missing_entitlement().into(), C::KeychainEntitlementMissing),
+        (coven::SyncError::SecureStorage(missing_entitlement()).into(), C::KeychainEntitlementMissing),
         (LibraryError::Storage("pin ended without completion".into()), C::Internal),
         (LibraryError::Validation("library name cannot be empty".into()), C::Config),
     ];

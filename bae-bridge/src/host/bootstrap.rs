@@ -34,6 +34,8 @@ pub struct BridgeSavedRestoreCode {
 }
 #[derive(Clone, uniffi::Record)]
 pub struct BridgeSavedRestoreCodeInfo {
+    /// The library's name as one of the person's devices last saw it.
+    pub name: String,
     pub library_id: String,
     pub location: BridgeStorageLocation,
     pub has_s3_credentials: bool,
@@ -42,6 +44,7 @@ pub struct BridgeSavedRestoreCodeInfo {
 impl BridgeSavedRestoreCode {
     pub fn info(&self) -> BridgeSavedRestoreCodeInfo {
         BridgeSavedRestoreCodeInfo {
+            name: self.saved.name.clone(),
             library_id: self.saved.store_id.to_string(),
             location: BridgeStorageLocation::from_core(self.saved.location.clone()),
             has_s3_credentials: self.saved.has_s3_credentials,
@@ -70,6 +73,33 @@ impl BridgeHost {
                             .map(|saved| Arc::new(BridgeSavedRestoreCode { saved }))
                             .collect()
                     })
+                    .map_err(|error| {
+                        BridgeError::diagnostic(
+                            BridgeErrorCategory::from_core(error.category()),
+                            error,
+                        )
+                    })
+            },
+        )
+        .await
+    }
+    /// Delete this saved restore code, and the S3 key saved beside it, from
+    /// iCloud Keychain on all the person's Apple devices. The library, its
+    /// storage and every device's copy stay.
+    pub async fn forget_saved_restore_code(
+        self: Arc<Self>,
+        saved: Arc<BridgeSavedRestoreCode>,
+    ) -> Result<(), BridgeError> {
+        crate::operation_runtime::run(
+            self.runtime
+                .as_ref()
+                .expect("host runtime exists until drop")
+                .handle()
+                .clone(),
+            move || async move {
+                self.keychain
+                    .forget_saved_restore_code(saved.saved.store_id)
+                    .await
                     .map_err(|error| {
                         BridgeError::diagnostic(
                             BridgeErrorCategory::from_core(error.category()),

@@ -163,6 +163,9 @@ serial_test = "3.4.0"
 dirs = "5.0"
 # coven's deterministic clock/id fakes for bae's tests (off in production builds).
 coven = { workspace = true, features = ["test-utils"] }
+# Builds the native keychain refusal coven wraps in `KeychainError`, for the
+# tests of how a missing keychain entitlement is reported.
+keyring-core = "1.0.1"
 
 [[test]]
 name = "test_close_open_files"
