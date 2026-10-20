@@ -19339,7 +19339,7 @@
       }
     },
     "Add" : {
-      "comment" : "Open panel button: add the selected folder",
+      "comment" : "Button: add the selected folder in the open panel, a typed artist, a pressing fact; and on the Add device screen, add this device to the library the code names.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -19404,7 +19404,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הוסף"
+            "value" : "הוספה"
           }
         },
         "hr" : {
@@ -19446,7 +19446,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Voeg toe"
+            "value" : "Toevoegen"
           }
         },
         "pl" : {
@@ -19506,7 +19506,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "加入"
+            "value" : "新增"
           }
         }
       }

@@ -120,10 +120,16 @@ struct BootstrapCodeView: View {
         }
     }
 
+    /// A join joins. A code entered on a new device adds this device to the
+    /// person's own library, whichever choice took it; a code saved in iCloud
+    /// Keychain, or one restoring over this device's copy, restores.
     private var primaryTitle: LocalizedStringKey {
-        if case .join = form.attempt { return "Join" }
-        if case .finishRestore = form.entry { return "Finish Restoring" }
-        return "Restore"
+        switch (form.attempt, form.entry) {
+        case (.some(.join), _): "Join"
+        case (_, .restore(nil)), (_, .join): "Add"
+        case (_, .restore(.some)), (_, .restoreOver): "Restore"
+        case (_, .finishRestore): "Finish Restoring"
+        }
     }
 
     @ViewBuilder
