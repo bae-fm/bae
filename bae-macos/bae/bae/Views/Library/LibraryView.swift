@@ -375,6 +375,7 @@ extension LibraryView {
             .environment(uiStore)
             .environment(session)
             .environment(PreviewData.configStore())
+            .environment(SettingsNavigation())
             .frame(width: 1100, height: 700)
             .windowBackground()
     }
@@ -399,6 +400,7 @@ extension LibraryView {
             .environment(uiStore)
             .environment(session)
             .environment(PreviewData.configStore())
+            .environment(SettingsNavigation())
             .frame(width: 1100, height: 700)
             .windowBackground()
     }
@@ -478,6 +480,7 @@ extension LibraryView {
             .environment(uiStore)
             .environment(session)
             .environment(PreviewData.configStore())
+            .environment(SettingsNavigation())
             .frame(width: 1100, height: 700)
             .windowBackground()
     }

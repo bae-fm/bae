@@ -77,6 +77,7 @@
                 .environment(CastStore())
                 .environment(ArtworkLoadingStore(cancel: {}))
                 .albumDetailPreviewEnvironment(store: libraryStore)
+                .environment(SettingsNavigation())
                 .mainWindowPreviewEnvironment()
                 .windowBackground()
         }

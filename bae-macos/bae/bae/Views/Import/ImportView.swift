@@ -65,8 +65,6 @@ struct ImportView: View {
     /// choices.
     @State
     var candidateActionConfirmation: ImportCandidateActionOffer?
-    @Environment(\.openSettingsWindow)
-    var openSettings
     @Environment(UiStore.self)
     var uiStore
     @Environment(ImportListSlot.self)
@@ -93,7 +91,7 @@ struct ImportView: View {
                     failedState(failure)
                 }
                 else if importStore.watchedFolders.isEmpty {
-                    emptyState
+                    ImportEmptyState()
                 }
                 else {
                     splitContent
@@ -127,25 +125,6 @@ struct ImportView: View {
                 "This replaces metadata and cover choices for the selected folders. Source files and track layout are unchanged."
             )
         }
-    }
-
-    // MARK: - Empty state
-
-    private var emptyState: some View {
-        VStack(spacing: ThemeSpace.group) {
-            Button(action: {
-                uiStore.setImportFolderPickerPresented(true)
-            }) {
-                Image(systemName: "plus.circle")
-                    .themeIcon(.hero)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            Text("Add a folder to import music from")
-                .themeText(.body)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// Shown when the list could not be read, instead of an empty state that
