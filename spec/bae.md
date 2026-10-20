@@ -1327,8 +1327,9 @@ rather than claim the library is synced.
 - **A newer schema.** Data written by a newer app needs an update;
   reconnecting can't fix it.
 - **Pausing** stops uploads and keeps their place, across restarts too.
-- **Covers after opening.** A device fetches the covers it doesn't hold yet;
-  the progress shows as a banner and can be cancelled.
+- **Covers after opening.** A device fetches the covers it doesn't hold yet.
+  On iOS and Android the progress shows as a banner and can be cancelled;
+  macOS puts no bar over its window for it.
 
 **Resetting a device.** Opening can fail because the database is damaged, and
 sync can find that this installation is another copy of the device, such as

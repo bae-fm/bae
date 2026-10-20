@@ -47,7 +47,6 @@ struct MainAppView: View {
                     searchText: $searchText,
                     onSearchFieldFrame: { searchFieldFrame = $0 }
                 )
-                ArtworkLoadingBanner()
 
                 HStack(spacing: 0) {
                     // Only the active section is mounted: `.onHover` tracking
@@ -286,7 +285,6 @@ struct MainAppView: View {
             .environment(PreviewAudio.stub())
             .environment(Cast.stub())
             .environment(CastStore())
-            .environment(ArtworkLoadingStore(cancel: {}))
             .albumDetailPreviewEnvironment(store: libraryStore)
             .environment(
                 \.playbackPositionPublisher,
