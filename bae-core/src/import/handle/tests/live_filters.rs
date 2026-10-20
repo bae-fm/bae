@@ -319,7 +319,14 @@ async fn a_verdict_off_the_page_delivers_its_count() {
     );
 
     super::lookup_choices::pick(&handle, &off_page, "off-the-page").await;
-    let moved = delivered(&list).await;
+    // The pick's write and its cancelling the row's run each deliver; while
+    // the run still goes it counts the row under In Progress.
+    let moved = loop {
+        let snapshot = delivered(&list).await;
+        if counted(&snapshot.pending_filter_entries, PendingFilter::Identified) == Some(1) {
+            break snapshot;
+        }
+    };
 
     assert_eq!(counted(&moved.pending_filter_entries, PendingFilter::Identified), Some(1));
     assert_eq!(counted(&moved.pending_filter_entries, PendingFilter::All), Some(2));
