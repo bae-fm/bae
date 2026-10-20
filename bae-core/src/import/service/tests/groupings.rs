@@ -15,6 +15,7 @@ async fn offers(manager: &LibraryManager) -> (Vec<(String, bool)>, Vec<(String, 
             .collect(),
             upload_standing: Default::default(),
             live_standings: Default::default(),
+            selected: Default::default(),
         })
         .await
         .unwrap();

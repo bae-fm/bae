@@ -56,8 +56,9 @@ import Foundation
     /// here and handed the window that matches them. The chrome around the list —
     /// the tab counts, Pending's covers, the group keys — rides on the same value and
     /// goes to `onSummary`, Found's filter entries with their counts go to
-    /// `onPendingFilterEntries`, and the selection revision the rows reflect goes
-    /// to `onSelectionRevision` once the rows have been handed out.
+    /// `onPendingFilterEntries`, and the selection — what it holds and can be
+    /// told to do, and the revision the rows reflect — goes to `onSelection`
+    /// once the rows have been handed out.
     public final class ImportListPageSource: PageSource, @unchecked Sendable {
         public typealias Row = BridgeImportListItem
 
@@ -95,7 +96,8 @@ import Foundation
             @MainActor @Sendable (BridgeImportQueueSummary) -> Void
         private let onPendingFilterEntries:
             @MainActor @Sendable ([BridgePendingFilterEntry]) -> Void
-        private let onSelectionRevision: @MainActor @Sendable (UInt64) -> Void
+        private let onSelection:
+            @MainActor @Sendable (BridgeSelectionSummary, UInt64) -> Void
         private let lock = NSLock()
         private var sinks: [WindowKey: Sink] = [:]
         private var viewWaiters: [UUID: ViewWaiterState] = [:]
@@ -121,13 +123,14 @@ import Foundation
             onPendingFilterEntries:
                 @escaping @MainActor @Sendable ([BridgePendingFilterEntry])
                 -> Void,
-            onSelectionRevision:
-                @escaping @MainActor @Sendable (UInt64) -> Void
+            onSelection:
+                @escaping @MainActor @Sendable (BridgeSelectionSummary, UInt64)
+                -> Void
         ) {
             self.subscription = subscription
             self.onSummary = onSummary
             self.onPendingFilterEntries = onPendingFilterEntries
-            self.onSelectionRevision = onSelectionRevision
+            self.onSelection = onSelection
             deliveries = Task { [weak self] in
                 await self?.deliver()
             }
@@ -233,7 +236,7 @@ import Foundation
                     let sinks = registeredSinks()
                     let onSummary = self.onSummary
                     let onPendingFilterEntries = self.onPendingFilterEntries
-                    let onSelectionRevision = self.onSelectionRevision
+                    let onSelection = self.onSelection
                     let summary = snapshot.summary
                     await MainActor.run {
                         onSummary(summary)
@@ -246,7 +249,10 @@ import Foundation
                             sinks[key]?
                                 .value(window.items, Int(snapshot.totalCount))
                         }
-                        onSelectionRevision(snapshot.selectionRevision)
+                        onSelection(
+                            snapshot.selection,
+                            snapshot.selectionRevision
+                        )
                     }
                     fulfillViewWaiters(
                         revision: snapshot.requestRevision,

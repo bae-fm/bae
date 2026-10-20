@@ -175,6 +175,9 @@ pub struct BridgeImportListSnapshot {
     pub pending_filter_entries: Vec<BridgePendingFilterEntry>,
     /// The person's changes to the selection the rows' `selected` reflects.
     pub selection_revision: u64,
+    /// What the selection holds and can be told to do: only ever rows this
+    /// list shows.
+    pub selection: BridgeSelectionSummary,
     pub request_revision: u64,
     pub cause: BridgeLiveQueryCause,
 }

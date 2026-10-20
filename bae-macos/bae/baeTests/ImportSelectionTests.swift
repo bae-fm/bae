@@ -24,46 +24,26 @@ extension ImportSelectionOperations {
     /// The inert operations with the ones a test watches replaced.
     static func stub(
         change:
-            @escaping @Sendable (BridgeImportListView, BridgeSelectionChange)
-            async throws -> UInt64 = { _, _ in 0 },
-        selectAll:
-            @escaping @Sendable (BridgeImportListView) async throws -> Void = {
-                _ in
-            },
-        keepShown:
-            @escaping @Sendable (BridgeImportListView) async throws -> Void = {
-                _ in
-            },
+            @escaping @Sendable (BridgeSelectionChange) async throws -> UInt64 =
+            { _ in 0 },
+        selectAll: @escaping @Sendable () async throws -> Void = {},
         combine: @escaping @Sendable () async throws -> String = {
             throw StubError.notImplemented
         },
         run:
             @escaping @Sendable (
-                BridgeImportListView,
                 BridgeCandidateAction,
                 @escaping @Sendable (BridgeSelectionActionProgress) -> Void
-            ) async throws -> [BridgeSelectionActionFailure] = { _, _, _ in [] }
+            ) async throws -> [BridgeSelectionActionFailure] = { _, _ in [] }
     ) -> ImportSelectionOperations {
         ImportSelectionOperations(
             change: change,
             selectAll: selectAll,
-            keepShown: keepShown,
             sourceFolders: inert.sourceFolders,
             combine: combine,
             run: run
         )
     }
-}
-
-extension BridgeImportListView {
-    /// Pending, unfiltered, sorted by path.
-    static let sortedByPath = BridgeImportListView(
-        tab: .pending,
-        filterText: "",
-        pendingFilter: .all,
-        collapsedGroups: [],
-        order: .pathAscending
-    )
 }
 
 @MainActor
@@ -72,7 +52,7 @@ struct ImportSelectionTests {
     func cancelRunningAction() async throws {
         let entered = AsyncStream<Void>.makeStream()
         let selection = ImportSelection(
-            operations: .stub(run: { _, _, _ in
+            operations: .stub(run: { _, _ in
                 entered.continuation.yield(())
                 try await Task.sleep(for: .seconds(30))
                 return []
@@ -81,7 +61,6 @@ struct ImportSelectionTests {
         let uiStore = UiStore()
         let started = selection.start(
             .skip,
-            in: .sortedByPath,
             uiStore: uiStore,
             before: {}
         )
@@ -90,7 +69,6 @@ struct ImportSelectionTests {
         await iterator.next()
         let second = selection.start(
             .skip,
-            in: .sortedByPath,
             uiStore: uiStore,
             before: {}
         )
@@ -107,11 +85,9 @@ struct ImportSelectionTests {
     )
     func failuresNameEachRow() async {
         let requested = CallLog<BridgeCandidateAction>()
-        let views = CallLog<BridgeImportListView>()
         let selection = ImportSelection(
-            operations: .stub(run: { view, action, _ in
+            operations: .stub(run: { action, _ in
                 requested.record(action)
-                views.record(view)
                 return [
                     BridgeSelectionActionFailure(
                         candidateKey: "/music/Album",
@@ -133,10 +109,9 @@ struct ImportSelectionTests {
             })
         )
         let uiStore = UiStore()
-        await selection.perform(.import, in: .sortedByPath, uiStore: uiStore)
+        await selection.perform(.import, uiStore: uiStore)
 
         #expect(requested.all == [.import])
-        #expect(views.all == [.sortedByPath])
         let line = uiStore.lastError?.line ?? ""
         #expect(line.contains("Album"))
         #expect(line.contains("Other Album"))
@@ -152,7 +127,7 @@ struct ImportSelectionTests {
     func progressFollowsCore() async throws {
         let release = AsyncStream<Void>.makeStream()
         let selection = ImportSelection(
-            operations: .stub(run: { _, _, progress in
+            operations: .stub(run: { _, progress in
                 progress(BridgeSelectionActionProgress(completed: 1, total: 3))
                 for await _ in release.stream { break }
                 return []
@@ -160,7 +135,6 @@ struct ImportSelectionTests {
         )
         let started = selection.start(
             .skip,
-            in: .sortedByPath,
             uiStore: UiStore(),
             before: {}
         )

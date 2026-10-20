@@ -51,10 +51,7 @@ mod subscription;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use flatten::{
-    first_candidate_among, flatten, locate_candidate, selected_candidates, selected_rows,
-    selected_candidates_in_view_order, shown_candidate_keys, Flattened, ItemRef,
-};
+pub(crate) use flatten::{first_candidate_among, flatten, locate_candidate, Flattened, ItemRef};
 pub use pending_filter::{FoundStates, PendingFilter, PendingFilterEntry};
 pub use subscription::{ImportListSubscription, ImportListSubscriptionError};
 
@@ -164,10 +161,10 @@ impl UploadStanding {
 
 /// Everything the list query is a function of.
 ///
-/// `upload_standing` and `live_standings` are held in memory rather than in a
-/// table this query reads — by the upload pipeline and the candidate runtime —
-/// so whoever builds the request reads them in: [`ImportListSubscription`]
-/// keeps them current.
+/// `upload_standing`, `live_standings` and `selected` are held in memory
+/// rather than in a table this query reads — by the upload pipeline, the
+/// candidate runtime and the list subscription — so whoever builds the request
+/// reads them in: [`ImportListSubscription`] keeps them current.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ImportListRequest {
     pub view: ImportListView,
@@ -177,6 +174,10 @@ pub struct ImportListRequest {
     /// The state what is running puts each candidate in, while the view's
     /// filter entry narrows Found's rows; empty under All.
     pub live_standings: BTreeMap<String, LiveStanding>,
+    /// The rows the person has selected in the list this request is read
+    /// for, by key — the list subscription's selection, which only ever holds
+    /// rows the list shows. Empty for a read no list owns.
+    pub selected: BTreeSet<String>,
 }
 
 impl ImportListRequest {
@@ -481,8 +482,11 @@ pub struct ImportListProjection {
     pub windows: Vec<ImportListWindow>,
     pub total_count: u64,
     pub summary: ImportQueueSummary,
-    /// The person's changes to the selection the rows' `selected` reflects.
-    pub selection_revision: u64,
+    /// The key of every row the list shows, in its order: what a selection
+    /// may hold, and what a run of rows is selected along.
+    pub shown_keys: Vec<String>,
+    /// The request's selected rows the list shows, in its order.
+    pub selected: crate::import::selection::SelectedRows,
     /// The state the tables put each of Found's rows in, whatever the view
     /// shows: what the filter's counts start from.
     pub found_states: FoundStates,
@@ -507,6 +511,9 @@ pub struct ImportListSnapshot {
     pub folder_scans: FolderScanProgress,
     /// The person's changes to the selection the rows' `selected` reflects.
     pub selection_revision: u64,
+    /// What the selection holds and can be told to do: the selected rows
+    /// this snapshot shows, joined with what is running for them.
+    pub selection: crate::import::selection::SelectionSummary,
     pub request_revision: u64,
     pub cause: coven::LiveQueryCause,
 }

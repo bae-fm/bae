@@ -18,7 +18,7 @@ use crate::import::watched_folder::candidate_relative_path;
 use crate::import::FolderReleaseDecisionKey;
 use crate::library::LibraryError;
 use std::borrow::Cow;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::Path;
 
 /// Where one item in the list comes from; only the requested windows build
@@ -40,6 +40,10 @@ pub(crate) struct Flattened {
     pub(crate) headers: Vec<GroupHeaderRow>,
     pub(crate) rows: Vec<PlacedRow>,
     pub(crate) summary: ImportQueueSummary,
+    /// The key of every row the list shows, in its order.
+    pub(crate) shown_keys: Vec<String>,
+    /// The request's selected rows the list shows, in its order.
+    pub(crate) selected: crate::import::selection::SelectedRows,
     /// The state the tables put each of Found's rows in, whatever the view
     /// shows.
     pub(crate) found_states: FoundStates,
@@ -83,14 +87,37 @@ pub(crate) fn flatten(
         counts,
     } = order(rows, request)?;
     let (items, headers) = emit(&request.view, &ordered);
-    let first_selected_position = items
-        .iter()
-        .position(|item| match item {
-            ItemRef::Candidate { index, .. } => placed[*index].row.selected,
-            ItemRef::Invalid { index, .. } => rows.selected.contains(&rows.candidates[*index].path),
-            ItemRef::Header(_) => false,
-        })
-        .map(|position| position as u64);
+    // Every row the list shows, and the selected ones among them, in its
+    // order: a selected row the list does not show is no row at all to it.
+    let mut shown_keys = Vec::new();
+    let mut selected = crate::import::selection::SelectedRows::default();
+    let mut first_selected_position = None;
+    for (position, item) in items.iter().enumerate() {
+        let key = match item {
+            ItemRef::Candidate { index, .. } => &placed[*index].row.candidate_key,
+            ItemRef::Invalid { index, .. } => &rows.candidates[*index].path,
+            ItemRef::Header(_) => continue,
+        };
+        shown_keys.push(key.clone());
+        if !request.selected.contains(key) {
+            continue;
+        }
+        first_selected_position.get_or_insert(position as u64);
+        match item {
+            ItemRef::Candidate { index, .. } => {
+                let row = &placed[*index].row;
+                selected
+                    .candidates
+                    .push(crate::import::selection::SelectedCandidate {
+                        candidate_key: row.candidate_key.clone(),
+                        name: row.folder_name.clone(),
+                        basis: row.action_basis.clone(),
+                    });
+            }
+            ItemRef::Invalid { .. } => selected.invalid.push(key.clone()),
+            ItemRef::Header(_) => {}
+        }
+    }
     let summary = summarise(
         rows,
         &request.view,
@@ -105,6 +132,8 @@ pub(crate) fn flatten(
         found_states: FoundStates::of(placed.iter().map(|placed| &placed.row)),
         rows: placed,
         summary,
+        shown_keys,
+        selected,
     })
 }
 
@@ -124,90 +153,6 @@ pub(crate) fn first_candidate_among(
         }
         ItemRef::Header(_) | ItemRef::Invalid { .. } => None,
     }))
-}
-
-/// The keys of the rows the list shows under `request`, in its order: its
-/// candidates, and the folders that failed validation.
-pub(crate) fn shown_candidate_keys(
-    rows: &ImportQueueRows,
-    request: &ImportListRequest,
-) -> Result<Vec<String>, LibraryError> {
-    let flat = flatten(rows, request)?;
-    Ok(flat
-        .items
-        .iter()
-        .filter_map(|item| match item {
-            ItemRef::Candidate { index, .. } => Some(flat.rows[*index].row.candidate_key.clone()),
-            ItemRef::Invalid { index, .. } => Some(rows.candidates[*index].path.clone()),
-            ItemRef::Header(_) => None,
-        })
-        .collect())
-}
-
-/// The selected candidates as the tables place them, in key order. A key the
-/// queue no longer lists as a valid release is not one.
-pub(crate) fn selected_candidates(
-    rows: &ImportQueueRows,
-) -> Result<Vec<crate::import::selection::SelectedCandidate>, LibraryError> {
-    let mut selected = Vec::new();
-    for row in &rows.candidates {
-        if row.kind != ScanCandidateKind::Valid || !rows.selected.contains(&row.path) {
-            continue;
-        }
-        let placed = place_row(rows, row)?;
-        selected.push(crate::import::selection::SelectedCandidate {
-            candidate_key: placed.candidate_key,
-            name: placed.folder_name,
-            basis: placed.action_basis,
-        });
-    }
-    selected.sort_by(|a, b| a.candidate_key.cmp(&b.candidate_key));
-    Ok(selected)
-}
-
-/// Every selected row as the tables place it: the candidates, and the keys
-/// of the folders that failed validation, each in key order.
-pub(crate) fn selected_rows(
-    rows: &ImportQueueRows,
-) -> Result<crate::import::selection::SelectedRows, LibraryError> {
-    let mut invalid: Vec<String> = rows
-        .candidates
-        .iter()
-        .filter(|row| row.kind == ScanCandidateKind::Invalid && rows.selected.contains(&row.path))
-        .map(|row| row.path.clone())
-        .collect();
-    invalid.sort();
-    Ok(crate::import::selection::SelectedRows {
-        candidates: selected_candidates(rows)?,
-        invalid,
-    })
-}
-
-/// The selected candidates in the order the list places them under `request`
-/// — its tab, sort and grouping, the one ordering every list read uses — so
-/// a bulk action reaches the rows top to bottom as the person sees them. A
-/// folded group's members sit where the group does, and a selected row the
-/// view leaves out sits where the same ordering puts it.
-pub(crate) fn selected_candidates_in_view_order(
-    rows: &ImportQueueRows,
-    request: &ImportListRequest,
-) -> Result<Vec<crate::import::selection::SelectedCandidate>, LibraryError> {
-    let Ordered {
-        entries, placed, ..
-    } = order(rows, request)?;
-    Ok(entries
-        .iter()
-        .filter_map(|entry| match entry.item {
-            ItemRef::Candidate { index, .. } => Some(&placed[index].row),
-            ItemRef::Header(_) | ItemRef::Invalid { .. } => None,
-        })
-        .filter(|row| rows.selected.contains(&row.candidate_key))
-        .map(|row| crate::import::selection::SelectedCandidate {
-            candidate_key: row.candidate_key.clone(),
-            name: row.folder_name.clone(),
-            basis: row.action_basis.clone(),
-        })
-        .collect())
 }
 
 fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered, LibraryError> {
@@ -249,7 +194,7 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
             // what encloses it.
             ScanCandidateKind::Tentative => {}
             ScanCandidateKind::Valid => {
-                let triage_row = place_row(rows, row)?;
+                let triage_row = place_row(rows, row, &request.selected)?;
                 let tab = triage_row.placement.tab();
                 counts.bump(tab);
                 let kept = match tab {
@@ -450,6 +395,7 @@ fn unfiltered(request: &ImportListRequest) -> ImportListRequest {
 pub(super) fn place_row(
     rows: &ImportQueueRows,
     row: &ScanCandidateListRow,
+    selected: &BTreeSet<String>,
 ) -> Result<TriageRow, LibraryError> {
     let content_hash = row.content_hash.as_deref().ok_or_else(|| {
         LibraryError::Internal(format!(
@@ -510,7 +456,7 @@ pub(super) fn place_row(
         import_status,
         metadata_provenance,
         release_link,
-        selected: rows.selected.contains(&row.path),
+        selected: selected.contains(&row.path),
     };
     Ok(triage_row)
 }

@@ -25,6 +25,7 @@ pub(super) fn list_request(
             .collect(),
         upload_standing: Default::default(),
         live_standings: Default::default(),
+        selected: Default::default(),
     }
 }
 

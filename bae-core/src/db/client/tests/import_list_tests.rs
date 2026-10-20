@@ -165,6 +165,7 @@ async fn request(tab: TriageTab) -> ImportListRequest {
         .collect(),
         upload_standing: Default::default(),
         live_standings: Default::default(),
+        selected: Default::default(),
     }
 }
 

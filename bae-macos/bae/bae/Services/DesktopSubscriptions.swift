@@ -41,21 +41,6 @@ private final class CandidateRuntimeSink: CandidateRuntimeCallback,
     }
 }
 
-private final class ImportSelectionSink: ImportSelectionCallback,
-    @unchecked Sendable
-{
-    private let apply: @MainActor @Sendable (BridgeSelectionSummary) -> Void
-
-    init(apply: @escaping @MainActor @Sendable (BridgeSelectionSummary) -> Void)
-    {
-        self.apply = apply
-    }
-
-    func onValue(value: BridgeSelectionSummary) {
-        Task { @MainActor in apply(value) }
-    }
-}
-
 /// The read behind the one selected import candidate, whose key moves in place
 /// as the selection moves. Several selected candidates, or none, read nothing
 /// here: the pane several open reads core's selection summary instead.
@@ -242,20 +227,28 @@ final class DesktopSubscriptions {
         self.importStore = importStore
         self.outputStore = outputStore
         self.uiStore = uiStore
-        selectionObservation = ImportSelectionObservation(
+        let selectionObservation = ImportSelectionObservation(
             appHandle: appHandle,
             importStore: importStore,
             uiStore: uiStore
         )
-        invalidSelectionObservation = InvalidCandidateSelectionObservation(
+        self.selectionObservation = selectionObservation
+        let invalidSelectionObservation = InvalidCandidateSelectionObservation(
             appHandle: appHandle,
             importStore: importStore,
             uiStore: uiStore
         )
+        self.invalidSelectionObservation = invalidSelectionObservation
+        let selectionOwner = ImportListSelectionOwner()
         let importSelection = ImportSelection(
-            operations: .live(handle: appHandle)
+            operations: .live(list: selectionOwner)
         )
         self.importSelection = importSelection
+        let applySelection = Self.selectionSink(
+            importStore: importStore,
+            importSelection: importSelection,
+            observations: (selectionObservation, invalidSelectionObservation)
+        )
         // A watched folder that could not be read. Wired before anything can
         // deliver a summary, and fed from the list's live query rather than a
         // transient event, so a scan that failed while the app was still
@@ -267,17 +260,17 @@ final class DesktopSubscriptions {
             uiStore: uiStore,
             selection: importSelection,
             makeSource: { view in
-                ImportListPageSource(
-                    subscription: appHandle.subscribeImportList(view: view),
+                let list = appHandle.subscribeImportList(view: view)
+                selectionOwner.own(list)
+                return ImportListPageSource(
+                    subscription: list,
                     onSummary: { summary in
                         importStore.applySummary(summary)
                     },
                     onPendingFilterEntries: { entries in
                         importStore.applyPendingFilterEntries(entries)
                     },
-                    onSelectionRevision: { revision in
-                        importStore.applySelectionRevision(revision)
-                    }
+                    onSelection: applySelection
                 )
                 .pages
             },
@@ -291,6 +284,28 @@ final class DesktopSubscriptions {
                 try await appHandle.firstIdentifyingCandidate(view: view)
             }
         )
+    }
+
+    /// Where the list's selection goes with each of its values: the
+    /// selection the panes read, the revision the rows reflect, and the read
+    /// behind the one selected row.
+    private static func selectionSink(
+        importStore: ImportStore,
+        importSelection: ImportSelection,
+        observations: (
+            ImportSelectionObservation, InvalidCandidateSelectionObservation
+        )
+    ) -> @MainActor @Sendable (BridgeSelectionSummary, UInt64) -> Void {
+        { summary, revision in
+            importStore.applySelectionRevision(revision)
+            importSelection.apply(summary)
+            observations.0.selectionChanged(
+                single: summary.single?.candidateKey
+            )
+            observations.1.selectionChanged(
+                key: summary.single?.invalidCandidateKey
+            )
+        }
     }
 
     /// Raise a watched folder that could not be read on the app's alert,
@@ -330,21 +345,6 @@ final class DesktopSubscriptions {
             appHandle.subscribeCandidateRuntime(
                 callback: CandidateRuntimeSink { [importStore] change in
                     importStore.candidateRuntimeSubject.send(change)
-                }
-            ),
-            appHandle.subscribeImportSelection(
-                callback: ImportSelectionSink {
-                    [
-                        importSelection, selectionObservation,
-                        invalidSelectionObservation
-                    ] summary in
-                    importSelection.apply(summary)
-                    selectionObservation.selectionChanged(
-                        single: summary.single?.candidateKey
-                    )
-                    invalidSelectionObservation.selectionChanged(
-                        key: summary.single?.invalidCandidateKey
-                    )
                 }
             ),
         ]

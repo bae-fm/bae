@@ -2,81 +2,6 @@ use super::*;
 use std::collections::BTreeSet;
 
 forward! { async this => {
-    /// Apply a change a person made by pointing at rows of the list `view`
-    /// shows, and return the selection revision of the list value that
-    /// reflects it.
-    fn change_import_selection(
-        view: crate::types::BridgeImportListView,
-        change: crate::types::BridgeSelectionChange,
-    ) -> u64 {
-        this.services
-            .change_import_selection(view.into_core(), change.into_core())
-            .await
-            .map_err(BridgeError::database_query)
-    }
-
-    /// Select every candidate the list shows under `view`, loaded by the
-    /// surface or not.
-    fn select_all_import_candidates(view: crate::types::BridgeImportListView) -> () {
-        this.services
-            .select_all_import_candidates(view.into_core())
-            .await
-            .map_err(BridgeError::database_query)
-    }
-
-    /// Keep only the selected candidates the list shows under `view`.
-    fn keep_shown_import_selection(view: crate::types::BridgeImportListView) -> () {
-        this.services
-            .keep_shown_import_selection(view.into_core())
-            .await
-            .map_err(BridgeError::database_query)
-    }
-
-    /// The folders of every selected candidate.
-    fn import_selection_source_folders() -> Vec<String> {
-        this.services
-            .import_selection_source_folders()
-            .await
-            .map_err(BridgeError::from)
-    }
-
-    /// Read every selected candidate as one release, select it, and answer
-    /// with its key.
-    fn combine_import_selection() -> String {
-        this.services
-            .combine_import_selection()
-            .await
-            .map_err(BridgeError::from)
-    }
-
-    /// Run `action` on every selected candidate that offers it, in the order
-    /// the list shows them under `view`, reporting how far it has got, and
-    /// answer with the candidates it failed on.
-    fn run_import_selection_action(
-        view: crate::types::BridgeImportListView,
-        action: crate::types::BridgeCandidateAction,
-        progress: Box<dyn crate::types::SelectionActionProgressCallback>,
-    ) -> Vec<crate::types::BridgeSelectionActionFailure> {
-        let failures = this
-            .services
-            .run_import_selection_action(view.into_core(), action.into_core(), |completed, total| {
-                progress.on_progress(crate::types::BridgeSelectionActionProgress {
-                    completed,
-                    total,
-                })
-            })
-            .await
-            .map_err(BridgeError::from)?;
-        Ok(failures
-            .into_iter()
-            .map(|failure| crate::types::BridgeSelectionActionFailure {
-                candidate_key: failure.candidate_key,
-                name: failure.name,
-                error: BridgeError::from(failure.error),
-            })
-            .collect())
-    }
-
     fn locate_import_candidate(
         view: crate::types::BridgeImportListView,
         candidate_key: String,
@@ -113,14 +38,17 @@ forward! { async this => {
     }
 } }
 
-/// The import tab's list, reconfigurable by view and by window.
+/// The import tab's list, reconfigurable by view and by window, and the
+/// selection it owns.
 ///
 /// The same shape as [`AlbumBrowseSubscription`](super::AlbumBrowseSubscription):
 /// one object per list, `set_view` and `set_windows` reconfigure it, `next`
-/// waits for the value that answers.
+/// waits for the value that answers. The selection only ever holds rows the
+/// list shows, so changing it and acting on it are this list's to do.
 #[derive(uniffi::Object)]
 pub struct ImportListSubscription {
     inner: bae_core::import::ImportListSubscription,
+    services: AppServices,
     runtime: tokio::runtime::Handle,
 }
 
@@ -135,32 +63,9 @@ impl AppHandle {
             inner: self
                 .services
                 .subscribe_import_list(view.into_core(), &runtime),
+            services: self.services.clone(),
             runtime,
         })
-    }
-
-    /// What the import list's selection holds and can be told to do, now and
-    /// on every change.
-    pub fn subscribe_import_selection(
-        &self,
-        callback: Box<dyn crate::types::ImportSelectionCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_channel(
-            move |services, runtime| services.subscribe_import_selection(runtime),
-            move |value| {
-                callback.on_value(crate::types::BridgeSelectionSummary {
-                    count: value.count,
-                    single: value
-                        .single
-                        .map(crate::types::BridgeSingleSelection::from_core),
-                    offers: value
-                        .offers
-                        .into_iter()
-                        .map(crate::types::BridgeSelectionOffer::from_core)
-                        .collect(),
-                })
-            },
-        )
     }
 
     /// What is in flight for one key right now — the read a view does once
@@ -223,6 +128,93 @@ impl ImportListSubscription {
         self.inner.set_windows(windows).map_err(list_error)
     }
 
+    /// Apply a change a person made by pointing at rows of the list, and
+    /// return the selection revision of the list value that reflects it.
+    pub fn change_selection(
+        &self,
+        change: crate::types::BridgeSelectionChange,
+    ) -> Result<u64, BridgeError> {
+        self.inner
+            .change_selection(change.into_core())
+            .map_err(list_error)
+    }
+
+    /// Select every row the list shows, loaded by the surface or not, and
+    /// return the selection revision of the list value that reflects it.
+    pub fn select_all(&self) -> Result<u64, BridgeError> {
+        self.inner.select_all().map_err(list_error)
+    }
+
+    /// The folders of every selected candidate.
+    pub async fn selection_source_folders(
+        self: std::sync::Arc<Self>,
+    ) -> Result<Vec<String>, BridgeError> {
+        let runtime = self.runtime.clone();
+        crate::operation_runtime::run(runtime, move || async move {
+            self.services
+                .import_selection_source_folders(&self.inner.selected())
+                .await
+                .map_err(BridgeError::from)
+        })
+        .await
+    }
+
+    /// Read every selected candidate as one release, select it, and answer
+    /// with its key.
+    pub async fn combine_selection(self: std::sync::Arc<Self>) -> Result<String, BridgeError> {
+        let runtime = self.runtime.clone();
+        crate::operation_runtime::run(runtime, move || async move {
+            let key = self
+                .services
+                .combine_import_selection(&self.inner.selected())
+                .await
+                .map_err(BridgeError::from)?;
+            self.inner
+                .change_selection(bae_core::import::selection::SelectionChange::Replace {
+                    keys: vec![key.clone()],
+                })
+                .map_err(list_error)?;
+            Ok(key)
+        })
+        .await
+    }
+
+    /// Run `action` on every selected candidate that offers it, in the order
+    /// the list shows them, reporting how far it has got, and answer with the
+    /// candidates it failed on.
+    pub async fn run_selection_action(
+        self: std::sync::Arc<Self>,
+        action: crate::types::BridgeCandidateAction,
+        progress: Box<dyn crate::types::SelectionActionProgressCallback>,
+    ) -> Result<Vec<crate::types::BridgeSelectionActionFailure>, BridgeError> {
+        let runtime = self.runtime.clone();
+        crate::operation_runtime::run(runtime, move || async move {
+            let failures = self
+                .services
+                .run_import_selection_action(
+                    &self.inner.selected(),
+                    action.into_core(),
+                    |completed, total| {
+                        progress.on_progress(crate::types::BridgeSelectionActionProgress {
+                            completed,
+                            total,
+                        })
+                    },
+                )
+                .await
+                .map_err(BridgeError::from)?;
+            Ok(failures
+                .into_iter()
+                .map(|failure| crate::types::BridgeSelectionActionFailure {
+                    candidate_key: failure.candidate_key,
+                    name: failure.name,
+                    error: BridgeError::from(failure.error),
+                })
+                .collect())
+        })
+        .await
+    }
+
     pub async fn next(
         self: std::sync::Arc<Self>,
     ) -> Result<crate::types::BridgeImportListSnapshot, BridgeError> {
@@ -250,6 +242,9 @@ impl ImportListSubscription {
 fn list_error(error: bae_core::import::ImportListSubscriptionError) -> BridgeError {
     match error {
         bae_core::import::ImportListSubscriptionError::Cancelled => BridgeError::Cancelled,
+        error @ bae_core::import::ImportListSubscriptionError::RunNotShown => {
+            BridgeError::internal(error.to_string())
+        }
         bae_core::import::ImportListSubscriptionError::Query(error) => {
             BridgeError::database_query(error)
         }

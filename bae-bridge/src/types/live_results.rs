@@ -66,10 +66,6 @@ callbacks! {
     /// `Removed` once nothing is running for it.
     #[cfg(feature = "desktop")]
     CandidateRuntimeCallback: on_change(change: BridgeCandidateRuntimeChange);
-    /// What the import list's selection holds and can be told to do: the
-    /// value on opening, then one call each time it changes.
-    #[cfg(feature = "desktop")]
-    ImportSelectionCallback: on_value(value: BridgeSelectionSummary);
     /// How far a bulk action over the selection has got.
     #[cfg(feature = "desktop")]
     SelectionActionProgressCallback: on_progress(progress: BridgeSelectionActionProgress);

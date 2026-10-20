@@ -713,6 +713,24 @@ mirror_struct! {
     },
 }
 
+impl crate::types::BridgeSelectionSummary {
+    pub(super) fn from_core(summary: bae_core::import::selection::SelectionSummary) -> Self {
+        let bae_core::import::selection::SelectionSummary {
+            count,
+            single,
+            offers,
+        } = summary;
+        Self {
+            count,
+            single: single.map(crate::types::BridgeSingleSelection::from_core),
+            offers: offers
+                .into_iter()
+                .map(crate::types::BridgeSelectionOffer::from_core)
+                .collect(),
+        }
+    }
+}
+
 impl crate::types::BridgeImportListSnapshot {
     pub(super) fn from_core(snapshot: bae_core::import::ImportListSnapshot) -> Self {
         let bae_core::import::ImportListSnapshot {
@@ -722,6 +740,7 @@ impl crate::types::BridgeImportListSnapshot {
             pending_filter_entries,
             folder_scans,
             selection_revision,
+            selection,
             request_revision,
             cause,
         } = snapshot;
@@ -737,6 +756,7 @@ impl crate::types::BridgeImportListSnapshot {
                 .map(crate::types::BridgePendingFilterEntry::from_core)
                 .collect(),
             selection_revision,
+            selection: crate::types::BridgeSelectionSummary::from_core(selection),
             request_revision,
             cause: crate::types::BridgeLiveQueryCause::from_core(cause),
         }

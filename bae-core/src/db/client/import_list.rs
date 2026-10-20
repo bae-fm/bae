@@ -111,10 +111,6 @@ pub struct ImportQueueRows {
     /// `None` when the view does not filter, so an unfiltered list neither
     /// reads nor reruns on it.
     pub imported_text: Option<HashMap<String, crate::import::ImportedReleaseText>>,
-    /// The candidate keys the person has selected.
-    pub selected: HashSet<String>,
-    /// The person's changes to the selection this read reflects.
-    pub selection_revision: u64,
 }
 
 /// Whether a queue read loads the Done rows' text: only when the view filters.
@@ -244,13 +240,6 @@ pub(super) fn load_import_queue_on(
     };
 
     let states = state_rows(sql)?;
-    let selected: HashSet<String> = sql
-        .query("SELECT candidate_key FROM candidate_selection", [], |row| {
-            row.get::<_, String>(0)
-        })?
-        .into_iter()
-        .collect();
-    let selection_revision = super::candidate_selection::selection_revision_on(sql)?;
     let imported_text = match done_row_text {
         DoneRowText::Read => Some(load_imported_release_text_on(sql, None)?),
         DoneRowText::Skip => None,
@@ -265,8 +254,6 @@ pub(super) fn load_import_queue_on(
         states,
         folder_readings,
         imported_text,
-        selected,
-        selection_revision,
     })
 }
 
@@ -532,7 +519,8 @@ struct ImportListRows {
     windows: Vec<(crate::library::LibraryPageWindow, Vec<window::WindowItemRows>)>,
     total_count: u64,
     summary: crate::import::ImportQueueSummary,
-    selection_revision: u64,
+    shown_keys: Vec<String>,
+    selected: crate::import::selection::SelectedRows,
     found_states: crate::import::list::FoundStates,
 }
 
@@ -549,12 +537,18 @@ fn load_import_list_on(
         .map(|window| {
             Ok((
                 window.clone(),
-                window::materialise(sql, window, &flat, &rows)?,
+                window::materialise(sql, window, &flat, &rows, &request.selected)?,
             ))
         })
         .collect::<Result<Vec<_>, DbError>>()?;
-    Ok(ImportListRows { windows, total_count: flat.items.len() as u64, summary: flat.summary,
-        selection_revision: rows.selection_revision, found_states: flat.found_states })
+    Ok(ImportListRows {
+        windows,
+        total_count: flat.items.len() as u64,
+        summary: flat.summary,
+        shown_keys: flat.shown_keys,
+        selected: flat.selected,
+        found_states: flat.found_states,
+    })
 }
 
 impl ImportListRows {
@@ -575,7 +569,8 @@ impl ImportListRows {
             total_count: self.total_count,
             windows,
             summary: self.summary,
-            selection_revision: self.selection_revision,
+            shown_keys: self.shown_keys,
+            selected: self.selected,
             found_states: self.found_states,
         })
     }

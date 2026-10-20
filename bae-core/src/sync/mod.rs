@@ -321,8 +321,6 @@ mod tests {
         "scan_cue_track",
         "scan_cue_index",
         "scan_sheet_audio_file",
-        "candidate_selection",
-        "candidate_selection_revision",
         "import_candidate_state",
         "import_candidate_folder",
         "import_candidate_edit",

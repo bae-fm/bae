@@ -49,7 +49,6 @@ extension ImportView {
                 .separate, .skip, .restore:
                 importSelection.start(
                     offer.action,
-                    in: listSlot.view,
                     uiStore: uiStore,
                     before: commitAndEndEditing
                 )

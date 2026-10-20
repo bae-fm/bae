@@ -1,11 +1,12 @@
-//! The import list's selection on [`AppServices`]: changing it, and running an
-//! action over it. The selection is rows in the library's database, so every
-//! operation here is over those rows, whatever their number.
+//! Acting on the import list's selection on [`AppServices`]. The list
+//! subscription owns the selection
+//! ([`ImportListSubscription`](crate::import::ImportListSubscription)) and
+//! hands its selected rows here, in the order the list shows them.
 
 use super::*;
-use crate::import::selection::{SelectionChange, SelectionSummary};
+use crate::import::selection::SelectedRows;
 use crate::import::triage::{keys_for, CandidateAction};
-use crate::import::{ImportError, ImportListView};
+use crate::import::ImportError;
 
 /// One selected candidate a bulk action could not run on, and why.
 #[derive(Debug)]
@@ -16,70 +17,14 @@ pub struct SelectionActionFailure {
 }
 
 impl AppServices {
-    /// Apply a change a person made by pointing at rows of the list `view`
-    /// shows, and return the selection revision of the list read that
-    /// reflects it.
-    pub async fn change_import_selection(
-        &self,
-        view: ImportListView,
-        change: SelectionChange,
-    ) -> Result<u64, crate::library::LibraryError> {
-        self.inner
-            .manager
-            .change_candidate_selection(
-                self.import_list_request(view, crate::library::LibraryPageWindows::new()),
-                change,
-            )
-            .await
-    }
-
-    /// Select every candidate the list shows under `view`, loaded by a surface
-    /// or not.
-    pub async fn select_all_import_candidates(
-        &self,
-        view: ImportListView,
-    ) -> Result<(), crate::library::LibraryError> {
-        self.inner
-            .manager
-            .select_shown_candidates(
-                self.import_list_request(view, crate::library::LibraryPageWindows::new()),
-            )
-            .await
-    }
-
-    /// Keep only the selected candidates the list shows under `view`: a view
-    /// that hides a selected row takes it out of the selection, and one that
-    /// shows more rows selects none of them.
-    pub async fn keep_shown_import_selection(
-        &self,
-        view: ImportListView,
-    ) -> Result<(), crate::library::LibraryError> {
-        self.inner
-            .manager
-            .keep_shown_candidate_selection(
-                self.import_list_request(view, crate::library::LibraryPageWindows::new()),
-            )
-            .await
-    }
-
-    /// What the selection holds and can be told to do, now and on every change
-    /// to the selected rows or to what is running for them.
-    pub fn subscribe_import_selection(
-        &self,
-        runtime_handle: &tokio::runtime::Handle,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<SelectionSummary> {
-        crate::import::selection::watch_selection(
-            self.inner.manager.subscribe_selected_rows(),
-            self.inner.import.watch_runtime_facts(),
-            runtime_handle,
-        )
-    }
-
     /// The folders of every selected candidate, for a surface to show where
     /// they are.
-    pub async fn import_selection_source_folders(&self) -> Result<Vec<String>, ImportError> {
+    pub async fn import_selection_source_folders(
+        &self,
+        selected: &SelectedRows,
+    ) -> Result<Vec<String>, ImportError> {
         let mut folders = Vec::new();
-        for candidate in self.inner.manager.load_selected_candidates().await? {
+        for candidate in &selected.candidates {
             folders.extend(
                 self.import_candidate_source_folders(&candidate.candidate_key)
                     .await?,
@@ -88,48 +33,34 @@ impl AppServices {
         Ok(folders)
     }
 
-    /// Read every selected candidate as one release, and select that release.
-    pub async fn combine_import_selection(&self) -> Result<String, ImportError> {
-        let selected = self.inner.manager.load_selected_candidates().await?;
-        let key = self
-            .import_combine_candidates(
-                selected
-                    .into_iter()
-                    .map(|candidate| candidate.candidate_key)
-                    .collect(),
-            )
-            .await?;
-        self.inner
-            .manager
-            .change_candidate_selection(
-                crate::import::ImportListRequest::default(),
-                SelectionChange::Replace {
-                    keys: vec![key.clone()],
-                },
-            )
-            .await?;
-        Ok(key)
+    /// Read every selected candidate as one release, and answer with its key.
+    pub async fn combine_import_selection(
+        &self,
+        selected: &SelectedRows,
+    ) -> Result<String, ImportError> {
+        self.import_combine_candidates(
+            selected
+                .candidates
+                .iter()
+                .map(|candidate| candidate.candidate_key.clone())
+                .collect(),
+        )
+        .await
     }
 
     /// Run `action` on every selected candidate that offers it now, one at a
-    /// time in the order the list shows them under `view`, telling `progress`
-    /// how many are done of how many. The identification and import queues
-    /// take what they are handed first to first, so the top rows start first.
-    /// A candidate the action fails on is reported and the rest go on.
+    /// time in the order the list shows them, telling `progress` how many are
+    /// done of how many. The identification and import queues take what they
+    /// are handed first to first, so the top rows start first. A candidate
+    /// the action fails on is reported and the rest go on.
     pub async fn run_import_selection_action(
         &self,
-        view: ImportListView,
+        selected: &SelectedRows,
         action: CandidateAction,
         progress: impl Fn(u64, u64),
     ) -> Result<Vec<SelectionActionFailure>, ImportError> {
-        let selected = self
-            .inner
-            .manager
-            .load_selected_candidates_in_view_order(
-                self.import_list_request(view, crate::library::LibraryPageWindows::new()),
-            )
-            .await?;
-        let members = crate::import::selection::members(&selected, &self.runtime_facts());
+        let selected = &selected.candidates;
+        let members = crate::import::selection::members(selected, &self.runtime_facts());
         let keys = keys_for(&members, action);
         let total = keys.len() as u64;
         let name_of = |key: &str| {

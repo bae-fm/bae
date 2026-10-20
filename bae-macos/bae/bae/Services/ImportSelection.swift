@@ -12,46 +12,37 @@ struct ImportCandidateActionProgress {
     var completed: Int
 }
 
-/// The calls the selection makes, as values a test can replace.
+/// The calls the selection makes, as values a test can replace. Each goes to
+/// the import list that owns the selection.
 struct ImportSelectionOperations: Sendable {
     /// Returns the selection revision of the list value that reflects the
     /// change.
-    let change:
-        @Sendable (BridgeImportListView, BridgeSelectionChange) async throws ->
-            UInt64
-    let selectAll: @Sendable (BridgeImportListView) async throws -> Void
-    let keepShown: @Sendable (BridgeImportListView) async throws -> Void
+    let change: @Sendable (BridgeSelectionChange) async throws -> UInt64
+    let selectAll: @Sendable () async throws -> Void
     let sourceFolders: @Sendable () async throws -> [String]
     let combine: @Sendable () async throws -> String
     let run:
         @Sendable (
-            BridgeImportListView,
             BridgeCandidateAction,
             @escaping @Sendable (BridgeSelectionActionProgress) -> Void
         ) async throws -> [BridgeSelectionActionFailure]
 
-    static func live(handle: any AppHandleProtocol) -> ImportSelectionOperations
+    static func live(list: ImportListSelectionOwner)
+        -> ImportSelectionOperations
     {
         ImportSelectionOperations(
-            change: {
-                try await handle.changeImportSelection(view: $0, change: $1)
-            },
-            selectAll: {
-                try await handle.selectAllImportCandidates(view: $0)
-            },
-            keepShown: {
-                try await handle.keepShownImportSelection(view: $0)
-            },
+            change: { try list.current().changeSelection(change: $0) },
+            selectAll: { _ = try list.current().selectAll() },
             sourceFolders: {
-                try await handle.importSelectionSourceFolders()
+                try await list.current().selectionSourceFolders()
             },
-            combine: { try await handle.combineImportSelection() },
-            run: { view, action, progress in
-                try await handle.runImportSelectionAction(
-                    view: view,
-                    action: action,
-                    progress: SelectionActionProgressSink(apply: progress)
-                )
+            combine: { try await list.current().combineSelection() },
+            run: { action, progress in
+                try await list.current()
+                    .runSelectionAction(
+                        action: action,
+                        progress: SelectionActionProgressSink(apply: progress)
+                    )
             }
         )
     }
@@ -59,13 +50,38 @@ struct ImportSelectionOperations: Sendable {
     /// Operations that change nothing, for previews and tests that never act
     /// on the selection.
     static let inert = ImportSelectionOperations(
-        change: { _, _ in 0 },
-        selectAll: { _ in },
-        keepShown: { _ in },
+        change: { _ in 0 },
+        selectAll: {},
         sourceFolders: { [] },
         combine: { throw StubError.notImplemented },
-        run: { _, _, _ in [] }
+        run: { _, _ in [] }
     )
+}
+
+/// The import list the selection belongs to: core's list subscription owns
+/// the selection beside the rows it shows, so what a person does to the
+/// selection goes to the list the sidebar reads now. A list rebuilt after a
+/// failed read is a new list, with a selection of its own.
+final class ImportListSelectionOwner: @unchecked Sendable {
+    private let lock = NSLock()
+    private var list: (any ImportListSubscriptionProtocol)?
+
+    /// Make `list` the one the selection's calls go to.
+    func own(_ list: any ImportListSubscriptionProtocol) {
+        lock.withLock { self.list = list }
+    }
+
+    func current() throws -> any ImportListSubscriptionProtocol {
+        guard let list = lock.withLock({ self.list }) else {
+            throw ImportListSelectionOwnerError.noList
+        }
+        return list
+    }
+}
+
+/// The selection was acted on before the import list was read.
+enum ImportListSelectionOwnerError: Error {
+    case noList
 }
 
 private final class SelectionActionProgressSink:
@@ -83,10 +99,10 @@ private final class SelectionActionProgressSink:
     }
 }
 
-/// The import list's selection. Core holds it as rows, so a selection of any
-/// size is one core call to change and one to act on; what it holds and can
-/// be told to do arrives here as core's summary, and this keeps no selection
-/// of its own.
+/// The import list's selection. Core's import list holds it, and only ever
+/// with rows the list shows, so a selection of any size is one core call to
+/// change and one to act on; what it holds and can be told to do arrives here
+/// with each of the list's values, and this keeps no selection of its own.
 @MainActor
 @Observable
 final class ImportSelection {
@@ -122,21 +138,13 @@ final class ImportSelection {
     /// Apply `change`, and return the selection revision of the list value
     /// that reflects it.
     @discardableResult
-    func change(
-        in view: BridgeImportListView,
-        _ change: BridgeSelectionChange
-    ) async throws -> UInt64 {
-        try await operations.change(view, change)
+    func change(_ change: BridgeSelectionChange) async throws -> UInt64 {
+        try await operations.change(change)
     }
 
-    /// Select every row `view` shows, whether or not its page has loaded.
-    func selectAll(in view: BridgeImportListView) async throws {
-        try await operations.selectAll(view)
-    }
-
-    /// Drop the selected rows `view` does not show.
-    func keepShown(in view: BridgeImportListView) async throws {
-        try await operations.keepShown(view)
+    /// Select every row the list shows, whether or not its page has loaded.
+    func selectAll() async throws {
+        try await operations.selectAll()
     }
 
     func sourceFolders() async throws -> [String] {
@@ -149,12 +157,11 @@ final class ImportSelection {
     }
 
     /// Run `action` over every selected row that offers it, in the order
-    /// `view` shows them, after `before`; the rows it fails on are reported
+    /// the list shows them, after `before`; the rows it fails on are reported
     /// together once it ends.
     @discardableResult
     func start(
         _ action: BridgeCandidateAction,
-        in view: BridgeImportListView,
         uiStore: UiStore,
         before: @escaping @MainActor () async -> Void
     ) -> Task<Void, Never>? {
@@ -163,7 +170,7 @@ final class ImportSelection {
             defer { task = nil }
             await before()
             guard !Task.isCancelled else { return }
-            await perform(action, in: view, uiStore: uiStore)
+            await perform(action, uiStore: uiStore)
         }
         return task
     }
@@ -172,7 +179,6 @@ final class ImportSelection {
 
     func perform(
         _ action: BridgeCandidateAction,
-        in view: BridgeImportListView,
         uiStore: UiStore
     ) async {
         let run = UUID()
@@ -188,7 +194,7 @@ final class ImportSelection {
         }
         let failures: [BridgeSelectionActionFailure]
         do {
-            failures = try await operations.run(view, action) { reported in
+            failures = try await operations.run(action) { reported in
                 Task { @MainActor [weak self] in
                     guard let self, self.currentRun == run,
                         Int(reported.completed)

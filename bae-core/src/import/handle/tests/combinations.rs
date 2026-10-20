@@ -151,6 +151,7 @@ async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
             .collect(),
             upload_standing: Default::default(),
             live_standings: Default::default(),
+            selected: Default::default(),
         })
         .await
         .unwrap();

@@ -137,6 +137,20 @@ struct ImportListPageSourceFailureTests {
         func setView(view _: BridgeImportListView) throws -> UInt64 { 0 }
         func cancel() async throws {}
 
+        // The selection is not what these tests drive.
+        func changeSelection(change _: BridgeSelectionChange) throws -> UInt64 {
+            0
+        }
+        func selectAll() throws -> UInt64 { 0 }
+        func selectionSourceFolders() async throws -> [String] { [] }
+        func combineSelection() async throws -> String {
+            throw StubError.notImplemented
+        }
+        func runSelectionAction(
+            action _: BridgeCandidateAction,
+            progress _: SelectionActionProgressCallback
+        ) async throws -> [BridgeSelectionActionFailure] { [] }
+
         func next() async throws -> BridgeImportListSnapshot {
             attempted.signal()
             throw ReadFailed()
@@ -180,7 +194,7 @@ struct ImportListPageSourceFailureTests {
             subscription: subscription,
             onSummary: { _ in },
             onPendingFilterEntries: { _ in },
-            onSelectionRevision: { _ in }
+            onSelection: { _, _ in }
         )
         // The read fails before anything subscribes, which is the launch race.
         await subscription.firstReadAttempted

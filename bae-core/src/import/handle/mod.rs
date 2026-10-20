@@ -620,6 +620,7 @@ impl ImportServiceHandle {
             view,
             windows: std::iter::once(window).collect(),
             upload_standing: Default::default(),
+            selected: Default::default(),
         };
         let query = self.library_manager.subscribe_import_list(request.clone());
         crate::import::ImportListSubscription::start(

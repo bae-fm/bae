@@ -242,6 +242,8 @@ impl AppServices {
             view,
             windows: crate::library::LibraryPageWindows::new(),
             upload_standing: upload_standing_of(&outbox),
+            // A new list opens with nothing selected.
+            selected: Default::default(),
         };
         let query = self.inner.manager.subscribe_import_list(request.clone());
         ImportListSubscription::start(
@@ -266,6 +268,8 @@ impl AppServices {
             view,
             windows,
             upload_standing: upload_standing_of(&self.subscribe_outbox_values()),
+            // A read no list owns has no selection.
+            selected: Default::default(),
         }
     }
 

@@ -257,25 +257,22 @@ struct ImportListSlotTests {
     }
 
     /// Each selection write waits for the ones before it, so core applies
-    /// them in the order the person made them; a view change asks core to
-    /// keep only the rows the new view shows.
-    @Test("selection writes land in order, and a view change keeps shown rows")
+    /// them in the order the person made them. A view change writes nothing
+    /// to the selection: core's list keeps it to the rows the view shows.
+    @Test("selection writes land in order, and a view change writes none")
     func selectionWritesLandInOrder() async throws {
         let writes = CallLog<String>()
         let toggleEntered = AsyncStream<Void>.makeStream()
         let releaseToggle = AsyncStream<Void>.makeStream()
         let selection = ImportSelection(
             operations: .stub(
-                change: { _, _ in
+                change: { _ in
                     toggleEntered.continuation.yield(())
                     for await _ in releaseToggle.stream { break }
                     writes.record("toggle")
                     return 1
                 },
-                selectAll: { _ in writes.record("select all") },
-                keepShown: { view in
-                    writes.record("keep shown in \(view.tab)")
-                }
+                selectAll: { writes.record("select all") }
             )
         )
         let slot = ImportListSlot(
@@ -298,9 +295,9 @@ struct ImportListSlotTests {
         slot.selectAllShown()
         slot.setTab(.done)
         releaseToggle.continuation.yield(())
-        try await Wait.until { writes.all.count == 3 }
+        try await Wait.until { writes.all.count == 2 }
 
-        #expect(writes.all == ["toggle", "select all", "keep shown in done"])
+        #expect(writes.all == ["toggle", "select all"])
     }
 
     /// The slot asks core for the list under the entry the person chose, and

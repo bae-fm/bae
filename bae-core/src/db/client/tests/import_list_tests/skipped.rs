@@ -5,7 +5,7 @@ use super::*;
 
 /// A folder that failed validation is listed under Skipped as what the scan
 /// read of it — its files, what its tags call it, the image it leads with —
-/// selected like any row, and read whole by the pane that looks into it. A
+/// selected like any row when the list selects it, and read whole by the pane that looks into it. A
 /// scan that finds it again finds it unchanged.
 #[tokio::test]
 async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
@@ -62,19 +62,10 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
     db.finish_folder_scan(&root, generation, None)
         .await
         .unwrap();
-    db.change_candidate_selection(
-        request(TriageTab::Skipped).await,
-        crate::import::selection::SelectionChange::Replace {
-            keys: vec![key.clone()],
-        },
-    )
-    .await
-    .unwrap();
+    let mut selecting = request(TriageTab::Skipped).await;
+    selecting.selected.insert(key.clone());
 
-    let list = db
-        .load_import_list(request(TriageTab::Skipped).await)
-        .await
-        .unwrap();
+    let list = db.load_import_list(selecting).await.unwrap();
     let listed: Vec<_> = list
         .windows
         .iter()

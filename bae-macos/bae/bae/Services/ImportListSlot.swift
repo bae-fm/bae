@@ -26,8 +26,7 @@ final class ImportListSlot {
     private let defaults: UserDefaults
     private static let sortPreferenceKey = "importCandidateSortOrder"
 
-    /// The view core answers the list for, which a bulk action runs over the
-    /// selection in the order of.
+    /// The view core answers the list for.
     @ObservationIgnored
     private(set) var view: BridgeImportListView
     @ObservationIgnored
@@ -45,8 +44,8 @@ final class ImportListSlot {
     private let importStore: ImportStore
     @ObservationIgnored
     private let uiStore: UiStore
-    /// Held to the rows the view shows: a view change drops the selected rows
-    /// it hides.
+    /// What a person does to the rows goes here; core's list keeps it to the
+    /// rows the view shows.
     @ObservationIgnored
     private let selection: ImportSelection
     /// The last selection write asked for, which the next one waits on.
@@ -179,6 +178,9 @@ final class ImportListSlot {
         next.pendingFilter = .all
         next.collapsedGroups = uiStore.collapsedReleaseGroupKeys
         view = next
+        // The list keeps only the rows its view shows selected, so it is
+        // asked for the view that shows the candidate before it selects it.
+        pages?.setView(next)
         try await selectOnly(candidateKey)
         guard let pages, let list else { return nil }
         try await pages.waitForView(next)
@@ -224,7 +226,6 @@ final class ImportListSlot {
         change(&next)
         guard next != view else { return }
         view = next
-        keepShownSelection(next)
         // A failed read is not retried on its own: it is reported, the list
         // shows what it could not load, and the next thing the person does
         // with the list is what asks core again.
@@ -357,11 +358,10 @@ extension ImportListSlot {
             }
             change = .extend(from: from, to: to)
         }
-        let view = view
         let click = importStore.beginSelectionClick(selected)
         writeSelection { [importStore] selection in
             do {
-                let revision = try await selection.change(in: view, change)
+                let revision = try await selection.change(change)
                 importStore.selectionClickWritten(click, revision: revision)
             }
             catch {
@@ -374,23 +374,15 @@ extension ImportListSlot {
     /// Make `candidateKey` the whole selection, once the writes asked for
     /// before it have landed.
     func selectOnly(_ candidateKey: String) async throws {
-        let view = view
         try await queueSelectionWrite {
-            try await $0.change(in: view, .replace(keys: [candidateKey]))
+            try await $0.change(.replace(keys: [candidateKey]))
         }
         .value
     }
 
     /// Select every row the list shows under its view, loaded or not.
     func selectAllShown() {
-        let view = view
-        writeSelection { try await $0.selectAll(in: view) }
-    }
-
-    /// Drop the selected rows `view` hides; rows it shows that were not
-    /// selected stay unselected.
-    private func keepShownSelection(_ view: BridgeImportListView) {
-        writeSelection { try await $0.keepShown(in: view) }
+        writeSelection { try await $0.selectAll() }
     }
 
     /// Run `write` once every selection write asked for before it has ended,

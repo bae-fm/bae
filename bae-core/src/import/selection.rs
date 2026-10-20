@@ -1,17 +1,19 @@
-//! The import list's selection, held in the database so a selection of any
-//! size is rows rather than a set a surface keeps: what it holds, how a
-//! person changes it, and what it can be told to do.
+//! The import list's selection: what it holds, how a person changes it, and
+//! what it can be told to do.
 //!
-//! What the selection offers is read in one place from the selected rows'
-//! stored placements and what is running for each, and a bulk action runs in
-//! core over the selected keys that offer it.
+//! The list subscription owns it beside the rows it shows
+//! ([`ImportListSubscription`](super::ImportListSubscription)), so it only
+//! ever holds rows the list shows: each read of the list that shows fewer rows
+//! takes the others out of it in the same step that delivers them. What it
+//! offers is read from the selected rows as that read placed them and what is
+//! running for each, and a bulk action runs in core over the selected keys
+//! that offer it.
 
-use super::candidate_runtime::RuntimeFactsWatch;
 use super::triage::{
     selection_offers, CandidateActionBasis, CandidateLiveState, SelectionMember, SelectionOffer,
     TriageRuntimeFacts,
 };
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 
 /// How a person changed the selection by pointing at rows.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,6 +27,35 @@ pub enum SelectionChange {
     },
     /// Add every row the list shows from `from` to `to`, both included.
     Extend { from: String, to: String },
+}
+
+impl SelectionChange {
+    /// The selection `selected` becomes, with `shown` the keys of the rows
+    /// the list last showed, in its order; `None` when it names a run whose
+    /// ends the list does not show. The list's next read takes out any key
+    /// it does not show, before anything reads the selection.
+    pub(crate) fn applied(
+        self,
+        selected: &BTreeSet<String>,
+        shown: &[String],
+    ) -> Option<BTreeSet<String>> {
+        let mut next = selected.clone();
+        match self {
+            Self::Replace { keys } => next = keys.into_iter().collect(),
+            Self::Toggle { add, remove } => {
+                for key in remove {
+                    next.remove(&key);
+                }
+                next.extend(add);
+            }
+            Self::Extend { from, to } => {
+                let position = |key: &str| shown.iter().position(|shown| shown == key);
+                let (from, to) = (position(&from)?, position(&to)?);
+                next.extend(shown[from.min(to)..=from.max(to)].iter().cloned());
+            }
+        }
+        Some(next)
+    }
 }
 
 /// One selected candidate as the tables place it: what its commands are
@@ -63,7 +94,12 @@ pub struct SelectionSummary {
 }
 
 impl SelectionSummary {
-    fn of(selected: &SelectedRows, facts: &HashMap<String, TriageRuntimeFacts>) -> Self {
+    /// The selection of `selected`, the rows as the list placed them, with
+    /// what is running for each.
+    pub(crate) fn of(
+        selected: &SelectedRows,
+        facts: &HashMap<String, TriageRuntimeFacts>,
+    ) -> Self {
         let single = match (selected.candidates.as_slice(), selected.invalid.as_slice()) {
             ([only], []) => Some(SingleSelection::Candidate {
                 key: only.candidate_key.clone(),
@@ -105,47 +141,6 @@ pub(crate) fn members(
             .actions,
         })
         .collect()
-}
-
-/// Deliver the selection's summary now and on every change: to the selected
-/// rows, or to what is running for any of them. Ends when the receiver is
-/// dropped or either source closes.
-pub(crate) fn watch_selection(
-    mut selected: coven::LiveQuery<SelectedRows>,
-    mut facts: RuntimeFactsWatch,
-    runtime_handle: &tokio::runtime::Handle,
-) -> tokio::sync::mpsc::UnboundedReceiver<SelectionSummary> {
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    runtime_handle.spawn(async move {
-        let mut rows = None;
-        let mut sent = None;
-        loop {
-            tokio::select! {
-                () = tx.closed() => return,
-                value = selected.next() => match value {
-                    Ok(value) => rows = Some(value),
-                    Err(error) => {
-                        tracing::error!("the import selection could not be read: {error}");
-                        return;
-                    }
-                },
-                changed = facts.changed() => {
-                    if !changed {
-                        return;
-                    }
-                }
-            }
-            let Some(rows) = &rows else { continue };
-            let summary = SelectionSummary::of(rows, facts.facts());
-            if sent.as_ref() != Some(&summary) {
-                if tx.send(summary.clone()).is_err() {
-                    return;
-                }
-                sent = Some(summary);
-            }
-        }
-    });
-    rx
 }
 
 #[cfg(test)]

@@ -27,16 +27,26 @@
 //! A change that moves a count — a run starting for a row off the page under
 //! All, or a read that changed only rows off the page — delivers the snapshot
 //! again even though nothing on the page moved.
+//!
+//! The subscription owns the list's selection, and the selection only ever
+//! holds rows the list shows. It travels in the request, so the read marks
+//! the rows it selects; the read that answers the current request takes every
+//! selected row it does not show out of the selection before its snapshot is
+//! delivered — a view that hides a row, or a row whose state moves it out of
+//! the filter — and hands the query the request without it, so a row that
+//! comes back later comes back unselected. What the selection offers rides on
+//! every snapshot.
 
 use super::{
     FolderScanProgress, FoundStates, ImportListProjection, ImportListRequest, ImportListSnapshot,
     ImportListView, PendingFilterEntry, UploadStanding,
 };
 use crate::import::candidate_runtime::RuntimeFactsWatch;
+use crate::import::selection::{SelectedRows, SelectionChange, SelectionSummary};
 use crate::import::triage::{LiveStanding, TriageRuntimeFacts};
 use crate::library::{LibraryPageWindows, OutboxSnapshot};
 use crate::live_query::CancellableLiveQuery;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use tokio::sync::watch;
 
@@ -44,6 +54,8 @@ use tokio::sync::watch;
 pub enum ImportListSubscriptionError {
     #[error("import list subscription cancelled")]
     Cancelled,
+    #[error("the list does not show both ends of the run of rows to select")]
+    RunNotShown,
     #[error(transparent)]
     Query(#[from] coven::CovenError),
 }
@@ -63,6 +75,13 @@ struct Standing {
     request: ImportListRequest,
     revision: u64,
     runtime_facts: HashMap<String, TriageRuntimeFacts>,
+    /// The person's changes to the selection, and the reads that took rows
+    /// they hide out of it.
+    selection_revision: u64,
+    /// What the read that answered the current request showed: every row's
+    /// key in its order, and the selected rows among them.
+    shown_keys: Vec<String>,
+    selected_rows: SelectedRows,
 }
 
 impl StandingRequest {
@@ -85,6 +104,7 @@ impl StandingRequest {
             request,
             revision,
             runtime_facts,
+            ..
         } = &mut *standing;
         request.live_standings = request
             .view
@@ -106,6 +126,65 @@ impl StandingRequest {
         let revision = self.update(|standing| standing.runtime_facts = facts)?;
         self.facts_changed.send_replace(());
         Ok(revision)
+    }
+
+    /// Make the selection what `next` says from the standing, and hand the
+    /// query the request carrying it. Answers with the selection revision.
+    fn select(
+        &self,
+        next: impl FnOnce(&Standing) -> Result<BTreeSet<String>, ImportListSubscriptionError>,
+    ) -> Result<u64, ImportListSubscriptionError> {
+        let mut refused = None;
+        self.update(|standing| match next(standing) {
+            Ok(next) => {
+                if next != standing.request.selected {
+                    standing.request.selected = next;
+                    standing.selection_revision += 1;
+                }
+            }
+            Err(error) => refused = Some(error),
+        })?;
+        match refused {
+            Some(error) => Err(error),
+            None => Ok(self.read(|standing| standing.selection_revision)),
+        }
+    }
+
+    /// Take what the read answering `revision` showed as what the list
+    /// shows, and, when it answers the current request, take every selected
+    /// row it does not show out of the selection, handing the query the
+    /// request without them.
+    fn settle_selection(
+        &self,
+        revision: u64,
+        projection: &super::ImportListProjection,
+    ) -> Result<(), ImportListSubscriptionError> {
+        let mut hid_selected = false;
+        {
+            let mut standing = self
+                .standing
+                .lock()
+                .expect("import list request mutex poisoned");
+            if standing.revision != revision {
+                return Ok(());
+            }
+            let shown: HashSet<&str> = projection.shown_keys.iter().map(String::as_str).collect();
+            let before = standing.request.selected.len();
+            standing
+                .request
+                .selected
+                .retain(|key| shown.contains(key.as_str()));
+            if standing.request.selected.len() != before {
+                standing.selection_revision += 1;
+                hid_selected = true;
+            }
+            standing.shown_keys = projection.shown_keys.clone();
+            standing.selected_rows = projection.selected.clone();
+        }
+        if hid_selected {
+            self.update(|_| {})?;
+        }
+        Ok(())
     }
 
     fn read<R>(&self, read: impl FnOnce(&Standing) -> R) -> R {
@@ -139,6 +218,8 @@ struct Delivered {
     page_facts: BTreeMap<String, TriageRuntimeFacts>,
     /// The filter entries the last snapshot carried.
     pending_filter_entries: Vec<PendingFilterEntry>,
+    /// What the selection offered as the last snapshot joined it.
+    selection: SelectionSummary,
     /// Told when the runtime facts change.
     facts_changed: watch::Receiver<()>,
 }
@@ -188,6 +269,7 @@ impl Delivered {
         &mut self,
         beside_list: bool,
         facts: &HashMap<String, TriageRuntimeFacts>,
+        selection_revision: u64,
     ) -> Option<ImportListSnapshot> {
         let (Some(list), Some(folder_scans)) = (&self.list, &self.folder_scans) else {
             return None;
@@ -199,6 +281,7 @@ impl Delivered {
         };
         self.page_facts = list.page_facts(facts);
         self.pending_filter_entries = list.pending_filter_entries(facts);
+        self.selection = SelectionSummary::of(&list.projection.selected, facts);
         let snapshot = ImportListSnapshot {
             windows: list
                 .projection
@@ -211,7 +294,8 @@ impl Delivered {
             summary: list.projection.summary.clone(),
             pending_filter_entries: self.pending_filter_entries.clone(),
             folder_scans: folder_scans.clone(),
-            selection_revision: list.projection.selection_revision,
+            selection_revision,
+            selection: self.selection.clone(),
             request_revision: list.request_revision,
             cause,
         };
@@ -248,6 +332,9 @@ impl ImportListSubscription {
                 // A query starts at revision zero.
                 revision: 0,
                 runtime_facts: runtime_facts.facts().clone(),
+                selection_revision: 0,
+                shown_keys: Vec::new(),
+                selected_rows: SelectedRows::default(),
             }),
             query: CancellableLiveQuery::new(query),
             facts_changed,
@@ -264,6 +351,7 @@ impl ImportListSubscription {
                 sent: false,
                 page_facts: BTreeMap::new(),
                 pending_filter_entries: Vec::new(),
+                selection: SelectionSummary::default(),
                 facts_changed: facts_changed_rx,
             }),
             merge,
@@ -283,6 +371,32 @@ impl ImportListSubscription {
         self.request
             .update(|standing| standing.request.windows = windows)
             .map(|_| ())
+    }
+
+    /// Apply a change a person made by pointing at rows of the list, and
+    /// answer with the selection revision of the snapshot that reflects it.
+    pub fn change_selection(
+        &self,
+        change: SelectionChange,
+    ) -> Result<u64, ImportListSubscriptionError> {
+        self.request.select(|standing| {
+            change
+                .applied(&standing.request.selected, &standing.shown_keys)
+                .ok_or(ImportListSubscriptionError::RunNotShown)
+        })
+    }
+
+    /// Select every row the list shows, whether or not a surface loaded it.
+    pub fn select_all(&self) -> Result<u64, ImportListSubscriptionError> {
+        self.request
+            .select(|standing| Ok(standing.shown_keys.iter().cloned().collect()))
+    }
+
+    /// The selected rows, in the order the list shows them, as the read that
+    /// answered the current request placed them: what a bulk action runs
+    /// over.
+    pub fn selected(&self) -> SelectedRows {
+        self.request.read(|standing| standing.selected_rows.clone())
     }
 
     /// The next snapshot: the list's next value beside the scans as they
@@ -346,6 +460,7 @@ impl ImportListSubscription {
                         }
                         true
                     } else {
+                        self.request.settle_selection(request_revision, &projection)?;
                         *answered = Some(AnsweredList {
                             projection,
                             found_states,
@@ -368,26 +483,32 @@ impl ImportListSubscription {
                 }
                 Arrival::RuntimeFacts => {
                     let Some(list) = &delivered.list else { continue };
-                    let (owed, page_facts, entries) = self.request.read(|standing| {
+                    let (owed, page_facts, entries, selection) = self.request.read(|standing| {
                         (
                             standing.revision != list.request_revision,
                             list.page_facts(&standing.runtime_facts),
                             list.pending_filter_entries(&standing.runtime_facts),
+                            SelectionSummary::of(&list.projection.selected, &standing.runtime_facts),
                         )
                     });
                     if !delivered.sent
                         || owed
                         || (page_facts == delivered.page_facts
-                            && entries == delivered.pending_filter_entries)
+                            && entries == delivered.pending_filter_entries
+                            && selection == delivered.selection)
                     {
                         continue;
                     }
                     true
                 }
             };
-            let snapshot = self
-                .request
-                .read(|standing| delivered.snapshot(beside_list, &standing.runtime_facts));
+            let snapshot = self.request.read(|standing| {
+                delivered.snapshot(
+                    beside_list,
+                    &standing.runtime_facts,
+                    standing.selection_revision,
+                )
+            });
             if let Some(snapshot) = snapshot {
                 return Ok(snapshot);
             }

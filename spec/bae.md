@@ -452,10 +452,17 @@ opens, read-only: its images, then every other file with each damaged one
 marked and why. Where a release's Import would be, the pane states the reason.
 A playable track in it can still be auditioned.
 
-The person can select any number of rows. The selection is stored as rows,
-not held by a surface, and a bulk action runs in core over the selected rows
-that offer it. A broken folder offers no action, so selected among others it
-counts toward the selection but holds back combining it.
+The person can select any number of rows. The import list in core owns the
+selection, not a surface, and it only ever holds rows the list shows: the read
+that stops showing a selected row — another tab, filter or search, or a row
+whose state moves it out of the filter, such as one that starts importing
+under Identified — takes it out of the selection before the list is
+delivered, and a row shown again comes back unselected. The pane a selection
+opens reads only that selection, so with nothing shown selected it shows
+nothing selected. A bulk action runs in core over the selected rows that offer
+it, in the order the list shows them. A broken folder offers no action, so
+selected among others it counts toward the selection but holds back combining
+it.
 
 ### 3.3 Clues in the files
 
@@ -1939,7 +1946,6 @@ All sync (§5), except `local_history`.
 | `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it |
 | `scan_sidecar`, `scan_sidecar_file` | files under a folder no release owns |
 | `scan_cue_sheet`, `scan_cue_track`, `scan_cue_index`, `scan_sheet_audio_file` | parsed CUE sheets and the audio each `FILE` line resolved to |
-| `candidate_selection`, `candidate_selection_revision` | the import list's selection, for one session |
 
 ### A.5 Import candidates
 

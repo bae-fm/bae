@@ -16,6 +16,7 @@ fn list_subscription(
         windows,
         upload_standing: Default::default(),
         live_standings: Default::default(),
+        selected: Default::default(),
     };
     crate::import::ImportListSubscription::start(
         fixture.manager.subscribe_import_list(request.clone()),

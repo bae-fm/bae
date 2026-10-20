@@ -27,6 +27,7 @@ pub(super) fn materialise(
     window: &LibraryPageWindow,
     flat: &Flattened,
     rows: &ImportQueueRows,
+    selected: &std::collections::BTreeSet<String>,
 ) -> Result<Vec<WindowItemRows>, DbError> {
     window_refs(&flat.items, window)
         .iter()
@@ -129,7 +130,7 @@ pub(super) fn materialise(
                 };
                 Ok(WindowItemRows::Ready(ImportListItem::Invalid {
                     candidate,
-                    selected: rows.selected.contains(&scanned.path),
+                    selected: selected.contains(&scanned.path),
                     is_group_member: *is_group_member,
                 }))
             }

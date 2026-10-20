@@ -738,9 +738,14 @@ fn the_summary_names_the_filter_its_count_is_for() {
 /// row is in it.
 #[test]
 fn the_summary_places_the_first_selected_row_in_the_list_it_shows() {
-    let mut rows = every_kind();
-    rows.selected.insert(key("Unidentified"));
-    let not_looked_up = flattened(&rows, &under(PendingFilter::NotLookedUp));
+    let rows = every_kind();
+    let selecting = |filter| ImportListRequest {
+        view: under(filter),
+        selected: std::iter::once(key("Unidentified")).collect(),
+        ..ImportListRequest::default()
+    };
+    let not_looked_up = flatten(&rows, &selecting(PendingFilter::NotLookedUp))
+        .expect("the queue flattens");
     let position = not_looked_up
         .summary
         .first_selected_position
@@ -751,6 +756,21 @@ fn the_summary_places_the_first_selected_row_in_the_list_it_shows() {
         }
         other => panic!("the position names a header or invalid row: {other:?}"),
     }
-    let needs_you = flattened(&rows, &under(PendingFilter::NeedsYou));
+    assert_eq!(
+        not_looked_up
+            .selected
+            .candidates
+            .iter()
+            .map(|candidate| candidate.candidate_key.clone())
+            .collect::<Vec<_>>(),
+        [key("Unidentified")]
+    );
+    let needs_you =
+        flatten(&rows, &selecting(PendingFilter::NeedsYou)).expect("the queue flattens");
     assert_eq!(needs_you.summary.first_selected_position, None);
+    assert!(
+        needs_you.selected.candidates.is_empty(),
+        "a selected row the filter hides is no selected row of the list"
+    );
+    assert!(!needs_you.shown_keys.contains(&key("Unidentified")));
 }

@@ -108,6 +108,20 @@ struct ImportListPageSourceTests {
 
         func cancel() async throws {}
 
+        // The selection is not what these tests drive.
+        func changeSelection(change _: BridgeSelectionChange) throws -> UInt64 {
+            0
+        }
+        func selectAll() throws -> UInt64 { 0 }
+        func selectionSourceFolders() async throws -> [String] { [] }
+        func combineSelection() async throws -> String {
+            throw StubError.notImplemented
+        }
+        func runSelectionAction(
+            action _: BridgeCandidateAction,
+            progress _: SelectionActionProgressCallback
+        ) async throws -> [BridgeSelectionActionFailure] { [] }
+
         func deliver(_ snapshot: BridgeImportListSnapshot) {
             lock.lock()
             let waiter = self.waiter
@@ -186,6 +200,11 @@ struct ImportListPageSourceTests {
             ),
             pendingFilterEntries: pendingFilterEntries,
             selectionRevision: 0,
+            selection: BridgeSelectionSummary(
+                count: 0,
+                single: nil,
+                offers: []
+            ),
             requestRevision: requestRevision,
             cause: .request
         )
@@ -204,7 +223,7 @@ extension ImportListPageSourceTests {
             subscription: subscription,
             onSummary: { _ in },
             onPendingFilterEntries: { delivered.append($0) },
-            onSelectionRevision: { _ in }
+            onSelection: { _, _ in }
         )
         _ = source.subscribe(
             offset: 0,
@@ -251,7 +270,7 @@ extension ImportListPageSourceTests {
             subscription: subscription,
             onSummary: { _ in },
             onPendingFilterEntries: { _ in },
-            onSelectionRevision: { _ in }
+            onSelection: { _, _ in }
         )
         let view = BridgeImportListView(
             tab: .pending,
@@ -296,7 +315,7 @@ extension ImportListPageSourceTests {
             subscription: subscription,
             onSummary: { _ in },
             onPendingFilterEntries: { _ in },
-            onSelectionRevision: { _ in }
+            onSelection: { _, _ in }
         )
         let task = Task {
             try await source.pages.waitForView(
@@ -330,7 +349,7 @@ extension ImportListPageSourceTests {
             subscription: subscription,
             onSummary: { _ in },
             onPendingFilterEntries: { _ in },
-            onSelectionRevision: { _ in }
+            onSelection: { _, _ in }
         )
         let task = Task {
             try await source.pages.waitForView(
@@ -364,7 +383,7 @@ extension ImportListPageSourceTests {
             subscription: subscription,
             onSummary: { _ in },
             onPendingFilterEntries: { _ in },
-            onSelectionRevision: { _ in }
+            onSelection: { _, _ in }
         )
         let failureDelivered = DispatchSemaphore(value: 0)
         _ = source.subscribe(
@@ -409,7 +428,7 @@ extension ImportListPageSourceTests {
             subscription: subscription,
             onSummary: { summaries.append($0) },
             onPendingFilterEntries: { _ in },
-            onSelectionRevision: { _ in }
+            onSelection: { _, _ in }
         )
         var first: [String] = []
         var second: [String] = []
@@ -462,7 +481,7 @@ extension ImportListPageSourceTests {
             subscription: subscription,
             onSummary: { _ in },
             onPendingFilterEntries: { _ in },
-            onSelectionRevision: { _ in }
+            onSelection: { _, _ in }
         )
         _ = source.subscribe(
             offset: 0,
@@ -497,7 +516,7 @@ extension ImportListPageSourceTests {
             subscription: subscription,
             onSummary: { _ in snapshots.count += 1 },
             onPendingFilterEntries: { _ in },
-            onSelectionRevision: { _ in }
+            onSelection: { _, _ in }
         )
         let importStore = ImportStore()
         let delivered = DeliveredPages()

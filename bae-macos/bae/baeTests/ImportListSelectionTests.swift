@@ -85,7 +85,7 @@ struct ImportListSelectionTests {
                 )
             ],
             selection: ImportSelection(
-                operations: .stub(change: { _, change in
+                operations: .stub(change: { change in
                     changes.record(change)
                     return 1
                 })
@@ -139,7 +139,7 @@ struct ImportListSelectionTests {
             uiStore: uiStore,
             items: [first, second],
             selection: ImportSelection(
-                operations: .stub(change: { _, _ in
+                operations: .stub(change: { _ in
                     for await _ in written.stream { break }
                     return 2
                 })
@@ -220,7 +220,7 @@ struct ImportListSelectionTests {
     func focusedListSelectAllAsksCore() async throws {
         let uiStore = UiStore()
         let store = PreviewData.importTabScene().store
-        let selectAlls = CallLog<BridgeImportListView>()
+        let selectAlls = CallLog<Void>()
         let slot = ImportListSlot.preview(
             importStore: store,
             uiStore: uiStore,
@@ -228,7 +228,7 @@ struct ImportListSelectionTests {
                 PreviewData.candidateItem(PreviewData.triageRowIdentified)
             ],
             selection: ImportSelection(
-                operations: .stub(selectAll: { selectAlls.record($0) })
+                operations: .stub(selectAll: { selectAlls.record(()) })
             )
         )
         let shownRowsSelectAll = ShownRowsSelectAll()
