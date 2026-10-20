@@ -107,7 +107,7 @@ fn sheet_naming_absent_audio_uses_the_unique_same_stem_file() {
         ScanItem::Invalid(invalid) => {
             panic!(
                 "folder must stay importable, got invalid: {}",
-                invalid.reason
+                invalid.reason()
             )
         }
         ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
@@ -252,7 +252,7 @@ fn unparseable_sheet_lands_as_a_document() {
         ScanItem::Invalid(invalid) => {
             panic!(
                 "an unparseable sheet must not invalidate: {}",
-                invalid.reason
+                invalid.reason()
             )
         }
         ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
@@ -377,10 +377,8 @@ fn corrupt_audio_and_empty_folders_still_invalidate() {
     assert!(
         matches!(
             &items[0],
-            ScanItem::Invalid(InvalidCandidate {
-                reason: InvalidReason::CorruptAudioFile { .. },
-                ..
-            })
+            ScanItem::Invalid(invalid)
+                if invalid.reason() == InvalidReason::DamagedAudio { count: 1 }
         ),
         "corrupt audio is still a real defect",
     );

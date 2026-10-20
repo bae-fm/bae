@@ -523,7 +523,8 @@ async fn rescan_seeded_root(
                 watched_folder_path: root.to_string_lossy().into_owned(),
                 display_path: "old-key".to_string(),
                 grouping: None,
-                reason: crate::import::InvalidReason::NoValidAudio,
+                files: Vec::new(),
+                tags: None,
             }),
         )
         .await

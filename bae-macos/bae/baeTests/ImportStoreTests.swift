@@ -95,22 +95,6 @@ private func folderCandidate(
     )
 }
 
-private func bridgeInvalid(
-    folderPath: String,
-    watchedFolderPath: String,
-    name: String
-) -> BridgeInvalidCandidate {
-    BridgeInvalidCandidate(
-        candidateKey: folderPath,
-        folderPath: folderPath,
-        sourceFolderName: name,
-        watchedFolderPath: watchedFolderPath,
-        displayPath: name,
-        separable: false,
-        reason: .noValidAudio
-    )
-}
-
 // MARK: - Triage row builders
 
 private func matchedRelease(

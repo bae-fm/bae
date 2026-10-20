@@ -50,31 +50,14 @@ struct TriageRowView: View {
             }
     }
 
+    /// The matched release's cover, or a placeholder so every row's text
+    /// lines up.
     private var rowContent: some View {
-        HStack(alignment: .center, spacing: ThemeSpace.related) {
-            cover
+        ImportListRowLayout(coverContent: coverContent) {
             meta
-            Spacer(minLength: ThemeSpace.inline)
+        } trailing: {
             trailing
         }
-        .padding(.vertical, ThemeSpace.compact)
-        .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
-    }
-
-    // MARK: - Leading
-
-    /// The matched release's cover, or a placeholder so every row's text lines
-    /// up.
-    private var cover: some View {
-        ImageView(
-            content: coverContent,
-            pointSize: TriageRowView.coverPointSize
-        )
-        .frame(
-            width: TriageRowView.coverPointSize,
-            height: TriageRowView.coverPointSize
-        )
-        .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
     }
 
     // MARK: - Meta
@@ -104,17 +87,8 @@ struct TriageRowView: View {
 
     /// An unidentified row names its folder, as the main pane's heading does.
     private var folderLine: some View {
-        HStack(spacing: ThemeSpace.compact) {
-            Image(systemName: "folder")
-                .themeIcon(.medium)
-                .foregroundStyle(.secondary)
-            Text(row.folderName)
-                .themeText(.mono)
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-                .truncationMode(.middle)
+        ImportFolderNameLine(folderName: row.folderName) {
             RecordArrow(readFromRecord: row.reading.readFromRecord)
-                .layoutPriority(1)
         }
     }
 

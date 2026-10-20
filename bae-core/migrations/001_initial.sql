@@ -641,17 +641,13 @@ CREATE TABLE IF NOT EXISTS scan_candidate (
     content_hash                   TEXT,
     file_edit_revision             INTEGER NOT NULL DEFAULT 0 CHECK (file_edit_revision >= 0),
     grouping_key                   TEXT CHECK (grouping_key IS NULL OR grouping_key = path),
-    invalid_reason                 TEXT CHECK (invalid_reason IS NULL OR invalid_reason IN ('corrupt_audio', 'no_valid_audio')),
-    invalid_reason_path            TEXT,
     -- 'grouping' for a release a grouping with no anchor builds from its
     -- members.
     source_kind                    TEXT NOT NULL DEFAULT 'folder' CHECK (source_kind IN ('folder', 'grouping')),
     PRIMARY KEY (watched_folder_path, path),
     FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE,
-    CHECK ((kind = 'invalid') = (invalid_reason IS NOT NULL)),
     CHECK ((kind = 'invalid') = (content_hash IS NULL)),
-    CHECK ((source_kind = 'grouping') <= (grouping_key IS NOT NULL)),
-    CHECK ((invalid_reason = 'corrupt_audio') = (invalid_reason_path IS NOT NULL))
+    CHECK ((source_kind = 'grouping') <= (grouping_key IS NOT NULL))
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_scan_candidate_path ON scan_candidate (path);
@@ -774,6 +770,40 @@ CREATE TABLE IF NOT EXISTS scan_candidate_part (
         REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE
 ) STRICT;
 
+-- Every file of a release that failed validation, in name order, as the scan
+-- read it: by its name, and for audio and images by its bytes. Its damaged
+-- audio is why it failed, and how many is the reason the Skipped tab gives.
+CREATE TABLE IF NOT EXISTS scan_skipped_file (
+    watched_folder_path TEXT NOT NULL,
+    candidate_path      TEXT NOT NULL,
+    position            INTEGER NOT NULL CHECK (position >= 0),
+    relative_path       TEXT NOT NULL,
+    absolute_path       TEXT NOT NULL,
+    size                INTEGER NOT NULL CHECK (size >= 0),
+    modified_at_ns      INTEGER NOT NULL CHECK (modified_at_ns >= 0),
+    role                TEXT NOT NULL CHECK (role IN ('audio', 'damaged_audio', 'track_sheet', 'artwork', 'damaged_image', 'document', 'other')),
+    -- Why a damaged track can't be played: it holds no bytes, or no stream bae plays.
+    audio_damage        TEXT CHECK (audio_damage IS NULL OR audio_damage IN ('empty', 'unreadable')),
+    PRIMARY KEY (watched_folder_path, candidate_path, position),
+    UNIQUE (watched_folder_path, candidate_path, relative_path),
+    FOREIGN KEY (watched_folder_path, candidate_path)
+        REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE,
+    CHECK ((role = 'damaged_audio') = (audio_damage IS NOT NULL))
+) STRICT;
+
+-- What the tags of a release that failed validation call it: the album title
+-- the first of its playable files to state one gives, with that file's
+-- artist. No row when none states one, and for a grouping's release.
+CREATE TABLE IF NOT EXISTS scan_skipped_tags (
+    watched_folder_path TEXT NOT NULL,
+    candidate_path      TEXT NOT NULL,
+    album_title         TEXT NOT NULL,
+    artist              TEXT,
+    PRIMARY KEY (watched_folder_path, candidate_path),
+    FOREIGN KEY (watched_folder_path, candidate_path)
+        REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE
+) STRICT;
+
 -- The files under a folder that no release the scan read there owns, such as
 -- a cover or booklet beside disc folders kept as separate releases. Stored and
 -- pruned like the scan's candidates. A sidecar and a scanned release holding
@@ -783,19 +813,17 @@ CREATE TABLE IF NOT EXISTS scan_sidecar (
     folder              TEXT PRIMARY KEY,
     watched_folder_path TEXT NOT NULL,
     generation          INTEGER NOT NULL CHECK (generation >= 0),
-    -- 'invalid' when one of its files is broken, so a release taking them in
-    -- cannot be imported; 'downloading' while a download into the folder runs.
+    -- 'invalid' when a zero-byte track is among its files, so a release taking
+    -- them in cannot be imported; 'downloading' while a download into the
+    -- folder runs, when none of its files is stored.
     state               TEXT NOT NULL CHECK (state IN ('valid', 'invalid', 'downloading')),
-    invalid_reason      TEXT CHECK (invalid_reason IS NULL OR invalid_reason = 'corrupt_audio'),
-    invalid_reason_path TEXT,
-    FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE,
-    CHECK ((state = 'invalid') = (invalid_reason IS NOT NULL)),
-    CHECK ((invalid_reason IS NULL) = (invalid_reason_path IS NULL))
+    FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_scan_sidecar_root ON scan_sidecar (watched_folder_path);
 
--- One file of a valid sidecar, in release file order, with its role.
+-- One file of a sidecar, in release file order, with its role. Only an
+-- invalid sidecar holds a damaged track.
 CREATE TABLE IF NOT EXISTS scan_sidecar_file (
     folder              TEXT NOT NULL REFERENCES scan_sidecar (folder) ON DELETE CASCADE,
     position            INTEGER NOT NULL CHECK (position >= 0),
@@ -803,9 +831,11 @@ CREATE TABLE IF NOT EXISTS scan_sidecar_file (
     absolute_path       TEXT NOT NULL UNIQUE,
     size                INTEGER NOT NULL CHECK (size >= 0),
     modified_at_ns      INTEGER NOT NULL CHECK (modified_at_ns >= 0),
-    role                TEXT NOT NULL CHECK (role IN ('artwork', 'damaged_image', 'document', 'other')),
+    role                TEXT NOT NULL CHECK (role IN ('artwork', 'damaged_image', 'document', 'other', 'damaged_audio')),
+    audio_damage        TEXT CHECK (audio_damage IS NULL OR audio_damage IN ('empty', 'unreadable')),
     PRIMARY KEY (folder, position),
-    UNIQUE (folder, relative_path)
+    UNIQUE (folder, relative_path),
+    CHECK ((role = 'damaged_audio') = (audio_damage IS NOT NULL))
 ) STRICT;
 
 -- A CUE sheet found beside a candidate's audio, as parsed.

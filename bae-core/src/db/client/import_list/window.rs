@@ -12,7 +12,7 @@ use super::super::records::check_releases_in_library_on;
 use super::*;
 use crate::identify::{TerminalVerdict, VerdictSummary};
 use crate::import::cover_art::CoverChoice;
-use crate::import::folder_scanner::{CategorizedFiles, FileVersion, InvalidCandidate};
+use crate::import::folder_scanner::{CategorizedFiles, FileVersion, ScanItem};
 use crate::import::list::{window_refs, Flattened, ImportListItem, ItemRef};
 use crate::import::folder_scanner::FolderCandidate;
 use crate::import::search::MetadataResult;
@@ -111,23 +111,25 @@ pub(super) fn materialise(
                 is_group_member,
             } => {
                 let scanned = &rows.candidates[*index];
+                // Only a row inside a window shows what its files are, so
+                // only such a row's files are read.
+                let stored = super::super::folder_scans::load_item_by_key(
+                    sql,
+                    &scanned.path,
+                    super::super::folder_scans::RowSources::Any,
+                )?;
+                let candidate = match stored.map(|(_, stored)| stored.item) {
+                    Some(ScanItem::Invalid(candidate)) => candidate,
+                    _ => {
+                        return Err(DbError::Message(format!(
+                            "the folder {} that failed validation vanished while its row was read",
+                            scanned.path
+                        )))
+                    }
+                };
                 Ok(WindowItemRows::Ready(ImportListItem::Invalid {
-                    candidate: InvalidCandidate {
-                        path: PathBuf::from(&scanned.folder),
-                        name: scanned.name.clone(),
-                        watched_folder_path: scanned.watched_folder_path.clone(),
-                        display_path: scanned.display_path.clone(),
-                        grouping: scanned
-                            .grouping
-                            .as_ref()
-                            .map(|_| scanned.path.clone()),
-                        reason: scanned.invalid_reason.clone().ok_or_else(|| {
-                            DbError::Message(format!(
-                                "scan candidate {} has no reason",
-                                scanned.path
-                            ))
-                        })?,
-                    },
+                    candidate,
+                    selected: rows.selected.contains(&scanned.path),
                     is_group_member: *is_group_member,
                 }))
             }

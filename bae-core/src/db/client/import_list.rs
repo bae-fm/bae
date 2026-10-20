@@ -10,14 +10,14 @@ mod window;
 use super::import_state::{load_matches_on, load_provenance_on, load_release_links_on};
 use super::*;
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
-use crate::import::folder_scanner::InvalidReason;
+use crate::import::folder_scanner::SkippedTags;
 use crate::import::list::{
     flatten, ImportCandidateDetailProjection, ImportListProjection, ImportListRequest,
     ImportListWindow,
 };
 use crate::import::watched_folder::WatchedFolder;
 use crate::import::{ImportedRelease, MetadataProvenance};
-use folder_scans::columns::{invalid_reason_of, to_u32, to_u64, unreadable};
+use folder_scans::columns::{to_u32, to_u64, unreadable};
 
 /// What the scan made of one folder.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,11 +45,12 @@ pub struct ScanCandidateListRow {
     /// for a release built from folders picked together, the earliest of
     /// those folders' dates. `None` when none is stored.
     pub discovered_at: Option<i64>,
-    /// `None` only for an invalid folder, which carries no files.
+    /// `None` only for an invalid folder, which is never imported.
     pub content_hash: Option<String>,
     pub file_edit_revision: u64,
-    /// Set exactly when `kind` is [`ScanCandidateKind::Invalid`].
-    pub invalid_reason: Option<InvalidReason>,
+    /// What an invalid folder's tags call it, when they name an album: what
+    /// its row shows, so what the filter tests.
+    pub skipped_tags: Option<SkippedTags>,
 }
 
 /// What a release read from several folders carries on its grouping.
@@ -288,7 +289,7 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
     // earliest of the folders it takes in, since joining them finds nothing.
     sql.query(
         "SELECT c.watched_folder_path, c.path, c.folder, c.kind, c.name, c.display_path, \
-                c.content_hash, c.file_edit_revision, c.invalid_reason, c.invalid_reason_path, \
+                c.content_hash, c.file_edit_revision, t.album_title, t.artist, \
                 CASE c.source_kind \
                     WHEN 'folder' THEN \
                         (SELECT COALESCE(d.source_date, d.first_seen_at) \
@@ -302,6 +303,8 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
                 c.grouping_key, g.skipped, g.blocked, g.blocked_subject, g.blocked_holder \
          FROM scan_candidate AS c \
          LEFT JOIN release_grouping AS g ON g.key = c.grouping_key \
+         LEFT JOIN scan_skipped_tags AS t \
+             ON t.watched_folder_path = c.watched_folder_path AND t.candidate_path = c.path \
          WHERE NOT EXISTS \
              (SELECT 1 FROM release_grouping_member WHERE member_key = c.path)",
         [],
@@ -339,8 +342,8 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
             (
                 content_hash,
                 file_edit_revision,
-                invalid_reason,
-                invalid_reason_path,
+                skipped_album_title,
+                skipped_artist,
                 discovered_at,
                 grouping_key,
                 grouping_skipped,
@@ -380,9 +383,10 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
                     file_edit_revision,
                     "a scan candidate's file edit revision",
                 )?,
-                invalid_reason: invalid_reason
-                    .map(|reason| invalid_reason_of(&reason, invalid_reason_path))
-                    .transpose()?,
+                skipped_tags: skipped_album_title.map(|album_title| SkippedTags {
+                    album_title,
+                    artist: skipped_artist,
+                }),
             })
         },
     )
@@ -652,6 +656,32 @@ impl Database {
                     .map(window::CandidateDetailRows::process)
                     .transpose()
                     .map_err(CovenError::from)
+            })
+    }
+
+    /// The folder that failed validation at the key the read is set to, as
+    /// the pane looking into it reads it, live; `None` for no key, or a key
+    /// naming no such folder, which clears a selection.
+    pub(crate) fn subscribe_invalid_candidate(
+        &self,
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<crate::import::InvalidCandidateDetail>>
+    {
+        self.inner
+            .handle
+            .subscribe_reconfigurable(initial, |key, sql| match key {
+                None => Ok(None),
+                Some(key) => {
+                    let stored =
+                        folder_scans::load_item_by_key(&sql, key, folder_scans::RowSources::Any)
+                            .map_err(CovenError::from)?;
+                    Ok(match stored.map(|(_, stored)| stored.item) {
+                        Some(crate::import::folder_scanner::ScanItem::Invalid(candidate)) => {
+                            Some(crate::import::InvalidCandidateDetail::of(candidate))
+                        }
+                        _ => None,
+                    })
+                }
             })
     }
 

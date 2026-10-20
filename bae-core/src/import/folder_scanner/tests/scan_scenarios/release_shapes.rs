@@ -15,7 +15,7 @@ fn same_size_same_mtime_corrupt_replacement_is_not_served_from_probe_cache() {
     assert!(items.iter().any(|item| matches!(
         item,
         ScanItem::Invalid(invalid)
-            if matches!(invalid.reason, InvalidReason::CorruptAudioFile { .. })
+            if invalid.reason() == InvalidReason::DamagedAudio { count: 1 }
     )));
     assert!(!items
         .iter()
@@ -432,7 +432,7 @@ fn cue_referencing_missing_audio_leaves_the_sheet_unbound() {
             assert!(candidate.files.bound_sheets().is_empty());
             assert_eq!(candidate.files.audio().count(), 5);
         }
-        ScanItem::Invalid(invalid) => panic!("must stay importable: {}", invalid.reason),
+        ScanItem::Invalid(invalid) => panic!("must stay importable: {}", invalid.reason()),
         ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
             panic!("terminal scan helper returned a progress item")
         }
@@ -670,7 +670,7 @@ fn multi_file_cue_with_missing_secondary_file_stays_unbound() {
             assert_eq!(candidate.files.audio().count(), 1);
             assert_eq!(candidate.files.track_count(), 1);
         }
-        ScanItem::Invalid(invalid) => panic!("must stay importable: {}", invalid.reason),
+        ScanItem::Invalid(invalid) => panic!("must stay importable: {}", invalid.reason()),
         ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
             panic!("terminal scan helper returned a progress item")
         }

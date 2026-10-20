@@ -167,7 +167,7 @@ pub(crate) fn automation_candidate_from_invalid(
             true,
             false,
         ),
-        invalid_reason: candidate.reason.to_string(),
+        invalid_reason: candidate.reason().to_string(),
     }
 }
 

@@ -128,7 +128,7 @@ fn collect_release_candidate_files_on_invalid_folder_yields_invalid_folder() {
     assert!(
         matches!(
             err,
-            crate::import::ImportError::InvalidFolder(InvalidReason::CorruptAudioFile { .. })
+            crate::import::ImportError::InvalidFolder(InvalidReason::DamagedAudio { count: 1 })
         ),
         "got: {err:?}"
     );
@@ -278,10 +278,15 @@ FILE "album.ape" WAVE
     assert_eq!(items.len(), 1, "exactly one scan item for the leaf");
     match &items[0] {
         ScanItem::Invalid(invalid) => {
+            assert_eq!(invalid.reason(), InvalidReason::DamagedAudio { count: 1 });
             assert!(
-                matches!(invalid.reason, InvalidReason::CorruptAudioFile { .. }),
-                "reason names the audio fault, got: {}",
-                invalid.reason,
+                invalid.files.iter().any(|file| file.relative_path == "album.ape"
+                    && file.role
+                        == ProposedRole::DamagedAudio {
+                            damage: AudioDamage::Unreadable
+                        }),
+                "the unreadable audio is marked as such: {:?}",
+                invalid.files,
             );
         }
         ScanItem::Valid(_) => panic!("corrupt-audio folder must not be a valid candidate"),
@@ -359,11 +364,7 @@ fn cue_with_unprobeable_audio_is_invalid_and_siblings_still_scan() {
             _ => None,
         })
         .expect("expected an invalid candidate for the unprobeable CUE audio");
-    assert!(
-        matches!(invalid.reason, InvalidReason::CorruptAudioFile { .. }),
-        "reason names the audio fault, got: {}",
-        invalid.reason,
-    );
+    assert_eq!(invalid.reason(), InvalidReason::DamagedAudio { count: 1 });
 
     let sibling_scanned = items
         .iter()
@@ -701,7 +702,7 @@ fn per_track_flacs_with_missing_cue_audio_still_import() {
         ScanItem::Invalid(invalid) => {
             panic!(
                 "a sheet naming absent audio must not invalidate: {}",
-                invalid.reason
+                invalid.reason()
             )
         }
         ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
@@ -917,3 +918,72 @@ fn test_collect_release_candidate_files_cue_ape_track_count() {
 // which of them a human would call a release.
 
 // --- Byte stubs ---
+
+/// A folder whose audio is damaged is read through before it is judged: every
+/// file is listed with what the scan made of it, each damaged track with why,
+/// and what its playable tracks' tags call the release — what the Skipped tab
+/// shows of it.
+#[test]
+fn a_skipped_folder_lists_every_damaged_track_and_what_its_tags_say() {
+    use lofty::config::WriteOptions;
+    use lofty::prelude::*;
+    use lofty::tag::{Tag, TagType};
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Half Copied");
+    std::fs::create_dir(&root).unwrap();
+    std::fs::write(root.join("01.flac"), fake_flac()).unwrap();
+    let mut tagged = lofty::read_from_path(root.join("01.flac")).unwrap();
+    let mut tag = Tag::new(TagType::VorbisComments);
+    tag.set_album("Album Title".to_string());
+    tag.set_artist("Track Artist".to_string());
+    tag.insert_text(ItemKey::AlbumArtist, "Artist Name".to_string());
+    tagged.insert_tag(tag);
+    tagged
+        .save_to_path(root.join("01.flac"), WriteOptions::default())
+        .unwrap();
+    // Zero-filled, the way an interrupted copy leaves it.
+    std::fs::write(root.join("02.flac"), vec![0u8; 4096]).unwrap();
+    std::fs::write(root.join("03.flac"), b"").unwrap();
+    std::fs::write(root.join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+
+    let items = scan_items(root);
+    let [ScanItem::Invalid(invalid)] = items.as_slice() else {
+        panic!("the folder is skipped: {items:?}");
+    };
+    assert_eq!(invalid.reason(), InvalidReason::DamagedAudio { count: 2 });
+    assert_eq!(
+        invalid
+            .files
+            .iter()
+            .map(|file| (file.relative_path.as_str(), file.role))
+            .collect::<Vec<_>>(),
+        [
+            ("01.flac", ProposedRole::Audio),
+            (
+                "02.flac",
+                ProposedRole::DamagedAudio {
+                    damage: AudioDamage::Unreadable
+                }
+            ),
+            (
+                "03.flac",
+                ProposedRole::DamagedAudio {
+                    damage: AudioDamage::Empty
+                }
+            ),
+            ("front.jpg", ProposedRole::Image),
+        ]
+    );
+    assert_eq!(
+        invalid.tags,
+        Some(SkippedTags {
+            album_title: "Album Title".to_string(),
+            artist: Some("Artist Name".to_string()),
+        })
+    );
+    assert_eq!(
+        invalid.cover().map(|file| file.relative_path.as_str()),
+        Some("front.jpg")
+    );
+}

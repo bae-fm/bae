@@ -313,6 +313,8 @@ mod tests {
         "scan_candidate_tag_snapshot",
         "scan_candidate_file_tag",
         "scan_candidate_part",
+        "scan_skipped_file",
+        "scan_skipped_tags",
         "scan_sidecar",
         "scan_sidecar_file",
         "scan_cue_sheet",

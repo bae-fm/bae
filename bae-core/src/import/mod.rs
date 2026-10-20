@@ -204,9 +204,9 @@ desktop_only! {
         ImportListNarrowing, ImportQueueSummary, NarrowedCount, PendingFilter, PendingFilterEntry,
     };
     pub use mapping::{
-        mapping_tracks, MappingContainer, MappingEntry, MappingFile, MappingFileRow, MappingImage,
-        MappingRole, MappingSource, MappingTable, MappingTrackSection, MappingTrackSectionContent,
-        SheetBound, SheetGroup, TrackMapping,
+        mapping_tracks, InvalidCandidateDetail, MappingContainer, MappingEntry, MappingFile,
+        MappingFileRow, MappingImage, MappingRole, MappingSource, MappingTable,
+        MappingTrackSection, MappingTrackSectionContent, SheetBound, SheetGroup, TrackMapping,
     };
     pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
     pub use preparations::CandidatePreparations;

@@ -11,7 +11,7 @@ import Foundation
             case .groupHeader(let stableKey, _, _, _, _),
                 .candidate(let stableKey, _, _),
                 .imported(let stableKey, _),
-                .invalid(let stableKey, _, _):
+                .invalid(let stableKey, _, _, _):
                 return stableKey
             }
         }

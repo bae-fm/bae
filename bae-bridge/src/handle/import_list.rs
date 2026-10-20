@@ -150,7 +150,9 @@ impl AppHandle {
             move |value| {
                 callback.on_value(crate::types::BridgeSelectionSummary {
                     count: value.count,
-                    single: value.single,
+                    single: value
+                        .single
+                        .map(crate::types::BridgeSingleSelection::from_core),
                     offers: value
                         .offers
                         .into_iter()

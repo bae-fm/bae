@@ -87,7 +87,8 @@ pub(crate) fn flatten(
         .iter()
         .position(|item| match item {
             ItemRef::Candidate { index, .. } => placed[*index].row.selected,
-            ItemRef::Header(_) | ItemRef::Invalid { .. } => false,
+            ItemRef::Invalid { index, .. } => rows.selected.contains(&rows.candidates[*index].path),
+            ItemRef::Header(_) => false,
         })
         .map(|position| position as u64);
     let summary = summarise(
@@ -125,7 +126,8 @@ pub(crate) fn first_candidate_among(
     }))
 }
 
-/// The keys of the candidates the list shows under `request`, in its order.
+/// The keys of the rows the list shows under `request`, in its order: its
+/// candidates, and the folders that failed validation.
 pub(crate) fn shown_candidate_keys(
     rows: &ImportQueueRows,
     request: &ImportListRequest,
@@ -136,7 +138,8 @@ pub(crate) fn shown_candidate_keys(
         .iter()
         .filter_map(|item| match item {
             ItemRef::Candidate { index, .. } => Some(flat.rows[*index].row.candidate_key.clone()),
-            ItemRef::Header(_) | ItemRef::Invalid { .. } => None,
+            ItemRef::Invalid { index, .. } => Some(rows.candidates[*index].path.clone()),
+            ItemRef::Header(_) => None,
         })
         .collect())
 }
@@ -160,6 +163,24 @@ pub(crate) fn selected_candidates(
     }
     selected.sort_by(|a, b| a.candidate_key.cmp(&b.candidate_key));
     Ok(selected)
+}
+
+/// Every selected row as the tables place it: the candidates, and the keys
+/// of the folders that failed validation, each in key order.
+pub(crate) fn selected_rows(
+    rows: &ImportQueueRows,
+) -> Result<crate::import::selection::SelectedRows, LibraryError> {
+    let mut invalid: Vec<String> = rows
+        .candidates
+        .iter()
+        .filter(|row| row.kind == ScanCandidateKind::Invalid && rows.selected.contains(&row.path))
+        .map(|row| row.path.clone())
+        .collect();
+    invalid.sort();
+    Ok(crate::import::selection::SelectedRows {
+        candidates: selected_candidates(rows)?,
+        invalid,
+    })
 }
 
 /// The selected candidates in the order the list places them under `request`
@@ -206,7 +227,17 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
                     discovered_at: row.discovered_at,
                     tab: TriageTab::Skipped,
                     group: None,
-                    matches_filter: filter.keeps(|| Ok(vec![Cow::Borrowed(row.name.as_str())]))?,
+                    // The row shows what its tags call the release, or else
+                    // its folder's name.
+                    matches_filter: filter.keeps(|| {
+                        Ok(match &row.skipped_tags {
+                            Some(tags) => std::iter::once(tags.album_title.as_str())
+                                .chain(tags.artist.as_deref())
+                                .map(Cow::Borrowed)
+                                .collect(),
+                            None => vec![Cow::Borrowed(row.name.as_str())],
+                        })
+                    })?,
                     item: ItemRef::Invalid {
                         index,
                         is_group_member: false,

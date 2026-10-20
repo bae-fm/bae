@@ -52,7 +52,7 @@ mod subscription;
 mod tests;
 
 pub(crate) use flatten::{
-    first_candidate_among, flatten, locate_candidate, selected_candidates,
+    first_candidate_among, flatten, locate_candidate, selected_candidates, selected_rows,
     selected_candidates_in_view_order, shown_candidate_keys, Flattened, ItemRef,
 };
 pub use pending_filter::{FoundStates, PendingFilter, PendingFilterEntry};
@@ -219,8 +219,12 @@ pub enum ImportListItem<Live = ()> {
     /// A candidate the list places in Done, presented as the library release
     /// it became. Never a group member: only Pending rows join a group.
     Imported { row: ImportedRow, live: Live },
+    /// A folder that failed validation, presented as what the scan read of
+    /// it. It offers nothing to do, so nothing running for it is joined.
     Invalid {
         candidate: InvalidCandidate,
+        /// Whether the person has selected the row.
+        selected: bool,
         is_group_member: bool,
     },
 }
@@ -299,9 +303,11 @@ impl ImportListItem {
             },
             Self::Invalid {
                 candidate,
+                selected,
                 is_group_member,
             } => ImportListItem::Invalid {
                 candidate,
+                selected,
                 is_group_member,
             },
         }

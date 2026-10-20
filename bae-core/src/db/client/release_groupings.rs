@@ -14,8 +14,8 @@
 use super::folder_scans::{self, EntrySource, RowSources};
 use super::*;
 use crate::import::folder_scanner::{
-    CandidateFile, FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey,
-    InvalidCandidate, InvalidReason, ScanItem, SidecarFiles,
+    AudioDamage, CandidateFile, FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey,
+    InvalidCandidate, ProposedRole, ScanItem, SidecarFiles, SkippedFile,
 };
 use crate::import::grouping::GroupingBlock;
 use std::collections::BTreeSet;
@@ -265,7 +265,19 @@ fn rebuild_grouping(sql: &SqlContext<'_, '_>, key: &str) -> Result<GroupingChang
     };
     let reads_parent_files = !matches!(parent, ParentFiles::None);
     let item = match parent {
-        ParentFiles::Invalid(reason) => invalid(candidate, reason),
+        ParentFiles::Invalid(parent_files) => {
+            let mut files: Vec<SkippedFile> = candidate
+                .files
+                .files
+                .iter()
+                .map(SkippedFile::of_release_file)
+                .chain(parent_files)
+                .collect();
+            files.sort_by(|a, b| {
+                natord::compare_ignore_case(&a.relative_path, &b.relative_path)
+            });
+            invalid(candidate, files)
+        }
         ParentFiles::None | ParentFiles::Files(_) => {
             // Keyed by the release's own files; the decisions it took over
             // from its folders were stored that way in `combine_releases`.
@@ -278,7 +290,23 @@ fn rebuild_grouping(sql: &SqlContext<'_, '_>, key: &str) -> Result<GroupingChang
                     candidate.file_edit_revision = edits.revision;
                     ScanItem::Valid(candidate)
                 }
-                Err(reason) => invalid(candidate, reason),
+                Err(unreadable) => {
+                    let files = candidate
+                        .files
+                        .files
+                        .iter()
+                        .map(|entry| {
+                            let mut file = SkippedFile::of_release_file(entry);
+                            if file.relative_path == unreadable.path {
+                                file.role = ProposedRole::DamagedAudio {
+                                    damage: AudioDamage::Unreadable,
+                                };
+                            }
+                            file
+                        })
+                        .collect();
+                    invalid(candidate, files)
+                }
             }
         }
     };
@@ -318,15 +346,17 @@ fn rebuild_grouping(sql: &SqlContext<'_, '_>, key: &str) -> Result<GroupingChang
     Ok(changes)
 }
 
-/// The release `candidate` names, as one that cannot be imported.
-fn invalid(candidate: FolderCandidate, reason: InvalidReason) -> ScanItem {
+/// The release `candidate` names, as one that cannot be imported, holding
+/// `files`. Its tags are not read: a grouping is built from stored rows.
+fn invalid(candidate: FolderCandidate, files: Vec<SkippedFile>) -> ScanItem {
     ScanItem::Invalid(InvalidCandidate {
         path: candidate.path,
         name: candidate.name,
         watched_folder_path: candidate.watched_folder_path,
         display_path: candidate.display_path,
         grouping: candidate.grouping,
-        reason,
+        files,
+        tags: None,
     })
 }
 
@@ -335,8 +365,9 @@ enum ParentFiles {
     /// It sits in no one folder, or that folder has no sidecar.
     None,
     Files(Vec<CandidateFile>),
-    /// One of the folder's files is broken, so the release cannot be imported.
-    Invalid(InvalidReason),
+    /// One of the folder's files is broken, so the release cannot be imported:
+    /// every one of them, as the scan read it.
+    Invalid(Vec<SkippedFile>),
 }
 
 impl ParentFiles {
@@ -397,7 +428,7 @@ fn parent_files_on(
     Ok(match sidecar.files {
         SidecarFiles::Downloading => Err(GroupingBlock::FolderFilesDownloading { folder: named }),
         SidecarFiles::Valid(files) => Ok(ParentFiles::Files(files)),
-        SidecarFiles::Invalid(reason) => Ok(ParentFiles::Invalid(reason)),
+        SidecarFiles::Invalid(files) => Ok(ParentFiles::Invalid(files)),
     })
 }
 

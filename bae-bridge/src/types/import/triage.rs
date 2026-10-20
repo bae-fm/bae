@@ -28,14 +28,17 @@ pub struct BridgeFolderReleaseDecisionKey {
 /// `bridge_invalid_reason_key`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeInvalidReason {
-    CorruptAudioFile { path: String },
+    /// `count` of its audio files can't be played.
+    DamagedAudio {
+        count: u32,
+    },
     NoValidAudio,
 }
 
 impl BridgeInvalidReason {
     pub(crate) fn loc_key(&self) -> &'static str {
         match self {
-            Self::CorruptAudioFile { .. } => "core.import.invalid.corrupt_audio",
+            Self::DamagedAudio { .. } => "core.import.invalid.damaged_audio",
             Self::NoValidAudio => "core.import.invalid.no_valid_audio",
         }
     }
@@ -46,7 +49,7 @@ mirror_enum! {
     BridgeInvalidReason = bae_core::import::InvalidReason,
     from_core: pub(crate) fn,
     variants: {
-        CorruptAudioFile { path },
+        DamagedAudio { count },
         NoValidAudio,
     },
 }
@@ -57,8 +60,56 @@ pub fn bridge_invalid_reason_key(reason: BridgeInvalidReason) -> String {
     reason.loc_key().to_string()
 }
 
+/// Why one audio file can't be played; the UI localizes it through
+/// `bridge_audio_damage_key`. Mirrors
+/// `bae_core::import::folder_scanner::AudioDamage`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum BridgeAudioDamage {
+    /// It holds no bytes.
+    Empty,
+    /// It holds no stream bae plays.
+    Unreadable,
+}
+
+impl BridgeAudioDamage {
+    pub(crate) fn loc_key(self) -> &'static str {
+        match self {
+            Self::Empty => "core.import.audio_damage.empty",
+            Self::Unreadable => "core.import.audio_damage.unreadable",
+        }
+    }
+}
+
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeAudioDamage = bae_core::import::folder_scanner::AudioDamage,
+    from_core: pub(crate) fn,
+    variants: { Empty, Unreadable },
+}
+
+/// The `Core` string table key for why an audio file can't be played.
+#[uniffi::export]
+pub fn bridge_audio_damage_key(damage: BridgeAudioDamage) -> String {
+    damage.loc_key().to_string()
+}
+
+/// What a skipped folder's tags call the release. Mirrors
+/// `bae_core::import::folder_scanner::SkippedTags`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSkippedTags {
+    pub album_title: String,
+    pub artist: Option<String>,
+}
+
+mirror_struct! {
+    #[cfg(feature = "desktop")]
+    BridgeSkippedTags = bae_core::import::folder_scanner::SkippedTags,
+    from_core: pub(crate) fn,
+    fields: { album_title, artist },
+}
+
 /// A folder that looks like a release but failed validation, listed under
-/// Skipped with its reason.
+/// Skipped with its reason, as what the scan read of it.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeInvalidCandidate {
     /// Its folder's path, or its grouping's.
@@ -72,6 +123,24 @@ pub struct BridgeInvalidCandidate {
     /// to separate.
     pub separable: bool,
     pub reason: BridgeInvalidReason,
+    /// What its tags call the release; absent when they name no album, and
+    /// the row names its folder instead.
+    pub tags: Option<BridgeSkippedTags>,
+    /// The image it leads with: the folder's own, when one decodes.
+    pub cover: Option<BridgeCoverImageSource>,
+}
+
+/// A folder that failed validation, as the pane looking into it reads it.
+/// Mirrors `bae_core::import::InvalidCandidateDetail`.
+#[cfg(feature = "desktop")]
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeInvalidCandidateDetail {
+    pub candidate: BridgeInvalidCandidate,
+    /// The images that decode, as the gallery shows them.
+    pub images: Vec<BridgeMappingImage>,
+    /// Every other file, each with what it is; the damaged audio among them
+    /// is why the folder failed.
+    pub files: Vec<BridgeMappingFile>,
 }
 
 /// A change to what one key has in flight, or every key in flight.
@@ -331,9 +400,29 @@ pub struct BridgeSelectionOffer {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSelectionSummary {
     pub count: u64,
-    /// The one selected candidate, when exactly one is.
-    pub single: Option<String>,
+    /// The one selected row, when exactly one is.
+    pub single: Option<BridgeSingleSelection>,
     pub offers: Vec<BridgeSelectionOffer>,
+}
+
+/// The one selected row of the import list. Mirrors
+/// `bae_core::import::selection::SingleSelection`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum BridgeSingleSelection {
+    Candidate {
+        key: String,
+    },
+    /// A folder that failed validation.
+    InvalidCandidate {
+        key: String,
+    },
+}
+
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeSingleSelection = bae_core::import::selection::SingleSelection,
+    from_core: pub(crate) fn,
+    variants: { Candidate { key }, InvalidCandidate { key } },
 }
 
 /// How a person changed the selection by pointing at rows. Mirrors

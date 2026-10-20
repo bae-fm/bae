@@ -1,23 +1,144 @@
 use super::*;
 
-/// Why a candidate folder failed validation. The `Display` text is the terse
-/// internal form (used by the import-commit error channel); the UI localizes the
-/// typed variant for the Skipped tab.
+/// Why a folder that looks like a release (it holds audio) can't be imported,
+/// as its skipped files say. The UI localizes the typed variant for the
+/// Skipped tab.
 ///
 /// Only real defects invalidate. A sheet that disagrees with what is on disk —
 /// naming absent audio, failing to parse, or naming a codec bae can't play from
-/// a single-file CUE — leaves the sheet unbound and the folder importable.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, serde::Serialize, serde::Deserialize)]
+/// a single-file CUE — leaves the sheet unbound and the folder importable, and
+/// an image that will not decode is carried as a damaged one.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum InvalidReason {
-    #[error("corrupt or zero-byte audio file: {path}")]
-    CorruptAudioFile { path: String },
+    /// `count` of its audio files can't be played: never zero.
+    #[error("{count} damaged audio files")]
+    DamagedAudio { count: u32 },
     #[error("no valid audio files")]
     NoValidAudio,
 }
 
-/// A leaf folder that looks like a release (it has audio) but failed validation.
-/// It can't be imported, so it carries no files and no identify state — only
-/// enough to surface it under the Skipped tab with its reason.
+impl InvalidReason {
+    /// The reason `files` give: the audio among them bae can't play, or, with
+    /// none of that, that they hold no audio at all.
+    pub fn of(files: &[SkippedFile]) -> Self {
+        let damaged = files
+            .iter()
+            .filter(|file| matches!(file.role, ProposedRole::DamagedAudio { .. }))
+            .count();
+        match u32::try_from(damaged).expect("a folder's file count fits u32") {
+            0 => Self::NoValidAudio,
+            count => Self::DamagedAudio { count },
+        }
+    }
+}
+
+/// A track sheet bound to audio that holds nothing bae can read: the error
+/// settling a release's sheet decisions over its files gives.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("a track sheet is bound to {path}, which holds no audio bae can read")]
+pub struct UnreadableAudio {
+    pub path: String,
+}
+
+/// Why one audio file can't be played.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum AudioDamage {
+    /// It holds no bytes.
+    Empty,
+    /// FFmpeg finds no stream in it that bae plays: a download cut off after
+    /// its header, or bytes overwritten with zeros.
+    Unreadable,
+}
+
+/// What the scan reads one file as before a release's roles settle: what its
+/// name says it is, and, for audio and images, what its bytes say. The files
+/// of a folder that can't be imported stop here, so this is also how the
+/// Skipped tab lists them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum ProposedRole {
+    /// Audio bae plays.
+    Audio,
+    /// Named as audio, and bae can't play it.
+    DamagedAudio { damage: AudioDamage },
+    /// A `.cue`, before it is parsed.
+    Cue,
+    Image,
+    /// Named as an image, and its bytes do not decode as one.
+    DamagedImage,
+    Document,
+    Other,
+}
+
+/// One file of a folder that can't be imported, as the scan read it.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct SkippedFile {
+    /// The file's path within the folder, `/`-separated.
+    pub relative_path: String,
+    /// The version of the file the scan read.
+    pub file: FileVersion,
+    pub role: ProposedRole,
+}
+
+impl SkippedFile {
+    /// `entry` of a release that can't be imported, read as the role its
+    /// scan settled on says.
+    pub(crate) fn of_release_file(entry: &CandidateFile) -> Self {
+        Self {
+            relative_path: entry.file.relative_path.clone(),
+            file: entry.file.version(),
+            role: match entry.role {
+                FileRole::Audio => ProposedRole::Audio,
+                FileRole::TrackSheet { .. } => ProposedRole::Cue,
+                FileRole::Artwork => ProposedRole::Image,
+                FileRole::DamagedImage => ProposedRole::DamagedImage,
+                FileRole::Document => ProposedRole::Document,
+                FileRole::Other => ProposedRole::Other,
+            },
+        }
+    }
+
+    /// The file as the scan found it, with none of its audio facts.
+    pub(crate) fn scanned(&self) -> ScannedFile {
+        ScannedFile::new(
+            self.file.path.clone(),
+            self.relative_path.clone(),
+            self.file.size,
+            self.file.modified_at_ns,
+        )
+    }
+}
+
+#[cfg(test)]
+impl SkippedFile {
+    /// A zero-byte track at `relative_path` under `folder`.
+    pub(crate) fn empty_track(folder: &Path, relative_path: &str) -> Self {
+        Self {
+            relative_path: relative_path.to_string(),
+            file: FileVersion {
+                path: folder.join(relative_path),
+                size: 0,
+                modified_at_ns: 1,
+            },
+            role: ProposedRole::DamagedAudio {
+                damage: AudioDamage::Empty,
+            },
+        }
+    }
+}
+
+/// What a skipped folder's tags call the release: the album title the first
+/// of its playable files to state one gives, with that file's album artist,
+/// or its track artist when it names no album artist.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct SkippedTags {
+    pub album_title: String,
+    pub artist: Option<String>,
+}
+
+/// A leaf folder that looks like a release (it has audio) but failed
+/// validation. It can't be imported, so it carries no identify state — only
+/// what the scan read of its files, to surface it under the Skipped tab with
+/// its reason and let the person look in.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct InvalidCandidate {
     /// Root path of the folder that failed validation — for a grouping, the
@@ -32,8 +153,42 @@ pub struct InvalidCandidate {
     /// The grouping this row reads several folders as, when it is one. The
     /// row's key is then the grouping's, not the folder's.
     pub grouping: Option<String>,
-    /// Why the folder failed validation — the UI localizes this typed reason.
-    pub reason: InvalidReason,
+    /// Every file it holds, in name order, as the scan read it; the damaged
+    /// ones are why it failed.
+    pub files: Vec<SkippedFile>,
+    /// What its tags call the release. `None` when none of its playable files
+    /// states an album title, and for a grouping, which is built from stored
+    /// rows without reading its files' tags.
+    pub tags: Option<SkippedTags>,
+}
+
+impl InvalidCandidate {
+    /// Why it failed validation.
+    pub fn reason(&self) -> InvalidReason {
+        InvalidReason::of(&self.files)
+    }
+
+    /// The image it would lead with if it could be imported: the one the
+    /// folder image ranking picks among its images that decode.
+    pub fn cover(&self) -> Option<&SkippedFile> {
+        let images: Vec<ScannedFile> = self
+            .files
+            .iter()
+            .filter(|file| file.role == ProposedRole::Image)
+            .map(SkippedFile::scanned)
+            .collect();
+        let cover = crate::import::local_artwork::default_local_cover_file(&images)?;
+        self.files
+            .iter()
+            .find(|file| file.relative_path == cover.relative_path)
+    }
+
+    /// Where its row draws [`Self::cover`] from.
+    pub fn cover_image(&self) -> Option<crate::import::CoverImageSource> {
+        self.cover().map(|file| crate::import::CoverImageSource::Local {
+            file: file.file.clone(),
+        })
+    }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -101,8 +256,8 @@ pub enum SidecarFiles {
     /// here to play, so it is carried as the document it is.
     Valid(Vec<CandidateFile>),
     /// A file among them is broken — a zero-byte track — so a release that
-    /// takes them in cannot be imported.
-    Invalid(InvalidReason),
+    /// takes them in cannot be imported. Every file, as the scan read it.
+    Invalid(Vec<SkippedFile>),
     /// A download into the folder is still running, so what it will hold is
     /// not known yet; a release that takes them in waits for it, as a
     /// release with a download running in it is not offered at all.

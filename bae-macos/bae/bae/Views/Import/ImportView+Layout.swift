@@ -36,13 +36,31 @@ extension ImportView {
                         maxHeight: .infinity
                     )
             }
-            else if let key = importSelection.summary.single {
+            else if let invalid = selectedInvalidCandidate {
+                InvalidCandidatePane(
+                    detail: invalid,
+                    previewingTarget: importStore.previewState.active?.target,
+                    mappingActions: ImportMappingFlow.actions(
+                        key: invalid.candidate.candidateKey,
+                        services: mappingServices
+                    ),
+                    onNavigateToPlacement: {
+                        uiStore.setImportCandidateTab(.skipped)
+                    }
+                )
+                .frame(
+                    minWidth: 620,
+                    maxWidth: .infinity,
+                    maxHeight: .infinity
+                )
+            }
+            else if let selection = importSelection.summary.single {
                 // A folder is chosen and its read has not landed yet. Blank,
                 // not the placeholder: "select a folder" would be false about
                 // a folder that is selected, and it was flashing on every
                 // click. Never the previous candidate either — the pane reads
                 // the selected key, which holds nothing until this one lands.
-                ImportCandidatePendingPane(candidateKey: key)
+                ImportCandidatePendingPane(selection: selection)
                     .frame(
                         minWidth: 620,
                         maxWidth: .infinity,
@@ -64,7 +82,7 @@ extension ImportView {
     }
 }
 
-/// The pane for a selected candidate whose read has not been delivered yet.
+/// The pane for a selected row whose read has not been delivered yet.
 ///
 /// Empty rather than a placeholder, and empty rather than a spinner: the read
 /// almost always lands within a frame or two, and a spinner that appears and
@@ -74,7 +92,7 @@ extension ImportView {
 private struct ImportCandidatePendingPane: View {
     /// Restarts the wait when the selection moves to another folder while one
     /// is still pending.
-    let candidateKey: String
+    let selection: BridgeSingleSelection
 
     private static let spinnerDelay = Duration.milliseconds(150)
 
@@ -88,7 +106,7 @@ private struct ImportCandidatePendingPane: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .task(id: candidateKey) {
+        .task(id: selection) {
             waitedLongEnough = false
             try? await Task.sleep(for: Self.spinnerDelay)
             guard !Task.isCancelled else { return }

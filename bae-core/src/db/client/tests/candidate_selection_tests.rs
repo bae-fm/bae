@@ -262,7 +262,7 @@ async fn the_offers_of_two_thousand_selected_rows_come_from_one_read() {
     db.select_shown_candidates(texted("")).await.unwrap();
 
     let mut summaries = crate::import::selection::watch_selection(
-        db.subscribe_selected_candidates(),
+        db.subscribe_selected_rows(),
         crate::import::candidate_runtime::RuntimeFactsWatch::of(&Default::default()),
         &tokio::runtime::Handle::current(),
     );
@@ -276,4 +276,87 @@ async fn the_offers_of_two_thousand_selected_rows_come_from_one_read() {
         .find(|offer| offer.action == crate::import::CandidateAction::Identify)
         .expect("every selected row can be identified");
     assert_eq!(identify.count, 2_000);
+}
+
+/// A folder that failed validation is a row the person can select to look
+/// into: alone it is the one selected row, and among others it offers nothing
+/// and holds combining back.
+#[tokio::test]
+async fn a_skipped_folder_is_selected_like_a_row_and_offers_nothing() {
+    use crate::import::folder_scanner::{InvalidCandidate, SkippedFile};
+    use crate::import::selection::SingleSelection;
+
+    let (db, _tmp, root) = watched_root().await;
+    let candidates = scanned_many(&db, &root, &names(1, "Album")).await;
+    let folder = std::path::Path::new(&root).join("Half Copied");
+    let invalid = InvalidCandidate {
+        path: folder.clone(),
+        name: "Half Copied".to_string(),
+        watched_folder_path: root.clone(),
+        display_path: "Half Copied".to_string(),
+        grouping: None,
+        files: vec![SkippedFile::empty_track(&folder, "01.flac")],
+        tags: None,
+    };
+    let generation = db
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
+    for item in [
+        ScanItem::Valid(candidates[0].clone()),
+        ScanItem::Invalid(invalid.clone()),
+    ] {
+        db.save_folder_scan_item(&root, generation, &item)
+            .await
+            .unwrap();
+    }
+    db.finish_folder_scan(&root, generation, None)
+        .await
+        .unwrap();
+
+    let mut summaries = crate::import::selection::watch_selection(
+        db.subscribe_selected_rows(),
+        crate::import::candidate_runtime::RuntimeFactsWatch::of(&Default::default()),
+        &tokio::runtime::Handle::current(),
+    );
+    assert_eq!(summaries.recv().await.unwrap().count, 0);
+
+    db.change_candidate_selection(
+        texted(""),
+        SelectionChange::Replace {
+            keys: vec![invalid.key()],
+        },
+    )
+    .await
+    .unwrap();
+    let summary = summaries.recv().await.unwrap();
+    assert_eq!(summary.count, 1);
+    assert_eq!(
+        summary.single,
+        Some(SingleSelection::InvalidCandidate { key: invalid.key() })
+    );
+    assert!(summary.offers.is_empty(), "{:?}", summary.offers);
+
+    db.change_candidate_selection(
+        texted(""),
+        SelectionChange::Toggle {
+            add: vec![candidates[0].key()],
+            remove: Vec::new(),
+        },
+    )
+    .await
+    .unwrap();
+    let summary = summaries.recv().await.unwrap();
+    assert_eq!(summary.count, 2);
+    assert_eq!(summary.single, None);
+    let combine = summary
+        .offers
+        .iter()
+        .find(|offer| offer.action == crate::import::CandidateAction::Combine)
+        .expect("two rows offer combining");
+    assert!(
+        !combine.enabled,
+        "a folder that failed validation holds it back"
+    );
+    assert_eq!(selected(&db).await, vec![candidates[0].key()]);
 }

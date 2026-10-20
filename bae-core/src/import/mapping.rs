@@ -7,8 +7,8 @@
 
 use crate::import::audio_layout::{audio_layout, UnitContribution};
 use crate::import::folder_scanner::{
-    BoundTrackSheet, CandidateFile, CategorizedFiles, FileRole, ScannedFile, SheetBinding,
-    SheetDisc, SheetReferenceOptions, TrackSheetFile,
+    AudioDamage, BoundTrackSheet, CandidateFile, CategorizedFiles, FileRole, InvalidCandidate,
+    ProposedRole, ScannedFile, SheetBinding, SheetDisc, SheetReferenceOptions, TrackSheetFile,
 };
 use crate::import::probe::SourceDurations;
 use crate::import::types::{AudioFile, CandidateDraft, CandidateTrack, RawTrackEdit};
@@ -122,6 +122,9 @@ pub enum MappingRole {
     /// Named as an image, but its bytes do not decode as one: carried with
     /// the release, and kept out of the gallery the cover is picked from.
     DamagedImage,
+    /// Named as audio, and bae can't play it. Only a folder that failed
+    /// validation holds one — it is why the folder failed.
+    DamagedAudio { damage: AudioDamage },
     /// In the folder and carried with the release, unrecognized.
     Other,
 }
@@ -560,6 +563,66 @@ fn mapping_image(entry: &CandidateFile) -> MappingImage {
         file_id: entry.file.relative_path.clone(),
         name: entry.file.file_name.clone(),
         file: entry.file.version(),
+    }
+}
+
+/// A folder that failed validation, as the pane looking into it reads it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct InvalidCandidateDetail {
+    pub candidate: InvalidCandidate,
+    /// The images that decode, in name order, as the gallery shows them.
+    pub images: Vec<MappingImage>,
+    /// Every other file, in name order, each with what it is — the damaged
+    /// audio among them is why the folder failed.
+    pub files: Vec<MappingFile>,
+}
+
+impl InvalidCandidateDetail {
+    pub fn of(candidate: InvalidCandidate) -> Self {
+        let mut images = Vec::new();
+        let mut files = Vec::new();
+        for skipped in &candidate.files {
+            let entry = |role| {
+                let scanned = skipped.scanned();
+                MappingFile {
+                    file_id: scanned.relative_path.clone(),
+                    name: scanned.relative_path.clone(),
+                    size: scanned.size,
+                    preview_target: (role == MappingRole::Audio).then(|| {
+                        crate::playback::PreviewTarget::whole_file(
+                            scanned.path.to_string_lossy().into_owned(),
+                        )
+                    }),
+                    path: scanned.path,
+                    duration_ms: None,
+                    audio_format: None,
+                    role,
+                }
+            };
+            match skipped.role {
+                ProposedRole::Image => images.push(MappingImage {
+                    file_id: skipped.relative_path.clone(),
+                    name: skipped.scanned().file_name,
+                    file: skipped.file.clone(),
+                }),
+                ProposedRole::Audio => files.push(entry(MappingRole::Audio)),
+                ProposedRole::DamagedAudio { damage } => {
+                    files.push(entry(MappingRole::DamagedAudio { damage }))
+                }
+                // A sheet in a folder that is never imported is never bound:
+                // it is the text it is.
+                ProposedRole::Cue | ProposedRole::Document => {
+                    files.push(entry(MappingRole::Document))
+                }
+                ProposedRole::DamagedImage => files.push(entry(MappingRole::DamagedImage)),
+                ProposedRole::Other => files.push(entry(MappingRole::Other)),
+            }
+        }
+        Self {
+            candidate,
+            images,
+            files,
+        }
     }
 }
 

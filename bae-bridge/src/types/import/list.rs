@@ -80,9 +80,13 @@ pub enum BridgeImportListItem {
         stable_key: String,
         row: BridgeImportedRow,
     },
+    /// A folder that failed validation, presented as what the scan read of
+    /// it.
     Invalid {
         stable_key: String,
         invalid_candidate: BridgeInvalidCandidate,
+        /// Whether the person has selected the row.
+        selected: bool,
         is_group_member: bool,
     },
 }

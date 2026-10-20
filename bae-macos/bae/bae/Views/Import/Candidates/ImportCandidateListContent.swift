@@ -638,7 +638,7 @@ extension ImportCandidateListContent {
                 candidateRow(row, isGroupMember: isGroupMember)
             case .imported(_, let row):
                 importedRow(row)
-            case .invalid(_, let invalid, let isGroupMember):
+            case .invalid(_, let invalid, _, let isGroupMember):
                 invalidRow(invalid, isGroupMember: isGroupMember)
             }
         }
@@ -684,7 +684,7 @@ extension ImportCandidateListContent {
             return isMember
         case .imported:
             return false
-        case .invalid(_, _, let isMember):
+        case .invalid(_, _, _, let isMember):
             return isMember
         }
     }
@@ -777,25 +777,18 @@ extension ImportCandidateListContent {
         .tag(row.candidateKey)
     }
 
-    /// An invalid folder is not a candidate, so it carries no selection tag.
+    /// A folder that failed validation is selected like any row, which opens
+    /// the pane that looks into it.
     private func invalidRow(
         _ invalid: BridgeInvalidCandidate,
         isGroupMember: Bool
     ) -> some View {
         InvalidCandidateRow(
-            displayName: invalid.sourceFolderName,
-            reason: invalid.reason,
-            revealPath: invalid.folderPath
+            invalid: invalid,
+            isGroupMember: isGroupMember,
+            onSeparate: { onSeparate(invalid.candidateKey) }
         )
-        // An unreadable combined folder can only be separated from here.
-        .contextMenu {
-            if invalid.separable {
-                Button("Keep as Separate Releases") {
-                    onSeparate(invalid.candidateKey)
-                }
-            }
-        }
-        .groupMemberRail(isGroupMember)
+        .tag(invalid.candidateKey)
     }
 }
 

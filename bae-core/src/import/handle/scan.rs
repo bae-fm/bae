@@ -773,7 +773,7 @@ impl ImportServiceHandle {
                     files.apply_candidate_file_edits(&decided)?;
                     settled.push((key, files));
                 }
-                Ok::<_, crate::import::folder_scanner::InvalidReason>(settled)
+                Ok::<_, crate::import::folder_scanner::UnreadableAudio>(settled)
             })
             .await
             .map_err(|e| crate::import::ImportError::Internal {

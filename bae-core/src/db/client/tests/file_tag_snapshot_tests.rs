@@ -4,8 +4,8 @@ use crate::import::file_tag_snapshot::{
     EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot,
 };
 use crate::import::folder_scanner::{
-    CandidateFile, CategorizedFiles, FileRole, FolderCandidate, InvalidCandidate, InvalidReason,
-    ReleaseFileScope, ScanItem, ScannedFile,
+    CandidateFile, CategorizedFiles, FileRole, FolderCandidate, InvalidCandidate, ReleaseFileScope,
+    ScanItem, ScannedFile,
 };
 use crate::util::content_type::ContentType;
 use std::path::PathBuf;
@@ -375,9 +375,11 @@ async fn a_candidate_that_turns_invalid_drops_the_reading_it_carried() {
             watched_folder_path: root.clone(),
             display_path: candidate.display_path.clone(),
             grouping: None,
-            reason: InvalidReason::CorruptAudioFile {
-                path: "02.flac".to_string(),
-            },
+            files: vec![crate::import::folder_scanner::SkippedFile::empty_track(
+                &candidate.path,
+                "02.flac",
+            )],
+            tags: None,
         }),
     )
     .await

@@ -14,7 +14,8 @@ fn invalid(candidate: &FolderCandidate) -> ImportEvent {
         watched_folder_path: candidate.watched_folder_path.clone(),
         display_path: "rel1".to_string(),
         grouping: candidate.grouping.clone(),
-        reason: InvalidReason::NoValidAudio,
+        files: Vec::new(),
+        tags: None,
     }))
 }
 

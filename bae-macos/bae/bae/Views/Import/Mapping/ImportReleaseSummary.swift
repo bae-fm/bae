@@ -61,6 +61,16 @@ struct ImportReleaseSummary {
         sourceAudio = nil
     }
 
+    /// A folder that failed validation, as its tags call the release: the
+    /// album title, and the artist under it.
+    init(tags: BridgeSkippedTags) {
+        titleIsPlaceholder = false
+        title = tags.albumTitle
+        artist = tags.artist
+        factsLine = ""
+        sourceAudio = nil
+    }
+
     /// A Done row's library release: its title, and its artist beside its
     /// year on the line under it.
     init(release: BridgeImportedReleaseSummary) {

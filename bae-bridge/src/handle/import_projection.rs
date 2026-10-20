@@ -48,15 +48,20 @@ impl crate::types::BridgeFolderCandidate {
 }
 
 impl crate::types::BridgeInvalidCandidate {
-    pub(super) fn from_core(candidate: bae_core::import::InvalidCandidate) -> Self {
+    pub(crate) fn from_core(candidate: bae_core::import::InvalidCandidate) -> Self {
         let candidate_key = candidate.key();
+        let reason = crate::types::BridgeInvalidReason::from_core(candidate.reason());
+        let cover = candidate
+            .cover_image()
+            .map(crate::types::BridgeCoverImageSource::from_core);
         let bae_core::import::InvalidCandidate {
             path,
             name,
             watched_folder_path,
             display_path,
             grouping,
-            reason,
+            files: _,
+            tags,
         } = candidate;
         crate::types::BridgeInvalidCandidate {
             candidate_key,
@@ -65,7 +70,30 @@ impl crate::types::BridgeInvalidCandidate {
             watched_folder_path,
             display_path,
             separable: grouping.is_some(),
-            reason: crate::types::BridgeInvalidReason::from_core(reason),
+            reason,
+            tags: tags.map(crate::types::BridgeSkippedTags::from_core),
+            cover,
+        }
+    }
+}
+
+impl crate::types::BridgeInvalidCandidateDetail {
+    pub(crate) fn from_core(detail: bae_core::import::InvalidCandidateDetail) -> Self {
+        let bae_core::import::InvalidCandidateDetail {
+            candidate,
+            images,
+            files,
+        } = detail;
+        Self {
+            candidate: crate::types::BridgeInvalidCandidate::from_core(candidate),
+            images: images
+                .into_iter()
+                .map(crate::types::BridgeMappingImage::from_core)
+                .collect(),
+            files: files
+                .into_iter()
+                .map(crate::types::BridgeMappingFile::from_core)
+                .collect(),
         }
     }
 }
@@ -582,10 +610,12 @@ impl crate::types::BridgeImportListItem {
             },
             bae_core::import::ImportListItem::Invalid {
                 candidate,
+                selected,
                 is_group_member,
             } => Self::Invalid {
                 stable_key,
                 invalid_candidate: crate::types::BridgeInvalidCandidate::from_core(candidate),
+                selected,
                 is_group_member,
             },
         }

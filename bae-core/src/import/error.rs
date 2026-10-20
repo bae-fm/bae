@@ -64,12 +64,16 @@ pub enum ImportError {
     #[error("folder scan failed: {0}")]
     Scan(#[from] crate::import::folder_scanner::FolderScanError),
 
-    /// The folder is structurally unimportable (corrupt/zero-byte audio,
-    /// CUE referencing missing audio, no valid audio). Typed reason reused
-    /// from the scanner.
+    /// The folder is structurally unimportable (damaged audio, no valid
+    /// audio). Typed reason reused from the scanner.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("folder cannot be imported: {0}")]
     InvalidFolder(#[from] crate::import::folder_scanner::InvalidReason),
+
+    /// A track sheet is bound to audio that holds nothing bae can read.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[error("folder cannot be imported: {0}")]
+    UnreadableAudio(#[from] crate::import::folder_scanner::UnreadableAudio),
 
     /// A MusicBrainz request failed. Network/Timeout/Provider{status}
     /// distinctions preserved from the wire.
@@ -307,6 +311,7 @@ impl ImportError {
             Self::Config { .. } => C::Config,
             Self::Scan(_)
             | Self::InvalidFolder(_)
+            | Self::UnreadableAudio(_)
             | Self::DiscogsNotConfigured
             | Self::FileTags { .. }
             | Self::UnusableFile { .. }

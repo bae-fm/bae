@@ -380,6 +380,10 @@ interrupted scan keeps both old and new entries.
 
 - **A broken folder.** A folder with corrupt or zero-byte audio, or no valid
   audio at all, is listed as skipped with its reason. It can't be imported.
+  The scan reads every file before judging it, so it stores each file of the
+  folder with what it made of it — each damaged track with why: it is empty,
+  or holds no audio bae can read — and the album title and artist its first
+  playable track's tags state.
 - **A damaged image** — zero bytes, or bytes that don't decode as the picture
   its name says — doesn't skip the folder: the release is its audio. The image
   is never artwork, so it is never the cover, and it imports as plain bytes the
@@ -440,9 +444,18 @@ hint, uploaded or not.
 Done offers no re-import. A second copy comes from importing another folder,
 such as a copy whose modification times changed.
 
+**Skipped.** A broken folder's row looks like a Found row: the folder's own
+cover when an image in it decodes, the album title and artist its tags state
+or else the folder's name, and under them why it can't be imported, such as
+"2 audio files are damaged". Selecting it opens it the way a Found release
+opens, read-only: its images, then every other file with each damaged one
+marked and why. Where a release's Import would be, the pane states the reason.
+A playable track in it can still be auditioned.
+
 The person can select any number of rows. The selection is stored as rows,
 not held by a surface, and a bulk action runs in core over the selected rows
-that offer it.
+that offer it. A broken folder offers no action, so selected among others it
+counts toward the selection but holds back combining it.
 
 ### 3.3 Clues in the files
 
@@ -1923,6 +1936,7 @@ All sync (§5), except `local_history`.
 | `folder_scan_generation_sequence`, `folder_scan_roots`, `folder_scan_directory` | each watched folder's last scan and the directories it saw |
 | `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders |
 | `scan_candidate_tag_snapshot`, `scan_candidate_file_tag` | the tags read from a candidate's audio, and its embedded cover |
+| `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it |
 | `scan_sidecar`, `scan_sidecar_file` | files under a folder no release owns |
 | `scan_cue_sheet`, `scan_cue_track`, `scan_cue_index`, `scan_sheet_audio_file` | parsed CUE sheets and the audio each `FILE` line resolved to |
 | `candidate_selection`, `candidate_selection_revision` | the import list's selection, for one session |

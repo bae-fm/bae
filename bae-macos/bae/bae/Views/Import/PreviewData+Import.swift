@@ -192,8 +192,24 @@
         ]
         .map(Candidate.init(bridge:))
 
-        /// Folders that failed validation, listed under Skipped.
+        /// Folders that failed validation, listed under Skipped: one whose
+        /// tags name the release and whose own cover decodes, one with only
+        /// its folder's name to go by, and one with no audio at all.
         static let invalidCandidates: [BridgeInvalidCandidate] = [
+            BridgeInvalidCandidate(
+                candidateKey: "/Music/Downloads/Half Copied",
+                folderPath: "/Music/Downloads/Half Copied",
+                sourceFolderName: "Half Copied",
+                watchedFolderPath: "/Music/Downloads",
+                displayPath: "Half Copied",
+                separable: false,
+                reason: .damagedAudio(count: 2),
+                tags: BridgeSkippedTags(
+                    albumTitle: "Album Title",
+                    artist: "Artist Name"
+                ),
+                cover: .local(file: previewArtFile("Front.png"))
+            ),
             BridgeInvalidCandidate(
                 candidateKey: "/Music/Downloads/Broken Rip",
                 folderPath: "/Music/Downloads/Broken Rip",
@@ -201,7 +217,9 @@
                 watchedFolderPath: "/Music/Downloads",
                 displayPath: "Broken Rip",
                 separable: false,
-                reason: .corruptAudioFile(path: "03.flac")
+                reason: .damagedAudio(count: 1),
+                tags: nil,
+                cover: nil
             ),
             BridgeInvalidCandidate(
                 candidateKey: "/Music/Downloads/Documents Only",
@@ -210,9 +228,113 @@
                 watchedFolderPath: "/Music/Downloads",
                 displayPath: "Documents Only",
                 separable: false,
-                reason: .noValidAudio
+                reason: .noValidAudio,
+                tags: nil,
+                cover: nil
             ),
         ]
+
+        /// One of a skipped folder's files, as its pane lists it.
+        private static func skippedFile(
+            folder: String,
+            name: String,
+            size: UInt64,
+            role: BridgeMappingRole
+        ) -> BridgeMappingFile {
+            let path = "\(folder)/\(name)"
+            return BridgeMappingFile(
+                fileId: name,
+                name: name,
+                size: size,
+                localPath: path,
+                previewTarget: role == .audio
+                    ? BridgePreviewTarget(
+                        path: path,
+                        startSample: 0,
+                        endSample: nil
+                    ) : nil,
+                durationMs: nil,
+                audioFormat: nil,
+                role: role
+            )
+        }
+
+        /// The tagged skipped folder looked into: its cover among its images,
+        /// two playable tracks, a zero-filled one and an empty one, its rip
+        /// log, and a damaged back image.
+        static let invalidCandidateDetail: BridgeInvalidCandidateDetail = {
+            let folder = invalidCandidates[0].folderPath
+            return BridgeInvalidCandidateDetail(
+                candidate: invalidCandidates[0],
+                images: [
+                    BridgeMappingImage(
+                        fileId: "Front.png",
+                        name: "Front.png",
+                        file: previewArtFile("Front.png")
+                    )
+                ],
+                files: [
+                    skippedFile(
+                        folder: folder,
+                        name: "01 Track Title.flac",
+                        size: 31_400_000,
+                        role: .audio
+                    ),
+                    skippedFile(
+                        folder: folder,
+                        name: "02 Track Title.flac",
+                        size: 28_900_000,
+                        role: .audio
+                    ),
+                    skippedFile(
+                        folder: folder,
+                        name: "03 Track Title.flac",
+                        size: 33_100_000,
+                        role: .damagedAudio(damage: .unreadable)
+                    ),
+                    skippedFile(
+                        folder: folder,
+                        name: "04 Track Title.flac",
+                        size: 0,
+                        role: .damagedAudio(damage: .empty)
+                    ),
+                    skippedFile(
+                        folder: folder,
+                        name: "Back.png",
+                        size: 512,
+                        role: .damagedImage
+                    ),
+                    skippedFile(
+                        folder: folder,
+                        name: "rip.log",
+                        size: 6_000,
+                        role: .document
+                    ),
+                ]
+            )
+        }()
+
+        /// The skipped folder with only its name to go by: no tags, no image
+        /// that decodes, one empty track.
+        static let untaggedInvalidCandidateDetail =
+            BridgeInvalidCandidateDetail(
+                candidate: invalidCandidates[1],
+                images: [],
+                files: [
+                    skippedFile(
+                        folder: invalidCandidates[1].folderPath,
+                        name: "01.flac",
+                        size: 0,
+                        role: .damagedAudio(damage: .empty)
+                    ),
+                    skippedFile(
+                        folder: invalidCandidates[1].folderPath,
+                        name: "02.flac",
+                        size: 30_200_000,
+                        role: .audio
+                    ),
+                ]
+            )
 
         private static let releaseQueueRoot = "/Music/Incoming"
 

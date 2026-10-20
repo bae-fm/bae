@@ -3,8 +3,8 @@
 
 use super::{candidate, empty_db};
 use crate::import::folder_scanner::{
-    CandidateFile, FileRole, FolderCandidate, FolderSidecar, InvalidCandidate, InvalidReason,
-    ScanItem, ScannedFile, SidecarFiles,
+    AudioDamage, CandidateFile, FileRole, FolderCandidate, FolderSidecar, InvalidReason,
+    ProposedRole, ScanItem, ScannedFile, SidecarFiles, SkippedFile,
 };
 use crate::import::grouping::GroupingBlock;
 use crate::import::watched_folder::host_root;
@@ -295,20 +295,34 @@ async fn releases_in_one_folder_read_its_files_and_only_one_grouping_does() {
 
     // A zero-byte track among the folder's files makes the release that
     // reads them one that cannot be imported, as a folder holding it would be.
+    let album = std::path::PathBuf::from(host_root("/music")).join("Album");
     let broken = FolderSidecar {
-        files: SidecarFiles::Invalid(InvalidReason::CorruptAudioFile {
-            path: "bonus.flac".into(),
-        }),
+        files: SidecarFiles::Invalid(vec![SkippedFile {
+            relative_path: "bonus.flac".into(),
+            file: crate::import::folder_scanner::FileVersion {
+                path: album.join("bonus.flac"),
+                size: 0,
+                modified_at_ns: 1,
+            },
+            role: ProposedRole::DamagedAudio {
+                damage: AudioDamage::Empty,
+            },
+        }]),
         ..sidecar_of("Album", &[])
     };
     scan_in(&db, ScanItem::Sidecar(broken)).await;
-    assert!(matches!(
-        stored(&db, "grouping:discs").await,
-        Some(ScanItem::Invalid(InvalidCandidate {
-            reason: InvalidReason::CorruptAudioFile { .. },
-            ..
-        }))
-    ));
+    let Some(ScanItem::Invalid(invalid)) = stored(&db, "grouping:discs").await else {
+        panic!("the release reading the broken files is invalid");
+    };
+    assert_eq!(invalid.reason(), InvalidReason::DamagedAudio { count: 1 });
+    assert!(
+        invalid
+            .files
+            .iter()
+            .any(|file| file.relative_path == "bonus.flac"),
+        "the release lists the folder's broken file among its own: {:?}",
+        invalid.files
+    );
 }
 
 /// A release that reads a folder's own files takes them from the sidecar:

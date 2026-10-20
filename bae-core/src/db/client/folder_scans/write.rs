@@ -239,9 +239,8 @@ pub(crate) fn insert_candidate_row(
     sql.execute(
         "INSERT INTO scan_candidate \
              (watched_folder_path, path, generation, kind, name, display_path, folder, \
-              file_root, scope, content_hash, file_edit_revision, grouping_key, source_kind, \
-              invalid_reason, invalid_reason_path) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)",
+              file_root, scope, content_hash, file_edit_revision, grouping_key, source_kind) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             watched_folder_path,
             path,
@@ -376,17 +375,17 @@ fn insert_invalid(
     source_kind: &str,
     candidate: &InvalidCandidate,
 ) -> Result<(), DbError> {
-    let (reason, reason_path) = invalid_reason_columns(&candidate.reason);
     let folder = candidate.path.to_string_lossy();
+    let key = candidate.key();
     sql.execute(
         "INSERT INTO scan_candidate \
              (watched_folder_path, path, generation, kind, name, display_path, folder, \
               file_root, scope, content_hash, file_edit_revision, grouping_key, \
-              source_kind, invalid_reason, invalid_reason_path) \
-         VALUES (?, ?, ?, 'invalid', ?, ?, ?, ?, ?, NULL, 0, ?, ?, ?, ?)",
+              source_kind) \
+         VALUES (?, ?, ?, 'invalid', ?, ?, ?, ?, ?, NULL, 0, ?, ?)",
         params![
             watched_folder_path,
-            candidate.key(),
+            key,
             generation,
             candidate.name,
             candidate.display_path,
@@ -399,10 +398,36 @@ fn insert_invalid(
             }),
             candidate.grouping,
             source_kind,
-            reason,
-            reason_path,
         ],
     )?;
+    for (position, file) in candidate.files.iter().enumerate() {
+        let (role, damage) = proposed_role_columns(file.role);
+        sql.execute(
+            "INSERT INTO scan_skipped_file \
+                 (watched_folder_path, candidate_path, position, relative_path, absolute_path, \
+                  size, modified_at_ns, role, audio_damage) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            params![
+                watched_folder_path,
+                key,
+                to_i64(position as u64, "a skipped file's position")?,
+                file.relative_path,
+                file.file.path.to_string_lossy(),
+                to_i64(file.file.size, "a skipped file's size")?,
+                file.file.modified_at_ns,
+                role,
+                damage,
+            ],
+        )?;
+    }
+    if let Some(tags) = &candidate.tags {
+        sql.execute(
+            "INSERT INTO scan_skipped_tags \
+                 (watched_folder_path, candidate_path, album_title, artist) \
+             VALUES (?, ?, ?, ?)",
+            params![watched_folder_path, key, tags.album_title, tags.artist],
+        )?;
+    }
     Ok(())
 }
 

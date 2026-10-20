@@ -154,11 +154,17 @@ mirror_enum! {
 mirror_enum! {
     BridgeMappingRole = bae_core::import::MappingRole,
     from_core: fn,
-    variants: { Audio, Document, DamagedImage, Other },
+    variants: {
+        Audio,
+        Document,
+        DamagedImage,
+        DamagedAudio { damage: (crate::types::BridgeAudioDamage) },
+        Other,
+    },
 }
 
 impl BridgeMappingFile {
-    fn from_core(file: bae_core::import::MappingFile) -> Self {
+    pub(crate) fn from_core(file: bae_core::import::MappingFile) -> Self {
         let bae_core::import::MappingFile {
             file_id,
             name,
@@ -279,7 +285,7 @@ mirror_enum! {
 }
 
 impl BridgeMappingImage {
-    fn from_core(image: bae_core::import::MappingImage) -> Self {
+    pub(crate) fn from_core(image: bae_core::import::MappingImage) -> Self {
         let bae_core::import::MappingImage {
             file_id,
             name,

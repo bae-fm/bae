@@ -5,7 +5,7 @@
 
 use super::import_list::{load_import_queue_on, DoneRowText};
 use super::*;
-use crate::import::selection::{SelectedCandidate, SelectionChange};
+use crate::import::selection::{SelectedCandidate, SelectedRows, SelectionChange};
 use crate::import::ImportListRequest;
 
 impl Database {
@@ -18,18 +18,16 @@ impl Database {
             .map(|_| ())
     }
 
-    /// The selected candidates as the tables place them, now and on every
-    /// write that changes them.
-    pub(crate) fn subscribe_selected_candidates(
-        &self,
-    ) -> coven::LiveQuery<Vec<SelectedCandidate>> {
+    /// The selected rows as the tables place them, now and on every write
+    /// that changes them.
+    pub(crate) fn subscribe_selected_rows(&self) -> coven::LiveQuery<SelectedRows> {
         self.inner
             .handle
             .subscribe(|sql| {
                 load_import_queue_on(&sql, DoneRowText::Skip).map_err(CovenError::from)
             })
             .process(|rows| {
-                crate::import::list::selected_candidates(&rows)
+                crate::import::list::selected_rows(&rows)
                     .map_err(|error| CovenError::from(DbError::Message(error.to_string())))
             })
     }

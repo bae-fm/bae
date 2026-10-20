@@ -80,7 +80,7 @@ impl ScannedFile {
 /// there from whatever is written at that path later. A reader that caches
 /// what it read from the file keys it by this, so a replaced file is new
 /// content without the reader looking at the file again.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct FileVersion {
     pub path: PathBuf,
     pub size: u64,
@@ -829,7 +829,7 @@ impl CategorizedFiles {
     pub fn apply_candidate_file_edits(
         &mut self,
         edits: &CandidateFileEdits,
-    ) -> Result<(), InvalidReason> {
+    ) -> Result<(), UnreadableAudio> {
         match settle_sheet_bindings(
             &mut self.files,
             &edits.sheet_bindings,
@@ -841,7 +841,7 @@ impl CategorizedFiles {
                 settle_sheet_discs(&mut self.files, &self.parts, &edits.sheet_discs);
                 Ok(())
             }
-            SettledBindings::CorruptAudio { path } => Err(InvalidReason::CorruptAudioFile { path }),
+            SettledBindings::CorruptAudio { path } => Err(UnreadableAudio { path }),
         }
     }
 }

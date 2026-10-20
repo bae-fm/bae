@@ -390,14 +390,15 @@ pub(super) fn candidate_from_files(
                 grouping,
             })))
         }
-        CategorizeOutcome::Invalid(reason) => {
+        CategorizeOutcome::Invalid { files, tags } => {
             Ok(Some(ProjectedScanNode::Invalid(InvalidCandidate {
                 path,
                 name,
                 watched_folder_path: scan.watched_folder_path.to_string(),
                 display_path,
                 grouping,
-                reason,
+                files,
+                tags,
             })))
         }
     }
@@ -956,6 +957,6 @@ pub fn collect_release_candidate_files_with_scope(
         &ProbedAudio::default(),
     )? {
         CategorizeOutcome::Valid(files) => Ok(files),
-        CategorizeOutcome::Invalid(reason) => Err(reason.into()),
+        CategorizeOutcome::Invalid { files, .. } => Err(InvalidReason::of(&files).into()),
     }
 }

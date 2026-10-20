@@ -141,6 +141,81 @@ final class ImportSelectionObservation {
     }
 }
 
+/// The read behind the one selected folder that failed validation, whose key
+/// moves in place as the selection moves. Any other selection reads nothing
+/// here.
+@MainActor
+final class InvalidCandidateSelectionObservation {
+    private let open: () -> DetailQuery<BridgeInvalidCandidateDetail>
+    private let importStore: ImportStore
+    private let uiStore: UiStore
+    private var reader: DetailReader<BridgeInvalidCandidateDetail>?
+
+    init(
+        open: @escaping () -> DetailQuery<BridgeInvalidCandidateDetail>,
+        importStore: ImportStore,
+        uiStore: UiStore
+    ) {
+        self.open = open
+        self.importStore = importStore
+        self.uiStore = uiStore
+    }
+
+    convenience init(
+        appHandle: AppHandle,
+        importStore: ImportStore,
+        uiStore: UiStore
+    ) {
+        self.init(
+            open: {
+                let subscription = appHandle.subscribeInvalidCandidate()
+                return DetailQuery(
+                    setId: { try subscription.setId(id: $0) },
+                    next: {
+                        let snapshot = try await subscription.next()
+                        return DetailDelivery(
+                            id: snapshot.id,
+                            value: snapshot.value
+                        )
+                    },
+                    cancel: { try? await subscription.cancel() }
+                )
+            },
+            importStore: importStore,
+            uiStore: uiStore
+        )
+    }
+
+    /// Read `key`, the one selected folder that failed validation, or
+    /// nothing.
+    func selectionChanged(key: String?) {
+        guard key != reader?.id else { return }
+        if let previous = reader?.id {
+            importStore.selectedInvalidCandidates.removeValue(forKey: previous)
+        }
+        guard let key else {
+            reader?.close()
+            reader = nil
+            return
+        }
+        let reader =
+            reader
+            ?? DetailReader(
+                open: open,
+                onValue: { [weak self] key, detail in
+                    // A key whose folder no longer fails reads nothing; the
+                    // selection then reads it as the candidate it became.
+                    self?.importStore.selectedInvalidCandidates[key] = detail
+                },
+                onError: { [weak self] _, error in
+                    self?.uiStore.showError(error)
+                }
+            )
+        self.reader = reader
+        reader.show(key)
+    }
+}
+
 @MainActor
 final class DesktopSubscriptions {
     /// The import sidebar's paged list, installed in the view environment.
@@ -153,6 +228,8 @@ final class DesktopSubscriptions {
     /// The import list's selection, installed in the view environment.
     let importSelection: ImportSelection
     private let selectionObservation: ImportSelectionObservation
+    private let invalidSelectionObservation:
+        InvalidCandidateSelectionObservation
     private var subscriptions: [LiveSubscription] = []
 
     init(
@@ -170,6 +247,11 @@ final class DesktopSubscriptions {
             importStore: importStore,
             uiStore: uiStore
         )
+        invalidSelectionObservation = InvalidCandidateSelectionObservation(
+            appHandle: appHandle,
+            importStore: importStore,
+            uiStore: uiStore
+        )
         let importSelection = ImportSelection(
             operations: .live(handle: appHandle)
         )
@@ -179,22 +261,7 @@ final class DesktopSubscriptions {
         // transient event, so a scan that failed while the app was still
         // starting up is raised on the first delivery instead of being
         // published to nobody.
-        importStore.onScanFailure = { [uiStore] watchedFolderPath, detail in
-            uiStore.showError(
-                DisplayError(
-                    line: String(
-                        format: NSLocalizedString(
-                            "ui.import.folder.scan_failed",
-                            tableName: "Core",
-                            bundle: .main,
-                            comment: ""
-                        ),
-                        watchedFolderPath
-                    ),
-                    detail: detail
-                )
-            )
-        }
+        importStore.onScanFailure = Self.scanFailureAlert(on: uiStore)
         importList = ImportListSlot(
             importStore: importStore,
             uiStore: uiStore,
@@ -226,6 +293,29 @@ final class DesktopSubscriptions {
         )
     }
 
+    /// Raise a watched folder that could not be read on the app's alert,
+    /// with the untranslated fault as its detail.
+    private static func scanFailureAlert(
+        on uiStore: UiStore
+    ) -> (_ watchedFolderPath: String, _ detail: String) -> Void {
+        { [uiStore] watchedFolderPath, detail in
+            uiStore.showError(
+                DisplayError(
+                    line: String(
+                        format: NSLocalizedString(
+                            "ui.import.folder.scan_failed",
+                            tableName: "Core",
+                            bundle: .main,
+                            comment: ""
+                        ),
+                        watchedFolderPath
+                    ),
+                    detail: detail
+                )
+            )
+        }
+    }
+
     func start() {
         precondition(subscriptions.isEmpty)
         subscriptions = [
@@ -244,10 +334,16 @@ final class DesktopSubscriptions {
             ),
             appHandle.subscribeImportSelection(
                 callback: ImportSelectionSink {
-                    [importSelection, selectionObservation] summary in
+                    [
+                        importSelection, selectionObservation,
+                        invalidSelectionObservation
+                    ] summary in
                     importSelection.apply(summary)
                     selectionObservation.selectionChanged(
-                        single: summary.single
+                        single: summary.single?.candidateKey
+                    )
+                    invalidSelectionObservation.selectionChanged(
+                        key: summary.single?.invalidCandidateKey
                     )
                 }
             ),

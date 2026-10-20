@@ -4,7 +4,8 @@
 
 use super::*;
 use crate::import::folder_scanner::{
-    FileRole, InvalidReason, ReleaseFileScope, SheetAudioFile, SheetBinding, SheetDisc,
+    AudioDamage, FileRole, ProposedRole, ReleaseFileScope, SheetAudioFile, SheetBinding,
+    SheetDisc,
 };
 
 /// A column holding a value no writer here produces.
@@ -41,28 +42,48 @@ pub(super) fn scope_of(stored: &str) -> Result<ReleaseFileScope, DbError> {
     }
 }
 
-/// The reason and the path it names, as the two columns store them.
-pub(super) fn invalid_reason_columns(reason: &InvalidReason) -> (&'static str, Option<&str>) {
-    match reason {
-        InvalidReason::CorruptAudioFile { path } => ("corrupt_audio", Some(path.as_str())),
-        InvalidReason::NoValidAudio => ("no_valid_audio", None),
+/// A skipped file's role, and the damage a damaged track names, as the two
+/// columns store them. The roles a release's files share are spelled as
+/// [`role_columns`] spells them.
+pub(super) fn proposed_role_columns(role: ProposedRole) -> (&'static str, Option<&'static str>) {
+    match role {
+        ProposedRole::Audio => ("audio", None),
+        ProposedRole::DamagedAudio { damage } => (
+            "damaged_audio",
+            Some(match damage {
+                AudioDamage::Empty => "empty",
+                AudioDamage::Unreadable => "unreadable",
+            }),
+        ),
+        ProposedRole::Cue => ("track_sheet", None),
+        ProposedRole::Image => ("artwork", None),
+        ProposedRole::DamagedImage => ("damaged_image", None),
+        ProposedRole::Document => ("document", None),
+        ProposedRole::Other => ("other", None),
     }
 }
 
-pub(crate) fn invalid_reason_of(
+pub(super) fn proposed_role_of(
     stored: &str,
-    path: Option<String>,
-) -> Result<InvalidReason, DbError> {
-    // The table pairs the two columns, so a reason that names a path always
-    // has one; a build reading a row written before that pairing existed is
-    // not a case — the schema is rebuilt, never migrated.
-    let named = |path: Option<String>| {
-        path.ok_or_else(|| DbError::Message(format!("folder scan reason {stored} names no path")))
-    };
-    match stored {
-        "corrupt_audio" => Ok(InvalidReason::CorruptAudioFile { path: named(path)? }),
-        "no_valid_audio" => Ok(InvalidReason::NoValidAudio),
-        other => Err(unreadable("invalid_reason", other)),
+    damage: Option<&str>,
+) -> Result<ProposedRole, DbError> {
+    // The table pairs the two columns, so only a damaged track names damage.
+    match (stored, damage) {
+        ("audio", None) => Ok(ProposedRole::Audio),
+        ("damaged_audio", Some("empty")) => Ok(ProposedRole::DamagedAudio {
+            damage: AudioDamage::Empty,
+        }),
+        ("damaged_audio", Some("unreadable")) => Ok(ProposedRole::DamagedAudio {
+            damage: AudioDamage::Unreadable,
+        }),
+        ("track_sheet", None) => Ok(ProposedRole::Cue),
+        ("artwork", None) => Ok(ProposedRole::Image),
+        ("damaged_image", None) => Ok(ProposedRole::DamagedImage),
+        ("document", None) => Ok(ProposedRole::Document),
+        ("other", None) => Ok(ProposedRole::Other),
+        (stored, damage) => Err(DbError::Message(format!(
+            "skipped file role {stored:?} stores damage {damage:?}"
+        ))),
     }
 }
 

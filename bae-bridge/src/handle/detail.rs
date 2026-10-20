@@ -1,7 +1,7 @@
 use super::*;
 
-/// The album, release, artist, composer, work, and import candidate detail
-/// views read live through one subscription each, whose id moves in place as
+/// The album, release, artist, composer, work, import candidate, and invalid
+/// import folder detail views read live through one subscription each, whose id moves in place as
 /// the view shows another item. A macro rather than a generic: uniffi exports concrete
 /// objects and records, so each detail needs its own named types.
 macro_rules! detail_subscription {
@@ -98,6 +98,19 @@ impl DetailValue for BridgeWorkDetail {
 #[cfg(feature = "desktop")]
 impl DetailValue for crate::types::BridgeImportCandidateDetail {
     type Core = bae_core::import::ImportCandidateDetail;
+}
+
+#[cfg(feature = "desktop")]
+impl DetailValue for crate::types::BridgeInvalidCandidateDetail {
+    type Core = bae_core::import::InvalidCandidateDetail;
+}
+
+#[cfg(feature = "desktop")]
+detail_subscription! {
+    object: InvalidCandidateSubscription,
+    subscribe: subscribe_invalid_candidate,
+    snapshot: BridgeInvalidCandidateSnapshot,
+    value: crate::types::BridgeInvalidCandidateDetail,
 }
 
 #[cfg(feature = "desktop")]

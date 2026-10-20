@@ -36,24 +36,52 @@ pub struct SelectedCandidate {
     pub basis: CandidateActionBasis,
 }
 
+/// Every selected row as the tables place it: the candidates, and the folders
+/// that failed validation, which the person can select to look into but which
+/// offer nothing to do.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SelectedRows {
+    pub candidates: Vec<SelectedCandidate>,
+    /// The keys of the selected folders that failed validation.
+    pub invalid: Vec<String>,
+}
+
+/// The one selected row, when exactly one is.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SingleSelection {
+    Candidate { key: String },
+    /// A folder that failed validation.
+    InvalidCandidate { key: String },
+}
+
 /// What the selection holds and can be told to do, as it stands.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SelectionSummary {
     pub count: u64,
-    /// The one selected candidate, when exactly one is.
-    pub single: Option<String>,
+    pub single: Option<SingleSelection>,
     pub offers: Vec<SelectionOffer>,
 }
 
 impl SelectionSummary {
-    fn of(selected: &[SelectedCandidate], facts: &HashMap<String, TriageRuntimeFacts>) -> Self {
+    fn of(selected: &SelectedRows, facts: &HashMap<String, TriageRuntimeFacts>) -> Self {
+        let single = match (selected.candidates.as_slice(), selected.invalid.as_slice()) {
+            ([only], []) => Some(SingleSelection::Candidate {
+                key: only.candidate_key.clone(),
+            }),
+            ([], [only]) => Some(SingleSelection::InvalidCandidate { key: only.clone() }),
+            _ => None,
+        };
+        // A folder that failed validation takes part in the selection — it
+        // holds back combining it — with no action of its own.
+        let mut members = members(&selected.candidates, facts);
+        members.extend(selected.invalid.iter().map(|key| SelectionMember {
+            candidate_key: key.clone(),
+            actions: Vec::new(),
+        }));
         Self {
-            count: selected.len() as u64,
-            single: match selected {
-                [only] => Some(only.candidate_key.clone()),
-                _ => None,
-            },
-            offers: selection_offers(&members(selected, facts)),
+            count: (selected.candidates.len() + selected.invalid.len()) as u64,
+            single,
+            offers: selection_offers(&members),
         }
     }
 }
@@ -83,7 +111,7 @@ pub(crate) fn members(
 /// rows, or to what is running for any of them. Ends when the receiver is
 /// dropped or either source closes.
 pub(crate) fn watch_selection(
-    mut selected: coven::LiveQuery<Vec<SelectedCandidate>>,
+    mut selected: coven::LiveQuery<SelectedRows>,
     mut facts: RuntimeFactsWatch,
     runtime_handle: &tokio::runtime::Handle,
 ) -> tokio::sync::mpsc::UnboundedReceiver<SelectionSummary> {
@@ -141,7 +169,13 @@ mod tests {
     }
 
     fn identify_count(selected: &[SelectedCandidate]) -> Option<u64> {
-        SelectionSummary::of(selected, &HashMap::new())
+        SelectionSummary::of(
+            &SelectedRows {
+                candidates: selected.to_vec(),
+                invalid: Vec::new(),
+            },
+            &HashMap::new(),
+        )
             .offers
             .into_iter()
             .find(|offer| offer.action == CandidateAction::Identify)

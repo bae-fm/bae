@@ -73,9 +73,18 @@ struct ImportView: View {
     var importSelection
 
     var selectedCandidate: Candidate? {
-        importSelection.summary.single.flatMap {
-            importStore.selectedCandidates[$0]
-        }
+        importSelection.summary.single?.candidateKey
+            .flatMap {
+                importStore.selectedCandidates[$0]
+            }
+    }
+
+    /// The selected folder that failed validation, once its read lands.
+    var selectedInvalidCandidate: BridgeInvalidCandidateDetail? {
+        importSelection.summary.single?.invalidCandidateKey
+            .flatMap {
+                importStore.selectedInvalidCandidates[$0]
+            }
     }
 
     func commitAndEndEditing() async {
@@ -199,8 +208,8 @@ struct ImportView: View {
         let uiStore = UiStore()
         let selection = ImportSelection()
 
-        /// The sidebar tab and selected candidate for this preview.
-        init(tab: BridgeTriageTab, selected: String? = nil) {
+        /// The sidebar tab and selected row for this preview.
+        init(tab: BridgeTriageTab, selected: BridgeSingleSelection? = nil) {
             uiStore.setImportCandidateTab(tab)
             selection.apply(
                 BridgeSelectionSummary(
@@ -237,7 +246,7 @@ struct ImportView: View {
     #Preview("Import tab — smoke test") {
         let preview = ImportTabPreview(
             tab: .pending,
-            selected: PreviewData.importTabCandidate.key
+            selected: .candidate(key: PreviewData.importTabCandidate.key)
         )
         let scene = PreviewData.importSmokeTestScene()
         ImportView(endEditing: {})
@@ -247,7 +256,7 @@ struct ImportView: View {
     #Preview("Import tab — a release settled") {
         let preview = ImportTabPreview(
             tab: .pending,
-            selected: PreviewData.importTabCandidate.key
+            selected: .candidate(key: PreviewData.importTabCandidate.key)
         )
         let scene = PreviewData.importTabScene()
         ImportView(endEditing: {})
@@ -257,7 +266,9 @@ struct ImportView: View {
     #Preview("Import tab — multiple pressings") {
         let preview = ImportTabPreview(
             tab: .pending,
-            selected: PreviewData.importTabSeveralMatchesCandidate.key
+            selected: .candidate(
+                key: PreviewData.importTabSeveralMatchesCandidate.key
+            )
         )
         let scene = PreviewData.importTabScene()
         ImportView(endEditing: {})
@@ -267,7 +278,9 @@ struct ImportView: View {
     #Preview("Import tab — identity signals disagree") {
         let preview = ImportTabPreview(
             tab: .pending,
-            selected: PreviewData.importTabDisagreementCandidate.key
+            selected: .candidate(
+                key: PreviewData.importTabDisagreementCandidate.key
+            )
         )
         let scene = PreviewData.importTabScene()
         ImportView(endEditing: {})
@@ -277,7 +290,9 @@ struct ImportView: View {
     #Preview("Import tab — the release lists no tracks") {
         let preview = ImportTabPreview(
             tab: .pending,
-            selected: PreviewData.importTabNoTracklistCandidate.key
+            selected: .candidate(
+                key: PreviewData.importTabNoTracklistCandidate.key
+            )
         )
         let scene = PreviewData.importTabScene()
         ImportView(endEditing: {})
@@ -287,7 +302,9 @@ struct ImportView: View {
     #Preview("Import tab — release already in library") {
         let preview = ImportTabPreview(
             tab: .pending,
-            selected: PreviewData.importTabAlreadyInLibraryCandidate.key
+            selected: .candidate(
+                key: PreviewData.importTabAlreadyInLibraryCandidate.key
+            )
         )
         let scene = PreviewData.importTabScene()
         ImportView(endEditing: {})
@@ -297,7 +314,7 @@ struct ImportView: View {
     #Preview("Import tab — no release matched") {
         let preview = ImportTabPreview(
             tab: .pending,
-            selected: PreviewData.importTabNoMatchCandidate.key
+            selected: .candidate(key: PreviewData.importTabNoMatchCandidate.key)
         )
         let scene = PreviewData.importTabScene()
         ImportView(endEditing: {})
@@ -315,6 +332,19 @@ struct ImportView: View {
         let preview = ImportTabPreview(tab: .skipped)
         let scene = PreviewData.importTabScene()
         ImportView(endEditing: {})
+            .importTabPreviewEnvironment(scene: scene, preview: preview)
+    }
+
+    #Preview("Import tab — looking into a skipped folder") {
+        let detail = PreviewData.invalidCandidateDetail
+        let preview = ImportTabPreview(
+            tab: .skipped,
+            selected: .invalidCandidate(key: detail.candidate.candidateKey)
+        )
+        let scene = PreviewData.importTabScene()
+        scene.store.selectedInvalidCandidates[detail.candidate.candidateKey] =
+            detail
+        return ImportView(endEditing: {})
             .importTabPreviewEnvironment(scene: scene, preview: preview)
     }
 #endif

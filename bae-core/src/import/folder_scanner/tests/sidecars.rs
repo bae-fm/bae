@@ -213,10 +213,27 @@ fn a_zero_byte_track_makes_the_sidecar_invalid() {
             FolderReleaseDecisionAuthor::User,
         )]),
     );
+    let [sidecar] = found.as_slice() else {
+        panic!("one sidecar: {found:?}");
+    };
+    let SidecarFiles::Invalid(files) = &sidecar.files else {
+        panic!("a zero-byte track leaves the files unimportable: {:?}", sidecar.files);
+    };
     assert_eq!(
-        found.iter().map(|sidecar| &sidecar.files).collect::<Vec<_>>(),
-        [&SidecarFiles::Invalid(InvalidReason::CorruptAudioFile {
-            path: "bonus.flac".into()
-        })]
+        files
+            .iter()
+            .map(|file| (file.relative_path.as_str(), file.role))
+            .collect::<Vec<_>>(),
+        [
+            (
+                "bonus.flac",
+                ProposedRole::DamagedAudio {
+                    damage: AudioDamage::Empty
+                }
+            ),
+            ("cover.jpg", ProposedRole::Image),
+            ("Scans/booklet.txt", ProposedRole::Document),
+        ],
+        "every file, as the scan read it"
     );
 }

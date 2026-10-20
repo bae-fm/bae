@@ -116,32 +116,17 @@ pub(super) fn is_partial_marker_file(path: &Path) -> bool {
 
 // ── File categorization ─────────────────────────────────────────────────────
 
-/// The result of categorizing a leaf folder's files: a valid release, or an
-/// invalid one carrying the reason it failed validation (corrupt/zero-byte
-/// audio, no audio at all). `Err` is reserved for genuine I/O faults, which
-/// are not the same as a failed-validation leaf.
+/// The result of categorizing a leaf folder's files: a valid release, or the
+/// folder read file by file when it fails validation (audio bae can't play, or
+/// no audio at all). `Err` is reserved for genuine I/O faults, which are not
+/// the same as a failed-validation leaf.
 #[derive(Debug)]
 pub(super) enum CategorizeOutcome {
     Valid(CategorizedFiles),
-    Invalid(InvalidReason),
-}
-
-/// What the extension says a file is, before the CUE parse and the
-/// `FILE`-directive resolution settle the roles.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum ProposedRole {
-    Audio,
-    Cue,
-    Image,
-    /// Named as an image, and its bytes do not decode as one.
-    DamagedImage,
-    Document,
-    Other,
-}
-
-/// Shorthand for a failed-validation leaf carrying `reason`.
-pub(super) fn invalid(reason: InvalidReason) -> Result<CategorizeOutcome, FolderScanError> {
-    Ok(CategorizeOutcome::Invalid(reason))
+    Invalid {
+        files: Vec<SkippedFile>,
+        tags: Option<SkippedTags>,
+    },
 }
 
 /// What settling a folder's sheet bindings produced.
@@ -487,16 +472,16 @@ impl DiscLayout {
     }
 }
 
-/// One file under `release_root` as its name proposes it — and, for an image,
-/// as its bytes do — or the defect that makes any release holding it
-/// unimportable: a zero-byte track. An image that will not decode is no such
-/// defect: the release is its audio, and the image is carried as a damaged
-/// one, never its artwork.
+/// One file under `release_root` as its name proposes it — and, for an image
+/// or a zero-byte track, as its bytes do. A zero-byte track is damaged audio,
+/// which makes any release holding it unimportable; an image that will not
+/// decode is no such defect: the release is its audio, and the image is
+/// carried as a damaged one, never its artwork.
 fn propose_file(
     entry: &FileEntry,
     release_root: &Path,
     fs_root: &Path,
-) -> Result<Result<(ScannedFile, ProposedRole), InvalidReason>, FolderScanError> {
+) -> Result<(ScannedFile, ProposedRole), FolderScanError> {
     let relative_from_release = if release_root.as_os_str().is_empty() {
         entry.path.clone()
     } else {
@@ -522,12 +507,13 @@ fn propose_file(
 
     let role = if is_audio_file(&entry.path) {
         if entry.size == 0 {
-            info!("Invalid candidate: corrupt or zero-byte audio file {relative_path}");
-            return Ok(Err(InvalidReason::CorruptAudioFile {
-                path: relative_path,
-            }));
+            info!("{relative_path} is a zero-byte audio file");
+            ProposedRole::DamagedAudio {
+                damage: AudioDamage::Empty,
+            }
+        } else {
+            ProposedRole::Audio
         }
-        ProposedRole::Audio
     } else if is_cue_file(&entry.path) {
         ProposedRole::Cue
     } else if is_image_file(&entry.path) {
@@ -549,7 +535,7 @@ fn propose_file(
         // Unrecognized, and carried anyway — the folder is the release.
         ProposedRole::Other
     };
-    Ok(Ok((
+    Ok((
         ScannedFile::new(
             absolute_path,
             relative_path,
@@ -557,25 +543,73 @@ fn propose_file(
             entry.modified_at_ns,
         ),
         role,
-    )))
+    ))
+}
+
+/// `proposed`, which failed validation, as its skipped files in name order.
+fn skipped_files(proposed: &[(ScannedFile, ProposedRole)]) -> Vec<SkippedFile> {
+    let mut files: Vec<SkippedFile> = proposed
+        .iter()
+        .map(|(file, role)| SkippedFile {
+            relative_path: file.relative_path.clone(),
+            file: file.version(),
+            role: *role,
+        })
+        .collect();
+    files.sort_by(|a, b| natord::compare_ignore_case(&a.relative_path, &b.relative_path));
+    files
+}
+
+/// What the tags of `proposed`'s playable audio call the release: the album
+/// title the first of them in name order to state one gives, and that file's
+/// album artist, else its track artist. A file whose tags can't be read is
+/// passed over, said in the log.
+fn skipped_tags(proposed: &[(ScannedFile, ProposedRole)]) -> Option<SkippedTags> {
+    use crate::import::file_tag_snapshot::FileTagReader;
+
+    let mut playable: Vec<&ScannedFile> = proposed
+        .iter()
+        .filter(|(_, role)| *role == ProposedRole::Audio)
+        .map(|(file, _)| file)
+        .collect();
+    playable.sort_by(|a, b| natord::compare_ignore_case(&a.relative_path, &b.relative_path));
+    for file in playable {
+        let read = match crate::import::file_tag_snapshot::LoftyFileTagReader.read(&file.path) {
+            Ok(read) => read,
+            Err(error) => {
+                tracing::warn!(
+                    "{}: its tags could not be read, so they name nothing: {error}",
+                    file.relative_path
+                );
+                continue;
+            }
+        };
+        if let Some(album_title) = read.album_title {
+            return Some(SkippedTags {
+                album_title,
+                artist: read.album_artist.or(read.track_artist),
+            });
+        }
+    }
+    None
 }
 
 /// The files under `folder` that no release read there owns, each given its
 /// role the way a release's are — `folder` holds no audio, so every one is an
-/// artwork, a document, or another file.
+/// artwork, a document, or another file — or, when a zero-byte track sits
+/// among them, every one as the scan read it.
 pub(super) fn categorize_sidecar(
     tree: &CandidateFileIndex,
     folder: &Path,
     fs_root: &Path,
     cancellation: &ScanCancellation,
 ) -> Result<SidecarFiles, FolderScanError> {
-    let mut files = Vec::new();
+    let mut proposed = Vec::new();
+    // `None` once a damaged track is among them.
+    let mut files = Some(Vec::new());
     for entry in tree.all_files_under(folder) {
         cancellation.check()?;
-        let (file, role) = match propose_file(entry, folder, fs_root)? {
-            Ok(proposal) => proposal,
-            Err(reason) => return Ok(SidecarFiles::Invalid(reason)),
-        };
+        let (file, role) = propose_file(entry, folder, fs_root)?;
         let role = match role {
             ProposedRole::Audio => {
                 return Err(FolderScanError::Other(format!(
@@ -584,13 +618,32 @@ pub(super) fn categorize_sidecar(
                 )))
             }
             // A sheet with no audio beside it names nothing here to play.
-            ProposedRole::Cue | ProposedRole::Document => FileRole::Document,
-            ProposedRole::Image => FileRole::Artwork,
-            ProposedRole::DamagedImage => FileRole::DamagedImage,
-            ProposedRole::Other => FileRole::Other,
+            ProposedRole::Cue => ProposedRole::Document,
+            role => role,
         };
-        files.push(CandidateFile { file, role });
+        let release_role = match role {
+            ProposedRole::Image => Some(FileRole::Artwork),
+            ProposedRole::DamagedImage => Some(FileRole::DamagedImage),
+            ProposedRole::Document | ProposedRole::Cue => Some(FileRole::Document),
+            ProposedRole::Other => Some(FileRole::Other),
+            ProposedRole::DamagedAudio { .. } | ProposedRole::Audio => None,
+        };
+        match release_role {
+            Some(role) => {
+                if let Some(files) = files.as_mut() {
+                    files.push(CandidateFile {
+                        file: file.clone(),
+                        role,
+                    });
+                }
+            }
+            None => files = None,
+        }
+        proposed.push((file, role));
     }
+    let Some(mut files) = files else {
+        return Ok(SidecarFiles::Invalid(skipped_files(&proposed)));
+    };
     // The release file order (see `categorize_files_from_tree`).
     files.sort_by(|a, b| natord::compare_ignore_case(&a.file.relative_path, &b.file.relative_path));
     Ok(SidecarFiles::Valid(files))
@@ -623,20 +676,38 @@ pub(super) fn categorize_files_from_tree(
 
     for entry in tree.all_files_under(release_root) {
         cancellation.check()?;
-        let (mut file, role) = match propose_file(entry, release_root, fs_root)? {
-            Ok(proposal) => proposal,
-            Err(reason) => return invalid(reason),
-        };
+        let (mut file, mut role) = propose_file(entry, release_root, fs_root)?;
         if role == ProposedRole::Audio {
-            let Some(read) = source_audio_of(&file, probed)? else {
-                return invalid(InvalidReason::CorruptAudioFile {
-                    path: file.relative_path,
-                });
-            };
-            file.source_audio = Some(read.audio);
-            tagged.insert(file.relative_path.clone(), read.tagged);
+            match source_audio_of(&file, probed)? {
+                Some(read) => {
+                    file.source_audio = Some(read.audio);
+                    tagged.insert(file.relative_path.clone(), read.tagged);
+                }
+                None => {
+                    info!("{} holds no audio bae can play", file.relative_path);
+                    role = ProposedRole::DamagedAudio {
+                        damage: AudioDamage::Unreadable,
+                    };
+                }
+            }
         }
         proposed.push((file, role));
+    }
+
+    // Every file is read before the folder is judged, so a folder that fails
+    // is listed with each of its damaged files, not only the first.
+    let damaged = proposed
+        .iter()
+        .any(|(_, role)| matches!(role, ProposedRole::DamagedAudio { .. }));
+    let playable = proposed
+        .iter()
+        .any(|(_, role)| *role == ProposedRole::Audio);
+    if damaged || !playable {
+        info!("Invalid candidate: its audio is damaged, or it has none");
+        return Ok(CategorizeOutcome::Invalid {
+            tags: skipped_tags(&proposed),
+            files: skipped_files(&proposed),
+        });
     }
 
     // One order for everything downstream: the release's own file order.
@@ -694,6 +765,9 @@ pub(super) fn categorize_files_from_tree(
             ProposedRole::DamagedImage => FileRole::DamagedImage,
             ProposedRole::Document => FileRole::Document,
             ProposedRole::Other => FileRole::Other,
+            ProposedRole::DamagedAudio { .. } => {
+                unreachable!("a folder holding damaged audio was judged invalid above")
+            }
         };
         files.push(CandidateFile { file, role });
     }
@@ -709,19 +783,15 @@ pub(super) fn categorize_files_from_tree(
         .unwrap_or_default();
     match settle_sheet_bindings(&mut files, &stored.sheet_bindings, cancellation)? {
         SettledBindings::Settled => {}
+        // Every audio file here was probed above, and one that could not be
+        // was judged before the sheets were read.
         SettledBindings::CorruptAudio { path } => {
-            return invalid(InvalidReason::CorruptAudioFile { path })
+            return Err(FolderScanError::Other(format!(
+                "a sheet binds {path}, which was probed as playable and holds no audio facts"
+            )))
         }
     }
     settle_sheet_discs(&mut files, parts, &stored.sheet_discs);
-
-    if !files
-        .iter()
-        .any(|entry| matches!(entry.role, FileRole::Audio))
-    {
-        info!("Invalid candidate: no valid audio files after categorization");
-        return invalid(InvalidReason::NoValidAudio);
-    };
 
     Ok(CategorizeOutcome::Valid(CategorizedFiles {
         files,

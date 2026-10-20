@@ -121,6 +121,10 @@ class ImportStore {
     /// subscription per key; the key leaves when its read says the folder is
     /// gone.
     var selectedCandidates: OrderedDictionary<String, Candidate> = [:]
+    /// The selected folder that failed validation, as the pane looking into
+    /// it reads it, by key; the key leaves when the selection moves off it or
+    /// its read says the folder no longer fails.
+    var selectedInvalidCandidates: [String: BridgeInvalidCandidateDetail] = [:]
     /// Where a folder candidate's session writes go: core stores them with
     /// the candidate and the next detail carries them back. A re-identify
     /// session has no stored candidate, so its session stays in memory here.
@@ -220,7 +224,9 @@ class ImportStore {
                     row.selected ? row.candidateKey : nil
                 case .imported(_, let row):
                     row.selected ? row.candidateKey : nil
-                case .groupHeader, .invalid:
+                case .invalid(_, let invalid, let selected, _):
+                    selected ? invalid.candidateKey : nil
+                case .groupHeader:
                     nil
                 }
             }

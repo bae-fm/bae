@@ -207,7 +207,7 @@ fn scanner_recognizes_cue_alac_pair() {
             ScanItem::Invalid(c) => {
                 panic!(
                     "ALAC fixture must scan as a valid release, got invalid: {}",
-                    c.reason
+                    c.reason()
                 )
             }
             ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {}

@@ -427,7 +427,8 @@ impl CoordinatorHarness {
                         watched_folder_path: root.clone(),
                         display_path: "Group/Release".to_string(),
                         grouping: None,
-                        reason: crate::import::InvalidReason::NoValidAudio,
+                        files: Vec::new(),
+                        tags: None,
                     }),
                 )
                 .await

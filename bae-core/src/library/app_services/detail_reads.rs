@@ -1,6 +1,6 @@
 //! The detail views' live reads on [`AppServices`]: one read per view, its
 //! id moved in place as the view shows another album, release, artist,
-//! composer, or work.
+//! composer, work, or folder that failed import validation.
 
 use super::*;
 
@@ -213,6 +213,21 @@ impl AppServices {
                 move |id| manager.subscribe_composer_detail(id)
             },
             move |projection| manager.resolve_composer_detail_projection(projection),
+        )
+    }
+
+    /// The folder that failed validation the import pane looks into, as it
+    /// changes; another folder is a new key on the same read.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub fn subscribe_invalid_candidate(
+        &self,
+        runtime_handle: &tokio::runtime::Handle,
+    ) -> crate::library::DetailSubscription<crate::import::InvalidCandidateDetail> {
+        let manager = self.inner.manager.clone();
+        detail_read(
+            runtime_handle,
+            move |key| manager.subscribe_invalid_candidate(key),
+            |detail| detail,
         )
     }
 

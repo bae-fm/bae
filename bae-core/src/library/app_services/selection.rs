@@ -69,7 +69,7 @@ impl AppServices {
         runtime_handle: &tokio::runtime::Handle,
     ) -> tokio::sync::mpsc::UnboundedReceiver<SelectionSummary> {
         crate::import::selection::watch_selection(
-            self.inner.manager.subscribe_selected_candidates(),
+            self.inner.manager.subscribe_selected_rows(),
             self.inner.import.watch_runtime_facts(),
             runtime_handle,
         )

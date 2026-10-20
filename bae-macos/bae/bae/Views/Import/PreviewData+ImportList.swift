@@ -52,6 +52,7 @@
             .invalid(
                 stableKey: "invalid:\(candidate.folderPath)",
                 invalidCandidate: candidate,
+                selected: false,
                 isGroupMember: false
             )
         }
@@ -157,7 +158,8 @@
             selection.apply(
                 BridgeSelectionSummary(
                     count: UInt64(keys.count),
-                    single: keys.count == 1 ? keys.first : nil,
+                    single: keys.count == 1
+                        ? keys.first.map { .candidate(key: $0) } : nil,
                     offers: bridgeCandidateSelectionOffers(members: members)
                 )
             )

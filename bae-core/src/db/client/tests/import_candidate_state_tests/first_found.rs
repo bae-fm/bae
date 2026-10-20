@@ -46,7 +46,7 @@ async fn a_release_is_found_by_its_first_settled_write_only() {
 /// nothing.
 #[tokio::test]
 async fn a_fixed_folder_is_not_found_again() {
-    use crate::import::folder_scanner::{InvalidCandidate, InvalidReason, ScanItem};
+    use crate::import::folder_scanner::{InvalidCandidate, ScanItem};
 
     let (db, _tmp) = empty_db().await;
     let root = &host_root("/mounted/library");
@@ -60,9 +60,11 @@ async fn a_fixed_folder_is_not_found_again() {
         watched_folder_path: root.clone(),
         display_path: candidate.display_path.clone(),
         grouping: None,
-        reason: InvalidReason::CorruptAudioFile {
-            path: "02.flac".to_string(),
-        },
+        files: vec![crate::import::folder_scanner::SkippedFile::empty_track(
+            &candidate.path,
+            "02.flac",
+        )],
+        tags: None,
     });
     db.add_watched_import_folder(root).await.unwrap();
     let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();

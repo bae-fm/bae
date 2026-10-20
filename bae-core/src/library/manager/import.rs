@@ -129,10 +129,10 @@ impl LibraryManager {
             .await?)
     }
 
-    pub(crate) fn subscribe_selected_candidates(
+    pub(crate) fn subscribe_selected_rows(
         &self,
-    ) -> coven::LiveQuery<Vec<crate::import::selection::SelectedCandidate>> {
-        self.database.subscribe_selected_candidates()
+    ) -> coven::LiveQuery<crate::import::selection::SelectedRows> {
+        self.database.subscribe_selected_rows()
     }
 
     pub(crate) async fn load_selected_candidates(
@@ -160,6 +160,14 @@ impl LibraryManager {
             .database
             .first_import_candidate_among(request, keys)
             .await?)
+    }
+
+    pub(crate) fn subscribe_invalid_candidate(
+        &self,
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<crate::import::InvalidCandidateDetail>>
+    {
+        self.database.subscribe_invalid_candidate(initial)
     }
 
     pub(crate) fn subscribe_import_candidate(

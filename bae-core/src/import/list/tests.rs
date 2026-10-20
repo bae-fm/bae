@@ -7,7 +7,6 @@
 use super::*;
 use crate::db::{CandidateStateListRow, ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
-use crate::import::folder_scanner::InvalidReason;
 use crate::import::search::SourceTracks;
 use crate::import::types::Catalog;
 use crate::import::watched_folder::host_root;
@@ -55,7 +54,7 @@ fn candidate(display_path: &str) -> ScanCandidateListRow {
         discovered_at: None,
         content_hash: Some(format!("hash-{display_path}")),
         file_edit_revision: 0,
-        invalid_reason: None,
+        skipped_tags: None,
     }
 }
 
@@ -70,7 +69,6 @@ fn invalid(display_path: &str) -> ScanCandidateListRow {
     ScanCandidateListRow {
         kind: ScanCandidateKind::Invalid,
         content_hash: None,
-        invalid_reason: Some(InvalidReason::NoValidAudio),
         ..candidate(display_path)
     }
 }

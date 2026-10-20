@@ -15,6 +15,7 @@ use std::path::PathBuf;
 
 mod dates;
 mod identity;
+mod skipped;
 
 /// One scanned candidate under a fresh watched root.
 async fn scanned(db: &Database, root: &str, name: &str) -> FolderCandidate {

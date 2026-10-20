@@ -145,7 +145,7 @@ struct ImportMappingTable: View {
             evidence: evidenceFor(mapping),
             actions: actions,
         )
-        .rowChrome(
+        .mappingRowChrome(
             background: mapping.source.previewTarget == previewingTarget
                 ? Theme.accentSoft : .clear
         )
@@ -192,10 +192,10 @@ struct ImportMappingTable: View {
                 evidence: ImportEvidence.of(file.fileId, in: evidence),
                 actions: actions,
             )
-            .rowChrome()
+            .mappingRowChrome()
         case .sheet(let sheet):
             sheetCaptionRow(sheet)
-                .rowChrome()
+                .mappingRowChrome()
         }
     }
 
@@ -232,9 +232,9 @@ struct ImportMappingTable: View {
 }
 
 extension View {
-    /// What every row of the mapping table sits in: one leading edge, one
-    /// height, and a hairline over it.
-    fileprivate func rowChrome(background: Color = .clear) -> some View {
+    /// What every row of the mapping table, and of a skipped folder's file
+    /// list, sits in: one leading edge, one height, and a hairline over it.
+    func mappingRowChrome(background: Color = .clear) -> some View {
         padding(.horizontal, ImportMappingColumns.rowPadding)
             .padding(.vertical, ThemeSpace.compact)
             .frame(minHeight: 40)

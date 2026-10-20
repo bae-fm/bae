@@ -114,7 +114,8 @@ fn an_import_outlives_its_candidate_leaving_the_scan() {
             watched_folder_path: "/watch/a".to_string(),
             display_path: "rel1".to_string(),
             grouping: None,
-            reason: InvalidReason::NoValidAudio,
+            files: Vec::new(),
+            tags: None,
         })),
     ];
     for departure in departures {

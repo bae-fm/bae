@@ -146,12 +146,15 @@ fn produced_keys() -> Vec<String> {
 
     // bridge_invalid_reason_key — every variant carries a key.
     for r in [
-        BridgeInvalidReason::CorruptAudioFile {
-            path: String::new(),
-        },
+        BridgeInvalidReason::DamagedAudio { count: 2 },
         BridgeInvalidReason::NoValidAudio,
     ] {
         keys.push(bridge_invalid_reason_key(r));
+    }
+
+    // bridge_audio_damage_key — every variant carries a key.
+    for damage in [BridgeAudioDamage::Empty, BridgeAudioDamage::Unreadable] {
+        keys.push(bridge_audio_damage_key(damage));
     }
 
     // bridge_unusable_barcode_key — every variant carries a key.

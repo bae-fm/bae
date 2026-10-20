@@ -1,7 +1,7 @@
 use super::*;
 use crate::db::LibraryStatus;
 use crate::import::candidate_search::{CandidateSearch, SourceSearch};
-use crate::import::folder_scanner::{CategorizedFiles, InvalidCandidate, InvalidReason};
+use crate::import::folder_scanner::{CategorizedFiles, InvalidCandidate};
 use crate::import::types::{
     Catalog, CatalogAvailability, ImportPhase, ImportProgress, PrepareStep, SourceAvailability,
 };
@@ -422,7 +422,8 @@ fn removal_and_invalidation_drop_the_runtime() {
             watched_folder_path: "/watch/a".to_string(),
             display_path: "rel2".to_string(),
             grouping: None,
-            reason: InvalidReason::NoValidAudio,
+            files: Vec::new(),
+            tags: None,
         },
     )));
 

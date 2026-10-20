@@ -315,6 +315,11 @@ pub enum BridgeMappingRole {
     /// Named as an image, but its bytes do not decode as one; carried, never
     /// in the gallery.
     DamagedImage,
+    /// Named as audio, and bae can't play it: only a folder that failed
+    /// validation holds one.
+    DamagedAudio {
+        damage: crate::types::BridgeAudioDamage,
+    },
     Other,
 }
 

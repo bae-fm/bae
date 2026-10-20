@@ -16,8 +16,9 @@ use crate::import::file_tag_snapshot::{
     EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot,
 };
 use crate::import::folder_scanner::{
-    CandidateFile, CategorizedFiles, Coverage, FileRole, FolderCandidate, InvalidCandidate,
-    ReleaseFileScope, ReleasePart, ScanItem, ScannedAudio, ScannedFile, SheetAudioFile,
+    CandidateFile, CategorizedFiles, Coverage, FileRole, FileVersion, FolderCandidate,
+    InvalidCandidate, ReleaseFileScope, ReleasePart, ScanItem, ScannedAudio, ScannedFile,
+    SheetAudioFile, SkippedFile, SkippedTags,
 };
 use crate::util::content_type::ContentType;
 use track_sheets::{load_cue_sheets, load_sheet_audio_files, SheetKey};
@@ -27,6 +28,8 @@ mod track_sheets;
 type FinishRead<T> = Box<dyn FnOnce() -> Result<T, DbError> + Send + 'static>;
 type FilesByCandidate = HashMap<String, Vec<CandidateFile>>;
 type PartsByCandidate = HashMap<String, Vec<ReleasePart>>;
+type SkippedFilesByCandidate = HashMap<String, Vec<SkippedFile>>;
+type SkippedTagsByCandidate = HashMap<String, SkippedTags>;
 
 /// Which rows a read takes in: what the scans wrote, or those and the
 /// releases groupings built from them too.
@@ -410,8 +413,6 @@ struct CandidateRow {
     scope: String,
     file_edit_revision: i64,
     grouping_key: Option<String>,
-    invalid_reason: Option<String>,
-    invalid_reason_path: Option<String>,
 }
 
 pub(crate) fn load_candidate_items_rows(
@@ -423,7 +424,7 @@ pub(crate) fn load_candidate_items_rows(
     let rows = sql.query(
         &format!(
             "SELECT path, generation, kind, name, display_path, folder, file_root, scope, \
-                    file_edit_revision, grouping_key, invalid_reason, invalid_reason_path \
+                    file_edit_revision, grouping_key \
              FROM scan_candidate \
              WHERE watched_folder_path = :root AND {} AND (:only IS NULL OR path = :only) \
              ORDER BY path",
@@ -442,13 +443,13 @@ pub(crate) fn load_candidate_items_rows(
                 scope: row.get(7)?,
                 file_edit_revision: row.get(8)?,
                 grouping_key: row.get(9)?,
-                invalid_reason: row.get(10)?,
-                invalid_reason_path: row.get(11)?,
             })
         },
     )?;
     let files = load_files_rows(sql, watched_folder_path, only)?;
     let parts = load_parts_rows(sql, watched_folder_path, only)?;
+    let mut skipped_files = load_skipped_files_rows(sql, watched_folder_path, only)?;
+    let mut skipped_tags = load_skipped_tags_rows(sql, watched_folder_path, only)?;
     let watched_folder_path = watched_folder_path.to_string();
     Ok(Box::new(move || {
         let mut files = files()?;
@@ -458,19 +459,15 @@ pub(crate) fn load_candidate_items_rows(
         for row in rows {
             let generation = to_u64(row.generation, "a scan candidate's generation")?;
             let item = match row.kind.as_str() {
-                "invalid" => {
-                    let reason = row.invalid_reason.as_deref().ok_or_else(|| {
-                        DbError::Message(format!("scan candidate {} has no reason", row.path))
-                    })?;
-                    ScanItem::Invalid(InvalidCandidate {
-                        path: PathBuf::from(&row.folder),
-                        name: row.name,
-                        watched_folder_path: watched_folder_path.to_string(),
-                        display_path: row.display_path,
-                        grouping: row.grouping_key,
-                        reason: invalid_reason_of(reason, row.invalid_reason_path)?,
-                    })
-                }
+                "invalid" => ScanItem::Invalid(InvalidCandidate {
+                    path: PathBuf::from(&row.folder),
+                    name: row.name,
+                    watched_folder_path: watched_folder_path.to_string(),
+                    display_path: row.display_path,
+                    grouping: row.grouping_key,
+                    files: skipped_files.remove(&row.path).unwrap_or_default(),
+                    tags: skipped_tags.remove(&row.path),
+                }),
                 kind @ ("tentative" | "valid") => {
                     let candidate = FolderCandidate {
                         path: PathBuf::from(&row.folder),
@@ -715,6 +712,73 @@ fn source_audio_of(row: &FileRow) -> Result<Option<ScannedAudio>, DbError> {
             row.relative_path
         ))),
     }
+}
+
+/// Every file of each release that failed validation, in name order.
+fn load_skipped_files_rows(
+    sql: &(impl QueryOne + QueryRows),
+    watched_folder_path: &str,
+    only: Option<&str>,
+) -> Result<SkippedFilesByCandidate, DbError> {
+    let rows = sql.query(
+        "SELECT candidate_path, relative_path, absolute_path, size, modified_at_ns, role, \
+                audio_damage \
+         FROM scan_skipped_file \
+         WHERE watched_folder_path = :root AND (:only IS NULL OR candidate_path = :only) \
+         ORDER BY candidate_path, position",
+        named_params! { ":root": watched_folder_path, ":only": only },
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, i64>(3)?,
+                row.get::<_, i64>(4)?,
+                row.get::<_, String>(5)?,
+                row.get::<_, Option<String>>(6)?,
+            ))
+        },
+    )?;
+    let mut files: SkippedFilesByCandidate = HashMap::new();
+    for (candidate_path, relative_path, absolute_path, size, modified_at_ns, role, damage) in rows
+    {
+        files.entry(candidate_path).or_default().push(SkippedFile {
+            relative_path,
+            file: FileVersion {
+                path: PathBuf::from(absolute_path),
+                size: to_u64(size, "a skipped file's size")?,
+                modified_at_ns,
+            },
+            role: proposed_role_of(&role, damage.as_deref())?,
+        });
+    }
+    Ok(files)
+}
+
+/// What the tags of each release that failed validation call it, for those
+/// whose tags name an album.
+fn load_skipped_tags_rows(
+    sql: &(impl QueryOne + QueryRows),
+    watched_folder_path: &str,
+    only: Option<&str>,
+) -> Result<SkippedTagsByCandidate, DbError> {
+    Ok(sql
+        .query(
+            "SELECT candidate_path, album_title, artist FROM scan_skipped_tags \
+             WHERE watched_folder_path = :root AND (:only IS NULL OR candidate_path = :only)",
+            named_params! { ":root": watched_folder_path, ":only": only },
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    SkippedTags {
+                        album_title: row.get(1)?,
+                        artist: row.get(2)?,
+                    },
+                ))
+            },
+        )?
+        .into_iter()
+        .collect())
 }
 
 /// The parts each release read from several is made of, in play order.

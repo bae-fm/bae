@@ -45,8 +45,8 @@ struct ImportMappingSourceCell: View {
                     // size mid-digit.
                     .fixedSize()
             }
-            if file.role == .damagedImage {
-                Text(coreString("ui.import.mapping.damaged_image"))
+            if let damage = damageLine(file) {
+                Text(damage)
                     .themeText(.fine)
                     .foregroundStyle(Theme.warning)
                     .fixedSize()
@@ -79,6 +79,19 @@ struct ImportMappingSourceCell: View {
             .themeText(.mono)
             .lineLimit(1)
             .truncationMode(.middle)
+    }
+
+    /// What is wrong with a damaged file, in the user's language; nil for
+    /// one that is whole.
+    private func damageLine(_ file: BridgeMappingFile) -> String? {
+        switch file.role {
+        case .damagedImage:
+            coreString("ui.import.mapping.damaged_image")
+        case .damagedAudio(let damage):
+            damage.localizedText
+        case .audio, .document, .other:
+            nil
+        }
     }
 
     private func openAction(_ file: BridgeMappingFile) -> (() -> Void)? {
