@@ -260,6 +260,7 @@ key that spells the fact.
 | work | its MusicBrainz work id |
 | album | its MusicBrainz release group, or failing that its Discogs master |
 | album credit | the album and the artist |
+| track credit | the track and the artist |
 | work credit | the work, the artist and the position |
 | work part | the parent and child works |
 | release record | the release and the catalog |
@@ -1928,7 +1929,7 @@ and `local_history` are not declared, so they never sync.
 | `releases` | independent | store | | |
 | `release_records` | shared key | store | | |
 | `tracks` | independent | store | | |
-| `track_artists` | independent | store | | |
+| `track_artists` | shared key | store | | |
 | `works` | shared key | store | | |
 | `work_artists` | shared key | store | | |
 | `work_parts` | shared key | store | | |
