@@ -26,7 +26,9 @@ impl BridgePendingRecords {
 }
 
 /// One thing coven is waiting on: what it is about, why, and what the person
-/// can do about it.
+/// can do about it. When core holds the error behind a record, the reason's
+/// detail is that error's message: it names the cause the record's class
+/// leaves out.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePendingRecord {
     pub subject: BridgePendingSubject,
@@ -35,7 +37,10 @@ pub struct BridgePendingRecord {
 }
 impl BridgePendingRecord {
     pub(crate) fn from_core(item: bae_core::library::PendingItem) -> Self {
-        let BridgePendingWait { reason, action } = BridgePendingWait::from_core(item.wait);
+        let BridgePendingWait { mut reason, action } = BridgePendingWait::from_core(item.wait);
+        if let Some(cause) = item.cause {
+            reason.detail = cause.to_string();
+        }
         Self {
             subject: BridgePendingSubject::from_core(item.subject),
             reason,

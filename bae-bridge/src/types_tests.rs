@@ -660,3 +660,35 @@ fn a_release_read_from_several_folders_crosses_as_its_folders() {
         ]
     );
 }
+
+/// The connection's record crosses with the error behind it as its details,
+/// since that names the cause the record's class leaves out.
+#[test]
+fn a_pending_record_with_its_error_crosses_with_that_error_as_its_details() {
+    let mut item = bae_core::library::PendingItem::before_open(coven::PendingRecord {
+        subject: coven::PendingSubject::Connection,
+        reason: coven::PendingReason::Storage {
+            provider: coven::CloudProvider::S3,
+            failure: coven::StorageFailure::Network,
+        },
+    });
+    let without = BridgePendingRecord::from_core(item.clone());
+    assert_eq!(
+        without.reason.detail,
+        "Storage { provider: S3, failure: Network }"
+    );
+
+    item.cause = Some(std::sync::Arc::new(coven::StorageError::Provider {
+        provider: coven::CloudProvider::S3,
+        failure: coven::StorageFailure::Network,
+        source: Box::new(std::io::Error::other(
+            "S3 request failed: dispatch failure: io error: connection refused",
+        )),
+    }));
+    let with = BridgePendingRecord::from_core(item);
+    assert_eq!(with.reason.kind, BridgePendingReasonKind::Storage);
+    assert_eq!(
+        with.reason.detail,
+        "S3: Network: S3 request failed: dispatch failure: io error: connection refused"
+    );
+}

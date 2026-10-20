@@ -405,8 +405,8 @@ impl LibraryManager {
         self.spawn_supervised_task("sync status subscription", async move {
             loop {
                 let status = rx.borrow_and_update().clone();
-                if let coven::SyncStatus::Failed { error } = &status {
-                    warn!(%error, "sync failed");
+                // `set_status` logs the failure, once, as it appears or changes.
+                if matches!(status, coven::SyncStatus::Failed { .. }) {
                     match lm.database.storage_config().await {
                         Ok(Some(storage)) => lm.diagnostics.event(TelemetryEvent::SyncFailed {
                             provider: storage.provider(),

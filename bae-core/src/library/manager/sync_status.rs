@@ -29,9 +29,20 @@ impl SyncStatusState {
         }
     }
 
+    /// Every change goes through here, so the connection's record always
+    /// carries the error the status holds, and a failure is logged once, as
+    /// it appears or changes, rather than on every value published.
     fn apply(&self, change: impl FnOnce(&mut SyncStatusSnapshot)) {
         let mut state = self.state.lock().unwrap();
+        let failure = state.failure();
         change(&mut state);
+        state.name_connection_cause();
+        let changed = state.failure();
+        if changed != failure {
+            if let Some(UiError::Diagnostic { category, detail }) = &changed {
+                tracing::warn!(?category, "sync failure: {detail}");
+            }
+        }
         self.connected.send_replace(state.connected());
         self.values.send_replace(state.clone());
     }
@@ -78,6 +89,35 @@ impl SyncStatusSnapshot {
     /// A sync pass is in progress (or the first one is queued).
     pub fn syncing(&self) -> bool {
         matches!(self.status, coven::SyncStatus::Syncing)
+    }
+
+    /// Give the connection's record the error behind it. coven's record
+    /// keeps only the failure's class; the status this process published
+    /// holds the error itself, with its cause, until the next pass replaces
+    /// it. An error rebuilt from the record after a restart has no cause, and
+    /// names nothing the record doesn't.
+    fn name_connection_cause(&mut self) {
+        use std::error::Error as _;
+        let error = match &self.status {
+            coven::SyncStatus::Offline { error }
+            | coven::SyncStatus::Failed {
+                error: coven::SyncFailure::Storage(error),
+            } if error.source().is_some() => Some(error),
+            _ => None,
+        };
+        let Some(Ok(items)) = &mut self.pending else {
+            return;
+        };
+        for item in items {
+            item.cause = match (&item.subject, &item.wait.reason, error) {
+                (
+                    super::PendingSubjectName::Connection,
+                    coven::PendingReason::Storage { failure, .. },
+                    Some(error),
+                ) if error.failure() == *failure => Some(error.clone()),
+                _ => None,
+            };
+        }
     }
 
     pub fn failure(&self) -> Option<UiError> {
@@ -380,5 +420,130 @@ mod tests {
             ))),
             crate::ui::UiErrorCategory::DeviceResetRequired
         );
+    }
+
+    fn state(status: coven::SyncStatus) -> SyncStatusState {
+        let snapshot = SyncStatusSnapshot {
+            status,
+            pending: None,
+            error: None,
+        };
+        SyncStatusState {
+            state: Arc::new(Mutex::new(snapshot.clone())),
+            values: tokio::sync::watch::channel(snapshot).0,
+            connected: tokio::sync::watch::channel(true).0,
+        }
+    }
+
+    /// An S3 request that never reached the provider, as coven reports it:
+    /// its class, and a cause whose message names each layer below it.
+    fn unreachable_s3() -> Arc<coven::StorageError> {
+        Arc::new(coven::StorageError::Provider {
+            provider: coven::CloudProvider::S3,
+            failure: coven::StorageFailure::Network,
+            source: Box::new(std::io::Error::other(
+                "S3 request failed: dispatch failure: io error: client error (Connect): \
+                 invalid peer certificate: UnknownIssuer",
+            )),
+        })
+    }
+
+    const UNREACHABLE_S3: &str = "S3: Network: S3 request failed: dispatch failure: io error: \
+         client error (Connect): invalid peer certificate: UnknownIssuer";
+
+    fn connection_record(failure: coven::StorageFailure) -> super::super::PendingItem {
+        super::super::PendingItem::before_open(record(coven::PendingReason::Storage {
+            provider: coven::CloudProvider::S3,
+            failure,
+        }))
+    }
+
+    #[test]
+    fn an_offline_status_names_every_layer_of_its_cause() {
+        let state = state(coven::SyncStatus::Offline {
+            error: unreachable_s3(),
+        });
+        assert_eq!(
+            state.snapshot().failure(),
+            Some(UiError::Diagnostic {
+                category: crate::ui::UiErrorCategory::Network,
+                detail: UNREACHABLE_S3.to_string(),
+            })
+        );
+    }
+
+    /// The connection's record keeps only the failure's class; while the
+    /// status holds the error behind it, the record carries that error,
+    /// whichever of the two arrives first.
+    #[test]
+    fn the_connection_record_carries_the_error_behind_it() {
+        let offline = coven::SyncStatus::Offline {
+            error: unreachable_s3(),
+        };
+        let cause = |state: &SyncStatusState| {
+            let Some(Ok(items)) = state.snapshot().pending else {
+                panic!("the pending records were read");
+            };
+            items[0].cause.as_ref().map(ToString::to_string)
+        };
+
+        let status_first = state(offline.clone());
+        status_first.set_pending(Ok(vec![connection_record(coven::StorageFailure::Network)]));
+        assert_eq!(cause(&status_first).as_deref(), Some(UNREACHABLE_S3));
+
+        let records_first = state(coven::SyncStatus::Syncing);
+        records_first.set_pending(Ok(vec![connection_record(coven::StorageFailure::Network)]));
+        assert_eq!(cause(&records_first), None);
+        records_first.set_status(offline);
+        assert_eq!(cause(&records_first).as_deref(), Some(UNREACHABLE_S3));
+        records_first.set_status(coven::SyncStatus::Syncing);
+        assert_eq!(cause(&records_first), None);
+    }
+
+    /// A record of another failure, or a status error with no cause left (as
+    /// rebuilt from the record after a restart), names nothing more than the
+    /// record does.
+    #[test]
+    fn the_connection_record_names_only_a_matching_error_with_a_cause() {
+        let other = state(coven::SyncStatus::Offline {
+            error: unreachable_s3(),
+        });
+        other.set_pending(Ok(vec![connection_record(
+            coven::StorageFailure::Authentication,
+        )]));
+        let restarted = state(coven::SyncStatus::Failed {
+            error: coven::SyncFailure::Storage(Arc::new(coven::StorageFailure::Network.into())),
+        });
+        restarted.set_pending(Ok(vec![connection_record(coven::StorageFailure::Network)]));
+        for state in [other, restarted] {
+            let Some(Ok(items)) = state.snapshot().pending else {
+                panic!("the pending records were read");
+            };
+            assert!(items[0].cause.is_none());
+        }
+    }
+
+    /// A failure is logged once, with its whole cause, when it appears or
+    /// changes; the same failure published again, or a change to anything
+    /// else, logs nothing more.
+    #[test]
+    fn a_new_sync_failure_logs_one_warning_with_its_cause() {
+        let state = state(coven::SyncStatus::Syncing);
+        let offline = coven::SyncStatus::Offline {
+            error: unreachable_s3(),
+        };
+        let logs = crate::test_logs::capture_warn_logs(|| {
+            state.set_status(offline.clone());
+            state.set_status(offline.clone());
+            state.set_pending(Ok(vec![connection_record(coven::StorageFailure::Network)]));
+        });
+        assert_eq!(logs.matches(UNREACHABLE_S3).count(), 1, "{logs}");
+        assert!(logs.contains("Network"), "{logs}");
+
+        let logs = crate::test_logs::capture_warn_logs(|| {
+            state.set_status(coven::SyncStatus::Syncing);
+            state.set_status(offline);
+        });
+        assert_eq!(logs.matches(UNREACHABLE_S3).count(), 1, "{logs}");
     }
 }

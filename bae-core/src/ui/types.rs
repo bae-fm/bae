@@ -116,7 +116,12 @@ impl UiError {
     }
 
     /// A diagnostic error in the given category, with the underlying error's
-    /// `Display` text as the opaque, log-only detail.
+    /// `Display` text as the opaque, log-only detail. bae's and coven's errors
+    /// each print their cause in their own message, so that text is the whole
+    /// chain. Walking `source()` instead would print what a message leaves out
+    /// on purpose: coven's S3 error keeps the SDK's unredacted error as its
+    /// source, with whole URLs and the provider's reply, which can echo
+    /// credentials.
     pub fn diagnostic(category: UiErrorCategory, detail: impl std::fmt::Display) -> Self {
         Self::Diagnostic {
             category,

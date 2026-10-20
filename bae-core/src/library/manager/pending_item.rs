@@ -68,6 +68,11 @@ impl PendingWait {
 pub struct PendingItem {
     pub subject: PendingSubjectName,
     pub wait: PendingWait,
+    /// The error behind the record, while this process holds it with its
+    /// cause. coven's record keeps only the failure's class, which is all
+    /// that survives a restart; the sync status carries the error this
+    /// process received, and the connection's record is named with it.
+    pub cause: Option<Arc<coven::StorageError>>,
 }
 
 impl PendingItem {
@@ -97,7 +102,11 @@ impl PendingItem {
             S::JoinRequest(_) => PendingSubjectName::JoinRequest,
             S::Connection => PendingSubjectName::Connection,
         };
-        Self { subject, wait }
+        Self {
+            subject,
+            wait,
+            cause: None,
+        }
     }
 }
 
