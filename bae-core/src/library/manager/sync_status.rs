@@ -65,11 +65,19 @@ impl SyncStatusSnapshot {
         !matches!(self.status, coven::SyncStatus::Disconnected)
     }
 
-    pub fn running(&self) -> bool {
+    /// The sync loop is running: storage is set up and syncing isn't
+    /// stopped, whether a pass is in progress, finished, or failed and backing
+    /// off.
+    pub(super) fn loop_running(&self) -> bool {
         !matches!(
             self.status,
             coven::SyncStatus::Disconnected | coven::SyncStatus::Stopped
         )
+    }
+
+    /// A sync pass is in progress (or the first one is queued).
+    pub fn syncing(&self) -> bool {
+        matches!(self.status, coven::SyncStatus::Syncing)
     }
 
     pub fn failure(&self) -> Option<UiError> {
@@ -274,6 +282,36 @@ mod tests {
                 ..
             })
         ));
+    }
+
+    /// Only a pass in progress is syncing: a finished, offline, blocked,
+    /// failed, stopped or absent sync is not, however long its loop runs.
+    #[test]
+    fn only_a_pass_in_progress_is_syncing() {
+        let syncing = |status| {
+            SyncStatusSnapshot {
+                status,
+                pending: Some(Ok(Vec::new())),
+                error: None,
+            }
+            .syncing()
+        };
+        assert!(syncing(coven::SyncStatus::Syncing));
+        assert!(!syncing(coven::SyncStatus::Synced {
+            finished_at: std::time::UNIX_EPOCH,
+        }));
+        assert!(!syncing(coven::SyncStatus::Offline {
+            error: Arc::new(coven::StorageFailure::PermissionDenied.into()),
+        }));
+        assert!(!syncing(coven::SyncStatus::Blocked {
+            slot: coven::Slot(3),
+            reason: coven::PendingReason::NoStorage,
+        }));
+        assert!(!syncing(coven::SyncStatus::Failed {
+            error: coven::SyncFailure::Removed,
+        }));
+        assert!(!syncing(coven::SyncStatus::Stopped));
+        assert!(!syncing(coven::SyncStatus::Disconnected));
     }
 
     #[test]

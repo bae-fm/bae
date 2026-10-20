@@ -640,8 +640,23 @@ fn a_healthy_sync_status_crosses_without_an_error() {
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
 
     assert!(bridge.error.is_none());
-    assert!(bridge.running);
+    assert!(!bridge.syncing, "a finished pass is not syncing");
     assert_eq!(bridge.indicator, crate::types::BridgeSyncIndicator::Synced);
+}
+
+/// A pass in progress crosses as syncing, the flag the library's sync
+/// progress reads.
+#[test]
+fn a_pass_in_progress_crosses_as_syncing() {
+    let snapshot = bae_core::library::SyncStatusSnapshot {
+        error: None,
+        status: coven::SyncStatus::Syncing,
+        pending: Some(Ok(Vec::new())),
+    };
+
+    let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
+
+    assert!(bridge.syncing);
 }
 
 /// The runtime stream end to end: a claim crosses as a key in flight, its

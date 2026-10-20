@@ -307,7 +307,10 @@ pub struct BridgePlaybackContext {
 pub struct BridgeSyncStatusSnapshot {
     pub error: Option<BridgeError>,
     pub connected: bool,
-    pub running: bool,
+    /// A sync pass is in progress (or the first one is queued). False once it
+    /// finishes, fails, or can't reach storage, while the loop waits for the
+    /// next one.
+    pub syncing: bool,
     pub pending: BridgePendingRecords,
     pub indicator: BridgeSyncIndicator,
 }

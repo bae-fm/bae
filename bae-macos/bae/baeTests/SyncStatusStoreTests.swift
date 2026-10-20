@@ -36,7 +36,7 @@ struct SyncStatusStoreTests {
             BridgeSyncStatusSnapshot(
                 error: .Diagnostic(category: .internal, detail: fault),
                 connected: false,
-                running: false,
+                syncing: false,
                 pending: .loading,
                 indicator: .unconnected
             )
@@ -72,7 +72,7 @@ struct SyncStatusStoreTests {
             BridgeSyncStatusSnapshot(
                 error: nil,
                 connected: true,
-                running: false,
+                syncing: false,
                 pending: .ready(records: [record]),
                 indicator: .waiting(items: 1)
             )
@@ -85,6 +85,27 @@ struct SyncStatusStoreTests {
         }
         let first = try #require(records.first)
         #expect(first.action == .retryOperation(id: 7))
+    }
+
+    /// The toolbar spinner turns while a pass runs and stops once it finishes,
+    /// though the library stays connected.
+    @MainActor
+    @Test("syncing lasts only while a pass is in progress")
+    func syncingFollowsThePass() {
+        let sync = SyncStatusStore()
+        sync.apply(
+            BridgeSyncStatusSnapshot(
+                error: nil,
+                connected: true,
+                syncing: true,
+                pending: .ready(records: []),
+                indicator: .loading
+            )
+        )
+        #expect(sync.syncing)
+        sync.apply(status(syncReady: true))
+        #expect(!sync.syncing)
+        #expect(sync.syncReady)
     }
 
     @MainActor
@@ -106,7 +127,7 @@ struct SyncStatusStoreTests {
                     detail: "schema 17 required"
                 ),
                 connected: true,
-                running: false,
+                syncing: false,
                 pending: .ready(records: []),
                 indicator: .synced
             )
@@ -132,7 +153,7 @@ struct SyncStatusStoreTests {
             BridgeSyncStatusSnapshot(
                 error: nil,
                 connected: true,
-                running: true,
+                syncing: true,
                 pending: .ready(records: []),
                 indicator: .waiting(items: 2)
             )
@@ -142,7 +163,7 @@ struct SyncStatusStoreTests {
             BridgeSyncStatusSnapshot(
                 error: .Diagnostic(category: .network, detail: "offline"),
                 connected: true,
-                running: true,
+                syncing: false,
                 pending: .ready(records: []),
                 indicator: .loading
             )
@@ -154,7 +175,7 @@ struct SyncStatusStoreTests {
         BridgeSyncStatusSnapshot(
             error: nil,
             connected: syncReady,
-            running: false,
+            syncing: false,
             pending: syncReady ? .ready(records: []) : .loading,
             indicator: syncReady ? .synced : .unconnected
         )

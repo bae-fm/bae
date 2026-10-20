@@ -7,7 +7,8 @@ public final class SyncStatusStore {
         self.snapshot = snapshot
     }
     public var syncReady: Bool { snapshot?.connected == true }
-    public var syncing: Bool { snapshot?.running == true }
+    /// A sync pass is in progress.
+    public var syncing: Bool { snapshot?.syncing == true }
     public var indicator: BridgeSyncIndicator {
         snapshot?.indicator ?? .loading
     }

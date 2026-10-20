@@ -290,7 +290,7 @@ private struct UploadPauseToggle: View {
                 snapshot: BridgeSyncStatusSnapshot(
                     error: nil,
                     connected: true,
-                    running: false,
+                    syncing: false,
                     pending: .ready(records: []),
                     indicator: .synced
                 )

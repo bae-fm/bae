@@ -79,15 +79,28 @@ class SyncStatusStoreTest {
         assertEquals(null, sync.error.value)
     }
 
+    @Test
+    fun theLibraryShowsSyncProgressOnlyWhileAPassRuns() {
+        val sync = SyncStatusStore()
+
+        sync.apply(status(connected = true, error = null, indicator = BridgeSyncIndicator.Loading, syncing = true), errors)
+        assertEquals(true, sync.syncing.value)
+
+        // A finished pass leaves the library connected and synced, with no bar.
+        sync.apply(status(connected = true, error = null), errors)
+        assertEquals(false, sync.syncing.value)
+    }
+
     private fun status(
         connected: Boolean,
         error: BridgeException?,
         indicator: BridgeSyncIndicator = BridgeSyncIndicator.Synced,
         pending: BridgePendingRecords = BridgePendingRecords.Loading,
+        syncing: Boolean = false,
     ) = BridgeSyncStatusSnapshot(
         error = error,
         connected = connected,
-        running = false,
+        syncing = syncing,
         pending = pending,
         indicator = indicator,
     )

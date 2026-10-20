@@ -78,7 +78,7 @@ internal fun LibraryBrowser(
     onDownloads: () -> Unit,
     onSyncStatus: () -> Unit,
 ) {
-    val syncSnapshot by session.syncStatusStore.snapshot.collectAsState()
+    val syncing by session.syncStatusStore.syncing.collectAsState()
     val appError by session.configStore.error.collectAsState()
     val appContext = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -101,7 +101,7 @@ internal fun LibraryBrowser(
             onComposerSortChange = { state.composerSortCriterion = it },
             artistSortCriterion = state.artistSortCriterion,
             onArtistSortChange = { state.artistSortCriterion = it },
-            syncing = syncSnapshot?.running == true,
+            syncing = syncing,
             onShuffleLibrary = { session.playLibraryShuffledOrReport(appContext, coroutineScope) },
             onSettings = onSettings,
         )

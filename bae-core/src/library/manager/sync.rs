@@ -24,7 +24,7 @@ impl LibraryManager {
     }
 
     pub fn is_sync_ready(&self) -> bool {
-        self.sync_status.snapshot().running()
+        self.sync_status.snapshot().loop_running()
     }
 
     pub fn get_sync_status(&self) -> SyncStatusSnapshot {

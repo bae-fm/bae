@@ -22,8 +22,9 @@ data class SyncFailure(
 
 /** Runtime sync state. The sync-status value stream is its only writer. */
 class SyncStatusStore {
-    private val _snapshot = MutableStateFlow<BridgeSyncStatusSnapshot?>(null)
-    val snapshot: StateFlow<BridgeSyncStatusSnapshot?> = _snapshot.asStateFlow()
+    /** A sync pass is in progress; the library shows its progress bar only then. */
+    private val _syncing = MutableStateFlow(false)
+    val syncing: StateFlow<Boolean> = _syncing.asStateFlow()
 
     private val _error = MutableStateFlow<SyncFailure?>(null)
     val error: StateFlow<SyncFailure?> = _error.asStateFlow()
@@ -47,7 +48,7 @@ class SyncStatusStore {
         status: BridgeSyncStatusSnapshot,
         errors: ErrorLines,
     ) {
-        _snapshot.value = status
+        _syncing.value = status.syncing
         // Disconnected, reconnecting is the remedy; connected, the failure names its own.
         _error.value =
             status.error?.let { error ->
