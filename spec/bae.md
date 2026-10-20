@@ -1282,6 +1282,17 @@ rather than claim the library is synced.
 - **Launching offline.** A failed connect at start-up opens the library
   unconnected, and the status line says so. *Reconnect* connects again, or
   runs the next cycle now when already connected.
+- **The network coming back.** Each attempt that finds no network backs off
+  longer, up to five minutes. While Ana's phone is locked, Android blocks
+  bae's network, so every pass and upload fails that way; once she unlocks it
+  the network is back, but the next attempt would still be minutes away. So
+  the apps tell sync when the network may be back: when the platform reports
+  the network became usable or changed, when bae comes to the foreground, and
+  when the device wakes. Each is reported once, on the change, and only while
+  a library is open. coven then ends every wait whose last attempt got no
+  answer from storage and runs a pass at once; a wait after storage answered,
+  such as with a server error, keeps its time
+  ([coven §6.7](https://github.com/bae-fm/coven/blob/main/spec/coven.md#67-waiting-and-retrying)).
 - **A newer schema.** Data written by a newer app needs an update;
   reconnecting can't fix it.
 - **Pausing** stops uploads and keeps their place, across restarts too.
