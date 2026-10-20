@@ -1092,6 +1092,19 @@ code listed, and deleting again finishes it. A later join, restore or reset on
 one of her devices saves the code again
 ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
 
+**A saved code bae can't read.** An entry in iCloud Keychain can be one bae
+can't restore from: saved in an older format or damaged, holding a different
+library's code than the one it's saved under, or saved more than once. The list
+still shows it, as a row saying the code can't be used and why, with the
+library's id beneath, since the entry has no name to show. It has **Delete**
+only, which asks and deletes as for any saved code; there is nothing to
+restore from. One such entry never hides the codes beside it. When one of
+Carol's devices opens the library, or applies a rename to it, it replaces the
+entry with the library's current name and its own current code, so the row
+becomes an ordinary one; a device whose keys another device replaced has no
+current code to save, and leaves the entry for her to delete
+([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
+
 **The S3 key.** On S3 a restore code doesn't reach the bucket alone: the device
 also needs Carol's S3 access key. The QR code one of her own devices shows
 carries that key beside the code, so scanning it is enough. A typed code asks
@@ -1606,8 +1619,8 @@ library is registered there by id.
 |---|---|
 | `create_library` | creates a new library's store and gives this device its identity; `create_library_default` generates the name |
 | `restore_from_code`, `restore_from_keychain` | opens a library on a new device from a restore code, typed or scanned, or saved in iCloud Keychain (§5.6) |
-| `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain for libraries not already on this device, each with its library's saved name |
-| `forget_saved_restore_code` | deletes a saved restore code and the S3 key beside it from iCloud Keychain on all the person's Apple devices; no library, storage or device's copy changes, and an absent code succeeds (§5.6) |
+| `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain for libraries not already on this device, each with its library's saved name; an entry coven can't restore from is listed with its library id and why, for deleting only |
+| `forget_saved_restore_code` | deletes a saved restore code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices; no library, storage or device's copy changes, and an absent code succeeds (§5.6) |
 | `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, which a failed restore leaves as it was; called again, finishes a restore that stopped after the restored copy took this one's place (§6.4) |
 | `join_with_invite` | joins a library from an invite and writes the person's profile (§5.6) |
 | `reset_device` | loads a library again under a fresh device id, after the warning; called again, finishes a reset that stopped after the new copy took the old one's place (§6.4) |
