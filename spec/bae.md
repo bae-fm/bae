@@ -1033,7 +1033,10 @@ editable by every member.
 A new device's first screen offers the two ways in: **Join library**, with an
 invite, and **Add device**, with the person's own restore code. Either one
 then scans or takes a typed code, and the code decides: an invite joins and a
-restore code restores, whichever was chosen. A Mac also offers **Create new
+restore code restores, whichever was chosen. A restore code's screens call
+that adding this device: the button is **Add**, and the running restore says
+it is adding this device. A code saved in iCloud Keychain, and a restore over
+this device's copy (§6.4), say **Restore**. A Mac also offers **Create new
 library**.
 
 Dan joins. Ana invites him with his Dropbox email and a role; her laptop shares
