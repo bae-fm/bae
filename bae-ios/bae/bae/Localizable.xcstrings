@@ -46437,6 +46437,871 @@
           }
         }
       }
+    },
+    "Recovery code can't be used" : {
+      "comment" : "Onboarding screen: title of a recovery code row in the iCloud Keychain list that bae can't restore from",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recovery code can't be used"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا يمكن استخدام رمز الاسترداد"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кодът за възстановяване не може да се използва"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kód pro obnovení nelze použít"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gendannelseskoden kan ikke bruges"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiederherstellungscode kann nicht verwendet werden"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ο κωδικός ανάκτησης δεν μπορεί να χρησιμοποιηθεί"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se puede usar el código de recuperación"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Palautuskoodia ei voi käyttää"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code de récupération inutilisable"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן להשתמש בקוד השחזור"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kod za oporavak ne može se upotrijebiti"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A helyreállítási kód nem használható"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile usare il codice di recupero"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この復旧コードは使用できません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 복구 코드는 사용할 수 없습니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenopprettingskoden kan ikke brukes"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Herstelcode kan niet worden gebruikt"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie można użyć kodu odzyskiwania"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não é possível usar o código de recuperação"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não é possível utilizar o código de recuperação"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codul de recuperare nu poate fi folosit"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kód na obnovenie sa nedá použiť"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Återställningskoden kan inte användas"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kurtarma kodu kullanılamıyor"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Код відновлення не можна використати"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法使用此恢复码"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法使用此復原碼"
+          }
+        }
+      }
+    },
+    "Saved in a format bae can't read" : {
+      "comment" : "Saved recovery code list: why a code can't be used — it was saved in an older or damaged format",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved in a format bae can't read"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "محفوظ بتنسيق لا يستطيع bae قراءته"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Записан във формат, който bae не може да прочете"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uloženo ve formátu, který bae neumí přečíst"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemt i et format, som bae ikke kan læse"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In einem Format gespeichert, das bae nicht lesen kann"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Αποθηκεύτηκε σε μορφή που το bae δεν μπορεί να διαβάσει"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardado en un formato que bae no puede leer"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tallennettu muodossa, jota bae ei osaa lukea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistré dans un format que bae ne sait pas lire"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נשמר בפורמט ש-bae לא יכול לקרוא"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spremljen u formatu koji bae ne može pročitati"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Olyan formátumban mentve, amelyet a bae nem tud olvasni"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvato in un formato che bae non riesce a leggere"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "baeが読み取れない形式で保存されています"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae가 읽을 수 없는 형식으로 저장됨"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagret i et format bae ikke kan lese"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewaard in een indeling die bae niet kan lezen"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zapisany w formacie, którego bae nie może odczytać"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvo em um formato que o bae não consegue ler"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardado num formato que o bae não consegue ler"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvat într-un format pe care bae nu îl poate citi"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uložený vo formáte, ktorý bae nevie prečítať"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sparad i ett format som bae inte kan läsa"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae'nin okuyamadığı bir biçimde kaydedilmiş"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Збережено у форматі, який bae не може прочитати"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以 bae 无法读取的格式保存"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以 bae 無法讀取的格式儲存"
+          }
+        }
+      }
+    },
+    "Saved for a different library" : {
+      "comment" : "Saved recovery code list: why a code can't be used — it holds a different library's code than the one it's saved under",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved for a different library"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "محفوظ لمكتبة أخرى"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Записан за друга библиотека"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uloženo pro jinou knihovnu"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemt til et andet bibliotek"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für eine andere Bibliothek gespeichert"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Αποθηκεύτηκε για άλλη βιβλιοθήκη"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardado para otra biblioteca"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tallennettu toiselle kirjastolle"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistré pour une autre bibliothèque"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נשמר עבור ספרייה אחרת"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spremljen za drugu fonoteku"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Egy másik könyvtárhoz mentve"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvato per un'altra libreria"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "別のライブラリ用に保存されています"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다른 라이브러리용으로 저장됨"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagret for et annet bibliotek"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewaard voor een andere bibliotheek"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zapisany dla innej biblioteki"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvo para outra biblioteca"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardado para outra biblioteca"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvat pentru altă bibliotecă"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uložený pre inú knižnicu"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sparad för ett annat bibliotek"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Başka bir kitaplık için kaydedilmiş"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Збережено для іншої бібліотеки"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "为另一个库保存"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "為另一個資料庫儲存"
+          }
+        }
+      }
+    },
+    "Saved more than once" : {
+      "comment" : "Saved recovery code list: why a code can't be used — iCloud Keychain holds more than one copy of it",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved more than once"
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "محفوظ أكثر من مرة"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Записан повече от веднъж"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uloženo více než jednou"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemt mere end én gang"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mehr als einmal gespeichert"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Αποθηκεύτηκε περισσότερες από μία φορές"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardado más de una vez"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tallennettu useammin kuin kerran"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistré plusieurs fois"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נשמר יותר מפעם אחת"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spremljen više puta"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Többször is mentve"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvato più di una volta"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "複数回保存されています"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "두 번 이상 저장됨"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagret mer enn én gang"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meer dan eens bewaard"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zapisany więcej niż raz"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvo mais de uma vez"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardado mais do que uma vez"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvat de mai multe ori"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uložený viac ako raz"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sparad mer än en gång"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Birden fazla kez kaydedilmiş"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Збережено більше ніж один раз"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存了不止一次"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "儲存了不只一次"
+          }
+        }
+      }
+    },
+    "This removes the recovery code from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this device or in your storage." : {
+      "comment" : "Onboarding screen: message of the alert confirming deletion of a saved recovery code that can't be used, so has no library name",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This removes the recovery code from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this device or in your storage."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يؤدي هذا إلى إزالة رمز الاسترداد من سلسلة مفاتيح iCloud على جميع أجهزة Apple لديك. لا يحذف المكتبة، ولا أي شيء على هذا الجهاز أو في مساحة التخزين لديك."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Това премахва кода за възстановяване от Ключодържателя на iCloud на всички ваши устройства на Apple. Не изтрива библиотеката, нито нещо на това устройство или във вашето хранилище."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tímto odstraníte kód pro obnovení z iCloud Klíčenky na všech svých zařízeních Apple. Knihovna ani nic na tomto zařízení nebo ve vašem úložišti se nesmaže."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette fjerner gendannelseskoden fra iCloud-nøglering på alle dine Apple-enheder. Det sletter ikke biblioteket eller noget på denne enhed eller i dit lager."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dadurch wird der Wiederherstellungscode auf allen deinen Apple-Geräten aus dem iCloud-Schlüsselbund entfernt. Die Bibliothek wird nicht gelöscht, ebenso wenig etwas auf diesem Gerät oder in deinem Speicher."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Έτσι αφαιρείται ο κωδικός ανάκτησης από το Μπρελόκ iCloud σε όλες τις συσκευές Apple σας. Δεν διαγράφεται η βιβλιοθήκη ούτε τίποτα σε αυτή τη συσκευή ή στον χώρο αποθήκευσής σας."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto elimina el código de recuperación del llavero de iCloud en todos tus dispositivos Apple. No elimina la biblioteca ni nada de este dispositivo ni de tu almacenamiento."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tämä poistaa palautuskoodin iCloud-avainnipusta kaikilla Apple-laitteillasi. Se ei poista kirjastoa eikä mitään tältä laitteelta tai tallennustilastasi."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette action supprime le code de récupération du trousseau iCloud sur tous vos appareils Apple. Elle ne supprime ni la bibliothèque, ni quoi que ce soit sur cet appareil ou dans votre stockage."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פעולה זו מסירה את קוד השחזור ממחזיק המפתחות של iCloud בכל מכשירי Apple שלך. היא לא מוחקת את הספרייה, ולא שום דבר במכשיר הזה או באחסון שלך."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time se kod za oporavak uklanja iz iCloud privjeska ključeva na svim vašim Apple uređajima. Ne briše se fonoteka ni išta na ovom uređaju ili u vašoj pohrani."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ez eltávolítja a helyreállítási kódot az iCloud-kulcstartóból az összes Apple-eszközödön. Nem törli a könyvtárat, sem semmit ezen az eszközön vagy a tárhelyeden."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il codice di recupero verrà rimosso dal portachiavi iCloud su tutti i tuoi dispositivi Apple. Non verrà eliminata la libreria, né nulla su questo dispositivo o nel tuo spazio di archiviazione."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この復旧コードを、すべてのAppleデバイスのiCloudキーチェーンから削除します。ライブラリや、このデバイスおよびストレージ上のものは削除されません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모든 Apple 기기의 iCloud 키체인에서 이 복구 코드를 제거합니다. 라이브러리나 이 기기 또는 저장소에 있는 항목은 삭제되지 않습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette fjerner gjenopprettingskoden fra iCloud-nøkkelringen på alle Apple-enhetene dine. Det sletter ikke biblioteket eller noe på denne enheten eller i lagringen din."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiermee wordt de herstelcode verwijderd uit de iCloud-sleutelhanger op al je Apple-apparaten. De bibliotheek wordt niet verwijderd, en ook niets op dit apparaat of in je opslag."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spowoduje to usunięcie kodu odzyskiwania z pęku kluczy iCloud na wszystkich Twoich urządzeniach Apple. Nie usuwa to biblioteki ani niczego na tym urządzeniu ani w Twojej przestrzeni dyskowej."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isso remove o código de recuperação das Chaves do iCloud em todos os seus dispositivos Apple. Não exclui a biblioteca nem nada neste dispositivo ou no seu armazenamento."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isto remove o código de recuperação do Porta-chaves iCloud em todos os seus dispositivos Apple. Não elimina a biblioteca nem nada neste dispositivo ou no seu armazenamento."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Astfel, codul de recuperare este eliminat din brelocul iCloud de pe toate dispozitivele tale Apple. Biblioteca nu este ștearsă și nici nimic de pe acest dispozitiv sau din spațiul tău de stocare."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Týmto sa kód na obnovenie odstráni z kľúčenky iCloud na všetkých tvojich zariadeniach Apple. Neodstráni sa knižnica ani nič na tomto zariadení alebo v tvojom úložisku."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detta tar bort återställningskoden från iCloud-nyckelringen på alla dina Apple-enheter. Biblioteket raderas inte, och inte heller något på den här enheten eller i din lagring."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu işlem, kurtarma kodunu tüm Apple aygıtlarınızdaki iCloud Anahtar Zinciri'nden kaldırır. Kitaplığı veya bu aygıttaki ya da depolama alanınızdaki hiçbir şeyi silmez."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Це вилучить код відновлення із В’язки ключів iCloud на всіх ваших пристроях Apple. Бібліотеку, а також усе на цьому пристрої і у вашому сховищі, не буде видалено."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这会从你所有 Apple 设备上的 iCloud 钥匙串中移除此恢复码。不会删除该库，也不会删除这台设备上或你的存储空间中的任何内容。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這會從你所有 Apple 裝置上的 iCloud 鑰匙圈中移除此復原碼。不會刪除該資料庫，也不會刪除這部裝置上或你的儲存空間中的任何內容。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

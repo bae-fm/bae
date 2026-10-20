@@ -1,12 +1,24 @@
-/// A restore code coven saved in iCloud Keychain, with the details read off it
-/// once: the library's name as one of the person's devices last saw it, and
-/// the provider and storage location the code holds.
-public struct SavedRestoreEntry {
-    public let code: BridgeSavedRestoreCode
-    public let info: BridgeSavedRestoreCodeInfo
+/// One library's entry in iCloud Keychain, as the saved-code list shows it: a
+/// code to restore from, or one bae can't read, which the person can only
+/// delete. Either is deleted by its library id.
+public enum SavedRestoreEntry {
+    case readable(SavedRestoreCode)
+    case unreadable(libraryId: String, reason: BridgeUnreadableSavedCode)
 
-    public init(code: BridgeSavedRestoreCode) {
-        self.code = code
-        info = code.info()
+    public init(_ entry: BridgeSavedRestoreEntry) {
+        switch entry {
+        case .readable(let code):
+            self = .readable(SavedRestoreCode(code: code))
+        case .unreadable(let libraryId, let reason):
+            self = .unreadable(libraryId: libraryId, reason: reason)
+        }
+    }
+
+    /// The library the entry is saved under.
+    public var libraryId: String {
+        switch self {
+        case .readable(let saved): saved.info.libraryId
+        case .unreadable(let libraryId, _): libraryId
+        }
     }
 }

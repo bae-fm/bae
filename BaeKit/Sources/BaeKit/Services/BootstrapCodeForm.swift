@@ -7,7 +7,7 @@ private let logger = Logger.bae("BootstrapCodeForm")
 /// What a code screen's primary action runs: a restore from a saved or entered
 /// restore code, or a join by invitation.
 public enum BootstrapAttempt {
-    case restoreSaved(SavedRestoreEntry)
+    case restoreSaved(SavedRestoreCode)
     /// A restore from a typed or scanned code; `s3Key` is the key that came
     /// beside a scanned code from the person's own device.
     case restore(
@@ -57,7 +57,7 @@ public final class BootstrapCodeForm {
 
     public let entry: Entry
     /// The saved code a restore opened with, read once.
-    public let saved: SavedRestoreEntry?
+    public let saved: SavedRestoreCode?
     public var codeInput = ""
     /// The entered code's kind and metadata, or nil while the field is empty.
     private var decoded: Result<BridgeCodeInfo, Error>?
@@ -91,7 +91,7 @@ public final class BootstrapCodeForm {
         self.makeBootstrap = makeBootstrap
         self.onLibraryReady = onLibraryReady
         if case .restore(let code?) = entry {
-            saved = SavedRestoreEntry(code: code)
+            saved = SavedRestoreCode(code: code)
         }
         else {
             saved = nil

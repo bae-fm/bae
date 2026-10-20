@@ -8,7 +8,7 @@ struct OnboardingEntryScreen: View {
     let setup: LibrarySetup
     let onJoin: () -> Void
     let onAddDevice: () -> Void
-    let onRestoreSaved: (SavedRestoreEntry) -> Void
+    let onRestoreSaved: (SavedRestoreCode) -> Void
 
     @Environment(LibraryRemovals.self)
     private var removals
@@ -97,13 +97,14 @@ private struct ErrorNotice: View {
 /// Delete. Each row shows the library's name as the person's devices last saw
 /// it, over the provider and the account or bucket the code holds: two
 /// libraries can share a name, or one renamed on another device still shows
-/// its old name, and the location tells them apart. Delete asks first, then
+/// its old name, and the location tells them apart. An entry bae can't read
+/// shows why and its library id, with Delete only. Delete asks first, then
 /// removes the code from iCloud Keychain on all the person's Apple devices.
 private struct SavedRestoreCodesList: View {
     let codes: SavedRestoreCodes
     let setup: LibrarySetup
     let disabled: Bool
-    let onRestore: (SavedRestoreEntry) -> Void
+    let onRestore: (SavedRestoreCode) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.group) {
@@ -120,12 +121,12 @@ private struct SavedRestoreCodesList: View {
                     error: deleteError
                 )
             }
-            ForEach(codes.list.value ?? [], id: \.info.libraryId) { entry in
+            ForEach(codes.list.value ?? [], id: \.libraryId) { entry in
                 SavedCodeRow(
                     entry: entry,
-                    isDeleting: codes.deletingLibraryId == entry.info.libraryId,
+                    isDeleting: codes.deletingLibraryId == entry.libraryId,
                     onRestore: onRestore,
-                    onDelete: { codes.askToDelete($0) }
+                    onDelete: { codes.askToDelete(entry) }
                 )
             }
         }
@@ -147,39 +148,66 @@ private struct SavedRestoreCodesList: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: { pending in
-            Text(
-                "This removes the recovery code for “\(pending.info.name)” from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this device or in your storage."
-            )
+            switch pending {
+            case .readable(let saved):
+                Text(
+                    "This removes the recovery code for “\(saved.info.name)” from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this device or in your storage."
+                )
+            case .unreadable:
+                Text(
+                    "This removes the recovery code from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this device or in your storage."
+                )
+            }
         }
     }
 }
 
-/// One saved code: the library's name, its provider and location, Restore,
-/// and Delete, which shows progress while the delete runs.
+/// One saved entry. A readable code shows the library's name, its provider
+/// and location, and Restore; one bae can't read says why, with its library
+/// id. Both have Delete, which shows progress while the delete runs.
 private struct SavedCodeRow: View {
     let entry: SavedRestoreEntry
     let isDeleting: Bool
-    let onRestore: (SavedRestoreEntry) -> Void
-    let onDelete: (SavedRestoreEntry) -> Void
+    let onRestore: (SavedRestoreCode) -> Void
+    let onDelete: () -> Void
 
     var body: some View {
         HStack(spacing: ThemeSpace.related) {
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text(entry.info.name)
-                    .themeText(.rowTitle)
-                    .lineLimit(1)
-                Text(entry.info.location.accountLine)
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+            switch entry {
+            case .readable(let saved):
+                VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                    Text(saved.info.name)
+                        .themeText(.rowTitle)
+                        .lineLimit(1)
+                    Text(saved.info.location.accountLine)
+                        .themeText(.detail)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                Spacer()
+                Button("Restore") { onRestore(saved) }
+                    .buttonStyle(.bordered)
+            case .unreadable(let libraryId, let reason):
+                VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                    Text("Recovery code can't be used")
+                        .themeText(.rowTitle)
+                        .lineLimit(1)
+                    Text(reason.label)
+                        .themeText(.detail)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Text(verbatim: libraryId)
+                        .themeText(.detail)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                Spacer()
             }
-            Spacer()
-            Button("Restore") { onRestore(entry) }
-                .buttonStyle(.bordered)
             ZStack {
                 Button("Delete", systemImage: "trash", role: .destructive) {
-                    onDelete(entry)
+                    onDelete()
                 }
                 .labelStyle(.iconOnly)
                 .buttonStyle(.bordered)
@@ -203,7 +231,7 @@ private struct SavedCodeRow: View {
 
 #Preview("Saved codes") {
     OnboardingEntryScreen(
-        setup: .stub(savedCodes: PreviewSavedRestoreCode.samples),
+        setup: .stub(savedCodes: PreviewSavedRestoreCode.entries),
         onJoin: {},
         onAddDevice: {},
         onRestoreSaved: { _ in }
@@ -213,12 +241,22 @@ private struct SavedCodeRow: View {
 }
 
 #Preview("Delete confirmation") {
-    let entries = PreviewSavedRestoreCode.samples.map {
-        SavedRestoreEntry(code: PreviewSavedRestoreCode($0))
-    }
+    let entries = PreviewSavedRestoreCode.entries.map(SavedRestoreEntry.init)
     SavedRestoreCodesList(
         codes: SavedRestoreCodes(previewing: entries, confirming: entries[0]),
-        setup: .stub(savedCodes: PreviewSavedRestoreCode.samples),
+        setup: .stub(savedCodes: PreviewSavedRestoreCode.entries),
+        disabled: false,
+        onRestore: { _ in }
+    )
+    .padding()
+    .background(Theme.background)
+}
+
+#Preview("Unreadable code delete confirmation") {
+    let entries = PreviewSavedRestoreCode.entries.map(SavedRestoreEntry.init)
+    SavedRestoreCodesList(
+        codes: SavedRestoreCodes(previewing: entries, confirming: entries.last),
+        setup: .stub(savedCodes: PreviewSavedRestoreCode.entries),
         disabled: false,
         onRestore: { _ in }
     )

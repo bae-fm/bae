@@ -126,3 +126,77 @@ impl BridgeBootstrapResult {
         }
     }
 }
+
+/// One library's entry in iCloud Keychain, as listing found it. Only a
+/// readable entry carries a code to restore from; either can be deleted by
+/// its library id.
+#[derive(Clone, uniffi::Enum)]
+pub enum BridgeSavedRestoreEntry {
+    Readable {
+        code: Arc<BridgeSavedRestoreCode>,
+    },
+    /// An entry bae can't restore from, kept listed so the person can delete
+    /// it.
+    Unreadable {
+        library_id: String,
+        reason: BridgeUnreadableSavedCode,
+    },
+}
+impl BridgeSavedRestoreEntry {
+    pub(crate) fn from_core(value: coven::SavedRestoreEntry) -> Self {
+        match value {
+            coven::SavedRestoreEntry::Readable(saved) => Self::Readable {
+                code: Arc::new(BridgeSavedRestoreCode { saved }),
+            },
+            coven::SavedRestoreEntry::Unreadable { store_id, reason } => Self::Unreadable {
+                library_id: store_id.to_string(),
+                reason: BridgeUnreadableSavedCode::from_core(reason),
+            },
+        }
+    }
+}
+
+/// Why bae can't restore from a saved entry.
+#[derive(Clone, Copy, uniffi::Enum)]
+pub enum BridgeUnreadableSavedCode {
+    /// Saved in a format bae doesn't read, such as an older one, or damaged.
+    Format,
+    /// Holds the code of a different library than the one it's saved under.
+    OtherLibrary,
+    /// Saved more than once, so reading it could give either copy.
+    Ambiguous,
+}
+impl BridgeUnreadableSavedCode {
+    fn from_core(value: coven::UnreadableSavedCode) -> Self {
+        match value {
+            coven::UnreadableSavedCode::Format => Self::Format,
+            coven::UnreadableSavedCode::OtherStore => Self::OtherLibrary,
+            coven::UnreadableSavedCode::Ambiguous => Self::Ambiguous,
+        }
+    }
+}
+
+/// A restore code saved in iCloud Keychain that bae can restore from.
+#[derive(uniffi::Object)]
+pub struct BridgeSavedRestoreCode {
+    pub(crate) saved: coven::SavedRestoreCode,
+}
+#[derive(Clone, uniffi::Record)]
+pub struct BridgeSavedRestoreCodeInfo {
+    /// The library's name as one of the person's devices last saw it.
+    pub name: String,
+    pub library_id: String,
+    pub location: BridgeStorageLocation,
+    pub has_s3_credentials: bool,
+}
+#[uniffi::export]
+impl BridgeSavedRestoreCode {
+    pub fn info(&self) -> BridgeSavedRestoreCodeInfo {
+        BridgeSavedRestoreCodeInfo {
+            name: self.saved.name.clone(),
+            library_id: self.saved.store_id.to_string(),
+            location: BridgeStorageLocation::from_core(self.saved.location.clone()),
+            has_s3_credentials: self.saved.has_s3_credentials,
+        }
+    }
+}

@@ -9,15 +9,17 @@ public final class LibrarySetup: Sendable, Observable {
     /// Create a library named by core's default generator, returning its open
     /// store.
     public let createLibrary: @Sendable () async throws -> OpenedLibrary
-    /// Restore codes coven saved in iCloud Keychain. Throws when the keychain
-    /// refuses the lookup — locked, or the display asleep — which a screen
-    /// listing them must not read as "no restore codes".
+    /// Restore codes coven saved in iCloud Keychain, including ones bae
+    /// can't read. Throws when the keychain refuses the lookup — locked, or
+    /// the display asleep — which a screen listing them must not read as "no
+    /// restore codes".
     public let savedRestoreCodes:
-        @Sendable () async throws -> [BridgeSavedRestoreCode]
-    /// Delete a saved restore code from iCloud Keychain on all the person's
-    /// Apple devices. The library and its storage stay.
+        @Sendable () async throws -> [BridgeSavedRestoreEntry]
+    /// Delete the library's saved restore code, readable or not, from iCloud
+    /// Keychain on all the person's Apple devices. The library and its
+    /// storage stay.
     public let forgetSavedRestoreCode:
-        @Sendable (BridgeSavedRestoreCode) async throws -> Void
+        @Sendable (_ libraryId: String) async throws -> Void
     /// One restore or join attempt.
     private let makeBootstrap: @MainActor @Sendable () -> LibraryBootstrap
 
@@ -25,9 +27,9 @@ public final class LibrarySetup: Sendable, Observable {
         listLibraries: @escaping @Sendable () async throws -> [BridgeLibrary],
         createLibrary: @escaping @Sendable () async throws -> OpenedLibrary,
         savedRestoreCodes:
-            @escaping @Sendable () async throws -> [BridgeSavedRestoreCode],
+            @escaping @Sendable () async throws -> [BridgeSavedRestoreEntry],
         forgetSavedRestoreCode:
-            @escaping @Sendable (BridgeSavedRestoreCode) async throws -> Void,
+            @escaping @Sendable (_ libraryId: String) async throws -> Void,
         makeBootstrap: @escaping @MainActor @Sendable () -> LibraryBootstrap
     ) {
         self.listLibraries = listLibraries
@@ -47,7 +49,7 @@ public final class LibrarySetup: Sendable, Observable {
             createLibrary: { try await host.createLibrary(name: nil) },
             savedRestoreCodes: { try await host.savedRestoreCodes() },
             forgetSavedRestoreCode: {
-                try await host.forgetSavedRestoreCode(saved: $0)
+                try await host.forgetSavedRestoreCode(libraryId: $0)
             },
             makeBootstrap: {
                 LibraryBootstrap(host: host, deviceName: deviceName)
@@ -75,16 +77,12 @@ public final class LibrarySetup: Sendable, Observable {
         /// once.
         public static func stub(
             libraries: [BridgeLibrary] = [],
-            savedCodes: [BridgeSavedRestoreCodeInfo] = []
+            savedCodes: [BridgeSavedRestoreEntry] = []
         ) -> LibrarySetup {
             LibrarySetup(
                 listLibraries: { libraries },
                 createLibrary: { throw StubError.notImplemented },
-                savedRestoreCodes: {
-                    savedCodes.map {
-                        PreviewSavedRestoreCode($0) as BridgeSavedRestoreCode
-                    }
-                },
+                savedRestoreCodes: { savedCodes },
                 forgetSavedRestoreCode: { _ in
                     throw StubError.notImplemented
                 },

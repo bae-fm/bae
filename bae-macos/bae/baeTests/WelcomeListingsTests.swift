@@ -12,7 +12,7 @@ private actor WelcomeBridge {
         return []
     }
 
-    func savedRestoreCodes() -> [BridgeSavedRestoreCode] {
+    func savedRestoreCodes() -> [BridgeSavedRestoreEntry] {
         calls.append("list saved codes")
         return []
     }

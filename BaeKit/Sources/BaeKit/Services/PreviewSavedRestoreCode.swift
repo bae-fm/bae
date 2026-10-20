@@ -57,5 +57,17 @@
                 hasS3Credentials: false
             ),
         ]
+
+        /// What the saved-code list reads in previews: the sample codes,
+        /// then an entry saved in a format bae can't read.
+        public static var entries: [BridgeSavedRestoreEntry] {
+            samples.map { .readable(code: PreviewSavedRestoreCode($0)) }
+                + [
+                    .unreadable(
+                        libraryId: "6f1c2a9e-4b7d-4e2a-9c3f-2d8e5b1a7c40",
+                        reason: .format
+                    )
+                ]
+        }
     }
 #endif

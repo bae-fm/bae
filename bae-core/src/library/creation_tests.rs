@@ -505,6 +505,9 @@ async fn removing_a_library_whose_restore_stopped_after_its_swap_deletes_both_co
     assert!(UnfinishedRemoval::find(&app_dir).await.unwrap().is_none());
 }
 
+/// A library on this device is opened, not restored, so neither its readable
+/// code nor an entry coven can't read is offered; elsewhere both are, the
+/// unreadable one for the person to delete.
 #[tokio::test]
 async fn saved_codes_for_libraries_on_this_device_are_not_offered() {
     let temp = tempfile::TempDir::new().unwrap();
@@ -519,18 +522,36 @@ async fn saved_codes_for_libraries_on_this_device_are_not_offered() {
         .unwrap()
         .id();
     let elsewhere = coven::StoreId(uuid::Uuid::new_v4());
-    let code = |store_id| coven::SavedRestoreCode {
-        name: "Library".into(),
-        store_id,
-        location: coven::StorageConfig::CloudKit {
-            container: "iCloud.fm.bae.desktop".into(),
-            owner: "owner".into(),
-            zone: "zone".into(),
-        },
-        has_s3_credentials: false,
+    let unreadable_elsewhere = coven::StoreId(uuid::Uuid::new_v4());
+    let code = |store_id| {
+        coven::SavedRestoreEntry::Readable(coven::SavedRestoreCode {
+            name: "Library".into(),
+            store_id,
+            location: coven::StorageConfig::CloudKit {
+                container: "iCloud.fm.bae.desktop".into(),
+                owner: "owner".into(),
+                zone: "zone".into(),
+            },
+            has_s3_credentials: false,
+        })
     };
-    let offered = restorable_codes(vec![code(here), code(elsewhere)], &layout)
-        .await
-        .unwrap();
-    assert_eq!(offered, vec![code(elsewhere)]);
+    let unreadable = |store_id| coven::SavedRestoreEntry::Unreadable {
+        store_id,
+        reason: coven::UnreadableSavedCode::Format,
+    };
+    let offered = restorable_codes(
+        vec![
+            code(here),
+            unreadable(here),
+            code(elsewhere),
+            unreadable(unreadable_elsewhere),
+        ],
+        &layout,
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        offered,
+        vec![code(elsewhere), unreadable(unreadable_elsewhere)]
+    );
 }

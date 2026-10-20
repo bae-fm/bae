@@ -4,9 +4,10 @@ import os.log
 private let logger = Logger.bae("SavedRestoreCodes")
 
 /// The restore codes coven saved in iCloud Keychain for libraries not on this
-/// device, and deleting one the person no longer wants offered. Deleting a
-/// code removes it from iCloud Keychain on all the person's Apple devices;
-/// the library, its storage and every device's copy of it stay.
+/// device, including ones bae can't read, and deleting one the person no
+/// longer wants offered. Deleting a code removes it from iCloud Keychain on
+/// all the person's Apple devices; the library, its storage and every
+/// device's copy of it stay.
 @MainActor
 @Observable
 public final class SavedRestoreCodes {
@@ -38,7 +39,7 @@ public final class SavedRestoreCodes {
         do {
             let saved = try await setup.savedRestoreCodes()
             try Task.checkCancellation()
-            list = .loaded(saved.map { SavedRestoreEntry(code: $0) })
+            list = .loaded(saved.map(SavedRestoreEntry.init))
         }
         catch is CancellationError {
             logger.debug("Saved restore code lookup cancelled")
@@ -77,10 +78,10 @@ public final class SavedRestoreCodes {
     ) async {
         pendingDelete = nil
         deleteError = nil
-        deletingLibraryId = entry.info.libraryId
+        deletingLibraryId = entry.libraryId
         defer { deletingLibraryId = nil }
         do {
-            try await setup.forgetSavedRestoreCode(entry.code)
+            try await setup.forgetSavedRestoreCode(entry.libraryId)
         }
         catch {
             guard let failure = DisplayError(error) else {

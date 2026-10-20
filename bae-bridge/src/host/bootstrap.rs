@@ -28,35 +28,11 @@ impl Drop for CancelOnDrop {
     }
 }
 
-#[derive(uniffi::Object)]
-pub struct BridgeSavedRestoreCode {
-    saved: coven::SavedRestoreCode,
-}
-#[derive(Clone, uniffi::Record)]
-pub struct BridgeSavedRestoreCodeInfo {
-    /// The library's name as one of the person's devices last saw it.
-    pub name: String,
-    pub library_id: String,
-    pub location: BridgeStorageLocation,
-    pub has_s3_credentials: bool,
-}
-#[uniffi::export]
-impl BridgeSavedRestoreCode {
-    pub fn info(&self) -> BridgeSavedRestoreCodeInfo {
-        BridgeSavedRestoreCodeInfo {
-            name: self.saved.name.clone(),
-            library_id: self.saved.store_id.to_string(),
-            location: BridgeStorageLocation::from_core(self.saved.location.clone()),
-            has_s3_credentials: self.saved.has_s3_credentials,
-        }
-    }
-}
-
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl BridgeHost {
     pub async fn saved_restore_codes(
         self: Arc<Self>,
-    ) -> Result<Vec<Arc<BridgeSavedRestoreCode>>, BridgeError> {
+    ) -> Result<Vec<BridgeSavedRestoreEntry>, BridgeError> {
         crate::operation_runtime::run(
             self.runtime
                 .as_ref()
@@ -70,7 +46,7 @@ impl BridgeHost {
                     .map(|codes| {
                         codes
                             .into_iter()
-                            .map(|saved| Arc::new(BridgeSavedRestoreCode { saved }))
+                            .map(BridgeSavedRestoreEntry::from_core)
                             .collect()
                     })
                     .map_err(|error| {
@@ -83,13 +59,14 @@ impl BridgeHost {
         )
         .await
     }
-    /// Delete this saved restore code, and the S3 key saved beside it, from
-    /// iCloud Keychain on all the person's Apple devices. The library, its
-    /// storage and every device's copy stay.
+    /// Delete the library's saved restore code, readable or not, and the S3
+    /// key saved beside it, from iCloud Keychain on all the person's Apple
+    /// devices. The library, its storage and every device's copy stay.
     pub async fn forget_saved_restore_code(
         self: Arc<Self>,
-        saved: Arc<BridgeSavedRestoreCode>,
+        library_id: String,
     ) -> Result<(), BridgeError> {
+        let store = coven::StoreId(library_id.parse().map_err(BridgeError::config)?);
         crate::operation_runtime::run(
             self.runtime
                 .as_ref()
@@ -98,7 +75,7 @@ impl BridgeHost {
                 .clone(),
             move || async move {
                 self.keychain
-                    .forget_saved_restore_code(saved.saved.store_id)
+                    .forget_saved_restore_code(store)
                     .await
                     .map_err(|error| {
                         BridgeError::diagnostic(

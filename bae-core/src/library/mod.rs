@@ -163,11 +163,13 @@ impl Keychain {
 
     /// The restore codes saved in this keychain (iCloud Keychain on Apple)
     /// for libraries not already on this device: a library this device has
-    /// is opened, not restored.
+    /// is opened, not restored. An entry coven can't restore from is listed
+    /// as unreadable, with its library's id and why, so the person can
+    /// delete it.
     pub async fn saved_restore_codes(
         &self,
         app_dir: &AppDir,
-    ) -> Result<Vec<coven::SavedRestoreCode>, SavedRestoreCodesError> {
+    ) -> Result<Vec<coven::SavedRestoreEntry>, SavedRestoreCodesError> {
         let codes = match self {
             Self::System => coven::saved_restore_codes().await?,
             #[cfg(any(test, feature = "test-utils"))]
@@ -179,8 +181,9 @@ impl Keychain {
     /// Delete a library's saved restore code, and the S3 key saved beside it,
     /// from this keychain: on Apple, from iCloud Keychain, and so from every
     /// one of the person's Apple devices. It changes no library, storage or
-    /// device's copy, and needs no open library. An entry already gone
-    /// succeeds, and calling again finishes one that failed partway.
+    /// device's copy, and needs no open library. An unreadable entry is
+    /// deleted the same way. An entry already gone succeeds, and calling
+    /// again finishes one that failed partway.
     pub async fn forget_saved_restore_code(
         &self,
         store: coven::StoreId,
@@ -392,9 +395,9 @@ impl ForgetSavedRestoreCodeError {
 }
 
 async fn restorable_codes(
-    codes: Vec<coven::SavedRestoreCode>,
+    codes: Vec<coven::SavedRestoreEntry>,
     layout: &coven::StoreLayout,
-) -> Result<Vec<coven::SavedRestoreCode>, SavedRestoreCodesError> {
+) -> Result<Vec<coven::SavedRestoreEntry>, SavedRestoreCodesError> {
     let here: std::collections::HashSet<_> = layout
         .stores()
         .await?
@@ -403,7 +406,7 @@ async fn restorable_codes(
         .collect();
     Ok(codes
         .into_iter()
-        .filter(|code| !here.contains(&code.store_id))
+        .filter(|code| !here.contains(&code.store_id()))
         .collect())
 }
 

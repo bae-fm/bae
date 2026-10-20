@@ -74,7 +74,12 @@ impl Home {
             .await
             .unwrap()
             .into_iter()
-            .map(|code| (code.store_id, code.name))
+            .map(|entry| match entry {
+                coven::SavedRestoreEntry::Readable(code) => (code.store_id, code.name),
+                coven::SavedRestoreEntry::Unreadable { store_id, reason } => {
+                    panic!("{store_id}'s saved code is unreadable: {reason:?}")
+                }
+            })
             .collect()
     }
 

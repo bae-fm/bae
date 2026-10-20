@@ -3,7 +3,8 @@
 
     // Preview fixtures for the Welcome flow: a library with a cloud home, one
     // without, one that can't be read, one whose restore stopped partway, and
-    // restore codes saved in iCloud Keychain for libraries not on this Mac.
+    // restore codes saved in iCloud Keychain for libraries not on this Mac,
+    // one of them unreadable.
     // Generic placeholder names throughout.
     extension PreviewData {
         static let welcomeLibraries: [BridgeLibrary] = [
@@ -50,12 +51,10 @@
             ),
         ]
 
-        /// Restore codes saved for libraries not on this Mac, as the
-        /// keychain section lists them.
+        /// Restore codes saved for libraries not on this Mac, one of them
+        /// unreadable, as the keychain section lists them.
         static var welcomeSavedCodes: [SavedRestoreEntry] {
-            PreviewSavedRestoreCode.samples.map {
-                SavedRestoreEntry(code: PreviewSavedRestoreCode($0))
-            }
+            PreviewSavedRestoreCode.entries.map(SavedRestoreEntry.init)
         }
 
         /// A `LibrarySetup` whose reads serve the fixtures above — the
@@ -64,7 +63,7 @@
         static func welcomeSetup() -> LibrarySetup {
             .stub(
                 libraries: welcomeLibraries,
-                savedCodes: PreviewSavedRestoreCode.samples
+                savedCodes: PreviewSavedRestoreCode.entries
             )
         }
 
