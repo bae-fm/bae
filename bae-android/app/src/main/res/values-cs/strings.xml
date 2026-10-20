@@ -214,10 +214,12 @@
     <string name="s3_access_key_id">ID přístupového klíče</string>
     <string name="s3_secret_access_key">Tajný přístupový klíč</string>
     <string name="onboarding_restore_action">Obnovit</string>
+    <string name="onboarding_add_action">Přidat</string>
     <string name="onboarding_join_title_named">Připojit se k %1$s</string>
     <string name="onboarding_person_name">Vaše jméno</string>
     <string name="name_shown_to_everyone">Toto jméno vidí všichni v knihovně.</string>
     <string name="onboarding_restoring_title">Obnovování knihovny</string>
+    <string name="onboarding_adding_device">Přidávání tohoto zařízení</string>
     <string name="onboarding_joining_library">Připojování k %1$s</string>
     <string name="onboarding_status_connecting">Připojování…</string>
     <string name="onboarding_status_waiting_for_approval">Čeká se, až správce knihovny toto zařízení schválí…</string>

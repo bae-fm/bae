@@ -210,10 +210,12 @@
     <string name="s3_access_key_id">Toegangssleutel-ID</string>
     <string name="s3_secret_access_key">Geheime toegangssleutel</string>
     <string name="onboarding_restore_action">Herstellen</string>
+    <string name="onboarding_add_action">Toevoegen</string>
     <string name="onboarding_join_title_named">Deelnemen aan %1$s</string>
     <string name="onboarding_person_name">Je naam</string>
     <string name="name_shown_to_everyone">Iedereen in de bibliotheek ziet deze naam.</string>
     <string name="onboarding_restoring_title">Je bibliotheek wordt hersteld</string>
+    <string name="onboarding_adding_device">Dit apparaat wordt toegevoegd</string>
     <string name="onboarding_joining_library">Deelnemen aan %1$s</string>
     <string name="onboarding_status_connecting">Verbinden…</string>
     <string name="onboarding_status_waiting_for_approval">Wachten tot een beheerder van de bibliotheek dit apparaat goedkeurt…</string>

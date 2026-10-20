@@ -208,10 +208,12 @@
     <string name="s3_access_key_id">액세스 키 ID</string>
     <string name="s3_secret_access_key">보안 액세스 키</string>
     <string name="onboarding_restore_action">복원</string>
+    <string name="onboarding_add_action">추가</string>
     <string name="onboarding_join_title_named">%1$s 참여</string>
     <string name="onboarding_person_name">내 이름</string>
     <string name="name_shown_to_everyone">라이브러리의 모든 사람이 이 이름을 봅니다.</string>
     <string name="onboarding_restoring_title">라이브러리를 복원하는 중</string>
+    <string name="onboarding_adding_device">이 기기를 추가하는 중</string>
     <string name="onboarding_joining_library">%1$s 참여 중</string>
     <string name="onboarding_status_connecting">연결 중…</string>
     <string name="onboarding_status_waiting_for_approval">라이브러리 관리자가 이 기기를 승인하기를 기다리는 중…</string>

@@ -1,6 +1,7 @@
 package fm.bae.app.ui.onboarding
 
 import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -213,11 +214,43 @@ internal fun OnboardingStartColumn(
 }
 
 /**
+ * What a restore says on its form and while it runs: on a new device it adds
+ * this device to the person's own library, whichever choice took the code;
+ * over this device's copy it restores that library.
+ */
+private class RestoreText(
+    @StringRes val title: Int,
+    @StringRes val action: Int,
+    @StringRes val running: Int,
+) {
+    companion object {
+        fun of(entry: CodeEntry): RestoreText =
+            when (entry) {
+                CodeEntry.AddDevice, CodeEntry.JoinLibrary -> {
+                    RestoreText(
+                        title = R.string.onboarding_add_device,
+                        action = R.string.onboarding_add_action,
+                        running = R.string.onboarding_adding_device,
+                    )
+                }
+
+                is RestoreOver -> {
+                    RestoreText(
+                        title = R.string.onboarding_restore_title,
+                        action = R.string.onboarding_restore_action,
+                        running = R.string.onboarding_restoring_title,
+                    )
+                }
+            }
+    }
+}
+
+/**
  * The person's own restore code, read: S3 asks for the bucket's access key;
  * the account providers sign in as the restore runs.
  */
 @Composable
-private fun RestoreForm(
+internal fun RestoreForm(
     step: OnboardingStep.Restore,
     error: String?,
     onRestore: (BridgeS3Credentials?) -> Unit,
@@ -226,7 +259,8 @@ private fun RestoreForm(
     var accessKeyId by remember { mutableStateOf("") }
     var secretAccessKey by remember { mutableStateOf("") }
     val needsKey = step.metadata.provider == BridgeCloudProvider.S3 && step.s3Credentials == null
-    OnboardingForm(title = stringResource(R.string.onboarding_restore_title), error = error, onBack = onBack) {
+    val text = RestoreText.of(step.entry)
+    OnboardingForm(title = stringResource(text.title), error = error, onBack = onBack) {
         LabeledValueRow(stringResource(R.string.settings_stored_in), storageLocationLabel(step.metadata.location))
         if (step.s3Credentials != null) {
             Text(
@@ -257,7 +291,7 @@ private fun RestoreForm(
             enabled = !needsKey || (accessKeyId.isNotEmpty() && secretAccessKey.isNotEmpty()),
             modifier = Modifier.width(actionWidth),
         ) {
-            Text(stringResource(R.string.onboarding_restore_action))
+            Text(stringResource(text.action))
         }
     }
 }
@@ -317,7 +351,7 @@ internal fun OnboardingProgress(
     val title =
         when (val from = step.from) {
             is OnboardingStep.Invite -> stringResource(R.string.onboarding_joining_library, from.libraryName)
-            is OnboardingStep.Restore -> stringResource(R.string.onboarding_restoring_title)
+            is OnboardingStep.Restore -> stringResource(RestoreText.of(from.entry).running)
         }
     OnboardingContainer {
         CircularProgressIndicator()
