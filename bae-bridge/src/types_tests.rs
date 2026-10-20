@@ -691,3 +691,43 @@ fn a_pending_record_with_its_error_crosses_with_that_error_as_its_details() {
         Some("S3: Network: S3 request failed: dispatch failure: io error: connection refused")
     );
 }
+
+/// Arrivals cross grouped by device for the activity list, and keyed by
+/// album and by release for the cards and the album detail to look up.
+#[test]
+fn arrivals_cross_grouped_and_keyed_by_album_and_release() {
+    let arrivals = bae_core::library::Arrivals {
+        devices: vec![bae_core::library::DeviceArrivals {
+            device: coven::DeviceId(1),
+            device_name: "Studio Mac".into(),
+            releases: vec![bae_core::library::ReleaseArrival {
+                release_id: "release".into(),
+                album_id: "album".into(),
+                album_title: "Blue".into(),
+                cover: true,
+                track_ids: vec!["track".into()],
+            }],
+            other_files: 2,
+        }],
+    };
+    let BridgeArrivals::Ready {
+        devices,
+        albums,
+        releases,
+    } = BridgeArrivals::from_core(Some(Ok(arrivals)))
+    else {
+        panic!("read arrivals cross as ready");
+    };
+    assert_eq!(devices.len(), 1);
+    assert_eq!(devices[0].device_name, "Studio Mac");
+    assert_eq!(devices[0].other_files, 2);
+    assert_eq!(devices[0].releases[0].album_title, "Blue");
+    assert_eq!(albums["album"], "Studio Mac");
+    assert_eq!(releases["release"].device_name, "Studio Mac");
+    assert!(releases["release"].cover);
+    assert_eq!(releases["release"].track_ids, vec!["track".to_string()]);
+    assert!(matches!(
+        BridgeArrivals::from_core(None),
+        BridgeArrivals::Loading
+    ));
+}

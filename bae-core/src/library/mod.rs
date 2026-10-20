@@ -20,6 +20,7 @@ pub mod search;
 mod storage_browse;
 pub mod storage_inspector;
 pub(crate) mod storage_transitions;
+mod sync_activity;
 pub(crate) mod sync_controller;
 mod upload_throughput;
 pub use album_selection::{
@@ -58,6 +59,7 @@ pub use search::{
     LibrarySearchSubscriptionError, SEARCH_RESULT_LIMIT,
 };
 pub use storage_browse::{StorageBrowseSnapshot, StorageBrowseSubscription, StorageBrowseView};
+pub use sync_activity::{DownloadsInFlight, SyncActivity, SyncActivityStream, UploadsInFlight};
 
 #[cfg(test)]
 mod creation_tests;

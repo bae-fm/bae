@@ -578,6 +578,11 @@ impl AppServices {
         self.inner.manager.subscribe_eager_cache_fill_status()
     }
 
+    /// Everything sync is doing now, live, for the activity indicator.
+    pub fn subscribe_sync_activity(&self) -> crate::library::SyncActivityStream {
+        crate::library::SyncActivityStream::new(self.inner.manager.clone())
+    }
+
     pub async fn cancel_eager_cache_fill(&self) -> Result<(), crate::library::LibraryError> {
         self.inner.manager.cancel_eager_cache_fill().await
     }

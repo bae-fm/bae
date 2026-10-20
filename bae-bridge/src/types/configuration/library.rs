@@ -324,7 +324,7 @@ pub struct BridgeEagerCacheFillProgress {
 }
 mirror_struct! {
     BridgeEagerCacheFillProgress = coven::PinProgress,
-    from_core: fn,
+    from_core: pub(crate) fn,
     fields: { files_completed, files_total, bytes_cached, bytes_total },
 }
 
