@@ -1064,6 +1064,16 @@ also needs Carol's S3 access key. The QR code one of her own devices shows
 carries that key beside the code, so scanning it is enough. A typed code asks
 for the key separately.
 
+**Where the code shows.** The apps call the restore code the *recovery code*.
+Carol adds a device from **Add Device…** under her own row in People, shown
+only for a library with a cloud home. Its sheet shows the QR code to scan, and
+the code to type on the new device instead, naming the onboarding choice that
+takes it; on S3 it says the QR code carries her key. Settings keeps the code
+under **Your recovery code**, for the day she loses every device: hidden until
+she asks, then shown in place as coven formats it, to copy or hide, and hidden
+again when Settings closes. On S3 that section also says she will need her
+access key and secret.
+
 **Removing a device.** Ben's old phone is lost. He removes it from his laptop.
 Had he lost every device, Ana, an admin, could remove it for him: admins can
 remove any person's device, and everyone else only their own. Removing a device
