@@ -6,16 +6,16 @@
     <description>Most recent updates to baeium</description>
     <language>en</language>
     <item>
-      <title>Version 0.6</title>
-      <pubDate>Sat, 04 Jul 2026 17:18:58 +0000</pubDate>
-      <sparkle:version>18</sparkle:version>
-      <sparkle:shortVersionString>0.6</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <title>Version 0.7</title>
+      <pubDate>Tue, 20 Oct 2026 00:57:23 +0000</pubDate>
+      <sparkle:version>26</sparkle:version>
+      <sparkle:shortVersionString>0.7</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/bae-fm/bae/releases/download/macos-v0.6/baeium-macos.dmg"
-        length="26957973"
+        url="https://github.com/bae-fm/bae/releases/download/macos-v0.7/baeium-macos.dmg"
+        length="49061050"
         type="application/octet-stream"
-        sparkle:edSignature="2MzK4uwGK+HbW4sNZAGvtqh6bw5gyfWtjnxc5Lg+11tRnX3Rzu+rAuQycysV7ueAfAxQJ3Wp32JR7e3pCUuRBA=="
+        sparkle:edSignature="v6Zo7kDceWNL0fBHJA0E4fA52J8Onwl+CGyf4A0kgfZVvpN0UVGS04C3PLOQ6soubABCMTKedy1+k6aZ7l0NAw=="
       />
     </item>
   </channel>
