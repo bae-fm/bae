@@ -1,8 +1,8 @@
 import Foundation
 
 /// Operations that run before a library is open: listing this device's
-/// libraries and the restore codes coven saved in iCloud Keychain, creating a
-/// library, and starting a restore or join. One injectable seam, so previews
+/// libraries and the restore codes coven saved in iCloud Keychain, deleting
+/// a saved code, creating a library, and starting a restore or join. One injectable seam, so previews
 /// never read or write real application data.
 public final class LibrarySetup: Sendable, Observable {
     public let listLibraries: @Sendable () async throws -> [BridgeLibrary]
@@ -14,6 +14,10 @@ public final class LibrarySetup: Sendable, Observable {
     /// listing them must not read as "no restore codes".
     public let savedRestoreCodes:
         @Sendable () async throws -> [BridgeSavedRestoreCode]
+    /// Delete a saved restore code from iCloud Keychain on all the person's
+    /// Apple devices. The library and its storage stay.
+    public let forgetSavedRestoreCode:
+        @Sendable (BridgeSavedRestoreCode) async throws -> Void
     /// One restore or join attempt.
     private let makeBootstrap: @MainActor @Sendable () -> LibraryBootstrap
 
@@ -22,11 +26,14 @@ public final class LibrarySetup: Sendable, Observable {
         createLibrary: @escaping @Sendable () async throws -> OpenedLibrary,
         savedRestoreCodes:
             @escaping @Sendable () async throws -> [BridgeSavedRestoreCode],
+        forgetSavedRestoreCode:
+            @escaping @Sendable (BridgeSavedRestoreCode) async throws -> Void,
         makeBootstrap: @escaping @MainActor @Sendable () -> LibraryBootstrap
     ) {
         self.listLibraries = listLibraries
         self.createLibrary = createLibrary
         self.savedRestoreCodes = savedRestoreCodes
+        self.forgetSavedRestoreCode = forgetSavedRestoreCode
         self.makeBootstrap = makeBootstrap
     }
 
@@ -39,6 +46,9 @@ public final class LibrarySetup: Sendable, Observable {
             listLibraries: { try await host.listLibraries() },
             createLibrary: { try await host.createLibrary(name: nil) },
             savedRestoreCodes: { try await host.savedRestoreCodes() },
+            forgetSavedRestoreCode: {
+                try await host.forgetSavedRestoreCode(saved: $0)
+            },
             makeBootstrap: {
                 LibraryBootstrap(host: host, deviceName: deviceName)
             }
@@ -60,15 +70,24 @@ public final class LibrarySetup: Sendable, Observable {
     }
 
     #if DEBUG
-        /// Serves `libraries` and no saved codes; every other operation throws.
-        /// A restore or join started from a preview fails at once.
+        /// Serves `libraries` and `savedCodes`; every other operation
+        /// throws. A restore, join or delete started from a preview fails at
+        /// once.
         public static func stub(
-            libraries: [BridgeLibrary] = []
+            libraries: [BridgeLibrary] = [],
+            savedCodes: [BridgeSavedRestoreCodeInfo] = []
         ) -> LibrarySetup {
             LibrarySetup(
                 listLibraries: { libraries },
                 createLibrary: { throw StubError.notImplemented },
-                savedRestoreCodes: { [] },
+                savedRestoreCodes: {
+                    savedCodes.map {
+                        PreviewSavedRestoreCode($0) as BridgeSavedRestoreCode
+                    }
+                },
+                forgetSavedRestoreCode: { _ in
+                    throw StubError.notImplemented
+                },
                 makeBootstrap: {
                     LibraryBootstrap(
                         host: BaeHost.make(

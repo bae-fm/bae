@@ -38,6 +38,7 @@ struct WelcomeListingsTests {
             listLibraries: { await bridge.listLibraries() },
             createLibrary: { throw WelcomeTestError.notUsed },
             savedRestoreCodes: { await bridge.savedRestoreCodes() },
+            forgetSavedRestoreCode: { _ in throw WelcomeTestError.notUsed },
             makeBootstrap: {
                 preconditionFailure("the welcome's lists start no restore")
             }
@@ -79,6 +80,6 @@ struct WelcomeListingsTests {
             Set(calls[3...]) == ["list libraries", "list saved codes"]
         )
         #expect(listings.localLibraries.value?.isEmpty == true)
-        #expect(listings.savedCodes.value?.isEmpty == true)
+        #expect(listings.savedCodes.list.value?.isEmpty == true)
     }
 }

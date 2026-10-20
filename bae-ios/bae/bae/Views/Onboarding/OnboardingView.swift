@@ -24,7 +24,7 @@ struct OnboardingView: View {
         switch mode {
         case .entry:
             OnboardingEntryScreen(
-                savedRestoreCodes: setup.savedRestoreCodes,
+                setup: setup,
                 onJoin: { show(.join) },
                 onAddDevice: { show(.restore(nil)) },
                 onRestoreSaved: { show(.restore($0.code)) }

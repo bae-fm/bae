@@ -138,6 +138,7 @@ struct BootstrapCodeView: View {
         var form = form
         if let saved = form.saved {
             Section("Saved recovery code") {
+                LabeledContent("Library", value: saved.info.name)
                 LabeledContent(
                     "Stored in",
                     value: saved.info.location.accountLine

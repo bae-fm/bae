@@ -45,15 +45,11 @@ struct WelcomeChooseView: View {
         listings.localLibraries.value ?? []
     }
 
-    private var savedEntries: [SavedRestoreEntry] {
-        listings.savedCodes.value ?? []
-    }
-
     /// Lead with "Create new library" only when both lookups finished and found
     /// nothing; a loading or failed lookup doesn't mean there are no libraries.
     private var isFirstRun: Bool {
         listings.localLibraries.value?.isEmpty == true
-            && listings.savedCodes.value?.isEmpty == true
+            && listings.savedCodes.list.value?.isEmpty == true
     }
 
     private var isBusy: Bool {
@@ -150,15 +146,21 @@ struct WelcomeChooseView: View {
                     onRemove: { askToRemove($0) }
                 )
             }
-            if let failure = listings.savedCodes.failure {
+            if let failure = listings.savedCodes.list.failure {
                 WelcomeLoadErrorCallout(
                     title: "Couldn't read recovery codes from your keychain",
                     error: failure
                 )
             }
-            else if !savedEntries.isEmpty {
+            else if listings.savedCodes.list.value?.isEmpty == false {
+                if let deleteError = listings.savedCodes.deleteError {
+                    WelcomeLoadErrorCallout(
+                        title: "Couldn't delete the recovery code",
+                        error: deleteError
+                    )
+                }
                 KeychainRestoreSection(
-                    entries: savedEntries,
+                    codes: listings.savedCodes,
                     disabled: isBusy,
                     onRestore: { onRestoreSaved($0.code) }
                 )
@@ -260,8 +262,8 @@ enum WelcomeLayout {
     static let columnWidth: CGFloat = 400
 }
 
-/// A danger notice for a failed open or lookup: a title naming what failed,
-/// the error, and optional guidance.
+/// A danger notice for a failed open, lookup or delete: a title naming what
+/// failed, the error, and optional guidance.
 private struct WelcomeLoadErrorCallout: View {
     let title: LocalizedStringKey
     let error: DisplayError

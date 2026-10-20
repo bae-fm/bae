@@ -1,14 +1,11 @@
 import BaeKit
 import SwiftUI
-import os.log
-
-private let logger = Logger.bae("OnboardingEntryScreen")
 
 /// The first-run chooser: add this device to one of your own libraries with
 /// its code, join someone's library by invitation, or restore from a code
 /// coven saved in iCloud Keychain.
 struct OnboardingEntryScreen: View {
-    let savedRestoreCodes: @Sendable () async throws -> [BridgeSavedRestoreCode]
+    let setup: LibrarySetup
     let onJoin: () -> Void
     let onAddDevice: () -> Void
     let onRestoreSaved: (SavedRestoreEntry) -> Void
@@ -18,15 +15,7 @@ struct OnboardingEntryScreen: View {
 
     /// Restore codes coven saved in iCloud Keychain.
     @State
-    private var saved: SavedCodes = .loading
-
-    /// A refused lookup is kept apart from an empty one: a locked keychain
-    /// doesn't mean there are no restore codes.
-    private enum SavedCodes {
-        case loading
-        case loaded([SavedRestoreEntry])
-        case failed(DisplayError)
-    }
+    private var saved = SavedRestoreCodes()
 
     private static let buttonWidth: CGFloat = 240
 
@@ -62,25 +51,23 @@ struct OnboardingEntryScreen: View {
             }
         }
         .scrollBounceBehavior(.basedOnSize)
-        .task { await loadSavedCodes() }
+        .task { await saved.load(from: setup) }
     }
 
     @ViewBuilder
     private var savedCodesSection: some View {
-        switch saved {
+        switch saved.list {
         case .loading:
             EmptyView()
         case .failed(let error):
-            VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                Text("Couldn't read recovery codes from your keychain")
-                    .themeText(.strong)
-                ErrorDetailDisclosure(error: error, showIcon: false)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .notice(.danger)
+            ErrorNotice(
+                title: "Couldn't read recovery codes from your keychain",
+                error: error
+            )
         case .loaded(let entries) where !entries.isEmpty:
             SavedRestoreCodesList(
-                entries: entries,
+                codes: saved,
+                setup: setup,
                 disabled: removals.isRetrying,
                 onRestore: onRestoreSaved
             )
@@ -88,36 +75,33 @@ struct OnboardingEntryScreen: View {
             EmptyView()
         }
     }
+}
 
-    private func loadSavedCodes() async {
-        do {
-            let codes = try await savedRestoreCodes()
-            try Task.checkCancellation()
-            saved = .loaded(codes.map { SavedRestoreEntry(code: $0) })
+/// A failed keychain read or delete: what failed, and the error.
+private struct ErrorNotice: View {
+    let title: LocalizedStringKey
+    let error: DisplayError
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            Text(title)
+                .themeText(.strong)
+            ErrorDetailDisclosure(error: error, showIcon: false)
         }
-        catch is CancellationError {
-            logger.debug("Saved restore code lookup cancelled")
-        }
-        catch {
-            // A refused lookup (such as a locked keychain) isn't the same as
-            // no restore codes. No line means core reported a cancellation.
-            guard let failure = DisplayError(error) else {
-                logger.debug("Saved restore code lookup cancelled")
-                return
-            }
-            logger.error(
-                "Saved restore code lookup failed: \(error.localizedDescription)"
-            )
-            saved = .failed(failure)
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .notice(.danger)
     }
 }
 
-/// One row per restore code coven saved in iCloud Keychain. A code carries no
-/// name, so each row shows the provider and the account or bucket the library
-/// is in.
+/// One row per restore code coven saved in iCloud Keychain, with Restore and
+/// Delete. Each row shows the library's name as the person's devices last saw
+/// it, over the provider and the account or bucket the code holds: two
+/// libraries can share a name, or one renamed on another device still shows
+/// its old name, and the location tells them apart. Delete asks first, then
+/// removes the code from iCloud Keychain on all the person's Apple devices.
 private struct SavedRestoreCodesList: View {
-    let entries: [SavedRestoreEntry]
+    let codes: SavedRestoreCodes
+    let setup: LibrarySetup
     let disabled: Bool
     let onRestore: (SavedRestoreEntry) -> Void
 
@@ -130,30 +114,115 @@ private struct SavedRestoreCodesList: View {
             )
             .themeText(.detail)
             .foregroundStyle(.secondary)
-            ForEach(entries, id: \.info.libraryId) { entry in
-                HStack(spacing: ThemeSpace.related) {
-                    Text(entry.info.location.accountLine)
-                        .themeText(.rowTitle)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    Spacer()
-                    Button("Restore") { onRestore(entry) }
-                        .buttonStyle(.bordered)
-                }
-                .padding(.horizontal, ThemeSpace.edge)
-                .padding(.vertical, ThemeSpace.related)
-                .background(Color.secondary.opacity(ThemeOpacity.tint))
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.control))
+            if let deleteError = codes.deleteError {
+                ErrorNotice(
+                    title: "Couldn't delete the recovery code",
+                    error: deleteError
+                )
+            }
+            ForEach(codes.list.value ?? [], id: \.info.libraryId) { entry in
+                SavedCodeRow(
+                    entry: entry,
+                    isDeleting: codes.deletingLibraryId == entry.info.libraryId,
+                    onRestore: onRestore,
+                    onDelete: { codes.askToDelete($0) }
+                )
             }
         }
         .frame(maxWidth: 360)
         .padding(.top, ThemeSpace.section)
-        .disabled(disabled)
+        .disabled(disabled || codes.deletingLibraryId != nil)
+        .alert(
+            "Delete this recovery code?",
+            isPresented: Binding(
+                get: { codes.pendingDelete != nil },
+                set: { if !$0 { codes.dismissDelete() } }
+            ),
+            presenting: codes.pendingDelete
+        ) { pending in
+            Button("Delete", role: .destructive) {
+                // The person confirmed; the delete finishes even if this
+                // screen closes meanwhile.
+                Task { await codes.delete(pending, from: setup) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { pending in
+            Text(
+                "This removes the recovery code for “\(pending.info.name)” from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this device or in your storage."
+            )
+        }
+    }
+}
+
+/// One saved code: the library's name, its provider and location, Restore,
+/// and Delete, which shows progress while the delete runs.
+private struct SavedCodeRow: View {
+    let entry: SavedRestoreEntry
+    let isDeleting: Bool
+    let onRestore: (SavedRestoreEntry) -> Void
+    let onDelete: (SavedRestoreEntry) -> Void
+
+    var body: some View {
+        HStack(spacing: ThemeSpace.related) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                Text(entry.info.name)
+                    .themeText(.rowTitle)
+                    .lineLimit(1)
+                Text(entry.info.location.accountLine)
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            Spacer()
+            Button("Restore") { onRestore(entry) }
+                .buttonStyle(.bordered)
+            ZStack {
+                Button("Delete", systemImage: "trash", role: .destructive) {
+                    onDelete(entry)
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.bordered)
+                .opacity(isDeleting ? 0 : 1)
+                .allowsHitTesting(!isDeleting)
+                ProgressView()
+                    .opacity(isDeleting ? 1 : 0)
+            }
+        }
+        .padding(.horizontal, ThemeSpace.edge)
+        .padding(.vertical, ThemeSpace.related)
+        .background(Color.secondary.opacity(ThemeOpacity.tint))
+        .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.control))
     }
 }
 
 #if DEBUG
 #Preview {
     PreviewScenes.welcome()
+}
+
+#Preview("Saved codes") {
+    OnboardingEntryScreen(
+        setup: .stub(savedCodes: PreviewSavedRestoreCode.samples),
+        onJoin: {},
+        onAddDevice: {},
+        onRestoreSaved: { _ in }
+    )
+    .background(Theme.background)
+    .environment(PreviewData.removals())
+}
+
+#Preview("Delete confirmation") {
+    let entries = PreviewSavedRestoreCode.samples.map {
+        SavedRestoreEntry(code: PreviewSavedRestoreCode($0))
+    }
+    SavedRestoreCodesList(
+        codes: SavedRestoreCodes(previewing: entries, confirming: entries[0]),
+        setup: .stub(savedCodes: PreviewSavedRestoreCode.samples),
+        disabled: false,
+        onRestore: { _ in }
+    )
+    .padding()
+    .background(Theme.background)
 }
 #endif

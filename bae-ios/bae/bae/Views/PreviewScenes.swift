@@ -11,7 +11,7 @@ enum PreviewScenes {
     /// The first-run onboarding entry screen over the app's dark background.
     static func welcome() -> some View {
         OnboardingEntryScreen(
-            savedRestoreCodes: { [] },
+            setup: .stub(),
             onJoin: {},
             onAddDevice: {},
             onRestoreSaved: { _ in }

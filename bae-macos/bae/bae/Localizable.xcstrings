@@ -38482,7 +38482,7 @@
       }
     },
     "Delete" : {
-      "comment" : "Album detail: confirm-delete button in the delete-release alert",
+      "comment" : "Delete button: confirms the delete-release alert in album detail; on the welcome screen, a saved recovery code row's delete button and the confirm button of its delete alert",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -130729,6 +130729,525 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "新增 %@ 金鑰..."
+          }
+        }
+      }
+    },
+    "Delete this recovery code?" : {
+      "comment" : "Welcome screen: title of the alert confirming deletion of a recovery code saved in iCloud Keychain",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "حذف رمز الاسترداد هذا؟"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Да се изтрие ли този код за възстановяване?"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Smazat tento kód pro obnovení?"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slet denne gendannelseskode?"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diesen Wiederherstellungscode löschen?"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Διαγραφή αυτού του κωδικού ανάκτησης;"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete this recovery code?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Eliminar este código de recuperación?"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poistetaanko tämä palautuskoodi?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer ce code de récupération ?"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "למחוק את קוד השחזור הזה?"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Izbrisati ovaj kod za oporavak?"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Törlöd ezt a helyreállítási kódot?"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminare questo codice di recupero?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この復旧コードを削除しますか？"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 복구 코드를 삭제하시겠습니까?"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vil du slette denne gjenopprettingskoden?"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deze herstelcode verwijderen?"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usunąć ten kod odzyskiwania?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Excluir este código de recuperação?"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar este código de recuperação?"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ștergi acest cod de recuperare?"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odstrániť tento kód na obnovenie?"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radera den här återställningskoden?"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu kurtarma kodu silinsin mi?"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Видалити цей код відновлення?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除此恢复码？"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刪除此復原碼？"
+          }
+        }
+      }
+    },
+    "This removes the recovery code for “%@” from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this Mac or in your storage." : {
+      "comment" : "Welcome screen: body of the alert confirming deletion of a saved recovery code; %@ is the library's name",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يؤدي هذا إلى إزالة رمز الاسترداد الخاص بـ «%@» من سلسلة مفاتيح iCloud على جميع أجهزة Apple لديك. لا يحذف المكتبة، ولا أي شيء على جهاز Mac هذا أو في مساحة التخزين لديك."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Това премахва кода за възстановяване за „%@“ от Ключодържателя на iCloud на всички ваши устройства на Apple. Не изтрива библиотеката, нито нещо на този Mac или във вашето хранилище."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tímto odstraníte kód pro obnovení knihovny „%@“ z iCloud Klíčenky na všech svých zařízeních Apple. Knihovna ani nic na tomto Macu nebo ve vašem úložišti se nesmaže."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette fjerner gendannelseskoden for »%@« fra iCloud-nøglering på alle dine Apple-enheder. Det sletter ikke biblioteket eller noget på denne Mac eller i dit lager."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dadurch wird der Wiederherstellungscode für „%@“ auf allen deinen Apple-Geräten aus dem iCloud-Schlüsselbund entfernt. Die Bibliothek wird nicht gelöscht, ebenso wenig etwas auf diesem Mac oder in deinem Speicher."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Έτσι αφαιρείται ο κωδικός ανάκτησης για «%@» από το Μπρελόκ iCloud σε όλες τις συσκευές Apple σας. Δεν διαγράφεται η βιβλιοθήκη ούτε τίποτα σε αυτό το Mac ή στον χώρο αποθήκευσής σας."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This removes the recovery code for “%@” from iCloud Keychain on all your Apple devices. It doesn't delete the library, or anything on this Mac or in your storage."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto elimina el código de recuperación de «%@» del llavero de iCloud en todos tus dispositivos Apple. No elimina la biblioteca ni nada de este Mac ni de tu almacenamiento."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tämä poistaa kirjaston ”%@” palautuskoodin iCloud-avainnipusta kaikilla Apple-laitteillasi. Se ei poista kirjastoa eikä mitään tältä Macilta tai tallennustilastasi."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette action supprime le code de récupération de « %@ » du trousseau iCloud sur tous vos appareils Apple. Elle ne supprime ni la bibliothèque, ni quoi que ce soit sur ce Mac ou dans votre stockage."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פעולה זו מסירה את קוד השחזור של ״%@״ ממחזיק המפתחות של iCloud בכל מכשירי Apple שלך. היא לא מוחקת את הספרייה, ולא שום דבר ב-Mac הזה או באחסון שלך."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time se kod za oporavak za „%@” uklanja iz iCloud privjeska ključeva na svim vašim Apple uređajima. Ne briše se fonoteka ni išta na ovom Macu ili u vašoj pohrani."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ez eltávolítja a(z) „%@” helyreállítási kódját az iCloud-kulcstartóból az összes Apple-eszközödön. Nem törli a könyvtárat, sem semmit ezen a Macen vagy a tárhelyeden."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il codice di recupero di «%@» verrà rimosso dal portachiavi iCloud su tutti i tuoi dispositivi Apple. Non verrà eliminata la libreria, né nulla su questo Mac o nel tuo spazio di archiviazione."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」の復旧コードを、すべてのAppleデバイスのiCloudキーチェーンから削除します。ライブラリや、このMacおよびストレージ上のものは削除されません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모든 Apple 기기의 iCloud 키체인에서 '%@'의 복구 코드를 제거합니다. 라이브러리나 이 Mac 또는 저장소에 있는 항목은 삭제되지 않습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette fjerner gjenopprettingskoden for «%@» fra iCloud-nøkkelringen på alle Apple-enhetene dine. Det sletter ikke biblioteket eller noe på denne Macen eller i lagringen din."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiermee wordt de herstelcode voor ‘%@’ verwijderd uit de iCloud-sleutelhanger op al je Apple-apparaten. De bibliotheek wordt niet verwijderd, en ook niets op deze Mac of in je opslag."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spowoduje to usunięcie kodu odzyskiwania dla „%@” z pęku kluczy iCloud na wszystkich Twoich urządzeniach Apple. Nie usuwa to biblioteki ani niczego na tym Macu ani w Twojej przestrzeni dyskowej."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isso remove o código de recuperação de “%@” das Chaves do iCloud em todos os seus dispositivos Apple. Não exclui a biblioteca nem nada neste Mac ou no seu armazenamento."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isto remove o código de recuperação de “%@” do Porta-chaves iCloud em todos os seus dispositivos Apple. Não elimina a biblioteca nem nada neste Mac ou no seu armazenamento."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Astfel, codul de recuperare pentru „%@” este eliminat din brelocul iCloud de pe toate dispozitivele tale Apple. Biblioteca nu este ștearsă și nici nimic de pe acest Mac sau din spațiul tău de stocare."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Týmto sa kód na obnovenie pre „%@“ odstráni z kľúčenky iCloud na všetkých tvojich zariadeniach Apple. Neodstráni sa knižnica ani nič na tomto Macu alebo v tvojom úložisku."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detta tar bort återställningskoden för ”%@” från iCloud-nyckelringen på alla dina Apple-enheter. Biblioteket raderas inte, och inte heller något på den här Macen eller i din lagring."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu işlem, “%@” için kurtarma kodunu tüm Apple aygıtlarınızdaki iCloud Anahtar Zinciri'nden kaldırır. Kitaplığı veya bu Mac'teki ya da depolama alanınızdaki hiçbir şeyi silmez."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Це вилучить код відновлення для «%@» із В’язки ключів iCloud на всіх ваших пристроях Apple. Бібліотеку, а також усе на цьому Mac і у вашому сховищі, не буде видалено."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这会从你所有 Apple 设备上的 iCloud 钥匙串中移除“%@”的恢复码。不会删除该库，也不会删除这台 Mac 上或你的存储空间中的任何内容。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這會從你所有 Apple 裝置上的 iCloud 鑰匙圈中移除「%@」的復原碼。不會刪除該資料庫，也不會刪除這部 Mac 上或你的儲存空間中的任何內容。"
+          }
+        }
+      }
+    },
+    "Couldn't delete the recovery code" : {
+      "comment" : "Welcome screen callout title when deleting a recovery code saved in iCloud Keychain fails",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّر حذف رمز الاسترداد"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кодът за възстановяване не можа да бъде изтрит"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kód pro obnovení se nepodařilo smazat"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gendannelseskoden kunne ikke slettes"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Wiederherstellungscode konnte nicht gelöscht werden"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Δεν ήταν δυνατή η διαγραφή του κωδικού ανάκτησης"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't delete the recovery code"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo eliminar el código de recuperación"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Palautuskoodia ei voitu poistaa"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de supprimer le code de récupération"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן היה למחוק את קוד השחזור"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije moguće izbrisati kod za oporavak"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nem sikerült törölni a helyreállítási kódot"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile eliminare il codice di recupero"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "復旧コードを削除できませんでした"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "복구 코드를 삭제할 수 없습니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke slette gjenopprettingskoden"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kan de herstelcode niet verwijderen"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie udało się usunąć kodu odzyskiwania"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível excluir o código de recuperação"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível eliminar o código de recuperação"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codul de recuperare nu a putut fi șters"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kód na obnovenie sa nepodarilo odstrániť"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det gick inte att radera återställningskoden"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kurtarma kodu silinemedi"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не вдалося видалити код відновлення"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法删除恢复码"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法刪除復原碼"
           }
         }
       }

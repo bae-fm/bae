@@ -8,19 +8,19 @@ private let logger = Logger.bae("WelcomeListings")
 /// saved in iCloud Keychain for libraries not on it. Core leaves out the code
 /// of a library this Mac holds, so the lists change together: removing a
 /// library from this Mac offers its code, which stays saved until the person
-/// leaves the library.
+/// leaves the library or deletes the code.
 @MainActor
 @Observable
 final class WelcomeListings {
     /// Libraries on this Mac.
     private(set) var localLibraries: SectionLoad<[BridgeLibrary]> = .loading
     /// Restore codes saved in iCloud Keychain for libraries not on this Mac.
-    private(set) var savedCodes: SectionLoad<[SavedRestoreEntry]> = .loading
+    let savedCodes = SavedRestoreCodes()
 
     /// Read both lists.
     func load(from setup: LibrarySetup) async {
         async let libraries: Void = loadLocalLibraries(from: setup)
-        async let codes: Void = loadSavedRestoreCodes(from: setup)
+        async let codes: Void = savedCodes.load(from: setup)
         _ = await (libraries, codes)
     }
 
@@ -61,48 +61,5 @@ final class WelcomeListings {
             )
             localLibraries = .failed(failure)
         }
-    }
-
-    private func loadSavedRestoreCodes(from setup: LibrarySetup) async {
-        do {
-            let saved = try await setup.savedRestoreCodes()
-            try Task.checkCancellation()
-            savedCodes = .loaded(
-                saved.map { SavedRestoreEntry(code: $0) }
-            )
-        }
-        catch is CancellationError {
-            logger.debug("Saved restore code lookup cancelled")
-        }
-        catch {
-            // A refused lookup (such as a locked keychain) isn't the same as
-            // no restore codes. No line means core reported a cancellation.
-            guard let failure = DisplayError(error) else {
-                logger.debug("Saved restore code lookup cancelled")
-                return
-            }
-            logger.error(
-                "Saved restore code lookup failed: \(error.localizedDescription)"
-            )
-            savedCodes = .failed(failure)
-        }
-    }
-}
-
-/// A welcome-screen lookup's state; a failure is kept apart from an empty
-/// result because they show different screens.
-enum SectionLoad<Value> {
-    case loading
-    case loaded(Value)
-    case failed(DisplayError)
-
-    var value: Value? {
-        if case .loaded(let value) = self { return value }
-        return nil
-    }
-
-    var failure: DisplayError? {
-        if case .failed(let failure) = self { return failure }
-        return nil
     }
 }

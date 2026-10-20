@@ -125,6 +125,7 @@ struct BootstrapCodeScreen: View {
         var form = form
         if let saved = form.saved {
             Section {
+                LabeledContent("Library", value: saved.info.name)
                 LabeledContent(
                     "Stored in",
                     value: saved.info.location.accountLine
