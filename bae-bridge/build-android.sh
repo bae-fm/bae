@@ -92,7 +92,7 @@ for ABI in "${ABIS[@]}"; do
         exit 1
     fi
     echo "Building bae-bridge for $ABI ($TARGET, $CARGO_PROFILE, features: ${BAE_BRIDGE_FEATURES:-(none)})..."
-    FFMPEG_DIR="$FFMPEG_PREFIX/$FA" RUSTC_WRAPPER="" cargo build $CARGO_FLAGS --target "$TARGET" -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
+    FFMPEG_DIR="$FFMPEG_PREFIX/$FA" cargo build $CARGO_FLAGS --target "$TARGET" -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
 done
 
 # Bindings come from the built .a: the release .so is stripped of the uniffi
