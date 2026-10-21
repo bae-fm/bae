@@ -1293,8 +1293,7 @@ whether or not the cloud is reachable.
 **The activity indicator.** Sync takes one small control in the window's
 title bar on macOS and in the library's top bar on iOS and Android, never a
 bar across the content. While bytes move it is a spinner: files this device
-is sending, offline copies downloading, or files still arriving from another
-device. While something needs the person, a sync failure or a pending record,
+is sending, or offline copies downloading. While something needs the person, a sync failure or a pending record,
 it shows a small warning symbol, beside the spinner when both hold. With
 neither it is absent. A pass alone doesn't spin it: an idle library runs one
 every half minute, and the indicator would blink for nothing.
@@ -1306,10 +1305,8 @@ each abandoned upload, with *Open Sync Settings*, where each record offers its
 action. Then one row per
 thing moving: a pass syncing the library's changes, the uploads ("2
 uploading · 10 queued", with the bytes their providers confirmed), and the
-offline downloads, which on the phones open the downloads list. Then the files
-still arriving, one section per device, "Arriving from Studio Mac", listing
-the albums by title and counting other pictures. With nothing to show it says everything is up
-to date. *Retry Now* is always there; it retries everything at once, as
+offline downloads, which on the phones open the downloads list. With nothing
+to show it says everything is up to date. *Retry Now* is always there; it retries everything at once, as
 pulling to refresh does.
 
 **Abandoned uploads.** A file this device attached can lose its row before
@@ -1351,13 +1348,10 @@ shows the album at once, and each file's row names its file when that file's
 upload completes on the Mac. Until then the phone holds the row without a
 file. It can't tell an upload still running on the Mac from a release the Mac
 keeps local: either way the release reads as not uploaded, and a picture
-without its file shows its placeholder. No device waits for another's upload,
-so no pending record is about one.
-
-The activity list's arrival sections, the cloud mark on an album's card, the
-"Arriving from Studio Mac" line and the dimmed tracks read which files another
-device is still uploading. Nothing tells this device that any more, so they
-never show.
+without its file shows its placeholder. The phone sees the release's files
+once they are uploaded, and nothing before that: no album or track is marked
+as on its way. No device waits for another's upload, so no pending record is
+about one.
 
 Ben's laptop shows "Waiting: 2 items": Dropbox wants him to sign in again, and
 a file of his vinyl rip moved before it uploaded. The list offers *Sign In* for
