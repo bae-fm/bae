@@ -4,6 +4,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.performBridgeAction
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -29,7 +30,10 @@ internal data class SessionMessage(
  * screen shows is shown once one does.
  */
 class SessionMessages internal constructor(
-    /** The session's scope, so an action and its Retry outlive the screen they started on. */
+    /**
+     * The session's scope, so an action and its Retry outlive the screen they
+     * started on; its bug handler reports what isn't an expected failure.
+     */
     private val scope: CoroutineScope,
     private val errors: ErrorDisplays,
 ) {
@@ -58,7 +62,8 @@ class SessionMessages internal constructor(
         operation: String,
         action: suspend () -> Unit,
     ) {
-        scope.launch {
+        // A failure that isn't a typed bridge error is a bug, for the scope's handler.
+        scope.launch(CoroutineName(operation)) {
             performBridgeAction(logger, operation, errors, { shown ->
                 if (shown == null) {
                     logger.debug("$operation was cancelled; nothing to show")

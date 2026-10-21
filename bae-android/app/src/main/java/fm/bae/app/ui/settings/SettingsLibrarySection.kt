@@ -18,7 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +40,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeErrorCategory
@@ -187,7 +187,7 @@ private fun RenameLibraryDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     var draft by remember { mutableStateOf(current) }
     var error by remember { mutableStateOf<DisplayError?>(null) }
     var saving by remember { mutableStateOf(false) }

@@ -16,7 +16,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +25,7 @@ import fm.bae.app.R
 import fm.bae.app.data.WindowedBrowserPageStore
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -46,7 +46,7 @@ internal fun LibraryPageContent(
     rows: @Composable () -> Unit,
 ) {
     var refreshing by remember { mutableStateOf(false) }
-    val refreshScope = rememberCoroutineScope()
+    val refreshScope = rememberScreenScope()
     val onRefresh: () -> Unit = {
         session.appHandle.retryNow()
         refreshScope.launch {

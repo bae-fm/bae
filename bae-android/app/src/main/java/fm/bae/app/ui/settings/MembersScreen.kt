@@ -28,7 +28,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +58,7 @@ import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.LabeledValueRow
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.StatusChip
+import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -219,7 +219,7 @@ fun MembersScreen(
     onBack: () -> Unit,
 ) {
     val appContext = LocalContext.current.applicationContext
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     val model = remember(session) { MembersModel(session.appHandle, LocaleErrorDisplays(appContext), scope) }
     DisposableEffect(model) { onDispose(model.subscribe()) }
     LaunchedEffect(model) { model.loadStorage() }

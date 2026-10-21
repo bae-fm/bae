@@ -43,7 +43,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
@@ -55,7 +54,6 @@ import fm.bae.app.durationClockLabel
 import fm.bae.app.durationUnitsText
 import fm.bae.app.labelsLineText
 import fm.bae.app.pressingLineText
-import fm.bae.app.runLoggedBridgeCommand
 import fm.bae.app.sideHeaderText
 import fm.bae.app.text
 import fm.bae.app.ui.BaeTheme
@@ -70,12 +68,13 @@ import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.library.LibraryDetailTopBar
 import fm.bae.app.ui.playback.NowPlayingBar
+import fm.bae.app.ui.rememberScreenScope
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
-
-private const val TAG = "bae.AlbumDetailScreen"
-private val logger = BaeLogger(TAG)
 
 internal data class AlbumPlaybackState(
     val currentTrackId: String?,
@@ -114,6 +113,7 @@ fun AlbumDetailScreen(
     val isPlaying by session.playback.isPlaying.collectAsState()
     var selectedReleaseId by remember(albumId, initialReleaseId) { mutableStateOf(initialReleaseId) }
     val appContext = LocalContext.current
+    val scope = rememberScreenScope()
 
     DisposableEffect(albumId, session) {
         session.libraryQueries.album.activate(albumId)
@@ -151,7 +151,7 @@ fun AlbumDetailScreen(
                     selectedRelease = release,
                     cover = release?.cover,
                     playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
-                    callbacks = buildAlbumDetailCallbacks(session, release) { selectedReleaseId = it },
+                    callbacks = buildAlbumDetailCallbacks(session, release, scope) { selectedReleaseId = it },
                     releaseDownloadControl = { rel -> ReleaseDownloadControl(session = session, release = rel) },
                 )
             }
@@ -216,9 +216,15 @@ private fun BoxScope.AlbumDetailPlaceholderBox(
     }
 }
 
+/**
+ * The page's commands, each run in [scope], whose bug handler reports one that
+ * fails: these calls fail only if this device's library is broken, never in
+ * normal use.
+ */
 private fun buildAlbumDetailCallbacks(
     session: OpenLibrary,
     release: BridgeRelease?,
+    scope: CoroutineScope,
     onSelectRelease: (String) -> Unit,
 ): AlbumDetailCallbacks {
     fun runPlayReleaseCommand(
@@ -227,7 +233,7 @@ private fun buildAlbumDetailCallbacks(
         shuffled: Boolean,
     ) {
         release?.let {
-            runLoggedBridgeCommand(logger, operation(it)) {
+            scope.launch(CoroutineName(operation(it))) {
                 session.appHandle.playRelease(it.id, startTrackId, shuffled)
             }
         }
@@ -238,7 +244,7 @@ private fun buildAlbumDetailCallbacks(
         command: (String) -> Unit,
     ) {
         release?.let {
-            runLoggedBridgeCommand(logger, "$operation ${it.id}") {
+            scope.launch(CoroutineName("$operation ${it.id}")) {
                 command(it.id)
             }
         }
@@ -249,7 +255,7 @@ private fun buildAlbumDetailCallbacks(
         operation: String,
         command: (List<String>) -> Unit,
     ) {
-        runLoggedBridgeCommand(logger, "$operation $trackId") {
+        scope.launch(CoroutineName("$operation $trackId")) {
             command(listOf(trackId))
         }
     }

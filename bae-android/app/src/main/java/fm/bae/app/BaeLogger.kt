@@ -106,15 +106,3 @@ class BaeLogger(
             "$message\n${throwable.stackTraceToString()}"
         }
 }
-
-internal fun runLoggedBridgeCommand(
-    logger: BaeLogger,
-    operation: String,
-    command: () -> Unit,
-) {
-    try {
-        command()
-    } catch (e: Exception) {
-        logger.error("$operation failed", e)
-    }
-}

@@ -16,7 +16,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -35,6 +34,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -115,7 +115,7 @@ internal fun RecoveryCodeSection(
     generate: suspend () -> String,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     val reveal = remember { RecoveryCodeReveal(scope, generate) { context.displayError(it) } }
     RecoveryCodeSectionContent(
         needsS3Key = needsS3Key,

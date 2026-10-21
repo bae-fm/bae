@@ -54,6 +54,7 @@ class MainActivity : ComponentActivity() {
                 startupError =
                     app.platformStartupError?.let(::DisplayError)
                         ?: app.startupError?.let { displayError(it) ?: DisplayError(it.toString()) },
+                bugs = app.bugs,
                 shortcutAction = pendingShortcut,
                 onShortcutHandled = { pendingShortcut = null },
             )
@@ -84,7 +85,7 @@ class MainActivity : ComponentActivity() {
         // process death while backgrounded. We can't shut core down (that would
         // stop the background audio), so this is the save point on Android.
         val session = AppSessionHolder.currentSession() ?: return
-        lifecycleScope.launch {
+        lifecycleScope.launch((application as BaeApp).bugs.handler) {
             // No screen asked for the save, so its failure shows as a snackbar when the library is next on screen.
             performBridgeAction(
                 logger = logger,

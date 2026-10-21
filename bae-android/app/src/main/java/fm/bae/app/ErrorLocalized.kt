@@ -109,7 +109,9 @@ class LocaleErrorDisplays(
 
 /**
  * Run a user-triggered bridge action, preserving coroutine cancellation while
- * turning every operation failure into the library's visible error state.
+ * turning its expected failure — a typed bridge error — into what [showError]
+ * shows. Any other failure is a bug and propagates to the coroutine scope's
+ * bug handler.
  */
 internal suspend fun performBridgeAction(
     logger: BaeLogger,
@@ -125,8 +127,5 @@ internal suspend fun performBridgeAction(
     } catch (e: BridgeException) {
         logger.error("$operation failed", e)
         showError(errors.display(e))
-    } catch (e: Exception) {
-        logger.error("$operation failed", e)
-        showError(DisplayError(e.toString()))
     }
 }

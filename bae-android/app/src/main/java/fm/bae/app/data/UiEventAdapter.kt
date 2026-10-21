@@ -1,7 +1,7 @@
 package fm.bae.app.data
 
 import fm.bae.app.BaeLogger
-import fm.bae.app.DisplayError
+import fm.bae.app.BugReports
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.playback.PlaybackEventSink
 import kotlinx.coroutines.CancellationException
@@ -19,6 +19,7 @@ object UiEventAdapter {
     suspend fun handle(
         event: BridgeUiEvent,
         messages: SessionMessages,
+        bugs: BugReports,
         player: PlaybackEventSink,
         errors: ErrorDisplays,
     ) {
@@ -32,8 +33,9 @@ object UiEventAdapter {
             logger.error("event handling failed", e)
             messages.show(errors.display(e))
         } catch (e: Exception) {
-            logger.error("event handling failed", e)
-            messages.show(DisplayError(e.toString()))
+            // A bug, reported here rather than by the scope's handler so the
+            // loop goes on to the next event.
+            bugs.report("handle ${event::class.simpleName}", e)
         }
     }
 

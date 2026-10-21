@@ -20,7 +20,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -45,6 +44,7 @@ import fm.bae.app.ui.components.Notice
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.library.LibraryDestination
+import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeDeviceReset
@@ -117,7 +117,7 @@ private fun SyncStatus(
     onOpenPending: () -> Unit,
     onResetDevice: (BridgeDeviceReset) -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     val indicator by session.syncStatusStore.indicator.collectAsState()
     val error by session.syncStatusStore.error.collectAsState()
     SyncStatusLine(indicator = indicator, onOpenPending = onOpenPending)
@@ -166,7 +166,7 @@ private fun DisconnectControl(
     session: OpenLibrary,
     onDisconnected: () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     val flow = rememberDisconnectSyncFlow(session, onDisconnected)
     val flowState by flow.state.collectAsState()
 
@@ -239,7 +239,7 @@ private fun rememberDisconnectSyncFlow(
     onDisconnected: () -> Unit,
 ): DisconnectSyncFlow {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     return remember(session) {
         DisconnectSyncFlow(
             scope = scope,

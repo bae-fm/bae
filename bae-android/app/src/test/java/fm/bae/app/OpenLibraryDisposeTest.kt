@@ -15,6 +15,7 @@ import fm.bae.app.playback.BaeCorePlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
@@ -49,6 +50,20 @@ class OpenLibraryDisposeTest {
 
         runBlocking { session.dispose() }
 
+        assertEquals(listOf("shutdown", "close"), handle.calls)
+    }
+
+    /** A screen still composed could take a tap, so the handle stays open until the last of them is gone. */
+    @Test
+    fun disposeWaitsForTheLibrarysScreensToGoBeforeClosing() {
+        val (session, handle) = openLibrary()
+        session.screenShown()
+
+        val disposing = CoroutineScope(Dispatchers.Unconfined).launch { session.dispose() }
+        assertEquals(emptyList<String>(), handle.calls)
+
+        session.screenGone()
+        runBlocking { disposing.join() }
         assertEquals(listOf("shutdown", "close"), handle.calls)
     }
 
@@ -121,6 +136,7 @@ class OpenLibraryDisposeTest {
                             ),
                         scope = scope,
                         messages = SessionMessages(scope, NoErrorDisplays),
+                        bugs = BugReports(),
                     ),
                 appContext = context,
             )

@@ -5,11 +5,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
+import fm.bae.app.LocalBugHandler
 import fm.bae.app.coreString
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
@@ -152,7 +155,10 @@ private fun AppearanceScene(
     val store = remember(mode, tone, accent) { AppearanceStore(AppearancePreferences(mode, accent, tone)) {} }
     BaeTheme(appearance = store) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            AppearanceSection()
+            // The section's coroutine scope reports bugs; a scene has nothing to report to.
+            CompositionLocalProvider(LocalBugHandler provides BugReports().handler) {
+                AppearanceSection()
+            }
         }
     }
 }

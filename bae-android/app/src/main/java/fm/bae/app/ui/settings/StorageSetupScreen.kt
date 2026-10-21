@@ -26,7 +26,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +48,7 @@ import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.QRCodeImage
+import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeCloudProvider
@@ -92,7 +92,7 @@ internal fun StorageSetupScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     val flow = remember(session) { StorageSetupFlow(session, oauthProviders, context, scope) }
     val back = { flow.back(onBack) }
     BackHandler(onBack = back)

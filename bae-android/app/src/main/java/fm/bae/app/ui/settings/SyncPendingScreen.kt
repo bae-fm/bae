@@ -32,7 +32,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,6 +53,7 @@ import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeAdminAccess
@@ -192,7 +192,7 @@ internal fun SyncPendingScreen(
     val indicator by session.syncStatusStore.indicator.collectAsState()
     val failure by session.syncStatusStore.error.collectAsState()
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     val runner = remember(session) { PendingActionRunner(session, actions, context, scope) }
 
     Column(modifier = Modifier.fillMaxSize()) {

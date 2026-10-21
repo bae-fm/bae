@@ -1,11 +1,14 @@
 package fm.bae.app.ui.settings
 
 import android.app.Application
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
+import fm.bae.app.LocalBugHandler
 import fm.bae.app.diagnosticDetail
 import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.CompletableDeferred
@@ -32,7 +35,11 @@ class RecoveryCodeSectionTest {
     @Test
     fun theCodeStaysHiddenUntilAskedForAndHidesAgain() {
         compose.setContent {
-            BaeTheme { RecoveryCodeSection(needsS3Key = false, generate = { CODE }) }
+            BaeTheme {
+                CompositionLocalProvider(LocalBugHandler provides BugReports().handler) {
+                    RecoveryCodeSection(needsS3Key = false, generate = { CODE })
+                }
+            }
         }
         compose.onNodeWithText(CODE).assertDoesNotExist()
 
@@ -48,7 +55,11 @@ class RecoveryCodeSectionTest {
     @Test
     fun anS3LibraryAlsoNamesTheAccessKey() {
         compose.setContent {
-            BaeTheme { RecoveryCodeSection(needsS3Key = true, generate = { CODE }) }
+            BaeTheme {
+                CompositionLocalProvider(LocalBugHandler provides BugReports().handler) {
+                    RecoveryCodeSection(needsS3Key = true, generate = { CODE })
+                }
+            }
         }
 
         compose.onNodeWithText("You’ll also need your S3 access key and secret.").assertIsDisplayed()
@@ -57,7 +68,11 @@ class RecoveryCodeSectionTest {
     @Test
     fun anotherProviderNamesNoAccessKey() {
         compose.setContent {
-            BaeTheme { RecoveryCodeSection(needsS3Key = false, generate = { CODE }) }
+            BaeTheme {
+                CompositionLocalProvider(LocalBugHandler provides BugReports().handler) {
+                    RecoveryCodeSection(needsS3Key = false, generate = { CODE })
+                }
+            }
         }
 
         compose.onNodeWithText("You’ll also need your S3 access key and secret.").assertDoesNotExist()

@@ -3,6 +3,7 @@ package fm.bae.app.playback
 import android.os.Looper
 import androidx.media3.common.Player
 import fm.bae.app.BridgeFixtures
+import fm.bae.app.BugReports
 import fm.bae.app.NoErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.data.CastStore
@@ -170,6 +171,7 @@ class PlaybackServiceTest {
                         ),
                     scope = scope,
                     messages = SessionMessages(scope, NoErrorDisplays),
+                    bugs = BugReports(),
                 ),
             appContext = context,
         )

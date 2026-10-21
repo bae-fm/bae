@@ -42,6 +42,9 @@ class BaeApp : Application() {
     var platformStartupError: String? = null
         private set
 
+    /** Bugs reported without crashing, for the whole run; the app's snackbar tells the person. */
+    val bugs = BugReports()
+
     override fun onCreate() {
         super.onCreate()
         // Telemetry first, from compiled-in values only, so the sink exists for

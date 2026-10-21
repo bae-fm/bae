@@ -37,7 +37,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,6 +56,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.bridgeNextRepeatMode
@@ -86,7 +86,7 @@ fun ExpandedNowPlayingScreen(
     // Pad past the navigation bar so the last queue row clears it.
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     // Lets the chevron animate the sheet out before dismissing.
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -198,7 +198,7 @@ private fun ExpandedSeekSection(
     player: fm.bae.app.playback.BaeCorePlayer,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     var failure by remember { mutableStateOf<DisplayError?>(null) }
     PlaybackProgressAndroidView(
         session = session,

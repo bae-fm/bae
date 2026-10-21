@@ -33,22 +33,24 @@ class BridgeActionTest {
         assertEquals(listOf(DisplayError("localized bridge error", "diagnostic detail")), shown)
     }
 
+    /** A failure that isn't a typed bridge error is a bug: it shows nothing here and goes on to the scope's bug handler. */
     @Test
-    fun unexpectedFailureIsReportedInsteadOfEscapingTheActionCoroutine() {
+    fun aFailureThatIsNotABridgeErrorEscapesToTheScopesBugHandler() {
         val shown = mutableListOf<DisplayError?>()
 
-        runBlocking {
-            performBridgeAction(
-                logger = BaeLogger("bae.BridgeActionTest"),
-                operation = "test operation",
-                errors = TestErrorDisplays,
-                showError = { shown.add(it) },
-            ) {
-                error("unexpected failure")
+        assertThrows(IllegalStateException::class.java) {
+            runBlocking {
+                performBridgeAction(
+                    logger = BaeLogger("bae.BridgeActionTest"),
+                    operation = "test operation",
+                    errors = TestErrorDisplays,
+                    showError = { shown.add(it) },
+                ) {
+                    error("unexpected failure")
+                }
             }
         }
-
-        assertEquals(listOf(DisplayError("java.lang.IllegalStateException: unexpected failure")), shown)
+        assertEquals(emptyList<DisplayError?>(), shown)
     }
 
     @Test

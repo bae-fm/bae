@@ -14,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -26,6 +25,7 @@ import fm.bae.app.currentLocale
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackPosition
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -78,7 +78,7 @@ fun PlaybackProgressAndroidView(
     perform: (operation: String, action: suspend () -> Unit) -> Unit = session.messages::perform,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     val config by session.configStore.config.collectAsState()
     val showRemaining = config.showRemainingTime
     // Remembered because the view re-collects whenever the flow instance changes.

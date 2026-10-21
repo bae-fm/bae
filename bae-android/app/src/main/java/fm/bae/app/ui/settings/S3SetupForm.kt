@@ -17,7 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -34,6 +33,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.S3KeyFields
+import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeS3BucketVersioning
@@ -112,7 +112,7 @@ internal fun S3SetupForm(
     onSetUp: (BridgeStorageSetup) -> Unit,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     val input = remember { S3FormInput() }
     var showAdvanced by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
@@ -157,7 +157,7 @@ private fun S3Advanced(
     onError: (DisplayError?) -> Unit,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     var detection by remember { mutableStateOf<BridgeS3Detection?>(null) }
     var checking by remember { mutableStateOf(false) }
     TextInput(input.keyPrefix, R.string.storage_s3_key_prefix) { input.keyPrefix = it.trim() }

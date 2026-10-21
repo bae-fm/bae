@@ -27,7 +27,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.AppScreen
 import fm.bae.app.AppSessionHolder
+import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
+import fm.bae.app.LocalBugHandler
 import fm.bae.app.OAuthProviders
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
@@ -57,6 +59,7 @@ fun ContentView(
     oauthProviders: OAuthProviders?,
     oauthProvidersError: String?,
     startupError: DisplayError?,
+    bugs: BugReports,
     shortcutAction: ShortcutAction?,
     onShortcutHandled: () -> Unit,
 ) {
@@ -79,15 +82,37 @@ fun ContentView(
         AppSessionHolder.openDiscoveredOrOnboard(context) { screen = it }
     }
 
+    // One snackbar for the app, over every screen: an open library's messages
+    // and, on any screen, a bug reported without crashing.
+    val snackbarHostState = remember { SnackbarHostState() }
+    val somethingWentWrong = context.coreString("core.error.category.internal")
+    LaunchedEffect(bugs, snackbarHostState) {
+        bugs.reported.collect {
+            snackbarHostState.showSnackbar(
+                message = somethingWentWrong,
+                withDismissAction = true,
+                duration = SnackbarDuration.Long,
+            )
+        }
+    }
     BaeAppChrome {
-        AppScreenRouter(
-            screen = screen,
-            oauthProviders = oauthProviders,
-            oauthProvidersError = oauthProvidersError,
-            shortcutAction = shortcutAction,
-            onShortcutHandled = onShortcutHandled,
-            onScreen = { screen = it },
-        )
+        CompositionLocalProvider(LocalBugHandler provides bugs.handler) {
+            AppScreenRouter(
+                screen = screen,
+                oauthProviders = oauthProviders,
+                oauthProvidersError = oauthProvidersError,
+                shortcutAction = shortcutAction,
+                onShortcutHandled = onShortcutHandled,
+                snackbarHostState = snackbarHostState,
+                onScreen = { screen = it },
+            )
+        }
+        Box(modifier = Modifier.fillMaxSize()) {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
     }
 }
 
@@ -113,6 +138,7 @@ private fun AppScreenRouter(
     oauthProvidersError: String?,
     shortcutAction: ShortcutAction?,
     onShortcutHandled: () -> Unit,
+    snackbarHostState: SnackbarHostState,
     onScreen: (AppScreen) -> Unit,
 ) {
     val context = LocalContext.current
@@ -133,13 +159,16 @@ private fun AppScreenRouter(
         }
 
         is AppScreen.LibraryOpen -> {
-            LibraryOpenScreen(
-                session = current.session,
-                libraries = AppSessionHolder.libraries,
-                shortcutAction = shortcutAction,
-                onShortcutHandled = onShortcutHandled,
-                actions = sessionActions(context, scope, current.session, oauthProviders, onScreen),
-            )
+            SessionScreen(current.session) {
+                LibraryOpenScreen(
+                    session = current.session,
+                    libraries = AppSessionHolder.libraries,
+                    shortcutAction = shortcutAction,
+                    onShortcutHandled = onShortcutHandled,
+                    snackbarHostState = snackbarHostState,
+                    actions = sessionActions(context, scope, current.session, oauthProviders, onScreen),
+                )
+            }
         }
 
         is AppScreen.Recovery -> {
@@ -147,11 +176,13 @@ private fun AppScreenRouter(
         }
 
         is AppScreen.ProfileRequired -> {
-            ProfileRequiredScreen(
-                session = current.session,
-                failure = current.error,
-                onCreated = { onScreen(AppScreen.LibraryOpen(current.session)) },
-            )
+            SessionScreen(current.session) {
+                ProfileRequiredScreen(
+                    session = current.session,
+                    failure = current.error,
+                    onCreated = { onScreen(AppScreen.LibraryOpen(current.session)) },
+                )
+            }
         }
 
         is AppScreen.RemovalIncomplete -> {
@@ -296,8 +327,8 @@ private fun sessionActions(
 )
 
 /**
- * The open library UI plus its snackbar, over whichever of its screens shows:
- * it confirms Play Next and Add to Queue, since the now-playing bar is hidden
+ * The open library UI and what the app's snackbar says over its screens: it
+ * confirms Play Next and Add to Queue, since the now-playing bar is hidden
  * while nothing plays, and tells the person what failed — what they did, with
  * Retry, and what core reported with no screen of its own, to dismiss.
  */
@@ -307,9 +338,9 @@ private fun LibraryOpenScreen(
     libraries: StateFlow<List<BridgeLibrary>>,
     shortcutAction: ShortcutAction?,
     onShortcutHandled: () -> Unit,
+    snackbarHostState: SnackbarHostState,
     actions: SessionActions,
 ) {
-    val snackbarHostState = remember { SnackbarHostState() }
     val appContext = LocalContext.current
     LaunchedEffect(session.playback, snackbarHostState) {
         session.playback.queueItemsAdded.collectLatest { count ->
@@ -340,12 +371,6 @@ private fun LibraryOpenScreen(
             onSearchOpened = onShortcutHandled,
             actions = actions,
         )
-        Box(modifier = Modifier.fillMaxSize()) {
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
-        }
     }
 }
 

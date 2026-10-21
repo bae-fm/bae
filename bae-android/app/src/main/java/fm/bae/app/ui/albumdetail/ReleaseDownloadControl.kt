@@ -23,7 +23,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +47,7 @@ import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.downloads.DownloadProgressBytes
 import fm.bae.app.ui.downloads.WaitingToDownloadText
+import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDownloadSnapshot
@@ -107,7 +107,7 @@ private fun PlayableReleaseDownloadControl(
             downloads = snapshot,
             releaseId = release.id,
         ) ?: return
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     var unpinning by remember(release.id) { mutableStateOf(false) }
     var unpinError by remember(release.id) { mutableStateOf<DisplayError?>(null) }
 

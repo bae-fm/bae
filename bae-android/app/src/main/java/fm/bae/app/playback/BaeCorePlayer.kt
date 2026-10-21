@@ -11,8 +11,8 @@ import androidx.media3.common.util.Util
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import fm.bae.app.BaeLogger
-import fm.bae.app.runLoggedBridgeCommand
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -624,17 +624,14 @@ class BaeCorePlayer(
             Player.COMMAND_SEEK_TO_NEXT,
             Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
             -> {
-                runLoggedBridgeCommand(logger, "nextTrack") {
-                    appHandle.nextTrack()
-                }
+                // The session scope's handler reports this as a bug if it fails.
+                scope.launch(CoroutineName("nextTrack")) { appHandle.nextTrack() }
             }
 
             Player.COMMAND_SEEK_TO_PREVIOUS,
             Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
             -> {
-                runLoggedBridgeCommand(logger, "previousTrack") {
-                    appHandle.previousTrack()
-                }
+                scope.launch(CoroutineName("previousTrack")) { appHandle.previousTrack() }
             }
 
             Player.COMMAND_SEEK_TO_MEDIA_ITEM -> {

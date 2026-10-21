@@ -30,8 +30,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeConfig
@@ -93,6 +96,13 @@ class OpenLibrary internal constructor(
     private var eventJob: Job? = null
     private var widgetJob: Job? = null
     private var networkReports: NetworkChangeReporter? = null
+
+    /**
+     * How many of this library's screens are composed. Closing waits for none
+     * to be, so a tap on a screen that is going away can never reach a closed
+     * handle: the holder takes the screens down first, then closes.
+     */
+    private val shownScreens = MutableStateFlow(0)
     private val valueSubscriptions = mutableListOf<LiveSubscription>()
     private val widgetSnapshotStore = WidgetSnapshotStore(appContext)
 
@@ -105,6 +115,14 @@ class OpenLibrary internal constructor(
      * from the foreground, so `PlaybackSystemHooks` starts it when playback
      * begins on screen.
      */
+    internal fun screenShown() {
+        shownScreens.update { it + 1 }
+    }
+
+    internal fun screenGone() {
+        shownScreens.update { it - 1 }
+    }
+
     fun wireUp(scope: CoroutineScope) {
         subscribeToValues(scope)
         val channel = Channel<BridgeUiEvent>(Channel.UNLIMITED)
@@ -115,6 +133,7 @@ class OpenLibrary internal constructor(
                     UiEventAdapter.handle(
                         event = event,
                         messages = messages,
+                        bugs = runtime.bugs,
                         player = playback,
                         errors = LocaleErrorDisplays(appContext),
                     )
@@ -333,7 +352,9 @@ class OpenLibrary internal constructor(
      * holder has already stopped offering this session as the current one.
      */
     private suspend fun stopSessionServices() {
-        // First: a report must never reach the handle once it closes.
+        // No screen of this library may still take a tap.
+        shownScreens.first { it == 0 }
+        // Then: a report must never reach the handle once it closes.
         networkReports?.stop()
         networkReports = null
         browserPages.cancel()
@@ -360,6 +381,8 @@ class OpenLibrary internal constructor(
 
 internal data class OpenLibraryRuntime(
     val playback: BaeCorePlayer,
+    /** The session's scope, whose bug handler reports any failure nothing caught. */
     val scope: CoroutineScope,
     val messages: SessionMessages,
+    val bugs: BugReports,
 )

@@ -22,7 +22,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +37,7 @@ import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.PrimaryButton
+import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeStorageFolder
 import uniffi.bae_bridge.BridgeStorageSetup
@@ -56,7 +56,7 @@ internal fun DropboxFolderChoice(
     onSetUp: (BridgeStorageSetup) -> Unit,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     var folders by remember { mutableStateOf<List<BridgeStorageFolder>?>(null) }
     var busy by remember { mutableStateOf(false) }
     val load: suspend () -> Unit = {
@@ -151,7 +151,7 @@ internal fun OneDriveFolderChoice(
     onSetUp: (BridgeStorageSetup) -> Unit,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     val browser = remember(session) { OneDriveBrowser(session, providers, LocaleErrorDisplays(context), onError) }
     var naming by remember { mutableStateOf(false) }
     LaunchedEffect(browser) { browser.openRoot() }

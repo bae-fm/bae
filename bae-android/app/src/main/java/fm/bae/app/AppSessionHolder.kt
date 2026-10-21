@@ -22,6 +22,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
@@ -525,7 +526,11 @@ object AppSessionHolder {
         current = null
         previous?.dispose()
         val appContext = context.applicationContext
-        val messages = SessionMessages(appScope, LocaleErrorDisplays(appContext))
+        val bugs = (appContext as BaeApp).bugs
+        // The session's coroutines report a failure nothing caught as a bug.
+        val sessionScope =
+            CoroutineScope(appScope.coroutineContext + SupervisorJob(appScope.coroutineContext.job) + bugs.handler)
+        val messages = SessionMessages(sessionScope, LocaleErrorDisplays(appContext))
         val session =
             OpenLibrary(
                 libraryId = libraryId,
@@ -539,7 +544,7 @@ object AppSessionHolder {
                                 applicationLooper = Looper.getMainLooper(),
                                 appHandle = handle,
                                 context = appContext,
-                                scope = appScope,
+                                scope = sessionScope,
                                 isAppForeground = {
                                     ProcessLifecycleOwner
                                         .get()
@@ -547,13 +552,14 @@ object AppSessionHolder {
                                         .isAtLeast(Lifecycle.State.STARTED)
                                 },
                             ),
-                        scope = appScope,
+                        scope = sessionScope,
                         messages = messages,
+                        bugs = bugs,
                     ),
                 appContext = appContext,
             )
         current = session
-        session.wireUp(appScope)
+        session.wireUp(sessionScope)
         diagnostics.event(BridgeTelemetryEvent.ScreenOpened(BridgeScreen.LIBRARY))
         return session
     }

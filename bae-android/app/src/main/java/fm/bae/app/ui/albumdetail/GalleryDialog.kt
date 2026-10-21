@@ -39,7 +39,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,6 +65,7 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeGalleryItem
@@ -99,7 +99,7 @@ fun GalleryDialog(
     ) {
         FullDisplayDialogWindow()
         val pagerState = rememberPagerState(pageCount = { items.size })
-        val scope = rememberCoroutineScope()
+        val scope = rememberScreenScope()
         var offsetY by remember { mutableFloatStateOf(0f) }
         val dismissThresholdPx = with(LocalDensity.current) { DISMISS_THRESHOLD_DP.dp.toPx() }
         // Fade the backdrop as the viewer is dragged down toward dismissal.
@@ -328,7 +328,7 @@ private fun ZoomableGalleryImage(
 ) {
     var scale by remember(identity) { mutableFloatStateOf(1f) }
     var origin by remember(identity) { mutableStateOf(TransformOrigin.Center) }
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
 
     Image(
         bitmap = bitmap.asImageBitmap(),

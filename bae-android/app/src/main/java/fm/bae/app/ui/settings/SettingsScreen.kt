@@ -26,7 +26,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +45,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.library.LibraryDestination
+import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
@@ -84,7 +84,7 @@ internal fun SettingsScreen(
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     val appContext = LocalContext.current.applicationContext
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     val config by session.configStore.config.collectAsState()
     val allLibraries by libraries.collectAsState()
     val model = remember(session) { SettingsLibraryModel(session.appHandle, LocaleErrorDisplays(appContext), scope) }
@@ -164,7 +164,7 @@ private fun SettingsClosingSections(
     onRemove: () -> Unit,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     var unsent by remember { mutableStateOf<BridgeUnsentWork?>(null) }
     SectionDivider()
     SettingsRemoveSection(onRequestRemove = {

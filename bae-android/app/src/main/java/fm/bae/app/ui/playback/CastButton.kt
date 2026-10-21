@@ -33,7 +33,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,6 +53,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.color
+import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeCastDevice
@@ -117,7 +117,7 @@ private fun CastPickerSheet(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     var castJob by remember { mutableStateOf<Job?>(null) }
     // A failed cast shows here: a snackbar would sit behind the open sheet.
     var castFailure by remember { mutableStateOf<DisplayError?>(null) }

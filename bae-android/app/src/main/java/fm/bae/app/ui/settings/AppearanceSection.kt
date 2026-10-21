@@ -24,7 +24,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +46,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.appearance.colors
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import java.io.IOException
 
@@ -54,7 +54,7 @@ import java.io.IOException
 internal fun AppearanceSection() {
     val store = LocalAppearanceStore.current
     val preferences by store.preferences.collectAsState()
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     var error by remember { mutableStateOf<String?>(null) }
     val save: (suspend () -> Unit) -> Unit = { change ->
         scope.launch {
