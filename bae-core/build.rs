@@ -12,17 +12,32 @@ fn set_version_env() {
     println!("cargo:rustc-env=BAE_VERSION={}", version);
     println!("cargo:rerun-if-env-changed=BAE_VERSION");
 
-    // Tell cargo to only rerun when the git HEAD changes (new commit, checkout, etc.)
-    // Without this, cargo reruns the build script every build, gets a potentially
-    // different `git describe` output, and recompiles everything.
-    if let Ok(git_dir) = Command::new("git")
-        .args(["rev-parse", "--git-dir"])
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+    // Rerun only when `git describe`'s inputs change: HEAD (a checkout) and the
+    // tags. Without these, cargo reruns the build script every build, gets a
+    // potentially different `git describe` output, and recompiles everything.
+    //
+    // HEAD belongs to the worktree's own git dir, the tags to the git dir every
+    // worktree shares. A linked worktree's git dir (.git/worktrees/<name>) has
+    // no refs/tags, and cargo reruns a build script whose rerun-if-changed path
+    // is missing on every build, which rebuilt bae-core and everything above it
+    // each time.
+    if let (Some(git_dir), Some(common_dir)) = (git_path("--git-dir"), git_path("--git-common-dir"))
     {
-        println!("cargo:rerun-if-changed={}/HEAD", git_dir);
-        println!("cargo:rerun-if-changed={}/refs/tags", git_dir);
+        println!("cargo:rerun-if-changed={git_dir}/HEAD");
+        println!("cargo:rerun-if-changed={common_dir}/refs/tags");
     }
+}
+
+/// An absolute path `git rev-parse` reports, e.g. `--git-dir`.
+fn git_path(which: &str) -> Option<String> {
+    let output = Command::new("git")
+        .args(["rev-parse", "--path-format=absolute", which])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
 fn derive_version_from_git() -> String {
