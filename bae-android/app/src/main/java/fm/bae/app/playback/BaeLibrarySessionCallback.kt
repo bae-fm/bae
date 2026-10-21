@@ -264,6 +264,7 @@ internal class BaeLibrarySessionCallback(
 }
 
 /** The controller's error code for a failed bridge read, by what core says failed. */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 private fun browseErrorCode(error: BridgeException): Int =
     when (error) {
         is BridgeException.Cancelled -> {
