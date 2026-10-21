@@ -23,13 +23,22 @@ class BugReports {
     /** One element per bug, for the snackbar that tells the person. */
     val reported: Flow<Unit> = channel.receiveAsFlow()
 
+    /** Report a bug and tell the person by the app's snackbar. */
     fun report(
+        operation: String,
+        error: Throwable,
+    ) {
+        reportShownInPlace(operation, error)
+        channel.trySend(Unit)
+    }
+
+    /** Report a bug whose "Something went wrong" the caller shows itself, where the person is looking. */
+    fun reportShownInPlace(
         operation: String,
         error: Throwable,
     ) {
         logger.error("bug: $operation failed", error)
         Sentry.captureException(error) { scope -> scope.setExtra("operation", operation) }
-        channel.trySend(Unit)
     }
 
     /**
@@ -45,11 +54,12 @@ class BugReports {
 }
 
 /**
- * The bug handler screen scopes install, provided at the app root. No default:
- * a screen scope with no handler would crash on a bug, so a missing provider
- * fails loudly instead.
+ * The app's bug reports, provided at the app root: screen scopes install its
+ * handler, and a screen that finds a broken guarantee reports it here. No
+ * default: a screen scope with no handler would crash on a bug, so a missing
+ * provider fails loudly instead.
  */
-val LocalBugHandler =
-    staticCompositionLocalOf<CoroutineExceptionHandler> {
-        error("LocalBugHandler not provided")
+val LocalBugReports =
+    staticCompositionLocalOf<BugReports> {
+        error("LocalBugReports not provided")
     }

@@ -3,7 +3,7 @@ package fm.bae.app.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import fm.bae.app.LocalBugHandler
+import fm.bae.app.LocalBugReports
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.job
@@ -16,7 +16,7 @@ import kotlinx.coroutines.job
  */
 @Composable
 internal fun rememberScreenScope(): CoroutineScope {
-    val handler = LocalBugHandler.current
+    val handler = LocalBugReports.current.handler
     val composition = rememberCoroutineScope()
     return remember(composition, handler) {
         CoroutineScope(composition.coroutineContext + SupervisorJob(composition.coroutineContext.job) + handler)

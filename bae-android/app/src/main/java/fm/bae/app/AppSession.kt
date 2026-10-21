@@ -92,6 +92,9 @@ class OpenLibrary internal constructor(
 
     /** The snackbar messages of this library's screens: failed actions with Retry, and failures with no screen. */
     val messages: SessionMessages get() = runtime.messages
+
+    /** Where this library's code reports a broken guarantee without crashing. */
+    val bugs: BugReports get() = runtime.bugs
     private var eventChannel: Channel<BridgeUiEvent>? = null
     private var eventJob: Job? = null
     private var widgetJob: Job? = null
@@ -133,7 +136,7 @@ class OpenLibrary internal constructor(
                     UiEventAdapter.handle(
                         event = event,
                         messages = messages,
-                        bugs = runtime.bugs,
+                        bugs = bugs,
                         player = playback,
                         errors = LocaleErrorDisplays(appContext),
                     )

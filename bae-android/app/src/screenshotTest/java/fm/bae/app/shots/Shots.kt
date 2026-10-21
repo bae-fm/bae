@@ -12,7 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
-import fm.bae.app.LocalBugHandler
+import fm.bae.app.LocalBugReports
 import fm.bae.app.coreString
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
@@ -156,7 +156,7 @@ private fun AppearanceScene(
     BaeTheme(appearance = store) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             // The section's coroutine scope reports bugs; a scene has nothing to report to.
-            CompositionLocalProvider(LocalBugHandler provides BugReports().handler) {
+            CompositionLocalProvider(LocalBugReports provides BugReports()) {
                 AppearanceSection()
             }
         }

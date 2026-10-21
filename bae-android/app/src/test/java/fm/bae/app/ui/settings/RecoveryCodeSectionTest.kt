@@ -8,7 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
-import fm.bae.app.LocalBugHandler
+import fm.bae.app.LocalBugReports
 import fm.bae.app.diagnosticDetail
 import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.CompletableDeferred
@@ -36,7 +36,7 @@ class RecoveryCodeSectionTest {
     fun theCodeStaysHiddenUntilAskedForAndHidesAgain() {
         compose.setContent {
             BaeTheme {
-                CompositionLocalProvider(LocalBugHandler provides BugReports().handler) {
+                CompositionLocalProvider(LocalBugReports provides BugReports()) {
                     RecoveryCodeSection(needsS3Key = false, generate = { CODE })
                 }
             }
@@ -56,7 +56,7 @@ class RecoveryCodeSectionTest {
     fun anS3LibraryAlsoNamesTheAccessKey() {
         compose.setContent {
             BaeTheme {
-                CompositionLocalProvider(LocalBugHandler provides BugReports().handler) {
+                CompositionLocalProvider(LocalBugReports provides BugReports()) {
                     RecoveryCodeSection(needsS3Key = true, generate = { CODE })
                 }
             }
@@ -69,7 +69,7 @@ class RecoveryCodeSectionTest {
     fun anotherProviderNamesNoAccessKey() {
         compose.setContent {
             BaeTheme {
-                CompositionLocalProvider(LocalBugHandler provides BugReports().handler) {
+                CompositionLocalProvider(LocalBugReports provides BugReports()) {
                     RecoveryCodeSection(needsS3Key = false, generate = { CODE })
                 }
             }

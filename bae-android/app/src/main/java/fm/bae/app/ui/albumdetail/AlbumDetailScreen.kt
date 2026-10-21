@@ -30,6 +30,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,8 +45,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
+import fm.bae.app.LocalBugReports
+import fm.bae.app.MissingMainRelease
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.coreString
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LiveQueryState
 import fm.bae.app.data.LocalImageStore
@@ -53,6 +57,7 @@ import fm.bae.app.displayError
 import fm.bae.app.durationClockLabel
 import fm.bae.app.durationUnitsText
 import fm.bae.app.labelsLineText
+import fm.bae.app.mainRelease
 import fm.bae.app.pressingLineText
 import fm.bae.app.sideHeaderText
 import fm.bae.app.text
@@ -64,6 +69,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.library.LibraryDetailTopBar
@@ -141,19 +147,20 @@ fun AlbumDetailScreen(
                     )
                 }
                 // Derived rather than stored, so a release list that arrives
-                // later needs no correction.
-                val release =
-                    loaded.releases.firstOrNull { it.id == selectedReleaseId }
-                        ?: loaded.releases.firstOrNull { it.id == loaded.album.primaryReleaseId }
-                        ?: loaded.releases.firstOrNull()
-                AlbumDetailContent(
-                    detail = loaded,
-                    selectedRelease = release,
-                    cover = release?.cover,
-                    playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
-                    callbacks = buildAlbumDetailCallbacks(session, release, scope) { selectedReleaseId = it },
-                    releaseDownloadControl = { rel -> ReleaseDownloadControl(session = session, release = rel) },
-                )
+                // later needs no correction: the one chosen, else the main one.
+                val release = loaded.releases.firstOrNull { it.id == selectedReleaseId } ?: loaded.mainRelease()
+                if (release == null) {
+                    MissingMainReleaseNotice(loaded)
+                } else {
+                    AlbumDetailContent(
+                        detail = loaded,
+                        selectedRelease = release,
+                        cover = release.cover,
+                        playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
+                        callbacks = buildAlbumDetailCallbacks(session, release, scope) { selectedReleaseId = it },
+                        releaseDownloadControl = { rel -> ReleaseDownloadControl(session = session, release = rel) },
+                    )
+                }
             }
         }
         NowPlayingBar(session = session)
@@ -217,13 +224,27 @@ private fun BoxScope.AlbumDetailPlaceholderBox(
 }
 
 /**
+ * An album whose named main release isn't among its releases: a bug, reported
+ * once per detail, and "Something went wrong" where the album would be.
+ */
+@Composable
+private fun BoxScope.MissingMainReleaseNotice(detail: BridgeAlbumDetail) {
+    val bugs = LocalBugReports.current
+    LaunchedEffect(detail) { bugs.reportShownInPlace("show album ${detail.album.id}", MissingMainRelease(detail)) }
+    ErrorText(
+        message = LocalContext.current.coreString("core.error.category.internal"),
+        modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
+    )
+}
+
+/**
  * The page's commands, each run in [scope], whose bug handler reports one that
  * fails: these calls fail only if this device's library is broken, never in
  * normal use.
  */
 private fun buildAlbumDetailCallbacks(
     session: OpenLibrary,
-    release: BridgeRelease?,
+    release: BridgeRelease,
     scope: CoroutineScope,
     onSelectRelease: (String) -> Unit,
 ): AlbumDetailCallbacks {
@@ -232,10 +253,8 @@ private fun buildAlbumDetailCallbacks(
         startTrackId: String?,
         shuffled: Boolean,
     ) {
-        release?.let {
-            scope.launch(CoroutineName(operation(it))) {
-                session.appHandle.playRelease(it.id, startTrackId, shuffled)
-            }
+        scope.launch(CoroutineName(operation(release))) {
+            session.appHandle.playRelease(release.id, startTrackId, shuffled)
         }
     }
 
@@ -243,10 +262,8 @@ private fun buildAlbumDetailCallbacks(
         operation: String,
         command: (String) -> Unit,
     ) {
-        release?.let {
-            scope.launch(CoroutineName("$operation ${it.id}")) {
-                command(it.id)
-            }
+        scope.launch(CoroutineName("$operation ${release.id}")) {
+            command(release.id)
         }
     }
 
@@ -302,7 +319,7 @@ private fun buildAlbumDetailCallbacks(
 @Composable
 internal fun AlbumDetailContent(
     detail: BridgeAlbumDetail,
-    selectedRelease: BridgeRelease?,
+    selectedRelease: BridgeRelease,
     cover: BridgeImageRef?,
     playback: AlbumPlaybackState,
     callbacks: AlbumDetailCallbacks,
@@ -312,18 +329,17 @@ internal fun AlbumDetailContent(
     val context = LocalContext.current
 
     var showGallery by remember { mutableStateOf(false) }
-    val galleryRelease = selectedRelease
-    val galleryItems = galleryRelease?.galleryItems ?: emptyList()
-    if (showGallery && galleryRelease != null && galleryItems.isNotEmpty()) {
+    val galleryItems = selectedRelease.galleryItems
+    if (showGallery && galleryItems.isNotEmpty()) {
         GalleryDialog(
-            releaseId = galleryRelease.id,
+            releaseId = selectedRelease.id,
             items = galleryItems,
             onDismiss = { showGallery = false },
         )
     }
 
     val positionColumnWidth =
-        rememberPositionColumnWidth(selectedRelease?.tracks.orEmpty().map { it.positionText })
+        rememberPositionColumnWidth(selectedRelease.tracks.map { it.positionText })
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(ThemeSpace.edge),
@@ -344,7 +360,7 @@ internal fun AlbumDetailContent(
                 Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                     detail.releases.forEach { rel ->
                         FilterChip(
-                            selected = rel.id == selectedRelease?.id,
+                            selected = rel.id == selectedRelease.id,
                             onClick = { callbacks.onSelectRelease(rel.id) },
                             label = { Text(rel.name.text(context), maxLines = 1) },
                         )
@@ -353,18 +369,16 @@ internal fun AlbumDetailContent(
             }
         }
 
-        if (selectedRelease != null) {
-            item { releaseDownloadControl(selectedRelease) }
-            item { AlbumActionButtons(callbacks) }
-            albumTrackGroups(selectedRelease, positionColumnWidth, playback, callbacks, context)
-        }
+        item { releaseDownloadControl(selectedRelease) }
+        item { AlbumActionButtons(callbacks) }
+        albumTrackGroups(selectedRelease, positionColumnWidth, playback, callbacks, context)
     }
 }
 
 @Composable
 private fun AlbumDetailHeader(
     detail: BridgeAlbumDetail,
-    selectedRelease: BridgeRelease?,
+    selectedRelease: BridgeRelease,
     cover: BridgeImageRef?,
     galleryItems: List<uniffi.bae_bridge.BridgeGalleryItem>,
     onShowGallery: () -> Unit,
@@ -401,8 +415,8 @@ private fun AlbumDetailHeader(
             // The pressing, then its labels, each on one line of its own.
             val factLines =
                 listOfNotNull(
-                    selectedRelease?.pressingLineText(context),
-                    selectedRelease?.labelsLineText(context),
+                    selectedRelease.pressingLineText(context),
+                    selectedRelease.labelsLineText(context),
                 ).filter { it.isNotEmpty() }
             if (factLines.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(ThemeSpace.inline))

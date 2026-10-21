@@ -4,9 +4,11 @@ import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import fm.bae.app.BaeLogger
+import fm.bae.app.MissingMainRelease
 import fm.bae.app.data.Library
 import fm.bae.app.data.LibrarySearch
 import fm.bae.app.data.LiveQueryEvent
+import fm.bae.app.mainRelease
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -112,10 +114,13 @@ internal class LibraryBrowseTree<Owner : Any>(
     artworkUri: (image: BridgeImageRef) -> Uri,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
     private val onChildrenChanged: (parentId: String, itemCount: Int) -> Unit = { _, _ -> },
+    /** Reports a bug found while answering a controller; the controller is answered with an error. */
+    private val reportBug: (operation: String, error: Throwable) -> Unit,
+) {
     private val onQueryError: (BridgeException) -> Unit = { error ->
         logger.error("library browse live query failed", error)
-    },
-) {
+    }
+
     /**
      * One controller's search: one live query for as long as the controller is connected, pointed
      * at each phrase it searches. State is guarded by the tree's lock; only values answering the
@@ -447,7 +452,8 @@ internal class LibraryBrowseTree<Owner : Any>(
             }
 
             firstAlbum != null -> {
-                albumDetails.value(firstAlbum.id)?.let(::primaryRelease)?.let { release ->
+                albumDetails.value(firstAlbum.id)?.let { detail ->
+                    val release = detail.mainRelease() ?: throw missingMainRelease(detail, reportBug)
                     flatTracks(release).firstOrNull()?.let { BrowseId.Track(release.id, it.id) }
                 }
             }
@@ -550,12 +556,11 @@ internal class LibraryBrowseTree<Owner : Any>(
     private fun parentFlow(parentId: String): Flow<LiveQueryEvent<BrowsePage>> =
         when (val id = checkNotNull(BrowseId.parse(parentId))) {
             is BrowseId.Album -> {
-                library.albumDetails(id.albumId).mapBrowse { detail ->
-                    detail
-                        ?.let(::primaryRelease)
-                        ?.let { release ->
-                            flatTracks(release).map { track -> nodes.track(release, track) }
-                        }.orEmpty()
+                library.albumDetails(id.albumId).map { event ->
+                    when (event) {
+                        is LiveQueryEvent.Error -> event
+                        is LiveQueryEvent.Value -> albumPage(event.value, nodes, reportBug)
+                    }
                 }
             }
 
@@ -609,10 +614,33 @@ private fun <Value> OptionalLiveQuery<Value>.mapBrowse(rows: (Value?) -> List<Me
         event.mapValue { value -> rows(value).let { BrowsePage(it, it.size) } }
     }
 
-private fun primaryRelease(detail: BridgeAlbumDetail): BridgeRelease? =
-    detail.releases.firstOrNull { it.id == detail.album.primaryReleaseId } ?: detail.releases.firstOrNull()
-
 private fun flatTracks(release: BridgeRelease): List<BridgeTrack> = release.trackGroups.flatMap { it.tracks }
+
+/**
+ * An album's children: its main release's tracks, or none once the album is
+ * gone. An album whose main release isn't among its releases is a bug,
+ * reported, and an error for the controller instead of another release's
+ * tracks.
+ */
+private fun albumPage(
+    detail: BridgeAlbumDetail?,
+    nodes: BrowseNodeFactory,
+    reportBug: (operation: String, error: Throwable) -> Unit,
+): LiveQueryEvent<BrowsePage> {
+    val release = detail?.let { it.mainRelease() ?: return LiveQueryEvent.Error(missingMainRelease(it, reportBug)) }
+    val tracks = release?.let { flatTracks(it).map { track -> nodes.track(it, track) } }.orEmpty()
+    return LiveQueryEvent.Value(BrowsePage(tracks, tracks.size))
+}
+
+/** Report an album with no main release among its releases as a bug; what the controller is answered with. */
+private fun missingMainRelease(
+    detail: BridgeAlbumDetail,
+    reportBug: (operation: String, error: Throwable) -> Unit,
+): BridgeException {
+    val bug = MissingMainRelease(detail)
+    reportBug("browse album ${detail.album.id}", bug)
+    return browseDiagnostic(bug.message.orEmpty())
+}
 
 internal fun windowEvicted(): BridgeException =
     BridgeException.Diagnostic(BridgeErrorCategory.Internal, "browse window was replaced by a newer request")

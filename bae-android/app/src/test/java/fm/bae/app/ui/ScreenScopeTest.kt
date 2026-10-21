@@ -4,7 +4,7 @@ import android.app.Application
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.createComposeRule
 import fm.bae.app.BugReports
-import fm.bae.app.LocalBugHandler
+import fm.bae.app.LocalBugReports
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -32,7 +32,7 @@ class ScreenScopeTest {
         val bugs = BugReports()
         lateinit var scope: CoroutineScope
         compose.setContent {
-            CompositionLocalProvider(LocalBugHandler provides bugs.handler) {
+            CompositionLocalProvider(LocalBugReports provides bugs) {
                 scope = rememberScreenScope()
             }
         }

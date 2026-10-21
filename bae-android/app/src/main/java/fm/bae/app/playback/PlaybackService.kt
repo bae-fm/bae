@@ -75,6 +75,7 @@ class PlaybackService(
                 onChildrenChanged = { parentId, count ->
                     mediaSession?.notifyChildrenChanged(parentId, count, null)
                 },
+                reportBug = open.bugs::reportShownInPlace,
             )
         val callback =
             BaeLibrarySessionCallback(tree, browseScope) { query ->

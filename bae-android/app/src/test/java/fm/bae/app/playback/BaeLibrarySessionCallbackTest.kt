@@ -168,6 +168,7 @@ class BaeLibrarySessionCallbackTest {
             { BrowseLabels("Library", "Albums", "Composers") },
             { Uri.parse("content://test/cover/${it.id}") },
             onChildrenChanged = changed,
+            reportBug = { operation, error -> throw AssertionError("unexpected bug in $operation", error) },
         )
 
     private fun controller(): MediaSession.ControllerInfo =

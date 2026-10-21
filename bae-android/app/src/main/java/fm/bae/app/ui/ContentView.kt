@@ -29,7 +29,7 @@ import fm.bae.app.AppScreen
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
-import fm.bae.app.LocalBugHandler
+import fm.bae.app.LocalBugReports
 import fm.bae.app.OAuthProviders
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
@@ -96,7 +96,7 @@ fun ContentView(
         }
     }
     BaeAppChrome {
-        CompositionLocalProvider(LocalBugHandler provides bugs.handler) {
+        CompositionLocalProvider(LocalBugReports provides bugs) {
             AppScreenRouter(
                 screen = screen,
                 oauthProviders = oauthProviders,

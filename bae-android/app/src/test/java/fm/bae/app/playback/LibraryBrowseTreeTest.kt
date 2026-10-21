@@ -3,7 +3,9 @@ package fm.bae.app.playback
 import android.net.Uri
 import androidx.media3.common.MediaItem
 import fm.bae.app.BridgeFixtures
+import fm.bae.app.MissingMainRelease
 import fm.bae.app.data.Library
+import fm.bae.app.ui.PreviewData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
@@ -12,6 +14,7 @@ import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,6 +31,8 @@ import java.util.concurrent.TimeUnit
 class LibraryBrowseTreeTest {
     private val labels = BrowseLabels(library = "Library", albums = "Albums", composers = "Composers")
 
+    private val bugs = mutableListOf<Pair<String, Throwable>>()
+
     private fun tree(
         handle: FakeAppHandle,
         onChildrenChanged: (String, Int) -> Unit = { _, _ -> },
@@ -37,7 +42,48 @@ class LibraryBrowseTreeTest {
             labels = { labels },
             artworkUri = { Uri.parse("content://test/cover/${it.id}") },
             onChildrenChanged = onChildrenChanged,
+            reportBug = { operation, error -> bugs += operation to error },
         )
+
+    /** An album's children are its main release's tracks, never another release's. */
+    @Test
+    fun anAlbumsChildrenAreItsMainReleasesTracks() =
+        runBlocking {
+            val album = BridgeFixtures.album(id = "album-1", primaryReleaseId = "rel-main", releaseIds = listOf("rel-other", "rel-main"))
+            val other =
+                PreviewData.release(
+                    id = "rel-other",
+                    albumId = "album-1",
+                    trackGroups = listOf(PreviewData.trackGroup(listOf(PreviewData.track("trk-other")))),
+                )
+            val main =
+                PreviewData.release(
+                    id = "rel-main",
+                    albumId = "album-1",
+                    trackGroups = listOf(PreviewData.trackGroup(listOf(PreviewData.track("trk-main")))),
+                )
+            val tree = tree(FakeAppHandle(albumDetails = mapOf("album-1" to BridgeFixtures.albumDetail(album, listOf(other, main)))))
+
+            val children = tree.children(BrowseId.Album("album-1").mediaId, 0, 20)!!
+
+            assertEquals(listOf(BrowseId.Track("rel-main", "trk-main").mediaId), children.map { it.mediaId })
+            tree.close()
+        }
+
+    /** An album naming a main release it doesn't hold is a bug: reported, and an error, not the first release. */
+    @Test
+    fun anAlbumWhoseMainReleaseIsMissingIsReportedAndAnError() =
+        runBlocking {
+            val album = BridgeFixtures.album(id = "album-1", primaryReleaseId = "rel-gone", releaseIds = listOf("rel-other"))
+            val other = PreviewData.release(id = "rel-other", albumId = "album-1")
+            val tree = tree(FakeAppHandle(albumDetails = mapOf("album-1" to BridgeFixtures.albumDetail(album, listOf(other)))))
+
+            assertThrows(BridgeException::class.java) {
+                runBlocking { tree.children(BrowseId.Album("album-1").mediaId, 0, 20) }
+            }
+            assertTrue(bugs.single().second is MissingMainRelease)
+            tree.close()
+        }
 
     private val MediaItem.title: String?
         get() = mediaMetadata.title?.toString()
