@@ -22,6 +22,7 @@
     <string name="library_empty_syncing">Nog geen albums. Synchroniseren vanuit de cloud…</string>
     <string name="library_load_failed">Kan je bibliotheek niet laden.</string>
     <string name="library_load_more_failed">Kan geen extra albums laden.</string>
+    <string name="library">Bibliotheek</string>
     <string name="album_load_failed">Kan dit album niet laden.</string>
     <string name="shuffle">Shuffle</string>
     <string name="play_next">Hierna afspelen</string>

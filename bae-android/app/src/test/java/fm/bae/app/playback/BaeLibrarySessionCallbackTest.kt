@@ -107,7 +107,7 @@ class BaeLibrarySessionCallbackTest {
     ): LibraryBrowseTree<MediaSession.ControllerInfo> =
         LibraryBrowseTree(
             Library(handle),
-            { BrowseLabels("Albums", "Composers") },
+            { BrowseLabels("Library", "Albums", "Composers") },
             { Uri.parse("content://test/cover/${it.id}") },
             onChildrenChanged = changed,
         )

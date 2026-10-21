@@ -22,6 +22,7 @@
     <string name="library_empty_syncing">Ainda não há álbuns. A sincronizar a partir da nuvem…</string>
     <string name="library_load_failed">Não foi possível carregar a sua biblioteca.</string>
     <string name="library_load_more_failed">Não foi possível carregar mais álbuns.</string>
+    <string name="library">Biblioteca</string>
     <string name="album_load_failed">Não foi possível carregar este álbum.</string>
     <string name="shuffle">Aleatório</string>
     <string name="play_next">Reproduzir a seguir</string>

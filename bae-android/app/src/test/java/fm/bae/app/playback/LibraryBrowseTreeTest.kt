@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class LibraryBrowseTreeTest {
-    private val labels = BrowseLabels(albums = "Albums", composers = "Composers")
+    private val labels = BrowseLabels(library = "Library", albums = "Albums", composers = "Composers")
 
     private fun tree(
         handle: FakeAppHandle,
@@ -47,6 +47,7 @@ class LibraryBrowseTreeTest {
         runBlocking {
             val tree = tree(FakeAppHandle())
             assertTrue(tree.root.mediaMetadata.isBrowsable == true)
+            assertEquals("Library", tree.root.title)
             val children = tree.children(BrowseId.Root.mediaId, 0, 10)!!
             assertEquals(listOf(BrowseId.Albums.mediaId, BrowseId.Composers.mediaId), children.map { it.mediaId })
             assertEquals(listOf("Albums", "Composers"), children.map { it.title })

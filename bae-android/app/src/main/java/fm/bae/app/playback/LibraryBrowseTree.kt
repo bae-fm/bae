@@ -42,6 +42,7 @@ private const val TREE_CLOSED_MESSAGE = "library browse tree is closed"
 private val logger = BaeLogger(TAG)
 
 internal data class BrowseLabels(
+    val library: String,
     val albums: String,
     val composers: String,
 )
@@ -219,7 +220,8 @@ internal class LibraryBrowseTree<Owner : Any>(
     }
 
     private val nodes = BrowseNodeFactory(artworkUri)
-    val root: MediaItem = nodes.browsable(BrowseId.Root, ROOT_TITLE, null, MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
+    val root: MediaItem
+        get() = nodes.browsable(BrowseId.Root, labels().library, null, MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
     private val lock = Any()
     private val parentsByOwner = mutableMapOf<Owner, ParentInterests>()
     private val fixedParents = mutableMapOf<String, FixedProjection<BrowsePage>>()
@@ -593,7 +595,6 @@ internal class LibraryBrowseTree<Owner : Any>(
     }
 
     private companion object {
-        const val ROOT_TITLE = "bae"
         val ALBUM_SORT = BridgeSortCriterion(BridgeSortField.DATE_ADDED, BridgeSortDirection.DESCENDING)
         val COMPOSER_SORT = BridgeComposerSortCriterion(BridgeComposerSortField.NAME, BridgeSortDirection.ASCENDING)
         const val MAXIMUM_IMPLICIT_PARENT_INTERESTS = 12

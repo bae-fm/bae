@@ -37,6 +37,8 @@
     <string name="library_empty_syncing">No albums yet. Syncing from the cloud…</string>
     <string name="library_load_failed">Couldn\'t load your library.</string>
     <string name="library_load_more_failed">Couldn\'t load more albums.</string>
+    <!-- The library as a place: the home screen's title, the back button to it, and the car's browse root. -->
+    <string name="library">Library</string>
 
     <!-- Album detail -->
     <string name="album_load_failed">Couldn\'t load this album.</string>

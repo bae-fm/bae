@@ -22,6 +22,7 @@
     <string name="library_empty_syncing">Brak albumów. Synchronizowanie z chmury…</string>
     <string name="library_load_failed">Nie udało się wczytać biblioteki.</string>
     <string name="library_load_more_failed">Nie udało się wczytać kolejnych albumów.</string>
+    <string name="library">Biblioteka</string>
     <string name="album_load_failed">Nie udało się wczytać tego albumu.</string>
     <string name="shuffle">Losowo</string>
     <string name="play_next">Odtwórz jako następne</string>

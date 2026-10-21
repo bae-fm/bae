@@ -22,6 +22,7 @@
     <string name="library_empty_syncing">Все още няма албуми. Синхронизиране от облака…</string>
     <string name="library_load_failed">Библиотеката ви не може да бъде заредена.</string>
     <string name="library_load_more_failed">Не могат да бъдат заредени още албуми.</string>
+    <string name="library">Библиотека</string>
     <string name="album_load_failed">Този албум не може да бъде зареден.</string>
     <string name="shuffle">Разбъркване</string>
     <string name="play_next">Възпроизведи следващо</string>

@@ -22,6 +22,7 @@
     <string name="library_empty_syncing">Noch keine Alben. Synchronisierung aus der Cloud …</string>
     <string name="library_load_failed">Deine Bibliothek konnte nicht geladen werden.</string>
     <string name="library_load_more_failed">Weitere Alben konnten nicht geladen werden.</string>
+    <string name="library">Mediathek</string>
     <string name="album_load_failed">Dieses Album konnte nicht geladen werden.</string>
     <string name="shuffle">Zufallswiedergabe</string>
     <string name="play_next">Als Nächstes abspielen</string>

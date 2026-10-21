@@ -323,19 +323,12 @@ macos = 12
 ios = "footnote"
 android = 12
 
-# The "bae" name set as a logo: large on the welcome and about screens, and in
-# a top bar.
+# The "bae" name set as a logo, large on the welcome and about screens.
 [text.wordmark]
 weight = "bold"
 macos = 48
 ios = "largeTitle"
 android = 48
-
-[text.wordmarkBar]
-weight = "bold"
-macos = 17
-ios = "headline"
-android = 20
 
 # The library's page heading at its largest, before it shrinks to `title` as
 # the page scrolls.

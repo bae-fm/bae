@@ -65,6 +65,7 @@ class PlaybackService(
                 library = open.library,
                 labels = {
                     BrowseLabels(
+                        library = getString(fm.bae.app.R.string.library),
                         albums = getString(fm.bae.app.R.string.library_mode_albums),
                         composers = getString(fm.bae.app.R.string.library_mode_composers),
                     )

@@ -22,6 +22,7 @@
     <string name="library_empty_syncing">עדיין אין אלבומים. מסנכרן מהענן…</string>
     <string name="library_load_failed">לא ניתן לטעון את הספרייה שלכם.</string>
     <string name="library_load_more_failed">לא ניתן לטעון אלבומים נוספים.</string>
+    <string name="library">ספרייה</string>
     <string name="album_load_failed">לא ניתן לטעון את האלבום הזה.</string>
     <string name="shuffle">ערבב</string>
     <string name="play_next">נגן כהבא בתור</string>

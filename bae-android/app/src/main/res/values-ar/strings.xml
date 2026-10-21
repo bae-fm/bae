@@ -22,6 +22,7 @@
     <string name="library_empty_syncing">لا توجد ألبومات بعد. جارٍ المزامنة من السحابة…</string>
     <string name="library_load_failed">تعذّر تحميل مكتبتك.</string>
     <string name="library_load_more_failed">تعذّر تحميل المزيد من الألبومات.</string>
+    <string name="library">المكتبة</string>
     <string name="album_load_failed">تعذّر تحميل هذا الألبوم.</string>
     <string name="shuffle">تشغيل عشوائي</string>
     <string name="play_next">تشغيل كالتالي</string>

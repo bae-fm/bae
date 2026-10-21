@@ -22,6 +22,7 @@
     <string name="library_empty_syncing">アルバムがまだありません。クラウドから同期中…</string>
     <string name="library_load_failed">ライブラリを読み込めませんでした。</string>
     <string name="library_load_more_failed">これ以上アルバムを読み込めませんでした。</string>
+    <string name="library">ライブラリ</string>
     <string name="album_load_failed">このアルバムを読み込めませんでした。</string>
     <string name="shuffle">シャッフル</string>
     <string name="play_next">次に再生</string>

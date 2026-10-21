@@ -22,6 +22,7 @@
     <string name="library_empty_syncing">Ancora nessun album. Sincronizzazione dal cloud…</string>
     <string name="library_load_failed">Impossibile caricare la tua libreria.</string>
     <string name="library_load_more_failed">Impossibile caricare altri album.</string>
+    <string name="library">Libreria</string>
     <string name="album_load_failed">Impossibile caricare questo album.</string>
     <string name="shuffle">Casuale</string>
     <string name="play_next">Riproduci dopo</string>

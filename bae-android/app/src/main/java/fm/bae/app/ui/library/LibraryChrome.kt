@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
@@ -98,7 +99,7 @@ internal fun LibraryTopBar(
             modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = "bae", style = ThemeText.wordmarkBar.style)
+            Text(text = stringResource(R.string.library), style = ThemeText.title.style)
             Spacer(modifier = Modifier.weight(1f))
             IconButton(onClick = onOpenSearch) {
                 Icon(imageVector = Icons.Filled.Search, contentDescription = stringResource(R.string.search))
@@ -140,6 +141,24 @@ internal fun LibraryTopBar(
             )
             IconButton(onClick = onSettings) {
                 Icon(imageVector = Icons.Filled.Settings, contentDescription = stringResource(R.string.settings))
+            }
+        }
+    }
+}
+
+/** A screen inside the library: its bar holds the one way back, labeled with where it goes. */
+@Composable
+internal fun LibraryDetailTopBar(onBack: () -> Unit) {
+    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(ThemeSpace.related),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // One button: the arrow and the label read together as "Back, Library".
+            TextButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                Spacer(modifier = Modifier.width(ThemeSpace.inline))
+                Text(text = stringResource(R.string.library))
             }
         }
     }
@@ -324,6 +343,14 @@ private fun LibraryTopBarPreview() {
             onOpenDownloads = {},
             onSettings = {},
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LibraryDetailTopBarPreview() {
+    BaeTheme {
+        LibraryDetailTopBar(onBack = {})
     }
 }
 

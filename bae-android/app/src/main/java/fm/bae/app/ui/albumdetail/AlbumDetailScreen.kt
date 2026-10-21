@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlayArrow
@@ -24,10 +23,8 @@ import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -70,9 +67,9 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.ErrorDetailDisclosure
-import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.PrimaryButton
+import fm.bae.app.ui.library.LibraryDetailTopBar
 import fm.bae.app.ui.playback.NowPlayingBar
 import fm.bae.app.ui.sync.ReleaseArrivalLine
 import uniffi.bae_bridge.BridgeAlbumDetail
@@ -132,7 +129,7 @@ fun AlbumDetailScreen(
     val loadError = albumLoadError(query, appContext)
 
     Column(modifier = Modifier.fillMaxSize()) {
-        AlbumDetailTopBar(onBack = onBack)
+        LibraryDetailTopBar(onBack = onBack)
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             val loaded = detail
             if (loaded == null) {
@@ -191,21 +188,6 @@ private fun BoxScope.AlbumDetailLoadingBox(
         }
     } else {
         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-    }
-}
-
-@Composable
-private fun AlbumDetailTopBar(onBack: () -> Unit) {
-    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(ThemeSpace.related),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-            }
-            Text(text = "bae", style = ThemeText.wordmarkBar.style)
-        }
     }
 }
 
@@ -517,14 +499,6 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
                 )
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun AlbumDetailTopBarPreview() {
-    BaeTheme {
-        AlbumDetailTopBar(onBack = {})
     }
 }
 

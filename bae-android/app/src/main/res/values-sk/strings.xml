@@ -22,6 +22,7 @@
     <string name="library_empty_syncing">Zatiaľ žiadne albumy. Synchronizuje sa z cloudu…</string>
     <string name="library_load_failed">Tvoju knižnicu sa nepodarilo načítať.</string>
     <string name="library_load_more_failed">Ďalšie albumy sa nepodarilo načítať.</string>
+    <string name="library">Knižnica</string>
     <string name="album_load_failed">Tento album sa nepodarilo načítať.</string>
     <string name="shuffle">Náhodne</string>
     <string name="play_next">Prehrať ako ďalšie</string>

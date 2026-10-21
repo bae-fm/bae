@@ -22,6 +22,7 @@
     <string name="library_empty_syncing">Még nincs album. Szinkronizálás a felhőből…</string>
     <string name="library_load_failed">A könyvtáradat nem sikerült betölteni.</string>
     <string name="library_load_more_failed">Nem sikerült több albumot betölteni.</string>
+    <string name="library">Könyvtár</string>
     <string name="album_load_failed">Ezt az albumot nem sikerült betölteni.</string>
     <string name="shuffle">Keverés</string>
     <string name="play_next">Lejátszás következőként</string>

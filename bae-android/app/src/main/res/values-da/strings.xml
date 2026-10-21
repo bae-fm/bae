@@ -22,6 +22,7 @@
     <string name="library_empty_syncing">Ingen album endnu. Synkroniserer fra skyen…</string>
     <string name="library_load_failed">Dit bibliotek kunne ikke indlæses.</string>
     <string name="library_load_more_failed">Der kunne ikke indlæses flere album.</string>
+    <string name="library">Bibliotek</string>
     <string name="album_load_failed">Dette album kunne ikke indlæses.</string>
     <string name="shuffle">Bland</string>
     <string name="play_next">Afspil som næste</string>
