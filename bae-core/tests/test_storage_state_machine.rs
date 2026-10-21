@@ -267,11 +267,12 @@ async fn test_manage_refused_without_cloud_storage() {
 }
 
 // ---------------------------------------------------------------------------
-// Attached files make a release Remote while uploads are still queued.
+// A release stays Local while its uploads are queued: rows name a file only
+// once it is stored, so the release turns Remote when the last upload lands.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn attached_release_is_remote_before_its_uploads_finish() {
+async fn attached_release_turns_remote_once_its_uploads_finish() {
     let tmp = TempDir::new().unwrap();
     let (_db, mgr, _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
@@ -284,23 +285,23 @@ async fn attached_release_is_remote_before_its_uploads_finish() {
 
     mgr.upload_release(&release_id, false).await.unwrap();
 
-    // Attachment is committed before uploads finish.
+    // Queued uploads leave every row without a stored file.
     assert_eq!(
         storage(&mgr, &release_id).await,
-        (ReleaseStorageState::Remote, false)
+        (ReleaseStorageState::Local, false)
     );
 
     let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, files.len());
 
-    // Upload completion leaves attachment and pin state unchanged.
+    // Each completed upload names its file, and the pin state is unchanged.
     assert_eq!(
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
 }
 
-/// Upload failure leaves the release attached and its files queued for retry.
+/// Upload failure leaves the release Local and its files queued for retry.
 #[tokio::test]
 async fn upload_failure_keeps_attachment_and_pending_work() {
     let tmp = TempDir::new().unwrap();
@@ -323,7 +324,7 @@ async fn upload_failure_keeps_attachment_and_pending_work() {
 
     assert_eq!(
         storage(&mgr, &release_id).await,
-        (ReleaseStorageState::Remote, false)
+        (ReleaseStorageState::Local, false)
     );
     assert_ne!(
         mgr.count_pending_uploads_for_release(&release_id)
