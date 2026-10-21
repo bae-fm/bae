@@ -115,16 +115,6 @@ _swift_format_lint() {
     | xargs -0 xcrun swift-format lint -s
 }
 
-# The baeium bridge exports none of the feature-gated functions.
-_baeium_macos_export_guard() {
-  local gated='oauthAuthorize|oauthBegin|oauthCancel|oauthComplete|setOauthClientCreds|signInCloudProvider|useCloudkit'
-  if grep -nE "func ($gated)" bae-bridge/swift-bindings-macos/bae_bridge.swift; then
-    echo "baeium bridge exported a feature-gated symbol (above): the gate leaked into the S3-only build." >&2
-    return 1
-  fi
-  echo "baeium bridge is clean: no OAuth/CloudKit bindings exported."
-}
-
 _ios_clippy() {
   local ffmpeg_prefix="$ROOT/bae-ffmpeg/ios/aarch64-apple-ios"
   local device_sdk
@@ -231,7 +221,7 @@ check "bridge build (macOS baeium)" \
 check "install macOS bridge binding (baeium)" \
   ./bae-bridge/install-swift-bindings.sh macos
 check "guard: baeium bridge exports no OAuth/CloudKit binding" \
-  _baeium_macos_export_guard
+  ./scripts/check-baeium-exports.sh
 check "xcodegen (macOS baeium)" bash -c 'cd bae-macos/bae && xcodegen'
 check "xcodebuild (macOS baeium)" \
   env BAE_BRIDGE_FEATURES=desktop \
