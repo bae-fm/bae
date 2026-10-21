@@ -18,7 +18,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,7 +63,6 @@ fun ContentView(
     onShortcutHandled: () -> Unit,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     var screen by remember(startupError) {
         mutableStateOf<AppScreen>(
             startupError?.let(AppScreen::Failed) ?: AppScreen.Loading,
@@ -142,7 +140,7 @@ private fun AppScreenRouter(
     onScreen: (AppScreen) -> Unit,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     when (val current = screen) {
         AppScreen.Loading -> {
             LoadingScreen()
@@ -206,7 +204,7 @@ private fun RecoveryScreen(
     onScreen: (AppScreen) -> Unit,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     val libraryId = screen.libraryId
 
     // A failed reset shows [failed], the screen it started from, with why.
@@ -283,7 +281,7 @@ private fun RestoreOverScreen(
     onScreen: (AppScreen) -> Unit,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     OnboardingScreen(
         oauthProvidersError = oauthProvidersError,
         onBootstrapped = { result ->

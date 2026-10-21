@@ -23,7 +23,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +47,7 @@ import fm.bae.app.ui.components.PersonNameField
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.QRScannerScreen
 import fm.bae.app.ui.components.S3KeyFields
+import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.storageLocationLabel
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeBootstrapStatus
@@ -85,7 +85,7 @@ internal fun OnboardingScreen(
     restoreOver: RestoreOver?,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope = rememberScreenScope()
     // The process-lifetime host built at app launch; restore and join run over it.
     val host = (context.applicationContext as BaeApp).host
     val flow =
