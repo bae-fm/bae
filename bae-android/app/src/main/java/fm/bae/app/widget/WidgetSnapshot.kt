@@ -2,6 +2,7 @@ package fm.bae.app.widget
 
 import android.content.Context
 import fm.bae.app.BaeLogger
+import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.NowPlaying
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -15,34 +16,49 @@ private const val TAG = "bae.WidgetSnapshot"
 private val logger = BaeLogger(TAG)
 
 /**
- * The now-playing state the home-screen widget renders. The widget runs in the
- * launcher's process and can't host bae-core, so the app writes this compact
- * projection to a file whenever now-playing changes; the widget reads it back on
- * render. [track] is null when nothing is playing (the widget's empty state).
+ * The last track this device played, as the home-screen widget shows it. A
+ * cold render (the widget drawn by a process with no library open) can't ask
+ * bae-core, so the open library writes this compact projection to a file
+ * whenever now-playing changes and the widget reads it back on render. [track]
+ * is null when nothing is playing (the widget's empty state).
+ *
+ * Whether the track is playing is not part of it: that is a fact about this
+ * process's open library, true only while it is alive and playing, which a file
+ * left behind by a process that died can't speak for ([widgetContent]).
  */
 data class WidgetSnapshot(
     val track: WidgetTrack?,
-    val isPlaying: Boolean,
 ) {
     companion object {
-        val EMPTY = WidgetSnapshot(track = null, isPlaying = false)
+        val EMPTY = WidgetSnapshot(track = null)
 
         /**
          * Project the player's live now-playing state into the widget snapshot.
          * The sole map from playback state to what the widget shows — hooked off
-         * the player's existing [NowPlaying]/isPlaying projection, not a second
-         * event subscription.
+         * the player's existing [NowPlaying] projection, not a second event
+         * subscription.
          */
-        fun from(
-            nowPlaying: NowPlaying?,
-            isPlaying: Boolean,
-        ): WidgetSnapshot =
-            WidgetSnapshot(
-                track = nowPlaying?.let { WidgetTrack(it.title, it.artist, it.coverImage) },
-                isPlaying = isPlaying,
-            )
+        fun from(nowPlaying: NowPlaying?): WidgetSnapshot =
+            WidgetSnapshot(track = nowPlaying?.let { WidgetTrack(it.title, it.artist, it.coverImage) })
     }
 }
+
+/** What the widget draws: [track], with a pause button only while [isPlaying]. */
+internal data class WidgetContent(
+    val track: WidgetTrack?,
+    val isPlaying: Boolean,
+)
+
+/**
+ * The widget's content from the saved [snapshot] and the open library's
+ * [livePlayer], null when this process has no library open. The track shows as
+ * playing only while that player is playing it; a snapshot alone, read by a
+ * process that just started or after the library closed, shows the play button.
+ */
+internal fun widgetContent(
+    snapshot: WidgetSnapshot,
+    livePlayer: BaeCorePlayer?,
+): WidgetContent = WidgetContent(track = snapshot.track, isPlaying = livePlayer?.isPlaying?.value == true)
 
 /**
  * The track fields the widget shows. [coverImage] is the reference the widget
@@ -55,7 +71,6 @@ data class WidgetTrack(
     val coverImage: BridgeImageRef?,
 )
 
-private const val KEY_IS_PLAYING = "isPlaying"
 private const val KEY_TRACK = "track"
 private const val KEY_TITLE = "title"
 private const val KEY_ARTIST = "artist"
@@ -66,7 +81,6 @@ private const val KEY_COVER_VERSION = "version"
 
 internal fun WidgetSnapshot.toJson(): String {
     val obj = JSONObject()
-    obj.put(KEY_IS_PLAYING, isPlaying)
     track?.let {
         val t = JSONObject()
         t.put(KEY_TITLE, it.title)
@@ -95,7 +109,7 @@ internal fun parseWidgetSnapshot(json: String): WidgetSnapshot {
                 coverImage = it.optJSONObject(KEY_COVER)?.let(::parseCover),
             )
         }
-    return WidgetSnapshot(track = track, isPlaying = obj.getBoolean(KEY_IS_PLAYING))
+    return WidgetSnapshot(track = track)
 }
 
 /** The image reference a snapshot's cover object names, or null when its kind

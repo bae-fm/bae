@@ -191,7 +191,12 @@ object AppSessionHolder {
     /** Local libraries on this device, for the Settings switcher. */
     val libraries: StateFlow<List<BridgeLibrary>> get() = discovered.libraries
 
-    /** The currently open library, if any. Reused across re-opens of the same id. */
+    /**
+     * The currently open library, if any. Reused across re-opens of the same id.
+     * A session stops being current before it starts closing, so nothing that
+     * asks for the current session (the widget's play state, its transport
+     * taps) reaches one whose handle is closing.
+     */
     @Volatile
     private var current: OpenLibrary? = null
 
@@ -515,8 +520,9 @@ object AppSessionHolder {
         val config: BridgeConfig = handle.getConfig()
         val initialOutbox = handle.getOutboxSnapshot()
         val initialDownloads = handle.getDownloadSnapshot()
-        current?.dispose()
+        val previous = current
         current = null
+        previous?.dispose()
         val appContext = context.applicationContext
         val session =
             OpenLibrary(

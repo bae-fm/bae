@@ -32,6 +32,7 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import fm.bae.app.AppSessionHolder
 import fm.bae.app.R
 import fm.bae.app.mainActivityIntent
 import fm.bae.app.playback.ArtworkContentProvider
@@ -51,19 +52,20 @@ import androidx.compose.ui.text.font.FontWeight as ComposeFontWeight
 import androidx.glance.color.ColorProvider as DayNightColorProvider
 
 /**
- * Home-screen now-playing widget, drawn from the file-backed [WidgetSnapshot]
- * because the launcher's process can't host bae-core.
+ * Home-screen now-playing widget, drawn from the file-backed [WidgetSnapshot],
+ * which a render without an open library can still read, and played or paused
+ * by the open library's player when there is one ([widgetContent]).
  */
 class NowPlayingWidget : GlanceAppWidget() {
     override suspend fun provideGlance(
         context: Context,
         id: GlanceId,
     ) {
-        val snapshot = WidgetSnapshotStore(context).read()
+        val content = widgetContent(WidgetSnapshotStore(context).read(), AppSessionHolder.currentSession()?.playback)
         val preferences = readAppearancePreferences(appearanceFile(context))
         provideContent {
             GlanceTheme(colors = widgetColors(preferences)) {
-                NowPlayingWidgetContent(snapshot, placeholder = placeholderColor(preferences))
+                NowPlayingWidgetContent(content, placeholder = placeholderColor(preferences))
             }
         }
     }
@@ -71,11 +73,11 @@ class NowPlayingWidget : GlanceAppWidget() {
 
 @Composable
 private fun NowPlayingWidgetContent(
-    snapshot: WidgetSnapshot,
+    content: WidgetContent,
     placeholder: ColorProvider,
 ) {
     val context = LocalContext.current
-    val track = snapshot.track
+    val track = content.track
     // The whole surface opens the app; the transport buttons take their own taps.
     Row(
         modifier =
@@ -105,8 +107,8 @@ private fun NowPlayingWidgetContent(
         if (track != null) {
             Spacer(GlanceModifier.width(ThemeSpace.related))
             TransportButton(
-                iconRes = if (snapshot.isPlaying) R.drawable.ic_widget_pause else R.drawable.ic_widget_play,
-                descriptionRes = if (snapshot.isPlaying) R.string.pause else R.string.play,
+                iconRes = if (content.isPlaying) R.drawable.ic_widget_pause else R.drawable.ic_widget_play,
+                descriptionRes = if (content.isPlaying) R.string.pause else R.string.play,
                 command = COMMAND_TOGGLE,
             )
             Spacer(GlanceModifier.width(ThemeSpace.inline))

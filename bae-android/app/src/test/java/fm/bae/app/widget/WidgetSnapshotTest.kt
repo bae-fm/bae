@@ -4,6 +4,7 @@ import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.playback.applyPlaybackState
+import fm.bae.app.playback.pausedState
 import fm.bae.app.playback.playbackValues
 import fm.bae.app.playback.playingState
 import fm.bae.app.testCoverRef
@@ -24,10 +25,11 @@ import uniffi.bae_bridge.BridgePlaybackValueState
 import java.io.File
 
 /**
- * The widget renders from a file-backed snapshot the launcher process reads, so
- * two things must hold: the map from the player's now-playing projection to the
- * snapshot, and the write/read round-trip through the store (a torn or absent
- * file must not crash the render — it falls back to the empty state).
+ * The widget renders the last track from a file-backed snapshot and its play
+ * state from the open library's player, so three things must hold: the map
+ * from the player's now-playing projection to the snapshot, the write/read
+ * round-trip through the store, and that a saved track shows as playing only
+ * while a live player is playing it.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -44,42 +46,45 @@ class WidgetSnapshotTest {
                         coverImage = testCoverRef("rel-1"),
                         sidePausePrompt = null,
                     ),
-                isPlaying = true,
             )
         assertEquals("Track Title", snapshot.track?.title)
         assertEquals("Artist Name", snapshot.track?.artist)
         assertEquals(testCoverRef("rel-1"), snapshot.track?.coverImage)
-        assertTrue(snapshot.isPlaying)
     }
 
     @Test
     fun mapsNullNowPlayingToEmptyState() {
-        val snapshot = WidgetSnapshot.from(nowPlaying = null, isPlaying = false)
-        assertNull(snapshot.track)
-        assertFalse(snapshot.isPlaying)
+        assertNull(WidgetSnapshot.from(nowPlaying = null).track)
     }
 
     @Test
-    fun playerPlayingEventMapsToPlayingSnapshot() {
-        val player = player()
-        player.applyPlaybackState(
-            playingState(
-                trackId = "t1",
-                title = "Track Title",
-                artistNames = "Artist Name",
-                albumId = "album-1",
-                albumTitle = "Album Title",
-                coverImage = testCoverRef("rel-1"),
-                durationMs = 185_000uL,
-            ),
-        )
+    fun aPlayingPlayerShowsItsTrackAsPlaying() {
+        val player = playingPlayer()
 
-        val snapshot = WidgetSnapshot.from(player.nowPlaying.value, player.isPlaying.value)
+        val content = widgetContent(WidgetSnapshot.from(player.nowPlaying.value), player)
 
-        assertEquals("Track Title", snapshot.track?.title)
-        assertEquals("Artist Name", snapshot.track?.artist)
-        assertEquals(testCoverRef("rel-1"), snapshot.track?.coverImage)
-        assertTrue(snapshot.isPlaying)
+        assertEquals("Track Title", content.track?.title)
+        assertEquals("Artist Name", content.track?.artist)
+        assertEquals(testCoverRef("rel-1"), content.track?.coverImage)
+        assertTrue(content.isPlaying)
+    }
+
+    @Test
+    fun aSavedTrackWithNoOpenLibraryShowsAsStopped() {
+        val saved = WidgetSnapshot.from(playingPlayer().nowPlaying.value)
+
+        val content = widgetContent(saved, livePlayer = null)
+
+        assertEquals("Track Title", content.track?.title)
+        assertFalse(content.isPlaying)
+    }
+
+    @Test
+    fun aPausedPlayerShowsItsTrackAsStopped() {
+        val player = playingPlayer()
+        player.applyPlaybackState(pausedState(trackId = "t1"))
+
+        assertFalse(widgetContent(WidgetSnapshot.from(player.nowPlaying.value), player).isPlaying)
     }
 
     @Test
@@ -87,19 +92,18 @@ class WidgetSnapshotTest {
         val player = player()
         player.applyValues(playbackValues(BridgePlaybackValueState.Stopped))
 
-        val snapshot = WidgetSnapshot.from(player.nowPlaying.value, player.isPlaying.value)
+        val content = widgetContent(WidgetSnapshot.from(player.nowPlaying.value), player)
 
-        assertNull(snapshot.track)
-        assertFalse(snapshot.isPlaying)
+        assertNull(content.track)
+        assertFalse(content.isPlaying)
     }
 
     @Test
-    fun roundTripsPlayingSnapshotThroughStore() =
+    fun roundTripsSnapshotThroughStore() =
         withStore { store ->
             val snapshot =
                 WidgetSnapshot(
                     track = WidgetTrack(title = "Track Title", artist = "Artist Name", coverImage = testCoverRef("rel-1")),
-                    isPlaying = true,
                 )
             store.write(snapshot)
             assertEquals(snapshot, store.read())
@@ -111,7 +115,6 @@ class WidgetSnapshotTest {
             val snapshot =
                 WidgetSnapshot(
                     track = WidgetTrack(title = "Track Title", artist = "Artist Name", coverImage = null),
-                    isPlaying = false,
                 )
             store.write(snapshot)
             assertEquals(snapshot, store.read())
@@ -138,6 +141,21 @@ class WidgetSnapshotTest {
             file.delete()
         }
     }
+
+    private fun playingPlayer(): BaeCorePlayer =
+        player().apply {
+            applyPlaybackState(
+                playingState(
+                    trackId = "t1",
+                    title = "Track Title",
+                    artistNames = "Artist Name",
+                    albumId = "album-1",
+                    albumTitle = "Album Title",
+                    coverImage = testCoverRef("rel-1"),
+                    durationMs = 185_000uL,
+                ),
+            )
+        }
 
     private fun player(): BaeCorePlayer {
         val context = RuntimeEnvironment.getApplication()

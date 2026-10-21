@@ -247,8 +247,10 @@ class OpenLibrary internal constructor(
     }
 
     /**
-     * Mirror the player's now-playing projection into the widget snapshot and
-     * refresh the widget on every change. This observes the same
+     * Mirror the player's now-playing track into the widget snapshot and
+     * refresh the widget on every change of track or of playing, which the
+     * widget reads from this session's player while it is open
+     * ([fm.bae.app.widget.widgetContent]). This observes the same
      * [BaeCorePlayer.nowPlaying]/[BaeCorePlayer.isPlaying] the in-app bar reads —
      * not a second bridge subscription — so the widget and the in-app UI reflect
      * one source. Position ticks don't touch these flows, so `distinctUntilChanged`
@@ -258,9 +260,9 @@ class OpenLibrary internal constructor(
         widgetJob =
             scope.launch {
                 combine(playback.nowPlaying, playback.isPlaying) { nowPlaying, isPlaying ->
-                    WidgetSnapshot.from(nowPlaying, isPlaying)
+                    WidgetSnapshot.from(nowPlaying) to isPlaying
                 }.distinctUntilChanged()
-                    .collect { snapshot ->
+                    .collect { (snapshot, _) ->
                         widgetSnapshotStore.write(snapshot)
                         NowPlayingWidget().updateAll(appContext)
                     }
@@ -298,7 +300,12 @@ class OpenLibrary internal constructor(
         }
     }
 
-    private fun stopSessionServices() {
+    /**
+     * Detach everything that reaches the handle, then redraw the widget, which
+     * shows the last track stopped once no open session is playing it. The
+     * holder has already stopped offering this session as the current one.
+     */
+    private suspend fun stopSessionServices() {
         // First: a report must never reach the handle once it closes.
         networkReports?.stop()
         networkReports = null
@@ -320,6 +327,7 @@ class OpenLibrary internal constructor(
         valueSubscriptions.forEach(LiveSubscription::cancel)
         valueSubscriptions.clear()
         appContext.stopService(Intent(appContext, PlaybackService::class.java))
+        NowPlayingWidget().updateAll(appContext)
     }
 }
 
