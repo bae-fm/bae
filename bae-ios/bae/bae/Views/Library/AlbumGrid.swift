@@ -10,6 +10,9 @@ struct AlbumGrid: View {
     var groupByArtist = false
     let onSelect: (String) -> Void
 
+    @Environment(SyncActivityStore.self)
+    private var syncActivity
+
     private let columns = [
         GridItem(.adaptive(minimum: cellWidth), spacing: ThemeSpace.group)
     ]
@@ -62,7 +65,12 @@ struct AlbumGrid: View {
 
     private func cells(_ positions: Range<Int>) -> some View {
         ForEach(positions, id: \.self) { position in
-            AlbumCell(list: list, position: position, onSelect: onSelect)
+            AlbumCell(
+                list: list,
+                position: position,
+                arrivingAlbums: syncActivity.arrivingAlbums,
+                onSelect: onSelect
+            )
         }
     }
 }
@@ -72,6 +80,8 @@ struct AlbumGrid: View {
 private struct AlbumCell: View {
     let list: AlbumList
     let position: Int
+    /// Each album still arriving from another device, with that device.
+    let arrivingAlbums: [String: String]
     let onSelect: (String) -> Void
 
     @Environment(LibraryStore.self)
@@ -84,6 +94,7 @@ private struct AlbumCell: View {
             {
                 AlbumCard(
                     summary: summary,
+                    arrivingFrom: arrivingAlbums[albumId],
                     onTap: { onSelect(albumId) }
                 )
             }
@@ -101,6 +112,8 @@ private struct AlbumCell: View {
 
 private struct AlbumCard: View {
     let summary: AlbumSummary
+    /// The device the album's files are still arriving from, if any are.
+    let arrivingFrom: String?
     let onTap: () -> Void
 
     var body: some View {
@@ -109,6 +122,10 @@ private struct AlbumCard: View {
                 ImageView(imageRef: summary.cover, pointSize: cellWidth)
                     .aspectRatio(1, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
+                    .overlay(alignment: .bottomTrailing) {
+                        AlbumArrivalBadge(device: arrivingFrom)
+                            .padding(ThemeSpace.compact)
+                    }
                 Text(summary.title)
                     .themeText(.rowTitle)
                     .foregroundStyle(.primary)
@@ -130,6 +147,7 @@ private struct AlbumCard: View {
                     comment: "Album card VoiceOver label: title by artist"
                 )
         )
+        .accessibilityValue(arrivingFrom.map(BridgeArrivals.fromLine) ?? "")
     }
 }
 

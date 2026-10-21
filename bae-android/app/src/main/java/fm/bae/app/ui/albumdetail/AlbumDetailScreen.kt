@@ -51,6 +51,7 @@ import fm.bae.app.R
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LiveQueryState
 import fm.bae.app.data.LocalImageStore
+import fm.bae.app.data.arrival
 import fm.bae.app.durationClockLabel
 import fm.bae.app.durationUnitsText
 import fm.bae.app.labelsLineText
@@ -69,9 +70,11 @@ import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.playback.NowPlayingBar
+import fm.bae.app.ui.sync.ReleaseArrivalLine
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
+import uniffi.bae_bridge.BridgeReleaseArrival
 
 private const val TAG = "bae.AlbumDetailScreen"
 private val logger = BaeLogger(TAG)
@@ -110,6 +113,7 @@ fun AlbumDetailScreen(
     // right after navigation, so ignore any value for another album.
     val detail = query.value?.takeIf { it.album.id == albumId }
     val nowPlaying by session.playback.nowPlaying.collectAsState()
+    val activity by session.syncActivityStore.activity.collectAsState()
     val isPlaying by session.playback.isPlaying.collectAsState()
     var selectedReleaseId by remember(albumId, initialReleaseId) { mutableStateOf(initialReleaseId) }
     val appContext = LocalContext.current
@@ -145,6 +149,7 @@ fun AlbumDetailScreen(
                 AlbumDetailContent(
                     detail = loaded,
                     selectedRelease = release,
+                    arrival = release?.let { activity.arrival(it.id) },
                     cover = release?.cover,
                     playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
                     callbacks = buildAlbumDetailCallbacks(session, release) { selectedReleaseId = it },
@@ -281,6 +286,8 @@ private fun buildAlbumDetailCallbacks(
 internal fun AlbumDetailContent(
     detail: BridgeAlbumDetail,
     selectedRelease: BridgeRelease?,
+    /** What of the selected release is still arriving from another device. */
+    arrival: BridgeReleaseArrival?,
     cover: BridgeImageRef?,
     playback: AlbumPlaybackState,
     callbacks: AlbumDetailCallbacks,
@@ -308,6 +315,7 @@ internal fun AlbumDetailContent(
             AlbumDetailHeader(
                 detail = detail,
                 selectedRelease = selectedRelease,
+                arrival = arrival,
                 cover = cover,
                 galleryItems = galleryItems,
                 onShowGallery = { showGallery = true },
@@ -331,7 +339,7 @@ internal fun AlbumDetailContent(
         if (selectedRelease != null) {
             item { releaseDownloadControl(selectedRelease) }
             item { AlbumActionButtons(callbacks) }
-            albumTrackGroups(selectedRelease, playback, callbacks, context)
+            albumTrackGroups(selectedRelease, arrival?.trackIds.orEmpty().toSet(), playback, callbacks, context)
         }
     }
 }
@@ -340,6 +348,7 @@ internal fun AlbumDetailContent(
 private fun AlbumDetailHeader(
     detail: BridgeAlbumDetail,
     selectedRelease: BridgeRelease?,
+    arrival: BridgeReleaseArrival?,
     cover: BridgeImageRef?,
     galleryItems: List<uniffi.bae_bridge.BridgeGalleryItem>,
     onShowGallery: () -> Unit,
@@ -391,6 +400,10 @@ private fun AlbumDetailHeader(
                     )
                 }
             }
+            arrival?.let {
+                Spacer(modifier = Modifier.height(ThemeSpace.inline))
+                ReleaseArrivalLine(deviceName = it.deviceName)
+            }
         }
     }
 }
@@ -431,6 +444,7 @@ private fun AlbumActionButtons(callbacks: AlbumDetailCallbacks) {
 
 private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
     release: BridgeRelease,
+    arrivingTrackIds: Set<String>,
     playback: AlbumPlaybackState,
     callbacks: AlbumDetailCallbacks,
     context: android.content.Context,
@@ -453,6 +467,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
                         durationLabel = context.durationClockLabel(track.durationClock),
                         isCurrent = isCurrent,
                         isPlaying = playback.isPlaying,
+                        isArriving = track.id in arrivingTrackIds,
                     ),
                 callbacks =
                     TrackRowCallbacks(
@@ -500,6 +515,7 @@ private fun AlbumDetailHeaderPreview() {
             AlbumDetailHeader(
                 detail = PreviewData.albumDetail(),
                 selectedRelease = PreviewData.release(),
+                arrival = PreviewData.releaseArrival(PreviewData.release()),
                 cover = PreviewData.imageRef(),
                 galleryItems = emptyList(),
                 onShowGallery = {},

@@ -83,7 +83,8 @@ struct AlbumTrackListLayoutTests {
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Theme.background)
-            .environment(UiStore()),
+            .environment(UiStore())
+            .environment(SyncActivityStore(cancelArtwork: {}, retryNow: {})),
             size: size
         ) {
             try await body($0, $1)

@@ -230,10 +230,12 @@ onFillSecondary = "#B3FFFFFF"
 
 # A colour laid over a surface: `tint` behind that colour's own text, as in a
 # status chip, a notice or a selection; `tintStrong` where it must read stronger,
-# as under the pointer.
+# as under the pointer. `muted` is content shown but not yet usable, such as a
+# track whose audio is still arriving from another device.
 [opacity]
 tint = 0.14
 tintStrong = 0.26
+muted = 0.45
 
 # Corner radii, in points on Apple and dp on Android. `artwork` is cover art in
 # rows and lists, `cover` a release's cover shown large; `bar` rounds skeleton

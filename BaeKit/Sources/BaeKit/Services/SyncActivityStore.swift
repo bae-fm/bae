@@ -50,6 +50,14 @@ public final class SyncActivityStore {
         return albums[albumId]
     }
 
+    /// Each album still arriving, by id, with the device it arrives from.
+    public var arrivingAlbums: [String: String] {
+        guard case .ready(_, let albums, _) = activity?.arrivals else {
+            return [:]
+        }
+        return albums
+    }
+
     /// What of a release is still arriving, if anything is.
     public func arrival(releaseId: String) -> BridgeReleaseArrival? {
         guard case .ready(_, _, let releases) = activity?.arrivals else {

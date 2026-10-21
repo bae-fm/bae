@@ -1312,6 +1312,17 @@ registered under. Once the Mac uploads it, the phone's next fetch of the file
 ends its arrival. A file whose uploader was removed, or whose request failed,
 stays a pending record.
 
+Arriving is shown quietly where the release is. Its album's card carries a
+small cloud mark, which names the device to assistive technologies and on
+hover. Its detail says "Arriving from Studio Mac" under the release's facts,
+and each track whose audio is still arriving shows dimmed, with "Arriving" in
+place of its length, and can't be played or queued until it lands. Nothing
+is coloured as a warning. A device knows a file is arriving only once it has
+asked storage for it: covers, artist images and avatars come down as their
+rows arrive, so those are known at once, while a track's audio is known after
+the device first tries to read it, by playing it or keeping it offline. When
+the last file lands, the mark and the line go by themselves.
+
 A cover or other picture still arriving is no failure either. Reading it
 names its file instead of failing, and the picture shows its placeholder
 until the file lands; the request waits for that and then reads the picture,

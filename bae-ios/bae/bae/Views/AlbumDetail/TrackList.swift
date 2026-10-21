@@ -10,8 +10,12 @@ struct TrackList: View {
     let onPlayNext: (String) -> Void
     let onAddToQueue: (String) -> Void
 
+    @Environment(SyncActivityStore.self)
+    private var syncActivity
+
     var body: some View {
         let groups = detail.trackGroups
+        let arriving = syncActivity.arrivingTrackIds(releaseId: detail.id)
 
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
@@ -23,6 +27,7 @@ struct TrackList: View {
                 ForEach(group.tracks, id: \.id) { track in
                     TrackRow(
                         track: track,
+                        isArriving: arriving.contains(track.id),
                         artist: artistDisplay.artist(for: track),
                         onPlay: { onPlayTrack(track.id) },
                         onPlayNext: { onPlayNext(track.id) },
@@ -44,6 +49,9 @@ struct TrackList: View {
 
 private struct TrackRow: View {
     let track: Track
+    /// The track's audio is still arriving from another device: it shows
+    /// dimmed, says so in place of its length, and can't play yet.
+    let isArriving: Bool
     /// The artist to show, or `nil` for none, as the album display resolves it.
     let artist: String?
     let onPlay: () -> Void
@@ -102,17 +110,24 @@ private struct TrackRow: View {
                     }
                 }
                 Spacer(minLength: 0)
-                if !track.durationLabel.isEmpty {
+                if isArriving {
+                    Text(localizedCoreString("core.arrival.track"))
+                        .themeText(.body)
+                        .foregroundStyle(.secondary)
+                }
+                else if !track.durationLabel.isEmpty {
                     Text(track.durationLabel)
                         .monospacedDigit()
                         .themeText(.body)
                         .foregroundStyle(.secondary)
                 }
             }
+            .opacity(isArriving ? ThemeOpacity.muted : 1)
             .contentShape(Rectangle())
             .padding(.vertical, ThemeSpace.related)
         }
         .buttonStyle(.plain)
+        .disabled(isArriving)
         .contextMenu {
             Button {
                 onPlayNext()

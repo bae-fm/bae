@@ -16,6 +16,9 @@ struct AlbumTrackListView: View {
     let onAddToQueue: (String) -> Void
     let onExportTrack: (String) -> Void
 
+    @Environment(SyncActivityStore.self)
+    private var syncActivity
+
     @ScaledMetric(relativeTo: .body)
     private var rowHeight: CGFloat = 40
     @ScaledMetric(relativeTo: .body)
@@ -64,10 +67,12 @@ struct AlbumTrackListView: View {
 
     private func trackColumn(tracks: [Track]) -> some View {
         let height = isCompilation ? rowHeightCompilation : rowHeight
+        let arriving = syncActivity.arrivingTrackIds(releaseId: release.id)
         return VStack(alignment: .leading, spacing: 0) {
             ForEach(tracks, id: \.id) { track in
                 TrackRowView(
                     track: track,
+                    isArriving: arriving.contains(track.id),
                     // Core sets this only for a compilation.
                     artist: track.displayArtist,
                     isCurrent: currentTrackId == track.id,
@@ -109,6 +114,11 @@ struct AlbumTrackListView: View {
         .frame(width: 540)
         .background(Theme.background)
         .environment(UiStore())
+        .environment(
+            PreviewData.arrivingActivity(
+                store: PreviewData.seededLibraryStore()
+            )
+        )
     }
 
     // Single flat side, first track playing.

@@ -27,6 +27,7 @@ internal fun AlbumDetailScene() {
             AlbumDetailContent(
                 detail = PreviewData.albumDetail(),
                 selectedRelease = PreviewData.release(),
+                arrival = PreviewData.releaseArrival(PreviewData.release()),
                 cover = PreviewData.imageRef(),
                 playback = AlbumPlaybackState(currentTrackId = null, isPlaying = false),
                 callbacks = inertAlbumDetailCallbacks(),

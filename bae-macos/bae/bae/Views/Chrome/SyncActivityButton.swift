@@ -73,6 +73,7 @@ private struct SyncActivityGlyph: View {
         SyncActivityButton()
             .environment(SyncActivityStore.preview())
             .environment(SettingsNavigation())
+            .environment(\.openSettingsWindow, OpenSettingsWindowAction {})
             .padding()
     }
 
@@ -80,6 +81,7 @@ private struct SyncActivityGlyph: View {
         SyncActivityButton()
             .environment(SyncActivityStore.preview(needsAttention: false))
             .environment(SettingsNavigation())
+            .environment(\.openSettingsWindow, OpenSettingsWindowAction {})
             .padding()
     }
 

@@ -80,6 +80,8 @@ struct AlbumDetailHeader: View {
                         .foregroundStyle(.secondary)
                         .padding(.top, ThemeSpace.inline)
                 }
+                ReleaseArrivalLine(releaseId: detail.id)
+                    .padding(.top, ThemeSpace.inline)
             }
             Spacer(minLength: 0)
         }

@@ -280,6 +280,18 @@ object PreviewData {
             state = state,
         )
 
+    /** [release] still arriving from a Mac: its cover and its first two tracks. */
+    fun releaseArrival(release: BridgeRelease): BridgeReleaseArrival =
+        BridgeReleaseArrival(
+            deviceName = "Studio Mac",
+            cover = true,
+            trackIds =
+                release.trackGroups
+                    .flatMap { it.tracks }
+                    .take(2)
+                    .map { it.id },
+        )
+
     /** A library mid-arrival: files uploading, artwork downloading, two albums still
      *  arriving from a Mac, and, when [needsAttention], a record that needs signing in. */
     fun syncActivity(needsAttention: Boolean): BridgeSyncActivity =

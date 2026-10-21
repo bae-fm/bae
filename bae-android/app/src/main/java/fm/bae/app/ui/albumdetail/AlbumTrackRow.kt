@@ -24,11 +24,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
+import fm.bae.app.coreString
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 
@@ -41,6 +45,9 @@ internal data class TrackRowData(
     val durationLabel: String,
     val isCurrent: Boolean,
     val isPlaying: Boolean,
+    /** The track's audio is still arriving from another device: it shows dimmed,
+     *  says so in place of its length, and can't play yet. */
+    val isArriving: Boolean,
 )
 
 internal data class TrackRowCallbacks(
@@ -59,7 +66,8 @@ internal fun TrackRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(onClick = callbacks.onClick)
+                .alpha(if (data.isArriving) ThemeOpacity.muted.toFloat() else 1f)
+                .clickable(enabled = !data.isArriving, onClick = callbacks.onClick)
                 .padding(vertical = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -85,7 +93,13 @@ internal fun TrackRow(
                 )
             }
         }
-        if (data.durationLabel.isNotEmpty()) {
+        if (data.isArriving) {
+            Text(
+                text = LocalContext.current.coreString("core.arrival.track"),
+                style = ThemeText.detail.style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else if (data.durationLabel.isNotEmpty()) {
             Text(
                 text = data.durationLabel,
                 style = ThemeText.detail.style,
@@ -93,6 +107,7 @@ internal fun TrackRow(
             )
         }
         TrackRowMenu(
+            enabled = !data.isArriving,
             menuExpanded = menuExpanded,
             onExpand = { menuExpanded = true },
             onDismiss = { menuExpanded = false },
@@ -130,6 +145,7 @@ private fun TrackPositionIndicator(
 
 @Composable
 private fun TrackRowMenu(
+    enabled: Boolean,
     menuExpanded: Boolean,
     onExpand: () -> Unit,
     onDismiss: () -> Unit,
@@ -137,7 +153,7 @@ private fun TrackRowMenu(
     onAddToQueue: () -> Unit,
 ) {
     Box {
-        IconButton(onClick = onExpand) {
+        IconButton(onClick = onExpand, enabled = enabled) {
             Icon(
                 imageVector = Icons.Filled.MoreVert,
                 contentDescription = stringResource(R.string.track_options),
@@ -178,6 +194,7 @@ private fun TrackRowPreview() {
                     durationLabel = "3:34",
                     isCurrent = false,
                     isPlaying = false,
+                    isArriving = false,
                 ),
             callbacks = previewTrackRowCallbacks,
         )
@@ -197,6 +214,27 @@ private fun TrackRowCurrentPreview() {
                     durationLabel = "4:12",
                     isCurrent = true,
                     isPlaying = true,
+                    isArriving = false,
+                ),
+            callbacks = previewTrackRowCallbacks,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun TrackRowArrivingPreview() {
+    BaeTheme {
+        TrackRow(
+            data =
+                TrackRowData(
+                    positionLabel = "3",
+                    title = "Track Title",
+                    artistNames = null,
+                    durationLabel = "5:02",
+                    isCurrent = false,
+                    isPlaying = false,
+                    isArriving = true,
                 ),
             callbacks = previewTrackRowCallbacks,
         )

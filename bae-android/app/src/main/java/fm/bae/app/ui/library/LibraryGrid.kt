@@ -2,6 +2,7 @@ package fm.bae.app.ui.library
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
@@ -19,6 +21,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -30,6 +35,7 @@ import fm.bae.app.R
 import fm.bae.app.data.AlbumPageStore
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
+import fm.bae.app.data.arrivingFrom
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
@@ -37,6 +43,7 @@ import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.sync.AlbumArrivalBadge
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
 
@@ -51,6 +58,7 @@ internal fun LibraryGridContent(
     groupByArtist: Boolean,
     onSelectAlbum: (String) -> Unit,
 ) {
+    val activity by session.syncActivityStore.activity.collectAsState()
     LibraryPageContent(
         session = session,
         page = page,
@@ -60,6 +68,7 @@ internal fun LibraryGridContent(
             count = page.totalCount,
             sections = if (groupByArtist) page.sections else emptyList(),
             albumAt = page.rows::get,
+            arrivingFrom = { albumId -> activity.arrivingFrom(albumId) },
             gridState = gridState,
             onSelectAlbum = onSelectAlbum,
         )
@@ -75,6 +84,7 @@ private fun LibraryGridBacking(
     count: Int,
     sections: List<BridgeLibraryBrowseSection> = emptyList(),
     albumAt: (Int) -> BridgeAlbum?,
+    arrivingFrom: (String) -> String?,
     gridState: LazyGridState,
     onSelectAlbum: (String) -> Unit,
 ) {
@@ -87,7 +97,7 @@ private fun LibraryGridBacking(
         modifier = Modifier.fillMaxSize(),
     ) {
         if (sections.isEmpty()) {
-            albumItems(0 until count, albumAt, onSelectAlbum)
+            albumItems(0 until count, albumAt, arrivingFrom, onSelectAlbum)
         } else {
             sections.forEach { section ->
                 item(key = section.id, span = { GridItemSpan(maxLineSpan) }) {
@@ -100,6 +110,7 @@ private fun LibraryGridBacking(
                 albumItems(
                     section.window.offset.toInt() until (section.window.offset + section.window.limit).toInt(),
                     albumAt,
+                    arrivingFrom,
                     onSelectAlbum,
                 )
             }
@@ -110,13 +121,14 @@ private fun LibraryGridBacking(
 private fun LazyGridScope.albumItems(
     positions: IntRange,
     albumAt: (Int) -> BridgeAlbum?,
+    arrivingFrom: (String) -> String?,
     onSelectAlbum: (String) -> Unit,
 ) {
     items(positions.count(), key = { positions.first + it }) { local ->
         val index = positions.first + local
         val album = albumAt(index)
         if (album != null) {
-            AlbumGridCard(album = album, onClick = { onSelectAlbum(album.id) })
+            AlbumGridCard(album = album, arrivingFrom = arrivingFrom(album.id), onClick = { onSelectAlbum(album.id) })
         } else {
             Spacer(modifier = Modifier.fillMaxWidth().aspectRatio(1f))
         }
@@ -134,6 +146,8 @@ internal fun LibraryGridScene() {
             LibraryGridBacking(
                 count = SCENE_ALBUM_COUNT,
                 albumAt = { i -> PreviewData.album(id = "alb-$i", title = "Album ${i + 1}") },
+                // The first album is still arriving from another device.
+                arrivingFrom = { id -> if (id == "alb-0") "Studio Mac" else null },
                 gridState = rememberLazyGridState(),
                 onSelectAlbum = {},
             )
@@ -150,16 +164,22 @@ private fun LibraryGridScenePreview() {
 @Composable
 private fun AlbumGridCard(
     album: BridgeAlbum,
+    arrivingFrom: String?,
     onClick: () -> Unit,
 ) {
     Column(modifier = Modifier.clickable(onClick = onClick)) {
-        CoverImage(
-            cover = album.cover,
-            cornerRadius = ThemeRadius.cover,
-            iconPadding = 40.dp,
-            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-            contentDescription = album.title,
-        )
+        Box(contentAlignment = Alignment.BottomEnd) {
+            CoverImage(
+                cover = album.cover,
+                cornerRadius = ThemeRadius.cover,
+                iconPadding = 40.dp,
+                modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                contentDescription = album.title,
+            )
+            arrivingFrom?.let { device ->
+                AlbumArrivalBadge(deviceName = device, modifier = Modifier.padding(ThemeSpace.compact))
+            }
+        }
         Spacer(modifier = Modifier.height(ThemeSpace.compact))
         Text(
             text = album.title,
@@ -180,7 +200,7 @@ private fun AlbumGridCard(
 private fun AlbumGridCardPreview() {
     BaeTheme {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            AlbumGridCard(album = PreviewData.album(), onClick = {})
+            AlbumGridCard(album = PreviewData.album(), arrivingFrom = "Studio Mac", onClick = {})
         }
     }
 }
