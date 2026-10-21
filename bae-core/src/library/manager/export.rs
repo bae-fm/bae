@@ -40,7 +40,7 @@ impl LibraryManager {
     /// directory is the atomic unit, renamed into place only once every file is
     /// written.
     ///
-    /// The bytes stream a window at a time from coven's stream over the blob
+    /// The bytes stream a window at a time from coven's stream over the file
     /// (the user's own file, the local store, the cache, or the cloud), so a
     /// file of any size costs one window of memory; each write runs on a
     /// blocking thread.

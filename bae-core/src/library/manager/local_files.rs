@@ -163,7 +163,7 @@ impl LibraryManager {
                 .database
                 .open_file_stream(&reference)
                 .await
-                .map_err(|error| LibraryError::Blob {
+                .map_err(|error| LibraryError::FileRead {
                     operation: "read file for local copy".into(),
                     error: Box::new(error),
                 })?;
@@ -172,7 +172,7 @@ impl LibraryManager {
             while offset < stream.plaintext_size() {
                 let bytes = tokio::select! {
                     _ = cancel.cancelled() => return Err(LibraryError::Storage("making release local was cancelled".into())),
-                    bytes = stream.read_at(offset, (4 * 1024 * 1024).min(stream.plaintext_size() - offset)) => bytes.map_err(|error| LibraryError::Blob { operation: "copy file to local folder".into(), error: Box::new(error) })?,
+                    bytes = stream.read_at(offset, (4 * 1024 * 1024).min(stream.plaintext_size() - offset)) => bytes.map_err(|error| LibraryError::FileRead { operation: "copy file to local folder".into(), error: Box::new(error) })?,
                 };
                 offset += bytes.len() as u64;
                 output = blocking_io(move || {

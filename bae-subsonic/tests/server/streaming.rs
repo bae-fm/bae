@@ -335,7 +335,7 @@ async fn a_changed_cover_gets_a_new_cover_art_id() {
     let before = cover_art(&call(&router, "getAlbum", &album_query).await);
 
     lib.manager
-        .store_library_image_blob(
+        .store_library_image(
             &bae_core::db::DbLibraryImage {
                 id: lib.per_track_release.clone(),
                 image_type: bae_core::db::LibraryImageType::Cover,
@@ -377,7 +377,7 @@ async fn an_artist_cover_art_is_the_artist_image() {
     let artist_id = artist_wire_id.strip_prefix("ar-").unwrap().to_string();
     let image = support::cover_png();
     lib.manager
-        .store_library_image_blob(
+        .store_library_image(
             &bae_core::db::DbLibraryImage {
                 id: artist_id,
                 image_type: bae_core::db::LibraryImageType::Artist,

@@ -273,12 +273,12 @@ async fn deleting_a_release_keeps_its_committed_upload_visible_until_it_finishes
 }
 
 /// A cover upload is carried by the `covers` row whose primary key is the
-/// release id, while its immutable cloud blob has a distinct id. The queue must
-/// identify and size the blob itself rather than mistaking the release id for
+/// release id, while its immutable cloud file has a distinct id. The queue must
+/// identify and size the file itself rather than mistaking the release id for
 /// an audio-file id.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn outbox_snapshot_identifies_the_cover_blob() {
+async fn outbox_snapshot_identifies_the_cover_file() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let release = insert_local_release_with_files(
@@ -297,7 +297,7 @@ async fn outbox_snapshot_identifies_the_cover_blob() {
         manager.clock.now().into(),
     );
     manager
-        .store_library_image_blob(&cover, cover_bytes)
+        .store_library_image(&cover, cover_bytes)
         .await
         .unwrap();
     manager.upload_release(&release.id, false).await.unwrap();

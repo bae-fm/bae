@@ -28,7 +28,7 @@ import kotlinx.coroutines.withContext
 
 private val logger = BaeLogger("bae.DownloadConcurrency")
 
-/** This device's download concurrency: how many blobs a pin fetches at once. */
+/** This device's download concurrency: how many files a pin fetches at once. */
 @Composable
 internal fun DownloadConcurrencyRow(
     session: OpenLibrary,

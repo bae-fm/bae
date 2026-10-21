@@ -175,7 +175,7 @@ fn imported_release_summary(
     let text = load_imported_release_text_on(sql, Some(&release.release_id))?
         .remove(&release.release_id)
         .ok_or_else(|| DbError::Message(format!("imported release {} has no album", release.release_id)))?;
-    let cover_version = super::super::blobs::image_version_on(
+    let cover_version = super::super::files::image_version_on(
         sql,
         &crate::db::LibraryImageType::Cover,
         &release.release_id,

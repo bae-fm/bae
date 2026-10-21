@@ -159,7 +159,7 @@ impl Database {
                     .flat_map(|window| window.rows.iter().map(|row| row.artist.id.clone()))
                     .collect::<Vec<_>>();
                 let image_versions =
-                    super::blobs::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
+                    super::files::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
                         .map_err(CovenError::from)?;
                 Ok(ComposerBrowseProjection {
                     windows,
@@ -229,7 +229,7 @@ impl Database {
                     .flat_map(|window| window.rows.iter().map(|row| row.artist.id.clone()))
                     .collect::<Vec<_>>();
                 let image_versions =
-                    super::blobs::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
+                    super::files::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
                         .map_err(CovenError::from)?;
                 Ok(ArtistBrowseProjection {
                     windows,
@@ -279,7 +279,7 @@ impl Database {
                     None => (Vec::new(), Vec::new()),
                 };
                 let image_versions =
-                    super::blobs::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
+                    super::files::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
                         .map_err(CovenError::from)?;
                 let cover_versions = album_cover_versions_on(&sql, &album_ids)?;
                 Ok((detail, image_versions, cover_versions))
@@ -329,10 +329,10 @@ impl Database {
                     None => (Vec::new(), Vec::new()),
                 };
                 let image_versions =
-                    super::blobs::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
+                    super::files::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
                         .map_err(CovenError::from)?;
                 let cover_versions =
-                    super::blobs::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
+                    super::files::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
                         .map_err(CovenError::from)?;
                 Ok((detail, image_versions, cover_versions))
             })
@@ -412,7 +412,7 @@ impl Database {
                     None => Vec::new(),
                 };
                 let cover_versions =
-                    super::blobs::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
+                    super::files::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
                         .map_err(CovenError::from)?;
                 Ok(WorkDetailProjection {
                     detail,

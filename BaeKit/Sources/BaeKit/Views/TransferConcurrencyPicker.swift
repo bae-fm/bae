@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A segmented 1...8 picker for a blob-transfer concurrency setting —
+/// A segmented 1...8 picker for a file-transfer concurrency setting —
 /// simultaneous uploads or downloads. Reads the current value from the config
 /// mirror and writes it through `setValue`; a failed write (an out-of-range
 /// value, a config-write error) is surfaced and the picker keeps showing the

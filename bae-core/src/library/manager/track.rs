@@ -138,7 +138,7 @@ impl LibraryManager {
         }
     }
 
-    /// The file record for a blob id — streaming looks the id up on the track's
+    /// The file record for a file id — streaming looks the id up on the track's
     /// audio segments, then fetches the row here.
     pub async fn get_file_by_id(&self, file_id: &str) -> Result<Option<DbFile>, LibraryError> {
         Ok(self.database.find_file_by_id(file_id).await?)

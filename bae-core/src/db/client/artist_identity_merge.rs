@@ -154,7 +154,7 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
     }
     let surviving_sort_name = discogs_artist.sort_name.or(musicbrainz_artist.sort_name);
     let image =
-        |artist_id: &str| super::blobs::image_version_on(sql, &LibraryImageType::Artist, artist_id);
+        |artist_id: &str| super::files::image_version_on(sql, &LibraryImageType::Artist, artist_id);
     let surviving_image = image(surviving_artist_id)?;
     let absorbed_image = image(&absorbed_artist_id)?;
 

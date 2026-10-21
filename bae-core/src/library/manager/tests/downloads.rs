@@ -5,7 +5,7 @@ async fn insert_pinnable_release(manager: &TestManager) -> String {
     let release = uploaded_release(manager, &source, "Test Album", false).await;
     let file = release_files(manager, &release).await.remove(0);
     manager
-        .evict_blob_for_test(&manager.release_file_row_blob_ref(&file.id).await.unwrap())
+        .evict_file_for_test(&manager.release_file_ref(&file.id).await.unwrap())
         .await
         .unwrap();
     release
@@ -45,7 +45,7 @@ async fn download_queue_enqueue_dedups_and_cancels_while_paused() {
 async fn download_queue_skips_already_pinned() {
     let (manager, temp_dir) = setup_test_manager().await;
 
-    // A genuinely pinned release: made Remote with pin, so its blob lands in
+    // A genuinely pinned release: made Remote with pin, so its file lands in
     // coven's offline cache.
     connect_test_cloud(&manager).await;
     let release_id = uploaded_release(
@@ -66,7 +66,7 @@ async fn download_queue_skips_already_pinned() {
     );
     assert!(
         summary.pinned,
-        "the offline-cached blob makes it read as pinned"
+        "the offline-cached file makes it read as pinned"
     );
 
     manager.set_downloads_paused(true);

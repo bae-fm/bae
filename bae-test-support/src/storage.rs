@@ -88,11 +88,11 @@ pub async fn remove_uploaded_file(
     storage: &MemoryStorage,
     file_id: &str,
 ) {
-    let reference = manager.release_blob_ref_for_test(file_id).await.unwrap();
-    manager.evict_blob_for_test(&reference).await.unwrap();
+    let reference = manager.release_file_ref_for_test(file_id).await.unwrap();
+    manager.evict_file_for_test(&reference).await.unwrap();
     let before = storage.reads().await.len();
     manager
-        .materialize_release_blob_for_test(file_id)
+        .materialize_release_file_for_test(file_id)
         .await
         .unwrap();
     let reads = storage.reads().await;
@@ -108,5 +108,5 @@ pub async fn remove_uploaded_file(
     for object in objects {
         storage.delete(&object).await.unwrap();
     }
-    manager.evict_blob_for_test(&reference).await.unwrap();
+    manager.evict_file_for_test(&reference).await.unwrap();
 }

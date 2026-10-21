@@ -138,7 +138,7 @@ async fn preload_fetch_yields_while_the_playing_track_is_fetching() {
 }
 
 /// Spawn the production `fill_on_demand` loop over an in-memory
-/// `blob`, filling `buffer`. The fetch serves `blob[start..end]` directly —
+/// `contents`, filling `buffer`. The fetch serves `contents[start..end]` directly —
 /// source offsets map identity into the buffer — so the seek-ordering and
 /// eviction assertions read against plaintext offsets. Records every
 /// `(start, end)` fetch into the returned log and, when `gate` is `Some`,
@@ -146,12 +146,12 @@ async fn preload_fetch_yields_while_the_playing_track_is_fetching() {
 /// loop the readers use, isolated from the encrypt/cloud fetch source so the
 /// loop's demand and eviction behavior is what's under test.
 fn start_recording_fill(
-    blob: Vec<u8>,
+    contents: Vec<u8>,
     gate: Option<Arc<ReadGate>>,
     buffer: &SharedSparseBuffer,
 ) -> ReadLog {
     let read_log: ReadLog = Arc::new(Mutex::new(Vec::new()));
-    let blob = Arc::new(blob);
+    let contents = Arc::new(contents);
     let fill_buffer = buffer.clone();
     let log = read_log.clone();
     tokio::spawn(async move {
@@ -161,7 +161,7 @@ fn start_recording_fill(
         // without firing on clean teardown.
         fill_buffer
             .fill_on_demand(move |start, len| {
-                let blob = blob.clone();
+                let contents = contents.clone();
                 let log = log.clone();
                 let gate = gate.clone();
                 async move {
@@ -170,7 +170,7 @@ fn start_recording_fill(
                     if let Some(gate) = &gate {
                         gate.wait_for(start).await;
                     }
-                    Ok(blob[start as usize..end as usize].to_vec())
+                    Ok(contents[start as usize..end as usize].to_vec())
                 }
             })
             .await
@@ -188,7 +188,7 @@ fn start_recording_fill(
 #[tokio::test]
 async fn seek_fetches_only_the_demanded_window_not_the_skipped_prefix() {
     let source_size = 8 * WINDOW;
-    let blob: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
+    let contents: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
 
     let buffer = create_sparse_buffer(source_size);
     // Register the seek demand BEFORE the fill loop starts so the first fetch
@@ -196,7 +196,7 @@ async fn seek_fetches_only_the_demanded_window_not_the_skipped_prefix() {
     let mut reader = buffer.new_reader();
     assert!(reader.seek(6 * WINDOW));
 
-    let read_log = start_recording_fill(blob, None, &buffer);
+    let read_log = start_recording_fill(contents, None, &buffer);
 
     // Read one byte at the seek target from the real blocking unit.
     let one = tokio::task::spawn_blocking(move || {
@@ -239,7 +239,7 @@ async fn seek_fetches_only_the_demanded_window_not_the_skipped_prefix() {
 #[tokio::test]
 async fn read_at_the_ceiling_is_served_not_starved() {
     let source_size = 4 * WINDOW;
-    let blob: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
+    let contents: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
 
     let buffer = create_sparse_buffer(source_size);
     // A segment reader positioned exactly at its segment's end: ceiling ==
@@ -249,7 +249,7 @@ async fn read_at_the_ceiling_is_served_not_starved() {
     reader.set_readahead_ceiling(WINDOW);
     assert!(reader.seek(WINDOW));
 
-    let _read_log = start_recording_fill(blob, None, &buffer);
+    let _read_log = start_recording_fill(contents, None, &buffer);
 
     let read_result = timeout(
         Duration::from_secs(5),
@@ -279,18 +279,18 @@ async fn read_at_the_ceiling_is_served_not_starved() {
 #[tokio::test]
 async fn prefetched_start_window_removes_the_seek_target_fetch() {
     let source_size = 8 * WINDOW;
-    let blob: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
+    let contents: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
     let start_byte = 3 * WINDOW; // a deep track's landing
 
     // Read one byte at `start_byte` and return the fill's fetch log.
     async fn seek_and_log(
         buffer: SharedSparseBuffer,
-        blob: Vec<u8>,
+        contents: Vec<u8>,
         start_byte: u64,
     ) -> Vec<(u64, u64)> {
         let mut reader = buffer.new_reader();
         assert!(reader.seek(start_byte));
-        let read_log = start_recording_fill(blob, None, &buffer);
+        let read_log = start_recording_fill(contents, None, &buffer);
         let served = tokio::task::spawn_blocking(move || {
             let mut b = [0u8; 1];
             let n = reader.read(&mut b).ok();
@@ -314,9 +314,9 @@ async fn prefetched_start_window_removes_the_seek_target_fetch() {
     let prefetched = create_sparse_buffer(source_size);
     prefetched.append_at(
         start_byte,
-        &blob[start_byte as usize..(start_byte + WINDOW) as usize],
+        &contents[start_byte as usize..(start_byte + WINDOW) as usize],
     );
-    let with = seek_and_log(prefetched, blob.clone(), start_byte).await;
+    let with = seek_and_log(prefetched, contents.clone(), start_byte).await;
     assert!(
         !with.iter().any(|&(start, _)| start == start_byte),
         "prefetched: the fill must not re-fetch the already-buffered start \
@@ -325,7 +325,7 @@ async fn prefetched_start_window_removes_the_seek_target_fetch() {
 
     // Cold buffer: the fill must fetch the start window to serve the seek.
     let cold = create_sparse_buffer(source_size);
-    let without = seek_and_log(cold, blob, start_byte).await;
+    let without = seek_and_log(cold, contents, start_byte).await;
     assert!(
         without.iter().any(|&(start, _)| start == start_byte),
         "cold: the fill must fetch the start window; log: {without:?}"
@@ -340,13 +340,16 @@ async fn prefetched_start_window_removes_the_seek_target_fetch() {
 #[tokio::test]
 async fn forward_play_evicts_so_memory_stays_bounded() {
     let source_size = 16 * WINDOW;
-    let blob: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
+    let contents: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
 
     let buffer = create_sparse_buffer(source_size);
-    let _read_log = start_recording_fill(blob.clone(), None, &buffer);
+    let _read_log = start_recording_fill(contents.clone(), None, &buffer);
 
     let out = drain_async(buffer.clone()).await;
-    assert_eq!(out, blob, "front-to-back play must recover the whole file");
+    assert_eq!(
+        out, contents,
+        "front-to-back play must recover the whole file"
+    );
 
     // No ceiling is set on this reader, so it fetches the cushion ahead and
     // evicts behind: the whole file passes through but only a window's worth
@@ -370,7 +373,7 @@ async fn forward_play_evicts_so_memory_stays_bounded() {
 #[tokio::test]
 async fn a_ceiling_fetches_the_whole_track_then_stops() {
     let source_size = 16 * WINDOW;
-    let blob: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
+    let contents: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
 
     // The track ends at 12 windows -- past the cushion (MIN_READAHEAD, 4
     // windows) and short of the 16-window file.
@@ -379,7 +382,7 @@ async fn a_ceiling_fetches_the_whole_track_then_stops() {
     let mut reader = buffer.new_reader();
     reader.set_readahead_ceiling(ceiling);
     assert!(reader.seek(0));
-    let _read_log = start_recording_fill(blob, None, &buffer);
+    let _read_log = start_recording_fill(contents, None, &buffer);
 
     // The reader sits at 0 (held, not draining); the fill should buffer up to
     // the ceiling. Yield to let the (current-thread) fill run.
@@ -414,10 +417,10 @@ async fn a_ceiling_fetches_the_whole_track_then_stops() {
 #[tokio::test]
 async fn backward_seek_into_evicted_region_refetches_the_window() {
     let source_size = 16 * WINDOW;
-    let blob: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
+    let contents: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
 
     let buffer = create_sparse_buffer(source_size);
-    let read_log = start_recording_fill(blob.clone(), None, &buffer);
+    let read_log = start_recording_fill(contents.clone(), None, &buffer);
 
     let reader_buffer = buffer.clone();
     let (n, got) = tokio::task::spawn_blocking(move || {
@@ -449,7 +452,7 @@ async fn backward_seek_into_evicted_region_refetches_the_window() {
     let target = WINDOW as usize;
     assert_eq!(
         &got[..n],
-        &blob[target..target + n],
+        &contents[target..target + n],
         "re-fetched bytes must match the file at the seek target"
     );
 
@@ -473,11 +476,11 @@ async fn backward_seek_into_evicted_region_refetches_the_window() {
 #[tokio::test]
 async fn fill_follows_the_buffer_and_exits_when_it_is_dropped() {
     let source_size = 4 * WINDOW;
-    let blob: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
+    let contents: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
     let buffer = create_sparse_buffer(source_size);
     let weak = Arc::downgrade(&buffer);
     let fill = tokio::spawn(buffer.clone().fill_on_demand(move |start, len| {
-        let bytes = blob[start as usize..(start + len) as usize].to_vec();
+        let bytes = contents[start as usize..(start + len) as usize].to_vec();
         async move { Ok(bytes) }
     }));
 
@@ -512,13 +515,13 @@ async fn fill_follows_the_buffer_and_exits_when_it_is_dropped() {
 #[tokio::test]
 async fn blocked_reader_unblocks_on_demanded_window_not_sequential_catch_up() {
     let source_size = 8 * WINDOW;
-    let blob: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
+    let contents: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
     let gate = Arc::new(ReadGate::new());
 
     let buffer = create_sparse_buffer(source_size);
     let mut reader = buffer.new_reader();
     assert!(reader.seek(6 * WINDOW));
-    let read_log = start_recording_fill(blob, Some(gate.clone()), &buffer);
+    let read_log = start_recording_fill(contents, Some(gate.clone()), &buffer);
 
     // Release ONLY the demanded window; everything else stays parked.
     gate.release(6 * WINDOW);
@@ -687,7 +690,7 @@ async fn test_local_file_reader_read_error_reports_error() {
 #[tokio::test]
 async fn a_failed_fetch_fails_the_buffer_with_the_read_error() {
     let source_size = 4 * WINDOW;
-    let blob: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
+    let contents: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
     let buffer = create_sparse_buffer(source_size);
 
     // The reader waits on the second window, which the fetch can't read.
@@ -695,7 +698,7 @@ async fn a_failed_fetch_fails_the_buffer_with_the_read_error() {
     assert!(reader.seek(WINDOW));
     let fill = tokio::spawn(buffer.clone().fill_on_demand(move |start, len| {
         let result = if start == 0 {
-            Ok(blob[..len as usize].to_vec())
+            Ok(contents[..len as usize].to_vec())
         } else {
             Err(PlaybackError::io(
                 format!("Failed to read {len} bytes at {start} from /volume/track.flac"),

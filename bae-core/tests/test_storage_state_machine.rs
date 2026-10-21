@@ -118,7 +118,7 @@ async fn create_local_release(
     (release_id, result)
 }
 
-/// A Remote (cloud-only, not pinned) release whose blobs sit in `cloud`: create it
+/// A Remote (cloud-only, not pinned) release whose files sit in `cloud`: create it
 /// Local, attach its files, and finish the uploads. Returns (release_id,
 /// [(file_id, original_filename, plaintext)]).
 async fn create_remote_cloud_only_release(
@@ -316,7 +316,7 @@ async fn upload_failure_keeps_attachment_and_pending_work() {
     mgr.upload_release(&release_id, false).await.unwrap();
 
     // The connect bootstrap already wrote through the home; arm the failure only
-    // now, so the upload drain fails every blob.
+    // now, so the upload drain fails every file.
     cloud.set_online(false);
     let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, 0, "no upload should succeed");
@@ -410,11 +410,11 @@ async fn detaching_audio_updates_summary_and_original_paths() {
     }
 }
 
-/// A failed audio detachment (a missing cloud blob 404s on the cache-miss read) leaves
+/// A failed audio detachment (a missing cloud file 404s on the cache-miss read) leaves
 /// bae's state consistent: the manager surfaces the error and the summary stays
 /// Remote. Coven reports the missing file; bae rolls back the local copies.
 #[tokio::test]
-async fn detaching_audio_with_a_missing_blob_fails_leaving_summary_remote() {
+async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
     let tmp = TempDir::new().unwrap();
     let (db, mgr, cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
@@ -426,7 +426,7 @@ async fn detaching_audio_with_a_missing_blob_fails_leaving_summary_remote() {
     )
     .await;
 
-    // Remove the SECOND file's blob from the cloud so its cache-miss read 404s.
+    // Remove the SECOND file's file from the cloud so its cache-miss read 404s.
     // `files` carries `(file_id, original_filename, plaintext)`.
     support::remove_uploaded_file(&mgr, &cloud, &files[1].0).await;
 
@@ -438,7 +438,7 @@ async fn detaching_audio_with_a_missing_blob_fails_leaving_summary_remote() {
             &CancellationToken::new(),
         )
         .await;
-    assert!(result.is_err(), "missing blob must be a hard error");
+    assert!(result.is_err(), "missing file must be a hard error");
 
     assert_eq!(
         storage(&mgr, &release_id).await,

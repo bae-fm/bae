@@ -18,17 +18,17 @@ pub(crate) struct OutboxDisplayContext {
 
 impl Database {
     /// Replace an image's bytes and row atomically; coven manages the old file.
-    pub async fn write_library_image_blob(
+    pub async fn write_library_image(
         &self,
         image: &DbLibraryImage,
         bytes: &[u8],
     ) -> Result<(), DbError> {
-        self.write_library_image_blob_after_planning(image, bytes, || async {})
+        self.write_library_image_after_planning(image, bytes, || async {})
             .await
     }
 
     #[cfg(test)]
-    pub(crate) async fn write_library_image_blob_after_planning_for_test<F, Fut>(
+    pub(crate) async fn write_library_image_after_planning_for_test<F, Fut>(
         &self,
         image: &DbLibraryImage,
         bytes: &[u8],
@@ -38,11 +38,11 @@ impl Database {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = ()>,
     {
-        self.write_library_image_blob_after_planning(image, bytes, after_planning)
+        self.write_library_image_after_planning(image, bytes, after_planning)
             .await
     }
 
-    async fn write_library_image_blob_after_planning<F, Fut>(
+    async fn write_library_image_after_planning<F, Fut>(
         &self,
         image: &DbLibraryImage,
         bytes: &[u8],
@@ -162,7 +162,7 @@ impl Database {
 
     /// The original this device has for a file. Unattached rows read bae's local
     /// paths; attached rows read coven's original-file registration.
-    pub async fn external_blob(&self, file_id: &str) -> Result<Option<coven::UserFile>, DbError> {
+    pub async fn external_file(&self, file_id: &str) -> Result<Option<coven::UserFile>, DbError> {
         let id = file_id.to_string();
         let local = self
             .read(move |sql| {

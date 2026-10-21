@@ -35,7 +35,7 @@ themselves are still exact; the folder carries one extra hidden file.
 
 Mechanics:
 
-- Reads each blob through coven's locality-aware read — a Remote release
+- Reads each file through coven's locality-aware read — a Remote release
   fetches from cloud/cache and decrypts. Export never requires a local copy
   and never changes release state: no gate flips, no locality change.
 - Destination is chosen per export in a folder dialog, seeded with the

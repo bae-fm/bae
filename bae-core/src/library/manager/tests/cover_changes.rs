@@ -2,7 +2,7 @@
 // a replacement is written.
 
 /// `change_cover` resizes whatever the user picks to a ≤600 JPEG thumbnail
-/// before storing it: a 900×300 PNG release image lands as a 600×200 JPEG blob
+/// before storing it: a 900×300 PNG release image lands as a 600×200 JPEG file
 /// (downscaled to fit 600, aspect kept), and the `covers` row records JPEG.
 #[tokio::test]
 async fn change_cover_stores_a_resized_jpeg_thumbnail() {
@@ -86,10 +86,10 @@ async fn assert_changed_cover(
 
     // The cover is a normalized JPEG; the release file retains its original bytes.
     let stored = manager
-        .read_cover_image_blob(&release.id)
+        .read_cover_image_bytes(&release.id)
         .await
         .unwrap()
-        .expect("cover blob stored");
+        .expect("cover file stored");
     assert_eq!(
         ::image::guess_format(&stored).unwrap(),
         ::image::ImageFormat::Jpeg
@@ -112,7 +112,7 @@ async fn assert_changed_cover(
 /// each change attaches a new file to the same `covers` row, which moves the
 /// cover's version. Captured references to the replaced file must be refused.
 #[tokio::test]
-async fn change_cover_twice_replaces_the_cover_blob() {
+async fn change_cover_twice_replaces_the_cover_file() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
@@ -196,7 +196,7 @@ async fn change_cover_twice_replaces_the_cover_blob() {
     );
     assert_ne!(cover_version().await, first_version, "the cover's version moves");
     let stored = manager
-        .read_cover_image_blob(&release.id)
+        .read_cover_image_bytes(&release.id)
         .await
         .unwrap()
         .expect("cover file stored");

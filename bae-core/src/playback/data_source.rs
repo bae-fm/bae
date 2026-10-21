@@ -272,10 +272,10 @@ pub fn create_audio_reader(
 }
 
 /// Streams a release file's plaintext from one opened source. The
-/// single playback reader: coven resolves locality and proves the blob's identity
+/// single playback reader: coven resolves locality and proves the file's identity
 /// when the stream opens, so playback never branches on locality and every window
 /// after that costs only its own bytes.
-pub struct CovenBlobReader {
+pub struct CovenFileReader {
     db: crate::db::Database,
     file_id: String,
     arbiter: Arc<FetchArbiter>,
@@ -292,7 +292,7 @@ pub struct CovenBlobReader {
     prefetch_file_end: bool,
 }
 
-impl CovenBlobReader {
+impl CovenFileReader {
     pub(crate) fn new(
         db: crate::db::Database,
         file_id: String,
@@ -310,13 +310,13 @@ impl CovenBlobReader {
     }
 }
 
-impl AudioDataReader for CovenBlobReader {
+impl AudioDataReader for CovenFileReader {
     fn start_reading(
         self: Box<Self>,
         buffer: SharedSparseBuffer,
         on_error: FillErrorHandler,
     ) -> FillTask {
-        let CovenBlobReader {
+        let CovenFileReader {
             db,
             file_id,
             arbiter,
@@ -373,7 +373,7 @@ impl AudioDataReader for CovenBlobReader {
                 );
             }
 
-            info!("CovenBlobReader: buffer={buffer_id} source_size={source_size}");
+            info!("CovenFileReader: buffer={buffer_id} source_size={source_size}");
             // This reader's running fetch total and the wall-clock origin, so each
             // window's log shows how many bytes have been read off the stream and how
             // long into it -- the visibility into start-up bandwidth and into a preload
@@ -425,7 +425,7 @@ impl AudioDataReader for CovenBlobReader {
     }
 }
 
-// The fill fetches one window at a time off the reader's opened `BlobStream`, where
+// The fill fetches one window at a time off the reader's opened `ReleaseFileStream`, where
 // a read is a positioned read of an already-proven handle -- so a window costs its
 // own bytes and nothing more, and the window size is purely a
 // readahead-vs-memory choice rather than a way to amortize per-call overhead.

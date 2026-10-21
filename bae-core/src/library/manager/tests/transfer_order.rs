@@ -109,7 +109,7 @@ async fn upload_keeps_the_cover_and_every_file_in_the_queue() {
         manager.clock.now().into(),
     );
     manager
-        .store_library_image_blob(&cover, cover_bytes)
+        .store_library_image(&cover, cover_bytes)
         .await
         .unwrap();
     let files = release_files(&manager, &release.id).await;

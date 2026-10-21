@@ -157,7 +157,7 @@ impl LibraryManager {
         cast_transcode_format: crate::config::CastTranscodeFormat
     );
 
-    /// How many blob uploads coven's upload drain runs at once. Rejected outside
+    /// How many file uploads coven's upload drain runs at once. Rejected outside
     /// 1..=[`MAX_CONCURRENT_TRANSFERS`](crate::config::MAX_CONCURRENT_TRANSFERS):
     /// zero would leave the drain admitting nothing. Durable in the config and
     /// applied to the open store at once: the next drain pass runs under it.
@@ -173,7 +173,7 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// How many blob downloads a pin fetches at once. Same bounds and
+    /// How many file downloads a pin fetches at once. Same bounds and
     /// application as [`Self::set_max_concurrent_uploads`].
     pub async fn set_max_concurrent_downloads(
         &self,

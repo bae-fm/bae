@@ -23,8 +23,8 @@ impl LibraryManager {
                     Err(LibraryError::Database(crate::db::DbError::FileRead(
                         coven::FileReadError::Uploading { .. },
                     ))) => {
-                        let file = self.release_file_row_blob_ref(file_id).await?;
-                        Ok(ImageRead::Arriving(super::coven_blobs::arriving(
+                        let file = self.release_file_ref(file_id).await?;
+                        Ok(ImageRead::Arriving(super::coven_files::arriving(
                             file_id, &file,
                         )))
                     }
@@ -84,7 +84,7 @@ impl LibraryManager {
     /// Change the cover art for an album's release. A `ReleaseImage` selection
     /// reads an image file already in the library by file id; a `RemoteCover` one
     /// downloads it from a URL. Either way the bytes are resized and stored as the
-    /// release's cover blob.
+    /// release's cover file.
     pub async fn change_cover(
         &self,
         release_id: &str,
@@ -101,7 +101,7 @@ impl LibraryManager {
 
                     // Read the chosen release image file through coven's locality-aware
                     // read (the user's own file when Local, the cache/cloud when Remote).
-                    let bytes = self.read_release_blob(&file).await?;
+                    let bytes = self.read_release_file(&file).await?;
                     let source_url = format!("release://{}", file.original_filename);
                     (bytes, "local".to_string(), Some(source_url))
                 }
@@ -130,8 +130,7 @@ impl LibraryManager {
             chrono::DateTime::<chrono::Utc>::from(self.clock.now()),
         );
 
-        self.store_library_image_blob(&library_image, &bytes)
-            .await?;
+        self.store_library_image(&library_image, &bytes).await?;
 
         Ok(())
     }

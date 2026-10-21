@@ -17,7 +17,7 @@ pub struct ReleaseStorageSummary {
     /// The release's storage state — Local (local) or Remote (cloud) —
     /// derived from its files' attachment state. Orthogonal to `pinned`.
     pub storage_state: ReleaseStorageState,
-    /// Whether coven keeps this release's blobs pinned (kept offline) on this
+    /// Whether coven keeps this release's files pinned (kept offline) on this
     /// device — the orthogonal coven-cache property. Meaningful only when
     /// `storage_state` is `Remote`. Kept SEPARATE from `storage_state`.
     pub pinned: bool,

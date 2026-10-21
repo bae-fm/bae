@@ -197,7 +197,7 @@ impl LibraryManager {
     }
 
     /// Copy a release's files verbatim to `<target_dir>/<source_folder_name>/`,
-    /// reading each blob through coven's locality-aware read (a Remote release
+    /// reading each file through coven's locality-aware read (a Remote release
     /// fetches from cloud/cache and decrypts). The export is all-or-nothing: every
     /// file is written into a hidden staging directory alongside the final one, and
     /// only after all files succeed is the staging directory renamed into place. Any

@@ -278,7 +278,7 @@ struct CloudOnlyPlaybackFixture {
 
 impl CloudOnlyPlaybackFixture {
     /// Import the FLAC fixtures as remote-unpinned, run the upload to put the
-    /// encrypted blobs in the (mock) cloud and clear the outbox, then delete the
+    /// encrypted files in the (mock) cloud and clear the outbox, then delete the
     /// import originals so resolution lands on the cloud reader. The mock cloud
     /// is returned so the test can arm a read failure before playing.
     async fn new() -> Result<Self, Box<dyn std::error::Error>> {
@@ -311,7 +311,7 @@ impl CloudOnlyPlaybackFixture {
         let mut import_rx = import_handle.subscribe_import(import_id);
         let (release_id, _album_id) = wait_for_import_complete(&mut import_rx).await;
 
-        // Run the upload so the encrypted blobs land in the cloud and the outbox
+        // Run the upload so the encrypted files land in the cloud and the outbox
         // clears — after this the track resolves cloud-only (no local copy, no
         // pending upload).
         while matches!(
@@ -320,8 +320,8 @@ impl CloudOnlyPlaybackFixture {
         ) {}
 
         for file in library_manager.get_files_for_release(&release_id).await? {
-            let reference = library_manager.release_blob_ref_for_test(&file.id).await?;
-            library_manager.evict_blob_for_test(&reference).await?;
+            let reference = library_manager.release_file_ref_for_test(&file.id).await?;
+            library_manager.evict_file_for_test(&reference).await?;
         }
 
         // Delete the import originals so file resolution can't fall back to them.

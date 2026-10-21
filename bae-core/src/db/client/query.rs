@@ -100,7 +100,7 @@ impl QueryRows for SqlContext<'_, '_> {
     }
 }
 
-/// The table a host-provided image blob's row lives in. The image type IS the
+/// The table a host-provided image file's row lives in. The image type IS the
 /// table (`covers` / `artist_images`), so there is no `type` column. A fixed
 /// match over the enum, so the interpolated name is always a trusted literal.
 pub(super) fn image_table(image_type: &LibraryImageType) -> &'static str {
@@ -892,5 +892,5 @@ pub(super) fn album_cover_versions_on(
             .flatten(),
         );
     }
-    super::blobs::image_versions_on(sql, LibraryImageType::Cover, &primaries)
+    super::files::image_versions_on(sql, LibraryImageType::Cover, &primaries)
 }

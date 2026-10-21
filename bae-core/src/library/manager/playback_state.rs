@@ -76,7 +76,7 @@ impl LibraryManager {
         prefetch_byte: Option<u64>,
         prefetch_file_end: bool,
     ) -> Box<dyn crate::playback::data_source::AudioDataReader> {
-        Box::new(crate::playback::data_source::CovenBlobReader::new(
+        Box::new(crate::playback::data_source::CovenFileReader::new(
             self.database.clone(),
             file_id.to_string(),
             arbiter,

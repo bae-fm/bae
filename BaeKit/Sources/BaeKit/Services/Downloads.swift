@@ -12,7 +12,7 @@ public final class Downloads: Sendable, Observable {
     /// and queue state arrive via `downloadQueueChanged` events.
     public let queuePins:
         @Sendable (_ releaseIds: [String]) async throws -> Void
-    /// Unpin a release: coven moves its blobs from storage/pinned/ to the
+    /// Unpin a release: coven moves its files from storage/pinned/ to the
     /// evictable cache; the release stays Remote and playable.
     public let unpinRelease:
         @Sendable (_ releaseId: String) async throws -> Void

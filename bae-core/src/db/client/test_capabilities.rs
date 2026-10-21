@@ -8,7 +8,7 @@ impl Database {
     /// Every row of every table bae can read, rendered, by table name: what
     /// a test compares to show an operation left the store as it found it.
     /// Coven's own tables are closed to bae's connections and are left out;
-    /// the blobs coven keeps for bae are files under the library directory.
+    /// the files coven keeps for bae are files under the library directory.
     pub async fn every_row_for_test(
         &self,
     ) -> Result<std::collections::BTreeMap<String, Vec<String>>, DbError> {
@@ -118,7 +118,7 @@ impl Database {
             .map(|entry| {
                 Ok((
                     entry.upload.file.table().to_string(),
-                    super::blobs::file_row_id(&entry.upload.file)?.to_string(),
+                    super::files::file_row_id(&entry.upload.file)?.to_string(),
                 ))
             })
             .collect()

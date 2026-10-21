@@ -110,7 +110,7 @@ async fn create_local_release(
     (album_id, release_id, result)
 }
 
-/// Get a Remote (cloud-only, not pinned) release whose blobs sit in `cloud`:
+/// Get a Remote (cloud-only, not pinned) release whose files sit in `cloud`:
 /// create it Local, attach its files, and finish the uploads.
 async fn create_remote_release(
     mgr: &LibraryManager,
@@ -253,15 +253,15 @@ async fn durable_outbox_subscription_emits_enqueue_without_a_sync_cycle() {
 }
 
 // ---------------------------------------------------------------------------
-// Host-provided cover blob via coven's local store
+// Host-provided cover file via coven's local store
 // ---------------------------------------------------------------------------
 
-/// A cover is a host-provided blob: its bytes go to coven's local store
+/// A cover is a host-provided file: its bytes go to coven's local store
 /// store and coven owns the copy. While the release is Local the cover lives in
-/// coven's local store and `read_image_blob` serves its bytes through the image
+/// coven's local store and `read_image_bytes` serves its bytes through the image
 /// reference — no cloud round-trip and no bae path into coven's store.
 #[tokio::test]
-async fn test_cover_blob_stored_via_local_files_is_readable() {
+async fn test_cover_file_stored_via_local_files_is_readable() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
     let mgr = setup(&tmp).await;
@@ -269,7 +269,7 @@ async fn test_cover_blob_stored_via_local_files_is_readable() {
 
     // No cover row yet → no bytes.
     assert!(
-        support::read_cover_image_blob(&mgr, &release_id)
+        support::read_cover_image_bytes(&mgr, &release_id)
             .await
             .is_none(),
         "no cover before one is stored"
@@ -278,7 +278,7 @@ async fn test_cover_blob_stored_via_local_files_is_readable() {
     // Store the cover bytes and `covers` row in one coven batch, exactly as
     // import / change_cover does.
     let bytes = b"cover-jpeg-bytes";
-    mgr.store_library_image_blob(
+    mgr.store_library_image(
         &bae_core::db::DbLibraryImage {
             id: release_id.clone(),
             image_type: bae_core::db::LibraryImageType::Cover,
@@ -295,8 +295,8 @@ async fn test_cover_blob_stored_via_local_files_is_readable() {
     .await
     .unwrap();
 
-    // read_image_blob serves it from coven's local store, byte-for-byte.
-    let read = support::read_cover_image_blob(&mgr, &release_id)
+    // read_image_bytes serves it from coven's local store, byte-for-byte.
+    let read = support::read_cover_image_bytes(&mgr, &release_id)
         .await
         .expect("cover resolves to bytes once stored");
     assert_eq!(read, bytes, "the stored cover reads back byte-for-byte");
@@ -306,7 +306,7 @@ async fn test_cover_blob_stored_via_local_files_is_readable() {
 // Pin / unpin guards
 // ---------------------------------------------------------------------------
 
-/// Pin rejects a Local release: there is no cloud blob to fetch into the pinned
+/// Pin rejects a Local release: there is no cloud file to fetch into the pinned
 /// cache.
 #[tokio::test]
 async fn test_pin_rejects_local_release() {
@@ -326,7 +326,7 @@ async fn test_pin_rejects_local_release() {
     assert!(failed(&events), "pin must fail for a local release");
 }
 
-/// Unpin rejects a Local release: it has no remote blobs to drop from the cache.
+/// Unpin rejects a Local release: it has no remote files to drop from the cache.
 #[tokio::test]
 async fn test_unpin_rejects_local_release() {
     tracing_init();
@@ -345,7 +345,7 @@ async fn test_unpin_rejects_local_release() {
 // Pin / unpin success — through coven's cache
 // ---------------------------------------------------------------------------
 
-/// Pin a Remote cloud-only release: coven fetches its blobs from the cloud into
+/// Pin a Remote cloud-only release: coven fetches its files from the cloud into
 /// the pinned cache, so it reads as (Remote, pinned).
 #[tokio::test]
 async fn test_pin_remote_fetches_into_pinned_cache() {
@@ -393,7 +393,7 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
     );
 }
 
-/// Unpin a Remote pinned release: coven moves its blobs out of the pinned cache
+/// Unpin a Remote pinned release: coven moves its files out of the pinned cache
 /// into the evictable cache, so it reads as (Remote, not pinned).
 #[tokio::test]
 async fn test_unpin_remote_drops_from_pinned_cache() {

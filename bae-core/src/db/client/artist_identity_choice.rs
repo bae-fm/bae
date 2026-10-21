@@ -46,7 +46,7 @@ impl Database {
                         crate::import::PaneMove::FindOnline,
                     );
                 }
-                Choice::SameArtist => unreachable!("a merge uses the blob-aware write"),
+                Choice::SameArtist => unreachable!("a merge uses the file-aware write"),
             };
             record_choice_on(sql, &hash, &discogs, &musicbrainz, choice, &artist_id)?;
             sql.execute(

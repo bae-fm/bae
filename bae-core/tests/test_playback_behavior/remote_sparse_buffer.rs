@@ -28,8 +28,8 @@ impl RemoteMultiWindowPlayback {
         let (release_id, _) = wait_for_import_complete(&mut import_handle.subscribe_import(import_id)).await;
         library_manager.drain_uploads_expecting_work().await?;
         for file in library_manager.get_files_for_release(&release_id).await? {
-            let reference = library_manager.release_blob_ref_for_test(&file.id).await?;
-            library_manager.evict_blob_for_test(&reference).await?;
+            let reference = library_manager.release_file_ref_for_test(&file.id).await?;
+            library_manager.evict_file_for_test(&reference).await?;
         }
         std::fs::remove_dir_all(album_dir)?;
         let track_ids = library_manager.get_tracks_for_release(&release_id).await?.into_iter().map(|track| track.id).collect();
@@ -186,27 +186,27 @@ async fn seek_within_the_last_track_over_remote_cloud() {
 const SEEK_LARGEST_RANGE_BOUND: u64 = 5 * 1024 * 1024;
 
 /// Everything the seek's ranged reads move, together, must stay under this — half
-/// the fixture's 31,922,637-byte blob. Loose on purpose: the fill keeps reading
+/// the fixture's 31,922,637-byte file. Loose on purpose: the fill keeps reading
 /// ahead while the seek settles, so the total lands on a whole number of 4 MiB
 /// windows (measured at one or two, 4,195,328 or 8,521,760 bytes, depending on
 /// how far read-ahead got before the counter was read). The point it pins is only
 /// that a seek never drags the file across, so it is bounded well above that
-/// race and well below the blob.
+/// race and well below the file.
 const SEEK_RANGE_BYTES_BOUND: u64 = 16 * 1024 * 1024;
 
 /// Coarse backstop on the seek itself. Serving a range used to mean downloading,
-/// decrypting and hashing the whole blob — seconds per read, several reads to a
+/// decrypting and hashing the whole file — seconds per read, several reads to a
 /// seek — so this is far above a chunked seek and far below the old cost.
 const SEEK_COST_BACKSTOP: Duration = Duration::from_secs(15);
 
 /// A seek over a remote cloud home costs the chunks its range touches, not the
-/// whole blob. coven seals a blob per chunk and authenticates each chunk on its
+/// whole file. coven seals a file per chunk and authenticates each chunk on its
 /// own, so a ranged read fetches only the chunks covering it: seeking near the end
 /// of the last track moves 4,195,328 bytes — the fill's one 4 MiB window and a
-/// kilobyte of probe — out of a 31,922,637-byte blob.
+/// kilobyte of probe — out of a 31,922,637-byte file.
 ///
 /// Before chunked ranges, opening a remote stream downloaded, decrypted and hashed
-/// the entire blob before it could serve a byte. The byte count is what pins the
+/// the entire file before it could serve a byte. The byte count is what pins the
 /// shape here, because it is exact where a stopwatch is load-dependent, and it is
 /// two-sided: see the assertions. The elapsed bound is only a coarse backstop.
 ///
@@ -214,7 +214,7 @@ const SEEK_COST_BACKSTOP: Duration = Duration::from_secs(15);
 /// and reads one `MemoryStorage` between them, so counters taken there would
 /// include their traffic.
 #[tokio::test(flavor = "multi_thread")]
-async fn seek_over_remote_cloud_costs_chunks_not_the_whole_blob() {
+async fn seek_over_remote_cloud_costs_chunks_not_the_whole_file() {
     let mut playback = RemoteMultiWindowPlayback::new("remote-seek-ranges").await
         .expect("set up the private remote fixture");
 
@@ -252,7 +252,7 @@ async fn seek_over_remote_cloud_costs_chunks_not_the_whole_blob() {
     // to do with playback.
     //
     // Three checks, catching different regressions. That any ranged read happened
-    // at all is what says the blob was served by range: were the whole-object
+    // at all is what says the file was served by range: were the whole-object
     // download back, the audio would arrive as one full read and this list would
     // be empty. The largest single read is the property itself — a range costs its
     // own bytes — and is independent of how many windows read-ahead pulled. The
@@ -262,18 +262,18 @@ async fn seek_over_remote_cloud_costs_chunks_not_the_whole_blob() {
     let range_bytes: u64 = reads.iter().map(|(_, _, length)| *length).sum();
     let largest = reads.iter().map(|(_, _, length)| *length).max();
     let largest = largest.expect(
-        "the seek served no ranged read at all -- the blob was fetched whole, not by range",
+        "the seek served no ranged read at all -- the file was fetched whole, not by range",
     );
     assert!(
         largest <= SEEK_LARGEST_RANGE_BOUND,
         "the seek's largest single ranged read was {largest} bytes (bound \
          {SEEK_LARGEST_RANGE_BOUND}); a chunked range must cost the chunks it covers, not the \
-         31,922,637-byte blob. All reads: {reads:?}",
+         31,922,637-byte file. All reads: {reads:?}",
     );
     assert!(
         range_bytes < SEEK_RANGE_BYTES_BOUND,
         "the seek fetched {range_bytes} bytes from the cloud across {} reads (bound \
-         {SEEK_RANGE_BYTES_BOUND}); a seek must not drag the whole blob across",
+         {SEEK_RANGE_BYTES_BOUND}); a seek must not drag the whole file across",
         reads.len(),
     );
     assert!(

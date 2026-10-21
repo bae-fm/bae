@@ -73,7 +73,7 @@ libc = "0.2"
 rtrb = "0.3.2"
 # Cover-art resizing at store time (src/util/cover.rs) runs on every platform —
 # imports and change-cover normalize to a ≤600 JPEG thumbnail everywhere, so the
-# stored cover blob is uniform regardless of which device imported it. Decode
+# stored cover file is uniform regardless of which device imported it. Decode
 # JPEG, PNG, GIF and WebP without default features (no rayon), including mobile.
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
 tokio-util = { version = "0.7", features = ["io", "rt"] }
@@ -82,7 +82,7 @@ lru = "0.18.2"
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 # The shared remote-image cache spools downloads to a temporary file before an
-# atomic persist. Desktop extraction also stages cover blobs for barcode OCR.
+# atomic persist. Desktop extraction also stages cover files for barcode OCR.
 tempfile = "3.8"
 # Google Cast sender (src/cast/): the CASTV2 protocol over TLS to Chromecast/Nest
 # devices, and mDNS service discovery of them. `thread_safe` makes rust_cast's

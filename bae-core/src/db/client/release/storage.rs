@@ -1,5 +1,5 @@
 //! The storage manager's reads over releases: one release's storage summary,
-//! the remote releases' representative blobs, and the paged listing with its
+//! the remote releases' representative files, and the paged listing with its
 //! counts and totals.
 //!
 //! Kept apart from the release writes beside them: this is one surface's
@@ -81,7 +81,7 @@ impl Database {
     }
 
     /// A representative file id for every remote release — one per release, `None`
-    /// for a remote release with no files. Pin/unpin act on all a release's blobs
+    /// for a remote release with no files. Pin/unpin act on all a release's files
     /// together, so one file stands for the release. The disconnect flow asks
     /// coven's cache whether each is pinned, to count the releases that become
     /// unreachable when the cloud provider is removed: an unpinned remote release
@@ -99,7 +99,7 @@ impl Database {
         .await
     }
 
-    /// The releases coven currently has blobs queued to upload for, or empty for
+    /// The releases coven currently has files queued to upload for, or empty for
     /// any filter that does not ask about uploading.
     ///
     /// Which releases are mid-upload is coven's queue state, so the storage page
@@ -218,7 +218,7 @@ impl Database {
                     .flat_map(|(_, rows)| rows.iter().map(|(release, _)| release.id.clone()))
                     .collect::<Vec<_>>();
                 let mut cover_versions = album_cover_versions_on(&sql, &album_ids)?;
-                cover_versions.extend(super::blobs::image_versions_on(
+                cover_versions.extend(super::files::image_versions_on(
                     &sql,
                     LibraryImageType::Cover,
                     &release_ids,

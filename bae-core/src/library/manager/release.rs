@@ -865,7 +865,7 @@ async fn project_file_metadata(
         // Read tags from this device's original, either a local path or an
         // attached source. Coven's cached copies expose no filesystem path.
         let path = database
-            .external_blob(&file.id)
+            .external_file(&file.id)
             .await?
             .map(|ext| ext.path)
             .ok_or_else(|| {

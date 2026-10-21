@@ -4,7 +4,7 @@
 //! shared rows, their files and cache budgets here.
 
 // The sync substrate lives in coven; these resolve `crate::sync::<item>`
-// unchanged. Cloud blob operations use the exact stored blob reference.
+// unchanged. Cloud file operations use the exact stored file reference.
 pub use coven::{decode_code_info, restore_from_code};
 
 pub mod membership;
@@ -29,13 +29,13 @@ pub struct S3ConfigData {
     pub profile: Option<coven::S3Profile>,
 }
 
-/// Cloud namespace for release-file (audio/image/text/…) blobs — the user's own
+/// Cloud namespace for release-file (audio/image/text/…) files — the user's own
 /// imported files. coven keys them under `release_files/…` and segments their
 /// cache + budget by this name.
 pub const RELEASE_FILES_NAMESPACE: &str = "release_files";
-/// Cloud namespace for the bae-produced album cover blob (1:1 with a release).
+/// Cloud namespace for the bae-produced album cover file (1:1 with a release).
 pub const COVERS_NAMESPACE: &str = "covers";
-/// Cloud namespace for the bae-produced artist image blob (1:1 with an artist).
+/// Cloud namespace for the bae-produced artist image file (1:1 with an artist).
 pub const ARTIST_IMAGES_NAMESPACE: &str = "artist_images";
 /// Profile avatars, fetched with their people rows.
 pub const PEOPLE_NAMESPACE: &str = "people";

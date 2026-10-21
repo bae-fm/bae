@@ -26,7 +26,7 @@ pub use server::{
 use coven::write_atomic;
 use save::default_save_presets;
 
-/// Blob transfers bae runs at once, per direction, on a fresh library. Serial
+/// File transfers bae runs at once, per direction, on a fresh library. Serial
 /// (1) is safe but slow; a small burst keeps a single stalled transfer from
 /// holding up the rest.
 pub const DEFAULT_CONCURRENT_TRANSFERS: u32 = 3;
@@ -38,7 +38,7 @@ fn default_transfer_concurrency() -> NonZeroU32 {
     NonZeroU32::new(DEFAULT_CONCURRENT_TRANSFERS).expect("DEFAULT_CONCURRENT_TRANSFERS is non-zero")
 }
 
-/// A blob-transfer concurrency setting must be at least 1 — coven's drain admits
+/// A file-transfer concurrency setting must be at least 1 — coven's drain admits
 /// nothing at 0 and never completes — and at most [`MAX_CONCURRENT_TRANSFERS`],
 /// the ceiling the UI offers. Returns the validated value for storage.
 pub(crate) fn validate_concurrency(n: u32) -> Result<NonZeroU32, ConfigError> {
@@ -299,11 +299,11 @@ pub struct Preferences {
     /// Whether a side or disc pause ends on its own after a countdown, and how
     /// long it is. Defaults to `Off`: the pause waits for Play.
     pub side_pause_countdown: SidePauseCountdown,
-    /// How many blob uploads coven's upload drain runs at once. Device-local: a
+    /// How many file uploads coven's upload drain runs at once. Device-local: a
     /// concurrency limit reflects one machine's link and CPU, so unlike most
     /// preferences it does not follow the user across devices.
     pub max_concurrent_uploads: NonZeroU32,
-    /// How many blob downloads a pin fetches at once. Device-local, like uploads.
+    /// How many file downloads a pin fetches at once. Device-local, like uploads.
     pub max_concurrent_downloads: NonZeroU32,
     /// Whether the seek bar's leading label counts down the time remaining
     /// instead of showing the time elapsed. Defaults to `false` (elapsed). Kept

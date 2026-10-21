@@ -471,13 +471,13 @@ fn with_file_row_params<T>(
 pub(super) fn insert_external_file_row(
     conn: &SqlContext<'_, '_>,
     file: &DbFile,
-    blob: coven::PreparedUserFile,
+    original: coven::PreparedUserFile,
 ) -> Result<(), DbError> {
     with_file_row_params(file, |params| {
         conn.insert_user_file(
             crate::sync::RELEASE_FILES_NAMESPACE,
             file.id.as_str(),
-            blob,
+            original,
             INSERT_RELEASE_FILE_SQL,
             params,
         )

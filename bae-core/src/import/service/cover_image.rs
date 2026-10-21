@@ -6,7 +6,7 @@ use crate::import::folder_scanner::CandidateFile;
 /// A candidate cover's bytes as they came from their source, with the provenance
 /// the `covers` row records. The bytes here are NOT the stored ones: the import
 /// funnel resizes the winning candidate and builds the row from that output, so
-/// nothing describing a candidate can be mistaken for a description of the blob.
+/// nothing describing a candidate can be mistaken for a description of the file.
 #[derive(Debug)]
 pub(super) struct CoverCandidate {
     pub bytes: Vec<u8>,

@@ -127,7 +127,7 @@ data class ImageByteBudgets(
  *
  * What a cached decode is pinned to — its token — is the content's identity, so
  * no entry can outlive the bytes it came from: a curated image keys on its
- * version (its blob id, which names one immutable byte string), and a release
+ * version (the content hash coven records for its file), and a release
  * file on its file id (immutable — an import mints a fresh id per file, and a
  * re-import mints new ones rather than repointing an existing row).
  */
@@ -248,7 +248,7 @@ class ImageStore(
         }
         return when (read) {
             null -> {
-                // Core handed us an image reference but its blob read
+                // Core handed us an image reference but its file read
                 // returned nothing — note it rather than blanking silently.
                 logger.warning("no bytes for ${content.description}")
                 null

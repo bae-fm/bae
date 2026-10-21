@@ -73,7 +73,7 @@ impl ReleaseRef {
 
 /// Wait for the current file's upload to leave coven's durable queue.
 #[cfg(feature = "test-utils")]
-async fn wait_for_published_blob(manager: &LibraryManager, table: &str, row_id: &str) {
+async fn wait_for_published_file(manager: &LibraryManager, table: &str, row_id: &str) {
     let reference = manager.database.file_ref(table, row_id).await.unwrap();
     let mut uploads = manager.database.subscribe_cloud_outbox();
     manager.database.sync_now();
@@ -119,7 +119,7 @@ async fn uploaded_release_with_files(
         wait_for_offline_copy_request(manager, &release.id).await;
     }
     let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
-    assert_eq!(uploaded, files.len(), "each release blob uploaded");
+    assert_eq!(uploaded, files.len(), "each release file uploaded");
     release.id
 }
 
@@ -306,16 +306,16 @@ async fn store_test_cover(manager: &LibraryManager, release_id: &str, bytes: &[u
         manager.clock.now().into(),
     );
     manager
-        .store_library_image_blob(&cover, bytes)
+        .store_library_image(&cover, bytes)
         .await
         .unwrap();
 }
 
-/// Whether coven keeps a row's blob in the pinned cache. Asked of that row's
+/// Whether coven keeps a row's file in the pinned cache. Asked of that row's
 /// own file rather than through `release_pinned`, which checks the release's
 /// files and deliberately excludes covers.
 #[cfg(feature = "test-utils")]
-async fn blob_pinned(manager: &LibraryManager, namespace: &str, row_id: &str) -> bool {
+async fn file_pinned(manager: &LibraryManager, namespace: &str, row_id: &str) -> bool {
     manager
         .database
         .rows_pinned(namespace, vec![row_id.to_string()])
@@ -324,7 +324,7 @@ async fn blob_pinned(manager: &LibraryManager, namespace: &str, row_id: &str) ->
         .first()
         .copied()
         .flatten()
-        .expect("the blob-bearing row exists")
+        .expect("the file-bearing row exists")
 }
 
 #[cfg(feature = "test-utils")]

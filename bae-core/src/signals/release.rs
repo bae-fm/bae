@@ -117,7 +117,7 @@ pub(crate) async fn resolve_release_artwork_paths(
     // failing the whole resolve.
     let cover_staging = match library_manager.cover_ref(release_id).await {
         Ok(Some(image)) => {
-            match library_manager.read_image_blob(&image).await {
+            match library_manager.read_image_bytes(&image).await {
                 Ok(Some(bytes)) => {
                     let staging_release = release_id.to_string();
                     match tokio::task::spawn_blocking(move || {
@@ -134,7 +134,7 @@ pub(crate) async fn resolve_release_artwork_paths(
                     }
                 }
                 Ok(None) => {
-                    debug!("artwork OCR: release {release_id} has no cover blob; skipping cover staging");
+                    debug!("artwork OCR: release {release_id} has no cover file; skipping cover staging");
                     None
                 }
                 Err(e) => {
@@ -146,7 +146,7 @@ pub(crate) async fn resolve_release_artwork_paths(
             }
         }
         Ok(None) => {
-            debug!("artwork OCR: release {release_id} has no cover blob; skipping cover staging");
+            debug!("artwork OCR: release {release_id} has no cover file; skipping cover staging");
             None
         }
         Err(e) => {

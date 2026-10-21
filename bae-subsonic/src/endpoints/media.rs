@@ -367,7 +367,7 @@ async fn cover_art_inner(state: &AppState, params: &Params) -> Result<Response, 
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
     let bytes = services
-        .read_library_image_blob(&subject_id, &image_type)
+        .read_library_image_bytes(&subject_id, &image_type)
         .await
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;

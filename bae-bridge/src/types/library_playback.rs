@@ -338,7 +338,7 @@ pub struct BridgeReleaseSummary {
     pub media_terms: Vec<crate::types::BridgeFactTerm>,
     /// The release's storage state — Local (local) or Remote (cloud).
     pub storage_state: BridgeReleaseStorageState,
-    /// Whether coven keeps this release's blobs pinned (kept offline) on this
+    /// Whether coven keeps this release's files pinned (kept offline) on this
     /// device — the ORTHOGONAL coven-cache property. Meaningful only when
     /// `storage_state` is `Remote`. Kept separate from `storage_state` so the UI
     /// never conflates "in the cloud" with "kept offline".
@@ -383,7 +383,7 @@ pub struct BridgeRelease {
     pub pressing_details: Vec<crate::types::BridgeFactTerm>,
     /// The release's storage state — Local (local) or Remote (cloud).
     pub storage_state: BridgeReleaseStorageState,
-    /// Whether coven keeps this release's blobs pinned (kept offline) on this
+    /// Whether coven keeps this release's files pinned (kept offline) on this
     /// device — the ORTHOGONAL coven-cache property, separate from `storage_state`.
     pub pinned: bool,
     /// Storage transitions available right now, gated on cloud-home by the

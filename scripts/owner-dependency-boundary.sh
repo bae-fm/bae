@@ -54,9 +54,6 @@ capability_types=(
   AudioDataReader
   AudioOutput
   AudioStream
-  BlobCache
-  BlobStream
-  BlobTransitionObserver
   CancellationRegistry
   CancellationToken
   CandidateDriver
@@ -153,7 +150,6 @@ allowed_capability_outputs=(
   AirPlayStreamControl
   AudioDataReader
   AudioStream
-  BlobStream
   FileStream
   DiscogsClient
   ExtractionServiceHandle

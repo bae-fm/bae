@@ -302,7 +302,7 @@ impl Database {
                 };
                 let context =
                     find_release_detail_context_on(&sql, release_id).map_err(CovenError::from)?;
-                let cover_versions = super::blobs::image_versions_on(
+                let cover_versions = super::files::image_versions_on(
                     &sql,
                     LibraryImageType::Cover,
                     std::slice::from_ref(release_id),
@@ -324,7 +324,7 @@ impl Database {
         self.read(move |sql| get_releases_for_album_on(&sql, &album_id))
             .await
     }
-    /// Seed a release-file row for tests that do not exercise its blob bytes.
+    /// Seed a release-file row for tests that do not exercise its file bytes.
     /// Production creates the row and its Coven-owned hash together in
     /// `finalize_import_atomic`.
     #[cfg(any(test, feature = "test-utils"))]
@@ -449,7 +449,7 @@ impl Database {
             .map(|(image, bytes)| ((*image).clone(), (*bytes).to_vec()))
             .collect();
         // Each image's bytes attach to its row, which coven finds by the row's id.
-        let image_blobs: Vec<(String, String, Vec<u8>)> = library_image
+        let image_files: Vec<(String, String, Vec<u8>)> = library_image
             .iter()
             .chain(artist_images.iter())
             .map(|(image, bytes)| {
@@ -466,7 +466,7 @@ impl Database {
         let now = now_dt.to_rfc3339();
         self.write_with_files(
             move |w| {
-                for (namespace, id, bytes) in image_blobs {
+                for (namespace, id, bytes) in image_files {
                     w.put_file(namespace, id, bytes);
                 }
                 Ok(())

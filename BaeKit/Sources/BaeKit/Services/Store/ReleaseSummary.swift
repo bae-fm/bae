@@ -35,7 +35,7 @@ public final class ReleaseSummary: Identifiable {
     /// The same media as core words them: "2×CD", "Vinyl".
     public var mediaTerms: [BridgeFactTerm]
     public var storageState: BridgeReleaseStorageState
-    /// Whether coven keeps this release's blobs pinned locally on this device
+    /// Whether coven keeps this release's files pinned locally on this device
     /// — the orthogonal coven-cache property, meaningful only when
     /// `storageState` is `.remote`. Kept separate from `storageState` so the UI
     /// never conflates "in the cloud" with "pinned locally".

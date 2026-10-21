@@ -10,7 +10,7 @@ impl Database {
         let mut prepared = Vec::with_capacity(files.len());
         for file in files {
             let source = self
-                .external_blob(&file.id)
+                .external_file(&file.id)
                 .await?
                 .ok_or_else(|| DbError::FileNotUploaded(file.id.clone()))?;
             validate_original(&source).await?;
@@ -94,7 +94,7 @@ impl Database {
             let mut originals = Vec::with_capacity(files.len());
             for (id, reference) in references {
                 let source = self
-                    .external_blob(&id)
+                    .external_file(&id)
                     .await?
                     .ok_or_else(|| DbError::FileNotUploaded(id.clone()))?;
                 validate_original(&source).await?;

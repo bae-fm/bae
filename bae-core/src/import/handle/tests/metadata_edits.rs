@@ -501,7 +501,7 @@ async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by
     assert_eq!(
         handle
             .library_manager
-            .read_image_blob(&image)
+            .read_image_bytes(&image)
             .await
             .unwrap()
             .expect("the materialized artist image is readable"),

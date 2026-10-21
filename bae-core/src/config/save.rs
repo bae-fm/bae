@@ -97,7 +97,7 @@ pub struct SavePreset {
     pub applies_to_track: bool,
     pub applies_to_release: bool,
     /// Whether saved files embed the release's cover art. When false, the cover
-    /// blob is never read — no wasted download/decrypt for a preset that won't
+    /// file is never read — no wasted download/decrypt for a preset that won't
     /// embed it.
     pub embed_cover: bool,
 }

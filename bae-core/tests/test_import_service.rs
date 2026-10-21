@@ -111,7 +111,7 @@ async fn assert_release_has_external_ref(f: &ImportFixture, release_id: &str) {
     let files = f.db.get_files_for_release(release_id).await.unwrap();
     assert!(!files.is_empty(), "prior release files should remain");
     assert!(
-        f.db.external_blob(&files[0].id).await.unwrap().is_some(),
+        f.db.external_file(&files[0].id).await.unwrap().is_some(),
         "prior local file reference should remain"
     );
 }

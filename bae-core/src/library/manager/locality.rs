@@ -191,7 +191,7 @@ impl LibraryManager {
     /// also publishes the action the storage row reads — and then joining the pin
     /// task, so a panicked pin reports the panic rather than "the channel closed".
     ///
-    /// Success needs no follow-up here: `pin_release_blobs_with_progress`
+    /// Success needs no follow-up here: `pin_release_files_with_progress`
     /// committed the new state, so the release subscription updates its
     /// `pinned` flag.
     /// Completion and failure reach diagnostics from inside the transfer
@@ -225,7 +225,7 @@ impl LibraryManager {
             .await
     }
 
-    /// Unpin a release: coven moves its blobs out of the pinned cache and into the
+    /// Unpin a release: coven moves its files out of the pinned cache and into the
     /// evictable cache, so they stay readable but become droppable.
     pub async fn unpin_release(&self, release_id: &str) -> Result<(), LibraryError> {
         let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
@@ -239,7 +239,7 @@ impl LibraryManager {
     /// checked and admitted. Empty and duplicate selections are invalid commands;
     /// release-specific refusals are returned beside the durable receipt for the
     /// releases that were admitted. The stored import storage choice says
-    /// whether coven keeps the blobs in the pinned cache (offline) or the
+    /// whether coven keeps the files in the pinned cache (offline) or the
     /// evictable cache. Once the upload lands, a remote release no longer
     /// refers to the user's source path; the source file itself remains
     /// untouched.

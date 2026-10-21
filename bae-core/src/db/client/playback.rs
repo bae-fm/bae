@@ -269,7 +269,7 @@ fn track_displays_on(
                 let cover_image = match row.get::<_, Option<String>>("cover_id")? {
                     Some(_) => Some(crate::album_detail::ImageRef {
                         id: release_id.clone(),
-                        version: super::blobs::image_version(&row.get::<_, Vec<u8>>("cover_hash")?),
+                        version: super::files::image_version(&row.get::<_, Vec<u8>>("cover_hash")?),
                         image_type: LibraryImageType::Cover,
                     }),
                     None => None,

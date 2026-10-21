@@ -232,9 +232,9 @@ impl RemoteImageHost {
     }
 }
 
-pub async fn read_cover_image_blob(
+pub async fn read_cover_image_bytes(
     mgr: &bae_core::library::LibraryManager,
     release_id: &str,
 ) -> Option<Vec<u8>> {
-    mgr.read_cover_image_blob(release_id).await.unwrap()
+    mgr.read_cover_image_bytes(release_id).await.unwrap()
 }

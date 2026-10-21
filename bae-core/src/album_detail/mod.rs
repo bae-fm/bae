@@ -101,7 +101,7 @@ impl ReleaseName {
 
 /// Whether the release's audio files have been attached to coven for upload.
 ///
-/// This is ORTHOGONAL to pinned-ness. Whether coven keeps a remote release's blobs
+/// This is ORTHOGONAL to pinned-ness. Whether coven keeps a remote release's files
 /// pinned or evictable is a separate per-device cache property, carried alongside
 /// as a `pinned: bool` and NEVER folded in here: mixing them would conflate "where
 /// the bytes live" with "is a copy kept offline."
@@ -130,9 +130,9 @@ pub fn storage_state(remote: bool) -> ReleaseStorageState {
 pub enum ReleaseStorageAction {
     /// Local -> Remote (upload to the cloud home).
     Upload,
-    /// Keep a remote release offline: fetch its blobs into coven's pinned cache.
+    /// Keep a remote release offline: fetch its files into coven's pinned cache.
     Pin,
-    /// Stop keeping a remote release offline: drop its blobs from the pinned
+    /// Stop keeping a remote release offline: drop its files from the pinned
     /// cache (still in the cloud).
     Unpin,
     /// Remote -> Local (move the files back out to a user folder).

@@ -640,7 +640,7 @@ impl CategorizedFiles {
     }
 
     /// Every file the release carries, in `relative_path` order — the rows the
-    /// import writes, the blobs coven uploads, and the set
+    /// import writes, the files coven uploads, and the set
     /// [`Self::content_hash`] covers. The folder is the release: what you
     /// import is what is stored and what comes back on export, so nothing the
     /// walk keeps is left behind.

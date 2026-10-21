@@ -103,7 +103,7 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud_with_sync_loop(&manager).await;
 
-    // Pinned: made Remote with pin, so its blob lands in coven's offline cache.
+    // Pinned: made Remote with pin, so its file lands in coven's offline cache.
     let pinned = upload_release_under_sync_loop(
         &manager,
         &temp_dir.path().join("pinned"),
@@ -111,7 +111,7 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
         true,
     )
     .await;
-    // Cloud-only: made Remote without pin, so its blob is evictable, not pinned.
+    // Cloud-only: made Remote without pin, so its file is evictable, not pinned.
     let cloud_only = upload_release_under_sync_loop(
         &manager,
         &temp_dir.path().join("cloud"),
@@ -366,22 +366,22 @@ async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
     assert_eq!(uploaded, 2, "the file and the cover both upload");
     let file_id = release_files(&manager, &release.id).await[0].id.clone();
     assert!(
-        blob_pinned(&manager, crate::sync::RELEASE_FILES_NAMESPACE, &file_id).await,
+        file_pinned(&manager, crate::sync::RELEASE_FILES_NAMESPACE, &file_id).await,
         "upload with pin leaves the release file pinned"
     );
     assert!(
-        !blob_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
+        !file_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
         "covers remain evictable when audio is pinned"
     );
 
     manager.unpin_release(&release.id).await.unwrap();
 
     assert!(
-        !blob_pinned(&manager, crate::sync::RELEASE_FILES_NAMESPACE, &file_id).await,
+        !file_pinned(&manager, crate::sync::RELEASE_FILES_NAMESPACE, &file_id).await,
         "the release file unpinned"
     );
     assert!(
-        !blob_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
+        !file_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
         "the cover remains evictable"
     );
 }
@@ -406,7 +406,7 @@ async fn pin_release_counts_audio_and_keeps_cover_evictable() {
     manager.upload_release(&release.id, false).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
     assert!(
-        !blob_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
+        !file_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
         "upload without pin leaves the cover evictable"
     );
 
@@ -418,22 +418,22 @@ async fn pin_release_counts_audio_and_keeps_cover_evictable() {
             .unwrap()
             .bytes_total,
         expected_total,
-        "the pane's denominator counts every blob the pin fetches"
+        "the pane's denominator counts every file the pin fetches"
     );
 
     let mut progress = Vec::new();
     manager
-        .pin_release_blobs_with_progress(&release.id, |update| progress.push(update))
+        .pin_release_files_with_progress(&release.id, |update| progress.push(update))
         .await
         .unwrap();
 
     let file_id = release_files(&manager, &release.id).await[0].id.clone();
     assert!(
-        blob_pinned(&manager, crate::sync::RELEASE_FILES_NAMESPACE, &file_id).await,
+        file_pinned(&manager, crate::sync::RELEASE_FILES_NAMESPACE, &file_id).await,
         "the release file pinned"
     );
     assert!(
-        !blob_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
+        !file_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
         "the cover remains evictable"
     );
     let last = progress.last().expect("the pin reports progress");
@@ -490,7 +490,7 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
     assert_eq!(pinned(&first), Some(false));
 
     manager
-        .pin_release_blobs_with_progress(&release.id, |_| {})
+        .pin_release_files_with_progress(&release.id, |_| {})
         .await
         .unwrap();
 
@@ -523,7 +523,7 @@ async fn a_pin_the_provider_refuses_is_a_cloud_setup_failure() {
     manager.drain_uploads_expecting_work().await.unwrap();
     let file_id = release_files(&manager, &release.id).await[0].id.clone();
     manager
-        .evict_blob_for_test(&manager.release_file_row_blob_ref(&file_id).await.unwrap())
+        .evict_file_for_test(&manager.release_file_ref(&file_id).await.unwrap())
         .await
         .unwrap();
 
@@ -536,7 +536,7 @@ async fn a_pin_the_provider_refuses_is_a_cloud_setup_failure() {
         faults.failure = failure;
         home.set_faults(faults).await;
         let error = manager
-            .pin_release_blobs_with_progress(&release.id, |_| {})
+            .pin_release_files_with_progress(&release.id, |_| {})
             .await
             .expect_err("the provider refuses the read");
 
@@ -567,13 +567,13 @@ async fn a_pin_the_cloud_cannot_serve_is_a_network_failure() {
     manager.drain_uploads_expecting_work().await.unwrap();
     let file_id = release_files(&manager, &release.id).await[0].id.clone();
     manager
-        .evict_blob_for_test(&manager.release_file_row_blob_ref(&file_id).await.unwrap())
+        .evict_file_for_test(&manager.release_file_ref(&file_id).await.unwrap())
         .await
         .unwrap();
     home.set_online(false);
 
     let error = manager
-        .pin_release_blobs_with_progress(&release.id, |_| {})
+        .pin_release_files_with_progress(&release.id, |_| {})
         .await
         .expect_err("the pin cannot fetch the file");
 

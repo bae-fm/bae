@@ -54,7 +54,7 @@ impl ExportFixture {
 
 /// Import a one-track album from `album_dir` as Local with Unknown
 /// identity (file metadata only — no network), then flip it to cloud-only:
-/// remote with no local copy, encrypted blobs seeded in the mock cloud,
+/// remote with no local copy, encrypted files seeded in the mock cloud,
 /// originals deleted. This is the state export must handle: no local bytes,
 /// audio only in the cloud.
 async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (String, Vec<u8>) {
@@ -76,11 +76,11 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
 
     f.mgr.upload_release(&release_id, false).await.unwrap();
     let uploaded = f.mgr.drain_uploads_expecting_work().await.unwrap();
-    assert_eq!(uploaded, files.len(), "each release blob uploaded");
+    assert_eq!(uploaded, files.len(), "each release file uploaded");
 
     for file in files {
-        let reference = f.mgr.release_blob_ref_for_test(&file.id).await.unwrap();
-        f.mgr.evict_blob_for_test(&reference).await.unwrap();
+        let reference = f.mgr.release_file_ref_for_test(&file.id).await.unwrap();
+        f.mgr.evict_file_for_test(&reference).await.unwrap();
     }
     fs::remove_dir_all(album_dir).unwrap();
     (release_id, original_bytes)
@@ -202,7 +202,7 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
 
 /// A save reads the cover only when the preset embeds: with art on the
 /// release, `embed_cover: true` carries the bytes and `false` carries none — the
-/// blob read is skipped entirely.
+/// file read is skipped entirely.
 #[tokio::test]
 async fn save_cover_image_skips_the_read_when_not_embedding() {
     support::tracing_init();
@@ -337,10 +337,10 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
     );
 }
 
-/// A cloud-only release whose blob is missing exports nothing and errors —
+/// A cloud-only release whose file is missing exports nothing and errors —
 /// no partial silent success.
 #[tokio::test]
-async fn export_release_missing_blob_is_hard_error() {
+async fn export_release_missing_file_is_hard_error() {
     support::tracing_init();
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
@@ -348,7 +348,7 @@ async fn export_release_missing_blob_is_hard_error() {
     support::write_tagged_flac(&album_dir, "01.flac", "Track One");
     let (release_id, _) = import_then_strand_in_cloud(&f, &album_dir).await;
 
-    // Blow away the seeded blob.
+    // Blow away the seeded file.
     let files = f.mgr.get_files_for_release(&release_id).await.unwrap();
     support::remove_uploaded_file(&f.mgr, &f.cloud, &files[0].id).await;
 
@@ -358,7 +358,7 @@ async fn export_release_missing_blob_is_hard_error() {
         .mgr
         .export_release(&release_id, &target, OutputKind::Export)
         .await;
-    assert!(result.is_err(), "missing blob must fail the export");
+    assert!(result.is_err(), "missing file must fail the export");
     assert!(
         fs::read_dir(&target).unwrap().next().is_none(),
         "failed export must leave no release folder or marker"

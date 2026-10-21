@@ -49,11 +49,11 @@ mod arriving_files;
 pub(crate) use arriving_files::{
     ArrivingReleaseRow, ArrivingReleaseRows, AttachedFileRow, FileTable,
 };
-mod blobs;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod candidate_state_rows;
 mod coven_capabilities;
 mod database_read;
+mod files;
 mod records;
 // Only identifying a release, a desktop operation, changes its records.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -88,7 +88,7 @@ mod collections;
 mod history;
 mod people;
 mod playback;
-pub(crate) use blobs::{OutboxDisplayContext, OutboxDisplayRequest};
+pub(crate) use files::{OutboxDisplayContext, OutboxDisplayRequest};
 pub(crate) use playback::{QueueCatalogProjection, QueueCatalogRequest};
 mod release;
 pub(crate) use release::ReleaseMetadataRows;

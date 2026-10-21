@@ -101,11 +101,11 @@ async fn check_cover_arrival() {
     // B reads the cover as soon as its row arrives, so the arrival doesn't
     // wait for B's own download to come round.
     wait_for_cover_row(&devices, &release.id).await;
-    let read = b.read_cover_image_blob(&release.id).await;
+    let read = b.read_cover_image_bytes(&release.id).await;
     assert!(
         matches!(
             &read,
-            Err(LibraryError::Blob { error, .. })
+            Err(LibraryError::FileRead { error, .. })
                 if matches!(**error, coven::FileReadError::Uploading { .. })
         ),
         "the cover is still uploading on A: {read:?}"
@@ -147,7 +147,7 @@ async fn check_cover_arrival() {
     // The cover is in storage now; B's next fetch of it, here the cover's
     // own read, ends its arrival.
     assert_eq!(
-        b.read_cover_image_blob(&release.id).await.unwrap(),
+        b.read_cover_image_bytes(&release.id).await.unwrap(),
         Some(b"cover".to_vec())
     );
     wait_for_status(

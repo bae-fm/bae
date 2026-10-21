@@ -1,7 +1,7 @@
-//! Coven blob surface for [`LibraryManager`]: blob-ref construction, byte reads
+//! Coven file surface for [`LibraryManager`]: file reference construction, byte reads
 //! for release files and library images, library-image stores, cover-ref
 //! lookups, pin state, and the per-namespace cache budgets. Moves bytes /
-//! blob-refs / pin state through the [`CovenHandle`] and [`Database`], distinct
+//! file references / pin state through the [`CovenHandle`] and [`Database`], distinct
 //! from the sync-provider control in `sync.rs`.
 
 use super::release::cover_ref_for;
@@ -9,15 +9,15 @@ use super::*;
 
 impl LibraryManager {
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn release_blob_ref_for_test(
+    pub async fn release_file_ref_for_test(
         &self,
         file_id: &str,
     ) -> Result<coven::FileRef, LibraryError> {
-        self.release_file_row_blob_ref(file_id).await
+        self.release_file_ref(file_id).await
     }
 
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn materialize_release_blob_for_test(
+    pub async fn materialize_release_file_for_test(
         &self,
         file_id: &str,
     ) -> Result<Vec<u8>, LibraryError> {
@@ -25,11 +25,11 @@ impl LibraryManager {
     }
 
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn evict_blob_for_test(&self, blob: &coven::FileRef) -> Result<(), LibraryError> {
+    pub async fn evict_file_for_test(&self, file: &coven::FileRef) -> Result<(), LibraryError> {
         self.database
-            .evict_file(blob)
+            .evict_file(file)
             .await
-            .map_err(|error| LibraryError::blob("evict", error))
+            .map_err(|error| LibraryError::file_read("evict", error))
     }
 
     /// Apply [`crate::sync::CACHE_BUDGETS`] to coven for this device.
@@ -41,23 +41,25 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// The exact-row blob reference coven binds for a release file's audio blob,
+    /// The exact-row file reference coven binds for a release file's audio file,
     /// captured from the live `release_files` row. coven's cache ops (read, pin,
     /// stream) key on this so a later row replacement cannot redirect a read; a
     /// missing row surfaces as an error.
-    pub(crate) async fn release_file_row_blob_ref(
+    pub(crate) async fn release_file_ref(
         &self,
         file_id: &str,
     ) -> Result<coven::FileRef, LibraryError> {
         self.database
             .file_ref(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
             .await
-            .map_err(|e| LibraryError::Storage(format!("blob ref for release file {file_id}: {e}")))
+            .map_err(|e| {
+                LibraryError::Storage(format!("file reference for release file {file_id}: {e}"))
+            })
     }
 
-    /// The exact-row blob reference for a host-provided image, keyed by its table
+    /// The exact-row file reference for a host-provided image, keyed by its table
     /// (`covers` / `artist_images`) and its subject row id (the release / artist).
-    async fn image_row_blob_ref(
+    async fn image_file_ref(
         &self,
         table: &str,
         row_id: &str,
@@ -65,11 +67,11 @@ impl LibraryManager {
         self.database
             .file_ref(table, row_id)
             .await
-            .map_err(|e| LibraryError::Storage(format!("blob ref for {table} {row_id}: {e}")))
+            .map_err(|e| LibraryError::Storage(format!("file reference for {table} {row_id}: {e}")))
     }
 
     /// Read through the same local-or-attached source used for playback.
-    pub(crate) async fn read_release_blob(&self, file: &DbFile) -> Result<Vec<u8>, LibraryError> {
+    pub(crate) async fn read_release_file(&self, file: &DbFile) -> Result<Vec<u8>, LibraryError> {
         Ok(self.database.read_release_file(&file.id).await?)
     }
 
@@ -105,34 +107,37 @@ impl LibraryManager {
     /// Read a host-provided library image's whole bytes through coven's
     /// locality-aware read. The [`ImageRef`] carries the image kind, so the read
     /// goes directly to the table/namespace that produced the ref.
-    pub async fn read_image_blob(&self, image: &ImageRef) -> Result<Option<Vec<u8>>, LibraryError> {
-        self.read_library_image_blob(&image.id, &image.image_type)
+    pub async fn read_image_bytes(
+        &self,
+        image: &ImageRef,
+    ) -> Result<Option<Vec<u8>>, LibraryError> {
+        self.read_library_image_bytes(&image.id, &image.image_type)
             .await
     }
 
-    pub async fn read_cover_image_blob(
+    pub async fn read_cover_image_bytes(
         &self,
         release_id: &str,
     ) -> Result<Option<Vec<u8>>, LibraryError> {
-        self.read_library_image_blob(release_id, &LibraryImageType::Cover)
+        self.read_library_image_bytes(release_id, &LibraryImageType::Cover)
             .await
     }
 
     /// Read a library image's whole bytes by its subject id and kind; `None`
     /// when no image is stored.
-    pub async fn read_library_image_blob(
+    pub async fn read_library_image_bytes(
         &self,
         id: &str,
         image_type: &LibraryImageType,
     ) -> Result<Option<Vec<u8>>, LibraryError> {
-        let Some(blob) = self.library_image_file(id, image_type).await? else {
+        let Some(file) = self.library_image_file(id, image_type).await? else {
             return Ok(None);
         };
         let bytes = self
             .database
-            .read_file(&blob)
+            .read_file(&file)
             .await
-            .map_err(|e| LibraryError::blob(format!("read image {id}"), e))?;
+            .map_err(|e| LibraryError::file_read(format!("read image {id}"), e))?;
         Ok(Some(bytes))
     }
 
@@ -151,9 +156,7 @@ impl LibraryManager {
         {
             return Ok(None);
         }
-        Ok(Some(
-            self.image_row_blob_ref(image_type.namespace(), id).await?,
-        ))
+        Ok(Some(self.image_file_ref(image_type.namespace(), id).await?))
     }
 
     /// A library image to show: its bytes, or the file another device is
@@ -171,7 +174,7 @@ impl LibraryManager {
             Err(coven::FileReadError::Uploading { .. }) => {
                 Ok(Some(ImageRead::Arriving(arriving(&image.id, &file))))
             }
-            Err(error) => Err(LibraryError::blob(
+            Err(error) => Err(LibraryError::file_read(
                 format!("read image {}", image.id),
                 error,
             )),
@@ -225,7 +228,7 @@ impl LibraryManager {
                 ReleasePinState::NotPinned => false,
                 ReleasePinState::RejectedBadId => {
                     self.diagnostics.event(TelemetryEvent::Anomaly {
-                        kind: crate::diagnostics::AnomalyKind::BlobIdInvalid,
+                        kind: crate::diagnostics::AnomalyKind::FileIdInvalid,
                     });
                     false
                 }
@@ -235,15 +238,15 @@ impl LibraryManager {
 
     /// Audio and companion files stay pinned together. Covers use their own
     /// eager cache budget and are never pinned.
-    pub(super) async fn release_pinnable_blobs(
+    pub(super) async fn release_pinnable_files(
         &self,
         release_id: &str,
-    ) -> Result<Vec<PinnableBlob>, LibraryError> {
+    ) -> Result<Vec<PinnableFile>, LibraryError> {
         let files = self.database.get_files_for_release(release_id).await?;
         let mut pinnable = Vec::with_capacity(files.len());
         for file in &files {
-            pinnable.push(PinnableBlob {
-                blob: self.release_file_row_blob_ref(&file.id).await?,
+            pinnable.push(PinnableFile {
+                file: self.release_file_ref(&file.id).await?,
                 bytes: pinnable_bytes(release_id, &file.id, file.file_size)?,
             });
         }
@@ -251,13 +254,13 @@ impl LibraryManager {
     }
 
     /// The Downloads pane's opening progress for a queued pin: zero of the same
-    /// total [`Self::pin_release_blobs_with_progress`] counts down, so the bar
+    /// total [`Self::pin_release_files_with_progress`] counts down, so the bar
     /// never jumps when the pin starts reporting.
     pub(crate) async fn initial_download_progress(
         &self,
         release_id: &str,
     ) -> Result<crate::library::DownloadTransferProgress, LibraryError> {
-        let pinnable = self.release_pinnable_blobs(release_id).await?;
+        let pinnable = self.release_pinnable_files(release_id).await?;
         crate::library::DownloadTransferProgress::new(
             release_id,
             0,
@@ -265,30 +268,30 @@ impl LibraryManager {
         )
     }
 
-    /// Unpin a remote release's blobs: coven moves every blob from
+    /// Unpin a remote release's files: coven moves every file from
     /// the pinned cache to the evictable cache (still readable, now
     /// droppable). No cloud read, no bae flag. The low-level cache op behind the
     /// "Unpin" transition.
-    pub(crate) async fn unpin_release_blobs(&self, release_id: &str) -> Result<(), LibraryError> {
-        let blobs: Vec<coven::FileRef> = self
-            .release_pinnable_blobs(release_id)
+    pub(crate) async fn unpin_release_files(&self, release_id: &str) -> Result<(), LibraryError> {
+        let files: Vec<coven::FileRef> = self
+            .release_pinnable_files(release_id)
             .await?
             .into_iter()
-            .map(|entry| entry.blob)
+            .map(|entry| entry.file)
             .collect();
         self.database
-            .unpin(&blobs)
+            .unpin(&files)
             .await
-            .map_err(|e| LibraryError::blob(format!("unpin release {release_id}"), e))
+            .map_err(|e| LibraryError::file_read(format!("unpin release {release_id}"), e))
     }
 
     /// Store a bae-produced host-provided image and its row in one coven batch.
-    pub async fn store_library_image_blob(
+    pub async fn store_library_image(
         &self,
         image: &DbLibraryImage,
         bytes: &[u8],
     ) -> Result<(), LibraryError> {
-        self.database.write_library_image_blob(image, bytes).await?;
+        self.database.write_library_image(image, bytes).await?;
         Ok(())
     }
 }
@@ -313,10 +316,10 @@ pub(super) fn arriving(image: &str, file: &coven::FileRef) -> super::ArrivingFil
     arriving
 }
 
-/// One blob of a release's pinned set, with the plaintext byte size its row
+/// One file of a release's pinned set, with the plaintext byte size its row
 /// records — what a pin fetches, and what the Downloads pane counts.
-pub(super) struct PinnableBlob {
-    pub(super) blob: coven::FileRef,
+pub(super) struct PinnableFile {
+    pub(super) file: coven::FileRef,
     bytes: u64,
 }
 
@@ -328,7 +331,7 @@ fn pinnable_bytes(release_id: &str, row_id: &str, file_size: i64) -> Result<u64,
     })
 }
 
-fn total_bytes(release_id: &str, pinnable: &[PinnableBlob]) -> Result<u64, LibraryError> {
+fn total_bytes(release_id: &str, pinnable: &[PinnableFile]) -> Result<u64, LibraryError> {
     pinnable.iter().try_fold(0u64, |total, entry| {
         total.checked_add(entry.bytes).ok_or_else(|| {
             LibraryError::Storage(format!("pin release {release_id}: byte total overflow"))

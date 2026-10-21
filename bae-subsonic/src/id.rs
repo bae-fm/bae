@@ -147,8 +147,8 @@ mod tests {
     #[test]
     fn cover_art_ids_carry_their_version_and_parse_to_their_subject() {
         let album = SubId::Album("r1".to_string());
-        let id = album.cover_art_id("blob-2");
-        assert_eq!(id, "al-r1~blob-2");
+        let id = album.cover_art_id("v2");
+        assert_eq!(id, "al-r1~v2");
         assert_eq!(SubId::parse_cover_art(&id).unwrap(), album);
         assert_eq!(SubId::parse_cover_art("al-r1").unwrap(), album);
         assert_eq!(SubId::parse_cover_art("al-r1~").unwrap_err().code, 70);

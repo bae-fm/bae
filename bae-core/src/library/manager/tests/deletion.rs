@@ -191,8 +191,8 @@ async fn track_display_carries_the_cover_version() {
 }
 
 /// Deleting a release cascade-deletes its `covers` row (the FK on `covers.id`
-/// to `releases`), including a cover whose blob really did reach the cloud —
-/// the delete plan reads the published cover's blob reference before the row
+/// to `releases`), including a cover whose file really did reach the cloud —
+/// the delete plan reads the published cover's file reference before the row
 /// goes, so a lookup failure there would take the delete down with it.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
@@ -200,7 +200,7 @@ async fn delete_release_removes_its_cover_image() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud_with_sync_loop(&manager).await;
 
-    // A genuinely Remote release, so storing its cover publishes the blob and
+    // A genuinely Remote release, so storing its cover publishes the file and
     // the delete runs against a cover that names a real cloud object.
     let release1 = ReleaseRef::of(
         &manager,
@@ -220,7 +220,7 @@ async fn delete_release_removes_its_cover_image() {
     // Give release1 a cover: a `covers` row plus its file in one coven batch.
     store_test_cover(&manager, &release1.id, b"image").await;
 
-    wait_for_published_blob(&manager, crate::sync::COVERS_NAMESPACE, &release1.id).await;
+    wait_for_published_file(&manager, crate::sync::COVERS_NAMESPACE, &release1.id).await;
 
     manager.delete_release(&release1.id).await.unwrap();
 
@@ -252,7 +252,7 @@ async fn delete_album_removes_release_covers() {
     .await;
     store_test_cover(&manager, &release.id, b"image").await;
 
-    wait_for_published_blob(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await;
+    wait_for_published_file(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await;
 
     manager.delete_album(&release.album_id).await.unwrap();
 

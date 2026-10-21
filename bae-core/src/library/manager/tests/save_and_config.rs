@@ -144,7 +144,7 @@ async fn replacing_a_cover_refuses_a_replacement_that_landed_first() {
 
     let error = manager
         .database
-        .write_library_image_blob_after_planning_for_test(&late, b"late cover", move || async move {
+        .write_library_image_after_planning_for_test(&late, b"late cover", move || async move {
             store_test_cover(&concurrent, &concurrent_release, b"between cover").await;
         })
         .await
@@ -152,7 +152,7 @@ async fn replacing_a_cover_refuses_a_replacement_that_landed_first() {
 
     assert!(error.to_string().contains("changed after planning"));
     assert_eq!(
-        manager.read_cover_image_blob(&release.id).await.unwrap(),
+        manager.read_cover_image_bytes(&release.id).await.unwrap(),
         Some(b"between cover".to_vec()),
         "the replacement that landed first stands"
     );

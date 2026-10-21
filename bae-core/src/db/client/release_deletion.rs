@@ -39,7 +39,7 @@ impl ReleaseDeletion {
             params![release_id],
             |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<Vec<u8>>>(1)?)),
         )?;
-        let cover = super::blobs::image_version_on(sql, &LibraryImageType::Cover, release_id)?;
+        let cover = super::files::image_version_on(sql, &LibraryImageType::Cover, release_id)?;
         Ok(Self {
             release_id: release_id.to_string(),
             album_id,

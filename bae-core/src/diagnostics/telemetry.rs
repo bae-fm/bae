@@ -200,7 +200,7 @@ telemetry_value_enum! {
         QueueEntryUnknown => "queue_entry_unknown",
         QueueTrackNoMetadata => "queue_track_no_metadata",
         AudioFormatOrphaned => "audio_format_orphaned",
-        BlobIdInvalid => "blob_id_invalid",
+        FileIdInvalid => "file_id_invalid",
         EncryptionKeyMissing => "encryption_key_missing",
     }
 }

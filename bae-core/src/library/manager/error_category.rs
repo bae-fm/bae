@@ -187,7 +187,7 @@ pub(crate) fn bootstrap_category(error: &coven::BootstrapError) -> C {
     }
 }
 
-pub(super) fn blob_category(error: &coven::FileReadError) -> C {
+pub(super) fn file_read_category(error: &coven::FileReadError) -> C {
     use coven::FileReadError as E;
     match error {
         E::Storage(error) => cloud_home_category(error),

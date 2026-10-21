@@ -30,7 +30,7 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
     // path validates the fragment and refuses it, which is why the value has to
     // be written straight onto the row the way coven applies a peer's changeset
     // — the seam `set_original_filename_for_test` exists for. It drives the
-    // gallery's blob resolution and, as the release's representative blob, the
+    // gallery's file resolution and, as the release's representative file, the
     // pinned-cache check; both must reject the bad fragment, not panic.
     let file = DbFile::new(
         &release.id,

@@ -81,7 +81,7 @@ impl LibraryManager {
 
     /// The cover bytes a save of `release_id` embeds: the art of the release
     /// the tracks are on, the same rule playback applies. `None` when the
-    /// preset does not embed — the blob is then never read — or the release
+    /// preset does not embed — the file is then never read — or the release
     /// has no art.
     pub async fn save_cover_image(
         &self,
@@ -92,7 +92,7 @@ impl LibraryManager {
             return Ok(None);
         }
         match self.cover_ref(release_id).await? {
-            Some(image) => self.read_image_blob(&image).await,
+            Some(image) => self.read_image_bytes(&image).await,
             None => Ok(None),
         }
     }
@@ -101,7 +101,7 @@ impl LibraryManager {
     /// sparse buffer sized to the stored file size, filled on demand through
     /// coven's locality-aware ranged read (the user's own file, the local
     /// store, the cache, or the cloud with decrypt). A read failure — or a
-    /// blob shorter than the stored size — fails the buffer, and the decode
+    /// file shorter than the stored size — fails the buffer, and the decode
     /// fails loudly with that read's error.
     fn open_save_source(&self, file: &crate::db::DbFile) -> SourceStream {
         use crate::playback::data_source::{create_audio_reader, FetchArbiter};

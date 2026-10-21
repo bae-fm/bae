@@ -2,16 +2,16 @@
 use super::*;
 
 impl LibraryManager {
-    pub(crate) async fn pin_release_blobs_with_progress(
+    pub(crate) async fn pin_release_files_with_progress(
         &self,
         release: &str,
         mut on_progress: impl FnMut(crate::library::DownloadTransferProgress) + Send,
     ) -> Result<(), LibraryError> {
         let files = self
-            .release_pinnable_blobs(release)
+            .release_pinnable_files(release)
             .await?
             .into_iter()
-            .map(|entry| entry.blob)
+            .map(|entry| entry.file)
             .collect::<Vec<_>>();
         let ids = files
             .iter()
@@ -48,7 +48,7 @@ impl LibraryManager {
                         _ = cancel.cancelled() => return Err(LibraryError::Storage("pinning release was cancelled".into())),
                         _ = closing.cancelled() => return Err(LibraryError::Storage("pinning release was cancelled because the library is closing".into())),
                         result = &mut pin => {
-                            result.map_err(|error| LibraryError::blob(format!("pin release {release}"), error))?;
+                            result.map_err(|error| LibraryError::file_read(format!("pin release {release}"), error))?;
                             (manager.database.pin_progress(files.clone()).await?, true)
                         }
                         next = progress.next() => (next?, false),
@@ -66,7 +66,7 @@ impl LibraryManager {
                 return match manager.database.unpin(&changed).await {
                     Ok(()) => Err(operation),
                     Err(error) => {
-                        let error = LibraryError::Cleanup { operation: Box::new(operation), cleanup: Box::new(LibraryError::blob("restore release pins", error)) };
+                        let error = LibraryError::Cleanup { operation: Box::new(operation), cleanup: Box::new(LibraryError::file_read("restore release pins", error)) };
                         tracing::error!(%error, "could not roll back release pins");
                         Err(error)
                     }

@@ -136,7 +136,7 @@ async fn a_fixture_albums_cover_is_its_releases_cover() {
     let albums = manager.get_albums(&[]).await.unwrap();
     let release_id = albums[0].primary_release_id.clone().unwrap();
     let stored = manager
-        .read_cover_image_blob(&release_id)
+        .read_cover_image_bytes(&release_id)
         .await
         .unwrap()
         .expect("the release has a cover");

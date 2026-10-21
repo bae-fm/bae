@@ -1,6 +1,6 @@
 /// Create a Remote, pinned, exportable release: a Local release with
 /// known-byte source files on disk (device-local paths) and a
-/// `source_folder_name`, made Remote with pin so its blobs stay readable from
+/// `source_folder_name`, made Remote with pin so its files stay readable from
 /// the offline cache. Returns its id. The manager must already be connected via
 /// [`connect_test_cloud`].
 #[cfg(feature = "test-utils")]

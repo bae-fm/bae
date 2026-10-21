@@ -146,7 +146,7 @@ pub struct DbReleaseStorageSummary {
     pub remote: bool,
     /// The id of one of the release's files, or `None` when it has none. Used to
     /// ask coven's cache whether the release is pinned — pin/unpin act on all a
-    /// release's blobs together, so any one file stands for the release.
+    /// release's files together, so any one file stands for the release.
     pub any_file_id: Option<String>,
     pub file_count: i64,
     pub total_size: i64,
@@ -282,7 +282,7 @@ pub struct DbReleaseSummary {
     pub remote: bool,
     /// The id of one of the release's files, or `None` when it has none. Used to
     /// ask coven's cache whether the release is pinned — pin/unpin act on all a
-    /// release's blobs together, so any one file stands for the release.
+    /// release's files together, so any one file stands for the release.
     pub any_file_id: Option<String>,
     pub file_count: i64,
     pub total_size: i64,

@@ -148,7 +148,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
     );
 }
 
-/// coven verifies a blob's plaintext against its row's content hash on every
+/// coven verifies a file's plaintext against its row's content hash on every
 /// cloud fetch, so a `covers` row must describe the bytes actually stored — the
 /// resized thumbnail the import writes, never the image it was made from. A row
 /// hashing anything else makes the cover unreadable on every other device.
@@ -158,19 +158,19 @@ async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: 
             .await
             .unwrap()
             .expect("cover row");
-    let bytes = support::read_cover_image_blob(&f.library_manager, release_id)
+    let bytes = support::read_cover_image_bytes(&f.library_manager, release_id)
         .await
-        .expect("cover blob readable");
+        .expect("cover file readable");
     let stored_hash = f.db.query_texts_for_test(&format!("SELECT lower(hex(hash)) FROM covers WHERE id = '{release_id}'")).await.unwrap();
     assert_eq!(stored_hash, vec![bae_core::util::fs::hash_bytes(&bytes)]);
     assert_eq!(
         cover.file_size,
         bytes.len() as i64,
-        "the covers row's file_size must be the size of the stored blob",
+        "the covers row's file_size must be the size of the stored file",
     );
 }
 
-/// 6. Import with local cover art: covers row + the cover blob in coven's local store.
+/// 6. Import with local cover art: covers row + the cover file in coven's local store.
 #[tokio::test]
 async fn import_with_cover_art() {
     support::tracing_init();
@@ -210,16 +210,16 @@ async fn import_with_cover_art() {
     assert_eq!(cover.source, "local");
 
     // Cover bytes readable through the image ref path (coven's local store while Local).
-    let cover_bytes = support::read_cover_image_blob(&f.library_manager, &release_id)
+    let cover_bytes = support::read_cover_image_bytes(&f.library_manager, &release_id)
         .await
-        .expect("cover blob should be readable");
+        .expect("cover file should be readable");
     assert!(!cover_bytes.is_empty(), "cover bytes should not be empty");
 
     assert_cover_row_describes_stored_bytes(&f, &release_id).await;
 }
 
 /// An oversized folder cover is resized to a ≤600 JPEG thumbnail at import: the
-/// stored blob decodes to 600×600 JPEG (from a 1000×1000 PNG source) and the
+/// stored file decodes to 600×600 JPEG (from a 1000×1000 PNG source) and the
 /// `covers` row records JPEG, not the source PNG.
 #[tokio::test]
 async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
@@ -261,10 +261,10 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
         bae_core::util::content_type::ContentType::Jpeg
     );
 
-    // The stored blob is a ≤600 JPEG downscaled from the 1000×1000 PNG source.
-    let cover_bytes = support::read_cover_image_blob(&f.library_manager, &release_id)
+    // The stored file is a ≤600 JPEG downscaled from the 1000×1000 PNG source.
+    let cover_bytes = support::read_cover_image_bytes(&f.library_manager, &release_id)
         .await
-        .expect("cover blob should be readable");
+        .expect("cover file should be readable");
     assert_eq!(
         image::guess_format(&cover_bytes).unwrap(),
         image::ImageFormat::Jpeg
@@ -334,7 +334,7 @@ async fn import_gif_and_webp_covers_stores_first_image_as_jpeg() {
             cover.content_type,
             bae_core::util::content_type::ContentType::Jpeg
         );
-        let stored = support::read_cover_image_blob(&f.library_manager, &release_id)
+        let stored = support::read_cover_image_bytes(&f.library_manager, &release_id)
             .await
             .unwrap();
         assert_eq!(

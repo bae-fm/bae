@@ -59,8 +59,8 @@ mod artist;
 mod collections;
 mod composer;
 mod config;
-mod coven_blobs;
-pub use coven_blobs::ImageRead;
+mod coven_files;
+pub use coven_files::ImageRead;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod discogs;
 mod error_category;
@@ -114,11 +114,11 @@ mod pending_item;
 mod storage;
 mod sync;
 mod sync_status;
-use error_category::{
-    blob_category, cloud_home_category, cloud_setup_category, cloud_unlock_category, key_category,
-    sync_category,
-};
 pub(crate) use error_category::{bootstrap_category, creation_category, deletion_category};
+use error_category::{
+    cloud_home_category, cloud_setup_category, cloud_unlock_category, file_read_category,
+    key_category, sync_category,
+};
 mod track;
 pub(crate) use track::queue_catalog_request;
 
@@ -167,9 +167,9 @@ pub enum LibraryError {
     Encryption(#[from] coven::CryptoError),
     #[error("Storage error: {0}")]
     Storage(String),
-    /// Reading, pinning, or unpinning a blob's bytes through coven failed.
+    /// Reading, pinning, or unpinning a file's bytes through coven failed.
     #[error("{operation}: {error}")]
-    Blob {
+    FileRead {
         operation: String,
         #[source]
         error: Box<coven::FileReadError>,
@@ -218,8 +218,8 @@ pub enum LibraryError {
 }
 
 impl LibraryError {
-    pub(crate) fn blob(operation: impl Into<String>, error: coven::FileReadError) -> Self {
-        Self::Blob {
+    pub(crate) fn file_read(operation: impl Into<String>, error: coven::FileReadError) -> Self {
+        Self::FileRead {
             operation: operation.into(),
             error: Box::new(error),
         }
@@ -308,7 +308,7 @@ impl LibraryError {
             LibraryError::ArtistIdentityConflict(_) => C::Import,
             LibraryError::Export(_) => C::Export,
             LibraryError::Save(_) => C::Save,
-            LibraryError::Blob { error, .. } => blob_category(error),
+            LibraryError::FileRead { error, .. } => file_read_category(error),
             LibraryError::Cleanup { operation, .. } => operation.category(),
             LibraryError::Io(_)
             | LibraryError::TrackMapping(_)

@@ -7,7 +7,7 @@ use crate::db::{DbArtist, DbReleaseDetail, DbReleaseSummary};
 /// The per-release inputs `LibraryManager` reads from the DB, coven's cache and
 /// this device's disk and threads into the release projections: whether a cloud
 /// home exists at all (which gates `storage_actions`), whether this release's
-/// blobs are pinned on this device, what the disk has said of the originals the
+/// files are pinned on this device, what the disk has said of the originals the
 /// library records this device holding, and the release's own cover reference.
 /// Bundled so the constructors take one context rather than a pile of parameters.
 #[derive(Debug, Clone)]
@@ -39,7 +39,7 @@ pub struct ReleaseSummary {
     /// Whether every release file has been attached for upload. Orthogonal to
     /// `pinned`.
     pub storage_state: ReleaseStorageState,
-    /// Whether coven keeps this release's blobs offline on this device. Meaningful
+    /// Whether coven keeps this release's files offline on this device. Meaningful
     /// only when `storage_state` is `Remote` — always `false` for a Local release,
     /// which is already a local file. Kept SEPARATE from `storage_state` so the two
     /// are never confused.

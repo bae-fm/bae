@@ -95,13 +95,13 @@ impl Database {
                     )
                     .collect::<Vec<_>>();
                 let mut cover_versions = album_cover_versions_on(&sql, &album_ids)?;
-                cover_versions.extend(super::blobs::image_versions_on(
+                cover_versions.extend(super::files::image_versions_on(
                     &sql,
                     LibraryImageType::Cover,
                     &release_ids,
                 )?);
                 let artist_image_versions =
-                    super::blobs::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
+                    super::files::image_versions_on(&sql, LibraryImageType::Artist, &artist_ids)
                         .map_err(CovenError::from)?;
                 Ok(Some((results, cover_versions, artist_image_versions)))
             })
@@ -406,7 +406,7 @@ impl Database {
                     None => Vec::new(),
                 };
                 let cover_versions =
-                    super::blobs::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
+                    super::files::image_versions_on(&sql, LibraryImageType::Cover, &release_ids)
                         .map_err(CovenError::from)?;
                 Ok((detail, cover_versions))
             })

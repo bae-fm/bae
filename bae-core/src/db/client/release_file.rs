@@ -60,7 +60,7 @@ impl Database {
             ));
         }
         let source = self
-            .external_blob(id)
+            .external_file(id)
             .await?
             .ok_or_else(|| DbError::FileNotUploaded(id.to_string()))?;
         let file = match tokio::fs::File::open(&source.path).await {

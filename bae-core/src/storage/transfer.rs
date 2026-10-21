@@ -28,7 +28,7 @@ pub async fn read_release_file_bytes(
     file: &DbFile,
     mgr: &LibraryManager,
 ) -> Result<Vec<u8>, LibraryError> {
-    let bytes = mgr.read_release_blob(file).await?;
+    let bytes = mgr.read_release_file(file).await?;
     if bytes.len() as i64 != file.file_size {
         return Err(LibraryError::Storage(format!(
             "File {} short read: got {} bytes, expected {}",
@@ -89,7 +89,7 @@ impl TransferService {
             ),
             move |tx| async move {
                 library_manager
-                    .pin_release_blobs_with_progress(&pinned_release_id, |progress| {
+                    .pin_release_files_with_progress(&pinned_release_id, |progress| {
                         send_progress(&tx, TransferProgress::Progress { progress });
                     })
                     .await?;
@@ -110,7 +110,7 @@ impl TransferService {
         RunningOp::new(abort, outcome)
     }
 
-    /// Unpin a release: move its blobs from the pinned cache to the evictable
+    /// Unpin a release: move its files from the pinned cache to the evictable
     /// cache. Returns a receiver for progress updates.
     pub fn unpin_release(&self, release_id: String) -> mpsc::UnboundedReceiver<TransferProgress> {
         let library_manager = self.library_manager.clone();
@@ -123,7 +123,7 @@ impl TransferService {
             ),
             move |_tx| async move {
                 library_manager
-                    .unpin_release_blobs(&unpinned_release_id)
+                    .unpin_release_files(&unpinned_release_id)
                     .await?;
                 Ok(())
             },
@@ -418,7 +418,7 @@ mod tests {
         let (manager, diagnostics, transport, _home) = manager_with_recording_transport().await;
         let transfer = TransferService::new(manager);
 
-        // No such release, so `ReleaseTransfer::start` errors before any blob work.
+        // No such release, so `ReleaseTransfer::start` errors before any file work.
         let running =
             transfer.pin_release("missing-release".to_string(), |mut progress| async move {
                 while progress.recv().await.is_some() {}

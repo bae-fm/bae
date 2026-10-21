@@ -696,7 +696,7 @@ impl DbFile {
     /// Create a file record
     ///
     /// Files are linked to releases. Used for reconstructing original file structure
-    /// during export. Coven owns the blob content hash and fills its private
+    /// during export. Coven owns the file content hash and fills its private
     /// declaration while registering the prepared external file.
     pub fn new(
         release_id: &str,

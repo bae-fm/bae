@@ -237,9 +237,9 @@ async fn file_metadata_import_seeds_embedded_cover_when_no_folder_image() {
 
     // The embedded picture (≤600) keeps its dimensions but the store path
     // re-encodes it to JPEG, so assert on the decoded image, not raw bytes.
-    let bytes = support::read_cover_image_blob(&f.library_manager, &release_id)
+    let bytes = support::read_cover_image_bytes(&f.library_manager, &release_id)
         .await
-        .expect("cover blob readable");
+        .expect("cover file readable");
     assert_eq!(
         image::guess_format(&bytes).unwrap(),
         image::ImageFormat::Jpeg

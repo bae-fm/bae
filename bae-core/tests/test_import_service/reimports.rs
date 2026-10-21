@@ -120,7 +120,7 @@ async fn repeated_imports_keep_independent_copies() {
     assert_eq!(f.db.release_ids_for_content_hash(hash).await.unwrap().len(), 4);
     assert!(f.db.is_content_hash_imported(hash).await.unwrap());
     for (release, _, files) in &copies {
-        let bytes = f.library_manager.materialize_release_blob_for_test(&files[0].id).await;
+        let bytes = f.library_manager.materialize_release_file_for_test(&files[0].id).await;
         assert!(bytes.is_ok(), "copy {} remains readable: {bytes:?}", release.id);
     }
 }

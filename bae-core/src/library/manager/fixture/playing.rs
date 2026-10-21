@@ -142,11 +142,11 @@ impl LibraryManager {
                 content_type: scanned.content_type,
                 duration_ms: scanned.duration_ms as i64,
             });
-            let blob = coven::prepare_user_file(&audio.path, |_| {})
+            let original = coven::prepare_user_file(&audio.path, |_| {})
                 .await
                 .map_err(|error| invalid(format!("{}: {error}", audio.path.display())))?;
             file_ids.insert(audio.path.clone(), file.id.clone());
-            files.push((file, blob));
+            files.push((file, original));
         }
 
         let built = {

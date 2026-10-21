@@ -180,7 +180,7 @@ async fn exec_batch(db: &super::Database, sql: &str) {
 async fn write_cover(db: &super::Database, release: &str, content: &str) -> String {
     let bytes = content.as_bytes();
     let image = crate::db::DbLibraryImage::cover(release, "discogs", None, bytes, fixed_now());
-    db.write_library_image_blob(&image, bytes).await.unwrap();
+    db.write_library_image(&image, bytes).await.unwrap();
     stored_image_version(db, crate::sync::COVERS_NAMESPACE, release).await
 }
 
@@ -188,7 +188,7 @@ async fn write_cover(db: &super::Database, release: &str, content: &str) -> Stri
 /// own reference to the row's file rather than from the version query.
 async fn stored_image_version(db: &super::Database, table: &str, id: &str) -> String {
     let file = db.file_ref(table, id).await.unwrap();
-    super::blobs::image_version(file.content_hash().as_bytes())
+    super::files::image_version(file.content_hash().as_bytes())
 }
 
 /// `ARTIST_PRIMARY` owning `ALBUM_A`, whose primary release is `RELEASE_A`.

@@ -13,7 +13,7 @@ public struct Config: Equatable {
     /// Whether a side or disc pause ends on its own after a countdown, and how
     /// long. Settings show it only while `pauseBetweenSides` is on.
     public let sidePauseCountdown: BridgeSidePauseCountdown
-    /// How many blob uploads run at once, and how many downloads a pin fetches at
+    /// How many file uploads run at once, and how many downloads a pin fetches at
     /// once. Device-local (a per-machine choice), range 1...8. The storage manager
     /// reads them here and writes through the bridge setters.
     public let maxConcurrentUploads: UInt32

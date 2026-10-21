@@ -33,7 +33,7 @@ impl Database {
         artists: Vec<DbArtist>,
         albums: Vec<SeededAlbum>,
     ) -> Result<(), DbError> {
-        let cover_blobs: Vec<(String, String, Vec<u8>)> = albums
+        let cover_files: Vec<(String, String, Vec<u8>)> = albums
             .iter()
             .filter_map(|seeded| seeded.cover.as_ref())
             .map(|(image, bytes)| {
@@ -46,7 +46,7 @@ impl Database {
             .collect();
         self.write_with_files(
             move |batch| {
-                for (namespace, id, bytes) in cover_blobs {
+                for (namespace, id, bytes) in cover_files {
                     batch.put_file(namespace, id, bytes);
                 }
                 Ok(())
@@ -73,8 +73,8 @@ impl Database {
                 // the user's own file as an import registers it, then the
                 // layouts reading them.
                 for audio in albums.into_iter().filter_map(|seeded| seeded.audio) {
-                    for (file, blob) in audio.files {
-                        insert_external_file_row(tx, &file, blob)?;
+                    for (file, original) in audio.files {
+                        insert_external_file_row(tx, &file, original)?;
                     }
                     for format in &audio.audio_formats {
                         insert_audio_format_row(tx, format)?;

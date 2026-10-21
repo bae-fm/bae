@@ -77,7 +77,7 @@ impl From<LibraryError> for AutomationError {
             LibraryError::Encryption(e) => Self::Unavailable(e.to_string()),
             LibraryError::Storage(e) => Self::Unavailable(e),
             error @ LibraryError::Closed(_) => Self::Unavailable(error.to_string()),
-            error @ LibraryError::Blob { .. } => Self::Unavailable(error.to_string()),
+            error @ LibraryError::FileRead { .. } => Self::Unavailable(error.to_string()),
             error @ LibraryError::Cleanup { .. } => {
                 bae_core::ui::UiError::diagnostic(error.category(), error).into()
             }

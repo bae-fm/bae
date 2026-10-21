@@ -285,7 +285,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
 }
 
 async fn store_artist_image(db: &Database, artist_id: &str, source: &str, bytes: &[u8]) {
-    db.write_library_image_blob(
+    db.write_library_image(
         &DbLibraryImage {
             id: artist_id.to_string(),
             image_type: LibraryImageType::Artist,

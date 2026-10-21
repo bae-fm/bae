@@ -257,7 +257,7 @@ impl LibraryManager {
     }
 
     /// Delete an album and its data: the rows go in one transaction, which
-    /// declares every release's blobs deleted so coven reclaims their on-device
+    /// declares every release's files deleted so coven reclaims their on-device
     /// copies with the commit.
     pub async fn delete_album(&self, album_id: &str) -> Result<(), LibraryError> {
         let releases = self.get_releases_for_album(album_id).await?;

@@ -155,7 +155,7 @@ class ImageStoreTest {
         }
 
     @Test
-    fun aReleaseFileIdNamesOneImmutableBlob() =
+    fun aReleaseFileIdNamesOneImmutableFile() =
         runBlocking {
             var crossings = 0
             val store =
