@@ -13,7 +13,6 @@ fi
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
-export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-target-macos}"
 if command -v brew &>/dev/null; then
   BREW_PREFIX="$(brew --prefix)"
   export LIBRARY_PATH="${BREW_PREFIX}/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"

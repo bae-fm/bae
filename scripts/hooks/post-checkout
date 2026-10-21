@@ -18,10 +18,6 @@ fi
 worktree_root="$(git rev-parse --show-toplevel)"
 cd "$worktree_root"
 
-# Match the pre-commit hook's build environment. CARGO_TARGET_DIR keeps the
-# primed Rust artifacts where the pre-commit hook looks for them.
-export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-target-macos}"
-
 # Project CLAUDE.md (gitignored). Convention: agent-instructions repo
 # at ~/dev/agent-instructions/projects/bae.md.
 ln -sf "$HOME/dev/agent-instructions/projects/bae.md" CLAUDE.md

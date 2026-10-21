@@ -8,9 +8,6 @@ source "$(git rev-parse --show-toplevel)/scripts/hooks/lib/file-list.sh"
 # SwiftPM's package clones; the hook's own git commands don't need them.
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 
-# target-macos keeps the iOS and Android caches intact.
-export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-target-macos}"
-
 WORKSPACE_CRATES=(
     bae-automation
     bae-bridge
