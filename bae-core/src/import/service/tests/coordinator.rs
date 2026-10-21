@@ -69,8 +69,9 @@ fn request_group_decision(
 
 /// Report a file created in a folder of `/music` nothing else touches, and
 /// assert that the pass it starts, the `index`th, is the root's next one and
-/// reads that folder alone. The coordinator takes a completed pass's end
-/// before this report, so a pass that end still owed would start first.
+/// reads that folder alone. The coordinator may take this report before or
+/// after the completed pass's end; either way, a pass that end still owed
+/// starts as the `index`th, covering the change or leaving it queued behind.
 async fn assert_next_pass_reads_only_a_later_change(harness: &CoordinatorHarness, index: usize) {
     harness
         .fs_events
@@ -105,6 +106,10 @@ async fn coordinator_coalesces_same_root_to_one_followup_scan() {
         .send(WatcherCommand::Rescan(root.clone()))
         .unwrap();
     harness.commands.send(WatcherCommand::Rescan(root)).unwrap();
+    // Both rescans are taken while the first pass runs; otherwise its end
+    // could be taken first, leaving the root idle for one rescan to start a
+    // pass and the other to queue a second.
+    harness.commands_handled().await;
     harness.scans.complete(0);
     harness.scans.wait_for_count(2).await;
     harness.scans.complete(1);

@@ -262,9 +262,12 @@ impl FakeScanStarter {
     /// End the scan at `index`, telling a folder decision's caller it was
     /// stored.
     ///
-    /// The pass's end is queued to the coordinator before this returns, so a
-    /// watch report sent afterwards is taken after it: the coordinator hears a
-    /// pass end ahead of the watch.
+    /// The pass's end is queued to the coordinator before this returns, but
+    /// from this thread, so it is not ordered against commands or watch
+    /// reports sent before or after it: the coordinator checks its channels
+    /// one after another, and the end can arrive after it found the others
+    /// empty. A test that needs its commands taken first waits for them with
+    /// [`CoordinatorHarness::commands_handled`].
     fn complete(&self, index: usize) {
         if let Some(reading) = self.scans.lock().unwrap()[index].reading.take() {
             reading.answer(Ok(()));
