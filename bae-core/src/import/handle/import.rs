@@ -353,22 +353,22 @@ impl ImportServiceHandle {
         &self,
         token: &str,
     ) -> Result<DiscogsSaveOutcome, crate::import::ImportError> {
-        use crate::config::DiscogsValidation;
-
-        match validation_from_validate_result(
+        let check = DiscogsCheck::of(
             self.library_manager
                 .try_discogs_key(token, CallPriority::Interactive)
                 .await,
-        ) {
-            DiscogsValidation::Valid => {
-                self.persist_discogs_key(token, DiscogsValidation::Valid).await?;
+        );
+        let validation = check.validation();
+        match check {
+            DiscogsCheck::Valid => {
+                self.persist_discogs_key(token, validation).await?;
                 Ok(DiscogsSaveOutcome::Valid)
             }
-            DiscogsValidation::Unvalidated => {
-                self.persist_discogs_key(token, DiscogsValidation::Unvalidated).await?;
-                Ok(DiscogsSaveOutcome::Unvalidated)
+            DiscogsCheck::Unchecked(error) => {
+                self.persist_discogs_key(token, validation).await?;
+                Ok(DiscogsSaveOutcome::Unvalidated(error))
             }
-            DiscogsValidation::Rejected => Ok(DiscogsSaveOutcome::Rejected),
+            DiscogsCheck::Rejected => Ok(DiscogsSaveOutcome::Rejected),
         }
     }
 
@@ -394,10 +394,7 @@ impl ImportServiceHandle {
         if self.library_manager.discogs_validation() != Some(DiscogsValidation::Unvalidated) {
             return Ok(());
         }
-        self.library_manager
-            .revalidate_discogs_token()
-            .await
-            .map_err(Into::into)
+        self.library_manager.revalidate_discogs_token().await
     }
 
     /// Remove the stored Discogs key and its validation.

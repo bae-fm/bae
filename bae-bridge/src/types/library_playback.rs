@@ -13,18 +13,29 @@ pub enum BridgeDiscogsTokenStatus {
 /// whether to keep the draft (`Rejected`) or clear it. Desktop-only: the import
 /// service that writes the key doesn't run on mobile.
 #[cfg(feature = "desktop")]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeDiscogsSaveOutcome {
     Valid,
-    Unvalidated,
+    /// The key is stored but Discogs could not be asked about it; `detail`
+    /// is why, untranslated, for the details disclosure.
+    Unvalidated {
+        detail: String,
+    },
     Rejected,
 }
 
-mirror_enum! {
-    #[cfg(feature = "desktop")]
-    BridgeDiscogsSaveOutcome = bae_core::import::DiscogsSaveOutcome,
-    from_core: pub(crate) fn,
-    variants: { Valid, Unvalidated, Rejected },
+#[cfg(feature = "desktop")]
+impl BridgeDiscogsSaveOutcome {
+    pub(crate) fn from_core(outcome: bae_core::import::DiscogsSaveOutcome) -> Self {
+        use bae_core::import::DiscogsSaveOutcome as O;
+        match outcome {
+            O::Valid => Self::Valid,
+            O::Unvalidated(error) => Self::Unvalidated {
+                detail: error.to_string(),
+            },
+            O::Rejected => Self::Rejected,
+        }
+    }
 }
 
 /// A service that publishes descriptions of releases. Mirrors

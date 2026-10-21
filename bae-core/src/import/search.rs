@@ -779,7 +779,12 @@ pub async fn search_source(
 ) -> SourceLookup {
     search_provider(library_manager, source, query, priority)
         .await
-        .map_err(|error| failure_of(&error, &format!("asking {} a search", source.as_str())))
+        .map_err(|error| {
+            failure_of(
+                &error,
+                &format!("asking {} a search for {query:?}", source.as_str()),
+            )
+        })
 }
 
 /// The releases MusicBrainz has for a disc ID, each with its cover art. Empty
@@ -793,7 +798,12 @@ pub(crate) async fn lookup_by_discid(
     let releases = match musicbrainz.lookup_by_discid(discid, priority).await {
         Ok(releases) => releases,
         Err(musicbrainz::MusicBrainzError::NotFound(_)) => return Ok(Vec::new()),
-        Err(e) => return Err(mb_failure(&e, "reading MusicBrainz's disc ID answer")),
+        Err(e) => {
+            return Err(mb_failure(
+                &e,
+                &format!("reading MusicBrainz's answer for disc ID {discid}"),
+            ))
+        }
     };
 
     Ok(mb_discid_releases_to_metadata(discid, releases))
@@ -811,7 +821,12 @@ pub(crate) async fn lookup_by_isrcs(
     let recordings = musicbrainz
         .search_recordings_by_isrcs(isrcs, priority)
         .await
-        .map_err(|error| mb_failure(&error, "reading MusicBrainz's ISRC answer"))?;
+        .map_err(|error| {
+            mb_failure(
+                &error,
+                &format!("reading MusicBrainz's answer for ISRCs {isrcs:?}"),
+            )
+        })?;
     Ok(isrc_releases_to_metadata(isrcs, recordings))
 }
 

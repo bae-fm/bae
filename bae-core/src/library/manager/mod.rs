@@ -123,7 +123,7 @@ mod track;
 pub(crate) use track::queue_catalog_request;
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) use discogs::discogs_validation_from_result;
+pub(crate) use discogs::DiscogsCheck;
 pub use pending_item::{PendingItem, PendingSubjectName, PendingWait};
 use sync_status::SyncStatusState;
 pub use sync_status::{pending_action, PendingAction};

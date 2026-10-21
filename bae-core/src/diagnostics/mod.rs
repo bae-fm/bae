@@ -385,7 +385,9 @@ impl DiagnosticsWorker {
 
     async fn record_flush_result(&mut self) {
         if let Err(error) = self.flush_buffer().await {
-            tracing::debug!(%error, "diagnostics flush failed");
+            // The batch stays buffered for the next flush; the cause says
+            // whether the intake, the network or the batch itself refused it.
+            tracing::warn!("diagnostics flush failed: {error}");
         }
     }
 

@@ -252,7 +252,7 @@ fn read_document(path: &Path) -> Option<String> {
     match crate::text_encoding::read_text_file(path) {
         Ok(read) => Some(read.text),
         Err(e) => {
-            debug!("rip document {:?} could not be read: {}", path, e);
+            warn!("rip document {:?} could not be read: {}", path, e);
             None
         }
     }
@@ -406,7 +406,7 @@ fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
                         }),
                     };
                 }
-                Err(e) => debug!("DiscID from LOG failed for {:?}: {}", document.path, e),
+                Err(e) => warn!("DiscID from LOG failed for {:?}: {}", document.path, e),
             }
         }
         if report.is_none() && reports_accuraterip_found(&text) {
@@ -538,7 +538,7 @@ fn discid_from_cue_audio(
     match calculate_mb_discid_from_cue(sheet, audio, "CUE/scanned audio") {
         Ok(id) => Some(id),
         Err(e) => {
-            debug!("DiscID from CUE+audio failed for {:?}: {}", cue_path, e);
+            warn!("DiscID from CUE+audio failed for {:?}: {}", cue_path, e);
             None
         }
     }

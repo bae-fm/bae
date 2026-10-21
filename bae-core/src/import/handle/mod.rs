@@ -3,7 +3,7 @@ use crate::import::folder_scanner::{
 };
 use crate::import::types::{Catalog, ImportCommand, ImportProgress};
 use crate::import::watched_folder::WatchedFolder;
-use crate::library::manager::discogs_validation_from_result as validation_from_validate_result;
+use crate::library::manager::DiscogsCheck;
 use crate::library::LibraryManager;
 use crate::util::worker_thread::WorkerThread;
 use std::collections::HashMap;
@@ -290,13 +290,14 @@ pub struct GroupedSearchResults {
 /// Discogs.
 ///
 /// - `Valid` — Discogs accepted the key; it is stored.
-/// - `Unvalidated` — Discogs was unreachable or rate-limited; the key is stored
-///   and re-checked later.
+/// - `Unvalidated` — Discogs could not be asked (unreachable, rate-limited, an
+///   answer bae could not read); the key is stored and re-checked later, and
+///   the failure says why.
 /// - `Rejected` — Discogs returned 401; nothing is stored.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug)]
 pub enum DiscogsSaveOutcome {
     Valid,
-    Unvalidated,
+    Unvalidated(crate::discogs::client::DiscogsError),
     Rejected,
 }
 

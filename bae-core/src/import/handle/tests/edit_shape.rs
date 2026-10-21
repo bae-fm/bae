@@ -4,16 +4,16 @@ fn validation_folds_validate_token_outcomes() {
     use crate::discogs::client::DiscogsError;
 
     assert_eq!(
-        validation_from_validate_result(Ok(())),
+        DiscogsCheck::of(Ok(())).validation(),
         DiscogsValidation::Valid
     );
     // A 401 is the one outcome that rejects the stored key.
     assert_eq!(
-        validation_from_validate_result(Err(DiscogsError::InvalidApiKey)),
+        DiscogsCheck::of(Err(DiscogsError::InvalidApiKey)).validation(),
         DiscogsValidation::Rejected
     );
     // Anything that merely fails to confirm the key leaves it unvalidated
-    // to retry — never rejected.
+    // to retry — never rejected — and keeps why.
     for couldnt_confirm in [
         DiscogsError::Provider {
             status: reqwest::StatusCode::SERVICE_UNAVAILABLE,
@@ -22,10 +22,13 @@ fn validation_folds_validate_token_outcomes() {
         DiscogsError::NotFound,
         DiscogsError::Serialization(serde_json::from_str::<i32>("nope").unwrap_err()),
     ] {
-        assert_eq!(
-            validation_from_validate_result(Err(couldnt_confirm)),
-            DiscogsValidation::Unvalidated
-        );
+        let reason = couldnt_confirm.to_string();
+        let check = DiscogsCheck::of(Err(couldnt_confirm));
+        assert_eq!(check.validation(), DiscogsValidation::Unvalidated);
+        let DiscogsCheck::Unchecked(kept) = check else {
+            panic!("a check Discogs could not answer keeps its failure");
+        };
+        assert_eq!(kept.to_string(), reason);
     }
 }
 

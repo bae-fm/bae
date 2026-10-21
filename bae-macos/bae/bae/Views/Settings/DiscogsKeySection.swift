@@ -82,16 +82,26 @@ struct DiscogsKeySection: View {
         saveTask = Task {
             defer { saveTask = nil }
             do {
-                let outcome = try await discogs.saveDiscogsToken(token)
-                if case .rejected = outcome {
+                switch try await discogs.saveDiscogsToken(token) {
+                case .rejected:
                     saveError = DisplayError(
                         line: String(
                             localized:
                                 "Discogs rejected this key. Check it and save again."
                         )
                     )
+                case .unvalidated(let detail):
+                    // Stored, but unchecked: say why under the status row.
+                    saveError = DisplayError(
+                        line: String(
+                            localized: "Couldn't check the key with Discogs."
+                        ),
+                        detail: detail
+                    )
+                case .valid:
+                    // The status reaches the row through the config event.
+                    break
                 }
-                // Other outcomes reach the status through the config event.
             }
             catch is CancellationError {
                 logger.debug("saveToken cancelled")

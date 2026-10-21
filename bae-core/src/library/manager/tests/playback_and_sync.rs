@@ -108,6 +108,47 @@ async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
     );
 }
 
+/// A key Discogs cannot be asked about is stored unvalidated, and the save
+/// says why; asking again fails with why rather than quietly leaving the same
+/// state.
+#[tokio::test]
+async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
+    use crate::config::DiscogsValidation;
+    use crate::discogs::client::DiscogsError;
+    use crate::import::{DiscogsSaveOutcome, ImportError};
+
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let handle = manager
+        .start_import_service(tokio::runtime::Handle::current())
+        .await
+        .unwrap();
+
+    let outcome = handle
+        .save_discogs_token("discogs-test-key")
+        .await
+        .expect("the key is stored though it went unchecked");
+    let DiscogsSaveOutcome::Unvalidated(reason) = outcome else {
+        panic!("an unreachable Discogs leaves the key unchecked: {outcome:?}");
+    };
+    assert!(
+        reason.to_string().contains("tcp connect error"),
+        "{reason}"
+    );
+    assert_eq!(
+        manager.discogs_validation(),
+        Some(DiscogsValidation::Unvalidated)
+    );
+
+    let error = handle
+        .revalidate_discogs_token()
+        .await
+        .expect_err("a re-check Discogs cannot answer fails with why");
+    assert!(
+        matches!(error, ImportError::Discogs(DiscogsError::Transport(_))),
+        "{error}"
+    );
+}
+
 #[tokio::test]
 async fn discogs_validation_signals_confirm_and_reject() {
     use crate::config::DiscogsValidation;

@@ -100,13 +100,13 @@ impl DiscogsSession {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    async fn validate(&self) -> Result<DiscogsValidation, LibraryError> {
+    async fn validate(&self) -> Result<DiscogsCheck, LibraryError> {
         let client = self.client.as_ref().ok_or_else(|| {
             LibraryError::Internal(
                 "config says a Discogs key is stored but the keyring has none".to_string(),
             )
         })?;
-        Ok(discogs_validation_from_result(
+        Ok(DiscogsCheck::of(
             client.validate_token(CallPriority::Interactive).await,
         ))
     }
@@ -145,23 +145,43 @@ fn record_discogs_validation_signal(config_handle: &ConfigHandle, signal: Discog
     }
 }
 
-/// What a token-validation request proves about a key. Provider failures that
-/// say nothing about the key leave it unvalidated.
+/// What a token-validation request proves about a key: Discogs accepted it,
+/// rejected it, or could not be asked — a failure that says nothing about the
+/// key, kept so the person is told why the key went unchecked.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) fn discogs_validation_from_result(
-    result: Result<(), DiscogsError>,
-) -> DiscogsValidation {
-    match result {
-        Ok(()) => DiscogsValidation::Valid,
-        Err(DiscogsError::InvalidApiKey) => DiscogsValidation::Rejected,
-        Err(
-            error @ (DiscogsError::Transport(_)
-            | DiscogsError::Provider { .. }
-            | DiscogsError::NotFound
-            | DiscogsError::Serialization(_)),
-        ) => {
-            debug!("Discogs validation couldn't confirm the key ({error}); leaving it unvalidated");
-            DiscogsValidation::Unvalidated
+#[derive(Debug)]
+pub(crate) enum DiscogsCheck {
+    Valid,
+    Rejected,
+    Unchecked(DiscogsError),
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl DiscogsCheck {
+    /// Read a token-validation request's outcome. A failure that leaves the
+    /// key unchecked is warned with its cause.
+    pub(crate) fn of(result: Result<(), DiscogsError>) -> Self {
+        match result {
+            Ok(()) => Self::Valid,
+            Err(DiscogsError::InvalidApiKey) => Self::Rejected,
+            Err(
+                error @ (DiscogsError::Transport(_)
+                | DiscogsError::Provider { .. }
+                | DiscogsError::NotFound
+                | DiscogsError::Serialization(_)),
+            ) => {
+                warn!("Discogs couldn't check the key, which stays unvalidated: {error}");
+                Self::Unchecked(error)
+            }
+        }
+    }
+
+    /// The validation the key is stored under.
+    pub(crate) fn validation(&self) -> DiscogsValidation {
+        match self {
+            Self::Valid => DiscogsValidation::Valid,
+            Self::Rejected => DiscogsValidation::Rejected,
+            Self::Unchecked(_) => DiscogsValidation::Unvalidated,
         }
     }
 }
@@ -387,14 +407,22 @@ impl LibraryManager {
         Ok(images)
     }
 
+    /// Check an unvalidated key again. A check Discogs could not answer
+    /// leaves the key unvalidated and fails with why, so the person who asked
+    /// is told rather than shown the same state again.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) async fn revalidate_discogs_token(&self) -> Result<(), LibraryError> {
+    pub(crate) async fn revalidate_discogs_token(&self) -> Result<(), crate::import::ImportError> {
         if self.discogs_validation() != Some(DiscogsValidation::Unvalidated) {
             return Ok(());
         }
-        let validation = self.discogs_session()?.validate().await?;
-        self.set_discogs_validation(validation).await?;
-        Ok(())
+        let check = self.discogs_session()?.validate().await?;
+        self.set_discogs_validation(check.validation())
+            .await
+            .map_err(LibraryError::from)?;
+        match check {
+            DiscogsCheck::Valid | DiscogsCheck::Rejected => Ok(()),
+            DiscogsCheck::Unchecked(error) => Err(error.into()),
+        }
     }
 
     #[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]

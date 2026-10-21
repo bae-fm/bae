@@ -83,7 +83,7 @@ forward! { async this => {
             .import_save_discogs_token(&token)
             .await
             .map(BridgeDiscogsSaveOutcome::from_core)
-            .map_err(BridgeError::config)
+            .map_err(BridgeError::from)
     }
 
     /// Re-check a stored `Unvalidated` key against Discogs. No-op when no key is
@@ -93,6 +93,6 @@ forward! { async this => {
         this.services
             .import_revalidate_discogs_token()
             .await
-            .map_err(BridgeError::config)
+            .map_err(BridgeError::from)
     }
 } }

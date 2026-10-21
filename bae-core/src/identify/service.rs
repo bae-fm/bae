@@ -428,9 +428,6 @@ fn dispatch_effect(
                     .lookup_musicbrainz_isrcs(&isrcs, priority)
                     .await;
                 let answer = annotate_lookup(lookup, &library_manager).await;
-                if let Ok(Err(failure)) = &answer {
-                    debug!("ISRC lookup failed for {isrcs:?}: {failure:?}");
-                }
                 emit_answer(&event_tx, answer, |outcome| {
                     IdentifyEvent::IsrcLookupAnswered { outcome }
                 });
@@ -447,12 +444,6 @@ fn dispatch_effect(
                 };
                 let lookup = search_source(&library_manager, source, &query, priority).await;
                 let answer = annotate_lookup(lookup, &library_manager).await;
-                if let Ok(Err(failure)) = &answer {
-                    debug!(
-                        "{} barcode lookup failed for {barcode}: {failure:?}",
-                        source.as_str()
-                    );
-                }
                 emit_answer(&event_tx, answer, |outcome| {
                     IdentifyEvent::BarcodeLookupAnswered {
                         source,
@@ -475,13 +466,6 @@ fn dispatch_effect(
                 };
                 let lookup = search_source(&library_manager, source, &search, priority).await;
                 let answer = annotate_lookup(lookup, &library_manager).await;
-                if let Ok(Err(failure)) = &answer {
-                    debug!(
-                        "{} title search failed for {}: {failure:?}",
-                        source.as_str(),
-                        query.album
-                    );
-                }
                 emit_answer(&event_tx, answer, |outcome| IdentifyEvent::SearchAnswered {
                     source,
                     outcome,
@@ -546,12 +530,6 @@ fn dispatch_effect(
                     }
                 };
                 let answer = annotate_lookup(lookup, &library_manager).await;
-                if let Ok(Err(failure)) = &answer {
-                    debug!(
-                        "{} pressing lookup failed for {key:?}: {failure:?}",
-                        source.as_str()
-                    );
-                }
                 emit_answer(&event_tx, answer, |outcome| {
                     IdentifyEvent::PressingLookupAnswered {
                         source,
@@ -582,12 +560,6 @@ fn dispatch_effect(
                 };
                 let lookup = search_source(&library_manager, source, &query, priority).await;
                 let answer = annotate_lookup(lookup, &library_manager).await;
-                if let Ok(Err(failure)) = &answer {
-                    debug!(
-                        "{} catalog lookup failed for {catalog}: {failure:?}",
-                        source.as_str()
-                    );
-                }
                 emit_answer(&event_tx, answer, |outcome| {
                     IdentifyEvent::CatalogLookupAnswered {
                         source,
