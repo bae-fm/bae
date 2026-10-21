@@ -295,6 +295,7 @@
     <string name="settings_rename_library">Μετονομασία</string>
     <string name="settings_library_name">Όνομα βιβλιοθήκης</string>
     <string name="settings_library_switch">Εναλλαγή σε άλλη βιβλιοθήκη σε αυτή τη συσκευή</string>
+    <string name="settings_libraries_load_failed">Δεν ήταν δυνατή η φόρτωση των βιβλιοθηκών σας.</string>
     <string name="settings_history">Ιστορικό ακρόασης</string>
     <string name="settings_history_private">Μόνο εγώ</string>
     <string name="settings_history_household">Νοικοκυριό</string>

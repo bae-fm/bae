@@ -2,6 +2,7 @@ package fm.bae.app.ui.library
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
+import fm.bae.app.LibraryListing
 import fm.bae.app.OpenLibrary
 import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.albumdetail.AlbumDetailScreen
@@ -11,7 +12,6 @@ import fm.bae.app.ui.settings.SettingsScreen
 import fm.bae.app.ui.settings.StorageSetupScreen
 import fm.bae.app.ui.settings.SyncPendingScreen
 import kotlinx.coroutines.flow.StateFlow
-import uniffi.bae_bridge.BridgeLibrary
 
 internal data class AlbumTarget(
     val albumId: String,
@@ -90,7 +90,7 @@ internal class LibraryNavigator {
 internal fun LibraryDestinationScreen(
     session: OpenLibrary,
     destination: LibraryDestination,
-    libraries: StateFlow<List<BridgeLibrary>>,
+    libraries: StateFlow<LibraryListing>,
     onBack: () -> Unit,
     onPush: (LibraryDestination) -> Unit,
     actions: SessionActions,
@@ -154,7 +154,7 @@ internal fun LibraryDestinationScreen(
 private fun SettingsDestinationScreen(
     session: OpenLibrary,
     destination: LibraryDestination.Setting,
-    libraries: StateFlow<List<BridgeLibrary>>,
+    libraries: StateFlow<LibraryListing>,
     actions: SessionActions,
     onBack: () -> Unit,
     onPush: (LibraryDestination) -> Unit,

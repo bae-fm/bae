@@ -299,6 +299,7 @@
     <string name="settings_rename_library">שינוי שם</string>
     <string name="settings_library_name">שם הספרייה</string>
     <string name="settings_library_switch">מעבר לספרייה אחרת במכשיר הזה</string>
+    <string name="settings_libraries_load_failed">לא ניתן לטעון את הספריות שלכם.</string>
     <string name="settings_history">היסטוריית האזנה</string>
     <string name="settings_history_private">רק אני</string>
     <string name="settings_history_household">בני הבית</string>

@@ -298,6 +298,7 @@
     <string name="settings_rename_library">Redenumește</string>
     <string name="settings_library_name">Numele bibliotecii</string>
     <string name="settings_library_switch">Comută la altă bibliotecă de pe acest dispozitiv</string>
+    <string name="settings_libraries_load_failed">Bibliotecile tale nu au putut fi încărcate.</string>
     <string name="settings_history">Istoric de ascultare</string>
     <string name="settings_history_private">Doar eu</string>
     <string name="settings_history_household">Gospodăria</string>

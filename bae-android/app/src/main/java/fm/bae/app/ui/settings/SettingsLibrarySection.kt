@@ -27,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
+import fm.bae.app.LibraryListing
 import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
@@ -55,7 +56,8 @@ private val logger = BaeLogger("bae.SettingsLibrarySection")
 @Composable
 internal fun SettingsLibrarySection(
     session: OpenLibrary,
-    libraries: List<BridgeLibrary>,
+    listing: LibraryListing,
+    onReloadLibraries: () -> Unit,
     name: LibraryNameRead,
     self: SelfRead,
     onRetryName: () -> Unit,
@@ -74,12 +76,28 @@ internal fun SettingsLibrarySection(
             onRetryName = onRetryName,
             onRetrySelf = onRetrySelf,
         )
-        if (libraries.size > 1) {
-            LibrarySwitcher(
-                libraries = libraries,
-                activeLibraryId = session.libraryId,
-                onSwitchLibrary = onSwitchLibrary,
-            )
+        when (listing) {
+            LibraryListing.Unlisted -> {
+                Unit
+            }
+
+            is LibraryListing.Listed -> {
+                if (listing.libraries.size > 1) {
+                    LibrarySwitcher(
+                        libraries = listing.libraries,
+                        activeLibraryId = session.libraryId,
+                        onSwitchLibrary = onSwitchLibrary,
+                    )
+                }
+            }
+
+            // The switcher's list isn't known, so it isn't shown as if it were.
+            is LibraryListing.Failed -> {
+                ReadFailure(
+                    error = DisplayError(stringResource(R.string.settings_libraries_load_failed), listing.error.detail),
+                    onRetry = onReloadLibraries,
+                )
+            }
         }
     }
 }

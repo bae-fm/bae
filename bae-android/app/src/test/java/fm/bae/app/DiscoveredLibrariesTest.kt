@@ -2,17 +2,17 @@ package fm.bae.app
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import uniffi.bae_bridge.BridgeLibrary
 
 /**
- * The discovered-libraries holder mirrors each listing into its published list,
- * so the Settings switcher shows every local library — a later listing that
- * omits a library drops it (the removal case).
+ * The discovered-libraries holder mirrors each listing into its published
+ * state, so the Settings switcher shows every local library — a later listing
+ * that omits a library drops it (the removal case) — and a listing that failed
+ * replaces the last list rather than leaving it to look current.
  */
 class DiscoveredLibrariesTest {
     @Test
-    fun startsEmpty() {
-        assertEquals(emptyList<BridgeLibrary>(), DiscoveredLibraries().libraries.value)
+    fun startsUnlisted() {
+        assertEquals(LibraryListing.Unlisted, DiscoveredLibraries().libraries.value)
     }
 
     @Test
@@ -22,9 +22,23 @@ class DiscoveredLibrariesTest {
         val b = BridgeFixtures.library("lib-b")
 
         discovered.replaceAll(listOf(a, b))
-        assertEquals(listOf(a, b), discovered.libraries.value)
+        assertEquals(LibraryListing.Listed(listOf(a, b)), discovered.libraries.value)
 
         discovered.replaceAll(listOf(a))
-        assertEquals(listOf(a), discovered.libraries.value)
+        assertEquals(LibraryListing.Listed(listOf(a)), discovered.libraries.value)
+    }
+
+    @Test
+    fun aFailedListingReplacesTheLastListUntilTheNextOne() {
+        val discovered = DiscoveredLibraries()
+        val a = BridgeFixtures.library("lib-a")
+        discovered.replaceAll(listOf(a))
+        val failure = DisplayError("Couldn't read the device's libraries.", "disk I/O error")
+
+        discovered.fail(failure)
+        assertEquals(LibraryListing.Failed(failure), discovered.libraries.value)
+
+        discovered.replaceAll(listOf(a))
+        assertEquals(LibraryListing.Listed(listOf(a)), discovered.libraries.value)
     }
 }

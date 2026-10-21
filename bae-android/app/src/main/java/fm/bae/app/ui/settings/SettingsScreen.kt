@@ -34,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
+import fm.bae.app.LibraryListing
 import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
@@ -51,7 +52,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeConfig
-import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeScreen
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeTelemetryEvent
@@ -77,7 +77,7 @@ internal sealed interface CloudHome {
 @Composable
 internal fun SettingsScreen(
     session: OpenLibrary,
-    libraries: StateFlow<List<BridgeLibrary>>,
+    libraries: StateFlow<LibraryListing>,
     actions: SessionActions,
     onBack: () -> Unit,
     onPush: (LibraryDestination) -> Unit,
@@ -86,7 +86,7 @@ internal fun SettingsScreen(
     val appContext = LocalContext.current.applicationContext
     val scope = rememberScreenScope()
     val config by session.configStore.config.collectAsState()
-    val allLibraries by libraries.collectAsState()
+    val listing by libraries.collectAsState()
     val model = remember(session) { SettingsLibraryModel(session.appHandle, LocaleErrorDisplays(appContext), scope) }
 
     LaunchedEffect(session) {
@@ -105,7 +105,8 @@ internal fun SettingsScreen(
         SectionDivider()
         SettingsLibrarySection(
             session = session,
-            libraries = allLibraries,
+            listing = listing,
+            onReloadLibraries = actions.reloadLibraries,
             name = model.name,
             self = self,
             onRetryName = model::watchName,

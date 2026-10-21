@@ -297,6 +297,7 @@
     <string name="settings_rename_library">Renommer</string>
     <string name="settings_library_name">Nom de la bibliothèque</string>
     <string name="settings_library_switch">Passer à une autre bibliothèque de cet appareil</string>
+    <string name="settings_libraries_load_failed">Impossible de charger vos bibliothèques.</string>
     <string name="settings_history">Historique d’écoute</string>
     <string name="settings_history_private">Moi uniquement</string>
     <string name="settings_history_household">Foyer</string>

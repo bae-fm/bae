@@ -295,6 +295,7 @@
     <string name="settings_rename_library">Gi nytt navn</string>
     <string name="settings_library_name">Bibliotekets navn</string>
     <string name="settings_library_switch">Bytt til et annet bibliotek på denne enheten</string>
+    <string name="settings_libraries_load_failed">Kunne ikke laste inn bibliotekene dine.</string>
     <string name="settings_history">Lyttehistorikk</string>
     <string name="settings_history_private">Bare meg</string>
     <string name="settings_history_household">Husstanden</string>

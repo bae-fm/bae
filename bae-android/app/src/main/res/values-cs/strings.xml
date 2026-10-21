@@ -302,6 +302,7 @@
     <string name="settings_rename_library">Přejmenovat</string>
     <string name="settings_library_name">Název knihovny</string>
     <string name="settings_library_switch">Přepnout na jinou knihovnu v tomto zařízení</string>
+    <string name="settings_libraries_load_failed">Vaše knihovny nelze načíst.</string>
     <string name="settings_history">Historie poslechu</string>
     <string name="settings_history_private">Jen já</string>
     <string name="settings_history_household">Domácnost</string>

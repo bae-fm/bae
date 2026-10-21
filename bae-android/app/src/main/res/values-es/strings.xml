@@ -297,6 +297,7 @@
     <string name="settings_rename_library">Cambiar nombre</string>
     <string name="settings_library_name">Nombre de la biblioteca</string>
     <string name="settings_library_switch">Cambiar a otra biblioteca de este dispositivo</string>
+    <string name="settings_libraries_load_failed">No se pudieron cargar tus bibliotecas.</string>
     <string name="settings_history">Historial de escucha</string>
     <string name="settings_history_private">Solo yo</string>
     <string name="settings_history_household">Hogar</string>

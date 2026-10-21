@@ -295,6 +295,7 @@
     <string name="settings_rename_library">Átnevezés</string>
     <string name="settings_library_name">Könyvtár neve</string>
     <string name="settings_library_switch">Váltás egy másik könyvtárra ezen az eszközön</string>
+    <string name="settings_libraries_load_failed">Nem sikerült betölteni a könyvtáraidat.</string>
     <string name="settings_history">Hallgatási előzmények</string>
     <string name="settings_history_private">Csak én</string>
     <string name="settings_history_household">Háztartás</string>

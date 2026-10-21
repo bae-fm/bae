@@ -7,15 +7,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import fm.bae.app.LibraryListing
 import fm.bae.app.OpenLibrary
 import fm.bae.app.ui.SessionActions
 import kotlinx.coroutines.flow.StateFlow
-import uniffi.bae_bridge.BridgeLibrary
 
 @Composable
 internal fun LibraryScreen(
     session: OpenLibrary,
-    libraries: StateFlow<List<BridgeLibrary>>,
+    libraries: StateFlow<LibraryListing>,
     openSearch: Boolean,
     onSearchOpened: () -> Unit,
     actions: SessionActions,

@@ -353,6 +353,7 @@
     <string name="settings_rename_library">Rename</string>
     <string name="settings_library_name">Library name</string>
     <string name="settings_library_switch">Switch to another library on this device</string>
+    <string name="settings_libraries_load_failed">Couldn\'t load your libraries.</string>
     <string name="settings_history">Listening history</string>
     <string name="settings_history_private">Only me</string>
     <string name="settings_history_household">Household</string>

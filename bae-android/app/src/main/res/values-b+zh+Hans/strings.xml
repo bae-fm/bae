@@ -293,6 +293,7 @@
     <string name="settings_rename_library">重命名</string>
     <string name="settings_library_name">库名称</string>
     <string name="settings_library_switch">切换到此设备上的另一个库</string>
+    <string name="settings_libraries_load_failed">无法加载你的音乐库。</string>
     <string name="settings_history">收听记录</string>
     <string name="settings_history_private">仅自己</string>
     <string name="settings_history_household">家人</string>

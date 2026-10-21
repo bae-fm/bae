@@ -299,6 +299,7 @@
     <string name="settings_rename_library">Preimenuj</string>
     <string name="settings_library_name">Naziv fonoteke</string>
     <string name="settings_library_switch">Prijeđi na drugu fonoteku na ovom uređaju</string>
+    <string name="settings_libraries_load_failed">Nije moguće učitati vaše biblioteke.</string>
     <string name="settings_history">Povijest slušanja</string>
     <string name="settings_history_private">Samo ja</string>
     <string name="settings_history_household">Kućanstvo</string>

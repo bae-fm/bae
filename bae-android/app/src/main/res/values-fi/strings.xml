@@ -295,6 +295,7 @@
     <string name="settings_rename_library">Nimeä uudelleen</string>
     <string name="settings_library_name">Kirjaston nimi</string>
     <string name="settings_library_switch">Vaihda toiseen tämän laitteen kirjastoon</string>
+    <string name="settings_libraries_load_failed">Kirjastojasi ei voitu ladata.</string>
     <string name="settings_history">Kuunteluhistoria</string>
     <string name="settings_history_private">Vain minä</string>
     <string name="settings_history_household">Kotitalous</string>

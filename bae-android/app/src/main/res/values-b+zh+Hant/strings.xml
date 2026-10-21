@@ -293,6 +293,7 @@
     <string name="settings_rename_library">重新命名</string>
     <string name="settings_library_name">資料庫名稱</string>
     <string name="settings_library_switch">切換到此裝置上的另一個資料庫</string>
+    <string name="settings_libraries_load_failed">無法載入你的資料庫。</string>
     <string name="settings_history">收聽紀錄</string>
     <string name="settings_history_private">僅自己</string>
     <string name="settings_history_household">家人</string>

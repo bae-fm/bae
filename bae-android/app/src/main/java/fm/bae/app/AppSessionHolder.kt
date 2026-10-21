@@ -53,16 +53,36 @@ private val logger = BaeLogger(TAG)
  */
 private const val POSITION_UPDATE_INTERVAL_MS = 200u
 
+/** The local libraries on this device as the last listing found them. */
+sealed interface LibraryListing {
+    /** No listing has run yet. */
+    data object Unlisted : LibraryListing
+
+    data class Listed(
+        val libraries: List<BridgeLibrary>,
+    ) : LibraryListing
+
+    /** The last listing failed, so which libraries there are isn't known. */
+    data class Failed(
+        val error: DisplayError,
+    ) : LibraryListing
+}
+
 /**
  * Local libraries on this device — drives the Settings library switcher.
- * Replaced by each listing.
+ * Replaced by each listing, including one that failed, so the switcher never
+ * shows an earlier list as current.
  */
 internal class DiscoveredLibraries {
-    private val state = MutableStateFlow<List<BridgeLibrary>>(emptyList())
-    val libraries: StateFlow<List<BridgeLibrary>> = state.asStateFlow()
+    private val state = MutableStateFlow<LibraryListing>(LibraryListing.Unlisted)
+    val libraries: StateFlow<LibraryListing> = state.asStateFlow()
 
     fun replaceAll(libraries: List<BridgeLibrary>) {
-        state.value = libraries
+        state.value = LibraryListing.Listed(libraries)
+    }
+
+    fun fail(error: DisplayError) {
+        state.value = LibraryListing.Failed(error)
     }
 }
 
@@ -191,7 +211,7 @@ object AppSessionHolder {
     private val discovered = DiscoveredLibraries()
 
     /** Local libraries on this device, for the Settings switcher. */
-    val libraries: StateFlow<List<BridgeLibrary>> get() = discovered.libraries
+    val libraries: StateFlow<LibraryListing> get() = discovered.libraries
 
     /**
      * The currently open library, if any. Reused across re-opens of the same id.
@@ -207,13 +227,27 @@ object AppSessionHolder {
 
     /**
      * List [host]'s local libraries, publish the result to [libraries], and
-     * return it. Throws when the listing itself fails, so callers can surface
-     * it rather than mistaking a failed listing for an empty device.
+     * return it. A failed listing is published as failed and thrown, so callers
+     * can surface it rather than mistaking a failed listing for an empty device.
      */
-    private suspend fun listLibraries(host: BridgeHost): List<BridgeLibrary> {
-        val result = host.listLibraries()
+    private suspend fun listLibraries(
+        host: BridgeHost,
+        context: Context,
+    ): List<BridgeLibrary> {
+        val result =
+            try {
+                host.listLibraries()
+            } catch (e: BridgeException) {
+                discovered.fail(errorMessage(context, e))
+                throw e
+            }
         discovered.replaceAll(result)
         return result
+    }
+
+    /** List this device's libraries again, after the last listing failed. */
+    suspend fun reloadLibraries(context: Context) {
+        refreshLibraries((context.applicationContext as BaeApp).host, context)
     }
 
     /**
@@ -244,7 +278,7 @@ object AppSessionHolder {
                     }
                     notice = errorMessage(context, unfinished.error)
                 }
-                listLibraries(host)
+                listLibraries(host, context)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: BridgeException) {
@@ -342,7 +376,7 @@ object AppSessionHolder {
                 onScreen(AppScreen.Failed(errorMessage(context, e)))
                 return
             }
-        refreshLibraries(app.host)
+        refreshLibraries(app.host, context)
         val shown = failure?.let { errorMessage(context, it) }
         onScreen(
             when {
@@ -489,14 +523,17 @@ object AppSessionHolder {
         openDiscoveredOrOnboard(context, onScreen)
     }
 
-    private suspend fun refreshLibraries(host: BridgeHost) {
+    /** List the libraries for the switcher; a failure shows there, with Retry, as the listing's state. */
+    private suspend fun refreshLibraries(
+        host: BridgeHost,
+        context: Context,
+    ) {
         try {
-            listLibraries(host)
+            listLibraries(host, context)
         } catch (e: CancellationException) {
             throw e
         } catch (e: BridgeException) {
-            // The library just opened; only the switcher's list is stale.
-            logger.error("listing libraries after opening one failed", e)
+            logger.error("listing libraries failed", e)
         }
     }
 

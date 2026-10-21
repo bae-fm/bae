@@ -29,6 +29,7 @@ import fm.bae.app.AppScreen
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
+import fm.bae.app.LibraryListing
 import fm.bae.app.LocalBugReports
 import fm.bae.app.OAuthProviders
 import fm.bae.app.OpenLibrary
@@ -48,7 +49,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeErrorCategory
-import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeReplacedBy
 import uniffi.bae_bridge.bridgeErrorCategoryKey
@@ -324,6 +324,7 @@ private fun sessionActions(
         }
     },
     restoreFromCode = { scope.launch { AppSessionHolder.presentDeviceRestore(onScreen) } },
+    reloadLibraries = { scope.launch { AppSessionHolder.reloadLibraries(context) } },
 )
 
 /**
@@ -335,7 +336,7 @@ private fun sessionActions(
 @Composable
 private fun LibraryOpenScreen(
     session: OpenLibrary,
-    libraries: StateFlow<List<BridgeLibrary>>,
+    libraries: StateFlow<LibraryListing>,
     shortcutAction: ShortcutAction?,
     onShortcutHandled: () -> Unit,
     snackbarHostState: SnackbarHostState,
