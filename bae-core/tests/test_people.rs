@@ -37,7 +37,7 @@ async fn profile_requires_membership_and_is_idempotent_after_setup() {
 }
 
 #[tokio::test]
-async fn avatar_bytes_and_profile_change_in_the_same_write() {
+async fn a_profile_names_its_avatar_once_the_upload_completes() {
     let directory = tempfile::tempdir().unwrap();
     let (manager, database, storage) =
         storage_library(directory.path(), bae_core::providers::Providers::offline()).await;
@@ -65,7 +65,17 @@ async fn avatar_bytes_and_profile_change_in_the_same_write() {
         .await
         .unwrap();
     let second = database.profile(profile.id).await.unwrap().unwrap();
-    assert_ne!(first.avatar_id, second.avatar_id);
+    // The profile row names a new avatar only once its upload completes; this
+    // device reads its own new avatar before then.
+    assert_eq!(first.avatar_id, None);
+    assert_eq!(second.avatar_id, None);
+    assert_eq!(
+        manager.avatar(profile.id).await.unwrap().unwrap(),
+        b"second avatar"
+    );
+    manager.drain_uploads_for_test().await.unwrap();
+    let stored = database.profile(profile.id).await.unwrap().unwrap();
+    assert!(stored.avatar_id.is_some(), "the uploaded avatar is named");
     assert_eq!(
         manager.avatar(profile.id).await.unwrap().unwrap(),
         b"second avatar"
