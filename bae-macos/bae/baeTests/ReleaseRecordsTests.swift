@@ -116,7 +116,8 @@ struct ReleaseRecordsTests {
             .background(.white)
             .environment(UiStore())
             .environment(store)
-            .environment(ImageStore.stub()),
+            .environment(ImageStore.stub())
+            .environment(SyncActivityStore(cancelArtwork: {}, retryNow: {})),
             size: Self.cardSize
         ) { _, host in
             return try await SnapshotTestSupport.capturePNG(
