@@ -109,7 +109,7 @@ class OpenLibrary internal constructor(
                         event = event,
                         stores = stores,
                         player = playback,
-                        errors = LocaleErrorLines(appContext),
+                        errors = LocaleErrorDisplays(appContext),
                     )
                 }
             }
@@ -146,7 +146,7 @@ class OpenLibrary internal constructor(
                 object : SyncStatusCallback {
                     override fun onValue(value: uniffi.bae_bridge.BridgeSyncStatusSnapshot) {
                         scope.launch(Dispatchers.Main.immediate) {
-                            stores.syncStatus.apply(value, LocaleErrorLines(appContext))
+                            stores.syncStatus.apply(value, LocaleErrorDisplays(appContext))
                         }
                     }
                 },
@@ -162,7 +162,9 @@ class OpenLibrary internal constructor(
 
                     override fun onError(error: uniffi.bae_bridge.BridgeException) {
                         scope.launch(Dispatchers.Main.immediate) {
-                            stores.syncActivity.fail(LocaleErrorLines(appContext).line(error) ?: error.toString())
+                            stores.syncActivity.fail(
+                                LocaleErrorDisplays(appContext).display(error) ?: DisplayError(error.toString()),
+                            )
                         }
                     }
                 },
@@ -179,7 +181,7 @@ class OpenLibrary internal constructor(
 
                     override fun onError(error: uniffi.bae_bridge.BridgeException) {
                         scope.launch(Dispatchers.Main.immediate) {
-                            stores.config.showError(LocaleErrorLines(appContext).line(error))
+                            stores.config.showError(LocaleErrorDisplays(appContext).display(error))
                         }
                     }
                 },
@@ -193,7 +195,7 @@ class OpenLibrary internal constructor(
 
                     override fun onError(error: uniffi.bae_bridge.BridgeException) {
                         scope.launch(Dispatchers.Main.immediate) {
-                            stores.config.showError(LocaleErrorLines(appContext).line(error))
+                            stores.config.showError(LocaleErrorDisplays(appContext).display(error))
                         }
                     }
                 },
@@ -207,7 +209,7 @@ class OpenLibrary internal constructor(
 
                     override fun onError(error: uniffi.bae_bridge.BridgeException) {
                         scope.launch(Dispatchers.Main.immediate) {
-                            stores.config.showError(LocaleErrorLines(appContext).line(error))
+                            stores.config.showError(LocaleErrorDisplays(appContext).display(error))
                         }
                     }
                 },
@@ -237,7 +239,7 @@ class OpenLibrary internal constructor(
 
                     override fun onError(error: uniffi.bae_bridge.BridgeException) {
                         scope.launch(Dispatchers.Main.immediate) {
-                            stores.config.showError(LocaleErrorLines(appContext).line(error))
+                            stores.config.showError(LocaleErrorDisplays(appContext).display(error))
                         }
                     }
                 },

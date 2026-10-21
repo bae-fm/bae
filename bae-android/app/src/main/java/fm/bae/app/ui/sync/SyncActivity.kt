@@ -40,22 +40,25 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.countLabelsText
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.syncActivityVisible
+import fm.bae.app.displayError
 import fm.bae.app.formatFileSize
-import fm.bae.app.localizedLine
 import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.color
 import fm.bae.app.ui.settings.pendingSubjectText
 import uniffi.bae_bridge.BridgeArrivals
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePendingRecords
 import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.bridgePendingReasonKey
@@ -142,7 +145,7 @@ private fun SyncActivitySheet(
 @Composable
 internal fun SyncActivityList(
     activity: BridgeSyncActivity?,
-    error: String?,
+    error: DisplayError?,
     onOpenSettings: () -> Unit,
     onOpenDownloads: () -> Unit,
     onCancelArtwork: () -> Unit,
@@ -165,7 +168,7 @@ internal fun SyncActivityList(
                 item { SecondaryLine(context.coreString("core.activity.idle")) }
             }
         }
-        error?.let { line -> item { Text(text = line, color = StatusTone.DANGER.color) } }
+        error?.let { shown -> item { ErrorDetailDisclosure(shown) } }
         item {
             OutlinedButton(onClick = onRetryNow) {
                 Text(context.coreString("core.activity.retry_now"))
@@ -182,7 +185,7 @@ private fun LazyListScope.attentionSection(
     if (!activity.needsAttention) return
     item { SectionHeading(context.coreString("core.activity.attention")) }
     activity.failure?.let { failure ->
-        item { Text(text = context.localizedLine(failure) ?: failure.toString(), color = StatusTone.WARNING.color) }
+        item { FailureDisclosure(context, failure) }
     }
     when (val attention = activity.attention) {
         BridgePendingRecords.Loading -> {
@@ -190,19 +193,21 @@ private fun LazyListScope.attentionSection(
         }
 
         is BridgePendingRecords.Failed -> {
-            item {
-                Text(
-                    text = context.localizedLine(attention.error) ?: attention.error.toString(),
-                    color = StatusTone.WARNING.color,
-                )
-            }
+            item { FailureDisclosure(context, attention.error) }
         }
 
         is BridgePendingRecords.Ready -> {
             items(attention.records) { record ->
                 Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
                     Text(text = pendingSubjectText(context, record.subject), style = ThemeText.strong.style)
-                    SecondaryLine(context.coreString(bridgePendingReasonKey(record.reason.kind)))
+                    ErrorDetailDisclosure(
+                        error =
+                            DisplayError(
+                                context.coreString(bridgePendingReasonKey(record.reason.kind)),
+                                record.reason.detail,
+                            ),
+                        lineColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }
@@ -263,12 +268,7 @@ private fun LazyListScope.arrivalSections(
         }
 
         is BridgeArrivals.Failed -> {
-            item {
-                Text(
-                    text = context.localizedLine(arrivals.error) ?: arrivals.error.toString(),
-                    color = StatusTone.WARNING.color,
-                )
-            }
+            item { FailureDisclosure(context, arrivals.error) }
         }
 
         is BridgeArrivals.Ready -> {
@@ -312,6 +312,18 @@ private fun TransferLine(
             )
         }
     }
+}
+
+/** A failure sync reported, in the warning tone, with its diagnostic behind it. */
+@Composable
+private fun FailureDisclosure(
+    context: Context,
+    failure: BridgeException,
+) {
+    ErrorDetailDisclosure(
+        error = context.displayError(failure) ?: DisplayError(failure.toString()),
+        lineColor = StatusTone.WARNING.color,
+    )
 }
 
 @Composable

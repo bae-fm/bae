@@ -32,7 +32,8 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorLines
+import fm.bae.app.DisplayError
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.currentLocale
@@ -40,6 +41,7 @@ import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.components.S3KeyFields
@@ -70,9 +72,9 @@ internal fun InviteDialog(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var invite by remember { mutableStateOf<BridgeInvite?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<DisplayError?>(null) }
     var busy by remember { mutableStateOf(false) }
-    val errors = LocaleErrorLines(context)
+    val errors = LocaleErrorDisplays(context)
 
     val created = invite
     if (created == null) {
@@ -137,7 +139,7 @@ private class InviteAccessInput {
 @Composable
 private fun InviteFormDialog(
     storage: BridgeStorageLocation?,
-    error: String?,
+    error: DisplayError?,
     busy: Boolean,
     onCreate: (BridgeMemberRole, BridgeInviteAccess) -> Unit,
     onDismiss: () -> Unit,
@@ -158,7 +160,7 @@ private fun InviteFormDialog(
                 } else {
                     InviteAccessFields(storage, input)
                 }
-                error?.let { ErrorText(it) }
+                error?.let { ErrorDetailDisclosure(it) }
             }
         },
         confirmButton = {
@@ -235,7 +237,7 @@ private fun RoleChoice(
 @Composable
 private fun InviteCreatedDialog(
     invite: BridgeInvite,
-    error: String?,
+    error: DisplayError?,
     busy: Boolean,
     onCancelInvite: () -> Unit,
     onDismiss: () -> Unit,
@@ -268,7 +270,7 @@ private fun InviteCreatedDialog(
                 TextButton(onClick = { clipboard.setText(AnnotatedString(invite.code)) }) {
                     Text(stringResource(R.string.copy_code))
                 }
-                error?.let { ErrorText(it) }
+                error?.let { ErrorDetailDisclosure(it) }
             }
         },
         confirmButton = {

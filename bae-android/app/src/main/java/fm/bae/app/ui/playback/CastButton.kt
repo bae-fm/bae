@@ -42,7 +42,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.castingDevice
-import fm.bae.app.localizedLine
+import fm.bae.app.displayError
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import kotlinx.coroutines.Job
@@ -142,7 +142,7 @@ private fun CastPickerSheet(
                                 onDismiss()
                             } catch (e: BridgeException) {
                                 logger.error("Failed to cast to ${device.id}", e)
-                                session.configStore.showError(context.localizedLine(e))
+                                session.configStore.showError(context.displayError(e))
                             }
                         }
                 },

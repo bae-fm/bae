@@ -192,6 +192,7 @@
     <string name="appearance_forest">Pădure</string>
     <string name="appearance_sand">Nisip</string>
     <string name="details">Detalii</string>
+    <string name="copy_details">Copiază detaliile</string>
     <string name="reset_device">Resetează acest dispozitiv</string>
     <string name="reset_device_confirm_title">Resetezi acest dispozitiv?</string>
     <string name="reset_device_confirm">Resetează</string>

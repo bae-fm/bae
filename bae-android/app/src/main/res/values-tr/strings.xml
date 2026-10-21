@@ -191,6 +191,7 @@
     <string name="appearance_forest">Orman</string>
     <string name="appearance_sand">Kum</string>
     <string name="details">Ayrıntılar</string>
+    <string name="copy_details">Ayrıntıları kopyala</string>
     <string name="reset_device">Bu cihazı sıfırla</string>
     <string name="reset_device_confirm_title">Bu cihaz sıfırlansın mı?</string>
     <string name="reset_device_confirm">Sıfırla</string>

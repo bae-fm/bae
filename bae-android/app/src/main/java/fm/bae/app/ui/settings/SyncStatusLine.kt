@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +31,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.DeviceResetDialog
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.Notice
 import fm.bae.app.ui.components.StatusTone
 import uniffi.bae_bridge.BridgeCloudProvider
@@ -83,7 +85,7 @@ internal fun SyncFailureNotice(
     if (error == null && !canReconnect) return
     Notice(StatusTone.WARNING) {
         Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-            error?.let { Text(text = it.message, style = ThemeText.detail.style) }
+            error?.let { ErrorDetailDisclosure(error = it.error, lineColor = LocalContentColor.current) }
             if (canReconnect) {
                 OutlinedButton(onClick = onReconnect) {
                     Text(stringResource(R.string.settings_reconnect))

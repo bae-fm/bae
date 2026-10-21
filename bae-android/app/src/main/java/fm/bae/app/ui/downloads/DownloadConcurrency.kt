@@ -15,7 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorLines
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.performBridgeAction
@@ -87,7 +87,7 @@ private suspend fun setDownloadConcurrency(
     performBridgeAction(
         logger = logger,
         operation = "set download concurrency",
-        errors = LocaleErrorLines(context),
+        errors = LocaleErrorDisplays(context),
         showError = session.configStore::showError,
     ) {
         withContext(Dispatchers.IO) {

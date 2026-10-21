@@ -24,7 +24,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorLines
+import fm.bae.app.DisplayError
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
@@ -107,7 +108,7 @@ private class S3FormInput {
 @Composable
 internal fun S3SetupForm(
     session: OpenLibrary,
-    onError: (String?) -> Unit,
+    onError: (DisplayError?) -> Unit,
     onSetUp: (BridgeStorageSetup) -> Unit,
 ) {
     val context = LocalContext.current
@@ -153,7 +154,7 @@ internal fun S3SetupForm(
 private fun S3Advanced(
     session: OpenLibrary,
     input: S3FormInput,
-    onError: (String?) -> Unit,
+    onError: (DisplayError?) -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -167,7 +168,7 @@ private fun S3Advanced(
             checking = true
             onError(null)
             scope.launch {
-                performBridgeAction(logger, "detect S3 settings", LocaleErrorLines(context), onError) {
+                performBridgeAction(logger, "detect S3 settings", LocaleErrorDisplays(context), onError) {
                     detection = session.appHandle.detectS3Settings(input.location(), input.credentials)
                 }
                 checking = false

@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
+import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.SyncActivityStore
@@ -133,7 +134,7 @@ private fun OpenLibrary.playLibraryShuffledOrReport(
             appHandle.playLibraryShuffled()
         } catch (e: Exception) {
             logger.error("playLibraryShuffled failed", e)
-            configStore.showError(appContext.getString(R.string.library_load_failed))
+            configStore.showError(DisplayError(appContext.getString(R.string.library_load_failed)))
         }
     }
 }
@@ -148,7 +149,7 @@ private fun LibraryBrowserContent(
     groupAlbumsByArtist: Boolean,
     composerSortCriterion: BridgeComposerSortCriterion,
     artistSortCriterion: BridgeArtistSortCriterion,
-    appError: String?,
+    appError: DisplayError?,
     gridState: LazyGridState,
     onSelectAlbum: (String) -> Unit,
     onSelectComposer: (String) -> Unit,
@@ -205,7 +206,7 @@ private fun AlbumBrowserContent(
     session: OpenLibrary,
     sortCriterion: BridgeSortCriterion,
     groupByArtist: Boolean,
-    appError: String?,
+    appError: DisplayError?,
     gridState: LazyGridState,
     onSelectAlbum: (String) -> Unit,
 ) {
@@ -232,7 +233,7 @@ private fun AlbumBrowserContent(
 private fun ComposerBrowserContent(
     session: OpenLibrary,
     sortCriterion: BridgeComposerSortCriterion,
-    appError: String?,
+    appError: DisplayError?,
     onSelectComposer: (String) -> Unit,
 ) {
     val page =
@@ -254,7 +255,7 @@ private fun ComposerBrowserContent(
 private fun ArtistBrowserContent(
     session: OpenLibrary,
     sortCriterion: BridgeArtistSortCriterion,
-    appError: String?,
+    appError: DisplayError?,
     onSelectArtist: (String) -> Unit,
 ) {
     val page =

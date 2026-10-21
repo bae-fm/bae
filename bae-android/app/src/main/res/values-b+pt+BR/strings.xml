@@ -192,6 +192,7 @@
     <string name="appearance_forest">Floresta</string>
     <string name="appearance_sand">Areia</string>
     <string name="details">Detalhes</string>
+    <string name="copy_details">Copiar detalhes</string>
     <string name="reset_device">Redefinir este dispositivo</string>
     <string name="reset_device_confirm_title">Redefinir este dispositivo?</string>
     <string name="reset_device_confirm">Redefinir</string>

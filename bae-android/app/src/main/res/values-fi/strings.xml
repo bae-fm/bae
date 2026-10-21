@@ -190,6 +190,7 @@
     <string name="appearance_forest">Metsä</string>
     <string name="appearance_sand">Hiekka</string>
     <string name="details">Tiedot</string>
+    <string name="copy_details">Kopioi tiedot</string>
     <string name="reset_device">Nollaa tämä laite</string>
     <string name="reset_device_confirm_title">Nollataanko tämä laite?</string>
     <string name="reset_device_confirm">Nollaa</string>

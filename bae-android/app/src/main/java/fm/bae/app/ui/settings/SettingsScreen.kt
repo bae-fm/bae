@@ -38,11 +38,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorLines
+import fm.bae.app.DisplayError
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.localizedLine
+import fm.bae.app.displayError
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
@@ -81,7 +82,7 @@ internal sealed interface CloudHome {
     ) : CloudHome
 
     data class Failed(
-        val message: String,
+        val error: DisplayError,
     ) : CloudHome
 }
 
@@ -108,7 +109,7 @@ private class SettingsLibraryModel(
                 throw e
             } catch (e: BridgeException) {
                 logger.error("reading the library's cloud home failed", e)
-                CloudHome.Failed(appContext.localizedLine(e) ?: e.toString())
+                CloudHome.Failed(appContext.displayError(e) ?: DisplayError(e.toString()))
             }
         loadSelf()
     }
@@ -121,7 +122,7 @@ private class SettingsLibraryModel(
                 throw e
             } catch (e: BridgeException) {
                 logger.error("reading the library's people failed", e)
-                session.configStore.showError(appContext.localizedLine(e))
+                session.configStore.showError(appContext.displayError(e))
                 null
             }
     }
@@ -222,7 +223,7 @@ private fun SettingsClosingSections(
             performBridgeAction(
                 logger = logger,
                 operation = "read what removing the library loses",
-                errors = LocaleErrorLines(context),
+                errors = LocaleErrorDisplays(context),
                 showError = { session.configStore.showError(it) },
             ) {
                 unsent = session.appHandle.unsentBeforeRemoval()

@@ -5,6 +5,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import fm.bae.app.DisplayError
+import fm.bae.app.diagnosticDetail
 import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -65,7 +67,7 @@ class RecoveryCodeSectionTest {
     fun aCodeGeneratedAfterHidingStaysHidden() =
         runTest {
             val pending = CompletableDeferred<String>()
-            val reveal = RecoveryCodeReveal(this, generate = { pending.await() }, errorLine = { null })
+            val reveal = RecoveryCodeReveal(this, generate = { pending.await() }, errorDisplay = { null })
             reveal.show()
             advanceUntilIdle()
             assertEquals(RecoveryCodeState.Loading, reveal.state)
@@ -86,7 +88,7 @@ class RecoveryCodeSectionTest {
                 RecoveryCodeReveal(
                     this,
                     generate = { if (calls++ == 0) first.await() else "CVR1-NEWER" },
-                    errorLine = { null },
+                    errorDisplay = { null },
                 )
             reveal.show()
             advanceUntilIdle()
@@ -105,19 +107,22 @@ class RecoveryCodeSectionTest {
                 RecoveryCodeReveal(
                     this,
                     generate = { throw BridgeException.Diagnostic(BridgeErrorCategory.Config, "storage unreachable") },
-                    errorLine = { "Couldn’t reach your storage." },
+                    errorDisplay = { DisplayError("Couldn’t reach your storage.", it.diagnosticDetail) },
                 )
             reveal.show()
             advanceUntilIdle()
 
-            assertEquals(RecoveryCodeState.Failed("Couldn’t reach your storage."), reveal.state)
+            assertEquals(
+                RecoveryCodeState.Failed(DisplayError("Couldn’t reach your storage.", "storage unreachable")),
+                reveal.state,
+            )
         }
 
     @Test
     fun aCancellationFromCoreLeavesTheCodeHidden() =
         runTest {
             val reveal =
-                RecoveryCodeReveal(this, generate = { throw BridgeException.Cancelled() }, errorLine = { null })
+                RecoveryCodeReveal(this, generate = { throw BridgeException.Cancelled() }, errorDisplay = { null })
             reveal.show()
             advanceUntilIdle()
 

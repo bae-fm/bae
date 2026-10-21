@@ -239,6 +239,7 @@
     <string name="appearance_forest">Forest</string>
     <string name="appearance_sand">Sand</string>
     <string name="details">Details</string>
+    <string name="copy_details">Copy details</string>
     <string name="reset_device">Reset this device</string>
     <string name="reset_device_confirm_title">Reset this device?</string>
     <string name="reset_device_confirm">Reset</string>

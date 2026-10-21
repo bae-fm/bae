@@ -26,16 +26,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.SyncFailure
-import fm.bae.app.localizedLine
+import fm.bae.app.displayError
 import fm.bae.app.reconnectFailedSync
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.LabeledValueRow
@@ -75,7 +77,7 @@ internal fun SettingsSyncSection(
             }
 
             is CloudHome.Failed -> {
-                ErrorText(cloudHome.message)
+                ErrorDetailDisclosure(cloudHome.error)
             }
 
             CloudHome.None -> {
@@ -169,7 +171,7 @@ private fun DisconnectControl(
     val flowState by flow.state.collectAsState()
 
     flowState.error?.let { error ->
-        ErrorText(error)
+        ErrorDetailDisclosure(error)
     }
 
     OutlinedButton(
@@ -235,29 +237,32 @@ private fun rememberDisconnectSyncFlow(
                             mapOf("count" to count.toLong()),
                         )
                     },
-                    // No detail means a cancellation, so leave the error clear.
-                    warningFailedLine = { e ->
-                        disconnectErrorDetail(context, e)?.let {
-                            context.getString(R.string.settings_disconnect_warning_check_failed, it)
-                        }
+                    // Nothing to show means a cancellation, so leave the error clear.
+                    warningFailed = { e ->
+                        disconnectError(context, e, R.string.settings_disconnect_warning_check_failed)
                     },
-                    disconnectFailedLine = { e ->
-                        disconnectErrorDetail(context, e)?.let {
-                            context.getString(R.string.settings_disconnect_failed, it)
-                        }
-                    },
+                    disconnectFailed = { e -> disconnectError(context, e, R.string.settings_disconnect_failed) },
                 ),
         )
     }
 }
 
-private fun disconnectErrorDetail(
+/** [error] under the headline [format] words around its line, with core's diagnostic behind it. */
+private fun disconnectError(
     context: Context,
     error: Throwable,
-): String? =
+    format: Int,
+): DisplayError? =
     when (error) {
-        is BridgeException -> context.localizedLine(error)
-        else -> error.message ?: error::class.java.simpleName
+        is BridgeException -> {
+            context.displayError(error)?.let { shown ->
+                DisplayError(context.getString(format, shown.line), shown.detail)
+            }
+        }
+
+        else -> {
+            DisplayError(context.getString(format, error.message ?: error::class.java.simpleName))
+        }
     }
 
 @Preview(showBackground = true)

@@ -6,9 +6,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import fm.bae.app.BaeLogger
 import fm.bae.app.ConflatedProgressDelivery
+import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.deviceName
-import fm.bae.app.localizedLine
+import fm.bae.app.displayError
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -142,7 +143,7 @@ internal class OnboardingFlow(
 ) {
     var step by mutableStateOf<OnboardingStep>(restoreOver?.let(OnboardingStep::EnterCode) ?: OnboardingStep.Choose)
         private set
-    var error by mutableStateOf<String?>(null)
+    var error by mutableStateOf<DisplayError?>(null)
 
     private var cancellation: BootstrapCancellation? = null
 
@@ -173,7 +174,7 @@ internal class OnboardingFlow(
                 scanned to decodeCodeInfo(scanned.code)
             } catch (e: BridgeException) {
                 logger.warning("the entered code is neither a restore code nor an invite", e)
-                error = context.getString(R.string.onboarding_code_invalid)
+                error = DisplayError(context.getString(R.string.onboarding_code_invalid))
                 return
             }
         val metadata =
@@ -184,7 +185,7 @@ internal class OnboardingFlow(
         // A provider that needs a sign-in can't be reached when the app's
         // registrations failed to load; say why rather than starting.
         if (metadata.oauthAccess != null && oauthProvidersError != null) {
-            error = oauthProvidersError
+            error = DisplayError(oauthProvidersError)
             return
         }
         error = null
@@ -263,7 +264,7 @@ internal class OnboardingFlow(
                 when (result) {
                     BridgeBootstrapResult.Declined -> {
                         step = OnboardingStep.EnterCode(from.entry)
-                        error = context.getString(R.string.onboarding_invite_declined)
+                        error = DisplayError(context.getString(R.string.onboarding_invite_declined))
                     }
 
                     else -> {
@@ -281,7 +282,7 @@ internal class OnboardingFlow(
                 logger.error("restoring or joining failed", e)
                 statuses.closeAndJoin()
                 step = from
-                error = context.localizedLine(e) ?: e.toString()
+                error = context.displayError(e) ?: DisplayError(e.toString())
             } finally {
                 if (cancellation === running) cancellation = null
             }

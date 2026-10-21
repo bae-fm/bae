@@ -191,6 +191,7 @@
     <string name="appearance_forest">Горски</string>
     <string name="appearance_sand">Пясъчен</string>
     <string name="details">Подробности</string>
+    <string name="copy_details">Копиране на подробностите</string>
     <string name="reset_device">Нулиране на това устройство</string>
     <string name="reset_device_confirm_title">Нулиране на това устройство?</string>
     <string name="reset_device_confirm">Нулиране</string>

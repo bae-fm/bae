@@ -1,5 +1,6 @@
 package fm.bae.app.ui.settings
 
+import fm.bae.app.DisplayError
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -25,8 +26,8 @@ class DisconnectSyncFlowTest {
         cloudOnlyReleaseCount: suspend () -> ULong = { 0uL },
         atRiskLine: (ULong) -> String = { "$it at risk." },
         disconnect: suspend () -> Unit = {},
-        warningFailedLine: (Throwable) -> String = { "warning check failed" },
-        disconnectFailedLine: (Throwable) -> String = { "disconnect failed" },
+        warningFailed: (Throwable) -> DisplayError = { DisplayError("warning check failed") },
+        disconnectFailed: (Throwable) -> DisplayError = { DisplayError("disconnect failed") },
     ): DisconnectSyncFlow =
         DisconnectSyncFlow(
             scope = CoroutineScope(Dispatchers.Unconfined),
@@ -35,8 +36,8 @@ class DisconnectSyncFlowTest {
             strings =
                 DisconnectStrings(
                     atRiskLine = atRiskLine,
-                    warningFailedLine = warningFailedLine,
-                    disconnectFailedLine = disconnectFailedLine,
+                    warningFailed = warningFailed,
+                    disconnectFailed = disconnectFailed,
                 ),
         )
 
@@ -83,7 +84,7 @@ class DisconnectSyncFlowTest {
         val flow =
             makeFlow(
                 cloudOnlyReleaseCount = { throw IllegalStateException("offline") },
-                warningFailedLine = { "couldn't check: ${it.message}" },
+                warningFailed = { DisplayError("couldn't check: ${it.message}") },
             )
 
         flow.promptDisconnect()
@@ -91,7 +92,7 @@ class DisconnectSyncFlowTest {
         val state = flow.state.value
         assertTrue(state.confirming)
         assertNull(state.extraWarning)
-        assertEquals("couldn't check: offline", state.error)
+        assertEquals(DisplayError("couldn't check: offline"), state.error)
     }
 
     @Test
@@ -112,13 +113,13 @@ class DisconnectSyncFlowTest {
         val flow =
             makeFlow(
                 disconnect = { throw IllegalStateException("busy") },
-                disconnectFailedLine = { "couldn't disconnect: ${it.message}" },
+                disconnectFailed = { DisplayError("couldn't disconnect: ${it.message}") },
             )
 
         runBlocking { flow.confirm() }
 
         val state = flow.state.value
         assertFalse(state.confirming)
-        assertEquals("couldn't disconnect: busy", state.error)
+        assertEquals(DisplayError("couldn't disconnect: busy"), state.error)
     }
 }

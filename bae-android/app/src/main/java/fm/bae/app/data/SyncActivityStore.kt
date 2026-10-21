@@ -1,5 +1,6 @@
 package fm.bae.app.data
 
+import fm.bae.app.DisplayError
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,17 +21,17 @@ class SyncActivityStore(
     private val mutableActivity = MutableStateFlow<BridgeSyncActivity?>(null)
     val activity: StateFlow<BridgeSyncActivity?> = mutableActivity.asStateFlow()
 
-    /** The last failure to read the activity, as its line. */
-    private val mutableError = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = mutableError.asStateFlow()
+    /** The last failure to read the activity. */
+    private val mutableError = MutableStateFlow<DisplayError?>(null)
+    val error: StateFlow<DisplayError?> = mutableError.asStateFlow()
 
     fun apply(value: BridgeSyncActivity) {
         mutableActivity.value = value
         mutableError.value = null
     }
 
-    fun fail(line: String) {
-        mutableError.value = line
+    fun fail(error: DisplayError) {
+        mutableError.value = error
     }
 
     /** Stop the artwork downloads. */
@@ -43,7 +44,7 @@ class SyncActivityStore(
 /** The indicator shows while bytes move or something needs the person, and is absent otherwise. */
 fun syncActivityVisible(
     activity: BridgeSyncActivity?,
-    error: String?,
+    error: DisplayError?,
 ): Boolean = error != null || (activity != null && (activity.moving || activity.needsAttention))
 
 /** The device an album is still arriving from, if any of its files is. */

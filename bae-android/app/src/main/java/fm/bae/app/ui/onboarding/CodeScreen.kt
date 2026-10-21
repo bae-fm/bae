@@ -20,8 +20,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import fm.bae.app.BaeLogger
+import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.PrimaryButton
 
@@ -137,7 +139,7 @@ internal fun CodeScreen(
 @Composable
 private fun CodeScreenContent(
     text: CodeScreenText,
-    error: String?,
+    error: DisplayError?,
     showCodeDialog: Boolean,
     codeInput: String,
     callbacks: CodeScreenCallbacks,
@@ -156,7 +158,7 @@ private fun CodeScreenContent(
         }
         if (error != null) {
             Spacer(modifier = Modifier.height(ThemeSpace.related))
-            ErrorText(error)
+            ErrorDetailDisclosure(error)
         }
     }
     if (showCodeDialog) {

@@ -42,17 +42,19 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorLines
+import fm.bae.app.DisplayError
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.localizedLine
+import fm.bae.app.displayError
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.LabeledValueRow
@@ -99,7 +101,7 @@ internal class MembersModel(
         private set
     var storage by mutableStateOf<BridgeStorageLocation?>(null)
         private set
-    var error by mutableStateOf<String?>(null)
+    var error by mutableStateOf<DisplayError?>(null)
     private var reloading: Job? = null
 
     /** Read the joined list again; a newer read replaces one still running. */
@@ -113,13 +115,13 @@ internal class MembersModel(
                     throw e
                 } catch (e: BridgeException) {
                     logger.error("reading the library's people failed", e)
-                    error = appContext.localizedLine(e) ?: e.toString()
+                    error = appContext.displayError(e) ?: DisplayError(e.toString())
                 }
             }
     }
 
     suspend fun loadStorage() {
-        performBridgeAction(logger, "read the library's cloud home", LocaleErrorLines(appContext), { error = it }) {
+        performBridgeAction(logger, "read the library's cloud home", LocaleErrorDisplays(appContext), { error = it }) {
             storage = session.appHandle.storageLocation()
         }
     }
@@ -138,7 +140,7 @@ internal class MembersModel(
                     override fun onError(error: BridgeException) {
                         logger.error("reading the library's members failed", error)
                         scope.launch(Dispatchers.Main.immediate) {
-                            this@MembersModel.error = appContext.localizedLine(error)
+                            this@MembersModel.error = appContext.displayError(error)
                         }
                     }
                 },
@@ -153,7 +155,7 @@ internal class MembersModel(
                     override fun onError(error: BridgeException) {
                         logger.error("reading the library's profiles failed", error)
                         scope.launch(Dispatchers.Main.immediate) {
-                            this@MembersModel.error = appContext.localizedLine(error)
+                            this@MembersModel.error = appContext.displayError(error)
                         }
                     }
                 },
@@ -180,7 +182,7 @@ internal class MembersModel(
     ) {
         error = null
         scope.launch {
-            performBridgeAction(logger, operation, LocaleErrorLines(appContext), { error = it }, action)
+            performBridgeAction(logger, operation, LocaleErrorDisplays(appContext), { error = it }, action)
         }
     }
 }
@@ -204,9 +206,9 @@ fun MembersScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         MembersTopBar(onBack = onBack)
-        model.error?.let { msg ->
-            ErrorText(
-                message = msg,
+        model.error?.let { shown ->
+            ErrorDetailDisclosure(
+                error = shown,
                 modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
             )
         }

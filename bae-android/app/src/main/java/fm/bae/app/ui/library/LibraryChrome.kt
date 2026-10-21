@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.AlbumPageStore
@@ -62,16 +63,16 @@ import uniffi.bae_bridge.BridgeSortField
 @Composable
 internal fun LibraryErrorBanner(
     page: AlbumPageStore,
-    appError: String?,
+    appError: DisplayError?,
 ) {
     val appendError = if (page.rows.isNotEmpty()) page.error else null
-    val banner = appendError?.message ?: appError ?: return
-    ErrorBanner(message = banner, onRetry = appendError?.onRetry)
+    val banner = appendError?.error ?: appError ?: return
+    ErrorBanner(error = banner, onRetry = appendError?.onRetry)
 }
 
 @Composable
-internal fun LibraryGlobalErrorBanner(appError: String?) {
-    ErrorBanner(message = appError ?: return)
+internal fun LibraryGlobalErrorBanner(appError: DisplayError?) {
+    ErrorBanner(error = appError ?: return)
 }
 
 @Composable

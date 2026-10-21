@@ -190,6 +190,7 @@
     <string name="appearance_forest">Skog</string>
     <string name="appearance_sand">Sand</string>
     <string name="details">Detaljer</string>
+    <string name="copy_details">Kopier detaljer</string>
     <string name="reset_device">Tilbakestill denne enheten</string>
     <string name="reset_device_confirm_title">Vil du tilbakestille denne enheten?</string>
     <string name="reset_device_confirm">Tilbakestill</string>

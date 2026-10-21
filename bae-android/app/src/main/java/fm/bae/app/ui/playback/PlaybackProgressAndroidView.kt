@@ -21,7 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.C
 import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorLines
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.clockText
 import fm.bae.app.currentLocale
@@ -108,7 +108,7 @@ fun PlaybackProgressAndroidView(
                         performBridgeAction(
                             logger = logger,
                             operation = "update show-remaining-time setting",
-                            errors = LocaleErrorLines(context),
+                            errors = LocaleErrorDisplays(context),
                             showError = session.configStore::showError,
                         ) {
                             session.appHandle.setShowRemainingTime(!showRemaining)

@@ -34,12 +34,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeApp
+import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.LabeledValueRow
 import fm.bae.app.ui.components.PersonNameField
@@ -98,7 +100,7 @@ internal fun OnboardingScreen(
 @Composable
 internal fun OnboardingSteps(flow: OnboardingFlow) {
     var scanning by remember { mutableStateOf(false) }
-    val requestScan = rememberScanRequest(onDenied = { flow.error = it }, onOpen = { scanning = true })
+    val requestScan = rememberScanRequest(onDenied = { flow.error = DisplayError(it) }, onOpen = { scanning = true })
 
     when (val step = flow.step) {
         OnboardingStep.Choose -> {
@@ -252,7 +254,7 @@ private class RestoreText(
 @Composable
 internal fun RestoreForm(
     step: OnboardingStep.Restore,
-    error: String?,
+    error: DisplayError?,
     onRestore: (BridgeS3Credentials?) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -300,7 +302,7 @@ internal fun RestoreForm(
 @Composable
 private fun InviteForm(
     step: OnboardingStep.Invite,
-    error: String?,
+    error: DisplayError?,
     onJoin: (String) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -325,7 +327,7 @@ private fun InviteForm(
 @Composable
 private fun OnboardingForm(
     title: String,
-    error: String?,
+    error: DisplayError?,
     onBack: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -336,7 +338,7 @@ private fun OnboardingForm(
     ) {
         Text(text = title, style = ThemeText.title.style, textAlign = TextAlign.Center)
         content()
-        error?.let { ErrorText(it) }
+        error?.let { ErrorDetailDisclosure(it) }
         TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
     }
 }

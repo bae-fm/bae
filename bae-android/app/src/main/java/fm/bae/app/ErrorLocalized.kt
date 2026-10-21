@@ -11,8 +11,9 @@ import uniffi.bae_bridge.bridgePlaybackErrorReasonKey
 // Renders bae's typed error events for the current locale. The locale never
 // crosses the bridge: core emits the typed reason plus a stable `core.*` catalog
 // key; this resolves the localized line. The opaque diagnostic `detail` (the
-// Rust error chain) is log-only and never translated, so it isn't surfaced as
-// primary copy. Mirrors macOS's `BridgeError+Localized` / iOS's `DisplayError`.
+// Rust error chain) is never translated: it rides beside the line in a
+// [DisplayError], which offers it behind a details disclosure with a copy
+// action. Mirrors macOS's `BridgeError+Localized` / iOS's `DisplayError`.
 //
 // `BridgeException` is uniffi's Kotlin name for the bridge `BridgeError`.
 
@@ -67,27 +68,43 @@ fun Context.localizedLine(reason: BridgePlaybackErrorReason): String? =
         }
     }
 
+/** The diagnostic core wrote behind a failure: the Rust error chain of a diagnostic, nothing for a keyed one. */
+val BridgeException.diagnosticDetail: String?
+    get() = (this as? BridgeException.Diagnostic)?.detail
+
+/** The diagnostic behind a playback failure, when it is one core could not name for the person. */
+val BridgePlaybackErrorReason.diagnosticDetail: String?
+    get() = (this as? BridgePlaybackErrorReason.Diagnostic)?.error?.diagnosticDetail
+
+/** A [BridgeException] ready to show, or null when core says it has nothing to show — a cancellation. */
+fun Context.displayError(error: BridgeException): DisplayError? =
+    localizedLine(error)?.let { line -> DisplayError(line, error.diagnosticDetail) }
+
+/** A [BridgePlaybackErrorReason] ready to show, or null when core says it has nothing to show. */
+fun Context.displayError(reason: BridgePlaybackErrorReason): DisplayError? =
+    localizedLine(reason)?.let { line -> DisplayError(line, reason.diagnosticDetail) }
+
 /**
- * Resolves a typed error event to its localized one-line message. Production
- * binds a [Context] ([LocaleErrorLines]); unit tests pass a no-op so the reducer
+ * Resolves a typed error event to what a person is shown. Production binds a
+ * [Context] ([LocaleErrorDisplays]); unit tests pass a fixed one so the reducer
  * stays plain-JVM-testable — the same reason playback goes through a
  * [fm.bae.app.playback.PlaybackEventSink] rather than a live player.
  */
-interface ErrorLines {
-    /** Null when core says the failure has no line to show. */
-    fun line(reason: BridgePlaybackErrorReason): String?
+interface ErrorDisplays {
+    /** Null when core says the failure has nothing to show. */
+    fun display(reason: BridgePlaybackErrorReason): DisplayError?
 
-    /** Null when core says the failure has no line to show. */
-    fun line(error: BridgeException): String?
+    /** Null when core says the failure has nothing to show. */
+    fun display(error: BridgeException): DisplayError?
 }
 
 /** The production resolver: renders for the device locale via the Core catalog. */
-class LocaleErrorLines(
+class LocaleErrorDisplays(
     private val context: Context,
-) : ErrorLines {
-    override fun line(reason: BridgePlaybackErrorReason) = context.localizedLine(reason)
+) : ErrorDisplays {
+    override fun display(reason: BridgePlaybackErrorReason) = context.displayError(reason)
 
-    override fun line(error: BridgeException) = context.localizedLine(error)
+    override fun display(error: BridgeException) = context.displayError(error)
 }
 
 /**
@@ -97,8 +114,8 @@ class LocaleErrorLines(
 internal suspend fun performBridgeAction(
     logger: BaeLogger,
     operation: String,
-    errors: ErrorLines,
-    showError: (String?) -> Unit,
+    errors: ErrorDisplays,
+    showError: (DisplayError?) -> Unit,
     action: suspend () -> Unit,
 ) {
     try {
@@ -107,9 +124,9 @@ internal suspend fun performBridgeAction(
         throw e
     } catch (e: BridgeException) {
         logger.error("$operation failed", e)
-        showError(errors.line(e))
+        showError(errors.display(e))
     } catch (e: Exception) {
         logger.error("$operation failed", e)
-        showError(e.toString())
+        showError(DisplayError(e.toString()))
     }
 }

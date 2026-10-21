@@ -190,6 +190,7 @@
     <string name="appearance_forest">Skov</string>
     <string name="appearance_sand">Sand</string>
     <string name="details">Detaljer</string>
+    <string name="copy_details">Kopier detaljer</string>
     <string name="reset_device">Nulstil denne enhed</string>
     <string name="reset_device_confirm_title">Nulstil denne enhed?</string>
     <string name="reset_device_confirm">Nulstil</string>

@@ -28,7 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorLines
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.RestorePlaybackPref
@@ -91,7 +91,7 @@ private fun PauseBetweenSidesRow(
                     performBridgeAction(
                         logger = logger,
                         operation = "update pause-between-sides setting",
-                        errors = LocaleErrorLines(context),
+                        errors = LocaleErrorDisplays(context),
                         showError = session.configStore::showError,
                     ) {
                         withContext(ioDispatcher) {
@@ -120,7 +120,7 @@ private fun SidePauseCountdownRow(
                 performBridgeAction(
                     logger = logger,
                     operation = "update side-pause countdown setting",
-                    errors = LocaleErrorLines(context),
+                    errors = LocaleErrorDisplays(context),
                     showError = session.configStore::showError,
                 ) {
                     withContext(ioDispatcher) {

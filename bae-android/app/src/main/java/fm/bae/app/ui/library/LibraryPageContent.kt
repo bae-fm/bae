@@ -25,7 +25,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.WindowedBrowserPageStore
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.ErrorText
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -64,7 +64,7 @@ internal fun LibraryPageContent(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        ErrorText(pageError.message)
+                        ErrorDetailDisclosure(pageError.error)
                         TextButton(onClick = pageError.onRetry) { Text(stringResource(R.string.retry)) }
                     }
                 }

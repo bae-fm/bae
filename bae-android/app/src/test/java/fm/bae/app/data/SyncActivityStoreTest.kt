@@ -1,5 +1,6 @@
 package fm.bae.app.data
 
+import fm.bae.app.DisplayError
 import fm.bae.app.ui.PreviewData
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -21,7 +22,7 @@ class SyncActivityStoreTest {
         assertTrue(syncActivityVisible(store.activity.value, store.error.value))
         store.apply(settled())
         assertFalse(syncActivityVisible(store.activity.value, store.error.value))
-        store.fail("Something went wrong.")
+        store.fail(DisplayError("Something went wrong.", "storage unreachable"))
         assertTrue(syncActivityVisible(store.activity.value, store.error.value))
     }
 

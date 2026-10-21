@@ -34,7 +34,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorLines
+import fm.bae.app.DisplayError
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OAuthProviders
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
@@ -44,6 +45,7 @@ import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.QRCodeImage
@@ -101,7 +103,7 @@ internal fun StorageSetupScreen(
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(ThemeSpace.edge),
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         ) {
-            flow.error?.let { ErrorText(it) }
+            flow.error?.let { ErrorDetailDisclosure(it) }
             SetupStepContent(
                 step = flow.step,
                 session = session,
@@ -127,7 +129,7 @@ private class StorageSetupFlow(
 ) {
     var step by mutableStateOf<SetupStep>(SetupStep.Choose)
         private set
-    var error by mutableStateOf<String?>(null)
+    var error by mutableStateOf<DisplayError?>(null)
 
     /** Back to choosing a provider, or out of setup from the choice or once set up. */
     fun back(leave: () -> Unit) {
@@ -145,14 +147,14 @@ private class StorageSetupFlow(
         }
         val providers = oauthProviders
         if (providers == null) {
-            error = context.getString(R.string.oauth_unconfigured)
+            error = DisplayError(context.getString(R.string.oauth_unconfigured))
             return
         }
         error = null
         step = SetupStep.SigningIn(provider)
         scope.launch {
             var signedIn = false
-            performBridgeAction(logger, "sign in to $provider", LocaleErrorLines(context), { error = it }) {
+            performBridgeAction(logger, "sign in to $provider", LocaleErrorDisplays(context), { error = it }) {
                 providers.signIn(session.appHandle, provider)
                 signedIn = true
             }
@@ -173,7 +175,7 @@ private class StorageSetupFlow(
 
 private class SetupCallbacks(
     val onChoose: (BridgeCloudProvider) -> Unit,
-    val onError: (String?) -> Unit,
+    val onError: (DisplayError?) -> Unit,
     val onSetUp: (BridgeStorageSetup) -> Unit,
     val onDone: () -> Unit,
 )
@@ -277,12 +279,12 @@ private fun ColumnScope.SetupDone(
 internal suspend fun runSetup(
     context: Context,
     operation: String,
-    onError: (String?) -> Unit,
+    onError: (DisplayError?) -> Unit,
     onSetUp: (BridgeStorageSetup) -> Unit,
     setUp: suspend (deviceName: String) -> BridgeStorageSetup,
 ) {
     var result: BridgeStorageSetup? = null
-    performBridgeAction(logger, operation, LocaleErrorLines(context), onError) {
+    performBridgeAction(logger, operation, LocaleErrorDisplays(context), onError) {
         result = setUp(deviceName(context))
     }
     result?.let(onSetUp)

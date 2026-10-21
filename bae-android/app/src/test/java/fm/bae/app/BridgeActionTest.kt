@@ -17,38 +17,38 @@ import uniffi.bae_bridge.BridgePlaybackErrorReason
 class BridgeActionTest {
     @Test
     fun bridgeFailureIsReportedInsteadOfEscapingTheActionCoroutine() {
-        val shown = mutableListOf<String?>()
+        val shown = mutableListOf<DisplayError?>()
 
         runBlocking {
             performBridgeAction(
                 logger = BaeLogger("bae.BridgeActionTest"),
                 operation = "test operation",
-                errors = TestErrorLines,
+                errors = TestErrorDisplays,
                 showError = { shown.add(it) },
             ) {
                 throw BridgeException.Diagnostic(BridgeErrorCategory.Internal, "diagnostic detail")
             }
         }
 
-        assertEquals(listOf("localized bridge error"), shown)
+        assertEquals(listOf(DisplayError("localized bridge error", "diagnostic detail")), shown)
     }
 
     @Test
     fun unexpectedFailureIsReportedInsteadOfEscapingTheActionCoroutine() {
-        val shown = mutableListOf<String?>()
+        val shown = mutableListOf<DisplayError?>()
 
         runBlocking {
             performBridgeAction(
                 logger = BaeLogger("bae.BridgeActionTest"),
                 operation = "test operation",
-                errors = TestErrorLines,
+                errors = TestErrorDisplays,
                 showError = { shown.add(it) },
             ) {
                 error("unexpected failure")
             }
         }
 
-        assertEquals(listOf("java.lang.IllegalStateException: unexpected failure"), shown)
+        assertEquals(listOf(DisplayError("java.lang.IllegalStateException: unexpected failure")), shown)
     }
 
     @Test
@@ -58,7 +58,7 @@ class BridgeActionTest {
                 performBridgeAction(
                     logger = BaeLogger("bae.BridgeActionTest"),
                     operation = "test operation",
-                    errors = TestErrorLines,
+                    errors = TestErrorDisplays,
                     showError = {},
                 ) {
                     throw CancellationException("cancelled")
@@ -67,9 +67,9 @@ class BridgeActionTest {
         }
     }
 
-    private data object TestErrorLines : ErrorLines {
-        override fun line(reason: BridgePlaybackErrorReason): String = "localized playback error"
+    private data object TestErrorDisplays : ErrorDisplays {
+        override fun display(reason: BridgePlaybackErrorReason) = DisplayError("localized playback error", reason.diagnosticDetail)
 
-        override fun line(error: BridgeException): String = "localized bridge error"
+        override fun display(error: BridgeException) = DisplayError("localized bridge error", error.diagnosticDetail)
     }
 }

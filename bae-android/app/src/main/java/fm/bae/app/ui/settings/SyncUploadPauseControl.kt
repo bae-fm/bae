@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorLines
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.pauseRequested
@@ -42,7 +42,7 @@ internal fun SyncUploadPauseControl(session: OpenLibrary) {
                     performBridgeAction(
                         logger = logger,
                         operation = "set sync pause state",
-                        errors = LocaleErrorLines(context),
+                        errors = LocaleErrorDisplays(context),
                         showError = session.configStore::showError,
                     ) {
                         session.appHandle.setSyncPaused(paused)

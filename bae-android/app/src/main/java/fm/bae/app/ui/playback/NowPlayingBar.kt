@@ -50,7 +50,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorLines
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
@@ -191,7 +191,7 @@ private fun SidePauseAlert(
                 performBridgeAction(
                     logger = logger,
                     operation = "turn off pause-between-sides from the side-pause prompt",
-                    errors = LocaleErrorLines(context),
+                    errors = LocaleErrorDisplays(context),
                     showError = session.configStore::showError,
                 ) {
                     withContext(Dispatchers.IO) {

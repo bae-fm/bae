@@ -192,6 +192,7 @@
     <string name="appearance_forest">Forêt</string>
     <string name="appearance_sand">Sable</string>
     <string name="details">Détails</string>
+    <string name="copy_details">Copier les détails</string>
     <string name="reset_device">Réinitialiser cet appareil</string>
     <string name="reset_device_confirm_title">Réinitialiser cet appareil ?</string>
     <string name="reset_device_confirm">Réinitialiser</string>

@@ -52,8 +52,8 @@ class MainActivity : ComponentActivity() {
                 oauthProviders = app.oauthProviders,
                 oauthProvidersError = app.oauthProvidersError,
                 startupError =
-                    app.platformStartupError
-                        ?: app.startupError?.let { localizedLine(it) ?: it.toString() },
+                    app.platformStartupError?.let(::DisplayError)
+                        ?: app.startupError?.let { displayError(it) ?: DisplayError(it.toString()) },
                 shortcutAction = pendingShortcut,
                 onShortcutHandled = { pendingShortcut = null },
             )
@@ -88,7 +88,7 @@ class MainActivity : ComponentActivity() {
             performBridgeAction(
                 logger = logger,
                 operation = "save playback state",
-                errors = LocaleErrorLines(this@MainActivity),
+                errors = LocaleErrorDisplays(this@MainActivity),
                 showError = session.configStore::showError,
             ) {
                 session.appHandle.savePlaybackState()

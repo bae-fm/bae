@@ -1,6 +1,7 @@
 package fm.bae.app.data
 
-import fm.bae.app.ErrorLines
+import fm.bae.app.DisplayError
+import fm.bae.app.ErrorDisplays
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import uniffi.bae_bridge.BridgeErrorCategory
@@ -12,10 +13,10 @@ import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 
 class SyncStatusStoreTest {
     private val errors =
-        object : ErrorLines {
-            override fun line(reason: BridgePlaybackErrorReason): String? = null
+        object : ErrorDisplays {
+            override fun display(reason: BridgePlaybackErrorReason): DisplayError? = null
 
-            override fun line(error: BridgeException): String = "line for $error"
+            override fun display(error: BridgeException) = DisplayError("line for $error", "detail of $error")
         }
 
     private val failure = BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")
@@ -26,7 +27,7 @@ class SyncStatusStoreTest {
 
         sync.apply(status(connected = false, error = failure), errors)
 
-        assertEquals(SyncFailure("line for $failure", canReconnect = true, offersDeviceReset = false), sync.error.value)
+        assertEquals(SyncFailure(shown(failure), canReconnect = true, offersDeviceReset = false), sync.error.value)
     }
 
     @Test
@@ -35,7 +36,7 @@ class SyncStatusStoreTest {
 
         sync.apply(status(connected = true, error = failure), errors)
 
-        assertEquals(SyncFailure("line for $failure", canReconnect = false, offersDeviceReset = false), sync.error.value)
+        assertEquals(SyncFailure(shown(failure), canReconnect = false, offersDeviceReset = false), sync.error.value)
     }
 
     @Test
@@ -45,7 +46,7 @@ class SyncStatusStoreTest {
 
         sync.apply(status(connected = true, error = copy), errors)
 
-        assertEquals(SyncFailure("line for $copy", canReconnect = false, offersDeviceReset = true), sync.error.value)
+        assertEquals(SyncFailure(shown(copy), canReconnect = false, offersDeviceReset = true), sync.error.value)
     }
 
     @Test
@@ -60,6 +61,8 @@ class SyncStatusStoreTest {
         assertEquals(pending, sync.pending.value)
         assertEquals(null, sync.error.value)
     }
+
+    private fun shown(error: BridgeException) = DisplayError("line for $error", "detail of $error")
 
     private fun status(
         connected: Boolean,

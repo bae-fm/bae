@@ -1,6 +1,7 @@
 package fm.bae.app.data
 
-import fm.bae.app.ErrorLines
+import fm.bae.app.DisplayError
+import fm.bae.app.ErrorDisplays
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,11 +12,12 @@ import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 
 /**
- * The last sync failure as a line, whether reconnecting is what fixes it, and
- * whether sync found another copy of this device, which only a reset answers.
+ * The last sync failure as a person sees it, whether reconnecting is what
+ * fixes it, and whether sync found another copy of this device, which only a
+ * reset answers.
  */
 data class SyncFailure(
-    val message: String,
+    val error: DisplayError,
     val canReconnect: Boolean,
     val offersDeviceReset: Boolean,
 )
@@ -34,14 +36,14 @@ class SyncStatusStore {
 
     fun apply(
         status: BridgeSyncStatusSnapshot,
-        errors: ErrorLines,
+        errors: ErrorDisplays,
     ) {
         // Disconnected, reconnecting is the remedy; connected, the failure names its own.
         _error.value =
             status.error?.let { error ->
-                errors.line(error)?.let { line ->
+                errors.display(error)?.let { shown ->
                     SyncFailure(
-                        line,
+                        shown,
                         canReconnect = !status.connected,
                         offersDeviceReset =
                             (error as? BridgeException.Diagnostic)?.category is BridgeErrorCategory.DeviceResetRequired,

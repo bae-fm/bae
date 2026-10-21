@@ -32,13 +32,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
+import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.localizedLine
+import fm.bae.app.displayError
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.QRCodeImage
 import kotlinx.coroutines.CancellationException
@@ -60,7 +62,7 @@ internal fun AddDeviceDialog(
 ) {
     val context = LocalContext.current
     var share by remember { mutableStateOf<BridgeRestoreCodeShare?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<DisplayError?>(null) }
 
     LaunchedEffect(Unit) {
         try {
@@ -69,7 +71,7 @@ internal fun AddDeviceDialog(
             throw e
         } catch (e: BridgeException) {
             logger.error("Failed to generate the add-device code", e)
-            error = context.localizedLine(e) ?: e.toString()
+            error = context.displayError(e) ?: DisplayError(e.toString())
         }
     }
 
@@ -80,7 +82,7 @@ internal fun AddDeviceDialog(
 @Composable
 internal fun AddDeviceDialogContent(
     share: BridgeRestoreCodeShare?,
-    error: String?,
+    error: DisplayError?,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
@@ -97,7 +99,7 @@ internal fun AddDeviceDialogContent(
                     }
 
                     error != null -> {
-                        ErrorText(error)
+                        ErrorDetailDisclosure(error)
                     }
 
                     else -> {
@@ -183,6 +185,15 @@ private fun AddDeviceDialogContentLoadingPreview() {
 @Composable
 private fun AddDeviceDialogContentFailedPreview() {
     BaeTheme {
-        AddDeviceDialogContent(share = null, error = "Couldn’t reach your storage.", onDismiss = {})
+        AddDeviceDialogContent(
+            share = null,
+            error =
+                DisplayError(
+                    "Couldn’t reach your storage.",
+                    "S3: Network: dispatch failure: io error: connection refused",
+                ),
+            onDismiss = {
+            },
+        )
     }
 }

@@ -29,7 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorLines
+import fm.bae.app.DisplayError
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OAuthProviders
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
@@ -51,7 +52,7 @@ private val logger = BaeLogger("bae.ProviderFolderChoice")
 internal fun DropboxFolderChoice(
     session: OpenLibrary,
     providers: OAuthProviders,
-    onError: (String?) -> Unit,
+    onError: (DisplayError?) -> Unit,
     onSetUp: (BridgeStorageSetup) -> Unit,
 ) {
     val context = LocalContext.current
@@ -60,7 +61,7 @@ internal fun DropboxFolderChoice(
     var busy by remember { mutableStateOf(false) }
     val load: suspend () -> Unit = {
         folders = null
-        performBridgeAction(logger, "list Dropbox shared folders", LocaleErrorLines(context), onError) {
+        performBridgeAction(logger, "list Dropbox shared folders", LocaleErrorDisplays(context), onError) {
             folders = providers.dropboxSharedFolders(session.appHandle)
         }
     }
@@ -99,8 +100,8 @@ internal fun DropboxFolderChoice(
 private class OneDriveBrowser(
     private val session: OpenLibrary,
     private val providers: OAuthProviders,
-    private val errors: LocaleErrorLines,
-    private val onError: (String?) -> Unit,
+    private val errors: LocaleErrorDisplays,
+    private val onError: (DisplayError?) -> Unit,
 ) {
     /** The folders opened from the top, the last being the one shown. */
     val path = mutableStateListOf<BridgeStorageFolder>()
@@ -146,12 +147,12 @@ private class OneDriveBrowser(
 internal fun OneDriveFolderChoice(
     session: OpenLibrary,
     providers: OAuthProviders,
-    onError: (String?) -> Unit,
+    onError: (DisplayError?) -> Unit,
     onSetUp: (BridgeStorageSetup) -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val browser = remember(session) { OneDriveBrowser(session, providers, LocaleErrorLines(context), onError) }
+    val browser = remember(session) { OneDriveBrowser(session, providers, LocaleErrorDisplays(context), onError) }
     var naming by remember { mutableStateOf(false) }
     LaunchedEffect(browser) { browser.openRoot() }
 

@@ -25,7 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorLines
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.castingDeviceName
@@ -85,7 +85,7 @@ internal fun SettingsCastSection(
             performBridgeAction(
                 logger = logger,
                 operation = "update cast conversion format",
-                errors = LocaleErrorLines(context),
+                errors = LocaleErrorDisplays(context),
                 showError = session.configStore::showError,
             ) {
                 withContext(ioDispatcher) { session.cast.setTranscodeFormat(format) }
@@ -98,7 +98,7 @@ internal fun SettingsCastSection(
             performBridgeAction(
                 logger = logger,
                 operation = "update casting setting",
-                errors = LocaleErrorLines(context),
+                errors = LocaleErrorDisplays(context),
                 showError = session.configStore::showError,
             ) {
                 withContext(ioDispatcher) { session.cast.setEnabled(enabled) }

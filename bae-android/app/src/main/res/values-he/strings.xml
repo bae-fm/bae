@@ -193,6 +193,7 @@
     <string name="appearance_forest">יער</string>
     <string name="appearance_sand">חול</string>
     <string name="details">פרטים</string>
+    <string name="copy_details">העתקת הפרטים</string>
     <string name="reset_device">איפוס המכשיר הזה</string>
     <string name="reset_device_confirm_title">לאפס את המכשיר הזה?</string>
     <string name="reset_device_confirm">איפוס</string>

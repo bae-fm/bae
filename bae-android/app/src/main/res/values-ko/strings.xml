@@ -189,6 +189,7 @@
     <string name="appearance_forest">숲</string>
     <string name="appearance_sand">모래</string>
     <string name="details">세부 정보</string>
+    <string name="copy_details">세부 정보 복사</string>
     <string name="reset_device">이 기기 초기화</string>
     <string name="reset_device_confirm_title">이 기기를 초기화할까요?</string>
     <string name="reset_device_confirm">초기화</string>

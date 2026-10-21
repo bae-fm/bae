@@ -25,12 +25,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
+import fm.bae.app.DisplayError
 import fm.bae.app.R
-import fm.bae.app.localizedLine
+import fm.bae.app.displayError
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
 import kotlinx.coroutines.CancellationException
@@ -54,7 +56,7 @@ internal sealed interface RecoveryCodeState {
     ) : RecoveryCodeState
 
     data class Failed(
-        val message: String,
+        val error: DisplayError,
     ) : RecoveryCodeState
 }
 
@@ -66,7 +68,7 @@ internal sealed interface RecoveryCodeState {
 internal class RecoveryCodeReveal(
     private val scope: CoroutineScope,
     private val generate: suspend () -> String,
-    private val errorLine: (BridgeException) -> String?,
+    private val errorDisplay: (BridgeException) -> DisplayError?,
 ) {
     var state by mutableStateOf<RecoveryCodeState>(RecoveryCodeState.Hidden)
         private set
@@ -87,8 +89,8 @@ internal class RecoveryCodeReveal(
                         // A run this reveal replaced or hid owns no state any more, whatever core reported for it.
                         ensureActive()
                         logger.error("Failed to generate the recovery code", e)
-                        // A failure with no line is a cancellation from core; the person can ask again.
-                        errorLine(e)?.let(RecoveryCodeState::Failed) ?: RecoveryCodeState.Hidden
+                        // A failure with nothing to show is a cancellation from core; the person can ask again.
+                        errorDisplay(e)?.let(RecoveryCodeState::Failed) ?: RecoveryCodeState.Hidden
                     }
                 ensureActive()
                 state = next
@@ -114,7 +116,7 @@ internal fun RecoveryCodeSection(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val reveal = remember { RecoveryCodeReveal(scope, generate) { context.localizedLine(it) } }
+    val reveal = remember { RecoveryCodeReveal(scope, generate) { context.displayError(it) } }
     RecoveryCodeSectionContent(
         needsS3Key = needsS3Key,
         state = reveal.state,
@@ -161,7 +163,7 @@ private fun RecoveryCodeSectionContent(
             }
 
             is RecoveryCodeState.Failed -> {
-                ErrorText(state.message)
+                ErrorDetailDisclosure(state.error)
                 ShowCodeButton(onShow)
             }
         }
@@ -229,7 +231,10 @@ private fun RecoveryCodeSectionFailedPreview() {
     BaeTheme {
         RecoveryCodeSectionContent(
             needsS3Key = false,
-            state = RecoveryCodeState.Failed("Couldn’t reach your storage."),
+            state =
+                RecoveryCodeState.Failed(
+                    DisplayError("Couldn’t reach your storage.", "S3: Network: dispatch failure"),
+                ),
             onShow = {},
             onHide = {},
         )

@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.AppScreen
 import fm.bae.app.AppSessionHolder
+import fm.bae.app.DisplayError
 import fm.bae.app.OAuthProviders
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
@@ -32,6 +33,7 @@ import fm.bae.app.ShortcutAction
 import fm.bae.app.coreString
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.library.LibraryScreen
 import fm.bae.app.ui.onboarding.OnboardingScreen
@@ -52,7 +54,7 @@ import uniffi.bae_bridge.bridgeErrorCategoryKey
 fun ContentView(
     oauthProviders: OAuthProviders?,
     oauthProvidersError: String?,
-    startupError: String?,
+    startupError: DisplayError?,
     shortcutAction: ShortcutAction?,
     onShortcutHandled: () -> Unit,
 ) {
@@ -145,20 +147,20 @@ private fun AppScreenRouter(
         is AppScreen.ProfileRequired -> {
             ProfileRequiredScreen(
                 session = current.session,
-                message = current.message,
+                failure = current.error,
                 onCreated = { onScreen(AppScreen.LibraryOpen(current.session)) },
             )
         }
 
         is AppScreen.RemovalIncomplete -> {
             RemovalIncompleteScreen(
-                message = current.message,
+                error = current.error,
                 onRetry = { scope.launch { AppSessionHolder.retryRemoval(context, onScreen) } },
             )
         }
 
         is AppScreen.Failed -> {
-            FailedScreen(message = current.message)
+            FailedScreen(error = current.error)
         }
     }
 }
@@ -177,7 +179,7 @@ private fun RecoveryScreen(
     // A failed reset shows [failed], the screen it started from, with why.
     fun reset(
         prepared: BridgeDeviceReset,
-        failed: (message: String) -> AppScreen,
+        failed: (DisplayError) -> AppScreen,
     ) {
         scope.launch { AppSessionHolder.resetDevice(context, libraryId, prepared, onScreen, failed) }
     }
@@ -185,7 +187,7 @@ private fun RecoveryScreen(
         is AppScreen.ResetOffered -> {
             ResetOfferedScreen(
                 libraryId = libraryId,
-                message = current.message,
+                error = current.error,
                 onReset = { prepared -> reset(prepared) { AppScreen.ResetOffered(libraryId, it) } },
             )
         }
@@ -283,8 +285,8 @@ private fun sessionActions(
     },
     resetDevice = { reset ->
         scope.launch {
-            AppSessionHolder.resetDevice(context, session.libraryId, reset, onScreen) { message ->
-                AppScreen.ResetOffered(session.libraryId, message)
+            AppSessionHolder.resetDevice(context, session.libraryId, reset, onScreen) { failure ->
+                AppScreen.ResetOffered(session.libraryId, failure)
             }
         }
     },
@@ -345,12 +347,12 @@ private fun LoadingScreen() {
 }
 
 @Composable
-private fun FailedScreen(message: String) {
+private fun FailedScreen(error: DisplayError) {
     Box(
         modifier = Modifier.fillMaxSize().padding(ThemeSpace.page),
         contentAlignment = Alignment.Center,
     ) {
-        ErrorText(message)
+        ErrorDetailDisclosure(error)
     }
 }
 
@@ -366,6 +368,6 @@ private fun LoadingScreenPreview() {
 @Composable
 private fun FailedScreenPreview() {
     BaeTheme {
-        FailedScreen(message = "Couldn't open the library.")
+        FailedScreen(error = DisplayError("Couldn't open the library.", "database error: disk I/O error"))
     }
 }

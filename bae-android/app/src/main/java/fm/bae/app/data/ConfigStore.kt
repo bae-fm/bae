@@ -1,5 +1,6 @@
 package fm.bae.app.data
 
+import fm.bae.app.DisplayError
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,21 +18,21 @@ class ConfigStore(
     val config: StateFlow<BridgeConfig> = _config.asStateFlow()
 
     /** Transient app-level error surfaced by `Error` events. */
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
+    private val _error = MutableStateFlow<DisplayError?>(null)
+    val error: StateFlow<DisplayError?> = _error.asStateFlow()
 
     fun setConfig(config: BridgeConfig) {
         _config.value = config
     }
 
     /**
-     * Surface an error. A null line means core says there is nothing to show — a
+     * Surface an error. Null means core says there is nothing to show — a
      * cancellation — so the banner is left alone rather than raised empty.
      */
-    fun showError(message: String?) {
-        if (message == null) {
+    fun showError(error: DisplayError?) {
+        if (error == null) {
             return
         }
-        _error.value = message
+        _error.value = error
     }
 }

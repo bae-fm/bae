@@ -90,7 +90,7 @@ sealed interface AppScreen {
      */
     data class ResetOffered(
         override val libraryId: String,
-        val message: String,
+        val error: DisplayError,
     ) : Recovery
 
     /**
@@ -109,7 +109,7 @@ sealed interface AppScreen {
      */
     data class ResetUnfinished(
         override val libraryId: String,
-        val error: String?,
+        val error: DisplayError?,
     ) : Recovery
 
     /**
@@ -128,7 +128,7 @@ sealed interface AppScreen {
      */
     data class ProfileRequired(
         val session: OpenLibrary,
-        val message: String,
+        val error: DisplayError,
     ) : AppScreen
 
     /**
@@ -136,11 +136,11 @@ sealed interface AppScreen {
      * this run or an earlier one; finishing deletes them.
      */
     data class RemovalIncomplete(
-        val message: String,
+        val error: DisplayError,
     ) : AppScreen
 
     data class Failed(
-        val message: String,
+        val error: DisplayError,
     ) : AppScreen
 
     companion object {
@@ -157,17 +157,17 @@ sealed interface AppScreen {
         /**
          * The screen a failed open of [libraryId] lands on: resetting the
          * device, finishing the reset or restore that stopped partway, or
-         * the failure's [message].
+         * the failure as [shown].
          */
         fun openFailed(
             libraryId: String,
             error: BridgeException,
-            message: String,
+            shown: DisplayError,
         ): AppScreen =
             when (val category = (error as? BridgeException.Diagnostic)?.category) {
-                is BridgeErrorCategory.DeviceResetRequired -> ResetOffered(libraryId, message)
+                is BridgeErrorCategory.DeviceResetRequired -> ResetOffered(libraryId, shown)
                 is BridgeErrorCategory.ReplacementUnfinished -> finishing(libraryId, category.by)
-                else -> Failed(message)
+                else -> Failed(shown)
             }
     }
 }
@@ -225,7 +225,7 @@ object AppSessionHolder {
     ) {
         onScreen(AppScreen.Loading)
         val host = (context.applicationContext as BaeApp).host
-        var notice: String? = null
+        var notice: DisplayError? = null
         val remaining =
             try {
                 val unfinished = host.unfinishedRemoval()
@@ -336,15 +336,15 @@ object AppSessionHolder {
                 return
             }
         refreshLibraries(app.host)
-        val message = failure?.let { context.localizedLine(it) ?: it.toString() }
+        val shown = failure?.let { errorMessage(context, it) }
         onScreen(
             when {
                 result is BridgeBootstrapResult.ProfileRequired -> {
-                    AppScreen.ProfileRequired(session, checkNotNull(message) { "a profile failure has a line" })
+                    AppScreen.ProfileRequired(session, checkNotNull(shown) { "a profile failure has a line" })
                 }
 
                 else -> {
-                    session.configStore.showError(message)
+                    session.configStore.showError(shown)
                     AppScreen.LibraryOpen(session)
                 }
             },
@@ -384,7 +384,7 @@ object AppSessionHolder {
         libraryId: String,
         reset: BridgeDeviceReset,
         onScreen: (AppScreen) -> Unit,
-        failed: (message: String) -> AppScreen,
+        failed: (DisplayError) -> AppScreen,
     ) {
         onScreen(AppScreen.Loading)
         current?.takeIf { it.libraryId == libraryId }?.let { open ->
@@ -568,7 +568,7 @@ object AppSessionHolder {
                             performBridgeAction(
                                 logger = logger,
                                 operation = "cancel the artwork download",
-                                errors = LocaleErrorLines(appContext),
+                                errors = LocaleErrorDisplays(appContext),
                                 showError = configStore::showError,
                             ) { handle.cancelEagerCacheFill() }
                         }
@@ -585,8 +585,8 @@ object AppSessionHolder {
     }
 }
 
-/** The line a failed library operation shows: core's localized line, or the error itself. */
+/** What a failed library operation shows: core's localized line and diagnostic, or the error itself. */
 private fun errorMessage(
     context: Context,
     error: BridgeException,
-): String = context.localizedLine(error) ?: error.toString()
+): DisplayError = context.displayError(error) ?: DisplayError(error.toString())

@@ -16,7 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorLines
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.performBridgeAction
@@ -46,7 +46,7 @@ internal fun HistorySharingSection(
             performBridgeAction(
                 logger = logger,
                 operation = "set history sharing to $chosen",
-                errors = LocaleErrorLines(context),
+                errors = LocaleErrorDisplays(context),
                 showError = session.configStore::showError,
             ) {
                 session.appHandle.setHistorySharing(chosen)

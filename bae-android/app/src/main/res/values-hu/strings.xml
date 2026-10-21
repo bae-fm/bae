@@ -190,6 +190,7 @@
     <string name="appearance_forest">Erdőzöld</string>
     <string name="appearance_sand">Homok</string>
     <string name="details">Részletek</string>
+    <string name="copy_details">Részletek másolása</string>
     <string name="reset_device">Az eszköz alaphelyzetbe állítása</string>
     <string name="reset_device_confirm_title">Alaphelyzetbe állítod az eszközt?</string>
     <string name="reset_device_confirm">Alaphelyzetbe állítás</string>

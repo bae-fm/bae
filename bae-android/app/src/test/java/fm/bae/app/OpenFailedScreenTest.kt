@@ -18,7 +18,7 @@ class OpenFailedScreenTest {
 
         assertEquals(
             AppScreen.RestoreUnfinished("library"),
-            AppScreen.openFailed("library", failure, "Restoring did not finish."),
+            AppScreen.openFailed("library", failure, DisplayError("Restoring did not finish.")),
         )
     }
 
@@ -32,7 +32,7 @@ class OpenFailedScreenTest {
 
         assertEquals(
             AppScreen.ResetUnfinished("library", error = null),
-            AppScreen.openFailed("library", failure, "Resetting did not finish."),
+            AppScreen.openFailed("library", failure, DisplayError("Resetting did not finish.")),
         )
     }
 
@@ -41,8 +41,8 @@ class OpenFailedScreenTest {
         val failure = BridgeException.Diagnostic(BridgeErrorCategory.DeviceResetRequired, "damaged database")
 
         assertEquals(
-            AppScreen.ResetOffered("library", "This device must be reset."),
-            AppScreen.openFailed("library", failure, "This device must be reset."),
+            AppScreen.ResetOffered("library", DisplayError("This device must be reset.", "damaged database")),
+            AppScreen.openFailed("library", failure, DisplayError("This device must be reset.", "damaged database")),
         )
     }
 
@@ -51,8 +51,8 @@ class OpenFailedScreenTest {
         val failure = BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")
 
         assertEquals(
-            AppScreen.Failed("Offline."),
-            AppScreen.openFailed("library", failure, "Offline."),
+            AppScreen.Failed(DisplayError("Offline.", "offline")),
+            AppScreen.openFailed("library", failure, DisplayError("Offline.", "offline")),
         )
     }
 }

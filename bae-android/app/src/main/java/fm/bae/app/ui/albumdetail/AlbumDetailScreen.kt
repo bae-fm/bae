@@ -46,12 +46,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
+import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LiveQueryState
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.data.arrival
+import fm.bae.app.displayError
 import fm.bae.app.durationClockLabel
 import fm.bae.app.durationUnitsText
 import fm.bae.app.labelsLineText
@@ -66,6 +68,7 @@ import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.PrimaryButton
@@ -135,8 +138,8 @@ fun AlbumDetailScreen(
                 AlbumDetailLoadingBox(loadError, onRetry = session.libraryQueries.album::retry)
             } else {
                 loadError?.let {
-                    ErrorText(
-                        message = it,
+                    ErrorDetailDisclosure(
+                        error = it,
                         modifier = Modifier.align(Alignment.TopCenter).padding(ThemeSpace.related),
                     )
                 }
@@ -164,17 +167,17 @@ fun AlbumDetailScreen(
 private fun albumLoadError(
     query: LiveQueryState<BridgeAlbumDetail>,
     context: android.content.Context,
-): String? =
-    query.error?.message
+): DisplayError? =
+    query.error?.let { error -> context.displayError(error) ?: DisplayError(error.toString()) }
         ?: if (query.delivered && query.value == null) {
-            context.getString(R.string.album_load_failed)
+            DisplayError(context.getString(R.string.album_load_failed))
         } else {
             null
         }
 
 @Composable
 private fun BoxScope.AlbumDetailLoadingBox(
-    loadError: String?,
+    loadError: DisplayError?,
     onRetry: () -> Unit,
 ) {
     if (loadError != null) {
@@ -182,7 +185,7 @@ private fun BoxScope.AlbumDetailLoadingBox(
             modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            ErrorText(loadError)
+            ErrorDetailDisclosure(loadError)
             TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
         }
     } else {

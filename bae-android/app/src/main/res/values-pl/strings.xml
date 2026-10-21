@@ -195,6 +195,7 @@
     <string name="appearance_forest">Las</string>
     <string name="appearance_sand">Piasek</string>
     <string name="details">Szczegóły</string>
+    <string name="copy_details">Kopiuj szczegóły</string>
     <string name="reset_device">Zresetuj to urządzenie</string>
     <string name="reset_device_confirm_title">Zresetować to urządzenie?</string>
     <string name="reset_device_confirm">Zresetuj</string>

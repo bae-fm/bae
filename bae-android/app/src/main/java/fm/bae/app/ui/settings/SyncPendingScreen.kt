@@ -21,6 +21,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -40,17 +41,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorLines
+import fm.bae.app.DisplayError
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.deviceName
+import fm.bae.app.displayError
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorText
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeAdminAccess
@@ -86,7 +89,7 @@ private class PendingActionRunner(
     private val context: Context,
     private val scope: CoroutineScope,
 ) {
-    var error by mutableStateOf<String?>(null)
+    var error by mutableStateOf<DisplayError?>(null)
     var adminAccessFor by mutableStateOf<Long?>(null)
     var keyDeletion by mutableStateOf<KeyDeletion?>(null)
 
@@ -96,7 +99,7 @@ private class PendingActionRunner(
     ) {
         error = null
         scope.launch {
-            performBridgeAction(logger, operation, LocaleErrorLines(context), { error = it }, action)
+            performBridgeAction(logger, operation, LocaleErrorDisplays(context), { error = it }, action)
         }
     }
 
@@ -144,7 +147,7 @@ private class PendingActionRunner(
     private fun signIn(provider: BridgeCloudProvider) {
         val providers = actions.oauthProviders
         if (providers == null) {
-            error = context.getString(R.string.oauth_unconfigured)
+            error = DisplayError(context.getString(R.string.oauth_unconfigured))
         } else {
             perform("sign in to $provider again") { providers.signInAgain(session.appHandle, deviceName(context)) }
         }
@@ -214,7 +217,7 @@ internal fun SyncPendingScreen(
                 onReconnect = { runner.perform("reconnect sync") { session.appHandle.reconnectSync() } },
             )
             DeviceResetOffer(session = session, error = failure, onResetDevice = actions.resetDevice)
-            runner.error?.let { ErrorText(it) }
+            runner.error?.let { ErrorDetailDisclosure(it) }
         }
         when (val current = pending) {
             BridgePendingRecords.Loading -> {
@@ -224,8 +227,8 @@ internal fun SyncPendingScreen(
             }
 
             is BridgePendingRecords.Failed -> {
-                ErrorText(
-                    LocaleErrorLines(context).line(current.error) ?: current.error.toString(),
+                ErrorDetailDisclosure(
+                    error = context.displayError(current.error) ?: DisplayError(current.error.toString()),
                     modifier = Modifier.padding(ThemeSpace.edge),
                 )
             }
@@ -258,8 +261,8 @@ private fun PendingActionDialogs(runner: PendingActionRunner) {
     }
 }
 
-/** Open bae's page in the device's app store; the line to show when no store can open it. */
-private fun openStoreListing(context: Context): String? =
+/** Open bae's page in the device's app store; the error to show when no store can open it. */
+private fun openStoreListing(context: Context): DisplayError? =
     try {
         context.startActivity(
             Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${context.packageName}"))
@@ -268,7 +271,7 @@ private fun openStoreListing(context: Context): String? =
         null
     } catch (e: ActivityNotFoundException) {
         logger.warning("no app store can open bae's listing", e)
-        context.getString(R.string.pending_update_no_store)
+        DisplayError(context.getString(R.string.pending_update_no_store))
     }
 
 @Composable
@@ -324,18 +327,23 @@ internal fun pendingSubjectText(
     }
 }
 
-/** One record: what it is about, why it waits, what its causes were, its action, and the error behind it on request. */
+/** One record: what it is about, why it waits with the error behind it, what its causes were, and its action. */
 @Composable
 private fun PendingRow(
     record: BridgePendingRecord,
     onAction: (BridgePendingAction) -> Unit,
 ) {
     val context = LocalContext.current
-    var showDetails by remember(record) { mutableStateOf(false) }
-    val detail = record.reason.detail
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
         Text(text = pendingSubjectText(context, record.subject), style = ThemeText.strong.style)
-        Text(text = context.coreString(bridgePendingReasonKey(record.reason.kind)))
+        ErrorDetailDisclosure(
+            error =
+                DisplayError(
+                    context.coreString(bridgePendingReasonKey(record.reason.kind)),
+                    record.reason.detail,
+                ),
+            lineColor = LocalContentColor.current,
+        )
         record.reason.causes.forEach { cause ->
             Text(
                 text = context.coreString(bridgePendingReasonKey(cause.kind)),
@@ -349,7 +357,7 @@ private fun PendingRow(
         ) {
             val actionKey = bridgePendingActionKey(record.action)
             when (record.action) {
-                // Details below show what a review is of.
+                // The reason's details show what a review is of.
                 BridgePendingAction.Wait, BridgePendingAction.Review -> {
                     Unit
                 }
@@ -367,21 +375,6 @@ private fun PendingRow(
                         Text(context.coreString(checkNotNull(actionKey) { "${record.action} has a label" }))
                     }
                 }
-            }
-            // Only an error held behind the reason has details to show.
-            if (detail != null) {
-                TextButton(onClick = { showDetails = !showDetails }) {
-                    Text(stringResource(R.string.details))
-                }
-            }
-        }
-        if (detail != null && showDetails) {
-            SelectionContainer {
-                Text(
-                    text = detail,
-                    style = ThemeText.mono.style,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         }
     }

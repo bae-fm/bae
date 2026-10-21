@@ -1,7 +1,8 @@
 package fm.bae.app.data
 
 import fm.bae.app.BaeLogger
-import fm.bae.app.ErrorLines
+import fm.bae.app.DisplayError
+import fm.bae.app.ErrorDisplays
 import fm.bae.app.playback.PlaybackEventSink
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeException
@@ -19,7 +20,7 @@ object UiEventAdapter {
         event: BridgeUiEvent,
         stores: OpenLibraryStores,
         player: PlaybackEventSink,
-        errors: ErrorLines,
+        errors: ErrorDisplays,
     ) {
         try {
             route(event, stores, player, errors)
@@ -29,10 +30,10 @@ object UiEventAdapter {
             // No special case for Cancelled: core says whether an error has a line,
             // and showError drops the ones that do not.
             logger.error("event handling failed", e)
-            stores.config.showError(errors.line(e))
+            stores.config.showError(errors.display(e))
         } catch (e: Exception) {
             logger.error("event handling failed", e)
-            stores.config.showError(e.message ?: e::class.java.simpleName)
+            stores.config.showError(DisplayError(e.toString()))
         }
     }
 
@@ -40,7 +41,7 @@ object UiEventAdapter {
         event: BridgeUiEvent,
         stores: OpenLibraryStores,
         player: PlaybackEventSink,
-        errors: ErrorLines,
+        errors: ErrorDisplays,
     ) {
         handleDirectEvent(event, stores, player, errors)
     }
@@ -49,7 +50,7 @@ object UiEventAdapter {
         event: BridgeUiEvent,
         stores: OpenLibraryStores,
         player: PlaybackEventSink,
-        errors: ErrorLines,
+        errors: ErrorDisplays,
     ) {
         if (handlePlaybackEvent(event, stores, player, errors)) {
             return
@@ -61,11 +62,11 @@ object UiEventAdapter {
         event: BridgeUiEvent,
         stores: OpenLibraryStores,
         player: PlaybackEventSink,
-        errors: ErrorLines,
+        errors: ErrorDisplays,
     ): Boolean {
         when (event) {
             is BridgeUiEvent.PlaybackError -> {
-                stores.config.showError(errors.line(event.reason))
+                stores.config.showError(errors.display(event.reason))
             }
 
             is BridgeUiEvent.QueueItemsAdded -> {

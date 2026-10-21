@@ -195,6 +195,7 @@
     <string name="appearance_forest">Lesní</string>
     <string name="appearance_sand">Pískový</string>
     <string name="details">Podrobnosti</string>
+    <string name="copy_details">Kopírovat podrobnosti</string>
     <string name="reset_device">Resetovat toto zařízení</string>
     <string name="reset_device_confirm_title">Resetovat toto zařízení?</string>
     <string name="reset_device_confirm">Resetovat</string>

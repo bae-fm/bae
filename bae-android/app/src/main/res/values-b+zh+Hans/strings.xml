@@ -189,6 +189,7 @@
     <string name="appearance_forest">森林</string>
     <string name="appearance_sand">沙色</string>
     <string name="details">详情</string>
+    <string name="copy_details">复制详情</string>
     <string name="reset_device">重置此设备</string>
     <string name="reset_device_confirm_title">要重置此设备吗？</string>
     <string name="reset_device_confirm">重置</string>

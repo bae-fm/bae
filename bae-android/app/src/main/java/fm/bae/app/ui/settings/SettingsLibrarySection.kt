@@ -28,7 +28,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorLines
+import fm.bae.app.DisplayError
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
@@ -38,6 +39,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.storageLocationLabel
@@ -138,7 +140,7 @@ private fun LibraryNameRow(
 
                     override fun onError(error: BridgeException) {
                         logger.error("reading the library's name failed", error)
-                        session.configStore.showError(LocaleErrorLines(context).line(error))
+                        session.configStore.showError(LocaleErrorDisplays(context).display(error))
                     }
                 },
             )
@@ -165,7 +167,7 @@ private fun RenameLibraryDialog(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var draft by remember { mutableStateOf(current) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<DisplayError?>(null) }
     var saving by remember { mutableStateOf(false) }
     RenameLibraryDialogContent(
         draft = draft,
@@ -180,7 +182,7 @@ private fun RenameLibraryDialog(
                 performBridgeAction(
                     logger = logger,
                     operation = "rename the library",
-                    errors = LocaleErrorLines(context),
+                    errors = LocaleErrorDisplays(context),
                     showError = { error = it },
                 ) {
                     session.appHandle.renameLibrary(draft.trim())
@@ -197,7 +199,7 @@ private fun RenameLibraryDialog(
 @Composable
 private fun RenameLibraryDialogContent(
     draft: String,
-    error: String?,
+    error: DisplayError?,
     saving: Boolean,
     onDraftChange: (String) -> Unit,
     onSave: () -> Unit,
@@ -216,7 +218,7 @@ private fun RenameLibraryDialogContent(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                error?.let { ErrorText(it) }
+                error?.let { ErrorDetailDisclosure(it) }
             }
         },
         confirmButton = {

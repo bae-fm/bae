@@ -6,7 +6,9 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import fm.bae.app.BaeLogger
+import fm.bae.app.DisplayError
 import fm.bae.app.R
+import fm.bae.app.diagnosticDetail
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -26,7 +28,7 @@ private const val MAXIMUM_BROWSER_PAGE_WINDOWS = 3
 private val logger = BaeLogger("bae.BrowserPageStores")
 
 internal class PageError(
-    val message: String,
+    val error: DisplayError,
     val onRetry: () -> Unit,
 )
 
@@ -176,12 +178,15 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
     private fun fail(value: BridgeException) {
         logger.error("browser page query failed", value)
         loading = false
+        // This app words the headline; core's diagnostic stays behind it for the disclosure.
         error =
             PageError(
-                value.message
-                    ?: appContext.getString(
+                DisplayError(
+                    appContext.getString(
                         if (rows.isEmpty()) R.string.library_load_failed else R.string.library_load_more_failed,
                     ),
+                    value.diagnosticDetail,
+                ),
                 ::retry,
             )
     }

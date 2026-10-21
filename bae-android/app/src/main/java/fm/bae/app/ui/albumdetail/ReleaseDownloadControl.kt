@@ -33,17 +33,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorLines
+import fm.bae.app.DisplayError
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.localizedLine
+import fm.bae.app.displayError
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.downloads.DownloadProgressBytes
 import fm.bae.app.ui.downloads.WaitingToDownloadText
@@ -87,7 +89,7 @@ internal fun ReleaseDownloadControl(
         ) ?: return
     val scope = rememberCoroutineScope()
     var unpinning by remember(release.id) { mutableStateOf(false) }
-    var unpinError by remember(release.id) { mutableStateOf<String?>(null) }
+    var unpinError by remember(release.id) { mutableStateOf<DisplayError?>(null) }
 
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.compact)) {
         DownloadControlBody(
@@ -99,7 +101,7 @@ internal fun ReleaseDownloadControl(
                     performBridgeAction(
                         logger = logger,
                         operation = "queue release download",
-                        errors = LocaleErrorLines(context),
+                        errors = LocaleErrorDisplays(context),
                         showError = session.configStore::showError,
                     ) {
                         session.appHandle.queuePinReleases(listOf(release.id))
@@ -114,19 +116,19 @@ internal fun ReleaseDownloadControl(
                 scope.launch { unpinError = runUnpin(session, release.id, context) { unpinning = false } }
             },
         )
-        unpinError?.let { message ->
-            ErrorText(message)
+        unpinError?.let { shown ->
+            ErrorDetailDisclosure(shown)
         }
     }
 }
 
-/** Unpins [releaseId] and returns the error line to show, or null on success; [onSettled] runs either way. */
+/** Unpins [releaseId] and returns the error to show, or null on success; [onSettled] runs either way. */
 private suspend fun runUnpin(
     session: OpenLibrary,
     releaseId: String,
     context: Context,
     onSettled: () -> Unit,
-): String? =
+): DisplayError? =
     try {
         session.appHandle.unpinRelease(releaseId)
         null
@@ -134,10 +136,10 @@ private suspend fun runUnpin(
         throw e
     } catch (e: BridgeException) {
         logger.error("unpinRelease failed for $releaseId", e)
-        context.localizedLine(e)
+        context.displayError(e)
     } catch (e: Exception) {
         logger.error("unpinRelease failed for $releaseId", e)
-        e.message ?: e::class.java.simpleName
+        DisplayError(e.message ?: e::class.java.simpleName)
     } finally {
         onSettled()
     }

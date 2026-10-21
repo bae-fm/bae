@@ -23,14 +23,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorLines
+import fm.bae.app.DisplayError
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorText
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.PersonNameField
 import fm.bae.app.ui.components.PrimaryButton
 import kotlinx.coroutines.launch
@@ -68,12 +69,12 @@ internal fun DeviceResetDialog(
 @Composable
 internal fun ResetOfferedScreen(
     libraryId: String,
-    message: String,
+    error: DisplayError,
     onReset: (BridgeDeviceReset) -> Unit,
 ) {
     val context = LocalContext.current
     var reset by remember(libraryId) { mutableStateOf<BridgeDeviceReset?>(null) }
-    LifecycleMessage(message) {
+    LifecycleError(error) {
         PrimaryButton(onClick = { reset = AppSessionHolder.prepareDeviceReset(context, libraryId) }) {
             Text(stringResource(R.string.reset_device))
         }
@@ -97,7 +98,7 @@ internal fun ResetOfferedScreen(
  */
 @Composable
 internal fun ResetUnfinishedScreen(
-    error: String?,
+    error: DisplayError?,
     onFinish: () -> Unit,
     onLeave: () -> Unit,
 ) {
@@ -106,7 +107,7 @@ internal fun ResetUnfinishedScreen(
     LifecycleMessage(
         context.coreString(bridgeErrorCategoryKey(BridgeErrorCategory.ReplacementUnfinished(BridgeReplacedBy.RESET))),
     ) {
-        error?.let { ErrorText(it) }
+        error?.let { ErrorDetailDisclosure(it) }
         PrimaryButton(onClick = onFinish) { Text(stringResource(R.string.finish_reset)) }
         TextButton(onClick = onLeave) { Text(stringResource(R.string.cancel)) }
     }
@@ -116,17 +117,17 @@ internal fun ResetUnfinishedScreen(
 @Composable
 internal fun ProfileRequiredScreen(
     session: OpenLibrary,
-    message: String,
+    failure: DisplayError,
     onCreated: () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<String?>(message) }
+    var error by remember { mutableStateOf<DisplayError?>(failure) }
     var saving by remember { mutableStateOf(false) }
     LifecycleMessage(stringResource(R.string.profile_required_title)) {
         PersonNameField(name) { name = it }
-        error?.let { ErrorText(it) }
+        error?.let { ErrorDetailDisclosure(it) }
         PrimaryButton(
             onClick = {
                 saving = true
@@ -135,7 +136,7 @@ internal fun ProfileRequiredScreen(
                     performBridgeAction(
                         logger = logger,
                         operation = "create the person's profile",
-                        errors = LocaleErrorLines(context),
+                        errors = LocaleErrorDisplays(context),
                         showError = { error = it },
                     ) {
                         session.appHandle.createProfile(name.trim())
@@ -155,10 +156,10 @@ internal fun ProfileRequiredScreen(
 /** A library left its store, but deleting this device's files for it failed; finishing is retried here. */
 @Composable
 internal fun RemovalIncompleteScreen(
-    message: String,
+    error: DisplayError,
     onRetry: () -> Unit,
 ) {
-    LifecycleMessage(message) {
+    LifecycleError(error) {
         PrimaryButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
     }
 }
@@ -183,10 +184,29 @@ private fun LifecycleMessage(
     }
 }
 
+/** A failure in place of the message, with its details, above what the screen offers. */
+@Composable
+private fun LifecycleError(
+    error: DisplayError,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(ThemeSpace.page),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.group, Alignment.CenterVertically),
+    ) {
+        ErrorDetailDisclosure(error = error, lineColor = MaterialTheme.colorScheme.onSurfaceVariant)
+        content()
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun RemovalIncompleteScreenPreview() {
     BaeTheme {
-        RemovalIncompleteScreen(message = "Couldn't delete this library's settings.", onRetry = {})
+        RemovalIncompleteScreen(
+            error = DisplayError("Couldn't delete this library's settings.", "permission denied"),
+            onRetry = {},
+        )
     }
 }
