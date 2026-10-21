@@ -21,7 +21,9 @@
     <string name="sort_descending">降順</string>
     <string name="library_empty_albums">アルバムがまだありません</string>
     <string name="library_load_failed">ライブラリを読み込めませんでした。</string>
-    <string name="library_load_more_failed">これ以上アルバムを読み込めませんでした。</string>
+    <string name="library_load_more_albums_failed">これ以上アルバムを読み込めませんでした。</string>
+    <string name="library_load_more_artists_failed">これ以上アーティストを読み込めませんでした。</string>
+    <string name="library_load_more_composers_failed">これ以上作曲者を読み込めませんでした。</string>
     <string name="library">ライブラリ</string>
     <string name="album_not_in_library">このアルバムはもうライブラリにありません。</string>
     <string name="shuffle">シャッフル</string>

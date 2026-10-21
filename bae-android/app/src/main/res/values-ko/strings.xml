@@ -21,7 +21,9 @@
     <string name="sort_descending">내림차순</string>
     <string name="library_empty_albums">아직 앨범이 없습니다</string>
     <string name="library_load_failed">라이브러리를 불러올 수 없습니다.</string>
-    <string name="library_load_more_failed">앨범을 더 불러올 수 없습니다.</string>
+    <string name="library_load_more_albums_failed">앨범을 더 불러올 수 없습니다.</string>
+    <string name="library_load_more_artists_failed">아티스트를 더 불러올 수 없습니다.</string>
+    <string name="library_load_more_composers_failed">작곡가를 더 불러올 수 없습니다.</string>
     <string name="library">보관함</string>
     <string name="album_not_in_library">이 앨범은 더 이상 보관함에 없습니다.</string>
     <string name="shuffle">셔플</string>

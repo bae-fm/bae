@@ -1,6 +1,7 @@
 package fm.bae.app.data
 
 import android.content.Context
+import androidx.annotation.StringRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -56,6 +57,8 @@ internal interface BrowseRowsQuery<Row> {
 internal abstract class WindowedBrowserPageStore<Parameter, Row>(
     private val appContext: Context,
     protected val scope: CoroutineScope,
+    /** The headline for a later page that failed to load, naming what this list holds. */
+    @StringRes private val loadMoreFailed: Int,
 ) {
     val rows = mutableStateMapOf<Int, Row>()
     var sections by mutableStateOf(emptyList<BridgeLibraryBrowseSection>())
@@ -183,7 +186,7 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
             PageError(
                 DisplayError(
                     appContext.getString(
-                        if (rows.isEmpty()) R.string.library_load_failed else R.string.library_load_more_failed,
+                        if (rows.isEmpty()) R.string.library_load_failed else loadMoreFailed,
                     ),
                     value.diagnosticDetail,
                 ),
@@ -214,7 +217,11 @@ internal class AlbumPageStore(
     private val library: Library,
     appContext: Context,
     scope: CoroutineScope,
-) : WindowedBrowserPageStore<AlbumBrowseParameters, BridgeAlbum>(appContext, scope) {
+) : WindowedBrowserPageStore<AlbumBrowseParameters, BridgeAlbum>(
+        appContext,
+        scope,
+        R.string.library_load_more_albums_failed,
+    ) {
     fun activate(
         criterion: BridgeSortCriterion,
         groupByArtist: Boolean = false,
@@ -232,7 +239,11 @@ internal class ArtistPageStore(
     private val library: Library,
     appContext: Context,
     scope: CoroutineScope,
-) : WindowedBrowserPageStore<BridgeArtistSortCriterion, BridgeArtistSummary>(appContext, scope) {
+) : WindowedBrowserPageStore<BridgeArtistSortCriterion, BridgeArtistSummary>(
+        appContext,
+        scope,
+        R.string.library_load_more_artists_failed,
+    ) {
     override fun open(parameter: BridgeArtistSortCriterion): BrowseRowsQuery<BridgeArtistSummary> =
         SnapshotRowsQuery(library.artistBrowse(parameter)) { snapshot ->
             BrowseRows(snapshot.windows.map { it.window to it.rows }, snapshot.totalCount.toInt())
@@ -243,7 +254,11 @@ internal class ComposerPageStore(
     private val library: Library,
     appContext: Context,
     scope: CoroutineScope,
-) : WindowedBrowserPageStore<BridgeComposerSortCriterion, BridgeComposerSummary>(appContext, scope) {
+) : WindowedBrowserPageStore<BridgeComposerSortCriterion, BridgeComposerSummary>(
+        appContext,
+        scope,
+        R.string.library_load_more_composers_failed,
+    ) {
     override fun open(parameter: BridgeComposerSortCriterion): BrowseRowsQuery<BridgeComposerSummary> =
         SnapshotRowsQuery(library.composerBrowse(parameter)) { snapshot ->
             BrowseRows(snapshot.windows.map { it.window to it.rows }, snapshot.totalCount.toInt())

@@ -21,7 +21,9 @@
     <string name="sort_descending">Laskeva</string>
     <string name="library_empty_albums">Ei vielä albumeita</string>
     <string name="library_load_failed">Kirjastoasi ei voitu ladata.</string>
-    <string name="library_load_more_failed">Lisää albumeita ei voitu ladata.</string>
+    <string name="library_load_more_albums_failed">Lisää albumeita ei voitu ladata.</string>
+    <string name="library_load_more_artists_failed">Lisää esittäjiä ei voitu ladata.</string>
+    <string name="library_load_more_composers_failed">Lisää säveltäjiä ei voitu ladata.</string>
     <string name="library">Kirjasto</string>
     <string name="album_not_in_library">Tämä albumi ei ole enää kirjastossasi.</string>
     <string name="shuffle">Sekoita</string>

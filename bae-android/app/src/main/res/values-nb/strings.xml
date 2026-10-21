@@ -21,7 +21,9 @@
     <string name="sort_descending">Synkende</string>
     <string name="library_empty_albums">Ingen album ennå</string>
     <string name="library_load_failed">Biblioteket ditt kunne ikke lastes inn.</string>
-    <string name="library_load_more_failed">Kunne ikke laste inn flere album.</string>
+    <string name="library_load_more_albums_failed">Kunne ikke laste inn flere album.</string>
+    <string name="library_load_more_artists_failed">Kunne ikke laste inn flere artister.</string>
+    <string name="library_load_more_composers_failed">Kunne ikke laste inn flere komponister.</string>
     <string name="library">Bibliotek</string>
     <string name="album_not_in_library">Dette albumet er ikke lenger i biblioteket ditt.</string>
     <string name="shuffle">Tilfeldig</string>

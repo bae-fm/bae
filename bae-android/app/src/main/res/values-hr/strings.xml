@@ -21,7 +21,9 @@
     <string name="sort_descending">Silazno</string>
     <string name="library_empty_albums">Još nema albuma</string>
     <string name="library_load_failed">Nije moguće učitati vašu fonoteku.</string>
-    <string name="library_load_more_failed">Nije moguće učitati više albuma.</string>
+    <string name="library_load_more_albums_failed">Nije moguće učitati više albuma.</string>
+    <string name="library_load_more_artists_failed">Nije moguće učitati više izvođača.</string>
+    <string name="library_load_more_composers_failed">Nije moguće učitati više skladatelja.</string>
     <string name="library">Biblioteka</string>
     <string name="album_not_in_library">Ovaj album više nije u vašoj biblioteci.</string>
     <string name="shuffle">Naizmjenično</string>

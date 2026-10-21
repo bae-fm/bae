@@ -36,7 +36,9 @@
     <string name="sort_descending">Descending</string>
     <string name="library_empty_albums">No albums yet</string>
     <string name="library_load_failed">Couldn\'t load your library.</string>
-    <string name="library_load_more_failed">Couldn\'t load more albums.</string>
+    <string name="library_load_more_albums_failed">Couldn\'t load more albums.</string>
+    <string name="library_load_more_artists_failed">Couldn\'t load more artists.</string>
+    <string name="library_load_more_composers_failed">Couldn\'t load more composers.</string>
     <!-- The library as a place: the home screen's title, the back button to it, and the car's browse root. -->
     <string name="library">Library</string>
 

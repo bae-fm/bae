@@ -21,7 +21,9 @@
     <string name="sort_descending">Decrescente</string>
     <string name="library_empty_albums">Ancora nessun album</string>
     <string name="library_load_failed">Impossibile caricare la tua libreria.</string>
-    <string name="library_load_more_failed">Impossibile caricare altri album.</string>
+    <string name="library_load_more_albums_failed">Impossibile caricare altri album.</string>
+    <string name="library_load_more_artists_failed">Impossibile caricare altri artisti.</string>
+    <string name="library_load_more_composers_failed">Impossibile caricare altri compositori.</string>
     <string name="library">Libreria</string>
     <string name="album_not_in_library">Questo album non è più nella tua libreria.</string>
     <string name="shuffle">Casuale</string>

@@ -21,7 +21,9 @@
     <string name="sort_descending">Csökkenő</string>
     <string name="library_empty_albums">Még nincs album</string>
     <string name="library_load_failed">A könyvtáradat nem sikerült betölteni.</string>
-    <string name="library_load_more_failed">Nem sikerült több albumot betölteni.</string>
+    <string name="library_load_more_albums_failed">Nem sikerült több albumot betölteni.</string>
+    <string name="library_load_more_artists_failed">Nem sikerült több előadót betölteni.</string>
+    <string name="library_load_more_composers_failed">Nem sikerült több zeneszerzőt betölteni.</string>
     <string name="library">Könyvtár</string>
     <string name="album_not_in_library">Ez az album már nincs a könyvtáradban.</string>
     <string name="shuffle">Keverés</string>

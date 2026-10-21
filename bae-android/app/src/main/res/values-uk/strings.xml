@@ -21,7 +21,9 @@
     <string name="sort_descending">За спаданням</string>
     <string name="library_empty_albums">Поки немає альбомів</string>
     <string name="library_load_failed">Не вдалося завантажити вашу бібліотеку.</string>
-    <string name="library_load_more_failed">Не вдалося завантажити більше альбомів.</string>
+    <string name="library_load_more_albums_failed">Не вдалося завантажити більше альбомів.</string>
+    <string name="library_load_more_artists_failed">Не вдалося завантажити більше виконавців.</string>
+    <string name="library_load_more_composers_failed">Не вдалося завантажити більше композиторів.</string>
     <string name="library">Фонотека</string>
     <string name="album_not_in_library">Цього альбому більше немає у вашій фонотеці.</string>
     <string name="shuffle">Перемішати</string>

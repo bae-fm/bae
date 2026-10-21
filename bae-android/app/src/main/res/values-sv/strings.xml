@@ -21,7 +21,9 @@
     <string name="sort_descending">Fallande</string>
     <string name="library_empty_albums">Inga album än</string>
     <string name="library_load_failed">Ditt bibliotek kunde inte läsas in.</string>
-    <string name="library_load_more_failed">Fler album kunde inte läsas in.</string>
+    <string name="library_load_more_albums_failed">Fler album kunde inte läsas in.</string>
+    <string name="library_load_more_artists_failed">Fler artister kunde inte läsas in.</string>
+    <string name="library_load_more_composers_failed">Fler kompositörer kunde inte läsas in.</string>
     <string name="library">Bibliotek</string>
     <string name="album_not_in_library">Det här albumet finns inte längre i ditt bibliotek.</string>
     <string name="shuffle">Blanda</string>

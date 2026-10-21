@@ -21,7 +21,9 @@
     <string name="sort_descending">تنازلي</string>
     <string name="library_empty_albums">لا توجد ألبومات بعد</string>
     <string name="library_load_failed">تعذّر تحميل مكتبتك.</string>
-    <string name="library_load_more_failed">تعذّر تحميل المزيد من الألبومات.</string>
+    <string name="library_load_more_albums_failed">تعذّر تحميل المزيد من الألبومات.</string>
+    <string name="library_load_more_artists_failed">تعذّر تحميل المزيد من الفنانين.</string>
+    <string name="library_load_more_composers_failed">تعذّر تحميل المزيد من المؤلفين.</string>
     <string name="library">المكتبة</string>
     <string name="album_not_in_library">لم يعد هذا الألبوم في مكتبتك.</string>
     <string name="shuffle">تشغيل عشوائي</string>

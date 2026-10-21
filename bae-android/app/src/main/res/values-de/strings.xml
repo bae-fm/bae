@@ -21,7 +21,9 @@
     <string name="sort_descending">Absteigend</string>
     <string name="library_empty_albums">Noch keine Alben</string>
     <string name="library_load_failed">Deine Bibliothek konnte nicht geladen werden.</string>
-    <string name="library_load_more_failed">Weitere Alben konnten nicht geladen werden.</string>
+    <string name="library_load_more_albums_failed">Weitere Alben konnten nicht geladen werden.</string>
+    <string name="library_load_more_artists_failed">Weitere Künstler konnten nicht geladen werden.</string>
+    <string name="library_load_more_composers_failed">Weitere Komponisten konnten nicht geladen werden.</string>
     <string name="library">Mediathek</string>
     <string name="album_not_in_library">Dieses Album ist nicht mehr in deiner Mediathek.</string>
     <string name="shuffle">Zufallswiedergabe</string>

@@ -1,6 +1,7 @@
 package fm.bae.app.data
 
 import android.os.Looper
+import fm.bae.app.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -14,6 +15,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeErrorCategory
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
 import uniffi.bae_bridge.BridgeLibraryPageWindow
 
@@ -95,18 +98,48 @@ class BrowserPageStoresTest {
         assertEquals("new", store.rows[0])
     }
 
+    @Test
+    fun aLaterPageThatFailsNamesWhatTheListHolds() {
+        val store =
+            RecordingPageStore(
+                CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+                loadMoreFailed = R.string.library_load_more_artists_failed,
+            )
+        store.activate("all")
+        val query = store.queries.single()
+        query.emit(window(0), "first")
+        shadowOf(Looper.getMainLooper()).idle()
+
+        query.fail(BridgeException.Diagnostic(BridgeErrorCategory.Database, "read failed"))
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals("Couldn't load more artists.", store.error?.error?.line)
+    }
+
+    @Test
+    fun aFirstPageThatFailsSaysTheLibraryDidntLoad() {
+        val store = RecordingPageStore(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+        store.activate("all")
+
+        store.queries.single().fail(BridgeException.Diagnostic(BridgeErrorCategory.Database, "read failed"))
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals("Couldn't load your library.", store.error?.error?.line)
+    }
+
     private fun window(offset: Int) = BridgeLibraryPageWindow(offset.toULong(), BROWSER_PAGE_SIZE.toULong())
 
     private class RecordingPageStore(
         scope: CoroutineScope,
-    ) : WindowedBrowserPageStore<String, String>(RuntimeEnvironment.getApplication(), scope) {
+        loadMoreFailed: Int = R.string.library_load_more_albums_failed,
+    ) : WindowedBrowserPageStore<String, String>(RuntimeEnvironment.getApplication(), scope, loadMoreFailed) {
         val queries = mutableListOf<RecordingQuery>()
 
         override fun open(parameter: String): BrowseRowsQuery<String> = RecordingQuery().also(queries::add)
     }
 
     private class RecordingQuery : BrowseRowsQuery<String> {
-        private val values = Channel<BrowseRows<String>>(Channel.UNLIMITED)
+        private val values = Channel<Result<BrowseRows<String>>>(Channel.UNLIMITED)
         var windows = emptyList<BridgeLibraryPageWindow>()
             private set
         var cancelled = false
@@ -116,7 +149,7 @@ class BrowserPageStoresTest {
             this.windows = windows
         }
 
-        override suspend fun next(): BrowseRows<String> = values.receive()
+        override suspend fun next(): BrowseRows<String> = values.receive().getOrThrow()
 
         override suspend fun cancel() {
             cancelled = true
@@ -127,7 +160,11 @@ class BrowserPageStoresTest {
             row: String,
             sections: List<BridgeLibraryBrowseSection> = emptyList(),
         ) {
-            values.trySend(BrowseRows(listOf(window to listOf(row)), totalCount = 500, sections = sections))
+            values.trySend(Result.success(BrowseRows(listOf(window to listOf(row)), totalCount = 500, sections = sections)))
+        }
+
+        fun fail(error: BridgeException) {
+            values.trySend(Result.failure(error))
         }
     }
 }

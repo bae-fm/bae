@@ -21,7 +21,9 @@
     <string name="sort_descending">Φθίνουσα</string>
     <string name="library_empty_albums">Κανένα άλμπουμ ακόμη</string>
     <string name="library_load_failed">Δεν ήταν δυνατή η φόρτωση της βιβλιοθήκης σας.</string>
-    <string name="library_load_more_failed">Δεν ήταν δυνατή η φόρτωση περισσότερων άλμπουμ.</string>
+    <string name="library_load_more_albums_failed">Δεν ήταν δυνατή η φόρτωση περισσότερων άλμπουμ.</string>
+    <string name="library_load_more_artists_failed">Δεν ήταν δυνατή η φόρτωση περισσότερων καλλιτεχνών.</string>
+    <string name="library_load_more_composers_failed">Δεν ήταν δυνατή η φόρτωση περισσότερων συνθετών.</string>
     <string name="library">Βιβλιοθήκη</string>
     <string name="album_not_in_library">Αυτό το άλμπουμ δεν βρίσκεται πλέον στη βιβλιοθήκη σας.</string>
     <string name="shuffle">Τυχαία σειρά</string>

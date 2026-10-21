@@ -20,8 +20,10 @@
     <string name="sort_ascending">遞增</string>
     <string name="sort_descending">遞減</string>
     <string name="library_empty_albums">尚無專輯</string>
-    <string name="library_load_failed">資料庫 · 錯誤</string>
-    <string name="library_load_more_failed">專輯 · 錯誤</string>
+    <string name="library_load_failed">無法載入你的資料庫。</string>
+    <string name="library_load_more_albums_failed">無法載入更多專輯。</string>
+    <string name="library_load_more_artists_failed">無法載入更多藝人。</string>
+    <string name="library_load_more_composers_failed">無法載入更多作曲者。</string>
     <string name="library">資料庫</string>
     <string name="album_not_in_library">此專輯已不在你的資料庫中。</string>
     <string name="shuffle">隨機播放</string>

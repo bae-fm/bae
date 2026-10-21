@@ -21,7 +21,9 @@
     <string name="sort_descending">Faldende</string>
     <string name="library_empty_albums">Ingen album endnu</string>
     <string name="library_load_failed">Dit bibliotek kunne ikke indlæses.</string>
-    <string name="library_load_more_failed">Der kunne ikke indlæses flere album.</string>
+    <string name="library_load_more_albums_failed">Der kunne ikke indlæses flere album.</string>
+    <string name="library_load_more_artists_failed">Der kunne ikke indlæses flere kunstnere.</string>
+    <string name="library_load_more_composers_failed">Der kunne ikke indlæses flere komponister.</string>
     <string name="library">Bibliotek</string>
     <string name="album_not_in_library">Dette album er ikke længere i dit bibliotek.</string>
     <string name="shuffle">Bland</string>

@@ -21,7 +21,9 @@
     <string name="sort_descending">Descrescător</string>
     <string name="library_empty_albums">Încă niciun album</string>
     <string name="library_load_failed">Biblioteca ta nu a putut fi încărcată.</string>
-    <string name="library_load_more_failed">Nu s-au putut încărca mai multe albume.</string>
+    <string name="library_load_more_albums_failed">Nu s-au putut încărca mai multe albume.</string>
+    <string name="library_load_more_artists_failed">Nu s-au putut încărca mai mulți artiști.</string>
+    <string name="library_load_more_composers_failed">Nu s-au putut încărca mai mulți compozitori.</string>
     <string name="library">Bibliotecă</string>
     <string name="album_not_in_library">Acest album nu mai este în biblioteca ta.</string>
     <string name="shuffle">Aleatoriu</string>

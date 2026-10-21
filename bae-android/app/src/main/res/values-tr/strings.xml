@@ -21,7 +21,9 @@
     <string name="sort_descending">Azalan</string>
     <string name="library_empty_albums">Henüz albüm yok</string>
     <string name="library_load_failed">Kitaplığınız yüklenemedi.</string>
-    <string name="library_load_more_failed">Daha fazla albüm yüklenemedi.</string>
+    <string name="library_load_more_albums_failed">Daha fazla albüm yüklenemedi.</string>
+    <string name="library_load_more_artists_failed">Daha fazla sanatçı yüklenemedi.</string>
+    <string name="library_load_more_composers_failed">Daha fazla besteci yüklenemedi.</string>
     <string name="library">Kitaplık</string>
     <string name="album_not_in_library">Bu albüm artık kitaplığınızda değil.</string>
     <string name="shuffle">Karıştır</string>
