@@ -54,7 +54,7 @@ All commands run from the repo root.
 
     xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Release build
 
-The Rust side is always built with `--release` by `build-macos.sh`. The Debug/Release toggle in Xcode only affects Swift compilation.
+The Xcode build runs `build-macos.sh` for the same configuration: Debug builds the Rust bridge in debug with the `test-keyring` and `dev-reset` features, Release builds it with `--release` and neither.
 
 ## Formatting
 
@@ -63,3 +63,17 @@ Swift code is formatted with [swift-format](https://github.com/swiftlang/swift-f
 ## Data
 
 The app discovers libraries from `~/.bae/libraries/`. Run the app first to create or import a library if you don't have one.
+
+## Resetting the dev library
+
+`scripts/reset-bae.py` wipes this Mac's bae state and recreates one library from
+`~/.config/bae-dev/profile.toml` (mode 600, never committed; the script's
+docstring lists its fields). It quits the running app, shows the plan, and on
+confirmation launches the Debug app from `bae-macos/run.sh` with
+`--dev-reset <profile>`. Before any library opens, the app removes every library
+the way Remove Library does, deletes their saved restore codes, deletes
+`~/.bae`, then creates the profile's library and sets its Discogs token,
+metadata preferences and S3 storage. Any failure stops the reset and shows on
+the welcome screen; Console logs each step under the `DevReset` category. The
+storage prefix's existing objects stay: coven offers bae no way to list or
+delete them. Release builds don't contain `--dev-reset`.
