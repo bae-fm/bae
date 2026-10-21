@@ -111,6 +111,30 @@ class LibraryBrowseTreeTest {
             assertEquals(1, handle.albumBrowseSubscriptions.size)
         }
 
+    /** The car gets exactly the page it asks for, however large, never one cut down to a cap. */
+    @Test
+    fun aLargePageIsReadAsAsked() =
+        runBlocking {
+            val handle = FakeAppHandle(albumPages = { _, _ -> listOf(BridgeFixtures.album(id = "album-page")) })
+            tree(handle).children(BrowseId.Albums.mediaId, 1, 800)!!
+
+            assertEquals(listOf(800uL to 800uL), handle.albumPageWindows)
+        }
+
+    /** A request that names no page is answered as a bad value, not read as page 0 or one item. */
+    @Test
+    fun aRequestNamingNoPageIsRefused() =
+        runBlocking {
+            val handle = FakeAppHandle()
+            val tree = tree(handle)
+
+            assertNull(tree.children(BrowseId.Albums.mediaId, -1, 20))
+            assertNull(tree.children(BrowseId.Albums.mediaId, 0, 0))
+            assertNull(tree.search("query", 0, 0))
+            assertTrue(handle.albumPageWindows.isEmpty())
+            tree.close()
+        }
+
     @Test
     fun requestChangesDoNotNotifyButDatabaseSnapshotsDo() =
         runBlocking {
@@ -291,7 +315,7 @@ class LibraryBrowseTreeTest {
 
             assertEquals(
                 BrowseId.Album("album-result").mediaId,
-                tree.search("query", 0, 20).single().mediaId,
+                tree.search("query", 0, 20)!!.single().mediaId,
             )
         }
 
@@ -334,7 +358,7 @@ class LibraryBrowseTreeTest {
             assertEquals(listOf(2, 1), notifications)
             assertEquals(
                 BrowseId.Album("recovered").mediaId,
-                tree.search("second", 0, 20).single().mediaId,
+                tree.search("second", 0, 20)!!.single().mediaId,
             )
             tree.close()
             assertTrue(handle.searchSubscriptions.single().closed)

@@ -222,30 +222,36 @@ internal class CollectionProjection<Row : Any, Snapshot : Any>(
     }
 }
 
+/**
+ * A controller's page of a browse list, exactly as it asked: [pageSize] items
+ * from item `page × pageSize`. Callers answer a request that names no page
+ * ([isPage] false) as a bad value rather than reading some other page.
+ */
 internal object BrowsePaging {
-    private const val MAX_PAGE_SIZE = 500
+    /** Whether [page] and [pageSize] name a page: one from 0, of at least one item. */
+    fun isPage(
+        page: Int,
+        pageSize: Int,
+    ): Boolean = page >= 0 && pageSize >= 1
 
     fun window(
         page: Int,
         pageSize: Int,
-    ) = BridgeLibraryPageWindow(offsetOf(page, pageSize), limitOf(pageSize))
+    ) = BridgeLibraryPageWindow(offsetOf(page, pageSize), pageSize.toULong())
 
-    fun limitOf(pageSize: Int): ULong = pageSize.coerceIn(1, MAX_PAGE_SIZE).toULong()
-
-    fun offsetOf(
+    private fun offsetOf(
         page: Int,
         pageSize: Int,
-    ): ULong = (page.toLong().coerceAtLeast(0) * pageSize.toLong().coerceAtLeast(0)).toULong()
+    ): ULong = page.toULong() * pageSize.toULong()
 
     fun paginate(
         items: List<MediaItem>,
         page: Int,
         pageSize: Int,
     ): List<MediaItem> {
-        val limit = pageSize.coerceIn(1, MAX_PAGE_SIZE)
-        val start = page.toLong().coerceAtLeast(0) * pageSize.toLong().coerceAtLeast(0)
-        if (start >= items.size) return emptyList()
-        return items.drop(start.toInt()).take(limit)
+        val start = offsetOf(page, pageSize)
+        if (start >= items.size.toULong()) return emptyList()
+        return items.drop(start.toInt()).take(pageSize)
     }
 }
 

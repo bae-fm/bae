@@ -241,12 +241,17 @@ internal class LibraryBrowseTree<Owner : Any>(
         CollectionProjection<uniffi.bae_bridge.BridgeComposerSummary, BridgeComposerBrowseSnapshot>? = null
     private var closed = false
 
+    /** [parentId]'s children on the page asked for, or null for a parent or page that names nothing. */
     suspend fun children(
         parentId: String,
         page: Int,
         pageSize: Int,
     ): List<MediaItem>? {
         checkOpen()
+        if (!BrowsePaging.isPage(page, pageSize)) {
+            logger.warning("a controller asked for page $page of size $pageSize of $parentId, which names no page")
+            return null
+        }
         return when (val id = BrowseId.parse(parentId)) {
             null -> {
                 null
@@ -331,12 +336,17 @@ internal class LibraryBrowseTree<Owner : Any>(
         }
     }
 
+    /** The albums matching [query] on the page asked for, or null for a page that names nothing. */
     suspend fun search(
         query: String,
         page: Int,
         pageSize: Int,
-    ): List<MediaItem> {
+    ): List<MediaItem>? {
         checkOpen()
+        if (!BrowsePaging.isPage(page, pageSize)) {
+            logger.warning("a controller asked for search page $page of size $pageSize, which names no page")
+            return null
+        }
         val search = synchronized(lock) { searchesByOwner.values.firstOrNull { it.query == query } }
         val results = search?.results() ?: spokenSearches.value(query)
         return BrowsePaging.paginate(results.albums.map { nodes.album(it.id, it.title, it.cover) }, page, pageSize)
