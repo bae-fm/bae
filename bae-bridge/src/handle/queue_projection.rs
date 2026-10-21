@@ -363,7 +363,6 @@ impl crate::types::BridgeSyncStatusSnapshot {
         let indicator = crate::types::BridgeSyncIndicator::from_core(snapshot.indicator());
         let error = snapshot.failure();
         let connected = snapshot.connected();
-        let syncing = snapshot.syncing();
         let bae_core::library::SyncStatusSnapshot {
             status: _,
             pending,
@@ -373,7 +372,6 @@ impl crate::types::BridgeSyncStatusSnapshot {
         Self {
             indicator,
             connected,
-            syncing,
             error: error.map(crate::types::BridgeError::from_core),
             pending: crate::types::BridgePendingRecords::from_core(pending),
         }

@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.Looper
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
-import fm.bae.app.data.ArtworkLoadingStore
 import fm.bae.app.data.CastStore
 import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.DownloadStore
@@ -12,6 +11,7 @@ import fm.bae.app.data.LibraryStore
 import fm.bae.app.data.LibraryTransferStores
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
+import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.playback.BaeCorePlayer
 import kotlinx.coroutines.CancellationException
@@ -561,19 +561,22 @@ object AppSessionHolder {
             library = LibraryStore(),
             config = configStore,
             syncStatus = SyncStatusStore(),
+            syncActivity =
+                SyncActivityStore(
+                    cancelArtworkAction = {
+                        appScope.launch {
+                            performBridgeAction(
+                                logger = logger,
+                                operation = "cancel the artwork download",
+                                errors = LocaleErrorLines(appContext),
+                                showError = configStore::showError,
+                            ) { handle.cancelEagerCacheFill() }
+                        }
+                    },
+                    retryNowAction = handle::retryNow,
+                ),
             transfers =
                 LibraryTransferStores(
-                    artworkLoading =
-                        ArtworkLoadingStore {
-                            appScope.launch {
-                                performBridgeAction(
-                                    logger = logger,
-                                    operation = "cancel the artwork download",
-                                    errors = LocaleErrorLines(appContext),
-                                    showError = configStore::showError,
-                                ) { handle.cancelEagerCacheFill() }
-                            }
-                        },
                     downloads = DownloadStore(initialDownloads),
                     outbox = OutboxStore(initialOutbox),
                 ),

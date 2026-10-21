@@ -307,10 +307,6 @@ pub struct BridgePlaybackContext {
 pub struct BridgeSyncStatusSnapshot {
     pub error: Option<BridgeError>,
     pub connected: bool,
-    /// A sync pass is in progress (or the first one is queued). False once it
-    /// finishes, fails, or can't reach storage, while the loop waits for the
-    /// next one.
-    pub syncing: bool,
     pub pending: BridgePendingRecords,
     pub indicator: BridgeSyncIndicator,
 }
@@ -326,22 +322,6 @@ mirror_struct! {
     BridgeEagerCacheFillProgress = coven::PinProgress,
     from_core: pub(crate) fn,
     fields: { files_completed, files_total, bytes_cached, bytes_total },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeEagerCacheFillStatus {
-    Idle,
-    Downloading {
-        progress: BridgeEagerCacheFillProgress,
-    },
-    Cancelled {
-        progress: BridgeEagerCacheFillProgress,
-    },
-}
-mirror_enum! {
-    BridgeEagerCacheFillStatus = coven::EagerCacheFillStatus,
-    from_core: pub(crate) fn,
-    variants: { Idle, Downloading(progress: (BridgeEagerCacheFillProgress)), Cancelled(progress: (BridgeEagerCacheFillProgress)) },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]

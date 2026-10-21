@@ -276,12 +276,6 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         NoopLiveSubscription()
     }
 
-    override func subscribeEagerCacheFillStatus(
-        callback _: any EagerCacheFillStatusCallback
-    ) -> LiveSubscription {
-        NoopLiveSubscription()
-    }
-
     override func subscribeSyncActivity(
         callback _: any SyncActivityCallback
     ) -> LiveSubscription {

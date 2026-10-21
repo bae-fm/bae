@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.countLabelsText
 import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.BaeTheme
@@ -126,7 +127,7 @@ private fun DownloadsList(
     val context = LocalContext.current
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
-            val summary = downloadQueueSummaryText(context, snapshot)
+            val summary = context.countLabelsText(snapshot.summaryParts)
             if (summary.isNotEmpty()) {
                 Text(
                     text = summary,

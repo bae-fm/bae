@@ -4,7 +4,6 @@ import android.os.Looper
 import androidx.media3.common.Player
 import fm.bae.app.BridgeFixtures
 import fm.bae.app.OpenLibrary
-import fm.bae.app.data.ArtworkLoadingStore
 import fm.bae.app.data.CastStore
 import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.DownloadStore
@@ -12,6 +11,7 @@ import fm.bae.app.data.LibraryStore
 import fm.bae.app.data.LibraryTransferStores
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
+import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -61,7 +61,6 @@ import uniffi.bae_bridge.ComposerBrowseSubscription
 import uniffi.bae_bridge.ComposerDetailSubscription
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCallback
-import uniffi.bae_bridge.EagerCacheFillStatusCallback
 import uniffi.bae_bridge.LibrarySearchSubscription
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.NoHandle
@@ -69,6 +68,7 @@ import uniffi.bae_bridge.OutboxCallback
 import uniffi.bae_bridge.PlaybackValuesCallback
 import uniffi.bae_bridge.QueueCallback
 import uniffi.bae_bridge.ReleaseDetailSubscription
+import uniffi.bae_bridge.SyncActivityCallback
 import uniffi.bae_bridge.SyncStatusCallback
 import uniffi.bae_bridge.UiEventCallback
 import uniffi.bae_bridge.WorkDetailSubscription
@@ -149,9 +149,9 @@ class PlaybackServiceTest {
                     library = LibraryStore(),
                     config = ConfigStore(BridgeFixtures.config()),
                     syncStatus = SyncStatusStore(),
+                    syncActivity = SyncActivityStore({}, {}),
                     transfers =
                         LibraryTransferStores(
-                            artworkLoading = ArtworkLoadingStore {},
                             downloads = DownloadStore(BridgeFixtures.downloadSnapshot()),
                             outbox = OutboxStore(BridgeFixtures.outboxSnapshot()),
                         ),
@@ -225,7 +225,7 @@ internal class FakeAppHandle(
 
     override fun subscribeSyncStatus(callback: SyncStatusCallback): LiveSubscription = liveSubscription()
 
-    override fun subscribeEagerCacheFillStatus(callback: EagerCacheFillStatusCallback): LiveSubscription = liveSubscription()
+    override fun subscribeSyncActivity(callback: SyncActivityCallback): LiveSubscription = liveSubscription()
 
     override fun subscribeDownloads(callback: DownloadCallback): LiveSubscription = liveSubscription()
 

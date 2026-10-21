@@ -1,0 +1,350 @@
+package fm.bae.app.ui.sync
+
+import android.content.Context
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import fm.bae.app.R
+import fm.bae.app.coreString
+import fm.bae.app.countLabelsText
+import fm.bae.app.data.SyncActivityStore
+import fm.bae.app.data.syncActivityVisible
+import fm.bae.app.formatFileSize
+import fm.bae.app.localizedLine
+import fm.bae.app.requireDisplayableByteCount
+import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.StatusTone
+import fm.bae.app.ui.components.color
+import fm.bae.app.ui.settings.pendingSubjectText
+import uniffi.bae_bridge.BridgeArrivals
+import uniffi.bae_bridge.BridgePendingRecords
+import uniffi.bae_bridge.BridgeSyncActivity
+import uniffi.bae_bridge.bridgePendingReasonKey
+
+/**
+ * Sync's place in the library's top bar: a small spinner while bytes move, a
+ * warning symbol while something needs the person, nothing otherwise. Tapping
+ * it opens what sync is doing in a sheet.
+ */
+@Composable
+internal fun SyncActivityButton(
+    store: SyncActivityStore,
+    onOpenSettings: () -> Unit,
+    onOpenDownloads: () -> Unit,
+) {
+    val activity by store.activity.collectAsState()
+    val error by store.error.collectAsState()
+    if (!syncActivityVisible(activity, error)) return
+    var listShown by rememberSaveable { mutableStateOf(false) }
+    val label = LocalContext.current.coreString("core.activity.title")
+    IconButton(
+        onClick = { listShown = true },
+        modifier = Modifier.semantics { contentDescription = label },
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.inline),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (activity?.moving == true) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            }
+            if (activity?.needsAttention == true || error != null) {
+                Icon(
+                    imageVector = Icons.Filled.Warning,
+                    contentDescription = null,
+                    tint = StatusTone.WARNING.color,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+    }
+    if (listShown) {
+        SyncActivitySheet(
+            store = store,
+            onDismiss = { listShown = false },
+            onOpenSettings = {
+                listShown = false
+                onOpenSettings()
+            },
+            onOpenDownloads = {
+                listShown = false
+                onOpenDownloads()
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SyncActivitySheet(
+    store: SyncActivityStore,
+    onDismiss: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenDownloads: () -> Unit,
+) {
+    val activity by store.activity.collectAsState()
+    val error by store.error.collectAsState()
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        SyncActivityList(
+            activity = activity,
+            error = error,
+            onOpenSettings = onOpenSettings,
+            onOpenDownloads = onOpenDownloads,
+            onCancelArtwork = store::cancelArtwork,
+            onRetryNow = store::retryNow,
+        )
+    }
+}
+
+/**
+ * What sync is doing: what needs the person first, then what is moving, then
+ * what is still arriving from other devices, and Retry Now.
+ */
+@Composable
+internal fun SyncActivityList(
+    activity: BridgeSyncActivity?,
+    error: String?,
+    onOpenSettings: () -> Unit,
+    onOpenDownloads: () -> Unit,
+    onCancelArtwork: () -> Unit,
+    onRetryNow: () -> Unit,
+) {
+    val context = LocalContext.current
+    LazyColumn(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(ThemeSpace.edge),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+    ) {
+        item {
+            Text(text = context.coreString("core.activity.title"), style = ThemeText.heading.style)
+        }
+        if (activity != null) {
+            attentionSection(context, activity, onOpenSettings)
+            transferRows(context, activity, onOpenDownloads, onCancelArtwork)
+            arrivalSections(context, activity.arrivals)
+            if (!activity.moving && !activity.needsAttention && !activity.syncing) {
+                item { SecondaryLine(context.coreString("core.activity.idle")) }
+            }
+        }
+        error?.let { line -> item { Text(text = line, color = StatusTone.DANGER.color) } }
+        item {
+            OutlinedButton(onClick = onRetryNow) {
+                Text(context.coreString("core.activity.retry_now"))
+            }
+        }
+    }
+}
+
+private fun LazyListScope.attentionSection(
+    context: Context,
+    activity: BridgeSyncActivity,
+    onOpenSettings: () -> Unit,
+) {
+    if (!activity.needsAttention) return
+    item { SectionHeading(context.coreString("core.activity.attention")) }
+    activity.failure?.let { failure ->
+        item { Text(text = context.localizedLine(failure) ?: failure.toString(), color = StatusTone.WARNING.color) }
+    }
+    when (val attention = activity.attention) {
+        BridgePendingRecords.Loading -> {
+            Unit
+        }
+
+        is BridgePendingRecords.Failed -> {
+            item {
+                Text(
+                    text = context.localizedLine(attention.error) ?: attention.error.toString(),
+                    color = StatusTone.WARNING.color,
+                )
+            }
+        }
+
+        is BridgePendingRecords.Ready -> {
+            items(attention.records) { record ->
+                Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
+                    Text(text = pendingSubjectText(context, record.subject), style = ThemeText.strong.style)
+                    SecondaryLine(context.coreString(bridgePendingReasonKey(record.reason.kind)))
+                }
+            }
+        }
+    }
+    item {
+        TextButton(onClick = onOpenSettings) {
+            Text(context.coreString("core.activity.open_settings"))
+        }
+    }
+    item { HorizontalDivider() }
+}
+
+private fun LazyListScope.transferRows(
+    context: Context,
+    activity: BridgeSyncActivity,
+    onOpenDownloads: () -> Unit,
+    onCancelArtwork: () -> Unit,
+) {
+    if (activity.syncing) {
+        item { Text(context.coreString("core.activity.syncing")) }
+    }
+    activity.uploads?.let { uploads ->
+        item { TransferLine(context.countLabelsText(uploads.summaryParts), uploads.bytesDone, uploads.bytesTotal) }
+    }
+    activity.artwork?.let { artwork ->
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    TransferLine(
+                        context.coreString("core.artwork_cache.downloading"),
+                        artwork.bytesCached,
+                        artwork.bytesTotal,
+                    )
+                }
+                TextButton(onClick = onCancelArtwork) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        }
+    }
+    activity.downloads?.let { downloads ->
+        item {
+            Text(
+                text = context.countLabelsText(downloads.summaryParts),
+                modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenDownloads),
+            )
+        }
+    }
+}
+
+private fun LazyListScope.arrivalSections(
+    context: Context,
+    arrivals: BridgeArrivals,
+) {
+    when (arrivals) {
+        BridgeArrivals.Loading -> {
+            Unit
+        }
+
+        is BridgeArrivals.Failed -> {
+            item {
+                Text(
+                    text = context.localizedLine(arrivals.error) ?: arrivals.error.toString(),
+                    color = StatusTone.WARNING.color,
+                )
+            }
+        }
+
+        is BridgeArrivals.Ready -> {
+            arrivals.devices.forEach { device ->
+                item { SectionHeading(context.coreString("core.arrival.from", mapOf("device" to device.deviceName))) }
+                items(device.releases) { release -> SecondaryLine(release.albumTitle) }
+                if (device.otherFiles > 0u) {
+                    item {
+                        SecondaryLine(
+                            context.coreString(
+                                "core.arrival.other_pictures",
+                                mapOf("count" to device.otherFiles.toLong()),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** A transfer's line, and the bytes it has moved when it counts any. */
+@Composable
+private fun TransferLine(
+    title: String,
+    done: ULong,
+    total: ULong,
+) {
+    val context = LocalContext.current
+    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
+        Text(title)
+        if (total > 0uL) {
+            SecondaryLine(
+                context.coreString(
+                    "core.download.bytes_progress",
+                    mapOf(
+                        "done" to context.formatFileSize(done.requireDisplayableByteCount()),
+                        "total" to context.formatFileSize(total.requireDisplayableByteCount()),
+                    ),
+                ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SectionHeading(text: String) {
+    Spacer(modifier = Modifier.padding(top = ThemeSpace.inline))
+    Text(text = text, style = ThemeText.strong.style)
+}
+
+@Composable
+private fun SecondaryLine(text: String) {
+    Text(text = text, style = ThemeText.detail.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SyncActivityListPreview() {
+    BaeTheme {
+        SyncActivityList(
+            activity = PreviewData.syncActivity(needsAttention = true),
+            error = null,
+            onOpenSettings = {},
+            onOpenDownloads = {},
+            onCancelArtwork = {},
+            onRetryNow = {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SyncActivityButtonPreview() {
+    val store = remember { SyncActivityStore({}, {}).apply { apply(PreviewData.syncActivity(needsAttention = true)) } }
+    BaeTheme {
+        SyncActivityButton(store = store, onOpenSettings = {}, onOpenDownloads = {})
+    }
+}

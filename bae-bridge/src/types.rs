@@ -34,9 +34,6 @@ pub use storage::*;
 pub use storage_failure::*;
 pub use storage_inspector::*;
 
-#[cfg(test)]
-#[path = "types/eager_cache_fill_tests.rs"]
-mod eager_cache_fill_tests;
 #[cfg(all(test, feature = "desktop"))]
 #[path = "types/loc_key_coverage_tests.rs"]
 mod loc_key_coverage_tests;

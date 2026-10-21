@@ -49,24 +49,6 @@ class SyncStatusStoreTest {
     }
 
     @Test
-    fun theLibraryShowsTheStatusLineOnlyWhenItHasSomethingToSay() {
-        val sync = SyncStatusStore()
-
-        sync.apply(status(connected = true, error = null), errors)
-        assertEquals(false, sync.needsAttention.value)
-
-        sync.apply(status(connected = true, error = null, indicator = BridgeSyncIndicator.Waiting(1uL)), errors)
-        assertEquals(true, sync.needsAttention.value)
-
-        sync.apply(status(connected = true, error = failure), errors)
-        assertEquals(true, sync.needsAttention.value)
-
-        // Without a cloud home there is no sync to speak of.
-        sync.apply(status(connected = false, error = failure), errors)
-        assertEquals(false, sync.needsAttention.value)
-    }
-
-    @Test
     fun theStatusLineAndPendingListFollowEachSnapshot() {
         val sync = SyncStatusStore()
         val waiting = BridgeSyncIndicator.Waiting(2uL)
@@ -79,28 +61,14 @@ class SyncStatusStoreTest {
         assertEquals(null, sync.error.value)
     }
 
-    @Test
-    fun theLibraryShowsSyncProgressOnlyWhileAPassRuns() {
-        val sync = SyncStatusStore()
-
-        sync.apply(status(connected = true, error = null, indicator = BridgeSyncIndicator.Loading, syncing = true), errors)
-        assertEquals(true, sync.syncing.value)
-
-        // A finished pass leaves the library connected and synced, with no bar.
-        sync.apply(status(connected = true, error = null), errors)
-        assertEquals(false, sync.syncing.value)
-    }
-
     private fun status(
         connected: Boolean,
         error: BridgeException?,
         indicator: BridgeSyncIndicator = BridgeSyncIndicator.Synced,
         pending: BridgePendingRecords = BridgePendingRecords.Loading,
-        syncing: Boolean = false,
     ) = BridgeSyncStatusSnapshot(
         error = error,
         connected = connected,
-        syncing = syncing,
         pending = pending,
         indicator = indicator,
     )

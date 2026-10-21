@@ -2,9 +2,7 @@ package fm.bae.app.ui
 
 import android.content.Context
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,7 +33,6 @@ import fm.bae.app.coreString
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.ErrorText
-import fm.bae.app.ui.library.ArtworkLoadingBanner
 import fm.bae.app.ui.library.LibraryScreen
 import fm.bae.app.ui.onboarding.OnboardingScreen
 import fm.bae.app.ui.onboarding.RestoreOver
@@ -324,18 +321,13 @@ private fun LibraryOpenScreen(
     }
     // Scoped to the session because the cache is keyed on that library's image ids.
     CompositionLocalProvider(LocalImageStore provides session.imageStore) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            ArtworkLoadingBanner(session.artworkLoadingStore)
-            Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                LibraryScreen(
-                    session = session,
-                    libraries = libraries,
-                    openSearch = shortcutAction == ShortcutAction.SEARCH,
-                    onSearchOpened = onShortcutHandled,
-                    actions = actions,
-                )
-            }
-        }
+        LibraryScreen(
+            session = session,
+            libraries = libraries,
+            openSearch = shortcutAction == ShortcutAction.SEARCH,
+            onSearchOpened = onShortcutHandled,
+            actions = actions,
+        )
         Box(modifier = Modifier.fillMaxSize()) {
             SnackbarHost(
                 hostState = snackbarHostState,

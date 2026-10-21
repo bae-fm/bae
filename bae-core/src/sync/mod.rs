@@ -18,16 +18,6 @@ pub(crate) mod test_devices;
 use coven::{CacheFill, Provenance};
 use coven::{FileDecl, RowIdentity, SyncedTable};
 
-/// The localized message key for a visible post-open artwork-loading state.
-/// Terminal success and the idle state have no banner.
-pub fn eager_cache_fill_title_key(status: &coven::EagerCacheFillStatus) -> Option<&'static str> {
-    match status {
-        coven::EagerCacheFillStatus::Idle => None,
-        coven::EagerCacheFillStatus::Downloading(_) => Some("core.artwork_cache.downloading"),
-        coven::EagerCacheFillStatus::Cancelled(_) => Some("core.artwork_cache.cancelled"),
-    }
-}
-
 /// S3 configuration data for save_s3_config.
 pub struct S3ConfigData {
     pub bucket: String,

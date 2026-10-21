@@ -1,16 +1,13 @@
 package fm.bae.app.ui.library
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
@@ -32,7 +29,6 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,19 +39,18 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.AlbumPageStore
+import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.Notice
-import fm.bae.app.ui.components.StatusTone
-import fm.bae.app.ui.settings.syncIndicatorText
+import fm.bae.app.ui.sync.SyncActivityButton
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSortField
 import uniffi.bae_bridge.BridgeComposerSortCriterion
@@ -79,36 +74,6 @@ internal fun LibraryGlobalErrorBanner(appError: String?) {
     ErrorBanner(message = appError ?: return)
 }
 
-/**
- * The sync status line — "Waiting: 3 items", or that sync is failing and why —
- * while it has something to say beyond "Synced"; tapping it opens what sync
- * is waiting on, where each record has its action.
- */
-@Composable
-internal fun LibrarySyncStatus(
-    session: OpenLibrary,
-    onOpen: () -> Unit,
-) {
-    val needsAttention by session.syncStatusStore.needsAttention.collectAsState()
-    if (!needsAttention) return
-    val indicator by session.syncStatusStore.indicator.collectAsState()
-    val failure by session.syncStatusStore.error.collectAsState()
-    val context = LocalContext.current
-    Notice(
-        tone = StatusTone.WARNING,
-        modifier =
-            Modifier
-                .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related)
-                .clickable(onClick = onOpen),
-    ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
-            Text(text = syncIndicatorText(context, indicator), style = ThemeText.strong.style)
-            failure?.let { Text(text = it.message, style = ThemeText.detail.style) }
-        }
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
-    }
-}
-
 @Composable
 internal fun LibraryTopBar(
     onOpenSearch: () -> Unit,
@@ -122,6 +87,9 @@ internal fun LibraryTopBar(
     onComposerSortChange: (BridgeComposerSortCriterion) -> Unit,
     artistSortCriterion: BridgeArtistSortCriterion,
     onArtistSortChange: (BridgeArtistSortCriterion) -> Unit,
+    syncActivity: SyncActivityStore,
+    onOpenSyncSettings: () -> Unit,
+    onOpenDownloads: () -> Unit,
     onSettings: () -> Unit,
 ) {
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
@@ -164,6 +132,11 @@ internal fun LibraryTopBar(
                     )
                 }
             }
+            SyncActivityButton(
+                store = syncActivity,
+                onOpenSettings = onOpenSyncSettings,
+                onOpenDownloads = onOpenDownloads,
+            )
             IconButton(onClick = onSettings) {
                 Icon(imageVector = Icons.Filled.Settings, contentDescription = stringResource(R.string.settings))
             }
@@ -345,6 +318,9 @@ private fun LibraryTopBarPreview() {
             onComposerSortChange = {},
             artistSortCriterion = previewArtistSort,
             onArtistSortChange = {},
+            syncActivity = SyncActivityStore({}, {}).apply { apply(PreviewData.syncActivity(needsAttention = true)) },
+            onOpenSyncSettings = {},
+            onOpenDownloads = {},
             onSettings = {},
         )
     }

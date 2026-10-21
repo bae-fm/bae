@@ -1,7 +1,6 @@
 package fm.bae.app.shots
 
 import android.content.res.Configuration
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -11,21 +10,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.coreString
-import fm.bae.app.data.ArtworkLoadingStore
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AlbumDetailScene
 import fm.bae.app.ui.appearance.AccentChoice
 import fm.bae.app.ui.appearance.AppearanceMode
 import fm.bae.app.ui.appearance.AppearancePreferences
 import fm.bae.app.ui.appearance.AppearanceStore
 import fm.bae.app.ui.appearance.SurfaceTone
-import fm.bae.app.ui.library.ArtworkLoadingBanner
 import fm.bae.app.ui.library.ErrorBanner
 import fm.bae.app.ui.library.LibraryGridScene
 import fm.bae.app.ui.onboarding.WelcomeScene
 import fm.bae.app.ui.settings.AppearanceSection
-import uniffi.bae_bridge.BridgeEagerCacheFillProgress
-import uniffi.bae_bridge.BridgeEagerCacheFillStatus
+import fm.bae.app.ui.sync.SyncActivityList
 
 // Screenshot scenes captured by scripts/shots/android.sh. Each function is one
 // scene: the plugin renders it to a PNG named after the function, and the script
@@ -162,19 +159,18 @@ private fun AppearanceScene(
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES, fontScale = 1.5f)
 @Composable
-fun ArtworkCancelled() {
-    val store =
-        remember {
-            ArtworkLoadingStore {}.apply {
-                apply(
-                    BridgeEagerCacheFillStatus.Cancelled(
-                        progress = BridgeEagerCacheFillProgress(4uL, 12uL, 310_000uL, 980_000uL),
-                    ),
-                )
-            }
-        }
+fun SyncActivityArriving() {
     BaeTheme {
-        ArtworkLoadingBanner(store)
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            SyncActivityList(
+                activity = PreviewData.syncActivity(needsAttention = true),
+                error = null,
+                onOpenSettings = {},
+                onOpenDownloads = {},
+                onCancelArtwork = {},
+                onRetryNow = {},
+            )
+        }
     }
 }
 
@@ -183,9 +179,6 @@ fun ArtworkCancelled() {
 @Composable
 fun SyncUpdateRequired() {
     BaeTheme {
-        Column {
-            ArtworkCancelled()
-            ErrorBanner(message = LocalContext.current.coreString("core.error.sync_update_required"))
-        }
+        ErrorBanner(message = LocalContext.current.coreString("core.error.sync_update_required"))
     }
 }

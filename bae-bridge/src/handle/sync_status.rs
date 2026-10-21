@@ -1,5 +1,5 @@
 //! The `AppHandle` surface for cloud sync: the loop's status and the operations
-//! it left waiting, the artwork cache fill, and the upload outbox.
+//! it left waiting, everything sync is doing, and the upload outbox.
 
 use super::*;
 
@@ -23,22 +23,6 @@ impl AppHandle {
             |services| services.subscribe_sync_status_values(),
             move |value| callback.on_value(BridgeSyncStatusSnapshot::from_core(value.clone())),
         )
-    }
-
-    pub fn subscribe_eager_cache_fill_status(
-        &self,
-        callback: Box<dyn crate::types::EagerCacheFillStatusCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.live_subscription(move |services, _| async move {
-            let mut values = services.subscribe_eager_cache_fill_status();
-            loop {
-                match values.next().await {
-                    Ok(value) => callback
-                        .on_value(crate::types::BridgeEagerCacheFillStatus::from_core(value)),
-                    Err(error) => callback.on_error(BridgeError::database_query(error)),
-                }
-            }
-        })
     }
 
     /// Everything sync is doing, for the activity indicator and its list:

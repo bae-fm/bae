@@ -5,7 +5,6 @@ import android.content.Intent
 import android.net.ConnectivityManager
 import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.ProcessLifecycleOwner
-import fm.bae.app.data.ArtworkLoadingStore
 import fm.bae.app.data.BrowserPageStores
 import fm.bae.app.data.Cast
 import fm.bae.app.data.CastStore
@@ -17,6 +16,7 @@ import fm.bae.app.data.LibraryQueryStores
 import fm.bae.app.data.LibraryStore
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
+import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.data.UiEventAdapter
 import fm.bae.app.playback.BaeCorePlayer
@@ -39,11 +39,11 @@ import uniffi.bae_bridge.BridgeUiEvent
 import uniffi.bae_bridge.CastDevicesCallback
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCallback
-import uniffi.bae_bridge.EagerCacheFillStatusCallback
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.OutboxCallback
 import uniffi.bae_bridge.PlaybackValuesCallback
 import uniffi.bae_bridge.QueueCallback
+import uniffi.bae_bridge.SyncActivityCallback
 import uniffi.bae_bridge.SyncStatusCallback
 import uniffi.bae_bridge.UiEventCallback
 
@@ -78,7 +78,7 @@ class OpenLibrary internal constructor(
     val libraryStore: LibraryStore get() = stores.library
     val configStore: ConfigStore get() = stores.config
     val syncStatusStore: SyncStatusStore get() = stores.syncStatus
-    val artworkLoadingStore: ArtworkLoadingStore get() = stores.transfers.artworkLoading
+    val syncActivityStore: SyncActivityStore get() = stores.syncActivity
     val downloadStore: DownloadStore get() = stores.transfers.downloads
     val outboxStore: OutboxStore get() = stores.transfers.outbox
     val castStore: CastStore get() = stores.cast
@@ -152,17 +152,17 @@ class OpenLibrary internal constructor(
                 },
             )
         valueSubscriptions +=
-            appHandle.subscribeEagerCacheFillStatus(
-                object : EagerCacheFillStatusCallback {
-                    override fun onValue(value: uniffi.bae_bridge.BridgeEagerCacheFillStatus) {
+            appHandle.subscribeSyncActivity(
+                object : SyncActivityCallback {
+                    override fun onValue(value: uniffi.bae_bridge.BridgeSyncActivity) {
                         scope.launch(Dispatchers.Main.immediate) {
-                            stores.transfers.artworkLoading.apply(value)
+                            stores.syncActivity.apply(value)
                         }
                     }
 
                     override fun onError(error: uniffi.bae_bridge.BridgeException) {
                         scope.launch(Dispatchers.Main.immediate) {
-                            stores.config.showError(LocaleErrorLines(appContext).line(error))
+                            stores.syncActivity.fail(LocaleErrorLines(appContext).line(error) ?: error.toString())
                         }
                     }
                 },

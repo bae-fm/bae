@@ -3,6 +3,7 @@ package fm.bae.app
 import android.content.Context
 import android.icu.text.MessageFormat
 import android.text.format.Formatter
+import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeDurationUnits
 import java.util.Locale
@@ -44,6 +45,11 @@ fun Context.coreString(
     key: String,
     args: Map<String, Any>,
 ): String = MessageFormat(coreString(key), currentLocale()).format(args)
+
+/** Core's count parts, such as "2 uploading" and "3 queued", each localized and
+ *  joined with " · ". Core decides which parts appear and in what order. */
+fun Context.countLabelsText(parts: List<BridgeCountLabel>): String =
+    parts.joinToString(" · ") { part -> coreString(part.key, mapOf("count" to part.count.toInt())) }
 
 /** The configuration's primary locale, for number / duration / byte formatting. */
 fun Context.currentLocale(): Locale = resources.configuration.locales[0]

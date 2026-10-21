@@ -572,12 +572,6 @@ impl AppServices {
         self.inner.manager.retry_pending_operation(id).await
     }
 
-    pub fn subscribe_eager_cache_fill_status(
-        &self,
-    ) -> coven::LiveQuery<crate::library::EagerCacheFillStatus> {
-        self.inner.manager.subscribe_eager_cache_fill_status()
-    }
-
     /// Everything sync is doing now, live, for the activity indicator.
     pub fn subscribe_sync_activity(&self) -> crate::library::SyncActivityStream {
         crate::library::SyncActivityStream::new(self.inner.manager.clone())

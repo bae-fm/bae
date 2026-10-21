@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -22,9 +20,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.data.DownloadStore
+import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.downloads.DownloadsSummaryStrip
+import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.playback.NowPlayingBar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -78,7 +76,6 @@ internal fun LibraryBrowser(
     onDownloads: () -> Unit,
     onSyncStatus: () -> Unit,
 ) {
-    val syncing by session.syncStatusStore.syncing.collectAsState()
     val appError by session.configStore.error.collectAsState()
     val appContext = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -101,12 +98,12 @@ internal fun LibraryBrowser(
             onComposerSortChange = { state.composerSortCriterion = it },
             artistSortCriterion = state.artistSortCriterion,
             onArtistSortChange = { state.artistSortCriterion = it },
-            syncing = syncing,
             onShuffleLibrary = { session.playLibraryShuffledOrReport(appContext, coroutineScope) },
+            syncActivity = session.syncActivityStore,
+            onOpenSyncSettings = onSyncStatus,
+            onOpenDownloads = onDownloads,
             onSettings = onSettings,
         )
-        LibrarySyncStatus(session = session, onOpen = onSyncStatus)
-        DownloadsStrip(session.downloadStore, onDownloads)
         LibraryBrowserContent(
             modifier = Modifier.fillMaxWidth().weight(1f),
             session = session,
@@ -124,17 +121,6 @@ internal fun LibraryBrowser(
             onSelectWork = onSelectWork,
         )
         NowPlayingBar(session = session)
-    }
-}
-
-@Composable
-private fun DownloadsStrip(
-    downloadStore: DownloadStore,
-    onTap: () -> Unit,
-) {
-    val snapshot by downloadStore.snapshot.collectAsState()
-    if (snapshot.downloads.isNotEmpty()) {
-        DownloadsSummaryStrip(snapshot = snapshot, onTap = onTap)
     }
 }
 
@@ -303,8 +289,10 @@ private fun LibraryBrowserChrome(
     onComposerSortChange: (BridgeComposerSortCriterion) -> Unit,
     artistSortCriterion: BridgeArtistSortCriterion,
     onArtistSortChange: (BridgeArtistSortCriterion) -> Unit,
-    syncing: Boolean,
     onShuffleLibrary: () -> Unit,
+    syncActivity: SyncActivityStore,
+    onOpenSyncSettings: () -> Unit,
+    onOpenDownloads: () -> Unit,
     onSettings: () -> Unit,
 ) {
     if (searchOpen) {
@@ -326,17 +314,13 @@ private fun LibraryBrowserChrome(
             onComposerSortChange = onComposerSortChange,
             artistSortCriterion = artistSortCriterion,
             onArtistSortChange = onArtistSortChange,
+            syncActivity = syncActivity,
+            onOpenSyncSettings = onOpenSyncSettings,
+            onOpenDownloads = onOpenDownloads,
             onSettings = onSettings,
         )
     }
     LibraryModeBar(mode = mode, onModeChange = onModeChange)
-    if (syncing) {
-        LinearProgressIndicator(
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surface,
-        )
-    }
 }
 
 @Preview(showBackground = true)
@@ -359,8 +343,10 @@ private fun LibraryBrowserChromePreview() {
             onComposerSortChange = {},
             artistSortCriterion = DEFAULT_ARTIST_SORT,
             onArtistSortChange = {},
-            syncing = false,
             onShuffleLibrary = {},
+            syncActivity = SyncActivityStore({}, {}).apply { apply(PreviewData.syncActivity(needsAttention = false)) },
+            onOpenSyncSettings = {},
+            onOpenDownloads = {},
             onSettings = {},
         )
     }

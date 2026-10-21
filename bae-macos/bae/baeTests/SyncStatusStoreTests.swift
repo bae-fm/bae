@@ -36,7 +36,6 @@ struct SyncStatusStoreTests {
             BridgeSyncStatusSnapshot(
                 error: .Diagnostic(category: .internal, detail: fault),
                 connected: false,
-                syncing: false,
                 pending: .loading,
                 indicator: .unconnected
             )
@@ -72,7 +71,6 @@ struct SyncStatusStoreTests {
             BridgeSyncStatusSnapshot(
                 error: nil,
                 connected: true,
-                syncing: false,
                 pending: .ready(records: [record]),
                 indicator: .waiting(items: 1)
             )
@@ -85,27 +83,6 @@ struct SyncStatusStoreTests {
         }
         let first = try #require(records.first)
         #expect(first.action == .retryOperation(id: 7))
-    }
-
-    /// The toolbar spinner turns while a pass runs and stops once it finishes,
-    /// though the library stays connected.
-    @MainActor
-    @Test("syncing lasts only while a pass is in progress")
-    func syncingFollowsThePass() {
-        let sync = SyncStatusStore()
-        sync.apply(
-            BridgeSyncStatusSnapshot(
-                error: nil,
-                connected: true,
-                syncing: true,
-                pending: .ready(records: []),
-                indicator: .loading
-            )
-        )
-        #expect(sync.syncing)
-        sync.apply(status(syncReady: true))
-        #expect(!sync.syncing)
-        #expect(sync.syncReady)
     }
 
     @MainActor
@@ -127,7 +104,6 @@ struct SyncStatusStoreTests {
                     detail: "schema 17 required"
                 ),
                 connected: true,
-                syncing: false,
                 pending: .ready(records: []),
                 indicator: .synced
             )
@@ -139,43 +115,10 @@ struct SyncStatusStoreTests {
         #expect(!sync.canReconnect)
     }
 
-    /// The library shows the status line only when it says more than
-    /// "Synced": records waiting, or a failure.
-    @MainActor
-    @Test(
-        "the status line asks for attention only when it has something to say"
-    )
-    func statusLineAttention() {
-        let sync = SyncStatusStore()
-        sync.apply(status(syncReady: true))
-        #expect(!sync.needsAttention)
-        sync.apply(
-            BridgeSyncStatusSnapshot(
-                error: nil,
-                connected: true,
-                syncing: true,
-                pending: .ready(records: []),
-                indicator: .waiting(items: 2)
-            )
-        )
-        #expect(sync.needsAttention)
-        sync.apply(
-            BridgeSyncStatusSnapshot(
-                error: .Diagnostic(category: .network, detail: "offline"),
-                connected: true,
-                syncing: false,
-                pending: .ready(records: []),
-                indicator: .loading
-            )
-        )
-        #expect(sync.needsAttention)
-    }
-
     private func status(syncReady: Bool) -> BridgeSyncStatusSnapshot {
         BridgeSyncStatusSnapshot(
             error: nil,
             connected: syncReady,
-            syncing: false,
             pending: syncReady ? .ready(records: []) : .loading,
             indicator: syncReady ? .synced : .unconnected
         )

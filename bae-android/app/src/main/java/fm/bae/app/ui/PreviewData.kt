@@ -5,15 +5,21 @@ import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumSearchResult
+import uniffi.bae_bridge.BridgeArrivals
+import uniffi.bae_bridge.BridgeArrivingRelease
 import uniffi.bae_bridge.BridgeArtistDetail
 import uniffi.bae_bridge.BridgeArtistSummary
+import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeComposerSummary
+import uniffi.bae_bridge.BridgeCountLabel
+import uniffi.bae_bridge.BridgeDeviceArrivals
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadProgress
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeDurationClock
+import uniffi.bae_bridge.BridgeEagerCacheFillProgress
 import uniffi.bae_bridge.BridgeFactTerm
 import uniffi.bae_bridge.BridgeFormerDevice
 import uniffi.bae_bridge.BridgeFormerDeviceState
@@ -30,23 +36,32 @@ import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberPublicKeys
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgePauseBoundary
+import uniffi.bae_bridge.BridgePendingAction
+import uniffi.bae_bridge.BridgePendingReason
+import uniffi.bae_bridge.BridgePendingReasonKind
+import uniffi.bae_bridge.BridgePendingRecord
+import uniffi.bae_bridge.BridgePendingRecords
+import uniffi.bae_bridge.BridgePendingSubject
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePersonProfile
 import uniffi.bae_bridge.BridgePressingFacts
 import uniffi.bae_bridge.BridgeQueuedRelease
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseArea
+import uniffi.bae_bridge.BridgeReleaseArrival
 import uniffi.bae_bridge.BridgeReleaseName
 import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSharing
 import uniffi.bae_bridge.BridgeSidePausePrompt
+import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeTermLabel
 import uniffi.bae_bridge.BridgeTrack
 import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSearchResult
 import uniffi.bae_bridge.BridgeTrackSide
+import uniffi.bae_bridge.BridgeUploadsInFlight
 import uniffi.bae_bridge.BridgeWorkSummary
 
 /** A member's signing and sealing public keys are each 32 bytes. */
@@ -263,6 +278,63 @@ object PreviewData {
             release = BridgeQueuedRelease(title = title, fileCount = 10, totalSize = 300_000_000),
             createdAt = 0,
             state = state,
+        )
+
+    /** A library mid-arrival: files uploading, artwork downloading, two albums still
+     *  arriving from a Mac, and, when [needsAttention], a record that needs signing in. */
+    fun syncActivity(needsAttention: Boolean): BridgeSyncActivity =
+        BridgeSyncActivity(
+            moving = true,
+            needsAttention = needsAttention,
+            failure = null,
+            attention =
+                BridgePendingRecords.Ready(
+                    records =
+                        if (needsAttention) {
+                            listOf(
+                                BridgePendingRecord(
+                                    subject = BridgePendingSubject.Connection,
+                                    reason = BridgePendingReason(BridgePendingReasonKind.STORAGE, null, emptyList()),
+                                    action = BridgePendingAction.SignIn(BridgeCloudProvider.DROPBOX),
+                                ),
+                            )
+                        } else {
+                            emptyList()
+                        },
+                ),
+            syncing = true,
+            uploads =
+                BridgeUploadsInFlight(
+                    summaryParts =
+                        listOf(
+                            BridgeCountLabel(key = "core.queue.uploading", count = 2u),
+                            BridgeCountLabel(key = "core.queue.queued", count = 10u),
+                        ),
+                    bytesDone = 3_200_000uL,
+                    bytesTotal = 8_400_000uL,
+                ),
+            artwork = BridgeEagerCacheFillProgress(4uL, 26uL, 169_000uL, 1_720_000uL),
+            downloads = null,
+            arrivals =
+                BridgeArrivals.Ready(
+                    devices =
+                        listOf(
+                            BridgeDeviceArrivals(
+                                deviceName = "Studio Mac",
+                                releases =
+                                    listOf(
+                                        BridgeArrivingRelease("r-1", "a-1", "Kind of Blue"),
+                                        BridgeArrivingRelease("r-2", "a-2", "Blue Train"),
+                                    ),
+                                otherFiles = 3u,
+                            ),
+                        ),
+                    albums = mapOf("a-1" to "Studio Mac", "a-2" to "Studio Mac"),
+                    releases =
+                        mapOf(
+                            "r-1" to BridgeReleaseArrival("Studio Mac", cover = true, trackIds = listOf("t-3", "t-4")),
+                        ),
+                ),
         )
 
     fun downloadSnapshot(
