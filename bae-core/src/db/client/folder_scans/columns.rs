@@ -15,16 +15,16 @@ pub(crate) fn unreadable(column: &str, stored: &str) -> DbError {
 
 pub(super) fn to_i64(value: u64, what: &str) -> Result<i64, DbError> {
     i64::try_from(value)
-        .map_err(|_| DbError::Message(format!("{what} exceeds SQLite's integer range")))
+        .map_err(|error| DbError::Message(format!("{what} exceeds SQLite's integer range: {error}")))
 }
 
 pub(crate) fn to_u64(value: i64, what: &str) -> Result<u64, DbError> {
-    u64::try_from(value).map_err(|_| DbError::Message(format!("{what} is negative")))
+    u64::try_from(value).map_err(|error| DbError::Message(format!("{what} is negative: {error}")))
 }
 
 pub(crate) fn to_u32(value: i64, what: &str) -> Result<u32, DbError> {
     u32::try_from(value)
-        .map_err(|_| DbError::Message(format!("{what} is outside the range it counts over")))
+        .map_err(|error| DbError::Message(format!("{what} is outside the range it counts over: {error}")))
 }
 
 pub(super) fn scope_text(scope: ReleaseFileScope) -> &'static str {

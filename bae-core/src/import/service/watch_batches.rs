@@ -249,7 +249,7 @@ pub(super) fn run(
             Some(at) => raw.recv_timeout(at.saturating_duration_since(Instant::now())),
             None => raw
                 .recv()
-                .map_err(|_| std::sync::mpsc::RecvTimeoutError::Disconnected),
+                .map_err(std::sync::mpsc::RecvTimeoutError::from),
         };
         match received {
             Ok((root, Ok(event))) => batches.add(&root, event, Instant::now()),

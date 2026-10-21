@@ -125,6 +125,10 @@ impl HapChannel {
         }
         let aad = [self.in_buf[0], self.in_buf[1]];
         let nonce = Self::nonce(self.read_counter);
+        #[expect(
+            clippy::map_err_ignore,
+            reason = "an AEAD failure is opaque by design: it says only that the tag did not verify"
+        )]
         let plaintext = self
             .read_cipher
             .decrypt(

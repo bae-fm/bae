@@ -40,6 +40,10 @@ impl Drop for Gate {
 impl Held {
     /// Report entering, then wait until the gate is open.
     pub(crate) fn pass(&self) {
+        #[expect(
+            clippy::let_underscore_must_use,
+            reason = "a test that stopped watching for entry needs no report"
+        )]
         let _ = self.entered.send(());
         let (open, changed) = &*self.opened;
         let _open = changed

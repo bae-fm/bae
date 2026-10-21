@@ -221,8 +221,11 @@ fn calculate_mb_discid_from_cue(
         laid += sectors_of(duration.duration_ms);
     }
     let sector = |frames: u64| {
-        i32::try_from(frames)
-            .map_err(|_| invalid_discid_data("CUE lays the disc out past the sector range"))
+        i32::try_from(frames).map_err(|error| {
+            invalid_discid_data(format!(
+                "CUE lays the disc out past the sector range ({frames} frames): {error}"
+            ))
+        })
     };
     let mut generated = 0u64;
     let mut raw_track_sectors = Vec::with_capacity(sheet.playable_track_count());

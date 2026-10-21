@@ -160,7 +160,7 @@ unsafe fn decode_audio_streaming_impl(
             &mut fmt_ctx,
             avio,
         );
-        let _ = Box::from_raw(avio_ctx_ptr);
+        drop(Box::from_raw(avio_ctx_ptr));
         return Err(DecodeError::decode("Failed to allocate frame/packet"));
     }
 

@@ -145,6 +145,10 @@ impl ImportCancels {
             let gate = self.running_gate.lock().unwrap().clone();
             async move {
                 if let Some(gate) = gate {
+                    #[expect(
+                        clippy::let_underscore_must_use,
+                        reason = "the gate opens by closing, which ends this wait without a permit"
+                    )]
                     let _ = gate.acquire().await;
                 }
                 work.await

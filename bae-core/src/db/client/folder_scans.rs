@@ -124,8 +124,8 @@ fn item_was_read_for(
 }
 
 fn generation_column(generation: u64) -> Result<i64, DbError> {
-    i64::try_from(generation).map_err(|_| {
-        DbError::Message("folder scan generation exceeds SQLite's integer range".to_string())
+    i64::try_from(generation).map_err(|error| {
+        DbError::Message(format!("folder scan generation exceeds SQLite's integer range: {error}"))
     })
 }
 
@@ -284,7 +284,7 @@ impl Database {
                 params![watched_folder_path, generation, volume],
             )?;
             u64::try_from(generation)
-                .map_err(|_| DbError::Message("folder scan generation is negative".to_string()))
+                .map_err(|error| DbError::Message(format!("folder scan generation is negative: {error}")))
         })
         .await
     }
@@ -756,9 +756,9 @@ fn load_folder_scan_snapshots_on(
 
     let mut snapshots = Vec::with_capacity(roots.len());
     for (watched_folder_path, generation, status, error, found_count) in roots {
-        let generation = u64::try_from(generation).map_err(|_| {
+        let generation = u64::try_from(generation).map_err(|error| {
             DbError::Message(format!(
-                "folder scan root {watched_folder_path} has a negative generation"
+                "folder scan root {watched_folder_path} has a negative generation: {error}"
             ))
         })?;
         let status = match (status.as_str(), error) {

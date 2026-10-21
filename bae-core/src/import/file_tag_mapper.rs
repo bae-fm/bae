@@ -283,8 +283,8 @@ pub(crate) fn map_file_metadata_to_db(
                             .disc_number()
                             .expect("carving sheet has a disc number"),
                     )
-                    .map_err(|_| ImportError::FileTags {
-                        detail: "CUE disc number exceeds supported range".into(),
+                    .map_err(|error| ImportError::FileTags {
+                        detail: format!("CUE disc number exceeds supported range: {error}"),
                     })?;
                     tracks.extend(
                         bound

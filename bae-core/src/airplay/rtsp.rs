@@ -105,20 +105,19 @@ impl RtspRequest {
     /// `Content-Length` is always emitted (0 for a bodyless request), matching
     /// what receivers expect.
     pub fn serialize(&self, cseq: u32, extra: &[(String, String)]) -> Vec<u8> {
-        let mut out = Vec::new();
-        let _ = write!(out, "{} {} RTSP/1.0\r\n", self.method.as_str(), self.uri);
-        let _ = write!(out, "CSeq: {cseq}\r\n");
-        for (key, value) in extra {
-            let _ = write!(out, "{key}: {value}\r\n");
-        }
-        for (key, value) in &self.headers {
-            let _ = write!(out, "{key}: {value}\r\n");
+        let mut head = format!(
+            "{} {} RTSP/1.0\r\nCSeq: {cseq}\r\n",
+            self.method.as_str(),
+            self.uri
+        );
+        for (key, value) in extra.iter().chain(&self.headers) {
+            head.push_str(&format!("{key}: {value}\r\n"));
         }
         if let Some(content_type) = &self.content_type {
-            let _ = write!(out, "Content-Type: {content_type}\r\n");
+            head.push_str(&format!("Content-Type: {content_type}\r\n"));
         }
-        let _ = write!(out, "Content-Length: {}\r\n", self.body.len());
-        out.extend_from_slice(b"\r\n");
+        head.push_str(&format!("Content-Length: {}\r\n\r\n", self.body.len()));
+        let mut out = head.into_bytes();
         out.extend_from_slice(&self.body);
         out
     }
@@ -188,10 +187,10 @@ impl RtspResponse {
             .iter()
             .find(|(k, _)| k.eq_ignore_ascii_case("Content-Length"))
         {
-            Some((_, v)) => v.trim().parse::<usize>().map_err(|_| {
+            Some((_, v)) => v.trim().parse::<usize>().map_err(|error| {
                 io::Error::new(
                     io::ErrorKind::InvalidData,
-                    format!("malformed RTSP Content-Length: {v:?}"),
+                    format!("malformed RTSP Content-Length: {v:?}: {error}"),
                 )
             })?,
             None => 0,

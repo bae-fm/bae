@@ -89,9 +89,9 @@ impl IdentificationHandle {
     }
 
     fn send_cancel(&self, command: Command) -> Result<(), crate::library::LibraryError> {
-        self.commands.send(command).map_err(|_| {
+        self.commands.send(command).map_err(|error| {
             crate::library::LibraryError::Internal(
-                "the identification queue has stopped".to_string(),
+                format!("the identification queue has stopped: {error}"),
             )
         })
     }
@@ -99,9 +99,9 @@ impl IdentificationHandle {
     async fn await_cancel(
         cancelled: tokio::sync::oneshot::Receiver<()>,
     ) -> Result<(), crate::library::LibraryError> {
-        cancelled.await.map_err(|_| {
+        cancelled.await.map_err(|error| {
             crate::library::LibraryError::Internal(
-                "the identification queue stopped before the cancel ended".to_string(),
+                format!("the identification queue stopped before the cancel ended: {error}"),
             )
         })
     }
@@ -131,6 +131,10 @@ impl IdentificationHandle {
             return;
         }
         // A stopped queue ends the wait too.
+        #[expect(
+            clippy::let_underscore_must_use,
+            reason = "a stopped queue ends the wait as surely as a drained one"
+        )]
         let _ = wait.await;
     }
 
@@ -146,6 +150,10 @@ impl IdentificationHandle {
         {
             return;
         }
+        #[expect(
+            clippy::let_underscore_must_use,
+            reason = "a stopped queue ends the wait as surely as a taken command"
+        )]
         let _ = wait.await;
     }
 }

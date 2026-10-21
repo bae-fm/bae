@@ -836,9 +836,9 @@ pub(crate) fn stored_track_lengths(tracks: &[DbTrack]) -> Result<Vec<u64>, Libra
                     track.id
                 ))
             })?;
-            u64::try_from(duration).map_err(|_| {
+            u64::try_from(duration).map_err(|error| {
                 LibraryError::Import(format!(
-                    "release track '{}' has a negative duration",
+                    "release track '{}' has a negative duration: {error}",
                     track.id
                 ))
             })

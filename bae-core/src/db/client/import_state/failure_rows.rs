@@ -94,9 +94,9 @@ impl Database {
     ) -> Result<(), DbError> {
         let content_hash = content_hash.to_string();
         let failure = failure.clone();
-        let edit_revision = i64::try_from(edit_revision).map_err(|_| {
+        let edit_revision = i64::try_from(edit_revision).map_err(|error| {
             DbError::Message(format!(
-                "candidate edit revision {edit_revision} exceeds SQLite's integer range"
+                "candidate edit revision {edit_revision} exceeds SQLite's integer range: {error}"
             ))
         })?;
         self.call(move |sql| {

@@ -102,6 +102,10 @@ pub(crate) unsafe extern "C" fn streaming_avio_read_callback(
         Err(BufferStop::Failed(error)) => {
             // Every later read fails the same way (the stop is terminal), so the
             // first error is the one to keep.
+            #[expect(
+                clippy::let_underscore_must_use,
+                reason = "the first failure is kept; a later one repeats it"
+            )]
             let _ = ctx.read_failure.set(error);
             ffmpeg_sys_next::AVERROR(ffmpeg_sys_next::EIO)
         }
@@ -230,10 +234,10 @@ pub(super) unsafe extern "C" fn avio_write_seek_callback(
     };
 
     let pos = match sink.seek(seek_from).and_then(|pos| {
-        i64::try_from(pos).map_err(|_| {
+        i64::try_from(pos).map_err(|error| {
             std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
-                "seek position exceeds i64",
+                format!("seek position exceeds i64: {error}"),
             )
         })
     }) {

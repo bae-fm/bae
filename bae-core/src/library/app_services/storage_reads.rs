@@ -51,7 +51,9 @@ impl AppServices {
                 match upload_queue(&mut outbox).await {
                     Ok(ids) => uploading = ids,
                     Err(error) => {
-                        let _ = tx.send(Err(error));
+                        if tx.send(Err(error)).is_err() {
+                            tracing::debug!("storage read failed after its reader went away");
+                        }
                         return;
                     }
                 }

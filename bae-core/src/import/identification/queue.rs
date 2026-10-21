@@ -400,6 +400,10 @@ pub(super) async fn run(
                 .partition(|(drain, _)| queue.is_drained(*drain));
             waiting_for_drain = waiting;
             for (_, drained) in done {
+                #[expect(
+                    clippy::let_underscore_must_use,
+                    reason = "a test that stopped waiting needs no answer"
+                )]
                 let _ = drained.send(());
             }
         }
@@ -449,6 +453,10 @@ pub(super) async fn run(
                     }
                     #[cfg(any(test, feature = "test-utils"))]
                     Command::AwaitCommandsTaken { taken } => {
+                        #[expect(
+                            clippy::let_underscore_must_use,
+                            reason = "a test that stopped waiting needs no answer"
+                        )]
                         let _ = taken.send(());
                     }
                 }

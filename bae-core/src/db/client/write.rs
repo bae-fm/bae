@@ -608,8 +608,11 @@ pub(super) fn insert_audio_segment_row(
     not(any(target_os = "ios", target_os = "android"))
 ))]
 fn sqlite_count(value: u64, what: &str) -> Result<i64, DbError> {
-    i64::try_from(value)
-        .map_err(|_| DbError::Message(format!("{what} {value} exceeds SQLite's integer range")))
+    i64::try_from(value).map_err(|error| {
+        DbError::Message(format!(
+            "{what} {value} exceeds SQLite's integer range: {error}"
+        ))
+    })
 }
 
 #[cfg(any(

@@ -65,9 +65,9 @@ pub(crate) async fn resolve_release_identity(
                 cue_paths.push(path.clone());
             }
             if let Some(source_audio) = &f.source_audio {
-                let duration_ms = u64::try_from(source_audio.duration_ms).map_err(|_| {
+                let duration_ms = u64::try_from(source_audio.duration_ms).map_err(|error| {
                     format!(
-                        "Release file '{}' has a negative source-audio duration",
+                        "Release file '{}' has a negative source-audio duration: {error}",
                         f.id
                     )
                 })?;

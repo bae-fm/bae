@@ -260,6 +260,10 @@ async fn playback_error_reason_for_file(
     reader.start_reading(
         buffer.clone(),
         Box::new(move |error| {
+            #[expect(
+                clippy::let_underscore_must_use,
+                reason = "a test that stopped listening for the failure needs no report"
+            )]
             let _ = error_tx.send(error);
         }),
     );

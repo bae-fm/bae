@@ -59,10 +59,10 @@ impl Automation {
                     self.services.import_read_watched_folders(),
                 )
                 .await
-                .map_err(|_| {
-                    AutomationError::Timeout(
-                        "timed out waiting for watched-folder scan".to_string(),
-                    )
+                .map_err(|elapsed| {
+                    AutomationError::Timeout(format!(
+                        "timed out waiting for watched-folder scan after {timeout_ms} ms: {elapsed}"
+                    ))
                 })??;
                 for status in statuses {
                     match status.status {

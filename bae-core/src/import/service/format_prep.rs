@@ -142,14 +142,14 @@ struct CueAudioPregap {
 
 fn probe_duration_samples(probe: &ProbeResult) -> Result<u64, ImportError> {
     u64::try_from(probe.duration.as_nanos() * u128::from(probe.sample_rate) / 1_000_000_000)
-        .map_err(|_| ImportError::Internal {
-            detail: "CUE audio duration exceeds the sample-count range".to_string(),
+        .map_err(|error| ImportError::Internal {
+            detail: format!("CUE audio duration exceeds the sample-count range: {error}"),
         })
 }
 
 fn cue_audio_measure(value: u64, quantity: &str) -> Result<i64, ImportError> {
-    i64::try_from(value).map_err(|_| ImportError::Internal {
-        detail: format!("CUE {quantity} exceeds the database integer range"),
+    i64::try_from(value).map_err(|error| ImportError::Internal {
+        detail: format!("CUE {quantity} exceeds the database integer range: {error}"),
     })
 }
 
@@ -185,8 +185,8 @@ fn cue_audio_pregap(
                 ),
             })?;
     let duration_ms = u64::try_from(u128::from(sample_count) * 1_000 / u128::from(sample_rate))
-        .map_err(|_| ImportError::Internal {
-            detail: "CUE pregap duration exceeds the millisecond range".to_string(),
+        .map_err(|error| ImportError::Internal {
+            detail: format!("CUE pregap duration exceeds the millisecond range: {error}"),
         })?;
     Ok(Some(CueAudioPregap {
         file_reference: index.file_reference.clone(),

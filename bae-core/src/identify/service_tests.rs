@@ -435,6 +435,10 @@ async fn a_cancelled_run_drops_the_lookup_it_was_waiting_on() {
     let token = CancellationToken::new();
     spawn_until_cancelled(&tokio::runtime::Handle::current(), &token, async move {
         let _guard = Dropped(Some(dropped_tx));
+        #[expect(
+            clippy::let_underscore_must_use,
+            reason = "the test is waiting on the start; a gone receiver has already failed it"
+        )]
         let _ = started_tx.send(());
         std::future::pending::<()>().await;
     });

@@ -280,6 +280,10 @@ impl SaveService {
                     failed |= entry.is_err();
                     // The track's save is waiting on this answer; one that
                     // stopped waiting was cancelled with the whole save.
+                    #[expect(
+                        clippy::let_underscore_must_use,
+                        reason = "a track that stopped waiting was cancelled with the whole save"
+                    )]
                     let _ = track.reply.send(entry);
                 }
                 if failed {
@@ -310,10 +314,10 @@ impl SaveService {
                             decode,
                             reply,
                         })
-                        .map_err(|_| "the release image encoder stopped".to_string())?;
+                        .map_err(|error| format!("the release image encoder stopped: {error}"))?;
                     entry
                         .await
-                        .map_err(|_| "the release image encoder stopped".to_string())?
+                        .map_err(|error| format!("the release image encoder stopped: {error}"))?
                 }
             },
         )
@@ -482,7 +486,7 @@ fn encode_image_track(
         .ok_or_else(|| "release image sample count overflow".to_string())?;
     Ok(CueTrack {
         number: u8::try_from(track.index + 1)
-            .map_err(|_| "CUE track number exceeds 99".to_string())?,
+            .map_err(|error| format!("CUE track number exceeds 99: {error}"))?,
         title: track.title.clone(),
         performer: track.performer.clone(),
         index_00_sample_frame: (pregap_sample_frames > 0).then_some(start),

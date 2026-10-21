@@ -322,9 +322,9 @@ pub(super) struct PinnableBlob {
 }
 
 fn pinnable_bytes(release_id: &str, row_id: &str, file_size: i64) -> Result<u64, LibraryError> {
-    u64::try_from(file_size).map_err(|_| {
+    u64::try_from(file_size).map_err(|error| {
         LibraryError::Storage(format!(
-            "pin release {release_id}: row {row_id} has negative size"
+            "pin release {release_id}: row {row_id} has negative size: {error}"
         ))
     })
 }

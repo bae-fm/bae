@@ -491,15 +491,15 @@ pub(crate) fn modified_at_nanos(
         .modified()
         .map_err(|error| ImportError::file_tags("read modification time of", path, error))?
         .duration_since(UNIX_EPOCH)
-        .map_err(|_| ImportError::FileTags {
+        .map_err(|error| ImportError::FileTags {
             detail: format!(
-                "modification time of {} is before the Unix epoch",
+                "modification time of {} is before the Unix epoch: {error}",
                 path.display()
             ),
         })?;
-    i64::try_from(since_epoch.as_nanos()).map_err(|_| ImportError::FileTags {
+    i64::try_from(since_epoch.as_nanos()).map_err(|error| ImportError::FileTags {
         detail: format!(
-            "modification time of {} exceeds SQLite's integer range",
+            "modification time of {} exceeds SQLite's integer range: {error}",
             path.display()
         ),
     })

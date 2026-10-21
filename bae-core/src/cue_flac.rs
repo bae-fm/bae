@@ -466,7 +466,9 @@ fn parse_u32_token(line: &str, token: Option<&str>) -> Result<u32, CueFlacError>
     token
         .ok_or_else(|| CueFlacError::CueParsing(format!("missing number in line: {line:?}")))?
         .parse::<u32>()
-        .map_err(|_| CueFlacError::CueParsing(format!("invalid number in line: {line:?}")))
+        .map_err(|error| {
+            CueFlacError::CueParsing(format!("invalid number in line: {line:?}: {error}"))
+        })
 }
 
 /// Spec commands valid inside a TRACK body that we don't store — listed so they
@@ -565,7 +567,9 @@ fn parse_time(input: &str) -> Result<u64, CueFlacError> {
     }
     let frames = frames_and_rest[..frame_end]
         .parse::<u64>()
-        .map_err(|_| CueFlacError::CueParsing(format!("invalid CUE time {input:?}")))?;
+        .map_err(|error| {
+            CueFlacError::CueParsing(format!("invalid CUE time {input:?}: {error}"))
+        })?;
     Ok((minutes * 60 + seconds) * 75 + frames)
 }
 
@@ -573,7 +577,7 @@ fn parse_u64_time_field(input: &str, token: Option<&str>) -> Result<u64, CueFlac
     token
         .ok_or_else(|| CueFlacError::CueParsing(format!("invalid CUE time {input:?}")))?
         .parse::<u64>()
-        .map_err(|_| CueFlacError::CueParsing(format!("invalid CUE time {input:?}")))
+        .map_err(|error| CueFlacError::CueParsing(format!("invalid CUE time {input:?}: {error}")))
 }
 #[cfg(test)]
 mod tests;

@@ -354,7 +354,7 @@ pub(super) fn save_preparation_on(
 
 fn to_i64(value: u64, what: &str) -> Result<i64, DbError> {
     i64::try_from(value)
-        .map_err(|_| DbError::Message(format!("{what} {value} exceeds SQLite's integer range")))
+        .map_err(|error| DbError::Message(format!("{what} {value} exceeds SQLite's integer range: {error}")))
 }
 
 impl Database {

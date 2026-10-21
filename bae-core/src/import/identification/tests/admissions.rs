@@ -81,7 +81,10 @@ async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
     );
 
     fixture.identification().shut_down();
-    let _ = tokio::time::timeout(Duration::from_secs(20), sweep).await;
+    tokio::time::timeout(Duration::from_secs(20), sweep)
+        .await
+        .expect("the sweep ends once identification shuts down")
+        .expect("the sweep does not panic");
 }
 
 /// The priority the next run of `key` reports.
@@ -315,5 +318,8 @@ async fn an_admitted_candidate_opens_on_find_online() {
 
     fixture.identification().shut_down();
     fixture.provider.release();
-    let _ = tokio::time::timeout(Duration::from_secs(20), sweep).await;
+    tokio::time::timeout(Duration::from_secs(20), sweep)
+        .await
+        .expect("the sweep ends once identification shuts down")
+        .expect("the sweep does not panic");
 }

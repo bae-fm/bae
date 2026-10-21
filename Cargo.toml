@@ -34,6 +34,11 @@ unexpected_cfgs = "allow"
 too_many_arguments = "allow"
 new_without_default = "allow"
 large_enum_variant = "allow"
+# `let _ = <must_use value>` drops a Result or a must-use value without a word;
+# a site where dropping it is right says why with `#[expect(..., reason)]`.
+let_underscore_must_use = "deny"
+# `.map_err(|_| ...)` discards the error it replaces, and with it the cause.
+map_err_ignore = "deny"
 
 [workspace.dependencies]
 # Every consumer, including tests, uses coven's application facade.

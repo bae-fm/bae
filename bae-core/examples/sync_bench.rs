@@ -14,8 +14,6 @@
 //!
 //! Usage: sync_bench --home /path/to/fixture-parent [--seconds 120]
 
-use std::io::Write as _;
-
 fn main() {
     let mut home: Option<String> = None;
     let mut seconds: u64 = 120;
@@ -113,8 +111,6 @@ fn main() {
         eprintln!("{e}");
         std::process::exit(1);
     }
-
-    let _ = std::io::stderr().flush();
 }
 
 async fn report_store_stats(handle: &coven::CovenHandle, label: &str) -> Result<(), String> {

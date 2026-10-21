@@ -103,6 +103,10 @@ impl PairVerify {
         let device_public = tlv
             .get(tlv_type::PUBLIC_KEY)
             .ok_or(PairingError::MissingField("device ephemeral key"))?;
+        #[expect(
+            clippy::map_err_ignore,
+            reason = "a slice of the wrong length says nothing past its length"
+        )]
         let device_public: [u8; 32] = device_public
             .try_into()
             .map_err(|_| PairingError::MissingField("device ephemeral key length"))?;
@@ -124,6 +128,10 @@ impl PairVerify {
         // Decrypt M2's verifier: authenticates the channel (a wrong session key
         // fails the AEAD tag). Its contents aren't checked further in a transient
         // session.
+        #[expect(
+            clippy::map_err_ignore,
+            reason = "an AEAD failure is opaque by design: it says only that the tag did not verify"
+        )]
         cipher
             .decrypt(&pair_verify_nonce(b"PV-Msg02"), encrypted)
             .map_err(|_| PairingError::Rejected(0x02))?;
@@ -138,6 +146,10 @@ impl PairVerify {
             .push(tlv_type::IDENTIFIER, b"bae".to_vec())
             .push(tlv_type::SIGNATURE, signature.to_bytes().to_vec())
             .encode();
+        #[expect(
+            clippy::map_err_ignore,
+            reason = "an AEAD failure is opaque by design: it says only that the tag did not verify"
+        )]
         let sealed = cipher
             .encrypt(
                 &pair_verify_nonce(b"PV-Msg03"),

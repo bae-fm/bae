@@ -1135,11 +1135,15 @@ impl PlaybackService {
                     self.preview_completed();
                 }
                 PlaybackCommand::GetVolume(reply) => {
-                    let _ = reply.send(self.audio_output.get_volume());
+                    if reply.send(self.audio_output.get_volume()).is_err() {
+                        debug!("volume asked for by a caller that stopped waiting");
+                    }
                 }
                 #[cfg(any(test, feature = "test-utils"))]
                 PlaybackCommand::GetQueueProjection(reply) => {
-                    let _ = reply.send(self.playback_queue.projection());
+                    if reply.send(self.playback_queue.projection()).is_err() {
+                        debug!("queue projection asked for by a caller that stopped waiting");
+                    }
                 }
                 PlaybackCommand::Shutdown(reply) => {
                     if matches!(&self.slot, PlaybackSlot::Active(cur) if matches!(cur.phase, TrackPhase::Playing)) {
@@ -1148,12 +1152,16 @@ impl PlaybackService {
                     self.capture_listening_position();
                     self.finish_listening().await;
                     self.persist_playback_state().await;
-                    let _ = reply.send(());
+                    if reply.send(()).is_err() {
+                        debug!("shutdown asked for by a caller that stopped waiting");
+                    }
                     break;
                 }
                 PlaybackCommand::SaveState(reply) => {
                     self.persist_playback_state().await;
-                    let _ = reply.send(());
+                    if reply.send(()).is_err() {
+                        debug!("state save asked for by a caller that stopped waiting");
+                    }
                 }
                 PlaybackCommand::PlayOn(connect) => {
                     self.handle_play_on(*connect).await;

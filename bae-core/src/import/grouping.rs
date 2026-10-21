@@ -195,8 +195,8 @@ pub fn compose(
             run_start + u32::try_from(position).unwrap_or(0)
         };
         inherited.overlay(&edits[position].under_prefix(&prefix, in_run));
-        next_disc += u32::try_from(discs.len().max(1)).map_err(|_| ImportError::Internal {
-            detail: "combined disc number exceeds the supported range".into(),
+        next_disc += u32::try_from(discs.len().max(1)).map_err(|error| ImportError::Internal {
+            detail: format!("combined disc number exceeds the supported range: {error}"),
         })?;
         if member.files.parts.is_empty() {
             parts.push(ReleasePart {

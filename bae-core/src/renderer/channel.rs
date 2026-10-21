@@ -161,7 +161,10 @@ impl RendererChannel for FakeChannel {
         }
         state.loads.push(media.clone());
         if let Some(load_events) = &state.load_events {
-            // A test that dropped its receiver no longer waits on loads.
+            #[expect(
+                clippy::let_underscore_must_use,
+                reason = "a test that dropped its receiver no longer waits on loads"
+            )]
             let _ = load_events.send(media.clone());
         }
         Ok(())

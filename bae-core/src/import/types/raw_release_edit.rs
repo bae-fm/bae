@@ -255,6 +255,10 @@ fn option_to_raw(value: &Option<String>) -> String {
     value.clone().unwrap_or_default()
 }
 
+#[expect(
+    clippy::map_err_ignore,
+    reason = "the year is the person's own text; which character failed adds nothing to it"
+)]
 fn parse_optional_year(raw: &str) -> Result<Option<i32>, EditValidationError> {
     match raw.trim() {
         "" => Ok(None),

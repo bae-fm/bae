@@ -59,9 +59,9 @@ where
             tracing::error!(operation, error = ?error, "persistent runtime operation failed after its caller disappeared");
         }
     }));
-    result_rx.await.map_err(|_| {
+    result_rx.await.map_err(|error| {
         BridgeError::internal(format!(
-            "persistent runtime operation ended without a result: {operation}"
+            "persistent runtime operation ended without a result: {operation}: {error}"
         ))
     })?
 }

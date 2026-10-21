@@ -161,7 +161,9 @@ async fn start_mock(responses: Vec<(u16, Vec<u8>)>) -> String {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
     tokio::spawn(async move {
-        let _ = axum::serve(listener, app).await;
+        axum::serve(listener, app)
+            .await
+            .expect("the test server serves until the test ends");
     });
     format!("http://{address}/cover.jpg")
 }
@@ -203,7 +205,9 @@ async fn start_counting_host(status: u16, body: Vec<u8>) -> (CountingHost, Strin
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
     tokio::spawn(async move {
-        let _ = axum::serve(listener, app).await;
+        axum::serve(listener, app)
+            .await
+            .expect("the test server serves until the test ends");
     });
     (host, format!("http://{address}/cover.jpg"))
 }

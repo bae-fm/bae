@@ -189,9 +189,9 @@ pub(super) fn replace_asset_rows(
             [content_hash],
         )?;
         for (position, duration) in source.audio_durations_ms.iter().enumerate() {
-            let duration = i64::try_from(*duration).map_err(|_| {
+            let duration = i64::try_from(*duration).map_err(|error| {
                 DbError::Message(format!(
-                    "applied length {duration} exceeds SQLite's integer range"
+                    "applied length {duration} exceeds SQLite's integer range: {error}"
                 ))
             })?;
             sql.execute(
@@ -358,8 +358,8 @@ fn load_applied_source_on(
         )?
         .into_iter()
         .map(|duration| {
-            u64::try_from(duration).map_err(|_| {
-                DbError::Message(format!("candidate {content_hash} has a negative applied length"))
+            u64::try_from(duration).map_err(|error| {
+                DbError::Message(format!("candidate {content_hash} has a negative applied length: {error}"))
             })
         })
         .collect::<Result<_, _>>()?;

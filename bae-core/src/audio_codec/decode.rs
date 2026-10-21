@@ -102,7 +102,7 @@ impl Drop for BufferDecodeResources {
             drop(core);
         }
         unsafe {
-            let _ = Box::from_raw(self.avio_ctx_ptr);
+            drop(Box::from_raw(self.avio_ctx_ptr));
         }
     }
 }
@@ -361,7 +361,7 @@ unsafe fn open_buffer_input(
     // FFmpeg takes ownership of this buffer.
     let avio_buffer = av_malloc(AVIO_BUFFER_SIZE) as *mut u8;
     if avio_buffer.is_null() {
-        let _ = Box::from_raw(avio_ctx_ptr);
+        drop(Box::from_raw(avio_ctx_ptr));
         return Err(BufferInputError::Alloc("Failed to allocate AVIO buffer"));
     }
 
@@ -376,7 +376,7 @@ unsafe fn open_buffer_input(
     );
     if avio.is_null() {
         av_free(avio_buffer as *mut c_void);
-        let _ = Box::from_raw(avio_ctx_ptr);
+        drop(Box::from_raw(avio_ctx_ptr));
         return Err(BufferInputError::Alloc("Failed to create AVIO context"));
     }
 
@@ -395,7 +395,7 @@ unsafe fn open_buffer_input(
         // notes/ffmpeg-seek-behavior.md).
         (*fmt_ctx).flags |= AVFMT_FLAG_FAST_SEEK as c_int;
     }) else {
-        let _ = Box::from_raw(avio_ctx_ptr);
+        drop(Box::from_raw(avio_ctx_ptr));
         return Err(BufferInputError::Alloc("Failed to allocate format context"));
     };
 
@@ -657,7 +657,7 @@ unsafe fn decode_buffer_to_sink_impl(
             &mut fmt_ctx,
             avio,
         );
-        let _ = Box::from_raw(avio_ctx_ptr);
+        drop(Box::from_raw(avio_ctx_ptr));
         return Err(DecodeError::decode("Failed to allocate frame/packet"));
     }
 

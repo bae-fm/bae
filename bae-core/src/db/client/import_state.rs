@@ -116,7 +116,7 @@ pub(super) fn require_current_candidate(
         )
         .optional()?;
     let expected_file_edit_revision = i64::try_from(expected_file_edit_revision)
-        .map_err(|_| DbError::Message("candidate file revision exceeds SQLite range".into()))?;
+        .map_err(|error| DbError::Message(format!("candidate file revision exceeds SQLite range: {error}")))?;
     let Some((current_hash, generation, current_file_edit_revision)) = current else {
         return Err(DbError::Message(format!(
             "candidate changed before metadata was stored: {candidate_path} is no longer valid"
@@ -128,7 +128,7 @@ pub(super) fn require_current_candidate(
         )));
     }
     u64::try_from(generation)
-        .map_err(|_| DbError::Message("candidate scan generation is negative".into()))
+        .map_err(|error| DbError::Message(format!("candidate scan generation is negative: {error}")))
 }
 
 /// `folder`, a stored folder under the watched folder `root`, by its path

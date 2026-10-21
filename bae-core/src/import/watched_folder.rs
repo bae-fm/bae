@@ -110,9 +110,9 @@ pub(crate) fn candidate_relative_path(
 ) -> Result<String, crate::import::ImportError> {
     let relative = candidate_path
         .strip_prefix(watched_folder_path)
-        .map_err(|_| crate::import::ImportError::WatchedFolder {
+        .map_err(|error| crate::import::ImportError::WatchedFolder {
             detail: format!(
-                "{} is outside watched folder {watched_folder_path}",
+                "{} is outside watched folder {watched_folder_path}: {error}",
                 candidate_path.display()
             ),
         })?;

@@ -130,6 +130,10 @@ impl TrackSink {
     /// it parks until the audio callback drains and unparks it, so a paused
     /// player wakes it zero times. Signals ready at 50% capacity.
     pub fn push_samples_blocking(&mut self, samples: &[f32]) -> usize {
+        #[expect(
+            clippy::let_underscore_must_use,
+            reason = "the first push records the decoder thread; later pushes come from it"
+        )]
         let _ = self.state.decoder_thread.set(std::thread::current());
 
         let mut offset = 0;
@@ -155,6 +159,10 @@ impl TrackSink {
 
             if self.ready_tx.is_some() && self.samples_pushed >= self.capacity / 2 {
                 if let Some(tx) = self.ready_tx.take() {
+                    #[expect(
+                        clippy::let_underscore_must_use,
+                        reason = "a reader that stopped waiting for readiness needs no signal"
+                    )]
                     let _ = tx.send(());
                 }
             }
@@ -193,6 +201,10 @@ impl TrackSink {
     /// a track shorter than half the ring never reaches the 50% threshold.
     pub fn mark_finished(&mut self) {
         if let Some(tx) = self.ready_tx.take() {
+            #[expect(
+                clippy::let_underscore_must_use,
+                reason = "a reader that stopped waiting for readiness needs no signal"
+            )]
             let _ = tx.send(());
         }
         self.state.finished.store(true, Ordering::Release);

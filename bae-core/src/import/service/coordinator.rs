@@ -124,6 +124,10 @@ impl ImportService {
                             WatcherCommand::WatchReport { report, taken } => {
                                 take_watch_report(report, &library_manager, &mut active_roots)
                                     .await;
+                                #[expect(
+                                    clippy::let_underscore_must_use,
+                                    reason = "a test that stopped waiting needs no answer"
+                                )]
                                 let _ = taken.send(());
                             }
                             WatcherCommand::Shutdown { completion } => {

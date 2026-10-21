@@ -43,6 +43,10 @@ mod tests {
     impl Drop for DropSignal {
         fn drop(&mut self) {
             if let Some(sender) = self.0.take() {
+                #[expect(
+                    clippy::let_underscore_must_use,
+                    reason = "a test that stopped watching for the drop needs no signal"
+                )]
                 let _ = sender.send(());
             }
         }

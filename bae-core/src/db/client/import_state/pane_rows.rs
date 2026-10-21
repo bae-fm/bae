@@ -318,7 +318,7 @@ pub(crate) fn load_drafts_on(
                 file_id: row.file_id.clone(),
                 sheet_id: row.sheet_id.clone().ok_or_else(|| missing("sheet"))?,
                 index: u32::try_from(row.slice_index.ok_or_else(|| missing("slice"))?)
-                    .map_err(|_| missing("a readable slice"))?,
+                    .map_err(|error| missing(&format!("a readable slice ({error})")))?,
             },
             other => return Err(unreadable("file_kind", other)),
         };

@@ -55,6 +55,13 @@ pub enum LibraryBrowseSubscriptionError {
     Query(#[from] coven::CovenError),
 }
 
+/// The live query ending is this subscription's cancellation.
+impl From<crate::live_query::LiveQueryCancelled> for LibraryBrowseSubscriptionError {
+    fn from(_: crate::live_query::LiveQueryCancelled) -> Self {
+        Self::Cancelled
+    }
+}
+
 pub struct LibraryBrowseSubscription<Projection, Row> {
     query: CancellableLiveQuery<LibraryPageWindows, Projection>,
     resolve: Arc<
@@ -87,7 +94,7 @@ where
         self.query
             .set(windows)
             .map(|_| ())
-            .map_err(|_| LibraryBrowseSubscriptionError::Cancelled)
+            .map_err(LibraryBrowseSubscriptionError::from)
     }
 
     pub async fn next(&self) -> Result<LibraryBrowseSnapshot<Row>, LibraryBrowseSubscriptionError> {
@@ -95,7 +102,7 @@ where
             .query
             .next()
             .await
-            .map_err(|_| LibraryBrowseSubscriptionError::Cancelled)?;
+            .map_err(LibraryBrowseSubscriptionError::from)?;
         let revision = event.revision.0;
         let cause = event.cause;
         let projection = event.result?;

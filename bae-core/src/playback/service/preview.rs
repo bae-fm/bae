@@ -45,7 +45,7 @@ impl PlaybackService {
     /// Stop preview because main playback is taking over. Main starts itself, so
     /// the resume the preview hands back is dropped rather than acted on.
     pub(super) fn stop_preview_for_main_playback(&mut self) {
-        let _ = self.preview.stop();
+        drop(self.preview.stop());
     }
 
     /// Preview a local source window. The same target toggles off (and resumes

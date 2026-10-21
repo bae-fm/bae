@@ -47,6 +47,13 @@ pub enum LibrarySearchSubscriptionError {
     Query(#[from] coven::CovenError),
 }
 
+/// The live query ending is this subscription's cancellation.
+impl From<crate::live_query::LiveQueryCancelled> for LibrarySearchSubscriptionError {
+    fn from(_: crate::live_query::LiveQueryCancelled) -> Self {
+        Self::Cancelled
+    }
+}
+
 /// A live library search whose query changes in place: one reconfigurable
 /// query for as long as the search field is open, instead of a new live query
 /// per keystroke.
@@ -84,7 +91,7 @@ impl LibrarySearchSubscription {
     pub fn set_query(&self, raw: &str) -> Result<u64, LibrarySearchSubscriptionError> {
         self.query
             .set(LibrarySearchQuery::parse(raw))
-            .map_err(|_| LibrarySearchSubscriptionError::Cancelled)
+            .map_err(LibrarySearchSubscriptionError::from)
     }
 
     pub async fn next(&self) -> Result<LibrarySearchSnapshot, LibrarySearchSubscriptionError> {
@@ -92,7 +99,7 @@ impl LibrarySearchSubscription {
             .query
             .next()
             .await
-            .map_err(|_| LibrarySearchSubscriptionError::Cancelled)?;
+            .map_err(LibrarySearchSubscriptionError::from)?;
         let request_revision = event.revision.0;
         let query = event.request.clone();
         let projection = event.result?;

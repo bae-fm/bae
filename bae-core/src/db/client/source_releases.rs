@@ -62,17 +62,25 @@ fn unreadable(what: &str, value: impl std::fmt::Debug) -> DbError {
     DbError::Message(format!("stored source release holds an unreadable {what}: {value:?}"))
 }
 
+#[expect(
+    clippy::map_err_ignore,
+    reason = "the unreadable value is named; the parse says nothing past it"
+)]
 fn catalog_column(value: &str) -> Result<Catalog, DbError> {
     Catalog::from_str(value).map_err(|_| unreadable("catalog", value))
 }
 
+#[expect(
+    clippy::map_err_ignore,
+    reason = "the unreadable value is named; the conversion says nothing past it"
+)]
 fn to_u64(value: i64, what: &str) -> Result<u64, DbError> {
     u64::try_from(value).map_err(|_| unreadable(what, value))
 }
 
 fn to_i64(value: u64, what: &str) -> Result<i64, DbError> {
     i64::try_from(value)
-        .map_err(|_| DbError::Message(format!("{what} {value} exceeds SQLite's integer range")))
+        .map_err(|error| DbError::Message(format!("{what} {value} exceeds SQLite's integer range: {error}")))
 }
 
 /// Write `release`, replacing whatever was stored for it.
@@ -605,7 +613,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         .map(|(document, document_key, reason)| {
             Ok(UnfetchedDocument {
                 document: crate::import::PayloadSource::from_str(&document)
-                    .map_err(|_| unreadable("unfetched document", &document))?,
+                    .map_err(|error| unreadable(&format!("unfetched document ({error})"), &document))?,
                 key: document_key,
                 reason: match reason.as_str() {
                     "failed" => UnfetchedReason::Failed,

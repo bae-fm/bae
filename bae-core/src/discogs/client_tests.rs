@@ -689,6 +689,10 @@ async fn scripted_server(responses: Vec<(u16, String)>) -> (String, Arc<AtomicUs
             };
             counted_requests.fetch_add(1, Ordering::SeqCst);
             let mut buffer = [0; 4096];
+            #[expect(
+                clippy::let_underscore_must_use,
+                reason = "the fake answers whatever the request said"
+            )]
             let _ = stream.read(&mut buffer).await;
             let (status, body) = remaining
                 .next()
@@ -698,6 +702,10 @@ async fn scripted_server(responses: Vec<(u16, String)>) -> (String, Arc<AtomicUs
                  Content-Length: {}\r\n\r\n{body}",
                 body.len()
             );
+            #[expect(
+                clippy::let_underscore_must_use,
+                reason = "a client that stopped reading needs no answer"
+            )]
             let _ = stream.write_all(raw.as_bytes()).await;
         }
     });

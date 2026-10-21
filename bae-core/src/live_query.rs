@@ -33,6 +33,10 @@ where
 
     /// Evaluate a new absolute request and return the revision that will
     /// deliver it. Repeating the standing request keeps its revision.
+    #[expect(
+        clippy::map_err_ignore,
+        reason = "coven refuses a request only because its query is gone, which is this cancellation"
+    )]
     pub(crate) fn set(&self, request: Request) -> Result<u64, LiveQueryCancelled> {
         if self.cancellation.is_cancelled() {
             return Err(LiveQueryCancelled);

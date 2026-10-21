@@ -126,9 +126,9 @@ pub(crate) fn sheet_track_duration_ms(
             ),
         })?;
     let total_ms =
-        u64::try_from(audio.probe.duration.as_millis()).map_err(|_| ImportError::UnusableFile {
+        u64::try_from(audio.probe.duration.as_millis()).map_err(|error| ImportError::UnusableFile {
             detail: format!(
-                "{} is too long to represent in milliseconds",
+                "{} is too long to represent in milliseconds: {error}",
                 audio.path.display()
             ),
         })?;

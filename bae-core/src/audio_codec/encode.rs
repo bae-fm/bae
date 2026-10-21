@@ -947,7 +947,11 @@ pub fn encode_i32(
     encoder.on_format(sample_rate, channels);
     encoder.on_samples(samples);
     encoder.finish()?;
-    let cursor = StdArc::try_unwrap(shared.0)
-        .map_err(|_| "encode sink still shared after finish".to_string())?;
+    let cursor = StdArc::try_unwrap(shared.0).map_err(|shared| {
+        format!(
+            "encode sink still shared after finish ({} holders)",
+            StdArc::strong_count(&shared)
+        )
+    })?;
     Ok(cursor.into_inner().unwrap().into_inner())
 }

@@ -83,9 +83,9 @@ pub(super) fn apply_sheet_disc_row(
                 ))
             })?;
             SheetDisc::Disc {
-                number: u32::try_from(number).map_err(|_| {
+                number: u32::try_from(number).map_err(|error| {
                     DbError::Message(format!(
-                        "the disc stored for {} is numbered {number}",
+                        "the disc stored for {} is numbered {number}: {error}",
                         row.sheet_id
                     ))
                 })?,

@@ -61,8 +61,10 @@ impl Database {
             }
             HistoryAudience::Person { .. } => {}
         }
-        let played_ms = i64::try_from(entry.played.as_millis()).map_err(|_| {
-            DbError::Message("played duration exceeds SQLite's integer range".into())
+        let played_ms = i64::try_from(entry.played.as_millis()).map_err(|error| {
+            DbError::Message(format!(
+                "played duration exceeds SQLite's integer range: {error}"
+            ))
         })?;
         self.call(move |sql| {
             match entry.audience {
@@ -95,6 +97,7 @@ fn history_rows(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<HistoryEntry>>
         let started_at: String = row.get(3)?;
         let started_at = started_at.parse::<DateTime<Utc>>().map_err(|error| rusqlite::Error::FromSqlConversionFailure(3, rusqlite::types::Type::Text, Box::new(error)))?;
         let played_ms: i64 = row.get(4)?;
+        #[expect(clippy::map_err_ignore, reason = "the out-of-range error carries the column and the value itself")]
         let played_ms = u64::try_from(played_ms).map_err(|_| rusqlite::Error::IntegralValueOutOfRange(4, played_ms))?;
         Ok(HistoryEntry { id: uuid_column(row, 0)?, track_id: row.get(1)?, release_id: row.get(2)?, started_at, played: Duration::from_millis(played_ms), audience })
     })

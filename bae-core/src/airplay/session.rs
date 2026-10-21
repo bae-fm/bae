@@ -13,6 +13,8 @@
 use std::net::{IpAddr, UdpSocket};
 use std::sync::{Arc, Mutex};
 
+use tracing::warn;
+
 use super::crypto::RaopCipher;
 use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
@@ -355,7 +357,9 @@ impl Drop for RaopSession {
     fn drop(&mut self) {
         // Best-effort receiver teardown; the stream threads stop when the
         // `RaopStream` field drops.
-        let _ = self.control.teardown();
+        if let Err(error) = self.control.teardown() {
+            warn!("airplay receiver teardown failed: {error}");
+        }
     }
 }
 

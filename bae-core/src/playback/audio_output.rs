@@ -466,9 +466,9 @@ impl CaptureOutputCore {
     fn rotate_capture_buffer(&self) -> Result<(), AudioError> {
         let captured = Arc::new(Mutex::new(Vec::<f32>::new()));
         *self.active.lock().unwrap() = captured.clone();
-        self.notify_tx
-            .send(captured)
-            .map_err(|_| AudioError::StreamBuildError("capture receiver dropped".to_string()))
+        self.notify_tx.send(captured).map_err(|error| {
+            AudioError::StreamBuildError(format!("capture receiver dropped: {error}"))
+        })
     }
 
     /// The one capture thread keeps running across a same-format swap; rotate

@@ -476,7 +476,9 @@ fn spawn_sync_thread(
 fn spawn_timing_thread(socket: UdpSocket, stop: Arc<AtomicBool>) -> JoinHandle<()> {
     std::thread::spawn(move || {
         // A read timeout lets the thread notice the stop flag between requests.
-        let _ = socket.set_read_timeout(Some(Duration::from_millis(200)));
+        if let Err(error) = socket.set_read_timeout(Some(Duration::from_millis(200))) {
+            warn!("airplay timing socket has no read timeout, so stopping waits for a request: {error}");
+        }
         let mut buf = [0u8; 64];
         while !stop.load(Ordering::Acquire) {
             match socket.recv_from(&mut buf) {

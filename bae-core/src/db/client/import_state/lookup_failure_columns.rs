@@ -45,8 +45,8 @@ pub(super) fn failure_of(
         "provider" => LookupFailure::Provider {
             status: status
                 .map(|status| {
-                    u16::try_from(status).map_err(|_| {
-                        DbError::Message(format!("a stored provider status is {status}"))
+                    u16::try_from(status).map_err(|error| {
+                        DbError::Message(format!("a stored provider status is {status}: {error}"))
                     })
                 })
                 .transpose()?,

@@ -299,7 +299,10 @@ async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
     let admitted = musicbrainz.admitted_requests();
 
     fixture.identification().shut_down();
-    let _ = tokio::time::timeout(Duration::from_secs(20), sweep).await;
+    tokio::time::timeout(Duration::from_secs(20), sweep)
+        .await
+        .expect("the sweep ends once identification shuts down")
+        .expect("the sweep does not panic");
 
     assert_eq!(typed.len(), 1);
     let typed_at = admitted

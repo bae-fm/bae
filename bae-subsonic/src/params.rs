@@ -33,10 +33,9 @@ impl Params {
     pub(crate) fn int(&self, name: &str) -> Result<Option<i64>, SubError> {
         match self.get(name) {
             None => Ok(None),
-            Some(raw) => raw
-                .parse::<i64>()
-                .map(Some)
-                .map_err(|_| SubError::generic(format!("parameter '{name}' must be an integer"))),
+            Some(raw) => raw.parse::<i64>().map(Some).map_err(|error| {
+                SubError::generic(format!("parameter '{name}' must be an integer: {error}"))
+            }),
         }
     }
 

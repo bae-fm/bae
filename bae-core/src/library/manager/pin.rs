@@ -56,7 +56,7 @@ impl LibraryManager {
                     let next = crate::library::DownloadTransferProgress::new(
                         &release, next.bytes_cached, next.bytes_total,
                     )?;
-                    progress_tx.send(next).map_err(|_| LibraryError::Storage("pinning release was cancelled".into()))?;
+                    progress_tx.send(next).map_err(|error| LibraryError::Storage(format!("pinning release was cancelled: {error}")))?;
                     if finished {
                         return Ok(());
                     }

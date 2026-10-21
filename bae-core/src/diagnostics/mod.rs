@@ -285,6 +285,10 @@ impl Diagnostics {
         }
     }
 
+    #[expect(
+        clippy::map_err_ignore,
+        reason = "a closed worker channel says only that the worker stopped"
+    )]
     pub async fn flush(&self) -> Result<(), DiagnosticsError> {
         let DiagnosticsInner::Worker { tx, .. } = self.inner.as_ref() else {
             return Ok(());

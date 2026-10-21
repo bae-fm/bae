@@ -232,7 +232,7 @@ fn insert_match(
     named_note: Option<&str>,
 ) -> Result<(), DbError> {
     let position = i64::try_from(position)
-        .map_err(|_| DbError::Message("a match list is longer than SQLite counts".to_string()))?;
+        .map_err(|error| DbError::Message(format!("a match list is longer than SQLite counts: {error}")))?;
     let cover = result.cover_art.as_ref();
     let (tracks_kind, tracks_count) = match &result.source_tracks {
         None => (None, None),
@@ -387,7 +387,7 @@ fn insert_match(
 
 fn ordinal_column(ordinal: usize) -> Result<i64, DbError> {
     i64::try_from(ordinal)
-        .map_err(|_| DbError::Message("a match's list is longer than SQLite counts".to_string()))
+        .map_err(|error| DbError::Message(format!("a match's list is longer than SQLite counts: {error}")))
 }
 
 /// The stored `album_links` values, one per [`AlbumLinks`] shape.
@@ -558,9 +558,9 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         ALBUM_LINKS_UNREAD => AlbumLinks::Unread,
         other => return Err(unreadable("album_links", other)),
     };
-    let row = u32::try_from(pressing).map_err(|_| {
+    let row = u32::try_from(pressing).map_err(|error| {
         DbError::Message(format!(
-            "match {position} of {content_hash} names pressing row {pressing}"
+            "match {position} of {content_hash} names pressing row {pressing}: {error}"
         ))
     })?;
     Ok(MatchRow {
@@ -606,8 +606,8 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
                     DbError::Message("a listed source tracklist states no count".to_string())
                 })?;
             Some(SourceTracks::Listed {
-                count: u32::try_from(count).map_err(|_| {
-                    DbError::Message("a source tracklist's count is out of range".to_string())
+                count: u32::try_from(count).map_err(|error| {
+                    DbError::Message(format!("a source tracklist's count is out of range: {error}"))
                 })?,
             })
         }
@@ -724,9 +724,9 @@ pub(super) fn identification_of(
                 ))
             })
             .and_then(|count| {
-                u32::try_from(count).map_err(|_| {
+                u32::try_from(count).map_err(|error| {
                     DbError::Message(format!(
-                        "verdict {kind} for {content_hash} counts {count} tracks"
+                        "verdict {kind} for {content_hash} counts {count} tracks: {error}"
                     ))
                 })
             })

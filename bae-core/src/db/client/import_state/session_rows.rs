@@ -205,6 +205,9 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
     use GroupingBlockReason as B;
     use UiErrorCategory as C;
     let unreadable = || DbError::Message(format!("unreadable failure class {column:?}"));
+    let unreadable_because = |error: &dyn std::fmt::Display| {
+        DbError::Message(format!("unreadable failure class {column:?}: {error}"))
+    };
     Ok(match column.split_once('.') {
         Some(("grouping_blocked", stored)) => C::GroupingBlocked(
             [
@@ -219,17 +222,17 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
             .ok_or_else(unreadable)?,
         ),
         Some(("storage", stored)) => {
-            C::Storage(serde_json::from_str(stored).map_err(|_| unreadable())?)
+            C::Storage(serde_json::from_str(stored).map_err(|error| unreadable_because(&error))?)
         }
         Some(("storage_check", stored)) => {
             let (check, failure) = stored.split_once('.').ok_or_else(unreadable)?;
             C::StorageCheck {
                 check: check_of(check).ok_or_else(unreadable)?,
-                failure: serde_json::from_str(failure).map_err(|_| unreadable())?,
+                failure: serde_json::from_str(failure).map_err(|error| unreadable_because(&error))?,
             }
         }
         Some(("versioning_unknown", stored)) => {
-            C::S3VersioningUnknown(serde_json::from_str(stored).map_err(|_| unreadable())?)
+            C::S3VersioningUnknown(serde_json::from_str(stored).map_err(|error| unreadable_because(&error))?)
         }
         Some(("versioning_unsupported", stored)) => {
             C::S3VersioningUnsupported(versioning_of(stored).ok_or_else(unreadable)?)
@@ -237,8 +240,8 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
         Some(("metadata_track_count", stored)) => {
             let (folder_tracks, release_tracks) = stored.split_once('.').ok_or_else(unreadable)?;
             C::MetadataTrackCount {
-                folder_tracks: folder_tracks.parse().map_err(|_| unreadable())?,
-                release_tracks: release_tracks.parse().map_err(|_| unreadable())?,
+                folder_tracks: folder_tracks.parse().map_err(|error| unreadable_because(&error))?,
+                release_tracks: release_tracks.parse().map_err(|error| unreadable_because(&error))?,
             }
         }
         Some(_) => return Err(unreadable()),

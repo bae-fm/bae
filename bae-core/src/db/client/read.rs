@@ -371,8 +371,9 @@ pub(super) fn rfc3339_column(row: &Row, column: &str) -> rusqlite::Result<DateTi
 /// error.
 pub(super) fn count_column(row: &Row, column: &str) -> rusqlite::Result<u64> {
     let raw: i64 = row.get(column)?;
-    u64::try_from(raw)
-        .map_err(|_| column_conversion_error(row, column, format!("{column} {raw} is negative")))
+    u64::try_from(raw).map_err(|error| {
+        column_conversion_error(row, column, format!("{column} {raw} is negative: {error}"))
+    })
 }
 
 /// [`count_column`] for a nullable column.

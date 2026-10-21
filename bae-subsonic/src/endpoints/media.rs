@@ -108,8 +108,9 @@ async fn stream_file(
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
 
-    let total = u64::try_from(file.file_size)
-        .map_err(|_| SubError::generic(format!("file {} has a negative size", file.id)))?;
+    let total = u64::try_from(file.file_size).map_err(|error| {
+        SubError::generic(format!("file {} has a negative size: {error}", file.id))
+    })?;
     let content_type = file.content_type.as_str().to_string();
 
     let buffer = services.open_release_file_stream(&segment.file_id, total);
@@ -165,6 +166,10 @@ async fn reader_body(buffer: SharedSparseBuffer, start: u64, len: u64) -> Result
                 // refused with the reason; after it, the body fails with it,
                 // so the response aborts instead of ending as if clean.
                 Err(stop) => {
+                    #[expect(
+                        clippy::let_underscore_must_use,
+                        reason = "a client that hung up needs no reason"
+                    )]
                     let _ = tx.blocking_send(Err(stop));
                     break;
                 }
@@ -300,7 +305,9 @@ impl std::io::Write for ChannelSink {
         // stops the encode rather than being silently dropped.
         self.tx
             .blocking_send(Ok(Bytes::copy_from_slice(buf)))
-            .map_err(|_| std::io::Error::from(std::io::ErrorKind::BrokenPipe))?;
+            .map_err(|error| {
+                std::io::Error::new(std::io::ErrorKind::BrokenPipe, error.to_string())
+            })?;
         Ok(buf.len())
     }
 

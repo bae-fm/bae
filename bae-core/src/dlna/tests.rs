@@ -461,7 +461,9 @@ async fn start_fake_renderer(state: Shared) -> String {
         .route("/rc", post(handle))
         .with_state(state);
     tokio::spawn(async move {
-        let _ = axum::serve(listener, router).await;
+        axum::serve(listener, router)
+            .await
+            .expect("the test server serves until the test ends");
     });
     format!("http://{addr}")
 }

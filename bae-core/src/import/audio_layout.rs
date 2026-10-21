@@ -324,9 +324,9 @@ pub(crate) fn resolve_track_files(
         };
         db_track.duration_ms =
             Some(
-                i64::try_from(duration_ms).map_err(|_| ImportError::UnusableFile {
+                i64::try_from(duration_ms).map_err(|error| ImportError::UnusableFile {
                     detail: format!(
-                        "{} is too long to represent in milliseconds",
+                        "{} is too long to represent in milliseconds: {error}",
                         file.relative_path
                     ),
                 })?,

@@ -477,6 +477,10 @@ pub(super) async fn mb_raw_server(
             let raw = remaining.next().unwrap_or_else(|| {
                 "HTTP/1.1 599 Response\r\nContent-Length: 18\r\n\r\nunscripted request".to_string()
             });
+            #[expect(
+                clippy::let_underscore_must_use,
+                reason = "a client that stopped reading needs no answer"
+            )]
             let _ = stream.write_all(raw.as_bytes()).await;
         }
     });

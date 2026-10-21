@@ -21,6 +21,13 @@ pub enum LibraryStatusSubscriptionError {
     Query(#[from] coven::CovenError),
 }
 
+/// The live query ending is this subscription's cancellation.
+impl From<crate::live_query::LiveQueryCancelled> for LibraryStatusSubscriptionError {
+    fn from(_: crate::live_query::LiveQueryCancelled) -> Self {
+        Self::Cancelled
+    }
+}
+
 /// The library membership of a set of offered releases. A new set of offers
 /// is a new request on the same query, and one read per database change
 /// answers every release in it.
@@ -45,7 +52,7 @@ impl LibraryStatusSubscription {
     ) -> Result<u64, LibraryStatusSubscriptionError> {
         self.query
             .set(checks.into_iter().collect())
-            .map_err(|_| LibraryStatusSubscriptionError::Cancelled)
+            .map_err(LibraryStatusSubscriptionError::from)
     }
 
     pub async fn next(&self) -> Result<LibraryStatusSnapshot, LibraryStatusSubscriptionError> {
@@ -53,7 +60,7 @@ impl LibraryStatusSubscription {
             .query
             .next()
             .await
-            .map_err(|_| LibraryStatusSubscriptionError::Cancelled)?;
+            .map_err(LibraryStatusSubscriptionError::from)?;
         let request_revision = event.revision.0;
         Ok(LibraryStatusSnapshot {
             statuses: event.result?,

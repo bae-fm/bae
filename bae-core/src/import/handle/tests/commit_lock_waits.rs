@@ -54,6 +54,10 @@ impl crate::import::file_tag_snapshot::FileTagReader for HeldTagReader {
         if held {
             // The receiver is gone once the test has stopped watching, which
             // changes nothing about the read.
+            #[expect(
+                clippy::let_underscore_must_use,
+                reason = "a test that stopped watching for entry needs no report"
+            )]
             let _ = self.entered.send(path.to_path_buf());
             let (lock, condition) = &*self.gate;
             let mut open = lock.lock().unwrap();

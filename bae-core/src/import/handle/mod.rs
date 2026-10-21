@@ -167,6 +167,10 @@ impl ImportEventBus {
         let (reader, events) = mpsc::unbounded_channel();
         let mut every_event = self.delivery.every_event.lock().unwrap();
         for event in &every_event.delivered {
+            #[expect(
+                clippy::let_underscore_must_use,
+                reason = "the receiver is returned below, so the send cannot fail"
+            )]
             let _ = reader.send(event.clone());
         }
         every_event.readers.push(reader);
@@ -206,12 +210,12 @@ impl ImportEventBus {
     /// Wait until a sender is stopped where [`Self::hold_send_where`] said.
     #[cfg(test)]
     pub(crate) async fn send_held(&self) {
-        let _ = self
-            .send_hold
+        self.send_hold
             .held
             .subscribe()
             .wait_for(|held| *held)
-            .await;
+            .await
+            .expect("the hold outlives the wait for it");
     }
 
     /// Let the stopped sender go on.

@@ -24,6 +24,13 @@ pub enum AlbumSelectionSubscriptionError {
     Query(#[from] coven::CovenError),
 }
 
+/// The live query ending is this subscription's cancellation.
+impl From<crate::live_query::LiveQueryCancelled> for AlbumSelectionSubscriptionError {
+    fn from(_: crate::live_query::LiveQueryCancelled) -> Self {
+        Self::Cancelled
+    }
+}
+
 /// The selected albums' summaries — what the grid's bulk actions act on —
 /// and whether each still exists. A new selection is a new request on the
 /// same query, and one read per database change answers every selected album.
@@ -51,7 +58,7 @@ impl AlbumSelectionSubscription {
         self.query
             .set(album_ids.into_iter().collect())
             .map(|_| ())
-            .map_err(|_| AlbumSelectionSubscriptionError::Cancelled)
+            .map_err(AlbumSelectionSubscriptionError::from)
     }
 
     pub async fn next(&self) -> Result<AlbumSelectionSnapshot, AlbumSelectionSubscriptionError> {
@@ -59,7 +66,7 @@ impl AlbumSelectionSubscription {
             .query
             .next()
             .await
-            .map_err(|_| AlbumSelectionSubscriptionError::Cancelled)?;
+            .map_err(AlbumSelectionSubscriptionError::from)?;
         let requested = event.request.clone();
         let projection = event.result?;
         Ok(AlbumSelectionSnapshot {

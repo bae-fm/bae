@@ -174,7 +174,9 @@ impl RemoteImageHost {
             .fallback(handler)
             .with_state(routes.clone());
         tokio::spawn(async move {
-            let _ = axum::serve(listener, app).await;
+            axum::serve(listener, app)
+                .await
+                .expect("the test image host serves until the test ends");
         });
         Self { routes, origin }
     }

@@ -543,7 +543,9 @@ impl PlaybackHandle {
     pub async fn save_state(&self) {
         let (tx, rx) = oneshot::channel();
         self.dispatch(PlaybackCommand::SaveState(tx));
-        let _ = rx.await;
+        if rx.await.is_err() {
+            debug!("playback service stopped before saving its state");
+        }
     }
 
     pub fn skip_to_entry(&self, entry_id: QueueEntryId) {

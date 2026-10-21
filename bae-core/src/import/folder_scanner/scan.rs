@@ -97,15 +97,15 @@ pub(crate) fn file_modified_at_ns(
         .map_err(|source| FolderScanError::io(path, source))?;
     let elapsed = modified
         .duration_since(std::time::UNIX_EPOCH)
-        .map_err(|_| {
+        .map_err(|error| {
             FolderScanError::Other(format!(
-                "modification time is before the Unix epoch: {}",
+                "modification time is before the Unix epoch: {}: {error}",
                 path.display()
             ))
         })?;
-    i64::try_from(elapsed.as_nanos()).map_err(|_| {
+    i64::try_from(elapsed.as_nanos()).map_err(|error| {
         FolderScanError::Other(format!(
-            "modification time exceeds SQLite's integer range: {}",
+            "modification time exceeds SQLite's integer range: {}: {error}",
             path.display()
         ))
     })

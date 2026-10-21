@@ -531,7 +531,7 @@ pub(super) fn load_candidate_detail_on(
         |row| row.get::<_, i64>(0),
     )?;
     let metadata_revision = u64::try_from(metadata_revision)
-        .map_err(|_| DbError::Message("candidate metadata revision is negative".to_string()))?;
+        .map_err(|error| DbError::Message(format!("candidate metadata revision is negative: {error}")))?;
 
     let statuses = identify
         .map(|identify| library_statuses(sql, &identify.verdict))

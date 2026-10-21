@@ -572,6 +572,10 @@ fn spawn_root_scan(
         if !scan_cancellation.is_cancelled() {
             // `rescan_and_reconcile` already recorded and announced any error;
             // passing it on would show it twice.
+            #[expect(
+                clippy::let_underscore_must_use,
+                reason = "the rescan records and announces its own error"
+            )]
             let _ = ImportService::rescan_and_reconcile(&path, &scan, &scan_cancellation).await;
         }
         if completion_tx

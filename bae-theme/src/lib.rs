@@ -19,8 +19,8 @@ impl Argb {
             .strip_prefix('#')
             .filter(|digits| digits.chars().all(|c| c.is_ascii_hexdigit()))
             .ok_or_else(|| format!("`{hex}` is not a #RRGGBB or #AARRGGBB colour"))?;
-        let value =
-            u32::from_str_radix(digits, 16).map_err(|_| format!("`{hex}` is not a colour"))?;
+        let value = u32::from_str_radix(digits, 16)
+            .map_err(|error| format!("`{hex}` is not a colour: {error}"))?;
         match digits.len() {
             6 => Ok(Self(0xFF00_0000 | value)),
             8 => Ok(Self(value)),

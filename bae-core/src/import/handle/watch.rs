@@ -16,6 +16,10 @@ impl ImportServiceHandle {
 
     /// Send a command to the folder-watch coordinator; a closed channel is an
     /// `Internal` error naming the action.
+    #[expect(
+        clippy::map_err_ignore,
+        reason = "a closed coordinator channel says only that it stopped; the action is named"
+    )]
     fn send_watcher_command(
         &self,
         command: WatcherCommand,
@@ -117,8 +121,8 @@ impl ImportServiceHandle {
         )?;
         receiver
             .await
-            .map_err(|_| crate::import::ImportError::Internal {
-                detail: "folder watch removal ended without a result".to_string(),
+            .map_err(|error| crate::import::ImportError::Internal {
+                detail: format!("folder watch removal ended without a result: {error}"),
             })?
             .map_err(|detail| crate::import::ImportError::Watch { detail })
     }
@@ -170,8 +174,8 @@ impl ImportServiceHandle {
         )?;
         receiver
             .await
-            .map_err(|_| crate::import::ImportError::Internal {
-                detail: "folder refresh task ended without a result".to_string(),
+            .map_err(|error| crate::import::ImportError::Internal {
+                detail: format!("folder refresh task ended without a result: {error}"),
             })?
             .map_err(|detail| crate::import::ImportError::Watch { detail })
     }
@@ -198,8 +202,8 @@ impl ImportServiceHandle {
         )?;
         receiver
             .await
-            .map_err(|_| crate::import::ImportError::Internal {
-                detail: "folder decision task ended without a result".to_string(),
+            .map_err(|error| crate::import::ImportError::Internal {
+                detail: format!("folder decision task ended without a result: {error}"),
             })?
             .map_err(|detail| crate::import::ImportError::Watch { detail })
     }

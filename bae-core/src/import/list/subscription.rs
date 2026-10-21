@@ -60,6 +60,13 @@ pub enum ImportListSubscriptionError {
     Query(#[from] coven::CovenError),
 }
 
+/// The live query ending is this subscription's cancellation.
+impl From<crate::live_query::LiveQueryCancelled> for ImportListSubscriptionError {
+    fn from(_: crate::live_query::LiveQueryCancelled) -> Self {
+        Self::Cancelled
+    }
+}
+
 /// The request as it stands, and the query it reconfigures.
 struct StandingRequest {
     standing: Mutex<Standing>,
@@ -113,7 +120,7 @@ impl StandingRequest {
         *revision = self
             .query
             .set(request.clone())
-            .map_err(|_| ImportListSubscriptionError::Cancelled)?;
+            .map_err(ImportListSubscriptionError::from)?;
         Ok(*revision)
     }
 
@@ -412,11 +419,15 @@ impl ImportListSubscription {
         loop {
             let arrival = tokio::select! {
                 event = self.request.query.next() => {
-                    Arrival::List(event.map_err(|_| ImportListSubscriptionError::Cancelled)?)
+                    Arrival::List(event.map_err(ImportListSubscriptionError::from)?)
                 }
                 value = self.next_folder_scans() => Arrival::FolderScans(value?),
                 changed = delivered.facts_changed.changed() => {
-                    changed.map_err(|_| ImportListSubscriptionError::Cancelled)?;
+                    // The facts' sender is the subscription's own; it closes
+                    // only as the subscription ends.
+                    if changed.is_err() {
+                        return Err(ImportListSubscriptionError::Cancelled);
+                    }
                     Arrival::RuntimeFacts
                 }
             };

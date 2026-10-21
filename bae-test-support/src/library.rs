@@ -1,7 +1,13 @@
 //! Test libraries: a database, a `LibraryManager` over it, and the runtimes
 //! and ids the tests around them need.
 
+/// Install the test log subscriber; the first test in the process to call
+/// this installs it, and every later call finds it there.
 pub fn tracing_init() {
+    #[expect(
+        clippy::let_underscore_must_use,
+        reason = "only the first test in the process installs the subscriber; later calls find it installed"
+    )]
     let _ = tracing_subscriber::fmt()
         .with_test_writer()
         .with_line_number(true)

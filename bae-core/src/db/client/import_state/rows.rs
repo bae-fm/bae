@@ -538,15 +538,15 @@ pub(crate) fn load_states_rows_on(
         for state in states {
             let state = state?;
             let mut file_edits = edits.remove(&state.content_hash).unwrap_or_default();
-            file_edits.revision = u64::try_from(state.edit_revision).map_err(|_| {
+            file_edits.revision = u64::try_from(state.edit_revision).map_err(|error| {
                 DbError::Message(format!(
-                    "import candidate {} has a negative edit revision",
+                    "import candidate {} has a negative edit revision: {error}",
                     state.content_hash
                 ))
             })?;
-            let metadata_revision = u64::try_from(state.metadata_revision).map_err(|_| {
+            let metadata_revision = u64::try_from(state.metadata_revision).map_err(|error| {
                 DbError::Message(format!(
-                    "import candidate {} has a negative metadata revision",
+                    "import candidate {} has a negative metadata revision: {error}",
                     state.content_hash
                 ))
             })?;
@@ -659,9 +659,9 @@ pub(crate) fn load_candidate_file_edits_on(
         let mut edits = edits.expect("a stored revision has fetched file edits")()?
             .remove(&content_hash)
             .unwrap_or_default();
-        edits.revision = u64::try_from(revision).map_err(|_| {
+        edits.revision = u64::try_from(revision).map_err(|error| {
             DbError::Message(format!(
-                "import candidate {content_hash} has a negative edit revision"
+                "import candidate {content_hash} has a negative edit revision: {error}"
             ))
         })?;
         Ok(edits)

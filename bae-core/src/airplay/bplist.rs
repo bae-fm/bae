@@ -439,6 +439,10 @@ fn integer_width(marker: u8) -> Result<usize, BplistError> {
 }
 
 /// A big-endian unsigned integer of at most eight bytes, as an index or length.
+#[expect(
+    clippy::map_err_ignore,
+    reason = "a value past usize says nothing more than that it is past it"
+)]
 fn read_uint(bytes: &[u8]) -> Result<usize, BplistError> {
     let value = be_u64(bytes);
     usize::try_from(value).map_err(|_| BplistError::Truncated)

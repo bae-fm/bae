@@ -31,6 +31,10 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
         let album_id = album.id.clone();
         load.push(tokio::spawn(async move {
             loop {
+                #[expect(
+                    clippy::let_underscore_must_use,
+                    reason = "this is load on the database; each read's answer is not the point"
+                )]
                 let _ = database.get_releases_for_album(&album_id).await;
             }
         }));

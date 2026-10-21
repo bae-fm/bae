@@ -660,6 +660,10 @@ mod candidate_runtime {
 
     impl CandidateRuntimeCallback for ForwardingCallback {
         fn on_change(&self, change: BridgeCandidateRuntimeChange) {
+            #[expect(
+                clippy::let_underscore_must_use,
+                reason = "a change arriving after the test dropped its receiver has no one to tell"
+            )]
             let _ = self.changes.send(change);
         }
     }

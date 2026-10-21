@@ -74,6 +74,10 @@ fn capturing_error_handler() -> (
     let (tx, rx) = tokio_mpsc::unbounded_channel();
     (
         Box::new(move |error| {
+            #[expect(
+                clippy::let_underscore_must_use,
+                reason = "a test that stopped listening for the failure needs no report"
+            )]
             let _ = tx.send(error);
         }),
         rx,

@@ -315,11 +315,10 @@ fn load_file_tag_facts(
                     album_artist,
                     year: year
                         .map(|value| {
-                            u16::try_from(value).map_err(|_| {
-                                DbError::Message(
-                                    "a file-tag year is outside the range it counts over"
-                                        .to_string(),
-                                )
+                            u16::try_from(value).map_err(|error| {
+                                DbError::Message(format!(
+                                    "a file-tag year is outside the range it counts over: {error}"
+                                ))
                             })
                         })
                         .transpose()?,

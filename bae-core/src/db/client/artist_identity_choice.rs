@@ -69,8 +69,9 @@ pub(super) fn require_revision<Q: QueryOne>(
         [hash],
         |row| row.get(0),
     )?;
-    let revision = u64::try_from(revision)
-        .map_err(|_| DbError::Message("candidate metadata revision is negative".into()))?;
+    let revision = u64::try_from(revision).map_err(|error| {
+        DbError::Message(format!("candidate metadata revision is negative: {error}"))
+    })?;
     if revision != expected {
         return Err(DbError::Message(
             "the candidate changed before its artist choice was saved".into(),

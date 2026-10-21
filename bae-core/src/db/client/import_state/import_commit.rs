@@ -90,9 +90,9 @@ fn load_committing_candidate(
         .map(|(edit, metadata)| {
             Ok::<_, DbError>((
                 u64::try_from(edit)
-                    .map_err(|_| DbError::Message("candidate file revision is negative".into()))?,
-                u64::try_from(metadata).map_err(|_| {
-                    DbError::Message("candidate metadata revision is negative".into())
+                    .map_err(|error| DbError::Message(format!("candidate file revision is negative: {error}")))?,
+                u64::try_from(metadata).map_err(|error| {
+                    DbError::Message(format!("candidate metadata revision is negative: {error}"))
                 })?,
             ))
         })

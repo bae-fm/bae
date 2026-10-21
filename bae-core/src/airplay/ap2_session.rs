@@ -16,6 +16,8 @@ use std::io::{BufReader, Read, Write};
 use std::net::{IpAddr, TcpStream, UdpSocket};
 use std::sync::{Arc, Mutex};
 
+use tracing::warn;
+
 use super::airplay2::{Ap2AudioCipher, PairVerify};
 use super::ap2_channel::{audio_key, HapChannel};
 use super::bplist::{self, Plist};
@@ -598,7 +600,9 @@ impl Ap2Session {
 
 impl Drop for Ap2Session {
     fn drop(&mut self) {
-        let _ = self.control.teardown();
+        if let Err(error) = self.control.teardown() {
+            warn!("airplay 2 receiver teardown failed: {error}");
+        }
     }
 }
 
