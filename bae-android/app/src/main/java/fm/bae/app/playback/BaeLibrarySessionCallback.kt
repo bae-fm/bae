@@ -35,6 +35,8 @@ private val logger = BaeLogger(TAG)
 internal class BaeLibrarySessionCallback(
     private val tree: LibraryBrowseTree<MediaSession.ControllerInfo>,
     private val scope: CoroutineScope,
+    /** What the controller says when a spoken request names nothing in the library, for that request. */
+    private val notFoundMessage: (query: String) -> String,
 ) : MediaLibrarySession.Callback {
     override fun onGetLibraryRoot(
         session: MediaLibrarySession,
@@ -152,13 +154,36 @@ internal class BaeLibrarySessionCallback(
      * arrives as an item with only a search query, which we resolve to a
      * playable track here. Handing the items back (rather than the base
      * callback's default failed future) is what lets browse and voice playback
-     * reach the player.
+     * reach the player. A request that names nothing to play fails, and a
+     * spoken one that matches nothing tells the controller it wasn't found, so
+     * the Assistant says so instead of a request that went nowhere succeeding.
      */
     override fun onAddMediaItems(
         session: MediaSession,
         controller: MediaSession.ControllerInfo,
         mediaItems: List<MediaItem>,
-    ): ListenableFuture<List<MediaItem>> = scope.future { mediaItems.map { resolveForPlayback(it) } }
+    ): ListenableFuture<List<MediaItem>> =
+        scope.future {
+            when (val request = resolve(mediaItems)) {
+                is PlayRequest.Tracks -> {
+                    request.items
+                }
+
+                is PlayRequest.NotFound -> {
+                    logger.warning("no playable result for spoken query \"${request.query}\"")
+                    session.sendError(
+                        controller,
+                        SessionError(SessionError.ERROR_BAD_VALUE, notFoundMessage(request.query)),
+                    )
+                    throw NothingToPlay("no playable result for spoken query \"${request.query}\"")
+                }
+
+                is PlayRequest.NotPlayable -> {
+                    logger.warning("a controller asked to play ${request.mediaId}, which isn't a track")
+                    throw NothingToPlay("a controller asked to play ${request.mediaId}, which isn't a track")
+                }
+            }
+        }
 
     override fun onDisconnected(
         session: MediaSession,
@@ -174,24 +199,73 @@ internal class BaeLibrarySessionCallback(
             LibraryResult.ofError<T>(SessionError.ERROR_UNKNOWN)
         }
 
-    private suspend fun resolveForPlayback(item: MediaItem): MediaItem {
-        // A tapped browse node already names what to play.
-        if (BrowseId.parse(item.mediaId) != null) return item
-        // A spoken query ("play X") carries no media id — resolve it to a track.
-        val query = item.requestMetadata.searchQuery?.takeUnless { it.isBlank() }
-        val track = query?.let { tree.searchTopPlayable(it) }
-        if (query != null && track == null) {
-            logger.warning("no playable result for spoken query \"$query\"")
+    /**
+     * What [mediaItems] ask to play: each a track tapped in the browse tree, or
+     * a spoken query resolved to the library's top playable track; the first
+     * that names no track decides the whole request.
+     */
+    internal suspend fun resolve(mediaItems: List<MediaItem>): PlayRequest {
+        val tracks = mutableListOf<MediaItem>()
+        for (item in mediaItems) {
+            when (val one = resolve(item)) {
+                is PlayRequest.Tracks -> tracks += one.items
+                is PlayRequest.NotFound, is PlayRequest.NotPlayable -> return one
+            }
         }
-        return track?.let {
-            MediaItem
-                .Builder()
-                .setMediaId(it.mediaId)
-                .setMediaMetadata(item.mediaMetadata)
-                .build()
-        } ?: item
+        return PlayRequest.Tracks(tracks)
+    }
+
+    private suspend fun resolve(item: MediaItem): PlayRequest {
+        val query = item.requestMetadata.searchQuery?.takeUnless { it.isBlank() }
+        return when {
+            BrowseId.parse(item.mediaId) is BrowseId.Track -> {
+                PlayRequest.Tracks(listOf(item))
+            }
+
+            // A spoken query ("play X") carries no media id — resolve it to a track.
+            query != null -> {
+                tree.searchTopPlayable(query)?.let { track ->
+                    PlayRequest.Tracks(
+                        listOf(
+                            MediaItem
+                                .Builder()
+                                .setMediaId(track.mediaId)
+                                .setMediaMetadata(item.mediaMetadata)
+                                .build(),
+                        ),
+                    )
+                } ?: PlayRequest.NotFound(query)
+            }
+
+            else -> {
+                PlayRequest.NotPlayable(item.mediaId)
+            }
+        }
     }
 }
+
+/** What a controller's request to play resolves to. */
+internal sealed interface PlayRequest {
+    /** Items each naming a track by its browse id, for the player. */
+    data class Tracks(
+        val items: List<MediaItem>,
+    ) : PlayRequest
+
+    /** A spoken [query] that matched nothing playable in the library. */
+    data class NotFound(
+        val query: String,
+    ) : PlayRequest
+
+    /** An item that is neither a track nor a spoken query, such as an album node. */
+    data class NotPlayable(
+        val mediaId: String,
+    ) : PlayRequest
+}
+
+/** A request to play that names nothing to play; failing it is how Media3 hears it didn't play. */
+internal class NothingToPlay(
+    message: String,
+) : Exception(message)
 
 /**
  * Run a `suspend` block on this scope and expose its result as a

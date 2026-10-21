@@ -307,4 +307,5 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">Codul QR conține și cheia ta de acces S3, așa că dispozitivul care îl scanează nu va cere cheia.</string>
     <string name="onboarding_s3_key_scanned">Cheia ta de acces S3 a venit odată cu codul scanat.</string>
+    <string name="voice_play_not_found">„%1$s” nu a fost găsit în biblioteca ta.</string>
 </resources>

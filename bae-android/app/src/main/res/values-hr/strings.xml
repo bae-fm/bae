@@ -309,4 +309,5 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">QR kôd sadrži i vaš pristupni ključ za S3, pa uređaj koji ga skenira neće tražiti ključ.</string>
     <string name="onboarding_s3_key_scanned">Vaš pristupni ključ za S3 stigao je uz skenirani kôd.</string>
+    <string name="voice_play_not_found">„%1$s” nije pronađeno u vašoj biblioteci.</string>
 </resources>

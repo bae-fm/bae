@@ -318,4 +318,5 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">يحمل رمز QR أيضًا مفتاح الوصول إلى S3 الخاص بك، فلن يطلب الجهاز الذي يمسحه المفتاح.</string>
     <string name="onboarding_s3_key_scanned">وصل مفتاح الوصول إلى S3 الخاص بك مع الرمز الممسوح.</string>
+    <string name="voice_play_not_found">تعذّر العثور على «%1$s» في مكتبتك.</string>
 </resources>

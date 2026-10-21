@@ -362,4 +362,5 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">The QR code also carries your S3 access key, so a device that scans it won\'t ask for the key.</string>
     <string name="onboarding_s3_key_scanned">Your S3 access key came with the scanned code.</string>
+    <string name="voice_play_not_found">Couldn\'t find “%1$s” in your library.</string>
 </resources>

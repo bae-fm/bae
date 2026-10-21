@@ -312,4 +312,5 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">Kod QR zawiera też Twój klucz dostępu S3, więc urządzenie, które go zeskanuje, nie zapyta o klucz.</string>
     <string name="onboarding_s3_key_scanned">Twój klucz dostępu S3 przyszedł razem z zeskanowanym kodem.</string>
+    <string name="voice_play_not_found">Nie znaleziono „%1$s” w Twojej bibliotece.</string>
 </resources>

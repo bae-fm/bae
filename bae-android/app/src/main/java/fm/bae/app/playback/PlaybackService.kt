@@ -76,7 +76,10 @@ class PlaybackService(
                     mediaSession?.notifyChildrenChanged(parentId, count, null)
                 },
             )
-        val callback = BaeLibrarySessionCallback(tree, browseScope)
+        val callback =
+            BaeLibrarySessionCallback(tree, browseScope) { query ->
+                getString(fm.bae.app.R.string.voice_play_not_found, query)
+            }
         val session =
             MediaLibrarySession
                 .Builder(this, player, callback)

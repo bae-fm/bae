@@ -306,4 +306,5 @@
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
     <string name="restore_code_carries_s3_key">De QR-code bevat ook je S3-toegangssleutel, dus een apparaat dat hem scant, vraagt niet om de sleutel.</string>
     <string name="onboarding_s3_key_scanned">Je S3-toegangssleutel kwam mee met de gescande code.</string>
+    <string name="voice_play_not_found">‘%1$s’ is niet gevonden in je bibliotheek.</string>
 </resources>

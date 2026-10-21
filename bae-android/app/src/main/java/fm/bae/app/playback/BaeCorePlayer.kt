@@ -660,18 +660,25 @@ class BaeCorePlayer(
         return Futures.immediateVoidFuture()
     }
 
-    /** Play a track chosen from the browse tree (Android Auto, a Bluetooth head unit). */
+    /**
+     * Play a track chosen from the browse tree (Android Auto, a Bluetooth head
+     * unit), which the session callback resolved every request to; anything
+     * else fails the request rather than reporting a play that didn't happen.
+     */
     override fun handleSetMediaItems(
         mediaItems: MutableList<MediaItem>,
         startIndex: Int,
         startPositionMs: Long,
     ): ListenableFuture<*> {
-        val item = mediaItems.getOrNull(startIndex) ?: mediaItems.firstOrNull()
-        val mediaId = item?.mediaId
-        when (val browseId = mediaId?.let { BrowseId.parse(it) }) {
-            is BrowseId.Track -> appHandle.playRelease(browseId.releaseId, browseId.trackId, false)
-            else -> logger.warning("handleSetMediaItems ignored non-track media id: $mediaId")
+        // C.INDEX_UNSET is Media3 asking to start from the default item, the first.
+        val index = if (startIndex == C.INDEX_UNSET) 0 else startIndex
+        val mediaId = mediaItems.getOrNull(index)?.mediaId
+        val track = mediaId?.let { BrowseId.parse(it) } as? BrowseId.Track
+        if (track == null) {
+            logger.error("asked to play $mediaId at $index of ${mediaItems.size}, which names no track")
+            return Futures.immediateFailedFuture<Unit>(IllegalArgumentException("no track to play at $index"))
         }
+        appHandle.playRelease(track.releaseId, track.trackId, false)
         return Futures.immediateVoidFuture()
     }
 
