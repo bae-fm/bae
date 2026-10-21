@@ -284,7 +284,6 @@ impl LibraryManager {
         self.clock.now().into()
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn new_id(&self) -> String {
         self.ids.new_id().to_string()
     }

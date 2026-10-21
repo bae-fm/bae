@@ -757,9 +757,16 @@ A cover belongs to one release, an artist image to one artist, an avatar to one
 person. Changing a cover attaches a new file to the release's cover row; coven
 never rewrites a stored file, and deletes the old one once nothing refers to it
 ([coven §17.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#178-deleting-stored-files)).
-An image's version is the content hash coven records for its file, so the apps
-and Subsonic clients that cache art by version fetch a cover again exactly when
-its bytes change.
+The apps and Subsonic clients cache art by an image's version, which must
+move whenever the bytes a device shows for it can. A row names its file only
+once the file's upload completes (§4.2), while the device that attached it
+shows the new image at once, and so do devices without storage, where the
+upload never completes. So each image row carries a *revision*, a new id bae
+writes with every new image, and the version is the revision followed by the
+content hash of the stored file the row names, once there is one. The
+attaching device's version moves with its write; another device's moves when
+the write arrives, and again when the upload completes and the row names the
+new file. Until then that device shows the image it had, or none.
 
 ### 4.2 Local and uploaded releases
 
@@ -2087,9 +2094,9 @@ and `local_history` are not declared, so they never sync.
 | `release_files` | independent | store | | the person's own; attached on upload; read on first use; detached to return to local paths |
 | `audio_formats` | independent | store | | |
 | `audio_format_segments` | independent | store | | |
-| `covers` | shared key: the release | store | | bae's own; fetched with the row |
-| `artist_images` | shared key: the artist | store | | bae's own; fetched with the row |
-| `people` | shared key: the person's `MemberId` | store | yes | the avatar: bae's own; fetched with the row |
+| `covers` | shared key: the release | store | | bae's own; read on first use |
+| `artist_images` | shared key: the artist | store | | bae's own; read on first use |
+| `people` | shared key: the person's `MemberId` | store | yes | the avatar: bae's own; read on first use |
 | `ratings` | shared key: the person, and the album or track | store | yes | |
 | `history` | independent, one per play | per row: the person's circle or the store, by their setting | yes | |
 | `playlists` | independent | per row: the person's circle or the store | yes | |

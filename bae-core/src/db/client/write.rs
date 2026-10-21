@@ -644,15 +644,16 @@ pub(super) fn upsert_library_image_row(
     let table = image_table(&image.image_type);
     conn.execute(
         &format!(
-            "INSERT INTO {table} (id, content_type, file_size, width, height, source, source_url, created_at) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?) \
+            "INSERT INTO {table} (id, content_type, file_size, width, height, source, source_url, created_at, revision) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) \
              ON CONFLICT(id) DO UPDATE SET \
                  content_type = excluded.content_type, \
                  file_size = excluded.file_size, \
                  width = excluded.width, \
                  height = excluded.height, \
                  source = excluded.source, \
-                 source_url = excluded.source_url"
+                 source_url = excluded.source_url, \
+                 revision = excluded.revision"
         ),
         params![
             image.id,
@@ -663,6 +664,7 @@ pub(super) fn upsert_library_image_row(
             image.source,
             image.source_url,
             image.created_at.to_rfc3339(),
+            image.revision,
         ],
     )
     .map(|_| ())

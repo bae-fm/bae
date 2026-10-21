@@ -50,6 +50,7 @@ async fn write_artist_image(db: &Database, artist: &str, content: &str) -> Strin
             source: "file_tags".into(),
             source_url: None,
             created_at: super::fixed_now(),
+            revision: uuid::Uuid::new_v4().to_string(),
         },
         bytes,
     )

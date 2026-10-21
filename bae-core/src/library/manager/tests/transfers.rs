@@ -300,6 +300,7 @@ async fn outbox_snapshot_identifies_the_cover_file() {
         None,
         cover_bytes,
         manager.clock.now().into(),
+        manager.new_id(),
     );
     manager
         .store_library_image(&cover, cover_bytes)

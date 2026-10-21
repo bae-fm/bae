@@ -289,6 +289,7 @@ async fn test_cover_file_stored_via_local_files_is_readable() {
             source: "local".to_string(),
             source_url: None,
             created_at: chrono::Utc::now(),
+            revision: uuid::Uuid::new_v4().to_string(),
         },
         bytes,
     )

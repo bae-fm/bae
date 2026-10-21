@@ -52,6 +52,8 @@ pub struct DbLibraryImage {
     /// MB: CAA image ID, Discogs: URL, local: "release://{path}"
     pub source_url: Option<String>,
     pub created_at: DateTime<Utc>,
+    /// A new id for each write of the image's bytes.
+    pub revision: String,
 }
 
 impl DbLibraryImage {
@@ -63,6 +65,7 @@ impl DbLibraryImage {
         source_url: Option<String>,
         bytes: &[u8],
         now: DateTime<Utc>,
+        revision: String,
     ) -> Self {
         DbLibraryImage {
             id: release_id.to_string(),
@@ -74,6 +77,7 @@ impl DbLibraryImage {
             source: source.to_string(),
             source_url,
             created_at: now,
+            revision,
         }
     }
 }

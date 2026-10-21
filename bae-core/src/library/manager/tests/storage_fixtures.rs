@@ -309,6 +309,7 @@ async fn store_test_cover(manager: &LibraryManager, release_id: &str, bytes: &[u
         None,
         bytes,
         manager.clock.now().into(),
+        manager.new_id(),
     );
     manager
         .store_library_image(&cover, bytes)

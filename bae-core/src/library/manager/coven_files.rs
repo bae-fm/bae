@@ -24,6 +24,17 @@ impl LibraryManager {
         Ok(self.database.read_release_file(file_id).await?)
     }
 
+    /// A library image's file as this device sees it, for tests that check
+    /// what it holds.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn library_image_file_for_test(
+        &self,
+        id: &str,
+        image_type: &LibraryImageType,
+    ) -> Result<Option<coven::FileRef>, LibraryError> {
+        self.library_image_file(id, image_type).await
+    }
+
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn evict_file_for_test(&self, file: &coven::FileRef) -> Result<(), LibraryError> {
         self.database
@@ -55,19 +66,6 @@ impl LibraryManager {
             .map_err(|e| {
                 LibraryError::Storage(format!("file reference for release file {file_id}: {e}"))
             })
-    }
-
-    /// The exact-row file reference for a host-provided image, keyed by its table
-    /// (`covers` / `artist_images`) and its subject row id (the release / artist).
-    async fn image_file_ref(
-        &self,
-        table: &str,
-        row_id: &str,
-    ) -> Result<coven::FileRef, LibraryError> {
-        self.database
-            .file_ref(table, row_id)
-            .await
-            .map_err(|e| LibraryError::Storage(format!("file reference for {table} {row_id}: {e}")))
     }
 
     /// How many of these release files carry a file on this device in coven:
@@ -144,7 +142,7 @@ impl LibraryManager {
     }
 
     /// Read a library image's whole bytes by its subject id and kind; `None`
-    /// when no image is stored.
+    /// when this device has no file for it.
     pub async fn read_library_image_bytes(
         &self,
         id: &str,
@@ -161,25 +159,22 @@ impl LibraryManager {
         Ok(Some(bytes))
     }
 
-    /// A library image's file, or `None` when no image is stored: the image
-    /// row must exist for coven to bind its row's file.
+    /// A library image's file as this device sees it: its own pending
+    /// attachment, or the stored file the row names. `None` when there is no
+    /// such row, or another device hasn't finished uploading its file.
     async fn library_image_file(
         &self,
         id: &str,
         image_type: &LibraryImageType,
     ) -> Result<Option<coven::FileRef>, LibraryError> {
-        if self
+        Ok(self
             .database
-            .find_library_image(id, image_type)
-            .await?
-            .is_none()
-        {
-            return Ok(None);
-        }
-        Ok(Some(self.image_file_ref(image_type.namespace(), id).await?))
+            .current_file(image_type.namespace(), id)
+            .await?)
     }
 
-    /// A library image to show: its bytes. `None` when no image is stored.
+    /// A library image to show: its bytes. `None` when this device has no
+    /// file for it.
     pub async fn read_image(&self, image: &ImageRef) -> Result<Option<ImageRead>, LibraryError> {
         let Some(file) = self
             .library_image_file(&image.id, &image.image_type)

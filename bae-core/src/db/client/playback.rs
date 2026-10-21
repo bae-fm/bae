@@ -221,7 +221,8 @@ fn track_displays_on(
         let query = format!(
             "SELECT \
                 t.id AS track_id, t.title, t.duration_ms, a.id AS album_id, \
-                a.title AS album_title, r.id AS release_id, c.id AS cover_id, c.hash AS cover_hash, \
+                a.title AS album_title, r.id AS release_id, c.revision AS cover_revision, \
+                c.hash AS cover_hash, \
                 COALESCE( \
                     NULLIF(( \
                         SELECT GROUP_CONCAT(art.name, ', ' ORDER BY credit.position) \
@@ -264,12 +265,14 @@ fn track_displays_on(
             |row| {
                 let track_id: String = row.get("track_id")?;
                 let release_id: String = row.get("release_id")?;
-                // A release's cover image is keyed by the release's id; a
-                // cover row always carries its file's hash.
-                let cover_image = match row.get::<_, Option<String>>("cover_id")? {
-                    Some(_) => Some(crate::album_detail::ImageRef {
+                // A release's cover image is keyed by the release's id.
+                let cover_image = match row.get::<_, Option<String>>("cover_revision")? {
+                    Some(revision) => Some(crate::album_detail::ImageRef {
                         id: release_id.clone(),
-                        version: super::files::image_version(&row.get::<_, Vec<u8>>("cover_hash")?),
+                        version: super::files::image_version(
+                            &revision,
+                            row.get::<_, Option<Vec<u8>>>("cover_hash")?.as_deref(),
+                        ),
                         image_type: LibraryImageType::Cover,
                     }),
                     None => None,

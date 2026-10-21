@@ -346,6 +346,7 @@ async fn a_changed_cover_gets_a_new_cover_art_id() {
                 source: "local".to_string(),
                 source_url: None,
                 created_at: chrono::Utc::now(),
+                revision: "cover-revision".to_string(),
             },
             &support::cover_png(),
         )
@@ -388,6 +389,7 @@ async fn an_artist_cover_art_is_the_artist_image() {
                 source: "local".to_string(),
                 source_url: None,
                 created_at: chrono::Utc::now(),
+                revision: "cover-revision".to_string(),
             },
             &image,
         )

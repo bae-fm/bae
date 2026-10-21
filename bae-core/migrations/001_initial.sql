@@ -71,6 +71,10 @@ CREATE TABLE IF NOT EXISTS artist_images (
     source TEXT NOT NULL,
     source_url TEXT,
     created_at TEXT NOT NULL,
+    -- A new id each time bae writes the image's bytes. It changes on every
+    -- device with the write, while the file columns follow only once the
+    -- upload completes, so an image's version (§4.1) is this and the hash.
+    revision TEXT NOT NULL,
     -- coven writes both columns when the file's upload completes; until then
     -- the row names no file, and only the attaching device holds it.
     hash BLOB,
@@ -222,6 +226,10 @@ CREATE TABLE IF NOT EXISTS covers (
     source TEXT NOT NULL,
     source_url TEXT,
     created_at TEXT NOT NULL,
+    -- A new id each time bae writes the image's bytes. It changes on every
+    -- device with the write, while the file columns follow only once the
+    -- upload completes, so an image's version (§4.1) is this and the hash.
+    revision TEXT NOT NULL,
     -- coven writes both columns when the file's upload completes; until then
     -- the row names no file, and only the attaching device holds it.
     hash BLOB,

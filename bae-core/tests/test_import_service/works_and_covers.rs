@@ -149,9 +149,10 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
 }
 
 /// coven verifies a file's plaintext against its row's content hash on every
-/// cloud fetch, so a `covers` row must describe the bytes actually stored — the
-/// resized thumbnail the import writes, never the image it was made from. A row
-/// hashing anything else makes the cover unreadable on every other device.
+/// cloud fetch, so the file attached to a `covers` row must be the bytes
+/// actually stored — the resized thumbnail the import writes, never the image
+/// it was made from — and the row's size must be theirs. The row names the
+/// file's hash once its upload completes.
 async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: &str) {
     let cover =
         f.db.find_library_image(release_id, &LibraryImageType::Cover)
@@ -161,8 +162,16 @@ async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: 
     let bytes = support::read_cover_image_bytes(&f.library_manager, release_id)
         .await
         .expect("cover file readable");
-    let stored_hash = f.db.query_texts_for_test(&format!("SELECT lower(hex(hash)) FROM covers WHERE id = '{release_id}'")).await.unwrap();
-    assert_eq!(stored_hash, vec![bae_core::util::fs::hash_bytes(&bytes)]);
+    let file = f
+        .library_manager
+        .library_image_file_for_test(release_id, &LibraryImageType::Cover)
+        .await
+        .unwrap()
+        .expect("the cover's file");
+    let attached_hash: String =
+        file.content_hash().as_bytes().iter().map(|byte| format!("{byte:02x}")).collect();
+    assert_eq!(attached_hash, bae_core::util::fs::hash_bytes(&bytes));
+    assert_eq!(file.plaintext_size(), bytes.len() as u64);
     assert_eq!(
         cover.file_size,
         bytes.len() as i64,

@@ -181,17 +181,17 @@ impl Database {
         Ok(())
     }
 
+    /// The person's avatar as this device sees it: this device's own avatar
+    /// while its upload runs, otherwise the stored file their row names.
+    /// `None` when there is none here, as while another device uploads it.
     pub async fn avatar(&self, person: coven::MemberId) -> Result<Option<Vec<u8>>, ProfileError> {
-        let profile = self.profile(person).await?.ok_or(ProfileError::Missing)?;
-        if profile.avatar_id.is_none() {
+        self.profile(person).await?.ok_or(ProfileError::Missing)?;
+        let Some(file) = self
+            .current_file(crate::sync::PEOPLE_NAMESPACE, person.to_string().as_str())
+            .await?
+        else {
             return Ok(None);
-        }
-        let file = self
-            .inner
-            .handle
-            .file_ref("people", person.to_string().as_str())
-            .await
-            .map_err(DbError::from)?;
+        };
         Ok(Some(
             self.inner
                 .handle

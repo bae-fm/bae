@@ -179,16 +179,40 @@ async fn exec_batch(db: &super::Database, sql: &str) {
 /// columns, and return the version reads report for it.
 async fn write_cover(db: &super::Database, release: &str, content: &str) -> String {
     let bytes = content.as_bytes();
-    let image = crate::db::DbLibraryImage::cover(release, "discogs", None, bytes, fixed_now());
+    let image = crate::db::DbLibraryImage::cover(
+        release,
+        "discogs",
+        None,
+        bytes,
+        fixed_now(),
+        uuid::Uuid::new_v4().to_string(),
+    );
     db.write_library_image(&image, bytes).await.unwrap();
     stored_image_version(db, crate::sync::COVERS_NAMESPACE, release).await
 }
 
-/// The version of the image attached to `table`'s row `id`, read from coven's
-/// own reference to the row's file rather than from the version query.
+/// The version reads should report for the image on `table`'s row `id`: the
+/// revision its row records, then the content hash of the file the row names
+/// once its upload completed, read from coven's own reference to the file
+/// rather than from the version query.
 async fn stored_image_version(db: &super::Database, table: &str, id: &str) -> String {
+    let image_type = match table {
+        crate::sync::COVERS_NAMESPACE => crate::db::LibraryImageType::Cover,
+        crate::sync::ARTIST_IMAGES_NAMESPACE => crate::db::LibraryImageType::Artist,
+        other => panic!("{other} holds no library images"),
+    };
+    let revision = db
+        .find_library_image(id, &image_type)
+        .await
+        .unwrap()
+        .expect("the image row")
+        .revision;
     let file = db.file_ref(table, id).await.unwrap();
-    super::files::image_version(file.content_hash().as_bytes())
+    let stored = match db.inner.handle.file_status(&file).await.unwrap() {
+        coven::FileStatus::Uploading => None,
+        _ => Some(file.content_hash()),
+    };
+    super::files::image_version(&revision, stored.as_ref().map(|hash| &hash.as_bytes()[..]))
 }
 
 /// `ARTIST_PRIMARY` owning `ALBUM_A`, whose primary release is `RELEASE_A`.

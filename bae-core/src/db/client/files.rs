@@ -54,8 +54,9 @@ impl Database {
     {
         let image = image.clone();
         let namespace = image.image_type.namespace();
+        let (image_type, id) = (image.image_type.clone(), image.id.clone());
         let planned = self
-            .find_image_version(&image.image_type, &image.id)
+            .read(move |sql| image_revision_on(&sql, &image_type, &id))
             .await?;
         after_planning().await;
         // coven attaches the bytes to the row whose file id column — the row's
@@ -68,8 +69,10 @@ impl Database {
                 Ok(())
             },
             move |sql| {
-                // Refuse a replacement when another edit changed this row.
-                let current = image_version_on(&sql, &image.image_type, &image.id)
+                // Refuse a replacement when another write of the image landed
+                // since planning. The image's upload completing changes none
+                // of this.
+                let current = image_revision_on(&sql, &image.image_type, &image.id)
                     .map_err(CovenError::from)?;
                 if current != planned {
                     return Err(CovenError::from(DbError::Message(format!(
@@ -395,13 +398,18 @@ pub(super) fn file_row_id(file: &coven::FileRef) -> Result<&str, DbError> {
     }
 }
 
-/// A library image's version: the content hash coven records when it attaches
-/// the row's file. coven fills `hash` on every attachment and never rewrites
-/// stored bytes, so the version moves exactly when the image's bytes do. Every
-/// image row carries a file — each write pairs the row with its bytes — so a
-/// row without a hash fails the read.
-pub(super) fn image_version(hash: &[u8]) -> String {
-    hex::encode(hash)
+/// A library image's version: the revision of the write that last set its
+/// bytes, then the content hash of the stored file its row names once there is
+/// one. The bytes a device reads for an image change only with one of them:
+/// a write changes the revision on every device as it arrives, while the row
+/// names the new file only once its upload completes (coven §17.2), which
+/// changes the hash. So the version moves whenever any device's bytes for the
+/// image can, though not only then.
+pub(super) fn image_version(revision: &str, hash: Option<&[u8]>) -> String {
+    match hash {
+        Some(hash) => format!("{revision}.{}", hex::encode(hash)),
+        None => revision.to_string(),
+    }
 }
 
 /// The version of one image row, or `None` when there is no such row.
@@ -413,12 +421,33 @@ pub(super) fn image_version_on<Q: QueryOne>(
     let table = image_table(image_type);
     Ok(sql
         .query_row(
-            &format!("SELECT hash FROM {table} WHERE id = ?"),
+            &format!("SELECT revision, hash FROM {table} WHERE id = ?"),
             params![id],
-            |row| row.get::<_, Vec<u8>>(0),
+            |row| {
+                Ok(image_version(
+                    &row.get::<_, String>(0)?,
+                    row.get::<_, Option<Vec<u8>>>(1)?.as_deref(),
+                ))
+            },
         )
-        .optional()?
-        .map(|hash| image_version(&hash)))
+        .optional()?)
+}
+
+/// The revision of the write that last set one image's bytes, or `None` when
+/// there is no such row.
+fn image_revision_on<Q: QueryOne>(
+    sql: &Q,
+    image_type: &LibraryImageType,
+    id: &str,
+) -> Result<Option<String>, DbError> {
+    let table = image_table(image_type);
+    Ok(sql
+        .query_row(
+            &format!("SELECT revision FROM {table} WHERE id = ?"),
+            params![id],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()?)
 }
 
 /// `ids` is a whole page's worth of releases (or, for the storage page, each row's
@@ -433,12 +462,15 @@ pub(super) fn image_versions_on(
     let mut map = HashMap::new();
     for chunk in ids.chunks(SQL_MAX_IN_VARS) {
         let placeholders = in_clause_placeholders(chunk.len());
-        let query = format!("SELECT id, hash FROM {table} WHERE id IN ({placeholders})");
+        let query = format!("SELECT id, revision, hash FROM {table} WHERE id IN ({placeholders})");
         map.extend(
             sql.query(&query, rusqlite::params_from_iter(chunk.iter()), |row| {
                 Ok((
                     row.get::<_, String>(0)?,
-                    image_version(&row.get::<_, Vec<u8>>(1)?),
+                    image_version(
+                        &row.get::<_, String>(1)?,
+                        row.get::<_, Option<Vec<u8>>>(2)?.as_deref(),
+                    ),
                 ))
             })?,
         );

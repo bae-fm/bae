@@ -795,6 +795,7 @@ impl ImportService {
                     candidate.source_url,
                     &bytes,
                     library_manager.now(),
+                    library_manager.new_id(),
                 );
                 Some((image, bytes))
             }

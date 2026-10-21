@@ -140,6 +140,7 @@ async fn replacing_a_cover_refuses_a_replacement_that_landed_first() {
         None,
         b"late cover",
         manager.clock.now().into(),
+        manager.new_id(),
     );
 
     let error = manager

@@ -400,6 +400,7 @@ impl LibraryManager {
                 source: crate::import::Catalog::Discogs.as_str().to_string(),
                 source_url: Some(source_url.clone()),
                 created_at: self.now(),
+                revision: self.new_id(),
             };
             images.push((row, image.bytes.clone()));
         }

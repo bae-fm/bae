@@ -107,6 +107,7 @@ async fn upload_keeps_the_cover_and_every_file_in_the_queue() {
         None,
         cover_bytes,
         manager.clock.now().into(),
+        manager.new_id(),
     );
     manager
         .store_library_image(&cover, cover_bytes)

@@ -68,8 +68,14 @@ async fn cover_versions_merges_chunks() {
         .enumerate()
         .map(|(index, release_id)| {
             let bytes = format!("cover-{index}").into_bytes();
-            let image =
-                DbLibraryImage::cover(release_id, "local", None, &bytes, chrono::Utc::now());
+            let image = DbLibraryImage::cover(
+                release_id,
+                "local",
+                None,
+                &bytes,
+                chrono::Utc::now(),
+                uuid::Uuid::new_v4().to_string(),
+            );
             (image, bytes)
         })
         .collect();

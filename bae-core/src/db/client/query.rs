@@ -581,6 +581,7 @@ pub(super) fn row_to_library_image(
         source: row.get("source")?,
         source_url: row.get("source_url")?,
         created_at: rfc3339_column(row, "created_at")?,
+        revision: row.get("revision")?,
     })
 }
 

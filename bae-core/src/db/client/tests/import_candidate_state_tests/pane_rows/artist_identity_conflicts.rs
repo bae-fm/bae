@@ -296,6 +296,7 @@ async fn store_artist_image(db: &Database, artist_id: &str, source: &str, bytes:
             source: source.into(),
             source_url: None,
             created_at: fixed_now(),
+            revision: uuid::Uuid::new_v4().to_string(),
         },
         bytes,
     )
