@@ -112,7 +112,7 @@
     <string name="settings_disconnect_confirm_title">Katkaistaanko synkronoinnin yhteys?</string>
     <string name="settings_disconnect_body">Tämä laite lopettaa synkronoinnin ja poistaa tallennustilan tunnistetietonsa. Jatka synkronointia kirjautumalla uudelleen.</string>
     <string name="settings_disconnect_failed">Yhteyden katkaisu epäonnistui: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Vain pilvessä olevia julkaisuja ei voitu tarkistaa: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Ei voitu tarkistaa, mitä menettäisit: %1$s</string>
     <string name="settings_pause_uploads">Keskeytä lähetykset</string>
     <string name="settings_pause_uploads_footer">Kun lähetykset ovat tauolla, muutokset odottavat tällä laitteella ja lähtevät, kun jatkat.</string>
     <string name="members_title">Ihmiset ja laitteet</string>

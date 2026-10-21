@@ -108,7 +108,7 @@
     <string name="settings_disconnect_confirm_title">Eşzamanlama bağlantısı kesilsin mi?</string>
     <string name="settings_disconnect_body">Bu cihaz eşzamanlamayı durdurur ve depolama kimlik bilgilerini kaldırır. Eşzamanlamayı sürdürmek için yeniden oturum açın.</string>
     <string name="settings_disconnect_failed">Bağlantı kesilemedi: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Yalnızca buluttaki yayınlar denetlenemedi: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Neleri kaybedeceğiniz denetlenemedi: %1$s</string>
     <string name="settings_pause_uploads">Yüklemeleri duraklat</string>
     <string name="settings_pause_uploads_footer">Duraklatıldığında değişiklikler bu cihazda bekler ve devam ettiğinizde yüklenir.</string>
     <string name="members_title">Kişiler ve cihazlar</string>

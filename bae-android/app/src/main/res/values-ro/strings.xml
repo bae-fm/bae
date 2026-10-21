@@ -113,7 +113,7 @@
     <string name="settings_disconnect_confirm_title">Deconectezi sincronizarea?</string>
     <string name="settings_disconnect_body">Acest dispozitiv oprește sincronizarea și elimină datele sale de autentificare pentru stocare. Conectează-te din nou pentru a relua sincronizarea.</string>
     <string name="settings_disconnect_failed">Deconectarea a eșuat: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Nu s-au putut verifica edițiile stocate doar în cloud: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Nu s-a putut verifica ce ai pierde: %1$s</string>
     <string name="settings_pause_uploads">Suspendă încărcările</string>
     <string name="settings_pause_uploads_footer">Cât timp sunt suspendate, modificările așteaptă pe acest dispozitiv și se încarcă la reluare.</string>
     <string name="members_title">Persoane și dispozitive</string>

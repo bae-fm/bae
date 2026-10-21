@@ -108,7 +108,7 @@
     <string name="settings_disconnect_confirm_title">Sync trennen?</string>
     <string name="settings_disconnect_body">Dieses Gerät beendet die Synchronisierung und entfernt seine Speicher-Zugangsdaten. Melde dich erneut an, um weiter zu synchronisieren.</string>
     <string name="settings_disconnect_failed">Trennen fehlgeschlagen: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Nach reinen Cloud-Veröffentlichungen konnte nicht gesucht werden: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Konnte nicht prüfen, was du verlieren würdest: %1$s</string>
     <string name="settings_pause_uploads">Uploads pausieren</string>
     <string name="settings_pause_uploads_footer">Solange pausiert, warten Änderungen auf diesem Gerät und werden hochgeladen, wenn du fortsetzt.</string>
     <string name="members_title">Personen und Geräte</string>

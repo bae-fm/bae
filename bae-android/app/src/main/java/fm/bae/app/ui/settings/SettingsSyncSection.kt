@@ -181,9 +181,9 @@ private fun DisconnectControl(
         Text(stringResource(R.string.settings_disconnect))
     }
 
-    if (flowState.confirming) {
+    flowState.confirming?.let { risk ->
         DisconnectConfirmDialog(
-            extraWarning = flowState.extraWarning,
+            risk = risk,
             // Dismiss first so the disconnect, which can wait on a running sync,
             // fires once.
             onConfirm = {
@@ -195,16 +195,35 @@ private fun DisconnectControl(
     }
 }
 
+/** The confirmation, saying what this device would lose — or that the check for it failed. */
 @Composable
 private fun DisconnectConfirmDialog(
-    extraWarning: String?,
+    risk: DisconnectRisk,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_disconnect_confirm_title)) },
-        text = { Text(disconnectConfirmMessage(stringResource(R.string.settings_disconnect_body), extraWarning)) },
+        text = {
+            val base = stringResource(R.string.settings_disconnect_body)
+            when (risk) {
+                DisconnectRisk.NothingCloudOnly -> {
+                    Text(base)
+                }
+
+                is DisconnectRisk.CloudOnly -> {
+                    Text(disconnectConfirmMessage(base, risk))
+                }
+
+                is DisconnectRisk.CheckFailed -> {
+                    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+                        Text(base)
+                        ErrorDetailDisclosure(risk.error)
+                    }
+                }
+            }
+        },
         confirmButton = {
             TextButton(onClick = onConfirm) { Text(stringResource(R.string.settings_disconnect)) }
         },
@@ -237,7 +256,7 @@ private fun rememberDisconnectSyncFlow(
                             mapOf("count" to count.toLong()),
                         )
                     },
-                    // Nothing to show means a cancellation, so leave the error clear.
+                    // Nothing to show means a cancellation, so no confirmation opens.
                     warningFailed = { e ->
                         disconnectError(context, e, R.string.settings_disconnect_warning_check_failed)
                     },

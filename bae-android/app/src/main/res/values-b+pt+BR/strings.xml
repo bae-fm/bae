@@ -108,7 +108,7 @@
     <string name="settings_disconnect_confirm_title">Desconectar sincronização?</string>
     <string name="settings_disconnect_body">Este dispositivo para de sincronizar e remove as credenciais de armazenamento. Entre novamente para retomar a sincronização.</string>
     <string name="settings_disconnect_failed">Falha ao desconectar: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Não foi possível verificar lançamentos somente na nuvem: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Não foi possível verificar o que você perderia: %1$s</string>
     <string name="settings_pause_uploads">Pausar envios</string>
     <string name="settings_pause_uploads_footer">Enquanto pausado, as alterações aguardam neste dispositivo e são enviadas quando você retomar.</string>
     <string name="members_title">Pessoas e dispositivos</string>

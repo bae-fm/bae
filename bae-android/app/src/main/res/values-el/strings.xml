@@ -112,7 +112,7 @@
     <string name="settings_disconnect_confirm_title">Αποσύνδεση συγχρονισμού;</string>
     <string name="settings_disconnect_body">Αυτή η συσκευή σταματά τον συγχρονισμό και αφαιρεί τα διαπιστευτήρια αποθήκευσής της. Συνδεθείτε ξανά για να συνεχιστεί ο συγχρονισμός.</string>
     <string name="settings_disconnect_failed">Η αποσύνδεση απέτυχε: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Δεν ήταν δυνατός ο έλεγχος για κυκλοφορίες που υπάρχουν μόνο στο cloud: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Δεν ήταν δυνατός ο έλεγχος του τι θα χάσετε: %1$s</string>
     <string name="settings_pause_uploads">Παύση μεταφορτώσεων</string>
     <string name="settings_pause_uploads_footer">Όσο είναι σε παύση, οι αλλαγές περιμένουν σε αυτή τη συσκευή και μεταφορτώνονται όταν συνεχίσετε.</string>
     <string name="members_title">Άτομα και συσκευές</string>

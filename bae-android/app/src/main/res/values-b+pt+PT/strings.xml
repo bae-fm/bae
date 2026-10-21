@@ -112,7 +112,7 @@
     <string name="settings_disconnect_confirm_title">Desligar a sincronização?</string>
     <string name="settings_disconnect_body">Este dispositivo deixa de sincronizar e remove as credenciais de armazenamento. Inicie sessão novamente para retomar a sincronização.</string>
     <string name="settings_disconnect_failed">Não foi possível desligar: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Não foi possível verificar as edições guardadas apenas na nuvem: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Não foi possível verificar o que perderia: %1$s</string>
     <string name="settings_pause_uploads">Suspender envios</string>
     <string name="settings_pause_uploads_footer">Enquanto estiverem suspensos, as alterações ficam à espera neste dispositivo e são enviadas quando retomar.</string>
     <string name="members_title">Pessoas e dispositivos</string>

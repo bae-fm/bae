@@ -108,7 +108,7 @@
     <string name="settings_disconnect_confirm_title">Odpojit synchronizaci?</string>
     <string name="settings_disconnect_body">Toto zařízení přestane synchronizovat a odstraní své přihlašovací údaje k úložišti. Pro obnovení synchronizace se znovu přihlaste.</string>
     <string name="settings_disconnect_failed">Nepodařilo se odpojit: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Nelze zjistit vydání pouze v cloudu: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Nelze zjistit, o co přijdete: %1$s</string>
     <string name="settings_pause_uploads">Pozastavit nahrávání</string>
     <string name="settings_pause_uploads_footer">Během pozastavení změny čekají na tomto zařízení a nahrají se, až budete pokračovat.</string>
     <string name="members_title">Lidé a zařízení</string>

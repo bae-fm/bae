@@ -143,7 +143,7 @@
     <string name="settings_disconnect_confirm_title">Disconnect sync?</string>
     <string name="settings_disconnect_body">This device stops syncing and removes its storage credentials. Sign in again to resume syncing.</string>
     <string name="settings_disconnect_failed">Failed to disconnect: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Couldn\'t check for cloud-only releases: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Couldn\'t check what you\'d lose: %1$s</string>
     <string name="settings_pause_uploads">Pause uploads</string>
     <string name="settings_pause_uploads_footer">While paused, changes wait on this device and upload when you resume.</string>
 

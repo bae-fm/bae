@@ -108,7 +108,7 @@
     <string name="settings_disconnect_confirm_title">Prekinuti sinkronizaciju?</string>
     <string name="settings_disconnect_body">Ovaj uređaj prestaje sinkronizirati i uklanja svoje vjerodajnice za pohranu. Ponovno se prijavite da biste nastavili sinkronizaciju.</string>
     <string name="settings_disconnect_failed">Prekid veze nije uspio: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Nije moguće provjeriti izdanja samo u oblaku: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Nije moguće provjeriti što biste izgubili: %1$s</string>
     <string name="settings_pause_uploads">Pauziraj prijenose</string>
     <string name="settings_pause_uploads_footer">Dok je pauzirano, promjene čekaju na ovom uređaju i prenose se kada nastavite.</string>
     <string name="members_title">Osobe i uređaji</string>

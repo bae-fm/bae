@@ -108,7 +108,7 @@
     <string name="settings_disconnect_confirm_title">Synchronisatie ontkoppelen?</string>
     <string name="settings_disconnect_body">Dit apparaat stopt met synchroniseren en verwijdert zijn inloggegevens voor de opslag. Log opnieuw in om verder te synchroniseren.</string>
     <string name="settings_disconnect_failed">Verbinding verbreken mislukt: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Kan niet controleren op releases die alleen in de cloud staan: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Kan niet controleren wat je kwijt zou raken: %1$s</string>
     <string name="settings_pause_uploads">Uploads pauzeren</string>
     <string name="settings_pause_uploads_footer">Terwijl gepauzeerd wachten wijzigingen op dit apparaat en worden ze geüpload wanneer je hervat.</string>
     <string name="members_title">Personen en apparaten</string>

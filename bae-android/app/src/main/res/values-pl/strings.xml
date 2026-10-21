@@ -108,7 +108,7 @@
     <string name="settings_disconnect_confirm_title">Rozłączyć synchronizację?</string>
     <string name="settings_disconnect_body">To urządzenie przestanie synchronizować i usunie swoje dane logowania do magazynu. Zaloguj się ponownie, aby wznowić synchronizację.</string>
     <string name="settings_disconnect_failed">Nie udało się rozłączyć: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Nie udało się sprawdzić wydań tylko w chmurze: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Nie udało się sprawdzić, co utracisz: %1$s</string>
     <string name="settings_pause_uploads">Wstrzymaj przesyłanie</string>
     <string name="settings_pause_uploads_footer">Podczas wstrzymania zmiany czekają na tym urządzeniu i zostaną przesłane po wznowieniu.</string>
     <string name="members_title">Osoby i urządzenia</string>

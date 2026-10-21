@@ -108,7 +108,7 @@
     <string name="settings_disconnect_confirm_title">Disconnettere la sincronizzazione?</string>
     <string name="settings_disconnect_body">Questo dispositivo smette di sincronizzare e rimuove le sue credenziali di archiviazione. Accedi di nuovo per riprendere la sincronizzazione.</string>
     <string name="settings_disconnect_failed">Disconnessione non riuscita: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Impossibile controllare le pubblicazioni solo cloud: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Impossibile controllare cosa perderesti: %1$s</string>
     <string name="settings_pause_uploads">Sospendi i caricamenti</string>
     <string name="settings_pause_uploads_footer">In pausa, le modifiche restano in attesa su questo dispositivo e vengono caricate alla ripresa.</string>
     <string name="members_title">Persone e dispositivi</string>

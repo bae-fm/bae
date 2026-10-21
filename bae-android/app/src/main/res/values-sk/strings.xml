@@ -114,7 +114,7 @@
     <string name="settings_disconnect_confirm_title">Odpojiť synchronizáciu?</string>
     <string name="settings_disconnect_body">Toto zariadenie prestane synchronizovať a odstráni svoje prihlasovacie údaje k úložisku. Na obnovenie synchronizácie sa znova prihláste.</string>
     <string name="settings_disconnect_failed">Odpojenie zlyhalo: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Nepodarilo sa overiť vydania uložené len v cloude: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Nepodarilo sa overiť, o čo prídete: %1$s</string>
     <string name="settings_pause_uploads">Pozastaviť odosielanie</string>
     <string name="settings_pause_uploads_footer">Kým je pozastavené, zmeny čakajú na tomto zariadení a odošlú sa, keď budeš pokračovať.</string>
     <string name="members_title">Ľudia a zariadenia</string>

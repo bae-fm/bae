@@ -5,17 +5,16 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
  * Covers the disconnect flow's message assembly and confirmation/execution state
  * with stubbed bridge closures — no live core. The load-bearing invariants: the
  * at-risk sentence is appended verbatim after a single space; a failed at-risk
- * check still opens the confirmation but surfaces the failure; and a failed
- * disconnect reports the error rather than reporting success.
+ * check opens a confirmation that says the check failed, never one that reads
+ * as nothing at risk; and a failed disconnect reports the error rather than
+ * reporting success.
  *
  * The flow launches its warning query into an injected scope; an unconfined
  * dispatcher runs that query inline, so state has settled by the time
@@ -26,7 +25,7 @@ class DisconnectSyncFlowTest {
         cloudOnlyReleaseCount: suspend () -> ULong = { 0uL },
         atRiskLine: (ULong) -> String = { "$it at risk." },
         disconnect: suspend () -> Unit = {},
-        warningFailed: (Throwable) -> DisplayError = { DisplayError("warning check failed") },
+        warningFailed: (Throwable) -> DisplayError? = { DisplayError("warning check failed") },
         disconnectFailed: (Throwable) -> DisplayError = { DisplayError("disconnect failed") },
     ): DisconnectSyncFlow =
         DisconnectSyncFlow(
@@ -45,14 +44,8 @@ class DisconnectSyncFlowTest {
     fun messageAppendsTheAtRiskSentenceAfterASingleSpace() {
         assertEquals(
             "Base sentence. 2 releases are only in the cloud.",
-            disconnectConfirmMessage("Base sentence.", "2 releases are only in the cloud."),
+            disconnectConfirmMessage("Base sentence.", DisconnectRisk.CloudOnly("2 releases are only in the cloud.")),
         )
-    }
-
-    @Test
-    fun messageWithoutAnAtRiskSentenceIsTheBaseOnly() {
-        assertEquals("Base sentence.", disconnectConfirmMessage("Base sentence.", null))
-        assertEquals("Base sentence.", disconnectConfirmMessage("Base sentence.", ""))
     }
 
     @Test
@@ -62,25 +55,23 @@ class DisconnectSyncFlowTest {
         flow.promptDisconnect()
 
         val state = flow.state.value
-        assertTrue(state.confirming)
-        assertEquals("3 at risk.", state.extraWarning)
+        assertEquals(DisconnectRisk.CloudOnly("3 at risk."), state.confirming)
         assertNull(state.error)
     }
 
     @Test
-    fun promptWithNoAtRiskReleasesOpensWithoutAWarning() {
+    fun promptWithNoAtRiskReleasesOpensSayingNothingIsCloudOnly() {
         val flow = makeFlow(cloudOnlyReleaseCount = { 0uL })
 
         flow.promptDisconnect()
 
         val state = flow.state.value
-        assertTrue(state.confirming)
-        assertNull(state.extraWarning)
+        assertEquals(DisconnectRisk.NothingCloudOnly, state.confirming)
         assertNull(state.error)
     }
 
     @Test
-    fun aFailedAtRiskCheckStillOpensTheConfirmationWithAnError() {
+    fun aFailedAtRiskCheckOpensTheConfirmationSayingTheCheckFailed() {
         val flow =
             makeFlow(
                 cloudOnlyReleaseCount = { throw IllegalStateException("offline") },
@@ -90,9 +81,31 @@ class DisconnectSyncFlowTest {
         flow.promptDisconnect()
 
         val state = flow.state.value
-        assertTrue(state.confirming)
-        assertNull(state.extraWarning)
-        assertEquals(DisplayError("couldn't check: offline"), state.error)
+        assertEquals(DisconnectRisk.CheckFailed(DisplayError("couldn't check: offline")), state.confirming)
+        assertNull(state.error)
+    }
+
+    @Test
+    fun aCheckCoreReportsAsCancelledOpensNoConfirmation() {
+        val flow =
+            makeFlow(
+                cloudOnlyReleaseCount = { throw IllegalStateException("cancelled") },
+                warningFailed = { null },
+            )
+
+        flow.promptDisconnect()
+
+        assertEquals(DisconnectSyncState(), flow.state.value)
+    }
+
+    @Test
+    fun dismissingClosesTheConfirmation() {
+        val flow = makeFlow(cloudOnlyReleaseCount = { 1uL })
+        flow.promptDisconnect()
+
+        flow.dismissConfirm()
+
+        assertNull(flow.state.value.confirming)
     }
 
     @Test
@@ -104,7 +117,7 @@ class DisconnectSyncFlowTest {
 
         val state = flow.state.value
         assertEquals(1, disconnectCalls)
-        assertFalse(state.confirming)
+        assertNull(state.confirming)
         assertNull(state.error)
     }
 
@@ -119,7 +132,7 @@ class DisconnectSyncFlowTest {
         runBlocking { flow.confirm() }
 
         val state = flow.state.value
-        assertFalse(state.confirming)
+        assertNull(state.confirming)
         assertEquals(DisplayError("couldn't disconnect: busy"), state.error)
     }
 }

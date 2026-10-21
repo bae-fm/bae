@@ -112,7 +112,7 @@
     <string name="settings_disconnect_confirm_title">Koble fra synkroniseringen?</string>
     <string name="settings_disconnect_body">Denne enheten slutter å synkronisere og fjerner påloggingsinformasjonen for lagringen. Logg på igjen for å fortsette synkroniseringen.</string>
     <string name="settings_disconnect_failed">Frakoblingen mislyktes: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Kunne ikke sjekke utgivelser som bare finnes i skyen: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Kunne ikke sjekke hva du ville miste: %1$s</string>
     <string name="settings_pause_uploads">Sett opplastinger på pause</string>
     <string name="settings_pause_uploads_footer">Mens de er satt på pause, venter endringene på denne enheten og lastes opp når du fortsetter.</string>
     <string name="members_title">Personer og enheter</string>

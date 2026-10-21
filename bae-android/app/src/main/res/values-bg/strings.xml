@@ -108,7 +108,7 @@
     <string name="settings_disconnect_confirm_title">Прекъсване на синхронизирането?</string>
     <string name="settings_disconnect_body">Това устройство спира синхронизирането и премахва идентификационните си данни за хранилището. Влезте отново, за да възобновите синхронизирането.</string>
     <string name="settings_disconnect_failed">Прекъсването на връзката не бе успешно: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Не може да се провери за издания само в облака: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Не може да се провери какво ще загубите: %1$s</string>
     <string name="settings_pause_uploads">Пауза на качванията</string>
     <string name="settings_pause_uploads_footer">Докато е на пауза, промените изчакват на това устройство и се качват, когато възобновите.</string>
     <string name="members_title">Хора и устройства</string>

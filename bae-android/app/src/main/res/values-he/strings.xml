@@ -108,7 +108,7 @@
     <string name="settings_disconnect_confirm_title">לנתק את הסנכרון?</string>
     <string name="settings_disconnect_body">המכשיר הזה מפסיק לסנכרן ומסיר את פרטי ההתחברות שלו לאחסון. התחברו שוב כדי להמשיך לסנכרן.</string>
     <string name="settings_disconnect_failed">ההתנתקות נכשלה: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">לא ניתן לבדוק מהדורות בענן בלבד: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">לא ניתן לבדוק מה תאבדו: %1$s</string>
     <string name="settings_pause_uploads">השהיית העלאות</string>
     <string name="settings_pause_uploads_footer">בזמן ההשהיה, השינויים ממתינים במכשיר הזה ומועלים כשתמשיך.</string>
     <string name="members_title">אנשים ומכשירים</string>

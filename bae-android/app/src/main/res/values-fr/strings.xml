@@ -108,7 +108,7 @@
     <string name="settings_disconnect_confirm_title">Déconnecter la synchronisation ?</string>
     <string name="settings_disconnect_body">Cet appareil arrête de synchroniser et supprime ses identifiants de stockage. Reconnectez-vous pour reprendre la synchronisation.</string>
     <string name="settings_disconnect_failed">Échec de la déconnexion : %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Impossible de vérifier les éditions dans le cloud uniquement : %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Impossible de vérifier ce que vous perdriez : %1$s</string>
     <string name="settings_pause_uploads">Suspendre les envois</string>
     <string name="settings_pause_uploads_footer">En pause, les modifications attendent sur cet appareil et sont envoyées à la reprise.</string>
     <string name="members_title">Personnes et appareils</string>

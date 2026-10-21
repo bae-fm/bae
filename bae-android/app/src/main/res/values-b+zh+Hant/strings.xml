@@ -108,7 +108,7 @@
     <string name="settings_disconnect_confirm_title">要中斷同步嗎？</string>
     <string name="settings_disconnect_body">此裝置將停止同步並移除其儲存空間憑證。重新登入即可恢復同步。</string>
     <string name="settings_disconnect_failed">中斷連線失敗：%1$s</string>
-    <string name="settings_disconnect_warning_check_failed">無法檢查僅在雲端的發行：%1$s</string>
+    <string name="settings_disconnect_warning_check_failed">無法檢查你會失去哪些內容：%1$s</string>
     <string name="settings_pause_uploads">暫停上傳</string>
     <string name="settings_pause_uploads_footer">暫停期間，變更會在此裝置上等待，恢復後上傳。</string>
     <string name="members_title">成員和裝置</string>

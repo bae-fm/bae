@@ -15,31 +15,45 @@ private const val TAG = "bae.DisconnectSyncFlow"
 private val logger = BaeLogger(TAG)
 
 /**
- * Confirmation-dialog visibility and inline-error state for disconnecting the
- * cloud provider from this device.
+ * What the disconnect confirmation says this device would lose: nothing only in
+ * the cloud, a count of releases that are, or that the check itself failed.
+ */
+internal sealed interface DisconnectRisk {
+    /** Every release this device can play is also stored somewhere it keeps. */
+    data object NothingCloudOnly : DisconnectRisk
+
+    /** The localized at-risk sentence for the releases that exist only in the cloud. */
+    data class CloudOnly(
+        val line: String,
+    ) : DisconnectRisk
+
+    /** The count failed, so the confirmation can't say what would be lost. */
+    data class CheckFailed(
+        val error: DisplayError,
+    ) : DisconnectRisk
+}
+
+/**
+ * The open confirmation, if any, and the inline error of a disconnect that
+ * failed.
  */
 internal data class DisconnectSyncState(
-    /** Whether the confirmation dialog is shown. */
-    val confirming: Boolean = false,
-    /**
-     * The localized at-risk sentence to append to the confirmation body, or null
-     * when nothing is at risk (or the check itself failed).
-     */
-    val extraWarning: String? = null,
-    /** Inline error in the Sync section, or null. */
+    /** The open confirmation's risk, or null when the dialog is closed. */
+    val confirming: DisconnectRisk? = null,
+    /** A failed disconnect, shown inline in the Sync section, or null. */
     val error: DisplayError? = null,
 )
 
 /**
  * The confirmation body: a localized [base] sentence with the at-risk sentence
- * appended after a single space when present. bae-core supplies the count; the
- * sentence itself is resolved here from `core.sync.cloud_only_releases`, with
- * this locale's plural rules.
+ * appended after a single space. bae-core supplies the count; the sentence
+ * itself is resolved from `core.sync.cloud_only_releases`, with this locale's
+ * plural rules.
  */
 internal fun disconnectConfirmMessage(
     base: String,
-    extraWarning: String?,
-): String = if (extraWarning.isNullOrEmpty()) base else "$base $extraWarning"
+    atRisk: DisconnectRisk.CloudOnly,
+): String = "$base ${atRisk.line}"
 
 /**
  * The localized text the disconnect flow shows: the at-risk warning for a
@@ -59,8 +73,9 @@ internal data class DisconnectStrings(
  * Drives the disconnect confirmation and execution with injected bridge calls so
  * the screen supplies the live handle and tests supply stubs.
  *
- * A failed at-risk check still opens the confirmation, surfacing the failure
- *   inline so the user sees the data-loss check didn't run yet can still proceed.
+ * A failed at-risk check still opens the confirmation, and the confirmation
+ * says the check failed, so the person knows nothing told them what they'd lose
+ * yet can still proceed.
  */
 internal class DisconnectSyncFlow(
     private val scope: CoroutineScope,
@@ -74,33 +89,40 @@ internal class DisconnectSyncFlow(
     private var warningJob: Job? = null
 
     /**
-     * Query the at-risk warning, then open the confirmation. On query failure,
-     * surface the error inline and still open the confirmation so the user can
-     * proceed or cancel. A superseding call cancels the prior query.
+     * Query the at-risk count, then open the confirmation with what it found or
+     * with the check's failure. A superseding call cancels the prior query; a
+     * check core reports as cancelled opens nothing.
      */
     fun promptDisconnect() {
         _state.update { it.copy(error = null) }
         warningJob?.cancel()
         warningJob =
             scope.launch {
-                _state.value =
+                val risk =
                     try {
                         val count = cloudOnlyReleaseCount()
-                        DisconnectSyncState(
-                            confirming = true,
-                            extraWarning = if (count > 0uL) strings.atRiskLine(count) else null,
-                        )
+                        if (count > 0uL) {
+                            DisconnectRisk.CloudOnly(strings.atRiskLine(count))
+                        } else {
+                            DisconnectRisk.NothingCloudOnly
+                        }
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Throwable) {
                         logger.error("Failed to compute disconnect warning", e)
-                        DisconnectSyncState(confirming = true, error = strings.warningFailed(e))
+                        val error = strings.warningFailed(e)
+                        if (error == null) {
+                            logger.info("Disconnect warning check was cancelled; not opening the confirmation")
+                            return@launch
+                        }
+                        DisconnectRisk.CheckFailed(error)
                     }
+                _state.value = DisconnectSyncState(confirming = risk)
             }
     }
 
     fun dismissConfirm() {
-        _state.update { it.copy(confirming = false) }
+        _state.update { it.copy(confirming = null) }
     }
 
     /**

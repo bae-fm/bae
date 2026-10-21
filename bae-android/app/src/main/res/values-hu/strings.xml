@@ -112,7 +112,7 @@
     <string name="settings_disconnect_confirm_title">Leválasztod a szinkronizálást?</string>
     <string name="settings_disconnect_body">Ez az eszköz leállítja a szinkronizálást, és eltávolítja a tárhely hitelesítő adatait. A folytatáshoz jelentkezz be újra.</string>
     <string name="settings_disconnect_failed">A leválasztás nem sikerült: %1$s</string>
-    <string name="settings_disconnect_warning_check_failed">Nem sikerült ellenőrizni a csak a felhőben tárolt kiadásokat: %1$s</string>
+    <string name="settings_disconnect_warning_check_failed">Nem sikerült ellenőrizni, mit veszítenél el: %1$s</string>
     <string name="settings_pause_uploads">Feltöltések szüneteltetése</string>
     <string name="settings_pause_uploads_footer">Szüneteltetés alatt a módosítások ezen az eszközön várakoznak, és a folytatáskor töltődnek fel.</string>
     <string name="members_title">Személyek és eszközök</string>
