@@ -1239,9 +1239,12 @@ picks the folder the library lives in. On Dropbox that is a shared folder, so
 the household can be invited to it; with none yet, bae says to share one in
 Dropbox and look again. On OneDrive it is any folder, browsed from the top,
 and the person can make a new one there. coven holds the sign-in; bae never
-sees its tokens.
+sees its tokens. bae's Dropbox app has access to the whole Dropbox, not an app
+folder: an app folder can't be shared, so a household couldn't be invited to
+it.
 
-**iCloud setup** uses the Apple Account the device is signed in to.
+**iCloud setup** uses the Apple Account the device is signed in to, and keeps
+the library in bae's iCloud container, `iCloud.fm.bae.desktop`.
 
 A device can hold several libraries, each its own coven store, and remembers
 which it last opened. coven keeps each store under `~/.bae/stores/`; bae keeps
@@ -1416,8 +1419,6 @@ rather than claim the library is synced.
 - **A newer schema.** Data written by a newer app needs an update;
   reconnecting can't fix it.
 - **Pausing** stops uploads and keeps their place, across restarts too.
-- **Covers after opening.** A device fetches the covers it doesn't hold yet.
-  Its progress is a row of the sync activity list, with *Cancel*.
 
 **Resetting a device.** Opening can fail because the database is damaged, and
 sync can find that this installation is another copy of the device, such as
@@ -1896,7 +1897,7 @@ bindings export none of their symbols.
 
 | App | Shape |
 |---|---|
-| bae-macos | SwiftUI app; shares its service layer and the generated bindings with iOS through the BaeKit package |
+| bae-macos | AppKit app whose application delegate owns start-up, the main menu and the windows; each window hosts SwiftUI views. The main menu holds the standard macOS menus with their standard actions, sent up the responder chain, plus bae's own commands. Shares its service layer and the generated bindings with iOS through the BaeKit package |
 | bae-ios | SwiftUI app on BaeKit: onboarding, library, album detail, downloads, playback, settings |
 | bae-android | Kotlin app: onboarding, library, album detail, downloads, playback with a system media session, settings, a widget |
 | bae-avalonia | Windows and Linux start-up, single instance, crash capture, telemetry, updater and packaging, and one window that calls the bridge |
@@ -1950,7 +1951,9 @@ Nothing in bae-core depends on a server crate.
   keys and data, never prose.
 - **Telemetry is typed.** What leaves a device is a closed catalog of events
   with typed fields. A string can't be a field, so a name, path or title can't
-  leak. The baeium edition sends none.
+  leak. Events from one installation share an id bae makes once and keeps in
+  `~/.bae/install-id`, never coven's device id, and each launch adds an id of
+  its own. The baeium edition sends none.
 - **Errors keep their cause.** A failure carries its typed reason to the
   person who can act on it; nothing defaults over an error.
 
