@@ -160,7 +160,7 @@
     <string name="cast">Diffuser</string>
     <string name="cast_casting_to">Diffusion vers %1$s</string>
     <string name="cast_disconnect">Déconnecter</string>
-    <string name="cast_no_devices">Aucun appareil trouvé</string>
+    <string name="cast_looking_for_devices">Recherche d\'appareils…</string>
     <string name="cast_turn_off_title">Désactiver la diffusion ?</string>
     <string name="cast_turn_off_message">La diffusion vers %1$s sera interrompue.</string>
     <string name="cast_turn_off_confirm">Désactiver</string>

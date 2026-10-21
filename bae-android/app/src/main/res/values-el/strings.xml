@@ -158,7 +158,7 @@
     <string name="cast">Μετάδοση</string>
     <string name="cast_casting_to">Μετάδοση σε %1$s</string>
     <string name="cast_disconnect">Αποσύνδεση</string>
-    <string name="cast_no_devices">Δεν βρέθηκαν συσκευές Cast</string>
+    <string name="cast_looking_for_devices">Αναζήτηση συσκευών…</string>
     <string name="cast_turn_off_title">Απενεργοποίηση μετάδοσης;</string>
     <string name="cast_turn_off_message">Αυτό θα σταματήσει τη μετάδοση σε %1$s.</string>
     <string name="cast_turn_off_confirm">Απενεργοποίηση</string>

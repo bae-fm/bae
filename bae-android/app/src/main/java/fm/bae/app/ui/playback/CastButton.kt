@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cast
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.filled.CastConnected
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
@@ -45,6 +48,7 @@ import fm.bae.app.R
 import fm.bae.app.data.castEndedFailure
 import fm.bae.app.data.castingDevice
 import fm.bae.app.displayError
+import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
@@ -101,8 +105,8 @@ fun CastButton(session: OpenLibrary) {
 
 /**
  * The device picker: the active-casting row when casting, or why the last
- * device stopped when its link was lost, then the discovered devices, or an
- * empty-state line while none have answered.
+ * device stopped when its link was lost, then the discovered devices as they
+ * answer, or a searching line while none have.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -167,8 +171,9 @@ private fun CastPickerSheet(
     }
 }
 
+/** The casting row, if any, then the devices discovery has found so far. */
 @Composable
-private fun CastDeviceRows(
+internal fun CastDeviceRows(
     devices: List<BridgeCastDevice>,
     castingTo: BridgeRemoteDevice?,
     onDisconnect: () -> Unit,
@@ -178,12 +183,7 @@ private fun CastDeviceRows(
         CastingRow(deviceName = castingTo.name, onDisconnect = onDisconnect)
     }
     if (devices.isEmpty()) {
-        Text(
-            text = stringResource(R.string.cast_no_devices),
-            style = ThemeText.body.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
-        )
+        LookingForDevicesRow()
     } else {
         devices.forEach { device ->
             DeviceRow(
@@ -192,6 +192,23 @@ private fun CastDeviceRows(
                 onCast = { onCast(device) },
             )
         }
+    }
+}
+
+/** Discovery runs the whole time the picker is open, so an empty list is still looking. */
+@Composable
+private fun LookingForDevicesRow() {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CircularProgressIndicator(modifier = Modifier.size(ThemeIcon.medium), strokeWidth = 2.dp)
+        Spacer(modifier = Modifier.width(ThemeSpace.group))
+        Text(
+            text = stringResource(R.string.cast_looking_for_devices),
+            style = ThemeText.body.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

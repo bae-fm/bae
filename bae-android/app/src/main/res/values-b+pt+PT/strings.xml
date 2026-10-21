@@ -158,7 +158,7 @@
     <string name="cast">Transmitir</string>
     <string name="cast_casting_to">A transmitir para %1$s</string>
     <string name="cast_disconnect">Desligar</string>
-    <string name="cast_no_devices">Não foram encontrados dispositivos Cast</string>
+    <string name="cast_looking_for_devices">A procurar dispositivos…</string>
     <string name="cast_turn_off_title">Desligar a transmissão?</string>
     <string name="cast_turn_off_message">Isto vai parar a transmissão para %1$s.</string>
     <string name="cast_turn_off_confirm">Desligar</string>

@@ -163,7 +163,7 @@
     <string name="cast">Трансляція</string>
     <string name="cast_casting_to">Трансляція на %1$s</string>
     <string name="cast_disconnect">Відключити</string>
-    <string name="cast_no_devices">Пристроїв не знайдено</string>
+    <string name="cast_looking_for_devices">Пошук пристроїв…</string>
     <string name="cast_turn_off_title">Вимкнути трансляцію?</string>
     <string name="cast_turn_off_message">Це припинить трансляцію на %1$s.</string>
     <string name="cast_turn_off_confirm">Вимкнути</string>

@@ -158,7 +158,7 @@
     <string name="cast">Átküldés</string>
     <string name="cast_casting_to">Átküldés ide: %1$s</string>
     <string name="cast_disconnect">Leválasztás</string>
-    <string name="cast_no_devices">Nem található átküldési eszköz</string>
+    <string name="cast_looking_for_devices">Eszközök keresése…</string>
     <string name="cast_turn_off_title">Kikapcsolod az átküldést?</string>
     <string name="cast_turn_off_message">Ezzel leáll az átküldés ide: %1$s.</string>
     <string name="cast_turn_off_confirm">Kikapcsolás</string>

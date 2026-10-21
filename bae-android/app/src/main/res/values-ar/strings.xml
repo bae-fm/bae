@@ -167,7 +167,7 @@
     <string name="cast">إرسال</string>
     <string name="cast_casting_to">يتم الإرسال إلى ‏%1$s</string>
     <string name="cast_disconnect">قطع الاتصال</string>
-    <string name="cast_no_devices">لم يتم العثور على أجهزة إرسال</string>
+    <string name="cast_looking_for_devices">جارٍ البحث عن أجهزة…</string>
     <string name="cast_turn_off_title">إيقاف الإرسال؟</string>
     <string name="cast_turn_off_message">سيؤدي هذا إلى إيقاف الإرسال إلى ‏%1$s.</string>
     <string name="cast_turn_off_confirm">إيقاف</string>

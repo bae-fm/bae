@@ -208,7 +208,7 @@
     <string name="cast">Cast</string>
     <string name="cast_casting_to">Casting to %1$s</string>
     <string name="cast_disconnect">Disconnect</string>
-    <string name="cast_no_devices">No Cast devices found</string>
+    <string name="cast_looking_for_devices">Looking for devices…</string>
     <string name="cast_turn_off_title">Turn off casting?</string>
     <string name="cast_turn_off_message">This will stop casting to %1$s.</string>
     <string name="cast_turn_off_confirm">Turn Off</string>

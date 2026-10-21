@@ -157,7 +157,7 @@
     <string name="cast">投放</string>
     <string name="cast_casting_to">正在投放到 %1$s</string>
     <string name="cast_disconnect">断开连接</string>
-    <string name="cast_no_devices">未找到投放设备</string>
+    <string name="cast_looking_for_devices">正在查找设备…</string>
     <string name="cast_turn_off_title">要关闭投放吗？</string>
     <string name="cast_turn_off_message">这将停止投放到 %1$s。</string>
     <string name="cast_turn_off_confirm">关闭</string>

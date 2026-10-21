@@ -161,7 +161,7 @@
     <string name="cast">Emitiraj</string>
     <string name="cast_casting_to">Emitiranje na %1$s</string>
     <string name="cast_disconnect">Prekini vezu</string>
-    <string name="cast_no_devices">Nema pronađenih uređaja</string>
+    <string name="cast_looking_for_devices">Traženje uređaja…</string>
     <string name="cast_turn_off_title">Isključiti emitiranje?</string>
     <string name="cast_turn_off_message">Time će se prekinuti emitiranje na %1$s.</string>
     <string name="cast_turn_off_confirm">Isključi</string>

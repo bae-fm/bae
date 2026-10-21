@@ -158,7 +158,7 @@
     <string name="cast">Casta</string>
     <string name="cast_casting_to">Castar till %1$s</string>
     <string name="cast_disconnect">Koppla från</string>
-    <string name="cast_no_devices">Inga Cast-enheter hittades</string>
+    <string name="cast_looking_for_devices">Söker efter enheter…</string>
     <string name="cast_turn_off_title">Stänga av castningen?</string>
     <string name="cast_turn_off_message">Detta stoppar castningen till %1$s.</string>
     <string name="cast_turn_off_confirm">Stäng av</string>

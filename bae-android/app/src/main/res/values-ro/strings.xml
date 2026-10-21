@@ -160,7 +160,7 @@
     <string name="cast">Transmite</string>
     <string name="cast_casting_to">Se transmite către %1$s</string>
     <string name="cast_disconnect">Deconectează</string>
-    <string name="cast_no_devices">Nu s-a găsit niciun dispozitiv Cast</string>
+    <string name="cast_looking_for_devices">Se caută dispozitive…</string>
     <string name="cast_turn_off_title">Oprești transmisia?</string>
     <string name="cast_turn_off_message">Aceasta va opri transmisia către %1$s.</string>
     <string name="cast_turn_off_confirm">Oprește</string>

@@ -160,7 +160,7 @@
     <string name="cast">Transmitir</string>
     <string name="cast_casting_to">Transmitiendo a %1$s</string>
     <string name="cast_disconnect">Desconectar</string>
-    <string name="cast_no_devices">No se encontraron dispositivos</string>
+    <string name="cast_looking_for_devices">Buscando dispositivos…</string>
     <string name="cast_turn_off_title">¿Desactivar la transmisión?</string>
     <string name="cast_turn_off_message">Esto detendrá la transmisión a %1$s.</string>
     <string name="cast_turn_off_confirm">Desactivar</string>

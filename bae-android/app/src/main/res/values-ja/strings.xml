@@ -157,7 +157,7 @@
     <string name="cast">キャスト</string>
     <string name="cast_casting_to">%1$s にキャスト中</string>
     <string name="cast_disconnect">切断</string>
-    <string name="cast_no_devices">キャストデバイスが見つかりません</string>
+    <string name="cast_looking_for_devices">デバイスを探しています…</string>
     <string name="cast_turn_off_title">キャストをオフにしますか？</string>
     <string name="cast_turn_off_message">%1$s へのキャストを停止します。</string>
     <string name="cast_turn_off_confirm">オフにする</string>

@@ -158,7 +158,7 @@
     <string name="cast">Cast</string>
     <string name="cast_casting_to">Caster til %1$s</string>
     <string name="cast_disconnect">Afbryd forbindelsen</string>
-    <string name="cast_no_devices">Der blev ikke fundet nogen Cast-enheder</string>
+    <string name="cast_looking_for_devices">Søger efter enheder…</string>
     <string name="cast_turn_off_title">Vil du slå casting fra?</string>
     <string name="cast_turn_off_message">Dette stopper casting til %1$s.</string>
     <string name="cast_turn_off_confirm">Slå fra</string>
