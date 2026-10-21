@@ -73,9 +73,10 @@ extension AppDelegate {
             try initializeKeyring()
         }
         catch {
-            // Discovery reads config.yaml and needs no keychain, so a
-            // keyring failure must not cost the user the list of libraries
-            // on this Mac — returning here handed a first-run create/join
+            // Discovery reads coven's store list and each store's settings
+            // and needs no keychain, so a keyring failure must not cost the
+            // user the list of libraries on this Mac — returning here
+            // handed a first-run create/join
             // wall to someone with libraries sitting right there. It does
             // cost them the open, since every library's keys live in the
             // keyring, so discovery runs and the welcome screen lists them

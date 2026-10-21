@@ -51107,7 +51107,7 @@
       }
     },
     "Join" : {
-      "comment" : "Join-library flow: button starting the device-pairing connection",
+      "comment" : "Joining a library: button joining it with the invite",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -76251,7 +76251,7 @@
       }
     },
     "Scan" : {
-      "comment" : "Device pairing: button opening the QR-code scanner",
+      "comment" : "Adding a device or joining a library: button opening the QR-code scanner",
       "localizations" : {
         "ar" : {
           "stringUnit" : {

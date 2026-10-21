@@ -307,7 +307,7 @@
       }
     },
     "NSLocalNetworkUsageDescription" : {
-      "comment" : "System prompt explaining why device pairing and local playback need access.",
+      "comment" : "System prompt explaining why bae needs the local network: finding speakers and TVs to play to.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
