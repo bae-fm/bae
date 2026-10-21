@@ -76,7 +76,7 @@
     <string name="artist_detail_load_failed">לא ניתן לטעון את האמן הזה.</string>
     <string name="artist_detail_not_found">פרטי האמן לא נמצאו</string>
     <string name="sort_name">שם</string>
-    <string name="gallery_load_failed">לא ניתן לטעון את התמונה.</string>
+    <string name="image_load_failed">לא ניתן לטעון את התמונה.</string>
     <string name="settings_library">ספרייה</string>
     <string name="settings_sync">סנכרון</string>
     <string name="settings_local_only">מקומי בלבד</string>

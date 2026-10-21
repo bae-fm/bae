@@ -80,7 +80,7 @@
     <string name="artist_detail_load_failed">Ezt az előadót nem sikerült betölteni.</string>
     <string name="artist_detail_not_found">Az előadó adatlapja nem található</string>
     <string name="sort_name">Név</string>
-    <string name="gallery_load_failed">A képet nem sikerült betölteni</string>
+    <string name="image_load_failed">A képet nem sikerült betölteni</string>
     <string name="settings_library">Könyvtár</string>
     <string name="settings_sync">Szinkronizálás</string>
     <string name="settings_local_only">Csak helyi</string>

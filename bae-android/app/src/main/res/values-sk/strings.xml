@@ -82,7 +82,7 @@
     <string name="artist_detail_load_failed">Tohto interpreta sa nepodarilo načítať.</string>
     <string name="artist_detail_not_found">Podrobnosti o interpretovi sa nenašli</string>
     <string name="sort_name">Názov</string>
-    <string name="gallery_load_failed">Obrázok sa nepodarilo načítať</string>
+    <string name="image_load_failed">Obrázok sa nepodarilo načítať</string>
     <string name="settings_library">Knižnica</string>
     <string name="settings_sync">Synchronizácia</string>
     <string name="settings_local_only">Len lokálne</string>

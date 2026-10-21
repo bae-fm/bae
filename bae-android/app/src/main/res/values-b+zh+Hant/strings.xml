@@ -76,7 +76,7 @@
     <string name="artist_detail_load_failed">無法載入此藝人。</string>
     <string name="artist_detail_not_found">找不到藝人詳細資料</string>
     <string name="sort_name">名稱</string>
-    <string name="gallery_load_failed">無法載入影像</string>
+    <string name="image_load_failed">無法載入影像</string>
     <string name="settings_library">資料庫</string>
     <string name="settings_sync">同步</string>
     <string name="settings_local_only">僅本機</string>

@@ -76,7 +76,7 @@
     <string name="artist_detail_load_failed">Не вдалося завантажити цього виконавця.</string>
     <string name="artist_detail_not_found">Відомості про виконавця не знайдено</string>
     <string name="sort_name">Назва</string>
-    <string name="gallery_load_failed">Не вдалося завантажити зображення</string>
+    <string name="image_load_failed">Не вдалося завантажити зображення</string>
     <string name="settings_library">Бібліотека</string>
     <string name="settings_sync">Синхронізація</string>
     <string name="settings_local_only">Лише локально</string>

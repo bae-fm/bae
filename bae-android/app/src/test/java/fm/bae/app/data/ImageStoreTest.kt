@@ -6,6 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -197,6 +198,14 @@ class ImageStoreTest {
             val store = storeOf(library = { null })
             assertNull(store.image(ImageContent.LibraryImage(coverRef("rel-1")), fitTo64))
         }
+
+    @Test
+    fun bytesThatArentAnImageAreAFailureNotAMissingImage() {
+        val store = storeOf(library = { "not an image".toByteArray() })
+        assertThrows(UnreadableImage::class.java) {
+            runBlocking { store.image(ImageContent.LibraryImage(coverRef("rel-1")), fitTo64) }
+        }
+    }
 
     private fun coverRef(
         id: String,

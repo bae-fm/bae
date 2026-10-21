@@ -81,7 +81,7 @@
     <string name="artist_detail_load_failed">Acest artist nu a putut fi încărcat.</string>
     <string name="artist_detail_not_found">Detaliile artistului nu au fost găsite</string>
     <string name="sort_name">Nume</string>
-    <string name="gallery_load_failed">Imaginea nu a putut fi încărcată</string>
+    <string name="image_load_failed">Imaginea nu a putut fi încărcată</string>
     <string name="settings_library">Bibliotecă</string>
     <string name="settings_sync">Sincronizare</string>
     <string name="settings_local_only">Doar local</string>

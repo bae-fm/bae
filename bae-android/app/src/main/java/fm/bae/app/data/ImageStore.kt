@@ -171,7 +171,8 @@ class ImageStore(
      * Decoded bitmap for [content] at [size]: the cached decode when there is one,
      * otherwise fetch the bytes, decode off the main thread at that size, and
      * store the result. Returns null when no such image exists (a library image
-     * with no bytes); a fetch or decode failure throws rather than resolving to a
+     * with no bytes); a fetch failure throws, and so do bytes that aren't an
+     * image this device decodes ([UnreadableImage]), rather than resolving to a
      * blank slot.
      */
     suspend fun image(
@@ -183,7 +184,9 @@ class ImageStore(
         if (cached != null) return cached
         val bitmap =
             withContext(dispatcher) {
-                imageBytes(content)?.let { decodeBytes(it, size) }
+                imageBytes(content)?.let { bytes ->
+                    decodeBytes(bytes, size) ?: throw UnreadableImage(content.description, bytes.size)
+                }
             }
         if (bitmap != null) {
             decoded[content.bucket].put(key, bitmap)
@@ -277,6 +280,12 @@ class ImageStore(
  *  subject, and the version that moves whenever its bytes do. */
 private val BridgeImageRef.libraryToken: String
     get() = "library:${imageType.name}:$id:$version"
+
+/** Bytes core handed back for an image that the platform can't decode as one. */
+class UnreadableImage(
+    description: String,
+    byteCount: Int,
+) : Exception("$description: $byteCount bytes that aren't an image this device decodes")
 
 /** A capability this [ImageStore] isn't wired for. */
 class ImageStoreUnavailable : Exception("this ImageStore has no fetch for that content")

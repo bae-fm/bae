@@ -76,7 +76,7 @@
     <string name="artist_detail_load_failed">Този изпълнител не можа да бъде зареден.</string>
     <string name="artist_detail_not_found">Данните за изпълнителя не са намерени</string>
     <string name="sort_name">Име</string>
-    <string name="gallery_load_failed">Изображението не може да бъде заредено</string>
+    <string name="image_load_failed">Изображението не може да бъде заредено</string>
     <string name="settings_library">Библиотека</string>
     <string name="settings_sync">Синхронизиране</string>
     <string name="settings_local_only">Само локално</string>

@@ -108,8 +108,8 @@
     <string name="artist_detail_not_found">Artist detail not found</string>
     <string name="sort_name">Name</string>
 
-    <!-- Gallery -->
-    <string name="gallery_load_failed">Couldn\'t load image</string>
+    <!-- An image that exists but couldn't be read or decoded: a gallery page, or a cover tile to tap to retry. -->
+    <string name="image_load_failed">Couldn\'t load image</string>
 
     <!-- Settings -->
     <string name="settings_library">Library</string>

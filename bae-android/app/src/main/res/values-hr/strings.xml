@@ -76,7 +76,7 @@
     <string name="artist_detail_load_failed">Nije moguće učitati ovog izvođača.</string>
     <string name="artist_detail_not_found">Detalji izvođača nisu pronađeni</string>
     <string name="sort_name">Naziv</string>
-    <string name="gallery_load_failed">Nije moguće učitati sliku</string>
+    <string name="image_load_failed">Nije moguće učitati sliku</string>
     <string name="settings_library">Fonoteka</string>
     <string name="settings_sync">Sinkronizacija</string>
     <string name="settings_local_only">Samo lokalno</string>

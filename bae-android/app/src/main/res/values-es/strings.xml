@@ -76,7 +76,7 @@
     <string name="artist_detail_load_failed">No se pudo cargar este artista.</string>
     <string name="artist_detail_not_found">No se encontraron los detalles del artista</string>
     <string name="sort_name">Nombre</string>
-    <string name="gallery_load_failed">No se pudo cargar la imagen</string>
+    <string name="image_load_failed">No se pudo cargar la imagen</string>
     <string name="settings_library">Biblioteca</string>
     <string name="settings_sync">Sincronización</string>
     <string name="settings_local_only">Solo local</string>

@@ -2,12 +2,14 @@ package fm.bae.app.ui.components
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -16,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -23,12 +26,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
+import fm.bae.app.R
 import fm.bae.app.data.DecodeSize
 import fm.bae.app.data.ImageContent
 import fm.bae.app.data.ImageStore
@@ -45,7 +51,11 @@ private val logger = BaeLogger(TAG)
 private sealed interface SlotState {
     data object Loading : SlotState
 
+    /** There is no image: no cover at all, or core has no file for the one named. */
     data object Absent : SlotState
+
+    /** The image exists but its read or decode failed; a tap reads it again. */
+    data object Failed : SlotState
 
     data class Loaded(
         val bitmap: Bitmap,
@@ -53,8 +63,9 @@ private sealed interface SlotState {
 }
 
 /**
- * Album cover clipped to a rounded square, or a music-note placeholder when there
- * is none; [modifier] sets the size.
+ * Album cover clipped to a rounded square, a music-note placeholder when there is
+ * none, or a broken-image tile to tap to retry when it couldn't be loaded;
+ * [modifier] sets the size.
  */
 @Composable
 fun CoverImage(
@@ -92,7 +103,9 @@ fun ImageSlot(
     ) {
         val size = DecodeSize.FitTo(boundedPixelSize(constraints))
         var state by remember(content, size) { mutableStateOf(store.firstFrameState(content, size)) }
-        LaunchedEffect(content, size) {
+        // Each retry of a failed load is a new attempt the load below runs for.
+        var attempt by remember(content, size) { mutableIntStateOf(0) }
+        LaunchedEffect(content, size, attempt) {
             if (content != null && state !is SlotState.Loaded) {
                 state = store.loadedState(content, size)
             }
@@ -101,6 +114,10 @@ fun ImageSlot(
             state = state,
             iconPadding = iconPadding,
             contentDescription = contentDescription,
+            onRetry = {
+                state = SlotState.Loading
+                attempt += 1
+            },
         )
     }
 }
@@ -115,8 +132,8 @@ private fun ImageStore.firstFrameState(
         else -> cachedImage(content, size)?.let { SlotState.Loaded(it) } ?: SlotState.Loading
     }
 
-/** [content] decoded at [size], or Absent when there are no bytes or the load
- *  failed (logged here). */
+/** [content] decoded at [size], Absent when core has no such image, or Failed
+ *  when reading or decoding it failed (logged here). */
 private suspend fun ImageStore.loadedState(
     content: ImageContent,
     size: DecodeSize.FitTo,
@@ -131,7 +148,7 @@ private suspend fun ImageStore.loadedState(
         throw e
     } catch (e: Exception) {
         logger.error("Failed to load ${content.description}", e)
-        SlotState.Absent
+        SlotState.Failed
     }
 }
 
@@ -141,6 +158,7 @@ private fun SlotContent(
     state: SlotState,
     iconPadding: Dp,
     contentDescription: String?,
+    onRetry: () -> Unit,
 ) {
     when (state) {
         is SlotState.Loaded -> {
@@ -154,12 +172,21 @@ private fun SlotContent(
 
         // Bytes not in yet: a plain tile, so no glyph flashes before the art.
         SlotState.Loading -> {
-            CoverTile(showIcon = false, iconPadding = iconPadding)
+            CoverTile(icon = null, iconPadding = iconPadding)
         }
 
-        // No image, or its bytes were absent or failed to load.
         SlotState.Absent -> {
-            CoverTile(showIcon = true, iconPadding = iconPadding)
+            CoverTile(icon = Icons.Filled.MusicNote, iconPadding = iconPadding)
+        }
+
+        SlotState.Failed -> {
+            val retry = stringResource(R.string.retry)
+            CoverTile(
+                icon = Icons.Filled.BrokenImage,
+                iconPadding = iconPadding,
+                iconDescription = stringResource(R.string.image_load_failed),
+                modifier = Modifier.clickable(onClickLabel = retry, onClick = onRetry),
+            )
         }
     }
 }
@@ -171,20 +198,22 @@ private fun boundedPixelSize(constraints: Constraints): Int {
     return maxOf(width, height)
 }
 
-/** The placeholder surface, with the music-note glyph only when there is no cover. */
+/** The placeholder surface, with [icon] saying why there is no art, or bare while it loads. */
 @Composable
 private fun CoverTile(
-    showIcon: Boolean,
+    icon: ImageVector?,
     iconPadding: Dp,
+    iconDescription: String? = null,
+    modifier: Modifier = Modifier,
 ) {
     Surface(
         color = BaeTheme.surfaces.placeholder,
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
     ) {
-        if (showIcon) {
+        if (icon != null) {
             Icon(
-                imageVector = Icons.Filled.MusicNote,
-                contentDescription = null,
+                imageVector = icon,
+                contentDescription = iconDescription,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(iconPadding),
             )

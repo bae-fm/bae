@@ -80,7 +80,7 @@
     <string name="artist_detail_load_failed">Tätä esittäjää ei voitu ladata.</string>
     <string name="artist_detail_not_found">Esittäjän tietoja ei löytynyt</string>
     <string name="sort_name">Nimi</string>
-    <string name="gallery_load_failed">Kuvaa ei voitu ladata</string>
+    <string name="image_load_failed">Kuvaa ei voitu ladata</string>
     <string name="settings_library">Kirjasto</string>
     <string name="settings_sync">Synkronointi</string>
     <string name="settings_local_only">Vain paikallisesti</string>

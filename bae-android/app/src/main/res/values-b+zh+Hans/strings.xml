@@ -76,7 +76,7 @@
     <string name="artist_detail_load_failed">无法加载此艺人。</string>
     <string name="artist_detail_not_found">未找到艺人详情</string>
     <string name="sort_name">名称</string>
-    <string name="gallery_load_failed">无法加载图片</string>
+    <string name="image_load_failed">无法加载图片</string>
     <string name="settings_library">库</string>
     <string name="settings_sync">同步</string>
     <string name="settings_local_only">仅本地</string>

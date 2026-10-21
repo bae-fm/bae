@@ -80,7 +80,7 @@
     <string name="artist_detail_load_failed">Den här artisten kunde inte läsas in.</string>
     <string name="artist_detail_not_found">Artistdetaljer hittades inte</string>
     <string name="sort_name">Namn</string>
-    <string name="gallery_load_failed">Bilden kunde inte läsas in</string>
+    <string name="image_load_failed">Bilden kunde inte läsas in</string>
     <string name="settings_library">Bibliotek</string>
     <string name="settings_sync">Synkronisering</string>
     <string name="settings_local_only">Endast lokalt</string>

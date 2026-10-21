@@ -281,7 +281,7 @@ private fun GalleryImage(
 
             failed -> {
                 Text(
-                    text = stringResource(R.string.gallery_load_failed),
+                    text = stringResource(R.string.image_load_failed),
                     color = BaeTheme.colors.onFill,
                     modifier = Modifier.padding(ThemeSpace.section),
                 )

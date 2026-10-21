@@ -80,7 +80,7 @@
     <string name="artist_detail_load_failed">Δεν ήταν δυνατή η φόρτωση αυτού του καλλιτέχνη.</string>
     <string name="artist_detail_not_found">Δεν βρέθηκαν λεπτομέρειες καλλιτέχνη</string>
     <string name="sort_name">Όνομα</string>
-    <string name="gallery_load_failed">Δεν ήταν δυνατή η φόρτωση της εικόνας</string>
+    <string name="image_load_failed">Δεν ήταν δυνατή η φόρτωση της εικόνας</string>
     <string name="settings_library">Βιβλιοθήκη</string>
     <string name="settings_sync">Συγχρονισμός</string>
     <string name="settings_local_only">Μόνο τοπικά</string>

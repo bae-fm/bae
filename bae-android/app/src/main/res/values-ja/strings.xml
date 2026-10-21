@@ -76,7 +76,7 @@
     <string name="artist_detail_load_failed">このアーティストを読み込めませんでした。</string>
     <string name="artist_detail_not_found">アーティストの詳細が見つかりません</string>
     <string name="sort_name">名前</string>
-    <string name="gallery_load_failed">画像を読み込めませんでした</string>
+    <string name="image_load_failed">画像を読み込めませんでした</string>
     <string name="settings_library">ライブラリ</string>
     <string name="settings_sync">同期</string>
     <string name="settings_local_only">ローカルのみ</string>
