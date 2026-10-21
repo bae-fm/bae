@@ -36,6 +36,8 @@ const DIRECT_KEYS: &[&str] = &[
     "core.arrival.from",
     "core.arrival.other_pictures",
     "core.arrival.track",
+    // The cast picker words a lost device's end with its name.
+    "core.cast.ended",
     // Returned by the device-reset confirmation object.
     "core.sync.reset_device.warning",
     // The device-reset screens' confirm button.
@@ -264,6 +266,7 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::KeyringLocked,
         BridgeErrorCategory::KeychainEntitlementMissing,
         BridgeErrorCategory::Membership,
+        BridgeErrorCategory::Renderer,
         BridgeErrorCategory::GroupingBlocked {
             reason: BridgeGroupingBlock::SourceChanged,
         },

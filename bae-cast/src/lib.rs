@@ -23,7 +23,7 @@ use bae_core::config::SubsonicCredential;
 use bae_core::dlna::DlnaChannel;
 use bae_core::library::AppServices;
 use bae_core::playback::airplay_output::{AirPlaySink, Ap2Sink, RaopSink};
-use bae_core::playback::{PlaybackProgress, RemoteDevice};
+use bae_core::playback::{PlaybackProgress, RemoteDevice, RemotePlayback};
 use bae_core::renderer::{
     CoverUrlProvider, MediaUrlProvider, RendererChannel, RendererConnection, RendererDevice,
     RendererDiscovery, RendererFlavor, RendererMediaSource, RendererServiceType,
@@ -265,7 +265,10 @@ impl CastController {
         let slot = self.server.clone();
         self.runtime.spawn(async move {
             while let Some(event) = progress.recv().await {
-                let PlaybackProgress::RemoteStatusChanged { device: None } = event else {
+                let PlaybackProgress::RemoteStatusChanged {
+                    remote: RemotePlayback::Local | RemotePlayback::Ended { .. },
+                } = event
+                else {
                     continue;
                 };
                 // Take the server out under the lock, then stop it off the lock

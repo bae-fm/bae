@@ -35,7 +35,7 @@ pub use discovery::{
 };
 pub use format::{RendererFlavor, RendererStreamFormat, TRANSCODE_BITRATE_KBPS};
 pub use media_source::{CoverUrlProvider, MediaUrlProvider, RendererMediaSource, ServedTrack};
-pub use session::{RendererSession, RendererSessionStatus, StatusCallback};
+pub use session::{EventCallback, RendererSession, RendererSessionEvent};
 
 #[cfg(test)]
 mod tests;

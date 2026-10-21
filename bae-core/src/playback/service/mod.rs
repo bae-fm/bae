@@ -95,7 +95,7 @@ pub use api::{
 use api::{SideBoundary, SidePauseDecision};
 use file_buffers::{prepare_track_for_playback, FileBuffers};
 use library_follow::LibraryFollow;
-use renderer::{RemoteConnect, Renderer};
+use renderer::{RemoteConnect, RemoteEnd, Renderer};
 use slot::{LoadGeneration, PausePhase, PlayIntent, PlayTarget, PlaybackSlot, TrackPhase};
 use starvation::StarvationEpisode;
 use volume::OutputVolume;
@@ -601,7 +601,7 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         | PlaybackCommand::PlayOn(_)
         | PlaybackCommand::PlayOnAirPlay(_)
         | PlaybackCommand::StopRemote
-        | PlaybackCommand::RemoteStatus(_) => None,
+        | PlaybackCommand::RemoteEvent(_) => None,
         #[cfg(target_os = "macos")]
         PlaybackCommand::OutputDeviceChanged => None,
         #[cfg(any(test, feature = "test-utils"))]
@@ -658,7 +658,7 @@ fn cancels_side_pause_countdown(command: &PlaybackCommand) -> bool {
         | PlaybackCommand::GetVolume(_)
         | PlaybackCommand::Shutdown(_)
         | PlaybackCommand::SaveState(_)
-        | PlaybackCommand::RemoteStatus(_) => false,
+        | PlaybackCommand::RemoteEvent(_) => false,
         #[cfg(target_os = "macos")]
         PlaybackCommand::OutputDeviceChanged => false,
         #[cfg(any(test, feature = "test-utils"))]

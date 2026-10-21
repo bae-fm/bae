@@ -6,14 +6,14 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use super::channel::{fake_status as status, FakeChannel, RendererError, RendererPlayerState};
-use super::session::{RendererSession, RendererSessionStatus, StatusCallback};
+use super::session::{EventCallback, RendererSession, RendererSessionEvent};
 use super::RendererMedia;
 
-/// Collects the statuses the session reports, and lets a test wait for one that
+/// Collects the events the session reports, and lets a test wait for one that
 /// matches a predicate.
 #[derive(Clone)]
 struct StatusSink {
-    reported: Arc<Mutex<Vec<RendererSessionStatus>>>,
+    reported: Arc<Mutex<Vec<RendererSessionEvent>>>,
 }
 
 impl StatusSink {
@@ -23,15 +23,20 @@ impl StatusSink {
         }
     }
 
-    fn callback(&self) -> StatusCallback {
+    fn callback(&self) -> EventCallback {
         let reported = self.reported.clone();
         Arc::new(move |s| reported.lock().unwrap().push(s))
     }
 
-    fn wait_for(&self, predicate: impl Fn(&RendererSessionStatus) -> bool) -> bool {
+    fn wait_for(&self, predicate: impl Fn(&RendererSessionEvent) -> bool) -> bool {
+        self.wait_until(|events| events.iter().any(&predicate))
+    }
+
+    /// Wait until the events reported so far satisfy `condition`.
+    fn wait_until(&self, condition: impl Fn(&[RendererSessionEvent]) -> bool) -> bool {
         let deadline = std::time::Instant::now() + Duration::from_secs(2);
         while std::time::Instant::now() < deadline {
-            if self.reported.lock().unwrap().iter().any(&predicate) {
+            if condition(&self.reported.lock().unwrap()) {
                 return true;
             }
             std::thread::sleep(Duration::from_millis(10));
@@ -100,7 +105,9 @@ fn session_reports_polled_status_to_the_callback() {
     let sink = StatusSink::new();
 
     let session = RendererSession::start(Box::new(channel), sink.callback());
-    let saw_playing = sink.wait_for(|s| s.player_state == RendererPlayerState::Playing && !s.ended);
+    let saw_playing = sink.wait_for(|event| {
+        matches!(event, RendererSessionEvent::Status(s) if s.player_state == RendererPlayerState::Playing)
+    });
     drop(session);
 
     assert!(
@@ -125,13 +132,54 @@ fn session_ends_on_receiver_side_stop() {
     let sink = StatusSink::new();
 
     let session = RendererSession::start(Box::new(channel), sink.callback());
-    let ended = sink.wait_for(|s| s.ended);
+    let ended = sink.wait_for(|event| {
+        *event
+            == RendererSessionEvent::Ended(RendererError::Connection(
+                "renderer stopped".to_string(),
+            ))
+    });
     drop(session);
 
     assert!(
         ended,
-        "a lost connection must end the session with a terminal status"
+        "a lost connection must end the session with why it was lost"
     );
+}
+
+/// A load the renderer refuses is reported with why, and the session goes on
+/// polling rather than ending.
+#[test]
+fn session_reports_a_refused_command_and_continues() {
+    let channel = FakeChannel::new();
+    let refusal = RendererError::Command("renderer returned 500 to a SOAP action".to_string());
+    channel.state.lock().unwrap().refuse_next_load = Some(refusal.clone());
+    let sink = StatusSink::new();
+
+    let session = RendererSession::start(Box::new(channel), sink.callback());
+    session.load(media("http://host/track"));
+    // The refusal, then a status polled after it.
+    let refused_then_polled = sink.wait_until(|events| {
+        events
+            .iter()
+            .position(|event| *event == RendererSessionEvent::CommandFailed(refusal.clone()))
+            .is_some_and(|at| {
+                events[at + 1..]
+                    .iter()
+                    .any(|event| matches!(event, RendererSessionEvent::Status(_)))
+            })
+    });
+    drop(session);
+
+    assert!(
+        refused_then_polled,
+        "a refused load must be reported with its cause, and polling must go on"
+    );
+    assert!(!sink
+        .reported
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|e| matches!(e, RendererSessionEvent::Ended(_))));
 }
 
 #[test]
@@ -146,8 +194,9 @@ fn session_reports_finished_for_queue_advance() {
     let sink = StatusSink::new();
 
     let session = RendererSession::start(Box::new(channel), sink.callback());
-    let saw_finished =
-        sink.wait_for(|s| s.player_state == RendererPlayerState::Finished && !s.ended);
+    let saw_finished = sink.wait_for(|event| {
+        matches!(event, RendererSessionEvent::Status(s) if s.player_state == RendererPlayerState::Finished)
+    });
     drop(session);
 
     assert!(

@@ -96,7 +96,7 @@ struct AppServiceMediaControlTests {
                 volume: 1,
                 isMuted: false,
                 repeatMode: .off,
-                remoteDevice: nil,
+                remote: .local,
                 preview: BridgePreviewValues(
                     state: .idle,
                     positionMs: 0,

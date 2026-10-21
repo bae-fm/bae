@@ -230,10 +230,11 @@ pub(crate) enum PlaybackCommand {
     /// End the remote or AirPlay session and return to local playback, paused at
     /// the last position.
     StopRemote,
-    /// A status update from the active remote session: drives progress, advances
-    /// the queue when the device finishes a track, and notices a stop on the
-    /// device. Ignored when playing locally (a late update from an ended session).
-    RemoteStatus(crate::renderer::RendererSessionStatus),
+    /// An event from the active remote session: a status drives progress and
+    /// advances the queue when the device finishes a track, a refused command
+    /// is reported, and the session's end returns playback here with why.
+    /// Ignored when playing locally (a late event from an ended session).
+    RemoteEvent(crate::renderer::RendererSessionEvent),
 }
 /// Current playback state: the track and its phase. Position flows through
 /// `PlaybackProgress::PositionUpdate` and `PlaybackProgress::Seeked` instead, so

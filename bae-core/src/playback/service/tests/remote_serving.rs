@@ -56,13 +56,12 @@ async fn served_whole_file_then_window(
         ))
         .await;
     service
-        .handle_remote_status(RendererSessionStatus {
+        .handle_remote_event(RendererSessionEvent::Status(ReceiverStatus {
             player_state: RendererPlayerState::Finished,
             position: None,
             duration: None,
             volume: Some(1.0),
-            ended: false,
-        })
+        }))
         .await;
 
     assert!(

@@ -18,9 +18,10 @@ use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 
 use super::*;
-use crate::playback::RemoteDevice;
+use crate::playback::{RemoteDevice, RemotePlayback};
 use crate::renderer::{
-    RendererMedia, RendererMediaSource, RendererPlayerState, RendererSession, RendererSessionStatus,
+    ReceiverStatus, RendererMedia, RendererMediaSource, RendererPlayerState, RendererSession,
+    RendererSessionEvent,
 };
 
 /// Where the current track plays. `Local` is the default; `Remote` holds the live
@@ -80,8 +81,13 @@ impl Renderer {
         }
     }
 
-    pub(super) fn airplay_failed(&self) -> bool {
-        matches!(self, Self::AirPlay(airplay) if airplay.control.has_failed())
+    /// Why the audio flow to the AirPlay receiver failed for good, when it
+    /// has.
+    pub(super) fn airplay_failure(&self) -> Option<String> {
+        match self {
+            Self::AirPlay(airplay) => airplay.control.failure(),
+            Self::Local | Self::Remote(_) => None,
+        }
     }
 
     pub(super) fn airplay_latency(&self) -> Option<Duration> {
@@ -111,11 +117,29 @@ impl Renderer {
     }
 }
 
+/// How remote playback ended: the person stopped it, or the link to the device
+/// was lost, with why.
+pub(super) enum RemoteEnd {
+    Stopped,
+    Lost(String),
+}
+
+impl RemoteEnd {
+    /// Where playback is going once remote playback on `device` ends this way.
+    fn remote_playback(self, device: RemoteDevice) -> RemotePlayback {
+        match self {
+            Self::Stopped => RemotePlayback::Local,
+            Self::Lost(detail) => RemotePlayback::Ended { device, detail },
+        }
+    }
+}
+
 /// A live AirPlay session driven through the swapped output sink. The decode
-/// pipeline runs unchanged; this holds the control handle the service drives
-/// pause/resume/seek through, the local output to restore when AirPlay ends, and
-/// the receiver latency the audible position is offset by.
+/// pipeline runs unchanged; this holds the receiver, the control handle the
+/// service drives pause/resume/seek through, the local output to restore when
+/// AirPlay ends, and the receiver latency the audible position is offset by.
 pub(super) struct AirPlayRenderer {
+    device: RemoteDevice,
     control: Arc<dyn crate::playback::airplay_output::AirPlayStreamControl>,
     /// The local (cpal/aaudio) output, put back when AirPlay playback ends.
     saved_output: Box<dyn crate::playback::audio_output::AudioOutput>,
@@ -126,11 +150,13 @@ pub(super) struct AirPlayRenderer {
 
 impl AirPlayRenderer {
     pub(super) fn new(
+        device: RemoteDevice,
         control: Arc<dyn crate::playback::airplay_output::AirPlayStreamControl>,
         saved_output: Box<dyn crate::playback::audio_output::AudioOutput>,
         latency_frames: u32,
     ) -> Self {
         Self {
+            device,
             control,
             saved_output,
             latency_frames,
@@ -171,13 +197,13 @@ impl std::fmt::Debug for AirPlayConnect {
     }
 }
 
-/// A live remote-renderer session and where the device reaches this library's
-/// media (to mint each track's media as the queue advances). The device's
-/// position lives with the current track in the slot, which every status, seek
-/// and load updates; local playback resumes there when remote playback ends.
-/// The device isn't held here — it rides the `RemoteStatusChanged` event out to
-/// the UI, which caches it.
+/// A live remote-renderer session, the device it drives (named again when the
+/// link is lost), and where the device reaches this library's media (to mint
+/// each track's media as the queue advances). The device's position lives with
+/// the current track in the slot, which every status, seek and load updates;
+/// local playback resumes there when remote playback ends.
 pub(super) struct RemoteRenderer {
+    device: RemoteDevice,
     session: RendererSession,
     media_source: RendererMediaSource,
 }
@@ -251,14 +277,14 @@ impl std::fmt::Debug for RemoteConnect {
     }
 }
 
-/// The status callback the session reports through: it dispatches each device
-/// status back onto the service's command loop as a `RemoteStatus` command, so
-/// status handling stays serial with every other command.
-pub(super) fn status_callback(
+/// The event callback the session reports through: it dispatches each session
+/// event back onto the service's command loop as a `RemoteEvent` command, so
+/// event handling stays serial with every other command.
+pub(super) fn event_callback(
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
-) -> crate::renderer::StatusCallback {
-    Arc::new(move |status: RendererSessionStatus| {
-        dispatch_command(&command_tx, PlaybackCommand::RemoteStatus(status));
+) -> crate::renderer::EventCallback {
+    Arc::new(move |event: RendererSessionEvent| {
+        dispatch_command(&command_tx, PlaybackCommand::RemoteEvent(event));
     })
 }
 
@@ -293,9 +319,10 @@ impl PlaybackService {
         // queue and its cursor are untouched.
         self.teardown_local_playback();
 
-        let session = RendererSession::start(channel, status_callback(self.command_tx.clone()));
+        let session = RendererSession::start(channel, event_callback(self.command_tx.clone()));
         session.set_volume(volume);
         self.renderer = Renderer::Remote(RemoteRenderer {
+            device: device.clone(),
             session,
             media_source,
         });
@@ -314,7 +341,7 @@ impl PlaybackService {
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::RemoteStatusChanged {
-                device: Some(device),
+                remote: RemotePlayback::On(device),
             },
         );
 
@@ -340,49 +367,62 @@ impl PlaybackService {
     /// playback paused at the last position — for whichever device flavor is live.
     pub(super) async fn handle_stop_remote(&mut self) {
         if self.renderer.is_airplay() {
-            self.end_airplay_and_resume_local().await;
+            self.end_airplay_and_resume_local(RemoteEnd::Stopped).await;
         } else {
-            self.end_remote_and_resume_local(true).await;
+            self.end_remote_and_resume_local(RemoteEnd::Stopped).await;
         }
     }
 
-    /// Apply one device status. Ignored when playing locally (a stale update from
-    /// a session that already ended). A terminal `ended` update — a device-side
-    /// stop — resumes local playback; otherwise the position feed and the slot
-    /// phase are reconciled to the device.
-    pub(super) async fn handle_remote_status(&mut self, status: RendererSessionStatus) {
+    /// Apply one session event. Ignored when playing locally (a stale event
+    /// from a session that already ended). A status reconciles the position
+    /// feed and the slot phase to the device; a refused command is reported to
+    /// the person; the session's end — the link lost — resumes local playback
+    /// and says why.
+    pub(super) async fn handle_remote_event(&mut self, event: RendererSessionEvent) {
         if !self.renderer.is_remote() {
             return;
         }
-        if status.ended {
-            info!("remote session ended (device-side); resuming local playback");
-            self.end_remote_and_resume_local(false).await;
-            return;
+        match event {
+            RendererSessionEvent::Status(status) => self.apply_remote_status(status).await,
+            RendererSessionEvent::CommandFailed(error) => emit_progress(
+                &self.progress_tx,
+                PlaybackProgress::PlaybackError {
+                    reason: crate::ui::PlaybackErrorReason::Diagnostic {
+                        error: crate::ui::UiError::diagnostic(
+                            crate::ui::UiErrorCategory::Renderer,
+                            error,
+                        ),
+                    },
+                },
+            ),
+            RendererSessionEvent::Ended(error) => {
+                self.end_remote_and_resume_local(RemoteEnd::Lost(error.to_string()))
+                    .await;
+            }
         }
-        self.apply_remote_status(status).await;
     }
 
     /// End the remote session and resume the local renderer, paused at the
-    /// current track's position on the device. `stop_device` stops device
-    /// playback first (a user-initiated stop); a device-side end has already
-    /// stopped it.
-    async fn end_remote_and_resume_local(&mut self, stop_device: bool) {
-        match &self.renderer {
-            Renderer::Remote(remote) => {
-                if stop_device {
-                    remote.session.stop();
-                }
-            }
+    /// current track's position on the device. A person's stop stops device
+    /// playback first; a lost link has nothing left to stop.
+    async fn end_remote_and_resume_local(&mut self, end: RemoteEnd) {
+        let Renderer::Remote(remote) = &self.renderer else {
             // AirPlay ends through `end_airplay_and_resume_local`, not here.
-            Renderer::Local | Renderer::AirPlay(_) => return,
+            return;
+        };
+        if matches!(end, RemoteEnd::Stopped) {
+            remote.session.stop();
         }
+        let remote_playback = end.remote_playback(remote.device.clone());
         let current = self.current_track_position();
 
         // Dropping the session ends its poll thread; back to local.
         self.renderer = Renderer::Local;
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::RemoteStatusChanged { device: None },
+            PlaybackProgress::RemoteStatusChanged {
+                remote: remote_playback,
+            },
         );
         self.teardown_local_playback();
 
@@ -403,7 +443,7 @@ impl PlaybackService {
     /// Reconcile the slot and the progress feed to a non-terminal device status:
     /// emit a position update, and drive queue-advance / phase changes off the
     /// device's player state.
-    async fn apply_remote_status(&mut self, status: RendererSessionStatus) {
+    async fn apply_remote_status(&mut self, status: ReceiverStatus) {
         let PlaybackSlot::Active(cur) = &mut self.slot else {
             return;
         };
@@ -538,9 +578,9 @@ impl PlaybackService {
             paused,
         ) {
             error!("remote: failed to mint media URL for {track_id}: {reason}");
-            self.fail_remote(crate::ui::PlaybackErrorReason::internal(
-                "Couldn't build the audio URL for the renderer.",
-            ))
+            self.fail_remote(crate::ui::PlaybackErrorReason::internal(format!(
+                "couldn't build the audio URL for the renderer: {reason}"
+            )))
             .await;
             return;
         }
@@ -570,7 +610,9 @@ impl PlaybackService {
         self.renderer = Renderer::Local;
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::RemoteStatusChanged { device: None },
+            PlaybackProgress::RemoteStatusChanged {
+                remote: RemotePlayback::Local,
+            },
         );
         self.stop().await;
     }
@@ -599,35 +641,42 @@ impl PlaybackService {
         let airplay_output =
             crate::playback::airplay_output::AirPlayOutput::new(sink, volume, control.clone());
         let saved_output = std::mem::replace(&mut self.audio_output, Box::new(airplay_output));
-        self.renderer =
-            Renderer::AirPlay(AirPlayRenderer::new(control, saved_output, latency_frames));
+        self.renderer = Renderer::AirPlay(AirPlayRenderer::new(
+            device.clone(),
+            control,
+            saved_output,
+            latency_frames,
+        ));
         self.hand_over_to_device(device, current, target).await;
     }
 
     /// End AirPlay playback: drop the AirPlay output (which tears the receiver
     /// session down), restore the saved local output, and resume local playback
     /// paused at the last position.
-    pub(super) async fn end_airplay_and_resume_local(&mut self) {
+    pub(super) async fn end_airplay_and_resume_local(&mut self, end: RemoteEnd) {
         if !self.renderer.is_airplay() {
             return;
         }
         let current = self.current_track_position();
         self.retire_current_track();
         self.discard_buffered_listening();
-        let saved_output = match std::mem::replace(&mut self.renderer, Renderer::Local) {
-            Renderer::AirPlay(r) => r.saved_output,
-            other => {
-                self.renderer = other;
-                return;
-            }
-        };
+        let (saved_output, remote_playback) =
+            match std::mem::replace(&mut self.renderer, Renderer::Local) {
+                Renderer::AirPlay(r) => (r.saved_output, end.remote_playback(r.device)),
+                other => {
+                    self.renderer = other;
+                    return;
+                }
+            };
         // Dropping the current output (the AirPlay stream) tears the receiver
         // session down; then restore the local sink.
         self.teardown_local_playback();
         self.audio_output = saved_output;
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::RemoteStatusChanged { device: None },
+            PlaybackProgress::RemoteStatusChanged {
+                remote: remote_playback,
+            },
         );
 
         match current {

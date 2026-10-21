@@ -112,8 +112,9 @@ pub struct PlaybackValues<Track = crate::playback::PlayingTrack> {
     pub volume: f32,
     pub is_muted: bool,
     pub repeat_mode: RepeatMode,
-    /// The remote renderer playback is on, `None` on local output.
-    pub remote_device: Option<RemoteDevice>,
+    /// Where playback is going: this device's own output, a remote renderer,
+    /// or back here after the link to a renderer was lost.
+    pub remote: RemotePlayback,
     pub preview: PreviewValues,
 }
 
@@ -126,6 +127,24 @@ pub struct RemoteDevice {
     pub name: String,
 }
 
+/// Where playback is going, for the cast surfaces: the speaker button's state,
+/// the picker's active device, and why the last device stopped playing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RemotePlayback {
+    /// This device's own output.
+    Local,
+    /// A remote renderer (Cast, DLNA or AirPlay).
+    On(RemoteDevice),
+    /// Back on this device's own output because the link to `device` was lost:
+    /// the receiver stopped its app, went unreachable, or the network dropped.
+    /// `detail` is why, untranslated. Held until playback moves to a device
+    /// again, so the picker can say what happened to the last one.
+    Ended {
+        device: RemoteDevice,
+        detail: String,
+    },
+}
+
 impl PlaybackValues {
     pub(super) fn initial() -> Self {
         Self {
@@ -135,7 +154,7 @@ impl PlaybackValues {
             volume: 1.0,
             is_muted: false,
             repeat_mode: RepeatMode::Off,
-            remote_device: None,
+            remote: RemotePlayback::Local,
             preview: PreviewValues {
                 state: PreviewState::Idle,
                 position_ms: 0,
@@ -186,8 +205,8 @@ impl PlaybackValues {
             PlaybackProgress::RepeatModeChanged { mode } => next.repeat_mode = *mode,
             PlaybackProgress::VolumeChanged { volume } => next.volume = *volume,
             PlaybackProgress::MuteChanged { is_muted } => next.is_muted = *is_muted,
-            PlaybackProgress::RemoteStatusChanged { device } => {
-                next.remote_device.clone_from(device);
+            PlaybackProgress::RemoteStatusChanged { remote } => {
+                next.remote.clone_from(remote);
             }
             PlaybackProgress::PreviewStateChanged(state) => {
                 next.preview.state = state.clone();
@@ -226,7 +245,7 @@ impl<Track: Clone> PlaybackValues<Track> {
             volume,
             is_muted,
             repeat_mode,
-            remote_device,
+            remote,
             preview,
         } = self;
         Ok(PlaybackValues {
@@ -236,7 +255,7 @@ impl<Track: Clone> PlaybackValues<Track> {
             volume,
             is_muted,
             repeat_mode,
-            remote_device,
+            remote,
             preview,
         })
     }
@@ -310,13 +329,13 @@ pub enum PlaybackProgress {
     MuteChanged {
         is_muted: bool,
     },
-    /// The active renderer changed: `Some(device)` when playback moved to a
-    /// remote renderer (Cast, DLNA, or AirPlay), `None` when it returned to local
-    /// output (a user stop or a device-side end). The UI reflects the speaker
-    /// button's active state, the picker's active device, and the "Playing on
-    /// `<name>`" row from this.
+    /// The active renderer changed: playback moved to a remote renderer
+    /// (Cast, DLNA, or AirPlay), returned to local output on a user stop, or
+    /// returned because the link to the device was lost, with why. The UI
+    /// reflects the speaker button's active state, the picker's active device,
+    /// the "Playing on `<name>`" row, and the lost device's reason from this.
     RemoteStatusChanged {
-        device: Option<RemoteDevice>,
+        remote: RemotePlayback,
     },
     /// Playback error (e.g. storage offline) — a typed reason the UI renders
     /// for its locale.

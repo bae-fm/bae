@@ -333,10 +333,10 @@ impl RaopSession {
         self.control.reanchor();
     }
 
-    /// Whether the audio flow to the receiver has failed persistently (a dead
-    /// receiver), so the session should be ended.
-    pub fn has_failed(&self) -> bool {
-        self.control.stream.has_failed()
+    /// Why the audio flow to the receiver failed for good (a dead
+    /// receiver), when it has, so the session should be ended.
+    pub fn failure(&self) -> Option<String> {
+        self.control.stream.failure()
     }
 
     /// Frames handed to the receiver so far.

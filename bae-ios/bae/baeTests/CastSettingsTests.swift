@@ -49,12 +49,35 @@ struct CastSettingsTests {
             id: "cast-living-room",
             name: "Living Room Speaker"
         )
-        store.applyStatus(device: device)
+        store.applyStatus(.on(device: device))
         #expect(store.castingDevice == device)
         #expect(store.castingDeviceName == "Living Room Speaker")
+        #expect(store.endedFailure == nil)
 
-        store.applyStatus(device: nil)
+        store.applyStatus(.local)
         #expect(store.castingDevice == nil)
+        #expect(store.endedFailure == nil)
+    }
+
+    @Test("a device whose link was lost is no longer casting, and says why")
+    func aLostDeviceSaysWhy() {
+        let store = CastStore()
+        let device = BridgeRemoteDevice(
+            id: "cast-living-room",
+            name: "Living Room Speaker"
+        )
+        store.applyStatus(
+            .ended(
+                device: device,
+                detail: "renderer connection failed: receiver closed the session"
+            )
+        )
+        #expect(store.castingDevice == nil)
+        #expect(
+            store.endedFailure?.detail
+                == "renderer connection failed: receiver closed the session"
+        )
+        #expect(store.endedFailure?.line.contains("Living Room Speaker") == true)
     }
 
     @Test("the cast strings ship in every locale")

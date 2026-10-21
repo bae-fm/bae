@@ -67,6 +67,9 @@ pub enum UiErrorCategory {
     /// A library-sharing membership operation failed: the membership chain, an
     /// invite, or key rotation across devices.
     Membership,
+    /// The device playback was sent to (Cast, DLNA) refused a command — a load,
+    /// a play, a seek — while the link to it stayed up.
+    Renderer,
 }
 
 /// Why a release read from several folders cannot be worked on as it stands,

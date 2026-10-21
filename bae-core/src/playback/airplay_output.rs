@@ -37,9 +37,9 @@ pub trait AirPlayStreamControl: Send + Sync {
     fn flush(&self);
     /// Re-anchor the pacing after a FLUSH (resume / post-seek).
     fn reanchor(&self);
-    /// Whether the audio flow to the receiver has failed persistently (a dead
-    /// receiver), so the service should end AirPlay.
-    fn has_failed(&self) -> bool;
+    /// Why the audio flow to the receiver failed for good (a dead receiver),
+    /// when it has, so the service should end AirPlay.
+    fn failure(&self) -> Option<String>;
     /// Frames handed to the receiver so far.
     fn frames_sent(&self) -> u64;
     /// The receiver's audio latency in frames.
@@ -91,9 +91,9 @@ impl AirPlayStreamControl for AirPlayControl {
         self.with_session(|session| session.reanchor());
     }
 
-    fn has_failed(&self) -> bool {
-        self.with_session(|session| session.has_failed())
-            .unwrap_or(false)
+    fn failure(&self) -> Option<String> {
+        // No session bound has nothing to fail.
+        self.with_session(|session| session.failure()).flatten()
     }
 
     fn frames_sent(&self) -> u64 {
@@ -357,8 +357,8 @@ impl AirPlayStreamControl for RaopSession {
         self.reanchor();
     }
 
-    fn has_failed(&self) -> bool {
-        self.has_failed()
+    fn failure(&self) -> Option<String> {
+        self.failure()
     }
 
     fn frames_sent(&self) -> u64 {
@@ -415,8 +415,8 @@ impl AirPlayStreamControl for crate::airplay::ap2_session::Ap2Session {
         }
     }
 
-    fn has_failed(&self) -> bool {
-        self.has_failed()
+    fn failure(&self) -> Option<String> {
+        self.failure()
     }
 
     fn frames_sent(&self) -> u64 {
@@ -481,8 +481,8 @@ mod tests {
         fn reanchor(&self) {
             self.0.reanchored.store(true, Ordering::Release);
         }
-        fn has_failed(&self) -> bool {
-            false
+        fn failure(&self) -> Option<String> {
+            None
         }
         fn frames_sent(&self) -> u64 {
             self.0.frames.load(Ordering::Relaxed)

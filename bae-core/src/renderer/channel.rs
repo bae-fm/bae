@@ -71,7 +71,7 @@ pub struct ReceiverStatus {
 /// link to the device is gone (the Cast app was stopped, the UPnP renderer went
 /// unreachable, the network dropped), which the session reads as the remote
 /// session ending.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum RendererError {
     /// The link could not be established or was lost.
     #[error("renderer connection failed: {0}")]
@@ -122,6 +122,8 @@ pub(crate) struct FakeChannelState {
     pub(crate) default_status: Option<ReceiverStatus>,
     /// Sent each load as it arrives, for a test that waits on one.
     pub(crate) load_events: Option<tokio::sync::mpsc::UnboundedSender<RendererMedia>>,
+    /// What the next load is refused with, once.
+    pub(crate) refuse_next_load: Option<RendererError>,
 }
 
 #[cfg(test)]
@@ -154,6 +156,9 @@ pub(crate) fn fake_status(player_state: RendererPlayerState) -> ReceiverStatus {
 impl RendererChannel for FakeChannel {
     fn load(&mut self, media: &RendererMedia) -> Result<(), RendererError> {
         let mut state = self.state.lock().unwrap();
+        if let Some(refusal) = state.refuse_next_load.take() {
+            return Err(refusal);
+        }
         state.loads.push(media.clone());
         if let Some(load_events) = &state.load_events {
             // A test that dropped its receiver no longer waits on loads.

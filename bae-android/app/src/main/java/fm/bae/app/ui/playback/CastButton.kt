@@ -39,12 +39,17 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.BaeLogger
+import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.data.castEndedFailure
 import fm.bae.app.data.castingDevice
 import fm.bae.app.displayError
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.StatusTone
+import fm.bae.app.ui.components.color
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeCastDevice
@@ -63,6 +68,7 @@ fun CastButton(session: OpenLibrary) {
     }
     val status by session.castStore.status.collectAsState()
     val castingTo = castingDevice(status)
+    val endedFailure = LocalContext.current.castEndedFailure(status)
     var pickerOpen by remember { mutableStateOf(false) }
 
     if (pickerOpen) {
@@ -74,6 +80,7 @@ fun CastButton(session: OpenLibrary) {
         CastPickerSheet(
             session = session,
             castingTo = castingTo,
+            endedFailure = endedFailure,
             onDismiss = { pickerOpen = false },
         )
     }
@@ -93,14 +100,16 @@ fun CastButton(session: OpenLibrary) {
 }
 
 /**
- * The device picker: the active-casting row when casting, then the discovered
- * devices, or an empty-state line while none have answered.
+ * The device picker: the active-casting row when casting, or why the last
+ * device stopped when its link was lost, then the discovered devices, or an
+ * empty-state line while none have answered.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CastPickerSheet(
     session: OpenLibrary,
     castingTo: BridgeRemoteDevice?,
+    endedFailure: DisplayError?,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -126,6 +135,13 @@ private fun CastPickerSheet(
                 style = ThemeText.heading.style,
                 modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
             )
+            endedFailure?.let { failure ->
+                ErrorDetailDisclosure(
+                    error = failure,
+                    lineColor = StatusTone.WARNING.color,
+                    modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
+                )
+            }
             CastDeviceRows(
                 devices = devices,
                 castingTo = castingTo,

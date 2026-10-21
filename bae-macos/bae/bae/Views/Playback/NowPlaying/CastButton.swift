@@ -33,6 +33,7 @@ struct CastButton: View {
             CastPickerPopover(
                 devices: castStore.devices,
                 castingDevice: castStore.castingDevice,
+                endedFailure: castStore.endedFailure,
                 onCast: castTo,
                 onDisconnect: {
                     cast.stopCasting()
@@ -78,11 +79,12 @@ struct CastButton: View {
     }
 }
 
-/// The device picker: the casting row while casting, then the discovered
-/// devices.
+/// The device picker: the casting row while casting, or why the last device
+/// stopped when its link was lost, then the discovered devices.
 private struct CastPickerPopover: View {
     let devices: [BridgeCastDevice]
     let castingDevice: BridgeRemoteDevice?
+    let endedFailure: DisplayError?
     let onCast: (String) -> Void
     let onDisconnect: () -> Void
 
@@ -90,6 +92,11 @@ private struct CastPickerPopover: View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             if let castingDevice {
                 castingRow(castingDevice.name)
+                Divider()
+            }
+            else if let endedFailure {
+                ErrorDetailDisclosure(error: endedFailure, tone: .warning)
+                    .padding(.vertical, ThemeSpace.line)
                 Divider()
             }
             if devices.isEmpty {

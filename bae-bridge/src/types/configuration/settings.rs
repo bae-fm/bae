@@ -170,6 +170,9 @@ pub enum BridgeErrorCategory {
     /// A library-sharing membership operation failed (the membership chain, an
     /// invite, or cross-device key rotation).
     Membership,
+    /// The device playback was sent to refused a command while the link to it
+    /// stayed up.
+    Renderer,
     /// A release read from several folders cannot be worked on as it stands,
     /// or cannot be made, for a reason the person can act on.
     GroupingBlocked {
@@ -328,6 +331,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::KeyringLocked => "core.error.keyring.locked",
         BridgeErrorCategory::KeychainEntitlementMissing => "core.error.keyring.entitlement_missing",
         BridgeErrorCategory::Membership => "core.error.category.membership",
+        BridgeErrorCategory::Renderer => "core.error.category.renderer",
         BridgeErrorCategory::GroupingBlocked { reason } => match reason {
             BridgeGroupingBlock::SourceChanged => "core.import.grouping.source_changed",
             BridgeGroupingBlock::SourceGone => "core.import.grouping.source_gone",
@@ -486,6 +490,7 @@ mirror_enum! {
         KeyringLocked,
         KeychainEntitlementMissing,
         Membership,
+        Renderer,
     },
 }
 

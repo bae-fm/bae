@@ -266,6 +266,33 @@ mirror_struct! {
     fields: { id, name },
 }
 
+/// Where playback is going, for the cast surfaces: this device's own output,
+/// a remote renderer, or back here after the link to a renderer was lost,
+/// with why (untranslated, for a details disclosure). The UI words the ended
+/// line itself (`core.cast.ended`, with the device's name). Mirrors
+/// `bae_core::playback::RemotePlayback`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeRemotePlayback {
+    Local,
+    On {
+        device: BridgeRemoteDevice,
+    },
+    Ended {
+        device: BridgeRemoteDevice,
+        detail: String,
+    },
+}
+
+mirror_enum! {
+    BridgeRemotePlayback = bae_core::playback::RemotePlayback,
+    from_core: pub(crate) fn,
+    variants: {
+        Local,
+        On(device: (BridgeRemoteDevice)),
+        Ended { device: (BridgeRemoteDevice), detail },
+    },
+}
+
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePlaybackValues {
     pub state: BridgePlaybackValueState,
@@ -274,7 +301,7 @@ pub struct BridgePlaybackValues {
     pub volume: f32,
     pub is_muted: bool,
     pub repeat_mode: BridgeRepeatMode,
-    pub remote_device: Option<BridgeRemoteDevice>,
+    pub remote: BridgeRemotePlayback,
     pub preview: BridgePreviewValues,
     pub media_control: BridgeMediaControlValues,
 }
@@ -360,7 +387,7 @@ impl BridgePlaybackValues {
             volume: value.volume,
             is_muted: value.is_muted,
             repeat_mode: BridgeRepeatMode::from_core(value.repeat_mode),
-            remote_device: value.remote_device.map(BridgeRemoteDevice::from_core),
+            remote: BridgeRemotePlayback::from_core(value.remote),
             preview: BridgePreviewValues::from_core(value.preview),
             media_control,
         }

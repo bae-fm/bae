@@ -30,7 +30,7 @@ internal fun playbackValues(
         volume = volume,
         isMuted = isMuted,
         repeatMode = repeatMode,
-        remoteDevice = null,
+        remote = uniffi.bae_bridge.BridgeRemotePlayback.Local,
         preview = BridgePreviewValues(BridgePreviewState.Idle, 0uL, 0.0),
         mediaControl =
             BridgeMediaControlValues(

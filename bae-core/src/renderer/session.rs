@@ -3,12 +3,14 @@
 //!
 //! [`RendererSession`] owns a [`RendererChannel`] and the thread that talks to
 //! it. The thread interleaves commands (load/play/pause/seek/volume/stop) with a
-//! status poll on a fixed interval, reporting every status — and the session's
-//! end — to a caller-supplied callback. The callback is the seam to the playback
-//! service: the session never names playback types, so this stays decoupled from
-//! the renderer that consumes it. Both the Cast and the UPnP channels are driven
+//! status poll on a fixed interval, reporting every status, every refused
+//! command, and the session's end with its cause, to a caller-supplied
+//! callback. The callback is the seam to the playback service: the session
+//! never names playback types, so this stays decoupled from the renderer that
+//! consumes it. Both the Cast and the UPnP channels are driven
 //! by this one session unchanged.
 
+use std::ops::ControlFlow;
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread::JoinHandle;
@@ -16,54 +18,28 @@ use std::time::Duration;
 
 use tracing::{debug, warn};
 
-use super::channel::{
-    ReceiverStatus, RendererChannel, RendererError, RendererMedia, RendererPlayerState,
-};
+use super::channel::{ReceiverStatus, RendererChannel, RendererError, RendererMedia};
 
 /// How often the session polls the renderer for status between commands.
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
 
-/// A status update from the session's poll loop. `ended` marks the terminal
-/// update: the connection was lost or the renderer stopped, and no further
-/// updates follow.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct RendererSessionStatus {
-    pub player_state: RendererPlayerState,
-    pub position: Option<Duration>,
-    pub duration: Option<Duration>,
-    /// The renderer's volume level, or `None` when it was omitted (not
-    /// fabricated).
-    pub volume: Option<f32>,
-    pub ended: bool,
+/// What the session reports: each status the renderer gives, each command it
+/// refused, and the session's end.
+#[derive(Debug, Clone, PartialEq)]
+pub enum RendererSessionEvent {
+    /// A status read off the renderer.
+    Status(ReceiverStatus),
+    /// The renderer refused a command — a load, a play, a seek. The session
+    /// goes on: the link is still up, and the next command may land.
+    CommandFailed(RendererError),
+    /// The link to the renderer was lost: the device stopped its app, went
+    /// unreachable, or the network dropped. No further events follow.
+    Ended(RendererError),
 }
 
-impl RendererSessionStatus {
-    fn from_receiver(status: ReceiverStatus) -> Self {
-        Self {
-            player_state: status.player_state,
-            position: status.position,
-            duration: status.duration,
-            volume: status.volume,
-            ended: false,
-        }
-    }
-
-    /// The terminal update sent once when the session ends.
-    fn ended() -> Self {
-        Self {
-            player_state: RendererPlayerState::Idle,
-            position: None,
-            duration: None,
-            volume: None,
-            ended: true,
-        }
-    }
-}
-
-/// Called on the session thread for every status change and once for session
-/// end. The playback service supplies one that dispatches the status back onto
-/// its command loop.
-pub type StatusCallback = Arc<dyn Fn(RendererSessionStatus) + Send + Sync>;
+/// Called on the session thread for every event. The playback service supplies
+/// one that dispatches the event back onto its command loop.
+pub type EventCallback = Arc<dyn Fn(RendererSessionEvent) + Send + Sync>;
 
 /// Commands the session thread executes against the channel.
 enum SessionCommand {
@@ -87,11 +63,11 @@ pub struct RendererSession {
 
 impl RendererSession {
     /// Start a session over an already-connected `channel`, spawning its poll
-    /// thread. `on_status` receives every status update and the terminal
-    /// `ended` update.
-    pub fn start(channel: Box<dyn RendererChannel>, on_status: StatusCallback) -> Self {
+    /// thread. `on_event` receives every status, every refused command, and
+    /// the session's end.
+    pub fn start(channel: Box<dyn RendererChannel>, on_event: EventCallback) -> Self {
         let (command_tx, command_rx) = mpsc::channel();
-        let thread = std::thread::spawn(move || run_session(channel, command_rx, on_status));
+        let thread = std::thread::spawn(move || run_session(channel, command_rx, on_event));
         Self {
             command_tx: Some(command_tx),
             thread: Some(thread),
@@ -151,51 +127,50 @@ impl Drop for RendererSession {
 /// The session thread body: interleave commands with a status poll every
 /// [`POLL_INTERVAL`], reporting each status. A connection failure — from a
 /// command or a poll — ends the session (the renderer stopped, or the network
-/// dropped): report the terminal update once and exit.
+/// dropped): report the end, with why, once and exit. The session's owner
+/// dropping it ends the thread quietly: nobody is listening.
 fn run_session(
     mut channel: Box<dyn RendererChannel>,
     command_rx: mpsc::Receiver<SessionCommand>,
-    on_status: StatusCallback,
+    on_event: EventCallback,
 ) {
-    // An initial poll surfaces the renderer's starting state promptly.
-    if poll_and_report(channel.as_mut(), &on_status).is_break() {
-        on_status(RendererSessionStatus::ended());
-        return;
+    if let ControlFlow::Break(error) = drive(channel.as_mut(), &command_rx, &on_event) {
+        warn!("renderer session ended: {error}");
+        on_event(RendererSessionEvent::Ended(error));
     }
+}
 
+/// Run the session until its link is lost (`Break`, with why) or its owner
+/// drops it (`Continue`).
+fn drive(
+    channel: &mut dyn RendererChannel,
+    command_rx: &mpsc::Receiver<SessionCommand>,
+    on_event: &EventCallback,
+) -> ControlFlow<RendererError> {
+    // An initial poll surfaces the renderer's starting state promptly.
+    poll_and_report(channel, on_event)?;
     loop {
         match command_rx.recv_timeout(POLL_INTERVAL) {
             Ok(command) => {
-                if run_command(channel.as_mut(), command).is_break() {
-                    on_status(RendererSessionStatus::ended());
-                    return;
-                }
+                run_command(channel, command, on_event)?;
                 // Reflect the command's effect immediately rather than waiting
                 // for the next poll tick.
-                if poll_and_report(channel.as_mut(), &on_status).is_break() {
-                    on_status(RendererSessionStatus::ended());
-                    return;
-                }
+                poll_and_report(channel, on_event)?;
             }
-            Err(mpsc::RecvTimeoutError::Timeout) => {
-                if poll_and_report(channel.as_mut(), &on_status).is_break() {
-                    on_status(RendererSessionStatus::ended());
-                    return;
-                }
-            }
-            // The session was dropped: end quietly without a terminal callback
-            // (the owner is going away and isn't listening).
-            Err(mpsc::RecvTimeoutError::Disconnected) => return,
+            Err(mpsc::RecvTimeoutError::Timeout) => poll_and_report(channel, on_event)?,
+            Err(mpsc::RecvTimeoutError::Disconnected) => return ControlFlow::Continue(()),
         }
     }
 }
 
-/// Run one command. A [`RendererError::Connection`] is terminal (`Break`); other
-/// errors are logged and playback continues (`Continue`).
+/// Run one command. A [`RendererError::Connection`] is terminal (`Break`); a
+/// command the renderer refused is warned and reported, and the session goes
+/// on.
 fn run_command(
     channel: &mut dyn RendererChannel,
     command: SessionCommand,
-) -> std::ops::ControlFlow<()> {
+    on_event: &EventCallback,
+) -> ControlFlow<RendererError> {
     let result = match command {
         SessionCommand::Load(media) => channel.load(&media),
         SessionCommand::Play => channel.play(),
@@ -204,35 +179,32 @@ fn run_command(
         SessionCommand::SetVolume(level) => channel.set_volume(level),
         SessionCommand::Stop => channel.stop(),
     };
-    classify(result)
-}
-
-/// Poll status and report it. A connection failure is terminal.
-fn poll_and_report(
-    channel: &mut dyn RendererChannel,
-    on_status: &StatusCallback,
-) -> std::ops::ControlFlow<()> {
-    match channel.poll_status() {
-        Ok(status) => {
-            on_status(RendererSessionStatus::from_receiver(status));
-            std::ops::ControlFlow::Continue(())
+    match result {
+        Ok(()) => ControlFlow::Continue(()),
+        Err(error @ RendererError::Connection(_)) => ControlFlow::Break(error),
+        Err(error) => {
+            warn!("renderer command failed (session continues): {error}");
+            on_event(RendererSessionEvent::CommandFailed(error));
+            ControlFlow::Continue(())
         }
-        Err(error) => classify(Err(error)),
     }
 }
 
-/// Map a channel result to control flow: a lost connection ends the session; any
-/// other error is logged and the session continues.
-fn classify(result: Result<(), RendererError>) -> std::ops::ControlFlow<()> {
-    match result {
-        Ok(()) => std::ops::ControlFlow::Continue(()),
-        Err(RendererError::Connection(detail)) => {
-            debug!("renderer session ending: {detail}");
-            std::ops::ControlFlow::Break(())
+/// Poll status and report it. A connection failure is terminal; any other
+/// failure to read status is warned and the next poll tries again.
+fn poll_and_report(
+    channel: &mut dyn RendererChannel,
+    on_event: &EventCallback,
+) -> ControlFlow<RendererError> {
+    match channel.poll_status() {
+        Ok(status) => {
+            on_event(RendererSessionEvent::Status(status));
+            ControlFlow::Continue(())
         }
+        Err(error @ RendererError::Connection(_)) => ControlFlow::Break(error),
         Err(error) => {
-            warn!("renderer command failed (session continues): {error}");
-            std::ops::ControlFlow::Continue(())
+            warn!("renderer status poll failed (session continues): {error}");
+            ControlFlow::Continue(())
         }
     }
 }

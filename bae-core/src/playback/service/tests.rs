@@ -4,6 +4,7 @@ use crate::playback::audio_output::{
     AudioOutputControls, AudioState, AudioStream,
 };
 use crate::playback::create_track_stream_pair;
+use crate::playback::RemotePlayback;
 use crate::renderer::channel::{FakeChannel, FakeChannelState};
 // Preview retains the per-track `StreamPipeline`; the test builds one for the
 // preview-teardown test via `test_pipeline`.
@@ -377,6 +378,7 @@ include!("tests/buffers_and_loading.rs");
 include!("tests/starvation_and_start.rs");
 include!("tests/queue_and_diagnostics.rs");
 include!("tests/remote_output.rs");
+include!("tests/remote_airplay.rs");
 include!("tests/remote_serving.rs");
 include!("tests/side_pause_countdown.rs");
 

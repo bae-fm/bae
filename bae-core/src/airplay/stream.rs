@@ -16,7 +16,7 @@
 
 use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
@@ -236,14 +236,14 @@ pub struct RaopStream {
 }
 
 /// The shared state a running stream is observed and steered through: how far the
-/// send has got, the re-anchor request, whether the audio flow has died, and the
-/// negotiated receiver latency the pacing lead and the audible position both use.
-/// A session keeps one and hands a clone to the threads.
+/// send has got, the re-anchor request, why the audio flow died if it has, and
+/// the negotiated receiver latency the pacing lead and the audible position both
+/// use. A session keeps one and hands a clone to the threads.
 #[derive(Clone)]
 pub(super) struct RaopStreamControl {
     frames_sent: Arc<AtomicU64>,
     reanchor: Arc<AtomicU64>,
-    failed: Arc<AtomicBool>,
+    failure: Arc<OnceLock<String>>,
     latency_frames: u32,
 }
 
@@ -254,7 +254,7 @@ impl RaopStreamControl {
         Self {
             frames_sent: Arc::new(AtomicU64::new(0)),
             reanchor: Arc::new(AtomicU64::new(0)),
-            failed: Arc::new(AtomicBool::new(false)),
+            failure: Arc::new(OnceLock::new()),
             latency_frames,
         }
     }
@@ -267,8 +267,9 @@ impl RaopStreamControl {
         self.reanchor.fetch_add(1, Ordering::Release);
     }
 
-    pub(super) fn has_failed(&self) -> bool {
-        self.failed.load(Ordering::Relaxed)
+    /// Why the audio flow to the receiver failed for good, when it has.
+    pub(super) fn failure(&self) -> Option<String> {
+        self.failure.get().cloned()
     }
 
     /// The receiver's audio latency in frames — how far ahead of the playback
@@ -289,9 +290,14 @@ impl RaopStreamControl {
         self.frames_sent.fetch_add(frames, Ordering::Relaxed);
     }
 
-    /// The audio flow has failed persistently — the receiver is unreachable.
-    fn mark_failed(&self) {
-        self.failed.store(true, Ordering::Release);
+    /// The audio flow has failed persistently — the receiver is unreachable —
+    /// the last send failing with `cause`. The first cause is kept and warned;
+    /// later ones repeat it.
+    fn mark_failed(&self, sends: u32, cause: &std::io::Error) {
+        let failure = format!("{sends} audio sends in a row failed: {cause}");
+        if self.failure.set(failure.clone()).is_ok() {
+            warn!("airplay receiver unreachable: {failure}");
+        }
     }
 }
 
@@ -412,12 +418,14 @@ fn spawn_audio_thread(mut t: AudioThread) -> JoinHandle<()> {
                 match t.socket.send_to(&packet, t.dst) {
                     Ok(_) => consecutive_failures = 0,
                     Err(e) => {
+                        // Each failed packet is noted; the run of them that
+                        // declares the receiver dead is warned once, with why.
                         debug!("airplay audio send failed: {e}");
                         consecutive_failures += 1;
                         if consecutive_failures >= FAILURE_THRESHOLD {
                             // The receiver is unreachable — surface the death rather
                             // than erroring silently forever.
-                            t.control.mark_failed();
+                            t.control.mark_failed(consecutive_failures, &e);
                         }
                     }
                 }

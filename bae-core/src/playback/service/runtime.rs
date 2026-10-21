@@ -478,10 +478,11 @@ impl PlaybackService {
     ) {
         // A dead AirPlay receiver surfaces here — the audio thread keeps ticking
         // while its sends fail, so this regular path catches the failure and ends
-        // AirPlay, resuming local paused (the shape a Cast/DLNA `ended` status has).
-        if self.renderer.airplay_failed() {
-            info!("airplay receiver unreachable; ending AirPlay and resuming local");
-            self.end_airplay_and_resume_local().await;
+        // AirPlay, resuming local paused (the shape a Cast/DLNA end has).
+        if let Some(cause) = self.renderer.airplay_failure() {
+            warn!("airplay receiver unreachable ({cause}); ending AirPlay and resuming local");
+            self.end_airplay_and_resume_local(RemoteEnd::Lost(cause))
+                .await;
             return;
         }
 
@@ -1163,8 +1164,8 @@ impl PlaybackService {
                 PlaybackCommand::StopRemote => {
                     self.handle_stop_remote().await;
                 }
-                PlaybackCommand::RemoteStatus(status) => {
-                    self.handle_remote_status(status).await;
+                PlaybackCommand::RemoteEvent(event) => {
+                    self.handle_remote_event(event).await;
                 }
             }
                 }

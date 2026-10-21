@@ -37,6 +37,7 @@ struct CastButton: View {
                 CastPickerView(
                     devices: castStore.devices,
                     castingDevice: castStore.castingDevice,
+                    endedFailure: castStore.endedFailure,
                     onCast: castTo,
                     onDisconnect: {
                         cast.stopCasting()
@@ -79,11 +80,13 @@ struct CastButton: View {
     }
 }
 
-/// The device picker: the active-casting row when casting, then the discovered
-/// devices, or an empty-state line while none have answered.
+/// The device picker: the active-casting row when casting, or why the last
+/// device stopped when its link was lost, then the discovered devices, or an
+/// empty-state line while none have answered.
 private struct CastPickerView: View {
     let devices: [BridgeCastDevice]
     let castingDevice: BridgeRemoteDevice?
+    let endedFailure: DisplayError?
     let onCast: (String) -> Void
     let onDisconnect: () -> Void
 
@@ -96,6 +99,11 @@ private struct CastPickerView: View {
                 if let castingDevice {
                     Section {
                         castingRow(castingDevice.name)
+                    }
+                }
+                else if let endedFailure {
+                    Section {
+                        ErrorDetailDisclosure(error: endedFailure, tone: .warning)
                     }
                 }
                 Section {

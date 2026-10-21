@@ -13,6 +13,7 @@ use tracing::debug;
 use crate::renderer::{
     ReceiverStatus, RendererChannel, RendererError, RendererMedia, RendererPlayerState,
 };
+use crate::util::error_text::CauseChain;
 
 /// The one real Cast [`RendererChannel`], over `rust_cast`. Owned and driven
 /// entirely on the session's thread — `rust_cast`'s channel calls block on the
@@ -49,24 +50,24 @@ impl RustCastChannel {
         // URL's own credential, not TLS identity.
         let device =
             rust_cast::CastDevice::connect_without_host_verification(host.to_string(), port)
-                .map_err(|e| RendererError::Connection(e.to_string()))?;
+                .map_err(|e| RendererError::Connection(CauseChain(&e).to_string()))?;
 
         device
             .connection
             .connect(RECEIVER_ID.to_string())
-            .map_err(|e| RendererError::Connection(e.to_string()))?;
+            .map_err(|e| RendererError::Connection(CauseChain(&e).to_string()))?;
 
         let app = device
             .receiver
             .launch_app(&MEDIA_RECEIVER_APP)
-            .map_err(|e| RendererError::Launch(e.to_string()))?;
+            .map_err(|e| RendererError::Launch(CauseChain(&e).to_string()))?;
 
         // Open a virtual connection to the launched app's transport so media
         // commands reach it.
         device
             .connection
             .connect(app.transport_id.clone())
-            .map_err(|e| RendererError::Connection(e.to_string()))?;
+            .map_err(|e| RendererError::Connection(CauseChain(&e).to_string()))?;
 
         Ok(Self {
             device,
@@ -117,7 +118,7 @@ impl RendererChannel for RustCastChannel {
             .device
             .media
             .load(self.transport_id.clone(), self.session_id.clone(), &request)
-            .map_err(|e| RendererError::Command(e.to_string()))?;
+            .map_err(|e| RendererError::Command(CauseChain(&e).to_string()))?;
 
         self.media_session_id = status.entries.first().map(|entry| entry.media_session_id);
         Ok(())
@@ -129,7 +130,7 @@ impl RendererChannel for RustCastChannel {
             .media
             .play(self.transport_id.clone(), media_session_id)
             .map(|_| ())
-            .map_err(|e| RendererError::Command(e.to_string()))
+            .map_err(|e| RendererError::Command(CauseChain(&e).to_string()))
     }
 
     fn pause(&mut self) -> Result<(), RendererError> {
@@ -138,7 +139,7 @@ impl RendererChannel for RustCastChannel {
             .media
             .pause(self.transport_id.clone(), media_session_id)
             .map(|_| ())
-            .map_err(|e| RendererError::Command(e.to_string()))
+            .map_err(|e| RendererError::Command(CauseChain(&e).to_string()))
     }
 
     fn seek(&mut self, position: Duration) -> Result<(), RendererError> {
@@ -152,7 +153,7 @@ impl RendererChannel for RustCastChannel {
                 None,
             )
             .map(|_| ())
-            .map_err(|e| RendererError::Command(e.to_string()))
+            .map_err(|e| RendererError::Command(CauseChain(&e).to_string()))
     }
 
     fn set_volume(&mut self, level: f32) -> Result<(), RendererError> {
@@ -160,7 +161,7 @@ impl RendererChannel for RustCastChannel {
             .receiver
             .set_volume(level.clamp(0.0, 1.0))
             .map(|_| ())
-            .map_err(|e| RendererError::Command(e.to_string()))
+            .map_err(|e| RendererError::Command(CauseChain(&e).to_string()))
     }
 
     fn stop(&mut self) -> Result<(), RendererError> {
@@ -169,7 +170,7 @@ impl RendererChannel for RustCastChannel {
             .media
             .stop(self.transport_id.clone(), media_session_id)
             .map(|_| ())
-            .map_err(|e| RendererError::Command(e.to_string()))
+            .map_err(|e| RendererError::Command(CauseChain(&e).to_string()))
     }
 
     fn poll_status(&mut self) -> Result<ReceiverStatus, RendererError> {
@@ -185,7 +186,7 @@ impl RendererChannel for RustCastChannel {
             .device
             .receiver
             .get_status()
-            .map_err(|e| RendererError::Connection(e.to_string()))?;
+            .map_err(|e| RendererError::Connection(CauseChain(&e).to_string()))?;
         // The receiver's level, carried as-is (`None` when omitted) rather than
         // invented.
         let volume = receiver_status.volume.level;
@@ -204,7 +205,7 @@ impl RendererChannel for RustCastChannel {
             .device
             .media
             .get_status(self.transport_id.clone(), Some(media_session_id))
-            .map_err(|e| RendererError::Connection(e.to_string()))?;
+            .map_err(|e| RendererError::Connection(CauseChain(&e).to_string()))?;
 
         let Some(entry) = media_status.entries.first() else {
             // The media session is gone (the receiver dropped the media) but the

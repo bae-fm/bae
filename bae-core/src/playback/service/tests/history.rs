@@ -277,16 +277,15 @@ async fn remote_listening_keeps_one_play_across_seek_and_pause() {
     let (_home, mut service, _device, mut progress) = remote_over_fake().await;
     let clock = Arc::new(crate::playback::ManualPlaybackClock::new(test_clock_start()));
     service.clock = clock.clone();
-    let status = |state, seconds| RendererSessionStatus {
+    let status = |state, seconds| ReceiverStatus {
         player_state: state,
         position: Some(Duration::from_secs(seconds)),
         duration: None,
         volume: Some(1.0),
-        ended: false,
     };
     clock.advance(Duration::from_secs(30));
     service
-        .handle_remote_status(status(RendererPlayerState::Playing, 30))
+        .handle_remote_event(RendererSessionEvent::Status(status(RendererPlayerState::Playing, 30)))
         .await;
     let first = service.library_manager.history().await.unwrap();
     assert_eq!(first.len(), 1);
@@ -294,15 +293,15 @@ async fn remote_listening_keeps_one_play_across_seek_and_pause() {
     service.seek(StreamPosition::from_millis(90_000)).await;
     clock.advance(Duration::from_secs(2));
     service
-        .handle_remote_status(status(RendererPlayerState::Playing, 92))
+        .handle_remote_event(RendererSessionEvent::Status(status(RendererPlayerState::Playing, 92)))
         .await;
     clock.advance(Duration::from_secs(1));
     service
-        .handle_remote_status(status(RendererPlayerState::Paused, 93))
+        .handle_remote_event(RendererSessionEvent::Status(status(RendererPlayerState::Paused, 93)))
         .await;
     clock.advance(Duration::from_secs(100));
     service
-        .handle_remote_status(status(RendererPlayerState::Paused, 93))
+        .handle_remote_event(RendererSessionEvent::Status(status(RendererPlayerState::Paused, 93)))
         .await;
     service.stop().await;
     let rows = service.library_manager.history().await.unwrap();

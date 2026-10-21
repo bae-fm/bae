@@ -223,13 +223,12 @@ async fn remote_finished_advances_queue_and_loads_next() {
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
 
     service
-        .handle_remote_status(RendererSessionStatus {
+        .handle_remote_event(RendererSessionEvent::Status(ReceiverStatus {
             player_state: RendererPlayerState::Finished,
             position: None,
             duration: None,
             volume: Some(1.0),
-            ended: false,
-        })
+        }))
         .await;
 
     assert_eq!(
@@ -255,13 +254,12 @@ async fn remote_status_feeds_progress() {
     while rx.try_recv().is_ok() {}
 
     service
-        .handle_remote_status(RendererSessionStatus {
+        .handle_remote_event(RendererSessionEvent::Status(ReceiverStatus {
             player_state: RendererPlayerState::Playing,
             position: Some(std::time::Duration::from_secs(30)),
             duration: Some(std::time::Duration::from_secs(180)),
             volume: Some(1.0),
-            ended: false,
-        })
+        }))
         .await;
 
     let mut saw_position = false;
@@ -293,15 +291,78 @@ async fn handing_over_announces_the_device_by_id() {
 
     let mut announced = None;
     while let Ok(progress) = rx.try_recv() {
-        if let PlaybackProgress::RemoteStatusChanged { device } = progress {
-            announced = device;
+        if let PlaybackProgress::RemoteStatusChanged { remote } = progress {
+            announced = Some(remote);
         }
     }
-    assert_eq!(announced, Some(test_device()));
+    assert_eq!(announced, Some(RemotePlayback::On(test_device())));
+}
+
+/// A device-side end — the link lost — resumes local playback and announces
+/// the device that was lost with why, so the cast surfaces can say what
+/// happened rather than quietly falling back.
+#[tokio::test]
+async fn a_lost_link_returns_to_local_and_says_why() {
+    let (_home, mut service, _state, mut rx) = remote_over_fake().await;
+    while rx.try_recv().is_ok() {}
+
+    service
+        .handle_remote_event(RendererSessionEvent::Ended(
+            crate::renderer::RendererError::Connection("receiver closed the session".to_string()),
+        ))
+        .await;
+
+    assert!(!service.renderer.is_remote(), "the renderer returns to Local");
+    let mut announced = None;
+    while let Ok(progress) = rx.try_recv() {
+        if let PlaybackProgress::RemoteStatusChanged { remote } = progress {
+            announced = Some(remote);
+        }
+    }
+    assert_eq!(
+        announced,
+        Some(RemotePlayback::Ended {
+            device: test_device(),
+            detail: "renderer connection failed: receiver closed the session".to_string(),
+        })
+    );
+}
+
+/// A command the device refused reaches the person as a playback error in the
+/// renderer's category, with the device's reason as its detail; the session
+/// stays on the device.
+#[tokio::test]
+async fn a_refused_command_is_reported_and_the_device_kept() {
+    let (_home, mut service, _state, mut rx) = remote_over_fake().await;
+    while rx.try_recv().is_ok() {}
+
+    service
+        .handle_remote_event(RendererSessionEvent::CommandFailed(
+            crate::renderer::RendererError::Command("LOAD failed: unsupported media".to_string()),
+        ))
+        .await;
+
+    assert!(service.renderer.is_remote(), "the session stays on the device");
+    let mut reported = None;
+    while let Ok(progress) = rx.try_recv() {
+        if let PlaybackProgress::PlaybackError {
+            reason: crate::ui::PlaybackErrorReason::Diagnostic { error },
+        } = progress
+        {
+            reported = Some(error);
+        }
+    }
+    assert_eq!(
+        reported,
+        Some(crate::ui::UiError::diagnostic(
+            crate::ui::UiErrorCategory::Renderer,
+            "renderer command failed: LOAD failed: unsupported media",
+        ))
+    );
 }
 
 /// Stopping remote playback stops the device, drops the renderer back to Local,
-/// and announces `RemoteStatusChanged(None)` so the UI leaves the remote state.
+/// and announces local playback so the UI leaves the remote state.
 #[tokio::test]
 async fn stop_remote_stops_device_and_returns_to_local() {
     let (_home, mut service, state, mut rx) =
@@ -321,13 +382,16 @@ async fn stop_remote_stops_device_and_returns_to_local() {
     );
     let mut saw_not_remote = false;
     while let Ok(progress) = rx.try_recv() {
-        if let PlaybackProgress::RemoteStatusChanged { device: None } = progress {
+        if let PlaybackProgress::RemoteStatusChanged {
+            remote: RemotePlayback::Local,
+        } = progress
+        {
             saw_not_remote = true;
         }
     }
     assert!(
         saw_not_remote,
-        "stopping remote playback announces RemoteStatusChanged(None)"
+        "stopping remote playback announces local playback"
     );
 }
 
@@ -359,13 +423,16 @@ async fn stop_while_remote_stops_device_and_returns_to_local() {
     );
     let mut saw_not_remote = false;
     while let Ok(progress) = rx.try_recv() {
-        if let PlaybackProgress::RemoteStatusChanged { device: None } = progress {
+        if let PlaybackProgress::RemoteStatusChanged {
+            remote: RemotePlayback::Local,
+        } = progress
+        {
             saw_not_remote = true;
         }
     }
     assert!(
         saw_not_remote,
-        "stopping while remote announces RemoteStatusChanged(None)"
+        "stopping while remote announces local playback"
     );
 }
 
@@ -401,13 +468,12 @@ async fn ending_remote_playback_after_an_advance_resumes_the_next_track_at_its_s
         (RendererPlayerState::Finished, None),
     ] {
         service
-            .handle_remote_status(RendererSessionStatus {
+            .handle_remote_event(RendererSessionEvent::Status(ReceiverStatus {
                 player_state,
                 position,
                 duration: None,
                 volume: Some(1.0),
-                ended: false,
-            })
+            }))
             .await;
     }
 
@@ -542,308 +608,6 @@ async fn set_volume_while_remote_sets_the_device_volume() {
     );
 }
 
-// -- AirPlay renderer-seam tests --
-
-/// Records the control operations the service drives an AirPlay stream through,
-/// standing in for the RAOP session so the seam is tested without a receiver.
-#[derive(Default)]
-struct FakeAirPlayControlState {
-    flushed: std::sync::atomic::AtomicU64,
-    reanchored: std::sync::atomic::AtomicU64,
-    failed: std::sync::atomic::AtomicBool,
-}
-
-struct FakeAirPlayControl(Arc<FakeAirPlayControlState>);
-
-impl crate::playback::airplay_output::AirPlayStreamControl for FakeAirPlayControl {
-    fn flush(&self) {
-        self.0
-            .flushed
-            .fetch_add(1, std::sync::atomic::Ordering::Release);
-    }
-    fn reanchor(&self) {
-        self.0
-            .reanchored
-            .fetch_add(1, std::sync::atomic::Ordering::Release);
-    }
-    fn has_failed(&self) -> bool {
-        self.0.failed.load(std::sync::atomic::Ordering::Acquire)
-    }
-    fn frames_sent(&self) -> u64 {
-        0
-    }
-    fn latency_frames(&self) -> u32 {
-        88_200
-    }
-}
-
-/// Install an AirPlay renderer on `service` with a fake control published, a
-/// tagged saved local output (volume `saved_tag`), and the given latency.
-fn install_airplay(
-    service: &mut PlaybackService,
-    latency_frames: u32,
-    saved_tag: f32,
-) -> Arc<FakeAirPlayControlState> {
-    let state = Arc::new(FakeAirPlayControlState::default());
-    let control: Arc<dyn crate::playback::airplay_output::AirPlayStreamControl> =
-        Arc::new(FakeAirPlayControl(state.clone()));
-    let saved = TestAudioOutput::new();
-    saved.set_volume(saved_tag);
-    service.renderer = Renderer::AirPlay(renderer::AirPlayRenderer::new(
-        control,
-        Box::new(saved),
-        latency_frames,
-    ));
-    state
-}
-
-#[tokio::test]
-async fn airplay_pause_flushes_and_resume_reanchors() {
-    let (_home, mut service, _progress_rx) = test_playback_service().await;
-    let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
-    let state = install_airplay(&mut service, 88_200, 0.5);
-
-    service.pause();
-    assert_eq!(
-        state.flushed.load(std::sync::atomic::Ordering::Acquire),
-        1,
-        "pause FLUSHes the receiver"
-    );
-    assert_eq!(
-        state.reanchored.load(std::sync::atomic::Ordering::Acquire),
-        0
-    );
-
-    service.resume().await;
-    assert_eq!(
-        state.reanchored.load(std::sync::atomic::Ordering::Acquire),
-        1,
-        "resume re-anchors the pacing"
-    );
-}
-
-#[tokio::test]
-async fn airplay_position_is_offset_by_receiver_latency() {
-    let (_home, mut service, mut progress_rx) = test_playback_service().await;
-    let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
-    // 88_200 frames at 44.1 kHz = 2 s of latency.
-    install_airplay(&mut service, 88_200, 0.5);
-
-    // A tick at 5 s of decoded position: the audible position is 5 − 2 = 3 s.
-    let mut fmt = test_track_fmt("t");
-    fmt.timeline = TrackTimeline::new(std::time::Duration::from_secs(60), None);
-    service
-        .handle_position_event(Arc::new(fmt), StreamPosition::from_millis(5_000))
-        .await;
-
-    let position = loop {
-        match progress_rx.try_recv() {
-            Ok(PlaybackProgress::PositionUpdate { position_ms, .. }) => break position_ms,
-            Ok(_) => continue,
-            Err(_) => panic!("expected a PositionUpdate"),
-        }
-    };
-    assert_eq!(
-        position, 3_000,
-        "position reflects the ~2 s receiver latency"
-    );
-}
-
-#[tokio::test]
-async fn airplay_stop_restores_the_local_output_and_returns_to_local() {
-    let (_home, mut service, _progress_rx) = test_playback_service().await;
-    let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
-    install_airplay(&mut service, 88_200, 0.777);
-
-    service.stop().await;
-
-    assert!(
-        !service.renderer.is_airplay(),
-        "stop returns to the local renderer"
-    );
-    assert_eq!(
-        service.audio_output.get_volume(),
-        0.777,
-        "the saved local output sink is restored"
-    );
-}
-
-/// Stopping AirPlay resumes local at the position playback actually reached: the
-/// resume position is read from the live shared position at teardown, so the
-/// `AirPlayRenderer` carries no separately-stored position that could go stale.
-/// (Fully exercising the resumed local decode needs a real imported track; here
-/// the position source and the return-to-local are asserted.)
-#[tokio::test]
-async fn airplay_stop_reads_the_live_position_and_returns_to_local() {
-    let (_home, mut service, _progress_rx) =
-        seeded_playback_service(&[("af63ef4c-8602-4cd5-82c0-3d334b916305", &[TRACK_T])]).await;
-    service.slot = active_slot(
-        test_prepared_track(TRACK_T, create_sparse_buffer(1_024)),
-        TrackPhase::Playing,
-    );
-    let saved_tag = 0.5;
-    install_airplay(&mut service, 88_200, saved_tag);
-
-    // Playback progressed on AirPlay: decode is local, so the slot's position is
-    // the live one the resume reads.
-    if let PlaybackSlot::Active(cur) = &mut service.slot {
-        cur.position = StreamPosition::from_millis(30_000);
-    }
-
-    service.handle_stop_remote().await;
-
-    assert!(
-        !service.renderer.is_airplay(),
-        "stop returns to the local renderer"
-    );
-    assert_eq!(
-        service.audio_output.get_volume(),
-        saved_tag,
-        "the saved local output sink is restored"
-    );
-}
-
-/// Seeking while on AirPlay FLUSHes the receiver and re-anchors the pacing (decode
-/// is local, so the rebuild re-fills the sink at the new position).
-#[tokio::test]
-async fn airplay_seek_flushes_and_reanchors() {
-    let (_home, mut service, _progress_rx) =
-        seeded_playback_service(&[("af63ef4c-8602-4cd5-82c0-3d334b916305", &[TRACK_T])]).await;
-    let buffer = create_sparse_buffer(64 * 1024);
-    service.slot = active_slot(
-        test_prepared_track(TRACK_T, buffer.clone()),
-        TrackPhase::Playing,
-    );
-    let (_sink, source, _ready) = create_track_stream_pair(44_100, 2);
-    let (_tx, audio_rx) = audio_event_channel();
-    service.output = Some(test_output(
-        Arc::new(Mutex::new(source::PlaybackSource::new(
-            source,
-            test_track_fmt(TRACK_T),
-        ))),
-        audio_rx,
-    ));
-    let state = install_airplay(&mut service, 88_200, 0.5);
-
-    service.seek(StreamPosition::from_duration(std::time::Duration::from_secs(20))).await;
-
-    assert!(
-        state.flushed.load(std::sync::atomic::Ordering::Acquire) >= 1,
-        "seek FLUSHes the receiver's buffer"
-    );
-    assert!(
-        state.reanchored.load(std::sync::atomic::Ordering::Acquire) >= 1,
-        "seek re-anchors the pacing"
-    );
-}
-
-/// A local end-of-decode advances the queue while the AirPlay renderer stays
-/// installed — playback moves to the next track on the same receiver.
-#[tokio::test]
-async fn airplay_advance_on_local_end_stays_on_airplay() {
-    let (_home, mut service, _progress_rx) =
-        seeded_playback_service(&[("af63ef4c-8602-4cd5-82c0-3d334b916305", &[TRACK_A, TRACK_B])])
-            .await;
-    service.playback_queue.apply(|queue| {
-        queue.play_release(
-            ContextSource::Release("af63ef4c-8602-4cd5-82c0-3d334b916305".to_string()),
-            vec![TRACK_A.to_string(), TRACK_B.to_string()],
-            ContextStart::Index(0),
-        )
-    });
-    service.slot = active_slot(
-        test_prepared_track(TRACK_A, create_sparse_buffer(1_024)),
-        TrackPhase::Playing,
-    );
-    install_airplay(&mut service, 88_200, 0.5);
-
-    service.handle_auto_advance(TRACK_A.to_string()).await;
-
-    assert!(
-        service.renderer.is_airplay(),
-        "the AirPlay renderer stays installed across an auto-advance"
-    );
-}
-
-/// A no-op AirPlay sink for driving `handle_play_on_airplay`: it accepts the PCM
-/// source without touching a socket.
-struct NoopAirPlaySink;
-impl crate::playback::airplay_output::AirPlaySink for NoopAirPlaySink {
-    fn start(
-        &self,
-        _source: Box<dyn crate::airplay::stream::PcmSource>,
-    ) -> Result<Arc<dyn crate::playback::airplay_output::AirPlayStreamControl>, AudioError> {
-        Ok(Arc::new(FakeAirPlayControl(Arc::new(
-            FakeAirPlayControlState::default(),
-        ))))
-    }
-}
-
-/// `handle_play_on_airplay` swaps to the AirPlay output and installs the AirPlay
-/// renderer without turning playback "remote" — decode stays local, so the queue
-/// and slot are driven by the local pipeline, not device transport commands.
-/// (Driven with nothing playing so the swap isn't torn down by the unit harness's
-/// undecodable seed track; the local decode path is covered by the seek/advance
-/// tests.)
-#[tokio::test]
-async fn play_on_airplay_swaps_the_sink_and_keeps_decode_local() {
-    let (_home, mut service, _progress_rx) = test_playback_service().await;
-    // Nothing playing: AirPlay arms without a track to re-decode.
-    service.slot = PlaybackSlot::Stopped;
-
-    service
-        .handle_play_on_airplay(renderer::AirPlayConnect::new(
-            Box::new(NoopAirPlaySink),
-            test_device(),
-            88_200,
-        ))
-        .await;
-
-    assert!(
-        service.renderer.is_airplay(),
-        "the AirPlay renderer is installed"
-    );
-    assert!(
-        !service.renderer.is_remote(),
-        "AirPlay keeps decoding locally — it is not a fetch-a-URL remote renderer"
-    );
-}
-
-/// A dead AirPlay receiver (the session reports transport failure) ends AirPlay
-/// and returns to local — surfaced on the regular position path rather than
-/// erroring silently forever.
-#[tokio::test]
-async fn airplay_receiver_death_ends_airplay_and_returns_to_local() {
-    let (_home, mut service, _progress_rx) =
-        seeded_playback_service(&[("af63ef4c-8602-4cd5-82c0-3d334b916305", &[TRACK_T])]).await;
-    service.slot = active_slot(
-        test_prepared_track(TRACK_T, create_sparse_buffer(1_024)),
-        TrackPhase::Playing,
-    );
-    let state = install_airplay(&mut service, 88_200, 0.5);
-
-    // The receiver went away: the session reports the transport as failed.
-    state
-        .failed
-        .store(true, std::sync::atomic::Ordering::Release);
-
-    // A routine position tick catches it and ends AirPlay.
-    service
-        .handle_position_event(
-            Arc::new(test_track_fmt(TRACK_T)),
-            StreamPosition::from_millis(1_000),
-        )
-        .await;
-
-    assert!(
-        !service.renderer.is_airplay(),
-        "a dead receiver ends AirPlay and returns to the local renderer"
-    );
-}
-
 /// A queued track renamed while an earlier one plays on a device reaches the
 /// device when it loads: each load reads the track's display from the library
 /// then, not from a copy taken when the queue was filled or the device was
@@ -901,13 +665,12 @@ async fn a_queued_track_renamed_while_another_plays_remotely_loads_with_its_new_
         .unwrap();
 
     service
-        .handle_remote_status(RendererSessionStatus {
+        .handle_remote_event(RendererSessionEvent::Status(ReceiverStatus {
             player_state: RendererPlayerState::Finished,
             position: None,
             duration: None,
             volume: Some(1.0),
-            ended: false,
-        })
+        }))
         .await;
 
     let second = loop {

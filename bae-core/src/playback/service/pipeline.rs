@@ -218,7 +218,9 @@ impl PlaybackService {
         if was_playing_on_device {
             emit_progress(
                 &self.progress_tx,
-                PlaybackProgress::RemoteStatusChanged { device: None },
+                PlaybackProgress::RemoteStatusChanged {
+                    remote: crate::playback::RemotePlayback::Local,
+                },
             );
         }
         self.sync_audio_state();

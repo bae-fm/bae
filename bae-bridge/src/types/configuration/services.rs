@@ -243,17 +243,6 @@ impl BridgeCastDevice {
     }
 }
 
-/// Whether playback is on a Cast device and, if so, which. Nothing in this
-/// crate builds one: each host tracks the session it started and holds this as
-/// its own state, so the type crosses as a shape and never as a conversion.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeCastStatus {
-    NotCasting,
-    Casting {
-        device: crate::types::BridgeRemoteDevice,
-    },
-}
-
 /// A service type a renderer advertises itself on, tagging which mapping a
 /// reported service goes through.
 #[derive(Debug, Clone, Copy, uniffi::Enum)]
