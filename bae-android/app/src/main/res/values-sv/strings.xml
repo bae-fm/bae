@@ -19,7 +19,7 @@
     <string name="sort_date_added">Tillagd</string>
     <string name="sort_ascending">Stigande</string>
     <string name="sort_descending">Fallande</string>
-    <string name="library_empty_syncing">Inga album än. Synkroniserar från molnet…</string>
+    <string name="library_empty_albums">Inga album än</string>
     <string name="library_load_failed">Ditt bibliotek kunde inte läsas in.</string>
     <string name="library_load_more_failed">Fler album kunde inte läsas in.</string>
     <string name="library">Bibliotek</string>

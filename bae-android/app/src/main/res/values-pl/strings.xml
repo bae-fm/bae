@@ -19,7 +19,7 @@
     <string name="sort_date_added">Data dodania</string>
     <string name="sort_ascending">Rosnąco</string>
     <string name="sort_descending">Malejąco</string>
-    <string name="library_empty_syncing">Brak albumów. Synchronizowanie z chmury…</string>
+    <string name="library_empty_albums">Nie ma jeszcze albumów</string>
     <string name="library_load_failed">Nie udało się wczytać biblioteki.</string>
     <string name="library_load_more_failed">Nie udało się wczytać kolejnych albumów.</string>
     <string name="library">Biblioteka</string>

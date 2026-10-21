@@ -19,7 +19,7 @@
     <string name="sort_date_added">Ημερομηνία προσθήκης</string>
     <string name="sort_ascending">Αύξουσα</string>
     <string name="sort_descending">Φθίνουσα</string>
-    <string name="library_empty_syncing">Κανένα άλμπουμ ακόμη. Συγχρονισμός από το cloud…</string>
+    <string name="library_empty_albums">Κανένα άλμπουμ ακόμη</string>
     <string name="library_load_failed">Δεν ήταν δυνατή η φόρτωση της βιβλιοθήκης σας.</string>
     <string name="library_load_more_failed">Δεν ήταν δυνατή η φόρτωση περισσότερων άλμπουμ.</string>
     <string name="library">Βιβλιοθήκη</string>

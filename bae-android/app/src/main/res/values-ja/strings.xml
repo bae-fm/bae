@@ -19,7 +19,7 @@
     <string name="sort_date_added">追加日</string>
     <string name="sort_ascending">昇順</string>
     <string name="sort_descending">降順</string>
-    <string name="library_empty_syncing">アルバムがまだありません。クラウドから同期中…</string>
+    <string name="library_empty_albums">アルバムがまだありません</string>
     <string name="library_load_failed">ライブラリを読み込めませんでした。</string>
     <string name="library_load_more_failed">これ以上アルバムを読み込めませんでした。</string>
     <string name="library">ライブラリ</string>

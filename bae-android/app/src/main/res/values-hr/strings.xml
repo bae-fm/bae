@@ -19,7 +19,7 @@
     <string name="sort_date_added">Datum dodavanja</string>
     <string name="sort_ascending">Uzlazno</string>
     <string name="sort_descending">Silazno</string>
-    <string name="library_empty_syncing">Još nema albuma. Sinkronizacija iz oblaka…</string>
+    <string name="library_empty_albums">Još nema albuma</string>
     <string name="library_load_failed">Nije moguće učitati vašu fonoteku.</string>
     <string name="library_load_more_failed">Nije moguće učitati više albuma.</string>
     <string name="library">Biblioteka</string>

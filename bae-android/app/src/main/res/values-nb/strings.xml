@@ -19,7 +19,7 @@
     <string name="sort_date_added">Lagt til</string>
     <string name="sort_ascending">Stigende</string>
     <string name="sort_descending">Synkende</string>
-    <string name="library_empty_syncing">Ingen album ennå. Synkroniserer fra skyen…</string>
+    <string name="library_empty_albums">Ingen album ennå</string>
     <string name="library_load_failed">Biblioteket ditt kunne ikke lastes inn.</string>
     <string name="library_load_more_failed">Kunne ikke laste inn flere album.</string>
     <string name="library">Bibliotek</string>

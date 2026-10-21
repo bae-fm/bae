@@ -19,7 +19,7 @@
     <string name="sort_date_added">За датою додавання</string>
     <string name="sort_ascending">За зростанням</string>
     <string name="sort_descending">За спаданням</string>
-    <string name="library_empty_syncing">Поки немає альбомів. Синхронізація з хмари…</string>
+    <string name="library_empty_albums">Поки немає альбомів</string>
     <string name="library_load_failed">Не вдалося завантажити вашу бібліотеку.</string>
     <string name="library_load_more_failed">Не вдалося завантажити більше альбомів.</string>
     <string name="library">Фонотека</string>

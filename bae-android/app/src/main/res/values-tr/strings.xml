@@ -19,7 +19,7 @@
     <string name="sort_date_added">Eklenme Tarihi</string>
     <string name="sort_ascending">Artan</string>
     <string name="sort_descending">Azalan</string>
-    <string name="library_empty_syncing">Henüz albüm yok. Buluttan eşzamanlanıyor…</string>
+    <string name="library_empty_albums">Henüz albüm yok</string>
     <string name="library_load_failed">Kitaplığınız yüklenemedi.</string>
     <string name="library_load_more_failed">Daha fazla albüm yüklenemedi.</string>
     <string name="library">Kitaplık</string>

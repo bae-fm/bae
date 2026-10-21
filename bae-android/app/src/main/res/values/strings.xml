@@ -34,7 +34,7 @@
     <string name="sort_date_added">Date Added</string>
     <string name="sort_ascending">Ascending</string>
     <string name="sort_descending">Descending</string>
-    <string name="library_empty_syncing">No albums yet. Syncing from the cloud…</string>
+    <string name="library_empty_albums">No albums yet</string>
     <string name="library_load_failed">Couldn\'t load your library.</string>
     <string name="library_load_more_failed">Couldn\'t load more albums.</string>
     <!-- The library as a place: the home screen's title, the back button to it, and the car's browse root. -->

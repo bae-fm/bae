@@ -19,7 +19,7 @@
     <string name="sort_date_added">Lisäyspäivä</string>
     <string name="sort_ascending">Nouseva</string>
     <string name="sort_descending">Laskeva</string>
-    <string name="library_empty_syncing">Ei vielä albumeita. Synkronoidaan pilvestä…</string>
+    <string name="library_empty_albums">Ei vielä albumeita</string>
     <string name="library_load_failed">Kirjastoasi ei voitu ladata.</string>
     <string name="library_load_more_failed">Lisää albumeita ei voitu ladata.</string>
     <string name="library">Kirjasto</string>

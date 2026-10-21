@@ -19,7 +19,7 @@
     <string name="sort_date_added">Hinzugefügt</string>
     <string name="sort_ascending">Aufsteigend</string>
     <string name="sort_descending">Absteigend</string>
-    <string name="library_empty_syncing">Noch keine Alben. Synchronisierung aus der Cloud …</string>
+    <string name="library_empty_albums">Noch keine Alben</string>
     <string name="library_load_failed">Deine Bibliothek konnte nicht geladen werden.</string>
     <string name="library_load_more_failed">Weitere Alben konnten nicht geladen werden.</string>
     <string name="library">Mediathek</string>

@@ -19,7 +19,7 @@
     <string name="sort_date_added">Дата на добавяне</string>
     <string name="sort_ascending">Възходящо</string>
     <string name="sort_descending">Низходящо</string>
-    <string name="library_empty_syncing">Все още няма албуми. Синхронизиране от облака…</string>
+    <string name="library_empty_albums">Все още няма албуми</string>
     <string name="library_load_failed">Библиотеката ви не може да бъде заредена.</string>
     <string name="library_load_more_failed">Не могат да бъдат заредени още албуми.</string>
     <string name="library">Библиотека</string>

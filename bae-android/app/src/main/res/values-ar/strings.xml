@@ -19,7 +19,7 @@
     <string name="sort_date_added">تاريخ الإضافة</string>
     <string name="sort_ascending">تصاعدي</string>
     <string name="sort_descending">تنازلي</string>
-    <string name="library_empty_syncing">لا توجد ألبومات بعد. جارٍ المزامنة من السحابة…</string>
+    <string name="library_empty_albums">لا توجد ألبومات بعد</string>
     <string name="library_load_failed">تعذّر تحميل مكتبتك.</string>
     <string name="library_load_more_failed">تعذّر تحميل المزيد من الألبومات.</string>
     <string name="library">المكتبة</string>

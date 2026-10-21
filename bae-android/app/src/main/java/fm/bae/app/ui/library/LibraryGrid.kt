@@ -54,7 +54,7 @@ internal fun LibraryGridContent(
     LibraryPageContent(
         session = session,
         page = page,
-        emptyMessage = stringResource(R.string.library_empty_syncing),
+        emptyMessage = stringResource(R.string.library_empty_albums),
     ) {
         LibraryGridBacking(
             count = page.totalCount,

@@ -19,7 +19,7 @@
     <string name="sort_date_added">Data de adição</string>
     <string name="sort_ascending">Ascendente</string>
     <string name="sort_descending">Descendente</string>
-    <string name="library_empty_syncing">Ainda não há álbuns. A sincronizar a partir da nuvem…</string>
+    <string name="library_empty_albums">Ainda não há álbuns</string>
     <string name="library_load_failed">Não foi possível carregar a sua biblioteca.</string>
     <string name="library_load_more_failed">Não foi possível carregar mais álbuns.</string>
     <string name="library">Biblioteca</string>

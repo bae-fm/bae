@@ -19,7 +19,7 @@
     <string name="sort_date_added">추가한 날짜</string>
     <string name="sort_ascending">오름차순</string>
     <string name="sort_descending">내림차순</string>
-    <string name="library_empty_syncing">아직 앨범이 없습니다. 클라우드에서 동기화 중…</string>
+    <string name="library_empty_albums">아직 앨범이 없습니다</string>
     <string name="library_load_failed">라이브러리를 불러올 수 없습니다.</string>
     <string name="library_load_more_failed">앨범을 더 불러올 수 없습니다.</string>
     <string name="library">보관함</string>
