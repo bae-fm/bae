@@ -51,6 +51,22 @@ struct PlaybackAudioSessionTests {
         )
     }
 
+    @Test(
+        "a stream that starts while the audio session is refused pauses instead of playing silently"
+    )
+    func refusedSessionPausesTheStream() {
+        let spy = PlaybackSpy()
+        let service = MediaControlService(activateAudioSession: { throw AudioSessionRefused() })
+        service.setupRemoteCommands(
+            playback: spy.playback,
+            playbackStore: PlaybackStore()
+        )
+
+        service.updateNowPlaying(state: playingState(), appHandle: fakeAppHandle)
+
+        #expect(spy.pauseCount == 1)
+    }
+
     @Test("an interruption while playing pauses core and resumes on ended")
     func interruptionWhilePlayingPausesAndResumes() {
         let (service, spy) = makeService()
@@ -249,3 +265,6 @@ private final class PlaybackSpy: @unchecked Sendable {
         resume: { [weak self] in self?.resumeCount += 1 }
     )
 }
+
+/// The system refusing the audio session, as it does while a call holds it.
+private struct AudioSessionRefused: Error {}

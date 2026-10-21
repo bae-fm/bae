@@ -173,10 +173,23 @@ internal class PlaybackSystemHooks(
         }
     }
 
+    /**
+     * Ask for audio focus as playback starts. The system refuses it while
+     * something that outranks music holds it, such as a phone call; playing
+     * over that would be wrong, so a refusal pauses the playback that just
+     * started, and the person sees it paused.
+     */
     private fun requestFocus() {
         if (hasFocus) return
         val result = audioManager.requestAudioFocus(focusRequest)
         hasFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        if (!hasFocus) {
+            systemHooksLogger.warning(
+                "audio focus refused (request result $result, audio mode ${audioManager.mode}); pausing playback",
+            )
+            resumeOnFocusGain = false
+            appHandle.pause()
+        }
     }
 
     private fun abandonFocus() {

@@ -54,6 +54,33 @@ class AudioFocusResumeTest {
             ),
         )
 
+    /** Playback that starts while the system refuses focus — a call, say — doesn't play over it. */
+    @Test
+    fun playbackStartingWithFocusRefusedPauses() {
+        val context = RuntimeEnvironment.getApplication()
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        shadowOf(audioManager).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_FAILED)
+        val handle = FakeAppHandle(emptyMap())
+        val player = player(context, handle)
+
+        player.startPlaying()
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(1, handle.pauseCount)
+    }
+
+    @Test
+    fun playbackStartingWithFocusGrantedPlays() {
+        val context = RuntimeEnvironment.getApplication()
+        val handle = FakeAppHandle(emptyMap())
+        val player = player(context, handle)
+
+        player.startPlaying()
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(0, handle.pauseCount)
+    }
+
     @Test
     fun transientLossWhileUserPausedDoesNotResumeOnRegain() {
         val context = RuntimeEnvironment.getApplication()

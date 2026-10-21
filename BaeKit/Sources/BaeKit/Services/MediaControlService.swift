@@ -66,9 +66,22 @@ public final class MediaControlService: @unchecked Sendable {
         /// Transport handle the remote commands and interruption/route handlers
         /// forward to. Set in `setupRemoteCommands`.
         var playback: Playback?
+        /// Activates the shared `.playback` audio session as a stream starts.
+        /// The system can refuse it — another app's call holds the session —
+        /// and a test passes one that fails the same way.
+        let activateAudioSession: () throws -> Void
     #endif
 
-    public init() {}
+    #if os(iOS)
+        public init(
+            activateAudioSession: @escaping () throws -> Void =
+                MediaControlService.activateSharedPlaybackSession
+        ) {
+            self.activateAudioSession = activateAudioSession
+        }
+    #else
+        public init() {}
+    #endif
 
     // MARK: - Retained media-control values
 

@@ -54,9 +54,26 @@
         /// the first `playbackLoading`/`playbackPlaying`, not at library open, so
         /// opening bae doesn't interrupt audio the user has playing in another
         /// app before they hit play. Idempotent — the cpal AudioUnit produces no
-        /// sound until this succeeds.
+        /// sound until this succeeds, so a session the system refused pauses
+        /// the stream rather than letting it play silently.
         func beginPlaybackSession() {
-            activateSession()
+            do {
+                try activateSession()
+            }
+            catch {
+                logger.warning(
+                    "Pausing playback: the system refused the audio session: \(error)"
+                )
+                playback?.pause()
+            }
+        }
+
+        /// The production audio session: the shared instance in `.playback`.
+        @usableFromInline
+        static func activateSharedPlaybackSession() throws {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playback, mode: .default)
+            try session.setActive(true)
         }
 
         /// Deactivate the session on `playbackStopped` and notify other apps so
@@ -80,21 +97,14 @@
             }
         }
 
-        private func activateSession() {
+        /// Activate the session unless it is already active; throws the
+        /// system's refusal.
+        private func activateSession() throws {
             guard !sessionActivated else {
                 return
             }
-            let session = AVAudioSession.sharedInstance()
-            do {
-                try session.setCategory(.playback, mode: .default)
-                try session.setActive(true)
-                sessionActivated = true
-            }
-            catch {
-                logger.error(
-                    "Failed to activate audio session: \(error.localizedDescription)"
-                )
-            }
+            try activateAudioSession()
+            sessionActivated = true
         }
 
         private func registerSessionObservers() {
@@ -141,7 +151,14 @@
                 // signals it (`.shouldResume`) and the interruption is what
                 // paused us; otherwise core stays paused until the user resumes.
                 sessionActivated = false
-                activateSession()
+                do {
+                    try activateSession()
+                }
+                catch {
+                    logger.error(
+                        "Failed to activate audio session: \(error.localizedDescription)"
+                    )
+                }
                 let shouldResume =
                     (info[AVAudioSessionInterruptionOptionKey] as? UInt)
                     .map(AVAudioSession.InterruptionOptions.init(rawValue:))?
