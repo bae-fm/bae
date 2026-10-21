@@ -56,6 +56,41 @@ internal fun HistorySharingSection(
     }
 }
 
+/**
+ * History sharing for this device's person, once read: the choice when they
+ * have a profile, or why it couldn't be read, with Retry.
+ */
+@Composable
+internal fun SelfHistorySharing(
+    session: OpenLibrary,
+    self: SelfRead,
+    onReloadSelf: () -> Unit,
+) {
+    when (self) {
+        SelfRead.Loading -> {
+            Unit
+        }
+
+        is SelfRead.Loaded -> {
+            self.person?.profile?.let { profile ->
+                SectionDivider()
+                HistorySharingSection(session = session, sharing = profile.historySharing, onChanged = onReloadSelf)
+            }
+        }
+
+        is SelfRead.Failed -> {
+            SectionDivider()
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
+                verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+            ) {
+                Eyebrow(text = stringResource(R.string.settings_history))
+                ReadFailure(error = self.error, onRetry = onReloadSelf)
+            }
+        }
+    }
+}
+
 @Composable
 private fun HistorySharingContent(
     sharing: BridgeSharing,

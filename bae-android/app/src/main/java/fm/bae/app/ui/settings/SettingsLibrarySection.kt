@@ -15,7 +15,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,20 +44,22 @@ import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeErrorCategory
-import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
-import uniffi.bae_bridge.LibraryNameCallback
+import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.bridgeErrorCategoryKey
 
-private val logger = BaeLogger("bae.LibraryNameRow")
+private val logger = BaeLogger("bae.SettingsLibrarySection")
 
 /** The open library's name, renamed by admins, and the switch to another library on this device. */
 @Composable
 internal fun SettingsLibrarySection(
     session: OpenLibrary,
     libraries: List<BridgeLibrary>,
-    canRename: Boolean,
+    name: LibraryNameRead,
+    self: SelfRead,
+    onRetryName: () -> Unit,
+    onRetrySelf: () -> Unit,
     onSwitchLibrary: (BridgeLibrary) -> Unit,
 ) {
     Column(
@@ -66,7 +67,13 @@ internal fun SettingsLibrarySection(
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         Eyebrow(text = stringResource(R.string.settings_library))
-        LibraryNameRow(session = session, canRename = canRename)
+        LibraryNameRow(
+            session = session,
+            name = name,
+            self = self,
+            onRetryName = onRetryName,
+            onRetrySelf = onRetrySelf,
+        )
         if (libraries.size > 1) {
             LibrarySwitcher(
                 libraries = libraries,
@@ -120,42 +127,57 @@ private fun LibrarySwitcher(
 
 /**
  * The library's one name, as its store holds it now, with Rename for an admin:
- * the name is the household's, and renaming is an admin entry.
+ * the name is the household's, and renaming is an admin entry. A name that
+ * couldn't be read, or a person whose role couldn't be, shows that failure here
+ * with Retry rather than leaving the row or its Rename out.
  */
 @Composable
 private fun LibraryNameRow(
     session: OpenLibrary,
-    canRename: Boolean,
+    name: LibraryNameRead,
+    self: SelfRead,
+    onRetryName: () -> Unit,
+    onRetrySelf: () -> Unit,
 ) {
-    val context = LocalContext.current
-    var name by remember(session) { mutableStateOf<String?>(null) }
     var renaming by remember { mutableStateOf(false) }
-    DisposableEffect(session) {
-        val subscription =
-            session.appHandle.subscribeLibraryName(
-                object : LibraryNameCallback {
-                    override fun onValue(value: String) {
-                        name = value
-                    }
+    val current =
+        when (name) {
+            LibraryNameRead.Loading -> {
+                return
+            }
 
-                    override fun onError(error: BridgeException) {
-                        logger.error("reading the library's name failed", error)
-                        session.configStore.showError(LocaleErrorDisplays(context).display(error))
-                    }
-                },
-            )
-        onDispose { subscription.cancel() }
-    }
-    val current = name ?: return
+            is LibraryNameRead.Failed -> {
+                ReadFailure(error = name.error, onRetry = onRetryName)
+                return
+            }
+
+            is LibraryNameRead.Named -> {
+                name.name
+            }
+        }
+    val canRename = (self as? SelfRead.Loaded)?.person?.membership?.role == BridgeMemberRole.ADMIN
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(text = current, style = ThemeText.heading.style, modifier = Modifier.weight(1f))
         if (canRename) {
             TextButton(onClick = { renaming = true }) { Text(stringResource(R.string.settings_rename_library)) }
         }
     }
+    if (self is SelfRead.Failed) {
+        ReadFailure(error = self.error, onRetry = onRetrySelf)
+    }
     if (renaming) {
         RenameLibraryDialog(session = session, current = current, onDismiss = { renaming = false })
     }
+}
+
+/** A read Settings needs that failed: the failure where its rows would be, and Retry. */
+@Composable
+internal fun ReadFailure(
+    error: DisplayError,
+    onRetry: () -> Unit,
+) {
+    ErrorDetailDisclosure(error)
+    TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
 }
 
 @Composable

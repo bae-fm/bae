@@ -1,7 +1,5 @@
 package fm.bae.app.ui.settings
 
-import android.content.Context
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,7 +10,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -23,6 +20,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -32,37 +30,28 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.displayError
-import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.library.LibraryDestination
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeConfig
-import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibrary
-import uniffi.bae_bridge.BridgeMemberRole
-import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgeScreen
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeTelemetryEvent
@@ -86,48 +75,6 @@ internal sealed interface CloudHome {
     ) : CloudHome
 }
 
-/**
- * What Settings reads from the open library beyond its config: its cloud home,
- * and this device's person — their profile and whether they are an admin.
- */
-private class SettingsLibraryModel(
-    private val session: OpenLibrary,
-    private val appContext: Context,
-) {
-    var cloudHome by mutableStateOf<CloudHome>(CloudHome.Loading)
-        private set
-
-    /** This device's person; null while unread, and when the library has no members yet. */
-    var self by mutableStateOf<BridgePerson?>(null)
-        private set
-
-    suspend fun load() {
-        cloudHome =
-            try {
-                session.appHandle.storageLocation()?.let(CloudHome::At) ?: CloudHome.None
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: BridgeException) {
-                logger.error("reading the library's cloud home failed", e)
-                CloudHome.Failed(appContext.displayError(e) ?: DisplayError(e.toString()))
-            }
-        loadSelf()
-    }
-
-    suspend fun loadSelf() {
-        self =
-            try {
-                session.appHandle.people().firstOrNull { it.membership?.isSelf == true }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: BridgeException) {
-                logger.error("reading the library's people failed", e)
-                session.configStore.showError(appContext.displayError(e))
-                null
-            }
-    }
-}
-
 /** Per-device settings, reached from the gear in the library top bar. */
 @Composable
 internal fun SettingsScreen(
@@ -142,11 +89,15 @@ internal fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val config by session.configStore.config.collectAsState()
     val allLibraries by libraries.collectAsState()
-    val model = remember(session) { SettingsLibraryModel(session, appContext) }
+    val model = remember(session) { SettingsLibraryModel(session.appHandle, LocaleErrorDisplays(appContext), scope) }
 
     LaunchedEffect(session) {
         session.diagnostics.event(BridgeTelemetryEvent.ScreenOpened(BridgeScreen.SETTINGS))
         model.load()
+    }
+    DisposableEffect(model) {
+        model.watchName()
+        onDispose { model.stopWatchingName() }
     }
 
     val self = model.self
@@ -157,7 +108,10 @@ internal fun SettingsScreen(
         SettingsLibrarySection(
             session = session,
             libraries = allLibraries,
-            canRename = self?.membership?.role == BridgeMemberRole.ADMIN,
+            name = model.name,
+            self = self,
+            onRetryName = model::watchName,
+            onRetrySelf = { scope.launch { model.loadSelf() } },
             onSwitchLibrary = actions.switchLibrary,
         )
         SectionDivider()
@@ -168,14 +122,11 @@ internal fun SettingsScreen(
             onPush = onPush,
             onCloudHomeChanged = { scope.launch { model.load() } },
         )
-        self?.profile?.let { profile ->
-            SectionDivider()
-            HistorySharingSection(
-                session = session,
-                sharing = profile.historySharing,
-                onChanged = { scope.launch { model.loadSelf() } },
-            )
-        }
+        SelfHistorySharing(
+            session = session,
+            self = self,
+            onReloadSelf = { scope.launch { model.loadSelf() } },
+        )
         SettingsPlaybackSections(session = session, config = config, ioDispatcher = ioDispatcher)
         // People, devices and the recovery code live in the library's store, which only a cloud home has.
         (model.cloudHome as? CloudHome.At)?.let { home ->
@@ -245,7 +196,7 @@ private fun SettingsClosingSections(
 }
 
 @Composable
-private fun SectionDivider() {
+internal fun SectionDivider() {
     HorizontalDivider(modifier = Modifier.padding(horizontal = ThemeSpace.edge))
 }
 
