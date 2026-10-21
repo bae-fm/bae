@@ -212,9 +212,6 @@ final class DesktopSubscriptions {
     private let uiStore: UiStore
     /// The import list's selection, installed in the view environment.
     let importSelection: ImportSelection
-    private let selectionObservation: ImportSelectionObservation
-    private let invalidSelectionObservation:
-        InvalidCandidateSelectionObservation
     private var subscriptions: [LiveSubscription] = []
 
     init(
@@ -227,18 +224,18 @@ final class DesktopSubscriptions {
         self.importStore = importStore
         self.outputStore = outputStore
         self.uiStore = uiStore
+        // The list's selection sink is the observations' one owner: it lives
+        // as long as the list slot that calls it.
         let selectionObservation = ImportSelectionObservation(
             appHandle: appHandle,
             importStore: importStore,
             uiStore: uiStore
         )
-        self.selectionObservation = selectionObservation
         let invalidSelectionObservation = InvalidCandidateSelectionObservation(
             appHandle: appHandle,
             importStore: importStore,
             uiStore: uiStore
         )
-        self.invalidSelectionObservation = invalidSelectionObservation
         let selectionOwner = ImportListSelectionOwner()
         let importSelection = ImportSelection(
             operations: .live(list: selectionOwner)
