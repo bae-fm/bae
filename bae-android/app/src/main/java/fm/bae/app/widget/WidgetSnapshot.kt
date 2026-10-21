@@ -43,22 +43,45 @@ data class WidgetSnapshot(
     }
 }
 
-/** What the widget draws: [track], with a pause button only while [isPlaying]. */
-internal data class WidgetContent(
-    val track: WidgetTrack?,
-    val isPlaying: Boolean,
-)
+/** What the widget draws. */
+internal sealed interface WidgetContent {
+    /** [track], with a pause button only while [isPlaying]. */
+    data class Track(
+        val track: WidgetTrack,
+        val isPlaying: Boolean,
+    ) : WidgetContent
+
+    /** Nothing has played, or the saved file was from an older version and is gone. */
+    data object NothingPlaying : WidgetContent
+
+    /** The saved file is damaged, which the app's one-step write rules out: a bug, reported. */
+    data object SomethingWentWrong : WidgetContent
+}
 
 /**
- * The widget's content from the saved [snapshot] and the open library's
+ * The widget's content from what was [read] and the open library's
  * [livePlayer], null when this process has no library open. The track shows as
- * playing only while that player is playing it; a snapshot alone, read by a
+ * playing only while that player is playing it; a saved track alone, read by a
  * process that just started or after the library closed, shows the play button.
  */
 internal fun widgetContent(
-    snapshot: WidgetSnapshot,
+    read: WidgetRead,
     livePlayer: BaeCorePlayer?,
-): WidgetContent = WidgetContent(track = snapshot.track, isPlaying = livePlayer?.isPlaying?.value == true)
+): WidgetContent =
+    when (read) {
+        is WidgetRead.Saved -> {
+            read.snapshot.track?.let { WidgetContent.Track(it, isPlaying = livePlayer?.isPlaying?.value == true) }
+                ?: WidgetContent.NothingPlaying
+        }
+
+        WidgetRead.NothingSaved -> {
+            WidgetContent.NothingPlaying
+        }
+
+        is WidgetRead.Damaged -> {
+            WidgetContent.SomethingWentWrong
+        }
+    }
 
 /**
  * The track fields the widget shows. [coverImage] is the reference the widget
@@ -71,6 +94,14 @@ data class WidgetTrack(
     val coverImage: BridgeImageRef?,
 )
 
+private const val KEY_FORMAT = "format"
+
+/**
+ * The file format this build writes. A file without it, or with another, was
+ * written by an older version: it is deleted rather than read.
+ */
+private const val CURRENT_FORMAT = 2
+
 private const val KEY_TRACK = "track"
 private const val KEY_TITLE = "title"
 private const val KEY_ARTIST = "artist"
@@ -81,6 +112,7 @@ private const val KEY_COVER_VERSION = "version"
 
 internal fun WidgetSnapshot.toJson(): String {
     val obj = JSONObject()
+    obj.put(KEY_FORMAT, CURRENT_FORMAT)
     track?.let {
         val t = JSONObject()
         t.put(KEY_TITLE, it.title)
@@ -99,8 +131,8 @@ internal fun WidgetSnapshot.toJson(): String {
     return obj.toString()
 }
 
-internal fun parseWidgetSnapshot(json: String): WidgetSnapshot {
-    val obj = JSONObject(json)
+/** The snapshot a current-format file holds; throws when the file is damaged. */
+private fun parseWidgetSnapshot(obj: JSONObject): WidgetSnapshot {
     val track =
         obj.optJSONObject(KEY_TRACK)?.let {
             WidgetTrack(
@@ -112,20 +144,27 @@ internal fun parseWidgetSnapshot(json: String): WidgetSnapshot {
     return WidgetSnapshot(track = track)
 }
 
-/** The image reference a snapshot's cover object names, or null when its kind
- *  isn't one the bridge declares (a snapshot written by an older build). */
-private fun parseCover(cover: JSONObject): BridgeImageRef? {
-    val name = cover.getString(KEY_COVER_TYPE)
-    val imageType = BridgeLibraryImageType.entries.firstOrNull { it.name == name }
-    if (imageType == null) {
-        logger.warning("widget snapshot names an unknown image kind $name; rendering without art")
-        return null
-    }
-    return BridgeImageRef(
+/** The image reference a cover object names; this build wrote it, so its kind is one the bridge declares. */
+private fun parseCover(cover: JSONObject): BridgeImageRef =
+    BridgeImageRef(
         id = cover.getString(KEY_COVER_ID),
         version = cover.getString(KEY_COVER_VERSION),
-        imageType = imageType,
+        imageType = BridgeLibraryImageType.valueOf(cover.getString(KEY_COVER_TYPE)),
     )
+
+/** What reading the saved widget file found. */
+internal sealed interface WidgetRead {
+    data class Saved(
+        val snapshot: WidgetSnapshot,
+    ) : WidgetRead
+
+    /** No file yet, or one from an older version, now deleted. */
+    data object NothingSaved : WidgetRead
+
+    /** A current-format file that doesn't parse: [error] is why. */
+    data class Damaged(
+        val error: Exception,
+    ) : WidgetRead
 }
 
 private const val SNAPSHOT_FILE_NAME = "now_playing_widget.json"
@@ -154,21 +193,38 @@ class WidgetSnapshotStore(
         }
     }
 
-    /** The last written snapshot, or [WidgetSnapshot.EMPTY] when none has been
-     *  written yet (first run) or the file can't be parsed. */
-    suspend fun read(): WidgetSnapshot =
+    /**
+     * The saved snapshot. Only the current format is read: a file from an
+     * older version is deleted and logged, and reads as nothing saved. A
+     * current-format file is written in one atomic step, so one that doesn't
+     * parse is damaged — a bug for the caller to report.
+     */
+    internal suspend fun read(): WidgetRead =
         withContext(Dispatchers.IO) {
             if (!file.exists()) {
-                logger.debug("no widget snapshot yet; empty state")
-                return@withContext WidgetSnapshot.EMPTY
+                logger.debug("no widget snapshot yet; nothing saved")
+                return@withContext WidgetRead.NothingSaved
+            }
+            val obj =
+                try {
+                    JSONObject(file.readText())
+                } catch (e: org.json.JSONException) {
+                    return@withContext WidgetRead.Damaged(e)
+                }
+            val format = obj.optInt(KEY_FORMAT, 0)
+            if (format != CURRENT_FORMAT) {
+                logger.info("deleting a widget snapshot in format $format, from an older version")
+                if (!file.delete()) logger.error("could not delete the older widget snapshot at ${file.path}")
+                return@withContext WidgetRead.NothingSaved
             }
             try {
-                parseWidgetSnapshot(file.readText())
+                WidgetRead.Saved(parseWidgetSnapshot(obj))
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
-                logger.warning("could not read widget snapshot; empty state", e)
-                WidgetSnapshot.EMPTY
+            } catch (e: org.json.JSONException) {
+                WidgetRead.Damaged(e)
+            } catch (e: IllegalArgumentException) {
+                WidgetRead.Damaged(e)
             }
         }
 }

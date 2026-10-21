@@ -33,7 +33,9 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import fm.bae.app.AppSessionHolder
+import fm.bae.app.BaeApp
 import fm.bae.app.R
+import fm.bae.app.coreString
 import fm.bae.app.mainActivityIntent
 import fm.bae.app.playback.ArtworkContentProvider
 import fm.bae.app.ui.appearance.AppearanceMode
@@ -61,7 +63,11 @@ class NowPlayingWidget : GlanceAppWidget() {
         context: Context,
         id: GlanceId,
     ) {
-        val content = widgetContent(WidgetSnapshotStore(context).read(), AppSessionHolder.currentSession()?.playback)
+        val read = WidgetSnapshotStore(context).read()
+        if (read is WidgetRead.Damaged) {
+            (context.applicationContext as BaeApp).bugs.reportShownInPlace("read the widget's saved track", read.error)
+        }
+        val content = widgetContent(read, AppSessionHolder.currentSession()?.playback)
         val preferences = readAppearancePreferences(appearanceFile(context))
         provideContent {
             GlanceTheme(colors = widgetColors(preferences)) {
@@ -77,7 +83,7 @@ private fun NowPlayingWidgetContent(
     placeholder: ColorProvider,
 ) {
     val context = LocalContext.current
-    val track = content.track
+    val track = (content as? WidgetContent.Track)?.track
     // The whole surface opens the app; the transport buttons take their own taps.
     Row(
         modifier =
@@ -92,7 +98,12 @@ private fun NowPlayingWidgetContent(
         Spacer(GlanceModifier.width(ThemeSpace.group))
         Column(modifier = GlanceModifier.defaultWeight()) {
             Text(
-                text = track?.title ?: context.getString(R.string.widget_nothing_playing),
+                text =
+                    when (content) {
+                        is WidgetContent.Track -> content.track.title
+                        WidgetContent.NothingPlaying -> context.getString(R.string.widget_nothing_playing)
+                        WidgetContent.SomethingWentWrong -> context.coreString("core.error.category.internal")
+                    },
                 maxLines = 1,
                 style = ThemeText.rowTitle.glanceStyle(GlanceTheme.colors.onSurface),
             )
@@ -104,7 +115,7 @@ private fun NowPlayingWidgetContent(
                 )
             }
         }
-        if (track != null) {
+        if (content is WidgetContent.Track) {
             Spacer(GlanceModifier.width(ThemeSpace.related))
             TransportButton(
                 iconRes = if (content.isPlaying) R.drawable.ic_widget_pause else R.drawable.ic_widget_play,
