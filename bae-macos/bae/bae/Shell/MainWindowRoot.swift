@@ -36,7 +36,6 @@ struct MainWindowRoot: View {
             }
         }
         .appAppearance()
-        .navigationTitle("bae")
         .mainWindowEnvironment(
             openSettingsWindow: OpenSettingsWindowAction {
                 appDelegate.showSettingsWindow(nil)

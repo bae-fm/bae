@@ -46,8 +46,7 @@ final class MainWindowController: HostingWindowController, NSMenuItemValidation
                 // The content sets the window's size limits: fixed while
                 // bootstrap shows, the library's minimum once it opens.
                 sizing: [.minSize, .maxSize],
-                // The window's title follows the content's navigation title.
-                bridging: .title,
+                bridging: [],
                 onClose: onClose
             )
         guard let window else {
@@ -58,6 +57,8 @@ final class MainWindowController: HostingWindowController, NSMenuItemValidation
         window.styleMask.insert(.fullSizeContentView)
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
+        // The window has no title; AppKit's default is "Untitled".
+        window.title = ""
     }
 
     private var target: MainAppMenuTarget? {
