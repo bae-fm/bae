@@ -5,8 +5,15 @@
 /// the joining logic or round-tripping their display fields through core.
 #[derive(Debug, PartialEq)]
 pub enum StorageInspectorFile<File, Upload> {
-    ReleaseFile { file: File, uploads: Vec<Upload> },
-    Upload { upload: Upload },
+    /// A release file and its upload, if one is queued: coven queues at most
+    /// one pending attachment per row.
+    ReleaseFile {
+        file: File,
+        upload: Option<Upload>,
+    },
+    Upload {
+        upload: Upload,
+    },
 }
 
 /// Each transfer queue has its own pause state and one operation per release.
@@ -76,16 +83,11 @@ fn storage_inspector_files<File, Upload>(
     let mut rows = Vec::with_capacity(files.len());
     for (id, file) in files {
         let row = coven::RowKey::from(id.as_str());
-        // Replacing an attachment may leave several committed uploads for one
-        // row. Keep every operation, in queue order, beside that row.
-        let (matching, remaining): (Vec<_>, Vec<_>) = uploads
-            .into_iter()
-            .partition(|(key, _)| key.as_ref() == Some(&row));
-        uploads = remaining;
-        rows.push(StorageInspectorFile::ReleaseFile {
-            file,
-            uploads: matching.into_iter().map(|(_, upload)| upload).collect(),
-        });
+        let upload = uploads
+            .iter()
+            .position(|(key, _)| key.as_ref() == Some(&row))
+            .map(|index| uploads.remove(index).1);
+        rows.push(StorageInspectorFile::ReleaseFile { file, upload });
     }
     for (_, upload) in uploads {
         rows.push(StorageInspectorFile::Upload { upload });
@@ -111,11 +113,11 @@ mod tests {
             vec![
                 StorageInspectorFile::ReleaseFile {
                     file: "track.flac",
-                    uploads: vec!["progress"]
+                    upload: Some("progress")
                 },
                 StorageInspectorFile::ReleaseFile {
                     file: "notes.txt",
-                    uploads: vec![]
+                    upload: None
                 },
                 StorageInspectorFile::Upload {
                     upload: "unmatched"
@@ -135,11 +137,11 @@ mod tests {
             vec![
                 StorageInspectorFile::ReleaseFile {
                     file: "b.flac",
-                    uploads: vec![]
+                    upload: None
                 },
                 StorageInspectorFile::ReleaseFile {
                     file: "a.flac",
-                    uploads: vec![]
+                    upload: None
                 },
             ]
         );

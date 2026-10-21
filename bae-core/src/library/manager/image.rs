@@ -17,28 +17,15 @@ impl LibraryManager {
             GallerySource::Cover(image) => self.read_image(image).await?.ok_or_else(|| {
                 LibraryError::Storage(format!("gallery cover image {} has no bytes", image.id))
             }),
-            GallerySource::ReleaseFile { file_id } => {
-                match self.load_gallery_image(release_id, file_id).await {
-                    Ok(bytes) => Ok(ImageRead::Bytes(bytes)),
-                    Err(LibraryError::Database(crate::db::DbError::FileRead(
-                        coven::FileReadError::Uploading { .. },
-                    ))) => {
-                        let file = self.release_file_ref(file_id).await?;
-                        Ok(ImageRead::Arriving(super::coven_files::arriving(
-                            file_id, &file,
-                        )))
-                    }
-                    Err(error) => Err(error),
-                }
-            }
+            GallerySource::ReleaseFile { file_id } => Ok(ImageRead::Bytes(
+                self.load_gallery_image(release_id, file_id).await?,
+            )),
         }
     }
 
-    /// Wait until `file` no longer arrives: coven fetched it once its uploader
-    /// uploaded it, or its wait turned into another condition. The image that
-    /// named it reads again then. A file coven fetches by itself, as every
-    /// cover, artist image and avatar, ends its wait on its own; any file
-    /// ends it on the person's retry.
+    /// Wait until no pending record waits for `file`'s upload. coven records
+    /// no such wait any more (a row names a file only once it is stored), so
+    /// this returns at its first read.
     pub async fn wait_for_arrival(&self, file: ArrivingFile) -> Result<(), LibraryError> {
         let mut pending = self.database.subscribe_pending();
         loop {

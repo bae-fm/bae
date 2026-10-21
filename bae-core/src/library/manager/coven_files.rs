@@ -159,9 +159,7 @@ impl LibraryManager {
         Ok(Some(self.image_file_ref(image_type.namespace(), id).await?))
     }
 
-    /// A library image to show: its bytes, or the file another device is
-    /// still uploading, which arrives by itself (`wait_for_arrival`).
-    /// `None` when no image is stored.
+    /// A library image to show: its bytes. `None` when no image is stored.
     pub async fn read_image(&self, image: &ImageRef) -> Result<Option<ImageRead>, LibraryError> {
         let Some(file) = self
             .library_image_file(&image.id, &image.image_type)
@@ -169,16 +167,11 @@ impl LibraryManager {
         else {
             return Ok(None);
         };
-        match self.database.read_file(&file).await {
-            Ok(bytes) => Ok(Some(ImageRead::Bytes(bytes))),
-            Err(coven::FileReadError::Uploading { .. }) => {
-                Ok(Some(ImageRead::Arriving(arriving(&image.id, &file))))
-            }
-            Err(error) => Err(LibraryError::file_read(
-                format!("read image {}", image.id),
-                error,
-            )),
-        }
+        let bytes =
+            self.database.read_file(&file).await.map_err(|error| {
+                LibraryError::file_read(format!("read image {}", image.id), error)
+            })?;
+        Ok(Some(ImageRead::Bytes(bytes)))
     }
 
     /// A release is pinned only when every one of its files is pinned.
@@ -237,7 +230,7 @@ impl LibraryManager {
     }
 
     /// Audio and companion files stay pinned together. Covers use their own
-    /// eager cache budget and are never pinned.
+    /// cache budget and are never pinned.
     pub(super) async fn release_pinnable_files(
         &self,
         release_id: &str,
@@ -300,20 +293,9 @@ impl LibraryManager {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImageRead {
     Bytes(Vec<u8>),
-    /// Another device hasn't uploaded the image's file yet; it is no failure,
-    /// and the image can be read once the file arrives.
+    /// Another device hasn't uploaded the image's file yet. No read returns
+    /// this: a row names its file only once storage holds it.
     Arriving(super::ArrivingFile),
-}
-
-/// The file `image` names as arriving, noted once at debug: an image another
-/// device is still uploading is the library arriving, not a failure.
-pub(super) fn arriving(image: &str, file: &coven::FileRef) -> super::ArrivingFile {
-    let arriving = super::ArrivingFile {
-        uploader: file.uploader(),
-        file: file.id(),
-    };
-    debug!(image, ?arriving, "image still arriving from its uploader");
-    arriving
 }
 
 /// One file of a release's pinned set, with the plaintext byte size its row

@@ -34,7 +34,7 @@ fn only_a_wait_for_the_files_own_upload_is_an_arrival() {
     for reason in [
         waits_for(other_file),
         waits_for(other_device),
-        coven::PendingReason::FileUnavailable(coven::FileMissingReason::DeviceRemoved),
+        coven::PendingReason::FileUnavailable(coven::FileMissingReason::Lost),
         coven::PendingReason::Storage {
             provider: coven::CloudProvider::S3,
             failure: coven::StorageFailure::Network,

@@ -15,8 +15,7 @@ mod identity_tests;
 #[cfg(test)]
 pub(crate) mod test_devices;
 
-use coven::{CacheFill, Provenance};
-use coven::{FileDecl, RowIdentity, SyncedTable};
+use coven::{FileDecl, Provenance, RowIdentity, SyncedTable};
 
 /// S3 configuration data for save_s3_config.
 pub struct S3ConfigData {
@@ -66,8 +65,8 @@ pub const PEOPLE_NAMESPACE: &str = "people";
 /// This device's cache budget (bytes) per namespace. Each namespace evicts
 /// against its own budget, so audio pressure never wipes the cover cache:
 /// `release_files` takes the bulk since audio dominates, and `covers` (grid art)
-/// and `artist_images` each keep a reserved slice. A `CacheEager` cover evicted
-/// under pressure shows a placeholder and re-fetches on the next pull — covers
+/// and `artist_images` each keep a reserved slice. A cover downloads when it is
+/// first read and stays cached until its namespace's budget evicts it; covers
 /// are not pinned.
 pub const CACHE_BUDGETS: [(&str, u64); 4] = [
     (RELEASE_FILES_NAMESPACE, 20 * 1024 * 1024 * 1024), // 20 GiB
@@ -99,7 +98,6 @@ pub fn synced_tables() -> Vec<SyncedTable> {
                 RELEASE_FILES_NAMESPACE,
                 CACHE_BUDGETS[0].1,
                 Provenance::UserProvided,
-                CacheFill::CacheLazy,
             )
             .with_size_column("file_size"),
         ),
@@ -110,7 +108,6 @@ pub fn synced_tables() -> Vec<SyncedTable> {
                 COVERS_NAMESPACE,
                 CACHE_BUDGETS[1].1,
                 Provenance::AppProvided,
-                CacheFill::CacheEager,
             )
             .with_size_column("file_size"),
         ),
@@ -119,7 +116,6 @@ pub fn synced_tables() -> Vec<SyncedTable> {
                 ARTIST_IMAGES_NAMESPACE,
                 CACHE_BUDGETS[2].1,
                 Provenance::AppProvided,
-                CacheFill::CacheEager,
             )
             .with_size_column("file_size"),
         ),
@@ -141,7 +137,6 @@ pub fn synced_tables() -> Vec<SyncedTable> {
                     PEOPLE_NAMESPACE,
                     CACHE_BUDGETS[3].1,
                     Provenance::AppProvided,
-                    CacheFill::CacheEager,
                 )
                 .with_id_column("avatar_id")
                 .with_size_column("file_size"),
@@ -239,7 +234,6 @@ mod tests {
                     RELEASE_FILES_NAMESPACE,
                     20 * 1024 * 1024 * 1024,
                     Provenance::UserProvided,
-                    CacheFill::CacheLazy,
                     "id",
                     false,
                 )),
@@ -247,7 +241,6 @@ mod tests {
                     COVERS_NAMESPACE,
                     512 * 1024 * 1024,
                     Provenance::AppProvided,
-                    CacheFill::CacheEager,
                     "id",
                     false,
                 )),
@@ -255,7 +248,6 @@ mod tests {
                     ARTIST_IMAGES_NAMESPACE,
                     256 * 1024 * 1024,
                     Provenance::AppProvided,
-                    CacheFill::CacheEager,
                     "id",
                     false,
                 )),
@@ -263,7 +255,6 @@ mod tests {
                     PEOPLE_NAMESPACE,
                     64 * 1024 * 1024,
                     Provenance::AppProvided,
-                    CacheFill::CacheEager,
                     "avatar_id",
                     false,
                 )),
@@ -275,12 +266,11 @@ mod tests {
                 "{}",
                 table.name()
             );
-            if let Some((namespace, budget, provenance, fill, id, once)) = expected {
+            if let Some((namespace, budget, provenance, id, once)) = expected {
                 let file = table.files().unwrap();
                 assert_eq!(file.namespace(), namespace);
                 assert_eq!(file.cache_budget(), budget);
                 assert_eq!(file.provenance(), &provenance);
-                assert_eq!(file.fill(), &fill);
                 assert_eq!(file.id_column(), id);
                 assert_eq!(file.size_column(), "file_size");
                 assert_eq!(file.hash_column(), "hash");

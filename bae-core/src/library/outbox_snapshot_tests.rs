@@ -13,12 +13,7 @@ async fn queued_files() -> (
     let tables = ["release_files", "covers", "artist_images"]
         .map(|table| {
             coven::SyncedTable::new(table, coven::RowIdentity::SharedKey).carries_files(
-                coven::FileDecl::new(
-                    table,
-                    1024 * 1024,
-                    coven::Provenance::AppProvided,
-                    coven::CacheFill::CacheLazy,
-                ),
+                coven::FileDecl::new(table, 1024 * 1024, coven::Provenance::AppProvided),
             )
         })
         .to_vec();
@@ -326,7 +321,16 @@ async fn completed_files_leave_no_empty_release_groups_or_stale_rates() {
 
 #[tokio::test]
 async fn display_names_join_by_table_and_row_while_rates_use_object_identity() {
-    let (handle, _directory, _initial_files) = queued_files().await;
+    let (handle, _directory, initial_files) = queued_files().await;
+    let replaced = initial_files
+        .iter()
+        .find(|upload| {
+            upload.file.table() == "release_files"
+                && upload.file.key() == &coven::RowKey::from("first")
+        })
+        .unwrap()
+        .file
+        .id();
     handle
         .write_with_files(
             |batch| {
@@ -361,11 +365,13 @@ async fn display_names_join_by_table_and_row_while_rates_use_object_identity() {
         .iter()
         .find(|group| group.release_id == "release")
         .unwrap();
-    assert_eq!(release.files.len(), 3);
-    assert_eq!(
-        release.files[2].label,
-        UploadFileLabel::Filename("Renamed.flac".into())
-    );
+    // Attaching again replaced the row's pending attachment: only the new
+    // file is queued for it.
+    assert_eq!(release.files.len(), 2);
+    assert!(release
+        .files
+        .iter()
+        .any(|file| file.label == UploadFileLabel::Filename("Renamed.flac".into())));
     assert!(
         !snapshot
             .upload_groups
@@ -400,17 +406,18 @@ async fn display_names_join_by_table_and_row_while_rates_use_object_identity() {
             })
             .collect(),
     );
-    let crate::library::storage_inspector::StorageInspectorFile::ReleaseFile { uploads, .. } =
-        &rows[0]
+    let crate::library::storage_inspector::StorageInspectorFile::ReleaseFile {
+        upload: Some(upload),
+        ..
+    } = &rows[0]
     else {
-        panic!("the release file retains its place")
+        panic!("the release file retains its place with its upload")
     };
-    assert_eq!(
-        uploads.len(),
-        2,
-        "both committed uploads join their release-file row"
+    assert_ne!(
+        upload.upload.file.id(),
+        replaced,
+        "the row's upload is the file attached last"
     );
-    assert_ne!(uploads[0].upload.file.id(), uploads[1].upload.file.id());
     handle.close().await.unwrap();
 }
 

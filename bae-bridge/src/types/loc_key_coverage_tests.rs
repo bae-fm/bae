@@ -367,6 +367,7 @@ fn produced_keys() -> Vec<String> {
         PendingReasonKind::AccessRemains,
         PendingReasonKind::DeleteAccessKey,
         PendingReasonKind::FileUnavailable,
+        PendingReasonKind::FileLost,
         PendingReasonKind::Failed,
         PendingReasonKind::Rejected,
         PendingReasonKind::Cleanup,

@@ -383,7 +383,7 @@ async fn upload_file_op_preserves_object_and_row_identity() {
     let directory = tempfile::tempdir().unwrap();
     let handle=coven::TestCoven::new().builder(bae_core::config::AppDir::at(directory.path()).unwrap().store_layout())
         .synced_tables(vec![coven::SyncedTable::new("release_files",coven::RowIdentity::SharedKey)
-            .carries_files(coven::FileDecl::new("release_files",1024,coven::Provenance::AppProvided,coven::CacheFill::CacheLazy))])
+            .carries_files(coven::FileDecl::new("release_files",1024,coven::Provenance::AppProvided))])
         .migrations(vec![coven::Migration::addition(1,"file fixture","CREATE TABLE release_files(id TEXT PRIMARY KEY NOT NULL,size INTEGER,hash BLOB,location TEXT);")])
         .create_store("Upload Test").await.unwrap();
     handle

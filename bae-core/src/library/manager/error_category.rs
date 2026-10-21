@@ -194,7 +194,6 @@ pub(super) fn file_read_category(error: &coven::FileReadError) -> C {
         E::Database(_) => C::Database,
         E::UpdateRequired(_) => C::SyncUpdateRequired,
         E::NoStorage => C::Config,
-        E::Uploading { .. } => C::Network,
         E::Missing { .. }
         | E::UserFileMissing { .. }
         | E::UserFileChanged { .. }

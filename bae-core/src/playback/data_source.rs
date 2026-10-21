@@ -245,9 +245,6 @@ fn playback_error_for_file_read(error: crate::db::DbError) -> PlaybackError {
         crate::db::DbError::FileRead(coven::FileReadError::NoStorage) => {
             PlaybackError::SyncDisconnected
         }
-        crate::db::DbError::FileRead(coven::FileReadError::Uploading { .. }) => {
-            PlaybackError::UploadPending
-        }
         // A release nobody uploaded: its audio is on the importing device.
         crate::db::DbError::FileNotUploaded(_) => PlaybackError::NotUploaded,
         crate::db::DbError::LocalFileMissing(_)

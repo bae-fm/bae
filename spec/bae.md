@@ -828,15 +828,16 @@ every file whole and keeps it regardless of the cache's size.
 Each kind of file has its own cache budget on each device, so audio never
 pushes the covers out:
 
-| Kind | Budget | Fetched |
-|---|---|---|
-| Audio and the folder's other files | 20 GiB | as read |
-| Covers | 512 MiB | as soon as the row arrives |
-| Artist images | 256 MiB | as soon as the row arrives |
-| Avatars | 64 MiB | as soon as the row arrives |
+| Kind | Budget |
+|---|---|
+| Audio and the folder's other files | 20 GiB |
+| Covers | 512 MiB |
+| Artist images | 256 MiB |
+| Avatars | 64 MiB |
 
-Over budget, the least recently used go first. Covers are never pinned; an
-evicted one shows a placeholder until fetched again.
+A file downloads when it is first read: a cover when it is first shown, a
+track as it plays. Over budget, the least recently used go first. Covers are
+never pinned; an evicted one is fetched again the next time it is shown.
 
 Pins download one release at a time from a queue that can be paused,
 cancelled and retried. A release becomes pinned only once every file lands. The
@@ -1037,7 +1038,7 @@ history setting.
   they are owner rows (§5.5), and the old identity has no device left to
   change them.
 - **An avatar is a file on the `people` row**, bae's own (app-provided),
-  downloaded as soon as the row arrives.
+  downloaded when it is first shown.
 - **The app joins `members()`**, who is in, with `people`, how to show them.
 
 ### 5.5 "Ana rated this"
@@ -1243,8 +1244,8 @@ with:
 - **whether it is an owner table**: `people`, `ratings`, `history`,
   `playlists` and `playlist_entries` are (§5.5);
 - **the files it carries**: `release_files` the person's own, attached when
-  the release is uploaded and read on first use; `covers`, `artist_images` and
-  the avatars on `people` bae's own, fetched as soon as their rows arrive.
+  the release is uploaded; `covers`, `artist_images` and the avatars on
+  `people` bae's own. Each is downloaded when it is first read.
 
 Appendix B lists every declaration. A test holds the declarations to exactly
 that list, each table with its identity, audience, owner flag and files, so a
@@ -1264,8 +1265,9 @@ whether or not the cloud is reachable.
 
 **The activity indicator.** Sync takes one small control in the window's
 title bar on macOS and in the library's top bar on iOS and Android, never a
-bar across the content. While bytes move it is a spinner: files this device is sending,
-offline copies downloading, or files still arriving from another device. While something needs the person, a sync failure or a pending record,
+bar across the content. While bytes move it is a spinner: files this device
+is sending, offline copies downloading, or files still arriving from another
+device. While something needs the person, a sync failure or a pending record,
 it shows a small warning symbol, beside the spinner when both hold. With
 neither it is absent. A pass alone doesn't spin it: an idle library runs one
 every half minute, and the indicator would blink for nothing.
@@ -1276,9 +1278,9 @@ Attention*: the failure's line and each pending record in plain words, with
 *Open Sync Settings*, where each record offers its action. Then one row per
 thing moving: a pass syncing the library's changes, the uploads ("2
 uploading · 10 queued", with the bytes their providers confirmed), and the
-offline downloads, which on the phones open the downloads list. Then the files still arriving, one
-section per device, "Arriving from Studio Mac", listing the albums by title
-and counting other pictures. With nothing to show it says everything is up
+offline downloads, which on the phones open the downloads list. Then the files
+still arriving, one section per device, "Arriving from Studio Mac", listing
+the albums by title and counting other pictures. With nothing to show it says everything is up
 to date. *Retry Now* is always there; it retries everything at once, as
 pulling to refresh does.
 
@@ -1299,37 +1301,21 @@ is in; any other subject, such as an operation or the connection, by what it
 is. In the upload list itself a file's row already names it, so its record
 there says only why it waits.
 
-**Files still arriving.** Rows arrive before their files. Ana's Mac imports
-an album and uploads its files over the next hour; her phone shows the album
-at once. When the phone asks for a file the Mac hasn't uploaded yet, storage
-confirms it absent while the Mac is still an active device, and coven records
-that the file waits for the Mac's upload
-([coven §17.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#174-a-files-status)).
-That is the library arriving, not something to fix: such a file is no record
-in the pending list and doesn't count toward "Waiting". bae finds the row each
-one belongs to (a release's cover or one of its files, an artist image, an
-avatar) and names the device it comes from by the name that device
-registered under. Once the Mac uploads it, the phone's next fetch of the file
-ends its arrival. A file whose uploader was removed, or whose request failed,
-stays a pending record.
+**Files another device hasn't uploaded.** A row names its file only once
+storage holds it
+([coven §17.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#172-attaching-a-file)).
+Ana's Mac imports an album and uploads its files over the next hour; her phone
+shows the album at once, and each file's row names its file when that file's
+upload completes on the Mac. Until then the phone holds the row without a
+file. It can't tell an upload still running on the Mac from a release the Mac
+keeps local: either way the release reads as not uploaded, and a picture
+without its file shows its placeholder. No device waits for another's upload,
+so no pending record is about one.
 
-Arriving is shown quietly where the release is. Its album's card carries a
-small cloud mark, which names the device to assistive technologies and on
-hover. Its detail says "Arriving from Studio Mac" under the release's facts,
-and each track whose audio is still arriving shows dimmed, with "Arriving" in
-place of its length, and can't be played or queued until it lands. Nothing
-is coloured as a warning. A device knows a file is arriving only once it has
-asked storage for it: covers, artist images and avatars come down as their
-rows arrive, so those are known at once, while a track's audio is known after
-the device first tries to read it, by playing it or keeping it offline. When
-the last file lands, the mark and the line go by themselves.
-
-A cover or other picture still arriving is no failure either. Reading it
-names its file instead of failing, and the picture shows its placeholder
-until the file lands; the request waits for that and then reads the picture,
-so it appears by itself. Nothing about it is logged above debug. A reader
-that has to answer at once, such as the artwork a car's media browser asks
-for, gets no picture rather than waiting.
+The activity list's arrival sections, the cloud mark on an album's card, the
+"Arriving from Studio Mac" line and the dimmed tracks read which files another
+device is still uploading. Nothing tells this device that any more, so they
+never show.
 
 Ben's laptop shows "Waiting: 2 items": Dropbox wants him to sign in again, and
 a file of his vinyl rip moved before it uploaded. The list offers *Sign In* for

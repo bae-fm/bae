@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// One file in the storage inspector: a release file with the uploads coven
+/// One file in the storage inspector: a release file with the upload coven
 /// holds for it, or an upload that belongs to no release file.
 struct StorageInspectorFileRow: View {
     let row: BridgeStorageInspectorFile
@@ -30,7 +30,7 @@ struct StorageInspectorFileRow: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .padding(.leading, Self.detailIndent)
-            ForEach(row.operations, id: \.fileId) { operation in
+            if let operation = row.operation {
                 UploadOperationLine(operation: operation)
                     .padding(.leading, Self.detailIndent)
             }
@@ -118,10 +118,10 @@ extension BridgeStorageInspectorFile {
         }
     }
 
-    var operations: [BridgeUploadFileOp] {
+    var operation: BridgeUploadFileOp? {
         switch self {
-        case .releaseFile(_, let operations): operations
-        case .upload(let operation): [operation]
+        case .releaseFile(_, let operation): operation
+        case .upload(let operation): operation
         }
     }
 

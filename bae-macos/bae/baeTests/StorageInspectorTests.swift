@@ -31,8 +31,8 @@ struct StorageInspectorTests {
         #expect(rows.count == 1 + PreviewData.uploadFileOps.count)
         #expect(row.name == file.originalFilename)
         #expect(row.file?.audioFormat == file.audioFormat)
-        #expect(row.operations.isEmpty)
-        #expect(rows.contains { $0.operations.first?.label == .cover })
+        #expect(row.operation == nil)
+        #expect(rows.contains { $0.operation?.label == .cover })
 
         let finished = bridgeStorageInspectorFiles(
             releaseId: "rel-row-1",
@@ -41,7 +41,7 @@ struct StorageInspectorTests {
         )
         #expect(finished.count == 1)
         #expect(finished.first?.identity == row.identity)
-        #expect(finished.first?.operations.isEmpty == true)
+        #expect(finished.first?.operation == nil)
         #expect(finished.first?.name == file.originalFilename)
     }
 
@@ -65,7 +65,7 @@ struct StorageInspectorTests {
             )
         )
         let row = try #require(rows.first)
-        let operation = try #require(row.operations.first)
+        let operation = try #require(row.operation)
         #expect(
             operation.pending?.reason.key
                 == "core.pending.reason.file_unavailable"
