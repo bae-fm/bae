@@ -335,6 +335,15 @@ check "Gradle unit tests (Android full)" bash -c \
 check "ktlint" ktlint "bae-android/app/src/**/*.kt"
 check "detekt" detekt --input bae-android/app/src/main/java \
   --config bae-android/detekt.yml --build-upon-default-config
+_detekt_type_resolved() {
+  local compile_sdk
+  compile_sdk=$(sed -n 's/^ *compileSdk = \([0-9][0-9]*\).*/\1/p' bae-android/app/build.gradle.kts)
+  detekt --input bae-android/app/src/main/java \
+    --config bae-android/detekt-type-resolved.yml \
+    --classpath "${ANDROID_HOME:-$HOME/Library/Android/sdk}/platforms/android-${compile_sdk}/android.jar" \
+    --jvm-target 17
+}
+check "detekt (type-resolved rules)" _detekt_type_resolved
 check "Android lint (full)" bash -c \
   'cd bae-android && ./gradlew lintFullDebug --no-daemon'
 check "assemble debug APK (full)" bash -c \

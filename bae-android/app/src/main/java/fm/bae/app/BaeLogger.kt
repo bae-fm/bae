@@ -94,6 +94,8 @@ class BaeLogger(
         Log.println(priority, tag, androidMessage(message, throwable))
     }
 
+    // Not Log.getStackTraceString: it prints nothing for a chain holding an
+    // UnknownHostException, so a DNS failure would log with no trace at all.
     private fun androidMessage(
         message: String,
         throwable: Throwable?,
@@ -101,7 +103,7 @@ class BaeLogger(
         if (throwable == null) {
             message
         } else {
-            "$message\n${Log.getStackTraceString(throwable)}"
+            "$message\n${throwable.stackTraceToString()}"
         }
 }
 

@@ -1,0 +1,33 @@
+# The detekt rules that need type resolution, run on their own against the
+# Android platform jar (--classpath), without --build-upon-default-config: a
+# rule set or rule not named here stays off. The main detekt.yml run has no
+# classpath, and a type-resolved rule there would match nothing.
+config:
+  validation: false
+
+comments:
+  active: false
+complexity:
+  active: false
+coroutines:
+  active: false
+empty-blocks:
+  active: false
+exceptions:
+  active: false
+naming:
+  active: false
+performance:
+  active: false
+potential-bugs:
+  active: false
+
+style:
+  active: true
+  # android.util.Log.getStackTraceString returns "" for any chain holding an
+  # UnknownHostException, so a DNS failure would log with no trace at all.
+  ForbiddenMethodCall:
+    active: true
+    methods:
+      - value: 'android.util.Log.getStackTraceString'
+        reason: 'It returns "" for any chain holding an UnknownHostException; use Throwable.stackTraceToString().'

@@ -7,6 +7,10 @@ exceptions:
   # enumerate all possible subtypes from a heterogeneous async call stack.
   TooGenericExceptionCaught:
     active: false
+  # A caught exception is either handled with its cause kept (logged, shown,
+  # rethrown wrapped) or the catch is wrong: dropping it silently loses why.
+  SwallowedException:
+    active: true
 
 complexity:
   # @Composable functions take many parameters by design: Compose hoists state
