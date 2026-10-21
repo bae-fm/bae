@@ -171,11 +171,7 @@ private struct RestoreFileView: View {
                         .textSelection(.enabled)
                 }
             } header: {
-                Text(
-                    localizedCoreString(
-                        bridgePendingReasonKey(reason: record.reason.kind)
-                    )
-                )
+                Text(localizedCoreString(record.reason.key))
             }
             if let error {
                 Section {
@@ -245,9 +241,7 @@ private struct PendingReviewView: View {
                     .textSelection(.enabled)
             }
         } header: {
-            Text(
-                localizedCoreString(bridgePendingReasonKey(reason: reason.kind))
-            )
+            Text(localizedCoreString(reason.key))
         }
     }
 }

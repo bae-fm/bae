@@ -168,7 +168,7 @@
         /// A file coven can't upload until its source is back where it was.
         static let unavailableFilePending = BridgePendingWait(
             reason: BridgePendingReason(
-                kind: .fileUnavailable,
+                key: "core.pending.reason.file_unavailable",
                 detail:
                     "file 0b6f2c9e-5a1d-4c7e-9f3a-2d8e6b1c4a70 is missing at /Volumes/Music/Album Title/05 Track Title.flac",
                 causes: []

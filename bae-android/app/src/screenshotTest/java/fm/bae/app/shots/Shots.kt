@@ -164,9 +164,7 @@ fun SyncActivityArriving() {
     BaeTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             SyncActivityList(
-                // A needs-attention record names its subject through a bridge
-                // call, which the preview renderer can't load.
-                activity = PreviewData.syncActivity(needsAttention = false),
+                activity = PreviewData.syncActivity(needsAttention = true),
                 error = null,
                 onOpenSettings = {},
                 onOpenDownloads = {},

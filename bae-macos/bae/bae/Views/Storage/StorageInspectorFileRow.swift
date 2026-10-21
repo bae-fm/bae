@@ -72,9 +72,7 @@ private struct UploadOperationLine: View {
 
     private var status: String {
         if let pending = operation.pending {
-            return localizedCoreString(
-                bridgePendingReasonKey(reason: pending.reason.kind)
-            )
+            return localizedCoreString(pending.reason.key)
         }
         return localizedCoreString(
             bridgeUploadFileStateKey(state: operation.state)

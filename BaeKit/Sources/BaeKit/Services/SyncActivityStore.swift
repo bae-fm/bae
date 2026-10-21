@@ -130,13 +130,17 @@ public final class SyncActivityStore {
 
         /// Dropbox asking to be signed in to again.
         private static let previewSignIn = BridgePendingRecord(
-            subject: .connection,
+            subject: BridgeMessage(
+                key: "core.pending.subject.connection",
+                args: []
+            ),
             reason: BridgePendingReason(
-                kind: .storage,
+                key: "core.pending.reason.storage",
                 detail: nil,
                 causes: []
             ),
-            action: .signIn(provider: .dropbox)
+            action: .signIn(provider: .dropbox),
+            actionKey: "core.pending.action.sign_in"
         )
 
         /// Two albums still arriving from a Mac, the first with its cover

@@ -58,16 +58,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeAdminAccess
 import uniffi.bae_bridge.BridgeCloudProvider
-import uniffi.bae_bridge.BridgeOperationKind
+import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgePendingAction
 import uniffi.bae_bridge.BridgePendingReason
-import uniffi.bae_bridge.BridgePendingReasonKind
 import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgePendingRecords
-import uniffi.bae_bridge.BridgePendingSubject
-import uniffi.bae_bridge.bridgePendingActionKey
-import uniffi.bae_bridge.bridgePendingReasonKey
-import uniffi.bae_bridge.bridgePendingSubjectKey
 
 private val logger = BaeLogger("bae.SyncPendingScreen")
 
@@ -306,27 +301,6 @@ private fun PendingList(
     }
 }
 
-/** What a pending record is about: a file by its name and album, anything else by what it is. */
-internal fun pendingSubjectText(
-    context: Context,
-    subject: BridgePendingSubject,
-): String {
-    val key = bridgePendingSubjectKey(subject)
-    return when (subject) {
-        is BridgePendingSubject.ReleaseFile -> {
-            context.coreString(key, mapOf("file" to subject.fileName, "album" to subject.albumTitle))
-        }
-
-        is BridgePendingSubject.Cover -> {
-            context.coreString(key, mapOf("album" to subject.albumTitle))
-        }
-
-        else -> {
-            context.coreString(key)
-        }
-    }
-}
-
 /** One record: what it is about, why it waits with the error behind it, what its causes were, and its action. */
 @Composable
 private fun PendingRow(
@@ -335,18 +309,18 @@ private fun PendingRow(
 ) {
     val context = LocalContext.current
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
-        Text(text = pendingSubjectText(context, record.subject), style = ThemeText.strong.style)
+        Text(text = context.coreString(record.subject), style = ThemeText.strong.style)
         ErrorDetailDisclosure(
             error =
                 DisplayError(
-                    context.coreString(bridgePendingReasonKey(record.reason.kind)),
+                    context.coreString(record.reason.key),
                     record.reason.detail,
                 ),
             lineColor = LocalContentColor.current,
         )
         record.reason.causes.forEach { cause ->
             Text(
-                text = context.coreString(bridgePendingReasonKey(cause.kind)),
+                text = context.coreString(cause.key),
                 style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -355,7 +329,7 @@ private fun PendingRow(
             horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val actionKey = bridgePendingActionKey(record.action)
+            val actionKey = record.actionKey
             when (record.action) {
                 // The reason's details show what a review is of.
                 BridgePendingAction.Wait, BridgePendingAction.Review -> {
@@ -388,24 +362,26 @@ private fun PendingListPreview() {
             records =
                 listOf(
                     BridgePendingRecord(
-                        subject = BridgePendingSubject.Connection,
+                        subject = BridgeMessage(key = "core.pending.subject.connection", args = emptyList()),
                         reason =
                             BridgePendingReason(
-                                kind = BridgePendingReasonKind.PROVIDER_PENDING,
+                                key = "core.pending.reason.provider_pending",
                                 detail = null,
                                 causes = emptyList(),
                             ),
                         action = BridgePendingAction.SignIn(BridgeCloudProvider.DROPBOX),
+                        actionKey = "core.pending.action.sign_in",
                     ),
                     BridgePendingRecord(
-                        subject = BridgePendingSubject.Operation(BridgeOperationKind.INVITE),
+                        subject = BridgeMessage(key = "core.pending.operation.invite", args = emptyList()),
                         reason =
                             BridgePendingReason(
-                                BridgePendingReasonKind.FAILED,
+                                "core.pending.reason.failed",
                                 "S3: Network: S3 request failed: dispatch failure: io error: connection refused",
                                 emptyList(),
                             ),
                         action = BridgePendingAction.RetryOperation(id = 7L),
+                        actionKey = "core.pending.action.retry",
                     ),
                 ),
             onAction = {},

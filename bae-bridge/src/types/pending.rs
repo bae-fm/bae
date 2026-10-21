@@ -1,4 +1,4 @@
-use super::{BridgeCloudProvider, BridgeError};
+use super::{BridgeCloudProvider, BridgeError, BridgeMessage, BridgeMessageArg};
 
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgePendingRecords {
@@ -29,16 +29,21 @@ impl BridgePendingRecords {
 /// can do about it.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePendingRecord {
-    pub subject: BridgePendingSubject,
+    /// What the record is about: a file by its name and album, anything else
+    /// by what it is.
+    pub subject: BridgeMessage,
     pub reason: BridgePendingReason,
     pub action: BridgePendingAction,
+    /// The action's catalog key; none for `Wait`, which offers nothing to do.
+    pub action_key: Option<String>,
 }
 impl BridgePendingRecord {
     pub(crate) fn from_core(item: bae_core::library::PendingItem) -> Self {
         let BridgePendingWait { reason, action } = BridgePendingWait::from_core(item.wait);
         Self {
-            subject: BridgePendingSubject::from_core(item.subject),
+            subject: subject_message(item.subject),
             reason,
+            action_key: action.key().map(str::to_string),
             action,
         }
     }
@@ -59,122 +64,11 @@ impl BridgePendingWait {
     }
 }
 
-/// What a pending record is about, named as core named it. Mirrors
-/// `PendingSubjectName`.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgePendingSubject {
-    ReleaseFile {
-        file_name: String,
-        album_title: String,
-    },
-    Cover {
-        album_title: String,
-    },
-    ArtistImage,
-    Avatar,
-    DeletedReleaseFile,
-    File,
-    LocalChanges,
-    LibraryChanges,
-    KeyCopy,
-    Snapshot,
-    Retention,
-    LibraryData,
-    CircleData,
-    JoinRequest,
-    Connection,
-    Operation {
-        kind: BridgeOperationKind,
-    },
-}
-mirror_enum! {
-    BridgePendingSubject = bae_core::library::PendingSubjectName,
-    from_core: pub(crate) fn,
-    variants: {
-        ReleaseFile { file_name, album_title },
-        Cover { album_title },
-        ArtistImage,
-        Avatar,
-        DeletedReleaseFile,
-        File,
-        LocalChanges,
-        LibraryChanges,
-        KeyCopy,
-        Snapshot,
-        Retention,
-        LibraryData,
-        CircleData,
-        JoinRequest,
-        Connection,
-        Operation(kind: (BridgeOperationKind)),
-    },
-}
-
-/// One of coven's operations on the library. Mirrors `coven::OperationKind`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeOperationKind {
-    CreateStore,
-    RenameStore,
-    AddDevice,
-    SetRole,
-    SetAccess,
-    RemoveMember,
-    RemoveDevice,
-    RenameCircle,
-    RemoveCircleMember,
-    RetainSequence,
-    RetainFiles,
-    WriteSnapshot,
-    SchemaChange,
-    Reset,
-    ReloadFromSnapshot,
-    RequiredReload,
-    RotateKey,
-    CreateCircle,
-    AddCircleMember,
-    DeleteCircle,
-    Invite,
-    RevokeAccess,
-    DeleteAccessKey,
-    ReplaceAccessKey,
-    ReplaceMemberKeys,
-}
-mirror_enum! {
-    BridgeOperationKind = coven::OperationKind,
-    from_core: pub(crate) fn,
-    variants: {
-        CreateStore,
-        RenameStore,
-        AddDevice,
-        SetRole,
-        SetAccess,
-        RemoveMember,
-        RemoveDevice,
-        RenameCircle,
-        RemoveCircleMember,
-        RetainSequence,
-        RetainFiles,
-        WriteSnapshot,
-        SchemaChange,
-        Reset,
-        ReloadFromSnapshot,
-        RequiredReload,
-        RotateKey,
-        CreateCircle,
-        AddCircleMember,
-        DeleteCircle,
-        Invite,
-        RevokeAccess,
-        DeleteAccessKey,
-        ReplaceAccessKey,
-        ReplaceMemberKeys,
-    },
-}
-
-/// A localized reason kind, the error behind it, and nested cleanup causes.
+/// Why a record waits, as a catalog key, with the error behind it and the
+/// reasons an undo that could not finish is made of.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePendingReason {
-    pub kind: BridgePendingReasonKind,
+    pub key: String,
     /// The text of the error behind the reason, with every cause below it,
     /// while core holds that error: it names what the reason's class leaves
     /// out, already redacted by coven. None when no error is held, as after a
@@ -182,8 +76,9 @@ pub struct BridgePendingReason {
     pub detail: Option<String>,
     pub causes: Vec<BridgePendingReason>,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgePendingReasonKind {
+/// The class of a coven reason, which names its catalog key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum PendingReasonKind {
     Missing,
     Waits,
     KeyUnavailable,
@@ -213,7 +108,7 @@ impl BridgePendingReason {
     ) -> Self {
         let detail = cause.map(|cause| cause.to_string());
         use coven::PendingReason as R;
-        use BridgePendingReasonKind as K;
+        use PendingReasonKind as K;
         let kind = match &reason {
             R::Missing { .. } => K::Missing,
             R::Waits(_) => K::Waits,
@@ -247,7 +142,7 @@ impl BridgePendingReason {
             _ => Vec::new(),
         };
         Self {
-            kind,
+            key: kind.key().to_string(),
             detail,
             causes,
         }
@@ -304,41 +199,41 @@ impl BridgePendingAction {
     }
 }
 
-/// The UI translates this key and offers the original detail separately.
-#[uniffi::export]
-pub fn bridge_pending_reason_key(reason: BridgePendingReasonKind) -> String {
-    use BridgePendingReasonKind as R;
-    match reason {
-        R::Missing => "core.pending.reason.missing",
-        R::Waits => "core.pending.reason.waits",
-        R::KeyUnavailable => "core.pending.reason.key_unavailable",
-        R::UpdateRequired => "core.error.sync_update_required",
-        R::NoStorage => "core.pending.reason.no_storage",
-        R::Storage => "core.pending.reason.storage",
-        R::Refused => "core.pending.reason.refused",
-        R::WritesRefused => "core.pending.reason.writes_refused",
-        R::ProviderPending => "core.pending.reason.provider_pending",
-        R::PendingOwner => "core.pending.reason.pending_owner",
-        R::AccountInUse => "core.pending.reason.account_in_use",
-        R::AccessRemains => "core.pending.reason.access_remains",
-        R::DeleteAccessKey => "core.pending.reason.delete_access_key",
-        R::FileUnavailable => "core.pending.reason.file_unavailable",
-        R::Failed => "core.pending.reason.failed",
-        R::Rejected => "core.pending.reason.rejected",
-        R::Cleanup => "core.pending.reason.cleanup",
-        R::Paused => "core.pending.reason.paused",
-        R::AdminAccessRequired => "core.pending.reason.admin_access_required",
-        R::Removed => "core.pending.reason.removed",
-        R::MemberKeysReplaced => "core.pending.reason.member_keys_replaced",
+impl PendingReasonKind {
+    /// The UI translates this key and offers the original detail separately.
+    pub(crate) fn key(self) -> &'static str {
+        use PendingReasonKind as R;
+        match self {
+            R::Missing => "core.pending.reason.missing",
+            R::Waits => "core.pending.reason.waits",
+            R::KeyUnavailable => "core.pending.reason.key_unavailable",
+            R::UpdateRequired => "core.error.sync_update_required",
+            R::NoStorage => "core.pending.reason.no_storage",
+            R::Storage => "core.pending.reason.storage",
+            R::Refused => "core.pending.reason.refused",
+            R::WritesRefused => "core.pending.reason.writes_refused",
+            R::ProviderPending => "core.pending.reason.provider_pending",
+            R::PendingOwner => "core.pending.reason.pending_owner",
+            R::AccountInUse => "core.pending.reason.account_in_use",
+            R::AccessRemains => "core.pending.reason.access_remains",
+            R::DeleteAccessKey => "core.pending.reason.delete_access_key",
+            R::FileUnavailable => "core.pending.reason.file_unavailable",
+            R::Failed => "core.pending.reason.failed",
+            R::Rejected => "core.pending.reason.rejected",
+            R::Cleanup => "core.pending.reason.cleanup",
+            R::Paused => "core.pending.reason.paused",
+            R::AdminAccessRequired => "core.pending.reason.admin_access_required",
+            R::Removed => "core.pending.reason.removed",
+            R::MemberKeysReplaced => "core.pending.reason.member_keys_replaced",
+        }
     }
-    .to_string()
 }
 
-#[uniffi::export]
-pub fn bridge_pending_action_key(action: &BridgePendingAction) -> Option<String> {
-    use BridgePendingAction as A;
-    Some(
-        match action {
+impl BridgePendingAction {
+    /// The action's catalog key; `Wait` offers nothing to do and has none.
+    pub(crate) fn key(&self) -> Option<&'static str> {
+        use BridgePendingAction as A;
+        Some(match self {
             A::Wait => return None,
             A::UpdateApp => "core.pending.action.update_app",
             A::SignIn { .. } => "core.pending.action.sign_in",
@@ -350,20 +245,35 @@ pub fn bridge_pending_action_key(action: &BridgePendingAction) -> Option<String>
             A::ProvideAdminAccess { .. } => "core.pending.action.provide_admin_access",
             A::DeleteAccessKey { .. } => "core.pending.action.delete_access_key",
             A::Review => "core.pending.action.review",
-        }
-        .to_string(),
-    )
+        })
+    }
 }
 
-/// The subject's catalog key. `ReleaseFile` takes `file` and `album`, and
-/// `Cover` takes `album`; the UI fills them from the subject's fields.
-#[uniffi::export]
-pub fn bridge_pending_subject_key(subject: &BridgePendingSubject) -> String {
-    use BridgeOperationKind as O;
-    use BridgePendingSubject as S;
-    match subject {
-        S::ReleaseFile { .. } => "core.pending.subject.release_file",
-        S::Cover { .. } => "core.pending.subject.cover",
+/// The subject as a catalog message. A release file's message takes its
+/// `file` name and `album` title and a cover's its `album` title, in the
+/// order the source message names them.
+pub(crate) fn subject_message(subject: bae_core::library::PendingSubjectName) -> BridgeMessage {
+    use bae_core::library::PendingSubjectName as S;
+    use coven::OperationKind as O;
+    let key = match subject {
+        S::ReleaseFile {
+            file_name,
+            album_title,
+        } => {
+            return BridgeMessage {
+                key: "core.pending.subject.release_file".to_string(),
+                args: vec![
+                    BridgeMessageArg::new("file", file_name),
+                    BridgeMessageArg::new("album", album_title),
+                ],
+            }
+        }
+        S::Cover { album_title } => {
+            return BridgeMessage {
+                key: "core.pending.subject.cover".to_string(),
+                args: vec![BridgeMessageArg::new("album", album_title)],
+            }
+        }
         S::ArtistImage => "core.pending.subject.artist_image",
         S::Avatar => "core.pending.subject.avatar",
         S::DeletedReleaseFile => "core.pending.subject.deleted_release_file",
@@ -377,7 +287,7 @@ pub fn bridge_pending_subject_key(subject: &BridgePendingSubject) -> String {
         S::CircleData => "core.pending.subject.circle_data",
         S::JoinRequest => "core.pending.subject.join_request",
         S::Connection => "core.pending.subject.connection",
-        S::Operation { kind } => match kind {
+        S::Operation(kind) => match kind {
             O::CreateStore => "core.pending.operation.create_store",
             O::RenameStore => "core.pending.operation.rename_store",
             O::AddDevice => "core.pending.operation.add_device",
@@ -404,6 +314,9 @@ pub fn bridge_pending_subject_key(subject: &BridgePendingSubject) -> String {
             O::ReplaceAccessKey => "core.pending.operation.replace_access_key",
             O::ReplaceMemberKeys => "core.pending.operation.replace_member_keys",
         },
+    };
+    BridgeMessage {
+        key: key.to_string(),
+        args: Vec::new(),
     }
-    .to_string()
 }

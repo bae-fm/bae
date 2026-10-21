@@ -56,7 +56,6 @@ import uniffi.bae_bridge.BridgeCodeMetadata
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeStorageLocation
-import uniffi.bae_bridge.bridgePendingReasonKey
 
 internal val actionWidth = 220.dp
 
@@ -375,7 +374,7 @@ internal fun OnboardingProgress(
                 }
 
                 is BridgeBootstrapStatus.Pending -> {
-                    status.records.map { context.coreString(bridgePendingReasonKey(it.reason.kind)) }
+                    status.records.map { context.coreString(it.reason.key) }
                 }
             }
         lines.forEach { line ->

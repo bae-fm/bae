@@ -45,9 +45,7 @@ private struct PendingRecordRow: View {
 
     /// The action's label, when the person can act on this record here.
     private var actionTitle: String? {
-        guard perform != nil,
-            let key = bridgePendingActionKey(action: record.action)
-        else { return nil }
+        guard perform != nil, let key = record.actionKey else { return nil }
         return localizedCoreString(key)
     }
 
@@ -57,9 +55,7 @@ private struct PendingRecordRow: View {
                 .themeText(.strong)
             ErrorDetailDisclosure(
                 error: DisplayError(
-                    line: localizedCoreString(
-                        bridgePendingReasonKey(reason: record.reason.kind)
-                    ),
+                    line: localizedCoreString(record.reason.key),
                     detail: record.reason.detail
                 ),
                 tone: .neutral,

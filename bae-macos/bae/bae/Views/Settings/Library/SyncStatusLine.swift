@@ -153,12 +153,8 @@ private struct RestoreFileSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            Text(
-                localizedCoreString(
-                    bridgePendingReasonKey(reason: record.reason.kind)
-                )
-            )
-            .themeText(.heading)
+            Text(localizedCoreString(record.reason.key))
+                .themeText(.heading)
             Text(
                 "Put the file back where it was when it was imported, then retry."
             )
@@ -232,10 +228,8 @@ private struct PendingReviewSheet: View {
 
     private func reason(_ reason: BridgePendingReason) -> some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            Text(
-                localizedCoreString(bridgePendingReasonKey(reason: reason.kind))
-            )
-            .themeText(.heading)
+            Text(localizedCoreString(reason.key))
+                .themeText(.heading)
             if let detail = reason.detail {
                 Text(detail)
                     .themeText(.mono)

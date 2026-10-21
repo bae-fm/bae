@@ -348,88 +348,35 @@ fn produced_keys() -> Vec<String> {
             failure,
         }));
     }
-    {
-        use BridgeOperationKind as O;
-        use BridgePendingSubject as S;
-        let operations = [
-            O::CreateStore,
-            O::RenameStore,
-            O::AddDevice,
-            O::SetRole,
-            O::SetAccess,
-            O::RemoveMember,
-            O::RemoveDevice,
-            O::RenameCircle,
-            O::RemoveCircleMember,
-            O::RetainSequence,
-            O::RetainFiles,
-            O::WriteSnapshot,
-            O::SchemaChange,
-            O::Reset,
-            O::ReloadFromSnapshot,
-            O::RequiredReload,
-            O::RotateKey,
-            O::CreateCircle,
-            O::AddCircleMember,
-            O::DeleteCircle,
-            O::Invite,
-            O::RevokeAccess,
-            O::DeleteAccessKey,
-            O::ReplaceAccessKey,
-            O::ReplaceMemberKeys,
-        ];
-        let subjects = [
-            S::ReleaseFile {
-                file_name: "01 Track.flac".into(),
-                album_title: "Album Title".into(),
-            },
-            S::Cover {
-                album_title: "Album Title".into(),
-            },
-            S::ArtistImage,
-            S::Avatar,
-            S::DeletedReleaseFile,
-            S::File,
-            S::LocalChanges,
-            S::LibraryChanges,
-            S::KeyCopy,
-            S::Snapshot,
-            S::Retention,
-            S::LibraryData,
-            S::CircleData,
-            S::JoinRequest,
-            S::Connection,
-        ]
-        .into_iter()
-        .chain(operations.map(|kind| S::Operation { kind }));
-        for subject in subjects {
-            keys.push(bridge_pending_subject_key(&subject));
-        }
-    }
+    keys.extend(
+        pending_subject_messages()
+            .into_iter()
+            .map(|message| message.key),
+    );
     for reason in [
-        BridgePendingReasonKind::Missing,
-        BridgePendingReasonKind::Waits,
-        BridgePendingReasonKind::KeyUnavailable,
-        BridgePendingReasonKind::UpdateRequired,
-        BridgePendingReasonKind::NoStorage,
-        BridgePendingReasonKind::Storage,
-        BridgePendingReasonKind::Refused,
-        BridgePendingReasonKind::WritesRefused,
-        BridgePendingReasonKind::ProviderPending,
-        BridgePendingReasonKind::PendingOwner,
-        BridgePendingReasonKind::AccountInUse,
-        BridgePendingReasonKind::AccessRemains,
-        BridgePendingReasonKind::DeleteAccessKey,
-        BridgePendingReasonKind::FileUnavailable,
-        BridgePendingReasonKind::Failed,
-        BridgePendingReasonKind::Rejected,
-        BridgePendingReasonKind::Cleanup,
-        BridgePendingReasonKind::Paused,
-        BridgePendingReasonKind::AdminAccessRequired,
-        BridgePendingReasonKind::Removed,
-        BridgePendingReasonKind::MemberKeysReplaced,
+        PendingReasonKind::Missing,
+        PendingReasonKind::Waits,
+        PendingReasonKind::KeyUnavailable,
+        PendingReasonKind::UpdateRequired,
+        PendingReasonKind::NoStorage,
+        PendingReasonKind::Storage,
+        PendingReasonKind::Refused,
+        PendingReasonKind::WritesRefused,
+        PendingReasonKind::ProviderPending,
+        PendingReasonKind::PendingOwner,
+        PendingReasonKind::AccountInUse,
+        PendingReasonKind::AccessRemains,
+        PendingReasonKind::DeleteAccessKey,
+        PendingReasonKind::FileUnavailable,
+        PendingReasonKind::Failed,
+        PendingReasonKind::Rejected,
+        PendingReasonKind::Cleanup,
+        PendingReasonKind::Paused,
+        PendingReasonKind::AdminAccessRequired,
+        PendingReasonKind::Removed,
+        PendingReasonKind::MemberKeysReplaced,
     ] {
-        keys.push(bridge_pending_reason_key(reason));
+        keys.push(reason.key().to_string());
     }
     for action in [
         BridgePendingAction::Wait,
@@ -449,9 +396,9 @@ fn produced_keys() -> Vec<String> {
         },
         BridgePendingAction::Review,
     ] {
-        keys.extend(bridge_pending_action_key(&action));
+        keys.extend(action.key().map(str::to_string));
     }
-    assert!(bridge_pending_action_key(&BridgePendingAction::Wait).is_none());
+    assert!(BridgePendingAction::Wait.key().is_none());
     for indicator in [
         BridgeSyncIndicator::Unconnected,
         BridgeSyncIndicator::Loading,
@@ -585,6 +532,65 @@ fn produced_keys() -> Vec<String> {
     keys
 }
 
+/// Every pending subject's message, one per subject and operation kind.
+fn pending_subject_messages() -> Vec<BridgeMessage> {
+    use bae_core::library::PendingSubjectName as S;
+    use coven::OperationKind as O;
+    let operations = [
+        O::CreateStore,
+        O::RenameStore,
+        O::AddDevice,
+        O::SetRole,
+        O::SetAccess,
+        O::RemoveMember,
+        O::RemoveDevice,
+        O::RenameCircle,
+        O::RemoveCircleMember,
+        O::RetainSequence,
+        O::RetainFiles,
+        O::WriteSnapshot,
+        O::SchemaChange,
+        O::Reset,
+        O::ReloadFromSnapshot,
+        O::RequiredReload,
+        O::RotateKey,
+        O::CreateCircle,
+        O::AddCircleMember,
+        O::DeleteCircle,
+        O::Invite,
+        O::RevokeAccess,
+        O::DeleteAccessKey,
+        O::ReplaceAccessKey,
+        O::ReplaceMemberKeys,
+    ];
+    [
+        S::ReleaseFile {
+            file_name: "01 Track.flac".into(),
+            album_title: "Album Title".into(),
+        },
+        S::Cover {
+            album_title: "Album Title".into(),
+        },
+        S::ArtistImage,
+        S::Avatar,
+        S::DeletedReleaseFile,
+        S::File,
+        S::LocalChanges,
+        S::LibraryChanges,
+        S::KeyCopy,
+        S::Snapshot,
+        S::Retention,
+        S::LibraryData,
+        S::CircleData,
+        S::JoinRequest,
+        S::Connection,
+    ]
+    .into_iter()
+    .chain(operations.map(S::Operation))
+    .map(subject_message)
+    .collect()
+}
+
 fn catalog() -> bae_loc::Catalog {
     bae_loc::Catalog::from_toml(include_str!("../../loc/catalog.toml")).expect("catalog parses")
 }
@@ -623,4 +629,19 @@ fn no_orphan_core_keys() {
         orphans.is_empty(),
         "catalog keys without a producer: {orphans:?}"
     );
+}
+
+/// A subject message names its arguments as its source message does and in
+/// the same order, since Apple's catalog takes them by position.
+#[test]
+fn pending_subject_arguments_follow_the_source_message() {
+    let cat = catalog();
+    for message in pending_subject_messages() {
+        let source = &cat.messages[&message.key].value;
+        let expected = bae_loc::mf1::referenced_args(
+            &bae_loc::mf1::parse(source).expect("source message parses"),
+        );
+        let names: Vec<_> = message.args.iter().map(|arg| arg.name.clone()).collect();
+        assert_eq!(names, expected, "`{}` arguments", message.key);
+    }
 }

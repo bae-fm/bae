@@ -56,12 +56,10 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.color
-import fm.bae.app.ui.settings.pendingSubjectText
 import uniffi.bae_bridge.BridgeArrivals
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePendingRecords
 import uniffi.bae_bridge.BridgeSyncActivity
-import uniffi.bae_bridge.bridgePendingReasonKey
 
 /**
  * Sync's place in the library's top bar: a small spinner while bytes move, a
@@ -199,11 +197,11 @@ private fun LazyListScope.attentionSection(
         is BridgePendingRecords.Ready -> {
             items(attention.records) { record ->
                 Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
-                    Text(text = pendingSubjectText(context, record.subject), style = ThemeText.strong.style)
+                    Text(text = context.coreString(record.subject), style = ThemeText.strong.style)
                     ErrorDetailDisclosure(
                         error =
                             DisplayError(
-                                context.coreString(bridgePendingReasonKey(record.reason.kind)),
+                                context.coreString(record.reason.key),
                                 record.reason.detail,
                             ),
                         lineColor = MaterialTheme.colorScheme.onSurfaceVariant,

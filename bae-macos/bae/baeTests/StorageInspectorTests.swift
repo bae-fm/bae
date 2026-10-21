@@ -66,7 +66,10 @@ struct StorageInspectorTests {
         )
         let row = try #require(rows.first)
         let operation = try #require(row.operations.first)
-        #expect(operation.pending?.reason.kind == .fileUnavailable)
+        #expect(
+            operation.pending?.reason.key
+                == "core.pending.reason.file_unavailable"
+        )
     }
 
     @Test("each visible transfer queue carries its pause state")

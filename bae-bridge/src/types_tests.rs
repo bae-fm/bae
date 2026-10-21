@@ -685,11 +685,68 @@ fn a_pending_record_with_its_error_crosses_with_that_error_as_its_details() {
         )),
     }));
     let with = BridgePendingRecord::from_core(item);
-    assert_eq!(with.reason.kind, BridgePendingReasonKind::Storage);
+    assert_eq!(with.subject.key, "core.pending.subject.connection");
+    assert_eq!(with.reason.key, "core.pending.reason.storage");
     assert_eq!(
         with.reason.detail.as_deref(),
         Some("S3: Network: S3 request failed: dispatch failure: io error: connection refused")
     );
+}
+
+/// A record crosses with its labels as catalog keys: a release file's subject
+/// with its file name and album title as the message's arguments, and the
+/// action's key beside the action.
+#[test]
+fn a_pending_record_crosses_with_its_labels_as_catalog_messages() {
+    let record = BridgePendingRecord::from_core(bae_core::library::PendingItem {
+        subject: bae_core::library::PendingSubjectName::ReleaseFile {
+            file_name: "01 Track Title.flac".into(),
+            album_title: "Album Title".into(),
+        },
+        wait: bae_core::library::PendingWait {
+            reason: coven::PendingReason::Paused,
+            cause: None,
+            action: bae_core::library::PendingAction::RestoreFile,
+        },
+    });
+    assert_eq!(
+        record.subject,
+        BridgeMessage {
+            key: "core.pending.subject.release_file".into(),
+            args: vec![
+                BridgeMessageArg {
+                    name: "file".into(),
+                    value: "01 Track Title.flac".into(),
+                },
+                BridgeMessageArg {
+                    name: "album".into(),
+                    value: "Album Title".into(),
+                },
+            ],
+        }
+    );
+    assert_eq!(record.reason.key, "core.pending.reason.paused");
+    assert_eq!(
+        record.action_key.as_deref(),
+        Some("core.pending.action.restore_file")
+    );
+
+    let waiting = BridgePendingRecord::from_core(bae_core::library::PendingItem {
+        subject: bae_core::library::PendingSubjectName::Snapshot,
+        wait: bae_core::library::PendingWait {
+            reason: coven::PendingReason::Paused,
+            cause: None,
+            action: bae_core::library::PendingAction::Wait,
+        },
+    });
+    assert_eq!(
+        waiting.subject,
+        BridgeMessage {
+            key: "core.pending.subject.snapshot".into(),
+            args: Vec::new(),
+        }
+    );
+    assert_eq!(waiting.action_key, None);
 }
 
 /// Arrivals cross grouped by device for the activity list, and keyed by
