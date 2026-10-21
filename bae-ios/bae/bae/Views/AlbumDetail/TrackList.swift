@@ -12,6 +12,10 @@ struct TrackList: View {
 
     @Environment(SyncActivityStore.self)
     private var syncActivity
+    /// The widest of the release's position labels, as measured where the
+    /// list lays them out, so every row's number column is as wide.
+    @State
+    private var positionWidth: CGFloat = 0
 
     var body: some View {
         let groups = detail.trackGroups
@@ -29,6 +33,7 @@ struct TrackList: View {
                         track: track,
                         isArriving: arriving.contains(track.id),
                         artist: artistDisplay.artist(for: track),
+                        positionWidth: positionWidth,
                         onPlay: { onPlayTrack(track.id) },
                         onPlayNext: { onPlayNext(track.id) },
                         onAddToQueue: { onAddToQueue(track.id) }
@@ -44,6 +49,44 @@ struct TrackList: View {
                 }
             }
         }
+        .background {
+            // Every position label laid out but not drawn: the stack is as
+            // wide as the widest.
+            ZStack {
+                ForEach(
+                    Set(detail.tracks.map(TrackPositionLabel.text(for:)))
+                        .sorted(),
+                    id: \.self
+                ) { text in
+                    TrackPositionLabel(text: text)
+                }
+            }
+            .hidden()
+            .onGeometryChange(for: CGFloat.self) { geometry in
+                geometry.size.width
+            } action: { width in
+                positionWidth = width
+            }
+        }
+    }
+}
+
+/// A track's position as the track list draws it, on one line: the rows show
+/// it, and the list measures every one to size the rows' number column.
+private struct TrackPositionLabel: View {
+    let text: String
+
+    /// The label for `track`, a dash when it has no position.
+    static func text(for track: Track) -> String {
+        track.positionText.isEmpty ? "-" : track.positionText
+    }
+
+    var body: some View {
+        Text(text)
+            .monospacedDigit()
+            .themeText(.body)
+            .lineLimit(1)
+            .fixedSize()
     }
 }
 
@@ -54,6 +97,9 @@ private struct TrackRow: View {
     let isArriving: Bool
     /// The artist to show, or `nil` for none, as the album display resolves it.
     let artist: String?
+    /// The widest position label in the release, so every row's number
+    /// column is as wide and no label wraps.
+    let positionWidth: CGFloat
     let onPlay: () -> Void
     let onPlayNext: () -> Void
     let onAddToQueue: () -> Void
@@ -63,6 +109,10 @@ private struct TrackRow: View {
     private var playbackStore
     @Environment(Playback.self)
     private var playback
+
+    /// The number column's least width, which the now-playing icon in the
+    /// number's place also fits.
+    private static let positionMinWidth: CGFloat = 36
 
     private var isCurrent: Bool {
         track.id == playbackStore.nowPlaying.track?.track.trackId
@@ -83,9 +133,7 @@ private struct TrackRow: View {
                 // Both stay in the layout tree, toggled by opacity, so swapping
                 // the current row in/out never re-measures the stack.
                 ZStack(alignment: .leading) {
-                    Text(track.positionText.isEmpty ? "-" : track.positionText)
-                        .monospacedDigit()
-                        .themeText(.body)
+                    TrackPositionLabel(text: TrackPositionLabel.text(for: track))
                         .foregroundStyle(.secondary)
                         .opacity(isCurrent ? 0 : 1)
                     Image(
@@ -96,7 +144,10 @@ private struct TrackRow: View {
                     .foregroundStyle(Theme.accent)
                     .opacity(isCurrent ? 1 : 0)
                 }
-                .frame(width: 36, alignment: .leading)
+                .frame(
+                    width: max(positionWidth, Self.positionMinWidth),
+                    alignment: .leading
+                )
                 VStack(alignment: .leading, spacing: ThemeSpace.line) {
                     Text(track.title)
                         .themeText(.rowTitle)

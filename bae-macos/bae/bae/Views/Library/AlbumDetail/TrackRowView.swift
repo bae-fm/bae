@@ -11,6 +11,9 @@ struct TrackRowView: View {
     let isArriving: Bool
     /// The artist to show, or `nil` for none — core's decision.
     let artist: String?
+    /// The widest position label in the release, so every row's number
+    /// column is as wide and no label wraps.
+    let positionWidth: CGFloat
     let isCurrent: Bool
     let isLoading: Bool
     let isPlaying: Bool
@@ -27,15 +30,17 @@ struct TrackRowView: View {
     @State
     private var highlightOpacity: Double = 0
 
+    /// The leading slot's least width: the play button and the loading
+    /// spinner that take the number's place.
+    fileprivate static let leadingSlotMinWidth: CGFloat = 22
+
     var body: some View {
         let isCurrentPlaying = isCurrent && isPlaying
         HStack(spacing: ThemeSpace.group) {
             // Every leading-slot state stays in the layout, opacity-toggled,
             // so the row's size never changes.
             ZStack {
-                trackNumberLabel
-                    .themeText(.detail)
-                    .monospacedDigit()
+                TrackPositionLabel(text: track.positionText)
                     .foregroundStyle(.tertiary)
                     .opacity(
                         !isCurrent && (!isHovered || isArriving) && !isLoading
@@ -63,7 +68,7 @@ struct TrackRowView: View {
                     .opacity(isLoading ? 1 : 0)
                     .allowsHitTesting(isLoading)
             }
-            .frame(width: 22)
+            .frame(width: max(positionWidth, Self.leadingSlotMinWidth))
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(track.title)
                     .themeText(.rowTitle)
@@ -149,9 +154,19 @@ struct TrackRowView: View {
         }
         .draggable(track.id)
     }
+}
 
-    private var trackNumberLabel: some View {
-        Text(track.positionText)
+/// A track's position as the track list draws it, on one line: the rows show
+/// it, and the list measures every one to size the rows' number column.
+struct TrackPositionLabel: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .themeText(.detail)
+            .monospacedDigit()
+            .lineLimit(1)
+            .fixedSize()
     }
 }
 
@@ -169,6 +184,9 @@ struct TrackRowView: View {
             track: track,
             isArriving: isArriving,
             artist: artist,
+            // A single-digit position measures under the slot's least width,
+            // which the list's rows then take.
+            positionWidth: TrackRowView.leadingSlotMinWidth,
             isCurrent: isCurrent,
             isLoading: isLoading,
             isPlaying: isPlaying,

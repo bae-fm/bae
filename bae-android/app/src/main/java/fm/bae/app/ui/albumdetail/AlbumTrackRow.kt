@@ -26,8 +26,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.coreString
@@ -36,7 +39,25 @@ import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 
-private val positionColumnWidth = 40.dp
+/** The position column's least width, which the now-playing icon in the
+ *  number's place also fits. */
+private val positionColumnMinWidth = 40.dp
+
+/** The position column's width: the widest of a release's [positionLabels]
+ *  in the label's style plus the gap before the title, so no label wraps and
+ *  every row's title starts at the same x. */
+@Composable
+internal fun rememberPositionColumnWidth(positionLabels: List<String>): Dp {
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    return remember(positionLabels, measurer, density) {
+        val widest =
+            positionLabels.maxOfOrNull { label ->
+                measurer.measure(label, style = ThemeText.body.style, maxLines = 1, softWrap = false).size.width
+            } ?: 0
+        maxOf(positionColumnMinWidth, with(density) { widest.toDp() } + ThemeSpace.related)
+    }
+}
 
 internal data class TrackRowData(
     val positionLabel: String,
@@ -60,6 +81,7 @@ internal data class TrackRowCallbacks(
 internal fun TrackRow(
     data: TrackRowData,
     callbacks: TrackRowCallbacks,
+    positionColumnWidth: Dp,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     Row(
@@ -71,7 +93,7 @@ internal fun TrackRow(
                 .padding(vertical = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TrackPositionIndicator(data.isCurrent, data.isPlaying, data.positionLabel)
+        TrackPositionIndicator(data.isCurrent, data.isPlaying, data.positionLabel, positionColumnWidth)
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = data.title,
@@ -122,9 +144,10 @@ private fun TrackPositionIndicator(
     isCurrent: Boolean,
     isPlaying: Boolean,
     positionLabel: String,
+    width: Dp,
 ) {
     if (isCurrent) {
-        Box(modifier = Modifier.width(positionColumnWidth), contentAlignment = Alignment.CenterStart) {
+        Box(modifier = Modifier.width(width), contentAlignment = Alignment.CenterStart) {
             Icon(
                 imageVector =
                     if (isPlaying) Icons.AutoMirrored.Filled.VolumeUp else Icons.Filled.PlayArrow,
@@ -138,7 +161,9 @@ private fun TrackPositionIndicator(
             text = positionLabel,
             style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(positionColumnWidth),
+            maxLines = 1,
+            softWrap = false,
+            modifier = Modifier.width(width),
         )
     }
 }
@@ -181,6 +206,9 @@ private fun TrackRowMenu(
 
 private val previewTrackRowCallbacks = TrackRowCallbacks(onClick = {}, onPlayNext = {}, onAddToQueue = {})
 
+/** The previewed rows' positions, as one release's. */
+private val previewPositionLabels = listOf("1", "2", "3")
+
 @Preview(showBackground = true)
 @Composable
 private fun TrackRowPreview() {
@@ -197,6 +225,7 @@ private fun TrackRowPreview() {
                     isArriving = false,
                 ),
             callbacks = previewTrackRowCallbacks,
+            positionColumnWidth = rememberPositionColumnWidth(previewPositionLabels),
         )
     }
 }
@@ -217,6 +246,7 @@ private fun TrackRowCurrentPreview() {
                     isArriving = false,
                 ),
             callbacks = previewTrackRowCallbacks,
+            positionColumnWidth = rememberPositionColumnWidth(previewPositionLabels),
         )
     }
 }
@@ -237,6 +267,7 @@ private fun TrackRowArrivingPreview() {
                     isArriving = true,
                 ),
             callbacks = previewTrackRowCallbacks,
+            positionColumnWidth = rememberPositionColumnWidth(previewPositionLabels),
         )
     }
 }

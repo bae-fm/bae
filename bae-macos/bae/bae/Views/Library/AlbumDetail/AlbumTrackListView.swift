@@ -23,6 +23,10 @@ struct AlbumTrackListView: View {
     private var rowHeight: CGFloat = 40
     @ScaledMetric(relativeTo: .body)
     private var rowHeightCompilation: CGFloat = 52
+    /// The widest of the release's position labels, as measured where the
+    /// list lays them out, so every row's number column is as wide.
+    @State
+    private var positionWidth: CGFloat = 0
 
     var body: some View {
         let groups = release.trackGroups
@@ -63,6 +67,24 @@ struct AlbumTrackListView: View {
                 }
             }
         }
+        .background {
+            // Every position label laid out but not drawn: the stack is as
+            // wide as the widest.
+            ZStack {
+                ForEach(
+                    Set(release.tracks.map(\.positionText)).sorted(),
+                    id: \.self
+                ) { text in
+                    TrackPositionLabel(text: text)
+                }
+            }
+            .hidden()
+            .onGeometryChange(for: CGFloat.self) { geometry in
+                geometry.size.width
+            } action: { width in
+                positionWidth = width
+            }
+        }
     }
 
     private func trackColumn(tracks: [Track]) -> some View {
@@ -75,6 +97,7 @@ struct AlbumTrackListView: View {
                     isArriving: arriving.contains(track.id),
                     // Core sets this only for a compilation.
                     artist: track.displayArtist,
+                    positionWidth: positionWidth,
                     isCurrent: currentTrackId == track.id,
                     isLoading: loadingTrackId == track.id,
                     isPlaying: isPlaying,

@@ -28,7 +28,7 @@ struct AlbumTrackListLayoutTests {
 
             // Nine tracks split five over four; the eight-track side stays whole.
             // Both of the first column's runs share one x, ordered down the pane.
-            let bands = try rowBands(in: host, height: size.height)
+            let bands = try rowBands(in: host, height: size.height, count: 17)
             let columnX = try #require(bands.map(\.x).min())
             let secondColumnX = try #require(bands.map(\.x).max())
             #expect(secondColumnX - columnX > 100)
@@ -58,6 +58,42 @@ struct AlbumTrackListLayoutTests {
                 secondColumnEnd > size.width - 20,
                 "second column ends at \(secondColumnEnd)"
             )
+        }
+    }
+
+    /// A side's position labels run as wide as its widest, "A10": the number
+    /// column takes that width, so the label stays on one line instead of
+    /// breaking into "A1" over "0".
+    @Test("A position wider than a digit stays on one line")
+    func widePositionStaysOnOneLine() async throws {
+        var release = PreviewData.releaseDetail(albumId: "a-22")
+        let firstSide = release.trackGroups[0].tracks.count
+        #expect(firstSide == 10)
+        for index in release.trackGroups[0].tracks.indices {
+            release.trackGroups[0].tracks[index].positionText = "A\(index + 1)"
+        }
+        for index in release.tracks.indices.prefix(firstSide) {
+            release.tracks[index].positionText = "A\(index + 1)"
+        }
+
+        let size = NSSize(width: 800, height: 900)
+        try await withHostedTrackList(release: release, size: size) {
+            window,
+            host in
+            window.appearance = NSAppearance(named: .darkAqua)
+            try await SnapshotTestSupport.settle(host)
+
+            let bands = try rowBands(in: host, height: size.height, count: 19)
+            let pane = try await Pane.capture(
+                host,
+                size: size,
+                secondColumn: [],
+                secondColumnX: size.width
+            )
+            for band in bands {
+                let height = try pane.labelInkHeight(of: band)
+                #expect(height < 14, "a label's ink is \(height) points tall")
+            }
         }
     }
 
@@ -94,9 +130,11 @@ struct AlbumTrackListLayoutTests {
     /// A band per row. Every row keeps its loading spinner in the layout tree,
     /// opacity-toggled, so the hosted tree carries one `NSProgressIndicator`
     /// per row wherever the row was laid out.
-    private func rowBands(in host: NSView, height: CGFloat) throws
-        -> [RowBand]
-    {
+    private func rowBands(
+        in host: NSView,
+        height: CGFloat,
+        count: Int
+    ) throws -> [RowBand] {
         let indicators = SnapshotTestSupport.descendants(of: host)
             .filter { $0 is NSProgressIndicator }
         let bands = indicators.map { indicator -> RowBand in
@@ -107,7 +145,7 @@ struct AlbumTrackListLayoutTests {
                 bottom: host.isFlipped ? frame.maxY : height - frame.minY
             )
         }
-        #expect(bands.count == 17)
+        #expect(bands.count == count)
         return bands
     }
 
@@ -159,6 +197,37 @@ struct AlbumTrackListLayoutTests {
         /// up to a point short of the column's edge.
         func columnEnd(of bands: some Collection<RowBand>) throws -> CGFloat {
             try #require(bands.map(durationEnd).max())
+        }
+
+        /// How tall the ink of a row's position label stands: the leading
+        /// slot is centred on the row's spinner, and spans the row's 40
+        /// points.
+        func labelInkHeight(of band: RowBand) throws -> CGFloat {
+            let scale = CGFloat(image.pixelsWide) / image.size.width
+            let center = (band.top + band.bottom) / 2
+            let middle = (band.x + (band.bottom - band.top) / 2)
+            let firstRow = max(Int((center - 18) * scale), 0)
+            let lastRow = min(Int((center + 18) * scale), image.pixelsHigh - 1)
+            let firstColumn = max(Int((middle - 20) * scale), 0)
+            let lastColumn = min(
+                Int((middle + 20) * scale),
+                image.pixelsWide - 1
+            )
+            var inked: [Int] = []
+            for y in firstRow...lastRow {
+                for x in firstColumn...lastColumn {
+                    guard let pixel = image.colorAt(x: x, y: y) else {
+                        continue
+                    }
+                    if distance(pixel, background) > Self.inkThreshold {
+                        inked.append(y)
+                        break
+                    }
+                }
+            }
+            let top = try #require(inked.min())
+            let bottom = try #require(inked.max())
+            return CGFloat(bottom - top + 1) / scale
         }
 
         /// A row beside a second column may only be scanned as far as that

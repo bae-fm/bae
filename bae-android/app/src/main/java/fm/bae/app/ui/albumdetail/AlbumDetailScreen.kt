@@ -44,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
@@ -310,6 +311,9 @@ internal fun AlbumDetailContent(
         )
     }
 
+    val positionColumnWidth =
+        rememberPositionColumnWidth(selectedRelease?.tracks.orEmpty().map { it.positionText })
+
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(ThemeSpace.edge),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
@@ -342,7 +346,12 @@ internal fun AlbumDetailContent(
         if (selectedRelease != null) {
             item { releaseDownloadControl(selectedRelease) }
             item { AlbumActionButtons(callbacks) }
-            albumTrackGroups(selectedRelease, arrival?.trackIds.orEmpty().toSet(), playback, callbacks, context)
+            albumTrackGroups(
+                ReleaseTrackRows(selectedRelease, arrival?.trackIds.orEmpty().toSet(), positionColumnWidth),
+                playback,
+                callbacks,
+                context,
+            )
         }
     }
 }
@@ -445,13 +454,21 @@ private fun AlbumActionButtons(callbacks: AlbumDetailCallbacks) {
     }
 }
 
+/** The selected release's tracks as the list draws them: which are still
+ *  arriving from another device, and the position column every row shares. */
+private data class ReleaseTrackRows(
+    val release: BridgeRelease,
+    val arrivingTrackIds: Set<String>,
+    val positionColumnWidth: Dp,
+)
+
 private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
-    release: BridgeRelease,
-    arrivingTrackIds: Set<String>,
+    rows: ReleaseTrackRows,
     playback: AlbumPlaybackState,
     callbacks: AlbumDetailCallbacks,
     context: android.content.Context,
 ) {
+    val release = rows.release
     release.trackGroups.forEach { group ->
         val header = group.sideHeaderText(context)
         if (header.isNotEmpty()) {
@@ -470,7 +487,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
                         durationLabel = context.durationClockLabel(track.durationClock),
                         isCurrent = isCurrent,
                         isPlaying = playback.isPlaying,
-                        isArriving = track.id in arrivingTrackIds,
+                        isArriving = track.id in rows.arrivingTrackIds,
                     ),
                 callbacks =
                     TrackRowCallbacks(
@@ -484,6 +501,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
                         onPlayNext = { callbacks.onPlayTrackNext(track.id) },
                         onAddToQueue = { callbacks.onAddTrackToQueue(track.id) },
                     ),
+                positionColumnWidth = rows.positionColumnWidth,
             )
         }
         // The header shows the total, so only a multi-side release lists each
