@@ -805,9 +805,21 @@ fn layout_lengths(
     tracks: &[DbTrack],
 ) -> Result<Vec<u64>, LibraryError> {
     Ok(match source {
-        crate::import::Catalog::MusicBrainz => stored_track_lengths(tracks).unwrap_or_default(),
+        crate::import::Catalog::MusicBrainz => measured_track_lengths_or_whole(tracks),
         crate::import::Catalog::Discogs => stored_track_lengths(tracks)?,
         other => unreachable!("nothing fetches documents from {}", other.as_str()),
+    })
+}
+
+/// The stored lengths a document that states its own track times is laid out
+/// against, or none — the whole release, which is what a single-medium release
+/// is either way — when a track was never measured. Laying it out whole is
+/// logged with the track that went unmeasured.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) fn measured_track_lengths_or_whole(tracks: &[DbTrack]) -> Vec<u64> {
+    stored_track_lengths(tracks).unwrap_or_else(|error| {
+        warn!("laying the document out against the whole release: {error}");
+        Vec::new()
     })
 }
 

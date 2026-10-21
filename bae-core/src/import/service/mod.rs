@@ -374,10 +374,28 @@ fn network_changes(root: &Path, recorded: &[(String, i64)]) -> Option<Vec<PathBu
             changes.push(directory);
             continue;
         }
-        let listing = std::fs::read_dir(root).ok()?;
+        let listing = match std::fs::read_dir(root) {
+            Ok(listing) => listing,
+            Err(error) => {
+                warn!(
+                    "can't list {} against what the last scan saw, so it is walked: {error}",
+                    root.display()
+                );
+                return None;
+            }
+        };
         let mut present = HashSet::new();
         for entry in listing {
-            let path = entry.ok()?.path();
+            let path = match entry {
+                Ok(entry) => entry.path(),
+                Err(error) => {
+                    warn!(
+                        "can't read an entry of {} against what the last scan saw, so it is walked: {error}",
+                        root.display()
+                    );
+                    return None;
+                }
+            };
             if path.is_dir() {
                 present.insert(path);
             } else if crate::import::folder_scanner::is_audio_file(&path) {

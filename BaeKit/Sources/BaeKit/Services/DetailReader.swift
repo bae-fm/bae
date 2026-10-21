@@ -1,4 +1,7 @@
 import Foundation
+import os.log
+
+private let logger = Logger.bae("DetailReader")
 
 /// One value a detail read delivered: the id it was read for, and that
 /// item's detail, or `nil` once no such item exists.
@@ -94,12 +97,17 @@ public final class DetailReader<Value: Sendable> {
     /// Stop showing anything, keeping the read open for the next `show`: it
     /// reads nothing until then.
     public func clear() {
-        guard id != nil else { return }
+        guard let shown = id else { return }
         id = nil
         do {
             try query?.setId(nil)
         }
         catch {
+            // A read that can no longer be pointed anywhere has ended; the
+            // next `show` opens another.
+            logger.warning(
+                "detail read showing \(shown) could not be cleared, so it is closed: \(error.localizedDescription)"
+            )
             closeRead()
         }
     }
@@ -138,7 +146,15 @@ public final class DetailReader<Value: Sendable> {
                 }
                 catch {
                     guard let self else { return }
-                    if let id = self.id { self.onError(id, error) }
+                    if let id = self.id {
+                        self.onError(id, error)
+                    }
+                    else {
+                        // Nothing is shown to report it on; the read goes on.
+                        logger.warning(
+                            "detail read failed while showing nothing: \(error.localizedDescription)"
+                        )
+                    }
                 }
             }
         }

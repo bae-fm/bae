@@ -1,5 +1,6 @@
 package fm.bae.app.data
 
+import fm.bae.app.BaeLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -13,6 +14,8 @@ import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeWorkDetail
+
+private val logger = BaeLogger("bae.LibraryQueryStores")
 
 internal const val SEARCH_DEBOUNCE_MS = 300L
 
@@ -60,6 +63,7 @@ internal class DetailQueryStore<Value>(
         // activation opens another.
         runCatching { current.setId(null) }.onFailure { error ->
             if (error !is BridgeException) throw error
+            logger.warning("detail read showing $value could not be cleared, so it is closed", error)
             closeRead()
         }
     }
@@ -101,6 +105,9 @@ internal class DetailQueryStore<Value>(
                 reading = false
             } else if (parameter != null) {
                 mutableState.value = mutableState.value.copy(error = error)
+            } else {
+                // Nothing is shown to report it on; the read goes on.
+                logger.warning("detail read failed while showing nothing", error)
             }
         }
     }

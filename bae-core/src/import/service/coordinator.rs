@@ -243,11 +243,25 @@ impl ImportService {
                                     }
                                 };
                                 let answer_root = checked_root.clone();
-                                let changes = tokio::task::spawn_blocking(move || {
+                                let changes = match tokio::task::spawn_blocking(move || {
                                     network_changes(&answer_root, &recorded)
                                 })
                                 .await
-                                .unwrap_or(None);
+                                {
+                                    Ok(changes) => changes,
+                                    Err(error) if error.is_panic() => {
+                                        std::panic::resume_unwind(error.into_panic())
+                                    }
+                                    // The runtime is shutting down under the
+                                    // check; nothing is left to ask.
+                                    Err(error) => {
+                                        debug!(
+                                            "the check of {} ended unfinished: {error}",
+                                            checked_root.display()
+                                        );
+                                        return;
+                                    }
+                                };
                                 if changes.as_ref().is_some_and(Vec::is_empty) {
                                     debug!(
                                         "network folder {} is as the last scan left it",

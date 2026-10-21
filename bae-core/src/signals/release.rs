@@ -40,7 +40,7 @@ pub(crate) async fn resolve_release_identity(
     // The lengths a pick of this release is laid out against, so a document
     // is read against the discs these tracks are; a release with a track
     // nothing measured is read whole, as a MusicBrainz pick of it is.
-    let track_lengths_ms = crate::library::stored_track_lengths(&tracks).unwrap_or_default();
+    let track_lengths_ms = crate::library::measured_track_lengths_or_whole(&tracks);
     // Original paths come from bae's local files or coven's attached originals.
     // A cloud-only release has no originals here, so yields no paths or disc ID.
     let mut documents = Vec::new();

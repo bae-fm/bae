@@ -9,6 +9,8 @@
 
 use std::path::Path;
 
+use tracing::warn;
+
 /// How often a watched folder on a network volume is checked, and so how long
 /// a change made there from elsewhere can go unnoticed. Named here because the list tells the user
 /// this number and it must be the one the coordinator actually uses.
@@ -78,7 +80,18 @@ pub(crate) async fn volume_kind(path: &Path) -> VolumeKind {
 /// rounding to the second would hide every change made in the same second as
 /// the walk that recorded it, which is a change nothing would then notice.
 pub(crate) fn directory_modified_at(path: &Path) -> Option<i64> {
-    let modified = std::fs::metadata(path).ok()?.modified().ok()?;
+    let modified = match std::fs::metadata(path).and_then(|metadata| metadata.modified()) {
+        Ok(modified) => modified,
+        // A directory that is gone has no time; the caller counts it touched.
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return None,
+        Err(error) => {
+            warn!(
+                "can't read when {} was last touched, so it counts as touched: {error}",
+                path.display()
+            );
+            return None;
+        }
+    };
     match modified.duration_since(std::time::UNIX_EPOCH) {
         Ok(since) => i64::try_from(since.as_nanos()).ok(),
         // A timestamp before 1970 is nothing a scan should reason about, but it
