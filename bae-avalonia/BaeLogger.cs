@@ -62,16 +62,8 @@ internal static class BaeDiagnostics
     /// Build the Datadog telemetry config the sink is constructed from. Local
     /// logging stays in <see cref="BaeLogger"/> (Trace).
     /// </summary>
-    internal static BridgeDiagnosticsConfig BridgeConfig()
-    {
-        var appVersion = AppAssembly.GetName().Version;
-        if (appVersion is null)
-        {
-            Trace.TraceError("Assembly version is missing; diagnostics disabled");
-            return new BridgeDiagnosticsConfig.Disabled();
-        }
-
-        return NativeBae.DiagnosticsConfig(
+    internal static BridgeDiagnosticsConfig BridgeConfig() =>
+        NativeBae.DiagnosticsConfig(
             AppMetadata.ConfiguredString("BaeDatadogSite"),
             AppMetadata.ConfiguredString("BaeDatadogClientToken"),
             // The source tag is what separates the platforms in the telemetry
@@ -80,10 +72,10 @@ internal static class BaeDiagnostics
             OperatingSystem.IsWindows() ? "windows" : "linux",
             "bae",
             AppMetadata.ConfiguredString("BaeEnvironment"),
-            appVersion.ToString(),
+            AppAssembly.GetName().Version?.ToString(),
             NativeBae.SupportsOAuthProviders() ? "bae" : "baeium",
-            AppMetadata.ConfiguredString("BaeGitCommit"));
-    }
+            AppMetadata.ConfiguredString("BaeGitCommit"),
+            Logger);
 
     internal static async System.Threading.Tasks.Task Flush(BridgeHost host)
     {

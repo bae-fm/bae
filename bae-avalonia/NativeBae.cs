@@ -35,8 +35,11 @@ internal static class NativeBae
         BaeBridgeMethods.ConfigureDiagnostics(config);
 
     /// <summary>
-    /// Build the Datadog telemetry config the sink is constructed from. Local
-    /// logging stays in <see cref="BaeLogger"/>.
+    /// Build the Datadog telemetry config the sink is constructed from. Telemetry
+    /// needs every build value — the Datadog site and client token, the
+    /// environment, the app version and the git commit — so a build missing any
+    /// sends nothing, and the log says which were missing, as Android's crash
+    /// reporting does. Local logging stays in <see cref="BaeLogger"/>.
     /// </summary>
     internal static BridgeDiagnosticsConfig DiagnosticsConfig(
         string? datadogSite,
@@ -44,21 +47,33 @@ internal static class NativeBae
         string source,
         string service,
         string? environment,
-        string appVersion,
+        string? appVersion,
         string edition,
-        string? gitCommit) =>
-        datadogSite is not null && clientToken is not null
-            ? new BridgeDiagnosticsConfig.Enabled(new BridgeDatadogDiagnosticsConfig(
-                datadogSite,
-                clientToken,
-                source,
-                new BridgeAppDiagnosticMetadata(
-                    service,
-                    environment ?? string.Empty,
-                    appVersion,
-                    edition,
-                    gitCommit ?? string.Empty)))
-            : new BridgeDiagnosticsConfig.Disabled();
+        string? gitCommit,
+        BaeLogger logger)
+    {
+        if (datadogSite is null || clientToken is null || environment is null || appVersion is null || gitCommit is null)
+        {
+            var missing = new (string Name, string? Value)[]
+            {
+                ("BaeDatadogSite", datadogSite),
+                ("BaeDatadogClientToken", clientToken),
+                ("BaeEnvironment", environment),
+                ("the assembly version", appVersion),
+                ("BaeGitCommit", gitCommit),
+            }.Where(value => value.Value is null).Select(value => value.Name);
+            logger.Warning(
+                $"Telemetry disabled: not configured at build time (missing {string.Join(", ", missing)}). " +
+                "Nothing will be sent.");
+            return new BridgeDiagnosticsConfig.Disabled();
+        }
+
+        return new BridgeDiagnosticsConfig.Enabled(new BridgeDatadogDiagnosticsConfig(
+            datadogSite,
+            clientToken,
+            source,
+            new BridgeAppDiagnosticMetadata(service, environment, appVersion, edition, gitCommit)));
+    }
 
     /// <summary>
     /// Build the process-lifetime host registrations around the telemetry sink
