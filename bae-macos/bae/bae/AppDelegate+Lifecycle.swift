@@ -88,7 +88,21 @@ extension AppDelegate {
         }
         startWatchingForKeychainUnlock()
         observeDeviceWake()
-        loadInitialState(canOpenLibraries: keyringReady)
+        #if BAE_DEV_RESET
+            if let profilePath = AppRuntime.devResetProfilePath(
+                arguments: CommandLine.arguments
+            ) {
+                runDevReset(
+                    profilePath: profilePath,
+                    keyringReady: keyringReady
+                )
+            }
+            else {
+                loadInitialState(canOpenLibraries: keyringReady)
+            }
+        #else
+            loadInitialState(canOpenLibraries: keyringReady)
+        #endif
         showMainWindow()
         #if !DEBUG
             requiredApplicationServices.updaterController.updater

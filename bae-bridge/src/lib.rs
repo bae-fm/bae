@@ -9,6 +9,8 @@ extern crate bae_mirror;
 mod android_tls;
 mod app_dir;
 mod bridge_utils;
+#[cfg(all(feature = "dev-reset", unix))]
+mod dev_reset;
 mod handle;
 mod host;
 mod init;
@@ -23,6 +25,8 @@ mod types;
 mod utils;
 
 pub use app_dir::*;
+#[cfg(all(feature = "dev-reset", unix))]
+pub use dev_reset::*;
 pub use handle::*;
 pub use host::*;
 pub use init::*;

@@ -26,6 +26,8 @@ pub mod config;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod cue_flac;
 pub mod db;
+#[cfg(all(feature = "dev-reset", unix))]
+pub mod dev_reset;
 pub mod diagnostics;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod discogs;

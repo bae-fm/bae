@@ -77,6 +77,9 @@ desktop = ["cast", "dep:bae-desktop"]
 # An in-memory keychain a debug app can start its host with, so UI tests never
 # touch the login keychain. Debug macOS builds turn it on.
 test-keyring = ["bae-core/test-utils"]
+# A debug app's dev reset, which recreates its library from a profile file.
+# Debug macOS builds turn it on.
+dev-reset = ["bae-core/dev-reset"]
 
 [lints]
 workspace = true

@@ -43,6 +43,23 @@ enum AppRuntime: Equatable {
         }
     #endif
 
+    #if BAE_DEV_RESET
+        /// The profile `--dev-reset <profile path>` names: the launch wipes
+        /// this Mac's libraries and recreates one from it. `nil` without the
+        /// argument.
+        static func devResetProfilePath(arguments: [String]) -> String? {
+            guard let flag = arguments.firstIndex(of: "--dev-reset") else {
+                return nil
+            }
+            let value = arguments.index(after: flag)
+            precondition(
+                value < arguments.endIndex,
+                "--dev-reset needs a profile path"
+            )
+            return arguments[value]
+        }
+    #endif
+
     #if DEBUG
         static func createsLibraryForUITesting(
             environment: [String: String]

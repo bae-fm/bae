@@ -21,7 +21,7 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
     echo "  build: BAE_BRIDGE_FEATURES=desktop $0"
     echo ""
     echo "  A debug build adds 'test-keyring', the in-memory keychain UI tests"
-    echo "  start the app with."
+    echo "  start the app with, and 'dev-reset', the --dev-reset launch argument."
     exit 0
 fi
 
@@ -41,12 +41,15 @@ fi
 # The bridge's cargo features, from which the Swift #if conditions are derived.
 BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES:-oauth-providers,cloudkit,desktop}"
 # UI tests launch the debug app with an in-memory keychain, so they never touch
-# the login keychain; a release build has no such keychain.
+# the login keychain, and a developer resets the debug app's library with
+# --dev-reset; a release build has neither.
 if [[ "$CARGO_PROFILE" == "debug" ]]; then
-    case ",$BAE_BRIDGE_FEATURES," in
-        *,test-keyring,*) ;;
-        *) BAE_BRIDGE_FEATURES="$BAE_BRIDGE_FEATURES,test-keyring" ;;
-    esac
+    for debug_feature in test-keyring dev-reset; do
+        case ",$BAE_BRIDGE_FEATURES," in
+            *,"$debug_feature",*) ;;
+            *) BAE_BRIDGE_FEATURES="$BAE_BRIDGE_FEATURES,$debug_feature" ;;
+        esac
+    done
 fi
 export BAE_BRIDGE_FEATURES
 
@@ -60,6 +63,9 @@ case ",$BAE_BRIDGE_FEATURES," in
 esac
 case ",$BAE_BRIDGE_FEATURES," in
     *,test-keyring,*) SWIFT_CONDITIONS="$SWIFT_CONDITIONS BAE_TEST_KEYRING" ;;
+esac
+case ",$BAE_BRIDGE_FEATURES," in
+    *,dev-reset,*) SWIFT_CONDITIONS="$SWIFT_CONDITIONS BAE_DEV_RESET" ;;
 esac
 SWIFT_CONDITIONS="$(echo "$SWIFT_CONDITIONS" | xargs)"
 
