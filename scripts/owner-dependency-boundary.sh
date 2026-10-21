@@ -54,9 +54,7 @@ capability_types=(
   AudioDataReader
   AudioOutput
   AudioStream
-  CancellationRegistry
   CancellationToken
-  CandidateDriver
   CandidateRuntime
   CastController
   ConfigHandle
@@ -68,75 +66,51 @@ capability_types=(
   DiscogsClient
   DiscogsValidationObserver
   DiskImageCache
-  DownloadQueue
-  EncryptionService
-  ExactCloudHome
   ExtractionService
   ExtractionServiceHandle
   FetchArbiter
   FileStream
   FolderWatcher
   Handle
-  IdProvider
   IdSource
   IdSourceRef
-  IdentifyService
   IdentifyServiceHandle
-  ImportQueue
   ImportService
   ImportServiceHandle
   JoinHandle
-  KeyService
   LibraryManager
   LocalSessionManager
   LruCache
-  MasterCache
   McpServerController
   McpTokenProvider
   MediaUrlProvider
   MonotonicClock
   Mutex
   Notify
-  OAuthClient
   OnceLock
-  OutputQueue
   PcmSource
   PlaybackQueue
   PlaybackService
-  QueueSweepHandle
-  ReleaseCache
   ReleaseQueue
-  ReleaseUploadObserver
   RemoteImageCache
-  RemoteUploadQueue
   Renderer
   RendererChannel
-  RendererService
   RootRemovalBackend
   RtspConnection
   Runtime
-  RwLock
   SaveService
   Sender
-  SequentialIdProvider
-  SequentialUuidProvider
   ServiceDaemon
   SessionCache
   SparseStreamingBuffer
   SrpClient
-  StorageManager
   StoreDir
-  StoreKeys
   SubsonicPasswordProvider
   SubsonicServerController
   SyncController
-  SyncManager
   TrackStream
   TransferService
-  UiEventBus
-  UploadSessions
   UploadThroughput
-  UuidProvider
   WatchBackend
   Write
   WriteAvioContext
