@@ -112,7 +112,7 @@ async fn test_local_import() {
         .await
         .unwrap()
         .iter()
-        .all(|file| !file.attached));
+        .all(|file| !file.stored));
     // A local release's original paths live in bae's device-local table.
     let files = library_manager
         .get_files_for_release(&release_id)
@@ -269,7 +269,7 @@ async fn run_import_with_cover_test() {
         .await
         .unwrap()
         .iter()
-        .all(|file| !file.attached));
+        .all(|file| !file.stored));
     let local_files = library_manager
         .get_files_for_release(&release_id)
         .await

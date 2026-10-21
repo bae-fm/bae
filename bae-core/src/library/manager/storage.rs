@@ -5,9 +5,10 @@
 use super::*;
 
 impl LibraryManager {
-    /// The original path registered on this device, whether the file is local
-    /// or attached for upload. `Ok(None)` means there is no original here or no
-    /// such row; coven's cached copies expose no path. Database errors propagate.
+    /// The path of the original this device recorded for a file, whether or
+    /// not it has been uploaded. `Ok(None)` means there is no original here or
+    /// no such row; coven's cached copies expose no path. Database errors
+    /// propagate.
     ///
     /// For the callers that need the user's actual file — the DiscID re-read of the
     /// rip's artifacts — rather than coven's locality-aware byte read.
@@ -192,9 +193,7 @@ impl LibraryManager {
         let pin_states = self.page_pin_states(&raw_rows).await?;
         let originals = self
             .look_at_originals(crate::album_detail::recorded_originals(
-                raw_rows
-                    .iter()
-                    .flat_map(|row| &row.release.unattached_audio),
+                raw_rows.iter().flat_map(|row| &row.release.unstored_audio),
             ))
             .await?;
         let mut rows = Vec::with_capacity(raw_rows.len());
@@ -257,7 +256,7 @@ impl LibraryManager {
                 .windows
                 .iter()
                 .flat_map(|window| &window.rows)
-                .flat_map(|row| &row.release.unattached_audio),
+                .flat_map(|row| &row.release.unstored_audio),
         )
     }
 

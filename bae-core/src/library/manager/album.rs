@@ -154,7 +154,7 @@ impl LibraryManager {
                 crate::album_detail::recorded_originals(
                     raw.releases
                         .iter()
-                        .flat_map(|release| &release.unattached_audio),
+                        .flat_map(|release| &release.unstored_audio),
                 )
             })
             .unwrap_or_default()
@@ -323,7 +323,7 @@ impl LibraryManager {
             .look_at_originals(crate::album_detail::recorded_originals(
                 raw.releases
                     .iter()
-                    .flat_map(|release| &release.unattached_audio),
+                    .flat_map(|release| &release.unstored_audio),
             ))
             .await?;
         self.resolve_album_detail_with_covers(raw, covers, pinned, &originals)

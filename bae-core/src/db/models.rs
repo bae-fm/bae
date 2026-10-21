@@ -354,8 +354,8 @@ pub struct DbTrack {
 /// Holds enough of the original file's information to reconstruct the folder
 /// structure on export.
 ///
-/// Unattached files use the importing device's local path. Attached files are
-/// read through coven, which owns their originals, cache and cloud references.
+/// A file storage holds is read through coven, from its cache or storage. Any
+/// other file is read from this device's original, when it holds one.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbFile {
     pub id: String,
@@ -366,8 +366,8 @@ pub struct DbFile {
     /// The scan's complete facts for this physical source file. `None` for
     /// non-audio files.
     pub source_audio: Option<crate::album_detail::SourceAudioFile>,
-    /// Whether coven has attached bytes to this synced row.
-    pub attached: bool,
+    /// Whether the row names a file storage holds: its upload completed.
+    pub stored: bool,
     pub created_at: DateTime<Utc>,
 }
 
@@ -713,7 +713,7 @@ impl DbFile {
             file_size,
             content_type,
             source_audio: None,
-            attached: false,
+            stored: false,
             created_at: now,
         }
     }

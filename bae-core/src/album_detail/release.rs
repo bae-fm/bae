@@ -71,7 +71,7 @@ impl ReleaseSummary {
             pinned: ctx.pinned,
             storage_actions: available_storage_actions(
                 storage_state,
-                release_playability(&raw.unattached_audio, ctx.originals),
+                release_playability(&raw.unstored_audio, ctx.originals),
                 ctx.pinned,
                 ctx.has_cloud_home,
             ),
@@ -319,8 +319,8 @@ impl ReleaseDetail {
 
         let track_groups: Vec<TrackGroup> = crate::util::format::group_tracks_by_side(&tracks);
 
-        let remote = !raw.files.is_empty() && raw.files.iter().all(|file| file.attached);
-        let playability = release_playability(&raw.unattached_audio, ctx.originals);
+        let remote = !raw.files.is_empty() && raw.files.iter().all(|file| file.stored);
+        let playability = release_playability(&raw.unstored_audio, ctx.originals);
         let mut cover_files = Vec::new();
         let files: Vec<FileDetail> = raw
             .files
@@ -394,7 +394,7 @@ impl ReleaseDetail {
                 any_file_id: files.first().map(|f| f.id.clone()),
                 file_count,
                 total_size,
-                unattached_audio: raw.unattached_audio,
+                unstored_audio: raw.unstored_audio,
             },
             ctx,
         );
@@ -465,7 +465,7 @@ mod release_edit_display_tests {
                 created_at: now,
             }],
             records: Vec::new(),
-            unattached_audio: Vec::new(),
+            unstored_audio: Vec::new(),
         };
 
         assert!(matches!(

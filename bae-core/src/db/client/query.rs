@@ -503,7 +503,7 @@ pub(super) fn row_to_release_summary(
 ) -> rusqlite::Result<DbReleaseSummary> {
     let id: String = row.get("release_id")?;
     Ok(DbReleaseSummary {
-        unattached_audio: super::read::unattached_audio_in_row(sql, &id)?,
+        unstored_audio: super::read::unstored_audio_in_row(sql, &id)?,
         id,
         album_id: row.get("album_id")?,
         media: super::pressing_columns::read_media(row, "release_media")?,
@@ -673,9 +673,10 @@ pub(super) fn storage_order_by(sort: &StorageSortCriterion) -> (String, bool) {
     }
 }
 
-/// All of a release's files have been attached for sharing. The upload queue
-/// separately reports whether their transfer is still pending.
-pub(super) const RELEASE_R_ATTACHED: &str =
+/// Every file of a release is in storage: each row names its file, which a
+/// row does only once the file's upload completed. A release this device is
+/// still uploading isn't; coven's upload queue reports it.
+pub(super) const RELEASE_R_STORED: &str =
     "EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id) AND \
      NOT EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id AND f.hash IS NULL)";
 
@@ -706,7 +707,7 @@ pub(super) fn storage_page_query(
             r.id AS release_id, \
             r.album_id, \
             r.media AS release_media, \
-            ({RELEASE_R_ATTACHED}) AS remote, \
+            ({RELEASE_R_STORED}) AS remote, \
             (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id, \
             COALESCE(( \
                 SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id \
@@ -737,8 +738,8 @@ pub(super) fn storage_page_query(
 pub(super) fn storage_filter_where(filter: StorageFilter, uploading_count: usize) -> String {
     match filter {
         StorageFilter::All => String::new(),
-        StorageFilter::Remote => format!("WHERE ({RELEASE_R_ATTACHED})"),
-        StorageFilter::Local => format!("WHERE NOT ({RELEASE_R_ATTACHED})"),
+        StorageFilter::Remote => format!("WHERE ({RELEASE_R_STORED})"),
+        StorageFilter::Local => format!("WHERE NOT ({RELEASE_R_STORED})"),
         StorageFilter::Uploading if uploading_count == 0 => "WHERE 0".to_string(),
         StorageFilter::Uploading => {
             format!(

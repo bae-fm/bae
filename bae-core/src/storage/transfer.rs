@@ -217,7 +217,18 @@ impl ReleaseTransfer {
             return Err(LibraryError::Storage("Release has no files".to_string()));
         }
 
-        if files.iter().all(|file| file.attached) != action_expects_remote(self.action) {
+        // Pin, unpin and detach act on files attached in coven, whether still
+        // uploading from here or stored; an upload needs every file unattached.
+        let attached = self
+            .library_manager
+            .attached_release_file_count(&files)
+            .await?;
+        let expected = if action_expects_attached(self.action) {
+            files.len()
+        } else {
+            0
+        };
+        if attached != expected {
             return Err(LibraryError::Storage(
                 wrong_state_error(self.action).to_string(),
             ));
@@ -307,7 +318,7 @@ where
     (rx, task)
 }
 
-fn action_expects_remote(action: ReleaseStorageAction) -> bool {
+fn action_expects_attached(action: ReleaseStorageAction) -> bool {
     matches!(
         action,
         ReleaseStorageAction::Pin | ReleaseStorageAction::Unpin | ReleaseStorageAction::DetachAudio

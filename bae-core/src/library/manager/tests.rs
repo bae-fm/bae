@@ -120,6 +120,15 @@ async fn release_files(manager: &LibraryManager, release_id: &str) -> Vec<DbFile
         .unwrap()
 }
 
+/// How many of a release's files this device has attached in coven: still
+/// uploading from here, or stored.
+async fn attached_file_count(manager: &LibraryManager, release_id: &str) -> usize {
+    manager
+        .attached_release_file_count(&release_files(manager, release_id).await)
+        .await
+        .unwrap()
+}
+
 async fn album_releases(manager: &LibraryManager, album_id: &str) -> Vec<DbRelease> {
     manager
         .database

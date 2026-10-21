@@ -537,9 +537,7 @@ impl LibraryManager {
         let has_cloud_home = self.has_cloud_home();
         let pinned = self.release_pinned(raw.any_file_id.as_deref()).await?;
         let originals = self
-            .look_at_originals(crate::album_detail::recorded_originals(
-                &raw.unattached_audio,
-            ))
+            .look_at_originals(crate::album_detail::recorded_originals(&raw.unstored_audio))
             .await?;
         Ok(Some(ReleaseStorageSummary::from_raw(
             raw,
@@ -576,9 +574,7 @@ impl LibraryManager {
         projection
             .context
             .as_ref()
-            .map(|context| {
-                crate::album_detail::recorded_originals(&context.detail.unattached_audio)
-            })
+            .map(|context| crate::album_detail::recorded_originals(&context.detail.unstored_audio))
             .unwrap_or_default()
     }
 
@@ -672,9 +668,7 @@ impl LibraryManager {
             .release_pinned(raw.files.first().map(|file| file.id.as_str()))
             .await?;
         let originals = self
-            .look_at_originals(crate::album_detail::recorded_originals(
-                &raw.unattached_audio,
-            ))
+            .look_at_originals(crate::album_detail::recorded_originals(&raw.unstored_audio))
             .await?;
         Ok(Some(self.resolve_release_detail_context(
             release_id,
@@ -862,8 +856,8 @@ async fn project_file_metadata(
         if !file.content_type.is_audio() {
             continue;
         }
-        // Read tags from this device's original, either a local path or an
-        // attached source. Coven's cached copies expose no filesystem path.
+        // Read tags from this device's original. Coven's cached copies expose
+        // no filesystem path.
         let path = database
             .external_file(&file.id)
             .await?

@@ -576,8 +576,11 @@ impl Database {
                         crate::import::service::PreparedImportSource::Local(original) => {
                             insert_local_file_row(tx, &prepared.row, &original)?;
                         }
-                        crate::import::service::PreparedImportSource::Shared(original) => {
-                            insert_external_file_row(tx, &prepared.row, original)?;
+                        crate::import::service::PreparedImportSource::Shared {
+                            original,
+                            attachment,
+                        } => {
+                            insert_external_file_row(tx, &prepared.row, &original, attachment)?;
                         }
                     }
                 }

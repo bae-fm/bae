@@ -769,15 +769,25 @@ Ana imports her CD rip to her laptop only. The release is local: its files are
 her own, at their path on her laptop. Its rows sync like any release's, so
 Ben's phone shows the album, its tracks and its cover, but can't play it. Ana
 moves it to the cloud. bae attaches each file to its `release_files` row, and
-coven uploads it from where it sits; from then on every device can play it.
-Ana's files stay where they are, untouched.
+coven uploads it from where it sits; once every file is in storage every device
+can play it. Ana's files stay where they are, untouched.
 
-A local release's audio stays on the importing device. Its paths sit in the
+**Where a file plays from.** Each device records the originals it holds in the
 device-local table `local_release_files`, one row per file with its path and
-modification time, not in the synced rows. Attaching a file to a synced row
-queues its upload in the same write
-([coven §17.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#172-attaching-a-file)),
-and uploading is the person's choice. The rows sync anyway, so every device
+modification time: the person's file it imported, or the copy a detach made
+(§4.4). These paths never leave the device. A row in `release_files` names its
+file only once storage holds it
+([coven §17.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#172-attaching-a-file)).
+So a device reads each release file by one rule:
+
+- the row names a stored file: through coven, from the cache or storage;
+- otherwise, this device holds an original: from that original, whether or
+  not it is uploading;
+- otherwise the file isn't here. Another device holds it, keeping it local or
+  still uploading it, and this device can't tell which.
+
+A release is *uploaded* once every one of its files' rows names its file.
+Until then it is local, on every device. The rows sync anyway, so every device
 knows what the household owns, and a rating or playlist entry pointing at a
 local release's track points at a row every device can read
 ([coven §15.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#153-references-stay-readable)).
@@ -790,28 +800,35 @@ uploading. Waiting files draw no progress bar; a bar appears only while a
 file's bytes are moving.
 
 **Uploading attaches the audio.** Moving a release to the cloud attaches every
-one of its files in one write, and the same write removes their
-`local_release_files` rows. A release is never half attached. Before that
-write, bae checks each file still has the size and modification time it
-recorded; a file that changed since import refuses the upload. The rows
-describe the file as imported, and a changed file would give every device audio
-that doesn't match them.
+one of its files in one write. The attachment is pending on this device: coven
+queues each upload, and the transaction that completes one writes that file
+into its row, file by file. The `local_release_files` rows stay, so this device
+keeps playing the release from its originals while it uploads; the upload list
+shows it uploading, and other devices see it local until its last file lands.
+A release is never half attached. Before that write, bae checks each file still
+has the size and modification time it recorded; a file that changed since
+import refuses the upload. The rows describe the file as imported, and a
+changed file would give every device audio that doesn't match them.
 
 **Detaching keeps local playback.** Two actions take a release's audio back off
-its rows. Each clears the attachment of every file and records this device's
-path for it in `local_release_files`, in one write, so the release plays from
-this device's disk the moment the write lands:
+its rows. Each clears the attachment of every file in one write, so the
+release plays from this device's disk the moment the write lands:
 
-- **Cancelling an upload** while any of its files is still queued puts the
-  release back at its original paths. The originals must still be unchanged.
+- **Cancelling an upload** while any of its files is still queued. Clearing a
+  queued file abandons its pending attachment, and coven retires its upload;
+  clearing one already stored takes it off its row. The release plays from its
+  originals again, which must still be unchanged. coven records each abandoned
+  attachment; bae dismisses those at once, since the person asked for it.
 - **Making a release local again** (§4.4) copies its files into a folder the
-  person picks, then points the release at the copies.
+  person picks, then, in the same write that clears them, records the copies
+  in `local_release_files`.
 
 Other devices again show the release but can't play it. What already reached
 storage stays until nothing refers to it; coven then deletes it
 ([coven §17.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#178-deleting-stored-files)).
 
-- **A cloud import** (§3.7) attaches its files in the same write as its rows.
+- **A cloud import** (§3.7) attaches its files in the same write as its rows,
+  and records their originals as a local import does.
 - **Uploads queue.** Files go up three at a time by default, a setting from
   one to eight. The queue can be paused, and stays paused across restarts; a
   paused upload keeps its place.
@@ -1961,7 +1978,7 @@ Beside them, one device-local table:
 
 | Table | One row per |
 |---|---|
-| `local_release_files` | file of a local release on this device: its path and modification time (§4.2). Attaching the file deletes the row in the same write; detaching it writes one |
+| `local_release_files` | the original this device holds of a release file: its path and modification time (§4.2). Importing writes it; making the release local again rewrites it to the copy; attaching leaves it |
 
 Whether a release is local or uploaded is not a column: it is whether its files
 are attached.

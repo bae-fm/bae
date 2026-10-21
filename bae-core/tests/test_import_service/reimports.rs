@@ -110,10 +110,12 @@ async fn repeated_imports_keep_independent_copies() {
         }
         if matches!(destination, ImportDestination::Remote { .. }) {
             assert_eq!(f.library_manager.drain_uploads_expecting_work().await.unwrap(), 1);
-            assert!(f.db.get_files_for_release(&id).await.unwrap().iter().all(|file| file.attached));
+            assert!(f.db.get_files_for_release(&id).await.unwrap().iter().all(|file| file.stored));
         } else {
             assert_release_has_external_ref(&f, &id).await;
         }
+        // Rows as they stand once any upload landed.
+        let files = f.db.get_files_for_release(&id).await.unwrap();
         copies.push((release, tracks, files));
     }
     let hash = copies[0].0.content_hash.as_ref().unwrap();
@@ -159,7 +161,8 @@ async fn a_remote_import_without_a_cloud_connection_queues_its_uploads() {
     .expect("a Remote import commits with no cloud connected");
 
     assert!(f.db.find_release_by_id(&release_id).await.unwrap().is_some());
-    assert!(f.db.get_files_for_release(&release_id).await.unwrap().iter().all(|file| file.attached));
+    // Each row names its file only once its upload completes.
+    assert!(f.db.get_files_for_release(&release_id).await.unwrap().iter().all(|file| !file.stored));
     let outbox = f.library_manager.outbox_snapshot().await.unwrap();
     assert!(
         outbox

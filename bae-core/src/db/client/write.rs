@@ -464,30 +464,47 @@ fn with_file_row_params<T>(
     })
 }
 
-/// Insert and register a user-owned release file while its content hash stays
-/// inside Coven. The row, hash, source path, and import graph share the caller's
-/// transaction.
+/// Insert a release file row that attaches the person's original for upload,
+/// and record that original on this device: until the upload completes the row
+/// names no file, and this device plays the file from its original.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn insert_external_file_row(
     conn: &SqlContext<'_, '_>,
     file: &DbFile,
-    original: coven::PreparedUserFile,
+    original: &coven::UserFile,
+    attachment: coven::PreparedUserFile,
 ) -> Result<(), DbError> {
     with_file_row_params(file, |params| {
         conn.insert_user_file(
             crate::sync::RELEASE_FILES_NAMESPACE,
             file.id.as_str(),
-            original,
+            attachment,
             INSERT_RELEASE_FILE_SQL,
             params,
         )
         .map_err(DbError::from)
-    })
+    })?;
+    record_original_on(conn, file, original)
 }
 
-/// Keep an unattached original on this device alongside its synced file row.
+/// Insert a release file row whose original stays on this device, not
+/// attached for upload.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn insert_local_file_row(
+    conn: &SqlContext<'_, '_>,
+    file: &DbFile,
+    original: &coven::UserFile,
+) -> Result<(), DbError> {
+    with_file_row_params(file, |params| {
+        conn.execute(INSERT_RELEASE_FILE_SQL, params)
+            .map_err(DbError::from)
+    })?;
+    record_original_on(conn, file, original)
+}
+
+/// Record on this device the original a release file was imported from.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn record_original_on(
     conn: &SqlContext<'_, '_>,
     file: &DbFile,
     original: &coven::UserFile,
@@ -504,10 +521,6 @@ pub(super) fn insert_local_file_row(
             file.id
         )));
     }
-    with_file_row_params(file, |params| {
-        conn.execute(INSERT_RELEASE_FILE_SQL, params)
-            .map_err(DbError::from)
-    })?;
     conn.execute(
         "INSERT INTO local_release_files (file_id, path, modified_at) VALUES (?, ?, ?)",
         params![

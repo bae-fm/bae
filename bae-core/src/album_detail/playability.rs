@@ -1,28 +1,26 @@
 //! Whether this device can play a release now, decided from what the library
 //! records it holding and what its disk has said about those originals.
 
-use crate::db::{DbUnattachedAudio, RecordedOriginal};
+use crate::db::{DbUnstoredAudio, RecordedOriginal};
 use std::collections::HashMap;
 
 /// Whether this device can play a release now, and why not.
 ///
-/// Decided from this device's own facts: an attached release is read through
-/// coven (from this device's source, its cache, or storage), so it counts as
-/// playable here; whether storage has its bytes yet is found when it plays,
-/// which reports an upload still under way.
+/// Decided from this device's own facts: a file storage holds is read through
+/// coven (from its cache or storage), so it counts as playable here; any other
+/// file plays from this device's original, while it uploads too.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReleasePlayability {
-    /// Its audio is attached, or it's a local release whose originals are on
-    /// this device and unchanged.
+    /// Each audio file is in storage, or its original is on this device and
+    /// unchanged.
     Playable,
-    /// A local release imported on another device: its audio stays there
-    /// until that device uploads it.
+    /// Audio another device holds: it stays there until that device's upload
+    /// of it completes.
     NotUploaded,
-    /// A local release imported on this device whose original files are gone
-    /// or changed since import.
+    /// Audio whose originals on this device are gone or changed since import.
     OriginalMissing,
-    /// A local release imported on this device whose originals the disk has
-    /// not answered for yet.
+    /// Audio whose originals on this device the disk has not answered for
+    /// yet.
     CheckingOriginals,
 }
 
@@ -58,15 +56,15 @@ impl FromIterator<(RecordedOriginal, OriginalOnDisk)> for OriginalsSeen {
 }
 
 /// The originals the library records this device holding among
-/// `unattached_audio`: what the disk is asked about.
+/// `unstored_audio`: what the disk is asked about.
 pub(crate) fn recorded_originals<'a>(
-    unattached_audio: impl IntoIterator<Item = &'a DbUnattachedAudio>,
+    unstored_audio: impl IntoIterator<Item = &'a DbUnstoredAudio>,
 ) -> Vec<RecordedOriginal> {
-    unattached_audio
+    unstored_audio
         .into_iter()
         .filter_map(|audio| match audio {
-            DbUnattachedAudio::Original(original) => Some(original.clone()),
-            DbUnattachedAudio::Elsewhere => None,
+            DbUnstoredAudio::Original(original) => Some(original.clone()),
+            DbUnstoredAudio::Elsewhere => None,
         })
         .collect()
 }
@@ -77,15 +75,15 @@ pub(crate) fn recorded_originals<'a>(
 /// before a changed original, since only uploading it makes it playable here;
 /// a changed original is reported before one the disk hasn't answered for.
 pub(crate) fn release_playability(
-    unattached_audio: &[DbUnattachedAudio],
+    unstored_audio: &[DbUnstoredAudio],
     seen: &OriginalsSeen,
 ) -> ReleasePlayability {
     let mut changed = false;
     let mut unanswered = false;
-    for audio in unattached_audio {
+    for audio in unstored_audio {
         match audio {
-            DbUnattachedAudio::Elsewhere => return ReleasePlayability::NotUploaded,
-            DbUnattachedAudio::Original(original) => match seen.0.get(original) {
+            DbUnstoredAudio::Elsewhere => return ReleasePlayability::NotUploaded,
+            DbUnstoredAudio::Original(original) => match seen.0.get(original) {
                 Some(OriginalOnDisk::Unchanged) => {}
                 Some(OriginalOnDisk::Changed) => changed = true,
                 None => unanswered = true,

@@ -44,7 +44,7 @@ impl ReleaseStorageSummary {
         let storage_state = storage_state(raw.remote);
         let storage_actions = available_storage_actions(
             storage_state,
-            release_playability(&raw.unattached_audio, originals),
+            release_playability(&raw.unstored_audio, originals),
             pinned,
             has_cloud_home,
         );

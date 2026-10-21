@@ -17,7 +17,7 @@ impl Database {
             r.album_id, \
             a.title AS album_title, \
             r.media, \
-            ({RELEASE_R_ATTACHED}) AS remote, \
+            ({RELEASE_R_STORED}) AS remote, \
             (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id, \
             {artist_names} AS artist_names, \
             COALESCE(( \
@@ -90,7 +90,7 @@ impl Database {
         self.read(move |sql| {
             sql.query(
                 &format!("SELECT (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) \
-                     FROM releases r WHERE {RELEASE_R_ATTACHED}"),
+                     FROM releases r WHERE {RELEASE_R_STORED}"),
                 [],
                 |row| row.get::<_, Option<String>>(0),
             )

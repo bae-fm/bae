@@ -99,7 +99,8 @@ impl ReleaseName {
     }
 }
 
-/// Whether the release's audio files have been attached to coven for upload.
+/// Whether every file of the release is in storage, so other devices can play
+/// it.
 ///
 /// This is ORTHOGONAL to pinned-ness. Whether coven keeps a remote release's files
 /// pinned or evictable is a separate per-device cache property, carried alongside
@@ -107,9 +108,10 @@ impl ReleaseName {
 /// the bytes live" with "is a copy kept offline."
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReleaseStorageState {
-    /// Unattached files, playable from their originals on the importing device.
+    /// A file storage doesn't hold yet: the release plays from its originals
+    /// on the device that holds them, uploading or not.
     Local,
-    /// Attached files, read through coven while uploads and caching proceed.
+    /// Every file is in storage, read through coven's cache or storage.
     Remote,
 }
 

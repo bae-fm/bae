@@ -152,7 +152,7 @@ async fn upload_release_under_sync_loop(
 #[cfg(feature = "test-utils")]
 async fn wait_for_landed_upload(manager: &LibraryManager, release_id: &str) {
     wait_for_settled_uploads(manager, release_id).await;
-    assert!(release_files(manager, release_id).await.iter().all(|file| file.attached));
+    assert!(release_files(manager, release_id).await.iter().all(|file| file.stored));
 }
 
 #[cfg(feature = "test-utils")]
@@ -176,7 +176,12 @@ async fn insert_partially_uploaded_release(
     std::fs::remove_file(source_dir.join("b.flac")).unwrap();
     let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, 1);
-    assert!(release_files(manager, &release.id).await.iter().all(|file| file.attached));
+    // The uploaded file's row names it; the other's names none until its
+    // upload completes.
+    assert_eq!(
+        release_files(manager, &release.id).await.iter().filter(|file| file.stored).count(),
+        1
+    );
     release
 }
 

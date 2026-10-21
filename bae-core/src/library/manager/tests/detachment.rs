@@ -47,7 +47,7 @@ async fn check_release_detachment(uploaded: bool) {
     manager.upload_release(&release.id, false).await.unwrap();
     let files = release_files(manager, &release.id).await;
     assert_eq!(files.len(), 2);
-    assert!(files.iter().all(|file| file.attached));
+    assert_eq!(attached_file_count(manager, &release.id).await, 2);
     assert_eq!(
         manager
             .count_pending_uploads_for_release(&release.id)
@@ -100,6 +100,7 @@ async fn check_release_detachment(uploaded: bool) {
             .unwrap();
     }
 
+    assert_eq!(attached_file_count(manager, &release.id).await, 0);
     for file in &files {
         assert!(
             !manager
@@ -108,7 +109,7 @@ async fn check_release_detachment(uploaded: bool) {
                 .await
                 .unwrap()
                 .unwrap()
-                .attached
+                .stored
         );
         let path = if uploaded {
             destination.path()
@@ -145,7 +146,7 @@ async fn check_release_detachment(uploaded: bool) {
                 .await
                 .unwrap()
                 .unwrap()
-                .attached
+                .stored
         );
         assert!(devices
             .b()
@@ -187,7 +188,7 @@ async fn cancelling_upload_with_a_queued_offline_copy_detaches_audio() {
         .unwrap();
     assert!(manager.download_queue().ops.is_empty());
     let files = release_files(&manager, &release.id).await;
-    assert!(files.iter().all(|file| !file.attached));
+    assert_eq!(attached_file_count(&manager, &release.id).await, 0);
     assert_eq!(
         manager
             .database
@@ -214,18 +215,19 @@ async fn cancelling_uploads_with_a_missing_original_changes_no_release() {
         .await
         .expect_err("every original is required before detaching");
     for release in [first, second] {
-        for file in release_files(&manager, &release.id).await {
-            assert!(file.attached);
-            let query = format!(
-                "SELECT path FROM local_release_files WHERE file_id='{}'",
-                file.id
-            );
+        let files = release_files(&manager, &release.id).await;
+        assert_eq!(
+            attached_file_count(&manager, &release.id).await,
+            files.len()
+        );
+        for file in files {
+            assert!(!file.stored);
             assert!(manager
                 .database
-                .query_texts_for_test(&query)
+                .external_file(&file.id)
                 .await
                 .unwrap()
-                .is_empty());
+                .is_some());
         }
     }
 }
@@ -243,7 +245,7 @@ async fn cancelling_a_cover_upload_preserves_completed_audio_and_its_download() 
     assert!(release_files(&manager, &release.id)
         .await
         .iter()
-        .all(|file| file.attached));
+        .all(|file| file.stored));
     assert!(manager
         .database
         .file_ref("covers", &release.id)

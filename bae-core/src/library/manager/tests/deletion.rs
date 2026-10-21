@@ -93,10 +93,10 @@ async fn test_delete_release_with_multiple_releases_preserves_album() {
     assert_eq!(releases[0].id, release2.id);
 }
 
-/// Deleted rows disappear immediately; committed file uploads remain readable
-/// and drain independently, because earlier shared writes still name them.
+/// Deleted rows disappear immediately, offline too; the uploads their files
+/// were queued for go with them, and the person's originals stay.
 #[tokio::test]
-async fn deletion_keeps_committed_file_uploads_without_losing_the_outbox() {
+async fn deletion_abandons_queued_file_uploads_and_keeps_the_originals() {
     for delete_album in [false, true] {
         let (manager, temp) = setup_test_manager().await;
         let storage = connect_test_cloud(&manager).await;
@@ -107,11 +107,7 @@ async fn deletion_keeps_committed_file_uploads_without_losing_the_outbox() {
         if delete_album { manager.delete_album(&release.album_id).await.unwrap(); }
         else { manager.delete_release(&release.id).await.unwrap(); }
         assert!(find_release(&manager, &release.id).await.is_none());
-        let snapshot = manager.outbox_snapshot().await.unwrap();
-        assert_eq!(snapshot.total.queued, 2);
         assert_eq!(std::fs::read(source.join("track.flac")).unwrap(), b"audio");
-        storage.set_online(true);
-        assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 2);
         let snapshot = manager.outbox_snapshot().await.unwrap();
         assert!(snapshot.upload_groups.is_empty());
         assert!(snapshot.other_files.is_empty());

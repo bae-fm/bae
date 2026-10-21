@@ -431,7 +431,6 @@ impl TrackAudioMeta {
 pub struct ResolvedTrackAudioSegment {
     pub role: DbAudioSegmentRole,
     pub file_id: String,
-    pub attached: bool,
     pub file_size: u64,
     /// Where this segment sits inside its backing file, in samples and bytes.
     pub span: crate::db::SegmentSpan,
@@ -473,8 +472,7 @@ pub struct ResolvedTrackAudio {
 }
 
 impl ResolvedTrackAudio {
-    /// Carry each segment's attachment state with its playback parameters so
-    /// readers choose coven or the device-local original directly.
+    /// Carry each segment's file and its size with the playback parameters.
     pub(crate) fn from_meta(meta: &TrackAudioMeta) -> Self {
         let segments = meta
             .audio_segments
@@ -488,7 +486,6 @@ impl ResolvedTrackAudio {
                 ResolvedTrackAudioSegment {
                     role: segment.role.clone(),
                     file_id: segment.file_id.clone(),
-                    attached: audio_file.attached,
                     file_size: audio_file.file_size as u64,
                     span: segment.span(),
                 }

@@ -274,7 +274,7 @@ async fn release_files_come_back_in_case_insensitive_natural_order() {
             file_size: 1,
             content_type: crate::util::content_type::ContentType::from_mime(mime),
             source_audio: None,
-            attached: false,
+            stored: false,
             created_at: chrono::Utc::now(),
         })
         .await
@@ -317,7 +317,7 @@ async fn release_file_source_audio_facts_round_trip_without_track_rows() {
         file_size: 12_345,
         content_type: crate::util::content_type::ContentType::Flac,
         source_audio: Some(source_audio.clone()),
-        attached: false,
+        stored: false,
         created_at: chrono::Utc::now(),
     })
     .await

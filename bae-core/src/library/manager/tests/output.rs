@@ -166,7 +166,7 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
         make_exportable_release(&manager, &source_dir, "Album Title (2020)", files).await;
 
     // Precondition: Remote, no pending uploads after the drain.
-    assert!(release_files(&manager, &release_id).await.iter().all(|file| file.attached));
+    assert!(release_files(&manager, &release_id).await.iter().all(|file| file.stored));
     assert!(!has_pending_uploads(&manager, &release_id).await);
 
     let target = temp_dir.path().join("export-out");
@@ -198,7 +198,7 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
     );
 
     // Export changed no release state: still Remote, no new outbox rows.
-    assert!(release_files(&manager, &release_id).await.iter().all(|file| file.attached));
+    assert!(release_files(&manager, &release_id).await.iter().all(|file| file.stored));
     assert!(
         !has_pending_uploads(&manager, &release_id).await,
         "export enqueues no cloud uploads"

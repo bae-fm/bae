@@ -17,10 +17,10 @@ pub(crate) struct SeededAlbum {
 }
 
 /// The audio of a [`SeededAlbum`]'s tracks: the release's files, each the
-/// user's own file prepared as an import registers it, and how each track's
+/// user's own file as an import records and attaches it, and how each track's
 /// audio is laid out in them.
 pub(crate) struct SeededAudio {
-    pub(crate) files: Vec<(DbFile, coven::PreparedUserFile)>,
+    pub(crate) files: Vec<(DbFile, coven::UserFile, coven::PreparedUserFile)>,
     pub(crate) audio_formats: Vec<DbAudioFormat>,
     pub(crate) audio_segments: Vec<DbAudioSegment>,
 }
@@ -73,8 +73,8 @@ impl Database {
                 // the user's own file as an import registers it, then the
                 // layouts reading them.
                 for audio in albums.into_iter().filter_map(|seeded| seeded.audio) {
-                    for (file, original) in audio.files {
-                        insert_external_file_row(tx, &file, original)?;
+                    for (file, original, attachment) in audio.files {
+                        insert_external_file_row(tx, &file, &original, attachment)?;
                     }
                     for format in &audio.audio_formats {
                         insert_audio_format_row(tx, format)?;

@@ -314,7 +314,8 @@ async fn storage_total_size_matches_page_total_size_sum() {
         );
     }
 
-    // Attaching a file makes the release remote while its upload is pending.
+    // A release stays local while its upload is pending: its rows name no
+    // file until storage holds it.
     assert_eq!(
         manager
             .get_storage_total_size(crate::db::StorageFilter::All)
@@ -327,14 +328,14 @@ async fn storage_total_size_matches_page_total_size_sum() {
             .get_storage_total_size(crate::db::StorageFilter::Local)
             .await
             .unwrap(),
-        1_000
+        11_000
     );
     assert_eq!(
         manager
             .get_storage_total_size(crate::db::StorageFilter::Remote)
             .await
             .unwrap(),
-        10_100
+        100
     );
     assert_eq!(
         manager

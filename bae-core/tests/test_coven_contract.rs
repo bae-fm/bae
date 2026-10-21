@@ -53,7 +53,7 @@ async fn real_schema_opens_with_the_declarations_and_unattached_files() {
     );
     database.insert_file(&file).await.unwrap();
     let stored = database.find_file_by_id(&file.id).await.unwrap().unwrap();
-    assert!(!stored.attached);
+    assert!(!stored.stored);
     assert!(handle.uploads().await.unwrap().files.is_empty());
     handle.close().await.unwrap();
 }
@@ -132,13 +132,15 @@ async fn upload_cancellation_detaches_the_file_and_restores_its_original() {
         .cancel_release_transition(&release.id)
         .await
         .unwrap();
-    assert_eq!(handle.uploads().await.unwrap().files.len(), 1);
+    // Clearing the pending attachment abandons it, so its upload leaves the
+    // queue.
+    assert!(handle.uploads().await.unwrap().files.is_empty());
     assert!(manager
         .get_files_for_release(&release.id)
         .await
         .unwrap()
         .iter()
-        .all(|file| !file.attached));
+        .all(|file| !file.stored));
     assert_eq!(
         manager.file_local_path(&file.id).await.unwrap(),
         Some(source)

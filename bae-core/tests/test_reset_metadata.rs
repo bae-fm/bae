@@ -546,7 +546,7 @@ async fn reset_file_metadata_unknown_returns_tags_from_disk() {
         file_size: std::fs::metadata(&f1).unwrap().len() as i64,
         content_type: ContentType::Flac,
         source_audio: None,
-        attached: false,
+        stored: false,
         created_at: now,
     };
     let file2 = DbFile {
@@ -556,7 +556,7 @@ async fn reset_file_metadata_unknown_returns_tags_from_disk() {
         file_size: std::fs::metadata(&f2).unwrap().len() as i64,
         content_type: ContentType::Flac,
         source_audio: None,
-        attached: false,
+        stored: false,
         created_at: now,
     };
     db.insert_external_file_for_test(&file1, &f1).await.unwrap();

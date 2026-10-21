@@ -132,7 +132,6 @@ mod tests {
                 role: DbAudioSegmentRole::Main,
                 file_id: "file".to_string(),
                 file_size: 1_000_000,
-                attached: false,
                 span,
             }],
             duration_ms: Some(10_000),

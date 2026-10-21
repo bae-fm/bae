@@ -160,23 +160,24 @@ impl Database {
             .await
     }
 
-    /// The original this device has for a file. Unattached rows read bae's local
-    /// paths; attached rows read coven's original-file registration.
+    /// The original this device holds for a release file: the person's file it
+    /// was imported from, or the copy a detach made, as `local_release_files`
+    /// records it. `None` when this device holds none, as for a release
+    /// another device imported.
     pub async fn external_file(&self, file_id: &str) -> Result<Option<coven::UserFile>, DbError> {
         let id = file_id.to_string();
         let local = self
             .read(move |sql| {
                 sql.query_row(
-                    "SELECT f.hash IS NOT NULL, l.path, l.modified_at, f.file_size \
-                 FROM release_files f LEFT JOIN local_release_files l ON l.file_id = f.id \
-                 WHERE f.id = ?",
+                    "SELECT l.path, l.modified_at, f.file_size \
+                     FROM release_files f JOIN local_release_files l ON l.file_id = f.id \
+                     WHERE f.id = ?",
                     [id],
                     |row| {
                         Ok((
-                            row.get::<_, bool>(0)?,
-                            row.get::<_, Option<String>>(1)?,
-                            row.get::<_, Option<String>>(2)?,
-                            row.get::<_, i64>(3)?,
+                            row.get::<_, String>(0)?,
+                            row.get::<_, String>(1)?,
+                            row.get::<_, i64>(2)?,
                         ))
                     },
                 )
@@ -184,30 +185,31 @@ impl Database {
                 .map_err(DbError::from)
             })
             .await?;
-        match local {
-            None => Ok(None),
-            Some((true, _, _, _)) => self
-                .inner
-                .handle
-                .user_file("release_files", file_id)
-                .await
-                .map_err(DbError::from),
-            Some((false, Some(path), Some(modified_at), size)) => {
-                let modified_at =
-                    chrono::DateTime::parse_from_rfc3339(&modified_at).map_err(|error| {
-                        DbError::Message(format!("invalid original modification time: {error}"))
-                    })?;
-                Ok(Some(coven::UserFile {
-                    path: path.into(),
-                    size: u64::try_from(size)
-                        .map_err(|error| DbError::Message(error.to_string()))?,
-                    modified_at: modified_at.into(),
-                }))
-            }
-            Some((false, None, None, _)) => Ok(None),
-            Some(_) => Err(DbError::Message(format!(
-                "incomplete original for {file_id}"
-            ))),
+        let Some((path, modified_at, size)) = local else {
+            return Ok(None);
+        };
+        let modified_at = chrono::DateTime::parse_from_rfc3339(&modified_at).map_err(|error| {
+            DbError::Message(format!("invalid original modification time: {error}"))
+        })?;
+        Ok(Some(coven::UserFile {
+            path: path.into(),
+            size: u64::try_from(size).map_err(|error| DbError::Message(error.to_string()))?,
+            modified_at: modified_at.into(),
+        }))
+    }
+
+    /// The file a row carries as this device sees it: this device's pending
+    /// attachment while its upload runs, otherwise the stored file the row
+    /// names. `None` when the row names no file here.
+    pub(crate) async fn current_file(
+        &self,
+        table: &str,
+        row_id: &str,
+    ) -> Result<Option<coven::FileRef>, DbError> {
+        match self.file_ref(table, row_id).await {
+            Ok(file) => Ok(Some(file)),
+            Err(coven::DbError::FileAbsent { .. }) => Ok(None),
+            Err(error) => Err(error.into()),
         }
     }
 

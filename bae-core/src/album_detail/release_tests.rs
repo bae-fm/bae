@@ -25,7 +25,7 @@ fn detail(tracks: Vec<crate::db::DbTrackWithArtists>) -> ReleaseDetail {
         audio_formats: Vec::new(),
         audio_segments: Vec::new(),
         records: Vec::new(),
-        unattached_audio: Vec::new(),
+        unstored_audio: Vec::new(),
     };
     let originals = OriginalsSeen::default();
     let ctx = ReleaseResolveCtx {

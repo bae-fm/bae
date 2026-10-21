@@ -2,13 +2,25 @@
 use super::*;
 
 impl Database {
+    /// Attach every file of a wholly local release for upload, in one write.
+    /// Each file keeps its original here: until its upload completes, its row
+    /// names no file and this device plays it from the original.
     pub(crate) async fn attach_release_files(&self, release_id: &str) -> Result<(), DbError> {
         let files = self.get_files_for_release(release_id).await?;
-        if files.is_empty() || files.iter().any(|file| file.attached) {
-            return Err(DbError::Message("release is not wholly local".into()));
+        if files.is_empty() {
+            return Err(DbError::Message("release has no files".into()));
         }
         let mut prepared = Vec::with_capacity(files.len());
         for file in files {
+            if self
+                .current_file("release_files", &file.id)
+                .await?
+                .is_some()
+            {
+                return Err(DbError::Message(format!(
+                    "release {release_id} is already attached"
+                )));
+            }
             let source = self
                 .external_file(&file.id)
                 .await?
@@ -26,24 +38,8 @@ impl Database {
                 prepared.iter().map(|(id, _, _)| id.as_str()),
             )?;
             for (id, source, attachment) in prepared {
-                let current: (Option<String>, Option<String>, bool) = sql.query_row(
-                    "SELECT l.path, l.modified_at, f.hash IS NOT NULL FROM release_files f \
-                     LEFT JOIN local_release_files l ON l.file_id=f.id WHERE f.id=?",
-                    [&id],
-                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-                )?;
-                let path = source
-                    .path
-                    .to_str()
-                    .ok_or_else(|| DbError::Message("local path is not UTF-8".into()))?;
-                let modified = DateTime::<Utc>::from(source.modified_at).to_rfc3339();
-                if current != (Some(path.to_string()), Some(modified), false) {
-                    return Err(DbError::Message(format!(
-                        "local file {id} changed before attachment"
-                    )));
-                }
+                require_recorded_original(&sql, &id, &source)?;
                 sql.register_user_file("release_files", id.as_str(), attachment)?;
-                sql.execute("DELETE FROM local_release_files WHERE file_id=?", [&id])?;
             }
             Ok(())
         })
@@ -60,8 +56,11 @@ impl Database {
             .await
     }
 
-    /// Restore originals for releases with a currently attached file still queued.
-    /// Every release is checked before the single write detaches any of them.
+    /// Take back the attachment of every file of each release this device is
+    /// still uploading, so it plays from its originals again. Every release is
+    /// checked before the single write clears any of them; a release with
+    /// nothing queued here is skipped. Clearing a file still queued abandons
+    /// its attachment.
     pub(crate) async fn cancel_release_uploads(
         &self,
         releases: Vec<String>,
@@ -70,37 +69,32 @@ impl Database {
         let mut prepared = Vec::new();
         for release in releases {
             let files = self.get_files_for_release(&release).await?;
-            let mut references = Vec::new();
-            for file in &files {
-                if file.attached {
-                    references.push((
-                        file.id.clone(),
-                        self.file_ref("release_files", &file.id).await?,
-                    ));
-                }
-            }
-            if !references
-                .iter()
-                .any(|(_, reference)| uploads.files.iter().any(|upload| upload.file == *reference))
-            {
+            let queued = uploads.files.iter().any(|upload| {
+                upload.file.table() == "release_files"
+                    && files
+                        .iter()
+                        .any(|file| upload.file.key() == &coven::RowKey::from(file.id.as_str()))
+            });
+            if !queued {
                 tracing::debug!(release, "no current audio upload to cancel");
                 continue;
             }
-            if references.len() != files.len() {
-                return Err(DbError::Message(format!(
-                    "release {release} is not wholly attached"
-                )));
-            }
-            let mut originals = Vec::with_capacity(files.len());
-            for (id, reference) in references {
-                let source = self
-                    .external_file(&id)
+            let mut attached = Vec::with_capacity(files.len());
+            for file in &files {
+                let reference = self
+                    .current_file("release_files", &file.id)
                     .await?
-                    .ok_or_else(|| DbError::FileNotUploaded(id.clone()))?;
+                    .ok_or_else(|| {
+                        DbError::Message(format!("release {release} is not wholly attached"))
+                    })?;
+                let source = self
+                    .external_file(&file.id)
+                    .await?
+                    .ok_or_else(|| DbError::FileNotUploaded(file.id.clone()))?;
                 validate_original(&source).await?;
-                originals.push((id, reference, source));
+                attached.push((file.id.clone(), reference, source));
             }
-            prepared.push((release, originals));
+            prepared.push((release, attached));
         }
         if prepared.is_empty() {
             return Ok(Vec::new());
@@ -108,7 +102,12 @@ impl Database {
         self.call_sql(move |sql| {
             let mut detached = Vec::with_capacity(prepared.len());
             for (release, files) in prepared {
-                detach_release_files_on(&sql, &release, files)?;
+                validate_file_set(&sql, &release, files.iter().map(|(id, _, _)| id.as_str()))?;
+                for (id, reference, source) in files {
+                    require_recorded_original(&sql, &id, &source)?;
+                    sql.validate_file_ref(&reference)?;
+                    sql.clear_user_file("release_files", id.as_str())?;
+                }
                 detached.push(release);
             }
             Ok(detached)
@@ -135,6 +134,32 @@ fn detach_release_files_on(
              ON CONFLICT(file_id) DO UPDATE SET path=excluded.path,modified_at=excluded.modified_at",
             params![id, path, DateTime::<Utc>::from(source.modified_at).to_rfc3339()],
         )?;
+    }
+    Ok(())
+}
+
+/// The write still finds the original it checked on disk recorded for `id`.
+fn require_recorded_original(
+    sql: &SqlContext<'_, '_>,
+    id: &str,
+    source: &coven::UserFile,
+) -> Result<(), DbError> {
+    let recorded: Option<(String, String)> = sql
+        .query_row(
+            "SELECT path, modified_at FROM local_release_files WHERE file_id=?",
+            [id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()?;
+    let path = source
+        .path
+        .to_str()
+        .ok_or_else(|| DbError::Message("local path is not UTF-8".into()))?;
+    let modified = DateTime::<Utc>::from(source.modified_at).to_rfc3339();
+    if recorded != Some((path.to_string(), modified)) {
+        return Err(DbError::Message(format!(
+            "the original of {id} changed during the operation"
+        )));
     }
     Ok(())
 }

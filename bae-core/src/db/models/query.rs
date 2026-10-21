@@ -150,9 +150,9 @@ pub struct DbReleaseStorageSummary {
     pub any_file_id: Option<String>,
     pub file_count: i64,
     pub total_size: i64,
-    /// What the library records this device holding for each audio file not
-    /// attached to its row.
-    pub unattached_audio: Vec<DbUnattachedAudio>,
+    /// What the library records this device holding for each audio file whose
+    /// row names no stored file.
+    pub unstored_audio: Vec<DbUnstoredAudio>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -235,16 +235,16 @@ pub struct DbReleaseDetail {
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<crate::import::ReleaseRecord>,
-    /// What the library records this device holding for each audio file not
-    /// attached to its row.
-    pub unattached_audio: Vec<DbUnattachedAudio>,
+    /// What the library records this device holding for each audio file whose
+    /// row names no stored file.
+    pub unstored_audio: Vec<DbUnstoredAudio>,
 }
 
 /// What the library records this device holding for one of a release's audio
-/// files that isn't attached to its row. Whether that original is still on the
-/// disk is the disk's to say, not the database's.
+/// files whose row names no stored file yet. Whether that original is still on
+/// the disk is the disk's to say, not the database's.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DbUnattachedAudio {
+pub enum DbUnstoredAudio {
     /// No original here: another device imported the release.
     Elsewhere,
     /// This device's original, as it was recorded at import.
@@ -286,9 +286,9 @@ pub struct DbReleaseSummary {
     pub any_file_id: Option<String>,
     pub file_count: i64,
     pub total_size: i64,
-    /// What the library records this device holding for each audio file not
-    /// attached to its row.
-    pub unattached_audio: Vec<DbUnattachedAudio>,
+    /// What the library records this device holding for each audio file whose
+    /// row names no stored file.
+    pub unstored_audio: Vec<DbUnstoredAudio>,
 }
 
 /// Raw storage-page row: a release summary joined with its parent album summary,

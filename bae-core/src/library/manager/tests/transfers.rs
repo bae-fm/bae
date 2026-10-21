@@ -192,7 +192,7 @@ async fn cancelling_a_completed_upload_preserves_the_attachment() {
     let (manager, temp, release, _) = queued_upload_fixture("completed").await;
     manager.drain_uploads_expecting_work().await.unwrap();
     manager.cancel_release_transition(&release.id).await.unwrap();
-    assert!(release_files(&manager, &release.id).await.iter().all(|file| file.attached));
+    assert!(release_files(&manager, &release.id).await.iter().all(|file| file.stored));
     assert_eq!(std::fs::read(temp.path().join("completed/a.flac")).unwrap().len(), 1000);
 }
 
@@ -225,7 +225,7 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
         .await
         .expect_err("a cancelled audio detachment must not report completion");
 
-    assert!(release_files(&manager, &release_id).await.iter().all(|file| file.attached),
+    assert!(release_files(&manager, &release_id).await.iter().all(|file| file.stored),
         "cancellation preserves every attachment");
     assert!(!dest.exists());
 }
@@ -243,7 +243,7 @@ async fn a_missing_upload_source_is_pending_and_cannot_be_cancelled() {
     assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
     assert!(!manager.pending().await.unwrap().is_empty());
     manager.cancel_release_upload(&release.id).await.expect_err("the missing original prevents restoring local playback");
-    assert!(manager.database.find_file_by_id(&file_id).await.unwrap().unwrap().attached);
+    assert!(manager.database.current_file("release_files", &file_id).await.unwrap().is_some(), "the attachment stays pending");
     assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 1);
 }
 
@@ -252,24 +252,29 @@ async fn cancelling_all_release_uploads_restores_their_originals() {
     let (manager, temp, first, _) = queued_upload_fixture("first").await;
     let second = insert_release_with_queued_uploads(&manager, &temp.path().join("second"), "Album", &[("b.flac", b"audio")]).await;
     manager.cancel_all_release_uploads().await.unwrap();
-    assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 2);
+    // Clearing a pending attachment abandons it, so its upload leaves the
+    // queue.
+    assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 0);
     for release in [first, second] {
-        assert!(release_files(&manager, &release.id).await.iter().all(|file| !file.attached));
+        for file in release_files(&manager, &release.id).await {
+            assert!(!file.stored);
+            assert!(manager.database.current_file("release_files", &file.id).await.unwrap().is_none());
+            assert!(manager.database.external_file(&file.id).await.unwrap().is_some(), "the original plays again");
+        }
     }
 }
 
+/// Deleting a release abandons the attachment of each file still queued: its
+/// upload leaves the queue, since no row can name it any more.
 #[tokio::test]
-async fn deleting_a_release_keeps_its_committed_upload_visible_until_it_finishes() {
-    let (manager, _temp, release, _) = queued_upload_fixture("queued").await;
+async fn deleting_a_release_abandons_its_queued_uploads() {
+    let (manager, temp, release, _) = queued_upload_fixture("queued").await;
     manager.delete_release(&release.id).await.unwrap();
-    let snapshot = manager.outbox_snapshot().await.unwrap();
-    assert_eq!(snapshot.total.queued, 1);
-    assert_eq!(snapshot.other_files.len(), 1);
-    assert!(snapshot.upload_groups.is_empty());
-    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 1);
     let snapshot = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snapshot.total.queued, 0);
     assert!(snapshot.other_files.is_empty());
+    assert!(snapshot.upload_groups.is_empty());
+    assert_eq!(std::fs::read(temp.path().join("queued/a.flac")).unwrap().len(), 1000);
 }
 
 /// A cover upload is carried by the `covers` row whose primary key is the
@@ -443,7 +448,7 @@ async fn an_active_target_does_not_block_sibling_cloud_admissions() {
 
     for release in [first_new_release, last_new_release] {
         assert!(has_pending_uploads(&manager, &release.id).await);
-        assert!(release_files(&manager, &release.id).await.iter().all(|file| file.attached));
+        assert_eq!(attached_file_count(&manager, &release.id).await, 1);
     }
 }
 
@@ -466,7 +471,7 @@ async fn an_upload_batch_refuses_duplicate_release_ids_without_admission() {
         .expect_err("a duplicate target refuses the whole batch");
 
     assert!(!has_pending_uploads(&manager, &release.id).await);
-    assert!(release_files(&manager, &release.id).await.iter().all(|file| !file.attached));
+    assert_eq!(attached_file_count(&manager, &release.id).await, 0);
 }
 
 /// The queue names each queued file by its row's current original filename,
@@ -625,10 +630,7 @@ async fn attachment_commits_before_its_offline_copy_runs_in_downloads() {
     )
     .await;
     manager.upload_release(&release.id, true).await.unwrap();
-    assert!(release_files(&manager, &release.id)
-        .await
-        .iter()
-        .all(|file| file.attached));
+    assert_eq!(attached_file_count(&manager, &release.id).await, 1);
     let queue = manager.download_queue();
     assert_eq!(queue.ops.len(), 1);
     assert_eq!(queue.ops[0].release_id, release.id);

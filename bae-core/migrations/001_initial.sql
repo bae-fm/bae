@@ -71,7 +71,8 @@ CREATE TABLE IF NOT EXISTS artist_images (
     source TEXT NOT NULL,
     source_url TEXT,
     created_at TEXT NOT NULL,
-    -- coven writes both columns when a file is attached.
+    -- coven writes both columns when the file's upload completes; until then
+    -- the row names no file, and only the attaching device holds it.
     hash BLOB,
     location TEXT,
     FOREIGN KEY (id) REFERENCES artists (id) ON DELETE CASCADE
@@ -221,7 +222,8 @@ CREATE TABLE IF NOT EXISTS covers (
     source TEXT NOT NULL,
     source_url TEXT,
     created_at TEXT NOT NULL,
-    -- coven writes both columns when a file is attached.
+    -- coven writes both columns when the file's upload completes; until then
+    -- the row names no file, and only the attaching device holds it.
     hash BLOB,
     location TEXT,
     FOREIGN KEY (id) REFERENCES releases (id) ON DELETE CASCADE
@@ -236,7 +238,8 @@ CREATE TABLE IF NOT EXISTS release_files (
     file_size INTEGER NOT NULL,
     content_type TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    -- coven writes both columns when this file is attached for upload.
+    -- coven writes both columns when this file's upload completes; until
+    -- then the row names no file, and only the attaching device holds it.
     hash BLOB,
     location TEXT,
     -- What the file held before import rewrote it: its own audio ('file') or
@@ -286,8 +289,10 @@ CREATE TABLE IF NOT EXISTS release_files (
 
 CREATE INDEX IF NOT EXISTS idx_release_files_release_id ON release_files (release_id);
 
--- Original files of a local release. These paths never leave this device;
--- attaching a file to its synced row removes its local-only entry atomically.
+-- The original of each release file this device imported, or the copy a
+-- detach made: its path and the modification time recorded then. These paths
+-- never leave this device. A row stays through an upload: until the row names
+-- a stored file, this device plays the file from here.
 CREATE TABLE IF NOT EXISTS local_release_files (
     file_id TEXT NOT NULL PRIMARY KEY REFERENCES release_files(id) ON DELETE CASCADE,
     path TEXT NOT NULL,

@@ -609,12 +609,13 @@ impl ImportService {
             let import_id_for_progress = import_id.to_string();
             let reported_percent = Arc::new(std::sync::atomic::AtomicU8::new(last_release_percent));
             let reported_percent_for_progress = Arc::clone(&reported_percent);
+            let original = coven::UserFile {
+                path: file.path.clone(), size: file.size,
+                modified_at: chrono::DateTime::from_timestamp_nanos(file.modified_at_ns).into(),
+            };
             let prepared_source = match destination {
-                ImportDestination::Local => PreparedImportSource::Local(coven::UserFile {
-                    path: file.path.clone(), size: file.size,
-                    modified_at: chrono::DateTime::from_timestamp_nanos(file.modified_at_ns).into(),
-                }),
-                ImportDestination::Remote { .. } => PreparedImportSource::Shared(Box::pin(coven::prepare_user_file(&file.path, move |consumed| {
+                ImportDestination::Local => PreparedImportSource::Local(original),
+                ImportDestination::Remote { .. } => PreparedImportSource::Shared { original, attachment: Box::pin(coven::prepare_user_file(&file.path, move |consumed| {
                 let completed = bytes_read_before_file + u128::from(consumed);
                 let percent = ((completed * 100) / total_bytes).min(100) as u8;
                 let previous = reported_percent_for_progress
@@ -638,7 +639,7 @@ impl ImportService {
                     "coven could not prepare {} for import: {error}",
                     file.path.display()
                 ),
-            })?),
+            })? },
             };
             bytes_read += u128::from(file.size);
             let completed_percent = ((bytes_read * 100) / total_bytes).min(100) as u8;

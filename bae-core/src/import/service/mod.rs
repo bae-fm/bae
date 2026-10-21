@@ -105,10 +105,14 @@ pub(crate) struct PreparedImportFile {
     pub(crate) source: PreparedImportSource,
 }
 
-/// Local originals stay on this device; shared originals attach to their row.
+/// Every original is recorded on this device; a shared one is also attached
+/// to its row for upload.
 pub(crate) enum PreparedImportSource {
     Local(coven::UserFile),
-    Shared(coven::PreparedUserFile),
+    Shared {
+        original: coven::UserFile,
+        attachment: coven::PreparedUserFile,
+    },
 }
 
 fn destination_label(destination: ImportDestination) -> &'static str {

@@ -70,6 +70,26 @@ impl LibraryManager {
             .map_err(|e| LibraryError::Storage(format!("file reference for {table} {row_id}: {e}")))
     }
 
+    /// How many of these release files carry a file on this device in coven:
+    /// this device's pending attachment, or the stored file the row names.
+    pub(crate) async fn attached_release_file_count(
+        &self,
+        files: &[DbFile],
+    ) -> Result<usize, LibraryError> {
+        let mut attached = 0;
+        for file in files {
+            if self
+                .database
+                .current_file(crate::sync::RELEASE_FILES_NAMESPACE, &file.id)
+                .await?
+                .is_some()
+            {
+                attached += 1;
+            }
+        }
+        Ok(attached)
+    }
+
     /// Read through the same local-or-attached source used for playback.
     pub(crate) async fn read_release_file(&self, file: &DbFile) -> Result<Vec<u8>, LibraryError> {
         Ok(self.database.read_release_file(&file.id).await?)
