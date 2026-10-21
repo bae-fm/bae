@@ -1,4 +1,5 @@
 import AVFoundation
+import BaeKit
 import SwiftUI
 
 struct QRScannerView: UIViewControllerRepresentable {
