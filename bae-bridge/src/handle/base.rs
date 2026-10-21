@@ -183,18 +183,9 @@ forward! { async this => {
     }
 
     fn save_sync_config(config_data: BridgeSaveSyncConfig, device_name: String) -> crate::types::BridgeStorageSetup {
-        use bae_core::sync::S3ConfigData;
         Ok(this
             .services
-            .save_s3_config(S3ConfigData {
-                bucket: config_data.bucket,
-                region: config_data.region,
-                endpoint: config_data.endpoint,
-                key_prefix: config_data.key_prefix,
-                access_key: config_data.access_key,
-                secret_key: config_data.secret_key,
-                profile: config_data.profile.map(crate::types::BridgeS3Profile::into_core),
-            }, &device_name)
+            .save_s3_config(config_data.into_core(), &device_name)
             .await.map(crate::types::BridgeStorageSetup::from_core)?)
     }
 

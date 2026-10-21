@@ -300,25 +300,16 @@ impl SyncController {
         data: S3ConfigData,
         device_name: &str,
     ) -> Result<coven::StorageSetup, LibraryError> {
-        let endpoint = data
-            .endpoint
-            .map(|value| value.parse())
-            .transpose()
+        let (storage, credentials) = data
+            .into_location()
             .map_err(|error| LibraryError::Validation(format!("invalid S3 endpoint: {error}")))?;
-        let storage = coven::StorageConfig::S3 {
-            bucket: data.bucket,
-            region: data.region,
-            endpoint,
-            prefix: data.key_prefix.unwrap_or_default(),
-            profile: data.profile,
-        };
         let setup = self
             .database
             .setup_s3_storage(
                 storage,
                 device_name,
-                data.access_key,
-                coven::SecretText::new(data.secret_key),
+                credentials.access_key_id,
+                credentials.secret_access_key,
             )
             .await?;
         self.diagnostics

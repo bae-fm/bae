@@ -29,6 +29,29 @@ pub struct S3ConfigData {
     pub profile: Option<coven::S3Profile>,
 }
 
+impl S3ConfigData {
+    /// The coven location these settings name, and the key that reaches it.
+    /// No key prefix is the bucket's root.
+    pub fn into_location(
+        self,
+    ) -> Result<(coven::StorageConfig, coven::S3Credentials), url::ParseError> {
+        let endpoint = self.endpoint.map(|value| value.parse()).transpose()?;
+        Ok((
+            coven::StorageConfig::S3 {
+                bucket: self.bucket,
+                region: self.region,
+                endpoint,
+                prefix: self.key_prefix.unwrap_or_default(),
+                profile: self.profile,
+            },
+            coven::S3Credentials {
+                access_key_id: self.access_key,
+                secret_access_key: coven::SecretText::new(self.secret_key),
+            },
+        ))
+    }
+}
+
 /// Cloud namespace for release-file (audio/image/text/…) files — the user's own
 /// imported files. coven keys them under `release_files/…` and segments their
 /// cache + budget by this name.

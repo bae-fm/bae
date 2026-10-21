@@ -20,6 +20,7 @@
     }
 
     private struct ProfileUnreadable: Error {}
+    private struct StorageUnreachable: Error {}
 
     private let profile = BridgeDevResetProfile(
         libraryName: "dev",
@@ -61,6 +62,9 @@
             BridgeDevResetProfile = { _ in profile },
         removal: @escaping @Sendable (BridgeLibrary) -> BridgeLibraryRemoval = {
             _ in .removed
+        },
+        emptying: @escaping @Sendable () throws -> BridgeEmptiedS3Prefix = {
+            BridgeEmptiedS3Prefix(objects: 3, uploads: 1)
         }
     ) -> DevReset {
         DevReset(
@@ -84,6 +88,12 @@
             forgetSavedRestoreCode: {
                 calls.record("forget restore code \($0)")
             },
+            emptyStoragePrefix: { config in
+                calls.record(
+                    "empty \(config.bucket) \(config.keyPrefix ?? "no prefix")"
+                )
+                return try emptying()
+            },
             replaceAppDirectory: { calls.record("replace app directory") },
             createLibrary: {
                 calls.record("create \($0.libraryName)")
@@ -94,11 +104,11 @@
 
     @Suite("DevReset")
     struct DevResetTests {
-        /// Every library goes before bae's directory does, only those
-        /// libraries' saved restore codes are deleted, and the profile's
-        /// library is created last.
+        /// Every library goes before the storage prefix is emptied and bae's
+        /// directory goes, only those libraries' saved restore codes are
+        /// deleted, and the profile's library is created last.
         @Test(
-            "removes every library, replaces bae's directory, then creates the profile's library"
+            "removes every library, empties the storage prefix, replaces bae's directory, then creates the profile's library"
         )
         func fullSequence() async throws {
             let calls = ResetCalls()
@@ -117,10 +127,28 @@
                     "remove library-2",
                     "saved restore codes",
                     "forget restore code library-2",
+                    "empty bucket-name prefix",
                     "replace app directory",
                     "create dev",
                 ]
             )
+        }
+
+        @Test(
+            "a storage prefix that couldn't be emptied stops the reset before bae's directory goes"
+        )
+        func failedEmptyingStops() async {
+            let calls = ResetCalls()
+            let devReset = reset(
+                calls,
+                emptying: { throw StorageUnreachable() }
+            )
+
+            await #expect(throws: StorageUnreachable.self) {
+                try await devReset.run(profilePath: "/profile.toml")
+            }
+            #expect(calls.calls.last == "empty bucket-name prefix")
+            #expect(!calls.calls.contains("replace app directory"))
         }
 
         @Test(

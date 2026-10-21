@@ -25,14 +25,11 @@
     /// Wipes this Mac's bae state and recreates one library from a dev
     /// profile, before any library opens. Every library is removed the way
     /// Remove Library does, so its store keys leave the keychain, and its saved
-    /// restore code is deleted the way the welcome screen deletes one. Then
-    /// `~/.bae` goes, and the new library is created and set up the way
-    /// Settings and storage setup do. Each step logs; the first failure stops
-    /// the reset and is thrown.
-    ///
-    /// The profile's storage prefix is not emptied: coven gives bae no way to
-    /// list or delete a location's objects, so the new library's store joins
-    /// whatever earlier ones left there.
+    /// restore code is deleted the way the welcome screen deletes one. Then the
+    /// profile's storage prefix is emptied, so the new library starts on an
+    /// empty remote, `~/.bae` goes, and the new library is created and set up
+    /// the way Settings and storage setup do. Each step logs; the first
+    /// failure stops the reset and is thrown.
     struct DevReset: Sendable {
         let readProfile: @Sendable (String) throws -> BridgeDevResetProfile
         /// Removals an earlier run left unfinished.
@@ -43,6 +40,11 @@
         let savedRestoreCodes:
             @Sendable () async throws -> [BridgeSavedRestoreEntry]
         let forgetSavedRestoreCode: @Sendable (String) async throws -> Void
+        /// Delete every object and abort every unfinished upload under the
+        /// storage's key prefix.
+        let emptyStoragePrefix:
+            @Sendable (BridgeSaveSyncConfig) async throws ->
+                BridgeEmptiedS3Prefix
         /// Delete bae's directory and create it empty again: the host's app
         /// directory must exist while it runs.
         let replaceAppDirectory: @Sendable () throws -> Void
@@ -87,7 +89,11 @@
             }
 
             logger.info(
-                "not emptying bucket \(profile.syncConfig.bucket), prefix \(String(describing: profile.syncConfig.keyPrefix)): coven offers no listing or deletion of a location's objects"
+                "emptying bucket \(profile.syncConfig.bucket), prefix \(String(describing: profile.syncConfig.keyPrefix))"
+            )
+            let emptied = try await emptyStoragePrefix(profile.syncConfig)
+            logger.info(
+                "deleted \(emptied.objects) objects and aborted \(emptied.uploads) unfinished uploads"
             )
 
             logger.info("replacing ~/.bae")
@@ -136,6 +142,9 @@
                 savedRestoreCodes: { try await host.savedRestoreCodes() },
                 forgetSavedRestoreCode: {
                     try await host.forgetSavedRestoreCode(libraryId: $0)
+                },
+                emptyStoragePrefix: {
+                    try await host.emptyDevResetPrefix(syncConfig: $0)
                 },
                 replaceAppDirectory: {
                     let directory = URL(fileURLWithPath: home)

@@ -71,9 +71,12 @@ The app discovers libraries from `~/.bae/libraries/`. Run the app first to creat
 docstring lists its fields). It quits the running app, shows the plan, and on
 confirmation launches the Debug app from `bae-macos/run.sh` with
 `--dev-reset <profile>`. Before any library opens, the app removes every library
-the way Remove Library does, deletes their saved restore codes, deletes
-`~/.bae`, then creates the profile's library and sets its Discogs token,
-metadata preferences and S3 storage. Any failure stops the reset and shows on
-the welcome screen; Console logs each step under the `DevReset` category. The
-storage prefix's existing objects stay: coven offers bae no way to list or
-delete them. Release builds don't contain `--dev-reset`.
+the way Remove Library does, deletes their saved restore codes, empties the
+profile's S3 key prefix (deleting every object under it and aborting its
+unfinished uploads, whatever wrote them, through coven's `empty_s3_prefix`),
+deletes `~/.bae`, then creates the profile's library and sets its Discogs
+token, metadata preferences and S3 storage. Any failure stops the reset and
+shows on the welcome screen; Console logs each step under the `DevReset`
+category, including how many objects and uploads the emptying removed. A
+versioned bucket keeps the deleted objects' earlier versions. Release builds
+don't contain `--dev-reset`.

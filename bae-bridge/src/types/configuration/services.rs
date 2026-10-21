@@ -319,3 +319,17 @@ pub struct BridgeSaveSyncConfig {
     pub secret_key: String,
     pub profile: Option<BridgeS3Profile>,
 }
+
+impl BridgeSaveSyncConfig {
+    pub(crate) fn into_core(self) -> bae_core::sync::S3ConfigData {
+        bae_core::sync::S3ConfigData {
+            bucket: self.bucket,
+            region: self.region,
+            endpoint: self.endpoint,
+            key_prefix: self.key_prefix,
+            access_key: self.access_key,
+            secret_key: self.secret_key,
+            profile: self.profile.map(BridgeS3Profile::into_core),
+        }
+    }
+}

@@ -4,10 +4,11 @@
 Quits the running debug app, confirms, then launches it with
 `--dev-reset <profile>`. The app does the reset itself, before any library
 opens: it removes every library the way Remove Library does (store keys
-leave the keychain), deletes those libraries' saved restore codes, deletes
-~/.bae, then creates the profile's library and sets its Discogs token,
-metadata preferences, and S3 storage. Only a Debug build carries
-`--dev-reset`.
+leave the keychain), deletes those libraries' saved restore codes, empties the
+profile's S3 key prefix (every object under it is deleted and every unfinished
+upload aborted, whatever wrote them), deletes ~/.bae, then creates the
+profile's library and sets its Discogs token, metadata preferences, and S3
+storage. Only a Debug build carries `--dev-reset`.
 
 The profile (default ~/.config/bae-dev/profile.toml) holds credentials, so it
 must be mode 600; this script never prints them. Its fields:
@@ -26,9 +27,6 @@ must be mode 600; this script never prints them. Its fields:
 
     [discogs]
     token = "..."
-
-The storage prefix is not emptied: coven gives bae no way to list or delete a
-location's objects.
 """
 
 import argparse
@@ -112,10 +110,11 @@ def main() -> None:
     print(f"  - quit bae ({BUNDLE_ID}) if it is running")
     print("  - remove every bae library on this Mac, with its keychain entries")
     print("    and saved restore codes")
+    print(f"  - delete everything in bucket {s3.get('bucket')!r} under prefix")
+    print(f"    {s3.get('key_prefix')!r}, and abort its unfinished uploads")
     print(f"  - delete {pathlib.Path.home() / '.bae'}")
     print(f"  - create the library {profile.get('library_name')!r} and connect it to")
     print(f"    bucket {s3.get('bucket')!r}, prefix {s3.get('key_prefix')!r}")
-    print("    (the prefix's existing objects stay)")
     print(f"  - launch {args.app}")
     if input("Continue? [y/N] ").strip().lower() != "y":
         print("Nothing changed.")
