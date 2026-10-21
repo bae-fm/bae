@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import fm.bae.app.DisplayError
 import fm.bae.app.coreString
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
@@ -181,6 +182,6 @@ fun SyncActivityArriving() {
 @Composable
 fun SyncUpdateRequired() {
     BaeTheme {
-        ErrorBanner(message = LocalContext.current.coreString("core.error.sync_update_required"))
+        ErrorBanner(error = DisplayError(LocalContext.current.coreString("core.error.sync_update_required")))
     }
 }
