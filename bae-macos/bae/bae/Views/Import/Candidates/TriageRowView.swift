@@ -173,12 +173,12 @@ extension TriageRowView {
                 .controlSize(.small)
                 .help(String(localized: "Identifying\u{2026}"))
         case .finalizationFailed(let error):
-            if let line = error.displayLine {
+            if let shown = DisplayError(error) {
                 trailingIcon(
                     "exclamationmark.triangle.fill",
                     tint: Theme.warning
                 )
-                .help(line)
+                .help(shown.line)
             }
             else {
                 trailingIcon(

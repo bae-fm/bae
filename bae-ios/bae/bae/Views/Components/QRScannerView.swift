@@ -39,14 +39,13 @@ class QRScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsD
             input = try AVCaptureDeviceInput(device: device)
         }
         catch {
-            // `displayLine` is optional because core reports a cancellation as
-            // having no line. AVFoundation's error always has one, so this is an
-            // unwrap rather than a branch — interpolating the optional itself
-            // would put `Optional("…")` in front of the user.
-            if let line = error.displayLine {
+            // `DisplayError` fails only for core's cancellation. AVFoundation's
+            // error always has a line, and carries no diagnostic behind it, so
+            // this is an unwrap rather than a branch.
+            if let shown = DisplayError(error) {
                 onError?(
                     String(
-                        localized: "Could not create camera input: \(line)"
+                        localized: "Could not create camera input: \(shown.line)"
                     )
                 )
             }

@@ -33,7 +33,7 @@ struct AlbumDetailView: View {
     var uiStore
 
     @State
-    private var transferError: String?
+    private var transferError: DisplayError?
     @State
     private var storageTask: Task<Void, Never>?
     @State
@@ -41,9 +41,9 @@ struct AlbumDetailView: View {
     @State
     private var releaseIdPendingDelete: String?
     @State
-    private var deleteError: String?
+    private var deleteError: DisplayError?
     @State
-    private var exportError: String?
+    private var exportError: DisplayError?
     @State
     private var exportTask: Task<Void, Never>?
     /// The view's one album read, moved as `albumId` changes.
@@ -151,9 +151,9 @@ struct AlbumDetailView: View {
             exportTask?.cancel()
             storageTask?.cancel()
         }
-        .errorAlert("Transfer Failed", message: $transferError)
-        .errorAlert("Export Failed", message: $exportError)
-        .errorAlert("Delete Failed", message: $deleteError)
+        .errorAlert("Transfer Failed", error: $transferError)
+        .errorAlert("Export Failed", error: $exportError)
+        .errorAlert("Delete Failed", error: $deleteError)
         .alert("Delete Release", isPresented: $showingDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 guard let releaseId = releaseIdPendingDelete else { return }
@@ -168,7 +168,7 @@ struct AlbumDetailView: View {
                         uiStore.closeAlbumDetail()
                     }
                     catch {
-                        deleteError = error.displayLine
+                        deleteError = DisplayError(error)
                     }
                 }
             }
@@ -385,7 +385,7 @@ extension AlbumDetailView {
                 try await outputs.enqueueExport(releaseId, targetDir)
             }
             catch {
-                exportError = error.displayLine
+                exportError = DisplayError(error)
             }
         }
     }
@@ -410,7 +410,7 @@ extension AlbumDetailView {
                 )
             }
             catch {
-                exportError = error.displayLine
+                exportError = DisplayError(error)
             }
         }
     }
@@ -444,7 +444,7 @@ extension AlbumDetailView {
             }
             catch is CancellationError {}
             catch {
-                transferError = error.displayLine
+                transferError = DisplayError(error)
             }
         }
     }
@@ -525,7 +525,7 @@ extension AlbumDetailView {
                 return nil
             }
             catch {
-                exportError = error.displayLine
+                exportError = DisplayError(error)
                 return nil
             }
             saveChoices.append(
@@ -544,7 +544,9 @@ extension AlbumDetailView {
             let defaultPresetId = configStore.config.defaultTrackSavePreset
             guard choices.contains(where: { $0.presetId == defaultPresetId })
             else {
-                exportError = String(localized: "Default format")
+                exportError = DisplayError(
+                    line: String(localized: "Default format")
+                )
                 return
             }
 
@@ -582,33 +584,7 @@ extension AlbumDetailView {
                 // view dismissed mid-save; OutputFileGuard cleaned up
             }
             catch {
-                exportError = error.displayLine
-            }
-        }
-    }
-}
-
-extension View {
-    /// Presents an OK-dismissible alert bound to an optional error message,
-    /// clearing it on dismiss. Collapses the repeated "alert over a `String?`
-    /// @State error" pattern.
-    fileprivate func errorAlert(
-        _ title: LocalizedStringKey,
-        message: Binding<String?>
-    )
-        -> some View
-    {
-        alert(
-            title,
-            isPresented: Binding(
-                get: { message.wrappedValue != nil },
-                set: { if !$0 { message.wrappedValue = nil } },
-            )
-        ) {
-            Button("OK") { message.wrappedValue = nil }
-        } message: {
-            if let err = message.wrappedValue {
-                Text(err)
+                exportError = DisplayError(error)
             }
         }
     }

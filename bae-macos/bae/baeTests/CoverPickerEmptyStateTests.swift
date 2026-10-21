@@ -12,7 +12,7 @@ struct CoverPickerEmptyStateTests {
         "Only a completed linked lookup says no remote covers were found",
         arguments: [
             RemoteCoverItems.unlinked, .linked([]), .loading([]),
-            .failed([], message: "Artwork lookup failed"),
+            .failed([], failure: DisplayError(line: "Artwork lookup failed")),
         ]
     )
     func lookupMessages(_ remoteItems: RemoteCoverItems) async throws {

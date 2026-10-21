@@ -117,10 +117,12 @@ struct EditMetadataSheet: View {
 
     private var footer: some View {
         VStack(spacing: ThemeSpace.related) {
-            if let message = session.validationMessage
-                ?? session.failureMessage
+            if let shown = session.validationMessage.map({
+                DisplayError(line: $0)
+            })
+                ?? session.failure
             {
-                ErrorText(message)
+                ErrorDetailDisclosure(error: shown)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             HStack(spacing: ThemeSpace.group) {

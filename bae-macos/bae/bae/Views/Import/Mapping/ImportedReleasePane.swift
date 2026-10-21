@@ -106,10 +106,12 @@ struct ImportedReleasePane: View {
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(session.isBusy)
             }
-            if let message = session.validationMessage
-                ?? session.failureMessage
+            if let shown = session.validationMessage.map({
+                DisplayError(line: $0)
+            })
+                ?? session.failure
             {
-                ErrorText(message)
+                ErrorDetailDisclosure(error: shown)
             }
         }
     }

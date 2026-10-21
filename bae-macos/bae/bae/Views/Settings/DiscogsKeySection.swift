@@ -22,10 +22,10 @@ struct DiscogsKeySection: View {
     /// The last save, re-check, or remove error, including Discogs rejecting
     /// the typed key.
     @State
-    private var saveError: String?
+    private var saveError: DisplayError?
     /// Set when the stored key can't be read back for display.
     @State
-    private var readError: String?
+    private var readError: DisplayError?
 
     var body: some View {
         DiscogsSettingsContent(
@@ -63,11 +63,13 @@ struct DiscogsKeySection: View {
         }
         catch {
             // A nil line means a cancellation, which shows nothing.
-            readError = error.displayLine.map { line in
-                String(
-                    localized: "Couldn't read the stored Discogs key: \(line)"
-                )
-            }
+            readError = DisplayError(error)?
+                .rewording { line in
+                    String(
+                        localized:
+                            "Couldn't read the stored Discogs key: \(line)"
+                    )
+                }
         }
     }
 
@@ -82,9 +84,11 @@ struct DiscogsKeySection: View {
             do {
                 let outcome = try await discogs.saveDiscogsToken(token)
                 if case .rejected = outcome {
-                    saveError = String(
-                        localized:
-                            "Discogs rejected this key. Check it and save again."
+                    saveError = DisplayError(
+                        line: String(
+                            localized:
+                                "Discogs rejected this key. Check it and save again."
+                        )
                     )
                 }
                 // Other outcomes reach the status through the config event.
@@ -93,9 +97,12 @@ struct DiscogsKeySection: View {
                 logger.debug("saveToken cancelled")
             }
             catch {
-                saveError = error.displayLine.map { line in
-                    String(localized: "Couldn't save the Discogs key: \(line)")
-                }
+                saveError = DisplayError(error)?
+                    .rewording { line in
+                        String(
+                            localized: "Couldn't save the Discogs key: \(line)"
+                        )
+                    }
             }
         }
     }
@@ -112,11 +119,13 @@ struct DiscogsKeySection: View {
                 logger.debug("revalidate cancelled")
             }
             catch {
-                saveError = error.displayLine.map { line in
-                    String(
-                        localized: "Couldn't re-check the Discogs key: \(line)"
-                    )
-                }
+                saveError = DisplayError(error)?
+                    .rewording { line in
+                        String(
+                            localized:
+                                "Couldn't re-check the Discogs key: \(line)"
+                        )
+                    }
             }
         }
     }
@@ -130,11 +139,13 @@ struct DiscogsKeySection: View {
                 draft = ""
             }
             catch {
-                saveError = error.displayLine.map { line in
-                    String(
-                        localized: "Couldn't remove the Discogs key: \(line)"
-                    )
-                }
+                saveError = DisplayError(error)?
+                    .rewording { line in
+                        String(
+                            localized:
+                                "Couldn't remove the Discogs key: \(line)"
+                        )
+                    }
             }
         }
     }
@@ -149,8 +160,8 @@ struct DiscogsSettingsContent: View {
     var draft: String
     let status: BridgeDiscogsTokenStatus
     let isValidating: Bool
-    let saveError: String?
-    let readError: String?
+    let saveError: DisplayError?
+    let readError: DisplayError?
     let onSave: () -> Void
     let onRecheck: () -> Void
     let onRemove: () -> Void
@@ -161,10 +172,10 @@ struct DiscogsSettingsContent: View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             statusRow
             if let saveError {
-                ErrorText(saveError)
+                ErrorDetailDisclosure(error: saveError)
             }
             if let readError {
-                ErrorText(readError)
+                ErrorDetailDisclosure(error: readError)
             }
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 Text(
@@ -251,7 +262,7 @@ struct DiscogsSettingsContent: View {
     private struct DiscogsKeyPreview: View {
         let status: BridgeDiscogsTokenStatus
         var draft: String = ""
-        var saveError: String?
+        var saveError: DisplayError?
 
         var body: some View {
             Form {
@@ -289,7 +300,9 @@ struct DiscogsSettingsContent: View {
         DiscogsKeyPreview(
             status: .rejected,
             draft: "bad-key",
-            saveError: "Discogs rejected this key. Check it and save again."
+            saveError: DisplayError(
+                line: "Discogs rejected this key. Check it and save again."
+            )
         )
     }
 #endif

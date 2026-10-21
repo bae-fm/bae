@@ -5,7 +5,7 @@ import SwiftUI
 /// before the app could run.
 enum AppLaunch {
     case ready(BridgeHost)
-    case failed(String)
+    case failed(DisplayError)
 }
 
 /// App root: why launch stopped, or this device's app session.
@@ -24,20 +24,20 @@ struct ContentView: View {
                     deviceName: deviceName
                 )
 
-            case .failed(let message):
-                ScreenError(message: message)
+            case .failed(let error):
+                ScreenError(error: error)
             }
         }
         .background(Theme.background)
     }
 }
 
-/// An error that is the whole screen's content.
+/// An error that is the whole screen's content, with its details.
 struct ScreenError: View {
-    let message: String
+    let error: DisplayError
 
     var body: some View {
-        ErrorText(message)
+        ErrorDetailDisclosure(error: error)
             .padding(ThemeSpace.page)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

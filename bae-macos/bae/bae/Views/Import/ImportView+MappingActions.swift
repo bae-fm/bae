@@ -53,10 +53,12 @@ extension ImportView {
         }
         catch {
             // No line means a cancellation, which raises no alert.
-            if let line = error.displayLine {
-                uiStore.showError(
-                    String(localized: "Could not read \(name): \(line)")
-                )
+            if let failure = DisplayError(error)?
+                .rewording({
+                    String(localized: "Could not read \(name): \($0)")
+                })
+            {
+                uiStore.showError(failure)
             }
         }
     }

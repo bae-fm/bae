@@ -38,8 +38,8 @@ struct AddDeviceSheet: View {
                 VStack {
                     Spacer()
                     // The presenter only records failures that have a line.
-                    if let line = error.displayLine {
-                        ErrorText(line)
+                    if let shown = DisplayError(error) {
+                        ErrorDetailDisclosure(error: shown)
                     }
                     Spacer()
                 }

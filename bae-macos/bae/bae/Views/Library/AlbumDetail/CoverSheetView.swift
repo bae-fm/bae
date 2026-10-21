@@ -18,7 +18,7 @@ struct CoverSheetView: View {
     @State
     private var release: ReleaseDetail?
     @State
-    private var releaseError: String?
+    private var releaseError: DisplayError?
     /// The sheet's one release read, moved as `releaseId` changes.
     @State
     private var releaseReader: DetailReader<BridgeRelease>?
@@ -56,7 +56,7 @@ struct CoverSheetView: View {
                 },
             initialLayout: initialLayout,
             isSaving: state.isSaving,
-            errorMessage: state.errorMessage ?? releaseError,
+            error: state.error ?? releaseError,
             onRefresh: { state.refresh(fetchRemoteCovers) },
             onFindRelease: onFindRelease,
             onSelect: { item in
@@ -89,9 +89,11 @@ struct CoverSheetView: View {
                 onValue: { _, release in
                     guard let release else {
                         self.release = nil
-                        releaseError = String(
-                            localized:
-                                "This release is no longer in the library."
+                        releaseError = DisplayError(
+                            line: String(
+                                localized:
+                                    "This release is no longer in the library."
+                            )
                         )
                         return
                     }
@@ -101,7 +103,7 @@ struct CoverSheetView: View {
                     )
                     releaseError = nil
                 },
-                onError: { _, error in releaseError = error.displayLine }
+                onError: { _, error in releaseError = DisplayError(error) }
             )
         releaseReader = reader
         reader.show(releaseId)

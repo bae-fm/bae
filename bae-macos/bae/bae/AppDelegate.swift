@@ -561,7 +561,7 @@ extension AppDelegate {
                 baeAppLogger.error(
                     "Failed to rename \(libraryId): \($0.localizedDescription)"
                 )
-                self.renameLibrarySheet?.error = $0.displayLine
+                self.renameLibrarySheet?.error = DisplayError($0)
             }
         )
     }

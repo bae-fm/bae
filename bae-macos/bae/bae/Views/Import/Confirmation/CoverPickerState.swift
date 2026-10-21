@@ -7,7 +7,7 @@ import SwiftUI
 final class CoverPickerState {
     private(set) var remoteItems: RemoteCoverItems
     private(set) var isSaving = false
-    private(set) var errorMessage: String?
+    private(set) var error: DisplayError?
     private var refreshTask: Task<Void, Never>?
     private var saveTask: Task<Void, Never>?
     private var loadVersion = 0
@@ -25,7 +25,7 @@ final class CoverPickerState {
         let version = loadVersion
         let previousItems = remoteItems.items
         remoteItems = .loading(previousItems)
-        errorMessage = nil
+        error = nil
         do {
             let covers = try await fetch()
             try Task.checkCancellation()
@@ -35,10 +35,11 @@ final class CoverPickerState {
         catch is CancellationError {}
         catch {
             guard loadVersion == version, !Task.isCancelled else { return }
-            let message = error.displayLine.map {
-                String(localized: "Failed to load covers: \($0)")
-            }
-            remoteItems = .failed(previousItems, message: message)
+            let failure = DisplayError(error)?
+                .rewording {
+                    String(localized: "Failed to load covers: \($0)")
+                }
+            remoteItems = .failed(previousItems, failure: failure)
         }
     }
 
@@ -54,7 +55,7 @@ final class CoverPickerState {
     ) {
         guard !isSaving else { return }
         isSaving = true
-        errorMessage = nil
+        error = nil
         saveTask = Task {
             defer { isSaving = false }
             do {
@@ -64,9 +65,10 @@ final class CoverPickerState {
             }
             catch is CancellationError {}
             catch {
-                errorMessage = error.displayLine.map {
-                    String(localized: "Couldn't change the cover: \($0)")
-                }
+                self.error = DisplayError(error)?
+                    .rewording {
+                        String(localized: "Couldn't change the cover: \($0)")
+                    }
             }
         }
     }

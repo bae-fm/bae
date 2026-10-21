@@ -9,7 +9,7 @@ struct CoverGalleryView: View {
     var currentCover: CoverItem?
     var initialLayout: ArtworkBrowserState.Layout = .grid
     var isSaving = false
-    var errorMessage: String?
+    var error: DisplayError?
     var onRefresh: (() -> Void)?
     var onFindRelease: (() -> Void)?
     let onSelect: (CoverItem) -> Void
@@ -90,10 +90,8 @@ struct CoverGalleryView: View {
             }
             Divider()
             HStack(spacing: ThemeSpace.edge) {
-                if let errorMessage = errorMessage ?? remoteItems.failureMessage
-                {
-                    ErrorText(errorMessage)
-                        .textSelection(.enabled)
+                if let failure = error ?? remoteItems.failure {
+                    ErrorDetailDisclosure(error: failure)
                 }
                 Spacer(minLength: ThemeSpace.group)
                 ProgressView().controlSize(.small).opacity(isSaving ? 1 : 0)
@@ -160,7 +158,7 @@ struct CoverGalleryView: View {
                         Button("Done", action: onDone)
                             .keyboardShortcut(.cancelAction)
                     }
-                    if remoteItems.hasStatus || errorMessage != nil {
+                    if remoteItems.hasStatus || error != nil {
                         lightboxStatus
                     }
                 }
@@ -207,13 +205,11 @@ struct CoverGalleryView: View {
     private var lightboxStatus: some View {
         VStack(spacing: ThemeSpace.related) {
             if browser.cursor != nil || !remoteItems.isLoading { remoteStatus }
-            if let errorMessage {
-                ErrorText(errorMessage)
-                    .textSelection(.enabled)
+            if let error {
+                ErrorDetailDisclosure(error: error)
             }
-            if let message = remoteItems.failureMessage {
-                ErrorText(message)
-                    .textSelection(.enabled)
+            if let failure = remoteItems.failure {
+                ErrorDetailDisclosure(error: failure)
                 if let onRefresh { Button("Retry", action: onRefresh) }
             }
         }

@@ -244,7 +244,7 @@ extension LibraryArtworkBrowserTests {
         "The lightbox distinguishes loading, missing identity, empty results, and lookup failure",
         arguments: [
             RemoteCoverItems.loading([]), .unlinked, .linked([]),
-            .failed([], message: "Lookup failed"),
+            .failed([], failure: DisplayError(line: "Lookup failed")),
         ]
     )
     func lookupStateInLightbox(_ remoteItems: RemoteCoverItems) async throws {

@@ -145,8 +145,8 @@ struct AppSessionView: View {
             }
             .padding()
 
-        case .failed(let message):
-            ScreenError(message: message)
+        case .failed(let error):
+            ScreenError(error: error)
         }
     }
 }

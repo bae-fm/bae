@@ -114,7 +114,7 @@ struct DisconnectSyncFlowTests {
         await flow.confirm()
 
         #expect(recorder.disconnectCalls == 1)
-        #expect(flow.error?.hasPrefix("disconnect failed: ") == true)
+        #expect(flow.error?.line.hasPrefix("disconnect failed: ") == true)
     }
 
     @Test("a superseding prompt cancels the prior warning query")

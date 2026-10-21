@@ -89,7 +89,7 @@ enum RemoteCoverItems: Equatable {
     case loading([CoverItem])
     case unlinked
     case linked([CoverItem])
-    case failed([CoverItem], message: String?)
+    case failed([CoverItem], failure: DisplayError?)
 
     init(_ gallery: BridgeRemoteCoverGallery) {
         switch gallery {
@@ -121,8 +121,8 @@ enum RemoteCoverItems: Equatable {
         return true
     }
 
-    var failureMessage: String? {
-        if case .failed(_, let message) = self { return message }
+    var failure: DisplayError? {
+        if case .failed(_, let failure) = self { return failure }
         return nil
     }
 
@@ -130,7 +130,7 @@ enum RemoteCoverItems: Equatable {
         switch self {
         case .loading, .unlinked: true
         case .linked(let items): items.isEmpty
-        case .failed(_, let message): message != nil
+        case .failed(_, let failure): failure != nil
         }
     }
 }

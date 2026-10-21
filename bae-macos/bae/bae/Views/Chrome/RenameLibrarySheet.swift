@@ -6,7 +6,7 @@ import SwiftUI
 struct RenameLibrarySheetState: Identifiable {
     let id: String
     var newName: String
-    var error: String?
+    var error: DisplayError?
 }
 
 /// Modal for renaming a local library; the caller performs the rename and
@@ -39,7 +39,7 @@ struct RenameLibrarySheet: View {
                 }
                 if let error = state.error {
                     Section {
-                        ErrorText(error)
+                        ErrorDetailDisclosure(error: error)
                     }
                 }
             }
@@ -63,7 +63,9 @@ struct RenameLibrarySheet: View {
             }
             .padding()
         }
-        .frame(width: 420, height: 240)
+        // Grows to fit an error and its details.
+        .frame(width: 420)
+        .frame(minHeight: 240)
     }
 }
 
@@ -89,7 +91,10 @@ struct RenameLibrarySheet: View {
         var state = RenameLibrarySheetState(
             id: "lib-preview",
             newName: "Album Library",
-            error: "A library with that name already exists"
+            error: DisplayError(
+                line: "A library with that name already exists",
+                detail: "config error: a library named Album Library exists"
+            )
         )
         RenameLibrarySheet(
             state: $state,

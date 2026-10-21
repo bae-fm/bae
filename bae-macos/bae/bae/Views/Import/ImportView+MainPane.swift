@@ -221,10 +221,12 @@ extension ImportView {
         }
         catch is CancellationError {}
         catch {
-            if let line = error.displayLine {
-                uiStore.showError(
-                    String(localized: "Couldn't save that change: \(line)")
-                )
+            if let failure = DisplayError(error)?
+                .rewording({
+                    String(localized: "Couldn't save that change: \($0)")
+                })
+            {
+                uiStore.showError(failure)
             }
         }
     }
@@ -281,12 +283,12 @@ extension ImportView {
             }
             catch is CancellationError {}
             catch {
-                if let line = error.displayLine {
-                    uiStore.showError(
-                        String(
-                            localized: "Couldn't change the cover: \(line)"
-                        )
-                    )
+                if let failure = DisplayError(error)?
+                    .rewording({
+                        String(localized: "Couldn't change the cover: \($0)")
+                    })
+                {
+                    uiStore.showError(failure)
                 }
             }
         }

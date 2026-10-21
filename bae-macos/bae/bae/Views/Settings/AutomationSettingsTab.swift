@@ -53,7 +53,7 @@ struct AutomationSettingsContent: View {
 
     private enum AutomationSettingsMessage {
         case feedback(String)
-        case error(String)
+        case error(DisplayError)
     }
 
     private var isWorking: Bool { mutationTask != nil }
@@ -84,8 +84,8 @@ struct AutomationSettingsContent: View {
                     Text(text)
                         .themeText(.body)
                         .foregroundStyle(.secondary)
-                case .error(let text):
-                    ErrorText(text)
+                case .error(let failure):
+                    ErrorDetailDisclosure(error: failure)
                 case nil:
                     EmptyView()
                 }
@@ -172,13 +172,15 @@ struct AutomationSettingsContent: View {
                 logger.debug("MCP settings update task cancelled")
             }
             catch {
-                guard let line = error.displayLine else { return }
-                message = .error(
-                    String(
-                        localized:
-                            "Couldn't update MCP settings: \(line)"
-                    )
-                )
+                guard
+                    let failure = DisplayError(error)?
+                        .rewording({
+                            String(
+                                localized: "Couldn't update MCP settings: \($0)"
+                            )
+                        })
+                else { return }
+                message = .error(failure)
             }
         }
     }
@@ -208,8 +210,8 @@ struct AutomationSettingsContent: View {
     }
 
     private func showError(_ error: any Error) {
-        guard let line = error.displayLine else { return }
-        message = .error(line)
+        guard let failure = DisplayError(error) else { return }
+        message = .error(failure)
     }
 
     private func copyToken() {
@@ -254,21 +256,21 @@ struct AutomationSettingsContent: View {
                 logger.debug("MCP token task cancelled")
             }
             catch {
-                guard let line = error.displayLine else { return }
+                guard let shown = DisplayError(error) else { return }
                 switch action {
                 case .copy:
                     message = .error(
-                        String(
-                            localized:
-                                "Couldn't copy MCP token: \(line)"
-                        )
+                        shown.rewording {
+                            String(localized: "Couldn't copy MCP token: \($0)")
+                        }
                     )
                 case .rotate:
                     message = .error(
-                        String(
-                            localized:
-                                "Couldn't rotate MCP token: \(line)"
-                        )
+                        shown.rewording {
+                            String(
+                                localized: "Couldn't rotate MCP token: \($0)"
+                            )
+                        }
                     )
                 }
             }

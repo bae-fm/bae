@@ -40,7 +40,7 @@ enum AppScreen {
     /// the person's current restore code finishes it.
     case restoreUnfinished(libraryId: String)
     case library(AppService)
-    case failed(message: String)
+    case failed(DisplayError)
 
     /// The screen that finishes a reset or restore of `libraryId` that
     /// stopped partway: the one call `by` names.
@@ -171,8 +171,8 @@ final class AppSessionHolder {
                 logger.error(
                     "Failed to list libraries: \(error.localizedDescription)"
                 )
-                guard let message = error.displayLine else { return }
-                self.screen = .failed(message: message)
+                guard let failure = DisplayError(error) else { return }
+                self.screen = .failed(failure)
             }
         )
     }
@@ -246,8 +246,8 @@ final class AppSessionHolder {
                 // only one offered.
                 screen = .finishing(libraryId: libraryId, by: by)
             }
-            else if let message = error.displayLine {
-                screen = .failed(message: message)
+            else if let failure = DisplayError(error) {
+                screen = .failed(failure)
             }
         }
     }

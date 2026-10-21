@@ -488,7 +488,7 @@ struct ArtistAssignmentsField: View {
     @State
     private var isSearching = false
     @State
-    private var errorMessage: String?
+    private var searchError: DisplayError?
 
     var body: some View {
         Button {
@@ -583,8 +583,8 @@ struct ArtistAssignmentsField: View {
             if isSearching {
                 ProgressView().controlSize(.small)
             }
-            if let errorMessage {
-                ErrorText(errorMessage)
+            if let searchError {
+                ErrorDetailDisclosure(error: searchError)
             }
             ForEach(results, id: \.artist.artistId) { result in
                 VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
@@ -656,7 +656,7 @@ struct ArtistAssignmentsField: View {
 
     @MainActor
     private func search() async {
-        errorMessage = nil
+        searchError = nil
         guard !trimmedQuery.isEmpty else {
             results = []
             isSearching = false
@@ -674,7 +674,7 @@ struct ArtistAssignmentsField: View {
         catch {
             isSearching = false
             results = []
-            errorMessage = error.displayLine
+            searchError = DisplayError(error)
         }
     }
 }

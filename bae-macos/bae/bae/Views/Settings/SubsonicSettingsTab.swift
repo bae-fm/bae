@@ -45,7 +45,7 @@ struct SubsonicSettingsContent: View {
 
     private enum SubsonicSettingsMessage {
         case feedback(String)
-        case error(String)
+        case error(DisplayError)
     }
 
     /// The username and password fields' width.
@@ -96,8 +96,8 @@ struct SubsonicSettingsContent: View {
                     Text(text)
                         .themeText(.body)
                         .foregroundStyle(.secondary)
-                case .error(let text):
-                    ErrorText(text)
+                case .error(let failure):
+                    ErrorDetailDisclosure(error: failure)
                 case nil:
                     EmptyView()
                 }
@@ -207,13 +207,16 @@ struct SubsonicSettingsContent: View {
                 logger.debug("Subsonic settings update task cancelled")
             }
             catch {
-                guard let line = error.displayLine else { return }
-                message = .error(
-                    String(
-                        localized:
-                            "Couldn't update Subsonic settings: \(line)"
-                    )
-                )
+                guard
+                    let failure = DisplayError(error)?
+                        .rewording({
+                            String(
+                                localized:
+                                    "Couldn't update Subsonic settings: \($0)"
+                            )
+                        })
+                else { return }
+                message = .error(failure)
             }
         }
     }
@@ -234,13 +237,16 @@ struct SubsonicSettingsContent: View {
                 logger.debug("Subsonic password task cancelled")
             }
             catch {
-                guard let line = error.displayLine else { return }
-                message = .error(
-                    String(
-                        localized:
-                            "Couldn't save Subsonic password: \(line)"
-                    )
-                )
+                guard
+                    let failure = DisplayError(error)?
+                        .rewording({
+                            String(
+                                localized:
+                                    "Couldn't save Subsonic password: \($0)"
+                            )
+                        })
+                else { return }
+                message = .error(failure)
             }
         }
     }
@@ -270,8 +276,8 @@ struct SubsonicSettingsContent: View {
     }
 
     private func showError(_ error: any Error) {
-        guard let line = error.displayLine else { return }
-        message = .error(line)
+        guard let failure = DisplayError(error) else { return }
+        message = .error(failure)
     }
 }
 

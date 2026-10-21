@@ -29,11 +29,11 @@ public final class DisconnectSyncFlow {
     /// The platform's base confirmation sentence, resolved against the app's
     /// localized catalog.
     private let baseMessage: () -> String
-    /// Builds the inline error shown when the at-risk check itself fails, from
-    /// the error's description.
+    /// Words the inline error's line when the at-risk check itself fails,
+    /// around the failure's own line.
     private let warningCheckFailedMessage: (String) -> String
-    /// Builds the inline error shown when the disconnect fails, from the error's
-    /// description.
+    /// Words the inline error's line when the disconnect fails, around the
+    /// failure's own line.
     private let disconnectFailedMessage: (String) -> String
 
     /// Whether the confirmation dialog is shown.
@@ -41,8 +41,9 @@ public final class DisconnectSyncFlow {
     /// The at-risk sentence to append to the confirmation body, or `nil` when
     /// nothing is at risk (or the check failed).
     public var extraWarning: String?
-    /// Inline error line for the Sync section, or `nil`.
-    public var error: String?
+    /// Inline error for the Sync section, with core's diagnostic behind it,
+    /// or `nil`.
+    public var error: DisplayError?
 
     @ObservationIgnored
     private var warningTask: Task<Void, Never>?
@@ -90,7 +91,8 @@ public final class DisconnectSyncFlow {
                     "Failed to compute disconnect warning: \(error.localizedDescription)"
                 )
                 // No line means nothing to say — a cancellation. Don't invent one.
-                self.error = error.displayLine.map(warningCheckFailedMessage)
+                self.error = DisplayError(error)?
+                    .rewording(warningCheckFailedMessage)
                 extraWarning = nil
             }
             showConfirm = true
@@ -110,7 +112,7 @@ public final class DisconnectSyncFlow {
         }
         catch {
             logger.error("Failed to disconnect: \(error.localizedDescription)")
-            self.error = error.displayLine.map(disconnectFailedMessage)
+            self.error = DisplayError(error)?.rewording(disconnectFailedMessage)
         }
     }
 }

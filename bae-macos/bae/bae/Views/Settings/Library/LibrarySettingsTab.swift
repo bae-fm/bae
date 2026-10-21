@@ -220,7 +220,7 @@ private struct ConnectedProviderControls: View {
             )
 
             if let error = flow.error {
-                ErrorText(error)
+                ErrorDetailDisclosure(error: error)
             }
         }
         .alert("Disconnect sync?", isPresented: $flow.showConfirm) {

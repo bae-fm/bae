@@ -47,7 +47,7 @@ struct CoverPickerView: View {
             },
             selectedCover: selectedCover?.selection,
             isSaving: state.isSaving,
-            errorMessage: state.errorMessage,
+            error: state.error,
             onRefresh: { state.refresh(fetchRemoteCovers) },
             onFindRelease: onFindRelease,
             onSelect: { item in

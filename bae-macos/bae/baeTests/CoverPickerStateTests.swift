@@ -53,7 +53,7 @@ struct CoverPickerStateTests {
         let covers = state.remoteItems.items
         await state.load { throw StubError.notImplemented }
         #expect(state.remoteItems.items == covers)
-        #expect(state.remoteItems.failureMessage != nil)
+        #expect(state.remoteItems.failure != nil)
         #expect(!state.remoteItems.isLoading)
     }
 
@@ -68,7 +68,7 @@ struct CoverPickerStateTests {
         #expect(state.remoteItems == .linked([]))
         #expect(state.remoteItems.canRefresh)
         await state.load { throw StubError.notImplemented }
-        #expect(state.remoteItems.failureMessage != nil)
+        #expect(state.remoteItems.failure != nil)
         #expect(state.remoteItems != .linked([]))
         #expect(state.remoteItems.canRefresh)
     }
@@ -84,10 +84,10 @@ struct CoverPickerStateTests {
         try await Wait.until { !state.isSaving }
         #expect(!state.isSaving)
         #expect(!dismissed)
-        #expect(state.errorMessage != nil)
+        #expect(state.error != nil)
         state.save({}, onSaved: { dismissed = true })
         try await Wait.until { !state.isSaving }
         #expect(dismissed)
-        #expect(state.errorMessage == nil)
+        #expect(state.error == nil)
     }
 }

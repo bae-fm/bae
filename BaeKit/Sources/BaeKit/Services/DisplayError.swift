@@ -79,6 +79,12 @@ public struct DisplayError: Equatable, Sendable {
         DisplayError(line: "\(context): \(line)", detail: detail)
     }
 
+    /// The same failure under a line the caller words around this one —
+    /// "Save failed: <line>" — keeping the diagnostic for "Copy Details".
+    public func rewording(_ reword: (String) -> String) -> DisplayError {
+        DisplayError(line: reword(line), detail: detail)
+    }
+
     /// A playback failure — the one typed core failure that is not a Swift
     /// `Error`, so it cannot reach `init(_ error:)`. Everything else that crosses
     /// the bridge is an `Error` and goes through there, finding this same mapping.
@@ -120,10 +126,12 @@ public struct DisplayError: Equatable, Sendable {
 }
 
 extension Error {
-    /// The line to show a human, for the places that hold a plain `String?` rather
-    /// than a `DisplayError`. `nil` means there is nothing to show. Prefer
-    /// `DisplayError(error)` where the type allows it — that one keeps the opaque
-    /// detail for the "Copy Details" button.
+    /// The line to show a human where a line alone is the whole display — a
+    /// tooltip, a row's status text. `nil` means there is nothing to show.
+    /// Never keep it as error state: that drops the opaque detail the "Copy
+    /// Details" action offers, so state holds `DisplayError(error)` instead
+    /// (SwiftLint's `error_state_keeps_its_detail` rule refuses an assignment
+    /// from this outside this file).
     ///
     /// This is `localizedDescription`'s job, and `localizedDescription` cannot do
     /// it: uniffi declares `errorDescription` on `BridgeError` itself as

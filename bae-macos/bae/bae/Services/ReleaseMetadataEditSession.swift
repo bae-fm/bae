@@ -20,7 +20,7 @@ final class ReleaseMetadataEditSession {
 
     private(set) var form: BridgeRawReleaseEdit
     private var operation: Operation?
-    private(set) var failureMessage: String?
+    private(set) var failure: DisplayError?
     private(set) var hasChanges = false
 
     private var persistedForm: BridgeRawReleaseEdit
@@ -85,7 +85,7 @@ final class ReleaseMetadataEditSession {
         form.tracks[index] = edited
         formRevision += 1
         hasChanges = true
-        failureMessage = nil
+        failure = nil
     }
 
     func updateCover(_ cover: BridgeImageRef?) {
@@ -94,7 +94,7 @@ final class ReleaseMetadataEditSession {
 
     func save(onSuccess: @escaping @MainActor @Sendable () -> Void) {
         let serial = begin(.saving)
-        failureMessage = nil
+        failure = nil
         operationTask = Task { @MainActor in
             await editingCommands.commitActiveEdits()
             guard !Task.isCancelled else {
@@ -121,16 +121,17 @@ final class ReleaseMetadataEditSession {
             catch {
                 guard serial == operationSerial else { return }
                 finish(serial)
-                failureMessage = error.displayLine.map {
-                    String(localized: "Save failed: \($0)")
-                }
+                failure = DisplayError(error)?
+                    .rewording {
+                        String(localized: "Save failed: \($0)")
+                    }
             }
         }
     }
 
     func resetToSource() {
         let serial = begin(.resetting)
-        failureMessage = nil
+        failure = nil
         operationTask = Task { @MainActor in
             await editingCommands.commitActiveEdits()
             guard !Task.isCancelled else {
@@ -151,9 +152,10 @@ final class ReleaseMetadataEditSession {
             catch {
                 guard serial == operationSerial else { return }
                 finish(serial)
-                failureMessage = error.displayLine.map {
-                    String(localized: "Reset failed: \($0)")
-                }
+                failure = DisplayError(error)?
+                    .rewording {
+                        String(localized: "Reset failed: \($0)")
+                    }
             }
         }
     }
@@ -169,7 +171,7 @@ final class ReleaseMetadataEditSession {
             form = persistedForm
             formRevision += 1
             hasChanges = false
-            failureMessage = nil
+            failure = nil
             finish(serial)
         }
     }
@@ -190,14 +192,14 @@ final class ReleaseMetadataEditSession {
         }
         formRevision += 1
         hasChanges = true
-        failureMessage = nil
+        failure = nil
     }
 
     private func setLabels(_ labels: [BridgeRawLabelEdit]) {
         form.pressing.labels = labels
         formRevision += 1
         hasChanges = true
-        failureMessage = nil
+        failure = nil
     }
 
     private func setPressingFact(_ fact: BridgePressingFactEdit) {
@@ -207,14 +209,14 @@ final class ReleaseMetadataEditSession {
         )
         formRevision += 1
         hasChanges = true
-        failureMessage = nil
+        failure = nil
     }
 
     private func setAlbumArtists(_ assignments: [BridgeArtistAssignment]) {
         form.albumArtistAssignments = assignments
         formRevision += 1
         hasChanges = true
-        failureMessage = nil
+        failure = nil
     }
 
     private func begin(_ next: Operation) -> Int {

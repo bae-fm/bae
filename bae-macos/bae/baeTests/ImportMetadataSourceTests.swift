@@ -21,7 +21,7 @@ private final class MetadataSourceRecorder {
     var clearedKeys: [String] = []
     var identifiedKeys: [String] = []
     var automaticKeys: [String] = []
-    var errors: [String] = []
+    var errors: [DisplayError] = []
 
     var importer: Importer {
         Importer(
@@ -115,7 +115,9 @@ extension ImportMetadataSourceTests {
         try await Wait.until { !recorder.errors.isEmpty }
 
         #expect(
-            recorder.errors == ["Couldn't save that change: Source changed"]
+            recorder.errors.map(\.line) == [
+                "Couldn't save that change: Source changed"
+            ]
         )
         #expect(recorder.fileTagApplications.isEmpty)
         #expect(recorder.clearedKeys.isEmpty)

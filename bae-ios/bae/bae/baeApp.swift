@@ -70,10 +70,10 @@ struct BaeApp: App {
         catch {
             // Only a cancellation has no line, and nothing at launch can be
             // cancelled.
-            guard let line = error.displayLine else {
+            guard let failure = DisplayError(error) else {
                 preconditionFailure("A launch step reported a cancellation: \(error)")
             }
-            return .failed(line)
+            return .failed(failure)
         }
     }
 

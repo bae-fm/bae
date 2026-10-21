@@ -15,7 +15,7 @@ struct ReleaseDownloadSection: View {
     @State
     private var unpinTask: Task<Void, Never>?
     @State
-    private var unpinError: String?
+    private var unpinError: DisplayError?
 
     var body: some View {
         let status = bridgeReleaseDownloadStatus(
@@ -27,7 +27,7 @@ struct ReleaseDownloadSection: View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             control(status)
             if let unpinError {
-                ErrorText(unpinError)
+                ErrorDetailDisclosure(error: unpinError)
             }
         }
         .onDisappear { unpinTask?.cancel() }
@@ -125,7 +125,7 @@ struct ReleaseDownloadSection: View {
             }
             catch is CancellationError {}
             catch {
-                unpinError = error.displayLine
+                unpinError = DisplayError(error)
             }
         }
     }

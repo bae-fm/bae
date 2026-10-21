@@ -168,10 +168,12 @@ struct ImportView: View {
                 try await importer.removeWatchedFolder(path)
             }
             catch {
-                if let line = error.displayLine {
-                    uiStore.showError(
-                        String(localized: "Couldn't remove folder: \(line)")
-                    )
+                if let failure = DisplayError(error)?
+                    .rewording({
+                        String(localized: "Couldn't remove folder: \($0)")
+                    })
+                {
+                    uiStore.showError(failure)
                 }
             }
         }

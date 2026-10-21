@@ -30,3 +30,17 @@ excluded:
   - bae-macos/bae/bae/PreviewData.swift
   - .build
   - .claude
+
+custom_rules:
+  # A failure core reported carries a diagnostic the line leaves out; state
+  # that keeps only `displayLine` drops it, and with it the details disclosure
+  # and its copy action. Hold the `DisplayError` and render
+  # `ErrorDetailDisclosure`.
+  error_state_keeps_its_detail:
+    name: "Error state keeps its detail"
+    regex: '=\s*[^=\n]*\.displayLine\b'
+    excluded:
+      - ".*/DisplayError\\.swift$"
+      - ".*/DisplayErrorTests\\.swift$"
+    message: "Hold the DisplayError (DisplayError(error)) and render ErrorDetailDisclosure instead of keeping only its displayLine"
+    severity: error

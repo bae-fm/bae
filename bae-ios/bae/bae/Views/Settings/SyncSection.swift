@@ -147,7 +147,7 @@ private struct ConnectedStorageControls: View {
                 onDisconnect: { flow.promptDisconnect() }
             )
             if let error = flow.error {
-                ErrorText(error)
+                ErrorDetailDisclosure(error: error)
             }
         }
         .confirmationDialog(

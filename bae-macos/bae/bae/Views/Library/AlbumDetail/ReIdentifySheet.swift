@@ -53,7 +53,7 @@ struct ReIdentifySheet: View {
         case committing
         case askRefresh
         case refreshing
-        case error(String)
+        case error(DisplayError)
     }
 
     private var key: String {
@@ -141,8 +141,8 @@ struct ReIdentifySheet: View {
         case .refreshing:
             ProgressView("Refreshing metadata from new source...")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        case .error(let message):
-            errorBanner(message: message)
+        case .error(let failure):
+            errorBanner(failure)
         }
     }
 
@@ -260,18 +260,19 @@ struct ReIdentifySheet: View {
 
     // MARK: - Error banner
 
-    private func errorBanner(message: String) -> some View {
+    private func errorBanner(_ failure: DisplayError) -> some View {
         VStack(spacing: ThemeSpace.group) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .themeIcon(.hero)
                 .foregroundStyle(Theme.danger)
             Text("Re-identify failed.")
                 .themeText(.heading)
-            Text(message)
-                .themeText(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: Self.messageWidth)
+            ErrorDetailDisclosure(
+                error: failure,
+                tone: .neutral,
+                showIcon: false
+            )
+            .frame(maxWidth: Self.messageWidth)
             // Still navigates when the commit landed and only the refresh
             // failed.
             Button("Close") { closeAndNavigate() }
@@ -327,9 +328,9 @@ extension ReIdentifySheet {
                 logger.error(
                     "Re-identify commit failed: \(error.localizedDescription)"
                 )
-                // A failure with no line to show gets no error phase.
-                if let line = error.displayLine {
-                    phase = .error(line)
+                // A failure with nothing to show gets no error phase.
+                if let failure = DisplayError(error) {
+                    phase = .error(failure)
                 }
             }
         }
@@ -348,7 +349,9 @@ extension ReIdentifySheet {
                 let shaped = shapeReleaseEdit(raw: reset)
                 guard case .valid(let edit) = shaped else {
                     if case .invalid(let reason) = shaped {
-                        phase = .error(reason.localizedMessage)
+                        phase = .error(
+                            DisplayError(line: reason.localizedMessage)
+                        )
                     }
                     return
                 }
@@ -367,9 +370,9 @@ extension ReIdentifySheet {
                 logger.error(
                     "Refresh failed: \(error.localizedDescription)"
                 )
-                // A failure with no line to show gets no error phase.
-                if let line = error.displayLine {
-                    phase = .error(line)
+                // A failure with nothing to show gets no error phase.
+                if let failure = DisplayError(error) {
+                    phase = .error(failure)
                 }
             }
         }

@@ -20,10 +20,12 @@ extension ImportMappingFlow {
             return
         }
         catch {
-            if let line = error.displayLine {
-                services.onError(
-                    String(localized: "Couldn't change that track: \(line)")
-                )
+            if let failure = DisplayError(error)?
+                .rewording({
+                    String(localized: "Couldn't change that track: \($0)")
+                })
+            {
+                services.onError(failure)
             }
         }
     }

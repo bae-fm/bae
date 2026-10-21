@@ -17,8 +17,9 @@ struct ImportMappingServices {
     /// Show the folder's images in the lightbox: the gallery's images, then
     /// the path of the one that was clicked.
     let openImages: ([BridgeMappingImage], String) -> Void
-    /// Surface a failed call to the user. Prose the caller already localized.
-    let onError: (String) -> Void
+    /// Surface a failed call to the user: a line the caller worded around
+    /// core's, with core's diagnostic behind it.
+    let onError: (DisplayError) -> Void
 }
 
 /// What the mapping table's controls do to a candidate.
@@ -112,10 +113,12 @@ enum ImportMappingFlow {
             }
             catch is CancellationError {}
             catch {
-                if let line = error.displayLine {
-                    services.onError(
-                        String(localized: "Couldn't save that change: \(line)")
-                    )
+                if let failure = DisplayError(error)?
+                    .rewording({
+                        String(localized: "Couldn't save that change: \($0)")
+                    })
+                {
+                    services.onError(failure)
                 }
             }
         }
@@ -221,13 +224,15 @@ extension ImportMappingFlow {
         catch {
             // No line means a cancellation, which has nothing to report; the
             // write still did not land, so the read below is still skipped.
-            if let line = error.displayLine {
-                services.onError(
+            if let failure = DisplayError(error)?
+                .rewording({
                     String(
                         localized:
-                            "Couldn't change what \(sheetFileId) describes: \(line)"
+                            "Couldn't change what \(sheetFileId) describes: \($0)"
                     )
-                )
+                })
+            {
+                services.onError(failure)
             }
             return
         }
@@ -250,13 +255,15 @@ extension ImportMappingFlow {
             return
         }
         catch {
-            if let line = error.displayLine {
-                services.onError(
+            if let failure = DisplayError(error)?
+                .rewording({
                     String(
                         localized:
-                            "Couldn't change which disc \(sheetFileId) is: \(line)"
+                            "Couldn't change which disc \(sheetFileId) is: \($0)"
                     )
-                )
+                })
+            {
+                services.onError(failure)
             }
             return
         }
