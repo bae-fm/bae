@@ -119,6 +119,8 @@ private fun CastPickerSheet(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var castJob by remember { mutableStateOf<Job?>(null) }
+    // A failed cast shows here: a snackbar would sit behind the open sheet.
+    var castFailure by remember { mutableStateOf<DisplayError?>(null) }
     val devices by session.castStore.devices.collectAsState()
     val sheetState = rememberModalBottomSheetState()
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -139,13 +141,7 @@ private fun CastPickerSheet(
                 style = ThemeText.heading.style,
                 modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
             )
-            endedFailure?.let { failure ->
-                ErrorDetailDisclosure(
-                    error = failure,
-                    lineColor = StatusTone.WARNING.color,
-                    modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
-                )
-            }
+            PickerFailures(endedFailure = endedFailure, castFailure = castFailure)
             CastDeviceRows(
                 devices = devices,
                 castingTo = castingTo,
@@ -155,6 +151,7 @@ private fun CastPickerSheet(
                 },
                 onCast = { device ->
                     castJob?.cancel()
+                    castFailure = null
                     castJob =
                         scope.launch {
                             try {
@@ -162,12 +159,33 @@ private fun CastPickerSheet(
                                 onDismiss()
                             } catch (e: BridgeException) {
                                 logger.error("Failed to cast to ${device.id}", e)
-                                session.configStore.showError(context.displayError(e))
+                                castFailure = context.displayError(e)
                             }
                         }
                 },
             )
         }
+    }
+}
+
+/** Why the last device stopped, when its link was lost, and why the last cast this picker started failed. */
+@Composable
+private fun PickerFailures(
+    endedFailure: DisplayError?,
+    castFailure: DisplayError?,
+) {
+    endedFailure?.let { failure ->
+        ErrorDetailDisclosure(
+            error = failure,
+            lineColor = StatusTone.WARNING.color,
+            modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
+        )
+    }
+    castFailure?.let { failure ->
+        ErrorDetailDisclosure(
+            error = failure,
+            modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
+        )
     }
 }
 

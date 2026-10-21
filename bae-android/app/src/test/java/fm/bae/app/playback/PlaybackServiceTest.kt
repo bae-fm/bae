@@ -3,6 +3,7 @@ package fm.bae.app.playback
 import android.os.Looper
 import androidx.media3.common.Player
 import fm.bae.app.BridgeFixtures
+import fm.bae.app.NoErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.data.CastStore
 import fm.bae.app.data.ConfigStore
@@ -11,6 +12,7 @@ import fm.bae.app.data.LibraryStore
 import fm.bae.app.data.LibraryTransferStores
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
+import fm.bae.app.data.SessionMessages
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
 import kotlinx.coroutines.CoroutineScope
@@ -167,6 +169,7 @@ class PlaybackServiceTest {
                             isAppForeground = { false },
                         ),
                     scope = scope,
+                    messages = SessionMessages(scope, NoErrorDisplays),
                 ),
             appContext = context,
         )

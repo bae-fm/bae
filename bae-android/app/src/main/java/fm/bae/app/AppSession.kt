@@ -16,9 +16,11 @@ import fm.bae.app.data.LibraryQueryStores
 import fm.bae.app.data.LibraryStore
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
+import fm.bae.app.data.SessionMessages
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.data.UiEventAdapter
+import fm.bae.app.data.castEndedFailure
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackService
 import fm.bae.app.widget.NowPlayingWidget
@@ -46,6 +48,8 @@ import uniffi.bae_bridge.QueueCallback
 import uniffi.bae_bridge.SyncActivityCallback
 import uniffi.bae_bridge.SyncStatusCallback
 import uniffi.bae_bridge.UiEventCallback
+
+private val logger = BaeLogger("bae.OpenLibrary")
 
 /**
  * One open library: the open [AppHandle] plus the stores and services wired
@@ -82,6 +86,9 @@ class OpenLibrary internal constructor(
     val downloadStore: DownloadStore get() = stores.transfers.downloads
     val outboxStore: OutboxStore get() = stores.transfers.outbox
     val castStore: CastStore get() = stores.cast
+
+    /** The snackbar messages of this library's screens: failed actions with Retry, and failures with no screen. */
+    val messages: SessionMessages get() = runtime.messages
     private var eventChannel: Channel<BridgeUiEvent>? = null
     private var eventJob: Job? = null
     private var widgetJob: Job? = null
@@ -107,7 +114,7 @@ class OpenLibrary internal constructor(
                 for (event in channel) {
                     UiEventAdapter.handle(
                         event = event,
-                        stores = stores,
+                        messages = messages,
                         player = playback,
                         errors = LocaleErrorDisplays(appContext),
                     )
@@ -175,13 +182,13 @@ class OpenLibrary internal constructor(
                     override fun onValue(value: uniffi.bae_bridge.BridgePlaybackValues) {
                         scope.launch(Dispatchers.Main.immediate) {
                             playback.applyValues(value)
-                            stores.cast.applyStatus(value.remote)
+                            stores.cast.applyStatus(value.remote)?.let(::announceCastEnded)
                         }
                     }
 
                     override fun onError(error: uniffi.bae_bridge.BridgeException) {
                         scope.launch(Dispatchers.Main.immediate) {
-                            stores.config.showError(LocaleErrorDisplays(appContext).display(error))
+                            subscriptionFailed("playback", error)?.let(playback.readFailures::failValues)
                         }
                     }
                 },
@@ -195,7 +202,7 @@ class OpenLibrary internal constructor(
 
                     override fun onError(error: uniffi.bae_bridge.BridgeException) {
                         scope.launch(Dispatchers.Main.immediate) {
-                            stores.config.showError(LocaleErrorDisplays(appContext).display(error))
+                            subscriptionFailed("downloads", error)?.let(stores.transfers.downloads::fail)
                         }
                     }
                 },
@@ -209,7 +216,7 @@ class OpenLibrary internal constructor(
 
                     override fun onError(error: uniffi.bae_bridge.BridgeException) {
                         scope.launch(Dispatchers.Main.immediate) {
-                            stores.config.showError(LocaleErrorDisplays(appContext).display(error))
+                            subscriptionFailed("outbox", error)?.let(stores.transfers.outbox::fail)
                         }
                     }
                 },
@@ -239,11 +246,31 @@ class OpenLibrary internal constructor(
 
                     override fun onError(error: uniffi.bae_bridge.BridgeException) {
                         scope.launch(Dispatchers.Main.immediate) {
-                            stores.config.showError(LocaleErrorDisplays(appContext).display(error))
+                            subscriptionFailed("queue", error)?.let(playback.readFailures::failQueue)
                         }
                     }
                 },
             )
+    }
+
+    /**
+     * What a failed read of a live [subscription] shows in place of its last
+     * value, or null when core says there is nothing to show — a cancellation.
+     */
+    private fun subscriptionFailed(
+        subscription: String,
+        error: uniffi.bae_bridge.BridgeException,
+    ): DisplayError? {
+        logger.error("the $subscription subscription failed", error)
+        val shown = LocaleErrorDisplays(appContext).display(error)
+        if (shown == null) logger.debug("the $subscription subscription was cancelled; its value stays")
+        return shown
+    }
+
+    /** A cast whose link was lost while the picker is closed: told wherever the person is. */
+    private fun announceCastEnded(ended: uniffi.bae_bridge.BridgeRemotePlayback.Ended) {
+        if (cast.pickerOpen) return
+        messages.show(appContext.castEndedFailure(ended))
     }
 
     /**
@@ -334,4 +361,5 @@ class OpenLibrary internal constructor(
 internal data class OpenLibraryRuntime(
     val playback: BaeCorePlayer,
     val scope: CoroutineScope,
+    val messages: SessionMessages,
 )

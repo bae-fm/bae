@@ -41,19 +41,27 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import fm.bae.app.BaeLogger
+import fm.bae.app.DisplayError
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.bridgeNextRepeatMode
+
+private val logger = BaeLogger("bae.ExpandedNowPlayingScreen")
 
 private val skipGlyphSize = 36.dp
 
@@ -69,6 +77,7 @@ fun ExpandedNowPlayingScreen(
 ) {
     val player = session.playback
     val nowPlaying by player.nowPlaying.collectAsState()
+    val valuesFailure by player.readFailures.values.collectAsState()
     val track = nowPlaying ?: return
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -92,6 +101,7 @@ fun ExpandedNowPlayingScreen(
                 ExpandedPlayer(
                     session = session,
                     track = track,
+                    failure = valuesFailure,
                     onCollapse = {
                         scope.launch { sheetState.hide() }.invokeOnCompletion {
                             if (!sheetState.isVisible) onDismiss()
@@ -111,10 +121,12 @@ fun ExpandedNowPlayingScreen(
     }
 }
 
+/** The player; a failed read of playback shows in place of the track, which is no longer known to be current. */
 @Composable
 private fun ExpandedPlayer(
     session: OpenLibrary,
     track: fm.bae.app.playback.NowPlaying,
+    failure: DisplayError?,
     onCollapse: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.section, vertical = ThemeSpace.related)) {
@@ -124,16 +136,20 @@ private fun ExpandedPlayer(
 
         Spacer(modifier = Modifier.height(ThemeSpace.related))
 
-        CoverImage(
-            cover = track.coverImage,
-            cornerRadius = ThemeRadius.cover,
-            iconPadding = 64.dp,
-            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-        )
+        if (failure != null) {
+            ErrorDetailDisclosure(failure)
+        } else {
+            CoverImage(
+                cover = track.coverImage,
+                cornerRadius = ThemeRadius.cover,
+                iconPadding = 64.dp,
+                modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+            )
 
-        Spacer(modifier = Modifier.height(ThemeSpace.section))
+            Spacer(modifier = Modifier.height(ThemeSpace.section))
 
-        ExpandedTrackInfo(title = track.title, artist = track.artist)
+            ExpandedTrackInfo(title = track.title, artist = track.artist)
+        }
 
         Spacer(modifier = Modifier.height(ThemeSpace.section))
 
@@ -174,17 +190,28 @@ private fun ExpandedTrackInfo(
     )
 }
 
+/** The seek bar; a failed toggle of its time label shows under it, since this sheet covers the snackbar. */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 private fun ExpandedSeekSection(
     session: OpenLibrary,
     player: fm.bae.app.playback.BaeCorePlayer,
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var failure by remember { mutableStateOf<DisplayError?>(null) }
     PlaybackProgressAndroidView(
         session = session,
         player = player,
         modifier = Modifier.fillMaxWidth(),
+        perform = { operation, action ->
+            failure = null
+            scope.launch {
+                performBridgeAction(logger, operation, LocaleErrorDisplays(context), { failure = it }, action)
+            }
+        },
     )
+    failure?.let { ErrorDetailDisclosure(it) }
 }
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)

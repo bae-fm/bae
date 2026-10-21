@@ -11,6 +11,7 @@ import fm.bae.app.data.LibraryStore
 import fm.bae.app.data.LibraryTransferStores
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
+import fm.bae.app.data.SessionMessages
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.playback.BaeCorePlayer
@@ -256,7 +257,7 @@ object AppSessionHolder {
         } else {
             val stopped = notice
             openLibrary(context, next.id) { screen ->
-                if (stopped != null && screen is AppScreen.LibraryOpen) screen.session.configStore.showError(stopped)
+                if (stopped != null && screen is AppScreen.LibraryOpen) screen.session.messages.show(stopped)
                 onScreen(screen)
             }
         }
@@ -349,7 +350,7 @@ object AppSessionHolder {
                 }
 
                 else -> {
-                    session.configStore.showError(shown)
+                    session.messages.show(shown)
                     AppScreen.LibraryOpen(session)
                 }
             },
@@ -452,7 +453,7 @@ object AppSessionHolder {
                 logger.error("removing library ${session.libraryId} failed", e)
                 val message = errorMessage(context, e)
                 openLibrary(context, session.libraryId) { screen ->
-                    if (screen is AppScreen.LibraryOpen) screen.session.configStore.showError(message)
+                    if (screen is AppScreen.LibraryOpen) screen.session.messages.show(message)
                     onScreen(screen)
                 }
                 return
@@ -524,12 +525,13 @@ object AppSessionHolder {
         current = null
         previous?.dispose()
         val appContext = context.applicationContext
+        val messages = SessionMessages(appScope, LocaleErrorDisplays(appContext))
         val session =
             OpenLibrary(
                 libraryId = libraryId,
                 appHandle = handle,
                 diagnostics = diagnostics,
-                stores = buildStores(config, handle, initialOutbox, initialDownloads, appContext),
+                stores = buildStores(config, handle, initialOutbox, initialDownloads, messages),
                 runtime =
                     OpenLibraryRuntime(
                         playback =
@@ -546,6 +548,7 @@ object AppSessionHolder {
                                 },
                             ),
                         scope = appScope,
+                        messages = messages,
                     ),
                 appContext = appContext,
             )
@@ -560,24 +563,18 @@ object AppSessionHolder {
         handle: AppHandle,
         initialOutbox: uniffi.bae_bridge.BridgeOutboxSnapshot,
         initialDownloads: uniffi.bae_bridge.BridgeDownloadSnapshot,
-        appContext: Context,
-    ): OpenLibraryStores {
-        val configStore = ConfigStore(config)
-        return OpenLibraryStores(
+        messages: SessionMessages,
+    ): OpenLibraryStores =
+        OpenLibraryStores(
             library = LibraryStore(),
-            config = configStore,
+            config = ConfigStore(config),
             syncStatus = SyncStatusStore(),
             syncActivity =
                 SyncActivityStore(
                     retryNowAction = handle::retryNow,
                     dismissAbandonedAction = { attachment ->
-                        appScope.launch {
-                            performBridgeAction(
-                                logger = logger,
-                                operation = "dismiss an abandoned upload",
-                                errors = LocaleErrorDisplays(appContext),
-                                showError = configStore::showError,
-                            ) { handle.dismissAbandonedAttachment(attachment.record) }
+                        messages.perform("dismiss an abandoned upload") {
+                            handle.dismissAbandonedAttachment(attachment.record)
                         }
                     },
                 ),
@@ -588,7 +585,6 @@ object AppSessionHolder {
                 ),
             cast = CastStore(),
         )
-    }
 }
 
 /** What a failed library operation shows: core's localized line and diagnostic, or the error itself. */

@@ -8,6 +8,7 @@ import fm.bae.app.data.LibraryStore
 import fm.bae.app.data.LibraryTransferStores
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
+import fm.bae.app.data.SessionMessages
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.playback.BaeCorePlayer
@@ -119,6 +120,7 @@ class OpenLibraryDisposeTest {
                                 isAppForeground = { false },
                             ),
                         scope = scope,
+                        messages = SessionMessages(scope, NoErrorDisplays),
                     ),
                 appContext = context,
             )

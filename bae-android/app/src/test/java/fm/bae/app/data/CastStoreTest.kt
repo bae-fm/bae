@@ -51,6 +51,18 @@ class CastStoreTest {
         assertNull(context.castEndedFailure(BridgeRemotePlayback.On(device)))
     }
 
+    /** Every playback value repeats the status, so a lost link is reported once, when it is new. */
+    @Test
+    fun aLostLinkIsReportedOnceWhenItIsNew() {
+        val store = CastStore()
+        val ended = BridgeRemotePlayback.Ended(device, "receiver closed the session")
+        store.applyStatus(BridgeRemotePlayback.On(device))
+
+        assertEquals(ended, store.applyStatus(ended))
+        assertNull(store.applyStatus(BridgeRemotePlayback.Ended(device, "receiver closed the session")))
+        assertNull(store.applyStatus(BridgeRemotePlayback.Local))
+    }
+
     @Test
     fun devicesSurfaceTheLatestList() {
         val store = CastStore()

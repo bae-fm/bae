@@ -36,7 +36,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,16 +46,15 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
-import fm.bae.app.performBridgeAction
+import fm.bae.app.data.castEndedFailure
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
@@ -66,27 +64,35 @@ import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.PrimaryButton
+import fm.bae.app.ui.components.StatusTone
+import fm.bae.app.ui.components.color
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeSideCountdown
 import uniffi.bae_bridge.bridgeNextRepeatMode
 
-private val logger = BaeLogger("bae.NowPlayingBar")
-
-/** Persistent now-playing bar, hidden until something is loaded. */
+/**
+ * Persistent now-playing bar, hidden until something is loaded or playback
+ * can't be read. A failed read shows in place of the track, which is no
+ * longer known to be current; a cast whose link was lost says so under it
+ * until playback moves on.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 fun NowPlayingBar(session: OpenLibrary) {
     val player = session.playback
     val nowPlaying by player.nowPlaying.collectAsState()
+    val valuesFailure by player.readFailures.values.collectAsState()
     val repeatMode by player.repeatMode.collectAsState()
 
-    val track = nowPlaying ?: return
+    val failure = valuesFailure
+    val track = nowPlaying
+    if (failure == null && track == null) return
 
     var queueOpen by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
@@ -105,7 +111,7 @@ fun NowPlayingBar(session: OpenLibrary) {
     if (expanded) {
         ExpandedNowPlayingScreen(session = session, onDismiss = { expanded = false })
     }
-    SidePauseAlert(session = session, track = track)
+    track?.let { SidePauseAlert(session = session, track = it) }
 
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 3.dp) {
         Column(
@@ -115,10 +121,14 @@ fun NowPlayingBar(session: OpenLibrary) {
                     .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.related),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                NowPlayingTrackInfo(
-                    track = track,
-                    onExpand = { expanded = true },
-                )
+                if (failure != null) {
+                    ErrorText(message = failure.line, maxLines = 2, modifier = Modifier.weight(1f))
+                } else if (track != null) {
+                    NowPlayingTrackInfo(
+                        track = track,
+                        onExpand = { expanded = true },
+                    )
+                }
                 NowPlayingTransportButtons(
                     session = session,
                     player = player,
@@ -131,8 +141,23 @@ fun NowPlayingBar(session: OpenLibrary) {
                 player = player,
                 modifier = Modifier.fillMaxWidth(),
             )
+            CastEndedLine(session)
         }
     }
+}
+
+/** Why casting ended, when the last device's link was lost, until playback moves on. */
+@Composable
+private fun CastEndedLine(session: OpenLibrary) {
+    val castStatus by session.castStore.status.collectAsState()
+    val ended = LocalContext.current.castEndedFailure(castStatus) ?: return
+    Text(
+        text = ended.line,
+        style = ThemeText.detail.style,
+        color = StatusTone.WARNING.color,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
 }
 
 @Composable
@@ -183,20 +208,12 @@ private fun SidePauseAlert(
     track: fm.bae.app.playback.NowPlaying,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     SidePauseAlert(
         track = track,
         onTurnOffPauseBetweenSides = {
-            scope.launch {
-                performBridgeAction(
-                    logger = logger,
-                    operation = "turn off pause-between-sides from the side-pause prompt",
-                    errors = LocaleErrorDisplays(context),
-                    showError = session.configStore::showError,
-                ) {
-                    withContext(Dispatchers.IO) {
-                        session.appHandle.setPauseBetweenSides(false)
-                    }
+            session.messages.perform("turn off pause-between-sides from the side-pause prompt") {
+                withContext(Dispatchers.IO) {
+                    session.appHandle.setPauseBetweenSides(false)
                 }
             }
         },

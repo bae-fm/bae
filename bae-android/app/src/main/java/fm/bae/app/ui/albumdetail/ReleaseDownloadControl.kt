@@ -34,12 +34,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.data.LiveValue
 import fm.bae.app.displayError
-import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeIcon
@@ -51,6 +50,7 @@ import fm.bae.app.ui.downloads.DownloadProgressBytes
 import fm.bae.app.ui.downloads.WaitingToDownloadText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
@@ -79,7 +79,27 @@ internal fun ReleaseDownloadControl(
         )
         return
     }
-    val snapshot by session.downloadStore.snapshot.collectAsState()
+    val downloads by session.downloadStore.state.collectAsState()
+    when (val current = downloads) {
+        is LiveValue.Current -> {
+            PlayableReleaseDownloadControl(session = session, release = release, snapshot = current.value)
+        }
+
+        // The download queue's read failed, so this release's place in it is unknown.
+        is LiveValue.Failed -> {
+            ErrorDetailDisclosure(current.error)
+        }
+    }
+}
+
+/** The control for a release this device can play, from the download queue as [snapshot] has it. */
+@Composable
+private fun PlayableReleaseDownloadControl(
+    session: OpenLibrary,
+    release: BridgeRelease,
+    snapshot: BridgeDownloadSnapshot,
+) {
+    val context = LocalContext.current
     val status =
         bridgeReleaseDownloadStatus(
             pinned = release.pinned,
@@ -97,15 +117,8 @@ internal fun ReleaseDownloadControl(
             unpinning = unpinning,
             // Progress arrives through the download snapshot; core skips ids already queued or pinned.
             onDownload = {
-                scope.launch {
-                    performBridgeAction(
-                        logger = logger,
-                        operation = "queue release download",
-                        errors = LocaleErrorDisplays(context),
-                        showError = session.configStore::showError,
-                    ) {
-                        session.appHandle.queuePinReleases(listOf(release.id))
-                    }
+                session.messages.perform("queue release download") {
+                    session.appHandle.queuePinReleases(listOf(release.id))
                 }
             },
             onCancel = { session.appHandle.cancelDownload(release.id) },

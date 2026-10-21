@@ -85,11 +85,12 @@ class MainActivity : ComponentActivity() {
         // stop the background audio), so this is the save point on Android.
         val session = AppSessionHolder.currentSession() ?: return
         lifecycleScope.launch {
+            // No screen asked for the save, so its failure shows as a snackbar when the library is next on screen.
             performBridgeAction(
                 logger = logger,
                 operation = "save playback state",
                 errors = LocaleErrorDisplays(this@MainActivity),
-                showError = session.configStore::showError,
+                showError = session.messages::show,
             ) {
                 session.appHandle.savePlaybackState()
             }

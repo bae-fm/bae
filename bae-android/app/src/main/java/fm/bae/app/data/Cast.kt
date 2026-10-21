@@ -23,8 +23,17 @@ class Cast(
             .createMulticastLock("bae-cast-discovery")
             .apply { setReferenceCounted(false) }
 
+    /**
+     * Whether the picker is open: discovery runs exactly while it is. A cast
+     * that ends while it is open shows in the picker; otherwise the person is
+     * told wherever they are.
+     */
+    var pickerOpen: Boolean = false
+        private set
+
     /** Begin browsing for devices (the picker opened). */
     fun startDiscovery() {
+        pickerOpen = true
         if (!multicastLock.isHeld) {
             multicastLock.acquire()
         }
@@ -33,6 +42,7 @@ class Cast(
 
     /** Stop browsing for devices (the picker closed). */
     fun stopDiscovery() {
+        pickerOpen = false
         appHandle.stopCastDiscovery()
         if (multicastLock.isHeld) {
             multicastLock.release()

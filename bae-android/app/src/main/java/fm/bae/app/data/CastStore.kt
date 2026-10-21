@@ -22,9 +22,15 @@ class CastStore {
     private val _devices = MutableStateFlow<List<BridgeCastDevice>>(emptyList())
     val devices: StateFlow<List<BridgeCastDevice>> = _devices.asStateFlow()
 
-    /** Apply the retained status. */
-    fun applyStatus(remote: BridgeRemotePlayback) {
+    /**
+     * Apply the retained status, which every playback value repeats. Returns
+     * the cast it newly reports ended — a link lost since the last status —
+     * so the person is told once, not on every value.
+     */
+    fun applyStatus(remote: BridgeRemotePlayback): BridgeRemotePlayback.Ended? {
+        val previous = _status.value
         _status.value = remote
+        return (remote as? BridgeRemotePlayback.Ended)?.takeIf { it != previous }
     }
 
     fun setDevices(devices: List<BridgeCastDevice>) {

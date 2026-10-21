@@ -18,28 +18,20 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.castingDeviceName
-import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.Eyebrow
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeConfig
-
-private val logger = BaeLogger("bae.SettingsCastSection")
 
 /** What flipping the casting toggle should do. */
 sealed interface CastToggleAction {
@@ -75,34 +67,18 @@ internal fun SettingsCastSection(
     config: BridgeConfig,
     ioDispatcher: CoroutineDispatcher,
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val status by session.castStore.status.collectAsState()
     var pendingDisconnect by remember { mutableStateOf<String?>(null) }
 
     fun setTranscodeFormat(format: BridgeCastTranscodeFormat) {
-        scope.launch {
-            performBridgeAction(
-                logger = logger,
-                operation = "update cast conversion format",
-                errors = LocaleErrorDisplays(context),
-                showError = session.configStore::showError,
-            ) {
-                withContext(ioDispatcher) { session.cast.setTranscodeFormat(format) }
-            }
+        session.messages.perform("update cast conversion format") {
+            withContext(ioDispatcher) { session.cast.setTranscodeFormat(format) }
         }
     }
 
     fun setEnabled(enabled: Boolean) {
-        scope.launch {
-            performBridgeAction(
-                logger = logger,
-                operation = "update casting setting",
-                errors = LocaleErrorDisplays(context),
-                showError = session.configStore::showError,
-            ) {
-                withContext(ioDispatcher) { session.cast.setEnabled(enabled) }
-            }
+        session.messages.perform("update casting setting") {
+            withContext(ioDispatcher) { session.cast.setEnabled(enabled) }
         }
     }
 

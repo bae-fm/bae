@@ -35,12 +35,14 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.countLabelsText
+import fm.bae.app.data.LiveValue
 import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadSnapshot
@@ -54,15 +56,17 @@ internal fun DownloadsScreen(
     session: OpenLibrary,
     onBack: () -> Unit,
 ) {
-    val snapshot by session.downloadStore.snapshot.collectAsState()
+    val state by session.downloadStore.state.collectAsState()
     val config by session.configStore.config.collectAsState()
+    // A failed read leaves no queue known to be current, so nothing acts on one.
+    val snapshot = (state as? LiveValue.Current)?.value
     Column(modifier = Modifier.fillMaxSize()) {
         DownloadsTopBar(
-            paused = snapshot.paused,
-            hasDownloads = snapshot.downloads.isNotEmpty(),
-            hasFailures = snapshot.total.failed > 0u,
+            paused = snapshot?.paused == true,
+            hasDownloads = snapshot?.downloads?.isNotEmpty() == true,
+            hasFailures = snapshot != null && snapshot.total.failed > 0u,
             onBack = onBack,
-            onPauseToggle = { session.appHandle.setDownloadsPaused(!snapshot.paused) },
+            onPauseToggle = { snapshot?.let { session.appHandle.setDownloadsPaused(!it.paused) } },
             onRetry = { session.appHandle.retryDownloads() },
         )
         DownloadConcurrencyRow(
@@ -71,17 +75,28 @@ internal fun DownloadsScreen(
         )
         HorizontalDivider()
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            if (snapshot.downloads.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.downloads_empty),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
-                )
-            } else {
-                DownloadsList(
-                    snapshot = snapshot,
-                    onCancel = { releaseId -> session.appHandle.cancelDownload(releaseId) },
-                )
+            when (val current = state) {
+                is LiveValue.Failed -> {
+                    ErrorDetailDisclosure(
+                        error = current.error,
+                        modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
+                    )
+                }
+
+                is LiveValue.Current -> {
+                    if (current.value.downloads.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.downloads_empty),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
+                        )
+                    } else {
+                        DownloadsList(
+                            snapshot = current.value,
+                            onCancel = { releaseId -> session.appHandle.cancelDownload(releaseId) },
+                        )
+                    }
+                }
             }
         }
     }

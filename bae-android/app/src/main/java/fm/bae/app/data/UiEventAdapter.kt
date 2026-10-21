@@ -18,41 +18,41 @@ private val logger = BaeLogger(TAG)
 object UiEventAdapter {
     suspend fun handle(
         event: BridgeUiEvent,
-        stores: OpenLibraryStores,
+        messages: SessionMessages,
         player: PlaybackEventSink,
         errors: ErrorDisplays,
     ) {
         try {
-            route(event, stores, player, errors)
+            route(event, messages, player, errors)
         } catch (e: CancellationException) {
             throw e
         } catch (e: BridgeException) {
             // No special case for Cancelled: core says whether an error has a line,
-            // and showError drops the ones that do not.
+            // and show drops the ones that do not.
             logger.error("event handling failed", e)
-            stores.config.showError(errors.display(e))
+            messages.show(errors.display(e))
         } catch (e: Exception) {
             logger.error("event handling failed", e)
-            stores.config.showError(DisplayError(e.toString()))
+            messages.show(DisplayError(e.toString()))
         }
     }
 
     private suspend fun route(
         event: BridgeUiEvent,
-        stores: OpenLibraryStores,
+        messages: SessionMessages,
         player: PlaybackEventSink,
         errors: ErrorDisplays,
     ) {
-        handleDirectEvent(event, stores, player, errors)
+        handleDirectEvent(event, messages, player, errors)
     }
 
     private fun handleDirectEvent(
         event: BridgeUiEvent,
-        stores: OpenLibraryStores,
+        messages: SessionMessages,
         player: PlaybackEventSink,
         errors: ErrorDisplays,
     ) {
-        if (handlePlaybackEvent(event, stores, player, errors)) {
+        if (handlePlaybackEvent(event, messages, player, errors)) {
             return
         }
         error("unhandled UI event: ${event::class.simpleName}")
@@ -60,13 +60,14 @@ object UiEventAdapter {
 
     private fun handlePlaybackEvent(
         event: BridgeUiEvent,
-        stores: OpenLibraryStores,
+        messages: SessionMessages,
         player: PlaybackEventSink,
         errors: ErrorDisplays,
     ): Boolean {
         when (event) {
+            // A playback failure has no screen of its own: a snackbar wherever the person is.
             is BridgeUiEvent.PlaybackError -> {
-                stores.config.showError(errors.display(event.reason))
+                messages.show(errors.display(event.reason))
             }
 
             is BridgeUiEvent.QueueItemsAdded -> {

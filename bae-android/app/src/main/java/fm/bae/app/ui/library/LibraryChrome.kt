@@ -43,8 +43,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import fm.bae.app.DisplayError
-import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.AlbumPageStore
 import fm.bae.app.data.SyncActivityStore
@@ -61,19 +59,11 @@ import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
 
+/** A later page of the album grid that failed to load, above the rows that did, with Retry. */
 @Composable
-internal fun LibraryErrorBanner(
-    page: AlbumPageStore,
-    appError: DisplayError?,
-) {
-    val appendError = if (page.rows.isNotEmpty()) page.error else null
-    val banner = appendError?.error ?: appError ?: return
-    ErrorBanner(error = banner, onRetry = appendError?.onRetry)
-}
-
-@Composable
-internal fun LibraryGlobalErrorBanner(appError: DisplayError?) {
-    ErrorBanner(error = appError ?: return)
+internal fun LibraryErrorBanner(page: AlbumPageStore) {
+    val appendError = (if (page.rows.isNotEmpty()) page.error else null) ?: return
+    ErrorBanner(error = appendError.error, onRetry = appendError.onRetry)
 }
 
 @Composable

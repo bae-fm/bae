@@ -1,6 +1,5 @@
 package fm.bae.app.ui.downloads
 
-import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -9,24 +8,16 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-private val logger = BaeLogger("bae.DownloadConcurrency")
 
 /** This device's download concurrency: how many files a pin fetches at once. */
 @Composable
@@ -34,11 +25,13 @@ internal fun DownloadConcurrencyRow(
     session: OpenLibrary,
     value: UInt,
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     DownloadConcurrencySelector(
         value = value,
-        onSelect = { option -> scope.launch { setDownloadConcurrency(session, context, option) } },
+        onSelect = { option ->
+            session.messages.perform("set download concurrency") {
+                withContext(Dispatchers.IO) { session.appHandle.setMaxConcurrentDownloads(option) }
+            }
+        },
     )
 }
 
@@ -76,22 +69,5 @@ private fun DownloadConcurrencySelector(
 private fun DownloadConcurrencySelectorPreview() {
     BaeTheme {
         DownloadConcurrencySelector(value = 3u, onSelect = {})
-    }
-}
-
-private suspend fun setDownloadConcurrency(
-    session: OpenLibrary,
-    context: Context,
-    value: UInt,
-) {
-    performBridgeAction(
-        logger = logger,
-        operation = "set download concurrency",
-        errors = LocaleErrorDisplays(context),
-        showError = session.configStore::showError,
-    ) {
-        withContext(Dispatchers.IO) {
-            session.appHandle.setMaxConcurrentDownloads(value)
-        }
     }
 }

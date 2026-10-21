@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -32,9 +34,9 @@ import fm.bae.app.R
 import fm.bae.app.ShortcutAction
 import fm.bae.app.coreString
 import fm.bae.app.data.LocalImageStore
+import fm.bae.app.data.SessionMessage
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.ErrorDetailDisclosure
-import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.library.LibraryScreen
 import fm.bae.app.ui.onboarding.OnboardingScreen
 import fm.bae.app.ui.onboarding.RestoreOver
@@ -294,8 +296,10 @@ private fun sessionActions(
 )
 
 /**
- * The open library UI plus the snackbar that confirms Play Next and Add to
- * Queue, since the now-playing bar is hidden while nothing plays.
+ * The open library UI plus its snackbar, over whichever of its screens shows:
+ * it confirms Play Next and Add to Queue, since the now-playing bar is hidden
+ * while nothing plays, and tells the person what failed — what they did, with
+ * Retry, and what core reported with no screen of its own, to dismiss.
  */
 @Composable
 private fun LibraryOpenScreen(
@@ -312,6 +316,12 @@ private fun LibraryOpenScreen(
             snackbarHostState.showSnackbar(
                 appContext.resources.getQuantityString(R.plurals.queue_items_added, count, count),
             )
+        }
+    }
+    val retryLabel = stringResource(R.string.retry)
+    LaunchedEffect(session.messages, snackbarHostState) {
+        session.messages.messages.collect { message ->
+            showMessage(snackbarHostState, message, retryLabel)
         }
     }
     // The Resume shortcut plays the queue that opening the library restored paused.
@@ -336,6 +346,24 @@ private fun LibraryOpenScreen(
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
+    }
+}
+
+/** [message] as a snackbar: its Retry runs the failed action again; otherwise it only dismisses. */
+private suspend fun showMessage(
+    host: SnackbarHostState,
+    message: SessionMessage,
+    retryLabel: String,
+) {
+    val result =
+        host.showSnackbar(
+            message = message.error.line,
+            actionLabel = message.retry?.let { retryLabel },
+            withDismissAction = true,
+            duration = SnackbarDuration.Long,
+        )
+    if (result == SnackbarResult.ActionPerformed) {
+        message.retry?.invoke()
     }
 }
 

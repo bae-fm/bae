@@ -1,7 +1,5 @@
 package fm.bae.app.ui.playback
 
-import android.content.Context
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,7 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -41,7 +38,6 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.displayError
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -51,7 +47,6 @@ import fm.bae.app.ui.components.Eyebrow
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.rememberReorderableLazyListState
-import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
 
@@ -134,6 +129,8 @@ internal class ReorderableQueue(
     val order: QueueOrder,
     val reorderState: ReorderableLazyListState,
     val failures: QueueFailures,
+    /** The queue's last read failed, so its order is no longer known to be current; shown in its place. */
+    val readFailure: DisplayError?,
 )
 
 /** The optimistic queue order and its reorderable list state, re-seeded from core except during a drag. */
@@ -143,6 +140,8 @@ internal fun rememberReorderableQueue(
     listState: LazyListState,
 ): ReorderableQueue {
     val queue by session.playback.queue.collectAsState()
+    val readFailure by session.playback.readFailures.queue
+        .collectAsState()
     val order = remember { QueueOrder() }
     val failures = rememberQueueFailures()
     val reorderState =
@@ -195,10 +194,11 @@ internal fun rememberReorderableQueue(
             order.revision = queue.revision
         }
     }
-    return ReorderableQueue(order, reorderState, failures)
+    return ReorderableQueue(order, reorderState, failures, readFailure)
 }
 
-// The queue's lanes, or an empty message, below the caller's now-playing header; `onSkipped` runs after a tap-to-skip.
+// The queue's lanes, an empty message, or the failure of its last read, below the caller's now-playing header;
+// `onSkipped` runs after a tap-to-skip.
 // A failed queue command shows above the lanes, and a stopped read of the context tail below it, with Retry.
 internal fun LazyListScope.queueContent(
     session: OpenLibrary,
@@ -210,6 +210,12 @@ internal fun LazyListScope.queueContent(
     val reorderState = queue.reorderState
     val failures = queue.failures
     item(key = "command-failure") { QueueCommandFailure(failures) }
+    queue.readFailure?.let { failure ->
+        item(key = "read-failure") {
+            ErrorDetailDisclosure(error = failure, modifier = Modifier.fillMaxWidth().padding(ThemeSpace.page))
+        }
+        return
+    }
     // Only show the empty message when nothing follows at all; with a context
     // present, the "Playing From" section below carries the queue.
     if (order.isEmpty) {

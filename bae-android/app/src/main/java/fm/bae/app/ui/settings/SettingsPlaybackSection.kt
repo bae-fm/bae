@@ -20,20 +20,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.RestorePlaybackPref
 import fm.bae.app.currentLocale
-import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -43,8 +39,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeSidePauseCountdown
-
-private val logger = BaeLogger("bae.SettingsPlaybackSection")
 
 @Composable
 internal fun SettingsPlaybackSection(
@@ -75,7 +69,6 @@ private fun PauseBetweenSidesRow(
     ioDispatcher: CoroutineDispatcher,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -87,16 +80,9 @@ private fun PauseBetweenSidesRow(
         Switch(
             checked = config.pauseBetweenSides,
             onCheckedChange = { enabled ->
-                scope.launch {
-                    performBridgeAction(
-                        logger = logger,
-                        operation = "update pause-between-sides setting",
-                        errors = LocaleErrorDisplays(context),
-                        showError = session.configStore::showError,
-                    ) {
-                        withContext(ioDispatcher) {
-                            session.appHandle.setPauseBetweenSides(enabled)
-                        }
+                session.messages.perform("update pause-between-sides setting") {
+                    withContext(ioDispatcher) {
+                        session.appHandle.setPauseBetweenSides(enabled)
                     }
                 }
             },
@@ -111,21 +97,13 @@ private fun SidePauseCountdownRow(
     ioDispatcher: CoroutineDispatcher,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     SidePauseCountdownPicker(
         pauseBetweenSides = config.pauseBetweenSides,
         selected = config.sidePauseCountdown,
         onSelect = { countdown ->
-            scope.launch {
-                performBridgeAction(
-                    logger = logger,
-                    operation = "update side-pause countdown setting",
-                    errors = LocaleErrorDisplays(context),
-                    showError = session.configStore::showError,
-                ) {
-                    withContext(ioDispatcher) {
-                        session.appHandle.setSidePauseCountdown(countdown)
-                    }
+            session.messages.perform("update side-pause countdown setting") {
+                withContext(ioDispatcher) {
+                    session.appHandle.setSidePauseCountdown(countdown)
                 }
             }
         },

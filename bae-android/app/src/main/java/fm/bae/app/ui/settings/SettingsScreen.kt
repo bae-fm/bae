@@ -57,8 +57,6 @@ import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeTelemetryEvent
 import uniffi.bae_bridge.BridgeUnsentWork
 
-private val logger = BaeLogger("bae.SettingsScreen")
-
 /** Where the open library is stored, as Settings knows it. */
 internal sealed interface CloudHome {
     data object Loading : CloudHome
@@ -170,15 +168,8 @@ private fun SettingsClosingSections(
     var unsent by remember { mutableStateOf<BridgeUnsentWork?>(null) }
     SectionDivider()
     SettingsRemoveSection(onRequestRemove = {
-        scope.launch {
-            performBridgeAction(
-                logger = logger,
-                operation = "read what removing the library loses",
-                errors = LocaleErrorDisplays(context),
-                showError = { session.configStore.showError(it) },
-            ) {
-                unsent = session.appHandle.unsentBeforeRemoval()
-            }
+        session.messages.perform("read what removing the library loses") {
+            unsent = session.appHandle.unsentBeforeRemoval()
         }
     })
     SectionDivider()

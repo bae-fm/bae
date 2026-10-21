@@ -1,5 +1,6 @@
 package fm.bae.app.data
 
+import fm.bae.app.DisplayError
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -10,16 +11,21 @@ import uniffi.bae_bridge.BridgeOutboxSnapshot
  * Mirror of core's cloud-upload outbox snapshot. Core re-emits the full snapshot
  * on every change to the upload pipeline — including each pause/resume — so the
  * Settings pause toggle renders its state from [BridgeOutboxSnapshot.pauseState]
- * rather than tracking it optimistically.
+ * rather than tracking it optimistically, or the failure of the last read in
+ * its place.
  */
 class OutboxStore(
     initialSnapshot: BridgeOutboxSnapshot,
 ) {
-    private val _snapshot = MutableStateFlow(initialSnapshot)
-    val snapshot: StateFlow<BridgeOutboxSnapshot> = _snapshot.asStateFlow()
+    private val _state = MutableStateFlow<LiveValue<BridgeOutboxSnapshot>>(LiveValue.Current(initialSnapshot))
+    val state: StateFlow<LiveValue<BridgeOutboxSnapshot>> = _state.asStateFlow()
 
     fun setSnapshot(snapshot: BridgeOutboxSnapshot) {
-        _snapshot.value = snapshot
+        _state.value = LiveValue.Current(snapshot)
+    }
+
+    fun fail(error: DisplayError) {
+        _state.value = LiveValue.Failed(error)
     }
 }
 

@@ -10,24 +10,16 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import fm.bae.app.BaeLogger
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.Eyebrow
-import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeSharing
-
-private val logger = BaeLogger("bae.HistorySharingSection")
 
 /**
  * Who sees what this person plays: only them, or the whole household. A
@@ -39,18 +31,9 @@ internal fun HistorySharingSection(
     sharing: BridgeSharing,
     onChanged: () -> Unit,
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     HistorySharingContent(sharing = sharing) { chosen ->
-        scope.launch {
-            performBridgeAction(
-                logger = logger,
-                operation = "set history sharing to $chosen",
-                errors = LocaleErrorDisplays(context),
-                showError = session.configStore::showError,
-            ) {
-                session.appHandle.setHistorySharing(chosen)
-            }
+        session.messages.perform("set history sharing to $chosen") {
+            session.appHandle.setHistorySharing(chosen)
             onChanged()
         }
     }

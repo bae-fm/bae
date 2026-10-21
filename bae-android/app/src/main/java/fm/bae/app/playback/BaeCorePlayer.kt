@@ -236,6 +236,9 @@ class BaeCorePlayer(
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
 
+    /** Failed reads of the values and the queue this player mirrors, each until its next value. */
+    val readFailures = PlaybackReadFailures()
+
     // True while core is loading or buffering a track.
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -278,6 +281,7 @@ class BaeCorePlayer(
     // ── Values and events from core, on the main thread ──
 
     fun applyValues(values: BridgePlaybackValues) {
+        readFailures.valuesArrived()
         when (val state = values.state) {
             BridgePlaybackValueState.Stopped -> {
                 onStopped()
@@ -480,6 +484,7 @@ class BaeCorePlayer(
             logger.warning("dropping queue value at revision $revision; revision $queueRevision is already applied")
             return
         }
+        readFailures.queueArrived()
         manualEntries = manual
         contextLane = lane
         if (revision > queueRevision) {
