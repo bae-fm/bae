@@ -1,28 +1,3 @@
-/// Insert (or replace) a release's `covers` row. The cover reference reads the
-/// row's `blob_id` as its version, so replacing the cover with a new blob moves
-/// that version — what `change_cover` does.
-///
-/// Seed a release's cover row naming the blob `blob`. A cover change mints a
-/// new blob, so a test that replaces the cover passes a different `blob`.
-async fn add_cover_row(manager: &LibraryManager, release_id: &str, blob: &str) {
-    manager
-        .upsert_library_image(&crate::db::DbLibraryImage {
-            id: release_id.to_string(),
-            blob_id: format!("{release_id}-{blob}"),
-            image_type: LibraryImageType::Cover,
-            content_type: crate::util::content_type::ContentType::Jpeg,
-            file_size: 5,
-            width: None,
-            height: None,
-            source: "local".to_string(),
-            source_url: None,
-
-            created_at: manager.clock.now().into(),
-        })
-        .await
-        .unwrap();
-}
-
 #[tokio::test]
 async fn release_detail_has_no_cover_without_a_cover_row() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
@@ -94,15 +69,14 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
     );
 }
 
-/// A release's cover reference carries the `covers` row's `blob_id` as its
-/// version, and replacing the cover (repointing the row at a new blob) moves
-/// that version — the changed field that fires the UI's per-field re-render and
-/// reloads the cover.
+/// A release's cover reference carries the cover's version, and replacing the
+/// cover (attaching new bytes to its row) moves that version — the changed
+/// field that fires the UI's per-field re-render and reloads the cover.
 #[tokio::test]
 async fn release_cover_version_moves_when_the_cover_row_is_reupserted() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
 
-    add_cover_row(&manager, &release.id, "cover-blob").await;
+    store_test_cover(&manager, &release.id, b"cover").await;
     let before = manager
         .find_release_detail(&release.id)
         .await
@@ -113,8 +87,8 @@ async fn release_cover_version_moves_when_the_cover_row_is_reupserted() {
         .expect("cover reference present once the row exists");
     assert_eq!(before.id, release.id, "the cover id is the release id");
 
-    // Replace (what change_cover does): same row, a new blob.
-    add_cover_row(&manager, &release.id, "replacement-cover-blob").await;
+    // Replace (what change_cover does): same row, new bytes.
+    store_test_cover(&manager, &release.id, b"replacement cover").await;
     let after = manager
         .find_release_detail(&release.id)
         .await
@@ -148,8 +122,8 @@ async fn storage_page_rows_carry_each_releases_own_cover() {
         .await
         .unwrap();
 
-    add_cover_row(&manager, &release1.id, "cover-blob").await;
-    add_cover_row(&manager, &release2.id, "cover-blob").await;
+    store_test_cover(&manager, &release1.id, b"cover").await;
+    store_test_cover(&manager, &release2.id, b"cover").await;
 
     let page = manager
         .get_storage_page(
@@ -200,7 +174,7 @@ async fn album_detail_cover_is_versioned_and_moves_on_overwrite() {
         .expect("detail present for known album");
     assert!(detail.cover.is_none());
 
-    add_cover_row(&manager, &release.id, "cover-blob").await;
+    store_test_cover(&manager, &release.id, b"cover").await;
     let before = manager
         .find_album_detail(&album.id)
         .await
@@ -210,8 +184,8 @@ async fn album_detail_cover_is_versioned_and_moves_on_overwrite() {
         .expect("cover reference present once the row exists");
     assert_eq!(before.id, release.id);
 
-    // Replace the cover (what change_cover does): a new blob.
-    add_cover_row(&manager, &release.id, "replacement-cover-blob").await;
+    // Replace the cover (what change_cover does): new bytes.
+    store_test_cover(&manager, &release.id, b"replacement cover").await;
     let after = manager
         .find_album_detail(&album.id)
         .await

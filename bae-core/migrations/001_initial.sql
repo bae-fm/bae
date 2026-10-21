@@ -74,9 +74,6 @@ CREATE TABLE IF NOT EXISTS artist_images (
     -- coven writes both columns when a file is attached.
     hash BLOB,
     location TEXT,
-    -- The coven blob holding the bytes; a new one per stored image, as on
-    -- covers.blob_id.
-    blob_id TEXT NOT NULL,
     FOREIGN KEY (id) REFERENCES artists (id) ON DELETE CASCADE
 ) STRICT;
 
@@ -227,9 +224,6 @@ CREATE TABLE IF NOT EXISTS covers (
     -- coven writes both columns when a file is attached.
     hash BLOB,
     location TEXT,
-    -- The coven blob holding the bytes. coven never rewrites a blob, so
-    -- replacing a cover points the row at a new blob id.
-    blob_id TEXT NOT NULL,
     FOREIGN KEY (id) REFERENCES releases (id) ON DELETE CASCADE
 ) STRICT;
 

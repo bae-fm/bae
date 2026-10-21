@@ -125,76 +125,35 @@ async fn enqueue_release_save_captures_the_preset() {
     );
 }
 
-async fn store_test_cover_image(manager: &LibraryManager, release_id: &str) {
-    store_test_cover_image_with_blob(manager, release_id, COVER_BLOB).await;
-}
-
-/// Write a release's cover row and its blob. A coven blob id names one immutable
-/// byte-string, so replacing a cover means a NEW `blob_id` on the same row — pass a
-/// different `blob_suffix` to stand in for what `change_cover` does.
-async fn store_test_cover_image_with_blob(
-    manager: &LibraryManager,
-    release_id: &str,
-    blob_suffix: &str,
-) {
-    manager
-        .store_library_image_blob(
-            &DbLibraryImage {
-                id: release_id.to_string(),
-                blob_id: bae_test_support::test_uuid(&format!("{release_id}-{blob_suffix}")),
-                image_type: LibraryImageType::Cover,
-                content_type: crate::util::content_type::ContentType::Jpeg,
-                file_size: 5,
-                width: None,
-                height: None,
-                source: "local".to_string(),
-                source_url: None,
-
-                created_at: manager.clock.now().into(),
-            },
-            b"image",
-        )
-        .await
-        .unwrap();
-}
-
-/// Replacing a cover declares the blob it replaces deleted, and that blob is
-/// read before the write opens. A replacement that lands in between would
-/// leave its blob undeclared and its bytes in coven's store for good, so the
-/// write checks the row still names the blob it planned to replace and
-/// refuses otherwise.
+/// A cover replacement is planned against the cover it replaces. One that
+/// lands in between wins, and the planned replacement is refused rather than
+/// overwriting a cover its planner never saw.
 #[tokio::test]
 async fn replacing_a_cover_refuses_a_replacement_that_landed_first() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    store_test_cover_image_with_blob(&manager, &release.id, "cover-first").await;
+    store_test_cover(&manager, &release.id, b"first cover").await;
     let concurrent = manager.clone();
     let concurrent_release = release.id.clone();
-    let late_blob = bae_test_support::test_uuid(&format!("{}-cover-late", release.id));
-    let mut late = manager
-        .get_library_image(&release.id, &LibraryImageType::Cover)
-        .await
-        .unwrap()
-        .expect("the first cover is stored");
-    late.blob_id = late_blob.clone();
+    let late = DbLibraryImage::cover(
+        &release.id,
+        "local",
+        None,
+        b"late cover",
+        manager.clock.now().into(),
+    );
 
     let error = manager
         .database
-        .write_library_image_blob_after_planning_for_test(&late, b"image", move || async move {
-            store_test_cover_image_with_blob(&concurrent, &concurrent_release, "cover-between")
-                .await;
+        .write_library_image_blob_after_planning_for_test(&late, b"late cover", move || async move {
+            store_test_cover(&concurrent, &concurrent_release, b"between cover").await;
         })
         .await
         .expect_err("a replacement planned against a superseded cover is refused");
 
     assert!(error.to_string().contains("changed after planning"));
-    let stored = manager
-        .get_library_image(&release.id, &LibraryImageType::Cover)
-        .await
-        .unwrap()
-        .expect("the cover row remains");
     assert_eq!(
-        stored.blob_id,
-        bae_test_support::test_uuid(&format!("{}-cover-between", release.id)),
+        manager.read_cover_image_blob(&release.id).await.unwrap(),
+        Some(b"between cover".to_vec()),
         "the replacement that landed first stands"
     );
 }

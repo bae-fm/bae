@@ -898,8 +898,8 @@ async fn project_file_metadata(
     .map_err(LibraryError::from)
 }
 
-/// The cover [`ImageRef`] for one release from its `covers` row's `blob_id`,
-/// or `None` when it has no cover row. Free function so the manager's `cover_ref`,
+/// The cover [`ImageRef`] for one release from its cover's version, or `None`
+/// when it has no cover row. Free function so the manager's `cover_ref`,
 /// the release-edit context, and one track's detail share one construction.
 pub(crate) async fn cover_ref_for(
     database: &Database,

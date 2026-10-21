@@ -175,12 +175,20 @@ async fn exec_batch(db: &super::Database, sql: &str) {
         .unwrap();
 }
 
-/// Store a real cover so coven supplies the file's managed columns.
-async fn write_cover(db: &super::Database, release: &str, version: &str) {
-    let bytes = b"fixture cover";
-    let image =
-        crate::db::DbLibraryImage::cover(release, version, "discogs", None, bytes, fixed_now());
+/// Store a real cover holding `content` so coven supplies the file's managed
+/// columns, and return the version reads report for it.
+async fn write_cover(db: &super::Database, release: &str, content: &str) -> String {
+    let bytes = content.as_bytes();
+    let image = crate::db::DbLibraryImage::cover(release, "discogs", None, bytes, fixed_now());
     db.write_library_image_blob(&image, bytes).await.unwrap();
+    stored_image_version(db, crate::sync::COVERS_NAMESPACE, release).await
+}
+
+/// The version of the image attached to `table`'s row `id`, read from coven's
+/// own reference to the row's file rather than from the version query.
+async fn stored_image_version(db: &super::Database, table: &str, id: &str) -> String {
+    let file = db.file_ref(table, id).await.unwrap();
+    super::blobs::image_version(file.content_hash().as_bytes())
 }
 
 /// `ARTIST_PRIMARY` owning `ALBUM_A`, whose primary release is `RELEASE_A`.

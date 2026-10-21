@@ -22,28 +22,16 @@ async fn work_detail_release_rows_are_display_ready() {
         TRACK_WORK_A.to_string(),
         now,
     );
-    let cover = DbLibraryImage {
-        id: release.id.clone(),
-        blob_id: bae_test_support::test_uuid(&format!("{}-cover-blob", release.id)),
-        image_type: LibraryImageType::Cover,
-        content_type: ContentType::Jpeg,
-        file_size: 100,
-        width: None,
-        height: None,
-        source: "local".to_string(),
-        source_url: None,
-
-        created_at: now,
-    };
 
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     manager.database.insert_track(&track).await.unwrap();
     manager
         .database
-        .insert_composition_fixture_rows(std::slice::from_ref(&work), &[track_work], &[cover])
+        .insert_composition_fixture_rows(std::slice::from_ref(&work), &[track_work])
         .await
         .unwrap();
+    store_test_cover(&manager, &release.id, b"cover").await;
 
     let detail = manager
         .get_work_detail(&work.id)
@@ -135,7 +123,7 @@ async fn deletion_keeps_committed_file_uploads_without_losing_the_outbox() {
 async fn deletion_refuses_an_unavailable_database_without_losing_rows() {
     for delete_album in [false, true] {
         let (manager, _temp, album, release) = manager_with_release().await;
-        store_test_cover_image(&manager, &release.id).await;
+        store_test_cover(&manager, &release.id, b"cover").await;
         let before = manager.database.every_row_for_test().await.unwrap();
         let id = manager.database.store_id();
         manager.database.close().await.unwrap();
@@ -184,7 +172,7 @@ async fn track_display_carries_the_cover_version() {
     let display = manager.get_track_display(&track.id).await.unwrap();
     assert_eq!(display.cover_image, None);
 
-    store_test_cover_image(&manager, &release.id).await;
+    store_test_cover(&manager, &release.id, b"cover").await;
     let version = manager
         .database
         .cover_version(&release.id)
@@ -229,26 +217,8 @@ async fn delete_release_removes_its_cover_image() {
     let release2 = create_test_release(&release1.album_id);
     insert_release(&manager, &release2).await;
 
-    // Give release1 a cover: a `covers` row plus its blob in one coven batch.
-    manager
-        .store_library_image_blob(
-            &crate::db::DbLibraryImage {
-                id: release1.id.clone(),
-                blob_id: bae_test_support::test_uuid(&format!("{}-cover-blob", release1.id)),
-                image_type: LibraryImageType::Cover,
-                content_type: crate::util::content_type::ContentType::Jpeg,
-                file_size: 5,
-                width: None,
-                height: None,
-                source: "local".to_string(),
-                source_url: None,
-
-                created_at: manager.clock.now().into(),
-            },
-            b"image",
-        )
-        .await
-        .unwrap();
+    // Give release1 a cover: a `covers` row plus its file in one coven batch.
+    store_test_cover(&manager, &release1.id, b"image").await;
 
     wait_for_published_blob(&manager, crate::sync::COVERS_NAMESPACE, &release1.id).await;
 
@@ -280,25 +250,7 @@ async fn delete_album_removes_release_covers() {
         .await,
     )
     .await;
-    manager
-        .store_library_image_blob(
-            &crate::db::DbLibraryImage {
-                id: release.id.clone(),
-                blob_id: bae_test_support::test_uuid(&format!("{}-cover-blob", release.id)),
-                image_type: LibraryImageType::Cover,
-                content_type: crate::util::content_type::ContentType::Jpeg,
-                file_size: 5,
-                width: None,
-                height: None,
-                source: "local".to_string(),
-                source_url: None,
-
-                created_at: manager.clock.now().into(),
-            },
-            b"image",
-        )
-        .await
-        .unwrap();
+    store_test_cover(&manager, &release.id, b"image").await;
 
     wait_for_published_blob(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await;
 
@@ -311,19 +263,19 @@ async fn delete_album_removes_release_covers() {
         .is_none());
 }
 
-/// The blobs a delete declares are read before its write opens. A cover
-/// replaced in between would leave the new blob undeclared, so the write
-/// checks the plan against the rows it deletes and refuses a stale one.
+/// A delete is planned against the release's rows and files before its write
+/// opens. A cover replaced in between is a change the plan never saw, so the
+/// write checks the plan against the rows it deletes and refuses a stale one.
 #[tokio::test]
 async fn delete_release_refuses_a_plan_whose_cover_changed() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    store_test_cover_image(&manager, &release.id).await;
+    store_test_cover(&manager, &release.id, b"cover").await;
     let plan = manager
         .database
         .plan_release_deletion(&release.id)
         .await
         .unwrap();
-    store_test_cover_image_with_blob(&manager, &release.id, "replacement-cover").await;
+    store_test_cover(&manager, &release.id, b"replacement cover").await;
 
     let error = manager
         .database

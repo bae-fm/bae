@@ -175,11 +175,11 @@ fn imported_release_summary(
     let text = load_imported_release_text_on(sql, Some(&release.release_id))?
         .remove(&release.release_id)
         .ok_or_else(|| DbError::Message(format!("imported release {} has no album", release.release_id)))?;
-    let cover_version = sql.query_row(
-        "SELECT blob_id FROM covers WHERE id = ?",
-        params![release.release_id],
-        |row| row.get::<_, String>(0),
-    ).optional()?;
+    let cover_version = super::super::blobs::image_version_on(
+        sql,
+        &crate::db::LibraryImageType::Cover,
+        &release.release_id,
+    )?;
     Ok(crate::import::ImportedReleaseSummary {
         cover: cover_version.map(|version| crate::album_detail::ImageRef {
             id: release.release_id.clone(),

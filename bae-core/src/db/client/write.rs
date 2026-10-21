@@ -631,10 +631,9 @@ pub(super) fn upsert_library_image_row(
     let table = image_table(&image.image_type);
     conn.execute(
         &format!(
-            "INSERT INTO {table} (id, blob_id, content_type, file_size, width, height, source, source_url, created_at) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) \
+            "INSERT INTO {table} (id, content_type, file_size, width, height, source, source_url, created_at) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?) \
              ON CONFLICT(id) DO UPDATE SET \
-                 blob_id = excluded.blob_id, \
                  content_type = excluded.content_type, \
                  file_size = excluded.file_size, \
                  width = excluded.width, \
@@ -644,7 +643,6 @@ pub(super) fn upsert_library_image_row(
         ),
         params![
             image.id,
-            image.blob_id,
             image.content_type.as_str(),
             image.file_size,
             image.width,

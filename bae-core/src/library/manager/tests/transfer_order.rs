@@ -103,7 +103,6 @@ async fn upload_keeps_the_cover_and_every_file_in_the_queue() {
     let cover_bytes = b"cover-bytes";
     let cover = DbLibraryImage::cover(
         &release.id,
-        &Uuid::new_v4().to_string(),
         "local",
         None,
         cover_bytes,

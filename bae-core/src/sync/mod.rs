@@ -89,7 +89,6 @@ pub fn synced_tables() -> Vec<SyncedTable> {
                 Provenance::AppProvided,
                 CacheFill::CacheEager,
             )
-            .with_id_column("blob_id")
             .with_size_column("file_size"),
         ),
         SyncedTable::new("artist_images", RowIdentity::SharedKey).carries_files(
@@ -99,7 +98,6 @@ pub fn synced_tables() -> Vec<SyncedTable> {
                 Provenance::AppProvided,
                 CacheFill::CacheEager,
             )
-            .with_id_column("blob_id")
             .with_size_column("file_size"),
         ),
         SyncedTable::new("history", RowIdentity::IndependentUuid)
@@ -227,7 +225,7 @@ mod tests {
                     512 * 1024 * 1024,
                     Provenance::AppProvided,
                     CacheFill::CacheEager,
-                    "blob_id",
+                    "id",
                     false,
                 )),
                 "artist_images" => Some((
@@ -235,7 +233,7 @@ mod tests {
                     256 * 1024 * 1024,
                     Provenance::AppProvided,
                     CacheFill::CacheEager,
-                    "blob_id",
+                    "id",
                     false,
                 )),
                 "people" => Some((

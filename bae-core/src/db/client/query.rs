@@ -573,7 +573,6 @@ pub(super) fn row_to_library_image(
 ) -> rusqlite::Result<DbLibraryImage> {
     Ok(DbLibraryImage {
         id: row.get("id")?,
-        blob_id: row.get("blob_id")?,
         image_type,
         content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
         file_size: row.get("file_size")?,

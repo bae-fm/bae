@@ -242,14 +242,7 @@ impl LibraryManager {
         .await
         .map_err(|error| failed(error.to_string()))?
         .map_err(failed)?;
-        let image = DbLibraryImage::cover(
-            release_id,
-            &self.ids.new_id().to_string(),
-            "local",
-            None,
-            &bytes,
-            added,
-        );
+        let image = DbLibraryImage::cover(release_id, "local", None, &bytes, added);
         Ok((image, bytes))
     }
 }

@@ -754,9 +754,12 @@ Two kinds of file, matching coven's
   to coven, which keeps them.
 
 A cover belongs to one release, an artist image to one artist, an avatar to one
-person. Changing a cover stores a new image with a new id; coven never rewrites
-a stored file, and deletes the old one once nothing refers to it
+person. Changing a cover attaches a new file to the release's cover row; coven
+never rewrites a stored file, and deletes the old one once nothing refers to it
 ([coven §17.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#178-deleting-stored-files)).
+An image's version is the content hash coven records for its file, so the apps
+and Subsonic clients that cache art by version fetch a cover again exactly when
+its bytes change.
 
 ### 4.2 Local and uploaded releases
 

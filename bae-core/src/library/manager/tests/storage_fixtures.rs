@@ -295,13 +295,11 @@ async fn playback_error_reason_for_file(
 }
 
 /// Store a cover on `release_id` the way the importer does — the `covers` row
-/// and its blob in one coven batch — so the release carries the cover blob that
-/// an upload pins along with its files.
-#[cfg(feature = "test-utils")]
+/// and its file in one coven batch. Storing different bytes again replaces the
+/// cover, as `change_cover` does.
 async fn store_test_cover(manager: &LibraryManager, release_id: &str, bytes: &[u8]) {
     let cover = DbLibraryImage::cover(
         release_id,
-        &Uuid::new_v4().to_string(),
         "local",
         None,
         bytes,

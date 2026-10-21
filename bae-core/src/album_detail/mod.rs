@@ -317,8 +317,8 @@ pub struct FileDetail {
 
 /// A library image's reference: kind, subject id, and content version. The id is a
 /// release id for a cover and an artist id for an artist image; the version is the
-/// image row's `blob_id`: a blob id names one immutable byte string, so the
-/// version moves exactly when the bytes do. The UI passes the
+/// content hash coven records for the image row's file, so it moves exactly when
+/// the bytes do. The UI passes the
 /// whole reference back to read bytes, so core dispatches to the right table rather
 /// than probe every image namespace.
 #[derive(Debug, Clone, PartialEq, Eq)]

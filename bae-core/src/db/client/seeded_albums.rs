@@ -39,7 +39,7 @@ impl Database {
             .map(|(image, bytes)| {
                 (
                     image.image_type.namespace().to_string(),
-                    image.blob_id.clone(),
+                    image.id.clone(),
                     bytes.clone(),
                 )
             })

@@ -73,15 +73,6 @@ impl LibraryManager {
         crate::storage::transfer::read_release_file_bytes(&file, self).await
     }
 
-    /// Test-only: seed a bare image row. Production writes cover/artist images
-    /// through `change_cover` / `store_library_image_blob`, which pair the row with
-    /// its blob.
-    #[cfg(test)]
-    pub async fn upsert_library_image(&self, image: &DbLibraryImage) -> Result<(), LibraryError> {
-        self.database.upsert_library_image(image).await?;
-        Ok(())
-    }
-
     pub async fn get_library_image(
         &self,
         id: &str,
@@ -133,7 +124,6 @@ impl LibraryManager {
             .map_err(|e| LibraryError::Import(format!("Failed to resize cover: {e}")))?;
         let library_image = DbLibraryImage::cover(
             release_id,
-            &self.ids.new_id().to_string(),
             &source,
             source_url,
             &bytes,

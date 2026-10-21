@@ -17,12 +17,6 @@ pub(crate) struct OutboxDisplayContext {
 }
 
 impl Database {
-    pub async fn upsert_library_image(&self, image: &DbLibraryImage) -> Result<(), DbError> {
-        let image = image.clone();
-        self.call_sql(move |sql| upsert_library_image_row(&sql, &image))
-            .await
-    }
-
     /// Replace an image's bytes and row atomically; coven manages the old file.
     pub async fn write_library_image_blob(
         &self,
@@ -60,32 +54,24 @@ impl Database {
     {
         let image = image.clone();
         let namespace = image.image_type.namespace();
-        let existing = self
-            .find_library_image(&image.id, &image.image_type)
+        let planned = self
+            .find_image_version(&image.image_type, &image.id)
             .await?;
-        let planned_blob_id = existing.as_ref().map(|existing| existing.blob_id.clone());
         after_planning().await;
-        let new_file_id = image.blob_id.clone();
+        // coven attaches the bytes to the row whose file id column — the row's
+        // own `id` — names them.
+        let file_id = image.id.clone();
         let bytes = bytes.to_vec();
         self.write_with_files(
             move |w| {
-                w.put_file(namespace, new_file_id, bytes);
+                w.put_file(namespace, file_id, bytes);
                 Ok(())
             },
             move |sql| {
                 // Refuse a replacement when another edit changed this row.
-                let current_blob_id: Option<String> = sql
-                    .query_row(
-                        &format!(
-                            "SELECT blob_id FROM {} WHERE id = ?",
-                            image_table(&image.image_type)
-                        ),
-                        params![image.id],
-                        |row| row.get(0),
-                    )
-                    .optional()
-                    .map_err(|error| CovenError::from(DbError::from(error)))?;
-                if current_blob_id != planned_blob_id {
+                let current = image_version_on(&sql, &image.image_type, &image.id)
+                    .map_err(CovenError::from)?;
+                if current != planned {
                     return Err(CovenError::from(DbError::Message(format!(
                         "{} image for {} changed after planning",
                         namespace, image.id
@@ -122,9 +108,8 @@ impl Database {
         .await
     }
 
-    /// The version of each given release's cover — its `covers` row's `blob_id`,
-    /// which names one immutable byte string; ids with no
-    /// cover row are absent from the map. This is the version a cover
+    /// The version of each given release's cover (its file's content hash); ids
+    /// with no cover row are absent from the map. This is the version a cover
     /// [`ImageRef`](crate::album_detail::ImageRef) carries — it moves whenever the
     /// cover bytes change, which moves the UI's `(id, version)` cache key and makes
     /// the subscribed album value show the new art.
@@ -136,9 +121,8 @@ impl Database {
             .await
     }
 
-    /// The version (`blob_id`) of each given artist's `artist_images` row, for
-    /// the ids that have one. Ids with no artist image row are absent from the
-    /// map.
+    /// The version of each given artist's `artist_images` row, for the ids
+    /// that have one. Ids with no artist image row are absent from the map.
     pub async fn artist_image_versions(
         &self,
         artist_ids: &[String],
@@ -160,11 +144,20 @@ impl Database {
             .await
     }
 
-    /// The version (`blob_id`) of one release's `covers` row, or `None` when it
-    /// has no cover. The single-id form of [`cover_versions`](Self::cover_versions).
+    /// The version of one release's cover, or `None` when it has no cover.
     pub async fn cover_version(&self, release_id: &str) -> Result<Option<String>, DbError> {
-        let ids = [release_id.to_string()];
-        Ok(self.cover_versions(&ids).await?.remove(release_id))
+        self.find_image_version(&LibraryImageType::Cover, release_id)
+            .await
+    }
+
+    async fn find_image_version(
+        &self,
+        image_type: &LibraryImageType,
+        id: &str,
+    ) -> Result<Option<String>, DbError> {
+        let (image_type, id) = (image_type.clone(), id.to_string());
+        self.read(move |sql| image_version_on(&sql, &image_type, &id))
+            .await
     }
 
     /// The original this device has for a file. Unattached rows read bae's local
@@ -400,6 +393,32 @@ pub(super) fn file_row_id(file: &coven::FileRef) -> Result<&str, DbError> {
     }
 }
 
+/// A library image's version: the content hash coven records when it attaches
+/// the row's file. coven fills `hash` on every attachment and never rewrites
+/// stored bytes, so the version moves exactly when the image's bytes do. Every
+/// image row carries a file — each write pairs the row with its bytes — so a
+/// row without a hash fails the read.
+pub(super) fn image_version(hash: &[u8]) -> String {
+    hex::encode(hash)
+}
+
+/// The version of one image row, or `None` when there is no such row.
+pub(super) fn image_version_on<Q: QueryOne>(
+    sql: &Q,
+    image_type: &LibraryImageType,
+    id: &str,
+) -> Result<Option<String>, DbError> {
+    let table = image_table(image_type);
+    Ok(sql
+        .query_row(
+            &format!("SELECT hash FROM {table} WHERE id = ?"),
+            params![id],
+            |row| row.get::<_, Vec<u8>>(0),
+        )
+        .optional()?
+        .map(|hash| image_version(&hash)))
+}
+
 /// `ids` is a whole page's worth of releases (or, for the storage page, each row's
 /// release plus its album's), so it is unbounded and must be chunked under
 /// SQLite's variable limit like every other batched `IN` query here.
@@ -412,10 +431,13 @@ pub(super) fn image_versions_on(
     let mut map = HashMap::new();
     for chunk in ids.chunks(SQL_MAX_IN_VARS) {
         let placeholders = in_clause_placeholders(chunk.len());
-        let query = format!("SELECT id, blob_id FROM {table} WHERE id IN ({placeholders})");
+        let query = format!("SELECT id, hash FROM {table} WHERE id IN ({placeholders})");
         map.extend(
             sql.query(&query, rusqlite::params_from_iter(chunk.iter()), |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                Ok((
+                    row.get::<_, String>(0)?,
+                    image_version(&row.get::<_, Vec<u8>>(1)?),
+                ))
             })?,
         );
     }

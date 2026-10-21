@@ -28,8 +28,8 @@ async fn cover_db() -> (Database, tempfile::TempDir) {
     })
     .await
     .unwrap();
-    super::write_cover(&db, RELEASE_LONELY, "bd5c1f6c-3b6e-4d16-9f0a-2c1d5f61a0aa").await;
-    super::write_cover(&db, RELEASE_OTHER, "0f2b9a51-7d2c-4a2f-8f16-9c0a3f1b2d44").await;
+    super::write_cover(&db, RELEASE_LONELY, "lonely release cover").await;
+    super::write_cover(&db, RELEASE_OTHER, "other release cover").await;
     (db, tmp)
 }
 
@@ -46,10 +46,11 @@ async fn cover_of(db: &Database, track_id: &str) -> Option<crate::album_detail::
     items[0].display.cover_image.clone()
 }
 
-fn cover_ref(release_id: &str, version: &str) -> Option<crate::album_detail::ImageRef> {
+/// The release's cover reference, carrying the version of the cover stored for it.
+async fn cover_ref(db: &Database, release_id: &str) -> Option<crate::album_detail::ImageRef> {
     Some(crate::album_detail::ImageRef {
         id: release_id.to_string(),
-        version: version.to_string(),
+        version: super::stored_image_version(db, crate::sync::COVERS_NAMESPACE, release_id).await,
         image_type: LibraryImageType::Cover,
     })
 }
@@ -61,7 +62,7 @@ async fn queue_row_covers_a_track_whose_album_has_no_primary_release() {
     let (db, _tmp) = cover_db().await;
     assert_eq!(
         cover_of(&db, TRACK_LONELY).await,
-        cover_ref(RELEASE_LONELY, "bd5c1f6c-3b6e-4d16-9f0a-2c1d5f61a0aa"),
+        cover_ref(&db, RELEASE_LONELY).await,
     );
 }
 
@@ -72,7 +73,7 @@ async fn queue_row_covers_the_track_s_own_release_not_the_album_s_primary() {
     let (db, _tmp) = cover_db().await;
     assert_eq!(
         cover_of(&db, TRACK_OTHER).await,
-        cover_ref(RELEASE_OTHER, "0f2b9a51-7d2c-4a2f-8f16-9c0a3f1b2d44"),
+        cover_ref(&db, RELEASE_OTHER).await,
     );
 }
 
@@ -85,7 +86,7 @@ async fn replacing_a_cover_changes_its_version() {
         .expect("the release has a cover");
     let listed_before = db.cover_version(RELEASE_LONELY).await.unwrap();
 
-    super::write_cover(&db, RELEASE_LONELY, "6a1e4c2b-9d3f-4b57-8e21-3c4d5e6f7a8b").await;
+    super::write_cover(&db, RELEASE_LONELY, "replacement cover").await;
 
     let after = cover_of(&db, TRACK_LONELY)
         .await

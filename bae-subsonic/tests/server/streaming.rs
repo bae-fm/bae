@@ -338,7 +338,6 @@ async fn a_changed_cover_gets_a_new_cover_art_id() {
         .store_library_image_blob(
             &bae_core::db::DbLibraryImage {
                 id: lib.per_track_release.clone(),
-                blob_id: support::test_uuid("replacement-cover"),
                 image_type: bae_core::db::LibraryImageType::Cover,
                 content_type: bae_core::util::content_type::ContentType::Png,
                 file_size: support::cover_png().len() as i64,
@@ -381,7 +380,6 @@ async fn an_artist_cover_art_is_the_artist_image() {
         .store_library_image_blob(
             &bae_core::db::DbLibraryImage {
                 id: artist_id,
-                blob_id: support::test_uuid("artist-image"),
                 image_type: bae_core::db::LibraryImageType::Artist,
                 content_type: bae_core::util::content_type::ContentType::Png,
                 file_size: image.len() as i64,

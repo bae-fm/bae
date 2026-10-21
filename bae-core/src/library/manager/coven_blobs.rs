@@ -74,11 +74,8 @@ impl LibraryManager {
     }
 
     /// The cover [`ImageRef`] for one release — its image id paired with the
-    /// `covers` row's `blob_id` — or `None` when the release has no cover row.
-    pub(crate) async fn cover_ref(
-        &self,
-        release_id: &str,
-    ) -> Result<Option<ImageRef>, LibraryError> {
+    /// cover's version — or `None` when the release has no cover row.
+    pub async fn cover_ref(&self, release_id: &str) -> Result<Option<ImageRef>, LibraryError> {
         cover_ref_for(&self.database, release_id).await
     }
 
@@ -121,7 +118,9 @@ impl LibraryManager {
             .await
     }
 
-    async fn read_library_image_blob(
+    /// Read a library image's whole bytes by its subject id and kind; `None`
+    /// when no image is stored.
+    pub async fn read_library_image_blob(
         &self,
         id: &str,
         image_type: &LibraryImageType,

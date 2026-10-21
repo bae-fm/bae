@@ -224,7 +224,7 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
             );
             device
                 .database()
-                .insert_composition_fixture_rows(&resolved.inserts, &[track_work], &[])
+                .insert_composition_fixture_rows(&resolved.inserts, &[track_work])
                 .await
                 .unwrap();
             releases.push(release.id);

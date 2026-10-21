@@ -790,7 +790,6 @@ impl ImportService {
                         .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
                 let image = crate::db::DbLibraryImage::cover(
                     &db_release.id,
-                    &library_manager.new_id(),
                     &candidate.source,
                     candidate.source_url,
                     &bytes,

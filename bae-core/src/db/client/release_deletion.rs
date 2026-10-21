@@ -9,8 +9,8 @@ pub struct ReleaseDeletion {
     album_id: String,
     /// File ids and hashes, ordered by id.
     files: Vec<(String, Option<Vec<u8>>)>,
-    /// The cover's file id and hash.
-    cover: Option<(String, Option<Vec<u8>>)>,
+    /// The cover's version, when the release has a cover.
+    cover: Option<String>,
 }
 
 impl ReleaseDeletion {
@@ -39,13 +39,7 @@ impl ReleaseDeletion {
             params![release_id],
             |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<Vec<u8>>>(1)?)),
         )?;
-        let cover = sql
-            .query_row(
-                "SELECT blob_id, hash FROM covers WHERE id = ?",
-                params![release_id],
-                |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<Vec<u8>>>(1)?)),
-            )
-            .optional()?;
+        let cover = super::blobs::image_version_on(sql, &LibraryImageType::Cover, release_id)?;
         Ok(Self {
             release_id: release_id.to_string(),
             album_id,

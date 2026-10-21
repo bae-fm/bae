@@ -160,9 +160,8 @@ impl Database {
         &self,
         works: &[DbWork],
         track_works: &[DbTrackWork],
-        images: &[DbLibraryImage],
     ) -> Result<(), DbError> {
-        let (works, track_works, images) = (works.to_vec(), track_works.to_vec(), images.to_vec());
+        let (works, track_works) = (works.to_vec(), track_works.to_vec());
         self.call_sql(move |sql| {
             let conn = &sql;
             for work in &works {
@@ -170,9 +169,6 @@ impl Database {
             }
             for track_work in &track_works {
                 insert_track_work_row(conn, track_work)?;
-            }
-            for image in &images {
-                upsert_library_image_row(conn, image)?;
             }
             Ok(())
         })
@@ -452,15 +448,14 @@ impl Database {
             .iter()
             .map(|(image, bytes)| ((*image).clone(), (*bytes).to_vec()))
             .collect();
-        // Keyed by the image's `blob_id`, not its row id: a coven blob id names one
-        // immutable byte-string, and the row id (the release / artist) never moves.
+        // Each image's bytes attach to its row, which coven finds by the row's id.
         let image_blobs: Vec<(String, String, Vec<u8>)> = library_image
             .iter()
             .chain(artist_images.iter())
             .map(|(image, bytes)| {
                 (
                     image.image_type.namespace().to_string(),
-                    image.blob_id.clone(),
+                    image.id.clone(),
                     bytes.clone(),
                 )
             })

@@ -289,10 +289,8 @@ async fn outbox_snapshot_identifies_the_cover_blob() {
     )
     .await;
     let cover_bytes = b"cover-bytes";
-    let cover_blob_id = Uuid::new_v4().to_string();
     let cover = DbLibraryImage::cover(
         &release.id,
-        &cover_blob_id,
         "local",
         None,
         cover_bytes,

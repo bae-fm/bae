@@ -188,15 +188,11 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     })
     .await
     .unwrap();
-    for (artist, version, source, bytes) in [
-        (&discogs.id, "44444444-4444-4444-8444-444444444444", "discogs", b"four".as_slice()),
-        (&musicbrainz.id, "33333333-3333-4333-8333-333333333333", "musicbrainz", b"one".as_slice()),
+    for (artist, source, bytes) in [
+        (&discogs.id, "discogs", b"four".as_slice()),
+        (&musicbrainz.id, "musicbrainz", b"one".as_slice()),
     ] {
-        db.write_library_image_blob(&DbLibraryImage {
-            id: artist.clone(), blob_id: version.into(), image_type: LibraryImageType::Artist,
-            content_type: crate::util::content_type::ContentType::Jpeg, file_size: bytes.len() as i64,
-            width: None, height: None, source: source.into(), source_url: None, created_at: fixed_now(),
-        }, bytes).await.unwrap();
+        store_artist_image(&db, artist, source, bytes).await;
     }
     let failure = artist_identity_failure(&discogs, &musicbrainz);
     db.save_import_candidate_failure(&hash, 0, &failure)
@@ -232,7 +228,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     let absorbed_id = musicbrainz.id.clone();
     let survivor_id = discogs.id.clone();
     let pending_hash_for_read = pending_hash.clone();
-    let (absorbed_references, survivor_image_blob, pending_album_artists, pending_track_artists) =
+    let (absorbed_references, pending_album_artists, pending_track_artists) =
         db.read(move |sql| {
             let mut absorbed_references = 0_i64;
             // Only this device's drafts move; shared credits stay as written.
@@ -246,11 +242,6 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
                     |row| row.get::<_, i64>(0),
                 )?;
             }
-            let survivor_image_blob = sql.query_row(
-                "SELECT blob_id FROM artist_images WHERE id = ?",
-                [&survivor_id],
-                |row| row.get::<_, String>(0),
-            )?;
             let pending_album_artists = sql.query_row(
                 "SELECT COUNT(*) FROM import_candidate_album_artist_assignment \
                  WHERE content_hash = ? AND artist_id = ?",
@@ -265,7 +256,6 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
             )?;
             Ok((
                 absorbed_references,
-                survivor_image_blob,
                 pending_album_artists,
                 pending_track_artists,
             ))
@@ -273,7 +263,11 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
         .await
         .unwrap();
     assert_eq!(absorbed_references, 0);
-    assert_eq!(survivor_image_blob, "44444444-4444-4444-8444-444444444444");
+    assert_eq!(
+        artist_image_bytes(&db, &discogs.id).await,
+        b"four",
+        "the survivor keeps its own image"
+    );
     assert_eq!(pending_album_artists, 1);
     assert_eq!(pending_track_artists, 1);
     assert!(db
@@ -287,6 +281,71 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
         .await
         .unwrap()
         .failure
+        .is_none());
+}
+
+async fn store_artist_image(db: &Database, artist_id: &str, source: &str, bytes: &[u8]) {
+    db.write_library_image_blob(
+        &DbLibraryImage {
+            id: artist_id.to_string(),
+            image_type: LibraryImageType::Artist,
+            content_type: crate::util::content_type::ContentType::Jpeg,
+            file_size: bytes.len() as i64,
+            width: None,
+            height: None,
+            source: source.into(),
+            source_url: None,
+            created_at: fixed_now(),
+        },
+        bytes,
+    )
+    .await
+    .unwrap();
+}
+
+async fn artist_image_bytes(db: &Database, artist_id: &str) -> Vec<u8> {
+    let file = db.file_ref("artist_images", artist_id).await.unwrap();
+    db.read_file(&file).await.unwrap()
+}
+
+/// When only the absorbed artist has an image, the survivor takes it: the
+/// merge attaches the absorbed image's bytes to the survivor's new row.
+#[tokio::test]
+async fn resolving_a_conflict_moves_the_absorbed_artists_image_to_the_survivor() {
+    let (db, _tmp) = empty_db().await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+    let discogs = DbArtist {
+        id: bae_test_support::test_uuid("image-move-discogs-artist"),
+        name: "Artist One".to_string(),
+        sort_name: None,
+        discogs_artist_id: Some("discogs-1".to_string()),
+        musicbrainz_artist_id: None,
+        created_at: fixed_now(),
+    };
+    let musicbrainz = DbArtist {
+        id: bae_test_support::test_uuid("image-move-musicbrainz-artist"),
+        name: "Artist One".to_string(),
+        sort_name: None,
+        discogs_artist_id: None,
+        musicbrainz_artist_id: Some("mb-1".to_string()),
+        created_at: fixed_now(),
+    };
+    db.insert_artist(&discogs).await.unwrap();
+    db.insert_artist(&musicbrainz).await.unwrap();
+    store_artist_image(&db, &musicbrainz.id, "musicbrainz", b"absorbed").await;
+    db.save_import_candidate_failure(&hash, 0, &artist_identity_failure(&discogs, &musicbrainz))
+        .await
+        .unwrap();
+
+    db.choose_import_artist_identity(&hash, 0, crate::import::ArtistIdentityConflictChoice::SameArtist, &coven::UuidIds)
+        .await
+        .unwrap();
+
+    assert_eq!(artist_image_bytes(&db, &discogs.id).await, b"absorbed");
+    assert!(db
+        .find_library_image(&musicbrainz.id, &LibraryImageType::Artist)
+        .await
+        .unwrap()
         .is_none());
 }
 

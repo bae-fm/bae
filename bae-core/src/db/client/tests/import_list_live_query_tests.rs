@@ -147,8 +147,7 @@ async fn import_list_done_row_reads_the_library_release() {
     assert!(release.cover.is_none());
     assert!(release.records.is_empty());
 
-    let cover_blob = "bd5c1f6c-3b6e-4d16-9f0a-2c1d5f61a0aa";
-    super::write_cover(&db, RELEASE_ID, cover_blob).await;
+    let cover_version = super::write_cover(&db, RELEASE_ID, "cover bytes").await;
     let covered = imported_rows(
         &tokio::time::timeout(Duration::from_secs(2), live.next())
             .await
@@ -160,7 +159,7 @@ async fn import_list_done_row_reads_the_library_release() {
         covered[0].releases[0].cover,
         Some(crate::album_detail::ImageRef {
             id: RELEASE_ID.to_string(),
-            version: cover_blob.to_string(),
+            version: cover_version,
             image_type: crate::db::LibraryImageType::Cover,
         })
     );

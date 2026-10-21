@@ -392,7 +392,6 @@ impl LibraryManager {
             };
             let row = DbLibraryImage {
                 id: artist.id.clone(),
-                blob_id: self.new_id(),
                 image_type: LibraryImageType::Artist,
                 content_type: image.content_type.clone(),
                 file_size: image.bytes.len() as i64,

@@ -5,7 +5,7 @@
 //! release into an `AlbumID3` and a track into a `Child`, resolving the audio
 //! format, artists, and backing file each `Child` requires.
 
-use bae_core::db::{DbFile, DbRelease, DbTrack, LibraryImageType};
+use bae_core::db::{DbFile, DbRelease, DbTrack};
 use bae_core::import::Catalog;
 use bae_core::library::{AppServices, LibraryError};
 
@@ -44,10 +44,10 @@ async fn release_cover_art(
     release_id: &str,
 ) -> Result<Option<String>, SubError> {
     Ok(services
-        .get_library_image(release_id, &LibraryImageType::Cover)
+        .cover_ref(release_id)
         .await
         .map_err(lib_err)?
-        .map(|cover| SubId::Album(release_id.to_string()).cover_art_id(&cover.blob_id)))
+        .map(|cover| SubId::Album(release_id.to_string()).cover_art_id(&cover.version)))
 }
 
 /// Sum of track durations in whole seconds.

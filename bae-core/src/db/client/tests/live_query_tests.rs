@@ -35,12 +35,13 @@ pub(super) async fn live_db() -> (Database, tempfile::TempDir) {
     (db, temp)
 }
 
-async fn write_artist_image(db: &Database, artist: &str, version: &str) {
-    let bytes = b"artist image fixture";
+/// Store an artist image holding `content` and return the version reads
+/// report for it.
+async fn write_artist_image(db: &Database, artist: &str, content: &str) -> String {
+    let bytes = content.as_bytes();
     db.write_library_image_blob(
         &DbLibraryImage {
             id: artist.into(),
-            blob_id: version.into(),
             image_type: LibraryImageType::Artist,
             content_type: ContentType::Jpeg,
             file_size: bytes.len() as i64,
@@ -54,6 +55,7 @@ async fn write_artist_image(db: &Database, artist: &str, version: &str) {
     )
     .await
     .unwrap();
+    super::stored_image_version(db, crate::sync::ARTIST_IMAGES_NAMESPACE, artist).await
 }
 
 /// Move `live` to `request` and return the event answering it, asserting the
@@ -164,7 +166,7 @@ async fn album_browse_delivers_rows_count_and_cover_versions() {
     assert_eq!(initial.windows[0].rows[0].title, "Album Title");
     assert!(initial.cover_versions.is_empty());
 
-    super::write_cover(&db, RELEASE_ID, "bd5c1f6c-3b6e-4d16-9f0a-2c1d5f61a0aa").await;
+    let cover = super::write_cover(&db, RELEASE_ID, "cover bytes").await;
 
     let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
@@ -173,7 +175,7 @@ async fn album_browse_delivers_rows_count_and_cover_versions() {
         .unwrap();
     assert_eq!(
         updated.cover_versions.get(RELEASE_ID).map(String::as_str),
-        Some("bd5c1f6c-3b6e-4d16-9f0a-2c1d5f61a0aa")
+        Some(cover.as_str())
     );
 }
 
@@ -192,13 +194,8 @@ async fn album_browse_reads_only_the_primary_releases_cover() {
     let mut live = db.subscribe_album_browse(&[], false, first_page());
     live.next().await.result.unwrap();
 
-    super::write_cover(
-        &db,
-        OTHER_RELEASE_ID,
-        "2b8f0c6e-4a1d-4c3e-8f5a-6d7e8f9a0b1c",
-    )
-    .await;
-    super::write_cover(&db, RELEASE_ID, "9c1d2e3f-4a5b-4c6d-8e7f-0a1b2c3d4e5f").await;
+    super::write_cover(&db, OTHER_RELEASE_ID, "other release cover bytes").await;
+    super::write_cover(&db, RELEASE_ID, "primary release cover bytes").await;
     let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("the primary release's cover wakes the browse")
@@ -342,12 +339,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     assert_eq!(shown_again.windows[0].rows, shown.windows[0].rows);
     let shown = shown_again;
 
-    super::write_cover(
-        &db,
-        OTHER_RELEASE_ID,
-        "96f3c15a-b99d-4395-81e5-2c32bb7a9c75",
-    )
-    .await;
+    let other_cover = super::write_cover(&db, OTHER_RELEASE_ID, "other cover bytes").await;
     // Only the requested rows' covers are read, so a cover on the album
     // outside the window changes nothing the browse delivers.
     next_album_page_is_only_a_rename(&db, &mut live, shown, "Album Title Shown Again").await;
@@ -365,15 +357,11 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
             .cover_versions
             .get(OTHER_RELEASE_ID)
             .map(String::as_str),
-        Some("96f3c15a-b99d-4395-81e5-2c32bb7a9c75")
+        Some(other_cover.as_str())
     );
 
-    super::write_cover(
-        &db,
-        OTHER_RELEASE_ID,
-        "5d0e7a43-2f18-4c6b-9a3e-7b1c2d3e4f50",
-    )
-    .await;
+    let replaced_other_cover =
+        super::write_cover(&db, OTHER_RELEASE_ID, "replaced other cover bytes").await;
     let cover_updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("a requested album's cover version wakes album browse")
@@ -384,7 +372,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
             .cover_versions
             .get(OTHER_RELEASE_ID)
             .map(String::as_str),
-        Some("5d0e7a43-2f18-4c6b-9a3e-7b1c2d3e4f50")
+        Some(replaced_other_cover.as_str())
     );
 
     requests
@@ -503,12 +491,7 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     )
     .await;
 
-    write_artist_image(
-        &db,
-        OTHER_COMPOSER_ID,
-        "19af4b72-9f57-4110-bc92-b72735b7b4ad",
-    )
-    .await;
+    let composer_image = write_artist_image(&db, OTHER_COMPOSER_ID, "composer image bytes").await;
     // Only the requested rows' images are read, so an image on the composer
     // outside the window changes nothing the browse delivers.
     next_composer_page_is_only_a_rename(&db, &mut live, shown, "Composer Name First Again").await;
@@ -526,15 +509,11 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
             .image_versions
             .get(OTHER_COMPOSER_ID)
             .map(String::as_str),
-        Some("19af4b72-9f57-4110-bc92-b72735b7b4ad")
+        Some(composer_image.as_str())
     );
 
-    write_artist_image(
-        &db,
-        OTHER_COMPOSER_ID,
-        "8c2f4e61-7a3b-4d95-b0e8-1f2a3b4c5d6e",
-    )
-    .await;
+    let replaced_composer_image =
+        write_artist_image(&db, OTHER_COMPOSER_ID, "replaced composer image bytes").await;
     let image_updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("a requested composer's image version wakes composer browse")
@@ -545,7 +524,7 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
             .image_versions
             .get(OTHER_COMPOSER_ID)
             .map(String::as_str),
-        Some("8c2f4e61-7a3b-4d95-b0e8-1f2a3b4c5d6e")
+        Some(replaced_composer_image.as_str())
     );
 
     requests.set(BTreeSet::new()).unwrap();
@@ -590,7 +569,7 @@ async fn artist_browse_reads_its_windows_and_their_images() {
     assert_eq!(initial.windows[0].rows[0].artist.id, ARTIST_ID);
     assert!(initial.image_versions.is_empty());
 
-    write_artist_image(&db, ARTIST_ID, "2b7d9e41-6c3a-4f58-9d12-8e4f5a6b7c8d").await;
+    let artist_image = write_artist_image(&db, ARTIST_ID, "artist image bytes").await;
     let imaged = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("an image on a listed artist wakes artist browse")
@@ -598,7 +577,7 @@ async fn artist_browse_reads_its_windows_and_their_images() {
         .unwrap();
     assert_eq!(
         imaged.image_versions.get(ARTIST_ID).map(String::as_str),
-        Some("2b7d9e41-6c3a-4f58-9d12-8e4f5a6b7c8d")
+        Some(artist_image.as_str())
     );
 
     live.requests().set(BTreeSet::new()).unwrap();
@@ -684,7 +663,7 @@ async fn album_browse_ignores_an_unread_table() {
 #[tokio::test]
 async fn album_detail_subscription_ignores_an_unread_column() {
     let (db, _temp) = live_db().await;
-    super::write_cover(&db, RELEASE_ID, "bd5c1f6c-3b6e-4d16-9f0a-2c1d5f61a0aa").await;
+    super::write_cover(&db, RELEASE_ID, "cover bytes").await;
     let mut live = db.subscribe_album_detail(Some(ALBUM_ID.to_string()));
     live.next().await.result.unwrap();
 

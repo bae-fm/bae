@@ -2,7 +2,6 @@
 // canonical v4 UUID (`RowIdentity::IndependentUuid`), which is what bae's
 // real ids are, so these fixtures carry UUIDs too. Each constant is named
 // for the moniker it replaced, so assertions still read by name.
-const COVER_BLOB: &str = "4c98761d-e446-4871-8800-8ce69ac302ad"; // was "cover-blob"
 const REL_1: &str = "cccb6034-5922-40d2-8d0b-d94619230882"; // was "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
 const REL_2: &str = "dcdebf05-2d41-4dfc-8823-024993c9d00f"; // was "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b"
 const REL_ABORT: &str = "59c56c5f-eee0-4a61-8ecc-fb828ab4c828"; // was "rel-abort"

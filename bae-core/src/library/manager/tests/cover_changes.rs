@@ -108,10 +108,9 @@ async fn assert_changed_cover(
     assert_eq!(row.file_size, stored.len() as i64);
 }
 
-/// A cover can be changed again and again. coven's `(namespace, blob id)` names one
-/// immutable byte-string — a blob's bytes are never rewritten under a live id — so
-/// each change mints a new `blob_id` and repoints the `covers` row at it.
-/// Captured references to the replaced row must be refused.
+/// A cover can be changed again and again. coven never rewrites stored bytes:
+/// each change attaches a new file to the same `covers` row, which moves the
+/// cover's version. Captured references to the replaced file must be refused.
 #[tokio::test]
 async fn change_cover_twice_replaces_the_cover_blob() {
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -170,25 +169,37 @@ async fn change_cover_twice_replaces_the_cover_blob() {
             .expect("cover row stored")
     };
 
+    let cover_version = async || {
+        manager
+            .cover_ref(&release.id)
+            .await
+            .unwrap()
+            .expect("cover stored")
+            .version
+    };
+
     change_to(&green).await.unwrap();
     let first = cover_row().await;
+    let first_version = cover_version().await;
     let first_ref = manager.database.file_ref("covers", &release.id).await.unwrap();
 
-    // The second change is the one that used to fail: it re-put a blob under an id
-    // the `covers` row already referenced.
+    // The second change attaches a new file to the row that already has one.
     change_to(&red).await.unwrap();
     let second = cover_row().await;
 
-    // The row moved to a new blob, and describes the bytes that blob holds.
+    // The row names a new file, and describes the bytes that file holds.
+    let second_ref = manager.database.file_ref("covers", &release.id).await.unwrap();
     assert_ne!(
-        second.blob_id, first.blob_id,
-        "a replaced cover is a new blob, not new bytes under the old id"
+        second_ref.id(),
+        first_ref.id(),
+        "a replaced cover is a new file, not new bytes under the old one"
     );
+    assert_ne!(cover_version().await, first_version, "the cover's version moves");
     let stored = manager
         .read_cover_image_blob(&release.id)
         .await
         .unwrap()
-        .expect("cover blob stored");
+        .expect("cover file stored");
     assert_eq!(
         manager.database.file_ref("covers", &release.id).await.unwrap().content_hash().as_bytes().iter().map(|byte| format!("{byte:02x}")).collect::<String>().as_str(),
         crate::util::fs::hash_bytes(&stored).as_str()

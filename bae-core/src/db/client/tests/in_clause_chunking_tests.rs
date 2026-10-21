@@ -62,34 +62,27 @@ async fn cover_versions_merges_chunks() {
     .await
     .unwrap();
 
+    // Each cover holds its own bytes, so each carries its own version.
     let images: Vec<_> = release_ids
         .iter()
         .enumerate()
         .map(|(index, release_id)| {
-            DbLibraryImage::cover(
-                release_id,
-                &bae_test_support::test_uuid(&format!("cover-blob-{index}")),
-                "local",
-                None,
-                b"cover",
-                chrono::Utc::now(),
-            )
+            let bytes = format!("cover-{index}").into_bytes();
+            let image =
+                DbLibraryImage::cover(release_id, "local", None, &bytes, chrono::Utc::now());
+            (image, bytes)
         })
         .collect();
     let files = images.clone();
     Box::pin(db.inner.handle.write_with_files(
         move |writer| {
-            for image in files {
-                writer.put_file(
-                    crate::sync::COVERS_NAMESPACE,
-                    image.blob_id,
-                    b"cover".to_vec(),
-                );
+            for (image, bytes) in files {
+                writer.put_file(crate::sync::COVERS_NAMESPACE, image.id, bytes);
             }
             Ok(())
         },
         move |sql| {
-            for image in images {
+            for (image, _) in images {
                 super::super::write::upsert_library_image_row(&sql, &image)
                     .map_err(CovenError::from)?;
             }
@@ -103,15 +96,19 @@ async fn cover_versions_merges_chunks() {
 
     // Spans three chunks; every row from every chunk must survive the merge.
     assert_eq!(versions.len(), cover_count);
-    assert_eq!(
-        versions.get(&release_ids[0]),
-        Some(&bae_test_support::test_uuid("cover-blob-0"))
-    );
-    let last = cover_count - 1;
-    assert_eq!(
-        versions.get(&release_ids[last]),
-        Some(&bae_test_support::test_uuid(&format!("cover-blob-{last}")))
-    );
+    for index in [0, cover_count - 1] {
+        assert_eq!(
+            versions.get(&release_ids[index]),
+            Some(
+                &super::stored_image_version(
+                    &db,
+                    crate::sync::COVERS_NAMESPACE,
+                    &release_ids[index]
+                )
+                .await
+            )
+        );
+    }
 }
 
 #[tokio::test]

@@ -31,7 +31,7 @@ impl Database {
         &self,
         plan: ArtistIdentityMergePlan,
     ) -> Result<(), DbError> {
-        let moved = if let (None, Some(file_id)) = &plan.images {
+        let moved = if let (None, Some(_)) = &plan.images {
             let reference = self
                 .file_ref("artist_images", &plan.absorbed_artist_id)
                 .await?;
@@ -39,15 +39,17 @@ impl Database {
                 .read_file(&reference)
                 .await
                 .map_err(DbError::FileRead)?;
-            Some((file_id.clone(), reference, bytes))
+            Some((reference, bytes))
         } else {
             None
         };
-        let reference = moved.as_ref().map(|(_, reference, _)| reference.clone());
+        let reference = moved.as_ref().map(|(reference, _)| reference.clone());
+        // The survivor's copied row is the one these bytes attach to.
+        let survivor = plan.surviving_artist_id.clone();
         self.write_with_files(
             move |write| {
-                if let Some((id, _, bytes)) = moved {
-                    write.put_file(crate::sync::ARTIST_IMAGES_NAMESPACE, id, bytes);
+                if let Some((_, bytes)) = moved {
+                    write.put_file(crate::sync::ARTIST_IMAGES_NAMESPACE, survivor, bytes);
                 }
                 Ok(())
             },
@@ -151,15 +153,8 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
         )));
     }
     let surviving_sort_name = discogs_artist.sort_name.or(musicbrainz_artist.sort_name);
-    let image = |artist_id: &str| {
-        sql.query_row(
-            "SELECT blob_id FROM artist_images WHERE id = ?",
-            [artist_id],
-            |row| row.get::<_, String>(0),
-        )
-        .optional()
-        .map_err(DbError::from)
-    };
+    let image =
+        |artist_id: &str| super::blobs::image_version_on(sql, &LibraryImageType::Artist, artist_id);
     let surviving_image = image(surviving_artist_id)?;
     let absorbed_image = image(&absorbed_artist_id)?;
 
@@ -226,9 +221,9 @@ fn apply_artist_identity_merge(
     if matches!(&plan.images, (None, Some(_))) {
         sql.execute(
             "INSERT INTO artist_images (id, content_type, file_size, width, height, source, \
-                 source_url, created_at, blob_id) \
+                 source_url, created_at) \
              SELECT ?, content_type, file_size, width, height, source, source_url, \
-                 created_at, blob_id FROM artist_images WHERE id = ?",
+                 created_at FROM artist_images WHERE id = ?",
             params![plan.surviving_artist_id, plan.absorbed_artist_id],
         )?;
     }

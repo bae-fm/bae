@@ -367,11 +367,7 @@ async fn cover_art_inner(state: &AppState, params: &Params) -> Result<Response, 
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
     let bytes = services
-        .read_image_blob(&bae_core::album_detail::ImageRef {
-            id: subject_id,
-            version: row.blob_id,
-            image_type,
-        })
+        .read_library_image_blob(&subject_id, &image_type)
         .await
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
