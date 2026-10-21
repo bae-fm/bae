@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -33,6 +34,17 @@ import uniffi.bae_bridge.NoHandle
 @Config(sdk = [35])
 class SettingsLibraryModelTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    /**
+     * The model's writes post Compose's snapshot apply to the main looper, and
+     * Robolectric drops whatever is still queued there when the test ends. That
+     * leaves Compose's JVM-wide main dispatcher waiting on a message that never
+     * runs, so every later Compose test in the JVM never goes idle.
+     */
+    @After
+    fun runWhatTheTestLeftOnTheMainLooper() {
+        shadowOf(Looper.getMainLooper()).idle()
+    }
 
     @Test
     fun aFailedSelfReadIsAFailureAndRetryReadsAgain() {
