@@ -149,6 +149,7 @@
                 scanImage,
                 infoLog,
                 notesDocument,
+                damagedFrontImage,
                 supplementalVideo,
             ]
                 + previewLogDocuments,
