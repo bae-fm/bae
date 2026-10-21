@@ -23,7 +23,7 @@
     <string name="library_load_failed">Библиотеката ви не може да бъде заредена.</string>
     <string name="library_load_more_failed">Не могат да бъдат заредени още албуми.</string>
     <string name="library">Библиотека</string>
-    <string name="album_load_failed">Този албум не може да бъде зареден.</string>
+    <string name="album_not_in_library">Този албум вече не е във вашата библиотека.</string>
     <string name="shuffle">Разбъркване</string>
     <string name="play_next">Възпроизведи следващо</string>
     <string name="add_to_queue">Добави в опашката</string>

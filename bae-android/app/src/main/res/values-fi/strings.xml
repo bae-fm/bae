@@ -23,7 +23,7 @@
     <string name="library_load_failed">Kirjastoasi ei voitu ladata.</string>
     <string name="library_load_more_failed">Lisää albumeita ei voitu ladata.</string>
     <string name="library">Kirjasto</string>
-    <string name="album_load_failed">Tätä albumia ei voitu ladata.</string>
+    <string name="album_not_in_library">Tämä albumi ei ole enää kirjastossasi.</string>
     <string name="shuffle">Sekoita</string>
     <string name="play_next">Toista seuraavaksi</string>
     <string name="add_to_queue">Lisää jonoon</string>

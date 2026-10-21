@@ -122,14 +122,17 @@ fun AlbumDetailScreen(
         }
     }
 
-    val loadError = albumLoadError(query, appContext)
+    val loadError = query.error?.let { error -> appContext.displayError(error) ?: DisplayError(error.toString()) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         LibraryDetailTopBar(onBack = onBack)
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             val loaded = detail
             if (loaded == null) {
-                AlbumDetailLoadingBox(loadError, onRetry = session.libraryQueries.album::retry)
+                AlbumDetailPlaceholderBox(
+                    placeholder = albumDetailPlaceholder(query, loadError),
+                    onRetry = session.libraryQueries.album::retry,
+                )
             } else {
                 loadError?.let {
                     ErrorDetailDisclosure(
@@ -157,32 +160,59 @@ fun AlbumDetailScreen(
     }
 }
 
-private fun albumLoadError(
-    query: LiveQueryState<BridgeAlbumDetail>,
-    context: android.content.Context,
-): DisplayError? =
-    query.error?.let { error -> context.displayError(error) ?: DisplayError(error.toString()) }
-        ?: if (query.delivered && query.value == null) {
-            DisplayError(context.getString(R.string.album_load_failed))
-        } else {
-            null
-        }
+/** What the album page shows while it has no album to draw. */
+internal sealed interface AlbumDetailPlaceholder {
+    data object Loading : AlbumDetailPlaceholder
 
-@Composable
-private fun BoxScope.AlbumDetailLoadingBox(
+    /** The read failed; Retry reads it again. */
+    data class Failed(
+        val error: DisplayError,
+    ) : AlbumDetailPlaceholder
+
+    /** The read answered that no such album exists: it was deleted, here or on another device. */
+    data object NotInLibrary : AlbumDetailPlaceholder
+}
+
+/** The placeholder for [query] before it holds an album, given its failure as [loadError]. */
+internal fun albumDetailPlaceholder(
+    query: LiveQueryState<BridgeAlbumDetail>,
     loadError: DisplayError?,
+): AlbumDetailPlaceholder =
+    when {
+        loadError != null -> AlbumDetailPlaceholder.Failed(loadError)
+        query.delivered && query.value == null -> AlbumDetailPlaceholder.NotInLibrary
+        else -> AlbumDetailPlaceholder.Loading
+    }
+
+/** A deleted album says so, with the top bar's back as the way out, like a missing artist or composer. */
+@Composable
+private fun BoxScope.AlbumDetailPlaceholderBox(
+    placeholder: AlbumDetailPlaceholder,
     onRetry: () -> Unit,
 ) {
-    if (loadError != null) {
-        Column(
-            modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            ErrorDetailDisclosure(loadError)
-            TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+    when (placeholder) {
+        is AlbumDetailPlaceholder.Failed -> {
+            Column(
+                modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                ErrorDetailDisclosure(placeholder.error)
+                TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+            }
         }
-    } else {
-        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+
+        AlbumDetailPlaceholder.NotInLibrary -> {
+            Text(
+                text = stringResource(R.string.album_not_in_library),
+                style = ThemeText.body.style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
+            )
+        }
+
+        AlbumDetailPlaceholder.Loading -> {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+        }
     }
 }
 

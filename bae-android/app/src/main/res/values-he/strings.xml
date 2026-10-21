@@ -23,7 +23,7 @@
     <string name="library_load_failed">לא ניתן לטעון את הספרייה שלכם.</string>
     <string name="library_load_more_failed">לא ניתן לטעון אלבומים נוספים.</string>
     <string name="library">ספרייה</string>
-    <string name="album_load_failed">לא ניתן לטעון את האלבום הזה.</string>
+    <string name="album_not_in_library">האלבום הזה כבר לא נמצא בספרייה שלכם.</string>
     <string name="shuffle">ערבב</string>
     <string name="play_next">נגן כהבא בתור</string>
     <string name="add_to_queue">הוסף לתור</string>

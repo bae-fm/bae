@@ -23,7 +23,7 @@
     <string name="library_load_failed">ライブラリを読み込めませんでした。</string>
     <string name="library_load_more_failed">これ以上アルバムを読み込めませんでした。</string>
     <string name="library">ライブラリ</string>
-    <string name="album_load_failed">このアルバムを読み込めませんでした。</string>
+    <string name="album_not_in_library">このアルバムはもうライブラリにありません。</string>
     <string name="shuffle">シャッフル</string>
     <string name="play_next">次に再生</string>
     <string name="add_to_queue">キューに追加</string>

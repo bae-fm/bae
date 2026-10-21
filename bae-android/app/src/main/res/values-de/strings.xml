@@ -23,7 +23,7 @@
     <string name="library_load_failed">Deine Bibliothek konnte nicht geladen werden.</string>
     <string name="library_load_more_failed">Weitere Alben konnten nicht geladen werden.</string>
     <string name="library">Mediathek</string>
-    <string name="album_load_failed">Dieses Album konnte nicht geladen werden.</string>
+    <string name="album_not_in_library">Dieses Album ist nicht mehr in deiner Mediathek.</string>
     <string name="shuffle">Zufallswiedergabe</string>
     <string name="play_next">Als Nächstes abspielen</string>
     <string name="add_to_queue">Zur Warteschlange hinzufügen</string>

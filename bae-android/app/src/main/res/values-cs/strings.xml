@@ -23,7 +23,7 @@
     <string name="library_load_failed">Nelze načíst vaši knihovnu.</string>
     <string name="library_load_more_failed">Nelze načíst další alba.</string>
     <string name="library">Knihovna</string>
-    <string name="album_load_failed">Nelze načíst toto album.</string>
+    <string name="album_not_in_library">Toto album už ve vaší knihovně není.</string>
     <string name="shuffle">Náhodně</string>
     <string name="play_next">Přehrát jako další</string>
     <string name="add_to_queue">Přidat do fronty</string>

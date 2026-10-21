@@ -41,7 +41,7 @@
     <string name="library">Library</string>
 
     <!-- Album detail -->
-    <string name="album_load_failed">Couldn\'t load this album.</string>
+    <string name="album_not_in_library">This album isn\'t in your library anymore.</string>
     <string name="shuffle">Shuffle</string>
     <string name="play_next">Play Next</string>
     <string name="add_to_queue">Add to Queue</string>

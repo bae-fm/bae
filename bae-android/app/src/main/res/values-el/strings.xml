@@ -23,7 +23,7 @@
     <string name="library_load_failed">Δεν ήταν δυνατή η φόρτωση της βιβλιοθήκης σας.</string>
     <string name="library_load_more_failed">Δεν ήταν δυνατή η φόρτωση περισσότερων άλμπουμ.</string>
     <string name="library">Βιβλιοθήκη</string>
-    <string name="album_load_failed">Δεν ήταν δυνατή η φόρτωση αυτού του άλμπουμ.</string>
+    <string name="album_not_in_library">Αυτό το άλμπουμ δεν βρίσκεται πλέον στη βιβλιοθήκη σας.</string>
     <string name="shuffle">Τυχαία σειρά</string>
     <string name="play_next">Αναπαραγωγή ως επόμενο</string>
     <string name="add_to_queue">Προσθήκη στην ουρά</string>

@@ -23,7 +23,7 @@
     <string name="library_load_failed">تعذّر تحميل مكتبتك.</string>
     <string name="library_load_more_failed">تعذّر تحميل المزيد من الألبومات.</string>
     <string name="library">المكتبة</string>
-    <string name="album_load_failed">تعذّر تحميل هذا الألبوم.</string>
+    <string name="album_not_in_library">لم يعد هذا الألبوم في مكتبتك.</string>
     <string name="shuffle">تشغيل عشوائي</string>
     <string name="play_next">تشغيل كالتالي</string>
     <string name="add_to_queue">إضافة إلى قائمة الانتظار</string>

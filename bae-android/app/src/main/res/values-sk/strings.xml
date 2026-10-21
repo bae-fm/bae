@@ -23,7 +23,7 @@
     <string name="library_load_failed">Tvoju knižnicu sa nepodarilo načítať.</string>
     <string name="library_load_more_failed">Ďalšie albumy sa nepodarilo načítať.</string>
     <string name="library">Knižnica</string>
-    <string name="album_load_failed">Tento album sa nepodarilo načítať.</string>
+    <string name="album_not_in_library">Tento album už nie je vo vašej knižnici.</string>
     <string name="shuffle">Náhodne</string>
     <string name="play_next">Prehrať ako ďalšie</string>
     <string name="add_to_queue">Pridať do poradia</string>

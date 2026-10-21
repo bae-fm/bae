@@ -23,7 +23,7 @@
     <string name="library_load_failed">A könyvtáradat nem sikerült betölteni.</string>
     <string name="library_load_more_failed">Nem sikerült több albumot betölteni.</string>
     <string name="library">Könyvtár</string>
-    <string name="album_load_failed">Ezt az albumot nem sikerült betölteni.</string>
+    <string name="album_not_in_library">Ez az album már nincs a könyvtáradban.</string>
     <string name="shuffle">Keverés</string>
     <string name="play_next">Lejátszás következőként</string>
     <string name="add_to_queue">Hozzáadás a sorhoz</string>

@@ -23,7 +23,7 @@
     <string name="library_load_failed">Nije moguće učitati vašu fonoteku.</string>
     <string name="library_load_more_failed">Nije moguće učitati više albuma.</string>
     <string name="library">Biblioteka</string>
-    <string name="album_load_failed">Nije moguće učitati ovaj album.</string>
+    <string name="album_not_in_library">Ovaj album više nije u vašoj biblioteci.</string>
     <string name="shuffle">Naizmjenično</string>
     <string name="play_next">Reproduciraj sljedeće</string>
     <string name="add_to_queue">Dodaj u red</string>

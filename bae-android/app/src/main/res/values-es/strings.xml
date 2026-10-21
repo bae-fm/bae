@@ -23,7 +23,7 @@
     <string name="library_load_failed">No se pudo cargar tu biblioteca.</string>
     <string name="library_load_more_failed">No se pudieron cargar más álbumes.</string>
     <string name="library">Biblioteca</string>
-    <string name="album_load_failed">No se pudo cargar este álbum.</string>
+    <string name="album_not_in_library">Este álbum ya no está en tu biblioteca.</string>
     <string name="shuffle">Aleatorio</string>
     <string name="play_next">Reproducir a continuación</string>
     <string name="add_to_queue">Añadir a la cola</string>

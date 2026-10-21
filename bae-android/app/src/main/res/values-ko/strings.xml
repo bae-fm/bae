@@ -23,7 +23,7 @@
     <string name="library_load_failed">라이브러리를 불러올 수 없습니다.</string>
     <string name="library_load_more_failed">앨범을 더 불러올 수 없습니다.</string>
     <string name="library">보관함</string>
-    <string name="album_load_failed">이 앨범을 불러올 수 없습니다.</string>
+    <string name="album_not_in_library">이 앨범은 더 이상 보관함에 없습니다.</string>
     <string name="shuffle">셔플</string>
     <string name="play_next">다음에 재생</string>
     <string name="add_to_queue">대기열에 추가</string>
