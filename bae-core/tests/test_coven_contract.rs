@@ -61,7 +61,7 @@ async fn real_schema_opens_with_the_declarations_and_unattached_files() {
 #[test]
 fn creation_retains_its_keyring_failure_through_cleanup() {
     let operation = coven::StoreCreationError::Identity(coven::IdentityError::Custody(
-        coven::KeyError::ServiceNotRegistered,
+        coven::KeyError::UnsupportedKeyringPlatform,
     ));
     let error = bae_core::library::CreateLibraryError::Store(coven::StoreCreationError::Cleanup {
         operation: Box::new(operation),
