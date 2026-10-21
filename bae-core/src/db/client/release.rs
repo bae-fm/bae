@@ -616,19 +616,27 @@ impl Database {
 
     /// Delete a release and clear its album's primary-release pointer atomically.
     /// Shared artists and works remain available to other releases and devices.
+    /// Deleting abandons the attachment of each of its files this device is
+    /// still uploading; the person asked for that, so its record is dismissed.
     pub async fn delete_release_with_cleanup(
         &self,
         plan: ReleaseDeletion,
     ) -> Result<bool, DbError> {
-        self.call_sql(move |sql| {
-            plan.apply_on(&sql)?;
-            sql.execute(
-                "DELETE FROM releases WHERE id = ?",
-                params![plan.release_id()],
-            )?;
-            vacate_album_on(&sql, plan.album_id(), plan.release_id())
-        })
-        .await
+        let abandoned = self
+            .own_abandonments(&plan.file_rows(), coven::AbandonReason::RowGone)
+            .await?;
+        let vacated = self
+            .call_sql(move |sql| {
+                plan.apply_on(&sql)?;
+                sql.execute(
+                    "DELETE FROM releases WHERE id = ?",
+                    params![plan.release_id()],
+                )?;
+                vacate_album_on(&sql, plan.album_id(), plan.release_id())
+            })
+            .await?;
+        self.dismiss_own_abandonments(&abandoned).await;
+        Ok(vacated)
     }
 
     /// Read what deleting `release_id` owes coven; see [`ReleaseDeletion`].

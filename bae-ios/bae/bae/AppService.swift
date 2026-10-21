@@ -36,7 +36,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             syncStatusStore: SyncStatusStore(),
             membershipStore: MembershipStore(handle: appHandle),
             syncActivityStore: SyncActivityStore(
-                retryNow: { appHandle.retryNow() }
+                retryNow: { appHandle.retryNow() },
+                dismissAbandoned: { record in
+                    try await appHandle.dismissAbandonedAttachment(record: record)
+                }
             ),
             libraryStore: LibraryStore(),
             downloadStore: DownloadStore(snapshot: seed.downloads),

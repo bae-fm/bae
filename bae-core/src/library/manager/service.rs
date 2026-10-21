@@ -424,7 +424,9 @@ impl LibraryManager {
             }
         })?;
         let pending = super::arrivals::PendingFollower::new(self.clone());
-        self.spawn_supervised_task("pending sync records", pending.run())
+        self.spawn_supervised_task("pending sync records", pending.run())?;
+        let abandoned = super::abandoned::AbandonedFollower::new(self.clone());
+        self.spawn_supervised_task("abandoned attachments", abandoned.run())
     }
 
     /// Every deletion of tracks from now on, none dropped, as the ids each

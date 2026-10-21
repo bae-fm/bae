@@ -149,6 +149,14 @@ impl Database {
         let person = self.own_profile().await?.id.to_string();
         match avatar {
             Some((id, bytes)) => {
+                // A new avatar replaces one still uploading; the person asked
+                // for that, so the abandoned upload's record is dismissed.
+                let abandoned = self
+                    .own_abandonments(
+                        &[(crate::sync::PEOPLE_NAMESPACE, person.clone())],
+                        coven::AbandonReason::Replaced,
+                    )
+                    .await?;
                 let file_id = id.clone();
                 self.write_with_files(
                     move |batch| {
@@ -165,6 +173,7 @@ impl Database {
                     },
                 )
                 .await?;
+                self.dismiss_own_abandonments(&abandoned).await;
             }
             None => {
                 self.call_sql(move |sql| {

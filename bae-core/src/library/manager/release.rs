@@ -759,8 +759,8 @@ impl LibraryManager {
             .collect();
 
         let deletion = self.database.plan_release_deletion(release_id).await?;
-        // Deletion is a local transaction. It does not cancel committed uploads;
-        // those remain visible in the queue after their display rows disappear.
+        // Deletion is a local transaction. It abandons the attachment of each
+        // file still queued here, which takes its upload off the queue.
         self.database.delete_release_with_cleanup(deletion).await?;
         self.emit_outbox_changed().await;
 

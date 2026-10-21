@@ -574,6 +574,18 @@ impl AppServices {
         self.inner.manager.retry_pending_operation(id).await
     }
 
+    /// Forget an abandoned attachment the person has seen in the activity
+    /// list.
+    pub async fn dismiss_abandoned_attachment(
+        &self,
+        record: coven::AbandonedAttachment,
+    ) -> Result<(), crate::library::LibraryError> {
+        self.inner
+            .manager
+            .dismiss_abandoned_attachment(record)
+            .await
+    }
+
     /// Everything sync is doing now, live, for the activity indicator.
     pub fn subscribe_sync_activity(&self) -> crate::library::SyncActivityStream {
         crate::library::SyncActivityStream::new(self.inner.manager.clone())

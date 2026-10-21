@@ -60,7 +60,7 @@ impl Database {
     /// still uploading, so it plays from its originals again. Every release is
     /// checked before the single write clears any of them; a release with
     /// nothing queued here is skipped. Clearing a file still queued abandons
-    /// its attachment.
+    /// its attachment; the person asked for that, so its record is dismissed.
     pub(crate) async fn cancel_release_uploads(
         &self,
         releases: Vec<String>,
@@ -99,20 +99,30 @@ impl Database {
         if prepared.is_empty() {
             return Ok(Vec::new());
         }
-        self.call_sql(move |sql| {
-            let mut detached = Vec::with_capacity(prepared.len());
-            for (release, files) in prepared {
-                validate_file_set(&sql, &release, files.iter().map(|(id, _, _)| id.as_str()))?;
-                for (id, reference, source) in files {
-                    require_recorded_original(&sql, &id, &source)?;
-                    sql.validate_file_ref(&reference)?;
-                    sql.clear_user_file("release_files", id.as_str())?;
+        let rows: Vec<(&str, String)> = prepared
+            .iter()
+            .flat_map(|(_, files)| files.iter().map(|(id, _, _)| ("release_files", id.clone())))
+            .collect();
+        let abandoned = self
+            .own_abandonments(&rows, coven::AbandonReason::Cleared)
+            .await?;
+        let detached = self
+            .call_sql(move |sql| {
+                let mut detached = Vec::with_capacity(prepared.len());
+                for (release, files) in prepared {
+                    validate_file_set(&sql, &release, files.iter().map(|(id, _, _)| id.as_str()))?;
+                    for (id, reference, source) in files {
+                        require_recorded_original(&sql, &id, &source)?;
+                        sql.validate_file_ref(&reference)?;
+                        sql.clear_user_file("release_files", id.as_str())?;
+                    }
+                    detached.push(release);
                 }
-                detached.push(release);
-            }
-            Ok(detached)
-        })
-        .await
+                Ok(detached)
+            })
+            .await?;
+        self.dismiss_own_abandonments(&abandoned).await;
+        Ok(detached)
     }
 }
 

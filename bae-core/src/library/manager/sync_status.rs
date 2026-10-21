@@ -19,6 +19,7 @@ impl SyncStatusState {
             status,
             pending: None,
             arrivals: None,
+            abandoned: None,
             error: None,
         };
         let (values, _) = tokio::sync::watch::channel(state.clone());
@@ -64,6 +65,11 @@ impl SyncStatusState {
             state.pending = Some(pending);
             state.arrivals = arrivals;
         });
+    }
+
+    /// This device's abandoned attachments, named.
+    pub(super) fn set_abandoned(&self, abandoned: Result<Vec<super::AbandonedItem>, UiError>) {
+        self.apply(|state| state.abandoned = Some(abandoned));
     }
 
     pub(super) fn set_error(&self, error: Option<UiError>) {
@@ -290,6 +296,7 @@ mod tests {
             status: coven::SyncStatus::Disconnected,
             pending: None,
             arrivals: None,
+            abandoned: None,
             error: None,
         };
         let state = SyncStatusState {
@@ -315,6 +322,7 @@ mod tests {
                 ),
             )])),
             arrivals: None,
+            abandoned: None,
             error: None,
         };
         assert_eq!(snapshot.indicator(), SyncIndicator::Waiting { items: 1 });
@@ -364,6 +372,7 @@ mod tests {
             },
             pending: Some(Ok(Vec::new())),
             arrivals: None,
+            abandoned: None,
             error: None,
         };
         assert_eq!(snapshot.indicator(), SyncIndicator::Loading);
@@ -387,6 +396,7 @@ mod tests {
                 status,
                 pending: Some(Ok(Vec::new())),
                 arrivals: None,
+                abandoned: None,
                 error: None,
             }
             .syncing()
@@ -416,6 +426,7 @@ mod tests {
             status: coven::SyncStatus::Syncing,
             pending: None,
             arrivals: None,
+            abandoned: None,
             error: None,
         };
         assert_eq!(snapshot.indicator(), SyncIndicator::Loading);
@@ -430,6 +441,7 @@ mod tests {
             status: coven::SyncStatus::Failed { error },
             pending: Some(Ok(Vec::new())),
             arrivals: None,
+            abandoned: None,
             error: None,
         }
     }
@@ -482,6 +494,7 @@ mod tests {
             status,
             pending: None,
             arrivals: None,
+            abandoned: None,
             error: None,
         };
         SyncStatusState {
@@ -635,6 +648,7 @@ mod tests {
             },
             pending: Some(Ok(Vec::new())),
             arrivals: None,
+            abandoned: None,
             error: None,
         };
         assert_eq!(

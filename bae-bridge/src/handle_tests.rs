@@ -610,6 +610,7 @@ fn a_failed_sync_status_crosses_with_its_fault() {
         status: coven::SyncStatus::Disconnected,
         pending: None,
         arrivals: None,
+        abandoned: None,
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
@@ -638,6 +639,7 @@ fn a_healthy_sync_status_crosses_without_an_error() {
         },
         pending: Some(Ok(Vec::new())),
         arrivals: Some(Ok(Default::default())),
+        abandoned: Some(Ok(Vec::new())),
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);

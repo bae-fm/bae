@@ -4,6 +4,7 @@ import fm.bae.app.DisplayError
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import uniffi.bae_bridge.BridgeAbandonedAttachment
 import uniffi.bae_bridge.BridgeArrivals
 import uniffi.bae_bridge.BridgeReleaseArrival
 import uniffi.bae_bridge.BridgeSyncActivity
@@ -16,6 +17,7 @@ import uniffi.bae_bridge.BridgeSyncActivity
  */
 class SyncActivityStore(
     private val retryNowAction: () -> Unit,
+    private val dismissAbandonedAction: (BridgeAbandonedAttachment) -> Unit,
 ) {
     private val mutableActivity = MutableStateFlow<BridgeSyncActivity?>(null)
     val activity: StateFlow<BridgeSyncActivity?> = mutableActivity.asStateFlow()
@@ -35,6 +37,9 @@ class SyncActivityStore(
 
     /** The person's retry: every ordinary wait ends and sync runs now. */
     fun retryNow() = retryNowAction()
+
+    /** Forget an abandoned upload the person has seen; the next activity value no longer lists it. */
+    fun dismissAbandoned(attachment: BridgeAbandonedAttachment) = dismissAbandonedAction(attachment)
 }
 
 /** The indicator shows while bytes move or something needs the person, and is absent otherwise. */

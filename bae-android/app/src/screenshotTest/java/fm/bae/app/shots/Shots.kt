@@ -169,6 +169,7 @@ fun SyncActivityArriving() {
                 onOpenSettings = {},
                 onOpenDownloads = {},
                 onRetryNow = {},
+                onDismissAbandoned = {},
             )
         }
     }

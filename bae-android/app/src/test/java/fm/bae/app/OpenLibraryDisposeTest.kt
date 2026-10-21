@@ -101,7 +101,7 @@ class OpenLibraryDisposeTest {
                         library = LibraryStore(),
                         config = ConfigStore(BridgeFixtures.config()),
                         syncStatus = SyncStatusStore(),
-                        syncActivity = SyncActivityStore {},
+                        syncActivity = SyncActivityStore({}, {}),
                         transfers =
                             LibraryTransferStores(
                                 downloads = DownloadStore(BridgeFixtures.downloadSnapshot()),

@@ -21,6 +21,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeBootstrapResult
@@ -522,7 +523,7 @@ object AppSessionHolder {
                 libraryId = libraryId,
                 appHandle = handle,
                 diagnostics = diagnostics,
-                stores = buildStores(config, handle, initialOutbox, initialDownloads),
+                stores = buildStores(config, handle, initialOutbox, initialDownloads, appContext),
                 runtime =
                     OpenLibraryRuntime(
                         playback =
@@ -553,14 +554,26 @@ object AppSessionHolder {
         handle: AppHandle,
         initialOutbox: uniffi.bae_bridge.BridgeOutboxSnapshot,
         initialDownloads: uniffi.bae_bridge.BridgeDownloadSnapshot,
-    ): OpenLibraryStores =
-        OpenLibraryStores(
+        appContext: Context,
+    ): OpenLibraryStores {
+        val configStore = ConfigStore(config)
+        return OpenLibraryStores(
             library = LibraryStore(),
-            config = ConfigStore(config),
+            config = configStore,
             syncStatus = SyncStatusStore(),
             syncActivity =
                 SyncActivityStore(
                     retryNowAction = handle::retryNow,
+                    dismissAbandonedAction = { attachment ->
+                        appScope.launch {
+                            performBridgeAction(
+                                logger = logger,
+                                operation = "dismiss an abandoned upload",
+                                errors = LocaleErrorDisplays(appContext),
+                                showError = configStore::showError,
+                            ) { handle.dismissAbandonedAttachment(attachment.record) }
+                        }
+                    },
                 ),
             transfers =
                 LibraryTransferStores(
@@ -569,6 +582,7 @@ object AppSessionHolder {
                 ),
             cast = CastStore(),
         )
+    }
 }
 
 /** What a failed library operation shows: core's localized line and diagnostic, or the error itself. */

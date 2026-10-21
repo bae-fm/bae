@@ -10,13 +10,15 @@ pub(crate) use client::ArtistCredits;
 pub(crate) use client::RecordsChange;
 pub(crate) use client::ReleaseFileStream;
 pub(crate) use client::ReleaseMetadataRows;
+pub(crate) use client::{
+    AbandonedRow, ArrivingReleaseRow, ArrivingReleaseRows, AttachedFileRow, FileTable,
+};
 pub use client::{
     AlbumBrowseProjection, AlbumDetailProjection, AlbumSelectionProjection, ArtistBrowseProjection,
     ArtistDetailProjection, ComposerBrowseProjection, ComposerDetailProjection,
     LibrarySearchProjection, ReleaseDetailProjection, StorageBrowseProjection,
     StorageBrowseRequest, WorkDetailProjection,
 };
-pub(crate) use client::{ArrivingReleaseRow, ArrivingReleaseRows, AttachedFileRow, FileTable};
 pub use client::{ArtistWriteError, Database, ReleaseDeletion};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use client::{

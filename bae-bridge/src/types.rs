@@ -1,3 +1,4 @@
+mod abandoned;
 mod arrivals;
 mod configuration;
 #[cfg(feature = "desktop")]
@@ -18,6 +19,7 @@ mod storage;
 mod storage_failure;
 mod storage_inspector;
 
+pub use abandoned::*;
 pub use arrivals::*;
 pub use configuration::*;
 #[cfg(feature = "desktop")]

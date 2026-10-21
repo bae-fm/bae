@@ -367,6 +367,7 @@ impl crate::types::BridgeSyncStatusSnapshot {
             status: _,
             pending,
             arrivals: _,
+            abandoned: _,
             error: _,
         } = snapshot;
         Self {

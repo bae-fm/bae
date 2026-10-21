@@ -52,6 +52,8 @@ pub use service::LibraryOpening;
 mod storage_operations;
 use storage_operations::*;
 
+mod abandoned;
+pub use abandoned::AbandonedItem;
 mod album;
 mod arrivals;
 pub use arrivals::{Arrivals, ArrivingFile, DeviceArrivals, ReleaseArrival};
@@ -349,6 +351,9 @@ pub struct SyncStatusSnapshot {
     pub status: coven::SyncStatus,
     pub pending: Option<Result<Vec<PendingItem>, crate::ui::UiError>>,
     pub arrivals: Option<Result<Arrivals, crate::ui::UiError>>,
+    /// The files this device attached that no row will name, until the
+    /// person dismisses them; `None` until first read.
+    pub abandoned: Option<Result<Vec<AbandonedItem>, crate::ui::UiError>>,
     pub error: Option<crate::ui::UiError>,
 }
 

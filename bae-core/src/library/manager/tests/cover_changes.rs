@@ -186,6 +186,10 @@ async fn change_cover_twice_replaces_the_cover_file() {
     // The second change attaches a new file to the row that already has one.
     change_to(&red).await.unwrap();
     let second = cover_row().await;
+    assert!(
+        manager.database.abandoned_attachments_for_test().await.unwrap().is_empty(),
+        "replacing a cover still uploading is the person's own change and lists nothing"
+    );
 
     // The row names a new file, and describes the bytes that file holds.
     let second_ref = manager.database.file_ref("covers", &release.id).await.unwrap();

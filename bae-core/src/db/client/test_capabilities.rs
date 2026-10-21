@@ -135,6 +135,28 @@ impl Database {
         .await
     }
 
+    /// Clear a row's user-provided file as a change another device made would,
+    /// abandoning this device's pending attachment on it.
+    pub async fn clear_user_file_for_test(&self, table: &str, id: &str) -> Result<(), DbError> {
+        let (table, id) = (table.to_string(), id.to_string());
+        self.call_sql(move |sql| {
+            sql.clear_user_file(&table, id.as_str())?;
+            Ok(())
+        })
+        .await
+    }
+
+    /// This device's abandoned attachments, oldest first.
+    pub async fn abandoned_attachments_for_test(
+        &self,
+    ) -> Result<Vec<coven::AbandonedAttachment>, DbError> {
+        self.inner
+            .handle
+            .abandoned_attachments()
+            .await
+            .map_err(DbError::from)
+    }
+
     /// Answer one text-valued query against this device's library.
     pub async fn query_texts_for_test(&self, query: &str) -> Result<Vec<String>, DbError> {
         let query = query.to_string();

@@ -22,6 +22,16 @@ impl ReleaseDeletion {
         &self.album_id
     }
 
+    /// The rows carrying the release's files: each release file, and its
+    /// cover, keyed by the release.
+    pub(super) fn file_rows(&self) -> Vec<(&'static str, String)> {
+        self.files
+            .iter()
+            .map(|(id, _)| ("release_files", id.clone()))
+            .chain([("covers", self.release_id.clone())])
+            .collect()
+    }
+
     pub(super) fn plan_on<Q: QueryOne + QueryRows>(
         sql: &Q,
         release_id: &str,

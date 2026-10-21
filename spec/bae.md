@@ -1298,8 +1298,9 @@ every half minute, and the indicator would blink for nothing.
 
 Clicking it opens what sync is doing, a popover on macOS and a sheet on the
 phones, updating as it changes. What needs the person comes first, under *Needs
-Attention*: the failure's line and each pending record in plain words, with
-*Open Sync Settings*, where each record offers its action. Then one row per
+Attention*: the failure's line and each pending record in plain words, then
+each abandoned upload, with *Open Sync Settings*, where each record offers its
+action. Then one row per
 thing moving: a pass syncing the library's changes, the uploads ("2
 uploading · 10 queued", with the bytes their providers confirmed), and the
 offline downloads, which on the phones open the downloads list. Then the files
@@ -1307,6 +1308,20 @@ still arriving, one section per device, "Arriving from Studio Mac", listing
 the albums by title and counting other pictures. With nothing to show it says everything is up
 to date. *Retry Now* is always there; it retries everything at once, as
 pulling to refresh does.
+
+**Abandoned uploads.** A file this device attached can lose its row before
+its upload completes: another device's change replaces or clears the row's
+file, or deletes the row, and arrives here first. coven then abandons the
+attachment: the upload never lands and no row names the file
+([coven §17.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#172-attaching-a-file)).
+Each one is listed under *Needs Attention* and marks the indicator, named as a
+pending record's file is (its file name and album, the cover of an album, an
+artist image or a profile picture, or a file of a deleted release), with why
+in plain words: replaced, removed, or deleted before its upload finished.
+*Dismiss* forgets it. The person's own change abandons too, when they cancel
+an upload, delete a release or album, merge an artist, or replace a cover,
+picture or avatar still uploading; bae dismisses those records as its write
+lands, since the person asked for it.
 
 **The status line.** Settings shows one line for sync: "Synced", or "Waiting: 3
 items". Opening it lists each thing coven is waiting on, one of its pending

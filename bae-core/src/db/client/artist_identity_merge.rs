@@ -44,6 +44,19 @@ impl Database {
             None
         };
         let reference = moved.as_ref().map(|(reference, _)| reference.clone());
+        // The absorbed artist's image row goes; an upload of it still queued
+        // here is abandoned by the merge the person chose, so its record is
+        // dismissed.
+        let abandoned = match &plan.images.1 {
+            Some(_) => {
+                self.own_abandonments(
+                    &[("artist_images", plan.absorbed_artist_id.clone())],
+                    coven::AbandonReason::RowGone,
+                )
+                .await?
+            }
+            None => Vec::new(),
+        };
         // The survivor's copied row is the one these bytes attach to.
         let survivor = plan.surviving_artist_id.clone();
         self.write_with_files(
@@ -69,8 +82,9 @@ impl Database {
             },
         )
         .await
-        .map(|_| ())
-        .map_err(Self::coven_error)
+        .map_err(Self::coven_error)?;
+        self.dismiss_own_abandonments(&abandoned).await;
+        Ok(())
     }
 }
 

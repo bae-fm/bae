@@ -7,6 +7,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import uniffi.bae_bridge.BridgeAbandonedAttachments
 import uniffi.bae_bridge.BridgeArrivals
 import uniffi.bae_bridge.BridgePendingRecords
 import uniffi.bae_bridge.BridgeSyncActivity
@@ -16,7 +17,7 @@ class SyncActivityStoreTest {
      *  absent for a settled library. */
     @Test
     fun theIndicatorShowsOnlyWhileSomethingMovesOrNeedsThePerson() {
-        val store = SyncActivityStore {}
+        val store = SyncActivityStore({}, {})
         assertFalse(syncActivityVisible(store.activity.value, store.error.value))
         store.apply(PreviewData.syncActivity(needsAttention = false))
         assertTrue(syncActivityVisible(store.activity.value, store.error.value))
@@ -43,6 +44,7 @@ class SyncActivityStoreTest {
             needsAttention = false,
             failure = null,
             attention = BridgePendingRecords.Ready(emptyList()),
+            abandoned = BridgeAbandonedAttachments.Ready(emptyList()),
             syncing = false,
             uploads = null,
             downloads = null,

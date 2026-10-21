@@ -1,6 +1,7 @@
 package fm.bae.app.ui
 
 import fm.bae.app.playback.SidePausePrompt
+import uniffi.bae_bridge.BridgeAbandonedAttachments
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
@@ -314,6 +315,7 @@ object PreviewData {
                             emptyList()
                         },
                 ),
+            abandoned = BridgeAbandonedAttachments.Ready(emptyList()),
             syncing = true,
             uploads =
                 BridgeUploadsInFlight(

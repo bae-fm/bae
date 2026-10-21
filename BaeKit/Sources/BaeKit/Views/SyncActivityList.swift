@@ -57,6 +57,7 @@ private struct SyncActivitySections: View {
                     ErrorDetailDisclosure(error: DisplayError(failure))
                 }
                 PendingRecordsView(records: activity.attention, perform: nil)
+                AbandonedAttachmentsView(attachments: activity.abandoned)
                 Button(
                     localizedCoreString("core.activity.open_settings"),
                     action: onOpenSettings

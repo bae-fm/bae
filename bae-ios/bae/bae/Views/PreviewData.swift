@@ -325,7 +325,8 @@ extension PreviewData {
         )
         return SyncActivityStore(
             activity: activity,
-            retryNow: {}
+            retryNow: {},
+            dismissAbandoned: { _ in }
         )
     }
 

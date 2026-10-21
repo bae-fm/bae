@@ -9,6 +9,7 @@ fn status() -> SyncStatusSnapshot {
         },
         pending: Some(Ok(Vec::new())),
         arrivals: Some(Ok(Arrivals::default())),
+        abandoned: Some(Ok(Vec::new())),
         error: None,
     }
 }
@@ -93,8 +94,8 @@ fn transfers_and_arrivals_are_movement() {
     assert!(!activity.needs_attention(), "arriving files need nothing");
 }
 
-/// A sync failure or a pending record that needs the person marks the
-/// indicator; a failed read of either list does too.
+/// A sync failure, a pending record that needs the person or an abandoned
+/// upload marks the indicator; a failed read of any list does too.
 #[test]
 fn failures_and_pending_records_need_attention() {
     let mut failed = status();
@@ -120,6 +121,20 @@ fn failures_and_pending_records_need_attention() {
     let mut unread = status();
     unread.arrivals = Some(Err(UiError::internal("no devices")));
     assert!(new(&unread).needs_attention());
+    let mut abandoned = status();
+    abandoned.abandoned = Some(Ok(vec![crate::library::AbandonedItem {
+        subject: crate::library::PendingSubjectName::ArtistImage,
+        record: coven::AbandonedAttachment {
+            table: "artist_images".into(),
+            key: coven::RowKey::from("artist"),
+            file: coven::FileId(uuid::Uuid::from_u128(1)),
+            reason: coven::AbandonReason::Replaced,
+        },
+    }]));
+    assert!(new(&abandoned).needs_attention());
+    let mut abandoned_unread = status();
+    abandoned_unread.abandoned = Some(Err(UiError::internal("no records")));
+    assert!(new(&abandoned_unread).needs_attention());
 }
 
 /// The list's lines name what is sending or downloading, then what waits,

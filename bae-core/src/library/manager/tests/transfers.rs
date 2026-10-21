@@ -253,8 +253,9 @@ async fn cancelling_all_release_uploads_restores_their_originals() {
     let second = insert_release_with_queued_uploads(&manager, &temp.path().join("second"), "Album", &[("b.flac", b"audio")]).await;
     manager.cancel_all_release_uploads().await.unwrap();
     // Clearing a pending attachment abandons it, so its upload leaves the
-    // queue.
+    // queue, and the person's own cancel leaves no record listed.
     assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 0);
+    assert!(manager.database.abandoned_attachments_for_test().await.unwrap().is_empty());
     for release in [first, second] {
         for file in release_files(&manager, &release.id).await {
             assert!(!file.stored);
@@ -274,7 +275,47 @@ async fn deleting_a_release_abandons_its_queued_uploads() {
     assert_eq!(snapshot.total.queued, 0);
     assert!(snapshot.other_files.is_empty());
     assert!(snapshot.upload_groups.is_empty());
+    assert!(manager.database.abandoned_attachments_for_test().await.unwrap().is_empty(),
+        "the person's own deletion leaves no record listed");
     assert_eq!(std::fs::read(temp.path().join("queued/a.flac")).unwrap().len(), 1000);
+}
+
+/// An upload a change this device didn't make abandons is listed, named by
+/// its row and with why, until the person dismisses it.
+#[tokio::test]
+async fn an_upload_abandoned_by_another_change_is_listed_until_dismissed() {
+    let (manager, _temp, _release, file_id) = queued_upload_fixture("abandoned").await;
+    manager.start().unwrap();
+    let mut values = manager.subscribe_sync_status_values();
+    manager.database.clear_user_file_for_test("release_files", &file_id).await.unwrap();
+    let listed = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        values.wait_for(|status| matches!(&status.abandoned, Some(Ok(items)) if !items.is_empty())),
+    )
+    .await
+    .expect("the abandoned upload is listed")
+    .unwrap()
+    .clone();
+    let Some(Ok(items)) = listed.abandoned else {
+        unreachable!("waited for a listed record");
+    };
+    assert_eq!(items.len(), 1);
+    assert_eq!(
+        items[0].subject,
+        PendingSubjectName::ReleaseFile {
+            file_name: "a.flac".into(),
+            album_title: "Test Album".into(),
+        }
+    );
+    assert_eq!(items[0].record.reason, coven::AbandonReason::Cleared);
+    manager.dismiss_abandoned_attachment(items[0].record.clone()).await.unwrap();
+    tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        values.wait_for(|status| matches!(&status.abandoned, Some(Ok(items)) if items.is_empty())),
+    )
+    .await
+    .expect("dismissing takes it off the list")
+    .unwrap();
 }
 
 /// A cover upload is carried by the `covers` row whose primary key is the

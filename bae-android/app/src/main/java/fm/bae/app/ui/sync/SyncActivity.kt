@@ -54,6 +54,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.color
+import uniffi.bae_bridge.BridgeAbandonedAttachment
 import uniffi.bae_bridge.BridgeArrivals
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePendingRecords
@@ -129,6 +130,7 @@ private fun SyncActivitySheet(
             onOpenSettings = onOpenSettings,
             onOpenDownloads = onOpenDownloads,
             onRetryNow = store::retryNow,
+            onDismissAbandoned = store::dismissAbandoned,
         )
     }
 }
@@ -144,6 +146,7 @@ internal fun SyncActivityList(
     onOpenSettings: () -> Unit,
     onOpenDownloads: () -> Unit,
     onRetryNow: () -> Unit,
+    onDismissAbandoned: (BridgeAbandonedAttachment) -> Unit,
 ) {
     val context = LocalContext.current
     LazyColumn(
@@ -155,7 +158,7 @@ internal fun SyncActivityList(
             Text(text = context.coreString("core.activity.title"), style = ThemeText.heading.style)
         }
         if (activity != null) {
-            attentionSection(context, activity, onOpenSettings)
+            attentionSection(context, activity, onOpenSettings, onDismissAbandoned)
             transferRows(context, activity, onOpenDownloads)
             arrivalSections(context, activity.arrivals)
             if (!activity.moving && !activity.needsAttention && !activity.syncing) {
@@ -175,6 +178,7 @@ private fun LazyListScope.attentionSection(
     context: Context,
     activity: BridgeSyncActivity,
     onOpenSettings: () -> Unit,
+    onDismissAbandoned: (BridgeAbandonedAttachment) -> Unit,
 ) {
     if (!activity.needsAttention) return
     item { SectionHeading(context.coreString("core.activity.attention")) }
@@ -206,6 +210,7 @@ private fun LazyListScope.attentionSection(
             }
         }
     }
+    abandonedRows(context, activity.abandoned, onDismissAbandoned)
     item {
         TextButton(onClick = onOpenSettings) {
             Text(context.coreString("core.activity.open_settings"))
@@ -293,7 +298,7 @@ private fun TransferLine(
 
 /** A failure sync reported, in the warning tone, with its diagnostic behind it. */
 @Composable
-private fun FailureDisclosure(
+internal fun FailureDisclosure(
     context: Context,
     failure: BridgeException,
 ) {
@@ -310,7 +315,7 @@ private fun SectionHeading(text: String) {
 }
 
 @Composable
-private fun SecondaryLine(text: String) {
+internal fun SecondaryLine(text: String) {
     Text(text = text, style = ThemeText.detail.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
@@ -324,6 +329,7 @@ private fun SyncActivityListPreview() {
             onOpenSettings = {},
             onOpenDownloads = {},
             onRetryNow = {},
+            onDismissAbandoned = {},
         )
     }
 }
@@ -331,7 +337,7 @@ private fun SyncActivityListPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun SyncActivityButtonPreview() {
-    val store = remember { SyncActivityStore {}.apply { apply(PreviewData.syncActivity(needsAttention = true)) } }
+    val store = remember { SyncActivityStore({}, {}).apply { apply(PreviewData.syncActivity(needsAttention = true)) } }
     BaeTheme {
         SyncActivityButton(store = store, onOpenSettings = {}, onOpenDownloads = {})
     }

@@ -338,7 +338,7 @@ private fun LibraryTopBarPreview() {
             onComposerSortChange = {},
             artistSortCriterion = previewArtistSort,
             onArtistSortChange = {},
-            syncActivity = SyncActivityStore {}.apply { apply(PreviewData.syncActivity(needsAttention = true)) },
+            syncActivity = SyncActivityStore({}, {}).apply { apply(PreviewData.syncActivity(needsAttention = true)) },
             onOpenSyncSettings = {},
             onOpenDownloads = {},
             onSettings = {},

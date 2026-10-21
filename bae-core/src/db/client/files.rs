@@ -18,6 +18,8 @@ pub(crate) struct OutboxDisplayContext {
 
 impl Database {
     /// Replace an image's bytes and row atomically; coven manages the old file.
+    /// Replacing an image this device is still uploading abandons that upload;
+    /// the person asked for that, so its record is dismissed.
     pub async fn write_library_image(
         &self,
         image: &DbLibraryImage,
@@ -59,6 +61,12 @@ impl Database {
             .read(move |sql| image_revision_on(&sql, &image_type, &id))
             .await?;
         after_planning().await;
+        let abandoned = self
+            .own_abandonments(
+                &[(namespace, image.id.clone())],
+                coven::AbandonReason::Replaced,
+            )
+            .await?;
         // coven attaches the bytes to the row whose file id column — the row's
         // own `id` — names them.
         let file_id = image.id.clone();
@@ -85,8 +93,9 @@ impl Database {
             },
         )
         .await
-        .map(|_| ())
-        .map_err(Self::coven_error)
+        .map_err(Self::coven_error)?;
+        self.dismiss_own_abandonments(&abandoned).await;
+        Ok(())
     }
 
     /// Find a host-provided image (cover / artist image) by its subject id. The

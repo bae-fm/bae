@@ -345,7 +345,7 @@ private fun LibraryBrowserChromePreview() {
             artistSortCriterion = DEFAULT_ARTIST_SORT,
             onArtistSortChange = {},
             onShuffleLibrary = {},
-            syncActivity = SyncActivityStore {}.apply { apply(PreviewData.syncActivity(needsAttention = false)) },
+            syncActivity = SyncActivityStore({}, {}).apply { apply(PreviewData.syncActivity(needsAttention = false)) },
             onOpenSyncSettings = {},
             onOpenDownloads = {},
             onSettings = {},
