@@ -317,13 +317,19 @@ fn setup_failure_classes_retain_the_actionable_category() {
         )
     };
     let cases: Vec<(LibraryError, C)> = vec![
-        (coven::StorageError::from(F::Authentication).into(), C::Credentials),
-        (coven::StorageError::from(F::ContainerNotFound).into(), C::Credentials),
-        (coven::StorageError::from(F::Network).into(), C::Network),
-        (coven::KeyError::ServiceNotRegistered.into(), C::Keyring),
+        (coven::StorageError::from(F::Authentication).into(), C::Storage(F::Authentication)),
+        (coven::StorageError::from(F::ContainerNotFound).into(), C::Storage(F::ContainerNotFound)),
+        (coven::StorageError::from(F::Network).into(), C::Storage(F::Network)),
+        // A full store and a wrong clock say so, rather than blaming the
+        // credentials or reporting an internal fault.
+        (coven::StorageError::from(F::QuotaExceeded).into(), C::Storage(F::QuotaExceeded)),
+        (coven::SyncError::Storage(F::ClockSkew.into()).into(), C::Storage(F::ClockSkew)),
+        (coven::SyncError::Storage(F::Conflict.into()).into(), C::Storage(F::Conflict)),
+        (coven::KeyError::PassphraseAuthentication.into(), C::Keyring),
+        (coven::KeyError::ServiceNotRegistered.into(), C::Internal),
         (crate::config::ConfigError::Config("invalid preference".into()).into(), C::Config),
-        (coven::SyncError::SecureStorage(coven::KeyError::ServiceNotRegistered).into(), C::Keyring),
-        (coven::SyncError::Storage(F::Network.into()).into(), C::Network),
+        (coven::SyncError::SecureStorage(coven::KeyError::Unsupported).into(), C::Keyring),
+        (coven::SyncError::Storage(F::Network.into()).into(), C::Storage(F::Network)),
         (coven::SyncError::NoStorage.into(), C::Config),
         (coven::SyncError::Removed.into(), C::DeviceRemoved),
         (coven::KeyError::Left.into(), C::DeviceRemoved),
@@ -356,7 +362,7 @@ fn every_storage_setup_failure_keeps_its_exact_user_action() {
     for failure in [F::Authentication, F::PermissionDenied, F::ContainerNotFound,
         F::RegionMismatch, F::QuotaExceeded, F::InvalidConfiguration, F::Network] {
         let error = LibraryError::CloudSetup(coven::StorageSetupError::Storage(failure.into()));
-        assert_eq!(error.category(), crate::ui::UiErrorCategory::CloudSetup(failure));
+        assert_eq!(error.category(), crate::ui::UiErrorCategory::Storage(failure));
     }
 }
 

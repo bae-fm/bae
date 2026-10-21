@@ -344,7 +344,7 @@ fn produced_keys() -> Vec<String> {
         BridgeStorageFailure::MemberKeysMissing,
         BridgeStorageFailure::CatchUpRequired,
     ] {
-        keys.push(bridge_error_category_key(BridgeErrorCategory::CloudSetup {
+        keys.push(bridge_error_category_key(BridgeErrorCategory::Storage {
             failure,
         }));
     }

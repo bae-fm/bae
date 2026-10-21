@@ -250,8 +250,8 @@ mod conversion_roundtrip {
             (Core::Network, BridgeStorageFailure::Network),
         ] {
             assert_eq!(
-                BridgeErrorCategory::from_core(UiErrorCategory::CloudSetup(core)),
-                BridgeErrorCategory::CloudSetup { failure: bridge },
+                BridgeErrorCategory::from_core(UiErrorCategory::Storage(core)),
+                BridgeErrorCategory::Storage { failure: bridge },
             );
         }
 

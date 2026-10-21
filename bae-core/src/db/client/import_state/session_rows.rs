@@ -126,8 +126,8 @@ fn category_column(category: UiErrorCategory) -> String {
         C::GroupingBlocked(reason) => format!("grouping_blocked.{}", block_column(reason)),
         C::Export => "export".to_string(),
         C::Save => "save".to_string(),
-        C::CloudSetup(failure) => format!(
-            "cloud_setup.{}",
+        C::Storage(failure) => format!(
+            "storage.{}",
             serde_json::to_string(&failure).expect("storage failure serializes")
         ),
         C::StorageCheck { check, failure } => format!(
@@ -218,8 +218,8 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
             .find(|reason| block_column(*reason) == stored)
             .ok_or_else(unreadable)?,
         ),
-        Some(("cloud_setup", stored)) => {
-            C::CloudSetup(serde_json::from_str(stored).map_err(|_| unreadable())?)
+        Some(("storage", stored)) => {
+            C::Storage(serde_json::from_str(stored).map_err(|_| unreadable())?)
         }
         Some(("storage_check", stored)) => {
             let (check, failure) = stored.split_once('.').ok_or_else(unreadable)?;
@@ -510,17 +510,17 @@ mod tests {
             C::S3VersioningUnsupported(coven::S3BucketVersioning::Enabled),
             C::S3VersioningUnknown(F::PermissionDenied),
             C::StorageLocationChangeUnsupported,
-            C::CloudSetup(F::Authentication),
-            C::CloudSetup(F::PermissionDenied),
-            C::CloudSetup(F::ContainerNotFound),
-            C::CloudSetup(F::RegionMismatch),
-            C::CloudSetup(F::QuotaExceeded),
-            C::CloudSetup(F::InvalidConfiguration),
-            C::CloudSetup(F::StoreExists),
-            C::CloudSetup(F::Network),
-            C::CloudSetup(F::MemberKeysMissing),
-            C::CloudSetup(F::File),
-            C::CloudSetup(F::Protocol),
+            C::Storage(F::Authentication),
+            C::Storage(F::PermissionDenied),
+            C::Storage(F::ContainerNotFound),
+            C::Storage(F::RegionMismatch),
+            C::Storage(F::QuotaExceeded),
+            C::Storage(F::InvalidConfiguration),
+            C::Storage(F::StoreExists),
+            C::Storage(F::Network),
+            C::Storage(F::MemberKeysMissing),
+            C::Storage(F::File),
+            C::Storage(F::Protocol),
             C::DeviceIdentityMissing,
             C::Credentials,
             C::Network,

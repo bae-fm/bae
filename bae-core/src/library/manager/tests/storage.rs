@@ -542,7 +542,7 @@ async fn a_pin_the_provider_refuses_is_a_cloud_setup_failure() {
 
         assert_eq!(
             error.category(),
-            crate::ui::UiErrorCategory::Credentials,
+            crate::ui::UiErrorCategory::Storage(failure),
             "{failure:?}: {error}"
         );
     }
@@ -577,7 +577,11 @@ async fn a_pin_the_cloud_cannot_serve_is_a_network_failure() {
         .await
         .expect_err("the pin cannot fetch the file");
 
-    assert_eq!(error.category(), crate::ui::UiErrorCategory::Network, "{error}");
+    assert_eq!(
+        error.category(),
+        crate::ui::UiErrorCategory::Storage(coven::StorageFailure::Network),
+        "{error}"
+    );
 }
 
 /// Attaching files requires a configured provider; absence is a setup issue.

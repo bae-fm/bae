@@ -31,9 +31,11 @@ pub enum UiErrorCategory {
     GroupingBlocked(GroupingBlockReason),
     Export,
     Save,
-    /// A failed storage setup keeps coven's exact provider reason so every UI
-    /// can tell the user what must change before retrying.
-    CloudSetup(coven::StorageFailure),
+    /// Storage failed — in setup, in sync, reading a file — and the line is
+    /// coven's exact provider reason, so every UI can tell the person what
+    /// happened: the storage is full, this device's clock is off, the provider
+    /// refused the credentials, the network is down.
+    Storage(coven::StorageFailure),
     StorageCheck {
         check: coven::StorageCheck,
         failure: coven::StorageFailure,
@@ -44,9 +46,7 @@ pub enum UiErrorCategory {
     /// The local store has no device identity. Create, join, and restore establish
     /// that identity before exposing a library.
     DeviceIdentityMissing,
-    /// A cloud provider rejected the request or the setup is misconfigured: bad
-    /// credentials, denied permission, a bucket/folder that isn't set. The user
-    /// fixes the cloud settings; retrying unchanged won't help.
+    /// A cloud provider's sign-in failed (OAuth): the person signs in again.
     Credentials,
     /// The cloud backend or the network to it was unreachable — a transient
     /// transport failure the user retries.

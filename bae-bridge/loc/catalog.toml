@@ -830,7 +830,7 @@ nb = "Lagringen kunne ikke fullføres."
 fi = "Tallennusta ei voitu viedä loppuun."
 
 [messages."core.error.cloud_setup.region_mismatch"]
-comment = "Cloud setup failed because the configured region or endpoint does not identify the bucket's location."
+comment = "Storage setup or sync failed because the configured region or endpoint does not identify the bucket's location."
 value = "The region or endpoint doesn't match this bucket."
 
 [messages."core.error.cloud_setup.region_mismatch".translations]
@@ -863,7 +863,7 @@ nb = "Regionen eller endepunktet passer ikke til denne bøtten."
 fi = "Alue tai päätepiste ei vastaa tätä säilöä."
 
 [messages."core.error.cloud_setup.quota_exceeded"]
-comment = "Cloud setup failed because the provider reports no available storage quota."
+comment = "Storage setup or sync failed because the provider reports no available storage quota: the storage is full."
 value = "This cloud storage has no available space."
 
 [messages."core.error.cloud_setup.quota_exceeded".translations]

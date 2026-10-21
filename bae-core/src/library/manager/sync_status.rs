@@ -370,7 +370,9 @@ mod tests {
         assert!(matches!(
             snapshot.failure(),
             Some(UiError::Diagnostic {
-                category: crate::ui::UiErrorCategory::Credentials,
+                category: crate::ui::UiErrorCategory::Storage(
+                    coven::StorageFailure::PermissionDenied
+                ),
                 ..
             })
         ));
@@ -641,7 +643,7 @@ mod tests {
             ))
             .failure(),
             Some(UiError::Diagnostic {
-                category: crate::ui::UiErrorCategory::Network,
+                category: crate::ui::UiErrorCategory::Storage(coven::StorageFailure::Network),
                 detail: UNREACHABLE_S3.to_string(),
             })
         );

@@ -186,7 +186,10 @@ async fn offline_removal_keeps_the_store_preferences_and_active_pointer() {
         .await
         .expect_err("leaving needs reachable storage");
     assert!(matches!(error, LibraryRemovalError::Store(_)), "{error}");
-    assert_eq!(error.category(), crate::ui::UiErrorCategory::Network);
+    assert_eq!(
+        error.category(),
+        crate::ui::UiErrorCategory::Storage(coven::StorageFailure::Network)
+    );
     assert_eq!(handle.store_name().await.unwrap(), "Library");
     assert!(home
         .directory(id)

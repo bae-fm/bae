@@ -137,7 +137,9 @@ pub enum BridgeErrorCategory {
     },
     Export,
     Save,
-    CloudSetup {
+    /// Storage failed — in setup, in sync, reading a file — with coven's
+    /// exact provider reason, which the line names.
+    Storage {
         failure: BridgeStorageFailure,
     },
     StorageCheck {
@@ -152,8 +154,7 @@ pub enum BridgeErrorCategory {
     },
     StorageLocationChangeUnsupported,
     DeviceIdentityMissing,
-    /// A cloud provider rejected the request or the setup is misconfigured (bad
-    /// credentials, denied permission, a bucket/folder that isn't set).
+    /// A cloud provider's sign-in (OAuth) failed: the person signs in again.
     Credentials,
     /// The cloud backend or the network to it was unreachable — retryable.
     Network,
@@ -313,7 +314,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::MetadataTrackCount { .. } => "core.import.error.metadata_track_count",
         BridgeErrorCategory::Export => "core.error.category.export",
         BridgeErrorCategory::Save => "core.error.category.save",
-        BridgeErrorCategory::CloudSetup { failure } => {
+        BridgeErrorCategory::Storage { failure } => {
             super::super::storage_failure::storage_failure_key(failure)
         }
         BridgeErrorCategory::StorageCheck { .. } => "core.error.storage.check",
@@ -478,7 +479,7 @@ mirror_enum! {
         GroupingBlocked(reason: (BridgeGroupingBlock)),
         Export,
         Save,
-        CloudSetup(failure: (BridgeStorageFailure)),
+        Storage(failure: (BridgeStorageFailure)),
         StorageCheck {check:(BridgeStorageCheck),failure:(BridgeStorageFailure)},
         S3VersioningUnknown(failure:(BridgeStorageFailure)),
         S3VersioningUnsupported(state:(BridgeS3BucketVersioning)),

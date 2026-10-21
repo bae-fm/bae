@@ -115,7 +115,7 @@ impl From<bae_core::ui::UiError> for AutomationError {
             | UiErrorCategory::SyncUpdateRequired
             | UiErrorCategory::Export
             | UiErrorCategory::Save
-            | UiErrorCategory::CloudSetup(_)
+            | UiErrorCategory::Storage(_)
             | UiErrorCategory::StorageCheck { .. }
             | UiErrorCategory::S3VersioningUnknown(_)
             | UiErrorCategory::S3VersioningUnsupported(_)

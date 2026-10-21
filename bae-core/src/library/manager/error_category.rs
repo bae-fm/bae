@@ -1,33 +1,22 @@
 //! User-facing classes for coven's typed failures; diagnostics retain each cause.
+//!
+//! Every coven variant is classed by name: a variant coven adds fails the
+//! build here rather than falling into a catch-all class that shows the person
+//! the wrong line.
+#![deny(clippy::wildcard_enum_match_arm)]
 
 use crate::ui::UiErrorCategory as C;
 
+/// A storage failure keeps coven's exact reason: the line says the storage is
+/// full, this device's clock is off, the provider refused the credentials.
 pub(super) fn cloud_home_category(error: &coven::StorageError) -> C {
-    storage_failure_category(error.failure())
-}
-
-fn storage_failure_category(failure: coven::StorageFailure) -> C {
-    use coven::StorageFailure as F;
-    match failure {
-        F::Network | F::RateLimited => C::Network,
-        F::Authentication
-        | F::PermissionDenied
-        | F::ContainerNotFound
-        | F::RegionMismatch
-        | F::QuotaExceeded
-        | F::InvalidConfiguration
-        | F::AccessNotRegistered { .. }
-        | F::AccessNotGranted { .. }
-        | F::OwnBucketRequired { .. }
-        | F::KeyBeyondStore => C::Credentials,
-        _ => C::Internal,
-    }
+    C::Storage(error.failure())
 }
 
 pub(super) fn cloud_setup_category(error: &coven::StorageSetupError) -> C {
     use coven::StorageSetupError as E;
     match error {
-        E::Storage(error) => C::CloudSetup(error.failure()),
+        E::Storage(error) => cloud_home_category(error),
         E::ProviderCheck { check, source } => C::StorageCheck {
             check: *check,
             failure: source.failure(),
@@ -59,7 +48,7 @@ pub(super) fn cloud_unlock_category(error: &coven::StoreKeyUnlockError) -> C {
 pub(super) fn pending_reason_category(reason: &coven::PendingReason) -> C {
     use coven::PendingReason as R;
     match reason {
-        R::Storage { failure, .. } => storage_failure_category(*failure),
+        R::Storage { failure, .. } => C::Storage(*failure),
         R::NoStorage => C::Config,
         R::UpdateRequired(_) | R::Refused(_) => C::SyncUpdateRequired,
         R::Removed => C::DeviceRemoved,
@@ -73,51 +62,91 @@ pub(super) fn pending_reason_category(reason: &coven::PendingReason) -> C {
         | R::DeleteAccessKey(_)
         | R::AdminAccessRequired
         | R::Rejected(_) => C::Membership,
-        R::Failed(coven::LocalFailure::Database) => C::Database,
-        R::Failed(coven::LocalFailure::KeyCustody) => C::Keyring,
-        R::Failed(
-            coven::LocalFailure::Disk
-            | coven::LocalFailure::Crypto
-            | coven::LocalFailure::Operation,
-        )
-        | R::Missing { .. }
-        | R::Waits(_)
-        | R::FileUnavailable(_)
-        | R::Paused => C::Internal,
+        R::Failed(failure) => local_failure_category(*failure),
+        R::Missing { .. } | R::Waits(_) | R::FileUnavailable(_) | R::Paused => C::Internal,
         R::Cleanup { operation, .. } => pending_reason_category(operation),
+    }
+}
+
+/// The class of a local failure coven met on this device.
+fn local_failure_category(failure: coven::LocalFailure) -> C {
+    use coven::LocalFailure as F;
+    match failure {
+        F::Database => C::Database,
+        F::KeyCustody => C::Keyring,
+        F::Disk | F::Crypto | F::Operation => C::Internal,
     }
 }
 
 pub(super) fn sync_category(error: &coven::SyncError) -> C {
     use coven::SyncError as E;
     match error {
+        E::Pending(record) => pending_reason_category(&record.reason),
+        E::Failed { failure, .. } => local_failure_category(*failure),
         E::Storage(error) => cloud_home_category(error),
         E::SecureStorage(error) => key_category(error),
         E::Database(_) => C::Database,
         E::NoStorage => C::Config,
         E::UpdateRequired(_) => C::SyncUpdateRequired,
         E::Removed => C::DeviceRemoved,
-        E::StoreOwner | E::InvitationChanged | E::MemberKeysReplaced { .. } | E::Rejected(_) => {
-            C::Membership
-        }
+        // Another copy uses this device's id: only a reset answers it.
+        E::DeviceIdInUse(_) => C::DeviceResetRequired,
+        // Administrative work: a member, an invitation, a key a member has not
+        // sealed for this device yet, a reload sharing waits on, an access key.
+        E::StoreOwner
+        | E::InvitationChanged
+        | E::MemberKeysReplaced { .. }
+        | E::Rejected(_)
+        | E::ReloadPending(_)
+        | E::AccessKeyNotDeleted(_)
+        | E::Key(_)
+        | E::KeyUnavailable(_) => C::Membership,
         E::Cleanup { operation, .. } => sync_category(operation),
-        _ => C::Internal,
+        // Broken invariants and damaged local data: nothing the person can
+        // change but report.
+        E::NotPending(_)
+        | E::OperationData(_)
+        | E::SequenceExhausted
+        | E::Crypto(_)
+        | E::Format(_)
+        | E::KeyAlreadyUsed(_)
+        | E::Damaged(_)
+        | E::WrongStore { .. } => C::Internal,
     }
 }
 
 pub(super) fn key_category(error: &coven::KeyError) -> C {
+    use coven::KeyError as E;
     match error {
         // A keychain that refused this second is not a broken keyring. It is
         // the one keyring failure a host should wait out, so it keeps its own
         // class all the way to the UI.
-        coven::KeyError::KeychainTemporarilyUnavailable(_) => C::KeyringLocked,
+        E::KeychainTemporarilyUnavailable(_) => C::KeyringLocked,
         // The build lacks its keychain entitlement: no keyring the person
         // could fix, and no retry that helps.
-        coven::KeyError::MissingKeychainEntitlement(_) => C::KeychainEntitlementMissing,
+        E::MissingKeychainEntitlement(_) => C::KeychainEntitlementMissing,
         // The person left the store, so coven refuses to write their synced
         // restore code or S3 key again: the removal, not the keychain, failed it.
-        coven::KeyError::Left => C::DeviceRemoved,
-        _ => C::Keyring,
+        E::Left => C::DeviceRemoved,
+        E::DeviceIdEncoding
+        | E::File(_)
+        | E::Crypto(_)
+        | E::Material(_)
+        | E::PassphraseAuthentication
+        | E::PassphraseHeader
+        | E::PassphraseParameters
+        | E::Unavailable(_)
+        | E::Keychain(_)
+        | E::UnsupportedKeyringPlatform
+        | E::Unsupported
+        | E::RestoreCodeStoreId => C::Keyring,
+        // The custody's handle closed under the call, or the keyring service
+        // was registered wrong at startup: bae's own sequencing, not the
+        // keyring.
+        E::StoreClosed
+        | E::ServiceNotRegistered
+        | E::ServiceAlreadyRegistered
+        | E::InvalidServiceName => C::Internal,
     }
 }
 

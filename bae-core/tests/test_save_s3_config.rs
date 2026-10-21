@@ -41,7 +41,7 @@ fn probe_failure_persists_nothing_and_surfaces_as_cloud_setup_network() {
     // category, distinct from the authentication and permission cases.
     assert_eq!(
         err.category(),
-        UiErrorCategory::CloudSetup(coven::StorageFailure::Network),
+        UiErrorCategory::Storage(coven::StorageFailure::Network),
         "got: {err}"
     );
 
