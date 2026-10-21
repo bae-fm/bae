@@ -1,6 +1,5 @@
 package fm.bae.app.ui.settings
 
-import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,11 +42,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
+import fm.bae.app.ErrorDisplays
 import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.displayError
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
@@ -65,6 +64,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeJoinRequest
@@ -83,17 +83,31 @@ import uniffi.bae_bridge.bridgeProviderSignOutKey
 private const val TAG = "bae.MembersScreen"
 private val logger = BaeLogger(TAG)
 
+/** The read of the library's people: running, answered, or failed with what to show. */
+internal sealed interface PeopleRead {
+    data object Loading : PeopleRead
+
+    data class Loaded(
+        val people: List<BridgePerson>,
+    ) : PeopleRead
+
+    /** The read failed; the list is not known, so none is shown, and Retry reads it again. */
+    data class Failed(
+        val error: DisplayError,
+    ) : PeopleRead
+}
+
 /**
  * The library's people as core joins them: each member with their profile.
  * Membership and profiles each arrive live; either change reads the joined
  * list again.
  */
 internal class MembersModel(
-    private val session: OpenLibrary,
-    private val appContext: Context,
+    private val appHandle: AppHandle,
+    private val errors: ErrorDisplays,
     private val scope: CoroutineScope,
 ) {
-    var people by mutableStateOf<List<BridgePerson>?>(null)
+    var people by mutableStateOf<PeopleRead>(PeopleRead.Loading)
         private set
     var selfIsAdmin by mutableStateOf(false)
         private set
@@ -109,26 +123,33 @@ internal class MembersModel(
         reloading?.cancel()
         reloading =
             scope.launch {
-                try {
-                    people = session.appHandle.people()
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: BridgeException) {
-                    logger.error("reading the library's people failed", e)
-                    error = appContext.displayError(e) ?: DisplayError(e.toString())
-                }
+                people =
+                    try {
+                        PeopleRead.Loaded(appHandle.people())
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: BridgeException) {
+                        logger.error("reading the library's people failed", e)
+                        PeopleRead.Failed(errors.display(e) ?: DisplayError(e.toString()))
+                    }
             }
     }
 
+    /** Read the list again after a failed read, showing the spinner while it runs. */
+    fun retry() {
+        people = PeopleRead.Loading
+        reload()
+    }
+
     suspend fun loadStorage() {
-        performBridgeAction(logger, "read the library's cloud home", LocaleErrorDisplays(appContext), { error = it }) {
-            storage = session.appHandle.storageLocation()
+        performBridgeAction(logger, "read the library's cloud home", errors, { error = it }) {
+            storage = appHandle.storageLocation()
         }
     }
 
     fun subscribe(): () -> Unit {
         val members =
-            session.appHandle.subscribeMembers(
+            appHandle.subscribeMembers(
                 object : MembershipCallback {
                     override fun onValue(value: BridgeMembership) {
                         scope.launch(Dispatchers.Main.immediate) {
@@ -140,13 +161,13 @@ internal class MembersModel(
                     override fun onError(error: BridgeException) {
                         logger.error("reading the library's members failed", error)
                         scope.launch(Dispatchers.Main.immediate) {
-                            this@MembersModel.error = appContext.displayError(error)
+                            this@MembersModel.error = errors.display(error)
                         }
                     }
                 },
             )
         val profiles =
-            session.appHandle.subscribeProfiles(
+            appHandle.subscribeProfiles(
                 object : ProfilesCallback {
                     override fun onValue(value: List<BridgePersonProfile>) {
                         scope.launch(Dispatchers.Main.immediate) { reload() }
@@ -155,13 +176,13 @@ internal class MembersModel(
                     override fun onError(error: BridgeException) {
                         logger.error("reading the library's profiles failed", error)
                         scope.launch(Dispatchers.Main.immediate) {
-                            this@MembersModel.error = appContext.displayError(error)
+                            this@MembersModel.error = errors.display(error)
                         }
                     }
                 },
             )
         val requests =
-            session.appHandle.subscribeJoinRequests(
+            appHandle.subscribeJoinRequests(
                 object : JoinRequestsCallback {
                     override fun onValue(value: List<BridgeJoinRequest>) {
                         scope.launch(Dispatchers.Main.immediate) { joinRequests = value }
@@ -182,7 +203,7 @@ internal class MembersModel(
     ) {
         error = null
         scope.launch {
-            performBridgeAction(logger, operation, LocaleErrorDisplays(appContext), { error = it }, action)
+            performBridgeAction(logger, operation, errors, { error = it }, action)
         }
     }
 }
@@ -199,7 +220,7 @@ fun MembersScreen(
 ) {
     val appContext = LocalContext.current.applicationContext
     val scope = rememberCoroutineScope()
-    val model = remember(session) { MembersModel(session, appContext, scope) }
+    val model = remember(session) { MembersModel(session.appHandle, LocaleErrorDisplays(appContext), scope) }
     DisposableEffect(model) { onDispose(model.subscribe()) }
     LaunchedEffect(model) { model.loadStorage() }
     val dialogs = remember { MembersDialogs() }
@@ -212,16 +233,27 @@ fun MembersScreen(
                 modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
             )
         }
-        when (val people = model.people) {
-            null -> {
+        when (val read = model.people) {
+            PeopleRead.Loading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             }
 
-            else -> {
+            is PeopleRead.Failed -> {
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(ThemeSpace.page),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    ErrorDetailDisclosure(read.error)
+                    TextButton(onClick = model::retry) { Text(stringResource(R.string.retry)) }
+                }
+            }
+
+            is PeopleRead.Loaded -> {
                 MembersList(
-                    people = people,
+                    people = read.people,
                     selfIsAdmin = model.selfIsAdmin,
                     joinRequests = model.joinRequests,
                     callbacks = memberCallbacks(session, model, dialogs),
