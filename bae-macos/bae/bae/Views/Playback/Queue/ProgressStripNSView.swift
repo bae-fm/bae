@@ -18,7 +18,9 @@ final class ProgressStripNSView: NSView {
     }
     private let elapsedField: NSTextField
 
-    private var positionMs: Int64 = 0
+    /// Nil until a position arrives and after a reset; the label is empty then.
+    private var positionMs: Int64?
+    /// Nil when the track's length is unknown.
     private var durationMs: UInt64?
 
     init(accent: NSColor) {
@@ -60,23 +62,23 @@ final class ProgressStripNSView: NSView {
 
     // MARK: - Direct position updates (called from a Combine subscription)
 
-    func setPosition(progress: Double, positionMs: Int64, durationMs: UInt64) {
+    func setPosition(progress: Double, positionMs: Int64, durationMs: UInt64?) {
         self.positionMs = positionMs
         self.durationMs = durationMs
         bar.progress = progress
         updateLabel()
     }
 
-    /// Clears everything: bar to 0, label empty, duration dropped.
+    /// Clears everything: bar to 0, label empty, position and duration dropped.
     func reset() {
         bar.progress = 0
-        positionMs = 0
+        positionMs = nil
         durationMs = nil
         elapsedField.stringValue = ""
     }
 
     private func updateLabel() {
-        guard let durationMs else {
+        guard let positionMs else {
             elapsedField.stringValue = ""
             return
         }

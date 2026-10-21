@@ -15,8 +15,7 @@ internal class PlaybackPositionModel {
     /** Position anchor from the latest progress event. */
     private var anchorPositionMs: Long = 0L
 
-    /** The current track's duration, or null when core has reported none. Non-null
-     *  is always positive (a reported 0 means "unknown" and maps to null). */
+    /** The current track's duration, or null when its length is unknown. */
     var durationMs: Long? = null
         private set
 
@@ -49,7 +48,7 @@ internal class PlaybackPositionModel {
         currentTrackId: String?,
         trackId: String,
         positionMs: Long,
-        durationMs: Long,
+        durationMs: Long?,
         progress: Double,
     ): PositionUpdate {
         val pendingSeek = pendingSeek
@@ -68,7 +67,7 @@ internal class PlaybackPositionModel {
         currentTrackId: String?,
         trackId: String,
         positionMs: Long,
-        durationMs: Long,
+        durationMs: Long?,
         progress: Double,
     ): PositionUpdate {
         if (!targetsCurrentTrack(currentTrackId, trackId)) {
@@ -82,14 +81,14 @@ internal class PlaybackPositionModel {
         currentTrackId: String?,
         trackId: String,
         positionMs: Long,
-        durationMs: Long,
+        durationMs: Long?,
         progress: Double,
     ): PositionUpdate {
         if (!targetsCurrentTrack(currentTrackId, trackId)) {
             return PositionUpdate.StaleTrack
         }
         anchorPositionMs = positionMs
-        this.durationMs = durationMs.takeIf { it > 0L }
+        this.durationMs = durationMs
         this.progress = progress
         return PositionUpdate.Applied
     }
@@ -104,17 +103,17 @@ internal class PlaybackPositionModel {
     /**
      * Enter or refresh the active track. Clears the pending seek when the track
      * changed (its projection no longer applies) and adopts the reported duration
-     * ([rawDurationMs] of 0 means unknown). Leaves the anchor and progress to the
-     * progress events.
+     * ([durationMs] is null when the length is unknown). Leaves the anchor and
+     * progress to the progress events.
      */
     fun setActiveTrack(
         trackChanged: Boolean,
-        rawDurationMs: Long,
+        durationMs: Long?,
     ) {
         if (trackChanged) {
             pendingSeek = null
         }
-        durationMs = rawDurationMs.takeIf { it > 0L }
+        this.durationMs = durationMs
     }
 
     /**

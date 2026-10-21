@@ -181,7 +181,7 @@ public final class MediaControlService: @unchecked Sendable {
         infoCenter.nowPlayingInfo = info
     }
 
-    public func updatePosition(positionMs: UInt64, durationMs: UInt64) {
+    public func updatePosition(positionMs: UInt64, durationMs: UInt64?) {
         let infoCenter = MPNowPlayingInfoCenter.default()
         guard var info = infoCenter.nowPlayingInfo else {
             return
@@ -195,17 +195,17 @@ public final class MediaControlService: @unchecked Sendable {
     }
 
     /// Track the live duration so the scrubber is enabled only while a track
-    /// duration is known. Core reports `0` when the length isn't known yet
-    /// (e.g. before decode determines it), mirroring Android's `C.TIME_UNSET`.
+    /// duration is known. Core reports no duration (nil) for a track whose
+    /// length is unknown, mirroring Android's `C.TIME_UNSET`.
     /// With a known duration the scrubber is enabled and a seek maps onto it;
     /// with an unknown one we drop the duration and disable the scrub command,
     /// so a drag can't reach a handler that would silently no-op against a
     /// missing duration.
     func trackDuration(
-        _ durationMs: UInt64,
+        _ durationMs: UInt64?,
         into info: inout [String: Any]
     ) {
-        currentDurationMs = durationMs > 0 ? durationMs : nil
+        currentDurationMs = durationMs
         if let currentDurationMs {
             info[MPMediaItemPropertyPlaybackDuration] =
                 Double(currentDurationMs) / 1000.0

@@ -51,7 +51,8 @@ final class PlaybackProgressUIView: UIView {
 
     private var isDragging = false
     private var positionMs: Int64 = 0
-    private var durationMs: UInt64 = 0
+    /// Nil when the track's length is unknown.
+    private var durationMs: UInt64?
     private var cancellable: AnyCancellable?
 
     override init(frame: CGRect) {
@@ -133,15 +134,18 @@ final class PlaybackProgressUIView: UIView {
         case .position(let progress, let positionMs, let durationMs):
             self.positionMs = positionMs
             self.durationMs = durationMs
+            // A track whose length is unknown has no fill to seek to.
+            slider.isEnabled = durationMs != nil
             updateLabels()
             if !isDragging {
                 slider.value = Float(max(0, min(1, progress)))
             }
         case .reset:
             isDragging = false
+            slider.isEnabled = false
             slider.value = 0
             positionMs = 0
-            durationMs = 0
+            durationMs = nil
             leadingLabel.text = ""
             trailingLabel.text = ""
         }

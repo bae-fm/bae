@@ -81,9 +81,10 @@ impl DurationClock {
 ///
 /// The leading label is the pregap countdown while position is negative. From
 /// track start onward it is the elapsed position or the countdown to the end,
-/// whichever the user asked for (`show_remaining_time` in the config). The
-/// trailing label is always the track's total length. The UI renders the two and
-/// owns none of these choices.
+/// whichever the user asked for (`show_remaining_time` in the config) — the
+/// elapsed position alone when the track's length is unknown. The trailing
+/// label is the track's total length, absent when it is unknown. The UI renders
+/// the two and owns none of these choices.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SeekBarClocks {
     pub leading: DurationClock,
@@ -92,17 +93,16 @@ pub struct SeekBarClocks {
 }
 
 impl SeekBarClocks {
-    /// A `duration_ms` of zero is how playback reports "length unknown", not a
-    /// zero-length track: there is nothing to count down to and no total to
-    /// name, so the leading label shows the elapsed position whatever the
-    /// preference says.
-    pub fn new(position_ms: i64, duration_ms: u64, show_remaining: bool) -> Self {
-        if duration_ms == 0 {
+    /// A `duration_ms` of `None` is a track whose length is not known: there is
+    /// nothing to count down to and no total to name, so the leading label
+    /// shows the elapsed position whatever the preference says.
+    pub fn new(position_ms: i64, duration_ms: Option<u64>, show_remaining: bool) -> Self {
+        let Some(duration_ms) = duration_ms else {
             return Self {
                 leading: DurationClock::playback_position(position_ms, None),
                 trailing: None,
             };
-        }
+        };
         let leading = if position_ms < 0 {
             DurationClock::playback_position(position_ms, Some(duration_ms))
         } else if show_remaining {
@@ -271,11 +271,11 @@ mod tests {
     /// total, so a bar can never show the countdown on both sides.
     #[test]
     fn the_leading_clock_follows_the_preference() {
-        let elapsed = SeekBarClocks::new(25_000, 100_000, false);
+        let elapsed = SeekBarClocks::new(25_000, Some(100_000), false);
         assert_eq!(elapsed.leading, clock(25_000));
         assert_eq!(elapsed.trailing, Some(clock(100_000)));
 
-        let remaining = SeekBarClocks::new(25_000, 100_000, true);
+        let remaining = SeekBarClocks::new(25_000, Some(100_000), true);
         assert_eq!(remaining.leading, DurationClock::remaining(25_000, 100_000));
         assert!(remaining.leading.negative);
         assert_eq!(remaining.trailing, Some(clock(100_000)));
@@ -290,11 +290,11 @@ mod tests {
             seconds: 2,
         };
         assert_eq!(
-            SeekBarClocks::new(-2_000, 100_000, false).leading,
+            SeekBarClocks::new(-2_000, Some(100_000), false).leading,
             expected_two
         );
         assert_eq!(
-            SeekBarClocks::new(-1_001, 100_000, false).leading,
+            SeekBarClocks::new(-1_001, Some(100_000), false).leading,
             expected_two
         );
 
@@ -305,29 +305,50 @@ mod tests {
             seconds: 1,
         };
         assert_eq!(
-            SeekBarClocks::new(-1_000, 100_000, false).leading,
+            SeekBarClocks::new(-1_000, Some(100_000), false).leading,
             expected_one
         );
-        assert_eq!(SeekBarClocks::new(-1, 100_000, false).leading, expected_one);
-        assert_eq!(SeekBarClocks::new(0, 100_000, false).leading, clock(0));
+        assert_eq!(
+            SeekBarClocks::new(-1, Some(100_000), false).leading,
+            expected_one
+        );
+        assert_eq!(
+            SeekBarClocks::new(0, Some(100_000), false).leading,
+            clock(0)
+        );
     }
 
     #[test]
     fn pregap_countdown_overrides_the_remaining_time_preference() {
-        let pregap = SeekBarClocks::new(-1_000, 100_000, false).leading;
-        assert_eq!(SeekBarClocks::new(-1_000, 100_000, true).leading, pregap,);
+        let pregap = SeekBarClocks::new(-1_000, Some(100_000), false).leading;
+        assert_eq!(
+            SeekBarClocks::new(-1_000, Some(100_000), true).leading,
+            pregap,
+        );
     }
 
-    /// A zero duration is playback saying it does not know the length. There is
-    /// no total, and nothing to count down to — so the leading label shows the
-    /// position even when the user asked for remaining.
+    /// With no known length there is no total, and nothing to count down to —
+    /// so the leading label shows the position even when the user asked for
+    /// remaining, and keeps counting up past any length a track might have.
     #[test]
     fn an_unknown_duration_has_no_total_and_no_countdown() {
         for show_remaining in [false, true] {
-            let bar = SeekBarClocks::new(25_000, 0, show_remaining);
-            assert_eq!(bar.leading, clock(25_000));
-            assert_eq!(bar.trailing, None);
+            for position_ms in [25_000, 400_000] {
+                let bar = SeekBarClocks::new(position_ms, None, show_remaining);
+                assert_eq!(bar.leading, clock(position_ms));
+                assert_eq!(bar.trailing, None);
+            }
         }
+    }
+
+    /// The pregap counts down to the track's start whether or not its length
+    /// is known.
+    #[test]
+    fn an_unknown_duration_still_counts_down_the_pregap() {
+        assert_eq!(
+            SeekBarClocks::new(-1_500, None, true).leading,
+            SeekBarClocks::new(-1_500, Some(100_000), false).leading,
+        );
     }
 
     fn units(ms: i64) -> DurationUnits {

@@ -294,7 +294,9 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     )
     .await;
 
-    let duration_ms = playback_duration_ms.expect("Should get duration from playback") as i64;
+    let duration_ms = playback_duration_ms
+        .expect("Should get duration from playback")
+        .expect("a CUE track has a length") as i64;
 
     info!(
         "Track 1: expected {}ms, playback duration {}ms",

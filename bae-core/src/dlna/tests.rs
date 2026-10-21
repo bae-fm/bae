@@ -624,9 +624,15 @@ fn poll_of_unreachable_renderer_is_a_connection_error() {
 
 // -- end-of-track inference: position-less and zero-duration renderers ---------
 
-/// Drive a channel to PLAYING (recording whatever position the renderer reports),
-/// then flip it to STOPPED and return the state the next poll classifies it as.
-fn stopped_state_after(rel_time: &str, track_duration: &str) -> RendererPlayerState {
+/// Load media of `loaded_length` (`None` when the track's length is unknown),
+/// drive the channel to PLAYING (recording whatever position the renderer
+/// reports), then flip it to STOPPED and return the state the next poll
+/// classifies it as.
+fn stopped_state_after(
+    loaded_length: Option<Duration>,
+    rel_time: &str,
+    track_duration: &str,
+) -> RendererPlayerState {
     let runtime = bae_test_support::multi_thread_runtime();
     let state: Shared = Arc::new(Mutex::new(FakeRenderer {
         transport_state: "PLAYING".to_string(),
@@ -636,6 +642,12 @@ fn stopped_state_after(rel_time: &str, track_duration: &str) -> RendererPlayerSt
     }));
     let base = runtime.block_on(start_fake_renderer(state.clone()));
     let mut channel = channel_to(&base);
+    channel
+        .load(&RendererMedia {
+            duration: loaded_length,
+            ..test_media()
+        })
+        .unwrap();
     // Observe PLAYING so has_played is set and any position is recorded.
     assert_eq!(
         channel.poll_status().unwrap().player_state,
@@ -651,22 +663,38 @@ fn stopped_state_after(rel_time: &str, track_duration: &str) -> RendererPlayerSt
 #[test]
 fn stop_without_any_reported_position_is_finished() {
     assert_eq!(
-        stopped_state_after("NOT_IMPLEMENTED", "NOT_IMPLEMENTED"),
+        stopped_state_after(None, "NOT_IMPLEMENTED", "NOT_IMPLEMENTED"),
         RendererPlayerState::Finished,
         "a position-less renderer must still advance the queue on STOPPED"
     );
 }
 
-/// While loading, renderers commonly report `TrackDuration=0:00:00`. Once a real
-/// position has been seen, a STOPPED must NOT read as end-of-track off that fake
-/// zero duration.
+/// While loading, renderers commonly report `TrackDuration=0:00:00`. That zero
+/// is no length, so the loaded track's length still decides: a STOPPED well
+/// short of it is a mid-track stop.
 #[test]
 fn zero_duration_with_reported_position_is_not_finished() {
     assert_eq!(
-        stopped_state_after("0:00:30", "0:00:00"),
+        stopped_state_after(Some(Duration::from_secs(180)), "0:00:30", "0:00:00"),
         RendererPlayerState::Idle,
         "a zero TrackDuration must not make a mid-track stop look finished"
     );
+}
+
+/// A track whose length nothing knows — not the library, not the renderer —
+/// gives a STOPPED no end to measure against. As with a position-less
+/// renderer, it can't be told from a device-remote stop, so it advances the
+/// queue rather than stalling it.
+#[test]
+fn stop_with_no_length_known_anywhere_is_finished() {
+    for track_duration in ["0:00:00", "NOT_IMPLEMENTED"] {
+        assert_eq!(
+            stopped_state_after(None, "0:02:00", track_duration),
+            RendererPlayerState::Finished,
+            "a track of unknown length must still advance the queue on STOPPED \
+             (renderer TrackDuration {track_duration})"
+        );
+    }
 }
 
 /// The 5s end-of-track slack: within 5s of the reported duration is a natural
@@ -675,13 +703,13 @@ fn zero_duration_with_reported_position_is_not_finished() {
 fn end_of_track_respects_the_five_second_slack() {
     // duration − 4s → within slack → finished.
     assert_eq!(
-        stopped_state_after("0:02:56", "0:03:00"),
+        stopped_state_after(None, "0:02:56", "0:03:00"),
         RendererPlayerState::Finished,
         "4s short of the end is a natural end"
     );
     // duration − 6s → outside slack → mid-track stop.
     assert_eq!(
-        stopped_state_after("0:02:54", "0:03:00"),
+        stopped_state_after(None, "0:02:54", "0:03:00"),
         RendererPlayerState::Idle,
         "6s short of the end is not a natural end"
     );

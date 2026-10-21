@@ -53,7 +53,7 @@ internal fun nowPlayingTrack(
     releaseId: String = "release-1",
     albumTitle: String = "Album Title",
     coverImage: BridgeImageRef? = null,
-    durationMs: ULong = 180_000uL,
+    durationMs: ULong? = 180_000uL,
 ) = BridgeNowPlayingTrack(
     track = BridgePlayingTrack(trackId = trackId, durationMs = durationMs),
     display =
@@ -75,7 +75,7 @@ internal fun playingState(
     releaseId: String = "release-1",
     albumTitle: String = "Album Title",
     coverImage: BridgeImageRef? = null,
-    durationMs: ULong = 180_000uL,
+    durationMs: ULong? = 180_000uL,
 ) = BridgePlaybackValueState.Playing(
     nowPlayingTrack(trackId, title, artistNames, albumId, releaseId, albumTitle, coverImage, durationMs),
 )
@@ -88,7 +88,7 @@ internal fun pausedState(
     releaseId: String = "release-1",
     albumTitle: String = "Album Title",
     coverImage: BridgeImageRef? = null,
-    durationMs: ULong = 180_000uL,
+    durationMs: ULong? = 180_000uL,
     reason: BridgePlaybackPauseReason = BridgePlaybackPauseReason.Manual,
 ) = BridgePlaybackValueState.Paused(
     nowPlayingTrack(trackId, title, artistNames, albumId, releaseId, albumTitle, coverImage, durationMs),

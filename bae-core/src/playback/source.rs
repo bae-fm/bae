@@ -326,7 +326,7 @@ mod tests {
     fn fmt(track_id: &str) -> TrackFmt {
         TrackFmt {
             track_id: track_id.to_string(),
-            timeline: TrackTimeline::new(Duration::from_secs(1), None),
+            timeline: TrackTimeline::new(Some(Duration::from_secs(1)), None),
             starts_at: StreamPosition::START,
             replay_gain_linear: 1.0,
         }

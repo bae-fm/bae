@@ -105,18 +105,20 @@ pub fn group_tracks_by_side(
     let mut groups: Vec<crate::album_detail::TrackGroup> = Vec::new();
     for track in tracks {
         let side = track_side(&track.position);
-        let duration_ms = track.duration_ms.unwrap_or(0);
         if let Some(last) = groups.last_mut() {
             if last.side == side {
                 last.tracks.push(track.clone());
-                last.total_duration_ms += duration_ms;
+                last.total_duration_ms = last
+                    .total_duration_ms
+                    .zip(track.duration_ms)
+                    .map(|(total, duration)| total + duration);
                 continue;
             }
         }
         groups.push(crate::album_detail::TrackGroup {
             side,
             tracks: vec![track.clone()],
-            total_duration_ms: duration_ms,
+            total_duration_ms: track.duration_ms,
         });
     }
     groups

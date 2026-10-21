@@ -165,7 +165,7 @@ public class PlaybackStore {
     public func updatePlaybackProgress(
         trackId: String,
         positionMs: Int64,
-        durationMs: UInt64,
+        durationMs: UInt64?,
         progress: Double
     ) -> PlaybackPositionSnapshot? {
         guard acceptsPlaybackPosition(trackId: trackId) else {
@@ -186,7 +186,7 @@ public class PlaybackStore {
     public func updatePlaybackSeeked(
         trackId: String,
         positionMs: Int64,
-        durationMs: UInt64,
+        durationMs: UInt64?,
         progress: Double
     ) -> PlaybackPositionSnapshot? {
         guard acceptsPlaybackPosition(trackId: trackId) else {
@@ -201,7 +201,7 @@ public class PlaybackStore {
 
     private func publishCurrentPosition(
         positionMs: Int64,
-        durationMs: UInt64,
+        durationMs: UInt64?,
         progress: Double
     ) -> PlaybackPositionSnapshot {
         let snapshot = PlaybackPositionSnapshot(
@@ -227,7 +227,7 @@ public class PlaybackStore {
     @discardableResult
     public func projectSeek(ratio: Double) -> PlaybackPositionSnapshot? {
         guard let currentPosition = playbackPosition?.snapshot,
-            currentPosition.durationMs > 0
+            let durationMs = currentPosition.durationMs
         else {
             logger.warning(
                 "Seek projection ignored for ratio \(ratio): no known playback duration"
@@ -236,7 +236,7 @@ public class PlaybackStore {
         }
         let clampedRatio = min(1.0, max(0.0, ratio))
         let targetPositionMs = Int64(
-            (clampedRatio * Double(currentPosition.durationMs)).rounded()
+            (clampedRatio * Double(durationMs)).rounded()
         )
         let snapshot = PlaybackPositionSnapshot(
             positionMs: targetPositionMs,

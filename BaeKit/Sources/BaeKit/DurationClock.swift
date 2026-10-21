@@ -27,11 +27,11 @@ public enum DurationClock {
     /// The seek bar's two labels: the leading one shows the pregap countdown
     /// before track start, then the elapsed position or end countdown per
     /// `showRemaining` (the user's config). The trailing one is the track's
-    /// total length — "" when its length is unknown. Which clock is shown is
-    /// core's decision, not the bar's.
+    /// total length — "" when its length is unknown (`durationMs` nil). Which
+    /// clock is shown is core's decision, not the bar's.
     public static func seekBar(
         positionMs: Int64,
-        durationMs: UInt64,
+        durationMs: UInt64?,
         showRemaining: Bool
     ) -> (leading: String, trailing: String) {
         let clocks = bridgeSeekBar(

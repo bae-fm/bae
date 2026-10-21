@@ -49,7 +49,7 @@ class PlaybackPositionModelTest {
         val model = playingModel(durationMs = 100_000)
         model.beginInTrackSeek(TRACK, requestedPositionMs = 75_000)
 
-        model.setActiveTrack(trackChanged = false, rawDurationMs = 100_000)
+        model.setActiveTrack(trackChanged = false, durationMs = 100_000)
 
         assertEquals(PositionUpdate.HeldByPendingSeek, model.progress(positionMs = 20_000, progress = 0.20))
         assertEquals(75_000, model.effectivePositionMs)
@@ -60,7 +60,7 @@ class PlaybackPositionModelTest {
         val model = playingModel(durationMs = 100_000)
         model.beginInTrackSeek(TRACK, requestedPositionMs = 75_000)
 
-        model.setActiveTrack(trackChanged = true, rawDurationMs = 100_000)
+        model.setActiveTrack(trackChanged = true, durationMs = 100_000)
 
         // The seek projection is gone, so live progress applies immediately.
         assertEquals(PositionUpdate.Applied, model.progress(positionMs = 20_000, progress = 0.20))
@@ -69,8 +69,8 @@ class PlaybackPositionModelTest {
 
     @Test
     fun seekWithoutDurationIsIgnored() {
-        val model = playingModel(durationMs = 0)
-        model.progress(positionMs = 10_000, durationMs = 0, progress = 0.0)
+        val model = playingModel(durationMs = null)
+        model.progress(positionMs = 10_000, durationMs = null, progress = 0.0)
 
         assertNull(model.beginInTrackSeek(TRACK, requestedPositionMs = 75_000))
         // No projection formed, so the anchor stays where the last progress left it.
@@ -117,8 +117,8 @@ class PlaybackPositionModelTest {
 
     @Test
     fun unknownDurationUsesRawProgressForSlider() {
-        val model = playingModel(durationMs = 0)
-        model.progress(positionMs = 10_000, durationMs = 0, progress = 0.33)
+        val model = playingModel(durationMs = null)
+        model.progress(positionMs = 10_000, durationMs = null, progress = 0.33)
 
         val position = model.position(hasCurrentTrack = true)
         assertEquals(0.33, position.progress, 0.0)
@@ -138,12 +138,12 @@ class PlaybackPositionModelTest {
         assertPosition(model, progress = 0.0, positionMs = 0, durationMs = null, hasCurrentTrack = false)
     }
 
-    private fun playingModel(durationMs: Long): PlaybackPositionModel =
-        PlaybackPositionModel().apply { setActiveTrack(trackChanged = true, rawDurationMs = durationMs) }
+    private fun playingModel(durationMs: Long?): PlaybackPositionModel =
+        PlaybackPositionModel().apply { setActiveTrack(trackChanged = true, durationMs = durationMs) }
 
     private fun PlaybackPositionModel.progress(
         positionMs: Long,
-        durationMs: Long = 100_000,
+        durationMs: Long? = 100_000,
         progress: Double,
     ): PositionUpdate =
         onProgress(currentTrackId = TRACK, trackId = TRACK, positionMs = positionMs, durationMs = durationMs, progress = progress)

@@ -637,12 +637,12 @@ pub struct BridgeSeekBarClocks {
 ///
 /// `show_remaining` is the user's `show_remaining_time` config, which the UI
 /// reads off the config mirror and never stores itself. The pregap countdown
-/// overrides it while `position_ms` is negative. A `duration_ms` of zero is
-/// playback reporting an unknown length: no total, and no end countdown.
+/// overrides it while `position_ms` is negative. A `duration_ms` of `None` is a
+/// track whose length is unknown: no total, and no end countdown.
 #[uniffi::export]
 pub fn bridge_seek_bar(
     position_ms: i64,
-    duration_ms: u64,
+    duration_ms: Option<u64>,
     show_remaining: bool,
 ) -> BridgeSeekBarClocks {
     let bae_core::util::duration::SeekBarClocks { leading, trailing } =

@@ -116,7 +116,7 @@ mod tests {
             .send(PlaybackProgress::Seeked {
                 track_id: "track-1".into(),
                 position_ms: 70,
-                duration_ms: 100,
+                duration_ms: Some(100),
                 progress: 0.7,
             })
             .unwrap();
@@ -124,7 +124,7 @@ mod tests {
             .send(PlaybackProgress::PositionUpdate {
                 track_id: "track-1".into(),
                 position_ms: 71,
-                duration_ms: 100,
+                duration_ms: Some(100),
                 progress: 0.71,
             })
             .unwrap();

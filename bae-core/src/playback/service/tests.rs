@@ -75,8 +75,13 @@ const TRACK_T2B: &str = "b98ba0de-5eb5-4c15-a20f-b5df519ed969";
 
 /// Insert each `(release_id, track_ids)` as album + release + track rows so
 /// `get_track_ids` returns each release's tracks in the given order. Tracks are
-/// numbered in slice order (the query orders by `side, track_number, id`).
-async fn seed_test_releases(database: &crate::db::Database, releases: &[(&str, &[&str])]) {
+/// numbered in slice order (the query orders by `side, track_number, id`), and
+/// each stores `track_length_ms` as its length.
+async fn seed_test_releases(
+    database: &crate::db::Database,
+    releases: &[(&str, &[&str])],
+    track_length_ms: Option<i64>,
+) {
     use crate::db::{DbAlbum, DbArtist, DbRelease, DbTrack};
     if releases.is_empty() {
         return;
@@ -96,8 +101,9 @@ async fn seed_test_releases(database: &crate::db::Database, releases: &[(&str, &
         database.insert_album(&album).await.unwrap();
         database.insert_release(&release).await.unwrap();
         for (index, track_id) in track_ids.iter().enumerate() {
-            let track =
+            let mut track =
                 DbTrack::new_test(release_id, track_id, "Track Title", Some(index as i32 + 1));
+            track.duration_ms = track_length_ms;
             database.insert_track(&track).await.unwrap();
         }
     }
@@ -111,13 +117,21 @@ async fn seeded_library_manager_with_diagnostics(
     releases: &[(&str, &[&str])],
     diagnostics: crate::diagnostics::Diagnostics,
 ) -> (TempDir, LibraryManager) {
+    seeded_library_manager_with_track_length(releases, diagnostics, None).await
+}
+
+async fn seeded_library_manager_with_track_length(
+    releases: &[(&str, &[&str])],
+    diagnostics: crate::diagnostics::Diagnostics,
+    track_length_ms: Option<i64>,
+) -> (TempDir, LibraryManager) {
     let home = TempDir::new().unwrap();
     let db_path = home.path().join("playback-service-test.db");
     let database =
         crate::db::Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
             .await
             .unwrap();
-    seed_test_releases(&database, releases).await;
+    seed_test_releases(&database, releases, track_length_ms).await;
 
     let config =
         crate::config::Config::with_defaults(database.store_id(), home.path().join("preferences"));
@@ -305,7 +319,6 @@ fn test_prepared_track_with_file(
     PlaybackPreparedTrack {
         track_id: track_id.to_string(),
         release_id: "release-id".to_string(),
-        duration: Some(std::time::Duration::from_secs(1)),
         segments: vec![PreparedAudioSegment {
             role: DbAudioSegmentRole::Main,
             file_id: file_id.to_string(),
@@ -315,7 +328,7 @@ fn test_prepared_track_with_file(
         sample_rate: 44_100,
         channels: 2,
         generated_pregap_frames: 0,
-        timeline: TrackTimeline::new(std::time::Duration::from_secs(1), None),
+        timeline: TrackTimeline::new(Some(std::time::Duration::from_secs(1)), None),
         content_type: crate::util::content_type::ContentType::Flac,
         replay_gain_linear: 1.0,
     }
@@ -368,7 +381,10 @@ fn test_preloaded_next(
 fn test_track_fmt(track_id: &str) -> TrackFmt {
     TrackFmt {
         track_id: track_id.to_string(),
-        timeline: crate::playback::TrackTimeline::new(std::time::Duration::from_secs(1), None),
+        timeline: crate::playback::TrackTimeline::new(
+            Some(std::time::Duration::from_secs(1)),
+            None,
+        ),
         starts_at: crate::playback::StreamPosition::START,
         replay_gain_linear: 1.0,
     }

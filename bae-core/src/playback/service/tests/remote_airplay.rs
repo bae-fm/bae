@@ -90,7 +90,7 @@ async fn airplay_position_is_offset_by_receiver_latency() {
 
     // A tick at 5 s of decoded position: the audible position is 5 − 2 = 3 s.
     let mut fmt = test_track_fmt("t");
-    fmt.timeline = TrackTimeline::new(std::time::Duration::from_secs(60), None);
+    fmt.timeline = TrackTimeline::new(Some(std::time::Duration::from_secs(60)), None);
     service
         .handle_position_event(Arc::new(fmt), StreamPosition::from_millis(5_000))
         .await;

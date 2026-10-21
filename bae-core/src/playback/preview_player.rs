@@ -166,7 +166,7 @@ impl PreviewSource {
     /// The window's timeline: a preview has no pregap, so its stream and its
     /// track start together.
     fn timeline(&self) -> TrackTimeline {
-        TrackTimeline::new(self.duration, None)
+        TrackTimeline::new(Some(self.duration), None)
     }
 }
 
@@ -282,7 +282,11 @@ impl PreviewPlayer {
         let Some(active) = self.active.as_ref() else {
             return;
         };
-        let position = active.source.timeline().position_at_progress(ratio);
+        let position = active
+            .source
+            .timeline()
+            .position_at_progress(ratio)
+            .expect("a preview window has a length");
         self.seek(position, audio_device).await;
     }
 

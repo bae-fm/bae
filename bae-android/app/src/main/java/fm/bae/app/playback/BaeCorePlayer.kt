@@ -302,9 +302,9 @@ class BaeCorePlayer(
         }
         values.position?.let {
             if (values.seekRevision != lastSeekRevision) {
-                onSeeked(it.trackId, it.positionMs, it.durationMs.toLong(), it.progress)
+                onSeeked(it.trackId, it.positionMs, it.durationMs?.toLong(), it.progress)
             } else {
-                onProgress(it.trackId, it.positionMs, it.durationMs.toLong(), it.progress)
+                onProgress(it.trackId, it.positionMs, it.durationMs?.toLong(), it.progress)
             }
         }
         lastSeekRevision = values.seekRevision
@@ -348,12 +348,12 @@ class BaeCorePlayer(
         systemHooks.onPlaybackActivated()
     }
 
-    /** Make [track] the current track. Its duration is 0 when unknown. */
+    /** Make [track] the current track. Its duration is null when unknown. */
     private fun makeCurrent(track: BridgeNowPlayingTrack) {
         val trackId = track.track.trackId
         positionModel.setActiveTrack(
             trackChanged = trackId != playingTrackId,
-            rawDurationMs = track.track.durationMs.toLong(),
+            durationMs = track.track.durationMs?.toLong(),
         )
         playingTrackId = trackId
         currentMeta =
@@ -449,7 +449,7 @@ class BaeCorePlayer(
     private fun onProgress(
         trackId: String,
         positionMs: Long,
-        durationMs: Long,
+        durationMs: Long?,
         progress: Double,
     ) {
         applyPositionUpdate(
@@ -461,7 +461,7 @@ class BaeCorePlayer(
     private fun onSeeked(
         trackId: String,
         positionMs: Long,
-        durationMs: Long,
+        durationMs: Long?,
         progress: Double,
     ) {
         applyPositionUpdate(

@@ -83,7 +83,7 @@ struct PlaybackProgressViewTests {
             #expect(labels.map(\.stringValue) == ["-0:02", "1:40"])
 
             events.send(
-                .position(progress: 0, positionMs: 25_000, durationMs: 0)
+                .position(progress: 0, positionMs: 25_000, durationMs: nil)
             )
             await drainPositionUpdates()
             #expect(labels.map(\.stringValue) == ["0:25", ""])

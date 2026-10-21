@@ -38,7 +38,7 @@ struct MediaControlServiceTests {
         #expect(scrubberEnabled)
     }
 
-    @Test("a zero duration drops the length and disables the scrubber")
+    @Test("an unknown duration drops the length and disables the scrubber")
     func unknownDurationDisablesScrubber() {
         let infoCenter = MPNowPlayingInfoCenter.default()
         infoCenter.nowPlayingInfo = [:]
@@ -48,9 +48,9 @@ struct MediaControlServiceTests {
         service.updatePosition(positionMs: 5_000, durationMs: 60_000)
         #expect(scrubberEnabled)
 
-        // Core reports 0 when the length isn't known yet; the scrubber must go
-        // away so a drag can't map onto a missing timeline.
-        service.updatePosition(positionMs: 6_000, durationMs: 0)
+        // Core reports no duration when the track's length is unknown; the
+        // scrubber must go away so a drag can't map onto a missing timeline.
+        service.updatePosition(positionMs: 6_000, durationMs: nil)
 
         let info = infoCenter.nowPlayingInfo
         #expect(info?[MPNowPlayingInfoPropertyElapsedPlaybackTime] as? Double == 6.0)

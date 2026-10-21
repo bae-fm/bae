@@ -37,11 +37,11 @@ pub struct BridgeNowPlayingTrack {
 }
 
 /// The playing track as the playback service knows it: which track, and the
-/// duration its prepared audio plays for.
+/// duration its prepared audio plays for — `None` when its length is unknown.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePlayingTrack {
     pub track_id: String,
-    pub duration_ms: u64,
+    pub duration_ms: Option<u64>,
 }
 
 /// A track as the now-playing bar, the queue, and the system media controls
@@ -208,7 +208,9 @@ pub enum BridgePreviewState {
 pub struct BridgePlaybackPosition {
     pub track_id: String,
     pub position_ms: i64,
-    pub duration_ms: u64,
+    /// `None` when the track's length is unknown.
+    pub duration_ms: Option<u64>,
+    /// The seek bar's fill; zero throughout when the length is unknown.
     pub progress: f64,
 }
 
@@ -219,7 +221,8 @@ pub struct BridgePlaybackPosition {
 pub struct BridgeMediaControlPosition {
     pub track_id: String,
     pub position_ms: u64,
-    pub duration_ms: u64,
+    /// `None` when the track's length is unknown.
+    pub duration_ms: Option<u64>,
     pub progress: f64,
 }
 

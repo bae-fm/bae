@@ -191,8 +191,8 @@ class PlaybackSeekProjectionTest {
     fun inTrackSeekWithoutDurationDoesNotChangeProjectedPosition() {
         val (player, handle) = player()
 
-        player.startPlaying(durationMs = 0uL)
-        player.onProgress(positionMs = 10_000, durationMs = 0, progress = 0.0)
+        player.startPlaying(durationMs = null)
+        player.onProgress(positionMs = 10_000, durationMs = null, progress = 0.0)
         val positionBeforeSeek = player.position.value
 
         player.seekTo(75_000)
@@ -273,7 +273,7 @@ class PlaybackSeekProjectionTest {
         return player to handle
     }
 
-    private fun BaeCorePlayer.startPlaying(durationMs: ULong) {
+    private fun BaeCorePlayer.startPlaying(durationMs: ULong?) {
         applyPlaybackState(
             playingState(
                 trackId = "track-1",
@@ -291,26 +291,26 @@ class PlaybackSeekProjectionTest {
 
     private fun BaeCorePlayer.onProgress(
         positionMs: Long,
-        durationMs: Long,
+        durationMs: Long?,
         progress: Double,
     ) {
         applyValues(
             playbackValues(
-                playingState(durationMs = durationMs.toULong()),
-                BridgePlaybackPosition("track-1", positionMs, durationMs.toULong(), progress),
+                playingState(durationMs = durationMs?.toULong()),
+                BridgePlaybackPosition("track-1", positionMs, durationMs?.toULong(), progress),
             ),
         )
     }
 
     private fun BaeCorePlayer.onSeeked(
         positionMs: Long,
-        durationMs: Long,
+        durationMs: Long?,
         progress: Double,
     ) {
         applyValues(
             playbackValues(
-                playingState(durationMs = durationMs.toULong()),
-                BridgePlaybackPosition("track-1", positionMs, durationMs.toULong(), progress),
+                playingState(durationMs = durationMs?.toULong()),
+                BridgePlaybackPosition("track-1", positionMs, durationMs?.toULong(), progress),
                 seekRevision = 1u,
             ),
         )

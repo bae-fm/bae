@@ -18,6 +18,9 @@ class SeekSlider: NSSlider {
     }
 
     override func mouseDown(with event: NSEvent) {
+        // Disabled while the track's length is unknown: there is no position for
+        // a click to seek to.
+        guard isEnabled else { return }
         // NSSlider's default click-on-track is a page-step increment toward
         // the click, not a jump-to-click. That moves doubleValue only a tiny
         // amount, so core treats the result as a same-position seek. Compute

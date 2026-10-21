@@ -10,10 +10,18 @@ impl PlaybackService {
     }
 
     /// Seek the current track to where a seek bar filled to `ratio` points,
-    /// drawn as `TrackTimeline::progress` draws it.
+    /// drawn as `TrackTimeline::progress` draws it. A track whose length is
+    /// unknown has no position at any fill, so it stays where it is.
     pub(super) async fn seek_by_ratio(&mut self, ratio: f64) {
         if let PlaybackSlot::Active(cur) = &self.slot {
-            let position = cur.prepared.timeline.position_at_progress(ratio);
+            let Some(position) = cur.prepared.timeline.position_at_progress(ratio) else {
+                warn!(
+                    track_id = %cur.prepared.track_id,
+                    ratio,
+                    "seek by ratio ignored: the track's length is unknown"
+                );
+                return;
+            };
             self.seek(position).await;
         }
     }

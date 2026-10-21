@@ -8,7 +8,7 @@ private func makeTrack(_ id: String) -> BridgeNowPlayingTrack {
     BridgeNowPlayingTrack(
         track: BridgePlayingTrack(
             trackId: id,
-            durationMs: 0
+            durationMs: nil
         ),
         display: BridgeTrackDisplay(
             title: "Title \(id)",
@@ -668,7 +668,7 @@ struct PlaybackStoreSeekProjectionTests {
         let store = PlaybackStore()
         _ = store.updatePlaybackPosition(
             positionMs: 10_000,
-            durationMs: 0,
+            durationMs: nil,
             progress: 0.1
         )
 
@@ -677,7 +677,7 @@ struct PlaybackStoreSeekProjectionTests {
             store.playbackPositionEvent,
             progress: 0.1,
             positionMs: 10_000,
-            durationMs: 0
+            durationMs: nil
         )
     }
 
@@ -746,7 +746,7 @@ private func expectPosition(
     _ event: PlaybackPositionEvent,
     progress: Double,
     positionMs: Int64,
-    durationMs: UInt64
+    durationMs: UInt64?
 ) {
     guard
         case .position(
@@ -768,7 +768,7 @@ private func expectStorePosition(
     _ store: PlaybackStore,
     progress: Double,
     positionMs: Int64,
-    durationMs: UInt64
+    durationMs: UInt64?
 ) {
     expectPosition(
         store.playbackPositionEvent,
@@ -781,7 +781,7 @@ private func expectStorePosition(
 extension PlaybackStore {
     fileprivate func updatePlaybackPosition(
         positionMs: Int64,
-        durationMs: UInt64,
+        durationMs: UInt64?,
         progress: Double
     ) -> PlaybackPositionSnapshot {
         guard
@@ -799,7 +799,7 @@ extension PlaybackStore {
 
     fileprivate func updatePlaybackSeeked(
         positionMs: Int64,
-        durationMs: UInt64,
+        durationMs: UInt64?,
         progress: Double
     ) -> PlaybackPositionSnapshot {
         guard

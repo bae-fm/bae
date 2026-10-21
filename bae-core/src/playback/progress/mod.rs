@@ -43,7 +43,9 @@ pub struct PlaybackPosition {
     /// Track-relative position: negative while pregap audio plays, zero at
     /// INDEX 01, positive afterward.
     pub position_ms: i64,
-    pub duration_ms: u64,
+    /// `None` when the track's length is unknown.
+    pub duration_ms: Option<u64>,
+    /// The seek bar's fill; zero throughout when the length is unknown.
     pub progress: f64,
 }
 
@@ -52,7 +54,8 @@ pub struct PlaybackPosition {
 pub struct MediaControlPosition {
     pub track_id: String,
     pub position_ms: u64,
-    pub duration_ms: u64,
+    /// `None` when the track's length is unknown.
+    pub duration_ms: Option<u64>,
     pub progress: f64,
 }
 
@@ -309,8 +312,9 @@ pub enum PlaybackProgress {
     PositionUpdate {
         position_ms: i64,
         /// User-facing track duration, paired with
-        /// `position_ms` so consumers don't re-derive it from track state.
-        duration_ms: u64,
+        /// `position_ms` so consumers don't re-derive it from track state;
+        /// `None` when the track's length is unknown.
+        duration_ms: Option<u64>,
         track_id: String,
         progress: f64,
     },
@@ -354,8 +358,9 @@ pub enum PlaybackProgress {
     Seeked {
         position_ms: i64,
         /// User-facing track duration, paired with
-        /// `position_ms` so consumers don't re-derive it from track state.
-        duration_ms: u64,
+        /// `position_ms` so consumers don't re-derive it from track state;
+        /// `None` when the track's length is unknown.
+        duration_ms: Option<u64>,
         track_id: String,
         progress: f64,
     },
@@ -438,7 +443,7 @@ mod tests {
         let values = PlaybackValues::initial()
             .applying(&PlaybackProgress::PositionUpdate {
                 position_ms: -1_250,
-                duration_ms: 100_000,
+                duration_ms: Some(100_000),
                 track_id: "track-1".to_string(),
                 progress: 0.0,
             })
@@ -456,6 +461,6 @@ mod tests {
             panic!("idle preview should expose library playback");
         };
         assert_eq!(position.position_ms, 0);
-        assert_eq!(position.duration_ms, 100_000);
+        assert_eq!(position.duration_ms, Some(100_000));
     }
 }

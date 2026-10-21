@@ -48,7 +48,7 @@ fn track_group_precomputes_header_key_per_side() {
         let group = crate::types::BridgeTrackGroup::from_core(bae_core::album_detail::TrackGroup {
             side,
             tracks: vec![track_detail(position, Some(187_000))],
-            total_duration_ms: 187_000,
+            total_duration_ms: Some(187_000),
         });
         assert_eq!(group.header_key.as_deref(), expected);
         assert_eq!(

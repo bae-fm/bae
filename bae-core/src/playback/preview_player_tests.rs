@@ -261,7 +261,10 @@ async fn preview_listener_maps_completion_to_preview_completed() {
     audio_tx.push_required(AudioEvent::Completion((
         Arc::new(TrackFmt {
             track_id: "preview.wav".to_string(),
-            timeline: crate::playback::TrackTimeline::new(std::time::Duration::from_secs(1), None),
+            timeline: crate::playback::TrackTimeline::new(
+                Some(std::time::Duration::from_secs(1)),
+                None,
+            ),
             starts_at: crate::playback::StreamPosition::START,
             replay_gain_linear: 1.0,
         }),

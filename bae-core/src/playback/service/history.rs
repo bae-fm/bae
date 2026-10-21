@@ -90,7 +90,7 @@ impl PlaybackService {
         let track = cur.prepared.track_id.clone();
         let position = cur.position;
         let release = cur.prepared.release_id.clone();
-        let duration = cur.prepared.duration;
+        let duration = cur.prepared.timeline.duration();
         let now = self.clock.now();
         match self
             .library_manager

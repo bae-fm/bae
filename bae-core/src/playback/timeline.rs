@@ -88,17 +88,22 @@ impl TrackTime {
 }
 
 /// Where a track sits in its stream: how long its pregap runs before INDEX 01,
-/// and how long it runs from there.
+/// and how long it runs from there when that is known.
+///
+/// A track's length is unknown when the library stores none for it. Its
+/// position still runs, but nothing holds it at an end, the seek bar has
+/// nothing to fill toward, and no fill points at a position.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TrackTimeline {
     pregap: Duration,
-    duration: Duration,
+    duration: Option<Duration>,
 }
 
 impl TrackTimeline {
-    /// The timeline of a track that runs `duration` from INDEX 01, after
-    /// `pregap_ms` of pregap. A missing or negative pregap is none.
-    pub fn new(duration: Duration, pregap_ms: Option<i64>) -> Self {
+    /// The timeline of a track that runs `duration` from INDEX 01 (`None` when
+    /// its length is unknown), after `pregap_ms` of pregap. A missing or
+    /// negative pregap is none.
+    pub fn new(duration: Option<Duration>, pregap_ms: Option<i64>) -> Self {
         let pregap_ms = u64::try_from(pregap_ms.unwrap_or(0)).unwrap_or(0);
         Self {
             pregap: Duration::from_millis(pregap_ms),
@@ -106,18 +111,19 @@ impl TrackTimeline {
         }
     }
 
-    /// How long the track runs from INDEX 01.
-    pub fn duration(self) -> Duration {
+    /// How long the track runs from INDEX 01, when known.
+    pub fn duration(self) -> Option<Duration> {
         self.duration
     }
 
-    pub fn duration_ms(self) -> u64 {
-        self.duration.as_millis() as u64
+    pub fn duration_ms(self) -> Option<u64> {
+        self.duration.map(|duration| duration.as_millis() as u64)
     }
 
-    /// How long the track's stream runs: its pregap, then the track.
-    pub fn stream_duration(self) -> Duration {
-        self.pregap + self.duration
+    /// How long the track's stream runs, its pregap and then the track, when
+    /// the track's length is known.
+    pub fn stream_duration(self) -> Option<Duration> {
+        self.duration.map(|duration| self.pregap + duration)
     }
 
     /// Where the track starts in its stream: INDEX 01, past the pregap.
@@ -126,10 +132,14 @@ impl TrackTimeline {
     }
 
     /// The track time at `position`: negative in the pregap, zero at INDEX 01,
-    /// and held at the duration if decoded audio runs past the declared end.
+    /// and held at a known duration if decoded audio runs past the declared
+    /// end. Without a known duration it runs on with the audio.
     pub fn track_time(self, position: StreamPosition) -> TrackTime {
         let ms = i128::from(position.as_millis()) - self.pregap.as_millis() as i128;
-        let ms = ms.min(i128::from(self.duration_ms()));
+        let ms = match self.duration_ms() {
+            Some(duration_ms) => ms.min(i128::from(duration_ms)),
+            None => ms,
+        };
         TrackTime(i64::try_from(ms).expect("playback position exceeds i64 milliseconds"))
     }
 
@@ -141,21 +151,25 @@ impl TrackTimeline {
     }
 
     /// The seek bar's fill (0.0–1.0) at `position`: zero through the pregap,
-    /// one at the track's end.
+    /// one at the track's end. Zero throughout when the length is unknown or
+    /// zero, since there is no end to fill toward.
     pub fn progress(self, position: StreamPosition) -> f64 {
-        let duration_ms = self.duration_ms();
-        if duration_ms == 0 {
+        let Some(duration_ms) = self.duration_ms().filter(|ms| *ms > 0) else {
             return 0.0;
-        }
+        };
         let time = self.track_time(position).0;
         (time.max(0) as f64 / duration_ms as f64).clamp(0.0, 1.0)
     }
 
     /// The stream position a seek bar fill points at — the inverse of
-    /// [`Self::progress`].
-    pub fn position_at_progress(self, ratio: f64) -> StreamPosition {
-        let into_track = (ratio.clamp(0.0, 1.0) * self.duration_ms() as f64) as u64;
-        StreamPosition::from_millis(self.pregap.as_millis() as u64 + into_track)
+    /// [`Self::progress`]. `None` when the length is unknown: a fill is a
+    /// fraction of a length, so without one it points nowhere.
+    pub fn position_at_progress(self, ratio: f64) -> Option<StreamPosition> {
+        let duration_ms = self.duration_ms()?;
+        let into_track = (ratio.clamp(0.0, 1.0) * duration_ms as f64) as u64;
+        Some(StreamPosition::from_millis(
+            self.pregap.as_millis() as u64 + into_track,
+        ))
     }
 }
 
@@ -164,7 +178,12 @@ mod tests {
     use super::*;
 
     fn timeline(duration_ms: u64, pregap_ms: Option<i64>) -> TrackTimeline {
-        TrackTimeline::new(Duration::from_millis(duration_ms), pregap_ms)
+        TrackTimeline::new(Some(Duration::from_millis(duration_ms)), pregap_ms)
+    }
+
+    /// The timeline of a track whose length nothing knows.
+    fn unknown_length(pregap_ms: Option<i64>) -> TrackTimeline {
+        TrackTimeline::new(None, pregap_ms)
     }
 
     fn at(ms: u64) -> StreamPosition {
@@ -207,6 +226,25 @@ mod tests {
         assert_eq!(timeline(0, None).progress(at(0)), 0.0);
     }
 
+    /// Without a length there is no end to fill toward, so the bar stays empty
+    /// however far the track plays.
+    #[test]
+    fn progress_stays_empty_without_a_length() {
+        let t = unknown_length(Some(2000));
+        assert_eq!(t.progress(at(0)), 0.0);
+        assert_eq!(t.progress(at(400_000)), 0.0);
+    }
+
+    /// An unknown length is no length: not the track's, and not its stream's.
+    #[test]
+    fn an_unknown_length_has_no_duration() {
+        let t = unknown_length(Some(2000));
+        assert_eq!(t.duration(), None);
+        assert_eq!(t.duration_ms(), None);
+        assert_eq!(t.stream_duration(), None);
+        assert_eq!(t.track_start(), at(2000));
+    }
+
     // -- track_time --
     //
     // The stream includes the pregap; the stored duration does not. The player
@@ -227,7 +265,7 @@ mod tests {
         assert_eq!(t.track_time(at(0)), TrackTime::from_millis(-2000));
         assert_eq!(t.track_time(at(1000)), TrackTime::from_millis(-1000));
         assert_eq!(t.track_time(at(1999)), TrackTime::from_millis(-1));
-        assert_eq!(t.duration_ms(), 10_000);
+        assert_eq!(t.duration_ms(), Some(10_000));
     }
 
     #[test]
@@ -254,6 +292,15 @@ mod tests {
         assert_eq!(t.track_start(), StreamPosition::START);
         assert_eq!(t.track_time(at(5000)), TrackTime::from_millis(5000));
         assert_eq!(t.progress(at(5000)), 0.5);
+    }
+
+    /// With no declared end there is nothing to hold the time at: it runs on
+    /// for as long as the audio does.
+    #[test]
+    fn track_time_runs_on_without_a_length() {
+        let t = unknown_length(Some(2000));
+        assert_eq!(t.track_time(at(0)), TrackTime::from_millis(-2000));
+        assert_eq!(t.track_time(at(402_000)), TrackTime::from_millis(400_000));
     }
 
     // -- stream_position --
@@ -286,7 +333,9 @@ mod tests {
         for pregap in [None, Some(2000), Some(-2000)] {
             let t = timeline(10_000, pregap);
             for ratio in [0.0, 0.25, 0.5, 0.75, 1.0] {
-                let position = t.position_at_progress(ratio);
+                let position = t
+                    .position_at_progress(ratio)
+                    .expect("a timeline with a length has a position at every fill");
                 let round_tripped = t.progress(position);
                 assert!(
                     (round_tripped - ratio).abs() < 1e-9,
@@ -300,8 +349,17 @@ mod tests {
     fn position_at_progress_offsets_past_the_pregap() {
         // 10s track plus a 2s pregap. Halfway is 5s in, i.e. 7s into the stream.
         let t = timeline(10_000, Some(2000));
-        assert_eq!(t.position_at_progress(0.0), at(2000));
-        assert_eq!(t.position_at_progress(0.5), at(7000));
-        assert_eq!(t.position_at_progress(1.0), at(12_000));
+        assert_eq!(t.position_at_progress(0.0), Some(at(2000)));
+        assert_eq!(t.position_at_progress(0.5), Some(at(7000)));
+        assert_eq!(t.position_at_progress(1.0), Some(at(12_000)));
+    }
+
+    /// A fill is a fraction of the length; without one it points nowhere.
+    #[test]
+    fn position_at_progress_has_no_position_without_a_length() {
+        let t = unknown_length(Some(2000));
+        for ratio in [0.0, 0.5, 1.0] {
+            assert_eq!(t.position_at_progress(ratio), None, "ratio {ratio}");
+        }
     }
 }

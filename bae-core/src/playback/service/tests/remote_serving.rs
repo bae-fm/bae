@@ -135,14 +135,19 @@ async fn a_converted_track_goes_out_in_the_format_the_flavor_takes() {
     );
 }
 
-/// A device is told the length of the stream it is served, which runs through
-/// the track's pregap before the track: the device's position counts in that
-/// stream, so a length without the pregap would end the track early.
-#[tokio::test]
-async fn a_device_is_told_the_served_stream_length_pregap_included() {
+/// Cast `RELEASE`'s one track, stored with `track_length_ms` and a 2 s
+/// generated pregap, to a fake device, and return the length the device is
+/// told for its stream.
+async fn served_stream_length(track_length_ms: Option<i64>) -> Option<std::time::Duration> {
     const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
     const TRACK: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
-    let (_home, mut service, _rx) = seeded_playback_service(&[(RELEASE, &[TRACK])]).await;
+    let (_home, library_manager) = seeded_library_manager_with_track_length(
+        &[(RELEASE, &[TRACK])],
+        crate::diagnostics::Diagnostics::noop(),
+        track_length_ms,
+    )
+    .await;
+    let (mut service, _rx) = playback_service_over(library_manager);
     seed_track_window(&service.library_manager, RELEASE, TRACK, 0, None, Some(2_000)).await;
     service.playback_queue.apply(|queue| {
         queue.play_release(
@@ -161,21 +166,24 @@ async fn a_device_is_told_the_served_stream_length_pregap_included() {
     service.handle_play_on(remote_connect(channel)).await;
 
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
-    let resolved = service
-        .library_manager
-        .resolve_track_audio(TRACK)
-        .await
-        .unwrap();
-    let track_duration = finalize_playback_track(
-        TRACK.to_string(),
-        &resolved,
-        Vec::new(),
-        crate::config::ReplayGainMode::Off,
-    )
-    .timeline
-    .duration();
+    let duration = state.lock().unwrap().loads[0].duration;
+    duration
+}
+
+/// A device is told the length of the stream it is served, which runs through
+/// the track's pregap before the track: the device's position counts in that
+/// stream, so a length without the pregap would end the track early.
+#[tokio::test]
+async fn a_device_is_told_the_served_stream_length_pregap_included() {
     assert_eq!(
-        state.lock().unwrap().loads[0].duration,
-        Some(std::time::Duration::from_secs(2) + track_duration)
+        served_stream_length(Some(60_000)).await,
+        Some(std::time::Duration::from_secs(62))
     );
+}
+
+/// A track with no stored length has no stream length to tell a device; the
+/// device plays it without one rather than to an assumed end.
+#[tokio::test]
+async fn a_device_is_told_no_length_for_a_track_with_none_stored() {
+    assert_eq!(served_stream_length(None).await, None);
 }

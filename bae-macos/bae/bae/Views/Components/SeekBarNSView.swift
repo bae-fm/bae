@@ -102,14 +102,18 @@ final class SeekBarNSView: NSView {
 
     // MARK: - Position updates
 
-    /// Position, duration, and progress always belong to the same update.
+    /// Position, duration, and progress always belong to the same update. A
+    /// track whose length is unknown has no fill to seek to, so the slider is
+    /// disabled until one is known.
     func apply(_ position: PlaybackPositionEvent) {
         self.position = position
         switch position {
-        case .position(let progress, _, _):
+        case .position(let progress, _, let durationMs):
+            slider.isEnabled = durationMs != nil
             guard !slider.isDragging else { return }
             slider.doubleValue = progress
         case .reset:
+            slider.isEnabled = false
             slider.doubleValue = 0
             draggingPositionMs = nil
         }
@@ -139,8 +143,7 @@ final class SeekBarNSView: NSView {
     @objc
     private func sliderValueChanged(_: SeekSlider) {
         guard slider.isDragging,
-            case .position(_, _, let durationMs) = position,
-            durationMs > 0
+            case .position(_, _, let durationMs?) = position
         else {
             return
         }

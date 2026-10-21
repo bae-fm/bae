@@ -2,8 +2,8 @@ use super::*;
 
 #[test]
 fn pregap_clock_crosses_the_bridge_in_both_time_modes() {
-    let elapsed_mode = bridge_seek_bar(-1_001, 100_000, false);
-    let remaining_mode = bridge_seek_bar(-1_001, 100_000, true);
+    let elapsed_mode = bridge_seek_bar(-1_001, Some(100_000), false);
+    let remaining_mode = bridge_seek_bar(-1_001, Some(100_000), true);
 
     assert_eq!(remaining_mode.leading, elapsed_mode.leading);
     assert!(elapsed_mode.leading.negative);

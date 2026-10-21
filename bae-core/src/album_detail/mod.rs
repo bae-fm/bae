@@ -297,10 +297,11 @@ pub struct TrackDetail {
 pub struct TrackGroup {
     pub side: TrackSide,
     pub tracks: Vec<TrackDetail>,
-    /// Playing time of this group's tracks, summed over the tracks that report
-    /// a length. A multi-disc release shows it under each disc, where the
-    /// album-wide total alone reads as belonging to the last disc.
-    pub total_duration_ms: i64,
+    /// Playing time of this group's tracks; `None` when any of their lengths
+    /// is unknown, since the sum would undercount. A multi-disc release shows it
+    /// under each disc, where the album-wide total alone reads as belonging to
+    /// the last disc.
+    pub total_duration_ms: Option<i64>,
 }
 
 /// A file with pre-computed display fields.

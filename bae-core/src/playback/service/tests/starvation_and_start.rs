@@ -34,7 +34,7 @@ async fn starvation_onset_reports_the_track_time_it_starved_at() {
     let (_home, manager) = seeded_library_manager_with_diagnostics(&[], diagnostics.clone()).await;
     let (mut service, _progress_rx) = playback_service_over(manager);
     let mut prepared = test_prepared_track("t", create_sparse_buffer(1_024));
-    prepared.timeline = TrackTimeline::new(std::time::Duration::from_secs(10), Some(2_000));
+    prepared.timeline = TrackTimeline::new(Some(std::time::Duration::from_secs(10)), Some(2_000));
     let fmt = prepared.track_fmt(StreamPosition::START);
     service.slot = active_slot(prepared, TrackPhase::Playing);
 
@@ -325,8 +325,8 @@ async fn playback_state_mapping() {
 #[test]
 fn track_start_position_cases() {
     use std::time::Duration;
-    let pregapped = TrackTimeline::new(Duration::from_secs(60), Some(3000));
-    let no_pregap = TrackTimeline::new(Duration::from_secs(60), None);
+    let pregapped = TrackTimeline::new(Some(Duration::from_secs(60)), Some(3000));
+    let no_pregap = TrackTimeline::new(Some(Duration::from_secs(60)), None);
 
     assert_eq!(
         TrackStart::Direct.position(pregapped),
@@ -363,6 +363,63 @@ fn a_generated_pregap_starts_the_track_past_it() {
     );
 }
 
+/// A track with no stored length plays without one: its position runs on with
+/// no end to hold it at, and the seek bar has nothing to fill toward.
+#[tokio::test]
+async fn a_track_with_no_stored_length_reports_its_position_without_an_end() {
+    let (_home, mut service, mut progress) = test_playback_service().await;
+    let mut resolved = test_resolved_track_audio("track", 44_100, 2);
+    resolved.duration_ms = None;
+    let prepared = finalize_playback_track(
+        "track".to_string(),
+        &resolved,
+        Vec::new(),
+        crate::config::ReplayGainMode::Off,
+    );
+    assert_eq!(PlayingTrack::from_prepared(&prepared).duration_ms, None);
+    service.slot = active_slot(prepared, TrackPhase::Playing);
+    if let PlaybackSlot::Active(cur) = &mut service.slot {
+        cur.position = StreamPosition::from_millis(400_000);
+    }
+
+    service.emit_position_display();
+
+    let Ok(PlaybackProgress::Seeked {
+        position_ms,
+        duration_ms,
+        progress,
+        ..
+    }) = progress.try_recv()
+    else {
+        panic!("the position display emits a Seeked");
+    };
+    assert_eq!(position_ms, 400_000);
+    assert_eq!(duration_ms, None);
+    assert_eq!(progress, 0.0);
+}
+
+/// A seek bar's fill is a fraction of the track's length. A track with no
+/// length has no position at any fill, so a seek by ratio leaves it playing
+/// where it is rather than jumping to a fraction of an assumed length.
+#[tokio::test]
+async fn a_seek_by_ratio_leaves_a_track_with_no_length_where_it_is() {
+    let (_home, mut service, _progress) = test_playback_service().await;
+    let mut prepared = test_prepared_track("track", create_sparse_buffer(1_024));
+    prepared.timeline = TrackTimeline::new(None, None);
+    service.slot = active_slot(prepared, TrackPhase::Playing);
+    if let PlaybackSlot::Active(cur) = &mut service.slot {
+        cur.position = StreamPosition::from_millis(10_000);
+    }
+
+    service.seek_by_ratio(0.5).await;
+
+    let PlaybackSlot::Active(cur) = &service.slot else {
+        panic!("the track is still current");
+    };
+    assert!(matches!(cur.phase, TrackPhase::Playing));
+    assert_eq!(cur.position, StreamPosition::from_millis(10_000));
+}
+
 #[test]
 fn resolved_audio_format_rejects_zero_channels() {
     let resolved = test_resolved_track_audio("track-id", 44_100, 0);
@@ -396,7 +453,7 @@ fn prepared_track_with_pregap_segments(
     let main_buffer = create_sparse_buffer(2_048);
     let mut prepared = test_prepared_track("track", main_buffer.clone());
     prepared.generated_pregap_frames = 441;
-    prepared.timeline = TrackTimeline::new(std::time::Duration::from_secs(1), Some(1010));
+    prepared.timeline = TrackTimeline::new(Some(std::time::Duration::from_secs(1)), Some(1010));
     prepared.segments = vec![
         PreparedAudioSegment {
             role: DbAudioSegmentRole::AudioPregap,

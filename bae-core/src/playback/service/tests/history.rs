@@ -8,8 +8,7 @@ async fn listening_counts_consumed_audio_across_decoder_replacement_and_pause() 
         seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
     let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
     prepared.release_id = RELEASE.to_string();
-    prepared.duration = Some(Duration::from_secs(40));
-    prepared.timeline = TrackTimeline::new(Duration::from_secs(40), None);
+    prepared.timeline = TrackTimeline::new(Some(Duration::from_secs(40)), None);
     prepared.sample_rate = 100;
     prepared.channels = 1;
     let fmt = prepared.track_fmt(StreamPosition::START);
@@ -87,8 +86,7 @@ async fn a_counted_play_is_saved_again_only_at_its_next_boundary() {
         seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
     let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
     prepared.release_id = RELEASE.to_string();
-    prepared.duration = Some(Duration::from_secs(40));
-    prepared.timeline = TrackTimeline::new(Duration::from_secs(40), None);
+    prepared.timeline = TrackTimeline::new(Some(Duration::from_secs(40)), None);
     prepared.sample_rate = 100;
     prepared.channels = 1;
     let fmt = prepared.track_fmt(StreamPosition::START);
@@ -216,8 +214,7 @@ async fn airplay_completion_waits_for_the_audio_still_in_the_receiver() {
         service.clock = clock.clone();
         let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
         prepared.release_id = RELEASE.into();
-        prepared.duration = Some(Duration::from_secs(40));
-        prepared.timeline = TrackTimeline::new(Duration::from_secs(40), None);
+        prepared.timeline = TrackTimeline::new(Some(Duration::from_secs(40)), None);
         prepared.sample_rate = 100;
         prepared.channels = 1;
         let (mut sink, stream, _) =
@@ -309,5 +306,43 @@ async fn remote_listening_keeps_one_play_across_seek_and_pause() {
     assert_eq!(rows[0].id, first[0].id);
     assert_eq!(rows[0].played, Duration::from_secs(33));
     assert_eq!(rows[0].started_at, test_clock_start());
+    assert!(!drained_a_playback_error(&mut progress));
+}
+
+/// A track with no stored length learns it when its audio ends, so a short
+/// track heard to its end counts as played even though an unknown length starts
+/// out needing thirty seconds heard.
+#[tokio::test]
+async fn a_short_track_of_unknown_length_heard_to_its_end_counts_as_played() {
+    use std::time::Duration;
+    const RELEASE: &str = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
+    let (_home, mut service, mut progress) =
+        seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
+    let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
+    prepared.release_id = RELEASE.into();
+    prepared.timeline = TrackTimeline::new(None, None);
+    prepared.sample_rate = 100;
+    prepared.channels = 1;
+    let (mut sink, stream, _) =
+        crate::playback::create_track_stream_pair_with_capacity(100, 1, 2000);
+    sink.push_samples(&vec![0.25; 2000]);
+    sink.mark_finished();
+    let mut source =
+        source::PlaybackSource::new(stream, prepared.track_fmt(StreamPosition::START));
+    service.slot = active_slot(prepared, TrackPhase::Playing);
+    assert!(service.begin_listening().await);
+    let (mut tx, _) = audio_event_channel();
+    source.pull_samples(&mut vec![0.0; 2000], &mut tx);
+
+    service
+        .handle_audio_event(AudioEvent::Completion(
+            source.take_completion_event().unwrap(),
+        ))
+        .await;
+    service.persist_listening().await;
+
+    let rows = service.library_manager.history().await.unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].played, Duration::from_secs(20));
     assert!(!drained_a_playback_error(&mut progress));
 }

@@ -17,11 +17,11 @@ pub struct TrackDisplay {
 }
 
 /// The playing track as the playback service knows it: which track, and the
-/// duration its prepared audio plays for.
+/// duration its prepared audio plays for — `None` when its length is unknown.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlayingTrack {
     pub track_id: String,
-    pub duration_ms: u64,
+    pub duration_ms: Option<u64>,
 }
 
 /// The playing track as surfaces show it.

@@ -13,7 +13,8 @@ pub struct AutomationRelease {
     pub year: Option<i32>,
     pub labels: Vec<bae_core::pressing::ReleaseLabel>,
     pub facts: bae_core::pressing::PressingFacts,
-    pub total_duration_ms: i64,
+    /// `None` when any track's length is unknown.
+    pub total_duration_ms: Option<i64>,
     pub tracks: Vec<AutomationTrackDetail>,
     pub track_groups: Vec<AutomationTrackGroup>,
     pub files: Vec<AutomationFileDetail>,

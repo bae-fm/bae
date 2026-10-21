@@ -439,7 +439,10 @@ mod tests {
     fn track_fmt() -> TrackFmt {
         TrackFmt {
             track_id: "t".to_string(),
-            timeline: crate::playback::TrackTimeline::new(std::time::Duration::from_secs(1), None),
+            timeline: crate::playback::TrackTimeline::new(
+                Some(std::time::Duration::from_secs(1)),
+                None,
+            ),
             starts_at: crate::playback::StreamPosition::START,
             replay_gain_linear: 1.0,
         }

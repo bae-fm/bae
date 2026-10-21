@@ -62,7 +62,8 @@ struct PlaybackTracking {
     /// to zero on stop, so the pre-stop value is what says whether it played
     /// through.
     last_position: Option<Duration>,
-    /// The track's duration, from `GetPositionInfo` (falling back to the LOAD's).
+    /// The track's duration, from `GetPositionInfo` (falling back to the LOAD's);
+    /// `None` when neither knows it.
     duration: Option<Duration>,
 }
 
@@ -158,12 +159,21 @@ impl DlnaChannel {
             return true;
         }
         // A position was reported, so the position rule applies: a natural end
-        // reaches within slack of a known duration. An unknown duration (never
-        // reported, or reported as zero while loading) can't confirm an end, so a
-        // stop off it is treated as mid-track, not finished.
-        match (self.playback.last_position, self.playback.duration) {
-            (Some(position), Some(duration)) => position + END_OF_TRACK_SLACK >= duration,
-            _ => false,
+        // reaches within slack of the track's length.
+        let Some(duration) = self.playback.duration else {
+            // No length from the load (the library has none for the track) nor
+            // from the renderer (never reported, or zero while loading): as with
+            // a position-less renderer, a natural end can't be told from a
+            // device-remote stop, so choose end-of-track and keep the queue moving.
+            debug!(
+                "dlna: STOPPED on a track of unknown length; treating as end-of-track \
+                 (auto-advance; a device-remote stop can't be told apart here)"
+            );
+            return true;
+        };
+        match self.playback.last_position {
+            Some(position) => position + END_OF_TRACK_SLACK >= duration,
+            None => false,
         }
     }
 }

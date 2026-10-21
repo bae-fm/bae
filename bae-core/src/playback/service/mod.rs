@@ -230,8 +230,6 @@ struct PreparedAudioSegment {
 struct PlaybackPreparedTrack {
     track_id: String,
     release_id: String,
-    /// The measured body length, absent when only the display's placeholder is known.
-    duration: Option<std::time::Duration>,
     segments: Vec<PreparedAudioSegment>,
     /// In Hz.
     sample_rate: u32,
@@ -240,7 +238,7 @@ struct PlaybackPreparedTrack {
     /// a natural start decodes before the first stored sample.
     generated_pregap_frames: u64,
     /// Where the track starts in its stream, past its pregap (stored audio or
-    /// generated silence), and how long it runs from there.
+    /// generated silence), and how long it runs from there when known.
     timeline: TrackTimeline,
     /// Picks how a track start seeks: by byte to `start_byte`, except APE, which
     /// seeks by sample.
@@ -324,25 +322,23 @@ fn finalize_playback_track(
     segments: Vec<PreparedAudioSegment>,
     replay_gain_mode: crate::config::ReplayGainMode,
 ) -> PlaybackPreparedTrack {
-    let duration = resolved
-        .duration_ms
-        .map(|ms| std::time::Duration::from_millis(ms as u64))
-        .unwrap_or_else(|| {
-            debug!(
-                release_id = %resolved.release_id,
-                "no resolved track duration; using 5min placeholder"
+    let duration = resolved.duration_ms.and_then(|ms| match u64::try_from(ms) {
+        Ok(ms) => Some(std::time::Duration::from_millis(ms)),
+        Err(_) => {
+            warn!(
+                track_id = %track_id,
+                duration_ms = ms,
+                "stored track length is negative; playing the track with no length"
             );
-            std::time::Duration::from_secs(300)
-        });
+            None
+        }
+    });
 
     let replay_gain_linear = resolved.replay_gain_linear(replay_gain_mode);
 
     PlaybackPreparedTrack {
         track_id,
         release_id: resolved.release_id.clone(),
-        duration: resolved
-            .duration_ms
-            .map(|ms| std::time::Duration::from_millis(ms as u64)),
         segments,
         sample_rate: resolved.sample_rate,
         channels: resolved.channels,

@@ -46,11 +46,13 @@ private const val TIME_LABEL_TEXT_SIZE_SP = 11f
 private const val TIME_LABEL_WIDTH_DP = 48
 
 /** What the seek bar draws: the [0,1] slider fraction and the two time labels core
- *  picks. */
+ *  picks, and whether it takes a seek — not while the track's length is unknown,
+ *  when no fill points at a position. */
 internal data class SeekBarState(
     val progress: Double,
     val leading: String,
     val trailing: String,
+    val seekable: Boolean,
 )
 
 /** The bar's state for [position], with empty labels when nothing is playing. */
@@ -58,12 +60,13 @@ internal fun Context.seekBarState(
     position: PlaybackPosition,
     showRemaining: Boolean,
 ): SeekBarState {
-    val positionMs = position.positionMs ?: return SeekBarState(position.progress, "", "")
-    val clocks = bridgeSeekBar(positionMs, (position.durationMs ?: 0L).toULong(), showRemaining)
+    val positionMs = position.positionMs ?: return SeekBarState(position.progress, "", "", seekable = false)
+    val clocks = bridgeSeekBar(positionMs, position.durationMs?.toULong(), showRemaining)
     return SeekBarState(
         progress = position.progress,
         leading = clockText(clocks.leading, currentLocale()),
         trailing = clockText(clocks.trailing, currentLocale()),
+        seekable = position.durationMs != null,
     )
 }
 
@@ -188,6 +191,7 @@ internal class PlaybackProgressView(
     fun setPosition(state: SeekBarState) {
         leadingTextView.text = state.leading
         trailingTextView.text = state.trailing
+        seekBar.isEnabled = state.seekable
         if (!isDragging) {
             seekBar.progress = progressToSeekBar(state.progress)
         }
