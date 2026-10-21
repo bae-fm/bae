@@ -336,8 +336,8 @@ object PreviewData {
                                 deviceName = "Studio Mac",
                                 releases =
                                     listOf(
-                                        BridgeArrivingRelease("r-1", "a-1", "Kind of Blue"),
-                                        BridgeArrivingRelease("r-2", "a-2", "Blue Train"),
+                                        BridgeArrivingRelease("r-1", "a-1", "Album Title One"),
+                                        BridgeArrivingRelease("r-2", "a-2", "Album Title Two"),
                                     ),
                                 otherFiles = 3u,
                             ),

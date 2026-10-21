@@ -153,12 +153,12 @@ public final class SyncActivityStore {
                         BridgeArrivingRelease(
                             releaseId: "r-1",
                             albumId: "a-1",
-                            albumTitle: "Kind of Blue"
+                            albumTitle: "Album Title One"
                         ),
                         BridgeArrivingRelease(
                             releaseId: "r-2",
                             albumId: "a-2",
-                            albumTitle: "Blue Train"
+                            albumTitle: "Album Title Two"
                         ),
                     ],
                     otherFiles: 3
