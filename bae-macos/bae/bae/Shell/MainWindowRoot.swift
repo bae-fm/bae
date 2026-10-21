@@ -15,14 +15,6 @@ struct MainWindowRoot: View {
         appDelegate.requiredApplicationServices
     }
 
-    /// The active library's name, else "bae".
-    private var windowTitle: String {
-        if let name = appDelegate.appService?.libraryName, !name.isEmpty {
-            return String(localized: "\(name) - bae")
-        }
-        return "bae"
-    }
-
     var body: some View {
         Group {
             if appDelegate.hasShell, let appService = appDelegate.appService {
@@ -31,7 +23,6 @@ struct MainWindowRoot: View {
                         MainWindowChrome(loadError: appDelegate.loadError) {
                             detailContent
                         }
-                        .navigationTitle(windowTitle)
                     )
                 )
             }
@@ -45,7 +36,7 @@ struct MainWindowRoot: View {
             }
         }
         .appAppearance()
-        .navigationTitle(appDelegate.hasShell ? windowTitle : "bae")
+        .navigationTitle("bae")
         .mainWindowEnvironment(
             openSettingsWindow: OpenSettingsWindowAction {
                 appDelegate.showSettingsWindow(nil)
