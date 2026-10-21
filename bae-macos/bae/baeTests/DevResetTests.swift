@@ -156,19 +156,22 @@
         )
         func unfinishedRemovalStops() async {
             let calls = ResetCalls()
-            let devReset = reset(calls) { library in
-                library.id == "library-1"
-                    ? .unfinished(
-                        removal: BridgeUnfinishedRemoval(
-                            error: .Diagnostic(
-                                category: .config,
-                                detail: "files remain"
-                            ),
-                            filesRemain: true
+            let devReset = reset(
+                calls,
+                removal: { library in
+                    library.id == "library-1"
+                        ? .unfinished(
+                            removal: BridgeUnfinishedRemoval(
+                                error: .Diagnostic(
+                                    category: .config,
+                                    detail: "files remain"
+                                ),
+                                filesRemain: true
+                            )
                         )
-                    )
-                    : .removed
-            }
+                        : .removed
+                }
+            )
 
             await #expect(throws: DevResetError.self) {
                 try await devReset.run(profilePath: "/profile.toml")
