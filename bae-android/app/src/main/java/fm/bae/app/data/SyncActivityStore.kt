@@ -15,7 +15,6 @@ import uniffi.bae_bridge.BridgeSyncActivity
  * stream is its only writer.
  */
 class SyncActivityStore(
-    private val cancelArtworkAction: () -> Unit,
     private val retryNowAction: () -> Unit,
 ) {
     private val mutableActivity = MutableStateFlow<BridgeSyncActivity?>(null)
@@ -33,9 +32,6 @@ class SyncActivityStore(
     fun fail(error: DisplayError) {
         mutableError.value = error
     }
-
-    /** Stop the artwork downloads. */
-    fun cancelArtwork() = cancelArtworkAction()
 
     /** The person's retry: every ordinary wait ends and sync runs now. */
     fun retryNow() = retryNowAction()

@@ -81,7 +81,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         let syncStatusStore = SyncStatusStore()
         let membershipStore = MembershipStore(handle: appHandle)
         let syncActivityStore = SyncActivityStore(
-            cancelArtwork: { try await appHandle.cancelEagerCacheFill() },
             retryNow: { appHandle.retryNow() }
         )
         let libraryStore = LibraryStore()

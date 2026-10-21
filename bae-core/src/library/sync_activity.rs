@@ -4,8 +4,8 @@
 use crate::library::release_queue::ReleaseQueueProgress;
 use crate::library::CountLabel;
 use crate::library::{
-    Arrivals, DownloadQueueContents, EagerCacheFillStatus, OutboxPauseState, OutboxSnapshot,
-    PendingItem, PinProgress, SyncStatusSnapshot,
+    Arrivals, DownloadQueueContents, OutboxPauseState, OutboxSnapshot, PendingItem,
+    SyncStatusSnapshot,
 };
 use crate::ui::UiError;
 
@@ -21,9 +21,6 @@ pub struct SyncActivity {
     pub syncing: bool,
     /// The files this device is sending now, if any.
     pub uploads: Option<UploadsInFlight>,
-    /// The covers and other pictures this device is downloading as their rows
-    /// arrive, while that runs.
-    pub artwork: Option<PinProgress>,
     /// The releases this device is downloading to keep offline, while any is.
     pub downloads: Option<DownloadsInFlight>,
     /// The files still arriving from other devices; `None` until first read.
@@ -78,12 +75,11 @@ impl DownloadsInFlight {
 }
 
 impl SyncActivity {
-    /// Assemble the activity from the sync status, the upload queue, the
-    /// artwork downloads and the offline downloads.
+    /// Assemble the activity from the sync status, the upload queue and the
+    /// offline downloads.
     pub fn new(
         status: &SyncStatusSnapshot,
         outbox: &OutboxSnapshot,
-        artwork: &EagerCacheFillStatus,
         downloads: &DownloadQueueContents,
     ) -> Self {
         let total = &outbox.total;
@@ -96,10 +92,6 @@ impl SyncActivity {
             bytes_done: total.upload_bytes_done,
             bytes_total: total.upload_bytes_total,
         });
-        let artwork = match artwork {
-            EagerCacheFillStatus::Downloading(progress) => Some(progress.clone()),
-            EagerCacheFillStatus::Idle | EagerCacheFillStatus::Cancelled(_) => None,
-        };
         let download_total = downloads.total();
         let downloads = (download_total.active > 0).then_some(DownloadsInFlight {
             active: download_total.active,
@@ -114,7 +106,6 @@ impl SyncActivity {
             attention: status.pending.clone(),
             syncing: status.syncing(),
             uploads,
-            artwork,
             downloads,
             arrivals: status.arrivals.clone(),
         }
@@ -126,7 +117,6 @@ impl SyncActivity {
     /// would blink the indicator for nothing.
     pub fn moving(&self) -> bool {
         self.uploads.is_some()
-            || self.artwork.is_some()
             || self.downloads.is_some()
             || matches!(&self.arrivals, Some(Ok(arrivals)) if !arrivals.is_empty())
     }
@@ -143,14 +133,14 @@ impl SyncActivity {
 }
 
 /// The sync activity, live: a new value whenever the sync status, the
-/// upload queue, the artwork downloads or the offline downloads change.
+/// upload queue or the offline downloads change.
 pub struct SyncActivityStream {
     manager: crate::library::LibraryManager,
     status: tokio::sync::watch::Receiver<SyncStatusSnapshot>,
     outbox: tokio::sync::watch::Receiver<Option<Result<OutboxSnapshot, String>>>,
-    artwork: coven::LiveQuery<EagerCacheFillStatus>,
-    artwork_value: Option<EagerCacheFillStatus>,
     downloads: tokio::sync::watch::Receiver<DownloadQueueContents>,
+    /// The first value was returned; later ones wait for a change.
+    started: bool,
 }
 
 impl SyncActivityStream {
@@ -158,9 +148,8 @@ impl SyncActivityStream {
         Self {
             status: manager.subscribe_sync_status_values(),
             outbox: manager.subscribe_outbox_values(),
-            artwork: manager.subscribe_eager_cache_fill_status(),
-            artwork_value: None,
             downloads: manager.subscribe_download_queue(),
+            started: false,
             manager,
         }
     }
@@ -168,16 +157,14 @@ impl SyncActivityStream {
     /// The first value at once, then the next after a change. A source that
     /// fails to read fails the value; a later change reads it again.
     pub async fn next(&mut self) -> Result<SyncActivity, UiError> {
-        if self.artwork_value.is_some() {
+        if self.started {
             tokio::select! {
                 changed = self.status.changed() => changed.expect("the sync status outlives its readers"),
                 changed = self.outbox.changed() => changed.expect("the upload queue outlives its readers"),
                 changed = self.downloads.changed() => changed.expect("the download queue outlives its readers"),
-                read = self.artwork.next() => self.artwork_value = Some(read.map_err(artwork_failure)?),
             }
-        } else {
-            self.artwork_value = Some(self.artwork.next().await.map_err(artwork_failure)?);
         }
+        self.started = true;
         let outbox = self.outbox.borrow_and_update().clone();
         let outbox = match outbox {
             Some(Ok(outbox)) => outbox,
@@ -192,20 +179,8 @@ impl SyncActivityStream {
         };
         let status = self.status.borrow_and_update().clone();
         let downloads = self.downloads.borrow_and_update().clone();
-        Ok(SyncActivity::new(
-            &status,
-            &outbox,
-            self.artwork_value
-                .as_ref()
-                .expect("the artwork downloads were read"),
-            &downloads,
-        ))
+        Ok(SyncActivity::new(&status, &outbox, &downloads))
     }
-}
-
-fn artwork_failure(error: coven::CovenError) -> UiError {
-    tracing::warn!(%error, "could not read the artwork downloads");
-    UiError::internal(error)
 }
 
 #[cfg(test)]

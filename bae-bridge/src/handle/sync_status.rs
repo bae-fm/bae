@@ -118,7 +118,6 @@ forward! { sync this => {
 } }
 
 forward! { async this => {
-    fn cancel_eager_cache_fill() -> () { Ok(this.services.cancel_eager_cache_fill().await?) }
     /// Retry sync with the provider this library already has configured: connect
     /// if a failed startup left no connection, then run a cycle now. The failure
     /// reaches the caller and is recorded as the sync-status error the failure

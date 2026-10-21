@@ -47,8 +47,6 @@ pub struct BridgeSyncActivity {
     /// A sync pass is running.
     pub syncing: bool,
     pub uploads: Option<BridgeUploadsInFlight>,
-    /// The covers and other pictures downloading as their rows arrive.
-    pub artwork: Option<super::BridgeEagerCacheFillProgress>,
     pub downloads: Option<BridgeDownloadsInFlight>,
     pub arrivals: BridgeArrivals,
 }
@@ -62,7 +60,6 @@ impl BridgeSyncActivity {
             attention,
             syncing,
             uploads,
-            artwork,
             downloads,
             arrivals,
         } = activity;
@@ -73,7 +70,6 @@ impl BridgeSyncActivity {
             attention: super::BridgePendingRecords::from_core(attention),
             syncing,
             uploads: uploads.map(BridgeUploadsInFlight::from_core),
-            artwork: artwork.map(super::BridgeEagerCacheFillProgress::from_core),
             downloads: downloads.map(BridgeDownloadsInFlight::from_core),
             arrivals: BridgeArrivals::from_core(arrivals),
         }

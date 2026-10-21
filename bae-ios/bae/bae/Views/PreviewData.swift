@@ -325,7 +325,6 @@ extension PreviewData {
         )
         return SyncActivityStore(
             activity: activity,
-            cancelArtwork: {},
             retryNow: {}
         )
     }

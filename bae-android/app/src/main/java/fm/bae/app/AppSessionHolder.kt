@@ -21,7 +21,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeBootstrapResult
@@ -523,7 +522,7 @@ object AppSessionHolder {
                 libraryId = libraryId,
                 appHandle = handle,
                 diagnostics = diagnostics,
-                stores = buildStores(config, handle, initialOutbox, initialDownloads, appContext),
+                stores = buildStores(config, handle, initialOutbox, initialDownloads),
                 runtime =
                     OpenLibraryRuntime(
                         playback =
@@ -554,25 +553,13 @@ object AppSessionHolder {
         handle: AppHandle,
         initialOutbox: uniffi.bae_bridge.BridgeOutboxSnapshot,
         initialDownloads: uniffi.bae_bridge.BridgeDownloadSnapshot,
-        appContext: Context,
-    ): OpenLibraryStores {
-        val configStore = ConfigStore(config)
-        return OpenLibraryStores(
+    ): OpenLibraryStores =
+        OpenLibraryStores(
             library = LibraryStore(),
-            config = configStore,
+            config = ConfigStore(config),
             syncStatus = SyncStatusStore(),
             syncActivity =
                 SyncActivityStore(
-                    cancelArtworkAction = {
-                        appScope.launch {
-                            performBridgeAction(
-                                logger = logger,
-                                operation = "cancel the artwork download",
-                                errors = LocaleErrorDisplays(appContext),
-                                showError = configStore::showError,
-                            ) { handle.cancelEagerCacheFill() }
-                        }
-                    },
                     retryNowAction = handle::retryNow,
                 ),
             transfers =
@@ -582,7 +569,6 @@ object AppSessionHolder {
                 ),
             cast = CastStore(),
         )
-    }
 }
 
 /** What a failed library operation shows: core's localized line and diagnostic, or the error itself. */

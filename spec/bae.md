@@ -1265,8 +1265,7 @@ whether or not the cloud is reachable.
 **The activity indicator.** Sync takes one small control in the window's
 title bar on macOS and in the library's top bar on iOS and Android, never a
 bar across the content. While bytes move it is a spinner: files this device is sending,
-covers or offline copies downloading, or files still arriving from another
-device. While something needs the person, a sync failure or a pending record,
+offline copies downloading, or files still arriving from another device. While something needs the person, a sync failure or a pending record,
 it shows a small warning symbol, beside the spinner when both hold. With
 neither it is absent. A pass alone doesn't spin it: an idle library runs one
 every half minute, and the indicator would blink for nothing.
@@ -1276,9 +1275,8 @@ phones, updating as it changes. What needs the person comes first, under *Needs
 Attention*: the failure's line and each pending record in plain words, with
 *Open Sync Settings*, where each record offers its action. Then one row per
 thing moving: a pass syncing the library's changes, the uploads ("2
-uploading · 10 queued", with the bytes their providers confirmed), the
-artwork downloading with its bytes and *Cancel*, and the offline downloads,
-which on the phones open the downloads list. Then the files still arriving, one
+uploading · 10 queued", with the bytes their providers confirmed), and the
+offline downloads, which on the phones open the downloads list. Then the files still arriving, one
 section per device, "Arriving from Studio Mac", listing the albums by title
 and counting other pictures. With nothing to show it says everything is up
 to date. *Retry Now* is always there; it retries everything at once, as

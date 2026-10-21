@@ -35,13 +35,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
-import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.countLabelsText
 import fm.bae.app.data.SyncActivityStore
@@ -130,7 +128,6 @@ private fun SyncActivitySheet(
             error = error,
             onOpenSettings = onOpenSettings,
             onOpenDownloads = onOpenDownloads,
-            onCancelArtwork = store::cancelArtwork,
             onRetryNow = store::retryNow,
         )
     }
@@ -146,7 +143,6 @@ internal fun SyncActivityList(
     error: DisplayError?,
     onOpenSettings: () -> Unit,
     onOpenDownloads: () -> Unit,
-    onCancelArtwork: () -> Unit,
     onRetryNow: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -160,7 +156,7 @@ internal fun SyncActivityList(
         }
         if (activity != null) {
             attentionSection(context, activity, onOpenSettings)
-            transferRows(context, activity, onOpenDownloads, onCancelArtwork)
+            transferRows(context, activity, onOpenDownloads)
             arrivalSections(context, activity.arrivals)
             if (!activity.moving && !activity.needsAttention && !activity.syncing) {
                 item { SecondaryLine(context.coreString("core.activity.idle")) }
@@ -222,29 +218,12 @@ private fun LazyListScope.transferRows(
     context: Context,
     activity: BridgeSyncActivity,
     onOpenDownloads: () -> Unit,
-    onCancelArtwork: () -> Unit,
 ) {
     if (activity.syncing) {
         item { Text(context.coreString("core.activity.syncing")) }
     }
     activity.uploads?.let { uploads ->
         item { TransferLine(context.countLabelsText(uploads.summaryParts), uploads.bytesDone, uploads.bytesTotal) }
-    }
-    activity.artwork?.let { artwork ->
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    TransferLine(
-                        context.coreString("core.artwork_cache.downloading"),
-                        artwork.bytesCached,
-                        artwork.bytesTotal,
-                    )
-                }
-                TextButton(onClick = onCancelArtwork) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        }
     }
     activity.downloads?.let { downloads ->
         item {
@@ -344,7 +323,6 @@ private fun SyncActivityListPreview() {
             error = null,
             onOpenSettings = {},
             onOpenDownloads = {},
-            onCancelArtwork = {},
             onRetryNow = {},
         )
     }
@@ -353,7 +331,7 @@ private fun SyncActivityListPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun SyncActivityButtonPreview() {
-    val store = remember { SyncActivityStore({}, {}).apply { apply(PreviewData.syncActivity(needsAttention = true)) } }
+    val store = remember { SyncActivityStore {}.apply { apply(PreviewData.syncActivity(needsAttention = true)) } }
     BaeTheme {
         SyncActivityButton(store = store, onOpenSettings = {}, onOpenDownloads = {})
     }

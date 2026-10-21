@@ -13,26 +13,12 @@ fn status() -> SyncStatusSnapshot {
     }
 }
 
-fn idle_artwork() -> EagerCacheFillStatus {
-    EagerCacheFillStatus::Idle
-}
-
-fn progress(bytes_cached: u64, bytes_total: u64) -> PinProgress {
-    PinProgress {
-        files_completed: 0,
-        files_total: 3,
-        bytes_cached,
-        bytes_total,
-    }
-}
-
 /// Nothing moving and nothing to fix: the indicator is absent.
 #[test]
 fn a_settled_library_is_quiet() {
     let activity = SyncActivity::new(
         &status(),
         &OutboxSnapshot::default(),
-        &idle_artwork(),
         &DownloadQueueContents::default(),
     );
     assert!(!activity.moving());
@@ -48,15 +34,14 @@ fn a_pass_alone_is_not_movement() {
     let activity = SyncActivity::new(
         &syncing,
         &OutboxSnapshot::default(),
-        &idle_artwork(),
         &DownloadQueueContents::default(),
     );
     assert!(activity.syncing);
     assert!(!activity.moving());
 }
 
-/// Files being sent, artwork downloading and files arriving each move;
-/// stopped artwork downloads and a paused queue's waiting files don't.
+/// Files being sent and files arriving each move; a paused queue's waiting
+/// files don't.
 #[test]
 fn transfers_and_arrivals_are_movement() {
     let mut outbox = OutboxSnapshot {
@@ -68,12 +53,7 @@ fn transfers_and_arrivals_are_movement() {
         },
         ..OutboxSnapshot::default()
     };
-    let uploading = SyncActivity::new(
-        &status(),
-        &outbox,
-        &idle_artwork(),
-        &DownloadQueueContents::default(),
-    );
+    let uploading = SyncActivity::new(&status(), &outbox, &DownloadQueueContents::default());
     assert!(uploading.moving());
     assert_eq!(
         uploading.uploads,
@@ -86,28 +66,8 @@ fn transfers_and_arrivals_are_movement() {
     );
     outbox.pause_state = OutboxPauseState::Paused;
     outbox.total.uploading = 0;
-    let paused = SyncActivity::new(
-        &status(),
-        &outbox,
-        &idle_artwork(),
-        &DownloadQueueContents::default(),
-    );
+    let paused = SyncActivity::new(&status(), &outbox, &DownloadQueueContents::default());
     assert_eq!(paused.uploads, None);
-
-    let artwork = SyncActivity::new(
-        &status(),
-        &OutboxSnapshot::default(),
-        &EagerCacheFillStatus::Downloading(progress(1, 8)),
-        &DownloadQueueContents::default(),
-    );
-    assert!(artwork.moving());
-    let stopped = SyncActivity::new(
-        &status(),
-        &OutboxSnapshot::default(),
-        &EagerCacheFillStatus::Cancelled(progress(1, 8)),
-        &DownloadQueueContents::default(),
-    );
-    assert!(!stopped.moving());
 
     let mut arriving = status();
     arriving.arrivals = Some(Ok(Arrivals {
@@ -127,7 +87,6 @@ fn transfers_and_arrivals_are_movement() {
     let activity = SyncActivity::new(
         &arriving,
         &OutboxSnapshot::default(),
-        &idle_artwork(),
         &DownloadQueueContents::default(),
     );
     assert!(activity.moving());
@@ -146,7 +105,6 @@ fn failures_and_pending_records_need_attention() {
         SyncActivity::new(
             status,
             &OutboxSnapshot::default(),
-            &idle_artwork(),
             &DownloadQueueContents::default(),
         )
     };

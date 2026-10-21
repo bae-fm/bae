@@ -76,14 +76,11 @@ private struct SyncActivitySections: View {
     }
 }
 
-/// A pass running, the files being sent, the artwork and the offline copies
-/// downloading: one row each while it moves.
+/// A pass running, the files being sent and the offline copies downloading:
+/// one row each while it moves.
 private struct TransferRows: View {
     let activity: BridgeSyncActivity
     let onOpenDownloads: (() -> Void)?
-
-    @Environment(SyncActivityStore.self)
-    private var store
 
     var body: some View {
         if activity.syncing {
@@ -101,26 +98,6 @@ private struct TransferRows: View {
                 )
             } icon: {
                 Image(systemName: "arrow.up.circle")
-            }
-        }
-        if let artwork = activity.artwork {
-            Label {
-                HStack {
-                    TransferLine(
-                        title: localizedCoreString(
-                            "core.artwork_cache.downloading"
-                        ),
-                        done: artwork.bytesCached,
-                        total: artwork.bytesTotal
-                    )
-                    Spacer()
-                    Button("Cancel") {
-                        Task { await store.cancelArtwork() }
-                    }
-                    .buttonStyle(.borderless)
-                }
-            } icon: {
-                Image(systemName: "photo.on.rectangle")
             }
         }
         if let downloads = activity.downloads {

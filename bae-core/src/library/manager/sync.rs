@@ -73,16 +73,6 @@ impl LibraryManager {
         self.database.retry_now();
     }
 
-    pub fn subscribe_eager_cache_fill_status(
-        &self,
-    ) -> coven::LiveQuery<crate::library::EagerCacheFillStatus> {
-        self.database.subscribe_eager_cache_fill_status()
-    }
-
-    pub async fn cancel_eager_cache_fill(&self) -> Result<(), LibraryError> {
-        Ok(self.database.cancel_eager_cache_fill().await?)
-    }
-
     pub async fn save_s3_config(
         &self,
         data: S3ConfigData,

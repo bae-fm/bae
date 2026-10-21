@@ -311,19 +311,6 @@ pub struct BridgeSyncStatusSnapshot {
     pub indicator: BridgeSyncIndicator,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeEagerCacheFillProgress {
-    pub files_completed: u64,
-    pub files_total: u64,
-    pub bytes_cached: u64,
-    pub bytes_total: u64,
-}
-mirror_struct! {
-    BridgeEagerCacheFillProgress = coven::PinProgress,
-    from_core: pub(crate) fn,
-    fields: { files_completed, files_total, bytes_cached, bytes_total },
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSyncIndicator {
     Unconnected,

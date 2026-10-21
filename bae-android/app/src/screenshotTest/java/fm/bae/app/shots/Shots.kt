@@ -168,7 +168,6 @@ fun SyncActivityArriving() {
                 error = null,
                 onOpenSettings = {},
                 onOpenDownloads = {},
-                onCancelArtwork = {},
                 onRetryNow = {},
             )
         }

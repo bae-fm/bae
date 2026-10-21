@@ -22,8 +22,7 @@ const DIRECT_KEYS: &[&str] = &[
     // A queue row whose release the library no longer holds.
     "core.queue.release_missing",
     "core.download.bytes_progress",
-    // Artwork downloads and transfer labels resolved by the UI.
-    "core.artwork_cache.downloading",
+    // Transfer labels resolved by the UI.
     "core.outbox.throughput",
     "core.outbox.eta",
     // The sync activity list and the quiet lines for files still arriving.

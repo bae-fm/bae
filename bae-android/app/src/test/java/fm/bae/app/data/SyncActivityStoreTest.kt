@@ -16,7 +16,7 @@ class SyncActivityStoreTest {
      *  absent for a settled library. */
     @Test
     fun theIndicatorShowsOnlyWhileSomethingMovesOrNeedsThePerson() {
-        val store = SyncActivityStore({}, {})
+        val store = SyncActivityStore {}
         assertFalse(syncActivityVisible(store.activity.value, store.error.value))
         store.apply(PreviewData.syncActivity(needsAttention = false))
         assertTrue(syncActivityVisible(store.activity.value, store.error.value))
@@ -45,7 +45,6 @@ class SyncActivityStoreTest {
             attention = BridgePendingRecords.Ready(emptyList()),
             syncing = false,
             uploads = null,
-            artwork = null,
             downloads = null,
             arrivals = BridgeArrivals.Ready(emptyList(), emptyMap(), emptyMap()),
         )

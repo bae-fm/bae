@@ -579,10 +579,6 @@ impl AppServices {
         crate::library::SyncActivityStream::new(self.inner.manager.clone())
     }
 
-    pub async fn cancel_eager_cache_fill(&self) -> Result<(), crate::library::LibraryError> {
-        self.inner.manager.cancel_eager_cache_fill().await
-    }
-
     delegate_async!(manager, pending => pending() -> Result<Vec<coven::PendingRecord>, crate::library::LibraryError>);
     delegate_async!(manager, library_name => library_name() -> Result<String, crate::library::LibraryError>);
     delegate_sync!(manager, subscribe_library_name => subscribe_library_name() -> coven::LiveQuery<String>);

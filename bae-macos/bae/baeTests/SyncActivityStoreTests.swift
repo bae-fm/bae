@@ -8,7 +8,7 @@ struct SyncActivityStoreTests {
     @MainActor
     @Test("the indicator shows only while something moves or needs the person")
     func indicatorVisibility() {
-        let store = SyncActivityStore(cancelArtwork: {}, retryNow: {})
+        let store = SyncActivityStore(retryNow: {})
         #expect(!store.visible)
         store.apply(.preview(needsAttention: false))
         #expect(store.visible)
@@ -25,7 +25,6 @@ struct SyncActivityStoreTests {
     func arrivalLookups() {
         let store = SyncActivityStore(
             activity: .preview(needsAttention: false),
-            cancelArtwork: {},
             retryNow: {}
         )
         #expect(store.arrivingFrom(albumId: "a-1") == "Studio Mac")
@@ -43,7 +42,6 @@ struct SyncActivityStoreTests {
             attention: .ready(records: []),
             syncing: false,
             uploads: nil,
-            artwork: nil,
             downloads: nil,
             arrivals: .ready(devices: [], albums: [:], releases: [:])
         )

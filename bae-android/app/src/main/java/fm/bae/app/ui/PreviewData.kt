@@ -19,7 +19,6 @@ import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeDurationClock
-import uniffi.bae_bridge.BridgeEagerCacheFillProgress
 import uniffi.bae_bridge.BridgeFactTerm
 import uniffi.bae_bridge.BridgeFormerDevice
 import uniffi.bae_bridge.BridgeFormerDeviceState
@@ -291,7 +290,7 @@ object PreviewData {
                     .map { it.id },
         )
 
-    /** A library mid-arrival: files uploading, artwork downloading, two albums still
+    /** A library mid-arrival: files uploading, two albums still
      *  arriving from a Mac, and, when [needsAttention], a record that needs signing in. */
     fun syncActivity(needsAttention: Boolean): BridgeSyncActivity =
         BridgeSyncActivity(
@@ -326,7 +325,6 @@ object PreviewData {
                     bytesDone = 3_200_000uL,
                     bytesTotal = 8_400_000uL,
                 ),
-            artwork = BridgeEagerCacheFillProgress(4uL, 26uL, 169_000uL, 1_720_000uL),
             downloads = null,
             arrivals =
                 BridgeArrivals.Ready(

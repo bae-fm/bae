@@ -60,20 +60,6 @@ impl Database {
         self.inner.handle.pending().await.map_err(DbError::from)
     }
 
-    pub(crate) fn subscribe_eager_cache_fill_status(
-        &self,
-    ) -> coven::LiveQuery<coven::EagerCacheFillStatus> {
-        self.inner.handle.subscribe_eager_cache_fill_status()
-    }
-
-    pub(crate) async fn cancel_eager_cache_fill(&self) -> Result<(), DbError> {
-        self.inner
-            .handle
-            .cancel_eager_cache_fill()
-            .await
-            .map_err(DbError::from)
-    }
-
     pub(crate) fn set_transfer_limits(&self, limits: coven::TransferLimits) {
         self.inner.handle.set_transfer_limits(limits)
     }

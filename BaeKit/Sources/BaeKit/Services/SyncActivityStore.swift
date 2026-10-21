@@ -1,8 +1,5 @@
 import Foundation
 import Observation
-import os.log
-
-private let logger = Logger.bae("SyncActivityStore")
 
 /// Everything sync is doing on this device, as core reports it: the title
 /// bar's indicator, the list it opens, and the quiet lines on albums whose
@@ -13,16 +10,13 @@ public final class SyncActivityStore {
     public private(set) var activity: BridgeSyncActivity?
     /// The last failure to read the activity, or to act from its list.
     public private(set) var error: DisplayError?
-    private let cancelArtworkAction: @Sendable () async throws -> Void
     private let retryNowAction: @Sendable () -> Void
 
     public init(
         activity: BridgeSyncActivity? = nil,
-        cancelArtwork: @escaping @Sendable () async throws -> Void,
         retryNow: @escaping @Sendable () -> Void
     ) {
         self.activity = activity
-        cancelArtworkAction = cancelArtwork
         retryNowAction = retryNow
     }
 
@@ -66,15 +60,6 @@ public final class SyncActivityStore {
         return releases[releaseId]
     }
 
-    /// Stop the artwork downloads; a failure shows in the list.
-    public func cancelArtwork() async {
-        do { try await cancelArtworkAction() }
-        catch {
-            logger.error("Cancelling artwork downloads failed: \(error)")
-            fail(error)
-        }
-    }
-
     /// The person's retry: every ordinary wait ends and sync runs now.
     public func retryNow() {
         retryNowAction()
@@ -83,15 +68,14 @@ public final class SyncActivityStore {
 
 #if DEBUG
     extension SyncActivityStore {
-        /// A library mid-arrival for previews: a few files uploading, the
-        /// artwork downloading, two albums still arriving from a Mac, and a
-        /// record that needs signing in again.
+        /// A library mid-arrival for previews: a few files uploading, two
+        /// albums still arriving from a Mac, and a record that needs signing
+        /// in again.
         public static func preview(
             needsAttention: Bool = true
         ) -> SyncActivityStore {
             SyncActivityStore(
                 activity: .preview(needsAttention: needsAttention),
-                cancelArtwork: {},
                 retryNow: {}
             )
         }
@@ -116,12 +100,6 @@ public final class SyncActivityStore {
                     ],
                     bytesDone: 3_200_000,
                     bytesTotal: 8_400_000
-                ),
-                artwork: BridgeEagerCacheFillProgress(
-                    filesCompleted: 4,
-                    filesTotal: 26,
-                    bytesCached: 169_000,
-                    bytesTotal: 1_720_000
                 ),
                 downloads: nil,
                 arrivals: previewArrivals

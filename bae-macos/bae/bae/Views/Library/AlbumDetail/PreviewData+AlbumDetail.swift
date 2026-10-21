@@ -187,7 +187,6 @@
             }
             return SyncActivityStore(
                 activity: activity,
-                cancelArtwork: {},
                 retryNow: {}
             )
         }

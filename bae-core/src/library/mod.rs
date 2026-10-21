@@ -28,7 +28,6 @@ pub use album_selection::{
 };
 pub use app_services::*;
 pub use browse::*;
-pub use coven::{EagerCacheFillStatus, PinProgress};
 pub use detail::{DetailSnapshot, DetailSubscription};
 pub use download_snapshot::{
     DownloadOp, DownloadProgress, DownloadQueueContents, DownloadRow, DownloadSnapshot,
