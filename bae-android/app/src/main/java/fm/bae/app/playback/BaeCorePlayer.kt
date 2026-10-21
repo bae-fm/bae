@@ -204,7 +204,8 @@ class BaeCorePlayer(
     /** The revision [manualEntries] and [contextLane] came from. */
     private var queueRevision: ULong = 0u
 
-    private val upcoming =
+    /** The read of the context's tail past its first window; the queue shows its failure and retries it. */
+    internal val upcoming =
         QueueUpcomingWindows(queueUpcomingSource, scope) { revision ->
             if (revision == queueRevision) {
                 pagedUpcoming = upcomingEntries()

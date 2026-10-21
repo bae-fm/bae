@@ -14,6 +14,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeErrorCategory
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryPageWindow
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
@@ -70,6 +72,26 @@ class QueueUpcomingWindowTest {
         assertEquals(1, feed.opened)
     }
 
+    /** A read that fails stops and says why; Retry opens it again over the windows it covered. */
+    @Test
+    fun aFailedUpcomingReadSaysWhyAndRetryOpensItAgain() {
+        val feed = UpcomingFeed()
+        val player = player(feed)
+        player.onQueueValue(emptyList(), context(), hasNext = true, hasPrevious = false, revision = 1uL)
+        player.loadUpcomingRange(100, 60)
+
+        val failure = BridgeException.Diagnostic(BridgeErrorCategory.Database, "database is locked")
+        feed.fail(failure)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(failure, player.upcoming.failure.value)
+
+        player.upcoming.retry()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertNull(player.upcoming.failure.value)
+        assertEquals("Retry opens the read again", 2, feed.opened)
+        assertEquals("over the windows it covered", listOf(window(100, 60)), feed.requests.last())
+    }
+
     private fun player(feed: UpcomingFeed) =
         BaeCorePlayer(
             applicationLooper = Looper.getMainLooper(),
@@ -105,10 +127,16 @@ class QueueUpcomingWindowTest {
     /** An upcoming read the test drives: it records every window request and hands `next`
      *  whatever the test delivers. */
     private class UpcomingFeed {
+        private companion object {
+            /** Wakes a waiting read so it can fail; never applied. */
+            val PLACEHOLDER = BridgeQueueUpcomingSnapshot(revision = 0uL, windows = emptyList())
+        }
+
         var opened = 0
             private set
         val requests = mutableListOf<List<BridgeLibraryPageWindow>>()
         private val values = Channel<BridgeQueueUpcomingSnapshot>(Channel.UNLIMITED)
+        private var failNext: BridgeException? = null
         private val closed = CompletableDeferred<Unit>()
 
         fun open(): QueueUpcomingQuery {
@@ -118,12 +146,25 @@ class QueueUpcomingWindowTest {
                     requests.add(windows)
                 }
 
-                override suspend fun next(): BridgeQueueUpcomingSnapshot = values.receive()
+                override suspend fun next(): BridgeQueueUpcomingSnapshot {
+                    val value = values.receive()
+                    failNext?.let { error ->
+                        failNext = null
+                        throw error
+                    }
+                    return value
+                }
 
                 override suspend fun cancel() {
                     closed.complete(Unit)
                 }
             }
+        }
+
+        /** End the read with [error]; a read opened after it reads on. */
+        fun fail(error: BridgeException) {
+            failNext = error
+            values.trySend(PLACEHOLDER)
         }
 
         fun deliver(

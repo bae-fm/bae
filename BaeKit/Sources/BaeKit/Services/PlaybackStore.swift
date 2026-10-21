@@ -49,6 +49,9 @@ public class PlaybackStore {
     /// value of its revision.
     @ObservationIgnored
     private var latestUpcoming: BridgeQueueUpcomingSnapshot?
+    /// Why the upcoming read stopped, until `retryUpcoming` opens it again.
+    /// Rows past the first window stay placeholders while it is set.
+    public private(set) var upcomingFailure: DisplayError?
 
     /// Sent through Combine rather than `@Observable` because it changes at
     /// display rate; only the progress bar re-renders.
@@ -308,7 +311,8 @@ extension PlaybackStore {
 
     /// Read `[offset, offset + limit)` of the upcoming tail. Beyond
     /// `maximumUpcomingWindows`, the window farthest from this one is dropped.
-    /// Errors are only logged: this is prefetch with no error UI.
+    /// A failed request or read stops the read and sets `upcomingFailure`,
+    /// which the queue shows with Retry.
     @MainActor
     public func loadUpcomingRange(offset: Int, limit: Int, queue: Queue) async {
         guard let context = queueContext else {
@@ -352,6 +356,35 @@ extension PlaybackStore {
             logger.warning(
                 "upcoming range [\(offset), \(end)) was not requested: \(error.localizedDescription)"
             )
+            upcomingFailure = DisplayError(error)
+        }
+    }
+
+    /// Open the upcoming read again over the windows it covered, after a
+    /// failure stopped it.
+    @MainActor
+    public func retryUpcoming(queue: Queue) async {
+        upcomingFailure = nil
+        let covered = upcomingWindows
+        closeUpcomingQuery()
+        for window in covered {
+            await loadUpcomingRange(
+                offset: window.lowerBound,
+                limit: window.count,
+                queue: queue
+            )
+        }
+    }
+
+    /// Stop the upcoming read and forget the windows it covered.
+    @MainActor
+    private func closeUpcomingQuery() {
+        upcomingDeliveries?.cancel()
+        upcomingDeliveries = nil
+        upcomingWindows = []
+        if let upcomingQuery {
+            self.upcomingQuery = nil
+            Task { await upcomingQuery.cancel() }
         }
     }
 
@@ -374,6 +407,7 @@ extension PlaybackStore {
                         logger.warning(
                             "upcoming queue read failed: \(error.localizedDescription)"
                         )
+                        self?.upcomingFailure = DisplayError(error)
                     }
                     return
                 }

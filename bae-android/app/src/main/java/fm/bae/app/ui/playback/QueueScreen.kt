@@ -1,5 +1,7 @@
 package fm.bae.app.ui.playback
 
+import android.content.Context
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,22 +31,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
+import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.displayError
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.Eyebrow
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.rememberReorderableLazyListState
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
 
@@ -65,7 +72,7 @@ fun QueueScreen(
 ) {
     val nowPlaying by session.playback.nowPlaying.collectAsState()
     val listState = rememberLazyListState()
-    val (order, reorderState) = rememberReorderableQueue(session, listState)
+    val queue = rememberReorderableQueue(session, listState)
 
     LazyColumn(
         state = listState,
@@ -88,8 +95,7 @@ fun QueueScreen(
         }
         queueContent(
             session = session,
-            order = order,
-            reorderState = reorderState,
+            queue = queue,
             hasNowPlaying = nowPlaying != null,
             onSkipped = onDismiss,
         )
@@ -120,14 +126,25 @@ internal class QueueOrder {
         }
 }
 
+/**
+ * The queue as a sheet shows it: its optimistic order, the drag state that reorders it, and the
+ * failures of the commands the sheet sends.
+ */
+internal class ReorderableQueue(
+    val order: QueueOrder,
+    val reorderState: ReorderableLazyListState,
+    val failures: QueueFailures,
+)
+
 /** The optimistic queue order and its reorderable list state, re-seeded from core except during a drag. */
 @Composable
 internal fun rememberReorderableQueue(
     session: OpenLibrary,
     listState: LazyListState,
-): Pair<QueueOrder, ReorderableLazyListState> {
+): ReorderableQueue {
     val queue by session.playback.queue.collectAsState()
     val order = remember { QueueOrder() }
+    val failures = rememberQueueFailures()
     val reorderState =
         rememberReorderableLazyListState(listState) { from, to ->
             // A reorder stays within one lane; section headers match no row key.
@@ -152,10 +169,8 @@ internal fun rememberReorderableQueue(
             lane.add(toPos, moved)
             // A null `before` means the lane's end.
             val beforeEntryId = lane.getOrNull(toPos + 1)?.entryId
-            try {
+            failures.run("reorderEntry ${moved.entryId} before $beforeEntryId") {
                 session.appHandle.reorderEntry(moved.entryId, beforeEntryId)
-            } catch (e: Exception) {
-                logger.error("reorderEntry ${moved.entryId} before $beforeEntryId failed", e)
             }
         }
 
@@ -180,17 +195,21 @@ internal fun rememberReorderableQueue(
             order.revision = queue.revision
         }
     }
-    return order to reorderState
+    return ReorderableQueue(order, reorderState, failures)
 }
 
 // The queue's lanes, or an empty message, below the caller's now-playing header; `onSkipped` runs after a tap-to-skip.
+// A failed queue command shows above the lanes, and a stopped read of the context tail below it, with Retry.
 internal fun LazyListScope.queueContent(
     session: OpenLibrary,
-    order: QueueOrder,
-    reorderState: ReorderableLazyListState,
+    queue: ReorderableQueue,
     hasNowPlaying: Boolean,
     onSkipped: (() -> Unit)?,
 ) {
+    val order = queue.order
+    val reorderState = queue.reorderState
+    val failures = queue.failures
+    item(key = "command-failure") { QueueCommandFailure(failures) }
     // Only show the empty message when nothing follows at all; with a context
     // present, the "Playing From" section below carries the queue.
     if (order.isEmpty) {
@@ -205,12 +224,13 @@ internal fun LazyListScope.queueContent(
     }
 
     if (order.manual.isNotEmpty()) {
-        item(key = "uphdr") { UpNextSectionLabel(session) }
+        item(key = "uphdr") { UpNextSectionLabel(session, failures) }
         // Always fully resolved, so no load hook.
         queueRows(
             session,
             QueueLane(order.manual, revision = 0uL, loadRange = null),
             reorderState,
+            failures,
             onSkipped,
         )
     }
@@ -224,6 +244,7 @@ internal fun LazyListScope.queueContent(
                 }
             ContextSectionLabel(
                 session = session,
+                failures = failures,
                 text = stringResource(labelRes),
                 shuffled = order.contextShuffled,
             )
@@ -238,8 +259,10 @@ internal fun LazyListScope.queueContent(
                 loadRange = { offset, limit -> session.playback.loadUpcomingRange(offset, limit) },
             ),
             reorderState,
+            failures,
             onSkipped,
         )
+        item(key = "upcoming-failure") { UpcomingFailure(session) }
     }
 }
 
@@ -255,6 +278,7 @@ private fun LazyListScope.queueRows(
     session: OpenLibrary,
     lane: QueueLane,
     reorderState: ReorderableLazyListState,
+    failures: QueueFailures,
     onSkipped: (() -> Unit)?,
 ) {
     itemsIndexed(lane.items, key = { index, item -> item?.entryId ?: "placeholder-$index" }) { index, item ->
@@ -273,18 +297,14 @@ private fun LazyListScope.queueRows(
                         item = item,
                         dragHandleModifier = Modifier.draggableHandle(),
                         onClick = {
-                            try {
+                            failures.run("skipToEntry ${item.entryId}") {
                                 session.appHandle.skipToEntry(item.entryId)
                                 onSkipped?.invoke()
-                            } catch (e: Exception) {
-                                logger.error("skipToEntry ${item.entryId} failed", e)
                             }
                         },
                         onRemove = {
-                            try {
+                            failures.run("removeEntry ${item.entryId}") {
                                 session.appHandle.removeEntry(item.entryId)
-                            } catch (e: Exception) {
-                                logger.error("removeEntry ${item.entryId} failed", e)
                             }
                         },
                     )
@@ -335,14 +355,13 @@ private fun ClearLaneButton(
 
 // The manual lane's label with its Clear.
 @Composable
-private fun UpNextSectionLabel(session: OpenLibrary) {
+private fun UpNextSectionLabel(
+    session: OpenLibrary,
+    failures: QueueFailures,
+) {
     SectionLabelRow(text = stringResource(R.string.queue_section_up_next)) {
         ClearLaneButton(R.string.queue_clear_up_next) {
-            try {
-                session.appHandle.clearUpNext()
-            } catch (e: Exception) {
-                logger.error("clearUpNext failed", e)
-            }
+            failures.run("clearUpNext") { session.appHandle.clearUpNext() }
         }
     }
 }
@@ -351,25 +370,16 @@ private fun UpNextSectionLabel(session: OpenLibrary) {
 @Composable
 private fun ContextSectionLabel(
     session: OpenLibrary,
+    failures: QueueFailures,
     text: String,
     shuffled: Boolean,
 ) {
     SectionLabelRow(text = text) {
         ClearLaneButton(R.string.queue_clear_playing_from) {
-            try {
-                session.appHandle.clearPlayingFrom()
-            } catch (e: Exception) {
-                logger.error("clearPlayingFrom failed", e)
-            }
+            failures.run("clearPlayingFrom") { session.appHandle.clearPlayingFrom() }
         }
         IconButton(
-            onClick = {
-                try {
-                    session.appHandle.setShuffle(!shuffled)
-                } catch (e: Exception) {
-                    logger.error("setShuffle ${!shuffled} failed", e)
-                }
-            },
+            onClick = { failures.run("setShuffle ${!shuffled}") { session.appHandle.setShuffle(!shuffled) } },
         ) {
             Icon(
                 imageVector = Icons.Filled.Shuffle,

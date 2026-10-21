@@ -135,6 +135,15 @@ struct QueueView: View {
                             .zIndex(
                                 dragCoordinator.isDragSource(.context) ? 1 : 0
                             )
+                            if let failure = playbackStore.upcomingFailure {
+                                UpcomingFailureRow(failure: failure) {
+                                    Task {
+                                        await playbackStore.retryUpcoming(
+                                            queue: queue
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }

@@ -19,9 +19,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
+import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.SyncActivityStore
+import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.playback.NowPlayingBar
@@ -130,11 +132,9 @@ private fun OpenLibrary.playLibraryShuffledOrReport(
     coroutineScope: CoroutineScope,
 ) {
     coroutineScope.launch {
-        try {
+        val errors = LocaleErrorDisplays(appContext)
+        performBridgeAction(logger, "play the library shuffled", errors, configStore::showError) {
             appHandle.playLibraryShuffled()
-        } catch (e: Exception) {
-            logger.error("playLibraryShuffled failed", e)
-            configStore.showError(DisplayError(appContext.getString(R.string.library_load_failed)))
         }
     }
 }

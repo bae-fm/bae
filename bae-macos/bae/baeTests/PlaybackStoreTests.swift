@@ -108,6 +108,18 @@ private final class UpcomingFeed: @unchecked Sendable {
         )
     }
 
+    /// End the waiting read with `error`.
+    func fail(_ error: any Error) {
+        let waiter:
+            CheckedContinuation<BridgeQueueUpcomingSnapshot, any Error>? =
+                lock.withLock {
+                    let waiter = self.waiter
+                    self.waiter = nil
+                    return waiter
+                }
+        waiter?.resume(throwing: error)
+    }
+
     func deliver(revision: UInt64, offset: UInt64, entryId: String) {
         let snapshot = BridgeQueueUpcomingSnapshot(
             revision: revision,
@@ -234,6 +246,39 @@ struct PlaybackStoreUpcomingWindowTests {
             "a queue revision the read has not reached shows no stale entries"
         )
         #expect(feed.openedCount == 1)
+    }
+}
+
+@Suite("PlaybackStore upcoming read failure")
+struct PlaybackStoreUpcomingFailureTests {
+    @MainActor
+    @Test("a failed read says why, and Retry opens it again over its windows")
+    func failedReadRetries() async throws {
+        let feed = UpcomingFeed()
+        let queue = Queue(subscribeUpcoming: { feed.query() })
+        let store = PlaybackStore()
+        store.applyQueueSnapshot(contextSnapshot(revision: 1))
+        await store.loadUpcomingRange(offset: 100, limit: 60, queue: queue)
+        try await Wait.until { feed.asks >= 1 }
+
+        feed.fail(
+            BridgeError.Diagnostic(
+                category: .database,
+                detail: "database is locked"
+            )
+        )
+        try await Wait.until { store.upcomingFailure != nil }
+        #expect(store.upcomingFailure?.detail == "database is locked")
+
+        await store.retryUpcoming(queue: queue)
+        #expect(store.upcomingFailure == nil)
+        #expect(feed.openedCount == 2, "Retry opens the read again")
+        #expect(
+            feed.requested.last == [
+                BridgeLibraryPageWindow(offset: 100, limit: 60)
+            ],
+            "over the windows it covered"
+        )
     }
 }
 

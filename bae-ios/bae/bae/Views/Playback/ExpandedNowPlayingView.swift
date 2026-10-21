@@ -216,6 +216,11 @@ struct ExpandedNowPlayingView: View {
                     queue: queue,
                     onSkipped: {}
                 )
+                if let failure = playbackStore.upcomingFailure {
+                    UpcomingFailureRow(failure: failure) {
+                        Task { await playbackStore.retryUpcoming(queue: queue) }
+                    }
+                }
             } header: {
                 playingFromHeader(
                     kind: context.kind,

@@ -5,6 +5,9 @@ import fm.bae.app.BaeLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeException
@@ -62,13 +65,19 @@ class QueueUpcomingSource(
 /**
  * The context tail's windows past the queue value's first, read through one live query opened on
  * first use. Its windows move in place as the queue scrolls, and the queue's revisions move it in
- * core; neither opens another. [onValue] hears the queue revision of each value it reads.
+ * core; neither opens another. [onValue] hears the queue revision of each value it reads; a
+ * failure stops the read and is held in [failure] until [retry] opens it again.
  */
 internal class QueueUpcomingWindows(
     private val source: QueueUpcomingSource,
     private val scope: CoroutineScope,
     private val onValue: (revision: ULong) -> Unit,
 ) {
+    private val mutableFailure = MutableStateFlow<BridgeException?>(null)
+
+    /** Why the read stopped, until [retry] opens it again. */
+    val failure: StateFlow<BridgeException?> = mutableFailure.asStateFlow()
+
     private var query: QueueUpcomingQuery? = null
     private var deliveries: Job? = null
 
@@ -80,8 +89,8 @@ internal class QueueUpcomingWindows(
 
     /**
      * Read [range] of the tail too. A no-op when a window already read covers it. Past
-     * [MAX_UPCOMING_WINDOWS], the window farthest from this one is dropped from the read. Errors
-     * are logged because this is background prefetch with no separate error UI.
+     * [MAX_UPCOMING_WINDOWS], the window farthest from this one is dropped from the read. A failed
+     * request is logged and held in [failure].
      */
     fun load(range: IntRange) {
         val covered = windows.any { it.first <= range.first && range.last <= it.last }
@@ -99,7 +108,16 @@ internal class QueueUpcomingWindows(
             )
         } catch (error: BridgeException) {
             logger.error("upcoming range $range was not requested", error)
+            mutableFailure.value = error
         }
+    }
+
+    /** Open the read again over the windows it covered, after a failure stopped it. */
+    fun retry() {
+        mutableFailure.value = null
+        val covered = windows.toList()
+        close()
+        covered.forEach(::load)
     }
 
     /** The newest value's entries by absolute tail index when it was sliced from queue
@@ -138,7 +156,10 @@ internal class QueueUpcomingWindows(
             delivered.onFailure { error ->
                 reading = false
                 if (error !is BridgeException) throw error
-                if (error !is BridgeException.Cancelled) logger.error("upcoming queue read failed", error)
+                if (error !is BridgeException.Cancelled) {
+                    logger.error("upcoming queue read failed", error)
+                    mutableFailure.value = error
+                }
             }
         }
     }

@@ -73,7 +73,7 @@ fun ExpandedNowPlayingScreen(
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val listState = rememberLazyListState()
-    val (order, reorderState) = rememberReorderableQueue(session, listState)
+    val queue = rememberReorderableQueue(session, listState)
     // Pad past the navigation bar so the last queue row clears it.
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     // Lets the chevron animate the sheet out before dismissing.
@@ -103,8 +103,7 @@ fun ExpandedNowPlayingScreen(
             // is next; tapping a row skips without closing the sheet.
             queueContent(
                 session = session,
-                order = order,
-                reorderState = reorderState,
+                queue = queue,
                 hasNowPlaying = true,
                 onSkipped = null,
             )
