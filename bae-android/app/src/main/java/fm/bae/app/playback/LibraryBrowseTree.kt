@@ -40,7 +40,6 @@ import java.util.LinkedHashMap
 private const val TAG = "bae.LibraryBrowseTree"
 private const val ACCESS_ORDER_INITIAL_CAPACITY = 16
 private const val ACCESS_ORDER_LOAD_FACTOR = 0.75f
-private const val TREE_CLOSED_MESSAGE = "library browse tree is closed"
 private val logger = BaeLogger(TAG)
 
 internal data class BrowseLabels(
@@ -652,15 +651,12 @@ private fun missingMainRelease(
     return browseDiagnostic(bug.message.orEmpty())
 }
 
-internal fun windowEvicted(): BridgeException =
-    BridgeException.Diagnostic(BridgeErrorCategory.Internal, "browse window was replaced by a newer request")
+internal fun windowEvicted(): BrowseUnavailable = BrowseUnavailable.Superseded("browse window replaced")
 
-internal fun treeClosedError(): BridgeException = browseDiagnostic(TREE_CLOSED_MESSAGE)
+internal fun treeClosedError(): BrowseUnavailable = BrowseUnavailable.LibraryClosed()
 
-private fun parentInterestEnded(): BridgeException =
-    BridgeException.Diagnostic(BridgeErrorCategory.Internal, "library browse parent interest ended")
+private fun parentInterestEnded(): BrowseUnavailable = BrowseUnavailable.Superseded("parent interest ended")
 
-private fun searchInterestEnded(): BridgeException =
-    BridgeException.Diagnostic(BridgeErrorCategory.Internal, "library browse search interest ended")
+private fun searchInterestEnded(): BrowseUnavailable = BrowseUnavailable.Superseded("search interest ended")
 
 private fun browseDiagnostic(message: String): BridgeException = Diagnostic(BridgeErrorCategory.Internal, message)

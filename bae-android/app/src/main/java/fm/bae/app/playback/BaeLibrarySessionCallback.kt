@@ -14,6 +14,7 @@ import fm.bae.app.BaeLogger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 
 private const val TAG = "bae.BaeLibrarySessionCallback"
@@ -197,11 +198,24 @@ internal class BaeLibrarySessionCallback(
         tree.disconnect(controller)
     }
 
+    /**
+     * [block]'s result, or the closest error a controller understands, with
+     * its cause logged: the library isn't available while it is closed; a
+     * request replaced by a newer one is cancelled; a read that failed is an
+     * I/O error; and a broken guarantee inside the app stays unknown.
+     */
     private suspend fun <T : Any> queryResult(block: suspend () -> LibraryResult<T>): LibraryResult<T> =
         try {
             block()
-        } catch (_: BridgeException) {
-            LibraryResult.ofError<T>(SessionError.ERROR_UNKNOWN)
+        } catch (e: BrowseUnavailable.LibraryClosed) {
+            logger.warning("a controller asked the browse tree after its library closed", e)
+            LibraryResult.ofError(SessionError.ERROR_INVALID_STATE)
+        } catch (e: BrowseUnavailable.Superseded) {
+            logger.debug("a controller's browse request was replaced by a newer one", e)
+            LibraryResult.ofError(SessionError.INFO_CANCELLED)
+        } catch (e: BridgeException) {
+            logger.error("reading the library for a controller failed", e)
+            LibraryResult.ofError(browseErrorCode(e))
         }
 
     /**
@@ -248,6 +262,27 @@ internal class BaeLibrarySessionCallback(
         }
     }
 }
+
+/** The controller's error code for a failed bridge read, by what core says failed. */
+private fun browseErrorCode(error: BridgeException): Int =
+    when (error) {
+        is BridgeException.Cancelled -> {
+            SessionError.INFO_CANCELLED
+        }
+
+        is BridgeException.NotFound -> {
+            SessionError.ERROR_BAD_VALUE
+        }
+
+        is BridgeException.Diagnostic -> {
+            when (error.category) {
+                // Core's own guarantee broke; nothing a controller can name.
+                BridgeErrorCategory.Internal -> SessionError.ERROR_UNKNOWN
+
+                else -> SessionError.ERROR_IO
+            }
+        }
+    }
 
 /** What a controller's request to play resolves to. */
 internal sealed interface PlayRequest {

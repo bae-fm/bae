@@ -7,7 +7,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import uniffi.bae_bridge.BridgeException
 import java.util.LinkedHashMap
 
 internal class LiveProjectionCache<Key, Value>(
@@ -22,7 +21,7 @@ internal class LiveProjectionCache<Key, Value>(
         var latest: LiveQueryEvent<Value>? = null,
         var changed: CompletableDeferred<Unit> = CompletableDeferred(),
         var job: Job? = null,
-        var retired: BridgeException? = null,
+        var retired: Exception? = null,
     )
 
     private val lock = Any()
@@ -51,7 +50,7 @@ internal class LiveProjectionCache<Key, Value>(
         }
     }
 
-    fun cancelAll(error: BridgeException) {
+    fun cancelAll(error: Exception) {
         val removed =
             synchronized(lock) {
                 entries.values.toList().also { values ->

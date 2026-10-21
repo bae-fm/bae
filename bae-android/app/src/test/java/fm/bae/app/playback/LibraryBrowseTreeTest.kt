@@ -266,7 +266,7 @@ class LibraryBrowseTreeTest {
             tree.close()
 
             assertTrue(handle.albumBrowseSubscriptions.single().cancelled)
-            assertTrue(withTimeout(1_000) { request.await() } is BridgeException)
+            assertTrue(withTimeout(1_000) { request.await() } is BrowseUnavailable.LibraryClosed)
         }
 
     @Test

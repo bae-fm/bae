@@ -69,8 +69,9 @@ class BaeLibrarySessionCallbackTest {
         scope.cancel()
     }
 
+    /** A failed read is an I/O error for the car, not an unknown one. */
     @Test
-    fun collectionErrorReturnsAnExplicitMedia3Error() {
+    fun aFailedReadIsAnIoError() {
         val handle = FakeAppHandle(initialAlbumPageError = queryFailure())
         val tree = tree(handle)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
@@ -80,7 +81,7 @@ class BaeLibrarySessionCallbackTest {
                 .getChildren(controller(), BrowseId.Albums.mediaId, 0, 20, null)
                 .get(1, TimeUnit.SECONDS)
 
-        assertEquals(SessionError.ERROR_UNKNOWN, result.resultCode)
+        assertEquals(SessionError.ERROR_IO, result.resultCode)
         tree.close()
         scope.cancel()
     }
@@ -104,6 +105,22 @@ class BaeLibrarySessionCallbackTest {
         assertEquals(listOf(BrowseId.Albums.mediaId to 1), notifications)
         assertEquals(BrowseId.Album("album-new").mediaId, result.value!!.single().mediaId)
         tree.close()
+        scope.cancel()
+    }
+
+    /** A library that closed isn't available: that, not a failure, is what the car hears. */
+    @Test
+    fun aClosedLibraryIsNotAvailable() {
+        val tree = tree(FakeAppHandle())
+        tree.close()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+
+        val result =
+            BaeLibrarySessionCallback(tree, scope) { "not found: $it" }
+                .getChildren(controller(), BrowseId.Albums.mediaId, 0, 20, null)
+                .get(1, TimeUnit.SECONDS)
+
+        assertEquals(SessionError.ERROR_INVALID_STATE, result.resultCode)
         scope.cancel()
     }
 
