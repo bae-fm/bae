@@ -316,12 +316,34 @@ pub(crate) async fn serve_not_found() -> String {
     origin
 }
 
+/// The error reqwest returns for a request to a port nothing listens on: a
+/// transport failure with a real cause chain, for a test that needs one.
+#[cfg(test)]
+pub(crate) async fn refused_request_error() -> reqwest::Error {
+    client_builder()
+        .build()
+        .expect("the test HTTP client builds")
+        .get("http://127.0.0.1:1/")
+        .send()
+        .await
+        .expect_err("nothing listens on port 1")
+}
+
+/// The error reqwest returns for a request it will not build.
+#[cfg(test)]
+pub(crate) fn unbuildable_request_error() -> reqwest::Error {
+    reqwest::Client::new()
+        .get("not a URL")
+        .build()
+        .expect_err("a relative URL does not build")
+}
+
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum HttpBodyError {
     #[error("HTTP body too large (limit {limit} bytes)")]
     TooLarge { limit: usize },
-    #[error("failed to read HTTP body: {0}")]
-    Read(reqwest::Error),
+    #[error("failed to read HTTP body: {}", crate::util::error_text::CauseChain(.0))]
+    Read(#[source] reqwest::Error),
 }
 
 pub(crate) async fn read_body_capped(

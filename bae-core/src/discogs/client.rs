@@ -4,11 +4,12 @@ use crate::discogs::models::{
 use crate::discogs::remote_cover_from_urls;
 use crate::import::cover_art::RemoteCover;
 use crate::retry::{retry_with_backoff_if, Repeat, RetryPolicy};
+use crate::util::error_text::CauseChain;
 use crate::util::http::{is_cacheable, CachedResponse, Http};
 use crate::util::rate_limiter::{CallPriority, RateAnswer, RateLimiter, WindowCount};
 use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
 use reqwest::header::HeaderMap;
-use reqwest::{Error as ReqwestError, StatusCode};
+use reqwest::StatusCode;
 use serde::Deserialize;
 use std::sync::Arc;
 use std::time::Duration;
@@ -148,10 +149,10 @@ fn artist_url(artist_id: &str) -> String {
 #[derive(Error, Debug)]
 pub enum DiscogsError {
     /// The request never reached a usable response — connection, DNS, timeout, a
-    /// dropped or unreadable body. Transport-level and worth retrying.
-    // reqwest's Display omits the source; Debug retains the actual cause.
-    #[error("Discogs transport error: {0:?}")]
-    Transport(#[from] ReqwestError),
+    /// dropped or unreadable body. Transport-level and worth retrying. Prints
+    /// every cause below reqwest's own text, which names none of them.
+    #[error("Discogs transport error: {}", CauseChain(.0))]
+    Transport(#[from] reqwest::Error),
     /// Discogs returned an HTTP error status not otherwise carved out below (not
     /// 404 / 401). Distinct from `Transport` so the retry policy can repeat a
     /// 5xx but not a 4xx, which is the server's permanent answer to this request.
@@ -830,7 +831,9 @@ impl DiscogsClient {
                         .inspect_err(|error| match error {
                             DiscogsError::InvalidApiKey => warn!("Discogs invalid API key"),
                             DiscogsError::NotFound => warn!("Discogs API returned not found"),
-                            DiscogsError::Transport(_) => warn!("Discogs API request failed"),
+                            DiscogsError::Transport(_) => {
+                                warn!("Discogs API request failed: {error}")
+                            }
                             DiscogsError::Provider { status, .. } => {
                                 warn!("Discogs API error response (status {status})")
                             }

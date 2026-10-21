@@ -19,6 +19,7 @@ use tracing::{debug, warn};
 use crate::renderer::protocol_discovery::{Browse, ProtocolDiscovery};
 use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::{RendererConnection, RendererDevice};
+use crate::util::error_text::CauseChain;
 
 /// The SSDP multicast endpoint every `M-SEARCH` is sent to.
 const SSDP_MULTICAST: &str = "239.255.255.250:1900";
@@ -103,7 +104,10 @@ fn run_search(socket: UdpSocket, stop: Arc<AtomicBool>, devices: PublishedDevice
     {
         Ok(client) => client,
         Err(e) => {
-            warn!("dlna discovery: failed to build HTTP client: {e}");
+            warn!(
+                "dlna discovery: failed to build HTTP client: {}",
+                CauseChain(&e)
+            );
             return;
         }
     };
@@ -165,7 +169,10 @@ fn fetch_device(client: &reqwest::blocking::Client, location: &str) -> Option<Re
     let xml = match client.get(location).send().and_then(|r| r.text()) {
         Ok(xml) => xml,
         Err(e) => {
-            debug!("dlna discovery: fetching {location} failed: {e}");
+            debug!(
+                "dlna discovery: fetching {location} failed: {}",
+                CauseChain(&e)
+            );
             return None;
         }
     };

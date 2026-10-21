@@ -20,6 +20,7 @@ use tracing::debug;
 use crate::renderer::{
     ReceiverStatus, RendererChannel, RendererError, RendererMedia, RendererPlayerState,
 };
+use crate::util::error_text::CauseChain;
 
 use super::soap::{self, DidlMetadata, PositionInfo, SoapRequest, TransportState};
 
@@ -75,7 +76,7 @@ impl DlnaChannel {
         let client = reqwest::blocking::Client::builder()
             .timeout(ACTION_TIMEOUT)
             .build()
-            .map_err(|e| RendererError::Connection(e.to_string()))?;
+            .map_err(|e| RendererError::Connection(CauseChain(&e).to_string()))?;
         Ok(Self {
             client,
             av_transport_url,
@@ -95,11 +96,11 @@ impl DlnaChannel {
             .header("SOAPACTION", request.soap_action)
             .body(request.body)
             .send()
-            .map_err(|e| RendererError::Connection(e.to_string()))?;
+            .map_err(|e| RendererError::Connection(CauseChain(&e).to_string()))?;
         let status = response.status();
         let body = response
             .text()
-            .map_err(|e| RendererError::Connection(e.to_string()))?;
+            .map_err(|e| RendererError::Connection(CauseChain(&e).to_string()))?;
         if status.is_success() {
             Ok(body)
         } else {

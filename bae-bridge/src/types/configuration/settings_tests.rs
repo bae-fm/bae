@@ -69,7 +69,6 @@ fn expected_provider_errors_remain_domain_failures() {
             status: Some(500),
             told_wait: None,
         }),
-        ImportError::MusicBrainz(MusicBrainzError::Network("connection closed".into())),
         ImportError::MusicBrainz(MusicBrainzError::Timeout),
         ImportError::Discogs(DiscogsError::NotFound),
         ImportError::Discogs(DiscogsError::Provider {
@@ -140,15 +139,9 @@ fn expected_local_and_draft_failures_keep_their_presentation() {
 
 #[test]
 fn artwork_request_conditions_remain_expected_at_the_bridge() {
-    use bae_core::signals::LookupFailure;
-    for failure in [
-        LookupFailure::Network,
-        LookupFailure::Timeout,
-        LookupFailure::Provider { status: Some(404) },
-        LookupFailure::Provider { status: Some(500) },
-    ] {
-        let error = ImportError::CoverArtRequest {
-            failure,
+    for status in [404, 500] {
+        let error = ImportError::CoverArtStatus {
+            status,
             detail: "artwork request failed".into(),
         };
         assert!(matches!(

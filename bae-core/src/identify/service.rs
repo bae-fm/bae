@@ -622,14 +622,7 @@ async fn read_release(
             release.key
         ),
     ) {
-        Failure::Lookup(failure) => {
-            debug!(
-                "{} release {} could not be read in full: {error}",
-                release.catalog.as_str(),
-                release.key
-            );
-            Some(Err(failure))
-        }
+        Failure::Lookup(failure) => Some(Err(failure)),
         Failure::Internal(failure) => {
             emit_step(event_tx, IdentifyEvent::Broke { failure });
             None

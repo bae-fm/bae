@@ -105,6 +105,11 @@ run_check "restricted-path Rust visibility" scripts/check-rust-visibility.sh || 
     exit 1
 }
 
+run_check "reqwest error causes" scripts/check-reqwest-error-display.py || {
+    echo "Print a held reqwest::Error through crate::util::error_text::CauseChain"
+    exit 1
+}
+
 run_check "owner dependency boundary" scripts/owner-dependency-boundary.sh || {
     exit 1
 }

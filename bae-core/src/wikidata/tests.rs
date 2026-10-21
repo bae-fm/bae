@@ -291,14 +291,16 @@ fn a_document_naming_no_item_does_not_parse() {
 /// about an item — the ordinary one for an id an editor typed wrong — and a
 /// parse failure returns the same verdict however many times the same bytes are
 /// read.
-#[test]
-fn only_transient_wikidata_failures_are_retried() {
+#[tokio::test]
+async fn only_transient_wikidata_failures_are_retried() {
     let provider = |status: Option<u16>, told_wait: Option<Duration>| {
         repeat(&WikidataError::Provider { status, told_wait })
     };
     assert_eq!(repeat(&WikidataError::Timeout), Repeat::AfterBackoff);
     assert_eq!(
-        repeat(&WikidataError::Network("refused".into())),
+        repeat(&WikidataError::Network(
+            crate::util::http::refused_request_error().await
+        )),
         Repeat::AfterBackoff
     );
     assert_eq!(provider(None, None), Repeat::AfterBackoff);
@@ -322,4 +324,23 @@ fn only_transient_wikidata_failures_are_retried() {
         repeat(&WikidataError::Other("Failed to parse JSON".into())),
         Repeat::Never
     );
+    assert_eq!(
+        repeat(&WikidataError::Request(
+            crate::util::http::unbuildable_request_error()
+        )),
+        Repeat::Never
+    );
+}
+
+/// An item fetch that never reached Wikidata names the DNS failure under
+/// reqwest's own text.
+#[tokio::test]
+async fn a_network_failure_names_its_cause() {
+    let wikidata = Wikidata::for_test(Http::for_test().serve_every_host("http://bae-test.invalid"));
+    let error = wikidata
+        .fetch_entity("Q424242", CallPriority::Interactive)
+        .await
+        .expect_err("nothing answers there");
+    assert!(matches!(error, WikidataError::Network(_)), "{error}");
+    assert!(error.to_string().contains("dns error"), "{error}");
 }

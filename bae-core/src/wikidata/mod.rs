@@ -19,6 +19,7 @@ use tracing::{debug, warn};
 
 use crate::import::{Catalog, CatalogPage};
 use crate::retry::{Repeat, RetryPolicy};
+use crate::util::error_text::CauseChain;
 use crate::util::http::{is_cacheable, CachedResponse, Http};
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
 use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
@@ -49,8 +50,8 @@ pub struct Wikidata {
 
 /// A Wikidata lookup failure, keeping the same wire-level distinctions the
 /// MusicBrainz client keeps: a transport failure that produced no HTTP
-/// response, a timeout, or an HTTP error *response* carrying a status. `Other`
-/// is local/internal detail, never Wikidata's verdict.
+/// response, a timeout, or an HTTP error *response* carrying a status.
+/// `Request` and `Other` are bae's own failures, never Wikidata's verdict.
 #[derive(Debug, Error)]
 pub enum WikidataError {
     /// Wikidata has no such item — a 404, which is its answer for an id that
@@ -58,9 +59,14 @@ pub enum WikidataError {
     #[error("No Wikidata item {0}")]
     NotFound(String),
     /// The request never reached a response — connection refused, DNS failure,
-    /// a dropped body. Carries the underlying error for logging.
-    #[error("Wikidata network error: {0}")]
-    Network(String),
+    /// TLS, a dropped body. Prints every cause below reqwest's own text, which
+    /// names none of them.
+    #[error("Wikidata network error: {}", CauseChain(.0))]
+    Network(#[source] reqwest::Error),
+    /// The request could not be made: a URL reqwest would not build, or a
+    /// redirect loop. Asking again fails the same way.
+    #[error("Wikidata request could not be made: {}", CauseChain(.0))]
+    Request(#[source] reqwest::Error),
     /// The request timed out before a response arrived.
     #[error("Wikidata request timed out")]
     Timeout,
@@ -80,11 +86,14 @@ pub enum WikidataError {
 }
 
 impl WikidataError {
-    /// Classify a `reqwest::Error` from a send or body read. A timeout is its
-    /// own variant; an error carrying an HTTP status is a `Provider` response;
+    /// Classify a `reqwest::Error` from a build, a send or a body read. A
+    /// request that could not be made is `Request`; a timeout is its own
+    /// variant; an error carrying an HTTP status is a `Provider` response;
     /// everything else (connection, DNS, dropped body) is transport `Network`.
     fn from_reqwest(e: reqwest::Error) -> Self {
-        if e.is_timeout() {
+        if e.is_builder() || e.is_redirect() {
+            WikidataError::Request(e)
+        } else if e.is_timeout() {
             WikidataError::Timeout
         } else if let Some(status) = e.status() {
             WikidataError::Provider {
@@ -92,14 +101,15 @@ impl WikidataError {
                 told_wait: None,
             }
         } else {
-            WikidataError::Network(e.to_string())
+            WikidataError::Network(e)
         }
     }
 }
 
 /// Retry only what a retry can fix. `NotFound` is Wikidata's answer about an
-/// item, not a fault. `Other` is local (a JSON parse): the same bytes will
-/// parse the same way.
+/// item, not a fault. `Request` and `Other` are local (a request reqwest would
+/// not build, a JSON parse): the same request fails, and the same bytes parse,
+/// the same way.
 /// A transient status is repeated after the wait the response asked for, when
 /// it asked for one.
 fn repeat(error: &WikidataError) -> Repeat {
@@ -117,7 +127,9 @@ fn repeat(error: &WikidataError) -> Repeat {
                 Repeat::Never
             }
         }
-        WikidataError::NotFound(_) | WikidataError::Other(_) => Repeat::Never,
+        WikidataError::NotFound(_) | WikidataError::Request(_) | WikidataError::Other(_) => {
+            Repeat::Never
+        }
     }
 }
 

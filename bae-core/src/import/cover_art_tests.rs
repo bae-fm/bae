@@ -476,11 +476,28 @@ async fn artwork_invalid_request_is_an_internal_failure() {
         .fetch_required("not a URL")
         .await
         .unwrap_err();
-    assert!(matches!(&error, ImportError::Internal { .. }), "{error}");
-    assert!(
-        error.to_string().contains("RelativeUrlWithoutBase"),
-        "{error}"
+    assert_eq!(crate::import::search::provider_failure(&error), None);
+    let crate::ui::UiError::Diagnostic { category, detail } = error.ui_error();
+    assert_eq!(category, crate::ui::UiErrorCategory::Internal);
+    assert!(detail.contains("relative URL without a base"), "{detail}");
+}
+
+/// An image request to a host no resolver knows names the DNS failure in the
+/// detail a surface shows, where reqwest's own text says only that sending
+/// failed.
+#[tokio::test]
+async fn artwork_unresolvable_host_names_its_dns_failure() {
+    let error = RemoteImageCache::for_test(direct_http())
+        .fetch_required("http://bae-test.invalid/cover.jpg")
+        .await
+        .unwrap_err();
+    assert_eq!(
+        crate::import::search::provider_failure(&error),
+        Some(crate::signals::LookupFailure::Network)
     );
+    let crate::ui::UiError::Diagnostic { category, detail } = error.ui_error();
+    assert_eq!(category, crate::ui::UiErrorCategory::Import);
+    assert!(detail.contains("dns error"), "{detail}");
 }
 
 #[tokio::test]

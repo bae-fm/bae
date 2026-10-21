@@ -570,23 +570,50 @@ fn mb_provider_failure(e: &musicbrainz::MusicBrainzError) -> Option<LookupFailur
             Some(LookupFailure::Provider { status: *status })
         }
         MusicBrainzError::NotFound(_) => Some(LookupFailure::Provider { status: Some(404) }),
-        MusicBrainzError::Other(_) => None,
+        MusicBrainzError::Request(_) | MusicBrainzError::Other(_) => None,
+    }
+}
+
+/// The failure a request that got no usable answer is, or `None` for one bae
+/// could not make: a URL reqwest would not build, a redirect loop.
+fn transport_failure(error: &reqwest::Error) -> Option<LookupFailure> {
+    if error.is_builder() || error.is_redirect() {
+        None
+    } else if error.is_timeout() {
+        Some(LookupFailure::Timeout)
+    } else if let Some(status) = error.status() {
+        Some(LookupFailure::Provider {
+            status: Some(status.as_u16()),
+        })
+    } else {
+        Some(LookupFailure::Network)
     }
 }
 
 /// Why a MusicBrainz lookup did not answer: its failure, or bae's own.
 fn mb_failure(e: &musicbrainz::MusicBrainzError, what: &str) -> Failure {
-    match mb_provider_failure(e) {
-        Some(failure) => Failure::Lookup(failure),
-        None => Failure::Internal(InternalFailure::logged(what, e)),
-    }
+    lookup_or_internal(mb_provider_failure(e), what, e)
 }
 
 /// Why a step that asked a catalog did not answer: what a provider answered
 /// with, or what bae met on its own side, logged as it is named.
 pub(crate) fn failure_of(error: &ImportError, what: &str) -> Failure {
-    match provider_failure(error) {
-        Some(failure) => Failure::Lookup(failure),
+    lookup_or_internal(provider_failure(error), what, error)
+}
+
+/// A provider's failure, warned with the error that carried it — the typed
+/// failure a surface renders keeps no cause, so this is where the DNS, TLS or
+/// status behind it is recorded — or bae's own, logged as an internal one.
+fn lookup_or_internal(
+    failure: Option<LookupFailure>,
+    what: &str,
+    error: &dyn std::fmt::Display,
+) -> Failure {
+    match failure {
+        Some(failure) => {
+            warn!("{what}: {error}");
+            Failure::Lookup(failure)
+        }
         None => Failure::Internal(InternalFailure::logged(what, error)),
     }
 }
@@ -597,11 +624,12 @@ pub(crate) fn failure_of(error: &ImportError, what: &str) -> Failure {
 pub(crate) fn provider_failure(error: &ImportError) -> Option<LookupFailure> {
     match error {
         ImportError::MusicBrainz(error) => mb_provider_failure(error),
-        ImportError::CoverArtRequest { failure, .. } => Some(failure.clone()),
+        ImportError::CoverArtTransport { error, .. } => transport_failure(error),
+        ImportError::CoverArtStatus { status, .. } => Some(LookupFailure::Provider {
+            status: Some(*status),
+        }),
         ImportError::Discogs(error) => match error {
-            DiscogsError::Transport(error) if error.is_builder() || error.is_redirect() => None,
-            DiscogsError::Transport(error) if error.is_timeout() => Some(LookupFailure::Timeout),
-            DiscogsError::Transport(_) => Some(LookupFailure::Network),
+            DiscogsError::Transport(error) => transport_failure(error),
             DiscogsError::Provider { status, .. } => Some(LookupFailure::Provider {
                 status: Some(status.as_u16()),
             }),

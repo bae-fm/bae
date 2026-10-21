@@ -227,7 +227,7 @@ async fn lead_metadata(
                     ),
                 });
             };
-            debug!(
+            warn!(
                 "identification: could not fetch the {:?} of {} ({}); storing the failure",
                 failure.asset,
                 release.release().key,
@@ -372,7 +372,7 @@ async fn settle_lead(
                     error: format!("could not settle {}: {error}", primary.key),
                 });
             };
-            debug!(
+            warn!(
                 "identification: could not settle {} ({error}); storing the failure",
                 primary.key
             );

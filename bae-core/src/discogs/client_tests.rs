@@ -972,3 +972,20 @@ async fn sustained_load_yields_discogs_minute_to_another_client() {
         outcome.elapsed
     );
 }
+
+/// A request that never reached Discogs names what failed underneath in the
+/// detail a surface shows, where reqwest's own text says only that sending
+/// failed.
+#[tokio::test]
+async fn a_transport_failure_names_its_cause_in_the_detail_a_surface_shows() {
+    let client = client_at("http://127.0.0.1:1".to_string());
+    let error = client
+        .get_release("510001", CallPriority::Interactive)
+        .await
+        .expect_err("nothing listens on port 1");
+    assert!(matches!(error, DiscogsError::Transport(_)), "{error}");
+    let crate::ui::UiError::Diagnostic { category, detail } =
+        crate::import::ImportError::from(error).ui_error();
+    assert_eq!(category, crate::ui::UiErrorCategory::Import);
+    assert!(detail.contains("tcp connect error"), "{detail}");
+}

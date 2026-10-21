@@ -127,13 +127,22 @@ pub enum ImportError {
     #[error("cover art failed: {detail}")]
     CoverArt { detail: String },
 
-    /// An artwork request failed with a known network or provider condition.
-    /// The reason remains typed for lookup surfaces; detail retains its context.
-    #[error("cover art request failed: {detail}")]
-    CoverArtRequest {
-        failure: crate::signals::LookupFailure,
-        detail: String,
+    /// An artwork request got no answer: the connection, DNS, TLS, a timeout
+    /// or a dropped body failed — or bae could not make the request at all (a
+    /// URL reqwest would not build, a redirect loop), which `ui_error` and
+    /// `provider_failure` tell apart by reading the error. `context` names
+    /// what was being fetched.
+    #[error("{context}: {}", crate::util::error_text::CauseChain(error))]
+    CoverArtTransport {
+        context: &'static str,
+        #[source]
+        error: reqwest::Error,
     },
+
+    /// An artwork host answered with a status that is not an image: a server
+    /// error, a refusal, or no image at an address that must have one.
+    #[error("cover art request failed: {detail}")]
+    CoverArtStatus { status: u16, detail: String },
 
     /// The selected local cover disappeared or could not be read.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -269,7 +278,6 @@ impl ImportError {
     pub fn ui_error(&self) -> crate::ui::UiError {
         use crate::discogs::client::DiscogsError;
         use crate::musicbrainz::MusicBrainzError;
-        use crate::signals::LookupFailure;
         use crate::ui::{UiError, UiErrorCategory as C};
         let category = match self {
             Self::GroupingBlocked { reason } => return reason.ui_error(),
@@ -287,6 +295,7 @@ impl ImportError {
             Self::SourceData { .. } | Self::CoverArt { .. } => C::ImportData,
             Self::MusicBrainz(error) => match error {
                 MusicBrainzError::Other(_) => C::ImportData,
+                MusicBrainzError::Request(_) => C::Internal,
                 MusicBrainzError::NotFound(_)
                 | MusicBrainzError::Network(_)
                 | MusicBrainzError::Timeout
@@ -302,11 +311,10 @@ impl ImportError {
                 | DiscogsError::InvalidApiKey
                 | DiscogsError::NotFound => C::Import,
             },
-            Self::CoverArtRequest { failure, .. } => match failure {
-                LookupFailure::Network
-                | LookupFailure::Timeout
-                | LookupFailure::Provider { .. } => C::Import,
-            },
+            Self::CoverArtTransport { error, .. } if error.is_builder() || error.is_redirect() => {
+                C::Internal
+            }
+            Self::CoverArtTransport { .. } | Self::CoverArtStatus { .. } => C::Import,
             Self::Internal { .. } => C::Internal,
             Self::Config { .. } => C::Config,
             Self::Scan(_)
@@ -381,7 +389,7 @@ mod tests {
             request_error,
         ));
         assert!(
-            error.to_string().contains("RelativeUrlWithoutBase"),
+            error.to_string().contains("relative URL without a base"),
             "{error}"
         );
         let crate::signals::Failure::Internal(failure) =
@@ -390,7 +398,7 @@ mod tests {
             panic!("a request bae could not build is its own failure");
         };
         assert!(
-            failure.detail.contains("RelativeUrlWithoutBase"),
+            failure.detail.contains("relative URL without a base"),
             "{}",
             failure.detail
         );

@@ -485,7 +485,7 @@ pub enum DiagnosticsError {
     InvalidHeader(#[source] reqwest::header::InvalidHeaderValue),
     #[error("diagnostic event serialization failed")]
     Serialize(#[source] serde_json::Error),
-    #[error("diagnostics transport failed")]
+    #[error("diagnostics transport failed: {}", crate::util::error_text::CauseChain(.0))]
     Transport(#[source] reqwest::Error),
     #[error("diagnostics intake rejected the batch with HTTP {0}")]
     Status(StatusCode),
@@ -927,5 +927,22 @@ mod tests {
         ));
         diagnostics.flush().await.expect("second flush succeeds");
         assert_eq!(transport.requests().len(), 2);
+    }
+
+    /// A batch that never reached the intake names the refused connection,
+    /// which reqwest's own text leaves to a cause below it.
+    #[tokio::test]
+    async fn a_transport_failure_names_its_cause() {
+        let request = DatadogRequest {
+            url: Url::parse("http://127.0.0.1:1/api/v2/logs").expect("the test URL parses"),
+            headers: HeaderMap::new(),
+            body: Vec::new(),
+        };
+        let error = DatadogTransport::new()
+            .send(request)
+            .await
+            .expect_err("nothing listens on port 1");
+        assert!(matches!(error, DiagnosticsError::Transport(_)), "{error}");
+        assert!(error.to_string().contains("tcp connect error"), "{error}");
     }
 }

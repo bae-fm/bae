@@ -14,6 +14,7 @@ use std::time::Duration;
 
 use crate::import::CatalogPage;
 use crate::retry::{Repeat, RetryPolicy};
+use crate::util::error_text::CauseChain;
 use crate::util::http::{is_cacheable, CachedResponse, Http};
 use crate::util::rate_limiter::{CallPriority, RateAnswer, RateLimiter, WindowCount};
 use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
@@ -109,9 +110,10 @@ fn url_lookup_url(resource: &str, include: &str) -> String {
 
 /// Retry only what a retry can fix. `NotFound` is MusicBrainz's answer, not a
 /// fault — and it's the ordinary answer for a disc it doesn't have, so retrying
-/// buys a round trip and a rate-limit wait per try to learn it again. `Other`
-/// is local (URL construction, JSON parse, a missing search field): either no
-/// request was made, or the same bytes will parse the same way.
+/// buys a round trip and a rate-limit wait per try to learn it again. `Request`
+/// and `Other` are local (a request reqwest would not build, a JSON parse, a
+/// missing search field): either no request was made, or the same bytes will
+/// parse the same way.
 ///
 /// A transient status is repeated after the wait the response asked for, when
 /// it asked for one.
@@ -130,7 +132,9 @@ fn repeat_mb(error: &MusicBrainzError) -> Repeat {
                 Repeat::Never
             }
         }
-        MusicBrainzError::NotFound(_) | MusicBrainzError::Other(_) => Repeat::Never,
+        MusicBrainzError::NotFound(_)
+        | MusicBrainzError::Request(_)
+        | MusicBrainzError::Other(_) => Repeat::Never,
     }
 }
 
@@ -220,17 +224,22 @@ fn mb_body(
 /// needs in order to localize: a transport failure that produced no HTTP
 /// response, a timeout, or an HTTP error *response* carrying a status. The status
 /// is kept structured — flattening it into a formatted string here would destroy
-/// it for every consumer. `Other` is local/internal detail, never a provider
-/// verdict.
+/// it for every consumer. `Request` and `Other` are bae's own failures, never
+/// a provider verdict.
 #[derive(Debug, Error)]
 pub enum MusicBrainzError {
     /// No release matched the DiscID (404 or an empty result set).
     #[error("No release found for DISCID: {0}")]
     NotFound(String),
     /// The request never reached a response — connection refused, DNS
-    /// failure, a dropped body. Carries the underlying error for logging.
-    #[error("MusicBrainz network error: {0}")]
-    Network(String),
+    /// failure, TLS, a dropped body. Prints every cause below reqwest's own
+    /// text, which names none of them.
+    #[error("MusicBrainz network error: {}", CauseChain(.0))]
+    Network(#[source] reqwest::Error),
+    /// The request could not be made: a URL reqwest would not build, or a
+    /// redirect loop. Asking again fails the same way.
+    #[error("MusicBrainz request could not be made: {}", CauseChain(.0))]
+    Request(#[source] reqwest::Error),
     /// The request timed out before a response arrived.
     #[error("MusicBrainz request timed out")]
     Timeout,
@@ -244,17 +253,18 @@ pub enum MusicBrainzError {
         status: Option<u16>,
         told_wait: Option<Duration>,
     },
-    /// A local/internal failure (URL construction, JSON parsing, body read).
+    /// A local failure reading an answer: JSON that does not parse, a
+    /// search answer missing a field.
     #[error("MusicBrainz API error: {0}")]
     Other(String),
 }
 
 impl MusicBrainzError {
-    /// Keep invalid request construction and redirect failures diagnostic;
-    /// actual transport, timeout, and HTTP status failures remain typed.
+    /// Keep a request bae could not make apart from transport, timeout and
+    /// HTTP status failures, each holding reqwest's error as its cause.
     fn from_reqwest(e: reqwest::Error) -> Self {
         if e.is_builder() || e.is_redirect() {
-            MusicBrainzError::Other(format!("{e:?}"))
+            MusicBrainzError::Request(e)
         } else if e.is_timeout() {
             MusicBrainzError::Timeout
         } else if let Some(status) = e.status() {
@@ -263,7 +273,7 @@ impl MusicBrainzError {
                 told_wait: None,
             }
         } else {
-            MusicBrainzError::Network(e.to_string())
+            MusicBrainzError::Network(e)
         }
     }
 }

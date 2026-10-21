@@ -273,14 +273,16 @@ fn mb_release_json(release: &MbReleaseResponse) -> String {
 /// answer for a disc MusicBrainz doesn't have, and each extra attempt costs
 /// another round trip plus a 1s rate-limit wait; the "at least one search field"
 /// error is raised before a request is even built.
-#[test]
-fn only_transient_musicbrainz_failures_are_retried() {
+#[tokio::test]
+async fn only_transient_musicbrainz_failures_are_retried() {
     let provider = |status: Option<u16>, told_wait: Option<Duration>| {
         repeat_mb(&MusicBrainzError::Provider { status, told_wait })
     };
     assert_eq!(repeat_mb(&MusicBrainzError::Timeout), Repeat::AfterBackoff);
     assert_eq!(
-        repeat_mb(&MusicBrainzError::Network("refused".into())),
+        repeat_mb(&MusicBrainzError::Network(
+            crate::util::http::refused_request_error().await
+        )),
         Repeat::AfterBackoff
     );
     assert_eq!(provider(Some(503), None), Repeat::AfterBackoff);
@@ -303,6 +305,36 @@ fn only_transient_musicbrainz_failures_are_retried() {
         )),
         Repeat::Never
     );
+    assert_eq!(
+        repeat_mb(&MusicBrainzError::Request(
+            crate::util::http::unbuildable_request_error()
+        )),
+        Repeat::Never
+    );
+}
+
+/// A lookup that never reached MusicBrainz names what failed underneath — the
+/// DNS lookup, the refused connection — in the detail a surface shows, where
+/// reqwest's own text says only that sending failed. The request's path and
+/// query stay out of it.
+#[tokio::test]
+async fn a_network_failure_names_its_cause_in_the_detail_a_surface_shows() {
+    for (origin, cause) in [
+        ("http://bae-test.invalid", "dns error"),
+        ("http://127.0.0.1:1", "tcp connect error"),
+    ] {
+        let musicbrainz = MusicBrainz::for_test(Http::for_test().serve_every_host(origin));
+        let error = musicbrainz
+            .lookup_by_discid("disc-unreachable", CallPriority::Interactive)
+            .await
+            .expect_err("nothing answers there");
+        assert!(matches!(error, MusicBrainzError::Network(_)), "{error}");
+        let crate::ui::UiError::Diagnostic { category, detail } =
+            crate::import::ImportError::from(error).ui_error();
+        assert_eq!(category, crate::ui::UiErrorCategory::Import);
+        assert!(detail.contains(cause), "{detail}");
+        assert!(!detail.contains("disc-unreachable"), "{detail}");
+    }
 }
 
 // ── release_labels ────────────────────────────────────────────────────────
@@ -795,9 +827,9 @@ async fn invalid_request_is_diagnostic_not_a_network_outage() {
         .get("not a URL", CallPriority::Interactive)
         .await
         .unwrap_err();
-    assert!(matches!(&error, MusicBrainzError::Other(_)), "{error}");
+    assert!(matches!(&error, MusicBrainzError::Request(_)), "{error}");
     assert!(
-        error.to_string().contains("RelativeUrlWithoutBase"),
+        error.to_string().contains("relative URL without a base"),
         "{error}"
     );
 }

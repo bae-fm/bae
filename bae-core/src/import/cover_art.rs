@@ -1,6 +1,5 @@
 use crate::import::{Catalog, ImportError};
 use crate::retry::{is_transient_status, retry_classified, ClassifiedAttempt, Repeat, RetryPolicy};
-use crate::signals::LookupFailure;
 use crate::util::content_type::ContentType;
 use crate::util::http::Http;
 use std::collections::HashMap;
@@ -706,8 +705,8 @@ impl RemoteImageCache {
     pub(crate) async fn fetch_required(&self, url: &str) -> Result<RemoteImage, ImportError> {
         self.fetch(url)
             .await?
-            .ok_or_else(|| ImportError::CoverArtRequest {
-                failure: LookupFailure::Provider { status: Some(404) },
+            .ok_or_else(|| ImportError::CoverArtStatus {
+                status: 404,
                 detail: format!("no image is served at {url}"),
             })
     }
@@ -783,7 +782,10 @@ async fn send_artwork_request(
             Ok(request) => request,
             Err(error) => {
                 return ClassifiedAttempt::Failed(
-                    artwork_request_error(error, "Failed to fetch image"),
+                    ImportError::CoverArtTransport {
+                        context: "Failed to fetch image",
+                        error,
+                    },
                     Repeat::Never,
                 );
             }
@@ -797,7 +799,10 @@ async fn send_artwork_request(
                     Repeat::AfterBackoff
                 };
                 return ClassifiedAttempt::Failed(
-                    artwork_request_error(error, "Failed to fetch image"),
+                    ImportError::CoverArtTransport {
+                        context: "Failed to fetch image",
+                        error,
+                    },
                     repeat,
                 );
             }
@@ -816,10 +821,8 @@ async fn send_artwork_request(
             Repeat::Never
         };
         ClassifiedAttempt::Failed(
-            ImportError::CoverArtRequest {
-                failure: LookupFailure::Provider {
-                    status: Some(status.as_u16()),
-                },
+            ImportError::CoverArtStatus {
+                status: status.as_u16(),
                 detail: format!("Image download failed with status {status}"),
             },
             repeat,
@@ -835,29 +838,14 @@ fn is_permanent_request_error(error: &reqwest::Error) -> bool {
     error.is_builder() || error.is_redirect()
 }
 
-/// Keep transport failures distinct from an invalid request or response content.
-fn artwork_request_error(error: reqwest::Error, context: &str) -> ImportError {
-    if is_permanent_request_error(&error) {
-        return ImportError::Internal {
-            detail: format!("{context}: {error:?}"),
-        };
-    }
-    let detail = format!("{context}: {error}");
-    let failure = if error.is_timeout() {
-        LookupFailure::Timeout
-    } else if let Some(status) = error.status() {
-        LookupFailure::Provider {
-            status: Some(status.as_u16()),
-        }
-    } else {
-        LookupFailure::Network
-    };
-    ImportError::CoverArtRequest { failure, detail }
-}
-
-fn artwork_body_error(error: crate::util::http::HttpBodyError, context: &str) -> ImportError {
+fn artwork_body_error(
+    error: crate::util::http::HttpBodyError,
+    context: &'static str,
+) -> ImportError {
     match error {
-        crate::util::http::HttpBodyError::Read(error) => artwork_request_error(error, context),
+        crate::util::http::HttpBodyError::Read(error) => {
+            ImportError::CoverArtTransport { context, error }
+        }
         crate::util::http::HttpBodyError::TooLarge { .. } => ImportError::CoverArt {
             detail: format!("{context}: {error}"),
         },

@@ -49,6 +49,9 @@ jobs:
     - name: Check restricted-path Rust visibility
       run: scripts/check-rust-visibility.sh
 
+    - name: Check reqwest error causes
+      run: scripts/check-reqwest-error-display.py
+
     - name: Check owner dependency boundaries
       run: scripts/owner-dependency-boundary.sh
 
