@@ -62,9 +62,6 @@ struct HostedAlbumGrid {
                 .environment(store)
                 .environment(library)
                 .environment(ImageStore.stub())
-                .environment(
-                    SyncActivityStore(retryNow: {}, dismissAbandoned: { _ in })
-                )
         )
         let frame = NSRect(x: 0, y: 0, width: 1180, height: 720)
         let host = NSHostingView(rootView: view)

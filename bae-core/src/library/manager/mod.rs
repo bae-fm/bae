@@ -55,14 +55,11 @@ use storage_operations::*;
 mod abandoned;
 pub use abandoned::AbandonedItem;
 mod album;
-mod arrivals;
-pub use arrivals::{Arrivals, ArrivingFile, DeviceArrivals, ReleaseArrival};
 mod artist;
 mod collections;
 mod composer;
 mod config;
 mod coven_files;
-pub use coven_files::ImageRead;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod discogs;
 mod error_category;
@@ -343,14 +340,12 @@ impl From<crate::import::ImportError> for LibraryError {
     }
 }
 
-/// Sync activity, the things coven is waiting on that need attention, and
-/// the files still arriving from other devices. Each list is `None` until
-/// first read.
+/// Sync activity and the things coven is waiting on that need attention.
+/// Each list is `None` until first read.
 #[derive(Debug, Clone)]
 pub struct SyncStatusSnapshot {
     pub status: coven::SyncStatus,
     pub pending: Option<Result<Vec<PendingItem>, crate::ui::UiError>>,
-    pub arrivals: Option<Result<Arrivals, crate::ui::UiError>>,
     /// The files this device attached that no row will name, until the
     /// person dismisses them; `None` until first read.
     pub abandoned: Option<Result<Vec<AbandonedItem>, crate::ui::UiError>>,

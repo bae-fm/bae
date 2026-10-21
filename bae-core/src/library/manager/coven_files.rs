@@ -173,22 +173,6 @@ impl LibraryManager {
             .await?)
     }
 
-    /// A library image to show: its bytes. `None` when this device has no
-    /// file for it.
-    pub async fn read_image(&self, image: &ImageRef) -> Result<Option<ImageRead>, LibraryError> {
-        let Some(file) = self
-            .library_image_file(&image.id, &image.image_type)
-            .await?
-        else {
-            return Ok(None);
-        };
-        let bytes =
-            self.database.read_file(&file).await.map_err(|error| {
-                LibraryError::file_read(format!("read image {}", image.id), error)
-            })?;
-        Ok(Some(ImageRead::Bytes(bytes)))
-    }
-
     /// A release is pinned only when every one of its files is pinned.
     pub(crate) async fn release_pinned(
         &self,
@@ -302,15 +286,6 @@ impl LibraryManager {
         self.database.write_library_image(image, bytes).await?;
         Ok(())
     }
-}
-
-/// An image to show, read now or still on its way from another device.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ImageRead {
-    Bytes(Vec<u8>),
-    /// Another device hasn't uploaded the image's file yet. No read returns
-    /// this: a row names its file only once storage holds it.
-    Arriving(super::ArrivingFile),
 }
 
 /// One file of a release's pinned set, with the plaintext byte size its row

@@ -389,12 +389,9 @@ extension MediaControlService {
         appHandle: AppHandle
     ) async -> Data? {
         do {
-            // Artwork still arriving from another device shows once it lands;
-            // a track change cancels the wait with this task.
             guard
-                let data = try await ImageStore.libraryImageBytes(
-                    image,
-                    handle: appHandle
+                let data = try await appHandle.fetchLibraryImageBytes(
+                    image: image
                 )
             else {
                 logger.debug("No Now Playing artwork for \(image.id)")

@@ -14,7 +14,6 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.runLoggedBridgeCommand
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +23,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandle
-import uniffi.bae_bridge.BridgeImageRead
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLoadingTrack
 import uniffi.bae_bridge.BridgeNowPlayingTrack
@@ -219,9 +217,6 @@ class BaeCorePlayer(
     /** The cover the current track's artwork is fetched for, and its bytes once
      *  they arrive. */
     private var currentArtworkCover: BridgeImageRef? = null
-
-    /** The fetch of [currentArtworkCover]'s bytes, cancelled when the cover changes. */
-    private var artworkJob: Job? = null
     private var currentArtwork: ByteArray? = null
 
     private var sidePausePrompt: SidePausePrompt? = null
@@ -373,51 +368,27 @@ class BaeCorePlayer(
         if (coverImage == currentArtworkCover) return
         currentArtworkCover = coverImage
         currentArtwork = null
-        artworkJob?.cancel()
         if (coverImage == null) {
             invalidateState()
             return
         }
-        artworkJob =
-            scope.launch {
-                val bytes =
-                    try {
-                        artworkBytes(coverImage)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        logger.error("Failed to load now-playing artwork ${coverImage.id}", e)
-                        null
-                    }
-                // The track may have changed while this fetched.
-                if (currentArtworkCover == coverImage) {
-                    if (bytes == null) {
-                        logger.warning("now-playing artwork bytes absent for ${coverImage.id}")
-                    }
-                    currentArtwork = bytes
-                    invalidateState()
+        scope.launch {
+            val bytes =
+                try {
+                    appHandle.fetchLibraryImageBytes(coverImage)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.error("Failed to load now-playing artwork ${coverImage.id}", e)
+                    null
                 }
-            }
-    }
-
-    /** [coverImage]'s bytes, or null when it has none. Artwork still arriving from
-     *  another device waits for its file and reads again; a track change cancels
-     *  the wait with the coroutine. */
-    private suspend fun artworkBytes(coverImage: BridgeImageRef): ByteArray? {
-        while (true) {
-            when (val read = appHandle.fetchLibraryImage(coverImage)) {
-                null -> {
-                    return null
+            // The track may have changed while this fetched.
+            if (currentArtworkCover == coverImage) {
+                if (bytes == null) {
+                    logger.warning("now-playing artwork bytes absent for ${coverImage.id}")
                 }
-
-                is BridgeImageRead.Bytes -> {
-                    return read.bytes
-                }
-
-                is BridgeImageRead.Arriving -> {
-                    logger.debug("now-playing artwork ${coverImage.id} is still arriving")
-                    appHandle.waitForArrival(read.file)
-                }
+                currentArtwork = bytes
+                invalidateState()
             }
         }
     }

@@ -423,7 +423,7 @@ impl LibraryManager {
                 }
             }
         })?;
-        let pending = super::arrivals::PendingFollower::new(self.clone());
+        let pending = super::pending_item::PendingFollower::new(self.clone());
         self.spawn_supervised_task("pending sync records", pending.run())?;
         let abandoned = super::abandoned::AbandonedFollower::new(self.clone());
         self.spawn_supervised_task("abandoned attachments", abandoned.run())

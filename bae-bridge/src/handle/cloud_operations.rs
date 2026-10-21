@@ -1,28 +1,17 @@
 use super::*;
 
 forward! { async this => {
-    /// A library image to show, or `None` when no image is stored.
-    fn fetch_library_image(image: crate::types::BridgeImageRef) -> Option<crate::types::BridgeImageRead> {
-        Ok(this.services
-            .read_image(&image.into_core())
-            .await
-            .map_err(BridgeError::database_query)?
-            .map(crate::types::BridgeImageRead::from_core))
-    }
-
-    fn fetch_release_image(release_id: String, source: BridgeGallerySource) -> crate::types::BridgeImageRead {
-        Ok(crate::types::BridgeImageRead::from_core(this.services
-            .read_gallery_bytes(&release_id, &source.into_core())
-            .await
-            .map_err(BridgeError::database_query)?))
-    }
-
-    /// Resolves once `file` no longer arrives, as when coven fetched it after
-    /// its uploader uploaded it; the image that named it reads again then.
-    /// Dropping the call stops the wait.
-    fn wait_for_arrival(file: std::sync::Arc<crate::types::BridgeArrivingFile>) -> () {
+    /// A library image's bytes, or `None` when no image is stored.
+    fn fetch_library_image_bytes(image: crate::types::BridgeImageRef) -> Option<Vec<u8>> {
         this.services
-            .wait_for_arrival(file.0)
+            .read_image_bytes(&image.into_core())
+            .await
+            .map_err(BridgeError::database_query)
+    }
+
+    fn fetch_release_image_bytes(release_id: String, source: BridgeGallerySource) -> Vec<u8> {
+        this.services
+            .read_gallery_bytes(&release_id, &source.into_core())
             .await
             .map_err(BridgeError::database_query)
     }

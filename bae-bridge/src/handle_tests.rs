@@ -609,7 +609,6 @@ fn a_failed_sync_status_crosses_with_its_fault() {
         error: Some(bae_core::ui::UiError::internal(fault)),
         status: coven::SyncStatus::Disconnected,
         pending: None,
-        arrivals: None,
         abandoned: None,
     };
 
@@ -638,7 +637,6 @@ fn a_healthy_sync_status_crosses_without_an_error() {
             finished_at: std::time::UNIX_EPOCH,
         },
         pending: Some(Ok(Vec::new())),
-        arrivals: Some(Ok(Default::default())),
         abandoned: Some(Ok(Vec::new())),
     };
 

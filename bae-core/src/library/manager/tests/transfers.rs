@@ -318,6 +318,40 @@ async fn an_upload_abandoned_by_another_change_is_listed_until_dismissed() {
     .unwrap();
 }
 
+/// An upload whose original vanished is listed in the sync status, named by
+/// its file and album, with restoring the file as what the person can do.
+#[tokio::test]
+async fn an_upload_missing_its_original_is_listed_by_name() {
+    let (manager, temp, _release, _file_id) = queued_upload_fixture("listed").await;
+    std::fs::remove_file(temp.path().join("listed/a.flac")).unwrap();
+    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
+    manager.start().unwrap();
+    let mut values = manager.subscribe_sync_status_values();
+    let listed = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        values.wait_for(|status| matches!(&status.pending, Some(Ok(items)) if !items.is_empty())),
+    )
+    .await
+    .expect("the pending upload is listed")
+    .unwrap()
+    .clone();
+    let Some(Ok(items)) = listed.pending else {
+        unreachable!("waited for a listed record");
+    };
+    let item = items
+        .iter()
+        .find(|item| matches!(item.subject, PendingSubjectName::ReleaseFile { .. }))
+        .expect("the upload is named by its file");
+    assert_eq!(
+        item.subject,
+        PendingSubjectName::ReleaseFile {
+            file_name: "a.flac".into(),
+            album_title: "Test Album".into(),
+        }
+    );
+    assert_eq!(item.wait.action, crate::library::PendingAction::RestoreFile);
+}
+
 /// A cover upload is carried by the `covers` row whose primary key is the
 /// release id, while its immutable cloud file has a distinct id. The queue must
 /// identify and size the file itself rather than mistaking the release id for

@@ -377,9 +377,7 @@ impl AppServices {
     delegate_async!(manager, cover_ref => cover_ref(release_id: &str) -> Result<Option<crate::album_detail::ImageRef>, crate::library::LibraryError>);
     delegate_async!(manager, read_image_bytes => read_image_bytes(image: &crate::album_detail::ImageRef) -> Result<Option<Vec<u8>>, crate::library::LibraryError>);
     delegate_async!(manager, read_library_image_bytes => read_library_image_bytes(id: &str, image_type: &crate::db::LibraryImageType) -> Result<Option<Vec<u8>>, crate::library::LibraryError>);
-    delegate_async!(manager, read_gallery_bytes => read_gallery_bytes(release_id: &str, source: &crate::album_detail::GallerySource) -> Result<crate::library::ImageRead, crate::library::LibraryError>);
-    delegate_async!(manager, read_image => read_image(image: &crate::album_detail::ImageRef) -> Result<Option<crate::library::ImageRead>, crate::library::LibraryError>);
-    delegate_async!(manager, wait_for_arrival => wait_for_arrival(file: crate::library::ArrivingFile) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, read_gallery_bytes => read_gallery_bytes(release_id: &str, source: &crate::album_detail::GallerySource) -> Result<Vec<u8>, crate::library::LibraryError>);
     delegate_async!(manager, read_cover_image_bytes => read_cover_image_bytes(release_id: &str) -> Result<Option<Vec<u8>>, crate::library::LibraryError>);
     delegate_async!(manager, get_artists_for_track => get_artists_for_track(track_id: &str) -> Result<Vec<crate::db::DbArtist>, crate::library::LibraryError>);
     delegate_async!(manager, get_all_track_ids => get_all_track_ids() -> Result<Vec<String>, crate::library::LibraryError>);

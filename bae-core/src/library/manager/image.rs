@@ -12,29 +12,13 @@ impl LibraryManager {
         &self,
         release_id: &str,
         source: &GallerySource,
-    ) -> Result<ImageRead, LibraryError> {
+    ) -> Result<Vec<u8>, LibraryError> {
         match source {
-            GallerySource::Cover(image) => self.read_image(image).await?.ok_or_else(|| {
+            GallerySource::Cover(image) => self.read_image_bytes(image).await?.ok_or_else(|| {
                 LibraryError::Storage(format!("gallery cover image {} has no bytes", image.id))
             }),
-            GallerySource::ReleaseFile { file_id } => Ok(ImageRead::Bytes(
-                self.load_gallery_image(release_id, file_id).await?,
-            )),
-        }
-    }
-
-    /// Wait until no pending record waits for `file`'s upload. coven records
-    /// no such wait any more (a row names a file only once it is stored), so
-    /// this returns at its first read.
-    pub async fn wait_for_arrival(&self, file: ArrivingFile) -> Result<(), LibraryError> {
-        let mut pending = self.database.subscribe_pending();
-        loop {
-            let records = pending.next().await?;
-            if !records
-                .iter()
-                .any(|record| ArrivingFile::of(record) == Some(file))
-            {
-                return Ok(());
+            GallerySource::ReleaseFile { file_id } => {
+                self.load_gallery_image(release_id, file_id).await
             }
         }
     }

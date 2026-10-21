@@ -45,7 +45,6 @@ import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeImageRead
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLibraryPageWindow
 import uniffi.bae_bridge.BridgeLibrarySearchSnapshot
@@ -239,8 +238,7 @@ internal class FakeAppHandle(
 
     override fun triggerSync() {}
 
-    override suspend fun fetchLibraryImage(image: BridgeImageRef): BridgeImageRead? =
-        imageBytes[image.id]?.let { BridgeImageRead.Bytes(it) }
+    override suspend fun fetchLibraryImageBytes(image: BridgeImageRef): ByteArray? = imageBytes[image.id]
 
     /** Deliver [value] on a search, as the answer to its newest request unless [revision] names
      *  an earlier one. */

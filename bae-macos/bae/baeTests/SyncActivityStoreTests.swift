@@ -18,23 +18,6 @@ struct SyncActivityStoreTests {
         #expect(store.visible)
     }
 
-    /// An album or release still arriving names its device; one that has
-    /// arrived names none.
-    @MainActor
-    @Test("arrivals are looked up by album and by release")
-    func arrivalLookups() {
-        let store = SyncActivityStore(
-            activity: .preview(needsAttention: false),
-            retryNow: {},
-            dismissAbandoned: { _ in }
-        )
-        #expect(store.arrivingFrom(albumId: "a-1") == "Studio Mac")
-        #expect(store.arrivingFrom(albumId: "a-9") == nil)
-        #expect(store.arrival(releaseId: "r-1")?.trackIds == ["t-3", "t-4"])
-        store.apply(settled())
-        #expect(store.arrivingFrom(albumId: "a-1") == nil)
-    }
-
     private func settled() -> BridgeSyncActivity {
         BridgeSyncActivity(
             moving: false,
@@ -44,8 +27,7 @@ struct SyncActivityStoreTests {
             abandoned: .ready(attachments: []),
             syncing: false,
             uploads: nil,
-            downloads: nil,
-            arrivals: .ready(devices: [], albums: [:], releases: [:])
+            downloads: nil
         )
     }
 }

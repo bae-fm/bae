@@ -8,8 +8,6 @@ struct AlbumCardView: View {
     let artistNames: String
     let year: Int32?
     let cover: BridgeImageRef?
-    /// The device the album's files are still arriving from, if any are.
-    let arrivingFrom: String?
     /// The album's detail is open; shown as the accent ring on the art.
     let isExpanded: Bool
     /// The album is in the multi-selection; shown as a tint behind the card.
@@ -44,10 +42,6 @@ struct AlbumCardView: View {
                         lineWidth: 3
                     )
                 )
-                .overlay(alignment: .bottomTrailing) {
-                    AlbumArrivalBadge(device: arrivingFrom)
-                        .padding(ThemeSpace.compact)
-                }
                 .overlay(alignment: .topTrailing) {
                     CardMenuButton(menu: menu, showMenu: $showMenu)
                         .padding(ThemeSpace.compact)
@@ -131,7 +125,6 @@ private struct AlbumCardStack<Art: View>: View {
                 artistNames: album.artistNames,
                 year: album.year,
                 cover: nil,
-                arrivingFrom: "Studio Mac",
                 isExpanded: false,
                 isSelected: false,
                 size: 200,
@@ -142,7 +135,6 @@ private struct AlbumCardStack<Art: View>: View {
                 artistNames: selected.artistNames,
                 year: selected.year,
                 cover: nil,
-                arrivingFrom: nil,
                 isExpanded: false,
                 isSelected: true,
                 size: 200,

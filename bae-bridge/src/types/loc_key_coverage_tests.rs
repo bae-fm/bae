@@ -25,7 +25,7 @@ const DIRECT_KEYS: &[&str] = &[
     // Transfer labels resolved by the UI.
     "core.outbox.throughput",
     "core.outbox.eta",
-    // The sync activity list and the quiet lines for files still arriving.
+    // The sync activity list.
     "core.activity.title",
     "core.activity.attention",
     "core.activity.open_settings",
@@ -33,9 +33,6 @@ const DIRECT_KEYS: &[&str] = &[
     "core.activity.idle",
     "core.activity.retry_now",
     "core.abandoned.action.dismiss",
-    "core.arrival.from",
-    "core.arrival.other_pictures",
-    "core.arrival.track",
     // The cast picker words a lost device's end with its name.
     "core.cast.ended",
     // Returned by the device-reset confirmation object.

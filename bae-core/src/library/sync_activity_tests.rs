@@ -1,6 +1,6 @@
 use super::*;
 use crate::library::CountLabel;
-use crate::library::{DeviceArrivals, OutboxSnapshot, ReleaseArrival, UploadProgress};
+use crate::library::{OutboxSnapshot, UploadProgress};
 
 fn status() -> SyncStatusSnapshot {
     SyncStatusSnapshot {
@@ -8,7 +8,6 @@ fn status() -> SyncStatusSnapshot {
             finished_at: std::time::UNIX_EPOCH,
         },
         pending: Some(Ok(Vec::new())),
-        arrivals: Some(Ok(Arrivals::default())),
         abandoned: Some(Ok(Vec::new())),
         error: None,
     }
@@ -41,10 +40,9 @@ fn a_pass_alone_is_not_movement() {
     assert!(!activity.moving());
 }
 
-/// Files being sent and files arriving each move; a paused queue's waiting
-/// files don't.
+/// Files being sent move; a paused queue's waiting files don't.
 #[test]
-fn transfers_and_arrivals_are_movement() {
+fn transfers_are_movement() {
     let mut outbox = OutboxSnapshot {
         total: UploadProgress {
             queued: 4,
@@ -69,29 +67,6 @@ fn transfers_and_arrivals_are_movement() {
     outbox.total.uploading = 0;
     let paused = SyncActivity::new(&status(), &outbox, &DownloadQueueContents::default());
     assert_eq!(paused.uploads, None);
-
-    let mut arriving = status();
-    arriving.arrivals = Some(Ok(Arrivals {
-        devices: vec![DeviceArrivals {
-            device: coven::DeviceId(1),
-            device_name: "Studio Mac".into(),
-            releases: vec![ReleaseArrival {
-                release_id: "release".into(),
-                album_id: "album".into(),
-                album_title: "Blue".into(),
-                cover: true,
-                track_ids: Vec::new(),
-            }],
-            other_files: 0,
-        }],
-    }));
-    let activity = SyncActivity::new(
-        &arriving,
-        &OutboxSnapshot::default(),
-        &DownloadQueueContents::default(),
-    );
-    assert!(activity.moving());
-    assert!(!activity.needs_attention(), "arriving files need nothing");
 }
 
 /// A sync failure, a pending record that needs the person or an abandoned
@@ -119,7 +94,7 @@ fn failures_and_pending_records_need_attention() {
     )]));
     assert!(new(&waiting).needs_attention());
     let mut unread = status();
-    unread.arrivals = Some(Err(UiError::internal("no devices")));
+    unread.pending = Some(Err(UiError::internal("no records")));
     assert!(new(&unread).needs_attention());
     let mut abandoned = status();
     abandoned.abandoned = Some(Ok(vec![crate::library::AbandonedItem {

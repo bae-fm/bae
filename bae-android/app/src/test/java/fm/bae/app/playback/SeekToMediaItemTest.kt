@@ -13,7 +13,6 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AppHandle
-import uniffi.bae_bridge.BridgeImageRead
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
@@ -139,6 +138,6 @@ class SeekToMediaItemTest {
 
         override fun subscribeUiEvents(callback: UiEventCallback) {}
 
-        override suspend fun fetchLibraryImage(image: BridgeImageRef): BridgeImageRead? = null
+        override suspend fun fetchLibraryImageBytes(image: BridgeImageRef): ByteArray? = null
     }
 }

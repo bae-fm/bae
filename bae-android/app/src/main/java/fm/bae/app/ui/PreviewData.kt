@@ -6,14 +6,11 @@ import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumSearchResult
-import uniffi.bae_bridge.BridgeArrivals
-import uniffi.bae_bridge.BridgeArrivingRelease
 import uniffi.bae_bridge.BridgeArtistDetail
 import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeCountLabel
-import uniffi.bae_bridge.BridgeDeviceArrivals
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadProgress
 import uniffi.bae_bridge.BridgeDownloadSnapshot
@@ -47,7 +44,6 @@ import uniffi.bae_bridge.BridgePressingFacts
 import uniffi.bae_bridge.BridgeQueuedRelease
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseArea
-import uniffi.bae_bridge.BridgeReleaseArrival
 import uniffi.bae_bridge.BridgeReleaseName
 import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeReleaseStorageState
@@ -279,20 +275,8 @@ object PreviewData {
             state = state,
         )
 
-    /** [release] still arriving from a Mac: its cover and its first two tracks. */
-    fun releaseArrival(release: BridgeRelease): BridgeReleaseArrival =
-        BridgeReleaseArrival(
-            deviceName = "Studio Mac",
-            cover = true,
-            trackIds =
-                release.trackGroups
-                    .flatMap { it.tracks }
-                    .take(2)
-                    .map { it.id },
-        )
-
-    /** A library mid-arrival: files uploading, two albums still
-     *  arriving from a Mac, and, when [needsAttention], a record that needs signing in. */
+    /** A library mid-sync: files uploading and, when [needsAttention], a record
+     *  that needs signing in. */
     fun syncActivity(needsAttention: Boolean): BridgeSyncActivity =
         BridgeSyncActivity(
             moving = true,
@@ -328,26 +312,6 @@ object PreviewData {
                     bytesTotal = 8_400_000uL,
                 ),
             downloads = null,
-            arrivals =
-                BridgeArrivals.Ready(
-                    devices =
-                        listOf(
-                            BridgeDeviceArrivals(
-                                deviceName = "Studio Mac",
-                                releases =
-                                    listOf(
-                                        BridgeArrivingRelease("r-1", "a-1", "Album Title One"),
-                                        BridgeArrivingRelease("r-2", "a-2", "Album Title Two"),
-                                    ),
-                                otherFiles = 3u,
-                            ),
-                        ),
-                    albums = mapOf("a-1" to "Studio Mac", "a-2" to "Studio Mac"),
-                    releases =
-                        mapOf(
-                            "r-1" to BridgeReleaseArrival("Studio Mac", cover = true, trackIds = listOf("t-3", "t-4")),
-                        ),
-                ),
         )
 
     fun downloadSnapshot(

@@ -1,5 +1,4 @@
 mod abandoned;
-mod arrivals;
 mod configuration;
 #[cfg(feature = "desktop")]
 mod conversion;
@@ -18,9 +17,9 @@ mod pressing;
 mod storage;
 mod storage_failure;
 mod storage_inspector;
+mod sync_activity;
 
 pub use abandoned::*;
-pub use arrivals::*;
 pub use configuration::*;
 #[cfg(feature = "desktop")]
 pub use cover::*;
@@ -37,6 +36,7 @@ pub use pressing::*;
 pub use storage::*;
 pub use storage_failure::*;
 pub use storage_inspector::*;
+pub use sync_activity::*;
 
 #[cfg(all(test, feature = "desktop"))]
 #[path = "types/loc_key_coverage_tests.rs"]

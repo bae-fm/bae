@@ -82,7 +82,6 @@ struct AlbumExpansionContent: View {
                             .themeText(.detail)
                             .foregroundStyle(.secondary)
                     }
-                    ReleaseArrivalLine(releaseId: selectedRelease.id)
                     HStack(spacing: ThemeSpace.related) {
                         Button(action: onPlay) {
                             Label("Play", systemImage: "play.fill")

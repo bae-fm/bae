@@ -165,10 +165,13 @@ public final class ImageStore: Sendable, Observable {
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
                 fetchLibraryImageBytes: {
-                    try await Self.libraryImageBytes($0, handle: handle)
+                    try await handle.fetchLibraryImageBytes(image: $0)
                 },
                 fetchReleaseImageBytes: {
-                    try await Self.releaseImageBytes($0, $1, handle: handle)
+                    try await handle.fetchReleaseImageBytes(
+                        releaseId: $0,
+                        source: $1
+                    )
                 },
                 fetchRemoteImage: {
                     guard
@@ -190,58 +193,17 @@ public final class ImageStore: Sendable, Observable {
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
                 fetchLibraryImageBytes: {
-                    try await Self.libraryImageBytes($0, handle: handle)
+                    try await handle.fetchLibraryImageBytes(image: $0)
                 },
                 fetchReleaseImageBytes: {
-                    try await Self.releaseImageBytes($0, $1, handle: handle)
+                    try await handle.fetchReleaseImageBytes(
+                        releaseId: $0,
+                        source: $1
+                    )
                 }
             )
         }
     #endif
-
-    /// A library image's bytes once they can be read, or nil when no image
-    /// is stored. An image another device is still uploading is no failure:
-    /// the read waits for its file to arrive, then reads again. The wait is
-    /// the calling view's task, so leaving the view ends it.
-    static func libraryImageBytes(
-        _ image: BridgeImageRef,
-        handle: any AppHandleProtocol
-    ) async throws -> Data? {
-        while true {
-            switch try await handle.fetchLibraryImage(image: image) {
-            case nil:
-                return nil
-            case .bytes(let bytes):
-                return bytes
-            case .arriving(let file):
-                logger.debug("\(image.imageType) \(image.id) is still arriving")
-                try await handle.waitForArrival(file: file)
-            }
-        }
-    }
-
-    /// A release image-strip slot's bytes once they can be read, waiting for
-    /// a file still arriving from another device as `libraryImageBytes` does.
-    static func releaseImageBytes(
-        _ releaseId: String,
-        _ source: BridgeGallerySource,
-        handle: any AppHandleProtocol
-    ) async throws -> Data {
-        while true {
-            switch try await handle.fetchReleaseImage(
-                releaseId: releaseId,
-                source: source
-            ) {
-            case .bytes(let bytes):
-                return bytes
-            case .arriving(let file):
-                logger.debug(
-                    "An image of release \(releaseId) is still arriving"
-                )
-                try await handle.waitForArrival(file: file)
-            }
-        }
-    }
 
     #if DEBUG
         // periphery:ignore

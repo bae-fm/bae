@@ -55,7 +55,6 @@ import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.color
 import uniffi.bae_bridge.BridgeAbandonedAttachment
-import uniffi.bae_bridge.BridgeArrivals
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePendingRecords
 import uniffi.bae_bridge.BridgeSyncActivity
@@ -136,8 +135,8 @@ private fun SyncActivitySheet(
 }
 
 /**
- * What sync is doing: what needs the person first, then what is moving, then
- * what is still arriving from other devices, and Retry Now.
+ * What sync is doing: what needs the person first, then what is moving, and
+ * Retry Now.
  */
 @Composable
 internal fun SyncActivityList(
@@ -160,7 +159,6 @@ internal fun SyncActivityList(
         if (activity != null) {
             attentionSection(context, activity, onOpenSettings, onDismissAbandoned)
             transferRows(context, activity, onOpenDownloads)
-            arrivalSections(context, activity.arrivals)
             if (!activity.moving && !activity.needsAttention && !activity.syncing) {
                 item { SecondaryLine(context.coreString("core.activity.idle")) }
             }
@@ -236,38 +234,6 @@ private fun LazyListScope.transferRows(
                 text = context.countLabelsText(downloads.summaryParts),
                 modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenDownloads),
             )
-        }
-    }
-}
-
-private fun LazyListScope.arrivalSections(
-    context: Context,
-    arrivals: BridgeArrivals,
-) {
-    when (arrivals) {
-        BridgeArrivals.Loading -> {
-            Unit
-        }
-
-        is BridgeArrivals.Failed -> {
-            item { FailureDisclosure(context, arrivals.error) }
-        }
-
-        is BridgeArrivals.Ready -> {
-            arrivals.devices.forEach { device ->
-                item { SectionHeading(context.coreString("core.arrival.from", mapOf("device" to device.deviceName))) }
-                items(device.releases) { release -> SecondaryLine(release.albumTitle) }
-                if (device.otherFiles > 0u) {
-                    item {
-                        SecondaryLine(
-                            context.coreString(
-                                "core.arrival.other_pictures",
-                                mapOf("count" to device.otherFiles.toLong()),
-                            ),
-                        )
-                    }
-                }
-            }
         }
     }
 }

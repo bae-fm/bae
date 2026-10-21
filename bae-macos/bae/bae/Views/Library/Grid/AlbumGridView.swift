@@ -11,8 +11,6 @@ struct AlbumGridView<ExpansionContent: View>: View {
     private var uiStore
     @Environment(LibraryStore.self)
     private var libraryStore
-    @Environment(SyncActivityStore.self)
-    private var syncActivity
     @Environment(Library.self)
     private var library
     let list: AlbumList
@@ -377,7 +375,6 @@ extension AlbumGridView {
                 artistNames: summary.artistNames,
                 year: summary.year,
                 cover: summary.cover,
-                arrivingFrom: syncActivity.arrivingFrom(albumId: albumId),
                 isExpanded: uiStore.selectedAlbumId == albumId
                     && (!groupByArtist || expandedSectionId == sectionId),
                 isSelected: selection.contains(albumId),

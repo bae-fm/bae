@@ -133,7 +133,6 @@
                 .environment(store)
                 .environment(MediaPaths.stub())
                 .environment(ImageStore.stub())
-                .environment(SyncActivityStore.preview(needsAttention: false))
         }
 
         /// The primary release's fat detail for a seeded preview album — tracks,
@@ -149,47 +148,6 @@
                 fatalError("no preview release detail for album \(albumId)")
             }
             return detail
-        }
-
-        /// Sync activity in which album `a-21`'s primary release is still
-        /// arriving from a Mac: its cover and its first two tracks, so the
-        /// detail previews show the arrival line and dimmed rows. A store
-        /// without that album shows nothing arriving.
-        @MainActor
-        static func arrivingActivity(store: LibraryStore) -> SyncActivityStore {
-            var activity = BridgeSyncActivity.preview(needsAttention: false)
-            if let summary = store.albumSummaries["a-21"],
-                let detail = store.releaseDetails[summary.primaryReleaseId]
-            {
-                activity.arrivals = .ready(
-                    devices: [
-                        BridgeDeviceArrivals(
-                            deviceName: "Studio Mac",
-                            releases: [
-                                BridgeArrivingRelease(
-                                    releaseId: detail.id,
-                                    albumId: "a-21",
-                                    albumTitle: summary.title
-                                )
-                            ],
-                            otherFiles: 0
-                        )
-                    ],
-                    albums: ["a-21": "Studio Mac"],
-                    releases: [
-                        detail.id: BridgeReleaseArrival(
-                            deviceName: "Studio Mac",
-                            cover: true,
-                            trackIds: detail.tracks.prefix(2).map(\.id)
-                        )
-                    ]
-                )
-            }
-            return SyncActivityStore(
-                activity: activity,
-                retryNow: {},
-                dismissAbandoned: { _ in }
-            )
         }
 
         /// One `Track` for the `TrackRowView` previews. `displayArtist` non-nil
@@ -331,7 +289,6 @@
         @MainActor
         func albumDetailPreviewEnvironment(store: LibraryStore) -> some View {
             self
-                .environment(PreviewData.arrivingActivity(store: store))
                 .environment(MediaPaths.stub())
                 .environment(ImageStore.stub())
                 .environment(Playback.stub())

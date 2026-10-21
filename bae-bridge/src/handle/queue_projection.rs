@@ -366,7 +366,6 @@ impl crate::types::BridgeSyncStatusSnapshot {
         let bae_core::library::SyncStatusSnapshot {
             status: _,
             pending,
-            arrivals: _,
             abandoned: _,
             error: _,
         } = snapshot;

@@ -4,15 +4,13 @@ pub use error::DbError;
 pub mod identity;
 mod models;
 // Only an import names its own artist credits from outside `db`.
+pub(crate) use client::AbandonedRow;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::ArtistCredits;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::RecordsChange;
 pub(crate) use client::ReleaseFileStream;
 pub(crate) use client::ReleaseMetadataRows;
-pub(crate) use client::{
-    AbandonedRow, ArrivingReleaseRow, ArrivingReleaseRows, AttachedFileRow, FileTable,
-};
 pub use client::{
     AlbumBrowseProjection, AlbumDetailProjection, AlbumSelectionProjection, ArtistBrowseProjection,
     ArtistDetailProjection, ComposerBrowseProjection, ComposerDetailProjection,

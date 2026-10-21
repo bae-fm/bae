@@ -128,6 +128,39 @@ fn upload_name(subject: UploadSubject, album_title: Option<String>) -> PendingSu
     }
 }
 
+/// Keeps the sync status's pending list current: coven's pending records,
+/// named.
+pub(super) struct PendingFollower {
+    manager: LibraryManager,
+    records: coven::LiveQuery<Vec<coven::PendingRecord>>,
+}
+
+impl PendingFollower {
+    pub(super) fn new(manager: LibraryManager) -> Self {
+        Self {
+            records: manager.database.subscribe_pending(),
+            manager,
+        }
+    }
+
+    pub(super) async fn run(mut self) {
+        loop {
+            let items = match self.records.next().await {
+                Ok(records) => self.manager.pending_items(records).await.map_err(|error| {
+                    warn!(%error, "could not name pending sync records");
+                    crate::ui::UiError::diagnostic(error.category(), error)
+                }),
+                Err(error) => {
+                    warn!(%error, "could not read pending sync records");
+                    let error = LibraryError::from(error);
+                    Err(crate::ui::UiError::diagnostic(error.category(), error))
+                }
+            };
+            self.manager.sync_status.set_pending(items);
+        }
+    }
+}
+
 impl LibraryManager {
     /// Each pending record, named. A file this device uploads is named from
     /// its upload queue and its release's album; the queue is read only when

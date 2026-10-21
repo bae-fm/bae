@@ -6,9 +6,6 @@ struct TrackRowView: View {
     @Environment(UiStore.self)
     private var uiStore
     let track: Track
-    /// The track's audio is still arriving from another device: it shows
-    /// dimmed, says so in place of its length, and can't play yet.
-    let isArriving: Bool
     /// The artist to show, or `nil` for none — core's decision.
     let artist: String?
     /// The widest position label in the release, so every row's number
@@ -42,10 +39,7 @@ struct TrackRowView: View {
             ZStack {
                 TrackPositionLabel(text: track.positionText)
                     .foregroundStyle(.tertiary)
-                    .opacity(
-                        !isCurrent && (!isHovered || isArriving) && !isLoading
-                            ? 1 : 0
-                    )
+                    .opacity(!isCurrent && !isHovered && !isLoading ? 1 : 0)
 
                 Button(action: isCurrent ? onTogglePlayPause : onPlay) {
                     Image(
@@ -55,8 +49,8 @@ struct TrackRowView: View {
                     .themeIcon(.medium)
                 }
                 .buttonStyle(.plain)
-                .opacity(isHovered && !isLoading && !isArriving ? 1 : 0)
-                .allowsHitTesting(isHovered && !isLoading && !isArriving)
+                .opacity(isHovered && !isLoading ? 1 : 0)
+                .allowsHitTesting(isHovered && !isLoading)
 
                 Image(systemName: "speaker.wave.2.fill")
                     .themeIcon(.small)
@@ -82,19 +76,13 @@ struct TrackRowView: View {
                 }
             }
             Spacer(minLength: 0)
-            if isArriving {
-                Text(localizedCoreString("core.arrival.track"))
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-            }
-            else if !track.durationLabel.isEmpty {
+            if !track.durationLabel.isEmpty {
                 Text(track.durationLabel)
                     .themeText(.detail)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
         }
-        .opacity(isArriving ? ThemeOpacity.muted : 1)
         .padding(.horizontal, ThemeSpace.related)
         .frame(maxHeight: .infinity)
         .background(
@@ -124,7 +112,7 @@ struct TrackRowView: View {
             uiStore.consumeTrackFlash(seq: flash.seq)
         }
         .onTapGesture(count: 2) {
-            if !isArriving { onPlay() }
+            onPlay()
         }
         .contentShape(Rectangle())
         .onHover { hovering in
@@ -144,11 +132,8 @@ struct TrackRowView: View {
         }
         .contextMenu {
             Button("Play") { onPlay() }
-                .disabled(isArriving)
             Button("Play Next") { onAddNext(track.id) }
-                .disabled(isArriving)
             Button("Add to Queue") { onAddToQueue(track.id) }
-                .disabled(isArriving)
             Divider()
             Button("Save As…") { onExportTrack(track.id) }
         }
@@ -177,12 +162,10 @@ struct TrackPositionLabel: View {
         artist: String? = nil,
         isCurrent: Bool = false,
         isLoading: Bool = false,
-        isPlaying: Bool = false,
-        isArriving: Bool = false
+        isPlaying: Bool = false
     ) -> some View {
         TrackRowView(
             track: track,
-            isArriving: isArriving,
             artist: artist,
             // A single-digit position measures under the slot's least width,
             // which the list's rows then take.
@@ -207,14 +190,6 @@ struct TrackPositionLabel: View {
                     title: "Track Title",
                     position: "1"
                 )
-            )
-            // Still arriving from another device.
-            previewTrackRow(
-                track: PreviewData.previewTrack(
-                    title: "Track Title",
-                    position: "1"
-                ),
-                isArriving: true
             )
             // Current + playing.
             previewTrackRow(

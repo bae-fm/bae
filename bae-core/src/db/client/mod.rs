@@ -47,10 +47,6 @@ use artist_resolution::{relink_album_artists, relink_track_artists, relinked_alb
 use artist_resolution::{artist_write_failure, relink};
 mod abandoned;
 pub(crate) use abandoned::AbandonedRow;
-mod arriving_files;
-pub(crate) use arriving_files::{
-    ArrivingReleaseRow, ArrivingReleaseRows, AttachedFileRow, FileTable,
-};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod candidate_state_rows;
 mod coven_capabilities;

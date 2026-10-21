@@ -47,7 +47,6 @@
                 .environment(uiStore)
                 .environment(backing.session)
                 .environment(PreviewData.configStore())
-                .environment(PreviewData.arrivingActivity(store: libraryStore))
                 .windowBackground()
         }
 

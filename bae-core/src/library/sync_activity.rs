@@ -4,13 +4,13 @@
 use crate::library::release_queue::ReleaseQueueProgress;
 use crate::library::CountLabel;
 use crate::library::{
-    AbandonedItem, Arrivals, DownloadQueueContents, OutboxPauseState, OutboxSnapshot, PendingItem,
+    AbandonedItem, DownloadQueueContents, OutboxPauseState, OutboxSnapshot, PendingItem,
     SyncStatusSnapshot,
 };
 use crate::ui::UiError;
 
-/// What sync is doing now: the work that needs the person, the transfers
-/// moving bytes, and the files still arriving from other devices.
+/// What sync is doing now: the work that needs the person and the transfers
+/// moving bytes.
 #[derive(Debug, Clone)]
 pub struct SyncActivity {
     /// The sync failure the status line shows, such as being offline.
@@ -26,8 +26,6 @@ pub struct SyncActivity {
     pub uploads: Option<UploadsInFlight>,
     /// The releases this device is downloading to keep offline, while any is.
     pub downloads: Option<DownloadsInFlight>,
-    /// The files still arriving from other devices; `None` until first read.
-    pub arrivals: Option<Result<Arrivals, UiError>>,
 }
 
 /// The uploads this device is sending, out of its whole queue.
@@ -111,18 +109,14 @@ impl SyncActivity {
             syncing: status.syncing(),
             uploads,
             downloads,
-            arrivals: status.arrivals.clone(),
         }
     }
 
-    /// Bytes are moving: something uploads or downloads, or files are still
-    /// arriving from another device. The indicator spins while they do. A
-    /// pass alone doesn't count: one runs every half minute while idle, and
-    /// would blink the indicator for nothing.
+    /// Bytes are moving: something uploads or downloads. The indicator
+    /// spins while they do. A pass alone doesn't count: one runs every half
+    /// minute while idle, and would blink the indicator for nothing.
     pub fn moving(&self) -> bool {
-        self.uploads.is_some()
-            || self.downloads.is_some()
-            || matches!(&self.arrivals, Some(Ok(arrivals)) if !arrivals.is_empty())
+        self.uploads.is_some() || self.downloads.is_some()
     }
 
     /// Something needs the person: sync failed, a pending record waits on
@@ -134,7 +128,6 @@ impl SyncActivity {
             || matches!(&self.attention, Some(Err(_)))
             || matches!(&self.abandoned, Some(Ok(items)) if !items.is_empty())
             || matches!(&self.abandoned, Some(Err(_)))
-            || matches!(&self.arrivals, Some(Err(_)))
     }
 }
 

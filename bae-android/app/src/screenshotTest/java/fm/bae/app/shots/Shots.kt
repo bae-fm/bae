@@ -160,7 +160,7 @@ private fun AppearanceScene(
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES, fontScale = 1.5f)
 @Composable
-fun SyncActivityArriving() {
+fun SyncActivityNeedingAttention() {
     BaeTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             SyncActivityList(

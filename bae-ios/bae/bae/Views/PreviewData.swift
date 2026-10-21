@@ -293,43 +293,6 @@ extension PreviewData {
         DownloadStore(snapshot: downloadSnapshot())
     }
 
-    /// Sync activity in which the preview album's release is still arriving
-    /// from a Mac: its cover and its first two tracks, so the album and its
-    /// detail show the arrival.
-    @MainActor
-    static func arrivingActivity() -> SyncActivityStore {
-        let detail = releaseDetail
-        var activity = BridgeSyncActivity.preview(needsAttention: false)
-        activity.arrivals = .ready(
-            devices: [
-                BridgeDeviceArrivals(
-                    deviceName: "Studio Mac",
-                    releases: [
-                        BridgeArrivingRelease(
-                            releaseId: detail.id,
-                            albumId: albumSummary.id,
-                            albumTitle: albumSummary.title
-                        )
-                    ],
-                    otherFiles: 0
-                )
-            ],
-            albums: [albumSummary.id: "Studio Mac"],
-            releases: [
-                detail.id: BridgeReleaseArrival(
-                    deviceName: "Studio Mac",
-                    cover: true,
-                    trackIds: detail.tracks.prefix(2).map(\.id)
-                )
-            ]
-        )
-        return SyncActivityStore(
-            activity: activity,
-            retryNow: {},
-            dismissAbandoned: { _ in }
-        )
-    }
-
     /// The album-detail fixtures, interned through a throwaway store so the
     /// summary and release detail carry the store-side shape the views read.
     @MainActor
@@ -356,7 +319,7 @@ extension View {
         let resolvedLibraryStore = libraryStore ?? PreviewData.libraryStore()
         return environment(PreviewData.configStore())
             .environment(SyncStatusStore())
-            .environment(PreviewData.arrivingActivity())
+            .environment(SyncActivityStore.preview(needsAttention: false))
             .environment(MembershipStore.stub(people: [], selfIsAdmin: false))
             .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
             .environment(PreviewData.removals())

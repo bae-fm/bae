@@ -77,7 +77,7 @@ private struct SyncActivityGlyph: View {
             .padding()
     }
 
-    #Preview("Sync activity: files arriving") {
+    #Preview("Sync activity: moving") {
         SyncActivityButton()
             .environment(SyncActivityStore.preview(needsAttention: false))
             .environment(SettingsNavigation())

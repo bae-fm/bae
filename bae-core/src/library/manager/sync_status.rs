@@ -18,7 +18,6 @@ impl SyncStatusState {
         let state = SyncStatusSnapshot {
             status,
             pending: None,
-            arrivals: None,
             abandoned: None,
             error: None,
         };
@@ -54,17 +53,9 @@ impl SyncStatusState {
         self.apply(|state| state.status = status);
     }
 
-    /// The pending work that needs attention, and the files still arriving;
-    /// arrivals are `None` while the devices they name are still being read.
-    pub(super) fn set_pending(
-        &self,
-        pending: Result<Vec<super::PendingItem>, UiError>,
-        arrivals: Option<Result<super::Arrivals, UiError>>,
-    ) {
-        self.apply(|state| {
-            state.pending = Some(pending);
-            state.arrivals = arrivals;
-        });
+    /// The pending work that needs attention.
+    pub(super) fn set_pending(&self, pending: Result<Vec<super::PendingItem>, UiError>) {
+        self.apply(|state| state.pending = Some(pending));
     }
 
     /// This device's abandoned attachments, named.
@@ -295,7 +286,6 @@ mod tests {
         let snapshot = SyncStatusSnapshot {
             status: coven::SyncStatus::Disconnected,
             pending: None,
-            arrivals: None,
             abandoned: None,
             error: None,
         };
@@ -305,7 +295,7 @@ mod tests {
             connected: tokio::sync::watch::channel(false).0,
         };
         state.set_error(Some(UiError::internal("connection failed")));
-        state.set_pending(Ok(Vec::new()), None);
+        state.set_pending(Ok(Vec::new()));
         assert!(state.snapshot().error.is_some());
     }
 
@@ -321,7 +311,6 @@ mod tests {
                     coven::PendingReason::NoStorage,
                 ),
             )])),
-            arrivals: None,
             abandoned: None,
             error: None,
         };
@@ -371,7 +360,6 @@ mod tests {
                 )),
             },
             pending: Some(Ok(Vec::new())),
-            arrivals: None,
             abandoned: None,
             error: None,
         };
@@ -395,7 +383,6 @@ mod tests {
             SyncStatusSnapshot {
                 status,
                 pending: Some(Ok(Vec::new())),
-                arrivals: None,
                 abandoned: None,
                 error: None,
             }
@@ -425,7 +412,6 @@ mod tests {
         let snapshot = SyncStatusSnapshot {
             status: coven::SyncStatus::Syncing,
             pending: None,
-            arrivals: None,
             abandoned: None,
             error: None,
         };
@@ -440,7 +426,6 @@ mod tests {
         SyncStatusSnapshot {
             status: coven::SyncStatus::Failed { error },
             pending: Some(Ok(Vec::new())),
-            arrivals: None,
             abandoned: None,
             error: None,
         }
@@ -493,7 +478,6 @@ mod tests {
         let snapshot = SyncStatusSnapshot {
             status,
             pending: None,
-            arrivals: None,
             abandoned: None,
             error: None,
         };
@@ -558,17 +542,11 @@ mod tests {
         };
 
         let status_first = state(offline.clone());
-        status_first.set_pending(
-            Ok(vec![connection_record(coven::StorageFailure::Network)]),
-            None,
-        );
+        status_first.set_pending(Ok(vec![connection_record(coven::StorageFailure::Network)]));
         assert_eq!(cause(&status_first).as_deref(), Some(UNREACHABLE_S3));
 
         let records_first = state(coven::SyncStatus::Syncing);
-        records_first.set_pending(
-            Ok(vec![connection_record(coven::StorageFailure::Network)]),
-            None,
-        );
+        records_first.set_pending(Ok(vec![connection_record(coven::StorageFailure::Network)]));
         assert_eq!(cause(&records_first), None);
         records_first.set_status(offline);
         assert_eq!(cause(&records_first).as_deref(), Some(UNREACHABLE_S3));
@@ -584,19 +562,13 @@ mod tests {
         let other = state(coven::SyncStatus::Offline {
             error: unreachable_s3(),
         });
-        other.set_pending(
-            Ok(vec![connection_record(
-                coven::StorageFailure::Authentication,
-            )]),
-            None,
-        );
+        other.set_pending(Ok(vec![connection_record(
+            coven::StorageFailure::Authentication,
+        )]));
         let restarted = state(coven::SyncStatus::Failed {
             error: coven::SyncFailure::Storage(Arc::new(coven::StorageFailure::Network.into())),
         });
-        restarted.set_pending(
-            Ok(vec![connection_record(coven::StorageFailure::Network)]),
-            None,
-        );
+        restarted.set_pending(Ok(vec![connection_record(coven::StorageFailure::Network)]));
         for state in [other, restarted] {
             let Some(Ok(items)) = state.snapshot().pending else {
                 panic!("the pending records were read");
@@ -617,10 +589,7 @@ mod tests {
         let logs = crate::test_logs::capture_warn_logs(|| {
             state.set_status(offline.clone());
             state.set_status(offline.clone());
-            state.set_pending(
-                Ok(vec![connection_record(coven::StorageFailure::Network)]),
-                None,
-            );
+            state.set_pending(Ok(vec![connection_record(coven::StorageFailure::Network)]));
         });
         assert_eq!(logs.matches(UNREACHABLE_S3).count(), 1, "{logs}");
         assert!(logs.contains("Network"), "{logs}");
@@ -647,7 +616,6 @@ mod tests {
                 error,
             },
             pending: Some(Ok(Vec::new())),
-            arrivals: None,
             abandoned: None,
             error: None,
         };
@@ -690,10 +658,7 @@ mod tests {
             coven::PendingReason::Failed(coven::LocalFailure::Disk),
         );
         record.cause = Some(Arc::new(std::io::Error::other("disk full")));
-        state.set_pending(
-            Ok(vec![super::super::PendingItem::before_open(record)]),
-            None,
-        );
+        state.set_pending(Ok(vec![super::super::PendingItem::before_open(record)]));
         state.set_status(coven::SyncStatus::Offline {
             error: unreachable_s3(),
         });

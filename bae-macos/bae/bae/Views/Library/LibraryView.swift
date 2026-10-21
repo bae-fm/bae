@@ -456,7 +456,6 @@ extension LibraryView {
             .environment(uiStore)
             .environment(session)
             .environment(PreviewData.makeConfigStore(libraryFullWidth: true))
-            .environment(PreviewData.arrivingActivity(store: libraryStore))
             .frame(width: 1500, height: 700)
             .windowBackground()
     }

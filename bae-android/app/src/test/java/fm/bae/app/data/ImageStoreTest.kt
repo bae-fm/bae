@@ -11,12 +11,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import uniffi.bae_bridge.BridgeArrivingFile
 import uniffi.bae_bridge.BridgeGallerySource
-import uniffi.bae_bridge.BridgeImageRead
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLibraryImageType
-import uniffi.bae_bridge.NoHandle
 
 /**
  * What the store promises its callers: a cached decode is pinned to the exact
@@ -194,34 +191,6 @@ class ImageStoreTest {
             assertEquals(2, crossings)
         }
 
-    /** A cover another device is still uploading is no failure: the slot's load
-     *  waits for its file to arrive and then decodes it, while a reader that
-     *  answers now, such as the artwork provider, gets nothing and never waits. */
-    @Test
-    fun anImageStillArrivingLoadsOnceItsFileArrives() =
-        runBlocking {
-            val file = BridgeArrivingFile(NoHandle)
-            var arrived = false
-            var waits = 0
-            val store =
-                ImageStore(
-                    fetchLibraryImage = {
-                        if (arrived) BridgeImageRead.Bytes(TestImages.png(128)) else BridgeImageRead.Arriving(file)
-                    },
-                    waitForArrival = {
-                        assertSame(file, it)
-                        waits += 1
-                        arrived = true
-                    },
-                    dispatcher = Dispatchers.Unconfined,
-                )
-            val cover = ImageContent.LibraryImage(coverRef("rel-1"))
-            assertNull(store.imageBytes(cover))
-            assertEquals(0, waits)
-            store.image(cover, fitTo64).orFail("the arrived cover")
-            assertEquals(1, waits)
-        }
-
     @Test
     fun aLibraryImageWithNoBytesResolvesToNothing() =
         runBlocking {
@@ -245,12 +214,8 @@ class ImageStoreTest {
         decodedBudgets: DecodedImageBudgets = DecodedImageBudgets(),
         byteBudgets: ImageByteBudgets = ImageByteBudgets(),
     ) = ImageStore(
-        fetchLibraryImage = {
-            checkNotNull(library) { "no library-image fetch in this store" }()?.let { BridgeImageRead.Bytes(it) }
-        },
-        fetchReleaseImage = { _, _ ->
-            BridgeImageRead.Bytes(checkNotNull(release) { "no release-image fetch in this store" }())
-        },
+        fetchLibraryImageBytes = { checkNotNull(library) { "no library-image fetch in this store" }() },
+        fetchReleaseImageBytes = { _, _ -> checkNotNull(release) { "no release-image fetch in this store" }() },
         decodedBudgets = decodedBudgets,
         byteBudgets = byteBudgets,
         // Unconfined keeps every fetch and decode on the test's own thread, so
