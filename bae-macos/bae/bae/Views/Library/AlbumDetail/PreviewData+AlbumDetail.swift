@@ -133,6 +133,7 @@
                 .environment(store)
                 .environment(MediaPaths.stub())
                 .environment(ImageStore.stub())
+                .environment(SyncActivityStore.preview(needsAttention: false))
         }
 
         /// The primary release's fat detail for a seeded preview album — tracks,

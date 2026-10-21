@@ -293,9 +293,6 @@ extension PreviewData {
         DownloadStore(snapshot: downloadSnapshot())
     }
 
-    /// The album-detail fixtures, interned through a throwaway store so the
-    /// summary and release detail carry the store-side shape the views read.
-    @MainActor
     /// Sync activity in which the preview album's release is still arriving
     /// from a Mac: its cover and its first two tracks, so the album and its
     /// detail show the arrival.
@@ -333,6 +330,9 @@ extension PreviewData {
         )
     }
 
+    /// The album-detail fixtures, interned through a throwaway store so the
+    /// summary and release detail carry the store-side shape the views read.
+    @MainActor
     static var albumSummary: AlbumSummary {
         LibraryStore().internAlbumSummary(albums[0])
     }
