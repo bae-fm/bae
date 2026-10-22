@@ -76,8 +76,9 @@ jobs:
 
     - name: Dead-code (bae-core lib only)
       # bae-core's production code alone, so an item only its tests use fails as
-      # dead code.
-      run: RUSTFLAGS="-D warnings" cargo check -p bae-core
+      # dead code. The flag goes to bae-core alone: RUSTFLAGS would recompile
+      # every dependency for this one check.
+      run: cargo rustc -p bae-core --lib --profile check -- -D warnings
 
     - name: Check for new #[allow(dead_code)]
       # New #[allow(dead_code)] is banned in every .rs file of the workspace.
