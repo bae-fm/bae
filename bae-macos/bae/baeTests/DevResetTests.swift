@@ -90,7 +90,7 @@
             },
             emptyStoragePrefix: { config in
                 calls.record(
-                    "empty \(config.bucket) \(config.keyPrefix ?? "no prefix")"
+                    "empty \(config.bucket) \(config.keyPrefix)"
                 )
                 return try emptying()
             },

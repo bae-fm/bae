@@ -152,6 +152,10 @@ fn category_column(category: UiErrorCategory) -> String {
             format!("versioning_unsupported.{}", versioning_column(state))
         }
         C::StorageLocationChangeUnsupported => "storage_location_change".into(),
+        C::S3Prefix(error) => format!(
+            "s3_prefix.{}",
+            serde_json::to_string(&error).expect("S3 prefix error serializes")
+        ),
         C::DeviceIdentityMissing => "device_identity_missing".to_string(),
         C::Credentials => "credentials".to_string(),
         C::Network => "network".to_string(),
@@ -242,6 +246,9 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
         }
         Some(("versioning_unknown", stored)) => {
             C::S3VersioningUnknown(serde_json::from_str(stored).map_err(|error| unreadable_because(&error))?)
+        }
+        Some(("s3_prefix", stored)) => {
+            C::S3Prefix(serde_json::from_str(stored).map_err(|error| unreadable_because(&error))?)
         }
         Some(("versioning_unsupported", stored)) => {
             C::S3VersioningUnsupported(versioning_of(stored).ok_or_else(unreadable)?)
@@ -533,6 +540,14 @@ mod tests {
             C::S3VersioningUnsupported(coven::S3BucketVersioning::Enabled),
             C::S3VersioningUnknown(F::PermissionDenied),
             C::StorageLocationChangeUnsupported,
+            C::S3Prefix(coven::S3PrefixError::EmptySegment),
+            C::S3Prefix(coven::S3PrefixError::InvalidCharacter {
+                segment: "bae.lib".into(),
+                character: '.',
+            }),
+            C::S3Prefix(coven::S3PrefixError::SegmentTooLong {
+                segment: "b".repeat(256),
+            }),
             C::Storage(F::Authentication),
             C::Storage(F::PermissionDenied),
             C::Storage(F::ContainerNotFound),

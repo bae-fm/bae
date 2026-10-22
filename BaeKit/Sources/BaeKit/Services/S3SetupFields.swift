@@ -68,7 +68,7 @@ public final class S3SetupFields {
             bucket: bucket,
             region: region,
             endpoint: endpoint.isEmpty ? nil : endpoint,
-            keyPrefix: keyPrefix.isEmpty ? nil : keyPrefix,
+            keyPrefix: keyPrefix,
             accessKey: accessKey,
             secretKey: secretKey,
             profile: chosen

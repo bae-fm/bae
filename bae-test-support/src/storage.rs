@@ -53,7 +53,7 @@ pub async fn connect_storage(manager: &LibraryManager, storage: &MemoryStorage) 
                 bucket,
                 region,
                 endpoint: endpoint.map(|url| url.to_string()),
-                key_prefix: Some(prefix),
+                key_prefix: prefix,
                 profile,
                 access_key: "test-access".into(),
                 secret_key: "test-secret".into(),

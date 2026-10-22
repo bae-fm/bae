@@ -40,7 +40,7 @@ fn a_private_profile_reads_into_the_library_it_describes() {
         profile.s3.endpoint.as_deref(),
         Some("https://storage.example.test")
     );
-    assert_eq!(profile.s3.key_prefix.as_deref(), Some("prefix/path"));
+    assert_eq!(profile.s3.key_prefix.as_str(), "prefix/path");
     assert_eq!(profile.s3.access_key, "access-key-id");
     assert_eq!(profile.s3.secret_key, "secret-access-key");
     assert!(profile.s3.profile.is_none());
@@ -76,6 +76,75 @@ fn an_empty_credential_is_refused_by_name() {
     ));
 }
 
+/// The key prefix goes through storage setup's parse: slashes at its ends
+/// mean nothing.
+#[test]
+fn a_key_prefix_with_slashes_at_its_ends_reads_as_its_folder_path() {
+    let dir = tempfile::tempdir().unwrap();
+    for typed in ["bae-dima/", "/bae-dima", "/bae-dima/"] {
+        let text = PROFILE.replace("\"prefix/path\"", &format!("\"{typed}\""));
+        let profile = DevResetProfile::read(&write(&dir, &text, 0o600)).unwrap();
+
+        assert_eq!(profile.s3.key_prefix.as_str(), "bae-dima", "{typed}");
+    }
+}
+
+/// A prefix that can't be a folder path fails while the profile is read,
+/// naming the field and the folder at fault, before the reset removes
+/// anything.
+#[test]
+fn a_key_prefix_that_is_no_folder_path_is_refused_by_name() {
+    let dir = tempfile::tempdir().unwrap();
+    for (typed, refusal) in [
+        ("prefix//path", coven::S3PrefixError::EmptySegment),
+        (
+            "prefix/pa.th",
+            coven::S3PrefixError::InvalidCharacter {
+                segment: "pa.th".into(),
+                character: '.',
+            },
+        ),
+    ] {
+        let text = PROFILE.replace("\"prefix/path\"", &format!("\"{typed}\""));
+        let error = DevResetProfile::read(&write(&dir, &text, 0o600))
+            .err()
+            .expect("a prefix that is no folder path is refused");
+
+        let DevResetProfileError::Prefix {
+            field: "s3.key_prefix",
+            error: parsed,
+            ..
+        } = &error
+        else {
+            panic!("expected a refused key prefix, got {error}");
+        };
+        assert_eq!(*parsed, refusal, "{typed}");
+        assert!(error.to_string().contains("s3.key_prefix"), "{error}");
+    }
+}
+
+/// A prefix of only slashes is the bucket's root, which the reset would empty
+/// whole.
+#[test]
+fn a_key_prefix_of_only_slashes_is_refused_as_the_whole_bucket() {
+    let dir = tempfile::tempdir().unwrap();
+    let text = PROFILE.replace("\"prefix/path\"", "\"/\"");
+    let error = DevResetProfile::read(&write(&dir, &text, 0o600))
+        .err()
+        .expect("the bucket's root is refused");
+
+    assert!(
+        matches!(
+            error,
+            DevResetProfileError::WholeBucket {
+                field: "s3.key_prefix",
+                ..
+            }
+        ),
+        "{error}"
+    );
+}
+
 /// toml's own message quotes the offending line; the profile's error must
 /// not, since that line may hold a credential.
 #[test]
@@ -107,12 +176,12 @@ fn an_unknown_field_is_refused() {
     assert!(matches!(error, DevResetProfileError::Malformed { .. }));
 }
 
-fn storage(endpoint: &str, key_prefix: Option<&str>) -> S3ConfigData {
+fn storage(endpoint: &str, key_prefix: &str) -> S3ConfigData {
     S3ConfigData {
         bucket: "bucket-name".into(),
         region: "us-east-1".into(),
         endpoint: Some(endpoint.into()),
-        key_prefix: key_prefix.map(str::to_owned),
+        key_prefix: coven::S3Prefix::parse(key_prefix).unwrap(),
         access_key: "access-key-id".into(),
         secret_key: "secret-access-key".into(),
         // An endpoint matching no known host names its service; AWS keys can
@@ -187,7 +256,7 @@ async fn fake_s3() -> (String, std::sync::Arc<std::sync::Mutex<Vec<String>>>) {
 async fn the_profile_storage_prefix_is_emptied_in_its_bucket() {
     let (endpoint, requests) = fake_s3().await;
 
-    let emptied = empty_storage_prefix(storage(&endpoint, Some("prefix/path")))
+    let emptied = empty_storage_prefix(storage(&endpoint, "prefix/path"))
         .await
         .unwrap();
 
@@ -214,7 +283,7 @@ async fn the_profile_storage_prefix_is_emptied_in_its_bucket() {
 #[tokio::test]
 async fn a_storage_without_a_key_prefix_is_refused_before_any_request() {
     // Nothing listens here.
-    let error = empty_storage_prefix(storage("http://127.0.0.1:9", None))
+    let error = empty_storage_prefix(storage("http://127.0.0.1:9", ""))
         .await
         .unwrap_err();
 
@@ -229,7 +298,7 @@ async fn a_storage_without_a_key_prefix_is_refused_before_any_request() {
 
 #[tokio::test]
 async fn an_endpoint_that_is_not_a_url_is_refused() {
-    let error = empty_storage_prefix(storage("storage example", Some("prefix")))
+    let error = empty_storage_prefix(storage("storage example", "prefix"))
         .await
         .unwrap_err();
 

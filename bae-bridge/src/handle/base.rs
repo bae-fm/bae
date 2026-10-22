@@ -185,7 +185,7 @@ forward! { async this => {
     fn save_sync_config(config_data: BridgeSaveSyncConfig, device_name: String) -> crate::types::BridgeStorageSetup {
         Ok(this
             .services
-            .save_s3_config(config_data.into_core(), &device_name)
+            .save_s3_config(config_data.into_core()?, &device_name)
             .await.map(crate::types::BridgeStorageSetup::from_core)?)
     }
 

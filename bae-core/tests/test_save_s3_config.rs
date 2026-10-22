@@ -20,7 +20,7 @@ fn unreachable_s3_config() -> S3ConfigData {
         bucket: "any-bucket".to_string(),
         region: "us-east-1".to_string(),
         endpoint: Some("http://127.0.0.1:1".to_string()),
-        key_prefix: None,
+        key_prefix: coven::S3Prefix::default(),
         access_key: "any-key".to_string(),
         secret_key: "any-secret".to_string(),
         profile: None,

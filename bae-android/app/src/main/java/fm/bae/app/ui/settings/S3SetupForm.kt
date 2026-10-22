@@ -92,7 +92,7 @@ private class S3FormInput {
             bucket = bucket,
             region = region,
             endpoint = endpoint.takeIf { it.isNotEmpty() },
-            keyPrefix = keyPrefix.takeIf { it.isNotEmpty() },
+            keyPrefix = keyPrefix,
             accessKey = accessKeyId,
             secretKey = secretAccessKey,
             profile = profile?.let { BridgeS3Profile.Named(it) },
@@ -160,7 +160,7 @@ private fun S3Advanced(
     val scope = rememberScreenScope()
     var detection by remember { mutableStateOf<BridgeS3Detection?>(null) }
     var checking by remember { mutableStateOf(false) }
-    TextInput(input.keyPrefix, R.string.storage_s3_key_prefix) { input.keyPrefix = it.trim() }
+    TextInput(input.keyPrefix, R.string.storage_s3_key_prefix) { input.keyPrefix = it }
     ProfileChoice(input.profile) { input.profile = it }
     OutlinedButton(
         enabled = input.complete && !checking,

@@ -30,6 +30,39 @@ pub enum BridgeStorageLocation {
     },
 }
 
+/// Why coven refused a typed S3 key prefix. Mirrors `coven::S3PrefixError`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeS3PrefixProblem {
+    /// Two slashes in a row leave a folder with no name.
+    EmptySegment,
+    /// A folder name holds a character other than a letter, a digit, `-` or
+    /// `_`: the folder as typed, and the first such character.
+    InvalidCharacter { segment: String, character: String },
+    /// A folder name is longer than 255 characters.
+    SegmentTooLong { segment: String },
+}
+
+mirror_enum! {
+    BridgeS3PrefixProblem = coven::S3PrefixError,
+    from_core: pub(crate) fn,
+    variants: {
+        EmptySegment,
+        InvalidCharacter { segment, character: (into) },
+        SegmentTooLong { segment },
+    },
+}
+
+/// A typed key prefix coven refused crosses in its own class, so the line
+/// names the folder at fault.
+impl From<coven::S3PrefixError> for BridgeError {
+    fn from(error: coven::S3PrefixError) -> Self {
+        BridgeError::from_core(bae_core::ui::UiError::diagnostic(
+            bae_core::ui::UiErrorCategory::S3Prefix(error.clone()),
+            &error,
+        ))
+    }
+}
+
 impl BridgeStorageLocation {
     pub(crate) fn from_core(value: coven::StorageConfig) -> Self {
         match value {
@@ -44,7 +77,7 @@ impl BridgeStorageLocation {
                 region,
                 endpoint: endpoint.map(Into::into),
                 profile: profile.map(BridgeS3Profile::from_core),
-                prefix,
+                prefix: prefix.into(),
             },
             coven::StorageConfig::Dropbox {
                 location,
@@ -90,7 +123,7 @@ impl BridgeStorageLocation {
                     .transpose()
                     .map_err(BridgeError::config)?,
                 profile: profile.map(BridgeS3Profile::into_core),
-                prefix,
+                prefix: coven::S3Prefix::parse(&prefix)?,
             },
             Self::Dropbox {
                 location,

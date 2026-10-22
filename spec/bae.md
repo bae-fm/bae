@@ -1566,6 +1566,16 @@ automatic by default. For a service coven doesn't know, *Detect Settings*
 probes the bucket with the key and shows what it found, which the person can
 then use. When coven refuses a setup, bae says why in plain words.
 
+The key prefix is the folder in the bucket the library lives under. The app
+passes it as typed, and coven parses it once
+([coven §20.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#203-where-a-store-lives)):
+slashes at its ends mean nothing, so Dan typing `music/bae/` or `/music/bae`
+gets `music/bae`, and only slashes is the bucket's root, as empty is. Settings
+then shows the prefix in that one spelling. A prefix that can't be a folder
+path is refused before any request, with a line naming the folder at fault:
+two slashes in a row, a character other than a–z, A–Z, a digit, `-` or `_`,
+or a folder name over 255 characters.
+
 **Dropbox and OneDrive setup.** The person signs in through the browser, then
 picks the folder the library lives in. On Dropbox that is a shared folder, so
 the household can be invited to it; with none yet, bae says to share one in
@@ -2667,6 +2677,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `CloudSetup`, `StorageCheck` | changes what the setup, or the check of the storage it failed, names |
 | `S3VersioningUnknown`, `S3VersioningUnsupported` | uses a bucket whose versioning coven can read and work with |
 | `StorageLocationChangeUnsupported` | keeps the library's storage location; it can't move |
+| `S3Prefix` | changes the key prefix: it has two slashes in a row, or the folder the line names holds a character other than a–z, A–Z, a digit, `-` or `_`, or runs over 255 characters |
 | `DeviceIdentityMissing` | creates, joins or restores |
 | `Credentials` | fixes the cloud settings |
 | `Network` | retries |

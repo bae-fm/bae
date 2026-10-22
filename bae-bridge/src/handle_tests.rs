@@ -262,7 +262,7 @@ fn save_sync_config_survives_the_uniffi_worker_stack() {
                             bucket: "bucket".to_string(),
                             region: "us-east-1".to_string(),
                             endpoint: Some("http://127.0.0.1:1".to_string()),
-                            key_prefix: None,
+                            key_prefix: String::new(),
                             access_key: "access-key".to_string(),
                             secret_key: "secret-key".to_string(),
                             profile: None,

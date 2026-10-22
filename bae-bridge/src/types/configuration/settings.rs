@@ -160,6 +160,11 @@ pub enum BridgeErrorCategory {
         state: BridgeS3BucketVersioning,
     },
     StorageLocationChangeUnsupported,
+    /// The S3 key prefix the person typed is not a folder path coven can
+    /// use; the line names the folder at fault.
+    S3Prefix {
+        problem: BridgeS3PrefixProblem,
+    },
     DeviceIdentityMissing,
     /// A cloud provider's sign-in (OAuth) failed: the person signs in again.
     Credentials,
@@ -343,6 +348,15 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::StorageLocationChangeUnsupported => {
             "core.error.storage.location_change"
         }
+        BridgeErrorCategory::S3Prefix { problem } => match problem {
+            BridgeS3PrefixProblem::EmptySegment => "core.error.storage.prefix.empty_segment",
+            BridgeS3PrefixProblem::InvalidCharacter { .. } => {
+                "core.error.storage.prefix.invalid_character"
+            }
+            BridgeS3PrefixProblem::SegmentTooLong { .. } => {
+                "core.error.storage.prefix.segment_too_long"
+            }
+        },
         BridgeErrorCategory::DeviceIdentityMissing => "core.error.identity_missing",
         BridgeErrorCategory::Credentials => "core.error.category.credentials",
         BridgeErrorCategory::Network => "core.error.category.network",
@@ -533,6 +547,7 @@ mirror_enum! {
         S3VersioningUnknown(failure:(BridgeStorageFailure)),
         S3VersioningUnsupported(state:(BridgeS3BucketVersioning)),
         StorageLocationChangeUnsupported,
+        S3Prefix(problem: (BridgeS3PrefixProblem)),
         DeviceIdentityMissing,
         Credentials,
         Network,

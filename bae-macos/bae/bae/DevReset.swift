@@ -89,7 +89,7 @@
             }
 
             logger.info(
-                "emptying bucket \(profile.syncConfig.bucket), prefix \(String(describing: profile.syncConfig.keyPrefix))"
+                "emptying bucket \(profile.syncConfig.bucket), prefix \(profile.syncConfig.keyPrefix)"
             )
             let emptied = try await emptyStoragePrefix(profile.syncConfig)
             logger.info(

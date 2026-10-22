@@ -115,7 +115,7 @@ impl From<bae_core::ui::UiError> for AutomationError {
             | UiErrorCategory::TiedMediums { .. }
             | UiErrorCategory::ReleaseChangedSinceOpened
             | UiErrorCategory::GroupingBlocked(_) => Self::Import(detail),
-            UiErrorCategory::Config => Self::Validation(detail),
+            UiErrorCategory::Config | UiErrorCategory::S3Prefix(_) => Self::Validation(detail),
             UiErrorCategory::Internal => Self::Internal(detail),
             UiErrorCategory::DeviceResetRequired
             | UiErrorCategory::DeviceRemoved

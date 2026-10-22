@@ -666,3 +666,79 @@ fn a_pending_record_crosses_with_its_labels_as_catalog_messages() {
     );
     assert_eq!(waiting.action_key, None);
 }
+
+/// What the person typed crosses as coven's one spelling: slashes at the
+/// prefix's ends mean nothing, and empty is the bucket's root.
+#[test]
+fn a_typed_key_prefix_crosses_as_its_folder_path() {
+    let typed = |key_prefix: &str| BridgeSaveSyncConfig {
+        bucket: "bucket".into(),
+        region: "us-east-1".into(),
+        endpoint: None,
+        key_prefix: key_prefix.into(),
+        access_key: "access-key".into(),
+        secret_key: "secret-key".into(),
+        profile: None,
+    };
+    for (key_prefix, canonical) in [
+        ("bae-dima/", "bae-dima"),
+        ("/music/bae/", "music/bae"),
+        ("music/bae", "music/bae"),
+        ("", ""),
+        ("/", ""),
+    ] {
+        let config = typed(key_prefix).into_core().ok().unwrap();
+        assert_eq!(config.key_prefix.as_str(), canonical, "{key_prefix:?}");
+    }
+
+    let refused = typed("music/bae.lib").into_core().err().unwrap();
+    let BridgeError::Diagnostic { category, .. } = &refused else {
+        panic!("expected a diagnostic, got {refused:?}");
+    };
+    assert_eq!(
+        *category,
+        BridgeErrorCategory::S3Prefix {
+            problem: BridgeS3PrefixProblem::InvalidCharacter {
+                segment: "bae.lib".into(),
+                character: ".".into(),
+            },
+        }
+    );
+    assert_eq!(
+        bridge_error_line_key(&refused).as_deref(),
+        Some("core.error.storage.prefix.invalid_character")
+    );
+    let BridgeError::Diagnostic { category, .. } = typed("music//bae").into_core().err().unwrap()
+    else {
+        panic!("expected a diagnostic");
+    };
+    assert_eq!(
+        category,
+        BridgeErrorCategory::S3Prefix {
+            problem: BridgeS3PrefixProblem::EmptySegment,
+        }
+    );
+}
+
+/// A location the app hands back, such as the one detection probes, takes
+/// the same parse, and the recorded prefix shows in its one spelling.
+#[test]
+fn an_s3_location_crosses_back_with_its_prefix_parsed() {
+    let location = |prefix: &str| BridgeStorageLocation::S3 {
+        bucket: "bucket".into(),
+        region: "us-east-1".into(),
+        endpoint: None,
+        profile: None,
+        prefix: prefix.into(),
+    };
+    let crossed = location("/music/bae/").into_core().ok().unwrap();
+    assert_eq!(
+        BridgeStorageLocation::from_core(crossed),
+        location("music/bae")
+    );
+    let refused = location("music/ bae").into_core().err().unwrap();
+    assert_eq!(
+        bridge_error_line_key(&refused).as_deref(),
+        Some("core.error.storage.prefix.invalid_character")
+    );
+}

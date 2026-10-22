@@ -89,7 +89,7 @@ extension BridgeStorageLocation {
             bucket: bucket,
             region: region,
             endpoint: endpoint,
-            keyPrefix: prefix.isEmpty ? nil : prefix,
+            keyPrefix: prefix,
             accessKey: accessKey,
             secretKey: secretKey,
             profile: profile

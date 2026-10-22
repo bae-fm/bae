@@ -269,6 +269,20 @@ fn produced_keys() -> Vec<String> {
             state: BridgeS3BucketVersioning::Enabled,
         },
         BridgeErrorCategory::StorageLocationChangeUnsupported,
+        BridgeErrorCategory::S3Prefix {
+            problem: BridgeS3PrefixProblem::EmptySegment,
+        },
+        BridgeErrorCategory::S3Prefix {
+            problem: BridgeS3PrefixProblem::InvalidCharacter {
+                segment: "bae.lib".into(),
+                character: ".".into(),
+            },
+        },
+        BridgeErrorCategory::S3Prefix {
+            problem: BridgeS3PrefixProblem::SegmentTooLong {
+                segment: "b".repeat(256),
+            },
+        },
         BridgeErrorCategory::DeviceIdentityMissing,
         BridgeErrorCategory::Credentials,
         BridgeErrorCategory::Network,

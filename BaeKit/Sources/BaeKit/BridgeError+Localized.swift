@@ -8,10 +8,10 @@ public func localizedCoreString(_ key: String) -> String {
 
 extension BridgeErrorCategory {
     /// The user-facing line for this category, resolved from the generated
-    /// `Core` string table via the key bae-core owns, with the counts and
-    /// disc numbers a category carries formatted for the current locale. The underlying Rust
-    /// error chain travels separately as opaque `detail` and is never
-    /// translated.
+    /// `Core` string table via the key bae-core owns, with the counts, disc
+    /// numbers and key-prefix folder a category carries formatted for the
+    /// current locale. The underlying Rust error chain travels separately as
+    /// opaque `detail` and is never translated.
     public var localizedLine: String {
         let line = localizedCoreString(bridgeErrorCategoryKey(category: self))
         switch self {
@@ -32,6 +32,15 @@ extension BridgeErrorCategory {
                 }
             )
             return String(format: line, locale: Locale.current, discs)
+        case .s3Prefix(.invalidCharacter(let segment, let character)):
+            return String(
+                format: line,
+                locale: Locale.current,
+                segment,
+                character
+            )
+        case .s3Prefix(.segmentTooLong(let segment)):
+            return String(format: line, locale: Locale.current, segment)
         default:
             return line
         }

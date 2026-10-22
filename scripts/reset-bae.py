@@ -21,7 +21,8 @@ must be mode 600; this script never prints them. Its fields:
     endpoint = "..."
     region = "..."
     bucket = "..."
-    key_prefix = "..."
+    key_prefix = "..."          # a folder in the bucket; slashes at its ends
+                                # don't matter, and it can't be the root
     access_key_id = "..."
     secret_access_key = "..."
 

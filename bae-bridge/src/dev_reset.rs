@@ -33,14 +33,14 @@ pub fn read_dev_reset_profile(path: String) -> Result<BridgeDevResetProfile, Bri
         identify_automatically,
         import_when_identified,
     } = bae_core::dev_reset::DevResetProfile::read(std::path::Path::new(&path))
-        .map_err(BridgeError::config)?;
+        .map_err(profile_error)?;
     Ok(BridgeDevResetProfile {
         library_name: library_name.into_string(),
         sync_config: BridgeSaveSyncConfig {
             bucket: s3.bucket,
             region: s3.region,
             endpoint: s3.endpoint,
-            key_prefix: s3.key_prefix,
+            key_prefix: s3.key_prefix.into(),
             access_key: s3.access_key,
             secret_key: s3.secret_key,
             profile: s3.profile.map(BridgeS3Profile::from_core),
@@ -50,3 +50,27 @@ pub fn read_dev_reset_profile(path: String) -> Result<BridgeDevResetProfile, Bri
         import_when_identified,
     })
 }
+
+/// A refused key prefix keeps its own class, so the line names the folder at
+/// fault; the detail names the profile and its `s3.key_prefix` field. Any
+/// other profile failure is a configuration error.
+fn profile_error(error: bae_core::dev_reset::DevResetProfileError) -> BridgeError {
+    use bae_core::dev_reset::DevResetProfileError as E;
+    match &error {
+        E::Prefix { error: refusal, .. } => {
+            BridgeError::from_core(bae_core::ui::UiError::diagnostic(
+                bae_core::ui::UiErrorCategory::S3Prefix(refusal.clone()),
+                &error,
+            ))
+        }
+        E::Read { .. }
+        | E::Exposed { .. }
+        | E::Malformed { .. }
+        | E::Empty { .. }
+        | E::WholeBucket { .. } => BridgeError::config(&error),
+    }
+}
+
+#[cfg(test)]
+#[path = "dev_reset_tests.rs"]
+mod tests;

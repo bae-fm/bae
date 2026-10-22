@@ -22,7 +22,7 @@ impl BridgeHost {
                 .handle()
                 .clone(),
             move || async move {
-                let emptied = bae_core::dev_reset::empty_storage_prefix(sync_config.into_core())
+                let emptied = bae_core::dev_reset::empty_storage_prefix(sync_config.into_core()?)
                     .await
                     .map_err(empty_error)?;
                 Ok(BridgeEmptiedS3Prefix {

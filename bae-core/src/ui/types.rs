@@ -52,6 +52,11 @@ pub enum UiErrorCategory {
     S3VersioningUnknown(coven::StorageFailure),
     S3VersioningUnsupported(coven::S3BucketVersioning),
     StorageLocationChangeUnsupported,
+    /// The S3 key prefix the person typed is not a folder path coven can use:
+    /// two slashes in a row, a character other than a letter, a digit, `-` or
+    /// `_`, or a folder name over 255 characters. The line names the folder
+    /// at fault.
+    S3Prefix(coven::S3PrefixError),
     /// The local store has no device identity. Create, join, and restore establish
     /// that identity before exposing a library.
     DeviceIdentityMissing,

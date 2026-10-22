@@ -314,22 +314,26 @@ pub struct BridgeSaveSyncConfig {
     pub bucket: String,
     pub region: String,
     pub endpoint: Option<String>,
-    pub key_prefix: Option<String>,
+    /// The key prefix as the person typed it, empty for none. Slashes at its
+    /// ends mean nothing; coven parses it.
+    pub key_prefix: String,
     pub access_key: String,
     pub secret_key: String,
     pub profile: Option<BridgeS3Profile>,
 }
 
 impl BridgeSaveSyncConfig {
-    pub(crate) fn into_core(self) -> bae_core::sync::S3ConfigData {
-        bae_core::sync::S3ConfigData {
+    /// A key prefix coven can't parse fails in its own class, naming the
+    /// folder at fault.
+    pub(crate) fn into_core(self) -> Result<bae_core::sync::S3ConfigData, BridgeError> {
+        Ok(bae_core::sync::S3ConfigData {
             bucket: self.bucket,
             region: self.region,
             endpoint: self.endpoint,
-            key_prefix: self.key_prefix,
+            key_prefix: coven::S3Prefix::parse(&self.key_prefix)?,
             access_key: self.access_key,
             secret_key: self.secret_key,
             profile: self.profile.map(BridgeS3Profile::into_core),
-        }
+        })
     }
 }

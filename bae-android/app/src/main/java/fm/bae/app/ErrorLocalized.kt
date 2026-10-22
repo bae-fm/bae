@@ -7,6 +7,7 @@ import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePlaybackErrorReason
+import uniffi.bae_bridge.BridgeS3PrefixProblem
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.bridgeErrorLineKey
 import uniffi.bae_bridge.bridgePlaybackErrorReasonKey
@@ -51,6 +52,24 @@ fun Context.localizedLine(error: BridgeException): String? =
                 val numbers = NumberFormat.getIntegerInstance(currentLocale())
                 val discs = category.mediums.map { numbers.format(it.toLong()) }
                 coreString(key, mapOf("discs" to ListFormatter.getInstance(currentLocale()).format(discs)))
+            }
+
+            // The line names the key prefix's folder at fault, and the
+            // character it may not hold.
+            is BridgeErrorCategory.S3Prefix -> {
+                when (val problem = category.problem) {
+                    is BridgeS3PrefixProblem.InvalidCharacter -> {
+                        coreString(key, mapOf("segment" to problem.segment, "character" to problem.character))
+                    }
+
+                    is BridgeS3PrefixProblem.SegmentTooLong -> {
+                        coreString(key, mapOf("segment" to problem.segment))
+                    }
+
+                    is BridgeS3PrefixProblem.EmptySegment -> {
+                        coreString(key)
+                    }
+                }
             }
 
             else -> {
