@@ -7,6 +7,11 @@ struct ReleaseEditCommands {
     /// Open the session afresh: the release as the library holds it, with
     /// nothing applied or picked.
     let open: @Sendable (String) async throws -> BridgeReleaseEditSeed
+    /// Apply a catalog release to the session; the seed comes back filled
+    /// with its every value, held until the save.
+    let apply:
+        @Sendable (String, BridgePressingLink) async throws ->
+            BridgeReleaseEditSeed
     /// Pick the album a save files the release under (`nil`: the one its
     /// records name); returns the album the session files it under now.
     let setAlbum: @Sendable (String, String?) async throws -> BridgeDraftAlbum
@@ -20,8 +25,8 @@ struct ReleaseEditCommands {
     let cover: @Sendable (String) async throws -> BridgeImageRef?
 }
 
-/// One persisted release-edit session shared by Import Done and the Library
-/// modal. It owns the working form and its save; core holds the album the
+/// One persisted release-edit session, behind the one release editor in the
+/// Library sheet and the import pane of an imported folder. It owns the working form and its save; core holds the album the
 /// person picked and what a catalog applied in the session until that save.
 @MainActor
 @Observable
@@ -32,6 +37,7 @@ final class ReleaseMetadataEditSession {
         case saving
         case cancelling
         case pickingAlbum
+        case applying
     }
 
     let releaseId: String
@@ -171,6 +177,31 @@ final class ReleaseMetadataEditSession {
             do {
                 show(try await commands.open(releaseId))
                 failure = nil
+            }
+            catch is CancellationError {}
+            catch {
+                failure = DisplayError(error)
+            }
+            finish(serial)
+        }
+    }
+
+    /// Apply the catalog release `link` picks: every value the form, the
+    /// tracks and the album show becomes what it gives, unsaved until Save.
+    func apply(_ link: BridgePressingLink) {
+        let serial = begin(.applying)
+        failure = nil
+        operationTask = Task { @MainActor in
+            await editingCommands.commitActiveEdits()
+            guard !Task.isCancelled else {
+                finish(serial)
+                return
+            }
+            do {
+                let seed = try await commands.apply(releaseId, link)
+                try Task.checkCancellation()
+                show(seed)
+                hasChanges = true
             }
             catch is CancellationError {}
             catch {

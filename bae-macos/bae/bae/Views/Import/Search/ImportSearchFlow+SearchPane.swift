@@ -23,7 +23,7 @@ extension ImportSearchFlow {
         /// the pane shows. `nil` when nothing is running for it.
         let runtime: BridgeCandidateRuntimeSnapshot?
         /// Which section is open: a folder candidate's as core's session
-        /// says, the re-identify sheet's own.
+        /// says, the release editor's own.
         let openSection: BridgeFindOnlineSection
         /// Open one section: for a folder candidate, a move core makes.
         let onOpenSection: (BridgeFindOnlineSection) -> Void
@@ -45,11 +45,10 @@ extension ImportSearchFlow {
     }
 
     /// `onSelect` owns what picking a pressing means for the surface that
-    /// opened the pane. Import applies it to the candidate draft; re-identify
-    /// keeps it selected until its own footer commits the library release.
+    /// opened the pane. Import applies it to the candidate draft; the release
+    /// editor applies it to the library release's edit session.
     ///
-    /// `onBack` is the pane's way out. The re-identify sheet passes `nil`: it
-    /// closes rather than going back to anything.
+    /// `onBack` is the pane's way out, back to the draft it was opened from.
     @MainActor
     @ViewBuilder
     static func buildSearchPane(

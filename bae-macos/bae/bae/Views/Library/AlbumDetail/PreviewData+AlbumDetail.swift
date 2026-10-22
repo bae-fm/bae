@@ -72,9 +72,7 @@
                 onAddToQueue: { _ in },
                 onAddNextAlbum: {},
                 onAddAlbumToQueue: {},
-                onChangeCover: {},
-                onEditMetadata: {},
-                onReIdentify: {},
+                onEdit: {},
                 onOpenStorage: {},
                 onExportRelease: {},
                 onSaveReleaseAs: {},
@@ -279,7 +277,7 @@
     extension View {
         /// Injects every service the `AlbumDetailView` tree reads from the
         /// environment so its real body — and the modal sheets it can present
-        /// (cover, edit-metadata, re-identify, storage) — render without a
+        /// (images, the release editor, storage) — render without a
         /// missing-environment trap. Nine `.stub` domain services plus the
         /// four the modals reach (`Importer`, `ImportStore`, `OutboxStore`,
         /// `ConfigStore`), fresh `PlaybackStore`/`UiStore`, and the passed-in

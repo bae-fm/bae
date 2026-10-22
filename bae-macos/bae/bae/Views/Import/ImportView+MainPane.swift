@@ -69,12 +69,6 @@ extension ImportView {
                     editCommands: releaseEditor.editCommands(
                         searchAlbums: importer.searchAlbums
                     ),
-                    changeCover: releaseEditor.changeCover,
-                    fetchRemoteCovers: {
-                        try await releaseEditor.fetchRemoteCovers(
-                            .release(releaseId: $0)
-                        )
-                    },
                     onViewInLibrary: { uiStore.navigateToAlbum($0) },
                     onOpenImages: mappingActions.openImages,
                     onOpenDocument: mappingActions.openDocument,

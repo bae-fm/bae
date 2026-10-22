@@ -349,6 +349,7 @@
         nonisolated func commands() -> ReleaseEditCommands {
             ReleaseEditCommands(
                 open: { _ in await self.open() },
+                apply: { _, _ in await self.open() },
                 setAlbum: { _, _ in .new },
                 searchAlbums: { _ in [] },
                 save: { releaseId, edit in

@@ -168,6 +168,7 @@ final class ReleaseEditor: Observable {
     ) -> ReleaseEditCommands {
         ReleaseEditCommands(
             open: openReleaseEdit,
+            apply: applyReleaseEditCatalog,
             setAlbum: setReleaseEditAlbum,
             searchAlbums: searchAlbums,
             save: saveReleaseEdit,

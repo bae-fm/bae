@@ -8,10 +8,6 @@ struct ImportedReleasePane: View {
     let releaseId: String
     let albumId: String
     let editCommands: ReleaseEditCommands
-    let changeCover:
-        @Sendable (String, BridgeCoverSelection) async throws -> Void
-    let fetchRemoteCovers:
-        @Sendable (String) async throws -> BridgeRemoteCoverGallery
     let onViewInLibrary: (String) -> Void
     let onOpenImages: ([BridgeMappingImage], String) -> Void
     let onOpenDocument: (String, String) -> Void
@@ -25,9 +21,6 @@ struct ImportedReleasePane: View {
     @State
     private var loadError: DisplayError?
 
-    @Environment(UiStore.self)
-    private var uiStore
-
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.section) {
             CandidateFolderLine(
@@ -37,12 +30,13 @@ struct ImportedReleasePane: View {
                 onNavigateToPlacement: {}
             )
             if let session {
-                actionBar(session)
-                ReleaseMetadataEditorContent(
+                importedLine
+                ReleaseEditorView(
                     session: session,
-                    onEditCover: { presentCoverPicker(session) },
+                    displayName: candidate.displayName,
                     onViewAlbum: onViewInLibrary,
-                    onPlayTrack: onPlayTrack
+                    onPlayTrack: onPlayTrack,
+                    onSaved: { _ in }
                 )
                 if !candidate.mapping.images.isEmpty {
                     imagesSection
@@ -77,34 +71,12 @@ struct ImportedReleasePane: View {
         }
     }
 
-    private func actionBar(_ session: ReleaseMetadataEditSession) -> some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            HStack(spacing: ThemeSpace.related) {
-                Label("Imported", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(Theme.success)
-                Button("View in Library") { onViewInLibrary(albumId) }
-                    .buttonStyle(.link)
-                Spacer(minLength: ThemeSpace.group)
-                Button("Cancel") { session.cancelChanges() }
-                    .opacity(session.hasChanges ? 1 : 0)
-                    .allowsHitTesting(session.hasChanges)
-                    .disabled(session.isBusy)
-                ProgressView()
-                    .controlSize(.small)
-                    .opacity(session.isBusy ? 1 : 0)
-                Button("Save") {
-                    session.save(onSuccess: { _ in })
-                }
-                .buttonStyle(PrimaryButtonStyle())
-                .disabled(session.isBusy)
-            }
-            if let shown = session.validationMessage.map({
-                DisplayError(line: $0)
-            })
-                ?? session.failure
-            {
-                ErrorDetailDisclosure(error: shown)
-            }
+    private var importedLine: some View {
+        HStack(spacing: ThemeSpace.related) {
+            Label("Imported", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(Theme.success)
+            Button("View in Library") { onViewInLibrary(albumId) }
+                .buttonStyle(.link)
         }
     }
 
@@ -185,24 +157,6 @@ struct ImportedReleasePane: View {
 }
 
 extension ImportedReleasePane {
-    private func presentCoverPicker(_ session: ReleaseMetadataEditSession) {
-        uiStore.presentModal {
-            CoverPickerFrame {
-                CoverSheetView(
-                    releaseId: releaseId,
-                    fetchRemoteCovers: {
-                        try await fetchRemoteCovers(releaseId)
-                    },
-                    onSelect: { selection in
-                        try await changeCover(releaseId, selection)
-                        try await session.refreshCover()
-                    },
-                    onDone: { uiStore.dismissModal() }
-                )
-            }
-        }
-    }
-
     @MainActor
     private func load() async {
         session?.cancelTasks()

@@ -2,7 +2,7 @@ import BaeKit
 import OSLog
 import SwiftUI
 
-/// The release editor body shared by Import Done and the Library modal.
+/// The release editor's draft: its fields, album row and track table.
 struct ReleaseMetadataEditorContent: View {
     private static let logger = Logger.bae("ReleaseMetadataEditor")
 

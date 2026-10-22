@@ -4,22 +4,22 @@ import Testing
 
 @testable import bae
 
-@Suite("Edit metadata sheet")
-struct EditMetadataSheetTests {
+@Suite("Release editor")
+struct ReleaseEditorTests {
     @Test("Modal size follows the host with minimum and maximum bounds")
     func modalSize() {
         #expect(
-            EditMetadataSheet.modalSize(
+            ReleaseEditorSheet.modalSize(
                 in: CGSize(width: 1_600, height: 1_000)
             ) == CGSize(width: 1_200, height: 860)
         )
         #expect(
-            EditMetadataSheet.modalSize(
+            ReleaseEditorSheet.modalSize(
                 in: CGSize(width: 820, height: 650)
             ) == CGSize(width: 760, height: 600)
         )
         #expect(
-            EditMetadataSheet.modalSize(
+            ReleaseEditorSheet.modalSize(
                 in: CGSize(width: 700, height: 500)
             ) == CGSize(width: 700, height: 500)
         )
@@ -214,7 +214,7 @@ struct EditMetadataSheetTests {
     }
 }
 
-extension EditMetadataSheetTests {
+extension ReleaseEditorTests {
     @MainActor
     @Test("cancel restores the saved form")
     func cancelRestoresSavedForm() async throws {

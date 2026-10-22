@@ -132,7 +132,8 @@ class ImportStore {
     /// Inert until the app wires the importer in.
     var sessionWriter = CandidateSessionWriter.inert
 
-    /// Re-identify candidates — one per active "Re-identify..." sheet.
+    /// Library releases' catalog searches — one per release editor that
+    /// opened its search.
     /// Keyed by `reidentify:{releaseId}` so identify events route the same
     /// way folder events do. The sheet inserts on open and removes on dismiss.
     var reIdentifyCandidates: OrderedDictionary<String, Candidate> = [:]
@@ -472,8 +473,8 @@ extension ImportStore {
 
     /// Move a folder candidate's pane as the person asked. Core moves it by
     /// the rule it moves every pane by, and the next detail carries it back.
-    /// A re-identify session has no pane to move: its sheet shows only the
-    /// search page.
+    /// A re-identify session has no pane to move: the release editor opens
+    /// and leaves its search page itself.
     func movePane(_ paneMove: BridgePaneMove, forKey key: String) {
         guard !key.hasPrefix("reidentify:") else { return }
         let writer = sessionWriter

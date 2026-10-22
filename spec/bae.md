@@ -983,12 +983,23 @@ import. Turning import on imports nothing already identified.
 - **Identifying a library release again.** A release already in the library
   can be identified again from its own files; its Disc IDs come from the rip
   logs and CUE sheets this device holds of it, and its track lengths from its
-  stored tracks. The person then picks its pressing, which is applied to the
-  release's edit session (below) and opens in the editor; a pressing whose
-  tracks don't lay out on the stored ones is refused with both counts.
+  stored tracks. The person searches from the release editor (§3.8) and picks
+  its pressing, which is applied to the release's edit session at once, with
+  no confirm step, and the editor shows what it gave; a pressing whose tracks
+  don't lay out on the stored ones is refused with both counts.
 - **One import at a time.** Imports run one after another on one worker.
 
 ### 3.8 Editing a library release
+
+One editor edits a library release: the album detail's release menu opens it
+with one *Edit…* item, and the import pane of an imported folder shows the
+same editor for each release the folder became. It has the parts of the
+import pane's draft, laid out the same way: the cover beside the album and
+pressing fields, the album the release files under, the track table, and the
+same *Identify* controls — *Automatic* identifies the release from its files
+and *Search* opens the typed search — whose results replace the draft in
+place until a pick applies one, or *Back* returns to it. *Save* writes the
+session; *Cancel*, shown once something changed, discards it.
 
 A library release is edited in a *session* the editor opens on it: its form
 holds the release's values as the library holds them. Applying a catalog

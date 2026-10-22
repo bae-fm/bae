@@ -64,10 +64,7 @@ struct AlbumDetailView: View {
                         summary: summary,
                         selectedRelease: selectedDetail,
                         onBrowseImages: {
-                            presentCoverSheet(
-                                release: selectedDetail,
-                                layout: .lightbox
-                            )
+                            presentImages(release: selectedDetail)
                         },
                         releaseCursor: releaseCursorBinding(summary: summary),
                         currentTrackId: playbackStore.nowPlaying.track?.track
@@ -103,17 +100,8 @@ struct AlbumDetailView: View {
                         onAddAlbumToQueue: {
                             queue.addToQueue(selectedDetail.tracks.map(\.id))
                         },
-                        onChangeCover: {
-                            presentCoverSheet(
-                                release: selectedDetail,
-                                layout: .grid
-                            )
-                        },
-                        onEditMetadata: {
-                            presentEditMetadataSheet(release: selectedDetail)
-                        },
-                        onReIdentify: {
-                            presentReIdentifySheet(release: selectedDetail)
+                        onEdit: {
+                            presentReleaseEditor(release: selectedDetail)
                         },
                         onOpenStorage: {
                             presentReleaseStorageSheet(selectedDetail)
@@ -255,20 +243,19 @@ struct AlbumDetailView: View {
 // MARK: - Modal presenters
 
 extension AlbumDetailView {
-    private func presentCoverSheet(
-        release: ReleaseDetail,
-        layout: ArtworkBrowserState.Layout
-    ) {
+    /// The release's images, larger, with the cover picker's choices: a
+    /// pick there writes the cover at once.
+    private func presentImages(release: ReleaseDetail) {
         let selectedReleaseId = release.id
         let releaseEditor = releaseEditor
         uiStore.presentModal {
-            let picker = CoverSheetView(
+            CoverSheetView(
                 releaseId: selectedReleaseId,
                 initialRelease: release,
-                initialLayout: layout,
+                initialLayout: .lightbox,
                 onFindRelease: {
                     uiStore.dismissModal()
-                    presentReIdentifySheet(release: release)
+                    presentReleaseEditor(release: release)
                 },
                 fetchRemoteCovers: {
                     try await releaseEditor.fetchRemoteCovers(
@@ -283,64 +270,48 @@ extension AlbumDetailView {
                 },
                 onDone: { uiStore.dismissModal() }
             )
-            if layout == .lightbox {
-                picker
-            }
-            else {
-                CoverPickerFrame { picker }
-            }
         }
     }
 
-    private func presentEditMetadataSheet(release: ReleaseDetail) {
+    /// Open the one release editor on `release`, as the library holds it.
+    private func presentReleaseEditor(release: ReleaseDetail) {
         let releaseId = release.id
-        // bae-core projects the release's current metadata into the raw form
-        // (current state → wire edit → raw form); the UI never shapes it. The
-        // seed loads off the release id, so nothing reads the @Observable
-        // release/summary fields in the modal builder's render context.
+        let displayName = release.displayName
+        let currentAlbumId = albumId
         let releaseEditor = releaseEditor
         let importer = importer
         Task {
             do {
                 let seed = try await releaseEditor.openReleaseEdit(releaseId)
                 uiStore.presentModal {
-                    EditMetadataSheet(
+                    ReleaseEditorSheet(
                         releaseId: releaseId,
+                        displayName: displayName,
                         seed: seed,
                         commands: releaseEditor.editCommands(
                             searchAlbums: importer.searchAlbums
                         ),
-                        onSaved: { _ in uiStore.dismissModal() },
+                        onSaved: { albumId in
+                            uiStore.dismissModal()
+                            // A release the save moved is shown where it went.
+                            if albumId != currentAlbumId {
+                                uiStore.navigateToAlbum(
+                                    albumId,
+                                    releaseId: releaseId
+                                )
+                            }
+                        },
                         onViewAlbum: { albumId in
                             uiStore.dismissModal()
                             uiStore.navigateToAlbum(albumId)
                         },
-                        onCancel: {
-                            uiStore.dismissModal()
-                            Task {
-                                try? await releaseEditor.discardReleaseEdit(
-                                    releaseId
-                                )
-                            }
-                        },
+                        onClose: { uiStore.dismissModal() }
                     )
                 }
             }
             catch {
                 uiStore.showError(error)
             }
-        }
-    }
-
-    private func presentReIdentifySheet(release: ReleaseDetail) {
-        let releaseId = release.id
-        let displayName = release.displayName
-        uiStore.presentModal {
-            ReIdentifySheet(
-                releaseId: releaseId,
-                displayName: displayName,
-                onClose: { uiStore.dismissModal() },
-            )
         }
     }
 

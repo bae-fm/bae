@@ -137,7 +137,7 @@ func shownIdentifyState(
         /// Everything the two readers above take their values from: the shared
         /// runtime and signals streams, and the importer they read the current
         /// value off when they appear. A preview that draws a candidate — a
-        /// row with a running import, a pane, the re-identify sheet — mounts
+        /// row with a running import, a pane, the release editor's search — mounts
         /// them, so it provides them and renders the same chain the app does.
         func candidateReaderPreviewEnvironment() -> some View {
             self

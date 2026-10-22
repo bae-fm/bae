@@ -24,9 +24,8 @@ struct AlbumExpansionContent: View {
     let onAddToQueue: (String) -> Void
     let onAddNextAlbum: () -> Void
     let onAddAlbumToQueue: () -> Void
-    let onChangeCover: () -> Void
-    let onEditMetadata: () -> Void
-    let onReIdentify: () -> Void
+    /// Open the release editor: cover, fields, album and catalog search.
+    let onEdit: () -> Void
     let onOpenStorage: () -> Void
     let onExportRelease: () -> Void
     let onSaveReleaseAs: () -> Void
@@ -145,9 +144,7 @@ struct AlbumExpansionContent: View {
                 Label("Add to Queue", systemImage: "text.append")
             }
             Divider()
-            Button("Change Cover...") { onChangeCover() }
-            Button("Edit metadata...") { onEditMetadata() }
-            Button("Re-identify...") { onReIdentify() }
+            Button("Edit…") { onEdit() }
             Button("Storage...") { onOpenStorage() }
             Button("Export…") { onExportRelease() }
             Button("Save As…") { onSaveReleaseAs() }
