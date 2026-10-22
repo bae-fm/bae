@@ -12,7 +12,7 @@ mirror_enum! {
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
-        Picked { artist: (BridgeExistingArtist), credit: (opt BridgeCreditName) },
+        Picked { artist: (BridgeExistingArtist), credit_name: (opt BridgeCreditName) },
         Credit { credit: (BridgeArtistCredit) },
     },
 }

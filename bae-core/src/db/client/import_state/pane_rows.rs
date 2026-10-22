@@ -497,14 +497,17 @@ struct AssignmentColumns<'a> {
 fn assignment_columns(credited: &Credited) -> AssignmentColumns<'_> {
     let join_phrase = credited.join.as_deref();
     match &credited.artist {
-        ArtistAssignment::Picked { artist, credit } => AssignmentColumns {
+        ArtistAssignment::Picked {
+            artist,
+            credit_name,
+        } => AssignmentColumns {
             kind: "picked",
             artist_id: Some(&artist.artist_id),
             name: None,
             sort_name: None,
             musicbrainz_id: None,
             discogs_id: None,
-            credit_key: credit.as_ref().map(|credit| credit.key.as_str()),
+            credit_key: credit_name.as_ref().map(|credit_name| credit_name.key.as_str()),
             credited_as: None,
             join_phrase,
         },
@@ -589,7 +592,7 @@ impl StoredAssignment {
                     musicbrainz_artist_id: self.musicbrainz_artist_id,
                     discogs_artist_id: self.discogs_artist_id,
                 },
-                credit: match (self.credit_key, self.credit_name) {
+                credit_name: match (self.credit_key, self.credit_name) {
                     (Some(key), Some(name)) => Some(crate::credits::CreditName { key, name }),
                     _ => None,
                 },

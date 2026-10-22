@@ -32,11 +32,11 @@ pub struct AutomationTrackUserEdit {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationArtistAssignment {
-    /// A library artist, printed by `credit` (one of its other printed
+    /// A library artist, printed by `credit_name` (one of its other printed
     /// names) where one is given, else by its own name.
     Picked {
         artist: AutomationExistingArtist,
-        credit: Option<AutomationCreditName>,
+        credit_name: Option<AutomationCreditName>,
     },
     Credit {
         credit: AutomationArtistCredit,

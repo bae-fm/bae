@@ -296,7 +296,7 @@ async fn album_artist_edit(device: &TestDevice, artist_ids: &[&str]) -> ReleaseU
             .unwrap()
             .expect("the credited artist is in the library");
         assignments.push(ArtistAssignment::Picked {
-            credit: None,
+            credit_name: None,
             artist: ExistingArtist::from(artist),
         });
     }

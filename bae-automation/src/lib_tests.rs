@@ -145,7 +145,7 @@ mod release_metadata_update_input {
         let mut edit = edit("Album Alpha", &[]);
         edit.album_artist_assignments = vec![AutomationCredited {
             artist: AutomationArtistAssignment::Picked {
-                credit: None,
+                credit_name: None,
                 artist: artist.clone(),
             },
             join: None,
@@ -153,7 +153,7 @@ mod release_metadata_update_input {
 
         let round_trip = AutomationReleaseUserEdit::from_core(edit.into_core());
         let AutomationArtistAssignment::Picked {
-            credit: None,
+            credit_name: None,
             artist: round_trip_artist,
         } = &round_trip.album_artist_assignments[0].artist
         else {

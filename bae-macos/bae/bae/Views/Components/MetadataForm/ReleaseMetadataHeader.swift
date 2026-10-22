@@ -420,21 +420,22 @@ extension BridgeArtistAssignment {
     /// its own; a credit's printed name or its name.
     var displayName: String {
         switch self {
-        case .picked(let artist, let credit): credit?.name ?? artist.name
+        case .picked(let artist, let creditName):
+            creditName?.name ?? artist.name
         case .credit(let credit): credit.creditedAs ?? credit.name
         }
     }
 }
 
 extension BridgeCredited {
-    /// A library artist in a new place of a credit list, printed by `credit`
-    /// (one of its other names) or its own name.
+    /// A library artist in a new place of a credit list, printed by
+    /// `creditName` (one of its other names) or its own name.
     static func picked(
         _ artist: BridgeExistingArtist,
-        credit: BridgeCreditName? = nil
+        creditName: BridgeCreditName? = nil
     ) -> Self {
         BridgeCredited(
-            artist: .picked(artist: artist, credit: credit),
+            artist: .picked(artist: artist, creditName: creditName),
             join: nil
         )
     }
@@ -682,7 +683,10 @@ struct ArtistAssignmentsField: View {
                         Button {
                             onChange(
                                 assignments + [
-                                    .picked(result.artist, credit: name.credit)
+                                    .picked(
+                                        result.artist,
+                                        creditName: name.credit
+                                    )
                                 ]
                             )
                             query = ""
@@ -719,7 +723,7 @@ struct ArtistAssignmentsField: View {
                 Button {
                     var next = assignments
                     next[index] = BridgeCredited(
-                        artist: .picked(artist: choice, credit: nil),
+                        artist: .picked(artist: choice, creditName: nil),
                         join: next[index].join
                     )
                     onChange(next)

@@ -94,11 +94,11 @@ pub struct BridgeTrackUserEdit {
 /// `bridge_artist_standing` / `bridge_artists_standing`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeArtistAssignment {
-    /// A library artist, printed by `credit` (one of its other printed
+    /// A library artist, printed by `credit_name` (one of its other printed
     /// names) where the person picked one, else by its own name.
     Picked {
         artist: BridgeExistingArtist,
-        credit: Option<BridgeCreditName>,
+        credit_name: Option<BridgeCreditName>,
     },
     Credit {
         credit: BridgeArtistCredit,

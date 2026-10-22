@@ -198,7 +198,7 @@ async fn an_existing_library_artist_needs_no_candidate_image_answer() {
     db.insert_artist(&artist).await.unwrap();
     let mut draft = candidate_draft("Release Title", "Artist Name");
     draft.album_artist_assignments = vec![crate::import::Credited::plain(ArtistAssignment::Picked {
-        credit: None,
+        credit_name: None,
         artist: ExistingArtist {
             artist_id: artist.id,
             name: artist.name,

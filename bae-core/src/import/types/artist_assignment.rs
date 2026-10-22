@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 pub enum ArtistAssignment {
     Picked {
         artist: ExistingArtist,
-        credit: Option<crate::credits::CreditName>,
+        credit_name: Option<crate::credits::CreditName>,
     },
     Credit {
         credit: ArtistCredit,
@@ -55,7 +55,7 @@ impl Credited {
         Self {
             artist: ArtistAssignment::Picked {
                 artist: credit.artist.into(),
-                credit: credit.credit,
+                credit_name: credit.credit,
             },
             join: credit.join,
         }
@@ -251,7 +251,7 @@ impl ArtistAssignment {
     pub fn picked(artist: ExistingArtist) -> Self {
         Self::Picked {
             artist,
-            credit: None,
+            credit_name: None,
         }
     }
 
@@ -259,9 +259,14 @@ impl ArtistAssignment {
     /// its name; a credit's printed name, else its name.
     pub fn printed(&self) -> &str {
         match self {
-            Self::Picked { artist, credit } => credit
+            Self::Picked {
+                artist,
+                credit_name,
+            } => credit_name
                 .as_ref()
-                .map_or(artist.name.as_str(), |credit| credit.name.as_str()),
+                .map_or(artist.name.as_str(), |credit_name| {
+                    credit_name.name.as_str()
+                }),
             Self::Credit { credit } => credit.printed(),
         }
     }
@@ -272,7 +277,7 @@ impl ArtistAssignment {
     /// resolved artist's own (see `db::client::write::settle_credit_name`).
     pub(crate) fn link_credit(&self) -> Option<crate::credits::CreditName> {
         match self {
-            Self::Picked { credit, .. } => credit.clone(),
+            Self::Picked { credit_name, .. } => credit_name.clone(),
             Self::Credit { credit } => Some(crate::credits::CreditName::of(credit.printed())),
         }
     }
@@ -322,7 +327,13 @@ impl ArtistAssignment {
 
     pub(super) fn normalized(self) -> Self {
         match self {
-            Self::Picked { artist, credit } => Self::Picked { artist, credit },
+            Self::Picked {
+                artist,
+                credit_name,
+            } => Self::Picked {
+                artist,
+                credit_name,
+            },
             Self::Credit { credit } => {
                 let name = credit.name.trim().to_string();
                 Self::Credit {

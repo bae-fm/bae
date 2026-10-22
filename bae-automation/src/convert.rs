@@ -465,7 +465,7 @@ mirror_enum! {
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
-        Picked { artist: (AutomationExistingArtist), credit: (opt AutomationCreditName) },
+        Picked { artist: (AutomationExistingArtist), credit_name: (opt AutomationCreditName) },
         Credit { credit: (AutomationArtistCredit) },
     },
 }

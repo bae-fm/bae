@@ -626,7 +626,7 @@ async fn a_queued_track_renamed_while_another_plays_remotely_loads_with_its_new_
             &crate::import::ReleaseUserEdit {
                 album_title: "Album Title".to_string(),
                 album_artist_assignments: vec![crate::import::Credited::plain(crate::import::ArtistAssignment::Picked {
-                    credit: None,
+                    credit_name: None,
                     artist: crate::import::ExistingArtist {
                         artist_id: bae_test_support::test_uuid(
                             "e36744a5-1a36-460f-891c-e7e558034edf",

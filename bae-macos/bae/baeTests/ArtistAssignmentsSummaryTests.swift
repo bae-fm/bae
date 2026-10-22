@@ -153,7 +153,7 @@ struct ArtistAssignmentsSummaryTests {
                                 musicbrainzArtistId: nil,
                                 discogsArtistId: nil
                             ),
-                            credit: BridgeCreditName(
+                            creditName: BridgeCreditName(
                                 key: "first alias",
                                 name: "First Alias"
                             )
