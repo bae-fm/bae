@@ -19,7 +19,7 @@ runs:
 
     - name: Restore the built generator
       id: cache
-      uses: actions/cache@v5
+      uses: actions/cache/restore@v5
       with:
         path: ${{ runner.tool_cache }}/uniffi-bindgen-cs
         key: uniffi-bindgen-cs-${{ runner.os }}-${{ runner.arch }}-${{ steps.rev.outputs.rev }}
@@ -31,6 +31,15 @@ runs:
         REV: ${{ steps.rev.outputs.rev }}
         ROOT: ${{ runner.tool_cache }}/uniffi-bindgen-cs
       run: cargo install --git https://github.com/bae-fm/uniffi-bindgen-cs --rev "$REV" uniffi-bindgen-cs --locked --root "$ROOT"
+
+    # Saved as soon as it is built: actions/cache's own post-job save is skipped
+    # when the job is cancelled, which on main is most runs.
+    - name: Save the built generator
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ runner.tool_cache }}/uniffi-bindgen-cs
+        key: ${{ steps.cache.outputs.cache-primary-key }}
 
     - name: Put the generator on the path
       shell: bash
