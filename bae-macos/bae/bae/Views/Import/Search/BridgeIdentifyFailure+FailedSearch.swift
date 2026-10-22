@@ -22,7 +22,7 @@ extension BridgeIdentifyFailure {
     /// The lookup this failure names, for the line saying its results are
     /// missing from the list. `nil` for the fetches that apply the release a
     /// run picked — its details, artist images and cover — which leave no
-    /// results missing. Only MusicBrainz is asked about disc IDs and ISRCs,
+    /// results missing. Only MusicBrainz is asked about Disc IDs and ISRCs,
     /// so their failures name it.
     var failedSearch: FailedSearch? {
         switch self {

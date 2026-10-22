@@ -321,7 +321,7 @@
         static let searchGroupsManual: [ReleaseGroup] =
             searchGroupsManualBridge.map(ReleaseGroup.init(bridge:))
 
-        /// One card per album when the disc ID and the barcode share none.
+        /// One card per album when the Disc ID and the barcode share none.
         static let discidOnlyGroup = BridgeReleaseGroup(
             id: "group-disc",
             title: "Album Title",
@@ -655,7 +655,7 @@
             signals: settledSignals
         )
 
-        /// The disc ID and the barcode named different albums, all offered.
+        /// The Disc ID and the barcode named different albums, all offered.
         static let searchStateDisagreement = searchState(
             identifyState: IdentifyState(bridge: bridgeDisagreementState)
         )

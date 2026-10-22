@@ -460,7 +460,7 @@ fn keep_disc(discs: &mut Vec<ComputedDiscId>, disc_id: String, file: Option<&str
             disc_id,
             kept_from = ?kept.source_file,
             again_from = ?file,
-            "two rip files hash to one disc ID; it is kept once"
+            "two rip files hash to one Disc ID; it is kept once"
         );
         return;
     }

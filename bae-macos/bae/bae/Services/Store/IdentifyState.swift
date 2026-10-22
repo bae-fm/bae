@@ -9,7 +9,7 @@ import Foundation
 ///
 /// A settled state carries the run it settled as, so the ledger stays up
 /// beside the matches. It carries none when extraction handed the run nothing
-/// to lay out: a folder with no disc ID, no barcode source and no catalog
+/// to lay out: a folder with no Disc ID, no barcode source and no catalog
 /// number, or a verdict stood back up from the store.
 ///
 /// A state's `groups` are every card its answers make. The rows agreement left

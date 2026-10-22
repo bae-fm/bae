@@ -10,7 +10,7 @@ import SwiftUI
 struct ImportMappingFileRow: View {
     let file: BridgeMappingFile
     let previewingTarget: BridgePreviewTarget?
-    /// Identifying signals extracted from this file — the rip log a disc ID
+    /// Identifying signals extracted from this file — the rip log a Disc ID
     /// was computed from wears its chip here.
     var evidence: [BridgeFileEvidence]
     let actions: ImportMappingActions

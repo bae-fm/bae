@@ -801,7 +801,7 @@ pub(crate) async fn lookup_by_discid(
         Err(e) => {
             return Err(mb_failure(
                 &e,
-                &format!("reading MusicBrainz's answer for disc ID {discid}"),
+                &format!("reading MusicBrainz's answer for Disc ID {discid}"),
             ))
         }
     };

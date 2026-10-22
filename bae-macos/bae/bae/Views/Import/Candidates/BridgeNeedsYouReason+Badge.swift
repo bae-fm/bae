@@ -59,7 +59,7 @@ extension BridgeNeedsYouReason {
         case .nothingToLookUp:
             String(
                 localized:
-                    "Your folder has no disc ID, barcode, catalog number or names to search with."
+                    "Your folder has no Disc ID, barcode, catalog number or names to search with."
             )
         }
     }

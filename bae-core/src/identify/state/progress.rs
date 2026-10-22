@@ -544,7 +544,7 @@ pub(super) fn settled_identity_state(context: &SignalsContext) -> SignalState {
     match &context.disc.signal {
         DiscIdSignal::Absent | DiscIdSignal::NotCdAudio => SignalState::Skipped,
         DiscIdSignal::Failed { .. } => {
-            unreachable!("a run whose disc ID could not be derived ended as an error")
+            unreachable!("a run whose Disc ID could not be derived ended as an error")
         }
         DiscIdSignal::Computed { .. } => match context.disc.not_asked {
             Some(reason) => SignalState::NotAsked { reason },
@@ -643,7 +643,7 @@ pub(super) fn start_discid_progress(
         }
         DiscIdSignal::Absent | DiscIdSignal::NotCdAudio => DiscidProgress::Skipped,
         DiscIdSignal::Failed { .. } => {
-            unreachable!("a run whose disc ID could not be derived ended as an error")
+            unreachable!("a run whose Disc ID could not be derived ended as an error")
         }
     }
 }

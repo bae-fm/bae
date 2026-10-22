@@ -765,7 +765,7 @@ mod tests {
             match BridgeIdentifyState::from_core(state) {
                 BridgeIdentifyState::Triangulating { run, .. } => match run.disc_id {
                     BridgeDiscIdStep::Read { discs } => discs,
-                    other => panic!("expected read disc IDs, got {other:?}"),
+                    other => panic!("expected read Disc IDs, got {other:?}"),
                 },
                 other => panic!("expected a run in flight, got {other:?}"),
             }

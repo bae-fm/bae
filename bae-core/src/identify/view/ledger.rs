@@ -75,7 +75,7 @@ pub(super) fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) 
         }
         DiscIdSignal::NotCdAudio => return DiscIdStepView::NotCdAudio,
         DiscIdSignal::Failed { .. } => {
-            unreachable!("a run whose disc ID could not be derived ended as an error")
+            unreachable!("a run whose Disc ID could not be derived ended as an error")
         }
     };
     let row = |disc_id: &str, lookup: LookupView| DiscIdRow {
@@ -109,7 +109,7 @@ pub(super) fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) 
             .map(|disc| row(&disc.disc_id, LookupView::NotAsked { reason: *reason }))
             .collect(),
         DiscidProgress::Skipped => {
-            unreachable!("only a disc ID that was never computed is skipped")
+            unreachable!("only a Disc ID that was never computed is skipped")
         }
     };
     DiscIdStepView::Read { discs }

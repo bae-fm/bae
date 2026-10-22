@@ -13,7 +13,7 @@ struct FindOnlineAutomaticSection: View {
     let state: ImportSearchState
     /// Open Settings on the Discogs page — offered when no source is on.
     let onOpenSettings: () -> Void
-    /// Turn one identifier in the band over — the disc ID, a barcode, a
+    /// Turn one identifier in the band over — the Disc ID, a barcode, a
     /// catalog number. Core re-derives the state the import projection
     /// delivers from what the candidate's choices then say.
     let onToggleLookup: (LookupToggle) -> Void
@@ -96,7 +96,7 @@ struct FindOnlineAutomaticSection: View {
                         .multilineTextAlignment(.center)
                 }
                 else {
-                    Text("No disc ID, barcode, or catalog number found")
+                    Text("No Disc ID, barcode, or catalog number found")
                         .foregroundStyle(.secondary)
                 }
                 SearchManuallyButton(action: onSearchManually)

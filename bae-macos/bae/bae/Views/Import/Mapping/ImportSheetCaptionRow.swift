@@ -5,7 +5,7 @@ import SwiftUI
 /// with no audio bound; bound references are changed from the summary's menu.
 struct ImportSheetCaptionRow: View {
     let sheet: BridgeSheetGroup
-    /// Identifying signals extracted from this sheet, such as a disc ID.
+    /// Identifying signals extracted from this sheet, such as a Disc ID.
     var evidence: [BridgeFileEvidence]
     /// Whether this surface offers the CUE selection and disc control.
     let showsDiscMenu: Bool

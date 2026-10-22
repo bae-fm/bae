@@ -257,7 +257,7 @@ extension BridgePaneFailure {
 // MARK: - Lookup toggles
 
 /// Which identifier a chip in the band stands for. Every chip turns its own
-/// identifier over — the disc ID, one of the candidate's barcodes, or one of
+/// identifier over — the Disc ID, one of the candidate's barcodes, or one of
 /// its catalog numbers — and that change is what goes to core.
 enum LookupToggle: Equatable {
     case discId

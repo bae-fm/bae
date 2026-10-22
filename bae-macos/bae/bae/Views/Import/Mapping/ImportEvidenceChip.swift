@@ -2,7 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// Badges and hover text marking a file as the source of an identifying
-/// signal: the image a barcode was read from, or the log or sheet a disc ID
+/// signal: the image a barcode was read from, or the log or sheet a Disc ID
 /// was computed from.
 enum ImportEvidence {
     struct Badge: Identifiable {

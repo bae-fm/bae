@@ -224,7 +224,7 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
             .and_then(|position| mediums.get_mut(position))
             .ok_or_else(|| {
                 DbError::Message(format!(
-                    "{catalog} release {key} holds a disc ID for medium {position}, which it does not hold"
+                    "{catalog} release {key} holds a Disc ID for medium {position}, which it does not hold"
                 ))
             })?;
         medium.disc_ids.push(disc_id);

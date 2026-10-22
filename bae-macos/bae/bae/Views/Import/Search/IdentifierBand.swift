@@ -54,8 +54,8 @@ struct IdentifierBand: View {
 
     // MARK: - Disc ID
 
-    /// One chip per disc ID with MusicBrainz's capsule, the only catalog that
-    /// answers disc IDs; a read disc ID toggles the disc IDs in and out of the
+    /// One chip per Disc ID with MusicBrainz's capsule, the only catalog that
+    /// answers Disc IDs; a read Disc ID toggles the Disc IDs in and out of the
     /// run.
     @ViewBuilder
     private var discIdChips: some View {
@@ -67,7 +67,7 @@ struct IdentifierBand: View {
         case .absent:
             IdentifierChip(label: label) { IdentifierDash() }
                 .help("No LOG or CUE in the folder")
-        // The CUE's audio is at a rate no CD holds, so no disc ID was read.
+        // The CUE's audio is at a rate no CD holds, so no Disc ID was read.
         case .notCdAudio(let sampleRateHz):
             IdentifierChip(label: label) { IdentifierDash() }
                 .help(
@@ -91,7 +91,7 @@ struct IdentifierBand: View {
         // Left out: clicking the chip asks about it again.
         case .notAsked(reason: .leftOut):
             discIdButton(label: label, discId: disc.discId, lookup: nil)
-        // Only Settings can switch on the catalog that answers disc IDs.
+        // Only Settings can switch on the catalog that answers Disc IDs.
         case .notAsked(reason: .noCatalog):
             IdentifierChip(label: label, value: disc.discId) {
                 IdentifierDash()
@@ -101,7 +101,7 @@ struct IdentifierBand: View {
         }
     }
 
-    /// The disc ID as a toggle; `lookup` is `nil` when the person left it out.
+    /// The Disc ID as a toggle; `lookup` is `nil` when the person left it out.
     private func discIdButton(
         label: String,
         discId: String,
@@ -127,8 +127,8 @@ struct IdentifierBand: View {
         .buttonStyle(.plain)
         .help(
             lookup == nil
-                ? "Ask about this disc ID again"
-                : "Leave this disc ID out of the run"
+                ? "Ask about this Disc ID again"
+                : "Leave this Disc ID out of the run"
         )
     }
 
@@ -433,7 +433,7 @@ private struct TitleSearchChip<Trailing: View>: View {
         .windowBackground()
     }
 
-    /// One source asked, which does not answer disc IDs.
+    /// One source asked, which does not answer Disc IDs.
     #Preview("Run on one source") {
         IdentifierBand(
             run: PreviewData.identifyRunOneSource,
@@ -487,7 +487,7 @@ private struct TitleSearchChip<Trailing: View>: View {
         .windowBackground()
     }
 
-    /// A disc ID left out, then two barcodes both asked about, then one of
+    /// A Disc ID left out, then two barcodes both asked about, then one of
     /// them left out.
     #Preview("Identifiers left out of the run") {
         VStack(alignment: .leading, spacing: 0) {

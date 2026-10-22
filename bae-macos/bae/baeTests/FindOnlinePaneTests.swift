@@ -795,10 +795,10 @@ struct IdentifierBandTests {
         #expect(leftOut != asked)
     }
 
-    /// A disc ID nothing looked up is two different situations, and the band
+    /// A Disc ID nothing looked up is two different situations, and the band
     /// draws them apart: the person took it out, which they can undo, or no
-    /// provider the run asks answers disc IDs, which they cannot.
-    @Test("a disc ID left out draws differently from one with no provider")
+    /// provider the run asks answers Disc IDs, which they cannot.
+    @Test("a Disc ID left out draws differently from one with no provider")
     func aLeftOutDiscIdDrawsDifferently() async throws {
         let leftOut = try await Self.pixels(
             PreviewData.identifyRunDiscIdLeftOut

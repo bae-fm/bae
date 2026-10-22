@@ -461,7 +461,7 @@ mod tests {
 
         assert!(
             rip.disc_id.computed().len() == 1,
-            "LOG file in local folder must produce a disc ID"
+            "LOG file in local folder must produce a Disc ID"
         );
         assert_eq!(track_count, 2, "track count comes from the DB tracks");
         assert_eq!(

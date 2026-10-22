@@ -4,7 +4,7 @@
 
     /// One `BridgeIdentifyRun` per shape the identifier band draws.
     extension PreviewData {
-        /// In flight: the disc ID matched, the first barcode is half
+        /// In flight: the Disc ID matched, the first barcode is half
         /// answered, and the second is left out.
         static let identifyRunInFlight = BridgeIdentifyRun(
             providers: [.musicBrainz, .discogs],
@@ -51,7 +51,7 @@
             search: .notNeeded
         )
 
-        /// Discogs alone, which does not answer disc IDs.
+        /// Discogs alone, which does not answer Disc IDs.
         static let identifyRunOneSource = BridgeIdentifyRun(
             providers: [.discogs],
             discId: .read(discs: [
@@ -83,7 +83,7 @@
             search: .notNeeded
         )
 
-        /// The one-source run with its disc ID left out.
+        /// The one-source run with its Disc ID left out.
         static let identifyRunDiscIdLeftOut = BridgeIdentifyRun(
             providers: identifyRunOneSource.providers,
             discId: .read(discs: [
@@ -229,7 +229,7 @@
             )
         )
 
-        /// Settled, with the disc ID and the barcode both matched.
+        /// Settled, with the Disc ID and the barcode both matched.
         static let identifyRunFound = BridgeIdentifyRun(
             providers: [.musicBrainz, .discogs],
             discId: .read(discs: [
@@ -257,7 +257,7 @@
             search: .notNeeded
         )
 
-        /// No disc ID or barcode, only catalog numbers to pick from.
+        /// No Disc ID or barcode, only catalog numbers to pick from.
         static let identifyRunAwaitingCatalog = BridgeIdentifyRun(
             providers: [.musicBrainz, .discogs],
             discId: .absent,

@@ -3305,9 +3305,9 @@ nb = "Utgivelsen ble automatisk identifisert fra strekkoden {value} på dette bi
 fi = "Julkaisu tunnistettiin automaattisesti tämän kuvan viivakoodista {value}"
 
 [messages."core.import.evidence.disc_id_from_file"]
-comment = "Import pane, hover over a rip log or cue sheet row: identification matched the release on a disc ID computed from this file ({value} is the disc ID)."
+comment = "Import pane, hover over a rip log or cue sheet row: identification matched the release on a Disc ID computed from this file ({value} is the Disc ID)."
 args = { value = "Str" }
-value = "Release was auto-identified from disc ID {value} from this file"
+value = "Release was auto-identified from Disc ID {value} from this file"
 
 [messages."core.import.evidence.disc_id_from_file".translations]
 es = "La edición se identificó automáticamente por el ID de disco {value} de este archivo"

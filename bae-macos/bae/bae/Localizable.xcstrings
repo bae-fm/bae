@@ -3878,7 +3878,7 @@
         }
       }
     },
-    "Your folder has no disc ID, barcode, catalog number or names to search with." : {
+    "Your folder has no Disc ID, barcode, catalog number or names to search with." : {
       "comment" : "Find online pane, a folder waiting on the person: it has nothing to look it up by",
       "extractionState" : "manual",
       "localizations" : {
@@ -3921,7 +3921,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your folder has no disc ID, barcode, catalog number or names to search with."
+            "value" : "Your folder has no Disc ID, barcode, catalog number or names to search with."
           }
         },
         "es" : {
@@ -5499,7 +5499,7 @@
       }
     },
     "Nothing to look up" : {
-      "comment" : "Import list row badge: the folder has no disc ID, barcode, catalog number or names to look it up by",
+      "comment" : "Import list row badge: the folder has no Disc ID, barcode, catalog number or names to look it up by",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
@@ -95622,7 +95622,7 @@
       }
     },
     "Not read: the audio is %@, which no CD holds" : {
-      "comment" : "Find online ledger: help on the disc ID label when the folder's CUE was not read into a disc ID because its audio is at a sample rate no CD plays at; %@ is the rate, e.g. \"96 kHz\"",
+      "comment" : "Find online ledger: help on the Disc ID label when the folder's CUE was not read into a Disc ID because its audio is at a sample rate no CD plays at; %@ is the rate, e.g. \"96 kHz\"",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -95968,7 +95968,7 @@
       }
     },
     "No LOG or CUE in the folder" : {
-      "comment" : "Find online ledger: help on the disc ID label when the folder has no LOG or CUE",
+      "comment" : "Find online ledger: help on the Disc ID label when the folder has no LOG or CUE",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -96141,7 +96141,7 @@
       }
     },
     "Reading…" : {
-      "comment" : "Find online ledger: help on the disc ID label before extraction has reported",
+      "comment" : "Find online ledger: help on the Disc ID label before extraction has reported",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -97867,7 +97867,7 @@
         }
       }
     },
-    "No disc ID, barcode, or catalog number found" : {
+    "No Disc ID, barcode, or catalog number found" : {
       "comment" : "Find online automatic section: the folder carries nothing to look up and no catalog number to offer",
       "localizations" : {
         "ar" : {
@@ -97897,7 +97897,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No disc ID, barcode, or catalog number found"
+            "value" : "No Disc ID, barcode, or catalog number found"
           }
         },
         "de" : {
@@ -100289,7 +100289,7 @@
         }
       }
     },
-    "Leave this disc ID out of the run" : {
+    "Leave this Disc ID out of the run" : {
       "comment" : "Find online band: help on a disc-ID chip the run asks about, which takes it out of the run",
       "localizations" : {
         "ar" : {
@@ -100319,7 +100319,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Leave this disc ID out of the run"
+            "value" : "Leave this Disc ID out of the run"
           }
         },
         "de" : {
@@ -100462,7 +100462,7 @@
         }
       }
     },
-    "Ask about this disc ID again" : {
+    "Ask about this Disc ID again" : {
       "comment" : "Find online band: help on a disc-ID chip left out of the run, which puts it back",
       "localizations" : {
         "ar" : {
@@ -100492,7 +100492,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ask about this disc ID again"
+            "value" : "Ask about this Disc ID again"
           }
         },
         "de" : {

@@ -128,7 +128,7 @@ extension ImportSearchFlow {
         }
     }
 
-    /// Take one identifier in or out of the run: the disc ID, one of the
+    /// Take one identifier in or out of the run: the Disc ID, one of the
     /// candidate's barcodes, or one of its catalog numbers.
     @MainActor
     private static func toggleLookup(

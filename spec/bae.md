@@ -487,7 +487,7 @@ of:
   the same folder. A sheet beside a log describes the disc the log already
   hashed, so it isn't hashed again; a disc two files hash alike counts once.
   bae hashes the track offsets the way MusicBrainz does; it never reads a
-  drive. Carol's box, a CUE sheet per disc, yields two disc IDs.
+  drive. Carol's box, a CUE sheet per disc, yields two Disc IDs.
 - **Barcodes**, decoded from the bars on the artwork, read from the digits
   printed under them, or taken from a CUE sheet's `CATALOG` line.
 - **Catalog numbers**, read from the folder's text: the CUE sheet, the
@@ -500,7 +500,7 @@ of:
 Reading the artwork means reading text off images. On macOS this uses the
 system's Vision framework; a platform with no image reader reads no artwork.
 
-Ana's folder yields a disc ID from her CUE sheet, the barcode from her scan of
+Ana's folder yields a Disc ID from her CUE sheet, the barcode from her scan of
 the case, LBL-1001 from the folder's text, and eleven ISRCs. The fast clues
 come first, so the disc-ID lookup need not wait for the artwork to be read.
 
@@ -519,7 +519,7 @@ from anything.
 
 A proven medium sets aside any pressing whose stated media could not have
 produced the audio (§3.5). A folder proven not to be a CD has its CUE sheet
-left unhashed: a disc ID of a vinyl rip names no disc.
+left unhashed: a Disc ID of a vinyl rip names no disc.
 
 ### 3.4 Looking up
 
@@ -528,7 +528,7 @@ itself and at its own pace:
 
 | Clue | Asked of |
 |---|---|
-| each disc ID | MusicBrainz |
+| each Disc ID | MusicBrainz |
 | ISRCs | MusicBrainz |
 | barcodes | both |
 | catalog numbers | both |
@@ -538,7 +538,7 @@ Discogs needs an API key; without one it is not asked. Either catalog can be
 switched off. MusicBrainz is asked no more than once every 1.2 seconds, under
 the rate it allows.
 
-**Rounds.** One lookup is not enough. Ana's disc ID returns three CD
+**Rounds.** One lookup is not enough. Ana's Disc ID returns three CD
 pressings; one of them carries LBL-1001, which the folder also states, so that
 number is now worth asking Discogs about. A run therefore goes in rounds:
 
@@ -572,7 +572,7 @@ alike. Five statements count:
    share a word.
 
 **A release's mediums.** A MusicBrainz release lists its media, each with its
-format, its own tracks, and the disc IDs registered against it. Discogs lists one flat tracklist and states the
+format, its own tracks, and the Disc IDs registered against it. Discogs lists one flat tracklist and states the
 media as format entries with quantities, so bae splits the tracklist by its
 positions:
 
@@ -597,8 +597,8 @@ alike, the group takes the one carrier its units name, else none.
 **Ranking.** Each pressing is scored by what it states against what the folder
 states. For each fact, a pressing agrees, says nothing, or disagrees; one that
 says nothing never loses to one that disagrees. Which lookup found a pressing
-adds no weight, with one exception: a disc ID's lookup returns only releases
-holding that disc, so a release returned for more of the folder's disc IDs
+adds no weight, with one exception: a Disc ID's lookup returns only releases
+holding that disc, so a release returned for more of the folder's Disc IDs
 holds more of its discs and ranks above one returned for fewer. The pressings
 tied at the top are offered; the rest are set aside under "N more releases".
 
@@ -631,7 +631,7 @@ A run *picks unattended* only when all of these hold:
 - its tracklist lists as many tracks as the folder holds.
 
 Ana's run finds one pressing, on both catalogs, read in full, eleven tracks.
-bae picks it and writes its metadata into her draft. A disc ID often returns
+bae picks it and writes its metadata into her draft. A Disc ID often returns
 several pressings of one album: an exact clue is not a unique answer, and
 choosing between them is the person's.
 
@@ -779,7 +779,7 @@ import. Turning import on imports nothing already identified.
   is stored with the candidate like any pane control (§3.6), and the
   candidate is ready again.
 - **Identifying a library release again.** A release already in the library
-  can be identified again from its own files; its disc IDs come from the rip
+  can be identified again from its own files; its Disc IDs come from the rip
   logs and CUE sheets this device holds of it, and its track lengths from its
   stored tracks. The person then names its pressing, whose records replace the old
   ones and whose facts seed its metadata, or says it is no catalog's pressing:
@@ -2131,7 +2131,7 @@ under it.
 |---|---|
 | `source_release` | one fetched catalog release and every fact an import reads from it |
 | `source_release_album_artist`, `source_release_role`, `source_release_entry_credit`, `source_release_entry_role` | its credits |
-| `source_release_medium`, `source_release_medium_disc`, `source_release_entry`, `source_release_format` | its mediums, each with its carrier where stated and the disc IDs registered against it, their tracklists, and its format entries |
+| `source_release_medium`, `source_release_medium_disc`, `source_release_entry`, `source_release_format` | its mediums, each with its carrier where stated and the Disc IDs registered against it, their tracklists, and its format entries |
 | `source_release_work`, `source_release_work_composer` | its MusicBrainz works |
 | `source_release_link`, `source_release_album_link`, `source_release_record`, `release_group_album_link` | what it says it is on other catalogs |
 | `source_release_cover`, `source_release_cover_copy`, `source_release_archive_group` | the images it offers a picker |

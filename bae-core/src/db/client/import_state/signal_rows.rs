@@ -298,7 +298,7 @@ pub(super) fn load_signals_on(
             let discs = std::mem::take(&mut values.discs);
             if (disc_id_state == "computed") == discs.is_empty() {
                 return Err(DbError::Message(format!(
-                    "a {disc_id_state} disc ID signal states {} disc IDs",
+                    "a {disc_id_state} Disc ID signal states {} Disc IDs",
                     discs.len()
                 )));
             }
@@ -307,7 +307,7 @@ pub(super) fn load_signals_on(
                 "absent" => DiscIdSignal::Absent,
                 "not_cd_audio" => DiscIdSignal::NotCdAudio,
                 "failed" => DiscIdSignal::Failed {
-                    failure: failure_of(disc_id_failure, "disc ID")?,
+                    failure: failure_of(disc_id_failure, "Disc ID")?,
                 },
                 other => return Err(unreadable("disc_id_state", other)),
             };

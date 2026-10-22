@@ -21,7 +21,7 @@ struct ImportSearchPane: View {
     let onRetrySearch: () -> Void
     /// Open Settings on the Discogs page.
     let onOpenSettings: () -> Void
-    /// Leave an identifier (disc ID, barcode, catalog number) out of the run,
+    /// Leave an identifier (Disc ID, barcode, catalog number) out of the run,
     /// or ask about it again.
     let onToggleLookup: (LookupToggle) -> Void
     /// Count a catalog number the folder states, or stop counting it.

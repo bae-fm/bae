@@ -22,7 +22,7 @@ pub async fn lookup_and_resolve(
     super::annotate_with_library_status(matches, library_manager)
         .await
         .map_err(|detail| {
-            InternalFailure::logged("checking the library for the disc ID's releases", detail)
+            InternalFailure::logged("checking the library for the Disc ID's releases", detail)
                 .into()
         })
 }
