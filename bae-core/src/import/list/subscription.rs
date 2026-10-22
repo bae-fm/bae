@@ -320,18 +320,34 @@ enum Arrival {
 }
 
 impl ImportListSubscription {
-    /// Start the subscription and the merges that keep its upload standing
-    /// and live standings current. A watch channel always holds its current
-    /// value, so the outbox merge reads it once before it waits; `initial`'s
-    /// live standings were read from `runtime_facts` as it stands.
+    /// Open the list for `view` through `windows` and start the merge that
+    /// keeps its request current.
+    ///
+    /// The request's upload status and live standings are read here, from the
+    /// same outbox and runtime watches the merge then follows, and `open`
+    /// opens the query with that request: the query starts agreeing with what
+    /// the merge would hand it, so the merge's first change to the request is
+    /// a real change to the queue or to what is running. A new list opens
+    /// with nothing selected.
     pub(crate) fn start(
-        query: coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection>,
+        open: impl FnOnce(
+            ImportListRequest,
+        ) -> coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection>,
         folder_scans: coven::LiveQuery<FolderScanProgress>,
-        initial: ImportListRequest,
-        outbox: watch::Receiver<Option<Result<OutboxSnapshot, String>>>,
+        view: ImportListView,
+        windows: LibraryPageWindows,
+        mut outbox: watch::Receiver<Option<Result<OutboxSnapshot, String>>>,
         runtime_facts: RuntimeFactsWatch,
         runtime_handle: &tokio::runtime::Handle,
     ) -> Self {
+        let initial = ImportListRequest {
+            live_standings: view.pending_filter.live_standings(runtime_facts.facts()),
+            view,
+            windows,
+            upload_status: UploadStatus::of(&outbox.borrow_and_update()),
+            selected: BTreeSet::new(),
+        };
+        let query = open(initial.clone());
         let (facts_changed, facts_changed_rx) = watch::channel(());
         let request = Arc::new(StandingRequest {
             standing: Mutex::new(Standing {
@@ -569,24 +585,15 @@ impl Drop for ImportListSubscription {
 ///
 /// The upload status comes from [`UploadStatus::of`], the same reading the
 /// request opened with: a failed outbox read makes it unreadable, which the
-/// Done tab says and orders by import time.
+/// Done tab says and orders by import time. The request opened with both as
+/// they stood, so the merge first waits for one to change.
 async fn merge(
     request: Arc<StandingRequest>,
     mut outbox: watch::Receiver<Option<Result<OutboxSnapshot, String>>>,
     mut runtime_facts: RuntimeFactsWatch,
 ) {
-    let mut outbox_changed = true;
     loop {
-        let result = if outbox_changed {
-            let next = UploadStatus::of(&outbox.borrow_and_update());
-            request.update(|standing| standing.request.upload_status = next)
-        } else {
-            request.set_runtime_facts(runtime_facts.facts().clone())
-        };
-        if result.is_err() {
-            return;
-        }
-        outbox_changed = tokio::select! {
+        let outbox_changed = tokio::select! {
             () = request.query.cancelled() => return,
             changed = outbox.changed() => match changed {
                 Ok(()) => true,
@@ -597,5 +604,14 @@ async fn merge(
                 false => return,
             },
         };
+        let result = if outbox_changed {
+            let next = UploadStatus::of(&outbox.borrow_and_update());
+            request.update(|standing| standing.request.upload_status = next)
+        } else {
+            request.set_runtime_facts(runtime_facts.facts().clone())
+        };
+        if result.is_err() {
+            return;
+        }
     }
 }

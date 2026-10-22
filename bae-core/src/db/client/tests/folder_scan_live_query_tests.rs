@@ -225,9 +225,10 @@ async fn import_list_subscription_delivers_scan_progress_beside_its_last_read() 
     let request = list_request(crate::import::TriageTab::Pending, [(0, 50)]);
     let (_outbox, outbox) = tokio::sync::watch::channel(None);
     let subscription = crate::import::ImportListSubscription::start(
-        db.subscribe_import_list(request.clone()),
+        |request| db.subscribe_import_list(request),
         db.subscribe_folder_scan_progress(),
-        request,
+        request.view,
+        request.windows,
         outbox,
         crate::import::candidate_runtime::RuntimeFactsWatch::of(&Default::default()),
         &tokio::runtime::Handle::current(),

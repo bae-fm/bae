@@ -17,15 +17,11 @@ async fn subscription() -> (ImportListSubscription, Database, tempfile::TempDir)
     .await
     .expect("the test database opens");
     let (_outbox_tx, outbox) = tokio::sync::watch::channel(None);
-    let request = ImportListRequest {
-        upload_status: UploadStatus::of(&outbox.borrow()),
-        ..ImportListRequest::default()
-    };
-    let query = database.subscribe_import_list(request.clone());
     let subscription = ImportListSubscription::start(
-        query,
+        |request| database.subscribe_import_list(request),
         database.subscribe_folder_scan_progress(),
-        request,
+        ImportListView::default(),
+        LibraryPageWindows::default(),
         outbox,
         crate::import::candidate_runtime::RuntimeFactsWatch::of(&Default::default()),
         &tokio::runtime::Handle::current(),
@@ -96,18 +92,14 @@ async fn a_failed_upload_queue_read_makes_the_done_order_unreadable() {
     .await
     .expect("the test database opens");
     let (outbox_tx, outbox) = tokio::sync::watch::channel(None);
-    let request = ImportListRequest {
-        view: ImportListView {
+    let subscription = ImportListSubscription::start(
+        |request| database.subscribe_import_list(request),
+        database.subscribe_folder_scan_progress(),
+        ImportListView {
             tab: crate::import::triage::TriageTab::Done,
             ..ImportListView::default()
         },
-        upload_status: UploadStatus::of(&outbox.borrow()),
-        ..ImportListRequest::default()
-    };
-    let subscription = ImportListSubscription::start(
-        database.subscribe_import_list(request.clone()),
-        database.subscribe_folder_scan_progress(),
-        request,
+        LibraryPageWindows::default(),
         outbox,
         crate::import::candidate_runtime::RuntimeFactsWatch::of(&Default::default()),
         &tokio::runtime::Handle::current(),

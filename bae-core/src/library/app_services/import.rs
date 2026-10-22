@@ -235,23 +235,13 @@ impl AppServices {
         view: ImportListView,
         runtime_handle: &tokio::runtime::Handle,
     ) -> ImportListSubscription {
-        let outbox = self.subscribe_outbox_values();
-        let runtime_facts = self.inner.import.watch_runtime_facts();
-        let request = ImportListRequest {
-            live_standings: view.pending_filter.live_standings(runtime_facts.facts()),
-            view,
-            windows: crate::library::LibraryPageWindows::new(),
-            upload_status: crate::import::list::UploadStatus::of(&outbox.borrow()),
-            // A new list opens with nothing selected.
-            selected: Default::default(),
-        };
-        let query = self.inner.manager.subscribe_import_list(request.clone());
         ImportListSubscription::start(
-            query,
+            |request| self.inner.manager.subscribe_import_list(request),
             self.inner.manager.subscribe_folder_scan_progress(),
-            request,
-            outbox,
-            runtime_facts,
+            view,
+            crate::library::LibraryPageWindows::new(),
+            self.subscribe_outbox_values(),
+            self.inner.import.watch_runtime_facts(),
             runtime_handle,
         )
     }

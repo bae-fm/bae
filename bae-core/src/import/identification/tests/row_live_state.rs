@@ -11,17 +11,11 @@ fn list_subscription(
     fixture: &Fixture,
     windows: crate::library::LibraryPageWindows,
 ) -> crate::import::ImportListSubscription {
-    let request = crate::import::ImportListRequest {
-        view: crate::import::ImportListView::default(),
-        windows,
-        upload_status: crate::import::list::UploadStatus::Read(Default::default()),
-        live_standings: Default::default(),
-        selected: Default::default(),
-    };
     crate::import::ImportListSubscription::start(
-        fixture.manager.subscribe_import_list(request.clone()),
+        |request| fixture.manager.subscribe_import_list(request),
         fixture.manager.subscribe_folder_scan_progress(),
-        request,
+        crate::import::ImportListView::default(),
+        windows,
         fixture.manager.subscribe_outbox_values(),
         fixture.import.watch_runtime_facts(),
         &tokio::runtime::Handle::current(),
