@@ -172,6 +172,12 @@ impl AudioDrain {
         }
     }
 
+    /// Tell playback the output stopped sending, for the reason `detail` states.
+    pub(crate) fn report_output_failure(&mut self, detail: String) {
+        self.audio_events
+            .push_required(AudioEvent::OutputFailed { detail });
+    }
+
     pub(crate) fn drain_iteration(
         &mut self,
         buf: &mut [f32],
@@ -303,6 +309,11 @@ pub(crate) enum AudioEvent {
         position: crate::playback::StreamPosition,
         samples_decoded: u64,
         decode_errors: u32,
+    },
+    /// The output stopped sending partway through, for the reason `detail`
+    /// states — bae's own failure, which stops playback and is reported.
+    OutputFailed {
+        detail: String,
     },
 }
 

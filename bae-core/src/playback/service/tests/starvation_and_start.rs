@@ -95,6 +95,36 @@ async fn starvation_past_fail_threshold_with_no_progress_escalates_to_error_and_
     );
 }
 
+/// An output that stops sending partway — an AirPlay conversion failing —
+/// stops playback with an error and reports the bug, rather than playing on
+/// with audio missing.
+#[tokio::test]
+async fn an_output_that_stops_sending_stops_playback_and_reports_the_bug() {
+    let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
+    let diagnostics = crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    let (_home, manager) = seeded_library_manager_with_diagnostics(&[], diagnostics).await;
+    let (mut service, mut progress_rx) = playback_service_over(manager);
+    service.slot = active_slot(
+        test_prepared_track("t", create_sparse_buffer(1_024)),
+        TrackPhase::Playing,
+    );
+
+    service
+        .handle_audio_event(AudioEvent::OutputFailed {
+            detail: "converting a chunk for the AirPlay speaker failed: swr_convert".to_string(),
+        })
+        .await;
+
+    let mut saw_error = false;
+    while let Ok(progress) = progress_rx.try_recv() {
+        saw_error |= matches!(progress, PlaybackProgress::PlaybackError { .. });
+    }
+    assert!(saw_error, "the person is told playback stopped");
+    assert!(matches!(service.slot, PlaybackSlot::Stopped));
+    assert_eq!(bugs.reports().len(), 1);
+    assert!(bugs.reports()[0].1.contains("swr_convert"));
+}
+
 /// `samples_decoded` advancing between `Starved` events shows the producer is
 /// alive (a slow cloud fetch, say), so starvation never escalates however long
 /// it lasts.

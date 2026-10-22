@@ -574,6 +574,18 @@ fn spawn_preview_listener(
                         dispatch_command(&command_tx, PlaybackCommand::PreviewCompleted);
                         completed = true;
                     }
+                    // Only an AirPlay output stops sending partway, and a
+                    // preview never plays to one; were it to, the preview
+                    // ends with the reason rather than going quiet.
+                    AudioEvent::OutputFailed { detail } => {
+                        emit_progress(
+                            &progress_tx,
+                            PlaybackProgress::PlaybackError {
+                                reason: crate::ui::PlaybackErrorReason::internal(detail),
+                            },
+                        );
+                        break;
+                    }
                     // Diagnostics (and the never-relevant TrackCrossing) go to
                     // the shared logger.
                     other => {

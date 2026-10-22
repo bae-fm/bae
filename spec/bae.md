@@ -1796,6 +1796,12 @@ it gets MP3.
 or offers only an encryption bae doesn't implement, is refused with that
 reason.
 
+A receiver takes 44.1 kHz stereo, so bae converts every other track on the way
+out. A track bae can't set up a conversion for doesn't play on the speaker,
+which says it can't play the track's sample rate; it is never sent
+unconverted. A conversion that fails partway stops playback with an error and
+is reported as a bug; no audio is skipped silently.
+
 How to connect is read from what the receiver advertises, never guessed. An
 AirPlay advertisement must state its features; a RAOP one without them states
 none, and a receiver without status flags sets none, as older receivers do. A

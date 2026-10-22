@@ -590,8 +590,8 @@ impl AudioStream for StubStream {
 
 /// Log the diagnostics both players log identically for Starved / StarvationEnded
 /// / SourceLockMissed / SourceLockReacquired. Position / Completion / TrackCrossing
-/// are the caller's to handle and are ignored here — both callers match those arms
-/// before falling through to this.
+/// / OutputFailed are the caller's to handle and are ignored here — both callers
+/// match those arms before falling through to this.
 pub(crate) fn log_stream_diagnostic(context: &'static str, event: &AudioEvent) {
     match event {
         AudioEvent::SourceLockMissed { missed_ms } => {
@@ -644,7 +644,10 @@ pub(crate) fn log_stream_diagnostic(context: &'static str, event: &AudioEvent) {
                 "playback source resumed after decoded sample starvation"
             );
         }
-        AudioEvent::Position(_) | AudioEvent::Completion(_) | AudioEvent::TrackCrossing(_) => {}
+        AudioEvent::Position(_)
+        | AudioEvent::Completion(_)
+        | AudioEvent::TrackCrossing(_)
+        | AudioEvent::OutputFailed { .. } => {}
     }
 }
 

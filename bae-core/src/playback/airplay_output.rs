@@ -148,7 +148,7 @@ impl AudioOutput for AirPlayOutput {
             self.controls.clone(),
             source_sample_rate,
             source_channels,
-        ));
+        )?);
         let session = self.sink.start(pcm_source)?;
         self.control.bind(&session);
         Ok(Box::new(AirPlayAudioStream { _session: session }))
@@ -188,6 +188,10 @@ const PULL_FRAMES: usize = 512;
 /// packetizes. A paused or drained drain yields no frames — the stream stays up
 /// (the session's lifetime ends it), so pause and gapless track swaps don't tear
 /// it down; the resampler's tail is flushed when the source drains.
+///
+/// A conversion that fails partway stops sending: the failure goes to playback
+/// as an [`AudioEvent::OutputFailed`], which stops playback and reports it,
+/// and nothing more reaches the receiver — no audio skipped silently.
 struct DrainSource {
     drain: AudioDrain,
     /// A clone of the output's controls, to tell a paused drain from a drained one.
@@ -201,30 +205,44 @@ struct DrainSource {
     in_scratch: Vec<f32>,
     /// Whether the resampler's tail has been flushed for the current drain.
     flushed: bool,
+    /// Set once a conversion fails; from then on the source yields nothing.
+    failed: bool,
 }
 
 impl DrainSource {
+    /// The source for a track of `source_sample_rate` and `source_channels`,
+    /// or the track's format when no converter to 44.1 kHz stereo can be set
+    /// up for it: then the speaker can't play the track at all.
     fn new(
         drain: AudioDrain,
         controls: AudioOutputControls,
         source_sample_rate: u32,
         source_channels: u32,
-    ) -> Self {
+    ) -> Result<Self, AudioError> {
         let source_channels = source_channels.max(1);
         let resampler = if source_sample_rate == AIRPLAY_RATE && source_channels == AIRPLAY_CHANNELS
         {
             None
         } else {
-            crate::audio_codec::Resampler::new(
+            let resampler = crate::audio_codec::Resampler::new(
                 source_sample_rate,
                 source_channels,
                 AIRPLAY_RATE,
                 AIRPLAY_CHANNELS,
             )
-            .map_err(|e| warn!("airplay resampler unavailable ({e}); sending at source rate"))
-            .ok()
+            .map_err(|error| {
+                warn!(
+                    "no converter from {source_sample_rate} Hz, {source_channels} channels \
+                     to the AirPlay speaker's 44.1 kHz stereo: {error}"
+                );
+                AudioError::UnsupportedFormat {
+                    sample_rate: source_sample_rate,
+                    channels: source_channels,
+                }
+            })?;
+            Some(resampler)
         };
-        DrainSource {
+        Ok(DrainSource {
             drain,
             controls,
             source_channels: source_channels as usize,
@@ -232,12 +250,26 @@ impl DrainSource {
             out_buf: Vec::new(),
             in_scratch: Vec::new(),
             flushed: false,
-        }
+            failed: false,
+        })
+    }
+
+    /// Stop sending after a conversion failed, and tell playback why.
+    fn conversion_failed(&mut self, what: &str, error: String) -> Pull {
+        self.failed = true;
+        self.out_buf.clear();
+        self.drain.report_output_failure(format!(
+            "converting {what} for the AirPlay speaker failed: {error}"
+        ));
+        Pull::Idle
     }
 
     /// Pull one drain iteration and append its (resampled) 44.1 kHz stereo output
     /// to `out_buf`. Returns whether anything was produced or the source is idle.
     fn fill(&mut self) -> Pull {
+        if self.failed {
+            return Pull::Idle;
+        }
         self.in_scratch
             .resize(PULL_FRAMES * self.source_channels, 0.0);
         match self
@@ -247,13 +279,13 @@ impl DrainSource {
             DrainStatus::Samples { read } => {
                 self.flushed = false;
                 let input = &self.in_scratch[..read];
-                match &mut self.resampler {
-                    Some(r) => {
-                        if let Ok(out) = r.convert(input) {
-                            self.out_buf.extend_from_slice(&out);
-                        }
-                    }
-                    None => self.out_buf.extend_from_slice(input),
+                let converted = match &mut self.resampler {
+                    Some(r) => r.convert(input),
+                    None => Ok(input.to_vec()),
+                };
+                match converted {
+                    Ok(out) => self.out_buf.extend_from_slice(&out),
+                    Err(error) => return self.conversion_failed("a chunk", error),
                 }
                 Pull::Produced
             }
@@ -263,11 +295,16 @@ impl DrainSource {
                 if !self.flushed && self.controls.get_state() == AudioState::Stopped {
                     self.flushed = true;
                     if let Some(r) = &mut self.resampler {
-                        if let Ok(tail) = r.flush() {
-                            let produced = !tail.is_empty();
-                            self.out_buf.extend_from_slice(&tail);
-                            if produced {
-                                return Pull::Produced;
+                        match r.flush() {
+                            Ok(tail) => {
+                                let produced = !tail.is_empty();
+                                self.out_buf.extend_from_slice(&tail);
+                                if produced {
+                                    return Pull::Produced;
+                                }
+                            }
+                            Err(error) => {
+                                return self.conversion_failed("the end of the track", error)
                             }
                         }
                     }
@@ -539,6 +576,28 @@ mod tests {
         assert!(state.torn_down.load(Ordering::Acquire));
     }
 
+    /// A track the converter can't be set up for is refused before anything
+    /// is sent, rather than streamed unconverted at the wrong speed and pitch.
+    #[test]
+    fn a_converter_that_cant_be_set_up_refuses_the_stream() {
+        let (tx, _rx) = audio_event_channel();
+        let controls = AudioOutputControls::new(1.0);
+        controls.set_state(AudioState::Playing);
+        let refused = DrainSource::new(
+            AudioDrain::new(controls.clone(), playing_source(4), tx, 100),
+            controls,
+            0,
+            2,
+        );
+        assert!(matches!(
+            refused,
+            Err(AudioError::UnsupportedFormat {
+                sample_rate: 0,
+                channels: 2
+            })
+        ));
+    }
+
     /// A paused output yields no frames from the drain (so the stream sends
     /// nothing), and a playing one converts full-scale f32 to i16::MAX.
     #[test]
@@ -551,7 +610,8 @@ mod tests {
             controls.clone(),
             44_100,
             2,
-        );
+        )
+        .expect("a converter sets up");
         let mut out = vec![0i16; 8];
         assert_eq!(paused.next_frames(&mut out), 0, "paused yields nothing");
 
@@ -564,7 +624,8 @@ mod tests {
             controls2,
             44_100,
             2,
-        );
+        )
+        .expect("a converter sets up");
         let mut out2 = vec![0i16; 8];
         assert_eq!(playing.next_frames(&mut out2), 4);
         assert!(out2.iter().all(|&s| s == i16::MAX));
@@ -591,7 +652,8 @@ mod tests {
             controls,
             48_000,
             2,
-        );
+        )
+        .expect("a converter sets up");
 
         let mut total = 0usize;
         let mut out = vec![0i16; 352 * 2];

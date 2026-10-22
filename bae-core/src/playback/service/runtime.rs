@@ -565,9 +565,8 @@ impl PlaybackService {
                         .await;
                 }
             }
-            AudioEvent::StarvationEnded { .. } => {
-                self.reset_starvation_episode();
-            }
+            AudioEvent::StarvationEnded { .. } => self.reset_starvation_episode(),
+            AudioEvent::OutputFailed { detail } => self.output_stopped_sending(detail).await,
             AudioEvent::SourceLockMissed { .. } | AudioEvent::SourceLockReacquired { .. } => {}
         }
     }

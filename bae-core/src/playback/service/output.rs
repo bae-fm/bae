@@ -78,6 +78,21 @@ impl PlaybackService {
         error.ui_reason()
     }
 
+    /// The output stopped sending partway through a track — a conversion for
+    /// the receiver failed. That is bae's own failure: report it, tell the
+    /// person, and stop rather than play on with audio missing.
+    pub(super) async fn output_stopped_sending(&mut self, detail: String) {
+        self.library_manager
+            .report_bug("keep the audio output playing", &detail);
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::PlaybackError {
+                reason: crate::ui::PlaybackErrorReason::internal(detail),
+            },
+        );
+        self.stop().await;
+    }
+
     /// Promote the stream already staged inside the live source. The source
     /// performs the ownership-preserving swap; this owner synchronizes it with
     /// event draining and output notification exactly like `attach_track`.
