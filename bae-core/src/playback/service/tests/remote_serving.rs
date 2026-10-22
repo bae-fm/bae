@@ -138,7 +138,7 @@ async fn a_converted_track_goes_out_in_the_format_the_flavor_takes() {
 /// Cast `RELEASE`'s one track, stored with `track_length_ms` and a 2 s
 /// generated pregap, to a fake device, and return the length the device is
 /// told for its stream.
-async fn served_stream_length(track_length_ms: i64) -> Option<std::time::Duration> {
+async fn served_stream_length(track_length_ms: u64) -> Option<std::time::Duration> {
     const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
     const TRACK: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
     let (_home, library_manager) = seeded_library_manager_with_track_length(

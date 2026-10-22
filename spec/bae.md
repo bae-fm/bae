@@ -180,6 +180,10 @@ Each track records:
 - its playing order in the release, counted from zero across every side;
 - the side or disc it sits on, where the pressing has them, which playback
   pauses between (§7.3);
+- its length, measured from its audio at import (§3.7). Every track has one,
+  so every surface that lists tracks (the album page, search, the queue, the
+  release editor, a Subsonic song) shows each track's length, and none has a
+  case for a track without one;
 - its audio format: content type, sample rate, bits per sample, channels;
 - its loudness, measured at import (§3.7).
 

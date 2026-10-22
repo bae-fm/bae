@@ -15,14 +15,14 @@
         ) -> [BridgeTrack] {
             names.enumerated()
                 .map { index, name in
-                    let durationMs = Int64((170 + (index * 37) % 170) * 1000)
+                    let durationMs = UInt64((170 + (index * 37) % 170) * 1000)
                     return BridgeTrack(
                         id: "t-d\(side)-\(index + 1)",
                         title: name,
                         side: side,
                         trackNumber: Int32(index + 1),
                         durationMs: durationMs,
-                        durationClock: bridgeClock(ms: durationMs),
+                        durationClock: bridgeLengthClock(ms: durationMs),
                         artistNames: artist,
                         displayArtist: nil,
                         positionText: positionText(index),
@@ -34,15 +34,12 @@
         private static func groupDuration(_ tracks: [BridgeTrack])
             -> BridgeDurationUnits?
         {
-            let ms = tracks.reduce(Int64(0)) { $0 + ($1.durationMs ?? 0) }
+            let ms = tracks.reduce(UInt64(0)) { $0 + $1.durationMs }
             guard ms > 0 else { return nil }
             let minutes = (ms + 30_000) / 60_000
             return minutes >= 60
-                ? .hoursAndMinutes(
-                    hours: UInt64(minutes / 60),
-                    minutes: UInt64(minutes % 60)
-                )
-                : .minutesOnly(minutes: UInt64(minutes))
+                ? .hoursAndMinutes(hours: minutes / 60, minutes: minutes % 60)
+                : .minutesOnly(minutes: minutes)
         }
 
         /// A two-part release's tracks plus the matching per-side groups, so the

@@ -37,7 +37,7 @@ public struct AlbumSearchResult: Equatable, Identifiable, Sendable {
 public struct TrackSearchResult: Equatable, Identifiable, Sendable {
     public let id: String
     public let title: String
-    public let durationClock: BridgeDurationClock?
+    public let durationClock: BridgeDurationClock
     /// The release the track is on, which the album opens on.
     public let releaseId: String
     public let albumId: String

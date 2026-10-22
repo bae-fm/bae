@@ -60,7 +60,7 @@ internal fun Context.seekBarState(
     return SeekBarState(
         progress = position.progress,
         leading = clockText(clocks.leading, currentLocale()),
-        trailing = clockText(clocks.trailing, currentLocale()),
+        trailing = clocks.trailing?.let { clockText(it, currentLocale()) } ?: "",
         seekable = position.durationMs != null,
     )
 }

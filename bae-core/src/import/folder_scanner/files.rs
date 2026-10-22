@@ -591,8 +591,7 @@ impl CategorizedFiles {
                                 },
                                 format: audio.format.clone(),
                             },
-                            duration_ms: i64::try_from(audio.duration_ms)
-                                .expect("scan audio duration fits SQLite's integer range"),
+                            duration_ms: audio.duration_ms,
                         },
                     )
                 })

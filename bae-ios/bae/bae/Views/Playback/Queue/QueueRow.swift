@@ -24,12 +24,10 @@ struct QueueRow: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
-            if !item.durationLabel.isEmpty {
-                Text(item.durationLabel)
-                    .monospacedDigit()
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-            }
+            Text(item.durationLabel)
+                .monospacedDigit()
+                .themeText(.detail)
+                .foregroundStyle(.secondary)
         }
         .contentShape(Rectangle())
         .padding(.vertical, ThemeSpace.inline)

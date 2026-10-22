@@ -331,7 +331,7 @@ pub struct DbTrack {
     pub side: Option<i32>,
     pub track_number: Option<i32>,
     /// How long the track's audio plays, measured when it was imported.
-    pub duration_ms: i64,
+    pub duration_ms: u64,
     pub created_at: DateTime<Utc>,
 }
 /// A physical file belonging to a release — not to an album, and not to a track

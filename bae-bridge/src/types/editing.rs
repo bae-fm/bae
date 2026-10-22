@@ -1,9 +1,9 @@
 #[cfg(feature = "desktop")]
 use super::*;
 use super::{
-    BridgeDiscogsDetail, BridgeImageRef, BridgeMediaCount, BridgePackaging, BridgePressingFacts,
-    BridgeReleaseArea, BridgeReleaseLabel, BridgeReleaseStatus, BridgeSourceAudioLayout,
-    BridgeSourceAudioSummary, BridgeTrackSide,
+    BridgeDiscogsDetail, BridgeDurationClock, BridgeImageRef, BridgeMediaCount, BridgePackaging,
+    BridgePressingFacts, BridgeReleaseArea, BridgeReleaseLabel, BridgeReleaseStatus,
+    BridgeSourceAudioLayout, BridgeSourceAudioSummary, BridgeTrackSide,
 };
 
 /// One kind of identifying signal extracted from a candidate file. Mirrors
@@ -617,7 +617,8 @@ pub struct BridgeReleaseEditTrackSource {
 pub struct BridgeReleaseEditTrackContext {
     pub track_id: String,
     pub sources: Vec<BridgeReleaseEditTrackSource>,
-    pub duration_ms: Option<i64>,
+    /// The track's stored length as a clock label's fields ("3:07").
+    pub duration_clock: BridgeDurationClock,
     pub side: BridgeTrackSide,
     pub side_header_key: Option<String>,
 }

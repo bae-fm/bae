@@ -77,7 +77,7 @@ internal class BrowseNodeFactory(
         val metadata =
             baseMetadata(track.title, release.cover)
                 .setArtist(track.artistNames)
-                .setDurationMs(track.durationMs)
+                .setDurationMs(track.durationMs.toLong())
                 .setIsBrowsable(false)
                 .setIsPlayable(true)
                 .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)

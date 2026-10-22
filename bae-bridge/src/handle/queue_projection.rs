@@ -319,7 +319,7 @@ impl crate::types::BridgeQueueEntry {
             entry_id,
             track_id,
             display: crate::types::BridgeTrackDisplay::from_core(display),
-            duration_clock: crate::types::BridgeDurationClock::from_millis(Some(duration_ms)),
+            duration_clock: crate::types::BridgeDurationClock::of_length(duration_ms),
         }
     }
 }

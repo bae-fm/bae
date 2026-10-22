@@ -15,6 +15,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeTrackDisplay
 
@@ -39,7 +40,7 @@ class QueueRowTest {
                         albumTitle = "Compilation Album",
                         coverImage = null,
                     ),
-                durationClock = null,
+                durationClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 0u),
             )
         compose.setContent {
             BaeTheme {

@@ -1,7 +1,7 @@
 use super::*;
 
 /// A track on side `side` of the release, `duration_ms` long when measured.
-fn track(id: &str, side: i32, number: i32, duration_ms: i64) -> crate::db::DbTrackWithArtists {
+fn track(id: &str, side: i32, number: i32, duration_ms: u64) -> crate::db::DbTrackWithArtists {
     let mut track = crate::db::DbTrack::new_test("release-id", id, "Track Title", Some(number));
     track.side = Some(side);
     track.duration_ms = duration_ms;

@@ -605,8 +605,7 @@ impl ImportService {
                         layout: source_audio_layouts.get(file.path.as_path()).copied(),
                         format: audio.format.clone(),
                         content_type: audio.content_type.clone(),
-                        duration_ms: i64::try_from(audio.duration_ms)
-                            .expect("scan audio duration fits SQLite's integer range"),
+                        duration_ms: audio.duration_ms,
                     });
             file_ids.insert(file.path.clone(), db_file.id.clone());
             prepared_files.push(PreparedImportFile {

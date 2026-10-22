@@ -13,6 +13,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
@@ -44,7 +45,7 @@ class SeekToMediaItemTest {
                     albumTitle = "Album Title",
                     coverImage = null,
                 ),
-            durationClock = null,
+            durationClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 0u),
         )
 
     @Test

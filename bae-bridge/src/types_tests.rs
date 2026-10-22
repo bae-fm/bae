@@ -506,7 +506,8 @@ mod conversion_roundtrip {
             assert_eq!(bridge.edit.album_title, edit.album_title);
             assert_eq!(bridge.display.tracks[0].track_id, "track-id");
             assert_eq!(bridge.display.tracks[0].sources[0].name, "source.flac");
-            assert_eq!(bridge.display.tracks[0].duration_ms, Some(123_000));
+            let clock = bridge.display.tracks[0].duration_clock;
+            assert_eq!((clock.minutes, clock.seconds), (2, 3));
             assert_eq!(
                 bridge.display.tracks[0].side_header_key.as_deref(),
                 Some("core.track.disc")

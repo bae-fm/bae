@@ -36,7 +36,13 @@ impl DurationClock {
     /// "0:00" that claims a length nothing knows.
     pub fn from_millis(ms: Option<i64>) -> Option<Self> {
         let ms = u64::try_from(ms?).ok()?;
-        Some(Self::from_seconds(ms / 1000, false))
+        Some(Self::of_length(ms))
+    }
+
+    /// The clock for a length every track has ("3:07"): a stored or measured
+    /// length always labels.
+    pub fn of_length(ms: u64) -> Self {
+        Self::from_seconds(ms / 1000, false)
     }
 
     /// A track-relative playback position. Negative positions count down to
@@ -145,8 +151,7 @@ impl DurationUnits {
     /// construction and names the *nearest* minute. The whole total rounds
     /// before it splits, so 3 h 59 m 45 s reads "4 hr" and can never produce the
     /// "3 hr, 60 min" that rounding the minutes alone would.
-    pub fn from_millis(ms: i64) -> Option<Self> {
-        let ms = u64::try_from(ms).ok()?;
+    pub fn from_millis(ms: u64) -> Option<Self> {
         if ms == 0 {
             return None;
         }
@@ -351,7 +356,7 @@ mod tests {
         );
     }
 
-    fn units(ms: i64) -> DurationUnits {
+    fn units(ms: u64) -> DurationUnits {
         DurationUnits::from_millis(ms).expect("a positive duration has units")
     }
 
@@ -410,7 +415,6 @@ mod tests {
     #[test]
     fn nothing_to_name_has_no_units() {
         assert_eq!(DurationUnits::from_millis(0), None);
-        assert_eq!(DurationUnits::from_millis(-1), None);
         assert_eq!(
             DurationUnits::from_millis(20_000),
             Some(DurationUnits::MinutesOnly { minutes: 0 }),

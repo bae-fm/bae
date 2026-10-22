@@ -55,11 +55,11 @@ fun Context.countLabelsText(parts: List<BridgeCountLabel>): String =
 fun Context.currentLocale(): Locale = resources.configuration.locales[0]
 
 /**
- * The clock label for a pre-computed clock (e.g. "3:07"), or empty when there is
- * nothing to label. Core rendered the clock's fields onto the row at conversion;
- * this renders them for the current locale.
+ * The clock label for a pre-computed clock (e.g. "3:07"). Core rendered the
+ * clock's fields onto the row at conversion; this renders them for the current
+ * locale.
  */
-fun Context.durationClockLabel(clock: BridgeDurationClock?): String = clockText(clock, currentLocale())
+fun Context.durationClockLabel(clock: BridgeDurationClock): String = clockText(clock, currentLocale())
 
 /**
  * A total playing time in words — "39 min", "3 hr", "3 hr, 42 min". Core decides
@@ -108,12 +108,9 @@ private fun Context.durationWord(
  * "3:07" — which is why this lives here and not in core.
  */
 internal fun clockText(
-    clock: BridgeDurationClock?,
+    clock: BridgeDurationClock,
     locale: Locale,
 ): String {
-    if (clock == null) {
-        return ""
-    }
     val sign = if (clock.negative) "-" else ""
     val minutes = clock.minutes.toLong()
     val seconds = clock.seconds.toLong()

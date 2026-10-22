@@ -199,7 +199,7 @@ struct ReleaseMetadataEditorContent: View {
             sourceCell(item, sourceIsInCaption: sourceIsInCaption)
             ReleaseMetadataTrackRow(
                 track: item.track,
-                duration: releaseDurationText(item.context.durationMs),
+                duration: DurationClock.label(item.context.durationClock),
                 durationDiverges: false,
                 columns: columns,
                 editingCommands: session.editingCommands,

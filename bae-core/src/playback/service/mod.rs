@@ -323,10 +323,7 @@ fn finalize_playback_track(
     segments: Vec<PreparedAudioSegment>,
     replay_gain_mode: crate::config::ReplayGainMode,
 ) -> PlaybackPreparedTrack {
-    // The schema keeps a stored length from being negative.
-    let duration = Some(std::time::Duration::from_millis(
-        u64::try_from(resolved.duration_ms).expect("a stored track length is never negative"),
-    ));
+    let duration = Some(std::time::Duration::from_millis(resolved.duration_ms));
 
     let replay_gain_linear = resolved.replay_gain_linear(replay_gain_mode);
 

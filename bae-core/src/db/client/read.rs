@@ -474,7 +474,7 @@ pub(super) fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
         .transpose()?;
     let source_audio = match (
         row.get::<_, Option<String>>("source_audio_content_type")?,
-        row.get::<_, Option<i64>>("source_audio_duration_ms")?,
+        row.get::<_, Option<u64>>("source_audio_duration_ms")?,
         row.get::<_, Option<i64>>("source_audio_sample_rate_hz")?,
         row.get::<_, Option<i64>>("source_audio_bits_per_sample")?,
         row.get::<_, Option<i64>>("source_audio_bitrate_kbps")?,

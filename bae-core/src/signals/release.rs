@@ -58,8 +58,7 @@ pub(crate) async fn resolve_release_identity(
         .map_err(|e| format!("Failed to load tracks: {e}"))?;
     // The lengths a pick of this release is laid out against, so a document
     // is read against the discs these tracks are.
-    let track_lengths_ms =
-        crate::library::stored_track_lengths(&tracks).map_err(|error| error.to_string())?;
+    let track_lengths_ms = crate::library::stored_track_lengths(&tracks);
     // Original paths are the ones this device recorded at import.
     // A release imported elsewhere has no originals here, so yields no paths or
     // disc ID.
@@ -85,12 +84,7 @@ pub(crate) async fn resolve_release_identity(
                 cue_paths.push(path.clone());
             }
             if let Some(source_audio) = &f.source_audio {
-                let duration_ms = u64::try_from(source_audio.duration_ms).map_err(|error| {
-                    format!(
-                        "Release file '{}' has a negative source-audio duration: {error}",
-                        f.id
-                    )
-                })?;
+                let duration_ms = source_audio.duration_ms;
                 audio_files.push(crate::import::discid::ReleaseAudioFile {
                     path,
                     duration_ms,
@@ -467,7 +461,7 @@ mod tests {
                 title: format!("Track {n}"),
                 side: Some(1),
                 track_number: Some(n),
-                duration_ms: 180_000 + n as i64,
+                duration_ms: 180_000 + n as u64,
                 created_at: Utc::now(),
             };
             database.insert_track(&track).await.unwrap();

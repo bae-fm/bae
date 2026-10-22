@@ -41,7 +41,7 @@ enum PreviewData {
             .map { index in
                 // Bound values first: the single-expression form exceeds the
                 // type checker's time budget on CI hardware.
-                let durationMs = Int64(180_000 + index * 15_000)
+                let durationMs = UInt64(180_000 + index * 15_000)
                 let trackNumber = Int32(index)
                 return BridgeTrack(
                     id: "t-\(index)",
@@ -49,7 +49,7 @@ enum PreviewData {
                     side: 1,
                     trackNumber: trackNumber,
                     durationMs: durationMs,
-                    durationClock: bridgeClock(ms: durationMs),
+                    durationClock: bridgeLengthClock(ms: durationMs),
                     artistNames: "Artist Name 1",
                     displayArtist: nil,
                     positionText: String(index)
@@ -147,7 +147,7 @@ enum PreviewData {
                     albumTitle: "Album Title 1",
                     coverImage: nil
                 ),
-                durationClock: bridgeClock(ms: Int64(180_000 + index * 15_000))
+                durationClock: bridgeLengthClock(ms: UInt64(180_000 + index * 15_000))
             )
         }
 
@@ -217,7 +217,7 @@ enum PreviewData {
                 BridgeTrackSearchResult(
                     id: "t-1",
                     title: "Track Title 1",
-                    durationClock: bridgeClock(ms: 195_000),
+                    durationClock: bridgeLengthClock(ms: 195_000),
                     releaseId: "r-1",
                     albumId: "a-1",
                     albumTitle: "Album Title 1",

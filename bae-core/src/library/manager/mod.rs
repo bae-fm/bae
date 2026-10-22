@@ -445,7 +445,7 @@ pub struct ResolvedTrackAudio {
     pub track_id: String,
     pub release_id: String,
     pub segments: Vec<ResolvedTrackAudioSegment>,
-    pub duration_ms: i64,
+    pub duration_ms: u64,
     pub pregap_samples: Option<u64>,
     pub generated_pregap_samples: Option<u64>,
     pub sample_rate: std::num::NonZeroU32,

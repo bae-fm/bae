@@ -14,6 +14,7 @@ import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadProgress
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
+import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeFile
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeImportStorage
@@ -137,7 +138,7 @@ object BridgeFixtures {
         BridgeTrackSearchResult(
             id = id,
             title = "Track Title",
-            durationClock = null,
+            durationClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 0u),
             releaseId = releaseId,
             albumId = albumId,
             albumTitle = "Album Title",

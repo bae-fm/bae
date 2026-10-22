@@ -37,7 +37,6 @@ class QueueProjectionTest {
 
     private fun entry(
         id: String,
-        durationClock: BridgeDurationClock? = sampleClock,
         coverImage: BridgeImageRef? = testCoverRef("cover-$id"),
     ) = BridgeQueueEntry(
         entryId = "entry-$id",
@@ -51,7 +50,7 @@ class QueueProjectionTest {
                 albumTitle = "Album Title",
                 coverImage = coverImage,
             ),
-        durationClock = durationClock,
+        durationClock = sampleClock,
     )
 
     @Test
@@ -140,24 +139,6 @@ class QueueProjectionTest {
 
         val context = player.queue.value.context
         assertEquals(BridgePlaybackSourceKind.LIBRARY, context?.kind)
-    }
-
-    @Test
-    fun entryWithNoDurationProjectsNoDuration() {
-        val player = player()
-
-        player.onQueueValue(
-            manual = listOf(entry("a", durationClock = null, coverImage = null)),
-            context = null,
-            hasNext = false,
-            hasPrevious = false,
-            revision = 1uL,
-        )
-
-        val manual = player.queue.value.manual
-        val projected = manual.single()
-        assertNull(projected.durationClock)
-        assertNull(projected.display.coverImage)
     }
 
     @Test

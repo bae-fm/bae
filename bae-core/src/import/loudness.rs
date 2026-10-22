@@ -486,7 +486,7 @@ pub(super) async fn measure_loudness(
                 })
                 .or_else(|| {
                     let ms = track_file.db_track.duration_ms;
-                    (ms > 0 && sample_rate > 0).then(|| ms as u64 * sample_rate / 1000)
+                    (ms > 0 && sample_rate > 0).then(|| ms * sample_rate / 1000)
                 })
         })
         .collect();

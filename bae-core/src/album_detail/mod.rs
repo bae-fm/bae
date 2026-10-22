@@ -276,7 +276,7 @@ pub struct TrackDetail {
     pub title: String,
     pub side: Option<i32>,
     pub track_number: Option<i32>,
-    pub duration_ms: i64,
+    pub duration_ms: u64,
     /// Effective artist names for display -- the track's own artists when it
     /// has per-track artist rows, otherwise the album artists. Always
     /// populated so UI consumers can render a row label without joining
@@ -302,7 +302,7 @@ pub struct TrackGroup {
     /// Playing time of this group's tracks. A multi-disc release shows it
     /// under each disc, where the album-wide total alone reads as belonging to
     /// the last disc.
-    pub total_duration_ms: i64,
+    pub total_duration_ms: u64,
 }
 
 /// A file with pre-computed display fields.

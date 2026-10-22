@@ -99,7 +99,7 @@ pub struct ReleaseDetail {
     /// What the pressing is: its area, media, status, packaging and details.
     pub facts: crate::pressing::PressingFacts,
     /// Summed across all tracks, in milliseconds. The UI formats it.
-    pub total_duration_ms: i64,
+    pub total_duration_ms: u64,
     pub tracks: Vec<TrackDetail>,
     pub track_groups: Vec<TrackGroup>,
     pub files: Vec<FileDetail>,
@@ -132,7 +132,7 @@ pub struct ReleaseEditTrackSource {
 pub struct ReleaseEditTrackContext {
     pub track_id: String,
     pub sources: Vec<ReleaseEditTrackSource>,
-    pub duration_ms: i64,
+    pub duration_ms: u64,
     pub side: TrackSide,
 }
 
@@ -349,7 +349,7 @@ impl ReleaseDetail {
 
         let file_count = files.len() as i64;
         let total_size: i64 = files.iter().map(|f| f.file_size).sum();
-        let total_duration_ms: i64 = tracks.iter().map(|t| t.duration_ms).sum();
+        let total_duration_ms: u64 = tracks.iter().map(|t| t.duration_ms).sum();
 
         let mut gallery = Vec::new();
         // One resolve of the `covers` row feeds both the gallery's "Cover" slot and

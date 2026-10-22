@@ -107,13 +107,11 @@ internal fun TrackRow(
                 )
             }
         }
-        if (data.durationLabel.isNotEmpty()) {
-            Text(
-                text = data.durationLabel,
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Text(
+            text = data.durationLabel,
+            style = ThemeText.detail.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         TrackRowMenu(
             menuExpanded = menuExpanded,
             onExpand = { menuExpanded = true },

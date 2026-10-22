@@ -52,7 +52,7 @@ pub struct SourceAudioFile {
     pub layout: Option<SourceAudioLayout>,
     pub format: AudioFormat,
     pub content_type: crate::util::content_type::ContentType,
-    pub duration_ms: i64,
+    pub duration_ms: u64,
 }
 
 impl SourceAudioFile {
@@ -78,7 +78,7 @@ impl SourceAudioFile {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SummarizedAudio {
     pub descriptor: SourceAudioDescriptor,
-    pub duration_ms: i64,
+    pub duration_ms: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -164,14 +164,14 @@ fn differing<T: PartialEq>(values: impl Iterator<Item = Option<T>>) -> Option<Ve
 /// for lossless files, which state none. Files that report no length count
 /// equally, since there is nothing to weigh them by.
 fn average_bitrate_kbps(files: &[SummarizedAudio]) -> Option<i64> {
-    let rated: Vec<(i64, i64)> = files
+    let rated: Vec<(i64, u64)> = files
         .iter()
         .filter_map(|file| Some((file.descriptor.format.bitrate_kbps?, file.duration_ms)))
         .collect();
     if rated.is_empty() {
         return None;
     }
-    let played: i64 = rated.iter().map(|(_, duration_ms)| duration_ms).sum();
+    let played: u64 = rated.iter().map(|(_, duration_ms)| duration_ms).sum();
     let (weighted, weight) = if played > 0 {
         (
             rated
@@ -198,7 +198,7 @@ mod tests {
         sample_rate_hz: i64,
         bits_per_sample: Option<i64>,
         bitrate_kbps: Option<i64>,
-        duration_ms: i64,
+        duration_ms: u64,
     ) -> SummarizedAudio {
         SummarizedAudio {
             descriptor: SourceAudioDescriptor {
@@ -219,7 +219,7 @@ mod tests {
         file("FLAC", sample_rate_hz, Some(bits), None, 200_000)
     }
 
-    fn aac(kbps: i64, duration_ms: i64) -> SummarizedAudio {
+    fn aac(kbps: i64, duration_ms: u64) -> SummarizedAudio {
         file("AAC", 44_100, None, Some(kbps), duration_ms)
     }
 

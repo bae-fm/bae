@@ -15,12 +15,12 @@ public enum DurationClock {
     /// at render time (an outbox ETA); a static row instead carries its clock as
     /// a `BridgeDurationClock` field and renders it through ``label(_:)``.
     public static func text(_ ms: Int64?) -> String {
-        render(bridgeClock(ms: ms))
+        bridgeClock(ms: ms).map(render) ?? ""
     }
 
     /// The clock label for a pre-computed clock — the fields core rendered onto
-    /// a row at conversion; "" when there is nothing to label.
-    public static func label(_ clock: BridgeDurationClock?) -> String {
+    /// a row at conversion (a track's length, which every track has).
+    public static func label(_ clock: BridgeDurationClock) -> String {
         render(clock)
     }
 
@@ -39,13 +39,12 @@ public enum DurationClock {
             durationMs: durationMs,
             showRemaining: showRemaining
         )
-        return (render(clocks.leading), render(clocks.trailing))
+        return (render(clocks.leading), clocks.trailing.map(render) ?? "")
     }
 
     /// `:` between the fields, every field after the first padded to two digits,
     /// a leading `-` for a countdown.
-    private static func render(_ clock: BridgeDurationClock?) -> String {
-        guard let clock else { return "" }
+    private static func render(_ clock: BridgeDurationClock) -> String {
         let sign = clock.negative ? "-" : ""
         let seconds = padded(UInt64(clock.seconds))
         guard let hours = clock.hours else {

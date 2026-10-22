@@ -24,7 +24,7 @@ struct QueueItemRowTests {
                 albumTitle: "Compilation Album",
                 coverImage: nil
             ),
-            durationClock: nil
+            durationClock: bridgeLengthClock(ms: 180_000)
         )
         let size = NSSize(width: 420, height: 90)
         try await SnapshotTestSupport.withHostedWindow(

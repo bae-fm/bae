@@ -14,6 +14,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryPageWindow
@@ -192,7 +193,7 @@ class QueueUpcomingWindowTest {
                                                     albumTitle = "Album Title",
                                                     coverImage = null,
                                                 ),
-                                            durationClock = null,
+                                            durationClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 0u),
                                         ),
                                     ),
                             ),

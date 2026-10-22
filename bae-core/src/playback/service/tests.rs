@@ -80,7 +80,7 @@ const TRACK_T2B: &str = "b98ba0de-5eb5-4c15-a20f-b5df519ed969";
 async fn seed_test_releases(
     database: &crate::db::Database,
     releases: &[(&str, &[&str])],
-    track_length_ms: i64,
+    track_length_ms: u64,
 ) {
     use crate::db::{DbAlbum, DbArtist, DbRelease, DbTrack};
     if releases.is_empty() {
@@ -123,7 +123,7 @@ async fn seeded_library_manager_with_diagnostics(
 async fn seeded_library_manager_with_track_length(
     releases: &[(&str, &[&str])],
     diagnostics: crate::diagnostics::Diagnostics,
-    track_length_ms: i64,
+    track_length_ms: u64,
 ) -> (TempDir, LibraryManager) {
     let home = TempDir::new().unwrap();
     let db_path = home.path().join("playback-service-test.db");

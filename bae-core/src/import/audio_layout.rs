@@ -321,14 +321,7 @@ pub(crate) fn resolve_track_files(
                 )
             }
         };
-        let db_track = row.measured(i64::try_from(duration_ms).map_err(|error| {
-            ImportError::UnusableFile {
-                detail: format!(
-                    "{} is too long to represent in milliseconds: {error}",
-                    file.relative_path
-                ),
-            }
-        })?);
+        let db_track = row.measured(duration_ms);
         track_files.push(TrackFile { db_track, audio });
     }
     Ok(track_files)

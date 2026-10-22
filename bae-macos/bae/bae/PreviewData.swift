@@ -178,7 +178,7 @@
                             coverImage: nil
                         ),
                     durationClock: source?.durationClock
-                        ?? bridgeClock(ms: 200_000)
+                        ?? bridgeLengthClock(ms: 200_000)
                 )
             }
             let at = min(max(index, 0), manual.count)
@@ -211,7 +211,7 @@
                     albumTitle: "Album Title A",
                     coverImage: nil
                 ),
-                durationClock: bridgeClock(ms: 210_000)
+                durationClock: bridgeLengthClock(ms: 210_000)
             ),
             BridgeQueueEntry(
                 entryId: "e-02",
@@ -224,7 +224,7 @@
                     albumTitle: "Album Title A",
                     coverImage: nil
                 ),
-                durationClock: bridgeClock(ms: 240_000)
+                durationClock: bridgeLengthClock(ms: 240_000)
             ),
             BridgeQueueEntry(
                 entryId: "e-03",
@@ -237,7 +237,7 @@
                     albumTitle: "Album Title B",
                     coverImage: nil
                 ),
-                durationClock: bridgeClock(ms: 198_000)
+                durationClock: bridgeLengthClock(ms: 198_000)
             ),
             BridgeQueueEntry(
                 entryId: "e-04",
@@ -250,7 +250,7 @@
                     albumTitle: "Album Title B",
                     coverImage: nil
                 ),
-                durationClock: bridgeClock(ms: 225_000)
+                durationClock: bridgeLengthClock(ms: 225_000)
             ),
             BridgeQueueEntry(
                 entryId: "e-05",
@@ -263,7 +263,7 @@
                     albumTitle: "Album Title C",
                     coverImage: nil
                 ),
-                durationClock: bridgeClock(ms: 187_000)
+                durationClock: bridgeLengthClock(ms: 187_000)
             ),
         ]
 
@@ -409,7 +409,7 @@
                     BridgeTrackSearchResult(
                         id: "t-03",
                         title: "Track Title 3",
-                        durationClock: bridgeClock(ms: 198_000),
+                        durationClock: bridgeLengthClock(ms: 198_000),
                         releaseId: "r-02",
                         albumId: "a-02",
                         albumTitle: "Album Title B",
@@ -419,7 +419,7 @@
                     BridgeTrackSearchResult(
                         id: "t-05",
                         title: "Track Title 5",
-                        durationClock: bridgeClock(ms: 187_000),
+                        durationClock: bridgeLengthClock(ms: 187_000),
                         releaseId: "r-03",
                         albumId: "a-03",
                         albumTitle: "Album Title C",

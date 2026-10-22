@@ -529,14 +529,14 @@ pub struct BridgeTrack {
     pub title: String,
     pub side: Option<i32>,
     pub track_number: Option<i32>,
-    /// Raw track length in milliseconds; `None` when core reports none. Retained
-    /// alongside `duration_clock` because a consumer needs the number itself —
-    /// Android sets it on the media-session `MediaMetadata` for a queued track.
-    pub duration_ms: Option<i64>,
-    /// The track length as a clock label's fields ("3:07"), or `None` when there
-    /// is nothing to label. Core-rendered at conversion so a track row reads a
-    /// field instead of an FFI call; the UI formats the fields for its locale.
-    pub duration_clock: Option<BridgeDurationClock>,
+    /// Raw track length in milliseconds. Retained alongside `duration_clock`
+    /// because a consumer needs the number itself — the media session's
+    /// metadata states it for a queued track.
+    pub duration_ms: u64,
+    /// The track length as a clock label's fields ("3:07"). Core-rendered at
+    /// conversion so a track row reads a field instead of an FFI call; the UI
+    /// formats the fields for its locale.
+    pub duration_clock: BridgeDurationClock,
     /// Effective comma-joined artist names for display (the track's own
     /// artists when it has per-track artist rows, otherwise the album
     /// artists). Always populated.
@@ -578,9 +578,15 @@ mirror_struct! {
 impl BridgeDurationClock {
     /// The clock for a duration in milliseconds, or `None` when there is nothing
     /// to label (an absent duration, or a negative one — a gap in the data, not
-    /// a short track). Pre-computed onto the static row types at conversion.
+    /// a short track).
     pub(crate) fn from_millis(ms: Option<i64>) -> Option<Self> {
         bae_core::util::duration::DurationClock::from_millis(ms).map(Self::from_core)
+    }
+
+    /// The clock for a track's length, which every track has. Pre-computed onto
+    /// the static row types at conversion.
+    pub(crate) fn of_length(ms: u64) -> Self {
+        Self::from_core(bae_core::util::duration::DurationClock::of_length(ms))
     }
 }
 
@@ -617,6 +623,12 @@ mirror_enum! {
 #[uniffi::export]
 pub fn bridge_clock(ms: Option<i64>) -> Option<BridgeDurationClock> {
     BridgeDurationClock::from_millis(ms)
+}
+
+/// The clock for a track's length ("3:07"), which every track has.
+#[uniffi::export]
+pub fn bridge_length_clock(ms: u64) -> BridgeDurationClock {
+    BridgeDurationClock::of_length(ms)
 }
 
 /// The two clocks a seek bar shows. Mirror of bae-core's `SeekBarClocks`.

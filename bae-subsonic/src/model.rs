@@ -96,7 +96,7 @@ pub(crate) struct Child {
     pub(crate) content_type: Option<String>,
     pub(crate) suffix: Option<String>,
     /// Playing time in whole seconds.
-    pub(crate) duration: Option<i64>,
+    pub(crate) duration: i64,
     pub(crate) bit_rate: Option<i64>,
     pub(crate) disc_number: Option<i32>,
     pub(crate) created: Option<String>,
@@ -124,7 +124,7 @@ impl Child {
             .opt_attr("size", self.size)
             .opt_attr("contentType", self.content_type.clone())
             .opt_attr("suffix", self.suffix.clone())
-            .opt_attr("duration", self.duration)
+            .attr("duration", self.duration)
             .opt_attr("bitRate", self.bit_rate)
             .opt_attr("discNumber", self.disc_number.map(i64::from))
             .opt_attr("created", self.created.clone())

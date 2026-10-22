@@ -24,10 +24,10 @@ pub struct BridgeAlbumSearchResult {
 pub struct BridgeTrackSearchResult {
     pub id: String,
     pub title: String,
-    /// The track length as a clock label's fields ("3:07"), or `None` when there
-    /// is nothing to label. The raw milliseconds do not cross — the search row
-    /// only ever shows the clock, never the number.
-    pub duration_clock: Option<BridgeDurationClock>,
+    /// The track length as a clock label's fields ("3:07"). The raw
+    /// milliseconds do not cross — the search row only ever shows the clock,
+    /// never the number.
+    pub duration_clock: BridgeDurationClock,
     /// The release the track is on — what playing it from a search starts.
     pub release_id: String,
     pub album_id: String,
@@ -240,10 +240,10 @@ pub struct BridgeQueueEntry {
     pub entry_id: String,
     pub track_id: String,
     pub display: BridgeTrackDisplay,
-    /// The track length as a clock label's fields ("3:07"), or `None` when there
-    /// is nothing to label. The raw milliseconds do not cross — a queue row only
-    /// ever shows the clock, never the number.
-    pub duration_clock: Option<BridgeDurationClock>,
+    /// The track length as a clock label's fields ("3:07"). The raw
+    /// milliseconds do not cross — a queue row only ever shows the clock, never
+    /// the number.
+    pub duration_clock: BridgeDurationClock,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

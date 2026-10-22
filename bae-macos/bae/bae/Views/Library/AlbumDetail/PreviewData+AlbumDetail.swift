@@ -156,7 +156,7 @@
             id: String = "t-preview",
             title: String = "Track Title",
             position: String = "1",
-            durationMs: Int64? = 214_000,
+            durationMs: UInt64 = 214_000,
             displayArtist: String? = nil
         ) -> Track {
             Track(
@@ -166,7 +166,7 @@
                     side: 1,
                     trackNumber: 1,
                     durationMs: durationMs,
-                    durationClock: bridgeClock(ms: durationMs),
+                    durationClock: bridgeLengthClock(ms: durationMs),
                     artistNames: displayArtist ?? "Artist Name",
                     displayArtist: displayArtist,
                     positionText: position

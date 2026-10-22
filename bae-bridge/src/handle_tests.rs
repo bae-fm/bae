@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 fn track_detail(
     position: bae_core::album_detail::TrackPosition,
-    duration_ms: i64,
+    duration_ms: u64,
 ) -> bae_core::album_detail::TrackDetail {
     bae_core::album_detail::TrackDetail {
         id: "track-1".to_string(),
@@ -67,14 +67,12 @@ fn track_precomputes_duration_clock() {
         TrackPosition::Flat { number: 1 },
         187_000,
     ));
-    assert_eq!(present.duration_ms, Some(187_000));
-    let clock = present
-        .duration_clock
-        .expect("clock for a present duration");
+    assert_eq!(present.duration_ms, 187_000);
+    let clock = present.duration_clock;
     assert_eq!((clock.minutes, clock.seconds), (3, 7));
 }
 
-fn track_search_result(duration_ms: i64) -> bae_core::album_detail::TrackSearchResult {
+fn track_search_result(duration_ms: u64) -> bae_core::album_detail::TrackSearchResult {
     bae_core::album_detail::TrackSearchResult {
         id: "track-1".to_string(),
         title: "Track".to_string(),
@@ -91,13 +89,11 @@ fn track_search_result(duration_ms: i64) -> bae_core::album_detail::TrackSearchR
 fn track_search_result_precomputes_duration_clock() {
     // A track's length renders a clock; the raw number does not cross.
     let present = crate::types::BridgeTrackSearchResult::from_core(track_search_result(187_000));
-    let clock = present
-        .duration_clock
-        .expect("clock for a present duration");
+    let clock = present.duration_clock;
     assert_eq!((clock.minutes, clock.seconds), (3, 7));
 }
 
-fn queue_item(duration_ms: i64) -> bae_core::queue::QueueItem {
+fn queue_item(duration_ms: u64) -> bae_core::queue::QueueItem {
     bae_core::queue::QueueItem {
         entry_id: "entry-1".to_string(),
         track_id: "track-1".to_string(),
@@ -117,9 +113,7 @@ fn queue_item(duration_ms: i64) -> bae_core::queue::QueueItem {
 fn queue_entry_precomputes_duration_clock() {
     // A track's length renders a clock; the raw number does not cross.
     let present = crate::types::BridgeQueueEntry::from_core(queue_item(187_000));
-    let clock = present
-        .duration_clock
-        .expect("clock for a present duration");
+    let clock = present.duration_clock;
     assert_eq!((clock.minutes, clock.seconds), (3, 7));
 }
 

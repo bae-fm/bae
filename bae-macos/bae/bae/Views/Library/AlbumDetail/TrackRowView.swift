@@ -76,12 +76,10 @@ struct TrackRowView: View {
                 }
             }
             Spacer(minLength: 0)
-            if !track.durationLabel.isEmpty {
-                Text(track.durationLabel)
-                    .themeText(.detail)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            }
+            Text(track.durationLabel)
+                .themeText(.detail)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
         }
         .padding(.horizontal, ThemeSpace.related)
         .frame(maxHeight: .infinity)

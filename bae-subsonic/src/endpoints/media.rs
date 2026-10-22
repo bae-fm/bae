@@ -279,8 +279,7 @@ fn transcode_format(
 /// The estimated length of the track encoded as `format`, ≈ duration ×
 /// bitrate (bytes = seconds × kbps × 1000 / 8).
 fn estimated_length(audio: &ResolvedTrackAudio, format: StreamEncodeFormat) -> u64 {
-    let duration_ms =
-        u64::try_from(audio.duration_ms).expect("a stored track length is never negative");
+    let duration_ms = audio.duration_ms;
     let bitrate_kbps = match format {
         StreamEncodeFormat::Mp3 { bitrate_kbps } | StreamEncodeFormat::OpusOgg { bitrate_kbps } => {
             u64::from(bitrate_kbps)

@@ -45,7 +45,7 @@ map_err_ignore = "deny"
 coven = { git = "https://github.com/bae-fm/coven", rev = "f0d13b2045ee0bdeecb2a2c4f8b1d11ef2e1e426" }
 # OptionalExtension, dynamic parameters and SQLite callback errors are not
 # re-exported by coven. This is the version coven's SQL contexts use.
-rusqlite = { version = "0.40.2", features = ["functions"] }
+rusqlite = { version = "0.40.2", features = ["functions", "fallible_uint"] }
 # HTTP
 reqwest = { version = "0.13", default-features = false }
 # Logging

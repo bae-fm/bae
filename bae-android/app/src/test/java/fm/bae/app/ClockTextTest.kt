@@ -39,12 +39,6 @@ class ClockTextTest {
         assertEquals("-0:00", clockText(clock(negative = true, minutes = 0u, seconds = 0u), en))
     }
 
-    /** No clock means no label — the duration is absent or nonsense. */
-    @Test
-    fun noClockRendersNothing() {
-        assertEquals("", clockText(null, en))
-    }
-
     /** The digits are the locale's; the `:` separators and the padding are not. */
     @Test
     fun digitsFollowTheLocale() {

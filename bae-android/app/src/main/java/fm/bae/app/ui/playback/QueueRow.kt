@@ -23,7 +23,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -104,16 +103,11 @@ internal fun QueueRow(
         )
         Spacer(modifier = Modifier.width(ThemeSpace.group))
         QueueItemText(item, modifier = Modifier.weight(1f))
-        // Hidden rather than removed when there is no duration, so rows align.
-        val durationLabel = LocalContext.current.durationClockLabel(item.durationClock)
         Text(
-            text = durationLabel,
+            text = LocalContext.current.durationClockLabel(item.durationClock),
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier =
-                Modifier
-                    .padding(horizontal = ThemeSpace.related)
-                    .alpha(if (durationLabel.isEmpty()) 0f else 1f),
+            modifier = Modifier.padding(horizontal = ThemeSpace.related),
         )
         IconButton(onClick = onRemove) {
             Icon(

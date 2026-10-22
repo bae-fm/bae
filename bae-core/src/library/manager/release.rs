@@ -762,18 +762,8 @@ impl LibraryManager {
 
 /// Each of a library release's tracks' stored length, in track order.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) fn stored_track_lengths(tracks: &[DbTrack]) -> Result<Vec<u64>, LibraryError> {
-    tracks
-        .iter()
-        .map(|track| {
-            u64::try_from(track.duration_ms).map_err(|error| {
-                LibraryError::Import(format!(
-                    "release track '{}' has a negative duration: {error}",
-                    track.id
-                ))
-            })
-        })
-        .collect()
+pub(crate) fn stored_track_lengths(tracks: &[DbTrack]) -> Vec<u64> {
+    tracks.iter().map(|track| track.duration_ms).collect()
 }
 
 /// Read the embedded tags of a release's local audio files. Errors if any

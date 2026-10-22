@@ -135,11 +135,9 @@ private struct TrackResultRow: View {
                 )
             )
             Spacer()
-            if !track.durationLabel.isEmpty {
-                Text(track.durationLabel)
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-            }
+            Text(track.durationLabel)
+                .themeText(.detail)
+                .foregroundStyle(.secondary)
         }
     }
 }

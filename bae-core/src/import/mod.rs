@@ -134,7 +134,7 @@ pub struct TrackRow {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl TrackRow {
     /// The row, its audio measuring `duration_ms`.
-    pub(crate) fn measured(self, duration_ms: i64) -> DbTrack {
+    pub(crate) fn measured(self, duration_ms: u64) -> DbTrack {
         DbTrack {
             id: self.id,
             release_id: self.release_id,

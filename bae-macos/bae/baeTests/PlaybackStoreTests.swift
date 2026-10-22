@@ -38,7 +38,7 @@ private func makeQueueSnapshot(
                     albumTitle: "Album Title",
                     coverImage: nil
                 ),
-                durationClock: bridgeClock(ms: 180_000)
+                durationClock: bridgeLengthClock(ms: 180_000)
             )
         ],
         context: nil,
@@ -138,7 +138,7 @@ private final class UpcomingFeed: @unchecked Sendable {
                                 albumTitle: "Album Title",
                                 coverImage: nil
                             ),
-                            durationClock: nil
+                            durationClock: bridgeLengthClock(ms: 180_000)
                         )
                     ]
                 )

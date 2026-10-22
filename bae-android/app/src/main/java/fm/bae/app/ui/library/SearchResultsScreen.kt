@@ -242,15 +242,12 @@ private fun TrackResultRow(
                 maxLines = 1,
             )
         }
-        val durationLabel = LocalContext.current.durationClockLabel(track.durationClock)
-        if (durationLabel.isNotEmpty()) {
-            Spacer(modifier = Modifier.width(ThemeSpace.group))
-            Text(
-                text = durationLabel,
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Spacer(modifier = Modifier.width(ThemeSpace.group))
+        Text(
+            text = LocalContext.current.durationClockLabel(track.durationClock),
+            style = ThemeText.detail.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

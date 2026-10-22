@@ -49,13 +49,13 @@ fn create_test_discogs_release() -> DiscogsRelease {
 ///   2: 00:30:00 (30000ms)
 ///   3: 01:00:00 (60000ms)
 /// Full file: 90000ms
-const EXPECTED_DURATIONS_MS: [i64; 3] = [
+const EXPECTED_DURATIONS_MS: [u64; 3] = [
     30000, // Track 1: 0 -> 30000
     30000, // Track 2: 30000 -> 60000
     30000, // Track 3: 60000 -> 90000
 ];
 
-const FULL_FILE_DURATION_MS: i64 = 90000;
+const FULL_FILE_DURATION_MS: u64 = 90000;
 
 /// Import the 3-track CUE/APE fixture into a fresh library, returning the
 /// manager, the imported release id, and the temp root that owns both the
@@ -110,13 +110,13 @@ async fn test_cue_ape_records_correct_durations() {
         // Allow 1 second tolerance for the last track (FFmpeg probe vs CUE timing)
         let tolerance = if i == 2 { 1000 } else { 50 };
         assert!(
-            (duration_ms - expected).abs() < tolerance,
+            duration_ms.abs_diff(expected) < tolerance,
             "Track {} '{}': expected ~{}ms, got {}ms (diff {}ms)",
             i + 1,
             track.title,
             expected,
             duration_ms,
-            (duration_ms - expected).abs(),
+            duration_ms.abs_diff(expected),
         );
 
         info!(

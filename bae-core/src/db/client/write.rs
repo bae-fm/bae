@@ -848,7 +848,7 @@ fn write_credits(
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct TrackQueueMeta {
     pub(super) display: crate::playback::TrackDisplay,
-    pub(super) duration_ms: i64,
+    pub(super) duration_ms: u64,
 }
 
 /// Join per-track metadata onto each queue entry, preserving order and duplicates.

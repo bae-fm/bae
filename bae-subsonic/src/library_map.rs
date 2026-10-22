@@ -52,7 +52,13 @@ async fn release_cover_art(
 
 /// Sum of track durations in whole seconds.
 fn total_duration_secs(tracks: &[DbTrack]) -> i64 {
-    tracks.iter().map(|t| t.duration_ms).sum::<i64>() / 1000
+    whole_seconds(tracks.iter().map(|t| t.duration_ms).sum())
+}
+
+/// A length in milliseconds as the whole seconds Subsonic states. Any `u64`
+/// count of milliseconds, divided by 1000, fits in an `i64`.
+fn whole_seconds(duration_ms: u64) -> i64 {
+    i64::try_from(duration_ms / 1000).expect("u64::MAX / 1000 is below i64::MAX")
 }
 
 /// The `AlbumID3` for a release: its album's title/artist, this release's year
@@ -170,7 +176,7 @@ async fn resolve_audio_fields(
         content_type,
         suffix,
         size,
-        duration_secs: audio.duration_ms / 1000,
+        duration_secs: whole_seconds(audio.duration_ms),
     })
 }
 
@@ -211,7 +217,7 @@ pub(crate) async fn track_child(
         size: audio.size,
         content_type: Some(audio.content_type),
         suffix: audio.suffix,
-        duration: Some(audio.duration_secs),
+        duration: audio.duration_secs,
         bit_rate: None,
         disc_number: track.side,
         created: Some(track.created_at.to_rfc3339()),
@@ -255,7 +261,7 @@ pub(crate) async fn search_track_child(
         size: audio.size,
         content_type: Some(audio.content_type),
         suffix: audio.suffix,
-        duration: Some(audio.duration_secs),
+        duration: audio.duration_secs,
         bit_rate: None,
         disc_number: None,
         created: None,

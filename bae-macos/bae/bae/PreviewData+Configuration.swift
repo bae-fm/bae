@@ -221,7 +221,9 @@
                                         layout: .file
                                     )
                                 ],
-                                durationMs: Int64(180_000 + index * 12_000),
+                                durationClock: bridgeLengthClock(
+                                    ms: UInt64(180_000 + index * 12_000)
+                                ),
                                 side: .flat,
                                 sideHeaderKey: nil
                             )

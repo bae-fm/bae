@@ -79,8 +79,7 @@ struct SearchView: View {
                     leading: .waveform,
                     title: track.title,
                     subtitle: trackSubtitle(track),
-                    trailing: track.durationLabel.isEmpty
-                        ? nil : track.durationLabel,
+                    trailing: track.durationLabel,
                     action: { onSelectTrack(track) }
                 )
             }

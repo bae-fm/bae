@@ -71,7 +71,7 @@ object PreviewData {
     // Preview track length (3:34) and the same value as a clock, built here
     // rather than through `bridgeClock` because the preview renderer cannot
     // call the native bridge.
-    private const val TRACK_DURATION_MS = 214_000L
+    private const val TRACK_DURATION_MS = 214_000uL
     private val trackDurationClock =
         BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 34u)
 

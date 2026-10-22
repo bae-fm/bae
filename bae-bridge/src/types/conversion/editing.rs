@@ -164,7 +164,7 @@ impl BridgeReleaseEditTrackContext {
                 .into_iter()
                 .map(BridgeReleaseEditTrackSource::from_core)
                 .collect(),
-            duration_ms: Some(duration_ms),
+            duration_clock: crate::types::BridgeDurationClock::of_length(duration_ms),
             side,
             side_header_key,
         }

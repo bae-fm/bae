@@ -103,7 +103,7 @@ impl LibraryManager {
                 title,
                 side: Some(1),
                 track_number: Some(track.number as i32),
-                duration_ms: duration_ms as i64,
+                duration_ms,
                 created_at: added,
             };
             if track.number == playing.track {
@@ -142,7 +142,7 @@ impl LibraryManager {
                 layout: Some(crate::album_detail::SourceAudioLayout::Cue),
                 format: scanned.format,
                 content_type: scanned.content_type,
-                duration_ms: scanned.duration_ms as i64,
+                duration_ms: scanned.duration_ms,
             });
             let attachment = coven::prepare_user_file(&audio.path, |_| {})
                 .await

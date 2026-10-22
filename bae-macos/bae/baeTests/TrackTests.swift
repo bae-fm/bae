@@ -12,8 +12,8 @@ struct TrackTests {
                 title: "Track Title",
                 side: 1,
                 trackNumber: nil,
-                durationMs: nil,
-                durationClock: nil,
+                durationMs: 180_000,
+                durationClock: bridgeLengthClock(ms: 180_000),
                 artistNames: "Artist Name",
                 displayArtist: nil,
                 positionText: "A"
