@@ -11,8 +11,8 @@ fn all_files_untagged_seeds_from_folder_and_filenames() {
     // "encoder=Lavf..." comment which is not ALBUM/ARTIST/TITLE.
 
     let parsed = map_tags_with_folder(&[dest], Some("Mystery Rip")).unwrap();
-    assert_eq!(parsed.album.title, "Mystery Rip");
-    assert_eq!(parsed.artists[0].name, "");
+    assert_eq!(parsed.album_title, "Mystery Rip");
+    assert_eq!(parsed.album_credits[0].name, "");
     assert_eq!(parsed.tracks[0].title, "untitled-track");
 }
 
@@ -104,12 +104,12 @@ fn mp3_with_id3v2_tags() {
     );
 
     let parsed = map_tags(&[f1]).unwrap();
-    assert_eq!(parsed.album.title, "MP3 Album");
-    assert_eq!(parsed.album.year, Some(2010));
-    assert!(parsed.release.pressing.facts.media.is_empty());
+    assert_eq!(parsed.album_title, "MP3 Album");
+    assert_eq!(parsed.album_year, Some(2010));
+    assert!(parsed.pressing.facts.media.is_empty());
     assert_eq!(parsed.tracks.len(), 1);
     assert_eq!(parsed.tracks[0].title, "MP3 Track");
-    assert_eq!(parsed.artists[0].name, "MP3 Artist");
+    assert_eq!(parsed.album_credits[0].name, "MP3 Artist");
 }
 
 /// M4A with MP4 ilst tags leaves release media blank.
@@ -137,9 +137,9 @@ fn m4a_with_mp4_ilst_tags() {
 
     let parsed = map_tags(&[f1]).unwrap();
 
-    assert_eq!(parsed.album.title, "Album Title");
-    assert_eq!(parsed.album.year, Some(2020));
-    assert!(parsed.release.pressing.facts.media.is_empty());
+    assert_eq!(parsed.album_title, "Album Title");
+    assert_eq!(parsed.album_year, Some(2020));
+    assert!(parsed.pressing.facts.media.is_empty());
     assert_eq!(parsed.tracks.len(), 1);
     assert_eq!(parsed.tracks[0].title, "Track One");
 }
@@ -168,7 +168,7 @@ fn aac_m4a_with_mp4_ilst_tags_leaves_release_media_blank() {
 
     let parsed = map_tags(&[f1]).unwrap();
 
-    assert!(parsed.release.pressing.facts.media.is_empty());
+    assert!(parsed.pressing.facts.media.is_empty());
 }
 
 /// A few JPEG SOI/EOI bytes — enough to round-trip as opaque cover
@@ -449,7 +449,7 @@ fn file_tag_import_leaves_media_blank_for_every_source_codec() {
     ] {
         let parsed = map_tags_with_folder(&[fixture_dir.join(name)], Some("Album Title"))
             .unwrap_or_else(|e| panic!("{name}: {e}"));
-        assert!(parsed.release.pressing.facts.media.is_empty(), "{name}");
+        assert!(parsed.pressing.facts.media.is_empty(), "{name}");
     }
 }
 

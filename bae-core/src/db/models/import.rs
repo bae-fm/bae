@@ -140,7 +140,6 @@ pub struct DbCandidateImportPreparation {
     pub release_link: Option<crate::import::ReleaseLink>,
     pub cover: Option<crate::import::CoverSelection>,
     pub draft: crate::import::CandidateDraft,
-    pub source_discogs_artist_ids: std::collections::BTreeSet<String>,
     pub assets: crate::import::CandidatePreparedAssets,
 }
 

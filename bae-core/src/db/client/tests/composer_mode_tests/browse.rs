@@ -62,10 +62,10 @@ async fn search_library_treats_like_metacharacters_as_literals() {
              ('07d51116-f6e3-4b4c-8ae2-601d5a972bf9', '2dd55a3f-3208-4faf-8737-453f474074cb', '2026-01-01T00:00:00Z', 2),
              ('3dc45e4f-fe7f-47aa-84fc-4d6027c57276', 'e00e6a4d-b8c9-4dce-8b2a-9a4c69553abc', '2026-01-01T00:00:00Z', 3);
 
-            INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, created_at) VALUES ('4dc8cde9-15fb-470d-802c-b7e5f1ccc63d', '94d062dd-9dc8-4e59-8c13-e5731b702157', '50% Track Title', 1, 1, 1000, NULL, '2026-01-01T00:00:00Z'),
-             ('37610729-bd6c-4511-81a9-8848a832ac73', '7a4de476-4ce8-4e2f-805a-d4c23dffaf8e', '500 Track Title', 1, 1, 1000, NULL, '2026-01-01T00:00:00Z'),
-             ('b2930937-dae6-4719-8150-aa61422eeeac', '07d51116-f6e3-4b4c-8ae2-601d5a972bf9', 'A_B Track Title', 1, 1, 1000, NULL, '2026-01-01T00:00:00Z'),
-             ('1f084b57-7c9c-457f-80fb-c61688c31175', '3dc45e4f-fe7f-47aa-84fc-4d6027c57276', 'ACB Track Title', 1, 1, 1000, NULL, '2026-01-01T00:00:00Z');
+            INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, created_at) VALUES ('4dc8cde9-15fb-470d-802c-b7e5f1ccc63d', '94d062dd-9dc8-4e59-8c13-e5731b702157', '50% Track Title', 1, 1, 1000, '2026-01-01T00:00:00Z'),
+             ('37610729-bd6c-4511-81a9-8848a832ac73', '7a4de476-4ce8-4e2f-805a-d4c23dffaf8e', '500 Track Title', 1, 1, 1000, '2026-01-01T00:00:00Z'),
+             ('b2930937-dae6-4719-8150-aa61422eeeac', '07d51116-f6e3-4b4c-8ae2-601d5a972bf9', 'A_B Track Title', 1, 1, 1000, '2026-01-01T00:00:00Z'),
+             ('1f084b57-7c9c-457f-80fb-c61688c31175', '3dc45e4f-fe7f-47aa-84fc-4d6027c57276', 'ACB Track Title', 1, 1, 1000, '2026-01-01T00:00:00Z');
             ",
         )
         .map(|_| ())

@@ -55,7 +55,6 @@ fn create_test_track(release_id: &str, track_number: i32) -> DbTrack {
         side: Some(1),
         track_number: Some(track_number),
         duration_ms: Some(180000),
-        discogs_position: None,
         created_at: now,
     }
 }

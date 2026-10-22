@@ -34,8 +34,11 @@ pub use artist_assignment::{
 };
 mod raw_release_edit;
 pub use raw_release_edit::{
-    CandidateDraft, CandidateTrack, EditValidationError, RawLabelEdit, RawPressingEdit,
-    RawReleaseEdit, RawReleaseEditOf, RawTrackEdit,
+    EditValidationError, RawLabelEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
+};
+mod candidate_draft;
+pub use candidate_draft::{
+    CandidateDraft, CandidateTrack, CreditedRole, GraphWork, WorkGraph, WorkPart,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::{path::PathBuf, sync::Arc};
@@ -311,9 +314,6 @@ impl PressingLink {
 pub struct CandidateMetadataDraft {
     /// Ordered included tracks, each with audio and a required number.
     pub draft: CandidateDraft,
-    /// Provider artists present in the selected release payload, including
-    /// role and work credits that are not editable album/track assignments.
-    pub source_discogs_artist_ids: std::collections::BTreeSet<String>,
     pub provenance: Option<MetadataProvenance>,
     pub cover: Option<CoverSelection>,
     pub assets: CandidatePreparedAssets,
@@ -329,7 +329,6 @@ pub struct CandidateMetadataDraft {
 pub(crate) struct CandidateMappingPreparation {
     /// Retained tracks and newly initialized tracks in audio order.
     pub draft: CandidateDraft,
-    pub source_discogs_artist_ids: std::collections::BTreeSet<String>,
     pub artist_images: Vec<PreparedArtistImage>,
 }
 
@@ -338,7 +337,6 @@ pub(crate) struct CandidateMappingPreparation {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct CandidatePreparedAssets {
-    pub applied_source: Option<crate::import::source_release::AppliedSource>,
     pub remote_cover: Option<crate::import::cover_art::RemoteImage>,
     pub artist_images: Vec<PreparedArtistImage>,
 }

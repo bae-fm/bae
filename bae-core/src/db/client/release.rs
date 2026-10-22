@@ -551,8 +551,8 @@ impl Database {
                 }
 
                 // The tracks came out of `tracks_to_files`; their `duration_ms`
-                // was set by the mapper, from the CUE sheet or a standalone-file
-                // probe.
+                // was set from the audio each is bound to: its CUE slice or its
+                // whole file.
                 for track in &tracks {
                     insert_track_row(tx, track)?;
                 }
@@ -605,7 +605,8 @@ impl Database {
         .map_err(Self::artist_write_error)
     }
 
-    /// Delete a release and clear its album's primary-release pointer atomically.
+    /// Delete a release in one write. Its album's next release in album order
+    /// is then the primary; nothing else is written for that.
     /// Shared artists and works remain available to other releases and devices.
     /// Deleting abandons the attachment of each of its files this device is
     /// still uploading; the person asked for that, so its record is dismissed.

@@ -136,9 +136,7 @@ async fn store_candidate_state(
 
 /// `metadata_draft` as a candidate stores it.
 fn candidate_draft(title: &str, artist: &str) -> crate::import::CandidateDraft {
-    crate::import::pane::candidate_draft_from_edit(metadata_draft(title, artist))
-        .unwrap()
-        .draft
+    crate::import::pane::draft_of_edit(metadata_draft(title, artist))
 }
 
 fn metadata_draft(title: &str, artist: &str) -> RawReleaseEdit {
@@ -748,11 +746,9 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
             &pane_candidate_path(),
             &crate::import::CandidateMetadataDraft {
                 draft: draft.clone(),
-                source_discogs_artist_ids: Default::default(),
                 provenance: Some(release_pick("release-1")),
                 cover: None,
                 assets: crate::import::CandidatePreparedAssets {
-                    applied_source: None,
                     remote_cover: None,
                     artist_images: vec![first],
                 },
@@ -778,11 +774,9 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
             &pane_candidate_path(),
             &crate::import::CandidateMetadataDraft {
                 draft,
-                source_discogs_artist_ids: Default::default(),
                 provenance: Some(release_pick("release-2")),
                 cover: None,
                 assets: crate::import::CandidatePreparedAssets {
-                    applied_source: None,
                     remote_cover: None,
                     artist_images: vec![second.clone()],
                 },
@@ -815,7 +809,6 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
             &pane_candidate_path(),
             &as_read(&hash, revision),
             &[third_assignment],
-            &std::collections::BTreeSet::new(),
             std::slice::from_ref(&third),
         )
         .await
@@ -830,14 +823,57 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
     );
 }
 
+/// A draft's roles and works are values it stores: they read back as they
+/// were written, and the Discogs artist a role credits needs its answer like
+/// any credit.
 #[tokio::test]
-async fn preparation_round_trips_source_only_artist_answers() {
+async fn preparation_round_trips_a_drafts_roles_works_and_their_answers() {
     let (db, _tmp) = empty_db().await;
     fetched(&db, "release-with-role").await;
     let (_, hash) = stored_pane_candidate(&db).await;
-    let source_ids = std::collections::BTreeSet::from(["role-artist".to_string()]);
     let answer = crate::import::PreparedArtistImage::Nothing {
         discogs_artist_id: "role-artist".to_string(),
+    };
+    let credit = |name: &str, discogs: Option<&str>| crate::import::ArtistCredit {
+        name: name.to_string(),
+        sort_name: None,
+        musicbrainz_artist_id: None,
+        discogs_artist_id: discogs.map(str::to_string),
+    };
+    let mut draft = candidate_draft("Release Title", "Artist Name");
+    draft.tracks[0].stated_length_ms = Some(181_000);
+    draft.tracks[0].roles = vec![crate::import::CreditedRole {
+        artist: credit("Role Artist", Some("role-artist")),
+        source: crate::import::Catalog::Discogs,
+        role: Some("Written-By".to_string()),
+    }];
+    draft.tracks[0].works = vec!["mb-work-child".to_string()];
+    draft.release_roles = vec![crate::import::CreditedRole {
+        artist: credit("Release Composer", None),
+        source: crate::import::Catalog::Discogs,
+        role: None,
+    }];
+    draft.works = crate::import::WorkGraph {
+        works: vec![
+            crate::import::GraphWork {
+                musicbrainz_work_id: "mb-work-child".to_string(),
+                title: "Movement".to_string(),
+                disambiguation: None,
+                work_type: Some("Song".to_string()),
+                composers: vec![credit("Composer Name", None)],
+            },
+            crate::import::GraphWork {
+                musicbrainz_work_id: "mb-work-parent".to_string(),
+                title: "Suite".to_string(),
+                disambiguation: Some("whole".to_string()),
+                work_type: None,
+                composers: Vec::new(),
+            },
+        ],
+        parts: vec![crate::import::WorkPart {
+            parent: "mb-work-parent".to_string(),
+            child: "mb-work-child".to_string(),
+        }],
     };
 
     crate::import::CandidatePreparations::new(db.clone())
@@ -846,12 +882,10 @@ async fn preparation_round_trips_source_only_artist_answers() {
             &as_read(&hash, 0),
             &pane_candidate_path(),
             &crate::import::CandidateMetadataDraft {
-                draft: candidate_draft("Release Title", "Artist Name"),
-                source_discogs_artist_ids: source_ids.clone(),
+                draft: draft.clone(),
                 provenance: Some(release_pick("release-with-role")),
                 cover: None,
                 assets: crate::import::CandidatePreparedAssets {
-                    applied_source: None,
                     remote_cover: None,
                     artist_images: vec![answer.clone()],
                 },
@@ -865,30 +899,6 @@ async fn preparation_round_trips_source_only_artist_answers() {
         .await
         .unwrap()
         .expect("the candidate is prepared");
-    assert_eq!(preparation.source_discogs_artist_ids, source_ids);
+    assert_eq!(preparation.draft, draft);
     assert_eq!(preparation.assets.artist_images, vec![answer]);
-
-    crate::import::CandidatePreparations::new(db.clone())
-        .set_album_artists_prepared(
-            &host_root("/music"),
-            &pane_candidate_path(),
-            &crate::import::CandidateAsRead {
-                content_hash: hash.clone(),
-                file_edit_revision: preparation.file_edit_revision,
-                metadata_revision: preparation.metadata_revision,
-            },
-            &preparation.draft.album_artist_assignments,
-            &std::collections::BTreeSet::new(),
-            &[],
-        )
-        .await
-        .unwrap();
-
-    let preparation = db
-        .load_import_candidate_preparation(&hash)
-        .await
-        .unwrap()
-        .expect("the candidate remains prepared");
-    assert!(preparation.source_discogs_artist_ids.is_empty());
-    assert!(preparation.assets.artist_images.is_empty());
 }

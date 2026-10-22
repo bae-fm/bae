@@ -5,7 +5,6 @@ use crate::import::discogs_mapper::parse_duration_to_ms;
 use crate::musicbrainz::{
     MbArtistCredit, MbMedium, MbRecording, MbReleaseGroupRef, MbReleaseResponse, MbTrack,
 };
-use coven::{FixedClock, SequentialIds};
 
 /// The release a MusicBrainz document extracts to, read by itself.
 fn mb_release(response: &MbReleaseResponse) -> crate::import::source_release::SourceRelease {
@@ -36,12 +35,6 @@ fn discogs_detail(json: &str, audio: &[u64]) -> ImportSearchReleaseDetail {
     .expect("the Discogs fixture extracts")
     .detail_for_audio(audio, &[])
     .expect("the Discogs fixture reads")
-}
-
-fn test_clock() -> FixedClock {
-    FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-            .unwrap()
-            .with_timezone(&chrono::Utc)).into())
 }
 
 fn make_mb_track(number: &str, title: &str) -> MbTrack {
@@ -607,13 +600,9 @@ fn mb_detail_pressing_matches_the_committed_pressing() {
 
     let detail = mb_detail(&response).unwrap();
     let parsed = mb_release(&response)
-    .parsed(
-        &[],
-        &test_clock(),
-        &SequentialIds::new(),
-    )
+    .values(&[])
     .unwrap();
-    let committed = parsed.release.pressing;
+    let committed = parsed.pressing;
 
     assert_eq!(detail.year, committed.year);
     assert_eq!(detail.labels, committed.labels);
@@ -655,11 +644,7 @@ fn mb_detail_track_title_prefers_the_recording_title() {
     assert_eq!(titles, vec!["Recording Title", "Only A Track Title"]);
 
     let parsed = mb_release(&response)
-    .parsed(
-        &[],
-        &test_clock(),
-        &SequentialIds::new(),
-    )
+    .values(&[])
     .unwrap();
     let committed: Vec<&str> = parsed.tracks.iter().map(|t| t.title.as_str()).collect();
     assert_eq!(titles, committed);

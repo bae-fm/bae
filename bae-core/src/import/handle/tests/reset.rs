@@ -360,7 +360,6 @@ async fn reset_setup_invalidates_prepared_metadata_and_refuses_claimed_candidate
     };
     let old_metadata = CandidateMetadataDraft {
         draft: before.draft.clone(),
-        source_discogs_artist_ids: before.source_discogs_artist_ids.clone(),
         provenance: before.metadata_provenance.clone(),
         cover: before.cover.clone(),
         assets: before.assets.clone(),
@@ -430,7 +429,6 @@ async fn reset_setup_discards_selected_release_assets_and_identification() {
         .unwrap();
     let hash = candidate.files.content_hash();
     let selected = preparation(&handle, &hash).await;
-    assert!(selected.assets.applied_source.is_some());
     assert!(!selected.assets.artist_images.is_empty());
     assert!(manager
         .load_import_candidate_state(&hash)
@@ -472,7 +470,6 @@ async fn reset_setup_discards_selected_release_assets_and_identification() {
     handle.reset_candidate_setup(&key).await.unwrap();
     let reset = preparation(&handle, &hash).await;
     assert_eq!(reset.assets, CandidatePreparedAssets::default());
-    assert!(reset.source_discogs_artist_ids.is_empty());
     assert!(reset.draft.album_artist_assignments.is_empty());
     assert_eq!(
         reset.cover,
@@ -484,11 +481,10 @@ async fn reset_setup_discards_selected_release_assets_and_identification() {
         reset.metadata_provenance,
         Some(MetadataProvenance::FileMetadata)
     );
-    assert!(reset
-        .draft
-        .tracks
-        .iter()
-        .all(|row| row.source_index.is_none()));
+    assert!(reset.draft.tracks.iter().all(|row| row.roles.is_empty()
+        && row.works.is_empty()
+        && row.stated_length_ms.is_none()));
+    assert!(reset.draft.release_roles.is_empty());
     let state = manager
         .load_import_candidate_state(&hash)
         .await
@@ -524,7 +520,6 @@ async fn reset_setup_rejects_an_unchanged_source_rescanned_after_preparation() {
         draft: before.draft.clone(),
         provenance: Some(MetadataProvenance::FileMetadata),
         cover: None,
-        source_discogs_artist_ids: Default::default(),
         assets: CandidatePreparedAssets::default(),
     };
     rescan_into(&manager, candidate.clone()).await;

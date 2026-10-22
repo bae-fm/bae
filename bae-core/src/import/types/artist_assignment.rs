@@ -52,6 +52,25 @@ pub struct ArtistCredit {
     pub discogs_artist_id: Option<String>,
 }
 
+impl ArtistCredit {
+    /// A fresh artist row carrying what the credit says, which the write that
+    /// links it resolves to a library artist when it commits.
+    pub(crate) fn write_row(
+        &self,
+        ids: &dyn coven::IdSource,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> crate::db::DbArtist {
+        crate::db::DbArtist {
+            id: ids.new_id().to_string(),
+            name: self.name.clone(),
+            sort_name: self.sort_name.clone(),
+            discogs_artist_id: self.discogs_artist_id.clone(),
+            musicbrainz_artist_id: self.musicbrainz_artist_id.clone(),
+            created_at: now,
+        }
+    }
+}
+
 /// What the library holds for one credit, as it stands when read.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CreditResolution {
@@ -158,14 +177,7 @@ impl ArtistAssignment {
                 musicbrainz_artist_id: artist.musicbrainz_artist_id.clone(),
                 created_at: now,
             },
-            Self::Credit { credit } => crate::db::DbArtist {
-                id: ids.new_id().to_string(),
-                name: credit.name.clone(),
-                sort_name: credit.sort_name.clone(),
-                discogs_artist_id: credit.discogs_artist_id.clone(),
-                musicbrainz_artist_id: credit.musicbrainz_artist_id.clone(),
-                created_at: now,
-            },
+            Self::Credit { credit } => credit.write_row(ids, now),
         }
     }
 
@@ -188,13 +200,23 @@ impl ArtistAssignment {
     }
 
     /// The name the artist is shown by — what the desktop import list's
-    /// filter tests a row's credits against, and what identification searches.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    /// filter tests a row's credits against, what identification searches,
+    /// and what decides a compilation.
     pub(crate) fn name(&self) -> &str {
         match self {
             Self::Picked { artist } => &artist.name,
             Self::Credit { credit } => &credit.name,
         }
+    }
+
+    /// Whether an album credited to `album_artists` is a compilation: its one
+    /// credit is the various-artists artist. Every write of an album's credits
+    /// derives the flag from them, so it never outlives an edit of them.
+    pub(crate) fn credit_a_compilation(album_artists: &[Self]) -> bool {
+        matches!(
+            album_artists,
+            [only] if crate::text_match::is_various_artists(only.name())
+        )
     }
 
     /// The credit this assignment leaves to be resolved, if it is one.

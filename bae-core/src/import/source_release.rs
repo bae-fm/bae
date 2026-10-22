@@ -10,13 +10,13 @@
 //! tracklist and the lengths the caller measured.
 
 use crate::pressing::Pressing;
-use crate::import::assemble::{ArtistRef, PartDirection};
 use crate::import::cover_art::RemoteCover;
 use crate::import::medium_coverage::MediumCoverage;
 use crate::import::release_metadata::ReleaseMetadata;
 use crate::import::search::{ImportSearchReleaseDetail, SourceTracks};
 use crate::pressing::{Medium, StatedMedia};
-use crate::import::{Catalog, ImportError, MetadataRef, ParsedAlbum, ReleaseRecord};
+use crate::import::release_values::ReleaseValues;
+use crate::import::{ArtistCredit, Catalog, ImportError, MetadataRef, ReleaseRecord};
 
 /// The catalogs bae fetches releases from are exactly the ones it asks, so a
 /// source release cannot exist for any other.
@@ -143,7 +143,7 @@ pub(crate) struct TracklistEntry {
     pub(crate) title: Option<String>,
     pub(crate) duration_ms: Option<u64>,
     /// Display credits in the catalog's order.
-    pub(crate) credits: Vec<ArtistCredit>,
+    pub(crate) credits: Vec<DisplayCredit>,
     /// Composer credits, at their positions among the row's relations.
     pub(crate) roles: Vec<RoleCredit>,
     /// The works a MusicBrainz recording performs, at their positions among
@@ -186,17 +186,17 @@ impl EntryKind {
 /// One display credit. `artist` is absent where the catalog printed a name
 /// with no artist behind it; the printed name still heads the picker's row.
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct ArtistCredit {
+pub(crate) struct DisplayCredit {
     pub(crate) position: i32,
     pub(crate) credited_name: String,
-    pub(crate) artist: Option<ArtistRef>,
+    pub(crate) artist: Option<ArtistCredit>,
 }
 
 /// One composer credit and the words its catalog credits it with.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct RoleCredit {
     pub(crate) position: i32,
-    pub(crate) artist: ArtistRef,
+    pub(crate) artist: ArtistCredit,
     pub(crate) role: Option<String>,
 }
 
@@ -223,11 +223,19 @@ pub(crate) struct SourceWork {
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum SourceWorkEvent {
-    Composer(ArtistRef),
+    Composer(ArtistCredit),
     Part {
         direction: PartDirection,
         work: SourceWork,
     },
+}
+
+/// Which way a MusicBrainz "parts" relation points from the work stating it:
+/// `Forward` names a part of the work, `Backward` the work it is part of.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum PartDirection {
+    Forward,
+    Backward,
 }
 
 impl SourceRelease {
@@ -495,53 +503,24 @@ impl SourceRelease {
         })
     }
 
-    /// The DB-shape album the commit writes, and the editor's seed is
-    /// projected from.
+    /// What this release says the audio's tracks are: its covered mediums'
+    /// tracks laid onto the audio, with every credit, role and work it states.
     ///
-    /// `audio_durations_ms` is what the release's audio measures. It chooses
-    /// which of the release's mediums are read and, for a Discogs tracklist,
-    /// its index/sub-track layout; a MusicBrainz tracklist states its own
-    /// track times. Empty means unmeasured, and reads the whole release.
-    pub fn parsed(
-        &self,
-        audio_durations_ms: &[u64],
-        clock: &dyn coven::Clock,
-        ids: &dyn coven::IdSource,
-    ) -> Result<ParsedAlbum, ImportError> {
+    /// `audio_durations_ms` is what the audio measures. It chooses which of
+    /// the release's mediums are read and, for a Discogs tracklist, its
+    /// index/sub-track layout; a MusicBrainz tracklist states its own track
+    /// times. Empty means unmeasured, and reads the whole release.
+    pub(crate) fn values(&self, audio_durations_ms: &[u64]) -> Result<ReleaseValues, ImportError> {
         let coverage = self.coverage(audio_durations_ms);
         match self.release.catalog {
-            Catalog::MusicBrainz => {
-                crate::import::musicbrainz_mapper::map(self, &coverage, clock, ids)
-            }
-            Catalog::Discogs => crate::import::discogs_mapper::map(
+            Catalog::MusicBrainz => crate::import::musicbrainz_mapper::values(self, &coverage),
+            Catalog::Discogs => crate::import::discogs_mapper::values(
                 self,
                 &coverage,
                 Some(audio_durations_ms),
-                clock,
-                ids,
             ),
             other => not_fetched(other),
         }
-    }
-}
-
-/// The release a candidate's draft was read from, as its stored row says,
-/// and the lengths the draft's tracks measured when it was. Reading it
-/// against those lengths again lays its tracklist out as the draft's source
-/// tracks index it.
-#[derive(Debug, Clone, PartialEq)]
-pub struct AppliedSource {
-    pub release: SourceRelease,
-    pub audio_durations_ms: Vec<u64>,
-}
-
-impl AppliedSource {
-    pub fn parsed(
-        &self,
-        clock: &dyn coven::Clock,
-        ids: &dyn coven::IdSource,
-    ) -> Result<ParsedAlbum, ImportError> {
-        self.release.parsed(&self.audio_durations_ms, clock, ids)
     }
 }
 

@@ -176,21 +176,10 @@ pub struct CandidatePreparation {
 }
 
 impl CandidatePreparation {
-    /// The Discogs artists whose image answers this draft needs: the ones the
-    /// source credits, plus every new artist with a Discogs identity on the
-    /// album or on a track that commits.
+    /// The Discogs artists whose image answers this draft needs: every one it
+    /// credits (see [`crate::import::CandidateDraft::discogs_artist_ids`]).
     pub fn required_discogs_artist_ids(&self) -> BTreeSet<String> {
-        self.metadata
-            .source_discogs_artist_ids
-            .union(
-                &self
-                    .metadata
-                    .draft
-                    .release_edit()
-                    .credit_discogs_artist_ids_for_bound_tracks(),
-            )
-            .cloned()
-            .collect()
+        self.metadata.draft.discogs_artist_ids()
     }
 
     /// The contradictions no stored candidate may hold, named so a save can
@@ -199,21 +188,6 @@ impl CandidatePreparation {
         self.author
             .check_provenance(self.metadata.provenance.as_ref())
             .map_err(|error| format!("candidate {}: {error}", self.content_hash))?;
-        if let Some(applied) = &self.metadata.assets.applied_source {
-            let Some(MetadataProvenance::ExternalRelease { record }) = &self.metadata.provenance
-            else {
-                return Err(format!(
-                    "candidate {} applies a release its provenance does not name",
-                    self.content_hash
-                ));
-            };
-            if applied.release.release() != record {
-                return Err(format!(
-                    "candidate {}: the applied release and the draft provenance disagree",
-                    self.content_hash
-                ));
-            }
-        }
         if let (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, Some(_)) =
             (&self.metadata.cover, &self.metadata.assets.remote_cover)
         {

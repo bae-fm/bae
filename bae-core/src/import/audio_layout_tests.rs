@@ -109,7 +109,6 @@ fn rows_for(units: Vec<AudioFile>) -> Vec<(DbTrack, AudioFile)> {
                     side: Some(1),
                     track_number: Some(index as i32 + 1),
                     duration_ms: None,
-                    discogs_position: None,
                     created_at: now,
                 },
                 unit,
@@ -305,7 +304,6 @@ fn an_unnamed_slot_is_titled_after_its_file() {
                 side: Some(1),
                 track_number: Some(1),
                 duration_ms: None,
-                discogs_position: None,
                 created_at: chrono::Utc::now(),
             },
             AudioFile::Standalone {
@@ -461,7 +459,6 @@ fn audio_that_left_the_folder_refuses() {
                 side: Some(1),
                 track_number: Some(1),
                 duration_ms: None,
-                discogs_position: None,
                 created_at: chrono::Utc::now(),
             },
             AudioFile::Standalone {

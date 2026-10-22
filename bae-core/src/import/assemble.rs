@@ -1,588 +1,287 @@
-//! Shared release intermediate representation and the single assembler.
+//! The one place an import's library rows are built: from the candidate's
+//! draft, as it stands.
 //!
-//! All three import mappers (file tags, MusicBrainz, Discogs) parse their source
-//! into a [`ReleaseIr`] — an ordered, pre-id, pre-dedup description of what the
-//! source said — and hand it to [`assemble_parsed_album`], which owns artist-pool
-//! dedup, per-side numbering, junction-row emission, and DB-row construction.
-//! The IR is the boundary between "what the source claims" and "which rows we
-//! mint": every [`ArtistRef`] is an unresolved reference the assembler resolves
-//! against one artist pool.
-//!
-//! Per-track event order is observable output — [`ParsedAlbum::artists`]
-//! insertion order, junction-row order, and id-mint order all follow it — so the
-//! mappers preserve each source's exact discovery order when building the IR.
+//! The draft holds every value the import writes — the album, the pressing,
+//! each track's title, credits, place, roles and works, and the release's own
+//! roles — so the rows are built from it alone; no source is read again.
+//! Artists stay credits here: each credit becomes a row of its own, and the
+//! commit resolves every one to a library artist inside the transaction that
+//! writes the release, where two credits naming one artist become one.
 
 use crate::db::{
     DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrack, DbTrackArtist,
     DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart,
 };
-use crate::pressing::Pressing;
-use crate::import::types::{Catalog, MetadataProvenance};
-use crate::import::{ParsedAlbum, ParsedWorkGraph};
+use crate::import::{
+    ArtistAssignment, AudioFile, CandidateDraft, Catalog, ImportError, MetadataProvenance,
+    ReleaseRows, WorkGraphRows, TrackArtistAssignments,
+};
 use chrono::{DateTime, Utc};
 use coven::{Clock, IdSource};
 use std::collections::{HashMap, HashSet};
-use tracing::debug;
 
-/// A reference to an artist as a source credits it, before any DB id exists.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ArtistRef {
-    pub name: String,
-    pub sort_name: Option<String>,
-    pub musicbrainz_artist_id: Option<String>,
-    pub discogs_artist_id: Option<String>,
+/// The rows one import writes, before its artists are resolved and its
+/// tracks bound to their audio.
+pub(crate) struct AssembledRelease {
+    pub parsed: ReleaseRows,
+    /// Each track's audio, in the order of `parsed.tracks`.
+    pub bindings: Vec<AudioFile>,
+    /// The artist rows that are library artists a person picked; the commit
+    /// links them as they are.
+    pub picked: HashSet<String>,
 }
 
-/// Read a positive number from a provider position: 7, A7, or 2-7.
-pub(crate) fn position_number(position: &str) -> Option<i32> {
-    let number = match position.split_once('-') {
-        Some((disc, number)) if disc.bytes().all(|byte| byte.is_ascii_digit()) => number,
-        _ if position
-            .as_bytes()
-            .first()
-            .is_some_and(u8::is_ascii_alphabetic) =>
-        {
-            &position[1..]
-        }
-        _ => position,
-    };
-    number.parse::<i32>().ok().filter(|number| *number > 0)
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum PartDirection {
-    Forward,
-    Backward,
-}
-
-/// A work and its sub-graph, validated: every event carries its payload. The
-/// source→IR mapper drops malformed relations (and logs them), so the assembler
-/// never has to.
-pub(crate) struct WorkNode {
-    /// The MusicBrainz work this node describes. Identifies the work within the
-    /// graph and across imports; the assembler mints the `works` row id
-    /// separately, because an MBID is often a version-3 UUID the sync layer
-    /// refuses on a synced row.
-    pub musicbrainz_work_id: String,
-    pub title: String,
-    pub disambiguation: Option<String>,
-    pub work_type: Option<String>,
-    /// Composer credits and part relations, in source relation order.
-    pub events: Vec<WorkEvent>,
-}
-
-pub(crate) enum WorkEvent {
-    Composer(ArtistRef),
-    /// "parts" relation: `Forward` names a child of this work, `Backward` names
-    /// its parent.
-    Part {
-        direction: PartDirection,
-        work: WorkGraphRef,
-    },
-}
-
-/// A reference to a work, from a track performance or a parent work. Each work
-/// is reachable from many places; the first reference in a release carries the
-/// expanded sub-graph (`Expanded`), and every later reference to the same work
-/// carries only its id (`AlreadyExpanded`). The distinction is explicit so a
-/// relation-less work (an `Expanded` node with no events) is never confused with
-/// a repeat reference.
-pub(crate) enum WorkGraphRef {
-    Expanded(WorkNode),
-    AlreadyExpanded { musicbrainz_work_id: String },
-}
-
-/// One track-scoped event, in source order. Order determines artist-pool
-/// insertion order, junction-row order, and id-mint order.
-pub(crate) enum TrackEvent {
-    /// Display credit → `track_artists` row at `position`.
-    Credit { position: i32, artist: ArtistRef },
-    /// Role credit → `track_artist_roles` row.
-    Role {
-        position: i32,
-        artist: ArtistRef,
-        source: Catalog,
-        source_credit: Option<String>,
-    },
-    /// Work performance → work graph rows + a `track_works` row (deduped per
-    /// track on work id).
-    Work {
-        position: i32,
-        source: Catalog,
-        work: WorkGraphRef,
-    },
-}
-
-pub(crate) struct TrackIr {
-    pub title: String,
-    pub side: Option<i32>,
-    pub number: Option<i32>,
-    /// Raw source position ("A1", "1-2", MusicBrainz track number); lands in
-    /// `DbTrack.discogs_position`.
-    pub source_position: Option<String>,
-    pub events: Vec<TrackEvent>,
-}
-
-/// Release-level role credit (Discogs extraartists composers).
-pub(crate) struct ReleaseRole {
-    pub position: i32,
-    pub artist: ArtistRef,
-    pub source: Catalog,
-    pub source_credit: Option<String>,
-}
-
-/// Which artists get `album_artists` junction rows (beyond the primary).
-pub(crate) enum AlbumArtistScope {
-    /// Only the release's own positional credits (MusicBrainz / Discogs).
-    ReleaseCredits,
-    /// Every artist in the final pool — a divergent per-track artist also
-    /// becomes an album artist (file-tag / CUE seeds).
-    FullPool,
-}
-
-pub(crate) struct ReleaseIr {
-    pub album_title: String,
-    /// The album's primary artist (`ParsedAlbum.artists[0]`, `DbAlbum.artist_id`).
-    pub primary_artist: ArtistRef,
-    /// Remaining release-level credits in order; pushed to the pool without
-    /// dedup, positions 1.. in `album_artists`.
-    pub additional_artists: Vec<ArtistRef>,
-    pub album_year: Option<i32>,
-    pub is_compilation: bool,
-    pub pressing: Pressing,
-    pub metadata_provenance: Option<MetadataProvenance>,
-    pub album_artist_scope: AlbumArtistScope,
-    pub release_roles: Vec<ReleaseRole>,
-    pub tracks: Vec<TrackIr>,
-}
-
-/// Mint a `DbArtist` from an [`ArtistRef`] and append it to the pool, returning
-/// its new id. No dedup — the caller decides whether to look first.
-fn push_artist(
-    artists: &mut Vec<DbArtist>,
-    artist_ref: &ArtistRef,
+/// The rows `draft` makes. The draft's form must shape: a titled album with an
+/// artist, and a year that reads as one. Works are MusicBrainz's, so their
+/// rows state it as their source. An album credited to the various-artists
+/// artist alone is a compilation.
+pub(crate) fn assemble_release(
+    draft: &CandidateDraft,
+    provenance: Option<&MetadataProvenance>,
+    clock: &dyn Clock,
     ids: &dyn IdSource,
-    now: DateTime<Utc>,
-) -> String {
-    let artist = DbArtist {
+) -> Result<AssembledRelease, ImportError> {
+    let edit = draft.release_edit().shape()?;
+    let now = DateTime::<Utc>::from(clock.now());
+    let mut artists = ArtistRows::new(ids, now);
+
+    let album_artist_ids: Vec<String> = edit
+        .album_artist_assignments
+        .iter()
+        .map(|assignment| artists.assigned(assignment))
+        .collect();
+    let album = DbAlbum {
         id: ids.new_id().to_string(),
-        name: artist_ref.name.clone(),
-        sort_name: artist_ref.sort_name.clone(),
-        discogs_artist_id: artist_ref.discogs_artist_id.clone(),
-        musicbrainz_artist_id: artist_ref.musicbrainz_artist_id.clone(),
+        title: edit.album_title.clone(),
+        artist_id: album_artist_ids
+            .first()
+            .cloned()
+            .ok_or(crate::import::EditValidationError::NoAlbumArtist)?,
+        year: edit.album_year,
+        is_compilation: ArtistAssignment::credit_a_compilation(&edit.album_artist_assignments),
         created_at: now,
     };
-    let id = artist.id.clone();
-    artists.push(artist);
-    id
-}
-
-/// Resolve an [`ArtistRef`] against the pool, minting a new artist on a miss.
-///
-/// Match rule, in order:
-///   - ref has a musicbrainz id → an existing artist with the same musicbrainz
-///     id;
-///   - else ref has a discogs id → an existing artist with the same discogs id;
-///   - else (no source ids) → the same name, as
-///     [`crate::text_match::same_artist_name`] compares artist names. For
-///     MusicBrainz provenance the match is restricted to existing
-///     artists that also lack a musicbrainz id (an id-less credit never merges
-///     into an id-bearing artist); Discogs / file metadata match any artist by name.
-fn find_or_push_artist(
-    artists: &mut Vec<DbArtist>,
-    artist_ref: &ArtistRef,
-    source: Option<Catalog>,
-    ids: &dyn IdSource,
-    now: DateTime<Utc>,
-) -> String {
-    let existing = artists.iter().find(|artist| {
-        if let Some(mb_id) = artist_ref.musicbrainz_artist_id.as_ref() {
-            artist.musicbrainz_artist_id.as_ref() == Some(mb_id)
-        } else if let Some(discogs_id) = artist_ref.discogs_artist_id.as_ref() {
-            artist.discogs_artist_id.as_ref() == Some(discogs_id)
-        } else {
-            let name_matches = crate::text_match::same_artist_name(&artist.name, &artist_ref.name);
-            match source {
-                // An id-less MusicBrainz credit only merges into an artist that
-                // also lacks a musicbrainz id.
-                Some(Catalog::MusicBrainz) => {
-                    name_matches && artist.musicbrainz_artist_id.is_none()
-                }
-                Some(Catalog::Discogs) | None => name_matches,
-                Some(other) => {
-                    unreachable!("no {} credit reaches a mapper", other.as_str())
-                }
-            }
-        }
-    });
-
-    if let Some(existing) = existing {
-        return existing.id.clone();
-    }
-    push_artist(artists, artist_ref, ids, now)
-}
-
-pub(crate) fn album_artist_links(
-    album_id: &str,
-    artists: &[DbArtist],
-    now: DateTime<Utc>,
-) -> Vec<DbAlbumArtist> {
-    artists
+    let album_artists = album_artist_ids
         .iter()
         .enumerate()
         .skip(1)
-        .map(|(position, artist)| {
-            DbAlbumArtist::new(album_id, &artist.id, position as i32, now)
-        })
-        .collect()
-}
-
-/// Pools the assembler threads through the work-graph walk.
-struct WorkPools<'a> {
-    artists: &'a mut Vec<DbArtist>,
-    works: &'a mut Vec<DbWork>,
-    work_artists: &'a mut Vec<DbWorkArtist>,
-    work_parts: &'a mut Vec<DbWorkPart>,
-    /// MusicBrainz work id → the `works` row id minted for it. Also the
-    /// "already emitted its row" set: a work is in here exactly once its row is
-    /// in `works`.
-    work_row_ids: &'a mut HashMap<String, String>,
-    expanded_works: &'a mut HashSet<String>,
-}
-
-/// Link `child_work_id` under `parent_work_id`, unless the pair is already
-/// linked. Both are minted row ids.
-fn push_work_part(
-    pools: &mut WorkPools,
-    parent_work_id: &str,
-    child_work_id: &str,
-    source: Catalog,
-    now: DateTime<Utc>,
-) {
-    if pools
-        .work_parts
-        .iter()
-        .any(|part| part.parent_work_id == parent_work_id && part.child_work_id == child_work_id)
-    {
-        return;
-    }
-    pools.work_parts.push(DbWorkPart::new(
-        parent_work_id,
-        child_work_id,
-        pools.work_parts.len() as i32,
-        source,
-        now,
-    ));
-}
-
-/// Fold a validated [`WorkNode`] into the work graph: mint the work row once,
-/// link it to `parent` if given, then expand its events once. Returns the work's
-/// minted row id. `work_row_ids` / `expanded_works` are release-global;
-/// `work_artists` / `work_parts` positions are the running pool lengths.
-fn push_work_graph(
-    node: &WorkNode,
-    parent: Option<&str>,
-    source: Catalog,
-    pools: &mut WorkPools,
-    ids: &dyn IdSource,
-    now: DateTime<Utc>,
-) -> String {
-    let work_id = match pools.work_row_ids.get(&node.musicbrainz_work_id) {
-        Some(work_id) => work_id.clone(),
-        None => {
-            let work_id = crate::db::identity::work_id(&node.musicbrainz_work_id);
-            pools
-                .work_row_ids
-                .insert(node.musicbrainz_work_id.clone(), work_id.clone());
-            pools.works.push(DbWork {
-                id: work_id.clone(),
-                title: node.title.clone(),
-                disambiguation: node.disambiguation.clone(),
-                work_type: node.work_type.clone(),
-                musicbrainz_work_id: node.musicbrainz_work_id.clone(),
-                created_at: now,
-            });
-            work_id
-        }
-    };
-
-    if let Some(parent_work_id) = parent {
-        push_work_part(pools, parent_work_id, &work_id, source, now);
-    }
-
-    if node.events.is_empty()
-        || !pools
-            .expanded_works
-            .insert(node.musicbrainz_work_id.clone())
-    {
-        return work_id;
-    }
-
-    for event in &node.events {
-        match event {
-            WorkEvent::Composer(artist_ref) => {
-                let artist_id = find_or_push_artist(
-                    pools.artists,
-                    artist_ref,
-                    Some(Catalog::MusicBrainz),
-                    ids,
-                    now,
-                );
-                if !pools.work_artists.iter().any(|link| {
-                    link.work_id == work_id && link.artist_id == artist_id && link.source == source
-                }) {
-                    pools.work_artists.push(DbWorkArtist::new(
-                        &work_id,
-                        &artist_id,
-                        pools.work_artists.len() as i32,
-                        source,
-                        now,
-                    ));
-                }
-            }
-            WorkEvent::Part { direction, work } => match direction {
-                PartDirection::Backward => {
-                    // `work` is this node's parent.
-                    let parent_id = push_work_ref(work, None, source, pools, ids, now);
-                    push_work_part(pools, &parent_id, &work_id, source, now);
-                }
-                PartDirection::Forward => {
-                    // `work` is a child of this node; `push_work_ref` creates the
-                    // parent link.
-                    push_work_ref(work, Some(&work_id), source, pools, ids, now);
-                }
-            },
-        }
-    }
-
-    work_id
-}
-
-/// Resolve a [`WorkGraphRef`] into the graph, returning the work's minted row id.
-/// `Expanded` walks the sub-graph (minting the work row and, if `parent` is
-/// given, the parent→child link). `AlreadyExpanded` names a work whose row and
-/// sub-graph a prior reference already emitted; only its `parent` link, if any,
-/// still needs creating.
-fn push_work_ref(
-    work: &WorkGraphRef,
-    parent: Option<&str>,
-    source: Catalog,
-    pools: &mut WorkPools,
-    ids: &dyn IdSource,
-    now: DateTime<Utc>,
-) -> String {
-    match work {
-        WorkGraphRef::Expanded(node) => push_work_graph(node, parent, source, pools, ids, now),
-        WorkGraphRef::AlreadyExpanded {
-            musicbrainz_work_id,
-        } => {
-            // The source→IR mapper only emits `AlreadyExpanded` for a work an
-            // enclosing `Expanded` node already carried, and a node's row is
-            // minted before its events are walked — so the row id is always here.
-            let work_id = pools
-                .work_row_ids
-                .get(musicbrainz_work_id)
-                .unwrap_or_else(|| {
-                    panic!(
-                        "work {musicbrainz_work_id} referenced before the reference that expanded it"
-                    )
-                })
-                .clone();
-            if let Some(parent_work_id) = parent {
-                push_work_part(pools, parent_work_id, &work_id, source, now);
-            }
-            work_id
-        }
-    }
-}
-
-/// The single place a [`ParsedAlbum`] is built. Owns artist dedup, ordered default
-/// numbering, junction emission, and row construction. Infallible — all source
-/// validation happens in the source→IR mappers.
-pub(crate) fn assemble_parsed_album(
-    ir: ReleaseIr,
-    clock: &dyn Clock,
-    ids: &dyn IdSource,
-) -> ParsedAlbum {
-    let now = chrono::DateTime::<chrono::Utc>::from(clock.now());
-    let artist_source = match &ir.metadata_provenance {
-        Some(MetadataProvenance::ExternalRelease { record, .. }) => Some(record.catalog),
-        Some(MetadataProvenance::FileMetadata) | None => None,
-    };
-
-    // Release-level artists: primary then additional, minted in order, no dedup.
-    let mut artists: Vec<DbArtist> = Vec::new();
-    push_artist(&mut artists, &ir.primary_artist, ids, now);
-    for artist_ref in &ir.additional_artists {
-        push_artist(&mut artists, artist_ref, ids, now);
-    }
-    let release_artist_count = artists.len();
-
-    let album = DbAlbum {
-        id: ids.new_id().to_string(),
-        title: ir.album_title,
-        artist_id: artists[0].id.clone(),
-        year: ir.album_year,
-        is_compilation: ir.is_compilation,
-        created_at: now,
-    };
+        .map(|(position, artist_id)| DbAlbumArtist::new(&album.id, artist_id, position as i32, now))
+        .collect();
 
     let release = DbRelease {
         id: ids.new_id().to_string(),
         album_id: album.id.clone(),
         release_name: None,
-        pressing: ir.pressing,
-        draft_from_tags: matches!(
-            ir.metadata_provenance,
-            Some(MetadataProvenance::FileMetadata)
-        ),
-        // Which lookup found the record is the candidate's answer, not this
-        // assembly's; `run_import` stamps it onto the row it writes.
+        pressing: edit.pressing.clone(),
+        draft_from_tags: matches!(provenance, Some(MetadataProvenance::FileMetadata)),
+        // The folder's name and hash are the candidate's, and the loudness is
+        // measured from the audio; `run_import` stamps them on.
         source_folder_name: None,
         content_hash: None,
-        // Album loudness is measured by `loudness::measure_loudness` and stamped
-        // onto the release row by `run_import`, not here.
         album_loudness_lufs: None,
         album_peak_linear: None,
         created_at: now,
     };
 
-    let mut release_artist_roles: Vec<DbReleaseArtistRole> = Vec::new();
-    for role in &ir.release_roles {
-        let artist_id = find_or_push_artist(&mut artists, &role.artist, artist_source, ids, now);
-        release_artist_roles.push(DbReleaseArtistRole::new(
-            &release.id,
-            &artist_id,
-            role.position,
-            role.source,
-            role.source_credit.clone(),
-            ids.new_id().to_string(),
-            now,
-        ));
-    }
+    let release_artist_roles = draft
+        .release_roles
+        .iter()
+        .enumerate()
+        .map(|(position, role)| {
+            DbReleaseArtistRole::new(
+                &release.id,
+                &artists.credited(&role.artist),
+                position as i32,
+                role.source,
+                role.role.clone(),
+                ids.new_id().to_string(),
+                now,
+            )
+        })
+        .collect();
 
-    let mut tracks: Vec<DbTrack> = Vec::with_capacity(ir.tracks.len());
-    let mut track_artists: Vec<DbTrackArtist> = Vec::new();
-    let mut track_artist_roles: Vec<DbTrackArtistRole> = Vec::new();
-    let mut works: Vec<DbWork> = Vec::new();
-    let mut work_artists: Vec<DbWorkArtist> = Vec::new();
-    let mut work_parts: Vec<DbWorkPart> = Vec::new();
-    let mut track_works: Vec<DbTrackWork> = Vec::new();
-    let mut work_row_ids: HashMap<String, String> = HashMap::new();
-    let mut expanded_works: HashSet<String> = HashSet::new();
+    let works = work_rows(draft, &mut artists, now);
 
-    for (index, track_ir) in ir.tracks.iter().enumerate() {
-        let track_number = Some(
-            track_ir
-                .number
-                .unwrap_or_else(|| i32::try_from(index + 1).expect("track position fits i32")),
-        );
-
-        let db_track = DbTrack {
+    let mut tracks = Vec::with_capacity(draft.tracks.len());
+    let mut bindings = Vec::with_capacity(draft.tracks.len());
+    let mut track_artists = Vec::new();
+    let mut track_artist_roles = Vec::new();
+    let mut track_works = Vec::new();
+    for (track, shaped) in draft.tracks.iter().zip(&edit.tracks) {
+        let row = DbTrack {
             id: ids.new_id().to_string(),
             release_id: release.id.clone(),
-            title: track_ir.title.clone(),
-            side: track_ir.side,
-            track_number,
+            title: shaped.title.clone(),
+            side: shaped.side,
+            track_number: shaped.track_number,
+            // Set from the audio the track is bound to (`resolve_track_files`).
             duration_ms: None,
-            discogs_position: track_ir.source_position.clone(),
             created_at: now,
         };
-
-        // A recording can carry more than one performance relation to the same
-        // work; track_works is uniquely keyed on (track_id, work_id), so link
-        // each work to this track at most once.
-        let mut track_work_ids: HashSet<String> = HashSet::new();
-
-        for event in &track_ir.events {
-            match event {
-                TrackEvent::Credit { position, artist } => {
-                    let artist_id =
-                        find_or_push_artist(&mut artists, artist, artist_source, ids, now);
-                    track_artists.push(DbTrackArtist::new(
-                        &db_track.id,
-                        &artist_id,
-                        *position,
-                        now,
-                    ));
-                }
-                TrackEvent::Role {
-                    position,
-                    artist,
-                    source,
-                    source_credit,
-                } => {
-                    let artist_id =
-                        find_or_push_artist(&mut artists, artist, artist_source, ids, now);
-                    track_artist_roles.push(DbTrackArtistRole::new(
-                        &db_track.id,
-                        &artist_id,
-                        *position,
-                        *source,
-                        source_credit.clone(),
-                        ids.new_id().to_string(),
-                        now,
-                    ));
-                }
-                TrackEvent::Work {
-                    position,
-                    source,
-                    work,
-                } => {
-                    let work_id = {
-                        let mut pools = WorkPools {
-                            artists: &mut artists,
-                            works: &mut works,
-                            work_artists: &mut work_artists,
-                            work_parts: &mut work_parts,
-                            work_row_ids: &mut work_row_ids,
-                            expanded_works: &mut expanded_works,
-                        };
-                        push_work_ref(work, None, *source, &mut pools, ids, now)
-                    };
-                    if !track_work_ids.insert(work_id.clone()) {
-                        debug!(
-                            track_id = %db_track.id,
-                            work_id = %work_id,
-                            "Skipping duplicate MusicBrainz recording performance relation to the same work"
-                        );
-                        continue;
-                    }
-                    track_works.push(DbTrackWork::new(
-                        &db_track.id,
-                        &work_id,
-                        *position,
-                        *source,
-                        ids.new_id().to_string(),
-                        now,
-                    ));
-                }
+        if let TrackArtistAssignments::Explicit(assignments) = &shaped.artist_assignments {
+            for (position, assignment) in assignments.iter().enumerate() {
+                track_artists.push(DbTrackArtist::new(
+                    &row.id,
+                    &artists.assigned(assignment),
+                    position as i32,
+                    now,
+                ));
             }
         }
-
-        tracks.push(db_track);
+        for (position, role) in track.roles.iter().enumerate() {
+            track_artist_roles.push(DbTrackArtistRole::new(
+                &row.id,
+                &artists.credited(&role.artist),
+                position as i32,
+                role.source,
+                role.role.clone(),
+                ids.new_id().to_string(),
+                now,
+            ));
+        }
+        for (position, work) in track.works.iter().enumerate() {
+            let work_id = works.ids.get(work).ok_or_else(|| ImportError::Internal {
+                detail: format!(
+                    "draft track {} performs work {work}, which the draft does not hold",
+                    track.edit.id
+                ),
+            })?;
+            track_works.push(DbTrackWork::new(
+                &row.id,
+                work_id,
+                position as i32,
+                Catalog::MusicBrainz,
+                ids.new_id().to_string(),
+                now,
+            ));
+        }
+        tracks.push(row);
+        bindings.push(track.edit.file.clone());
     }
 
-    let album_artist_slice = match ir.album_artist_scope {
-        AlbumArtistScope::ReleaseCredits => &artists[..release_artist_count],
-        AlbumArtistScope::FullPool => &artists[..],
-    };
-    let album_artists = album_artist_links(&album.id, album_artist_slice, now);
-
-    ParsedAlbum {
-        album,
-        release,
-        tracks,
-        artists,
-        album_artists,
-        track_artists,
-        work_graph: ParsedWorkGraph {
-            works,
-            work_artists,
-            work_parts,
-            track_works,
+    let ArtistRows {
+        rows: artist_rows,
+        picked,
+        ..
+    } = artists;
+    Ok(AssembledRelease {
+        parsed: ReleaseRows {
+            album,
+            release,
+            tracks,
+            artists: artist_rows,
+            album_artists,
+            track_artists,
+            work_graph: WorkGraphRows {
+                works: works.works,
+                work_artists: works.work_artists,
+                work_parts: works.work_parts,
+                track_works,
+            },
+            release_artist_roles,
+            track_artist_roles,
         },
-        release_artist_roles,
-        track_artist_roles,
+        bindings,
+        picked,
+    })
+}
+
+/// The artist rows one import's links name: one per credit, and one per
+/// picked library artist however often it is picked.
+struct ArtistRows<'a> {
+    rows: Vec<DbArtist>,
+    picked: HashSet<String>,
+    ids: &'a dyn IdSource,
+    now: DateTime<Utc>,
+}
+
+impl<'a> ArtistRows<'a> {
+    fn new(ids: &'a dyn IdSource, now: DateTime<Utc>) -> Self {
+        Self {
+            rows: Vec::new(),
+            picked: HashSet::new(),
+            ids,
+            now,
+        }
+    }
+
+    /// The row an album or track artist assignment links.
+    fn assigned(&mut self, assignment: &ArtistAssignment) -> String {
+        let row = assignment.write_row(self.ids, self.now);
+        let id = row.id.clone();
+        if matches!(assignment, ArtistAssignment::Picked { .. }) && !self.picked.insert(id.clone())
+        {
+            return id;
+        }
+        self.rows.push(row);
+        id
+    }
+
+    /// The row a role or a composer credit links.
+    fn credited(&mut self, credit: &crate::import::ArtistCredit) -> String {
+        let row = credit.write_row(self.ids, self.now);
+        let id = row.id.clone();
+        self.rows.push(row);
+        id
     }
 }
+
+/// The rows of the draft's works, and the row id of each by its MusicBrainz
+/// id.
+struct WorkRows {
+    works: Vec<DbWork>,
+    work_artists: Vec<DbWorkArtist>,
+    work_parts: Vec<DbWorkPart>,
+    ids: HashMap<String, String>,
+}
+
+/// Each work's composers are numbered in the work's order, and each part in
+/// its parent's: one composer credit or one part of one work is the same row
+/// on every device that imports it.
+fn work_rows(draft: &CandidateDraft, artists: &mut ArtistRows<'_>, now: DateTime<Utc>) -> WorkRows {
+    let mut rows = WorkRows {
+        works: Vec::with_capacity(draft.works.works.len()),
+        work_artists: Vec::new(),
+        work_parts: Vec::new(),
+        ids: HashMap::new(),
+    };
+    for work in &draft.works.works {
+        let work_id = crate::db::identity::work_id(&work.musicbrainz_work_id);
+        rows.ids
+            .insert(work.musicbrainz_work_id.clone(), work_id.clone());
+        for (position, composer) in work.composers.iter().enumerate() {
+            rows.work_artists.push(DbWorkArtist::new(
+                &work_id,
+                &artists.credited(composer),
+                position as i32,
+                Catalog::MusicBrainz,
+                now,
+            ));
+        }
+        rows.works.push(DbWork {
+            id: work_id,
+            title: work.title.clone(),
+            disambiguation: work.disambiguation.clone(),
+            work_type: work.work_type.clone(),
+            musicbrainz_work_id: work.musicbrainz_work_id.clone(),
+            created_at: now,
+        });
+    }
+    let mut parts_of: HashMap<&str, i32> = HashMap::new();
+    for part in &draft.works.parts {
+        let position = parts_of.entry(part.parent.as_str()).or_default();
+        rows.work_parts.push(DbWorkPart::new(
+            &crate::db::identity::work_id(&part.parent),
+            &crate::db::identity::work_id(&part.child),
+            *position,
+            Catalog::MusicBrainz,
+            now,
+        ));
+        *position += 1;
+    }
+    rows
+}
+
+#[cfg(test)]
+#[path = "assemble_tests.rs"]
+mod tests;

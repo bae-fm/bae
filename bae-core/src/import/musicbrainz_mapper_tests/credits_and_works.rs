@@ -72,7 +72,7 @@ fn nested_recording_work_imports_composer_work_graph() {
         tracks: vec![track_one, track_two],
     }]);
 
-    let parsed = map(&response, vec![]).unwrap();
+    let parsed = rows(map(&response, vec![]).unwrap());
 
     let work_graph = &parsed.work_graph;
     assert_eq!(work_graph.works.len(), 2);
@@ -87,20 +87,18 @@ fn nested_recording_work_imports_composer_work_graph() {
         .iter()
         .any(|part| { part.parent_work_id == parent_id && part.child_work_id == child_id }));
 
+    let committed = crate::import::release_values::committed_artists(&parsed);
     let composer = parsed
         .artists
         .iter()
         .find(|artist| artist.musicbrainz_artist_id.as_deref() == Some("composer-artist-a"))
+        .map(|artist| committed[&artist.id].clone())
         .expect("composer artist imported");
-    assert!(work_graph
-        .work_artists
-        .iter()
-        .any(|link| { link.artist_id == composer.id }));
     assert_eq!(
         work_graph
             .work_artists
             .iter()
-            .filter(|link| { link.artist_id == composer.id })
+            .filter(|link| committed[&link.artist_id] == composer)
             .count(),
         2
     );
@@ -111,11 +109,11 @@ fn nested_recording_work_imports_composer_work_graph() {
     assert!(!parsed
         .album_artists
         .iter()
-        .any(|link| link.artist_id == composer.id));
+        .any(|link| committed[&link.artist_id] == composer));
     assert!(!parsed
         .track_artists
         .iter()
-        .any(|link| link.artist_id == composer.id));
+        .any(|link| committed[&link.artist_id] == composer));
 }
 
 #[test]
@@ -153,7 +151,7 @@ fn recording_linking_the_same_work_twice_produces_one_track_work_link() {
         tracks: vec![track],
     }]);
 
-    let parsed = map(&response, vec![]).unwrap();
+    let parsed = rows(map(&response, vec![]).unwrap());
 
     let track_id = &parsed.tracks[0].id;
     let work_id = work_row_id(&parsed, "mb-work-a");
@@ -183,7 +181,7 @@ fn track_level_artist_credit_creates_and_links_a_new_artist() {
         tracks: vec![make_mb_track("1", "Track 1"), featured],
     }]);
 
-    let parsed = map(&response, vec![]).unwrap();
+    let parsed = rows(map(&response, vec![]).unwrap());
 
     let guest = parsed
         .artists
@@ -220,7 +218,7 @@ fn track_artist_credit_name_is_used_when_artist_payload_name_is_missing() {
         tracks: vec![track],
     }]);
 
-    let parsed = map(&response, vec![]).unwrap();
+    let parsed = rows(map(&response, vec![]).unwrap());
 
     let artist = parsed
         .artists
@@ -235,8 +233,8 @@ fn track_artist_credit_name_is_used_when_artist_payload_name_is_missing() {
 
 #[test]
 fn track_level_artist_credit_dedupes_against_release_artist_by_mb_id() {
-    // The track credits the release artist again by the same MB id; the loop
-    // must reuse the existing artist rather than create a duplicate.
+    // The track credits the release artist again by the same MB id; the
+    // commit must make them one artist rather than a duplicate.
     let mut t = make_mb_track("1", "Track 1");
     t.artist_credit = vec![credit("artist-1", "Test Artist")];
     let response = make_response(vec![MbMedium {
@@ -245,22 +243,14 @@ fn track_level_artist_credit_dedupes_against_release_artist_by_mb_id() {
         tracks: vec![t],
     }]);
 
-    let parsed = map(&response, vec![]).unwrap();
+    let parsed = rows(map(&response, vec![]).unwrap());
 
-    let matching: Vec<_> = parsed
-        .artists
-        .iter()
-        .filter(|a| a.musicbrainz_artist_id.as_deref() == Some("artist-1"))
-        .collect();
-    assert_eq!(
-        matching.len(),
-        1,
+    let committed = crate::import::release_values::committed_artists(&parsed);
+    assert!(
+        parsed.track_artists.iter().any(|ta| ta.track_id == parsed.tracks[0].id
+            && committed[&ta.artist_id] == committed[&parsed.album.artist_id]),
         "release artist must not be duplicated by a track credit"
     );
-    assert!(parsed
-        .track_artists
-        .iter()
-        .any(|ta| ta.track_id == parsed.tracks[0].id && ta.artist_id == matching[0].id));
 }
 
 #[test]
@@ -285,7 +275,7 @@ fn known_mb_artist_id_does_not_merge_into_same_name_artist_without_id() {
     }]);
     response.artist_credit[0].artist = None;
 
-    let parsed = map(&response, vec![]).unwrap();
+    let parsed = rows(map(&response, vec![]).unwrap());
 
     let release_artist = parsed
         .artists
@@ -330,7 +320,7 @@ fn id_less_track_credit_does_not_merge_into_id_bearing_release_artist() {
         tracks: vec![track],
     }]);
 
-    let parsed = map(&response, vec![]).unwrap();
+    let parsed = rows(map(&response, vec![]).unwrap());
 
     let matching: Vec<_> = parsed
         .artists
@@ -368,14 +358,17 @@ fn known_mb_artist_ids_keep_same_name_artists_separate() {
         tracks: vec![track],
     }]);
 
-    let parsed = map(&response, vec![]).unwrap();
+    let parsed = rows(map(&response, vec![]).unwrap());
 
+    let committed = crate::import::release_values::committed_artists(&parsed);
     let matching: Vec<_> = parsed
         .artists
         .iter()
         .filter(|artist| artist.name == "Artist Name A")
         .collect();
-    assert_eq!(matching.len(), 2);
+    let distinct: std::collections::HashSet<_> =
+        matching.iter().map(|artist| &committed[&artist.id]).collect();
+    assert_eq!(distinct.len(), 2, "two MB ids commit as two artists");
     assert!(matching
         .iter()
         .any(|artist| artist.musicbrainz_artist_id.as_deref() == Some("artist-1")));
@@ -423,7 +416,7 @@ fn backward_work_parts_relation_treats_related_work_as_parent() {
         tracks: vec![track],
     }]);
 
-    let parsed = map(&response, vec![]).unwrap();
+    let parsed = rows(map(&response, vec![]).unwrap());
     let parent_id = work_row_id(&parsed, "mb-work-parent-a");
     let child_id = work_row_id(&parsed, "mb-work-child-a");
     assert!(
@@ -451,7 +444,7 @@ fn release_artist_gets_discogs_id_by_case_insensitive_name() {
     }))
     .expect("Discogs relationship fixture parses")];
 
-    let parsed = map(&response, vec![discogs_artist_document("ARTIST NAME A")]).unwrap();
+    let parsed = rows(map(&response, vec![discogs_artist_document("ARTIST NAME A")]).unwrap());
 
     let release_artist = parsed
         .artists
@@ -470,7 +463,7 @@ fn unrelated_discogs_document_does_not_supply_an_artist_identity() {
         tracks: vec![make_mb_track("1", "Track 1")],
     }]);
 
-    let parsed = map(&response, vec![discogs_artist_document("ARTIST NAME A")]).unwrap();
+    let parsed = rows(map(&response, vec![discogs_artist_document("ARTIST NAME A")]).unwrap());
 
     assert_eq!(parsed.artists[0].discogs_artist_id, None);
 }
@@ -489,7 +482,7 @@ fn release_artist_discogs_id_is_none_when_no_name_matches() {
     }))
     .expect("Discogs relationship fixture parses")];
 
-    let parsed = map(&response, vec![discogs_artist_document("Different Artist")]).unwrap();
+    let parsed = rows(map(&response, vec![discogs_artist_document("Different Artist")]).unwrap());
 
     let release_artist = parsed
         .artists
@@ -530,7 +523,7 @@ fn work_composer_relation_without_artist_payload_is_logged_and_skipped() {
 
     let mut parsed = None;
     let logs = crate::test_logs::capture_warn_logs(|| {
-        parsed = Some(map(&response, vec![]).unwrap());
+        parsed = Some(rows(map(&response, vec![]).unwrap()));
     });
     let parsed = parsed.unwrap();
 
@@ -580,7 +573,7 @@ fn work_referenced_by_two_tracks_logs_skip_once() {
 
     let mut parsed = None;
     let logs = crate::test_logs::capture_warn_logs(|| {
-        parsed = Some(map(&response, vec![]).unwrap());
+        parsed = Some(rows(map(&response, vec![]).unwrap()));
     });
     let parsed = parsed.unwrap();
 
@@ -636,7 +629,7 @@ fn work_parts_relation_without_work_payload_is_logged_and_skipped() {
 
     let mut parsed = None;
     let logs = crate::test_logs::capture_warn_logs(|| {
-        parsed = Some(map(&response, vec![]).unwrap());
+        parsed = Some(rows(map(&response, vec![]).unwrap()));
     });
     let parsed = parsed.unwrap();
 
@@ -669,7 +662,7 @@ fn track_artist_credit_without_resolvable_name_is_logged_and_skipped() {
 
     let mut parsed = None;
     let logs = crate::test_logs::capture_warn_logs(|| {
-        parsed = Some(map(&response, vec![]).unwrap());
+        parsed = Some(rows(map(&response, vec![]).unwrap()));
     });
     let parsed = parsed.unwrap();
 

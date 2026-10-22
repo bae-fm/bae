@@ -227,14 +227,12 @@ pub struct MappingContainer {
 /// draft is redrawn with every change to the folder's files, so a mismatch is a
 /// stored state that contradicts itself.
 ///
-/// `source_lengths` are the lengths the applied release lists for its tracks,
-/// by the source index a track keeps; empty when no release was applied. A row
-/// one names shows that length beside its file's own.
+/// A row whose track holds the length its source lists shows that length
+/// beside its file's own.
 pub(crate) fn mapping_table(
     files: &CategorizedFiles,
     durations: &SourceDurations,
     draft: &CandidateDraft,
-    source_lengths: &[Option<u64>],
 ) -> Result<MappingTable, ImportError> {
     let layout = audio_layout(files);
     let contributions: HashMap<&str, &UnitContribution<'_>> = layout
@@ -254,7 +252,6 @@ pub(crate) fn mapping_table(
     let sides: BTreeSet<_> = draft.tracks.iter().map(|track| track.edit.side).collect();
     let mut rows = RowBuilder {
         durations,
-        source_lengths,
         medium: draft.pressing.facts.physical_medium(),
         multi_side: sides.len() > 1,
         tracks: draft.tracks.iter(),
@@ -367,7 +364,6 @@ pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
 /// with the draft's tracks in order.
 struct RowBuilder<'a> {
     durations: &'a SourceDurations,
-    source_lengths: &'a [Option<u64>],
     medium: Option<crate::pressing::PhysicalMedium>,
     /// Whether the draft spans more than one side or disc — what decides that
     /// a row's position carries its side.
@@ -467,9 +463,7 @@ impl RowBuilder<'_> {
                 })
             }
         };
-        let source_length = track
-            .source_index
-            .and_then(|index| self.source_lengths.get(index as usize).copied().flatten());
+        let source_length = track.stated_length_ms;
         let position = crate::util::format::compute_track_position(
             self.medium,
             track.edit.side,

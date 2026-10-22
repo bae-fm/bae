@@ -330,8 +330,6 @@ pub struct DbTrack {
     pub side: Option<i32>,
     pub track_number: Option<i32>,
     pub duration_ms: Option<i64>,
-    /// Position from metadata source (e.g., "A1", "1", "1-1")
-    pub discogs_position: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 /// A physical file belonging to a release — not to an album, and not to a track
@@ -670,8 +668,6 @@ impl DbTrack {
             side: Some(1),
             track_number,
             duration_ms: None,
-            discogs_position: None,
-
             created_at: now,
         }
     }

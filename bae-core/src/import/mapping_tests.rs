@@ -94,7 +94,7 @@ fn track_file(mapping: &TrackMapping) -> &MappingFile {
 
 /// The table the folder's blank draft renders.
 fn blank_table(files: &CategorizedFiles, durations: &SourceDurations) -> MappingTable {
-    mapping_table(files, durations, &blank_candidate_draft(files), &[])
+    mapping_table(files, durations, &blank_candidate_draft(files))
         .expect("a blank draft is drawn over its own folder")
 }
 
@@ -170,9 +170,8 @@ fn a_track_the_release_names_no_length_for_uses_its_stored_probe() {
     assert!(!mapping.lengths_disagree);
 }
 
-/// A row read from the applied release shows the length the release lists
-/// for it and says when that is far from its file's; a row the release does
-/// not name shows its file's.
+/// A row whose track holds the length its source lists shows that length
+/// and says when it is far from its file's; a row with none shows its file's.
 #[test]
 fn a_row_read_from_the_release_shows_the_release_s_length() {
     let tmp = tempfile::TempDir::new().unwrap();
@@ -182,8 +181,8 @@ fn a_row_read_from_the_release_shows_the_release_s_length() {
     let files = scan(tmp.path());
     let durations = source_durations(&files).unwrap();
     let mut draft = blank_candidate_draft(&files);
-    draft.tracks[0].source_index = Some(0);
-    let table = mapping_table(&files, &durations, &draft, &[Some(200_000)]).unwrap();
+    draft.tracks[0].stated_length_ms = Some(200_000);
+    let table = mapping_table(&files, &durations, &draft).unwrap();
     let rows = mappings(&table);
     assert_eq!(rows[0].duration_ms, Some(200_000));
     assert!(rows[0].lengths_disagree);
@@ -251,7 +250,7 @@ fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
     for (index, track) in draft.tracks.iter_mut().enumerate() {
         track.edit.title = format!("Track Title {}", index + 1);
     }
-    let table = mapping_table(&files, &durations, &draft, &[]).unwrap();
+    let table = mapping_table(&files, &durations, &draft).unwrap();
 
     assert_eq!(
         table.track_sections.len(),
@@ -322,7 +321,7 @@ fn standalone_tracks_are_sectioned_by_release_side() {
     let files = scan(tmp.path());
     let mut draft = numbered_draft(&files, &[(1, 1), (1, 2), (2, 1), (2, 2)]);
     draft.pressing.facts = made_of(Medium::Vinyl, 1);
-    let table = mapping_table(&files, &SourceDurations::default(), &draft, &[]).unwrap();
+    let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
 
     assert_eq!(table.track_sections.len(), 2);
     assert_eq!(
@@ -357,7 +356,7 @@ fn each_cue_is_one_section_on_its_assigned_disc() {
     assign_discs(&mut files, &[("alpha.cue", 2), ("beta.cue", 1)]);
     let mut draft = numbered_draft(&files, &[(1, 1), (1, 2), (2, 1), (2, 2)]);
     draft.pressing.facts = made_of(Medium::Cd, 2);
-    let table = mapping_table(&files, &SourceDurations::default(), &draft, &[]).unwrap();
+    let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
 
     assert_eq!(table.track_sections.len(), 2);
     for (section, (disc, sheet_id)) in table
@@ -386,7 +385,7 @@ fn a_sheet_the_release_splits_across_sides_heads_each_side() {
     let files = scan(tmp.path());
     let mut draft = numbered_draft(&files, &[(1, 1), (1, 2), (2, 1), (2, 2)]);
     draft.pressing.facts = made_of(Medium::Vinyl, 1);
-    let table = mapping_table(&files, &SourceDurations::default(), &draft, &[]).unwrap();
+    let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
 
     assert_eq!(table.track_sections.len(), 2);
     for (section, letter) in table.track_sections.iter().zip(["A", "B"]) {
@@ -464,21 +463,21 @@ fn a_draft_not_drawn_over_the_folder_s_audio_is_refused() {
     let mut swapped = blank_candidate_draft(&files);
     swapped.tracks.swap(0, 1);
     assert!(matches!(
-        mapping_table(&files, &durations, &swapped, &[]),
+        mapping_table(&files, &durations, &swapped),
         Err(ImportError::Internal { .. })
     ));
 
     let mut short = blank_candidate_draft(&files);
     short.tracks.pop();
     assert!(matches!(
-        mapping_table(&files, &durations, &short, &[]),
+        mapping_table(&files, &durations, &short),
         Err(ImportError::Internal { .. })
     ));
 
     let mut long = blank_candidate_draft(&files);
     long.tracks.push(long.tracks[0].clone());
     assert!(matches!(
-        mapping_table(&files, &durations, &long, &[]),
+        mapping_table(&files, &durations, &long),
         Err(ImportError::Internal { .. })
     ));
 }
@@ -746,7 +745,7 @@ fn source_disc_assignments_do_not_invent_sides() {
     for track in &mut draft.tracks {
         track.edit.side = None;
     }
-    let table = mapping_table(&files, &SourceDurations::default(), &draft, &[]).unwrap();
+    let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
     assert!(
         table.track_sections.iter().all(|section| {
             !matches!(section.side, crate::album_detail::TrackSide::Sided { .. })

@@ -104,7 +104,6 @@ impl LibraryManager {
                 side: Some(1),
                 track_number: Some(track.number as i32),
                 duration_ms: Some(duration_ms as i64),
-                discogs_position: None,
                 created_at: added,
             };
             if track.number == playing.track {

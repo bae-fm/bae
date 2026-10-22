@@ -477,7 +477,6 @@ async fn musicbrainz_id_surfaces_when_present() {
         side: Some(1),
         track_number: Some(1),
         duration_ms: Some(1000),
-        discogs_position: None,
         created_at: now,
     };
     manager

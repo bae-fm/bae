@@ -2,7 +2,7 @@ use super::*;
 use crate::db::Database;
 use crate::import::source_release::{UnfetchedDocument, UnfetchedReason};
 use chrono::{DateTime, Utc};
-use coven::{FixedClock, SequentialIds};
+use coven::FixedClock;
 use std::sync::Arc;
 
 #[test]
@@ -658,14 +658,14 @@ fn a_discogs_release_reaches_its_master_through_the_anchor() {
     let parsed = payloads
         .extract()
         .unwrap()
-        .parsed(&[], &FixedClock::new((now()).into()), &SequentialIds::new())
+        .values(&[])
         .expect("the documents map");
     assert_eq!(
-        parsed.album.year,
+        parsed.album_year,
         Some(1967),
         "the album year is the master's, not the pressing's"
     );
-    assert_eq!(parsed.release.pressing.year, Some(1985));
+    assert_eq!(parsed.pressing.year, Some(1985));
 }
 
 /// What Wikidata's item added when the release was fetched is stored with
@@ -866,14 +866,10 @@ fn discogs_master_cross_reference_retains_album_links_without_claiming_a_pressin
     let parsed = payloads
         .extract()
         .unwrap()
-        .parsed(
-            &[],
-            &FixedClock::new((now()).into()),
-            &SequentialIds::new(),
-        )
+        .values(&[])
         .unwrap();
-    assert_eq!(parsed.album.year, Some(1966));
-    assert_eq!(parsed.release.pressing.year, None);
+    assert_eq!(parsed.album_year, Some(1966));
+    assert_eq!(parsed.pressing.year, None);
     assert_eq!(
         parsed
             .tracks

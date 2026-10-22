@@ -1,16 +1,11 @@
 use super::*;
-use crate::import::ParsedAlbum;
-use chrono::{DateTime, Utc};
-use coven::{FixedClock, SequentialIds};
+
 use serde_json::json;
 
-fn parse(payloads: &ReleasePayloads) -> Result<ParsedAlbum, ImportError> {
-    let clock = FixedClock::new((DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-            .unwrap()
-            .with_timezone(&Utc)).into());
+fn parse(payloads: &ReleasePayloads) -> Result<crate::import::release_values::ReleaseValues, ImportError> {
     payloads
         .extract()
-        .and_then(|release| release.parsed(&[], &clock, &SequentialIds::new()))
+        .and_then(|release| release.values(&[]))
 }
 
 fn selected_release() -> ReleasePayloads {
@@ -53,12 +48,12 @@ fn malformed_group_credit_preserves_selected_tracks_and_valid_supplemental_field
         payloads.supporting[0].json.clone(),
     ));
     let parsed = parse(&payloads).unwrap();
-    assert_eq!(parsed.album.title, "Selected Album");
-    assert_eq!(parsed.album.year, Some(1979));
-    assert_eq!(parsed.release.pressing.year, None);
-    assert_eq!(parsed.artists[0].name, "Selected Artist");
+    assert_eq!(parsed.album_title, "Selected Album");
+    assert_eq!(parsed.album_year, Some(1979));
+    assert_eq!(parsed.pressing.year, None);
+    assert_eq!(parsed.album_credits[0].name, "Selected Artist");
     assert_eq!(
-        parsed.artists[0].musicbrainz_artist_id.as_deref(),
+        parsed.album_credits[0].musicbrainz_artist_id.as_deref(),
         Some("linked-artist")
     );
     assert_eq!(
@@ -84,19 +79,19 @@ fn malformed_linked_release_credit_keeps_its_pressing_fields_and_valid_credit() 
         .to_string(),
     ));
     let parsed = parse(&payloads).unwrap();
-    assert_eq!(parsed.album.title, "Selected Album");
-    assert_eq!(parsed.album.year, Some(1979));
-    assert_eq!(parsed.release.pressing.year, Some(1985));
+    assert_eq!(parsed.album_title, "Selected Album");
+    assert_eq!(parsed.album_year, Some(1979));
+    assert_eq!(parsed.pressing.year, Some(1985));
     assert_eq!(
-        parsed.release.pressing.facts.area,
+        parsed.pressing.facts.area,
         Some(crate::pressing::area("JP"))
     );
     assert_eq!(
-        parsed.release.pressing.barcode.as_deref(),
+        parsed.pressing.barcode.as_deref(),
         Some("1234567890123")
     );
     assert_eq!(
-        parsed.artists[0].musicbrainz_artist_id.as_deref(),
+        parsed.album_credits[0].musicbrainz_artist_id.as_deref(),
         Some("linked-artist")
     );
     assert_eq!(parsed.tracks[1].title, "Second Track");
@@ -150,8 +145,8 @@ fn malformed_optional_documents_do_not_block_extraction() {
             supporting,
         );
         let parsed = parse(&payloads).unwrap_or_else(|error| panic!("{source:?}: {error}"));
-        assert_eq!(parsed.album.title, "Selected Album");
-        assert_eq!(parsed.album.year, Some(1979));
+        assert_eq!(parsed.album_title, "Selected Album");
+        assert_eq!(parsed.album_year, Some(1979));
         assert_eq!(parsed.tracks.len(), 2);
         assert_eq!(payloads.extract().unwrap().records().len(), 1);
         assert!(payloads.extract().unwrap().covers().is_empty());

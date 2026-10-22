@@ -314,7 +314,6 @@ pub struct ImportServiceHandle {
     library_manager: LibraryManager,
     /// The one writer of candidates' stored state.
     preparations: crate::import::CandidatePreparations,
-    clock: coven::ClockRef,
     ids: coven::IdSourceRef,
     /// Reads a folder's audio files for their embedded tags; the scan's
     /// pre-fill uses the same reader.
@@ -445,7 +444,7 @@ impl ImportServiceHandle {
             event_tx,
             library_manager,
             preparations,
-            clock,
+            clock: _,
             ids,
             file_tags,
             directories: _,
@@ -468,7 +467,6 @@ impl ImportServiceHandle {
             worker,
             library_manager,
             preparations,
-            clock,
             ids,
             file_tags,
             event_tx,
@@ -880,8 +878,8 @@ impl ImportServiceHandle {
 
 /// Remap the parsed (temporary) IDs a link row points at to their actual DB IDs.
 ///
-/// A `ParsedAlbum`'s link rows reference artist and work IDs minted during
-/// parsing; reconcile may have resolved those to existing DB rows. `label` names
+/// A `ReleaseRows`'s link rows reference artist and work IDs minted when the
+/// rows were built; reconcile may have resolved those to existing DB rows. `label` names
 /// the endpoint being remapped in the unmapped-ID error.
 pub(crate) fn remap_links<T: Clone>(
     links: &[T],
@@ -905,53 +903,4 @@ pub(crate) fn remap_links<T: Clone>(
             Ok(remapped)
         })
         .collect()
-}
-
-/// Project a parsed album into the editor's `ReleaseUserEdit`; every path
-/// seeds the edit-metadata form through this.
-///
-/// It projects the same `ParsedAlbum` the commit worker applies the edit onto,
-/// which is what lets `apply_user_edit_to_seed` tell an untouched field from an
-/// edited one.
-///
-/// An empty per-track artist list means the track shares the album artist.
-pub fn parsed_album_to_user_edit(parsed: &super::ParsedAlbum) -> crate::import::ReleaseUserEdit {
-    // The mapper builds a ParsedAlbum's artists and links together, so a
-    // missing reference is a bug.
-    let album_artist_assignments = crate::import::artist_assignments::album_artist_assignments(
-        &parsed.artists,
-        &parsed.album_artists,
-        &parsed.album.artist_id,
-    )
-    .expect("ParsedAlbum album_artists reference its own artists");
-
-    let tracks = parsed
-        .tracks
-        .iter()
-        .map(|t| {
-            let artist_assignments = crate::import::artist_assignments::track_artist_assignments(
-                &parsed.artists,
-                &parsed.track_artists,
-                &t.id,
-            )
-            .expect("ParsedAlbum track_artists reference its own artists");
-            crate::import::TrackUserEdit {
-                title: t.title.clone(),
-                side: t.side,
-                track_number: t.track_number,
-                artist_assignments,
-                // A seed does not say which audio file backs each track; the
-                // folder's audio units settle that.
-                file: None,
-            }
-        })
-        .collect();
-
-    crate::import::ReleaseUserEdit {
-        album_title: parsed.album.title.clone(),
-        album_artist_assignments,
-        album_year: parsed.album.year,
-        pressing: parsed.release.pressing.clone(),
-        tracks,
-    }
 }

@@ -8,6 +8,7 @@
 //! which groups a candidate save replaces, and under what checks, is
 //! `preparation_rows`'s to say.
 
+mod values;
 mod writes;
 
 use super::verdict_rows::unreadable;
@@ -24,7 +25,7 @@ const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, \
      labels, barcode, country, region, media, status, packaging, discogs_details";
 
 const TRACK_COLUMNS: &str = "content_hash, track_id, position, title, \
-     artist_assignment_kind, side, track_number, source_index, \
+     artist_assignment_kind, side, track_number, stated_length_ms, \
      file_kind, file_id, sheet_id, slice_index";
 
 pub(super) fn delete_cover(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {
@@ -118,7 +119,9 @@ pub(crate) fn insert_draft(
                 assignment_kind_column(&track.edit.artist_assignments),
                 track.edit.side,
                 track.edit.track_number,
-                track.source_index,
+                track
+                    .stated_length_ms
+                    .map(|length| i64::try_from(length).expect("a stated length fits SQLite's integer range")),
                 file_kind,
                 file_id,
                 sheet_id,
@@ -129,7 +132,7 @@ pub(crate) fn insert_draft(
             insert_track_artist_assignments(sql, content_hash, &track.edit.id, assignments)?;
         }
     }
-    Ok(())
+    values::insert_draft_values(sql, content_hash, draft)
 }
 
 fn assignment_kind_column(assignments: &TrackArtistAssignments) -> &'static str {
@@ -269,6 +272,7 @@ pub(crate) fn load_drafts_on(
 ) -> Result<HashMap<String, CandidateDraft>, DbError> {
     let album_assignments = load_album_artist_assignments_on(sql, only)?;
     let track_assignments = load_track_artist_assignments_on(sql, only)?;
+    let mut values = values::load_draft_values_on(sql, only)?;
     let track_rows = sql.query(
         &format!(
             "SELECT {TRACK_COLUMNS} FROM import_candidate_track \
@@ -284,7 +288,7 @@ pub(crate) fn load_drafts_on(
                 assignment_kind: row.get("artist_assignment_kind")?,
                 side: row.get("side")?,
                 track_number: row.get("track_number")?,
-                source_index: row.get("source_index")?,
+                stated_length_ms: row.get("stated_length_ms")?,
                 file_kind: row.get("file_kind")?,
                 file_id: row.get("file_id")?,
                 sheet_id: row.get("sheet_id")?,
@@ -322,19 +326,30 @@ pub(crate) fn load_drafts_on(
             },
             other => return Err(unreadable("file_kind", other)),
         };
+        let stated_length_ms = row
+            .stated_length_ms
+            .map(u64::try_from)
+            .transpose()
+            .map_err(|error| missing(&format!("a readable stated length ({error})")))?;
+        let key = (row.content_hash, row.track_id);
+        let roles = values.track_roles.remove(&key).unwrap_or_default();
+        let works = values.track_works.remove(&key).unwrap_or_default();
+        let (content_hash, track_id) = key;
         tracks
-            .entry(row.content_hash)
+            .entry(content_hash)
             .or_default()
             .push(CandidateTrack {
                 edit: RawTrackEdit {
-                    id: row.track_id,
+                    id: track_id,
                     title: row.title,
                     artist_assignments,
                     side: row.side,
                     track_number: row.track_number,
                     file,
                 },
-                source_index: row.source_index,
+                stated_length_ms,
+                roles,
+                works,
             });
     }
     let rows = sql.query(
@@ -373,6 +388,11 @@ pub(crate) fn load_drafts_on(
                     facts: row.facts,
                 },
                 tracks: tracks.remove(&row.content_hash).unwrap_or_default(),
+                release_roles: values
+                    .release_roles
+                    .remove(&row.content_hash)
+                    .unwrap_or_default(),
+                works: values.works.remove(&row.content_hash).unwrap_or_default(),
             },
         );
     }
@@ -410,7 +430,7 @@ struct StoredTrackRow {
     assignment_kind: String,
     side: Option<i32>,
     track_number: i32,
-    source_index: Option<u32>,
+    stated_length_ms: Option<i64>,
     file_kind: String,
     file_id: String,
     sheet_id: Option<String>,

@@ -1,7 +1,7 @@
 //! Fields addressed by metadata edit commands.
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use super::RawReleaseEditOf;
+use super::CandidateDraft;
 
 /// One album-level text field of the metadata form.
 ///
@@ -19,7 +19,7 @@ pub enum CandidateEditField {
 impl CandidateEditField {
     /// Put `value` in this field of the draft.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn set<Track>(self, draft: &mut RawReleaseEditOf<Track>, value: &str) {
+    pub(crate) fn set(self, draft: &mut CandidateDraft, value: &str) {
         let slot = match self {
             Self::AlbumTitle => &mut draft.album_title,
             Self::AlbumYear => &mut draft.album_year,
@@ -58,7 +58,7 @@ pub enum DraftFieldEdit {
 impl DraftFieldEdit {
     /// Put this edit in the draft.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn apply<Track>(self, draft: &mut RawReleaseEditOf<Track>) {
+    pub(crate) fn apply(self, draft: &mut CandidateDraft) {
         match self {
             Self::Text { field, value } => field.set(draft, &value),
             Self::Labels(labels) => draft.pressing.labels = labels,

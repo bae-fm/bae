@@ -13,48 +13,40 @@ pub struct CandidateSource {
 }
 
 impl FolderCandidate {
-    /// The draft the release's own files describe, with the track layout
-    /// every draft of it keeps: a release read from several folders numbers
-    /// its discs folder by folder, whatever the files' own tags say.
-    pub(crate) fn file_tag_edit(
+    /// What the release's own files describe, with the track layout every
+    /// draft of it keeps: a release read from several folders numbers its
+    /// discs folder by folder, whatever the files' own tags say.
+    pub(crate) fn file_tag_values(
         &self,
         snapshot: &super::file_tag_snapshot::FileTagSnapshot,
-        clock: &dyn coven::Clock,
-        ids: &dyn coven::IdSource,
-    ) -> Result<super::ReleaseUserEdit, super::ImportError> {
-        let parsed = super::file_tag_mapper::map_file_metadata_to_db(
-            &self.files,
-            snapshot,
-            Some(&self.name),
-            clock,
-            ids,
-        )?;
-        let mut edit = super::parsed_album_to_user_edit(&parsed);
+    ) -> Result<super::release_values::ReleaseValues, super::ImportError> {
+        let mut values =
+            super::file_tag_mapper::file_metadata_values(&self.files, snapshot, Some(&self.name))?;
         if !self.files.parts.is_empty() {
             let layout = super::audio_layout::direct_entry_track_rows(&self.files);
-            if edit.tracks.len() != layout.len() {
+            if values.tracks.len() != layout.len() {
                 return Err(super::ImportError::Internal {
                     detail: "file metadata does not match the release's track count".into(),
                 });
             }
-            for (track, laid_out) in edit.tracks.iter_mut().zip(&layout) {
+            for (track, laid_out) in values.tracks.iter_mut().zip(&layout) {
                 track.side = laid_out.side;
-                track.track_number = laid_out.track_number;
+                track.number = laid_out.track_number;
             }
         }
-        Ok(edit)
+        Ok(values)
     }
 
     /// The draft a release starts from before anyone describes it: one blank
     /// track per audio unit, in the release's own track layout. A release
     /// read from several folders starts titled by the name it is listed as —
     /// no one folder's name speaks for it on its own.
-    pub(crate) fn blank_source(&self) -> super::pane::CandidateSourceDraft {
-        let mut source = super::pane::blank_candidate_source(&self.files);
+    pub(crate) fn blank_draft(&self) -> super::CandidateDraft {
+        let mut draft = super::pane::blank_candidate_draft(&self.files);
         if self.grouping.is_some() {
-            source.draft.album_title.clone_from(&self.name);
+            draft.album_title.clone_from(&self.name);
         }
-        source
+        draft
     }
 
     pub fn source(&self) -> CandidateSource {

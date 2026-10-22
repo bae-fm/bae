@@ -70,9 +70,8 @@ impl ImportServiceHandle {
             )
             .await?;
             records.push(crate::import::search::MetadataResult::of_release(&release));
-            let parsed = release.parsed(&audio_durations, self.clock.as_ref(), self.ids.as_ref())?;
             offered.push(crate::import::RawReleaseEdit::from_user_edit(
-                crate::import::parsed_album_to_user_edit(&parsed),
+                release.values(&audio_durations)?.user_edit(),
                 crate::import::pane::CANDIDATE_TRACK_ID_PREFIX,
             ));
         }
@@ -81,13 +80,8 @@ impl ImportServiceHandle {
             &offered,
             crate::identify::row_facts::folder_pressing_year(&text, &records),
         );
-        let (source_discogs_artist_ids, artist_images) = self
-            .prepared_artist_images_for_active(
-                current.assets.applied_source.as_ref(),
-                &draft.release_edit(),
-                &draft.tracks,
-                current.assets.artist_images,
-            )
+        let artist_images = self
+            .prepared_artist_images_for(&draft, current.assets.artist_images)
             .await?;
         let _commit = self
             .commit_lock_for_revision(
@@ -109,7 +103,6 @@ impl ImportServiceHandle {
                 &candidate_key,
                 &shared.link,
                 draft,
-                source_discogs_artist_ids,
                 artist_images,
             )
             .await?)

@@ -1,7 +1,5 @@
 use super::*;
-use crate::import::ParsedAlbum;
-use chrono::{DateTime, Utc};
-use coven::{FixedClock, SequentialIds};
+
 use serde_json::json;
 
 fn selected(urls: &[&str]) -> ReleasePayloads {
@@ -41,18 +39,11 @@ fn master(id: u64, year: u32) -> SourcePayload {
     )
 }
 
-fn parsed(payloads: &ReleasePayloads) -> ParsedAlbum {
-    let now = DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-        .unwrap()
-        .with_timezone(&Utc);
+fn parsed(payloads: &ReleasePayloads) -> crate::import::release_values::ReleaseValues {
     payloads
         .extract()
         .unwrap()
-        .parsed(
-            &[],
-            &FixedClock::new((now).into()),
-            &SequentialIds::new(),
-        )
+        .values(&[])
         .unwrap()
 }
 
@@ -90,7 +81,7 @@ fn assert_permutation(payloads: &ReleasePayloads, check: impl Fn(&ReleasePayload
     reversed.anchor = anchor.to_string();
     check(&reversed);
     assert_eq!(payloads.extract().unwrap().records(), reversed.extract().unwrap().records());
-    assert_eq!(parsed(payloads).album.year, parsed(&reversed).album.year);
+    assert_eq!(parsed(payloads).album_year, parsed(&reversed).album_year);
 }
 
 #[test]
@@ -113,7 +104,7 @@ fn ambiguous_pressings_contribute_only_a_proven_common_parent() {
         assert_permutation(&payloads, |payloads| {
             let same = parents == (Some(101), Some(101));
             assert_eq!(
-                parsed(payloads).album.year,
+                parsed(payloads).album_year,
                 Some(if same { 1971 } else { 2005 })
             );
             let records = payloads.extract().unwrap().records();
@@ -141,7 +132,7 @@ fn missing_ambiguous_pressing_does_not_prove_a_common_parent() {
     ]);
     payloads.supporting = vec![pressing(11, Some(101)), master(101, 1971)];
     assert_permutation(&payloads, |payloads| {
-        assert_eq!(parsed(payloads).album.year, Some(2005));
+        assert_eq!(parsed(payloads).album_year, Some(2005));
         assert_eq!(payloads.extract().unwrap().records().len(), 1);
         assert!(payloads.extract().unwrap().covers().is_empty());
     });
@@ -155,7 +146,7 @@ fn competing_direct_album_links_do_not_choose_by_key_or_order() {
     ]);
     payloads.supporting = vec![master(101, 1971), master(102, 1982)];
     assert_permutation(&payloads, |payloads| {
-        assert_eq!(parsed(payloads).album.year, Some(2005));
+        assert_eq!(parsed(payloads).album_year, Some(2005));
         assert_eq!(payloads.extract().unwrap().records().len(), 1);
         assert!(payloads.extract().unwrap().covers().is_empty());
     });
@@ -230,7 +221,7 @@ fn an_admitted_wikidata_item_cannot_restore_a_conflicting_album() {
         }).to_string(),
     )];
     assert_permutation(&payloads, |payloads| {
-        assert_eq!(parsed(payloads).album.year, Some(2005));
+        assert_eq!(parsed(payloads).album_year, Some(2005));
         assert!(!payloads
             .extract().unwrap()
             .records()
@@ -261,7 +252,7 @@ fn selected_parent_wins_over_conflicting_album_links() {
         ));
     }
     assert_permutation(&payloads, |payloads| {
-        assert_eq!(parsed(payloads).album.year, Some(1980));
+        assert_eq!(parsed(payloads).album_year, Some(1980));
         assert_eq!(
             payloads.extract().unwrap().records()[0].album_ref().unwrap().key,
             "selected-group"
@@ -288,7 +279,7 @@ fn selected_album_url_precedes_counterpart_parent_inference() {
             master(102, 1982),
         ];
         assert_permutation(&payloads, |payloads| {
-            assert_eq!(parsed(payloads).album.year, Some(1982));
+            assert_eq!(parsed(payloads).album_year, Some(1982));
             assert_eq!(
                 payloads.album_links().unwrap(),
                 vec![MetadataRef::new(Catalog::Discogs, "102")]
@@ -330,7 +321,7 @@ fn a_wikidata_item_is_taken_over_linked_releases_that_disagree() {
         }
         payloads.supporting = vec![pressing(11, Some(101)), pressing(12, Some(102)), master(101, 1971), master(102, 1982), SourcePayload::new(PayloadSource::Wikidata, "Q101", json!({"entities":{"Q101":{"claims":{"P1954":[{"mainsnak":{"datavalue":{"value":"101"}}}]}}}}).to_string())];
         assert_permutation(&payloads, |payloads| {
-            assert_eq!(parsed(payloads).album.year, Some(1971));
+            assert_eq!(parsed(payloads).album_year, Some(1971));
             assert_eq!(
                 payloads.album_links().unwrap(),
                 vec![

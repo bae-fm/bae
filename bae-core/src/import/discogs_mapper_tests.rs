@@ -1,8 +1,7 @@
 use super::*;
 use crate::import::source_release::SourceRelease;
 use crate::discogs::models::{DiscogsArtist, DiscogsRoleArtist, DiscogsTrack};
-use coven::FixedClock;
-use coven::SequentialIds;
+use crate::import::MetadataRef;
 
 /// A lone Discogs release document as bae keeps it: its own facts and
 /// tracklist, no other document behind it.
@@ -33,29 +32,29 @@ fn all_discs(release: &SourceRelease) -> MediumCoverage {
     MediumCoverage::all(release.mediums.len())
 }
 
+/// The rows the release's reading commits as.
 fn map_with(
     release: &DiscogsRelease,
     audio_durations_ms: Option<&[u64]>,
-) -> Result<ParsedAlbum, ImportError> {
-    let clock = FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-            .unwrap()
-            .with_timezone(&chrono::Utc)).into());
-    let ids = SequentialIds::new();
+) -> Result<crate::import::ReleaseRows, ImportError> {
     let stored = stored(release);
-    super::map(&stored, &all_discs(&stored), audio_durations_ms, &clock, &ids)
+    super::values(&stored, &all_discs(&stored), audio_durations_ms)
+        .map(crate::import::release_values::committed_rows)
 }
 
 /// Exercise track and credit mapping with the release's own metadata.
-fn map(release: &DiscogsRelease) -> Result<ParsedAlbum, ImportError> {
+fn map(release: &DiscogsRelease) -> Result<crate::import::ReleaseRows, ImportError> {
     map_with(release, None)
 }
 
 fn map_for_audio(
     release: &DiscogsRelease,
     audio_durations_ms: &[u64],
-) -> Result<ParsedAlbum, ImportError> {
+) -> Result<crate::import::ReleaseRows, ImportError> {
     map_with(release, Some(audio_durations_ms))
 }
+
+use crate::import::release_values::committed_artists;
 
 /// A tracklist's rows as a stored medium holds them.
 fn entries(rows: &[DiscogsTrack]) -> Vec<TracklistEntry> {
@@ -202,18 +201,20 @@ fn extraartist_roles_import_as_role_credits_not_works_or_display_artists() {
     assert!(parsed.work_graph.work_parts.is_empty());
     assert!(parsed.work_graph.track_works.is_empty());
 
+    let committed = committed_artists(&parsed);
     let composer = parsed
         .artists
         .iter()
         .find(|artist| artist.discogs_artist_id.as_deref() == Some("discogs-composer-a"))
+        .map(|artist| committed[&artist.id].clone())
         .expect("composer role artist imported");
     let release_artist_roles = &parsed.release_artist_roles;
     let track_artist_roles = &parsed.track_artist_roles;
     assert!(release_artist_roles.iter().any(|role| {
-        role.artist_id == composer.id && role.source_credit.as_deref() == Some("Composed By")
+        committed[&role.artist_id] == composer && role.source_credit.as_deref() == Some("Composed By")
     }));
     assert!(track_artist_roles.iter().any(|role| {
-        role.artist_id == composer.id && role.source_credit.as_deref() == Some("Written-By")
+        committed[&role.artist_id] == composer && role.source_credit.as_deref() == Some("Written-By")
     }));
     assert!(!parsed
         .artists
@@ -226,11 +227,12 @@ fn extraartist_roles_import_as_role_credits_not_works_or_display_artists() {
     assert!(!parsed
         .album_artists
         .iter()
-        .any(|link| link.artist_id == composer.id));
+        .any(|link| committed[&link.artist_id] == composer));
+    assert!(committed[&parsed.album.artist_id] != composer);
     assert!(!parsed
         .track_artists
         .iter()
-        .any(|link| link.artist_id == composer.id));
+        .any(|link| committed[&link.artist_id] == composer));
 }
 
 #[test]
@@ -587,10 +589,9 @@ fn role_artist_without_credited_name_falls_back_to_canonical_name() {
 }
 
 /// An id-less composer role credit whose name case-insensitively matches
-/// the release artist (which carries a Discogs id) reuses that artist
-/// rather than minting a duplicate: the Discogs role-artist matcher falls
-/// back to a name match when the credit has no id, and that match is
-/// unrestricted by whether the existing artist bears a source id.
+/// the release artist (which carries a Discogs id) commits as that artist
+/// rather than a duplicate: a credit with no id is matched by its name,
+/// whether or not the artist it names bears a source id.
 #[test]
 fn id_less_role_credit_reuses_release_artist_by_name() {
     let mut release = make_release(vec![make_track("1", "Track 1")]);
@@ -604,21 +605,15 @@ fn id_less_role_credit_reuses_release_artist_by_name() {
 
     let parsed = map(&release).unwrap();
 
-    let matching: Vec<_> = parsed
-        .artists
-        .iter()
-        .filter(|a| a.name.eq_ignore_ascii_case("Artist Name A"))
-        .collect();
-    assert_eq!(
-        matching.len(),
-        1,
-        "id-less role credit must reuse the release artist by name, not duplicate it"
-    );
+    let committed = committed_artists(&parsed);
     let role = parsed
         .release_artist_roles
         .first()
         .expect("composer role imported");
-    assert_eq!(role.artist_id, parsed.album.artist_id);
+    assert_eq!(
+        committed[&role.artist_id], committed[&parsed.album.artist_id],
+        "id-less role credit must commit as the release artist, not a duplicate"
+    );
 }
 
 /// An id-less credit names the release artist however it is accented or
@@ -635,18 +630,18 @@ fn id_less_role_credit_reuses_release_artist_however_it_is_accented() {
 
     let parsed = map(&release).unwrap();
 
-    assert_eq!(parsed.artists.len(), 1);
+    let committed = committed_artists(&parsed);
     let role = parsed
         .release_artist_roles
         .first()
         .expect("composer role imported");
-    assert_eq!(role.artist_id, parsed.album.artist_id);
+    assert_eq!(committed[&role.artist_id], committed[&parsed.album.artist_id]);
 }
 
-/// An id-less Discogs role credit dedups on its *credited* name — the name
-/// actually stored on the artist row. Two id-less composer credits sharing a
-/// credited name but with different canonical names collapse into one
-/// artist: the dedup key and the stored name are the same field.
+/// An id-less Discogs role credit is its *credited* name — the name stored on
+/// the artist row. Two id-less composer credits sharing a credited name but
+/// with different canonical names commit as one artist: the name matched and
+/// the name stored are the same field.
 #[test]
 fn id_less_role_credits_dedup_on_credited_name() {
     let mut release = make_release(vec![make_track("1", "Track 1")]);
@@ -667,28 +662,26 @@ fn id_less_role_credits_dedup_on_credited_name() {
 
     let parsed = map(&release).unwrap();
 
-    let matching: Vec<_> = parsed
-        .artists
-        .iter()
-        .filter(|a| a.name == "Shared Credited Name")
-        .collect();
-    assert_eq!(
-        matching.len(),
-        1,
-        "id-less role credits with the same credited name dedup into one artist"
-    );
     // The stored name is the credited name; neither canonical name lands.
     assert!(!parsed
         .artists
         .iter()
         .any(|a| a.name == "Canonical One" || a.name == "Canonical Two"));
-    // Both release roles point at the single deduped artist.
-    assert_eq!(
-        parsed
-            .release_artist_roles
-            .iter()
-            .filter(|r| r.artist_id == matching[0].id)
-            .count(),
-        2
-    );
+    // Both release roles commit as one artist of the credited name.
+    let committed = committed_artists(&parsed);
+    let roles: Vec<_> = parsed
+        .release_artist_roles
+        .iter()
+        .map(|role| {
+            let row = parsed
+                .artists
+                .iter()
+                .find(|artist| artist.id == role.artist_id)
+                .expect("a role names its artist row");
+            assert_eq!(row.name, "Shared Credited Name");
+            committed[&row.id].clone()
+        })
+        .collect();
+    assert_eq!(roles.len(), 2);
+    assert_eq!(roles[0], roles[1], "both credits commit as one artist");
 }

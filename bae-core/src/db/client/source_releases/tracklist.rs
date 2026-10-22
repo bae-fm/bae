@@ -267,11 +267,11 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
             let name: Option<String> = row.get(3)?;
             Ok((
                 row.get::<_, i64>(0)?,
-                ArtistCredit {
+                DisplayCredit {
                     position: row.get(1)?,
                     credited_name: row.get(2)?,
                     artist: match name {
-                        Some(name) => Some(ArtistRef {
+                        Some(name) => Some(crate::import::ArtistCredit {
                             name,
                             sort_name: row.get(4)?,
                             musicbrainz_artist_id: row.get(5)?,

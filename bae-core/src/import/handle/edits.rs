@@ -11,7 +11,6 @@ struct PreparedArtistEdit {
     watched_folder_path: String,
     candidate_path: String,
     candidate: crate::import::CandidateAsRead,
-    source_discogs_artist_ids: std::collections::BTreeSet<String>,
     assets: Vec<crate::import::PreparedArtistImage>,
 }
 
@@ -152,7 +151,6 @@ impl ImportServiceHandle {
                 &prepared.candidate_path,
                 &prepared.candidate,
                 &assignments,
-                &prepared.source_discogs_artist_ids,
                 &prepared.assets,
             )
             .await?;
@@ -182,9 +180,13 @@ impl ImportServiceHandle {
         let replacement = track.clone();
         let prepared = self
             .prepared_artist_edit(candidate_key, move |draft| {
-                if let Some(current) = draft.tracks.iter_mut().find(|row| row.id == replacement.id)
+                if let Some(current) = draft
+                    .tracks
+                    .iter_mut()
+                    .find(|row| row.edit.id == replacement.id)
                 {
-                    *current = replacement;
+                    current.edit.title = replacement.title;
+                    current.edit.artist_assignments = replacement.artist_assignments;
                 }
             })
             .await?;
@@ -202,7 +204,6 @@ impl ImportServiceHandle {
                 &prepared.candidate_path,
                 &prepared.candidate,
                 &track,
-                &prepared.source_discogs_artist_ids,
                 &prepared.assets,
             )
             .await?;
@@ -237,8 +238,8 @@ impl ImportServiceHandle {
         let prepared = self
             .prepared_artist_edit(candidate_key, move |draft| {
                 for track in &mut draft.tracks {
-                    if edited_ids.contains(&track.id) {
-                        track.artist_assignments = replacement.clone();
+                    if edited_ids.contains(&track.edit.id) {
+                        track.edit.artist_assignments = replacement.clone();
                     }
                 }
             })
@@ -258,7 +259,6 @@ impl ImportServiceHandle {
                 &prepared.candidate,
                 &track_ids,
                 &assignments,
-                &prepared.source_discogs_artist_ids,
                 &prepared.assets,
             )
             .await?;
@@ -282,7 +282,7 @@ impl ImportServiceHandle {
     async fn prepared_artist_edit(
         &self,
         candidate_key: &str,
-        decide: impl FnOnce(&mut crate::import::RawReleaseEdit),
+        decide: impl FnOnce(&mut crate::import::CandidateDraft),
     ) -> Result<PreparedArtistEdit, crate::import::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
         let hash = candidate.files.content_hash();
@@ -298,15 +298,10 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} changed before its edit was prepared"),
             });
         }
-        let mut active = preparation.draft.release_edit();
+        let mut active = preparation.draft.clone();
         decide(&mut active);
-        let (source_discogs_artist_ids, assets) = self
-            .prepared_artist_images_for_active(
-                preparation.assets.applied_source.as_ref(),
-                &active,
-                &preparation.draft.tracks,
-                preparation.assets.artist_images,
-            )
+        let assets = self
+            .prepared_artist_images_for(&active, preparation.assets.artist_images)
             .await?;
         Ok(PreparedArtistEdit {
             candidate_path: candidate.key(),
@@ -316,70 +311,27 @@ impl ImportServiceHandle {
                 file_edit_revision: preparation.file_edit_revision,
                 metadata_revision: preparation.metadata_revision,
             },
-            source_discogs_artist_ids,
             assets,
         })
     }
 
-    pub(super) async fn prepared_artist_images_for_active(
+    /// The image answers `draft` needs: `current` when they answer exactly
+    /// the Discogs artists it credits, else every one fetched again.
+    pub(super) async fn prepared_artist_images_for(
         &self,
-        source: Option<&crate::import::source_release::AppliedSource>,
-        active: &crate::import::RawReleaseEdit,
-        tracks: &[crate::import::CandidateTrack],
+        draft: &crate::import::CandidateDraft,
         current: Vec<crate::import::PreparedArtistImage>,
-    ) -> Result<
-        (
-            std::collections::BTreeSet<String>,
-            Vec<crate::import::PreparedArtistImage>,
-        ),
-        crate::import::ImportError,
-    > {
-        let source_discogs_artist_ids = self
-            .source_discogs_artist_ids_for_tracks(source, tracks)
-            .await?;
-        let required_discogs_artist_ids = source_discogs_artist_ids
-            .union(&active.credit_discogs_artist_ids_for_bound_tracks())
-            .cloned()
-            .collect::<std::collections::BTreeSet<_>>();
-        let prepared_discogs_artist_ids = current
+    ) -> Result<Vec<crate::import::PreparedArtistImage>, crate::import::ImportError> {
+        let required = draft.discogs_artist_ids();
+        let prepared: std::collections::BTreeSet<String> = current
             .iter()
             .map(|asset| asset.discogs_artist_id().to_string())
             .collect();
-        let assets = if required_discogs_artist_ids == prepared_discogs_artist_ids {
-            current
-        } else {
-            self.library_manager
-                .prepare_discogs_artist_images(required_discogs_artist_ids)
-                .await?
-        };
-        Ok((source_discogs_artist_ids, assets))
-    }
-
-    /// The Discogs artists the applied source credits on the tracks the draft
-    /// still takes from it.
-    async fn source_discogs_artist_ids_for_tracks(
-        &self,
-        source: Option<&crate::import::source_release::AppliedSource>,
-        tracks: &[crate::import::CandidateTrack],
-    ) -> Result<std::collections::BTreeSet<String>, crate::import::ImportError> {
-        let Some(source) = source else {
-            return Ok(Default::default());
-        };
-        let mut parsed = source.parsed(self.clock.as_ref(), self.ids.as_ref())?;
-        let retained = tracks
-            .iter()
-            .filter_map(|track| track.source_index)
-            .map(|index| {
-                parsed
-                    .tracks
-                    .get(index as usize)
-                    .map(|track| track.id.clone())
-                    .ok_or_else(|| crate::import::ImportError::Internal {
-                        detail: format!("draft names unavailable source track {index}"),
-                    })
-            })
-            .collect::<Result<std::collections::HashSet<_>, _>>()?;
-        crate::import::service::retain_track_metadata(&mut parsed, &retained);
-        Ok(crate::import::pane::source_discogs_artist_ids(&parsed))
+        if required == prepared {
+            return Ok(current);
+        }
+        self.library_manager
+            .prepare_discogs_artist_images(required)
+            .await
     }
 }

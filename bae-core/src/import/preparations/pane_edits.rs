@@ -143,7 +143,6 @@ impl CandidatePreparations {
         candidate_path: &str,
         read: &CandidateAsRead,
         assignments: &[crate::import::ArtistAssignment],
-        source_discogs_artist_ids: &std::collections::BTreeSet<String>,
         assets: &[crate::import::PreparedArtistImage],
     ) -> Result<u64, LibraryError> {
         if assignments.is_empty() {
@@ -155,7 +154,6 @@ impl CandidatePreparations {
             watched_folder_path,
             candidate_path,
             read,
-            source_discogs_artist_ids,
             assets,
             |prep| {
                 prep.metadata.draft.album_artist_assignments = assignments.to_vec();
@@ -189,14 +187,12 @@ impl CandidatePreparations {
         candidate_path: &str,
         read: &CandidateAsRead,
         row: &crate::import::RawTrackEdit,
-        source_discogs_artist_ids: &std::collections::BTreeSet<String>,
         assets: &[crate::import::PreparedArtistImage],
     ) -> Result<u64, LibraryError> {
         self.edit_prepared_candidate(
             watched_folder_path,
             candidate_path,
             read,
-            source_discogs_artist_ids,
             assets,
             |prep| apply_track_edit(&mut prep.metadata.draft, row),
         )
@@ -210,7 +206,6 @@ impl CandidatePreparations {
         read: &CandidateAsRead,
         track_ids: &[String],
         assignments: &TrackArtistAssignments,
-        source_discogs_artist_ids: &std::collections::BTreeSet<String>,
         assets: &[crate::import::PreparedArtistImage],
     ) -> Result<u64, LibraryError> {
         if track_ids.is_empty() {
@@ -222,7 +217,6 @@ impl CandidatePreparations {
             watched_folder_path,
             candidate_path,
             read,
-            source_discogs_artist_ids,
             assets,
             |prep| fill_track_artists(&mut prep.metadata.draft, track_ids, assignments),
         )
@@ -237,11 +231,9 @@ impl CandidatePreparations {
         watched_folder_path: &str,
         candidate_path: &str,
         read: &CandidateAsRead,
-        source_discogs_artist_ids: &std::collections::BTreeSet<String>,
         assets: &[crate::import::PreparedArtistImage],
         change: impl FnOnce(&mut CandidatePreparation) -> Result<(), LibraryError>,
     ) -> Result<u64, LibraryError> {
-        let source_discogs_artist_ids = source_discogs_artist_ids.clone();
         let assets = assets.to_vec();
         self.edit_candidate(
             Some(scanned_key(watched_folder_path, candidate_path)),
@@ -251,7 +243,6 @@ impl CandidatePreparations {
             move |prep| {
                 require_prepared(prep)?;
                 change(prep)?;
-                prep.metadata.source_discogs_artist_ids = source_discogs_artist_ids;
                 prep.metadata.assets.artist_images = assets;
                 Ok(())
             },

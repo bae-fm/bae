@@ -1,7 +1,7 @@
 use super::*;
 use crate::db::Database;
 use chrono::{DateTime, Utc};
-use coven::{FixedClock, SequentialIds};
+use coven::FixedClock;
 use serde_json::json;
 use std::sync::Arc;
 
@@ -96,15 +96,11 @@ async fn a_master_backlink_is_followed_and_the_stored_release_reads_back() {
         .iter()
         .any(|record| record.catalog() == Catalog::MusicBrainz && record.release_ref().is_some()));
     let parsed = fetched
-        .parsed(
-            &[],
-            &FixedClock::new((instant()).into()),
-            &SequentialIds::new(),
-        )
+        .values(&[])
         .unwrap();
-    assert_eq!(parsed.album.title, "Selected Album");
-    assert_eq!(parsed.album.year, Some(1980));
-    assert_eq!(parsed.release.pressing.year, Some(2005));
+    assert_eq!(parsed.album_title, "Selected Album");
+    assert_eq!(parsed.album_year, Some(1980));
+    assert_eq!(parsed.pressing.year, Some(2005));
     assert_eq!(
         parsed
             .tracks
@@ -114,7 +110,7 @@ async fn a_master_backlink_is_followed_and_the_stored_release_reads_back() {
         vec![Some(1), Some(2)]
     );
     assert_eq!(
-        parsed.artists[0].musicbrainz_artist_id.as_deref(),
+        parsed.album_credits[0].musicbrainz_artist_id.as_deref(),
         Some("artist-id")
     );
     let (db, _temp) = database().await;
@@ -142,40 +138,36 @@ fn selected_pressing_wins_and_linked_release_fills_only_absent_details() {
     let parsed = payloads
         .extract()
         .unwrap()
-        .parsed(
-            &[],
-            &FixedClock::new((instant()).into()),
-            &SequentialIds::new(),
-        )
+        .values(&[])
         .unwrap();
-    assert_eq!(parsed.album.title, "Selected Album");
-    assert_eq!(parsed.album.year, Some(1980));
-    assert_eq!(parsed.release.pressing.year, Some(2005));
+    assert_eq!(parsed.album_title, "Selected Album");
+    assert_eq!(parsed.album_year, Some(1980));
+    assert_eq!(parsed.pressing.year, Some(2005));
     assert_eq!(
-        parsed.release.pressing.labels[0].name(),
+        parsed.pressing.labels[0].name(),
         Some("Selected Label")
     );
     assert_eq!(
-        parsed.release.pressing.facts.media,
+        parsed.pressing.facts.media,
         crate::pressing::made_of(crate::pressing::Medium::Vinyl, 1).media,
         "the selected pressing's own media, not the linked release's CD"
     );
     assert_eq!(
-        parsed.release.pressing.facts.area,
+        parsed.pressing.facts.area,
         Some(crate::pressing::area("JP")),
         "the linked release fills the area the selected one leaves out"
     );
     assert_eq!(
-        parsed.release.pressing.barcode.as_deref(),
+        parsed.pressing.barcode.as_deref(),
         Some("1234567890123")
     );
     assert_eq!(parsed.tracks.len(), 2);
     assert_eq!(parsed.tracks[1].title, "Second Track");
     assert_eq!(parsed.tracks[1].side, Some(2));
     let detail = payloads.extract().unwrap().detail_for_audio(&[], &[]).unwrap();
-    assert_eq!(detail.labels, parsed.release.pressing.labels);
-    assert_eq!(detail.facts, parsed.release.pressing.facts);
-    assert_eq!(detail.year, parsed.release.pressing.year);
+    assert_eq!(detail.labels, parsed.pressing.labels);
+    assert_eq!(detail.facts, parsed.pressing.facts);
+    assert_eq!(detail.year, parsed.pressing.year);
 }
 
 #[test]
@@ -196,16 +188,12 @@ fn linked_album_fills_missing_title_and_artists_without_setting_pressing_year() 
     let parsed = payloads
         .extract()
         .unwrap()
-        .parsed(
-            &[],
-            &FixedClock::new((instant()).into()),
-            &SequentialIds::new(),
-        )
+        .values(&[])
         .unwrap();
-    assert_eq!(parsed.album.title, "Master Album");
-    assert_eq!(parsed.artists[0].name, "Selected Artist");
-    assert_eq!(parsed.album.year, Some(1980));
-    assert_eq!(parsed.release.pressing.year, None);
+    assert_eq!(parsed.album_title, "Master Album");
+    assert_eq!(parsed.album_credits[0].name, "Selected Artist");
+    assert_eq!(parsed.album_year, Some(1980));
+    assert_eq!(parsed.pressing.year, None);
 }
 
 /// A cross-reference the catalog no longer answers is gone from the release
@@ -262,14 +250,10 @@ fn linked_release_album_date_survives_an_unavailable_parent_document() {
     let parsed = payloads
         .extract()
         .unwrap()
-        .parsed(
-            &[],
-            &FixedClock::new((instant()).into()),
-            &SequentialIds::new(),
-        )
+        .values(&[])
         .unwrap();
-    assert_eq!(parsed.album.year, Some(1979));
-    assert_eq!(parsed.release.pressing.year, Some(2005));
+    assert_eq!(parsed.album_year, Some(1979));
+    assert_eq!(parsed.pressing.year, Some(2005));
 }
 
 #[test]
@@ -293,21 +277,16 @@ fn selected_album_credits_keep_every_artist_in_detail_and_import() {
     let parsed = payloads
         .extract()
         .unwrap()
-        .parsed(
-            &[],
-            &FixedClock::new((instant()).into()),
-            &SequentialIds::new(),
-        )
+        .values(&[])
         .unwrap();
     assert_eq!(
         parsed
-            .artists
+            .album_credits
             .iter()
             .map(|artist| artist.name.as_str())
             .collect::<Vec<_>>(),
         vec!["Selected Artist", "Second Artist"]
     );
-    assert_eq!(parsed.album_artists.len(), 1);
 }
 
 /// A parent a later fetch could not obtain does not come back from the

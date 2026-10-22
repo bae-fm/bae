@@ -39,6 +39,8 @@ mod artist_identity_choice;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod artist_identity_merge;
 mod artist_resolution;
+#[cfg(test)]
+pub(crate) use artist_resolution::resolved_in_an_empty_library;
 pub(crate) use artist_resolution::ArtistCredits;
 pub use artist_resolution::ArtistWriteError;
 use artist_resolution::{relink_album_artists, relink_track_artists, relinked_album};

@@ -366,15 +366,11 @@ impl LibraryManager {
         }
         let folder = candidate.path.display().to_string();
         let candidate = candidate.clone();
-        let clock = self.clock.clone();
-        let ids = self.ids.clone();
         let read = tokio::task::spawn_blocking(move || {
             crate::import::file_metadata_seed::FileMetadataSeed::read(
                 &candidate,
                 generation,
                 reader.as_ref(),
-                clock.as_ref(),
-                ids.as_ref(),
             )
         })
         .await

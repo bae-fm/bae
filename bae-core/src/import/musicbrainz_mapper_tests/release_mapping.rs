@@ -2,32 +2,27 @@ use super::*;
 use crate::musicbrainz::{
     MbArtistCredit, MbArtistRef, MbMedium, MbRecording, MbReleaseResponse, MbTrack, MbWork,
 };
-use coven::FixedClock;
-use coven::SequentialIds;
+use crate::import::MetadataRef;
 
-/// Project archived source documents through the same metadata and mapping
-/// path as import, with only clock and ID generation replaced.
+/// Read archived source documents through the same metadata and reading path
+/// as import.
 fn map(
     response: &MbReleaseResponse,
     supporting: Vec<crate::import::SourcePayload>,
-) -> Result<ParsedAlbum, ImportError> {
+) -> Result<ReleaseValues, ImportError> {
     let payloads: crate::import::payloads::ReleasePayloads =
         crate::import::payloads::ReleasePayloads::for_test(
         MetadataRef::new(Catalog::MusicBrainz, &response.id),
         serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
         supporting,
     );
-    let clock = FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-            .unwrap()
-            .with_timezone(&chrono::Utc)).into());
-    let ids = SequentialIds::new();
-    payloads.extract().unwrap().parsed(&[], &clock, &ids)
+    payloads.extract().unwrap().values(&[])
 }
 
-/// The id of the `works` row the parsed release minted for a MusicBrainz
-/// work. Row ids are minted, so a link is checked against this, never
-/// against the MBID.
-fn work_row_id(parsed: &ParsedAlbum, musicbrainz_work_id: &str) -> String {
+use crate::import::release_values::committed_rows as rows;
+
+/// The id of the `works` row the release's rows hold for a MusicBrainz work.
+fn work_row_id(parsed: &crate::import::ReleaseRows, musicbrainz_work_id: &str) -> String {
     parsed
         .work_graph
         .works
@@ -93,18 +88,14 @@ fn make_response(media: Vec<MbMedium>) -> MbReleaseResponse {
 fn map_for_audio(
     response: &MbReleaseResponse,
     audio_durations_ms: &[u64],
-) -> Result<ParsedAlbum, ImportError> {
+) -> Result<ReleaseValues, ImportError> {
     let payloads: crate::import::payloads::ReleasePayloads =
         crate::import::payloads::ReleasePayloads::for_test(
         MetadataRef::new(Catalog::MusicBrainz, &response.id),
         serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
         Vec::new(),
     );
-    let clock = FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-            .unwrap()
-            .with_timezone(&chrono::Utc)).into());
-    let ids = SequentialIds::new();
-    payloads.extract().unwrap().parsed(audio_durations_ms, &clock, &ids)
+    payloads.extract().unwrap().values(audio_durations_ms)
 }
 
 fn timed_mb_track(number: &str, title: &str, length_ms: u64) -> MbTrack {
@@ -141,7 +132,7 @@ fn a_hybrid_sacd_rip_is_read_from_its_cd_layer() {
         parsed
             .tracks
             .iter()
-            .map(|track| track.track_number)
+            .map(|track| track.number)
             .collect::<Vec<_>>(),
         vec![Some(1), Some(2), Some(3)]
     );
@@ -230,15 +221,15 @@ fn test_cd_two_media_each_one_side() {
 
     // Medium 1 = side 1
     assert_eq!(tracks[0].side, Some(1));
-    assert_eq!(tracks[0].track_number, Some(1));
+    assert_eq!(tracks[0].number, Some(1));
     assert_eq!(tracks[1].side, Some(1));
-    assert_eq!(tracks[1].track_number, Some(2));
+    assert_eq!(tracks[1].number, Some(2));
 
     // Medium 2 = side 2
     assert_eq!(tracks[2].side, Some(2));
-    assert_eq!(tracks[2].track_number, Some(1));
+    assert_eq!(tracks[2].number, Some(1));
     assert_eq!(tracks[3].side, Some(2));
-    assert_eq!(tracks[3].track_number, Some(2));
+    assert_eq!(tracks[3].number, Some(2));
 }
 
 #[test]
@@ -255,14 +246,14 @@ fn numeric_vinyl_tracks_are_usable_without_side_boundaries() {
     assert_eq!(parsed.tracks.len(), 12);
     assert!(parsed.tracks.iter().all(|track| track.side.is_none()));
     assert_eq!(
-        parsed.release.pressing.facts.media,
+        parsed.pressing.facts.media,
         crate::pressing::made_of(crate::pressing::Medium::Vinyl, 1).media
     );
     assert_eq!(
         parsed
             .tracks
             .iter()
-            .map(|track| track.track_number)
+            .map(|track| track.number)
             .collect::<Vec<_>>(),
         (1..=12).map(Some).collect::<Vec<_>>()
     );
@@ -288,15 +279,15 @@ fn test_vinyl_one_medium_two_sides() {
 
     // A tracks = side 1
     assert_eq!(tracks[0].side, Some(1));
-    assert_eq!(tracks[0].track_number, Some(1));
+    assert_eq!(tracks[0].number, Some(1));
     assert_eq!(tracks[1].side, Some(1));
-    assert_eq!(tracks[1].track_number, Some(2));
+    assert_eq!(tracks[1].number, Some(2));
 
     // B tracks = side 2
     assert_eq!(tracks[2].side, Some(2));
-    assert_eq!(tracks[2].track_number, Some(1));
+    assert_eq!(tracks[2].number, Some(1));
     assert_eq!(tracks[3].side, Some(2));
-    assert_eq!(tracks[3].track_number, Some(2));
+    assert_eq!(tracks[3].number, Some(2));
 }
 
 /// 2LP vinyl: two media, each with two sides (A/B and C/D).
@@ -363,11 +354,11 @@ fn test_single_medium_cd_all_side_one() {
 
     // All tracks on side 1
     assert_eq!(tracks[0].side, Some(1));
-    assert_eq!(tracks[0].track_number, Some(1));
+    assert_eq!(tracks[0].number, Some(1));
     assert_eq!(tracks[1].side, Some(1));
-    assert_eq!(tracks[1].track_number, Some(2));
+    assert_eq!(tracks[1].number, Some(2));
     assert_eq!(tracks[2].side, Some(1));
-    assert_eq!(tracks[2].track_number, Some(3));
+    assert_eq!(tracks[2].number, Some(3));
 }
 
 /// Known and unknown side assignments coexist without guessed boundaries.
@@ -569,8 +560,8 @@ fn pressing_reads_year_every_label_barcode_and_every_fact() {
 
     // What the mapper commits is what the projection says.
     let parsed = map(&response, vec![]).unwrap();
-    assert_eq!(parsed.release.pressing, pressing);
-    assert_eq!(parsed.album.year, Some(1969));
+    assert_eq!(parsed.pressing, pressing);
+    assert_eq!(parsed.album_year, Some(1969));
 }
 
 fn discogs_artist_document(name: &str) -> crate::import::SourcePayload {
@@ -628,13 +619,12 @@ fn release_artist_credit_name_is_used_when_artist_payload_name_is_missing() {
 
     let parsed = map(&response, vec![]).unwrap();
 
-    let artist = parsed
-        .artists
-        .iter()
-        .find(|artist| artist.musicbrainz_artist_id.as_deref() == Some("artist-credit-name-only"))
-        .expect("release artist imported from credit name");
+    let artist = &parsed.album_credits[0];
+    assert_eq!(
+        artist.musicbrainz_artist_id.as_deref(),
+        Some("artist-credit-name-only")
+    );
     assert_eq!(artist.name, "Credit Artist Name");
-    assert_eq!(parsed.album.artist_id, artist.id);
 }
 
 #[test]
@@ -662,15 +652,15 @@ fn missing_mb_sort_names_remain_absent() {
     let parsed = map(&response, vec![]).unwrap();
 
     let release_artist = parsed
-        .artists
+        .album_credits
         .iter()
         .find(|artist| artist.musicbrainz_artist_id.as_deref() == Some("artist-1"))
-        .expect("release artist imported");
-    let composer = parsed
-        .artists
-        .iter()
-        .find(|artist| artist.musicbrainz_artist_id.as_deref() == Some("composer-artist-a"))
-        .expect("composer artist imported");
+        .expect("release artist read");
+    let composer = &parsed.tracks[0].roles[0].artist;
+    assert_eq!(
+        composer.musicbrainz_artist_id.as_deref(),
+        Some("composer-artist-a")
+    );
 
     assert_eq!(release_artist.sort_name, None);
     assert_eq!(composer.sort_name, None);

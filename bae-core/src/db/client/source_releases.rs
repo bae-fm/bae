@@ -7,11 +7,10 @@
 
 use crate::import::album_links::AlbumLinks;
 use super::*;
-use crate::import::assemble::{ArtistRef, PartDirection};
 use crate::import::cover_art::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
 use crate::import::release_metadata::{AlbumMetadata, ReleaseMetadata};
 use crate::import::source_release::{
-    ArchiveRelease, ArtistCredit, CatalogFacts, EntryKind, PerformedWork, ReleaseCovers,
+    ArchiveRelease, CatalogFacts, DisplayCredit, PartDirection, EntryKind, PerformedWork, ReleaseCovers,
     RoleCredit, SourceMedium, SourceRelease, SourceWork, SourceWorkEvent, TracklistEntry,
     UnfetchedDocument, UnfetchedReason,
 };
@@ -327,8 +326,8 @@ pub(super) fn replace_source_release_on(
     Ok(())
 }
 
-fn artist_at(row: &Row<'_>, first: usize) -> rusqlite::Result<ArtistRef> {
-    Ok(ArtistRef {
+fn artist_at(row: &Row<'_>, first: usize) -> rusqlite::Result<crate::import::ArtistCredit> {
+    Ok(crate::import::ArtistCredit {
         name: row.get(first)?,
         sort_name: row.get(first + 1)?,
         musicbrainz_artist_id: row.get(first + 2)?,

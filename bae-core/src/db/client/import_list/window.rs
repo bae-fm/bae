@@ -465,7 +465,6 @@ pub(super) struct CandidateDetailRows {
     metadata_revision: u64,
     statuses: Option<Vec<LibraryStatus>>,
     claimed: Vec<crate::import::source_release::SourceRelease>,
-    draft_source: Option<crate::import::source_release::SourceRelease>,
     records: Vec<crate::import::ReleaseRecord>,
     picked_library_status: Option<LibraryStatus>,
     embedded_cover: Option<(FileVersion, Vec<u8>)>,
@@ -508,9 +507,6 @@ pub(super) fn load_candidate_detail_on(
     let state = load_states_on(sql, Some(&content_hash))?.remove(&content_hash);
     let current = state.filter(|state| state.file_edits.revision == candidate.file_edit_revision);
     let identify = current.as_ref().and_then(|state| state.identify.as_ref());
-    let metadata_provenance = current
-        .as_ref()
-        .and_then(|state| state.metadata_provenance.clone());
     let release_link = current
         .as_ref()
         .and_then(|state| state.release_link.clone());
@@ -543,24 +539,6 @@ pub(super) fn load_candidate_detail_on(
         &candidate,
         release_link.as_ref().and_then(ReleaseLink::pressing),
     )?;
-    // The release the draft's tracks were read from, whose track lengths the
-    // mapping sets beside the files': the linked one when the draft was read
-    // from it, which is the one already read above.
-    let draft_source = match &metadata_provenance {
-        Some(MetadataProvenance::ExternalRelease { record })
-            if claimed.first().map(|release| release.release()) != Some(record) =>
-        {
-            Some(load_source_release_on(sql, record)?.ok_or_else(|| {
-                DbError::Message(format!(
-                    "{} is read from {} release {} that nothing stored",
-                    candidate.key(),
-                    record.catalog.as_str(),
-                    record.key
-                ))
-            })?)
-        }
-        _ => None,
-    };
     // Every catalog record of what the candidate is linked to: the linked
     // pressing's releases describe it, an album names its own.
     let records = match &release_link {
@@ -586,13 +564,13 @@ pub(super) fn load_candidate_detail_on(
     };
     Ok(Some(CandidateDetailRows { candidate, source_error, actionable, skipped,
         imported_releases, current, pane_rows, artist_resolutions, metadata_revision,
-        statuses, claimed, draft_source, records, picked_library_status, embedded_cover }))
+        statuses, claimed, records, picked_library_status, embedded_cover }))
 }
 
 impl CandidateDetailRows {
     pub(super) fn process(self) -> Result<ImportCandidateDetailProjection, DbError> {
         let Self { candidate, source_error, actionable, skipped, imported_releases, current,
-            pane_rows, artist_resolutions, metadata_revision, statuses, claimed, draft_source,
+            pane_rows, artist_resolutions, metadata_revision, statuses, claimed,
             records, picked_library_status, embedded_cover } = self;
         let metadata_provenance = current.as_ref().and_then(|state| state.metadata_provenance.clone());
         let release_link = current.as_ref().and_then(|state| state.release_link.clone());
@@ -650,22 +628,8 @@ impl CandidateDetailRows {
                     .clone()
                     .resume_state(&status_of, text, audio.clone());
         }
-        let source_lengths = match (&metadata_provenance, &draft_source) {
-            (Some(MetadataProvenance::ExternalRelease { .. }), Some(source)) => {
-                crate::import::pane::track_lengths(Some(
-                    &source
-                        .detail_for_audio(&audio_durations, &[])
-                        .map_err(|error| DbError::Message(error.to_string()))?,
-                ))
-            }
-            (Some(MetadataProvenance::ExternalRelease { .. }), None) => {
-                crate::import::pane::track_lengths(release.as_ref())
-            }
-            (Some(MetadataProvenance::FileMetadata) | None, _) => Vec::new(),
-        };
         let pane = crate::import::pane::draft_pane(
             release,
-            &source_lengths,
             &candidate.files,
             durations,
             &pane_rows.draft,

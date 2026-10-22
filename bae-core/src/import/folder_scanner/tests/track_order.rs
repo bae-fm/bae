@@ -56,18 +56,10 @@ fn tag_draft(root: &Path) -> Vec<(String, Option<i32>, i32, String)> {
     let [candidate] = candidates.as_slice() else {
         panic!("one release under {}", root.display());
     };
-    let clock = coven::FixedClock::new(
-        "2026-01-01T00:00:00Z"
-            .parse::<chrono::DateTime<chrono::Utc>>()
-            .expect("timestamp")
-            .into(),
-    );
     let seed = crate::import::file_metadata_seed::FileMetadataSeed::read(
         candidate,
         0,
         &crate::import::file_tag_snapshot::LoftyFileTagReader,
-        &clock,
-        &coven::SequentialIds::new(),
     )
     .expect("tags read");
     seed.draft
@@ -236,18 +228,10 @@ fn a_catalog_tracklist_lands_on_the_files_its_numbers_are_tagged_with() {
     let [candidate] = candidates.as_slice() else {
         panic!("one release");
     };
-    let clock = coven::FixedClock::new(
-        "2026-01-01T00:00:00Z"
-            .parse::<chrono::DateTime<chrono::Utc>>()
-            .expect("timestamp")
-            .into(),
-    );
     let seed = crate::import::file_metadata_seed::FileMetadataSeed::read(
         candidate,
         0,
         &crate::import::file_tag_snapshot::LoftyFileTagReader,
-        &clock,
-        &coven::SequentialIds::new(),
     )
     .expect("tags read");
     let catalog = crate::import::RawReleaseEdit::from_user_edit(
@@ -271,9 +255,8 @@ fn a_catalog_tracklist_lands_on_the_files_its_numbers_are_tagged_with() {
         "catalog-track",
     );
 
-    let laid = crate::import::pane::metadata_over_audio(catalog, &seed.draft).expect("lays over");
+    let laid = crate::import::pane::edit_over_audio(catalog, &seed.draft).expect("lays over");
     let pairs: Vec<_> = laid
-        .draft
         .tracks
         .iter()
         .map(|track| (track.edit.title.clone(), track.edit.file.file_id().to_string()))

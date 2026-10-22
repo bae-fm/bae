@@ -161,7 +161,6 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
                 &key,
                 &crate::import::CandidateMetadataDraft {
                     draft: preparation.draft,
-                    source_discogs_artist_ids: preparation.source_discogs_artist_ids,
                     provenance: preparation.metadata_provenance,
                     cover: explicit.then(|| CoverSelection::Embedded("01.flac".to_string())),
                     assets: preparation.assets,

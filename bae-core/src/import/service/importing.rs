@@ -271,7 +271,6 @@ impl ImportService {
         let metadata_provenance = preparation.metadata_provenance;
         let release_link = preparation.release_link;
         let selected_cover = preparation.cover;
-        let user_edit = Some(preparation.draft.release_edit().shape()?);
         let mut prepared_assets = preparation.assets;
 
         let file_tag_snapshot = expectation.file_tag_snapshot.as_ref();
@@ -290,16 +289,6 @@ impl ImportService {
                 .into());
             }
         }
-        if matches!(
-            metadata_provenance,
-            Some(crate::import::MetadataProvenance::FileMetadata)
-        ) && file_tag_snapshot.is_none()
-        {
-            return Err(crate::import::ImportError::Internal {
-                detail: format!("{candidate_key}'s file-metadata import has no metadata snapshot"),
-            }
-            .into());
-        }
         if matches!(selected_cover, Some(CoverSelection::Embedded(_)))
             && file_tag_snapshot.is_none()
         {
@@ -315,67 +304,21 @@ impl ImportService {
             }
             None => Vec::new(),
         };
-        let parsed = match &metadata_provenance {
-            Some(crate::import::MetadataProvenance::ExternalRelease { .. }) => {
-                let applied = prepared_assets.applied_source.as_ref().ok_or_else(|| {
-                    crate::import::ImportError::Internal {
-                        detail: format!("{candidate_key} has no applied source"),
-                    }
-                })?;
-                applied.parsed(self.clock.as_ref(), self.ids.as_ref())?
-            }
-            Some(crate::import::MetadataProvenance::FileMetadata) => {
-                let folder_name = source_name.clone();
-                let clock = self.clock.clone();
-                let ids = self.ids.clone();
-                let categorized_for_seed = categorized.clone();
-                let snapshot = file_tag_snapshot
-                    .expect("file metadata was paired with its snapshot above")
-                    .clone();
-                let parsed = tokio::task::spawn_blocking(move || {
-                    crate::import::file_tag_mapper::map_file_metadata_to_db(
-                        &categorized_for_seed,
-                        &snapshot,
-                        Some(&folder_name),
-                        clock.as_ref(),
-                        ids.as_ref(),
-                    )
-                })
-                .await
-                .map_err(|e| crate::import::ImportError::Internal {
-                    detail: format!("file-metadata mapping task failed: {e}"),
-                })??;
-                // A file-metadata import claims no source release, so there is no
-                // release cover to derive: its art comes from the folder or the
-                // files' own tags.
-                parsed
-            }
-            None => {
-                let parsed = crate::import::direct_entry_mapper::map_direct_entry_candidate_to_db(
-                    &categorized,
-                    self.clock.as_ref(),
-                    self.ids.as_ref(),
-                );
-                parsed
-            }
-        };
-
-        // The release's track rows and the folder's audio are reconciled before
-        // any metadata is applied, so everything downstream works on the track
-        // list the import will actually write.
-        let mut parsed = parsed;
-        let track_bindings = settle_track_rows(
-            &mut parsed,
+        // The draft holds every value the release is written with; nothing
+        // is read from its source again.
+        let assembled = crate::import::assemble::assemble_release(
             &preparation.draft,
+            metadata_provenance.as_ref(),
+            self.clock.as_ref(),
             self.ids.as_ref(),
-            chrono::DateTime::<chrono::Utc>::from(self.clock.now()),
         )?;
+        let track_bindings = assembled.bindings;
 
         let mut prepared = self
             .reconcile_prepared_release(
-                parsed,
+                assembled.parsed,
                 records,
-                user_edit,
+                assembled.picked,
                 std::mem::take(&mut prepared_assets.artist_images),
             )
             .await?;

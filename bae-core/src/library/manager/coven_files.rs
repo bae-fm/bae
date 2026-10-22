@@ -8,6 +8,17 @@ use super::release::cover_ref_for;
 use super::*;
 
 impl LibraryManager {
+    /// Each track of a release in play order: its title, and the MusicBrainz
+    /// ids of the artists credited on it in a role and of the works it
+    /// performs — what a test reads back from an import.
+    #[cfg(test)]
+    pub(crate) async fn track_sources_for_test(
+        &self,
+        release_id: &str,
+    ) -> Result<Vec<(String, Vec<String>, Vec<String>)>, LibraryError> {
+        Ok(self.database.track_sources_for_test(release_id).await?)
+    }
+
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn release_file_ref_for_test(
         &self,

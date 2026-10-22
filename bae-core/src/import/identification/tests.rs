@@ -730,7 +730,7 @@ impl Fixture {
             .await
             .expect("the candidate state is readable")
             .expect("the scanned candidate is answerable");
-        let mut draft = candidate.blank_source().draft;
+        let mut draft = candidate.blank_draft();
         draft.album_title = "Album".to_string();
         draft.album_artist_assignments = vec![crate::import::ArtistAssignment::Credit {
             credit: crate::import::ArtistCredit {
@@ -816,7 +816,6 @@ impl Fixture {
                             },
                             metadata: crate::import::CandidateMetadataDraft {
                                 draft,
-                                source_discogs_artist_ids: Default::default(),
                                 provenance: Some(
                                     crate::import::MetadataProvenance::ExternalRelease { record },
                                 ),

@@ -158,8 +158,6 @@ impl CandidatePreparations {
         prep.identification = None;
         prep.signals = None;
         prep.metadata.draft = mapping_preparation.draft.clone();
-        prep.metadata.source_discogs_artist_ids =
-            mapping_preparation.source_discogs_artist_ids.clone();
         // The prepared answers were made for the draft before it was redrawn;
         // every artist the redrawn draft needs must be among them, and the
         // ones it no longer needs go.
@@ -219,12 +217,10 @@ impl CandidatePreparations {
                     "metadata replacement has no candidate state row".into(),
                 )
             })?;
-        let draft = super::pane::metadata_over_audio(draft.clone(), &prep.metadata.draft)
-            .map_err(|error| LibraryError::Import(error.to_string()))?
-            .draft;
+        let draft = super::pane::edit_over_audio(draft.clone(), &prep.metadata.draft)
+            .map_err(|error| LibraryError::Import(error.to_string()))?;
         let metadata = crate::import::CandidateMetadataDraft {
             draft,
-            source_discogs_artist_ids: Default::default(),
             provenance: provenance.cloned(),
             cover: None,
             assets: crate::import::CandidatePreparedAssets::default(),
@@ -349,7 +345,6 @@ impl CandidatePreparations {
         folder_path: &str,
         link: &crate::import::AlbumLink,
         draft: crate::import::CandidateDraft,
-        source_discogs_artist_ids: std::collections::BTreeSet<String>,
         artist_images: Vec<crate::import::PreparedArtistImage>,
     ) -> Result<u64, LibraryError> {
         let mut prep = self.loaded_at(read).await?;
@@ -374,7 +369,6 @@ impl CandidatePreparations {
         prep.folder_path = folder_path.to_string();
         prep.author = MetadataAuthor::Person;
         prep.metadata.draft = draft;
-        prep.metadata.source_discogs_artist_ids = source_discogs_artist_ids;
         prep.metadata.assets.artist_images = artist_images;
         prep.assets_prepared = assets_are_prepared(&prep.metadata);
         prep.metadata_revision += 1;
@@ -462,7 +456,6 @@ impl CandidatePreparations {
         };
         let metadata = crate::import::CandidateMetadataDraft {
             draft: draft.clone(),
-            source_discogs_artist_ids: Default::default(),
             provenance: Some(crate::import::MetadataProvenance::FileMetadata),
             cover: cover.cloned(),
             assets: crate::import::CandidatePreparedAssets::default(),

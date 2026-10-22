@@ -150,30 +150,24 @@ fn vinyl_response() -> crate::musicbrainz::MbReleaseResponse {
     }
 }
 
-/// The editor seed for a release, exactly as the pane builds it: the commit
-/// worker's own `ParsedAlbum`, projected into the editor's shape.
+/// The editor seed for a release: its reading's editable values.
 fn seed_for(response: &crate::musicbrainz::MbReleaseResponse) -> crate::import::ReleaseUserEdit {
-    let parsed = crate::import::payloads::ReleasePayloads::for_test(
+    crate::import::payloads::ReleasePayloads::for_test(
         crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, &response.id),
         serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
         Vec::new(),
     )
     .extract()
     .unwrap()
-    .parsed(
-        &[],
-        &coven::SystemClock,
-        &coven::UuidIds,
-    )
-    .expect("synthetic MB response maps");
-    parsed_album_to_user_edit(&parsed)
+    .values(&[])
+    .expect("synthetic MB response reads")
+    .user_edit()
 }
 
 /// The seed carries the mapper's per-side track numbering (A1,A2 -> 1,2 ; B1 ->
-/// 1), not a release-global 1..N index. `apply_user_edit_to_seed` writes
-/// `track_number` verbatim back onto the seed, so a flat index would overwrite
-/// the correct per-side numbers of every multi-side vinyl / cassette /
-/// multi-disc release.
+/// 1), not a release-global 1..N index: the draft and the library keep the
+/// number as read, so a flat index would overwrite the correct per-side
+/// numbers of every multi-side vinyl / cassette / multi-disc release.
 #[test]
 fn seed_numbers_tracks_per_side() {
     let edit = seed_for(&vinyl_response());

@@ -316,6 +316,19 @@ pub(crate) fn resolve_artists_on<Q: QueryOne + QueryRows>(
     })
 }
 
+/// The library artist each of `credits` resolves to when one write commits
+/// them all into an empty library, positionally: which credits of a release
+/// the commit makes one artist.
+#[cfg(test)]
+pub(crate) fn resolved_in_an_empty_library(credits: &[DbArtist]) -> Vec<String> {
+    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory library opens");
+    conn.execute_batch(include_str!("../../../migrations/001_initial.sql"))
+        .expect("the schema applies");
+    resolve_artists_on(&conn, credits, &HashSet::new())
+        .expect("credits resolve in an empty library")
+        .ids
+}
+
 /// What the library holds for one credit as it stands now: the rule every
 /// write commits by, applied to the credit alone. What the import pane shows
 /// beside a credit, read inside its live query so an artist another import

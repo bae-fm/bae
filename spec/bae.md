@@ -150,6 +150,11 @@ primary. "Set as Primary Release" moves a release before the album's others,
 and is refused for a release of another album. Moving or deleting a release
 writes nothing else: the next release in the order is then the primary.
 
+An album credited to the various-artists artist alone is a *compilation*, and
+its tracks show their own artists. The flag is decided from the album's
+credits at every write of them, an import's or an edit's, so it never outlives
+an edit of the artists.
+
 A release has tracks, a cover, and the files its tracks play from. Its pressing
 facts are typed values in bae's own vocabulary (Appendix H), read from what the
 catalogs state, so a surface shows one shape whichever catalog stated them.
@@ -649,8 +654,12 @@ candidate, and changing them starts the next run.
 
 ### 3.6 The draft
 
-A *draft* is the metadata an import will write: the album fields, the pressing
-facts, the album's artists, and one track per audio unit. An *audio unit* is
+A *draft* is the metadata an import will write, as plain values: the album
+fields, the pressing facts, the album's artists, and one track per audio unit
+with its title, artists, side and number, and the length its source lists for
+it. It also holds what the source credits beyond the editable fields: each
+track's composers and other roles, the works it performs and the works those
+nest among, and the composers the source credits on the release as a whole. An *audio unit* is
 what one track plays: a whole file, or one slice a bound CUE sheet carves out of
 an image. Units add up: a disc image with two loose bonus tracks offers
 thirteen.
@@ -666,14 +675,26 @@ folders in name order. Ben's download names its files by title alone, but tags
 `Track Title.mp3` as track 7, so it is the seventh unit: a draft read from the
 tags numbers it 7, and a catalog's tracklist lays its seventh track on it.
 
+Applying a source — a catalog's release, the folder's tags, or nothing —
+writes everything it says into the draft once. The draft points back at
+nothing in the source: the import, the pane, and every later edit read the
+draft alone, so a release its catalog's editors change after it was applied,
+and fetched again, changes nothing the draft imports. A release that lists no
+tracks fills the album fields and leaves each track as it was. A file decision
+(§3.1) keeps each retained track, with every value it holds; a track the folder
+gains takes its title from its tags and has no roles, works or listed length,
+since no source said anything about it, and the draft keeps only the works its
+tracks still perform.
+
 Every draft records who wrote it: nobody yet, the folder's tags, an
 identification, or the person. Every pane control is stored the moment it's
 used, under the candidate's hash, so the person can leave a candidate half
 done and come back to it, even after a restart. Where the pane was, such as a
 half-typed search, is stored too.
 
-The mapping table pairs each unit with its draft track, showing both the
-folder's and the catalog's durations. For a CUE sheet, the person can bind each
+The mapping table pairs each unit with its draft track, showing the length the
+track's source listed beside the folder's own, and marking the two when they
+disagree by more than three seconds. For a CUE sheet, the person can bind each
 `FILE` line to an audio file and say which disc each sheet is, or ignore a
 sheet.
 
@@ -704,10 +725,12 @@ Ana clicks Import. bae:
    library joins it, even when the library already holds that pressing: the
    import is another copy (§2.7). Otherwise the album takes its id from its
    group (§2.6).
-6. **Writes everything in one transaction**: the album; the release, with a
-   fresh random id and the folder's hash; its tracks, files, segments,
-   credits, works, records and cover. The artists are decided in that
-   transaction (§2.3).
+6. **Writes everything in one transaction**, from the draft as it stands, read
+   from no source again: the album; the release, with a fresh random id and the
+   folder's hash; its tracks, files, segments, credits, roles, works, records
+   and cover. A track left untitled takes its file's name. Each credit, role
+   and composer is its own artist credit until that transaction decides which
+   library artist it is (§2.3), so two credits naming one artist write one.
 
 Nothing durable is written before the last step, so a cancel before it leaves
 the library as it was. Once the write begins, a cancel is refused and the
@@ -2023,7 +2046,7 @@ All sync.
 | `release_files` | file of a release: name, size, type, and the audio facts the scan read; carries a file once attached, whose hash and location coven writes |
 | `release_artist_roles` | credit on a release, as the catalog stated it |
 | `release_records` | catalog record of a release: pressing or album, key, album key, URL |
-| `tracks` | track: title, number, duration, Discogs position, playing order, side |
+| `tracks` | track: title, number, duration, playing order, side |
 | `track_artists` | track's artist, in order |
 | `track_artist_roles` | credit on a track, as the catalog stated it |
 | `track_works` | work a track performs, in order |
@@ -2080,11 +2103,12 @@ Keyed by the candidate's content hash.
 | Table | Holds |
 |---|---|
 | `import_candidate_state`, `import_candidate_folder` | the candidate, its revisions, and where it was found |
-| `import_candidate_edit`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft (§3.6) |
+| `import_candidate_edit`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields and each track's listed length (§3.6) |
+| `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_composer`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values |
 | `import_candidate_sheet_disc`, `import_candidate_sheet_reference` | the person's CUE decisions |
 | `import_candidate_cover`, `import_candidate_cover_copy`, `import_candidate_remote_cover_asset` | the chosen cover and its fetched bytes |
-| `import_candidate_source_artist`, `import_candidate_artist_asset`, `import_candidate_asset_preparation` | the artists' fetched pictures, and that all are ready |
-| `import_candidate_draft_provenance`, `import_candidate_applied_source`, `import_candidate_applied_length` | where the draft was read from, and the lengths it was laid against |
+| `import_candidate_artist_asset`, `import_candidate_asset_preparation` | the fetched pictures of every Discogs artist the draft credits, and that all are ready |
+| `import_candidate_draft_provenance` | where the draft was read from |
 | `import_candidate_release_link`, `import_candidate_release_link_partner`, `import_candidate_release_link_album` | the pressing or album the candidate is linked to |
 | `import_candidate_session` | where the pane was, and its last failure |
 | `import_candidate_failure`, `import_candidate_artist_identity_conflict` | why the last import failed |

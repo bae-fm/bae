@@ -119,8 +119,6 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<crate::import::ReleaseUserEdit, LibraryError> {
-        use crate::import::parsed_album_to_user_edit;
-
         let release = self
             .database
             .find_release_by_id(release_id)
@@ -129,7 +127,7 @@ impl LibraryManager {
 
         let records = self.database.get_release_records(release_id).await?;
         let draft_record = records.iter().find(|record| record.reads_draft());
-        let parsed = match (draft_record, release.draft_from_tags) {
+        let values = match (draft_record, release.draft_from_tags) {
             (Some(record), _) => {
                 // The record names which release seeded this one, and stored
                 // releases are keyed by exactly that — so what is read back
@@ -150,23 +148,9 @@ impl LibraryManager {
                     }
                 };
                 let existing_tracks = self.database.get_tracks_for_release(release_id).await?;
-                parsed_for_existing_release(
-                    &source,
-                    record.catalog(),
-                    &existing_tracks,
-                    self.clock.as_ref(),
-                    self.ids.as_ref(),
-                )?
+                values_for_existing_release(&source, record.catalog(), &existing_tracks)?
             }
-            (None, true) => {
-                project_file_metadata(
-                    &self.database,
-                    &release,
-                    self.clock.clone(),
-                    self.ids.clone(),
-                )
-                .await?
-            }
+            (None, true) => project_file_metadata(&self.database, &release).await?,
             (None, false) => {
                 return Err(LibraryError::Import(format!(
                     "release '{release_id}' was read from nothing to reset to"
@@ -174,7 +158,7 @@ impl LibraryManager {
             }
         };
 
-        Ok(parsed_album_to_user_edit(&parsed))
+        Ok(values.user_edit())
     }
 
     /// Re-identify commit: translate the user's `ReleaseReseed` into a fully
@@ -283,14 +267,9 @@ impl LibraryManager {
             .find_release_by_id(release_id)
             .await?
             .ok_or_else(|| LibraryError::Import(format!("Release '{release_id}' not found")))?;
-        let parsed = project_file_metadata(
-            &self.database,
-            &release,
-            self.clock.clone(),
-            self.ids.clone(),
-        )
-        .await?;
-        let edit = crate::import::parsed_album_to_user_edit(&parsed);
+        let edit = project_file_metadata(&self.database, &release)
+            .await?
+            .user_edit();
         let change = self.records_change(release_id, Vec::new(), true).await?;
         let album = change
             .new_album
@@ -461,6 +440,9 @@ impl LibraryManager {
             title: edit.album_title.clone(),
             artist_id: primary_album_artist_id.clone(),
             year: edit.album_year,
+            is_compilation: crate::import::ArtistAssignment::credit_a_compilation(
+                &edit.album_artist_assignments,
+            ),
             ..album
         };
 
@@ -773,15 +755,13 @@ impl LibraryManager {
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn parsed_for_existing_release(
+fn values_for_existing_release(
     release: &crate::import::source_release::SourceRelease,
     source: crate::import::Catalog,
     tracks: &[DbTrack],
-    clock: &dyn coven::Clock,
-    ids: &dyn coven::IdSource,
-) -> Result<crate::import::ParsedAlbum, LibraryError> {
+) -> Result<crate::import::release_values::ReleaseValues, LibraryError> {
     release
-        .parsed(&layout_lengths(source, tracks)?, clock, ids)
+        .values(&layout_lengths(source, tracks)?)
         .map_err(LibraryError::from)
 }
 
@@ -840,16 +820,14 @@ pub(crate) fn stored_track_lengths(tracks: &[DbTrack]) -> Result<Vec<u64>, Libra
         .collect()
 }
 
-/// Project the embedded tags of a release's local audio files into a `ParsedAlbum`,
-/// as the file-metadata import path does. Errors if any audio file is unreachable on disk
-/// (a cloud-only release with no local copy).
+/// Read the embedded tags of a release's local audio files. Errors if any
+/// audio file is unreachable on disk (a cloud-only release with no local
+/// copy).
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 async fn project_file_metadata(
     database: &Database,
     release: &DbRelease,
-    clock: ClockRef,
-    ids: IdSourceRef,
-) -> Result<crate::import::ParsedAlbum, LibraryError> {
+) -> Result<crate::import::release_values::ReleaseValues, LibraryError> {
     let files = database.get_files_for_release(&release.id).await?;
     let mut audio_paths = Vec::new();
     for file in &files {
@@ -880,12 +858,7 @@ async fn project_file_metadata(
     // release was originally imported from.
     let folder_name = release.source_folder_name.clone();
     tokio::task::spawn_blocking(move || {
-        crate::import::file_tag_mapper::map_file_tags_to_db(
-            &audio_paths,
-            folder_name.as_deref(),
-            clock.as_ref(),
-            ids.as_ref(),
-        )
+        crate::import::file_tag_mapper::read_file_tags(&audio_paths, folder_name.as_deref())
     })
     .await
     .map_err(|e| LibraryError::Import(format!("file-tag mapping task failed: {e}")))?

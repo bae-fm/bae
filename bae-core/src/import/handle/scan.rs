@@ -247,41 +247,31 @@ impl ImportServiceHandle {
     }
 
     /// Build a candidate draft from an external release, keeping each current
-    /// track on its file. A release that lists tracks lays them over the
-    /// folder's audio, and is refused when it lists another number of them;
-    /// one that lists none leaves the draft's tracks as they are. Where the
-    /// release states no year, the pressing's is `pressing_year` — see
-    /// `identify::row_facts::pressing_year`.
+    /// track on its file. A release that lists tracks lays every value it
+    /// states over the folder's audio, and is refused when it lists another
+    /// number of them; one that lists none leaves the draft's tracks as they
+    /// are. Where the release states no year, the pressing's is
+    /// `pressing_year` — see `identify::row_facts::pressing_year`.
     pub(crate) fn external_candidate_draft(
         &self,
         release: &crate::import::source_release::SourceRelease,
         durations: &crate::import::probe::SourceDurations,
         current: &crate::import::CandidateDraft,
         pressing_year: Option<i32>,
-    ) -> Result<crate::import::pane::CandidateSourceDraft, crate::import::ImportError> {
+    ) -> Result<crate::import::CandidateDraft, crate::import::ImportError> {
         let audio_durations = current.audio_durations(durations)?;
-        let parsed = release.parsed(&audio_durations, self.clock.as_ref(), self.ids.as_ref())?;
-        let edit = crate::import::RawReleaseEdit::from_user_edit(
-            crate::import::parsed_album_to_user_edit(&parsed),
-            crate::import::pane::CANDIDATE_TRACK_ID_PREFIX,
-        );
-        let mut source = if edit.tracks.is_empty() {
-            crate::import::pane::album_over_draft(edit, current)?
+        let values = release.values(&audio_durations)?;
+        let mut draft = if values.tracks.is_empty() {
+            crate::import::pane::album_over_draft(values, current)
         } else {
-            let mut laid = crate::import::pane::metadata_over_audio(edit, current)?;
-            for (index, track) in laid.draft.tracks.iter_mut().enumerate() {
-                track.source_index =
-                    Some(u32::try_from(index).expect("source track index fits u32"));
-            }
-            laid
+            crate::import::pane::values_over_audio(values, current)?
         };
-        source.source_discogs_artist_ids = crate::import::pane::source_discogs_artist_ids(&parsed);
-        if source.draft.pressing.year.trim().is_empty() {
+        if draft.pressing.year.trim().is_empty() {
             if let Some(year) = pressing_year {
-                source.draft.pressing.year = year.to_string();
+                draft.pressing.year = year.to_string();
             }
         }
-        Ok(source)
+        Ok(draft)
     }
 
     /// Build the metadata for an external release and fetch the artist images
@@ -295,13 +285,12 @@ impl ImportServiceHandle {
         current: &crate::import::CandidateDraft,
         pressing_year: Option<i32>,
     ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
-        let source_draft =
-            self.external_candidate_draft(release, durations, current, pressing_year)?;
+        let draft = self.external_candidate_draft(release, durations, current, pressing_year)?;
         let assets = self
-            .fetch_release_assets(&source_draft, release, &partners)
+            .fetch_release_assets(&draft, release, &partners)
             .await
             .map_err(|failure| failure.error)?;
-        external_metadata_with_assets(source_draft, release, assets, durations, current)
+        Ok(external_metadata_with_assets(draft, release, assets))
     }
 
     /// The artist images and cover `source_draft`, read from an external
@@ -313,15 +302,11 @@ impl ImportServiceHandle {
     /// fails the whole, naming which asset it was for.
     pub(crate) async fn fetch_release_assets(
         &self,
-        source_draft: &crate::import::pane::CandidateSourceDraft,
+        draft: &crate::import::CandidateDraft,
         release: &crate::import::source_release::SourceRelease,
         partners: &[crate::import::source_release::SourceRelease],
     ) -> Result<ReleaseAssets, AssetFetchFailure> {
-        let required_artist_ids = source_draft
-            .source_discogs_artist_ids
-            .union(&source_draft.mapped_credit_discogs_artist_ids)
-            .cloned()
-            .collect();
+        let required_artist_ids = draft.discogs_artist_ids();
         let artist_images = self
             .library_manager
             .prepare_discogs_artist_images(required_artist_ids)
@@ -398,8 +383,6 @@ impl ImportServiceHandle {
                 &read.candidate,
                 read.snapshot,
                 Some(&current.draft.tracks),
-                self.clock.as_ref(),
-                self.ids.as_ref(),
             )?;
             let commit = self
                 .commit_lock_for_revision(
@@ -582,7 +565,7 @@ impl ImportServiceHandle {
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} has no stored import preparation"),
             })?;
-        let mut draft = candidate.blank_source().draft;
+        let mut draft = candidate.blank_draft();
         crate::import::pane::keep_row_identities(&mut draft.tracks, &current.draft.tracks)?;
         let _commit = self
             .commit_lock_for_revision(
@@ -604,7 +587,6 @@ impl ImportServiceHandle {
                 &candidate_key,
                 &crate::import::CandidateMetadataDraft {
                     draft,
-                    source_discogs_artist_ids: Default::default(),
                     provenance: None,
                     cover: None,
                     assets: crate::import::CandidatePreparedAssets::default(),
@@ -802,15 +784,11 @@ impl ImportServiceHandle {
             let mut replacement = current_candidate.clone();
             replacement.files = settled_files.clone();
             let reader = self.file_tags.clone();
-            let clock = self.clock.clone();
-            let ids = self.ids.clone();
             let initialized = tokio::task::spawn_blocking(move || {
                 crate::import::file_metadata_seed::FileMetadataSeed::read(
                     &replacement,
                     stored.scan_generation,
                     reader.as_ref(),
-                    clock.as_ref(),
-                    ids.as_ref(),
                 )
                 .map(|seed| seed.draft)
             })
@@ -824,18 +802,11 @@ impl ImportServiceHandle {
                 &preparation.draft,
                 self.ids.as_ref(),
             );
-            let active = draft.release_edit();
-            let (source_discogs_artist_ids, artist_images) = self
-                .prepared_artist_images_for_active(
-                    preparation.assets.applied_source.as_ref(),
-                    &active,
-                    &draft.tracks,
-                    preparation.assets.artist_images.clone(),
-                )
+            let artist_images = self
+                .prepared_artist_images_for(&draft, preparation.assets.artist_images.clone())
                 .await?;
             let mapping_preparation = crate::import::CandidateMappingPreparation {
                 draft,
-                source_discogs_artist_ids,
                 artist_images,
             };
 
@@ -942,15 +913,13 @@ pub(crate) struct ReleaseAssets {
     )>,
 }
 
-/// The metadata `source_draft`, read from an external release, makes with
-/// the assets fetched for it.
+/// The metadata `draft`, read from an external release, makes with the
+/// assets fetched for it.
 pub(crate) fn external_metadata_with_assets(
-    source_draft: crate::import::pane::CandidateSourceDraft,
+    draft: crate::import::CandidateDraft,
     release: &crate::import::source_release::SourceRelease,
     assets: ReleaseAssets,
-    durations: &crate::import::probe::SourceDurations,
-    current: &crate::import::CandidateDraft,
-) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
+) -> crate::import::CandidateMetadataDraft {
     let (cover, remote_cover) = match assets.cover {
         Some((remote, image)) => (
             Some(crate::import::CoverSelection::Remote(
@@ -961,20 +930,15 @@ pub(crate) fn external_metadata_with_assets(
         ),
         None => (None, None),
     };
-    Ok(crate::import::CandidateMetadataDraft {
-        draft: source_draft.draft,
-        source_discogs_artist_ids: source_draft.source_discogs_artist_ids,
+    crate::import::CandidateMetadataDraft {
+        draft,
         provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
             record: release.release().clone(),
         }),
         cover,
         assets: crate::import::CandidatePreparedAssets {
-            applied_source: Some(crate::import::source_release::AppliedSource {
-                release: release.clone(),
-                audio_durations_ms: current.audio_durations(durations)?,
-            }),
             remote_cover,
             artist_images: assets.artist_images,
         },
-    })
+    }
 }

@@ -1,6 +1,4 @@
 use super::*;
-use coven::FixedClock;
-use coven::SequentialIds;
 use lofty::config::WriteOptions;
 use lofty::tag::items::Timestamp;
 use lofty::tag::{Tag, TagType};
@@ -76,16 +74,7 @@ fn cue_and_loose_audio_both_keep_their_metadata_in_playback_order() {
             })
             .collect(),
     };
-    let clock = FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-            .unwrap()
-            .with_timezone(&chrono::Utc)).into());
-    let parsed = map_file_metadata_to_db(
-        &files,
-        &snapshot,
-        Some("Folder"),
-        &clock,
-        &SequentialIds::new(),
-    )
+    let parsed = file_metadata_values(&files, &snapshot, Some("Folder"))
     .unwrap();
     assert_eq!(
         parsed
@@ -99,20 +88,26 @@ fn cue_and_loose_audio_both_keep_their_metadata_in_playback_order() {
 }
 
 /// Run the mapper with deterministic fakes. Exercises the real
-/// `map_file_tags_to_db`; only the clock/id inputs are faked.
-fn map_tags(audio_files: &[PathBuf]) -> Result<ParsedAlbum, ImportError> {
+/// `read_file_tags`.
+fn map_tags(audio_files: &[PathBuf]) -> Result<ReleaseValues, ImportError> {
     map_tags_with_folder(audio_files, None)
 }
 
 fn map_tags_with_folder(
     audio_files: &[PathBuf],
     folder_name: Option<&str>,
-) -> Result<ParsedAlbum, ImportError> {
-    let clock = FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-            .unwrap()
-            .with_timezone(&chrono::Utc)).into());
-    let ids = SequentialIds::new();
-    map_file_tags_to_db(audio_files, folder_name, &clock, &ids)
+) -> Result<ReleaseValues, ImportError> {
+    read_file_tags(audio_files, folder_name)
+}
+
+/// Each track's number in the draft the reading makes: the number the tags
+/// state, else the track's place in the release.
+fn draft_numbers(values: ReleaseValues) -> Vec<i32> {
+    crate::import::release_values::committed_rows(values)
+        .tracks
+        .iter()
+        .map(|track| track.track_number.expect("a draft numbers every track"))
+        .collect()
 }
 
 fn fixtures_dir() -> PathBuf {
@@ -158,23 +153,19 @@ fn stored_file_tag_facts_project_without_opening_the_source_file() {
         }],
         embedded_cover: None,
     };
-    let clock = FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-            .unwrap()
-            .with_timezone(&chrono::Utc)).into());
-    let ids = SequentialIds::new();
 
     let parsed =
-        map_file_metadata_to_db(&files, &snapshot, Some("Folder Alpha"), &clock, &ids).unwrap();
+        file_metadata_values(&files, &snapshot, Some("Folder Alpha")).unwrap();
 
-    assert_eq!(parsed.album.title, "Album Alpha");
+    assert_eq!(parsed.album_title, "Album Alpha");
     assert_eq!(parsed.tracks[0].title, "Track Alpha");
-    assert!(parsed.release.pressing.facts.media.is_empty());
+    assert!(parsed.pressing.facts.media.is_empty());
 }
 
 /// A folder holding one disc image per sheet, each sheet bound to its image
 /// and assigned its disc in order, read through the file-metadata mapper with
 /// tags that name nothing.
-fn map_cue_folder(sheets: Vec<CueSheet>, folder_name: Option<&str>) -> ParsedAlbum {
+fn map_cue_folder(sheets: Vec<CueSheet>, folder_name: Option<&str>) -> ReleaseValues {
     use crate::import::file_tag_snapshot::{FileObservation, FileTagFact};
     use crate::import::folder_scanner::{
         CandidateFile, CategorizedFiles, FileRole, ScannedFile, SheetAudioFile, SheetBinding,
@@ -242,16 +233,7 @@ fn map_cue_folder(sheets: Vec<CueSheet>, folder_name: Option<&str>) -> ParsedAlb
             })
             .collect(),
     };
-    let clock = FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-            .unwrap()
-            .with_timezone(&chrono::Utc)).into());
-    map_file_metadata_to_db(
-        &files,
-        &snapshot,
-        folder_name,
-        &clock,
-        &SequentialIds::new(),
-    )
+    file_metadata_values(&files, &snapshot, folder_name)
     .unwrap()
 }
 
@@ -286,13 +268,13 @@ fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
         parsed
             .tracks
             .iter()
-            .map(|t| t.track_number)
+            .map(|t| t.number)
             .collect::<Vec<_>>(),
         vec![Some(1), Some(2), Some(3)]
     );
-    assert_eq!(parsed.album.title, "Album Title");
-    assert_eq!(parsed.album.year, Some(1970));
-    assert_eq!(parsed.artists[0].name, "Artist Name");
+    assert_eq!(parsed.album_title, "Album Title");
+    assert_eq!(parsed.album_year, Some(1970));
+    assert_eq!(parsed.album_credits[0].name, "Artist Name");
 }
 
 fn cue_track(number: u32, title: &str) -> crate::cue_flac::CueTrack {
@@ -343,7 +325,7 @@ fn cue_multi_sheet_assigns_side_per_disc() {
         parsed
             .tracks
             .iter()
-            .map(|track| (track.side, track.track_number))
+            .map(|track| (track.side, track.number))
             .collect::<Vec<_>>(),
         [
             (Some(1), Some(1)),
@@ -446,32 +428,33 @@ fn flac_with_vorbis_comments_basic() {
 
     let parsed = map_tags(&[f1, f2]).unwrap();
 
-    assert_eq!(parsed.album.title, "Album Title");
-    assert_eq!(parsed.album.year, Some(1999));
-    assert_eq!(parsed.release.pressing.year, Some(1999));
-    assert!(parsed.release.pressing.facts.media.is_empty());
-    assert!(parsed.release.draft_from_tags);
+    assert_eq!(parsed.album_title, "Album Title");
+    assert_eq!(parsed.album_year, Some(1999));
+    assert_eq!(parsed.pressing.year, Some(1999));
+    assert!(parsed.pressing.facts.media.is_empty());
 
     assert_eq!(parsed.tracks.len(), 2);
     assert_eq!(parsed.tracks[0].title, "Track One");
     assert_eq!(parsed.tracks[0].side, None);
-    assert_eq!(parsed.tracks[0].track_number, Some(1));
+    assert_eq!(parsed.tracks[0].number, Some(1));
     assert_eq!(parsed.tracks[1].title, "Track Two");
-    assert_eq!(parsed.tracks[1].track_number, Some(2));
+    assert_eq!(parsed.tracks[1].number, Some(2));
 
-    assert_eq!(parsed.artists.len(), 1, "single artist for whole album");
-    assert_eq!(parsed.artists[0].name, "Artist Name");
-    assert!(parsed.album_artists.is_empty());
     assert_eq!(
-        parsed.track_artists.len(),
-        2,
-        "every track ARTIST tag emits a junction row, even when it \
-         matches the album artist (mirrors MB/Discogs mappers)"
+        parsed
+            .album_credits
+            .iter()
+            .map(|credit| credit.name.as_str())
+            .collect::<Vec<_>>(),
+        ["Artist Name"],
+        "single artist for whole album"
     );
-    assert!(parsed
-        .track_artists
-        .iter()
-        .all(|ta| ta.artist_id == parsed.artists[0].id));
+    // Every track ARTIST tag is the track's own credit, even when it matches
+    // the album artist (as the catalogs' readers credit each track).
+    assert!(parsed.tracks.iter().all(|track| matches!(
+        &track.credits,
+        TrackCredits::Own(credits) if credits.len() == 1 && credits[0].name == "Artist Name"
+    )));
 }
 
 /// Multi-disc rip: DISCNUMBER + TRACKNUMBER produce side groupings.
@@ -506,13 +489,13 @@ fn flac_multi_disc_groups_by_discnumber() {
 
     assert_eq!(parsed.tracks.len(), 4);
     assert_eq!(parsed.tracks[0].side, Some(1));
-    assert_eq!(parsed.tracks[0].track_number, Some(1));
+    assert_eq!(parsed.tracks[0].number, Some(1));
     assert_eq!(parsed.tracks[1].side, Some(1));
-    assert_eq!(parsed.tracks[1].track_number, Some(2));
+    assert_eq!(parsed.tracks[1].number, Some(2));
     assert_eq!(parsed.tracks[2].side, Some(2));
-    assert_eq!(parsed.tracks[2].track_number, Some(1));
+    assert_eq!(parsed.tracks[2].number, Some(1));
     assert_eq!(parsed.tracks[3].side, Some(2));
-    assert_eq!(parsed.tracks[3].track_number, Some(2));
+    assert_eq!(parsed.tracks[3].number, Some(2));
 }
 
 #[test]
@@ -537,7 +520,8 @@ fn out_of_range_tag_numbers_do_not_wrap_negative() {
     let parsed = map_tags(&[file]).unwrap();
 
     assert_eq!(parsed.tracks[0].side, None);
-    assert_eq!(parsed.tracks[0].track_number, Some(1));
+    assert_eq!(parsed.tracks[0].number, None);
+    assert_eq!(draft_numbers(parsed), [1]);
 }
 
 /// Per-track artist different from album artist → adds an extra
@@ -580,22 +564,27 @@ fn flac_per_track_artist_emits_junction_row() {
 
     let parsed = map_tags(&[f1, f2]).unwrap();
 
-    assert_eq!(parsed.artists.len(), 2);
-    assert_eq!(parsed.artists[0].name, "Album Artist");
-    assert_eq!(parsed.artists[1].name, "Featured Artist");
+    let track_artist = |index: usize| match &parsed.tracks[index].credits {
+        TrackCredits::Own(credits) => credits
+            .iter()
+            .map(|credit| credit.name.as_str())
+            .collect::<Vec<_>>(),
+        TrackCredits::AlbumArtists => Vec::new(),
+    };
+    assert_eq!(track_artist(0), ["Album Artist"]);
+    assert_eq!(track_artist(1), ["Featured Artist"]);
 
-    assert_eq!(parsed.track_artists.len(), 2);
-    assert_eq!(parsed.track_artists[0].track_id, parsed.tracks[0].id);
-    assert_eq!(parsed.track_artists[0].artist_id, parsed.artists[0].id);
-    assert_eq!(parsed.track_artists[1].track_id, parsed.tracks[1].id);
-    assert_eq!(parsed.track_artists[1].artist_id, parsed.artists[1].id);
-
-    // The divergent per-track artist joins the album-artists junction: the
-    // file-tag path scopes album artists to the whole pool, so any artist
-    // introduced by a per-track credit also becomes an album artist.
-    assert_eq!(parsed.album_artists.len(), 1);
-    assert_eq!(parsed.album_artists[0].artist_id, parsed.artists[1].id);
-    assert_eq!(parsed.album_artists[0].position, 1);
+    // The divergent per-track artist is an album artist too, after the
+    // album's own: the file-tag reader credits the album with every artist
+    // its tracks name.
+    assert_eq!(
+        parsed
+            .album_credits
+            .iter()
+            .map(|credit| credit.name.as_str())
+            .collect::<Vec<_>>(),
+        ["Album Artist", "Featured Artist"]
+    );
 }
 
 /// Missing optional tags (no year, no DISCNUMBER) → year is None,
@@ -634,12 +623,12 @@ fn missing_optional_tags_yields_none_and_defaults() {
     );
 
     let parsed = map_tags(&[f1, f2]).unwrap();
-    assert_eq!(parsed.album.year, None);
-    assert_eq!(parsed.release.pressing.year, None);
+    assert_eq!(parsed.album_year, None);
+    assert_eq!(parsed.pressing.year, None);
     assert_eq!(parsed.tracks[0].side, None);
     assert_eq!(parsed.tracks[1].side, None);
-    assert_eq!(parsed.tracks[0].track_number, Some(1));
-    assert_eq!(parsed.tracks[1].track_number, Some(2));
+    assert_eq!(parsed.tracks[0].number, Some(1));
+    assert_eq!(parsed.tracks[1].number, Some(2));
 }
 
 /// Supplied numbers remain unchanged; absent numbers use ordered position.
@@ -678,12 +667,13 @@ fn partial_track_numbers_default_to_order() {
     );
 
     let parsed = map_tags(&[f1, f2]).unwrap();
+    assert_eq!(parsed.tracks[0].number, None);
+    assert_eq!(parsed.tracks[1].number, Some(1));
     assert_eq!(
-        parsed.tracks[0].track_number,
-        Some(1),
+        draft_numbers(parsed),
+        [1, 1],
         "an untagged file uses its ordered position"
     );
-    assert_eq!(parsed.tracks[1].track_number, Some(1));
 }
 
 /// The album-title ladder (ALBUM tag → folder name → empty) and the
@@ -798,19 +788,17 @@ fn album_and_artist_fallback_ladder() {
         );
         let parsed = map_tags_with_folder(&[f], row.folder).unwrap();
         assert_eq!(
-            parsed.album.title, row.expect_title,
+            parsed.album_title, row.expect_title,
             "title for {}",
             row.name
         );
-        // artists[0] is always the primary (album) artist; a divergent
-        // per-track ARTIST may add a second row, which isn't the ladder's
-        // concern here.
+        // The first album credit is the album artist; a divergent per-track
+        // ARTIST may add a second, which isn't the ladder's concern here.
         assert_eq!(
-            parsed.artists[0].name, row.expect_artist,
+            parsed.album_credits[0].name, row.expect_artist,
             "artist for {}",
             row.name
         );
-        assert_eq!(parsed.album.artist_id, parsed.artists[0].id, "{}", row.name);
         assert_eq!(parsed.tracks[0].title, "Track Title", "{}", row.name);
     }
 }
@@ -837,14 +825,7 @@ fn absent_numbers_use_order_across_known_discs() {
         })
         .collect::<Vec<_>>();
     let parsed = map_tags(&files).unwrap();
-    assert_eq!(
-        parsed
-            .tracks
-            .iter()
-            .map(|track| track.track_number)
-            .collect::<Vec<_>>(),
-        [Some(1), Some(2)]
-    );
+    assert_eq!(draft_numbers(parsed), [1, 2]);
 }
 
 #[test]
@@ -858,7 +839,7 @@ fn cue_numbers_are_preserved_instead_of_recreated() {
         parsed
             .tracks
             .iter()
-            .map(|track| track.track_number)
+            .map(|track| track.number)
             .collect::<Vec<_>>(),
         [Some(4), Some(7)]
     );

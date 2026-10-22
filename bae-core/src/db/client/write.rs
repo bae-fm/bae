@@ -176,8 +176,8 @@ pub(super) fn insert_track_row(conn: &SqlContext<'_, '_>, track: &DbTrack) -> Re
         r#"
         INSERT INTO tracks (
             id, release_id, title, side, track_number, duration_ms,
-            discogs_position, created_at, position
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?,
+            created_at, position
+        ) VALUES (?, ?, ?, ?, ?, ?, ?,
             (SELECT COALESCE(MAX(position) + 1, 0) FROM tracks WHERE release_id = ?))
         "#,
         params![
@@ -187,7 +187,6 @@ pub(super) fn insert_track_row(conn: &SqlContext<'_, '_>, track: &DbTrack) -> Re
             track.side,
             track.track_number,
             track.duration_ms,
-            track.discogs_position,
             track.created_at.to_rfc3339(),
             track.release_id,
         ],

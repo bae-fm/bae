@@ -390,7 +390,6 @@ fn make_track(release_id: &str, number: i32) -> DbTrack {
         side: Some(1),
         track_number: Some(number),
         duration_ms: Some(180000),
-        discogs_position: None,
         created_at: now,
     }
 }

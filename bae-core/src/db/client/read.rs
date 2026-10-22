@@ -181,7 +181,6 @@ pub(super) fn get_tracks_with_artists_for_release_on(
             track.side AS track_side,
             track.track_number AS track_track_number,
             track.duration_ms AS track_duration_ms,
-            track.discogs_position AS track_discogs_position,
             track.created_at AS track_created_at,
             artist.id AS artist_id,
             artist.name AS artist_name,
@@ -436,7 +435,6 @@ pub(super) fn row_to_track_with_prefix(row: &Row, prefix: &str) -> rusqlite::Res
         side: row.get(column("side").as_str())?,
         track_number: row.get(column("track_number").as_str())?,
         duration_ms: row.get(column("duration_ms").as_str())?,
-        discogs_position: row.get(column("discogs_position").as_str())?,
         created_at: rfc3339_column(row, &column("created_at"))?,
     })
 }

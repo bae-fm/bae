@@ -248,6 +248,43 @@ impl Database {
         .await
     }
 
+    /// Each track of the release in play order: its title, the MusicBrainz
+    /// ids of the artists credited on it in a role, and of the works it
+    /// performs, each in order.
+    pub async fn track_sources_for_test(
+        &self,
+        release_id: &str,
+    ) -> Result<Vec<(String, Vec<String>, Vec<String>)>, DbError> {
+        let release_id = release_id.to_string();
+        self.read(move |sql| {
+            let tracks = sql.query(
+                "SELECT id, title FROM tracks WHERE release_id = ?1 ORDER BY position",
+                [&release_id],
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            )?;
+            let mut out = Vec::with_capacity(tracks.len());
+            for (track_id, title) in tracks {
+                let roles = sql.query(
+                    "SELECT COALESCE(a.musicbrainz_artist_id, a.name) FROM track_artist_roles r \
+                     JOIN artists a ON a.id = r.artist_id \
+                     WHERE r.track_id = ?1 ORDER BY r.position",
+                    [&track_id],
+                    |row| row.get::<_, String>(0),
+                )?;
+                let works = sql.query(
+                    "SELECT w.musicbrainz_work_id FROM track_works tw \
+                     JOIN works w ON w.id = tw.work_id \
+                     WHERE tw.track_id = ?1 ORDER BY tw.position",
+                    [&track_id],
+                    |row| row.get::<_, String>(0),
+                )?;
+                out.push((title, roles, works));
+            }
+            Ok(out)
+        })
+        .await
+    }
+
     pub async fn committed_track_files_for_test(
         &self,
         release_id: &str,

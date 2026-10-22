@@ -93,7 +93,6 @@ async fn prepare_named_candidate(
             candidate_path,
             &crate::import::CandidateMetadataDraft {
                 draft,
-                source_discogs_artist_ids: preparation.source_discogs_artist_ids,
                 provenance: preparation.metadata_provenance,
                 cover: preparation.cover,
                 assets: preparation.assets,

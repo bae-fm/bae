@@ -23,22 +23,36 @@ fn draft(sides: &[Option<i32>]) -> CandidateDraft {
     draft
 }
 
-/// Release metadata over `sides`, its tracks naming no audio.
-fn metadata(sides: &[Option<i32>]) -> RawReleaseEdit {
-    let mut edit = draft(sides).release_edit();
-    for track in &mut edit.tracks {
-        track.file = None;
+/// A reading of tracks on `sides`.
+fn metadata(sides: &[Option<i32>]) -> ReleaseValues {
+    ReleaseValues {
+        album_title: "Album Title".to_string(),
+        album_credits: Vec::new(),
+        album_year: None,
+        pressing: crate::pressing::Pressing::blank(),
+        release_roles: Vec::new(),
+        works: Default::default(),
+        tracks: sides
+            .iter()
+            .map(|side| crate::import::release_values::TrackValues {
+                title: "Track Title".to_string(),
+                side: *side,
+                number: None,
+                stated_length_ms: None,
+                credits: crate::import::release_values::TrackCredits::AlbumArtists,
+                roles: Vec::new(),
+                works: Vec::new(),
+            })
+            .collect(),
     }
-    edit
 }
 
 /// An LP ripped as one tagged disc takes the record's two sides.
 #[test]
 fn metadata_splits_one_draft_disc_into_sides() {
     let current = draft(&[Some(1), Some(1), Some(1), Some(1)]);
-    let laid = metadata_over_audio(metadata(&[Some(1), Some(1), Some(2), Some(2)]), &current)
-        .unwrap()
-        .draft;
+    let laid = values_over_audio(metadata(&[Some(1), Some(1), Some(2), Some(2)]), &current)
+        .unwrap();
     assert_eq!(laid.tracks[2].edit.side, Some(2));
     assert_eq!(laid.tracks[2].edit.file, current.tracks[2].edit.file);
 }
@@ -47,18 +61,16 @@ fn metadata_splits_one_draft_disc_into_sides() {
 #[test]
 fn metadata_merges_two_draft_discs_into_one() {
     let current = draft(&[Some(1), Some(1), Some(2), Some(2)]);
-    let laid = metadata_over_audio(metadata(&[Some(1), Some(1), Some(1), Some(1)]), &current)
-        .unwrap()
-        .draft;
+    let laid = values_over_audio(metadata(&[Some(1), Some(1), Some(1), Some(1)]), &current)
+        .unwrap();
     assert_eq!(laid.tracks[3].edit.side, Some(1));
 }
 
 #[test]
 fn unknown_sides_do_not_prevent_metadata_application() {
     let current = draft(&[None, None, None, None]);
-    let laid = metadata_over_audio(metadata(&[Some(1), Some(1), Some(2), Some(2)]), &current)
-        .unwrap()
-        .draft;
+    let laid = values_over_audio(metadata(&[Some(1), Some(1), Some(2), Some(2)]), &current)
+        .unwrap();
     assert_eq!(laid.tracks[2].edit.side, Some(2));
     assert_eq!(laid.tracks[2].edit.file, current.tracks[2].edit.file);
 }
@@ -69,9 +81,8 @@ fn metadata_takes_the_identity_of_the_row_it_is_laid_over() {
     let mut current = draft(&[None, None]);
     current.tracks[0].edit.id = "kept-first".into();
     current.tracks[1].edit.id = "kept-second".into();
-    let laid = metadata_over_audio(metadata(&[None, None]), &current)
-        .unwrap()
-        .draft;
+    let laid = values_over_audio(metadata(&[None, None]), &current)
+        .unwrap();
     assert_eq!(
         laid.tracks
             .iter()
@@ -87,7 +98,7 @@ fn metadata_takes_the_identity_of_the_row_it_is_laid_over() {
 fn metadata_with_a_different_track_count_is_refused() {
     let current = draft(&[None, None, None]);
     assert!(matches!(
-        metadata_over_audio(metadata(&[None, None]), &current),
+        values_over_audio(metadata(&[None, None]), &current),
         Err(ImportError::MetadataTrackCount {
             folder_tracks: 3,
             release_tracks: 2,

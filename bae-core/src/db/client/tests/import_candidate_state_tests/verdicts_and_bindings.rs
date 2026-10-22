@@ -125,7 +125,6 @@ fn concluding(mut row: NewImportCandidateVerdict, release_id: &str) -> NewImport
         link: release_link(release_id),
         metadata: crate::import::CandidateMetadataDraft {
             draft: candidate_draft("", ""),
-            source_discogs_artist_ids: Default::default(),
             provenance: Some(release_pick(release_id)),
             cover: None,
             assets: crate::import::CandidatePreparedAssets::default(),

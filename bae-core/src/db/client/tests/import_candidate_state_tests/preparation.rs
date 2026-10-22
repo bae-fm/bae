@@ -11,7 +11,6 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
         .expect("the scanned candidate is prepared");
     let mapping_preparation = crate::import::CandidateMappingPreparation {
         draft: stale.draft.clone(),
-        source_discogs_artist_ids: stale.source_discogs_artist_ids.clone(),
         artist_images: stale.assets.artist_images.clone(),
     };
     crate::import::CandidatePreparations::new(db.clone())
@@ -40,7 +39,6 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
             &pane_candidate_path(),
             &crate::import::CandidateMetadataDraft {
                 draft: stale.draft,
-                source_discogs_artist_ids: stale.source_discogs_artist_ids,
                 provenance: stale.metadata_provenance,
                 cover: stale.cover,
                 assets: stale.assets,
@@ -86,7 +84,6 @@ async fn metadata_replacement_refuses_a_candidate_key_that_now_names_other_files
             &pane_candidate_path(),
             &crate::import::CandidateMetadataDraft {
                 draft: stale.draft,
-                source_discogs_artist_ids: stale.source_discogs_artist_ids,
                 provenance: stale.metadata_provenance,
                 cover: stale.cover,
                 assets: stale.assets,
@@ -169,7 +166,6 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
             &[(pane_candidate_path(), settled)],
             &crate::import::CandidateMappingPreparation {
                 draft: stale.draft.clone(),
-                source_discogs_artist_ids: stale.source_discogs_artist_ids,
                 artist_images: stale.assets.artist_images,
             },
         )
@@ -216,7 +212,6 @@ async fn an_existing_library_artist_needs_no_candidate_image_answer() {
             &pane_candidate_path(),
             &crate::import::CandidateMetadataDraft {
                 draft,
-                source_discogs_artist_ids: Default::default(),
                 provenance: None,
                 cover: None,
                 assets: crate::import::CandidatePreparedAssets::default(),
@@ -527,7 +522,6 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
                 "Track Title",
                 Some(preparation.draft.tracks[0].edit.file.clone()),
             ),
-            &preparation.source_discogs_artist_ids,
             &preparation.assets.artist_images,
         )
         .await
@@ -784,7 +778,6 @@ file_edit_revision: 0,
                 link: release_link("rel-1"),
                 metadata: crate::import::CandidateMetadataDraft {
                 draft: candidate_draft("Different album", "Different Artist"),
-                source_discogs_artist_ids: Default::default(),
                 provenance: Some(release_pick("rel-1")),
                 cover: None,
                 assets: crate::import::CandidatePreparedAssets::default(),
@@ -830,7 +823,6 @@ file_edit_revision: 0,
                 link: release_link("rel-first"),
                 metadata: crate::import::CandidateMetadataDraft {
                 draft: candidate_draft("First album", "Artist"),
-                source_discogs_artist_ids: Default::default(),
                 provenance: Some(first_pick.clone()),
                 cover: None,
                 assets: crate::import::CandidatePreparedAssets::default(),
@@ -855,7 +847,6 @@ file_edit_revision: 0,
                 link: release_link("rel-second"),
                 metadata: crate::import::CandidateMetadataDraft {
                 draft: candidate_draft("Second album", "Different Artist"),
-                source_discogs_artist_ids: Default::default(),
                 provenance: Some(release_pick("rel-second")),
                 cover: None,
                 assets: crate::import::CandidatePreparedAssets::default(),

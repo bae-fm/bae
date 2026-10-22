@@ -123,38 +123,73 @@ mod edit_shaping_tests {
         );
     }
 
+    /// Every artist the draft credits that the import may create needs a
+    /// picture answer: the album's and the tracks' credits, the roles, and the
+    /// works' composers. A picked library artist is never created.
     #[test]
-    fn fileless_tracks_do_not_require_new_artist_images() {
-        let assignment = |name: &str, discogs_artist_id: &str| ArtistAssignment::Credit {
-            credit: ArtistCredit {
-                name: name.to_string(),
+    fn a_draft_needs_an_answer_for_every_discogs_artist_it_credits() {
+        let credit = |name: &str, discogs_artist_id: &str| ArtistCredit {
+            name: name.to_string(),
+            sort_name: None,
+            musicbrainz_artist_id: None,
+            discogs_artist_id: Some(discogs_artist_id.to_string()),
+        };
+        let role = |name: &str, discogs_artist_id: &str| crate::import::CreditedRole {
+            artist: credit(name, discogs_artist_id),
+            source: Catalog::Discogs,
+            role: None,
+        };
+        let mut draft = crate::import::pane::draft_of_edit(RawReleaseEdit {
+            tracks: valid_form()
+                .tracks
+                .into_iter()
+                .map(|track| RawTrackEdit {
+                    file: Some(AudioFile::Standalone {
+                        file_id: "01.flac".to_string(),
+                    }),
+                    ..track
+                })
+                .collect(),
+            ..valid_form()
+        });
+        draft.album_artist_assignments = vec![
+            ArtistAssignment::Credit {
+                credit: credit("Album Artist", "album-artist"),
+            },
+            ArtistAssignment::picked(ExistingArtist {
+                artist_id: "library-artist".to_string(),
+                name: "Library Artist".to_string(),
                 sort_name: None,
                 musicbrainz_artist_id: None,
-                discogs_artist_id: Some(discogs_artist_id.to_string()),
-            },
-        };
-        let mut form = valid_form();
-        form.album_artist_assignments = vec![assignment("Album Artist", "album-artist")];
-        form.tracks[0].artist_assignments =
-            TrackArtistAssignments::Explicit(vec![assignment("Mapped Artist", "mapped-artist")]);
-        form.tracks.push(RawTrackEdit {
-            id: "track-1".to_string(),
-            title: "Unmapped Track".to_string(),
-            artist_assignments: TrackArtistAssignments::Explicit(vec![assignment(
-                "Unmapped Artist",
-                "unmapped-artist",
-            )]),
-            side: Some(1),
-            track_number: Some(2),
-            file: None,
-        });
+                discogs_artist_id: Some("picked-artist".to_string()),
+            }),
+        ];
+        draft.tracks[0].edit.artist_assignments =
+            TrackArtistAssignments::Explicit(vec![ArtistAssignment::Credit {
+                credit: credit("Track Artist", "track-artist"),
+            }]);
+        draft.tracks[0].roles = vec![role("Track Composer", "track-composer")];
+        draft.release_roles = vec![role("Release Composer", "release-composer")];
+        draft.works.works = vec![crate::import::GraphWork {
+            musicbrainz_work_id: "mb-work".to_string(),
+            title: "Work".to_string(),
+            disambiguation: None,
+            work_type: None,
+            composers: vec![credit("Work Composer", "work-composer")],
+        }];
 
         assert_eq!(
-            form.credit_discogs_artist_ids_for_bound_tracks(),
-            std::collections::BTreeSet::from([
-                "album-artist".to_string(),
-                "mapped-artist".to_string(),
-            ])
+            draft.discogs_artist_ids(),
+            std::collections::BTreeSet::from(
+                [
+                    "album-artist",
+                    "release-composer",
+                    "track-artist",
+                    "track-composer",
+                    "work-composer",
+                ]
+                .map(str::to_string)
+            )
         );
     }
 

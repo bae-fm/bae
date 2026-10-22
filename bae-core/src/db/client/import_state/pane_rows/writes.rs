@@ -15,8 +15,6 @@ impl Database {
                 return Ok(None);
             };
             let rows = load_pane_rows_on(&sql, &content_hash)?;
-            let source_discogs_artist_ids =
-                super::prepared_asset_rows::load_source_artist_ids_on(&sql, &content_hash)?;
             let assets = super::prepared_asset_rows::load_prepared_assets_on(
                 &sql,
                 &content_hash,
@@ -29,7 +27,6 @@ impl Database {
                 release_link: state.release_link,
                 cover: rows.cover,
                 draft: rows.draft,
-                source_discogs_artist_ids,
                 assets,
             }))
         })

@@ -134,8 +134,6 @@ pub(super) fn load_preparation_on(
         return Ok(None);
     };
     let rows = load_pane_rows_on(sql, content_hash)?;
-    let source_discogs_artist_ids =
-        prepared_asset_rows::load_source_artist_ids_on(sql, content_hash)?;
     let (assets, assets_prepared) = prepared_asset_rows::load_asset_rows_on(sql, content_hash)?;
     Ok(Some(CandidatePreparation {
         content_hash: state.content_hash,
@@ -145,7 +143,6 @@ pub(super) fn load_preparation_on(
         author: state.metadata_author,
         metadata: crate::import::CandidateMetadataDraft {
             draft: rows.draft,
-            source_discogs_artist_ids,
             provenance: state.metadata_provenance,
             cover: rows.cover,
             assets,
@@ -247,7 +244,6 @@ pub(super) fn save_preparation_on(
     prepared_asset_rows::replace_asset_rows(
         sql,
         content_hash,
-        &prep.metadata.source_discogs_artist_ids,
         &prep.metadata.assets,
         prep.assets_prepared,
     )?;

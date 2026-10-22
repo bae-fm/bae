@@ -72,7 +72,6 @@ fn make_track(release_id: &str, n: i32, title: &str) -> DbTrack {
         side: Some(1),
         track_number: Some(n),
         duration_ms: Some(180_000),
-        discogs_position: None,
         created_at: Utc::now(),
     }
 }

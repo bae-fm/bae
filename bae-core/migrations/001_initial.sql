@@ -366,7 +366,6 @@ CREATE TABLE IF NOT EXISTS tracks (
     title TEXT NOT NULL,
     track_number INTEGER,
     duration_ms INTEGER,
-    discogs_position TEXT,
     created_at TEXT NOT NULL,
     -- Playing order within the release, from zero across all sides.
     position INTEGER NOT NULL DEFAULT 0 CHECK (position >= 0),
@@ -1013,6 +1012,9 @@ CREATE TABLE IF NOT EXISTS import_candidate_album_artist_assignment (
 ) STRICT;
 
 -- The tracks of the draft, each bound to the file (or CUE slice) it plays.
+-- `stated_length_ms` is the length the source the draft was read from lists
+-- for the track, unstated where it lists none or the draft was read from no
+-- catalog.
 CREATE TABLE IF NOT EXISTS import_candidate_track (
     content_hash           TEXT NOT NULL,
     track_id               TEXT NOT NULL,
@@ -1021,7 +1023,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_track (
     artist_assignment_kind TEXT NOT NULL CHECK (artist_assignment_kind IN ('album_artists', 'explicit')),
     side                   INTEGER,
     track_number           INTEGER NOT NULL,
-    source_index           INTEGER CHECK (source_index IS NULL OR source_index >= 0),
+    stated_length_ms       INTEGER CHECK (stated_length_ms IS NULL OR stated_length_ms >= 0),
     file_kind              TEXT NOT NULL CHECK (file_kind IN ('standalone', 'sheet_slice')),
     file_id                TEXT NOT NULL,
     sheet_id               TEXT,
@@ -1057,6 +1059,94 @@ CREATE TABLE IF NOT EXISTS import_candidate_track_artist_assignment (
         OR
         (assignment_kind = 'credit' AND artist_id IS NULL AND name IS NOT NULL AND name <> '')
     )
+) STRICT;
+
+-- Who the source credits on a draft track in a role, as it stated the role
+-- (composers), in its order.
+CREATE TABLE IF NOT EXISTS import_candidate_track_role (
+    content_hash          TEXT NOT NULL,
+    track_id              TEXT NOT NULL,
+    position              INTEGER NOT NULL CHECK (position >= 0),
+    name                  TEXT NOT NULL CHECK (name <> ''),
+    sort_name             TEXT,
+    musicbrainz_artist_id TEXT,
+    discogs_artist_id     TEXT,
+    source                TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
+    role                  TEXT,
+    PRIMARY KEY (content_hash, track_id, position),
+    FOREIGN KEY (content_hash, track_id)
+        REFERENCES import_candidate_track (content_hash, track_id) ON DELETE CASCADE
+) STRICT;
+
+-- Who the source credits in a role on the release itself rather than on one
+-- track (Discogs's release-level composers), in its order.
+CREATE TABLE IF NOT EXISTS import_candidate_release_role (
+    content_hash          TEXT NOT NULL,
+    position              INTEGER NOT NULL CHECK (position >= 0),
+    name                  TEXT NOT NULL CHECK (name <> ''),
+    sort_name             TEXT,
+    musicbrainz_artist_id TEXT,
+    discogs_artist_id     TEXT,
+    source                TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
+    role                  TEXT,
+    PRIMARY KEY (content_hash, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_edit (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- Every MusicBrainz work the draft's tracks perform, and the works those are
+-- parts of or hold as parts, once each, in the order the source reached them.
+CREATE TABLE IF NOT EXISTS import_candidate_work (
+    content_hash        TEXT NOT NULL,
+    musicbrainz_work_id TEXT NOT NULL CHECK (musicbrainz_work_id <> ''),
+    position            INTEGER NOT NULL CHECK (position >= 0),
+    title               TEXT NOT NULL,
+    disambiguation      TEXT,
+    work_type           TEXT,
+    PRIMARY KEY (content_hash, musicbrainz_work_id),
+    UNIQUE (content_hash, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_edit (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- A draft work's composers, in the work's order.
+CREATE TABLE IF NOT EXISTS import_candidate_work_composer (
+    content_hash          TEXT NOT NULL,
+    musicbrainz_work_id   TEXT NOT NULL,
+    position              INTEGER NOT NULL CHECK (position >= 0),
+    name                  TEXT NOT NULL CHECK (name <> ''),
+    sort_name             TEXT,
+    musicbrainz_artist_id TEXT,
+    discogs_artist_id     TEXT,
+    PRIMARY KEY (content_hash, musicbrainz_work_id, position),
+    FOREIGN KEY (content_hash, musicbrainz_work_id)
+        REFERENCES import_candidate_work (content_hash, musicbrainz_work_id) ON DELETE CASCADE
+) STRICT;
+
+-- A draft work that is part of another, in the order the source relates them.
+CREATE TABLE IF NOT EXISTS import_candidate_work_part (
+    content_hash     TEXT NOT NULL,
+    position         INTEGER NOT NULL CHECK (position >= 0),
+    parent_work_id   TEXT NOT NULL,
+    child_work_id    TEXT NOT NULL,
+    PRIMARY KEY (content_hash, position),
+    UNIQUE (content_hash, parent_work_id, child_work_id),
+    FOREIGN KEY (content_hash, parent_work_id)
+        REFERENCES import_candidate_work (content_hash, musicbrainz_work_id) ON DELETE CASCADE,
+    FOREIGN KEY (content_hash, child_work_id)
+        REFERENCES import_candidate_work (content_hash, musicbrainz_work_id) ON DELETE CASCADE
+) STRICT;
+
+-- The works a draft track performs, in the order it performs them.
+CREATE TABLE IF NOT EXISTS import_candidate_track_work (
+    content_hash        TEXT NOT NULL,
+    track_id            TEXT NOT NULL,
+    position            INTEGER NOT NULL CHECK (position >= 0),
+    musicbrainz_work_id TEXT NOT NULL,
+    PRIMARY KEY (content_hash, track_id, position),
+    UNIQUE (content_hash, track_id, musicbrainz_work_id),
+    FOREIGN KEY (content_hash, track_id)
+        REFERENCES import_candidate_track (content_hash, track_id) ON DELETE CASCADE,
+    FOREIGN KEY (content_hash, musicbrainz_work_id)
+        REFERENCES import_candidate_work (content_hash, musicbrainz_work_id) ON DELETE CASCADE
 ) STRICT;
 
 -- Which disc of the release the user said each CUE sheet is, or that it is
@@ -1117,14 +1207,6 @@ CREATE TABLE IF NOT EXISTS import_candidate_remote_cover_asset (
     FOREIGN KEY (content_hash) REFERENCES import_candidate_cover (content_hash) ON DELETE CASCADE
 ) STRICT;
 
--- The Discogs artists the draft credits, so their pictures can be fetched.
-CREATE TABLE IF NOT EXISTS import_candidate_source_artist (
-    content_hash      TEXT NOT NULL,
-    discogs_artist_id TEXT NOT NULL,
-    PRIMARY KEY (content_hash, discogs_artist_id),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
-) STRICT;
-
 -- The picture fetched for one credited artist, or the settled answer that
 -- there is none.
 CREATE TABLE IF NOT EXISTS import_candidate_artist_asset (
@@ -1159,24 +1241,6 @@ CREATE TABLE IF NOT EXISTS import_candidate_draft_provenance (
     FOREIGN KEY (source, release_id) REFERENCES source_release (catalog, release_id),
     CHECK ((kind = 'external_release') = (source IS NOT NULL)),
     CHECK ((kind = 'external_release') = (release_id IS NOT NULL))
-) STRICT;
-
--- Marks that the draft's tracks point into the tracklist of the release its
--- provenance names, as laid out against import_candidate_applied_length.
-CREATE TABLE IF NOT EXISTS import_candidate_applied_source (
-    content_hash TEXT PRIMARY KEY,
-    FOREIGN KEY (content_hash)
-        REFERENCES import_candidate_draft_provenance (content_hash) ON DELETE CASCADE
-) STRICT;
-
--- The measured lengths of the draft's tracks, in order, when it was read.
-CREATE TABLE IF NOT EXISTS import_candidate_applied_length (
-    content_hash TEXT NOT NULL,
-    position     INTEGER NOT NULL CHECK (position >= 0),
-    duration_ms  INTEGER NOT NULL CHECK (duration_ms >= 0),
-    PRIMARY KEY (content_hash, position),
-    FOREIGN KEY (content_hash)
-        REFERENCES import_candidate_applied_source (content_hash) ON DELETE CASCADE
 ) STRICT;
 
 -- What the candidate is linked to in the catalogs: the pressing picked for its

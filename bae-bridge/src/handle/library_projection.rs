@@ -465,7 +465,6 @@ impl BridgeTrackRoleSummary {
             side: _,
             track_number: _,
             duration_ms: _,
-            discogs_position: _,
             created_at: _,
         } = track;
         let bae_core::db::DbAlbum {
@@ -516,7 +515,6 @@ impl BridgeWorkTrackSummary {
             side: _,
             track_number: _,
             duration_ms: _,
-            discogs_position: _,
             created_at: _,
         } = track;
         let bae_core::db::DbAlbum {

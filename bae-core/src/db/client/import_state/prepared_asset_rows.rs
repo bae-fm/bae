@@ -19,25 +19,6 @@ fn validate_remote_cover(
     }
 }
 
-fn replace_source_artist_rows(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    source_discogs_artist_ids: &BTreeSet<String>,
-) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_source_artist WHERE content_hash = ?",
-        [content_hash],
-    )?;
-    for discogs_artist_id in source_discogs_artist_ids {
-        sql.execute(
-            "INSERT INTO import_candidate_source_artist (content_hash, discogs_artist_id) \
-             VALUES (?, ?)",
-            params![content_hash, discogs_artist_id],
-        )?;
-    }
-    Ok(())
-}
-
 fn replace_artist_asset_rows(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
@@ -79,11 +60,11 @@ fn replace_artist_asset_rows(
     Ok(())
 }
 
+/// Every Discogs artist the stored draft credits — what
+/// `CandidateDraft::discogs_artist_ids` reads off the loaded draft: the album
+/// and track artist credits, the roles, and the works' composers.
 const REQUIRED_DISCOGS_ARTIST_IDS_SQL: &str =
-    "SELECT discogs_artist_id FROM import_candidate_source_artist \
-     WHERE content_hash = ? \
-     UNION \
-     SELECT assignment.discogs_artist_id \
+    "SELECT assignment.discogs_artist_id \
      FROM import_candidate_album_artist_assignment assignment \
      WHERE assignment.content_hash = ? \
        AND assignment.assignment_kind = 'credit' \
@@ -96,7 +77,16 @@ const REQUIRED_DISCOGS_ARTIST_IDS_SQL: &str =
       AND track.track_id = assignment.track_id \
      WHERE assignment.content_hash = ? \
        AND assignment.assignment_kind = 'credit' \
-       AND assignment.discogs_artist_id IS NOT NULL";
+       AND assignment.discogs_artist_id IS NOT NULL \
+     UNION \
+     SELECT discogs_artist_id FROM import_candidate_track_role \
+     WHERE content_hash = ? AND discogs_artist_id IS NOT NULL \
+     UNION \
+     SELECT discogs_artist_id FROM import_candidate_release_role \
+     WHERE content_hash = ? AND discogs_artist_id IS NOT NULL \
+     UNION \
+     SELECT discogs_artist_id FROM import_candidate_work_composer \
+     WHERE content_hash = ? AND discogs_artist_id IS NOT NULL";
 
 fn required_discogs_artist_ids_for_read(
     sql: &SqlReadContext<'_>,
@@ -105,7 +95,7 @@ fn required_discogs_artist_ids_for_read(
     Ok(sql
         .query(
             REQUIRED_DISCOGS_ARTIST_IDS_SQL,
-            params![content_hash, content_hash, content_hash],
+            params![content_hash, content_hash, content_hash, content_hash, content_hash],
             |row| row.get(0),
         )?
         .into_iter()
@@ -133,21 +123,6 @@ fn missing_preparation_marker(content_hash: &str) -> DbError {
     ))
 }
 
-pub(super) fn load_source_artist_ids_on(
-    sql: &SqlReadContext<'_>,
-    content_hash: &str,
-) -> Result<BTreeSet<String>, DbError> {
-    Ok(sql
-        .query(
-            "SELECT discogs_artist_id FROM import_candidate_source_artist \
-             WHERE content_hash = ? ORDER BY discogs_artist_id",
-            [content_hash],
-            |row| row.get(0),
-        )?
-        .into_iter()
-        .collect())
-}
-
 /// The rows under the hash as stored, and whether the preparation marker
 /// says they are a complete answer set. No validation: the value they load
 /// into carries its own.
@@ -166,42 +141,15 @@ pub(super) fn load_asset_rows_on(
     Ok((load_asset_rows_unmarked(sql, content_hash)?, prepared))
 }
 
-/// Replace every asset row group under the hash from the value: the source
-/// artists, the remote cover bytes, the artist image answers, and the marker
-/// that says the set is complete.
+/// Replace every asset row group under the hash from the value: the remote
+/// cover bytes, the artist image answers, and the marker that says the set is
+/// complete.
 pub(super) fn replace_asset_rows(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
-    source_discogs_artist_ids: &BTreeSet<String>,
     assets: &CandidatePreparedAssets,
     prepared: bool,
 ) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_applied_source WHERE content_hash = ?",
-        [content_hash],
-    )?;
-    if let Some(source) = &assets.applied_source {
-        // The release itself is the provenance's to name, and its row
-        // references it; what the application adds is the lengths the draft
-        // was laid out against.
-        sql.execute(
-            "INSERT INTO import_candidate_applied_source (content_hash) VALUES (?)",
-            [content_hash],
-        )?;
-        for (position, duration) in source.audio_durations_ms.iter().enumerate() {
-            let duration = i64::try_from(*duration).map_err(|error| {
-                DbError::Message(format!(
-                    "applied length {duration} exceeds SQLite's integer range: {error}"
-                ))
-            })?;
-            sql.execute(
-                "INSERT INTO import_candidate_applied_length (content_hash, position, duration_ms) \
-                 VALUES (?, ?, ?)",
-                params![content_hash, position as i64, duration],
-            )?;
-        }
-    }
-    replace_source_artist_rows(sql, content_hash, source_discogs_artist_ids)?;
     sql.execute(
         "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?",
         [content_hash],
@@ -309,62 +257,8 @@ fn load_asset_rows_unmarked(
         };
         artist_images.push(asset);
     }
-    let applied_source = load_applied_source_on(sql, content_hash)?;
     Ok(CandidatePreparedAssets {
-        applied_source,
         remote_cover,
         artist_images,
     })
-}
-
-/// The release the candidate's draft was applied from — the one its
-/// provenance names, read from its stored row — with the lengths it was laid
-/// out against. `None` when the draft was not applied from a release.
-fn load_applied_source_on(
-    sql: &SqlReadContext<'_>,
-    content_hash: &str,
-) -> Result<Option<crate::import::source_release::AppliedSource>, DbError> {
-    let applied = sql
-        .query_row(
-            "SELECT 1 FROM import_candidate_applied_source WHERE content_hash = ?",
-            [content_hash],
-            |_| Ok(()),
-        )
-        .optional()?
-        .is_some();
-    if !applied {
-        return Ok(None);
-    }
-    let provenance = super::load_provenance_on(sql, Some(content_hash))?.remove(content_hash);
-    let Some(crate::import::MetadataProvenance::ExternalRelease { record }) = provenance else {
-        return Err(DbError::Message(format!(
-            "candidate {content_hash} applies a release its provenance does not name"
-        )));
-    };
-    let release = super::super::source_releases::load_source_release_on(sql, &record)?
-        .ok_or_else(|| {
-            DbError::Message(format!(
-                "candidate {content_hash} applies {} release {} that nothing stored",
-                record.catalog.as_str(),
-                record.key
-            ))
-        })?;
-    let audio_durations_ms = sql
-        .query(
-            "SELECT duration_ms FROM import_candidate_applied_length \
-             WHERE content_hash = ? ORDER BY position",
-            [content_hash],
-            |row| row.get::<_, i64>(0),
-        )?
-        .into_iter()
-        .map(|duration| {
-            u64::try_from(duration).map_err(|error| {
-                DbError::Message(format!("candidate {content_hash} has a negative applied length: {error}"))
-            })
-        })
-        .collect::<Result<_, _>>()?;
-    Ok(Some(crate::import::source_release::AppliedSource {
-        release,
-        audio_durations_ms,
-    }))
 }

@@ -14,9 +14,9 @@ use {
     crate::import::folder_scanner::ScanItem,
     crate::import::audio_layout::resolve_track_files,
     crate::import::types::{
-        AudioFile, Catalog, CoverSelection, ImportPhase, PrepareStep, TrackFile,
+        Catalog, CoverSelection, ImportPhase, PrepareStep, TrackFile,
     },
-    crate::import::ParsedWorkGraph,
+    crate::import::WorkGraphRows,
     std::collections::{HashMap, HashSet},
     std::path::{Path, PathBuf},
     std::sync::Arc,
@@ -84,7 +84,7 @@ struct PreparedMetadata {
     /// Empty when the release joins an album already in the library.
     album_artists: Vec<DbAlbumArtist>,
     /// Works resolved; `work_artists` still name their artist by credit.
-    work_graph: ParsedWorkGraph,
+    work_graph: WorkGraphRows,
     release_artist_roles: Vec<DbReleaseArtistRole>,
     track_artist_roles: Vec<DbTrackArtistRole>,
     /// Every artist the links above name, as the source or the person said.
@@ -593,208 +593,6 @@ fn spawn_root_scan(
         }
     });
     RootScanTask { cancellation, task }
-}
-
-/// Rebuild the tracks in the draft's order, reusing the source track each row
-/// names and dropping the credits and works of source tracks left out. Returns
-/// each track's audio binding.
-fn settle_track_rows(
-    parsed: &mut crate::import::ParsedAlbum,
-    draft: &crate::import::CandidateDraft,
-    ids: &dyn coven::IdSource,
-    now: chrono::DateTime<chrono::Utc>,
-) -> Result<Vec<AudioFile>, crate::import::ImportError> {
-    let mut seeded: Vec<Option<crate::db::DbTrack>> = std::mem::take(&mut parsed.tracks)
-        .into_iter()
-        .map(Some)
-        .collect();
-    let mut tracks = Vec::with_capacity(draft.tracks.len());
-    let mut bindings = Vec::with_capacity(draft.tracks.len());
-    for row in &draft.tracks {
-        let track = match row.source_index {
-            Some(index) => seeded
-                .get_mut(index as usize)
-                .and_then(Option::take)
-                .ok_or_else(|| crate::import::ImportError::Internal {
-                    detail: format!(
-                        "draft track {} names unavailable source track {index}",
-                        row.edit.id
-                    ),
-                })?,
-            None => crate::db::DbTrack {
-                id: ids.new_id().to_string(),
-                release_id: parsed.release.id.clone(),
-                title: row.edit.title.clone(),
-                side: row.edit.side,
-                track_number: Some(row.edit.track_number),
-                duration_ms: None,
-                discogs_position: None,
-                created_at: now,
-            },
-        };
-        tracks.push(track);
-        bindings.push(row.edit.file.clone());
-    }
-    let retained_track_ids = tracks.iter().map(|track| track.id.clone()).collect();
-    retain_track_metadata(parsed, &retained_track_ids);
-    parsed.tracks = tracks;
-    Ok(bindings)
-}
-
-pub(crate) fn retain_track_metadata(
-    parsed: &mut crate::import::ParsedAlbum,
-    retained_track_ids: &HashSet<String>,
-) {
-    parsed
-        .track_artists
-        .retain(|link| retained_track_ids.contains(&link.track_id));
-    parsed
-        .track_artist_roles
-        .retain(|role| retained_track_ids.contains(&role.track_id));
-    parsed
-        .work_graph
-        .track_works
-        .retain(|link| retained_track_ids.contains(&link.track_id));
-
-    let graph = &mut parsed.work_graph;
-    let mut retained: HashSet<String> = graph
-        .track_works
-        .iter()
-        .map(|link| link.work_id.clone())
-        .collect();
-    loop {
-        let before = retained.len();
-        for part in &graph.work_parts {
-            if retained.contains(&part.parent_work_id) || retained.contains(&part.child_work_id) {
-                retained.insert(part.parent_work_id.clone());
-                retained.insert(part.child_work_id.clone());
-            }
-        }
-        if retained.len() == before {
-            break;
-        }
-    }
-    graph.works.retain(|work| retained.contains(&work.id));
-    graph
-        .work_artists
-        .retain(|link| retained.contains(&link.work_id));
-    graph.work_parts.retain(|part| {
-        retained.contains(&part.parent_work_id) && retained.contains(&part.child_work_id)
-    });
-}
-
-/// Apply the person's edit to the seeded album, release, and tracks, and
-/// rebuild the album's and each explicit track's artist links from it. Returns
-/// the ids of picked library artists, which the commit links as they are.
-fn apply_user_edit_to_seed(
-    edit: &crate::import::ReleaseUserEdit,
-    seed: &mut crate::import::ParsedAlbum,
-    clock: &dyn coven::Clock,
-    ids: &dyn coven::IdSource,
-) -> Result<HashSet<String>, crate::import::ImportError> {
-    use crate::db::{DbAlbumArtist, DbTrackArtist};
-
-    let crate::import::ParsedAlbum {
-        album: db_album,
-        release: db_release,
-        tracks: db_tracks,
-        artists,
-        album_artists,
-        track_artists,
-        ..
-    } = seed;
-
-    if edit.album_artist_assignments.is_empty() {
-        return Err(crate::import::EditValidationError::NoAlbumArtist.into());
-    }
-    if edit.tracks.len() != db_tracks.len() {
-        return Err(crate::import::ImportError::Internal {
-            detail: format!(
-                "Track count mismatch: seed has {} tracks, edit supplies {}",
-                db_tracks.len(),
-                edit.tracks.len()
-            ),
-        });
-    }
-
-    let now = chrono::DateTime::<chrono::Utc>::from(clock.now());
-    let mut picked_artist_ids = HashSet::new();
-
-    db_album.title = edit.album_title.clone();
-    db_album.year = edit.album_year;
-    db_album.artist_id = materialize_artist_assignment(
-        &edit.album_artist_assignments[0],
-        artists,
-        &mut picked_artist_ids,
-        ids,
-        now,
-    );
-
-    db_release.pressing = edit.pressing.clone();
-
-    for (track, t_edit) in db_tracks.iter_mut().zip(edit.tracks.iter()) {
-        track.title = t_edit.title.clone();
-        track.side = t_edit.side;
-        track.track_number = t_edit.track_number;
-    }
-
-    album_artists.clear();
-    for (position, assignment) in edit.album_artist_assignments.iter().enumerate().skip(1) {
-        let artist_id =
-            materialize_artist_assignment(assignment, artists, &mut picked_artist_ids, ids, now);
-        album_artists.push(DbAlbumArtist::new(
-            &db_album.id,
-            &artist_id,
-            position as i32,
-            now,
-        ));
-    }
-
-    for (track, t_edit) in db_tracks.iter().zip(edit.tracks.iter()) {
-        track_artists.retain(|credit| credit.track_id != track.id);
-        if let crate::import::TrackArtistAssignments::Explicit(assignments) =
-            &t_edit.artist_assignments
-        {
-            for (position, assignment) in assignments.iter().enumerate() {
-                let artist_id = materialize_artist_assignment(
-                    assignment,
-                    artists,
-                    &mut picked_artist_ids,
-                    ids,
-                    now,
-                );
-                track_artists.push(DbTrackArtist::new(
-                    &track.id,
-                    &artist_id,
-                    position as i32,
-                    now,
-                ));
-            }
-        }
-    }
-
-    Ok(picked_artist_ids)
-}
-
-/// The artist row one assignment links: a picked library artist as itself,
-/// recorded in `picked`; a credit as a new credit row.
-fn materialize_artist_assignment(
-    assignment: &crate::import::ArtistAssignment,
-    artists: &mut Vec<crate::db::DbArtist>,
-    picked: &mut HashSet<String>,
-    ids: &dyn coven::IdSource,
-    now: chrono::DateTime<chrono::Utc>,
-) -> String {
-    let artist = assignment.write_row(ids, now);
-    let id = artist.id.clone();
-    if matches!(assignment, crate::import::ArtistAssignment::Picked { .. }) {
-        picked.insert(id.clone());
-        if artists.iter().any(|candidate| candidate.id == id) {
-            return id;
-        }
-    }
-    artists.push(artist);
-    id
 }
 
 /// The release `release_ref` names, from storage or fetched and stored now. A

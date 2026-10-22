@@ -17,7 +17,6 @@ pub(crate) fn same_artist_name(a: &str, b: &str) -> bool {
 
 /// Whether `name` is the credit a catalog gives a compilation instead of an
 /// artist: "Various" or "Various Artists", in any case.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn is_various_artists(name: &str) -> bool {
     let lower = name.trim().to_lowercase();
     lower == "various" || lower == "various artists"

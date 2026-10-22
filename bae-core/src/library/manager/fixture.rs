@@ -167,7 +167,6 @@ impl LibraryManager {
                 side: Some(1),
                 track_number: Some(number as i32 + 1),
                 duration_ms: Some(180_000),
-                discogs_position: None,
                 created_at: added,
             })
             .collect();

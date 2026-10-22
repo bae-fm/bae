@@ -195,7 +195,8 @@ pub enum ImportError {
         reason: crate::import::grouping::GroupingBlock,
     },
 
-    /// The user-edit overlay is invalid (reuses the editor's typed error).
+    /// The draft or edit does not shape into a savable one (the editor's
+    /// typed error).
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error(transparent)]
     Edit(#[from] crate::import::EditValidationError),

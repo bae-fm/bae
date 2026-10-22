@@ -1,13 +1,11 @@
-//! The editor's form and the stored draft that shares its shape.
+//! The editor's form.
 //!
 //! The form is text as typed; [`RawReleaseEdit::shape`] turns it into the
 //! wire edit and is the one place the typed text is validated. A candidate's
-//! draft is the same album fields over rows that also carry each track's
-//! physical decision.
+//! draft ([`super::CandidateDraft`]) projects its editable fields into this
+//! form.
 
 use super::*;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-use crate::import::ImportError;
 
 /// Edit-metadata form values exactly as the editor holds them — text the user
 /// typed, not yet normalized. Artist assignments retain their identity while
@@ -21,100 +19,12 @@ use crate::import::ImportError;
 /// [`ReleaseUserEdit`]. [`from_user_edit`](RawReleaseEdit::from_user_edit) is
 /// the reverse, seeding this form from a wire edit.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct RawReleaseEditOf<Track> {
+pub struct RawReleaseEdit {
     pub album_title: String,
     pub album_artist_assignments: Vec<ArtistAssignment>,
     pub album_year: String,
     pub pressing: RawPressingEdit,
-    pub tracks: Vec<Track>,
-}
-
-/// The editor's form: album fields over the rows a person edits.
-pub type RawReleaseEdit = RawReleaseEditOf<RawTrackEdit>;
-
-/// A candidate's stored draft: the same album fields over one
-/// [`CandidateTrack`] per audio unit of the folder, in the folder's order.
-/// Track `i` plays unit `i`; the folder's order, not an edit, decides which
-/// audio a track plays.
-pub type CandidateDraft = RawReleaseEditOf<CandidateTrack>;
-
-/// A track included in the candidate. Its audio and number are required.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CandidateTrack {
-    pub edit: RawTrackEdit<AudioFile, i32>,
-    /// The track in the applied source document that supplied supplemental
-    /// credits. Audio the folder gained after the source was applied has
-    /// none.
-    pub source_index: Option<u32>,
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl CandidateTrack {
-    pub fn from_edit(edit: RawTrackEdit, position: usize) -> Result<Self, ImportError> {
-        let file = edit.file.ok_or_else(|| ImportError::Internal {
-            detail: format!("draft track {} has no audio", edit.id),
-        })?;
-        Ok(Self {
-            edit: RawTrackEdit {
-                id: edit.id,
-                title: edit.title,
-                artist_assignments: edit.artist_assignments,
-                side: edit.side,
-                track_number: edit.track_number.unwrap_or_else(|| {
-                    i32::try_from(position + 1).expect("track position fits i32")
-                }),
-                file,
-            },
-            source_index: None,
-        })
-    }
-}
-
-impl RawTrackEdit<AudioFile, i32> {
-    /// Cross the editor boundary without weakening the stored draft's shape.
-    pub fn as_edit(&self) -> RawTrackEdit {
-        RawTrackEdit {
-            id: self.id.clone(),
-            title: self.title.clone(),
-            artist_assignments: self.artist_assignments.clone(),
-            side: self.side,
-            track_number: Some(self.track_number),
-            file: Some(self.file.clone()),
-        }
-    }
-}
-
-impl CandidateDraft {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn audio_durations(
-        &self,
-        durations: &crate::import::probe::SourceDurations,
-    ) -> Result<Vec<u64>, ImportError> {
-        self.tracks
-            .iter()
-            .map(|track| {
-                durations
-                    .duration_of(&track.edit.file)
-                    .ok_or_else(|| ImportError::Internal {
-                        detail: format!("draft track {} has no measured audio", track.edit.id),
-                    })
-            })
-            .collect()
-    }
-
-    pub fn release_edit(&self) -> RawReleaseEdit {
-        RawReleaseEditOf {
-            album_title: self.album_title.clone(),
-            album_artist_assignments: self.album_artist_assignments.clone(),
-            album_year: self.album_year.clone(),
-            pressing: self.pressing.clone(),
-            tracks: self
-                .tracks
-                .iter()
-                .map(|track| track.edit.as_edit())
-                .collect(),
-        }
-    }
+    pub tracks: Vec<RawTrackEdit>,
 }
 
 impl RawReleaseEdit {
@@ -137,32 +47,9 @@ impl RawReleaseEdit {
                     )
             })
     }
-
-    /// Discogs identities on album artist credits and on the credits of track
-    /// rows that have audio bound — every artist the import may create, and so
-    /// may need a prepared picture for. A picked library artist is never
-    /// created; fileless rows do not become tracks.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn credit_discogs_artist_ids_for_bound_tracks(
-        &self,
-    ) -> std::collections::BTreeSet<String> {
-        self.album_artist_assignments
-            .iter()
-            .chain(self.tracks.iter().flat_map(|track| {
-                match (&track.artist_assignments, track.file.is_some()) {
-                    (TrackArtistAssignments::Explicit(assignments), true) => assignments.as_slice(),
-                    _ => &[],
-                }
-            }))
-            .filter_map(|assignment| match assignment {
-                ArtistAssignment::Picked { .. } => None,
-                ArtistAssignment::Credit { credit } => credit.discogs_artist_id.clone(),
-            })
-            .collect()
-    }
 }
 
-impl<Track: AsRef<TrackArtistAssignments>> RawReleaseEditOf<Track> {
+impl RawReleaseEdit {
     /// Every artist credit the form carries, the album's first, then each
     /// track's own; picked library artists are not credits.
     pub(crate) fn credits(&self) -> impl Iterator<Item = &ArtistCredit> {
@@ -171,21 +58,9 @@ impl<Track: AsRef<TrackArtistAssignments>> RawReleaseEditOf<Track> {
             .chain(
                 self.tracks
                     .iter()
-                    .flat_map(|track| track.as_ref().explicit()),
+                    .flat_map(|track| track.artist_assignments.explicit()),
             )
             .filter_map(ArtistAssignment::credit)
-    }
-}
-
-impl<File, Number> AsRef<TrackArtistAssignments> for RawTrackEdit<File, Number> {
-    fn as_ref(&self) -> &TrackArtistAssignments {
-        &self.artist_assignments
-    }
-}
-
-impl AsRef<TrackArtistAssignments> for CandidateTrack {
-    fn as_ref(&self) -> &TrackArtistAssignments {
-        &self.edit.artist_assignments
     }
 }
 

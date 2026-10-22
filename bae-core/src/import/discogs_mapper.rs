@@ -1,18 +1,13 @@
-use super::assemble::{
-    assemble_parsed_album, AlbumArtistScope, ArtistRef, ReleaseIr, ReleaseRole, TrackEvent, TrackIr,
-};
-use super::ParsedAlbum;
-use crate::text_match::is_various_artists;
-use crate::pressing::{PhysicalMedium, Pressing, PressingFacts, ReleaseArea, StatedMedia};
 use crate::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack};
 use crate::import::medium_coverage::MediumCoverage;
+use crate::import::release_values::{position_number, ReleaseValues, TrackCredits, TrackValues};
 use crate::import::search::ReleaseTrack;
 use crate::import::source_release::{
-    ArtistCredit, CatalogFacts, EntryKind, RoleCredit, SourceMedium, SourceRelease, TracklistEntry,
+    CatalogFacts, DisplayCredit, EntryKind, RoleCredit, SourceMedium, SourceRelease,
+    TracklistEntry,
 };
-use crate::import::{Catalog, ImportError, MetadataRef};
-use coven::Clock;
-use coven::IdSource;
+use crate::import::{ArtistCredit, Catalog, CreditedRole, ImportError};
+use crate::pressing::{PhysicalMedium, Pressing, PressingFacts, ReleaseArea, StatedMedia};
 use std::collections::HashSet;
 use tracing::{debug, warn};
 
@@ -29,11 +24,11 @@ fn discogs_role_is_composer(role: &str) -> bool {
         || compact.contains("composer")
 }
 
-/// An [`ArtistRef`] for a Discogs artist: the display name doubles as its own
+/// The credit of a Discogs artist: the display name doubles as its own
 /// sort name, and the Discogs artist id (when present) is what dedups the pool.
 /// Discogs artists carry no MusicBrainz id.
-fn discogs_artist_ref(name: String, discogs_artist_id: Option<String>) -> ArtistRef {
-    ArtistRef {
+fn discogs_artist_ref(name: String, discogs_artist_id: Option<String>) -> ArtistCredit {
+    ArtistCredit {
         name: name.clone(),
         sort_name: Some(name),
         musicbrainz_artist_id: None,
@@ -41,9 +36,9 @@ fn discogs_artist_ref(name: String, discogs_artist_id: Option<String>) -> Artist
     }
 }
 
-/// An [`ArtistRef`] for a Discogs role credit. The display name is the
+/// The credit of a Discogs role artist. The display name is the
 /// `credited_name`, falling back to the canonical name (logged) when absent.
-fn discogs_role_artist_ref(credit: &DiscogsRoleArtist) -> ArtistRef {
+fn discogs_role_artist_ref(credit: &DiscogsRoleArtist) -> ArtistCredit {
     let name = match credit.credited_name.clone() {
         Some(name) => name,
         None => {
@@ -58,8 +53,8 @@ fn discogs_role_artist_ref(credit: &DiscogsRoleArtist) -> ArtistRef {
     discogs_artist_ref(name, credit.id.clone())
 }
 
-/// An [`ArtistRef`] for a Discogs display credit, keyed on its canonical name.
-pub(crate) fn discogs_track_artist_ref(credit: &DiscogsArtist) -> ArtistRef {
+/// The credit of a Discogs display artist, keyed on its canonical name.
+pub(crate) fn discogs_track_artist_ref(credit: &DiscogsArtist) -> ArtistCredit {
     discogs_artist_ref(credit.name.clone(), Some(credit.id.clone()))
 }
 
@@ -67,7 +62,7 @@ pub(crate) fn discogs_track_artist_ref(credit: &DiscogsArtist) -> ArtistRef {
 pub(crate) fn metadata(release: &DiscogsRelease) -> super::release_metadata::ReleaseMetadata {
     // With no artists list, fall back to the artist half of the "Artist - Album"
     // title split.
-    let release_refs: Vec<ArtistRef> = if release.artists.is_empty() {
+    let release_refs: Vec<ArtistCredit> = if release.artists.is_empty() {
         match crate::discogs::split_title(&release.title).and_then(|(artist, _)| artist) {
             Some(name) => vec![discogs_artist_ref(name.to_owned(), None)],
             None => Vec::new(),
@@ -233,7 +228,7 @@ fn tracklist_entry(release_id: &str, row: &DiscogsTrack, kind: EntryKind) -> Tra
             .artists
             .iter()
             .enumerate()
-            .map(|(position, artist)| ArtistCredit {
+            .map(|(position, artist)| DisplayCredit {
                 position: position as i32,
                 credited_name: artist.name.clone(),
                 artist: Some(discogs_track_artist_ref(artist)),
@@ -292,28 +287,26 @@ pub(crate) fn detail_tracks(
         .collect()
 }
 
-pub(crate) fn map(
+/// What the covered mediums of a Discogs release say the audio's tracks are,
+/// its tracklist laid out against `audio_durations_ms`.
+pub(crate) fn values(
     release: &SourceRelease,
     coverage: &MediumCoverage,
     audio_durations_ms: Option<&[u64]>,
-    clock: &dyn Clock,
-    ids: &dyn IdSource,
-) -> Result<ParsedAlbum, ImportError> {
+) -> Result<ReleaseValues, ImportError> {
     let release_id = &release.release.key;
     let entries = release.covered_entries(coverage);
     let processed = process_tracklist(&entries, audio_durations_ms);
-    let mut metadata = release.metadata.clone();
-    let primary_artist = metadata.album.take_primary(Catalog::Discogs, release_id)?;
-    let is_compilation = is_various_artists(&primary_artist.name);
+    let metadata = release.metadata.clone();
+    metadata.album.require_artists(Catalog::Discogs, release_id)?;
 
     let release_roles = match &release.catalog {
         CatalogFacts::Discogs { release_roles, .. } => release_roles
             .iter()
-            .map(|role| ReleaseRole {
-                position: role.position,
+            .map(|role| CreditedRole {
                 artist: role.artist.clone(),
                 source: Catalog::Discogs,
-                source_credit: role.role.clone(),
+                role: role.role.clone(),
             })
             .collect(),
         CatalogFacts::MusicBrainz { .. } => {
@@ -321,69 +314,55 @@ pub(crate) fn map(
         }
     };
 
-    let tracks: Vec<TrackIr> = processed
-        .iter()
-        .map(|pt| discogs_track_ir(formats(release), pt))
-        .collect();
-
-    let ir = ReleaseIr {
+    Ok(ReleaseValues {
         album_title: metadata.album.title,
-        primary_artist,
-        additional_artists: metadata.album.artists,
+        album_credits: metadata.album.artists,
         album_year: metadata.album.year,
-        is_compilation,
         pressing: metadata.pressing,
-        metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
-            record: MetadataRef::new(Catalog::Discogs, release_id.clone()),
-        }),
-        album_artist_scope: AlbumArtistScope::ReleaseCredits,
         release_roles,
-        tracks,
-    };
-
-    Ok(assemble_parsed_album(ir, clock, ids))
+        works: Default::default(),
+        tracks: processed
+            .iter()
+            .map(|pt| discogs_track_values(formats(release), pt))
+            .collect(),
+    })
 }
 
-/// Build one track's IR from a processed Discogs track. Role credits precede
-/// display credits per source row (preserving the artist-pool discovery order);
-/// display credits are deduped across a collapsed track's source rows by Discogs
-/// artist id, first occurrence wins, with positions compacted `0..n`.
-fn discogs_track_ir(formats: &StatedMedia, pt: &ProcessedTrack) -> TrackIr {
-    let mut events: Vec<TrackEvent> = Vec::new();
+/// One track's values from a processed Discogs track. A collapsed track holds
+/// every source row's composers, and its display artists once each by Discogs
+/// artist id, first occurrence winning.
+fn discogs_track_values(formats: &StatedMedia, pt: &ProcessedTrack) -> TrackValues {
+    let mut roles = Vec::new();
+    let mut credits: Vec<ArtistCredit> = Vec::new();
     let mut seen_credit_ids: HashSet<Option<String>> = HashSet::new();
-    let mut credit_position = 0i32;
-
     for discogs_track in &pt.source_tracks {
-        for role in &discogs_track.roles {
-            events.push(TrackEvent::Role {
-                position: role.position,
-                artist: role.artist.clone(),
-                source: Catalog::Discogs,
-                source_credit: role.role.clone(),
-            });
-        }
-
+        roles.extend(discogs_track.roles.iter().map(|role| CreditedRole {
+            artist: role.artist.clone(),
+            source: Catalog::Discogs,
+            role: role.role.clone(),
+        }));
         for artist in discogs_track
             .credits
             .iter()
             .filter_map(|credit| credit.artist.as_ref())
         {
             if seen_credit_ids.insert(artist.discogs_artist_id.clone()) {
-                events.push(TrackEvent::Credit {
-                    position: credit_position,
-                    artist: artist.clone(),
-                });
-                credit_position += 1;
+                credits.push(artist.clone());
             }
         }
     }
-
-    TrackIr {
+    TrackValues {
         title: pt.title.clone(),
         side: release_track_side(formats, pt),
-        number: super::assemble::position_number(&pt.position),
-        source_position: Some(pt.position.clone()),
-        events,
+        number: position_number(&pt.position),
+        stated_length_ms: pt.duration_ms,
+        credits: if credits.is_empty() {
+            TrackCredits::AlbumArtists
+        } else {
+            TrackCredits::Own(credits)
+        },
+        roles,
+        works: Vec::new(),
     }
 }
 

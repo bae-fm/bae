@@ -217,7 +217,6 @@ async fn insert_n_tracks(database: &Database, release_id: &str, n: usize) {
             side: Some(1),
             track_number: Some(i as i32),
             duration_ms: None,
-            discogs_position: None,
             created_at: Utc::now(),
         };
         database.insert_track(&track).await.unwrap();
@@ -474,7 +473,6 @@ async fn re_identify_with_file_metadata_reseeds_rows_from_file_tags() {
             side: Some(1),
             track_number: Some(i as i32 + 1),
             duration_ms: None,
-            discogs_position: None,
             created_at: Utc::now(),
         };
         manager.database.insert_track(&track).await.unwrap();
@@ -589,7 +587,6 @@ async fn re_identify_with_file_metadata_replaces_previously_edited_fields() {
         side: Some(1),
         track_number: Some(1),
         duration_ms: None,
-        discogs_position: None,
         created_at: Utc::now(),
     };
     manager.database.insert_track(&track).await.unwrap();

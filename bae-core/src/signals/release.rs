@@ -449,7 +449,6 @@ mod tests {
                 side: Some(1),
                 track_number: Some(n),
                 duration_ms: Some(180_000 + n as i64),
-                discogs_position: None,
                 created_at: Utc::now(),
             };
             database.insert_track(&track).await.unwrap();

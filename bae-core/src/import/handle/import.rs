@@ -508,13 +508,13 @@ impl ImportServiceHandle {
                 .library_manager
                 .load_import_candidate_prepared_assets(&content_hash)
                 .await?;
-            let source_draft = crate::import::pane::metadata_over_audio(
+            let draft = crate::import::pane::edit_over_audio(
                 crate::import::RawReleaseEdit::from_user_edit(edit, "test-import-track"),
                 &rows.draft,
             )?;
             assets.artist_images = self
                 .library_manager
-                .prepare_discogs_artist_images(source_draft.mapped_credit_discogs_artist_ids.clone())
+                .prepare_discogs_artist_images(draft.discogs_artist_ids())
                 .await?;
             self.preparations
                 .apply_source(
@@ -526,8 +526,7 @@ impl ImportServiceHandle {
                     },
                     &command.candidate_key,
                     &crate::import::CandidateMetadataDraft {
-                        draft: source_draft.draft,
-                        source_discogs_artist_ids: Default::default(),
+                        draft,
                         // An edit of the draft the command applied, which
                         // stays read from where it was; with none applied,
                         // the draft is typed in, read from nowhere.

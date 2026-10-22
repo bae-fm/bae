@@ -237,17 +237,11 @@ async fn lead_metadata(
             return Ok(None);
         }
     };
-    crate::import::external_metadata_with_assets(
+    Ok(Some(crate::import::external_metadata_with_assets(
         source_draft,
         release,
         assets,
-        durations,
-        &current.draft,
-    )
-    .map(Some)
-    .map_err(|error| Settled::Unwritable {
-        error: error.to_string(),
-    })
+    )))
 }
 
 /// The lookup failure a catalog's `failure` to give `asset` is.

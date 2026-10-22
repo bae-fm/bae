@@ -1,5 +1,4 @@
-use super::assemble::ArtistRef;
-use super::{Catalog, ImportError};
+use super::{ArtistCredit, Catalog, ImportError};
 use crate::pressing::Pressing;
 
 /// Album facts can come from a release or its parent without claiming a
@@ -7,7 +6,7 @@ use crate::pressing::Pressing;
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct AlbumMetadata {
     pub title: String,
-    pub artists: Vec<ArtistRef>,
+    pub artists: Vec<ArtistCredit>,
     pub year: Option<i32>,
     /// The year the album first came out, as its MusicBrainz release group's
     /// first release date or its Discogs master's year states it — never a
@@ -44,11 +43,9 @@ impl AlbumMetadata {
         }
     }
 
-    pub(crate) fn take_primary(
-        &mut self,
-        catalog: Catalog,
-        key: &str,
-    ) -> Result<ArtistRef, ImportError> {
+    /// `Ok` when the release credits its album to an artist: a catalog
+    /// release always does, so one that names none is data bae cannot read.
+    pub(crate) fn require_artists(&self, catalog: Catalog, key: &str) -> Result<(), ImportError> {
         if self.artists.is_empty() {
             return Err(ImportError::SourceData {
                 catalog,
@@ -58,7 +55,7 @@ impl AlbumMetadata {
                 ),
             });
         }
-        Ok(self.artists.remove(0))
+        Ok(())
     }
 }
 
@@ -79,8 +76,8 @@ impl ReleaseMetadata {
 mod tests {
     use super::*;
 
-    fn artist(name: &str, musicbrainz_artist_id: Option<&str>) -> ArtistRef {
-        ArtistRef {
+    fn artist(name: &str, musicbrainz_artist_id: Option<&str>) -> ArtistCredit {
+        ArtistCredit {
             name: name.to_string(),
             sort_name: None,
             musicbrainz_artist_id: musicbrainz_artist_id.map(str::to_string),
@@ -88,7 +85,7 @@ mod tests {
         }
     }
 
-    fn album(artists: Vec<ArtistRef>) -> AlbumMetadata {
+    fn album(artists: Vec<ArtistCredit>) -> AlbumMetadata {
         AlbumMetadata {
             title: "Album Title".to_string(),
             artists,

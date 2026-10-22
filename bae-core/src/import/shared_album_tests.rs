@@ -155,9 +155,13 @@ fn draft() -> CandidateDraft {
                         file_id: format!("{position}.flac"),
                     },
                 },
-                source_index: None,
+                stated_length_ms: None,
+                roles: Vec::new(),
+                works: Vec::new(),
             })
             .collect(),
+        release_roles: Vec::new(),
+        works: Default::default(),
     }
 }
 

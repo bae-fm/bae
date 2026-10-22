@@ -27,8 +27,6 @@ impl FileMetadataSeed {
         candidate: &crate::import::folder_scanner::FolderCandidate,
         scan_generation: u64,
         reader: &dyn crate::import::file_tag_snapshot::FileTagReader,
-        clock: &dyn coven::Clock,
-        ids: &dyn coven::IdSource,
     ) -> Result<Self, ImportError> {
         let audio_files = candidate.files.audio().cloned().collect::<Vec<_>>();
         let snapshot = crate::import::file_tag_snapshot::extract_file_tag_snapshot(
@@ -37,7 +35,7 @@ impl FileMetadataSeed {
             candidate.file_edit_revision,
             reader,
         )?;
-        Self::project(candidate, snapshot, None, clock, ids)
+        Self::project(candidate, snapshot, None)
     }
 
     /// Project `snapshot` into the draft a candidate stores for it.
@@ -50,11 +48,8 @@ impl FileMetadataSeed {
         candidate: &FolderCandidate,
         snapshot: FileTagSnapshot,
         keeping: Option<&[CandidateTrack]>,
-        clock: &dyn coven::Clock,
-        ids: &dyn coven::IdSource,
     ) -> Result<Self, ImportError> {
-        let edit = crate::import::pane::file_metadata_edit(candidate, &snapshot, clock, ids)?;
-        let mut draft = crate::import::pane::candidate_draft_from_edit(edit)?.draft;
+        let mut draft = crate::import::pane::file_metadata_draft(candidate, &snapshot)?;
         if let Some(keeping) = keeping {
             crate::import::pane::keep_row_identities(&mut draft.tracks, keeping)?;
         }

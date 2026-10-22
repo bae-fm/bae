@@ -350,11 +350,9 @@ async fn a_track_edit_that_keeps_artist_ids_keeps_the_prepared_artist_image() {
             &key,
             &crate::import::CandidateMetadataDraft {
                 draft,
-                source_discogs_artist_ids: Default::default(),
                 provenance: preparation.metadata_provenance,
                 cover: preparation.cover,
                 assets: crate::import::CandidatePreparedAssets {
-                    applied_source: None,
                     remote_cover: preparation.assets.remote_cover,
                     artist_images: vec![image.clone()],
                 },

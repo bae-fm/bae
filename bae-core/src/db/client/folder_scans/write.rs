@@ -210,7 +210,7 @@ fn insert_candidate(
     let seed = match file_metadata {
         Some(seed) => CandidateStateSeed::FileMetadata(seed),
         None => {
-            blank = candidate.blank_source();
+            blank = candidate.blank_draft();
             CandidateStateSeed::Blank(&blank)
         }
     };
@@ -280,7 +280,7 @@ pub(crate) fn insert_candidate_row(
 /// What a candidate's draft is created from when it has none.
 pub(crate) enum CandidateStateSeed<'a> {
     /// As many empty track slots as the folder has audio units.
-    Blank(&'a crate::import::pane::CandidateSourceDraft),
+    Blank(&'a crate::import::CandidateDraft),
     /// The folder read as its own files describe it, with the reading it was
     /// projected from and the cover those tags embed.
     FileMetadata(&'a crate::import::file_metadata_seed::FileMetadataSeed),
@@ -327,7 +327,7 @@ pub(crate) fn ensure_candidate_state(
                 super::super::import_state::insert_draft(
                     sql,
                     &content_hash,
-                    &source.draft,
+                    source,
                     crate::import::MetadataAuthor::Nobody,
                 )?;
             }

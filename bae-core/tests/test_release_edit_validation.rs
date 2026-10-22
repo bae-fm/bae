@@ -52,7 +52,6 @@ async fn seed(db: &Database) -> (String, String) {
         side: Some(1),
         track_number: Some(1),
         duration_ms: None,
-        discogs_position: None,
         created_at: Utc::now(),
     };
     db.insert_artist(&artist).await.unwrap();
@@ -161,4 +160,26 @@ async fn new_artist_names_are_stored_trimmed() {
         "expected a trimmed artist name, got {:?}",
         artists.iter().map(|a| &a.name).collect::<Vec<_>>(),
     );
+}
+
+/// Whether an album is a compilation follows its credits at every edit:
+/// crediting it to the various-artists artist alone marks it one, and
+/// crediting it to anyone else, or to that artist beside another, unmarks it.
+#[tokio::test]
+async fn editing_the_album_artist_decides_whether_it_is_a_compilation() {
+    let (manager, db, _tmp) = bae_test_support::setup_test_library().await;
+    let (album_id, release_id) = seed(&db).await;
+
+    for (artists, compilation) in [
+        (&["Various Artists"][..], true),
+        (&["Artist Alpha"][..], false),
+        (&["Various Artists", "Artist Alpha"][..], false),
+    ] {
+        manager
+            .apply_release_metadata_user_edit(&release_id, &wire_edit("Album Alpha", artists))
+            .await
+            .unwrap();
+        let album = db.find_album_by_id(&album_id).await.unwrap().unwrap();
+        assert_eq!(album.is_compilation, compilation, "credited to {artists:?}");
+    }
 }

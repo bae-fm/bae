@@ -2,7 +2,6 @@
 // leave out — the import editor is desktop-only.
 desktop_only! {
     pub mod album_links;
-    mod artist_assignments;
     pub(crate) mod assemble;
     pub(crate) mod release_metadata;
     pub(crate) mod candidate_runtime;
@@ -42,7 +41,6 @@ desktop_only! {
     pub mod list;
     pub(crate) mod local_artwork;
     mod loudness;
-    pub(crate) mod direct_entry_mapper;
     // The folder's audio units beside the draft's tracks — the desktop import
     // pane's one structure, and desktop-only like the scan it reads.
     pub mod mapping;
@@ -56,6 +54,8 @@ desktop_only! {
     pub mod probe;
     pub(crate) mod pressing_evidence;
     pub mod release_candidate;
+    /// What one reading of a source says a release is, as plain values.
+    pub(crate) mod release_values;
     pub mod release_group;
     pub mod search;
     pub mod selection;
@@ -85,29 +85,30 @@ pub(crate) fn parse_year(date: Option<&str>) -> Option<i32> {
     date?.split('-').next()?.parse().ok()
 }
 
+/// The rows of the works one import writes.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone)]
-pub struct ParsedWorkGraph {
+pub struct WorkGraphRows {
     pub works: Vec<DbWork>,
     pub work_artists: Vec<DbWorkArtist>,
     pub work_parts: Vec<DbWorkPart>,
     pub track_works: Vec<DbTrackWork>,
 }
 
-/// A parsed release (a catalog's document, or the files' own tags) in the shape
-/// that flows into commit, which turns it into `albums` / `releases` / `tracks`
-/// writes. The records are the pick's to state, not this mapping's, so they
-/// reach commit alongside rather than inside it.
+/// The rows one import writes, built from the candidate's draft
+/// (`assemble::assemble_release`) and turned by the commit into `albums` /
+/// `releases` / `tracks` writes. The records are the link's to state, not the
+/// draft's, so they reach the commit alongside rather than inside it.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone)]
-pub struct ParsedAlbum {
+pub struct ReleaseRows {
     pub album: DbAlbum,
     pub release: DbRelease,
     pub tracks: Vec<DbTrack>,
     pub artists: Vec<DbArtist>,
     pub album_artists: Vec<DbAlbumArtist>,
     pub track_artists: Vec<DbTrackArtist>,
-    pub work_graph: ParsedWorkGraph,
+    pub work_graph: WorkGraphRows,
     pub release_artist_roles: Vec<DbReleaseArtistRole>,
     pub track_artist_roles: Vec<DbTrackArtistRole>,
 }
@@ -191,7 +192,7 @@ desktop_only! {
         InvalidReason, ReleaseFileScope, ReleasePart,
     };
     pub use handle::{
-        parsed_album_to_user_edit, DiscogsSaveOutcome, GroupedSearchResults, ImportEvent,
+        DiscogsSaveOutcome, GroupedSearchResults, ImportEvent,
         ImportEventBus, ImportServiceHandle, ScanEvent,
     };
     pub(crate) use handle::{external_metadata_with_assets, ReleaseAsset};
@@ -237,10 +238,10 @@ pub use types::{
     artists_standing, asked_sources, is_the_only_asked_source, parse_catalog_url, AlbumLink,
     ArtistAssignment, ArtistCredit, ArtistStanding, ArtistsStanding, AudioFile, CandidateDraft,
     CandidateEditField, CandidateTrack, Catalog, CatalogAvailability, CatalogPage,
-    CreditResolution, DraftFieldEdit, EditValidationError, ExistingArtist, MetadataProvenance,
-    MetadataRef, PressingFactEdit, PressingLink, RawLabelEdit, RawPressingEdit, RawReleaseEdit,
-    RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed, ReleaseLink, ReleaseRecord, ReleaseUserEdit,
-    ResolvedCredit, SourceAvailability, TrackArtistAssignments, TrackUserEdit,
+    CreditResolution, CreditedRole, DraftFieldEdit, EditValidationError, ExistingArtist, GraphWork,
+    MetadataProvenance, MetadataRef, PressingFactEdit, PressingLink, RawLabelEdit, RawPressingEdit,
+    RawReleaseEdit, RawTrackEdit, ReleaseEditSeed, ReleaseLink, ReleaseRecord, ReleaseUserEdit,
+    ResolvedCredit, SourceAvailability, TrackArtistAssignments, TrackUserEdit, WorkGraph, WorkPart,
 };
 desktop_only! {
     pub use types::{

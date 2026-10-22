@@ -1,9 +1,9 @@
 //! Projects stored file-tag readings into editable import metadata.
 //!
 //! Reads embedded ID3v1/ID3v2/Vorbis-comment/MP4-ilst tags from a rip's audio
-//! files and projects them into the same `ParsedAlbum` shape that
-//! `SourceRelease::parsed` produces from external sources. The editable
-//! confirmation page lets the user correct anything the tags got wrong.
+//! files and reads them into the same `ReleaseValues` a catalog release's
+//! reading produces. The editable confirmation page lets the user correct
+//! anything the tags got wrong.
 //!
 //! File tags name no catalog, so a release seeded from them carries no
 //! records. The release provenance is `FileMetadata`. Lookup signals such as OCR,
@@ -12,24 +12,19 @@
 //! Year comes from any tag carrying a date. Source codecs are physical audio
 //! facts, not release media, so the pressing's media stay unstated.
 
-use super::assemble::{
-    assemble_parsed_album, AlbumArtistScope, ArtistRef, ReleaseIr, TrackEvent, TrackIr,
-};
 use super::file_tag_snapshot::{
     extract_file_tag_snapshot, non_empty, FileTagFact, FileTagSnapshot, LoftyFileTagReader,
 };
-use super::ParsedAlbum;
+use super::release_values::{ReleaseValues, TrackCredits, TrackValues};
 use crate::cue_flac::CueSheet;
 use crate::import::folder_scanner::{CategorizedFiles, ScannedFile};
-use crate::import::ImportError;
+use crate::import::{ArtistCredit, ImportError};
 use crate::pressing::Pressing;
 #[cfg(test)]
 use crate::util::content_type::ContentType;
-use coven::Clock;
-use coven::IdSource;
 use std::path::{Path, PathBuf};
 
-/// Map the embedded tags of a rip's audio files to a `ParsedAlbum`.
+/// Read the embedded tags of a rip's audio files.
 ///
 /// `audio_files` is the rip's audio files in the order its tracks play; each
 /// track is numbered by its file's DISCNUMBER/TRACKNUMBER tags, else by the
@@ -46,12 +41,10 @@ use std::path::{Path, PathBuf};
 ///
 /// Errors only when `audio_files` is empty (an album has at least one track) or
 /// a file fails to open or have its tags read.
-pub fn map_file_tags_to_db(
+pub(crate) fn read_file_tags(
     audio_files: &[PathBuf],
     folder_name: Option<&str>,
-    clock: &dyn Clock,
-    ids: &dyn IdSource,
-) -> Result<ParsedAlbum, ImportError> {
+) -> Result<ReleaseValues, ImportError> {
     if audio_files.is_empty() {
         return Err(ImportError::FileTags {
             detail: "file-tag seeding requires at least one audio file".to_string(),
@@ -78,26 +71,13 @@ pub fn map_file_tags_to_db(
         })
         .collect::<Result<Vec<_>, _>>()?;
     let snapshot = extract_file_tag_snapshot(&scanned, 0, 0, &LoftyFileTagReader)?;
-    map_file_tag_facts_to_db(&snapshot.files, folder_name, clock, ids)
+    file_tag_facts_values(&snapshot.files, folder_name)
 }
 
-fn map_file_tag_facts_to_db(
+fn file_tag_facts_values(
     extracted: &[FileTagFact],
     folder_name: Option<&str>,
-    clock: &dyn Clock,
-    ids: &dyn IdSource,
-) -> Result<ParsedAlbum, ImportError> {
-    Ok(assemble_parsed_album(
-        file_tag_facts_ir(extracted, folder_name)?,
-        clock,
-        ids,
-    ))
-}
-
-fn file_tag_facts_ir(
-    extracted: &[FileTagFact],
-    folder_name: Option<&str>,
-) -> Result<ReleaseIr, ImportError> {
+) -> Result<ReleaseValues, ImportError> {
     if extracted.is_empty() {
         return Err(ImportError::FileTags {
             detail: "file-tag seeding requires at least one audio file".to_string(),
@@ -125,7 +105,7 @@ fn file_tag_facts_ir(
 
     let year = extracted.iter().find_map(|t| t.year).map(|y| y as i32);
 
-    let tracks: Vec<TrackIr> = extracted
+    let tracks: Vec<TrackValues> = extracted
         .iter()
         .map(|t| {
             // The scanner only admits files with a recognised audio extension, so
@@ -145,17 +125,19 @@ fn file_tag_facts_ir(
             let side = numbers.disc.and_then(|number| i32::try_from(number).ok());
             let number = numbers.track.and_then(|number| i32::try_from(number).ok());
 
-            TrackIr {
+            TrackValues {
                 title,
                 side,
                 number,
-                source_position: None,
-                events: file_tag_credit_events(t.track_artist.as_deref()),
+                stated_length_ms: None,
+                credits: file_tag_credits(t.track_artist.as_deref()),
+                roles: Vec::new(),
+                works: Vec::new(),
             }
         })
         .collect();
 
-    Ok(file_tag_release_ir(
+    Ok(file_tag_release_values(
         album_title,
         &album_artist_name,
         year,
@@ -163,10 +145,10 @@ fn file_tag_facts_ir(
     ))
 }
 
-/// An [`ArtistRef`] for a file-tag ARTIST/PERFORMER value. The source provides
-/// only a display name here, so the sort name and source artist ids stay absent.
-fn file_tag_artist_ref(name: &str) -> ArtistRef {
-    ArtistRef {
+/// The credit of a file-tag ARTIST/PERFORMER value. The source provides only
+/// a display name here, so the sort name and source artist ids stay absent.
+fn file_tag_artist(name: &str) -> ArtistCredit {
+    ArtistCredit {
         name: name.to_string(),
         sort_name: None,
         musicbrainz_artist_id: None,
@@ -174,53 +156,60 @@ fn file_tag_artist_ref(name: &str) -> ArtistRef {
     }
 }
 
-/// The track's credit events: a single display credit at position 0 when the
-/// source carries an ARTIST/PERFORMER, else none. The junction row is emitted
-/// whenever a name is present, regardless of whether it matches the album
-/// artist — the junction is the source of truth for per-track credits.
-fn file_tag_credit_events(artist: Option<&str>) -> Vec<TrackEvent> {
+/// The track's own artist when the source carries an ARTIST/PERFORMER,
+/// whether or not it matches the album artist; else the album's.
+fn file_tag_credits(artist: Option<&str>) -> TrackCredits {
     match artist {
-        Some(name) => vec![TrackEvent::Credit {
-            position: 0,
-            artist: file_tag_artist_ref(name),
-        }],
-        None => Vec::new(),
+        Some(name) => TrackCredits::Own(vec![file_tag_artist(name)]),
+        None => TrackCredits::AlbumArtists,
     }
 }
 
-/// The [`ReleaseIr`] shared by the file-tag and CUE-sheet seeders. Provenance
-/// is `FileMetadata`; `album_artist_scope` is `FullPool` so a divergent per-track
-/// artist also becomes an album artist.
-fn file_tag_release_ir(
+/// The values the file-tag and CUE-sheet readers share. A track artist the
+/// album artist does not name is an album artist too, after it, once per
+/// name.
+fn file_tag_release_values(
     album_title: String,
     album_artist_name: &str,
     year: Option<i32>,
-    tracks: Vec<TrackIr>,
-) -> ReleaseIr {
-    ReleaseIr {
+    tracks: Vec<TrackValues>,
+) -> ReleaseValues {
+    let mut album_credits = vec![file_tag_artist(album_artist_name)];
+    for track in &tracks {
+        let TrackCredits::Own(credits) = &track.credits else {
+            continue;
+        };
+        for credit in credits {
+            if !album_credits
+                .iter()
+                .any(|known| crate::text_match::same_artist_name(&known.name, &credit.name))
+            {
+                album_credits.push(credit.clone());
+            }
+        }
+    }
+    ReleaseValues {
         album_title,
-        primary_artist: file_tag_artist_ref(album_artist_name),
-        additional_artists: Vec::new(),
+        album_credits,
         album_year: year,
-        is_compilation: false,
         pressing: Pressing {
             year,
             ..Pressing::blank()
         },
-        metadata_provenance: Some(crate::import::MetadataProvenance::FileMetadata),
-        album_artist_scope: AlbumArtistScope::FullPool,
         release_roles: Vec::new(),
+        works: Default::default(),
         tracks,
     }
 }
 
-pub(crate) fn map_file_metadata_to_db(
+/// What a folder's stored tag reading says its audio units are, one track per
+/// unit in the folder's order: a loose file's tags for it, and a bound CUE
+/// sheet's tracks for the slices it carves.
+pub(crate) fn file_metadata_values(
     categorized: &CategorizedFiles,
     snapshot: &FileTagSnapshot,
     folder_name: Option<&str>,
-    clock: &dyn Clock,
-    ids: &dyn IdSource,
-) -> Result<ParsedAlbum, ImportError> {
+) -> Result<ReleaseValues, ImportError> {
     let audio_file_ids = categorized
         .audio()
         .map(|file| file.relative_path.as_str())
@@ -261,13 +250,13 @@ pub(crate) fn map_file_metadata_to_db(
         })
         .collect::<Vec<_>>();
     if sheets.is_empty() {
-        return map_file_tag_facts_to_db(&loose_facts, folder_name, clock, ids);
+        return file_tag_facts_values(&loose_facts, folder_name);
     }
-    let mut release = cue_sheets_release(&sheets, folder_name);
+    let release = cue_sheets_release(&sheets, folder_name);
     let mut loose_tracks = if loose_facts.is_empty() {
         Vec::new()
     } else {
-        file_tag_facts_ir(&loose_facts, folder_name)?.tracks
+        file_tag_facts_values(&loose_facts, folder_name)?.tracks
     }
     .into_iter();
     let mut tracks = Vec::new();
@@ -290,22 +279,33 @@ pub(crate) fn map_file_metadata_to_db(
                         bound
                             .sheet
                             .playable_tracks()
-                            .map(|track| cue_track_ir(track, side)),
+                            .map(|track| cue_track_values(track, side)),
                     );
                 }
             }
             UnitContribution::SpokenFor => {}
         }
     }
-    release.tracks = tracks;
-    Ok(assemble_parsed_album(release, clock, ids))
+    Ok(file_tag_release_values(
+        release.album_title,
+        &release.album_artist_name,
+        release.year,
+        tracks,
+    ))
+}
+
+/// The album facts a folder's carving sheets state.
+struct SheetsRelease {
+    album_title: String,
+    album_artist_name: String,
+    year: Option<i32>,
 }
 
 /// The release a folder's carving sheets describe, before its tracks: the
 /// album title from the first sheet's `TITLE` (the folder name when none has
 /// one), the artist from the first `PERFORMER`, the year from the first
 /// `REM DATE`. The tracks are the folder's layout's to lay down.
-fn cue_sheets_release(sheets: &[&CueSheet], folder_name: Option<&str>) -> ReleaseIr {
+fn cue_sheets_release(sheets: &[&CueSheet], folder_name: Option<&str>) -> SheetsRelease {
     // Blank is allowed — the editable file-metadata form gates save on a title.
     let album_title = sheets
         .iter()
@@ -319,18 +319,24 @@ fn cue_sheets_release(sheets: &[&CueSheet], folder_name: Option<&str>) -> Releas
     let year = sheets
         .iter()
         .find_map(|s| year_from_cue_date(s.date.as_deref()));
-    file_tag_release_ir(album_title, &album_artist_name, year, Vec::new())
+    SheetsRelease {
+        album_title,
+        album_artist_name,
+        year,
+    }
 }
 
-fn cue_track_ir(track: &crate::cue_flac::CueTrack, side: i32) -> TrackIr {
-    TrackIr {
+fn cue_track_values(track: &crate::cue_flac::CueTrack, side: i32) -> TrackValues {
+    TrackValues {
         title: non_empty(track.title.clone()).unwrap_or_default(),
         side: Some(side),
         number: i32::try_from(track.number)
             .ok()
             .filter(|number| *number > 0),
-        source_position: None,
-        events: file_tag_credit_events(non_empty(track.performer.clone()).as_deref()),
+        stated_length_ms: None,
+        credits: file_tag_credits(non_empty(track.performer.clone()).as_deref()),
+        roles: Vec::new(),
+        works: Vec::new(),
     }
 }
 

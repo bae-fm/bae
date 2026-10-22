@@ -348,7 +348,6 @@ async fn set_records_does_not_touch_metadata_columns() {
         side: Some(1),
         track_number: Some(1),
         duration_ms: Some(180_000),
-        discogs_position: None,
         created_at: Utc::now(),
     };
     manager.database.insert_track(&track).await.unwrap();
@@ -487,7 +486,6 @@ async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
         side: Some(1),
         track_number: Some(1),
         duration_ms: Some(180_000),
-        discogs_position: None,
         created_at: now,
     };
     manager.database.insert_track(&beta_track).await.unwrap();

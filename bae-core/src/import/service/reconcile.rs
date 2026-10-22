@@ -1,13 +1,13 @@
-//! Reconcile a parsed release against existing library state: apply the user's
-//! edit overlay, match the release to an existing album, and resolve its works
-//! — yielding the [`super::PreparedMetadata`] the worker runs the import from.
+//! Reconcile a release's rows, built from its draft, against existing library
+//! state: match the release to an existing album, and resolve its works —
+//! yielding the [`super::PreparedMetadata`] the worker runs the import from.
 //! Its artist credits stay credits until the commit resolves them.
 
 use std::collections::HashMap;
 
-use super::{apply_user_edit_to_seed, ImportService, PreparedMetadata};
+use super::{ImportService, PreparedMetadata};
 use crate::import::handle::remap_links;
-use crate::import::ParsedWorkGraph;
+use crate::import::WorkGraphRows;
 
 fn retain_referenced_artists(
     artists: &mut Vec<crate::db::DbArtist>,
@@ -39,51 +39,28 @@ fn retain_referenced_artists(
 }
 
 impl ImportService {
-    /// Reconcile the prepared release against existing library state and apply
-    /// the user's edit overlay — yielding the [`PreparedMetadata`] the worker
-    /// runs the import from. Pure DB reads and string remapping — no network.
-    /// The caller has already run the mapper its selected metadata provenance
-    /// calls for, so the input is a mapped `ParsedAlbum` plus its raw external
-    /// metadata pairs (empty for file metadata and direct entry).
+    /// Reconcile the release's rows against existing library state — yielding
+    /// the [`PreparedMetadata`] the worker runs the import from. Pure DB reads
+    /// and string remapping — no network.
     ///
-    /// The mapper's output carries the identity rows as they stand: a
-    /// **External Release** keeps the selected pressing's `source_release_id`,
-    /// and **file metadata and direct entry** arrive with an empty identity vec, so the
-    /// album lookup is skipped and the release lands on a fresh album.
-    ///
-    /// The mapped release also carries the matching external, file metadata, or
-    /// absent metadata provenance.
-    ///
-    /// The confirmation-page `user_edit` overlay applies last, so the user's
-    /// edits win over every seeded value.
+    /// A release whose records name an album already in the library joins it;
+    /// one with no records — read from its files or from nothing — lands on
+    /// a fresh album. `picked` are the artist rows that are library artists a
+    /// person picked.
     ///
     /// Artists are not decided here. Every artist link keeps naming its credit,
     /// and the commit resolves the credits inside its own transaction, against
     /// the library as it stands when the release is written.
     pub(super) async fn reconcile_prepared_release(
         &self,
-        parsed: crate::import::ParsedAlbum,
+        parsed: crate::import::ReleaseRows,
         records: Vec<crate::import::ReleaseRecord>,
-        user_edit: Option<crate::import::ReleaseUserEdit>,
+        picked_artists: std::collections::HashSet<String>,
         prepared_artist_images: Vec<crate::import::PreparedArtistImage>,
     ) -> Result<PreparedMetadata, crate::import::ImportError> {
         let library_manager = &self.library_manager;
 
-        let mut parsed = parsed;
-
-        // The overlay applies after the seed, so the user's edits win over
-        // every seeded value.
-        let picked_artists = match user_edit {
-            Some(edit) => apply_user_edit_to_seed(
-                &edit,
-                &mut parsed,
-                self.clock.as_ref(),
-                self.ids.as_ref(),
-            )?,
-            None => std::collections::HashSet::new(),
-        };
-
-        let crate::import::ParsedAlbum {
+        let crate::import::ReleaseRows {
             album: mut db_album,
             release: mut db_release,
             tracks: db_tracks,
@@ -192,7 +169,7 @@ impl ImportService {
             existing_album_id,
             track_artists,
             album_artists,
-            work_graph: ParsedWorkGraph {
+            work_graph: WorkGraphRows {
                 works: resolved_works.inserts,
                 work_artists: remapped_work_artists,
                 work_parts: remapped_work_parts,

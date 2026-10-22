@@ -68,8 +68,6 @@ impl ImportServiceHandle {
                 })?;
         let mut initialized_candidate = candidate.clone();
         let reader = self.file_tags.clone();
-        let clock = self.clock.clone();
-        let ids = self.ids.clone();
         let (metadata, snapshot, settled_folders) = tokio::task::spawn_blocking(move || {
             let mut settled_folders = Vec::with_capacity(matching_folders.len());
             let decisions = CandidateFileEdits {
@@ -97,13 +95,7 @@ impl ImportServiceHandle {
                 .collect::<Vec<_>>();
             let snapshot =
                 extract_file_tag_snapshot(&audio, generation, next_revision, reader.as_ref())?;
-            let seed = FileMetadataSeed::project(
-                &initialized_candidate,
-                snapshot,
-                None,
-                clock.as_ref(),
-                ids.as_ref(),
-            )?;
+            let seed = FileMetadataSeed::project(&initialized_candidate, snapshot, None)?;
             // A reset unmakes the whole setup, so the candidate starts again
             // with the cover its folder gives it — the same one a scan of a
             // new candidate stores.
@@ -119,7 +111,6 @@ impl ImportServiceHandle {
                     draft: seed.draft,
                     provenance: Some(crate::import::MetadataProvenance::FileMetadata),
                     cover,
-                    source_discogs_artist_ids: Default::default(),
                     assets: CandidatePreparedAssets::default(),
                 },
                 seed.snapshot,
