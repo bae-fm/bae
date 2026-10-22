@@ -137,8 +137,7 @@ struct ReleaseMetadataEditorContent: View {
         ForEach(Array(side.groups.enumerated()), id: \.element.id) {
             groupIndex,
             group in
-            let captionSource =
-                group.tracks.count > 1 ? group.sharedSource : nil
+            let captionSource = group.sharedSource
             if let source = captionSource {
                 sharedSourceCaption(source)
             }

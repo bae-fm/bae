@@ -454,28 +454,33 @@ mod conversion_roundtrip {
                 cover: None,
                 display: bae_core::album_detail::ReleaseEditDisplayContext {
                     source_audio: None,
-                    tracks: vec![bae_core::album_detail::ReleaseEditTrackContext {
-                        track_id: "track-id".to_string(),
-                        sources: vec![bae_core::album_detail::ReleaseEditTrackSource {
-                            file_id: "file-id".to_string(),
-                            name: "source.flac".to_string(),
-                            layout: bae_core::album_detail::SourceAudioLayout::File,
-                        }],
-                        duration_ms: 123_000,
-                        position_text: "3".to_string(),
+                    sides: vec![bae_core::album_detail::ReleaseEditTrackSide {
                         side: bae_core::album_detail::TrackSide::Disc { disc: 2 },
+                        runs: vec![bae_core::album_detail::ReleaseEditTrackRun::Track(
+                            bae_core::album_detail::ReleaseEditTrackContext {
+                                track_id: "track-id".to_string(),
+                                sources: vec![bae_core::album_detail::ReleaseEditTrackSource {
+                                    file_id: "file-id".to_string(),
+                                    name: "source.flac".to_string(),
+                                    layout: bae_core::album_detail::SourceAudioLayout::File,
+                                }],
+                                duration_ms: 123_000,
+                                position_text: "3".to_string(),
+                            },
+                        )],
                     }],
                 },
             });
             assert_eq!(bridge.edit.album_title, edit.album_title);
-            assert_eq!(bridge.display.tracks[0].track_id, "track-id");
-            assert_eq!(bridge.display.tracks[0].sources[0].name, "source.flac");
-            let clock = bridge.display.tracks[0].duration_clock;
+            let side = &bridge.display.sides[0];
+            assert_eq!(side.header_key.as_deref(), Some("core.track.disc"));
+            let BridgeReleaseEditTrackRun::Track { track } = &side.runs[0] else {
+                panic!("the side's one run is its track");
+            };
+            assert_eq!(track.track_id, "track-id");
+            assert_eq!(track.sources[0].name, "source.flac");
+            let clock = track.duration_clock;
             assert_eq!((clock.minutes, clock.seconds), (2, 3));
-            assert_eq!(
-                bridge.display.tracks[0].side_header_key.as_deref(),
-                Some("core.track.disc")
-            );
         }
     }
 }

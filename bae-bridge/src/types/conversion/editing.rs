@@ -148,8 +148,6 @@ mirror_struct! {
     fields: { file_id, name, layout: (BridgeSourceAudioLayout) },
 }
 
-/// Not a `mirror_struct`: `side_header_key` is derived from the side rather
-/// than carried by core, so a track row reads a field instead of asking.
 impl BridgeReleaseEditTrackContext {
     fn from_core(context: bae_core::album_detail::ReleaseEditTrackContext) -> Self {
         let bae_core::album_detail::ReleaseEditTrackContext {
@@ -157,10 +155,7 @@ impl BridgeReleaseEditTrackContext {
             sources,
             duration_ms,
             position_text,
-            side,
         } = context;
-        let side = BridgeTrackSide::from_core(side);
-        let side_header_key = side.header_key().map(str::to_string);
         Self {
             track_id,
             sources: sources
@@ -169,8 +164,35 @@ impl BridgeReleaseEditTrackContext {
                 .collect(),
             duration_clock: crate::types::BridgeDurationClock::of_length(duration_ms),
             position_text,
+        }
+    }
+}
+
+mirror_enum! {
+    BridgeReleaseEditTrackRun = bae_core::album_detail::ReleaseEditTrackRun,
+    from_core: fn,
+    variants: {
+        Track(track: (BridgeReleaseEditTrackContext)),
+        Sheet {
+            source: (BridgeReleaseEditTrackSource),
+            tracks: (each BridgeReleaseEditTrackContext),
+        },
+    },
+}
+
+/// Not a `mirror_struct`: `header_key` is derived from the side rather than
+/// carried by core, so a side reads a field instead of asking.
+impl BridgeReleaseEditTrackSide {
+    fn from_core(side: bae_core::album_detail::ReleaseEditTrackSide) -> Self {
+        let bae_core::album_detail::ReleaseEditTrackSide { side, runs } = side;
+        let side = BridgeTrackSide::from_core(side);
+        Self {
+            header_key: side.header_key().map(str::to_string),
             side,
-            side_header_key,
+            runs: runs
+                .into_iter()
+                .map(BridgeReleaseEditTrackRun::from_core)
+                .collect(),
         }
     }
 }
@@ -180,7 +202,7 @@ mirror_struct! {
     from_core: fn,
     fields: {
         source_audio: (opt BridgeSourceAudioSummary),
-        tracks: (each BridgeReleaseEditTrackContext),
+        sides: (each BridgeReleaseEditTrackSide),
     },
 }
 

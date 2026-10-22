@@ -673,15 +673,41 @@ pub struct BridgeReleaseEditTrackContext {
     /// How the track's place reads ("A1", "3"), which the editor shows and
     /// never edits.
     pub position_text: String,
+}
+
+/// Consecutive tracks of one side that the editor's table draws together.
+/// Mirrors `bae_core::album_detail::ReleaseEditTrackRun`.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeReleaseEditTrackRun {
+    /// A track whose row names its own source.
+    Track {
+        track: BridgeReleaseEditTrackContext,
+    },
+    /// Two or more consecutive tracks a CUE sheet carves from one file, which
+    /// is named once above them.
+    Sheet {
+        source: BridgeReleaseEditTrackSource,
+        tracks: Vec<BridgeReleaseEditTrackContext>,
+    },
+}
+
+/// One side of the release in the editor's track table and the runs of
+/// tracks on it. Mirrors `bae_core::album_detail::ReleaseEditTrackSide`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeReleaseEditTrackSide {
     pub side: BridgeTrackSide,
-    pub side_header_key: Option<String>,
+    /// Localization key for the side's header word, or `None` when the side
+    /// has no heading.
+    pub header_key: Option<String>,
+    pub runs: Vec<BridgeReleaseEditTrackRun>,
 }
 
 /// Persisted release facts used to render the shared metadata editor.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditDisplayContext {
     pub source_audio: Option<BridgeSourceAudioSummary>,
-    pub tracks: Vec<BridgeReleaseEditTrackContext>,
+    /// The release's tracks, laid out as the table draws them.
+    pub sides: Vec<BridgeReleaseEditTrackSide>,
 }
 
 /// Raw pressing fields as the editor holds them. Mirrors

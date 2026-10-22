@@ -172,17 +172,31 @@ struct EditMetadataSheetTests {
         shared: Bool
     ) async throws -> [CGRect] {
         var seed = PreviewData.releaseEditSeed(trackCount: 2)
-        for index in seed.display.tracks.indices {
-            seed.display.tracks[index].sources = [
-                BridgeReleaseEditTrackSource(
-                    fileId: shared ? "disc.flac" : "track-\(index).flac",
-                    name: shared
-                        ? "Disc audio.flac"
-                        : "Disc 1/0\(index + 1) A source track with a long filename.flac",
-                    layout: layout
+        let contexts = seed.edit.tracks.enumerated()
+            .map { index, track in
+                PreviewData.releaseEditTrackContext(
+                    trackId: track.id,
+                    index: index,
+                    source: BridgeReleaseEditTrackSource(
+                        fileId: shared ? "disc.flac" : "track-\(index).flac",
+                        name: shared
+                            ? "Disc audio.flac"
+                            : "Disc 1/0\(index + 1) A source track with a long filename.flac",
+                        layout: layout
+                    )
                 )
-            ]
-        }
+            }
+        // Core lays two tracks a sheet carves from one file out as one run,
+        // and every other track as a run of its own.
+        seed.display.sides = [
+            BridgeReleaseEditTrackSide(
+                side: .flat,
+                headerKey: nil,
+                runs: shared
+                    ? [.sheet(source: contexts[0].sources[0], tracks: contexts)]
+                    : contexts.map { .track(track: $0) }
+            )
+        ]
         let session = ReleaseMetadataEditSession(
             releaseId: "release-test",
             seed: seed,

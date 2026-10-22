@@ -1006,6 +1006,12 @@ session; nothing is re-read, and there is no reset to a source: the library
 holds no pointer back into one. A release with nothing applied saves its
 edited fields alone, its mediums, roles and works as stored.
 
+The editor lays the tracks out as the import's mapping table does: a heading
+for each disc or record side where the release has several, and two or more
+consecutive tracks a CUE sheet carves from one file under that file's name,
+once; every other track names its own file in its row. An applied catalog
+lays them out again at the places it gives them.
+
 ---
 ## 4. Files
 

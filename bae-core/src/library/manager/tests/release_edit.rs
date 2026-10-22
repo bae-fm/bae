@@ -198,27 +198,34 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
         seed.cover.as_ref().map(|cover| cover.id.as_str()),
         Some(release.id.as_str())
     );
-    assert_eq!(seed.display.tracks[0].track_id, first.id);
+    let sides = &seed.display.sides;
     assert_eq!(
-        seed.display.tracks[0].sources[0].layout,
+        sides.iter().map(|side| &side.side).collect::<Vec<_>>(),
+        [
+            &crate::album_detail::TrackSide::Disc { disc: 1 },
+            &crate::album_detail::TrackSide::Disc { disc: 2 },
+        ]
+    );
+    let crate::album_detail::ReleaseEditTrackRun::Track(first_context) = &sides[0].runs[0] else {
+        panic!("a track on its own file is a run of its own");
+    };
+    assert_eq!(first_context.track_id, first.id);
+    assert_eq!(
+        first_context.sources[0].layout,
         crate::album_detail::SourceAudioLayout::File
     );
+    // A track playing two files is no sheet's run, though a sheet carves both.
+    let crate::album_detail::ReleaseEditTrackRun::Track(second_context) = &sides[1].runs[0] else {
+        panic!("a track over two files is a run of its own");
+    };
+    assert_eq!(second_context.track_id, second.id);
     assert_eq!(
-        seed.display.tracks[0].side,
-        crate::album_detail::TrackSide::Disc { disc: 1 }
-    );
-    assert_eq!(seed.display.tracks[1].track_id, second.id);
-    assert_eq!(
-        seed.display.tracks[1]
+        second_context
             .sources
             .iter()
             .map(|source| source.name.as_str())
             .collect::<Vec<_>>(),
         vec!["second-a.flac", "second-b.flac"]
-    );
-    assert_eq!(
-        seed.display.tracks[1].side,
-        crate::album_detail::TrackSide::Disc { disc: 2 }
     );
     assert!(matches!(
         seed.display.source_audio,

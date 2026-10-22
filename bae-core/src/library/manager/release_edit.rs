@@ -162,17 +162,17 @@ impl LibraryManager {
         let mut seed = self.open_release_edit(release_id).await?;
         let track_ids: Vec<String> = seed
             .display
-            .tracks
-            .iter()
+            .tracks()
             .map(|track| track.track_id.clone())
             .collect();
         let draft = values.library_draft(track_ids);
         seed.edit = draft.release_edit();
-        for (context, track) in seed.display.tracks.iter_mut().zip(&draft.tracks) {
-            let position = crate::mediums::track_position(&track.place, &draft.mediums);
-            context.position_text = crate::util::format::track_position_text(&position);
-            context.side = crate::util::format::track_side(&position);
-        }
+        seed.display = seed.display.placed(
+            draft
+                .tracks
+                .iter()
+                .map(|track| crate::mediums::track_position(&track.place, &draft.mediums)),
+        );
         self.release_edits.sessions().insert(
             release_id.to_string(),
             AppliedCatalog {

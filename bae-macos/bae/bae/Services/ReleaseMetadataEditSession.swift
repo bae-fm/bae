@@ -24,7 +24,6 @@ final class ReleaseMetadataEditSession {
 
     private var persistedForm: BridgeRawReleaseEdit
     private var formRevision = 0
-    private let trackContextById: [String: BridgeReleaseEditTrackContext]
     private let saveAction:
         @Sendable (String, BridgeRawReleaseEdit) async throws -> Void
     private var operationTask: Task<Void, Never>?
@@ -43,11 +42,6 @@ final class ReleaseMetadataEditSession {
         display = seed.display
         form = seed.edit
         persistedForm = seed.edit
-        trackContextById = Dictionary(
-            uniqueKeysWithValues: seed.display.tracks.map {
-                ($0.trackId, $0)
-            }
-        )
         saveAction = save
     }
 
@@ -205,42 +199,48 @@ final class ReleaseMetadataEditSession {
 }
 
 extension ReleaseMetadataEditSession {
-    var trackItems: [ReleaseMetadataTrackItem] {
-        form.tracks.map { track in
-            guard let context = trackContextById[track.id] else {
+    /// The tracks as core lays the table out — a side per disc or record
+    /// side, and on it a run per file a sheet carves several tracks from —
+    /// each beside the form row it edits.
+    var trackSides: [ReleaseMetadataTrackSide] {
+        let formTracks = Dictionary(
+            uniqueKeysWithValues: form.tracks.map { ($0.id, $0) }
+        )
+        func item(_ context: BridgeReleaseEditTrackContext)
+            -> ReleaseMetadataTrackItem
+        {
+            guard let track = formTracks[context.trackId] else {
                 preconditionFailure(
-                    "Release edit track \(track.id) has no display context"
+                    "Release edit track \(context.trackId) has no form row"
                 )
             }
             return ReleaseMetadataTrackItem(track: track, context: context)
         }
-    }
-
-    /// The tracks as the table lays them out: a run per side, and within it a
-    /// run per sheet the tracks are carved from. The same shape the import
-    /// mapping table draws, so a release reads the same before and after it
-    /// is imported.
-    var trackSides: [ReleaseMetadataTrackSide] {
-        var sides: [ReleaseMetadataTrackSide] = []
-        for item in trackItems {
-            if let last = sides.last, last.side == item.context.side {
-                sides[sides.count - 1].append(item)
-            }
-            else {
-                sides.append(
-                    ReleaseMetadataTrackSide(
-                        id: "side:\(item.id)",
-                        side: item.context.side,
-                        headerText: item.context.side.headerText(
-                            key: item.context.sideHeaderKey
-                        ),
-                        groups: []
+        return display.sides.map { side in
+            let groups = side.runs.map { run in
+                switch run {
+                case .track(let track):
+                    ReleaseMetadataTrackGroup(
+                        id: track.trackId,
+                        sharedSource: nil,
+                        tracks: [item(track)]
                     )
-                )
-                sides[sides.count - 1].append(item)
+                case .sheet(let source, let tracks):
+                    ReleaseMetadataTrackGroup(
+                        // Core never lays out a run without tracks.
+                        id: "source:\(source.fileId):\(tracks[0].trackId)",
+                        sharedSource: source,
+                        tracks: tracks.map(item)
+                    )
+                }
             }
+            // Nor a side without runs.
+            return ReleaseMetadataTrackSide(
+                id: "side:\(groups[0].id)",
+                headerText: side.side.headerText(key: side.headerKey),
+                groups: groups
+            )
         }
-        return sides
     }
 
     var validationMessage: String? {
@@ -264,58 +264,22 @@ struct ReleaseMetadataTrackItem: Identifiable {
     let context: BridgeReleaseEditTrackContext
 
     var id: String { track.id }
-
-    var sharedCueSource: BridgeReleaseEditTrackSource? {
-        guard context.sources.count == 1,
-            let source = context.sources.first,
-            case .cue = source.layout
-        else { return nil }
-        return source
-    }
 }
 
+/// A run of tracks the table draws together: one track naming its own
+/// source, or the tracks a sheet carves from the one file named above them.
 struct ReleaseMetadataTrackGroup: Identifiable {
     let id: String
     let sharedSource: BridgeReleaseEditTrackSource?
-    var tracks: [ReleaseMetadataTrackItem]
+    let tracks: [ReleaseMetadataTrackItem]
 }
 
 /// One side of the release — a disc of a multi-disc set, a side of a record —
 /// and the runs of tracks on it.
 struct ReleaseMetadataTrackSide: Identifiable {
     let id: String
-    let side: BridgeTrackSide
     /// "Disc 2" / "Side B", or empty for a release with one flat side, which
     /// has no header to draw.
     let headerText: String
-    var groups: [ReleaseMetadataTrackGroup]
-
-    /// Add the next track in table order: onto the run of the sheet it is
-    /// carved from when that run is the last one, else as a run of its own.
-    mutating func append(_ item: ReleaseMetadataTrackItem) {
-        guard let cueSource = item.sharedCueSource else {
-            groups.append(
-                ReleaseMetadataTrackGroup(
-                    id: item.id,
-                    sharedSource: nil,
-                    tracks: [item]
-                )
-            )
-            return
-        }
-        if let last = groups.last,
-            last.sharedSource?.fileId == cueSource.fileId
-        {
-            groups[groups.count - 1].tracks.append(item)
-        }
-        else {
-            groups.append(
-                ReleaseMetadataTrackGroup(
-                    id: "source:\(cueSource.fileId):\(item.id)",
-                    sharedSource: cueSource,
-                    tracks: [item]
-                )
-            )
-        }
-    }
+    let groups: [ReleaseMetadataTrackGroup]
 }

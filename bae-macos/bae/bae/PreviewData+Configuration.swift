@@ -207,26 +207,45 @@
                             format: format
                         )
                     ),
-                    tracks: edit.tracks.enumerated()
-                        .map { index, track in
-                            BridgeReleaseEditTrackContext(
-                                trackId: track.id,
-                                sources: [
-                                    BridgeReleaseEditTrackSource(
-                                        fileId: "file-\(index + 1)",
-                                        name: "Track \(index + 1).flac",
-                                        layout: .file
+                    sides: [
+                        BridgeReleaseEditTrackSide(
+                            side: .flat,
+                            headerKey: nil,
+                            runs: edit.tracks.enumerated()
+                                .map { index, track in
+                                    .track(
+                                        track: releaseEditTrackContext(
+                                            trackId: track.id,
+                                            index: index,
+                                            source:
+                                                BridgeReleaseEditTrackSource(
+                                                    fileId: "file-\(index + 1)",
+                                                    name:
+                                                        "Track \(index + 1).flac",
+                                                    layout: .file
+                                                )
+                                        )
                                     )
-                                ],
-                                durationClock: bridgeLengthClock(
-                                    ms: UInt64(180_000 + index * 12_000)
-                                ),
-                                positionText: String(index + 1),
-                                side: .flat,
-                                sideHeaderKey: nil
-                            )
-                        }
+                                }
+                        )
+                    ]
                 )
+            )
+        }
+
+        /// One track's context beside its form row in the release editor.
+        static func releaseEditTrackContext(
+            trackId: String,
+            index: Int,
+            source: BridgeReleaseEditTrackSource
+        ) -> BridgeReleaseEditTrackContext {
+            BridgeReleaseEditTrackContext(
+                trackId: trackId,
+                sources: [source],
+                durationClock: bridgeLengthClock(
+                    ms: UInt64(180_000 + index * 12_000)
+                ),
+                positionText: String(index + 1)
             )
         }
 
