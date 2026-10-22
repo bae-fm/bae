@@ -313,8 +313,8 @@ async fn find_release_detail_surfaces_seeded_tracks() {
 
     // Seed two tracks; the detail resolver must surface both with their
     // titles and track numbers (not just report emptiness).
-    let t1 = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Opening", Some(1));
-    let t2 = crate::db::DbTrack::new_test(&release.id, TRACK_2, "Closing", Some(2));
+    let t1 = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Opening", 1);
+    let t2 = crate::db::DbTrack::new_test(&release.id, TRACK_2, "Closing", 2);
     manager.database.insert_track(&t1).await.unwrap();
     manager.database.insert_track(&t2).await.unwrap();
 
@@ -329,7 +329,7 @@ async fn find_release_detail_surfaces_seeded_tracks() {
         .iter()
         .find(|t| t.title == "Opening")
         .expect("opening track surfaced");
-    assert_eq!(opening.track_number, Some(1));
+    assert_eq!(opening.position_text, "1");
     assert!(
         detail.tracks.iter().any(|t| t.title == "Closing"),
         "closing track surfaced"
@@ -347,7 +347,7 @@ async fn display_artist_is_set_only_for_a_compilation() {
         let mut album = create_test_album();
         album.is_compilation = is_compilation;
         let release = create_test_release(&album.id);
-        let track = crate::db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", Some(1));
+        let track = crate::db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
         let guest = DbArtist {
             id: "75c512c4-41b6-438d-89a6-d5929fa0697d".to_string(),
             name: "Guest Performer".to_string(),
@@ -510,19 +510,19 @@ async fn resolve_to_track_ids_expands_album_to_primary_release() {
         &release1.id,
         "48ae00a1-d7a5-443c-8240-f999fc4ddfcc",
         "Old A",
-        Some(1),
+        1,
     );
     let p1 = crate::db::DbTrack::new_test(
         &release2.id,
         "cc4180bc-58f5-456f-8116-f9b2099f5b7f",
         "New A",
-        Some(1),
+        1,
     );
     let p2 = crate::db::DbTrack::new_test(
         &release2.id,
         "cc4181bc-58f5-4722-8116-fab2099f5d32",
         "New B",
-        Some(2),
+        2,
     );
     manager.database.insert_track(&old).await.unwrap();
     manager.database.insert_track(&p1).await.unwrap();

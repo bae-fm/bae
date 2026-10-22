@@ -56,10 +56,11 @@ fn plain(members: &[FolderCandidate]) -> Vec<(FolderCandidate, CandidateFileEdit
         .collect()
 }
 
-fn layout(release: &FolderCandidate) -> Vec<(Option<i32>, Option<i32>)> {
-    crate::import::audio_layout::direct_entry_track_rows(&release.files)
+/// Each track's disc and number as the folders lay them out.
+fn layout(release: &FolderCandidate) -> Vec<(Option<u32>, u32)> {
+    crate::import::audio_layout::folder_tracks(&release.files)
         .iter()
-        .map(|track| (track.side, track.track_number))
+        .map(|track| (track.disc, track.number.get()))
         .collect()
 }
 
@@ -113,12 +114,7 @@ fn folders_under_one_folder_keep_their_paths_below_it_and_a_disc_each() {
     );
     assert_eq!(
         layout(&release),
-        [
-            (Some(1), Some(1)),
-            (Some(1), Some(2)),
-            (Some(2), Some(1)),
-            (Some(2), Some(2))
-        ]
+        [(Some(1), 1), (Some(1), 2), (Some(2), 1), (Some(2), 2)]
     );
 }
 
@@ -145,12 +141,7 @@ fn folders_under_different_roots_take_their_position_and_name() {
     );
     assert_eq!(
         layout(&release),
-        [
-            (Some(1), Some(1)),
-            (Some(1), Some(2)),
-            (Some(2), Some(1)),
-            (Some(2), Some(2))
-        ]
+        [(Some(1), 1), (Some(1), 2), (Some(2), 1), (Some(2), 2)]
     );
 }
 
@@ -215,12 +206,17 @@ fn file_metadata_keeps_the_releases_numbering_instead_of_the_tags() {
             .collect(),
     };
     let edit = release.file_tag_values(&snapshot).unwrap();
+    let laid_out: Vec<_> = layout(&release)
+        .into_iter()
+        .map(|(disc, number)| (disc, std::num::NonZeroU32::new(number)))
+        .collect();
     assert_eq!(
         edit.tracks
             .iter()
-            .map(|track| (track.side, track.number))
+            .map(|track| track.place)
             .collect::<Vec<_>>(),
-        layout(&release)
+        crate::mediums::by_disc(&laid_out).1,
+        "the folders' layout places the tracks, whatever their tags say"
     );
     assert_eq!(edit.tracks[2].title, "Tagged Track 2");
 }
@@ -302,15 +298,15 @@ fn sheets_take_discs_within_their_folders_run() {
     let release = composed(&[first, folder_at("/music", "Album/Disc 2")]);
     // Disc 1's loose `02.flac` is its first disc, its sheet the second, and
     // Disc 2's loose audio the third.
-    let sides: Vec<Option<i32>> = layout(&release).iter().map(|(side, _)| *side).collect();
+    let sides: Vec<Option<u32>> = layout(&release).iter().map(|(disc, _)| *disc).collect();
     assert_eq!(sides.iter().filter(|side| **side == Some(1)).count(), 1);
     assert_eq!(sides.iter().filter(|side| **side == Some(2)).count(), 1);
     assert_eq!(sides.iter().filter(|side| **side == Some(3)).count(), 2);
     assert_eq!(
         crate::import::audio_layout::audio_units(&release.files),
-        crate::import::audio_layout::direct_entry_track_rows(&release.files)
+        crate::import::audio_layout::folder_tracks(&release.files)
             .into_iter()
-            .map(|track| track.file.unwrap())
+            .map(|track| track.file)
             .collect::<Vec<_>>()
     );
 }

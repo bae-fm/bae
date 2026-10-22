@@ -177,6 +177,10 @@ pub(crate) async fn get_song(state: AppState, params: Params) -> Result<Option<E
         .get_track_display(&track_id)
         .await
         .map_err(lib_err)?;
+    let mediums = services
+        .get_release_mediums(&info.release_id)
+        .await
+        .map_err(lib_err)?;
     let cover_art = release_album_id3_with(services, &release).await?.cover_art;
 
     let child = track_child(
@@ -185,6 +189,7 @@ pub(crate) async fn get_song(state: AppState, params: Params) -> Result<Option<E
         &release,
         &display.album_title,
         &files,
+        &mediums,
         cover_art,
     )
     .await?;

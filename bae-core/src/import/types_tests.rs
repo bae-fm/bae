@@ -56,8 +56,6 @@ mod edit_shaping_tests {
                 artist_assignments: TrackArtistAssignments::Explicit(vec![
                     ArtistAssignment::named("Artist Two"),
                 ]),
-                side: Some(1),
-                track_number: Some(1),
                 file: Some(AudioFile::Standalone {
                     file_id: "01.flac".to_string(),
                 }),
@@ -305,8 +303,6 @@ mod edit_shaping_tests {
             tracks: vec![
                 TrackUserEdit {
                     title: "Track One".to_string(),
-                    side: Some(1),
-                    track_number: Some(1),
                     artist_assignments: TrackArtistAssignments::Explicit(vec![
                         ArtistAssignment::named("Track Artist"),
                     ]),
@@ -316,8 +312,6 @@ mod edit_shaping_tests {
                 },
                 TrackUserEdit {
                     title: "Track Two".to_string(),
-                    side: Some(2),
-                    track_number: Some(1),
                     artist_assignments: TrackArtistAssignments::AlbumArtists,
                     file: None,
                 },

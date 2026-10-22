@@ -454,13 +454,19 @@ mod tests {
         // Two track rows, so the assertion below pins the count and the
         // lengths to the DB rather than to whatever a folder walk would have
         // read.
+        database
+            .insert_release_medium(&crate::db::DbReleaseMedium::new_test(&release.id))
+            .await
+            .unwrap();
         for n in 1..=2 {
             let track = DbTrack {
                 id: Uuid::new_v4().to_string(),
                 release_id: release.id.clone(),
                 title: format!("Track {n}"),
-                side: Some(1),
-                track_number: Some(n),
+                medium_id: crate::db::identity::release_medium_id(&release.id, 1),
+                side: std::num::NonZeroU8::MIN,
+                track_number: std::num::NonZeroU32::new(u32::try_from(n).expect("a test track number fits u32"))
+                    .expect("track numbers count from one"),
                 duration_ms: 180_000 + n as u64,
                 created_at: Utc::now(),
             };

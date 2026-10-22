@@ -69,12 +69,10 @@ impl ImportServiceHandle {
             )
             .await?;
             records.push(crate::import::search::MetadataResult::of_release(&release));
-            offered.push(crate::import::RawReleaseEdit::from_user_edit(
-                release
+            offered.push(crate::import::shared_album::OfferedReading::of(
+                &release
                     .read(&audio)
-                    .map_err(crate::import::ImportError::from)?
-                    .user_edit(),
-                crate::import::pane::CANDIDATE_TRACK_ID_PREFIX,
+                    .map_err(crate::import::ImportError::from)?,
             ));
         }
         let draft = crate::import::shared_album::shared_draft(

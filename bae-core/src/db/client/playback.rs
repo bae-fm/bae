@@ -54,14 +54,8 @@ impl Database {
                         .optional()
                         .map_err(DbError::from)?;
                     let Some(track) = track else { continue };
-                    let release =
-                        find_release_by_id_on(&sql, &track.release_id)?.ok_or_else(|| {
-                            DbError::Message(format!(
-                                "track {track_id} names release {} the library does not hold",
-                                track.release_id
-                            ))
-                        })?;
-                    infos.push(crate::playback::PlaybackTrackInfo::of(&track, &release));
+                    let mediums = release_mediums_on(&sql, &track.release_id)?;
+                    infos.push(crate::playback::PlaybackTrackInfo::of(&track, &mediums));
                 }
                 Ok(infos)
             })

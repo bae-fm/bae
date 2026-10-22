@@ -77,8 +77,9 @@ fn test_track(
         id: id.to_string(),
         release_id: release_id.to_string(),
         title: title.to_string(),
-        side: Some(1),
-        track_number: Some(1),
+        medium_id: crate::db::identity::release_medium_id(release_id, 1),
+        side: std::num::NonZeroU8::MIN,
+        track_number: std::num::NonZeroU32::MIN,
         duration_ms: 1000,
         created_at: now,
     }
@@ -98,18 +99,23 @@ struct Commit<'a> {
 }
 
 /// Finalize `release` past the guard, which these tests have already satisfied
-/// by seeding the DB directly rather than going through the import queue.
+/// by seeding the DB directly rather than going through the import queue. Its
+/// tracks sit on its one CD ([`test_track`]).
 async fn commit_import(
     db: &Database,
     release: &DbRelease,
     commit: Commit<'_>,
 ) {
+    let mediums = [crate::db::DbReleaseMedium::new_test(&release.id)];
     db.finalize_import_atomic(
         crate::db::ImportCommitGuard::UncheckedTestSetup,
         commit.album,
         release,
         commit.track_files,
-        commit.rows,
+        crate::db::ImportRows {
+            mediums: &mediums,
+            ..commit.rows
+        },
         commit.files,
         commit.library_image,
         commit.artist_images,
@@ -211,7 +217,9 @@ async fn seeded_db() -> (Database, tempfile::TempDir) {
 
             INSERT INTO releases (id, album_id, release_name, year, labels, barcode, media, discogs_details, source_folder_name, content_hash, album_loudness_lufs, album_peak_linear, created_at, album_order) VALUES ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', NULL, 2026, '[]', NULL, '[{\"medium\":\"cd\",\"count\":1}]', '[]', NULL, NULL, NULL, NULL, '2026-01-01T00:00:00Z', 0);
 
-            INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, created_at) VALUES ('0482872e-d4bf-4080-8426-441a0a3e71fc', '0252dedb-ee39-4547-8803-438dbeb57a64', 'Track Title A', 1, 1, 1000, '2026-01-01T00:00:00Z');
+            INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) VALUES ('c9f6f13c-15b2-5039-aad4-8cdd8b6c67f8', '0252dedb-ee39-4547-8803-438dbeb57a64', 1, 'cd', 1, '2026-01-01T00:00:00Z');
+
+            INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, created_at, medium_id) VALUES ('0482872e-d4bf-4080-8426-441a0a3e71fc', '0252dedb-ee39-4547-8803-438dbeb57a64', 'Track Title A', 1, 1, 1000, '2026-01-01T00:00:00Z', 'c9f6f13c-15b2-5039-aad4-8cdd8b6c67f8');
 
             INSERT INTO works (id, title, disambiguation, work_type, musicbrainz_work_id, created_at) VALUES ('6b05af7a-ee0c-4f12-8938-1d5536697271', 'Parent Work A', NULL, 'work', 'mb-work-parent-a', '2026-01-01T00:00:00Z'),
              ('f63d8e66-6a81-4a67-8005-1fbe870f27eb', 'Displayed Work A', NULL, 'part', 'mb-work-child-a', '2026-01-01T00:00:00Z');

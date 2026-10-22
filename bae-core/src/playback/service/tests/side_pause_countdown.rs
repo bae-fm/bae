@@ -32,36 +32,45 @@ fn countdown_deadline() -> chrono::DateTime<chrono::Utc> {
     test_clock_start() + chrono::Duration::seconds(5)
 }
 
-/// Two tracks of one release, the first ending side or disc `number` of
-/// `medium` and the second starting the next.
-fn tracks_across(medium: PhysicalMedium, number: i32) -> (PlaybackTrackInfo, PlaybackTrackInfo) {
-    let on = |track_id: &str, number: i32| PlaybackTrackInfo {
-        side: Some(PlaybackTrackSide { medium, number }),
+/// Two tracks of one release, the first on `last` = (medium, side) and the
+/// second on `next`, each side ending `boundary` and labelled as given.
+fn tracks_across(
+    boundary: PlaybackPauseBoundary,
+    last: (u16, u8, &str),
+    next: (u16, u8, &str),
+) -> (PlaybackTrackInfo, PlaybackTrackInfo) {
+    let on = |track_id: &str, (medium, side, label): (u16, u8, &str)| PlaybackTrackInfo {
+        side: Some(PlaybackTrackSide {
+            medium: std::num::NonZeroU16::new(medium).expect("mediums count from one"),
+            side: std::num::NonZeroU8::new(side).expect("sides count from one"),
+            boundary,
+            label: label.to_string(),
+        }),
         ..test_track_info(track_id)
     };
-    (on("last", number), on("next", number + 1))
+    (on("last", last), on("next", next))
 }
 
-/// Records and cassettes end a side, labeled by letter, and CDs a disc, labeled
-/// by number; the prompt carries which kind ended.
+/// A record's side ends at the next side of it, and a CD at the next disc;
+/// the prompt carries which kind ended and the label of the side that did.
 #[test]
 fn a_pause_carries_the_kind_of_boundary_that_ended() {
-    for (medium, kind, side_label) in [
-        (PhysicalMedium::Record, PlaybackPauseBoundary::Side, "B"),
-        (PhysicalMedium::Cassette, PlaybackPauseBoundary::Side, "B"),
-        (PhysicalMedium::Cd, PlaybackPauseBoundary::Disc, "2"),
+    for (kind, last, next, side_label) in [
+        (PlaybackPauseBoundary::Side, (1, 2, "B"), (2, 1, "C"), "B"),
+        (PlaybackPauseBoundary::Side, (1, 1, "A"), (1, 2, "B"), "A"),
+        (PlaybackPauseBoundary::Disc, (2, 1, "2"), (3, 1, "3"), "2"),
     ] {
-        let (last, next) = tracks_across(medium, 2);
+        let (last, next) = tracks_across(kind, last, next);
         let boundary = side_boundary_between(&last, &next).expect("the side ends");
-        assert_eq!(boundary.kind, kind, "{medium:?}");
-        assert_eq!(boundary.side_label, side_label, "{medium:?}");
+        assert_eq!(boundary.kind, kind, "{side_label}");
+        assert_eq!(boundary.side_label, side_label);
         let prompt = SidePauseDecision {
             track_id: "next".to_string(),
             boundary,
             resumes_at: None,
         }
         .prompt();
-        assert_eq!(prompt.boundary, kind, "{medium:?}");
+        assert_eq!(prompt.boundary, kind, "{side_label}");
     }
 }
 
@@ -184,4 +193,85 @@ fn commands_that_steer_playback_stop_the_countdown_and_the_rest_leave_it() {
             "{command:?} leaves the countdown running"
         );
     }
+}
+
+/// What playback reads of a track on a release of `mediums`, its place given
+/// as (medium, side).
+fn info_on(
+    track_id: &str,
+    mediums: &crate::db::DbReleaseMediums,
+    (medium, side): (u16, u8),
+) -> PlaybackTrackInfo {
+    let mut track = crate::db::DbTrack::new_test("release-id", track_id, "Track Title", 1);
+    track.medium_id.clone_from(&mediums.0[usize::from(medium) - 1].id);
+    track.side = std::num::NonZeroU8::new(side).expect("sides count from one");
+    PlaybackTrackInfo::of(&track, mediums)
+}
+
+fn release_of(mediums: &[crate::mediums::ReleaseMedium]) -> crate::db::DbReleaseMediums {
+    crate::db::DbReleaseMediums(
+        mediums
+            .iter()
+            .enumerate()
+            .map(|(index, medium)| {
+                crate::db::DbReleaseMedium::new(
+                    "release-id",
+                    crate::mediums::medium_position(index),
+                    *medium,
+                    chrono::Utc::now(),
+                )
+            })
+            .collect(),
+    )
+}
+
+/// A CD release pauses where its discs change and nowhere else, the pause
+/// named by the disc that ended.
+#[test]
+fn a_cd_release_pauses_at_disc_changes_only() {
+    let cd = crate::mediums::ReleaseMedium::one_sided(Some(crate::pressing::Medium::Cd));
+    let mediums = release_of(&[cd, cd]);
+    let first = info_on("first", &mediums, (1, 1));
+    let second = info_on("second", &mediums, (1, 1));
+    let third = info_on("third", &mediums, (2, 1));
+    assert_eq!(side_boundary_between(&first, &second), None);
+    let boundary = side_boundary_between(&second, &third).expect("disc 1 ends");
+    assert_eq!(boundary.kind, PlaybackPauseBoundary::Disc);
+    assert_eq!(boundary.side_label, "1");
+}
+
+/// A 2×LP rip pauses at each side, named by its letter across both records.
+#[test]
+fn a_two_record_release_pauses_at_each_side() {
+    let record = crate::mediums::ReleaseMedium {
+        carrier: Some(crate::pressing::Medium::Vinyl),
+        sides: std::num::NonZeroU8::new(2).expect("two sides"),
+    };
+    let mediums = release_of(&[record, record]);
+    let places = [(1, 1), (1, 2), (2, 1), (2, 2)];
+    let infos: Vec<_> = places
+        .iter()
+        .enumerate()
+        .map(|(index, place)| info_on(&format!("track-{index}"), &mediums, *place))
+        .collect();
+    let labels: Vec<_> = infos
+        .windows(2)
+        .map(|pair| {
+            let boundary = side_boundary_between(&pair[0], &pair[1]).expect("a side ends");
+            assert_eq!(boundary.kind, PlaybackPauseBoundary::Side);
+            boundary.side_label
+        })
+        .collect();
+    assert_eq!(labels, ["A", "B", "C"]);
+}
+
+/// A medium of no physical carrier never pauses.
+#[test]
+fn a_medium_of_no_carrier_never_pauses() {
+    let unstated = crate::mediums::ReleaseMedium::one_sided(None);
+    let mediums = release_of(&[unstated, unstated]);
+    let first = info_on("first", &mediums, (1, 1));
+    let second = info_on("second", &mediums, (2, 1));
+    assert_eq!(first.side, None);
+    assert_eq!(side_boundary_between(&first, &second), None);
 }

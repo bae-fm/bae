@@ -438,8 +438,6 @@ impl AutomationTrackUserEdit {
     pub(crate) fn from_core(track: TrackUserEdit) -> Self {
         Self {
             title: track.title,
-            side: track.side,
-            track_number: track.track_number,
             artist_assignments: AutomationTrackArtistAssignments::from_core(
                 track.artist_assignments,
             ),
@@ -449,8 +447,6 @@ impl AutomationTrackUserEdit {
     pub(crate) fn into_core(self) -> TrackUserEdit {
         TrackUserEdit {
             title: self.title,
-            side: self.side,
-            track_number: self.track_number,
             artist_assignments: self.artist_assignments.into_core(),
             // Automation never sets which audio backs a track.
             file: None,
@@ -652,8 +648,6 @@ impl AutomationTrackDetail {
         Self {
             id: track.id,
             title: track.title,
-            side: track.side,
-            track_number: track.track_number,
             duration_ms: track.duration_ms,
             artist_names: track.artist_names,
             position_text: track.position_text,
@@ -667,11 +661,8 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         Sided { side_letter, number },
-        SidedUnnumbered { side_letter },
         Disc { disc, number },
-        DiscUnnumbered { disc },
         Flat { number },
-        Unnumbered,
     },
 }
 

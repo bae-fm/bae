@@ -90,12 +90,16 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
     assert_eq!(projected.metadata_draft.tracks.len(), 4);
     assert_eq!(
         projected
-            .metadata_draft
-            .tracks
+            .mapping
+            .track_sections
             .iter()
-            .map(|track| track.side)
+            .map(|section| section.side.clone())
             .collect::<Vec<_>>(),
-        [Some(1), Some(1), Some(2), Some(2)]
+        [
+            crate::album_detail::TrackSide::Disc { disc: 1 },
+            crate::album_detail::TrackSide::Disc { disc: 2 }
+        ],
+        "each folder is a disc"
     );
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap();
@@ -109,19 +113,15 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
         .unwrap();
     assert_eq!(imported.edit.album_title, "Collected Volumes");
     assert_eq!(imported.edit.tracks.len(), 4);
+    let disc = |disc| crate::album_detail::TrackSide::Disc { disc };
     assert_eq!(
         imported
-            .edit
+            .display
             .tracks
             .iter()
-            .map(|track| (track.side, track.track_number))
+            .map(|track| (track.side.clone(), track.position_text.as_str()))
             .collect::<Vec<_>>(),
-        [
-            (Some(1), Some(1)),
-            (Some(1), Some(2)),
-            (Some(2), Some(1)),
-            (Some(2), Some(2))
-        ]
+        [(disc(1), "1"), (disc(1), "2"), (disc(2), "1"), (disc(2), "2")]
     );
     assert!(pane(&handle, &key).await.is_added);
     handle.separate_candidate(&key).await.unwrap();

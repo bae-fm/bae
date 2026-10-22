@@ -13,27 +13,55 @@ pub struct PlaybackTrackInfo {
 }
 
 impl PlaybackTrackInfo {
-    /// The facts of `track`, which plays on `release`.
-    pub(crate) fn of(track: &crate::db::DbTrack, release: &crate::db::DbRelease) -> Self {
-        let side = release
-            .pressing
-            .facts
-            .physical_medium()
-            .zip(track.side)
-            .map(|(medium, number)| PlaybackTrackSide { medium, number });
+    /// The facts of `track`, which sits on one of `mediums`, its release's. A
+    /// track on a medium with no physical carrier — a download, a disc of
+    /// unstated carrier — is on no side playback pauses at.
+    pub(crate) fn of(track: &crate::db::DbTrack, mediums: &crate::db::DbReleaseMediums) -> Self {
+        let place = mediums.place(track);
+        let side = mediums
+            .medium_of(track)
+            .medium
+            .carrier
+            .and_then(crate::pressing::Medium::physical)
+            .map(|physical| {
+                let boundary = match physical {
+                    PhysicalMedium::Record | PhysicalMedium::Cassette => {
+                        PlaybackPauseBoundary::Side
+                    }
+                    PhysicalMedium::Cd => PlaybackPauseBoundary::Disc,
+                };
+                let label = match crate::mediums::track_side(&place, &mediums.mediums()) {
+                    crate::album_detail::TrackSide::Sided { side_letter } => side_letter,
+                    crate::album_detail::TrackSide::Disc { disc } => disc.to_string(),
+                    crate::album_detail::TrackSide::Flat => place.medium.to_string(),
+                };
+                PlaybackTrackSide {
+                    medium: place.medium,
+                    side: place.side,
+                    boundary,
+                    label,
+                }
+            });
         Self {
             track_id: track.id.clone(),
-            release_id: release.id.clone(),
+            release_id: track.release_id.clone(),
             side,
         }
     }
 }
 
-/// The side or disc a track is on, which decides where playback pauses.
+/// The side or disc a track is on, which decides where playback pauses: a
+/// change of medium or of side is a boundary.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaybackTrackSide {
-    pub medium: PhysicalMedium,
-    pub number: i32,
+    /// The medium's position among its release's.
+    pub medium: std::num::NonZeroU16,
+    /// The side of that medium.
+    pub side: std::num::NonZeroU8,
+    /// What ends there: a record's or cassette's side, or a CD.
+    pub boundary: PlaybackPauseBoundary,
+    /// How the side reads ("B", or the disc's number).
+    pub label: String,
 }
 
 impl PlayingTrack {

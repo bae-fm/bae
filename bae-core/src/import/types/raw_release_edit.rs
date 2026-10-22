@@ -29,8 +29,6 @@ pub struct RawReleaseEdit {
 
 impl RawReleaseEdit {
     /// Whether the editable metadata contains no authored or sourced values.
-    /// Physical side/track positions are excluded: they describe candidate
-    /// slots, not release metadata.
     pub fn is_blank(&self) -> bool {
         self.album_title.trim().is_empty()
             && self.album_artist_assignments.is_empty()
@@ -98,12 +96,10 @@ impl RawLabelEdit {
 /// — used only to diff rows in the UI; shaping drops it because wire
 /// tracks zip positionally to existing track IDs.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct RawTrackEdit<Audio = Option<AudioFile>, Number = Option<i32>> {
+pub struct RawTrackEdit<Audio = Option<AudioFile>> {
     pub id: String,
     pub title: String,
     pub artist_assignments: TrackArtistAssignments,
-    pub side: Option<i32>,
-    pub track_number: Number,
     /// The audio bound to this row, carried through editing untouched, so the
     /// row the editor hands back names the audio it was drawn over.
     pub file: Audio,
@@ -165,8 +161,6 @@ impl RawReleaseEdit {
                 .iter()
                 .map(|t| TrackUserEdit {
                     title: t.title.clone(),
-                    side: t.side,
-                    track_number: t.track_number,
                     artist_assignments: t.artist_assignments.clone(),
                     file: t.file.clone(),
                 })
@@ -211,8 +205,6 @@ impl RawTrackEdit {
             id,
             title: edit.title,
             artist_assignments: edit.artist_assignments,
-            side: edit.side,
-            track_number: edit.track_number,
             file: edit.file,
         }
     }

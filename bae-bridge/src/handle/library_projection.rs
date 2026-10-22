@@ -33,8 +33,6 @@ impl BridgeTrack {
         let bae_core::album_detail::TrackDetail {
             id,
             title,
-            side,
-            track_number,
             duration_ms,
             artist_names,
             display_artist,
@@ -46,8 +44,6 @@ impl BridgeTrack {
         BridgeTrack {
             id,
             title,
-            side,
-            track_number,
             duration_clock: crate::types::BridgeDurationClock::of_length(duration_ms),
             duration_ms,
             artist_names,
@@ -460,6 +456,7 @@ impl BridgeTrackRoleSummary {
             title: track_title,
             release_id,
             id: _,
+            medium_id: _,
             side: _,
             track_number: _,
             duration_ms: _,
@@ -510,6 +507,7 @@ impl BridgeWorkTrackSummary {
             title: track_title,
             release_id,
             id: _,
+            medium_id: _,
             side: _,
             track_number: _,
             duration_ms: _,

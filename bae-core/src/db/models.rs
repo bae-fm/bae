@@ -326,13 +326,90 @@ pub struct DbTrack {
     pub id: String,
     pub release_id: String,
     pub title: String,
-    /// Physical side, 1-indexed and always set explicitly, never defaulted: a CD
-    /// disc is side 1; vinyl A = 1, B = 2; a cassette has 2 sides.
-    pub side: Option<i32>,
-    pub track_number: Option<i32>,
+    /// The release medium the track sits on ([`DbReleaseMedium::id`]).
+    pub medium_id: String,
+    /// The side of that medium, counted from one: a CD's only side is 1, a
+    /// record's B side 2.
+    pub side: std::num::NonZeroU8,
+    /// The track's number on its side.
+    pub track_number: NonZeroU32,
     /// How long the track's audio plays, measured when it was imported.
     pub duration_ms: u64,
     pub created_at: DateTime<Utc>,
+}
+
+/// One medium a release holds, at its position among the release's mediums.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbReleaseMedium {
+    pub id: String,
+    pub release_id: String,
+    pub position: std::num::NonZeroU16,
+    pub medium: crate::mediums::ReleaseMedium,
+    pub created_at: DateTime<Utc>,
+}
+
+impl DbReleaseMedium {
+    /// The row for `medium` at `position` of `release_id`.
+    pub fn new(
+        release_id: &str,
+        position: std::num::NonZeroU16,
+        medium: crate::mediums::ReleaseMedium,
+        created_at: DateTime<Utc>,
+    ) -> Self {
+        Self {
+            id: crate::db::identity::release_medium_id(release_id, position.get()),
+            release_id: release_id.to_string(),
+            position,
+            medium,
+            created_at,
+        }
+    }
+}
+
+/// A release's mediums in order, which its tracks' places are read against.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct DbReleaseMediums(pub Vec<DbReleaseMedium>);
+
+impl DbReleaseMediums {
+    /// The mediums alone, in order.
+    pub fn mediums(&self) -> Vec<crate::mediums::ReleaseMedium> {
+        self.0.iter().map(|row| row.medium).collect()
+    }
+
+    /// Where `track`, one of this release's, sits. Its medium is one of these:
+    /// the schema refuses a track whose medium row is missing.
+    pub fn place(&self, track: &DbTrack) -> crate::mediums::TrackPlace {
+        let medium = self
+            .0
+            .iter()
+            .find(|medium| medium.id == track.medium_id)
+            .expect("a track's medium row is its release's");
+        crate::mediums::TrackPlace {
+            medium: medium.position,
+            side: track.side,
+            number: track.track_number,
+        }
+    }
+
+    /// How `track` reads among these mediums.
+    pub fn position(&self, track: &DbTrack) -> crate::album_detail::TrackPosition {
+        crate::mediums::track_position(&self.place(track), &self.mediums())
+    }
+
+    /// The disc number a surface outside bae states for `track` (a saved
+    /// file's disc tag, a Subsonic song's disc): its medium's position, for a
+    /// release of several mediums, and none for a release of one.
+    pub fn disc_number(&self, track: &DbTrack) -> Option<u32> {
+        (self.0.len() > 1).then(|| u32::from(self.place(track).medium.get()))
+    }
+
+    /// The medium `track` sits on.
+    pub fn medium_of(&self, track: &DbTrack) -> &DbReleaseMedium {
+        self.0
+            .iter()
+            .find(|medium| medium.id == track.medium_id)
+            .expect("a track's medium row is its release's")
+    }
 }
 /// A physical file belonging to a release — not to an album, and not to a track
 /// (some files are metadata like cover.jpg or .cue sheets that no track owns).
@@ -652,25 +729,36 @@ impl DbRelease {
 }
 
 impl DbTrack {
+    /// Track `track_number` of the only side of `release_id`'s first medium
+    /// ([`DbReleaseMedium::new_test`]).
     #[cfg(test)]
-    pub fn new_test(
-        release_id: &str,
-        track_id: &str,
-        title: &str,
-        track_number: Option<i32>,
-    ) -> Self {
+    pub fn new_test(release_id: &str, track_id: &str, title: &str, track_number: u32) -> Self {
         let now = chrono::Utc::now();
         DbTrack {
             id: track_id.to_string(),
             release_id: release_id.to_string(),
             title: title.to_string(),
-            side: Some(1),
-            track_number,
+            medium_id: crate::db::identity::release_medium_id(release_id, 1),
+            side: std::num::NonZeroU8::MIN,
+            track_number: NonZeroU32::new(track_number).expect("track numbers count from one"),
             duration_ms: 180_000,
             created_at: now,
         }
     }
 }
+impl DbReleaseMedium {
+    /// The first medium of `release_id`: one CD side.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn new_test(release_id: &str) -> Self {
+        Self::new(
+            release_id,
+            std::num::NonZeroU16::MIN,
+            crate::mediums::ReleaseMedium::one_sided(Some(crate::pressing::Medium::Cd)),
+            chrono::Utc::now(),
+        )
+    }
+}
+
 impl DbFile {
     /// Create a file record
     ///

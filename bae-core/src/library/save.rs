@@ -27,16 +27,11 @@ pub fn render_save_filename(
             SaveFilenameToken::Title => tags.title.clone(),
             SaveFilenameToken::Artist => tags.artist.clone(),
             SaveFilenameToken::Album => tags.album.clone(),
-            // An absent year / disc / track number renders empty and drops out
-            // of the join. That is a legitimate state for a filename pattern,
-            // not an error.
+            // An absent year or disc renders empty and drops out of the join.
+            // That is a legitimate state for a filename pattern, not an error.
             SaveFilenameToken::Year => tags.year.map(|y| y.to_string()).unwrap_or_default(),
-            // Zero-padded to two digits so tracks sort lexically; empty when the
-            // track carries no number.
-            SaveFilenameToken::TrackNumber => resolved
-                .track_number
-                .map(|n| format!("{n:02}"))
-                .unwrap_or_default(),
+            // Zero-padded to two digits so tracks sort lexically.
+            SaveFilenameToken::TrackNumber => format!("{:02}", resolved.track_number),
             SaveFilenameToken::DiscNumber => tags.disc.map(|d| d.to_string()).unwrap_or_default(),
             SaveFilenameToken::TrackTotal => resolved.total_tracks.to_string(),
         })
@@ -221,7 +216,6 @@ impl SaveService {
         let channels = plans[0].audio_meta.audio_format.channels.get();
         let release_title = plans[0].resolved.tags.album.clone();
         let release_performer = plans[0].resolved.tags.artist.clone();
-        let is_digital = plans[0].resolved.is_digital;
         let year = plans[0].resolved.tags.year;
         let cue_file_type = cue_file_type(&preset.codec)?;
         let audio_filename = output_audio_path
@@ -360,7 +354,6 @@ impl SaveService {
                 &tags,
                 None,
                 total_tracks,
-                is_digital,
                 cover_image_bytes.as_deref(),
             )?;
 
@@ -426,9 +419,8 @@ impl SaveService {
                 &output_path,
                 tag_type,
                 &plan.resolved.tags,
-                plan.resolved.track_number.map(|n| n as u32),
+                Some(plan.resolved.track_number),
                 plan.resolved.total_tracks as u32,
-                plan.resolved.is_digital,
                 cover_image_bytes.as_deref(),
             )?;
 
@@ -638,7 +630,6 @@ fn write_tags(
     tags: &crate::library::manager::SaveTags,
     track_number: Option<u32>,
     total_tracks: u32,
-    is_digital: bool,
     cover_data: Option<&[u8]>,
 ) -> Result<(), String> {
     use lofty::config::WriteOptions;
@@ -670,12 +661,8 @@ fn write_tags(
         tag.set_track_total(total_tracks);
     }
 
-    // Skip the disc tag on vinyl / cassette: ID3 "disc number" doesn't
-    // describe a physical side, and writing it mislabels side B as disc 2.
-    if is_digital {
-        if let Some(disc) = tags.disc {
-            tag.set_disk(disc as u32);
-        }
+    if let Some(disc) = tags.disc {
+        tag.set_disk(disc);
     }
 
     if let Some(data) = cover_data {

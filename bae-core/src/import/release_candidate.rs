@@ -23,15 +23,20 @@ impl FolderCandidate {
         let mut values =
             super::file_tag_mapper::file_metadata_values(&self.files, snapshot, Some(&self.name))?;
         if !self.files.parts.is_empty() {
-            let layout = super::audio_layout::direct_entry_track_rows(&self.files);
+            let layout = super::audio_layout::folder_tracks(&self.files);
             if values.tracks.len() != layout.len() {
                 return Err(super::ImportError::Internal {
                     detail: "file metadata does not match the release's track count".into(),
                 });
             }
-            for (track, laid_out) in values.tracks.iter_mut().zip(&layout) {
-                track.side = laid_out.side;
-                track.number = laid_out.track_number;
+            let numbering: Vec<_> = layout
+                .iter()
+                .map(|track| (track.disc, Some(track.number)))
+                .collect();
+            let (mediums, places) = crate::mediums::by_disc(&numbering);
+            values.mediums = mediums;
+            for (track, place) in values.tracks.iter_mut().zip(places) {
+                track.place = place;
             }
         }
         Ok(values)

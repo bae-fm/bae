@@ -359,21 +359,44 @@ CREATE INDEX IF NOT EXISTS idx_release_records_catalog_key ON release_records (c
 CREATE INDEX IF NOT EXISTS idx_release_records_catalog_album ON release_records
     (catalog, CASE WHEN kind = 'album' THEN key ELSE album_key END);
 
+-- The mediums a release holds — the discs, records or tapes its audio was
+-- read from — in order. The id derives from (release, position), so two
+-- devices that write one release's mediums write the same rows.
+CREATE TABLE IF NOT EXISTS release_mediums (
+    id TEXT PRIMARY KEY,
+    release_id TEXT NOT NULL,
+    -- Counted from one.
+    position INTEGER NOT NULL CHECK (position >= 1),
+    -- The carrier (a `crate::pressing::Medium` key), where the source states one.
+    medium TEXT CHECK (medium IS NULL OR medium <> ''),
+    -- A CD is one side; a record or a cassette as many as its tracks name.
+    side_count INTEGER NOT NULL CHECK (side_count >= 1),
+    created_at TEXT NOT NULL,
+    UNIQUE (release_id, position),
+    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
+) STRICT;
+
 -- The tracks of a release, in playing order.
 CREATE TABLE IF NOT EXISTS tracks (
     id TEXT PRIMARY KEY,
     release_id TEXT NOT NULL,
     title TEXT NOT NULL,
-    track_number INTEGER,
+    -- The medium the track sits on, one of its release's.
+    medium_id TEXT NOT NULL,
+    -- The side of that medium, counted from one.
+    side INTEGER NOT NULL CHECK (side >= 1),
+    -- The track's number on that side.
+    track_number INTEGER NOT NULL CHECK (track_number >= 1),
     -- How long the track's audio plays, measured when it was imported.
     duration_ms INTEGER NOT NULL CHECK (duration_ms >= 0),
     created_at TEXT NOT NULL,
     -- Playing order within the release, from zero across all sides.
     position INTEGER NOT NULL DEFAULT 0 CHECK (position >= 0),
-    -- The side or disc this track sits on, where the pressing has them.
-    side INTEGER,
-    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
+    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE,
+    FOREIGN KEY (medium_id) REFERENCES release_mediums (id)
 ) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_tracks_medium_id ON tracks (medium_id);
 
 CREATE INDEX IF NOT EXISTS idx_tracks_release_id ON tracks (release_id);
 
@@ -1012,18 +1035,30 @@ CREATE TABLE IF NOT EXISTS import_candidate_album_artist_assignment (
     )
 ) STRICT;
 
--- The tracks of the draft, each bound to the file (or CUE slice) it plays.
--- `stated_length_ms` is the length the source the draft was read from lists
--- for the track, unstated where it lists none or the draft was read from no
--- catalog.
+-- The mediums of the draft, in order: what applying a source read the
+-- folder's audio to be on.
+CREATE TABLE IF NOT EXISTS import_candidate_medium (
+    content_hash TEXT NOT NULL,
+    position     INTEGER NOT NULL CHECK (position >= 1),
+    medium       TEXT CHECK (medium IS NULL OR medium <> ''),
+    side_count   INTEGER NOT NULL CHECK (side_count >= 1),
+    PRIMARY KEY (content_hash, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_edit (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- The tracks of the draft, each bound to the file (or CUE slice) it plays and
+-- placed on a side of one of the draft's mediums. `stated_length_ms` is the
+-- length the source the draft was read from lists for the track, unstated
+-- where it lists none or the draft was read from no catalog.
 CREATE TABLE IF NOT EXISTS import_candidate_track (
     content_hash           TEXT NOT NULL,
     track_id               TEXT NOT NULL,
     position               INTEGER NOT NULL CHECK (position >= 0),
     title                  TEXT NOT NULL,
     artist_assignment_kind TEXT NOT NULL CHECK (artist_assignment_kind IN ('album_artists', 'explicit')),
-    side                   INTEGER,
-    track_number           INTEGER NOT NULL,
+    medium                 INTEGER NOT NULL CHECK (medium >= 1),
+    side                   INTEGER NOT NULL CHECK (side >= 1),
+    track_number           INTEGER NOT NULL CHECK (track_number >= 1),
     stated_length_ms       INTEGER CHECK (stated_length_ms IS NULL OR stated_length_ms >= 0),
     file_kind              TEXT NOT NULL CHECK (file_kind IN ('standalone', 'sheet_slice')),
     file_id                TEXT NOT NULL,
@@ -1032,6 +1067,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_track (
     PRIMARY KEY (content_hash, track_id),
     UNIQUE (content_hash, position),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_edit (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (content_hash, medium) REFERENCES import_candidate_medium (content_hash, position),
     CHECK (
         (file_kind = 'standalone' AND file_id IS NOT NULL AND sheet_id IS NULL AND slice_index IS NULL)
         OR (file_kind = 'sheet_slice' AND file_id IS NOT NULL AND sheet_id IS NOT NULL AND slice_index IS NOT NULL)

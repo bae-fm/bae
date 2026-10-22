@@ -163,7 +163,9 @@ async fn queue_db() -> (Database, tempfile::TempDir) {
             INSERT INTO artists (id, name, name_key, created_at) VALUES ('5b5f8c38-5237-4187-895c-28b1b2a43672', 'Track Artist Name First', 'track artist name first', '2026-01-01T00:00:00Z'),
              ('8ccac2a7-7e60-4f52-881e-0b349ff78cc5', 'Track Artist Name Second', 'track artist name second', '2026-01-01T00:00:00Z');
 
-            INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, created_at) VALUES ('0482872e-d4bf-4080-8426-441a0a3e71fc', '0252dedb-ee39-4547-8803-438dbeb57a64', 'Track Title A', 1, 1, 1000, '2026-01-01T00:00:00Z');
+            INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) VALUES ('c9f6f13c-15b2-5039-aad4-8cdd8b6c67f8', '0252dedb-ee39-4547-8803-438dbeb57a64', 1, 'cd', 1, '2026-01-01T00:00:00Z');
+
+            INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, created_at, medium_id) VALUES ('0482872e-d4bf-4080-8426-441a0a3e71fc', '0252dedb-ee39-4547-8803-438dbeb57a64', 'Track Title A', 1, 1, 1000, '2026-01-01T00:00:00Z', 'c9f6f13c-15b2-5039-aad4-8cdd8b6c67f8');
 
             INSERT INTO track_artists (id, track_id, artist_id, position, created_at) VALUES ('af940e5f-472b-4162-81fb-97517afd23be', '0482872e-d4bf-4080-8426-441a0a3e71fc', '8ccac2a7-7e60-4f52-881e-0b349ff78cc5', 1, '2026-01-01T00:00:00Z'),
              ('8b08019f-1c04-400e-8107-9b85f7222407', '0482872e-d4bf-4080-8426-441a0a3e71fc', '5b5f8c38-5237-4187-895c-28b1b2a43672', 0, '2026-01-01T00:00:00Z');
@@ -204,8 +206,10 @@ async fn release_detail_db() -> (Database, tempfile::TempDir) {
             INSERT INTO artists (id, name, name_key, created_at) VALUES ('5b5f8c38-5237-4187-895c-28b1b2a43672', 'Track Artist Name First', 'track artist name first', '2026-01-01T00:00:00Z'),
              ('8ccac2a7-7e60-4f52-881e-0b349ff78cc5', 'Track Artist Name Second', 'track artist name second', '2026-01-01T00:00:00Z');
 
-            INSERT INTO tracks (position, id, release_id, title, side, track_number, duration_ms, created_at) VALUES (1, '04676261-1659-47b1-879c-2947c52f4a8d', '0252dedb-ee39-4547-8803-438dbeb57a64', 'Track Title B', 1, 2, 1000, '2026-01-01T00:00:00Z'),
-             (0, '0482872e-d4bf-4080-8426-441a0a3e71fc', '0252dedb-ee39-4547-8803-438dbeb57a64', 'Track Title A', 1, 1, 1000, '2026-01-01T00:00:00Z');
+            INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) VALUES ('c9f6f13c-15b2-5039-aad4-8cdd8b6c67f8', '0252dedb-ee39-4547-8803-438dbeb57a64', 1, 'cd', 1, '2026-01-01T00:00:00Z');
+
+            INSERT INTO tracks (position, id, release_id, title, side, track_number, duration_ms, created_at, medium_id) VALUES (1, '04676261-1659-47b1-879c-2947c52f4a8d', '0252dedb-ee39-4547-8803-438dbeb57a64', 'Track Title B', 1, 2, 1000, '2026-01-01T00:00:00Z', 'c9f6f13c-15b2-5039-aad4-8cdd8b6c67f8'),
+             (0, '0482872e-d4bf-4080-8426-441a0a3e71fc', '0252dedb-ee39-4547-8803-438dbeb57a64', 'Track Title A', 1, 1, 1000, '2026-01-01T00:00:00Z', 'c9f6f13c-15b2-5039-aad4-8cdd8b6c67f8');
 
             INSERT INTO track_artists (id, track_id, artist_id, position, created_at) VALUES ('af940e5f-472b-4162-81fb-97517afd23be', '0482872e-d4bf-4080-8426-441a0a3e71fc', '8ccac2a7-7e60-4f52-881e-0b349ff78cc5', 1, '2026-01-01T00:00:00Z'),
              ('8b08019f-1c04-400e-8107-9b85f7222407', '0482872e-d4bf-4080-8426-441a0a3e71fc', '5b5f8c38-5237-4187-895c-28b1b2a43672', 0, '2026-01-01T00:00:00Z');

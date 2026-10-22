@@ -641,15 +641,11 @@ async fn a_queued_track_renamed_while_another_plays_remotely_loads_with_its_new_
                 tracks: vec![
                     crate::import::TrackUserEdit {
                         title: "Track Title".to_string(),
-                        side: None,
-                        track_number: Some(1),
                         artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                         file: None,
                     },
                     crate::import::TrackUserEdit {
                         title: "Renamed Track".to_string(),
-                        side: None,
-                        track_number: Some(2),
                         artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                         file: None,
                     },

@@ -249,11 +249,9 @@ pub(crate) fn mapping_table(
         .map(|sheet| sheet.file.relative_path.as_str())
         .collect();
     let disc_options = disc_options(files);
-    let sides: BTreeSet<_> = draft.tracks.iter().map(|track| track.edit.side).collect();
     let mut rows = RowBuilder {
         durations,
-        medium: draft.pressing.facts.physical_medium(),
-        multi_side: sides.len() > 1,
+        mediums: &draft.mediums,
         tracks: draft.tracks.iter(),
     };
     let mut track_sections = Vec::new();
@@ -364,10 +362,8 @@ pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
 /// with the draft's tracks in order.
 struct RowBuilder<'a> {
     durations: &'a SourceDurations,
-    medium: Option<crate::pressing::PhysicalMedium>,
-    /// Whether the draft spans more than one side or disc — what decides that
-    /// a row's position carries its side.
-    multi_side: bool,
+    /// The draft's mediums, which its tracks' places read against.
+    mediums: &'a [crate::mediums::ReleaseMedium],
     tracks: std::slice::Iter<'a, CandidateTrack>,
 }
 
@@ -464,12 +460,7 @@ impl RowBuilder<'_> {
             }
         };
         let source_length = track.stated_length_ms;
-        let position = crate::util::format::compute_track_position(
-            self.medium,
-            track.edit.side,
-            Some(track.edit.track_number),
-            self.multi_side,
-        );
+        let position = crate::mediums::track_position(&track.place, self.mediums);
         Ok((
             crate::util::format::track_side(&position),
             TrackMapping {

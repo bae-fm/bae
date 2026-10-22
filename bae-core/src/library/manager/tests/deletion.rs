@@ -4,7 +4,7 @@ async fn work_detail_release_rows_are_display_ready() {
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.pressing.facts = crate::pressing::made_of(crate::pressing::Medium::Cd, 1);
-    let track = crate::db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", Some(1));
+    let track = crate::db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
     let now = Utc::now();
     let work = DbWork {
         id: WORK_A.to_string(),
@@ -148,7 +148,7 @@ async fn track_display_carries_the_cover_version() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    let track = crate::db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", Some(1));
+    let track = crate::db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
     let track_artist = crate::db::DbTrackArtist::new(
         &track.id,
         &bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),

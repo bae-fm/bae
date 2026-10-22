@@ -397,8 +397,6 @@ mod conversion_roundtrip {
             },
             tracks: vec![bae_core::import::TrackUserEdit {
                 title: "Track Title".to_string(),
-                side: Some(1),
-                track_number: Some(1),
                 artist_assignments: bae_core::import::TrackArtistAssignments::Explicit(vec![
                     bae_core::import::ArtistAssignment::named("Track Artist"),
                 ]),
@@ -443,8 +441,6 @@ mod conversion_roundtrip {
                 artist_assignments: bae_core::import::TrackArtistAssignments::Explicit(vec![
                     bae_core::import::ArtistAssignment::named("Track Artist"),
                 ]),
-                side: Some(1),
-                track_number: Some(1),
                 // Not a form field, so the round trip must keep it or a
                 // corrected file pairing is lost before the commit.
                 file: Some(bae_core::import::AudioFile::Standalone {
@@ -477,8 +473,6 @@ mod conversion_roundtrip {
                 id: "track-id".to_string(),
                 title: "Track Title".to_string(),
                 artist_assignments: bae_core::import::TrackArtistAssignments::AlbumArtists,
-                side: Some(2),
-                track_number: Some(3),
                 file: None,
             }],
         };
@@ -498,6 +492,7 @@ mod conversion_roundtrip {
                             layout: bae_core::album_detail::SourceAudioLayout::File,
                         }],
                         duration_ms: 123_000,
+                        position_text: "3".to_string(),
                         side: bae_core::album_detail::TrackSide::Disc { disc: 2 },
                     }],
                 },

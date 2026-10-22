@@ -115,12 +115,31 @@ fn row(title: &str, catalog_number: &str, tracks: &[&str]) -> RawReleaseEdit {
                 id: format!("row-{position}"),
                 title: title.to_string(),
                 artist_assignments: TrackArtistAssignments::AlbumArtists,
-                side: None,
-                track_number: Some(position as i32 + 1),
                 file: None,
             })
             .collect(),
     }
+}
+
+/// What picking each of `rows` reads: its fields, on one CD numbered in order.
+fn offered(rows: Vec<RawReleaseEdit>) -> Vec<OfferedReading> {
+    rows.into_iter()
+        .map(|edit| {
+            let mut placer = crate::mediums::Placer::default();
+            let places = edit
+                .tracks
+                .iter()
+                .map(|_| {
+                    placer.place(std::num::NonZeroU16::MIN, std::num::NonZeroU8::MIN, None)
+                })
+                .collect();
+            OfferedReading {
+                edit,
+                mediums: vec![crate::mediums::ReleaseMedium::one_sided(Some(Medium::Cd))],
+                places,
+            }
+        })
+        .collect()
 }
 
 /// A draft read from the folder's tags: two tracks, a catalog number the
@@ -149,17 +168,21 @@ fn draft() -> CandidateDraft {
                     id: format!("candidate-track-{position}"),
                     title: title.to_string(),
                     artist_assignments: TrackArtistAssignments::AlbumArtists,
-                    side: None,
-                    track_number: position as i32 + 1,
                     file: AudioFile::Standalone {
                         file_id: format!("{position}.flac"),
                     },
+                },
+                place: crate::mediums::TrackPlace {
+                    medium: std::num::NonZeroU16::MIN,
+                    side: std::num::NonZeroU8::MIN,
+                    number: std::num::NonZeroU32::new(position as u32 + 1).expect("from one"),
                 },
                 stated_length_ms: None,
                 roles: Vec::new(),
                 works: Vec::new(),
             })
             .collect(),
+        mediums: vec![crate::mediums::ReleaseMedium::one_sided(None)],
         release_roles: Vec::new(),
         works: Default::default(),
     }
@@ -169,10 +192,10 @@ fn draft() -> CandidateDraft {
 fn what_the_pressings_agree_on_is_taken_as_the_top_row_spells_it() {
     let shared = shared_draft(
         &draft(),
-        &[
+        &offered(vec![
             row("Album Title", "ABC-100", &["First Song", "Second Song (Remastered)"]),
             row("ALBUM TITLE", "ABC-200", &["first song", "Second Song"]),
-        ],
+        ]),
         None,
     );
     assert_eq!(shared.album_title, "Album Title");
@@ -203,10 +226,10 @@ fn what_the_pressings_disagree_on_or_leave_unstated_stays_as_the_draft_has_it() 
     unstated.album_year.clear();
     let shared = shared_draft(
         &current,
-        &[
+        &offered(vec![
             row("Album Title", "ABC-100", &["First Song", "Second Song"]),
             unstated,
-        ],
+        ]),
         None,
     );
     assert_eq!(shared.album_year, current.album_year, "never blanked");
@@ -220,10 +243,10 @@ fn what_the_pressings_disagree_on_or_leave_unstated_stays_as_the_draft_has_it() 
 fn catalog_numbers_agree_only_as_one_number() {
     let shared = shared_draft(
         &draft(),
-        &[
+        &offered(vec![
             row("Album Title", "ABC-100", &["First Song", "Second Song"]),
             row("Album Title", "abc 100", &["First Song", "Second Song"]),
-        ],
+        ]),
         None,
     );
     assert_eq!(shared.pressing.labels, vec![label("Label Name", "ABC-100")]);
@@ -234,10 +257,10 @@ fn tracks_agree_only_when_every_pressing_lists_the_folders_count() {
     let current = draft();
     let shared = shared_draft(
         &current,
-        &[
+        &offered(vec![
             row("Album Title", "ABC-100", &["First Song", "Second Song"]),
             row("Album Title", "ABC-200", &["First Song", "Second Song", "Bonus"]),
-        ],
+        ]),
         None,
     );
     assert_eq!(shared.tracks, current.tracks);
@@ -258,7 +281,7 @@ fn media_every_pressing_states_alike_are_taken() {
         },
         ..first.clone()
     };
-    let shared = shared_draft(&draft(), &[first.clone(), second], None);
+    let shared = shared_draft(&draft(), &offered(vec![first.clone(), second]), None);
     assert_eq!(shared.pressing.facts.media, first.pressing.facts.media);
 }
 
@@ -270,8 +293,8 @@ fn a_year_the_pressings_do_not_share_is_the_folder_s() {
     first.pressing.year = "2005".to_string();
     let mut second = row("Album Title", "ABC-200", &["First Song", "Second Song"]);
     second.pressing.year = "2010".to_string();
-    let shared = shared_draft(&draft(), &[first.clone(), second], Some(1986));
+    let shared = shared_draft(&draft(), &offered(vec![first.clone(), second]), Some(1986));
     assert_eq!(shared.pressing.year, "1986");
-    let agreeing = shared_draft(&draft(), &[first.clone(), first.clone()], Some(1986));
+    let agreeing = shared_draft(&draft(), &offered(vec![first.clone(), first.clone()]), Some(1986));
     assert_eq!(agreeing.pressing.year, "2005");
 }

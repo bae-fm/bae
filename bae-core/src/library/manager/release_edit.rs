@@ -63,8 +63,6 @@ impl LibraryManager {
                 entry.track.id.clone(),
                 crate::import::TrackUserEdit {
                     title: entry.track.title.clone(),
-                    side: entry.track.side,
-                    track_number: entry.track.track_number,
                     artist_assignments: if artists.is_empty() {
                         crate::import::TrackArtistAssignments::AlbumArtists
                     } else {

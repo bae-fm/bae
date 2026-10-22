@@ -237,26 +237,20 @@ pub fn release_download_status(
     }
 }
 
-/// Where a track sits in its release. The variant carries the domain decision —
-/// sided physical medium, multi-disc digital, or flat single-disc digital. Core
-/// renders `position_text` from this; the UI only resolves the header word.
+/// How a track's place reads ([`crate::mediums::track_position`]): on a
+/// lettered side of a record or cassette, on a numbered disc of a release of
+/// several mediums, or plain on a release of one. Core renders `position_text`
+/// from this; the UI only resolves the header word.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrackPosition {
-    /// Vinyl/cassette: header "Side A", position "A1". `side_letter` is the
-    /// letter for the face (A/B/C...); `number` is the within-side track
-    /// number.
-    Sided { side_letter: String, number: i32 },
-    /// Vinyl/cassette track whose source has no per-track number. The side
-    /// still determines grouping and the visible prefix.
-    SidedUnnumbered { side_letter: String },
-    /// Multi-disc digital (CD etc.): header "Disc 2", position "3" (the header carries the disc).
-    Disc { disc: i32, number: i32 },
-    /// Multi-disc digital track whose source has no per-track number.
-    DiscUnnumbered { disc: i32 },
-    /// Single-disc digital: position "5", no header.
-    Flat { number: i32 },
-    /// Single-disc digital track whose source has no per-track number.
-    Unnumbered,
+    /// Header "Side A", position "A1". `side_letter` names the side among the
+    /// release's sided mediums (A, B, … Z, AA, …); `number` is the track's
+    /// number on that side.
+    Sided { side_letter: String, number: u32 },
+    /// Header "Disc 2", position "3" (the header carries the disc).
+    Disc { disc: u32, number: u32 },
+    /// Position "5", no header.
+    Flat { number: u32 },
 }
 
 /// What the UI renders as the "Side A" / "Disc 2" header; `Flat` means no header.
@@ -265,7 +259,7 @@ pub enum TrackPosition {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrackSide {
     Sided { side_letter: String },
-    Disc { disc: i32 },
+    Disc { disc: u32 },
     Flat,
 }
 
@@ -274,8 +268,6 @@ pub enum TrackSide {
 pub struct TrackDetail {
     pub id: String,
     pub title: String,
-    pub side: Option<i32>,
-    pub track_number: Option<i32>,
     pub duration_ms: u64,
     /// Effective artist names for display -- the track's own artists when it
     /// has per-track artist rows, otherwise the album artists. Always

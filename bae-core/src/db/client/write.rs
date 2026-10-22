@@ -171,19 +171,40 @@ pub(super) fn insert_release_row(
     .map_err(DbError::from)
 }
 
+pub(super) fn insert_release_medium_row(
+    conn: &SqlContext<'_, '_>,
+    medium: &DbReleaseMedium,
+) -> Result<(), DbError> {
+    conn.execute(
+        "INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) \
+         VALUES (?, ?, ?, ?, ?, ?)",
+        params![
+            medium.id,
+            medium.release_id,
+            medium.position,
+            medium.medium.carrier.map(crate::pressing::Medium::key),
+            medium.medium.sides,
+            medium.created_at.to_rfc3339(),
+        ],
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
+
 pub(super) fn insert_track_row(conn: &SqlContext<'_, '_>, track: &DbTrack) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT INTO tracks (
-            id, release_id, title, side, track_number, duration_ms,
+            id, release_id, title, medium_id, side, track_number, duration_ms,
             created_at, position
-        ) VALUES (?, ?, ?, ?, ?, ?, ?,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?,
             (SELECT COALESCE(MAX(position) + 1, 0) FROM tracks WHERE release_id = ?))
         "#,
         params![
             track.id,
             track.release_id,
             track.title,
+            track.medium_id,
             track.side,
             track.track_number,
             track.duration_ms,

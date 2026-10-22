@@ -10,8 +10,6 @@ struct TrackTests {
             from: BridgeTrack(
                 id: "track-1",
                 title: "Track Title",
-                side: 1,
-                trackNumber: nil,
                 durationMs: 180_000,
                 durationClock: bridgeLengthClock(ms: 180_000),
                 artistNames: "Artist Name",

@@ -1,12 +1,19 @@
 use super::*;
 use crate::import::folder_scanner::{CandidateFile, FileRole, ScannedFile};
 
-fn draft(sides: &[Option<i32>]) -> CandidateDraft {
+fn place(medium: u16, side: u8, number: u32) -> crate::mediums::TrackPlace {
+    crate::mediums::TrackPlace {
+        medium: std::num::NonZeroU16::new(medium).expect("mediums count from one"),
+        side: std::num::NonZeroU8::new(side).expect("sides count from one"),
+        number: std::num::NonZeroU32::new(number).expect("numbers count from one"),
+    }
+}
+
+/// A draft of `tracks` loose files, all on its first disc.
+fn draft(tracks: usize) -> CandidateDraft {
     let files = CategorizedFiles {
-        files: sides
-            .iter()
-            .enumerate()
-            .map(|(index, _)| {
+        files: (0..tracks)
+            .map(|index| {
                 let name = format!("{index}.flac");
                 CandidateFile {
                     file: ScannedFile::new(name.clone().into(), name, 100, 1)
@@ -14,30 +21,30 @@ fn draft(sides: &[Option<i32>]) -> CandidateDraft {
                     role: FileRole::Audio,
                 }
             })
-            .collect(), parts: Vec::new(), 
+            .collect(),
+        parts: Vec::new(),
     };
-    let mut draft = blank_candidate_draft(&files);
-    for (track, side) in draft.tracks.iter_mut().zip(sides) {
-        track.edit.side = *side;
-    }
-    draft
+    blank_candidate_draft(&files)
 }
 
-/// A reading of tracks on `sides`.
-fn metadata(sides: &[Option<i32>]) -> ReleaseValues {
+/// A reading of tracks at `places` on `mediums`.
+fn metadata(
+    mediums: Vec<crate::mediums::ReleaseMedium>,
+    places: &[crate::mediums::TrackPlace],
+) -> ReleaseValues {
     ReleaseValues {
         album_title: "Album Title".to_string(),
         album_credits: Vec::new(),
         album_year: None,
         pressing: crate::pressing::Pressing::blank(),
+        mediums,
         release_roles: Vec::new(),
         works: Default::default(),
-        tracks: sides
+        tracks: places
             .iter()
-            .map(|side| crate::import::release_values::TrackValues {
+            .map(|place| crate::import::release_values::TrackValues {
                 title: "Track Title".to_string(),
-                side: *side,
-                number: None,
+                place: *place,
                 stated_length_ms: None,
                 credits: crate::import::release_values::TrackCredits::AlbumArtists,
                 roles: Vec::new(),
@@ -47,41 +54,57 @@ fn metadata(sides: &[Option<i32>]) -> ReleaseValues {
     }
 }
 
-/// An LP ripped as one tagged disc takes the record's two sides.
+/// A reading of `count` tracks on one CD.
+fn one_disc(count: u32) -> ReleaseValues {
+    let places: Vec<_> = (1..=count).map(|number| place(1, 1, number)).collect();
+    metadata(
+        vec![crate::mediums::ReleaseMedium::one_sided(Some(
+            crate::pressing::Medium::Cd,
+        ))],
+        &places,
+    )
+}
+
+/// An LP ripped as one disc takes the record's two sides.
 #[test]
 fn metadata_splits_one_draft_disc_into_sides() {
-    let current = draft(&[Some(1), Some(1), Some(1), Some(1)]);
-    let laid = values_over_audio(metadata(&[Some(1), Some(1), Some(2), Some(2)]), &current)
-        .unwrap();
-    assert_eq!(laid.tracks[2].edit.side, Some(2));
+    let current = draft(4);
+    let record = crate::mediums::ReleaseMedium {
+        carrier: Some(crate::pressing::Medium::Vinyl),
+        sides: std::num::NonZeroU8::new(2).expect("two sides"),
+    };
+    let laid = values_over_audio(
+        metadata(
+            vec![record],
+            &[place(1, 1, 1), place(1, 1, 2), place(1, 2, 1), place(1, 2, 2)],
+        ),
+        &current,
+    )
+    .unwrap();
+    assert_eq!(laid.mediums, [record]);
+    assert_eq!(laid.tracks[2].place, place(1, 2, 1));
     assert_eq!(laid.tracks[2].edit.file, current.tracks[2].edit.file);
 }
 
-/// Files tagged as two discs take the one disc a release states.
+/// Files laid out as two discs take the one disc a release states.
 #[test]
 fn metadata_merges_two_draft_discs_into_one() {
-    let current = draft(&[Some(1), Some(1), Some(2), Some(2)]);
-    let laid = values_over_audio(metadata(&[Some(1), Some(1), Some(1), Some(1)]), &current)
-        .unwrap();
-    assert_eq!(laid.tracks[3].edit.side, Some(1));
-}
-
-#[test]
-fn unknown_sides_do_not_prevent_metadata_application() {
-    let current = draft(&[None, None, None, None]);
-    let laid = values_over_audio(metadata(&[Some(1), Some(1), Some(2), Some(2)]), &current)
-        .unwrap();
-    assert_eq!(laid.tracks[2].edit.side, Some(2));
-    assert_eq!(laid.tracks[2].edit.file, current.tracks[2].edit.file);
+    let mut current = draft(4);
+    current.mediums.push(crate::mediums::ReleaseMedium::one_sided(None));
+    current.tracks[2].place = place(2, 1, 1);
+    current.tracks[3].place = place(2, 1, 2);
+    let laid = values_over_audio(one_disc(4), &current).unwrap();
+    assert_eq!(laid.mediums.len(), 1);
+    assert_eq!(laid.tracks[3].place, place(1, 1, 4));
 }
 
 /// Each laid track keeps the identity of the row whose audio it plays.
 #[test]
 fn metadata_takes_the_identity_of_the_row_it_is_laid_over() {
-    let mut current = draft(&[None, None]);
+    let mut current = draft(2);
     current.tracks[0].edit.id = "kept-first".into();
     current.tracks[1].edit.id = "kept-second".into();
-    let laid = values_over_audio(metadata(&[None, None]), &current)
+    let laid = values_over_audio(one_disc(2), &current)
         .unwrap();
     assert_eq!(
         laid.tracks
@@ -96,9 +119,9 @@ fn metadata_takes_the_identity_of_the_row_it_is_laid_over() {
 /// units is refused, naming both counts.
 #[test]
 fn metadata_with_a_different_track_count_is_refused() {
-    let current = draft(&[None, None, None]);
+    let current = draft(3);
     assert!(matches!(
-        values_over_audio(metadata(&[None, None]), &current),
+        values_over_audio(one_disc(2), &current),
         Err(ImportError::MetadataTrackCount {
             folder_tracks: 3,
             release_tracks: 2,

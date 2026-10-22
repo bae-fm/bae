@@ -93,8 +93,6 @@ pub struct AutomationImageRef {
 pub struct AutomationTrackDetail {
     pub id: String,
     pub title: String,
-    pub side: Option<i32>,
-    pub track_number: Option<i32>,
     pub duration_ms: u64,
     pub artist_names: String,
     pub position_text: String,
@@ -104,12 +102,9 @@ pub struct AutomationTrackDetail {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationTrackPosition {
-    Sided { side_letter: String, number: i32 },
-    SidedUnnumbered { side_letter: String },
-    Disc { disc: i32, number: i32 },
-    DiscUnnumbered { disc: i32 },
-    Flat { number: i32 },
-    Unnumbered,
+    Sided { side_letter: String, number: u32 },
+    Disc { disc: u32, number: u32 },
+    Flat { number: u32 },
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -122,7 +117,7 @@ pub struct AutomationTrackGroup {
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationTrackSide {
     Sided { side_letter: String },
-    Disc { disc: i32 },
+    Disc { disc: u32 },
     Flat,
 }
 

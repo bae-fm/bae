@@ -6,7 +6,7 @@ use crate::import::source_release::{
     TracklistEntry,
 };
 use crate::import::{ArtistCredit, Catalog, CreditedRole, ImportError};
-use crate::pressing::{PhysicalMedium, Pressing, PressingFacts, ReleaseArea, StatedMedia};
+use crate::pressing::{Medium, Pressing, PressingFacts, ReleaseArea, StatedMedia};
 use std::collections::HashSet;
 use tracing::{debug, warn};
 
@@ -253,16 +253,6 @@ fn title_of(entry: &TracklistEntry) -> &str {
         .expect("a Discogs tracklist row states its title")
 }
 
-/// What a stored Discogs release's formats say it is made of.
-fn formats(release: &SourceRelease) -> &StatedMedia {
-    match &release.catalog {
-        CatalogFacts::Discogs { media, .. } => media,
-        CatalogFacts::MusicBrainz { .. } => {
-            unreachable!("a Discogs reading is asked only of a Discogs release")
-        }
-    }
-}
-
 /// What the covered mediums of a Discogs release say the audio's tracks are,
 /// its tracklist laid out against `audio_durations_ms`; with none, every
 /// index and heading read out to its sub-tracks.
@@ -272,8 +262,16 @@ pub(crate) fn values(
     audio_durations_ms: Option<&[u64]>,
 ) -> Result<ReleaseValues, ImportError> {
     let release_id = &release.release.key;
+    let covered: Vec<&crate::import::source_release::SourceMedium> =
+        release.covered_mediums(coverage).collect();
     let entries = release.covered_entries(coverage);
+    let entry_mediums: Vec<usize> = covered
+        .iter()
+        .enumerate()
+        .flat_map(|(index, medium)| std::iter::repeat_n(index, medium.entries.len()))
+        .collect();
     let processed = process_tracklist(&entries, audio_durations_ms);
+    let covered_layout = covered_layout(&covered, &entries, &entry_mediums, &processed);
     let metadata = release.metadata.clone();
     metadata.album.require_artists(Catalog::Discogs, release_id)?;
 
@@ -296,19 +294,109 @@ pub(crate) fn values(
         album_credits: metadata.album.artists,
         album_year: metadata.album.year,
         pressing: metadata.pressing,
+        mediums: covered_layout.mediums,
         release_roles,
         works: Default::default(),
         tracks: processed
             .iter()
-            .map(|pt| discogs_track_values(formats(release), pt))
+            .zip(covered_layout.places)
+            .map(|(pt, place)| discogs_track_values(pt, place))
             .collect(),
     })
 }
 
-/// One track's values from a processed Discogs track. A collapsed track holds
-/// every source row's composers, and its display artists once each by Discogs
-/// artist id, first occurrence winning.
-fn discogs_track_values(formats: &StatedMedia, pt: &ProcessedTrack) -> TrackValues {
+/// The mediums the processed tracks are on and each track's place: a track
+/// is on the medium of the row it was read from, on the side its position's
+/// letter names on a record or cassette (counted from the medium's lowest
+/// letter; a track with no letter is on the side of the one before it), and
+/// numbered by its position, else by its place on that side.
+struct CoveredLayout {
+    mediums: Vec<crate::mediums::ReleaseMedium>,
+    places: Vec<crate::mediums::TrackPlace>,
+}
+
+fn covered_layout(
+    covered: &[&crate::import::source_release::SourceMedium],
+    entries: &[TracklistEntry],
+    entry_mediums: &[usize],
+    processed: &[ProcessedTrack<'_>],
+) -> CoveredLayout {
+    fn holds(entry: &TracklistEntry, target: &TracklistEntry) -> bool {
+        std::ptr::eq(entry, target) || entry.children.iter().any(|child| holds(child, target))
+    }
+    let track_mediums: Vec<usize> = processed
+        .iter()
+        .map(|pt| {
+            let first = pt
+                .source_tracks
+                .first()
+                .expect("a processed Discogs track is read from a row");
+            entries
+                .iter()
+                .zip(entry_mediums)
+                .find(|(entry, _)| holds(entry, first))
+                .map(|(_, medium)| *medium)
+                .expect("a processed Discogs track is read from a covered row")
+        })
+        .collect();
+    let letters: Vec<Option<u8>> = processed
+        .iter()
+        .map(|pt| {
+            let letter = *pt.position.as_bytes().first()?;
+            (letter.is_ascii_alphabetic()
+                && pt.position[1..]
+                    .bytes()
+                    .next()
+                    .is_some_and(|byte| byte.is_ascii_digit()))
+            .then(|| letter.to_ascii_uppercase())
+        })
+        .collect();
+    let mut mediums = Vec::with_capacity(covered.len());
+    let mut sides = vec![std::num::NonZeroU8::MIN; processed.len()];
+    for (index, medium) in covered.iter().enumerate() {
+        let on_medium: Vec<usize> = (0..processed.len())
+            .filter(|track| track_mediums[*track] == index)
+            .collect();
+        let sided = medium.medium.is_some_and(Medium::is_sided);
+        let base = on_medium
+            .iter()
+            .filter_map(|track| letters[*track])
+            .min();
+        let mut count = std::num::NonZeroU8::MIN;
+        if let (true, Some(base)) = (sided, base) {
+            let mut current = std::num::NonZeroU8::MIN;
+            for track in &on_medium {
+                if let Some(letter) = letters[*track] {
+                    current = crate::mediums::side_number(usize::from(letter - base));
+                }
+                sides[*track] = current;
+                count = count.max(current);
+            }
+        }
+        mediums.push(crate::mediums::ReleaseMedium {
+            carrier: medium.medium,
+            sides: count,
+        });
+    }
+    let mut placer = crate::mediums::Placer::default();
+    let places = processed
+        .iter()
+        .enumerate()
+        .map(|(track, pt)| {
+            placer.place(
+                crate::mediums::medium_position(track_mediums[track]),
+                sides[track],
+                position_number(&pt.position),
+            )
+        })
+        .collect();
+    CoveredLayout { mediums, places }
+}
+
+/// One track's values from a processed Discogs track at `place`. A collapsed
+/// track holds every source row's composers, and its display artists once each
+/// by Discogs artist id, first occurrence winning.
+fn discogs_track_values(pt: &ProcessedTrack, place: crate::mediums::TrackPlace) -> TrackValues {
     let mut roles = Vec::new();
     let mut credits: Vec<ArtistCredit> = Vec::new();
     let mut seen_credit_ids: HashSet<Option<String>> = HashSet::new();
@@ -330,8 +418,7 @@ fn discogs_track_values(formats: &StatedMedia, pt: &ProcessedTrack) -> TrackValu
     }
     TrackValues {
         title: pt.title.clone(),
-        side: release_track_side(formats, pt),
-        number: position_number(&pt.position),
+        place,
         stated_length_ms: pt.duration_ms,
         credits: if credits.is_empty() {
             TrackCredits::AlbumArtists
@@ -351,7 +438,6 @@ pub(crate) struct ProcessedTrack<'a> {
     pub position: String,
     pub duration_ms: Option<u64>,
     pub source_tracks: Vec<&'a TracklistEntry>,
-    pub side: Option<i32>,
 }
 
 #[derive(Clone)]
@@ -541,7 +627,6 @@ fn fixed_track_layout(entry: &TracklistEntry) -> CandidateLayout<'_> {
             position: position_of(entry).to_string(),
             duration_ms: entry.duration_ms,
             source_tracks: vec![entry],
-            side: parse_side_from_position(position_of(entry)),
         }],
         expanded_groups: 0,
     }
@@ -559,7 +644,6 @@ fn heading_layouts<'a>(
                 position: position_of(child).to_string(),
                 duration_ms: child.duration_ms,
                 source_tracks: vec![child],
-                side: parse_side_from_position(position_of(child)),
             })
             .collect(),
         expanded_groups: 1,
@@ -577,7 +661,6 @@ fn heading_layouts<'a>(
                     .collect::<Vec<_>>()
                     .join(" \u{2013} ")
             ),
-            side: parse_side_from_position(&position),
             position,
             duration_ms: sum_track_durations(&sources),
             source_tracks: sources,
@@ -647,7 +730,6 @@ fn index_layouts<'a>(
     let collapsed = CandidateLayout {
         tracks: vec![ProcessedTrack {
             title: title_of(index).to_string(),
-            side: parse_side_from_position(&position),
             position,
             duration_ms,
             source_tracks: collapsed_sources,
@@ -723,40 +805,6 @@ pub(crate) fn parse_duration_to_ms(duration: &str) -> Option<u64> {
         ),
         _ => None,
     }
-}
-
-/// A known compact disc contains one side even when its track positions
-/// omit a disc.
-pub(crate) fn release_track_side(formats: &StatedMedia, track: &ProcessedTrack) -> Option<i32> {
-    track.side.or_else(|| {
-        formats
-            .any(|medium| medium.physical() == Some(PhysicalMedium::Cd))
-            .then_some(1)
-    })
-}
-
-/// The side a Discogs position string names: for vinyl (`A1`, `B2`, `C1`) the
-/// letter is the side (A=1, B=2, ...); for CD (`1-1`, `2-1`) the disc number is;
-/// a plain number (`1`, `2`) leaves the side unknown.
-pub fn parse_side_from_position(position: &str) -> Option<i32> {
-    if let Some(dash_idx) = position.find('-') {
-        if let Ok(disc) = position[..dash_idx].parse::<i32>() {
-            if disc <= 0 {
-                return None;
-            }
-            return Some(disc);
-        }
-    }
-
-    if let Some(first_char) = position.chars().next() {
-        if first_char.is_ascii_alphabetic()
-            && position[1..].bytes().all(|byte| byte.is_ascii_digit())
-        {
-            return Some((first_char.to_ascii_uppercase() as i32) - ('A' as i32) + 1);
-        }
-    }
-
-    None
 }
 
 #[cfg(test)]

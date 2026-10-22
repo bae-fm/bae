@@ -101,8 +101,10 @@ impl LibraryManager {
                 id: self.ids.new_id().to_string(),
                 release_id: release_id.clone(),
                 title,
-                side: Some(1),
-                track_number: Some(track.number as i32),
+                medium_id: seeded.medium.id.clone(),
+                side: std::num::NonZeroU8::MIN,
+                track_number: std::num::NonZeroU32::new(track.number)
+                    .ok_or_else(|| invalid(format!("track {} has no number", track.number)))?,
                 duration_ms,
                 created_at: added,
             };

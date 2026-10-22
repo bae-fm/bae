@@ -228,9 +228,8 @@ async fn aborted_transfer_clears_the_streamed_action() {
     assert!(!values.borrow().contains_key(REL_ABORT));
 }
 
-/// Seed an album with two releases, each holding two tracks with explicit
-/// side/track-number so the library order is deterministic. Track ids are
-/// chosen so the `(release_id, side, track_number, id)` order is unambiguous.
+/// Seed an album with two releases, each holding two tracks inserted in
+/// playing order, so the library order is deterministic.
 async fn seed_two_release_library(manager: &LibraryManager) -> (String, String) {
     use crate::db::DbTrack;
     let mut album = create_test_album();
@@ -243,10 +242,10 @@ async fn seed_two_release_library(manager: &LibraryManager) -> (String, String) 
     insert_release(manager, &rel1).await;
     insert_release(manager, &rel2).await;
 
-    let track = |release_id: &str, id: &str, side: i32, number: i32| {
+    let track = |release_id: &str, id: &str, side: u8, number: u32| {
         let t = DbTrack {
-            side: Some(side),
-            ..DbTrack::new_test(release_id, id, "Track Title", Some(number))
+            side: std::num::NonZeroU8::new(side).expect("sides count from one"),
+            ..DbTrack::new_test(release_id, id, "Track Title", number)
         };
         let database = &manager.database;
         async move { database.insert_track(&t).await.unwrap() }
@@ -431,7 +430,7 @@ async fn seed_release_tracks(manager: &LibraryManager, count: usize) -> Vec<Stri
             &release.id,
             &track_id,
             &format!("Track Title {i}"),
-            Some(i as i32),
+            u32::try_from(i + 1).expect("a test track number fits u32"),
         );
         manager.database.insert_track(&track).await.unwrap();
         track_ids.push(track_id);

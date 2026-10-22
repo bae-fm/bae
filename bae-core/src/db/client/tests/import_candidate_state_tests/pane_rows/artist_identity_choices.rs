@@ -134,7 +134,7 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
             &release.id,
             &bae_test_support::test_uuid("choice-track"),
             "Track Title",
-            Some(1),
+            1,
         );
         let tracks = [crate::import::TrackFile {
             db_track: track.clone(),
@@ -172,6 +172,7 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
             &release,
             &tracks,
             ImportRows {
+                mediums: &[crate::db::DbReleaseMedium::new_test(&release.id)],
                 artists: ArtistCredits {
                     credits: &credits,
                     picked: &[],

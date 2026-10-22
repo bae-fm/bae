@@ -370,6 +370,7 @@ impl AppServices {
 
     delegate_async!(manager, get_release_records => get_release_records(release_id: &str) -> Result<Vec<crate::import::ReleaseRecord>, crate::library::LibraryError>);
     delegate_async!(manager, get_tracks_for_release => get_tracks_for_release(release_id: &str) -> Result<Vec<crate::db::DbTrack>, crate::library::LibraryError>);
+    delegate_async!(manager, get_release_mediums => get_release_mediums(release_id: &str) -> Result<crate::db::DbReleaseMediums, crate::library::LibraryError>);
     delegate_async!(manager, get_files_for_release => get_files_for_release(release_id: &str) -> Result<Vec<crate::db::DbFile>, crate::library::LibraryError>);
     delegate_async!(manager, get_file_by_id => get_file_by_id(file_id: &str) -> Result<Option<crate::db::DbFile>, crate::library::LibraryError>);
     delegate_async!(manager, file_local_path => file_local_path(file_id: &str) -> Result<Option<std::path::PathBuf>, crate::library::LibraryError>);

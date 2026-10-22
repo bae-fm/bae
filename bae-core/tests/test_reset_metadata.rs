@@ -69,8 +69,12 @@ fn make_track(release_id: &str, n: i32, title: &str) -> DbTrack {
         id: Uuid::new_v4().to_string(),
         release_id: release_id.to_string(),
         title: title.to_string(),
-        side: Some(1),
-        track_number: Some(n),
+        medium_id: bae_core::db::identity::release_medium_id(release_id, 1),
+        side: std::num::NonZeroU8::MIN,
+        track_number: std::num::NonZeroU32::new(
+            u32::try_from(n).expect("a test track number fits u32"),
+        )
+        .expect("track numbers count from one"),
         duration_ms: 180_000,
         created_at: Utc::now(),
     }
@@ -147,6 +151,9 @@ async fn edit_seed_exposes_reset_eligibility_from_where_the_draft_was_read() {
         release.draft_from_tags = matches!(source, DraftSource::FileMetadata);
         db.insert_album(&album).await.unwrap();
         db.insert_release(&release).await.unwrap();
+        db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
+            .await
+            .unwrap();
         if let DraftSource::Record(record) = &source {
             db.insert_release_records(&release.id, std::slice::from_ref(record))
                 .await
@@ -167,6 +174,9 @@ async fn resetting_a_source_less_release_reports_that_it_has_no_provenance() {
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
     db.insert_release(&release).await.unwrap();
+    db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
 
     let error = lm
         .reset_metadata_to_source(&release.id)
@@ -268,6 +278,9 @@ async fn reset_mb_returns_full_pressing_data_from_the_stored_release() {
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
     db.insert_release(&release).await.unwrap();
+    db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
     db.insert_track(&t1).await.unwrap();
     db.insert_track(&t2).await.unwrap();
 
@@ -414,6 +427,9 @@ async fn reset_discogs_returns_full_pressing_data_from_the_stored_release() {
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
     db.insert_release(&release).await.unwrap();
+    db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
     db.insert_track(&t1).await.unwrap();
 
     db.insert_release_records(
@@ -533,6 +549,9 @@ async fn reset_file_metadata_unknown_returns_tags_from_disk() {
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
     db.insert_release(&release).await.unwrap();
+    db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
     db.insert_track(&t1).await.unwrap();
     db.insert_track(&t2).await.unwrap();
 
@@ -595,6 +614,9 @@ async fn reset_fetches_a_release_this_device_never_stored() {
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
     db.insert_release(&release).await.unwrap();
+    db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
     db.insert_track(&track).await.unwrap();
     db.insert_release_records(
         &release.id,
@@ -645,6 +667,9 @@ async fn reset_to_a_release_that_cannot_be_fetched_fails_loud() {
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
     db.insert_release(&release).await.unwrap();
+    db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
     db.insert_release_records(
         &release.id,
         &[record_read_from(Catalog::Discogs, "4343", "909")],
@@ -680,6 +705,9 @@ async fn reset_mb_reads_only_the_pressing_the_pointer_names() {
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
     db.insert_release(&release).await.unwrap();
+    db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
     db.insert_track(&track).await.unwrap();
 
     db.insert_release_records(

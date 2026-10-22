@@ -73,8 +73,6 @@ extension MappingFixtures {
             id: "import-track-\(index)",
             title: title,
             artistAssignments: .albumArtists,
-            side: 1,
-            trackNumber: Int32(index + 1),
             file: file
         )
     }
@@ -312,8 +310,6 @@ extension MappingFixtures {
                                 id: "file-tags-track-\(index - 1)",
                                 title: "Track \(index)",
                                 artistAssignments: .albumArtists,
-                                side: 1,
-                                trackNumber: Int32(index),
                                 file: .standalone(fileId: "\(index).flac")
                             ),
                             position: "\(index)",

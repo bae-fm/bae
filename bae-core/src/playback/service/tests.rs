@@ -74,9 +74,9 @@ const TRACK_B: &str = "36a9322d-0c07-4223-9c0b-2110a1fdc622";
 const TRACK_T2B: &str = "b98ba0de-5eb5-4c15-a20f-b5df519ed969";
 
 /// Insert each `(release_id, track_ids)` as album + release + track rows so
-/// `get_track_ids` returns each release's tracks in the given order. Tracks are
-/// numbered in slice order (the query orders by `side, track_number, id`), and
-/// each stores `track_length_ms` as its length.
+/// `get_track_ids` returns each release's tracks in the given order: they are
+/// inserted, and so played, in slice order, on the release's one CD. Each
+/// stores `track_length_ms` as its length.
 async fn seed_test_releases(
     database: &crate::db::Database,
     releases: &[(&str, &[&str])],
@@ -100,9 +100,17 @@ async fn seed_test_releases(
         let release = DbRelease::new_test(&album.id, release_id);
         database.insert_album(&album).await.unwrap();
         database.insert_release(&release).await.unwrap();
+        database
+            .insert_release_medium(&crate::db::DbReleaseMedium::new_test(release_id))
+            .await
+            .unwrap();
         for (index, track_id) in track_ids.iter().enumerate() {
-            let mut track =
-                DbTrack::new_test(release_id, track_id, "Track Title", Some(index as i32 + 1));
+            let mut track = DbTrack::new_test(
+                release_id,
+                track_id,
+                "Track Title",
+                u32::try_from(index + 1).expect("a test track number fits u32"),
+            );
             track.duration_ms = track_length_ms;
             database.insert_track(&track).await.unwrap();
         }

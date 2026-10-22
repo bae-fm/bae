@@ -107,6 +107,7 @@ async fn pure_reads_use_the_read_connection() {
                             facts: Default::default(),
                             barcode: String::new(),
                         },
+                        mediums: Vec::new(),
                         tracks: Vec::new(),
                         release_roles: Vec::new(),
                         works: Default::default(),

@@ -194,7 +194,7 @@ fn whole_file_main_segment(format_id: &str, file_id: &str) -> crate::db::DbAudio
 
 fn standalone_track(track_id: &str, path: &std::path::Path) -> TrackFile {
     TrackFile {
-        db_track: crate::db::DbTrack::new_test("release-id", track_id, "Track Title", Some(1)),
+        db_track: crate::db::DbTrack::new_test("release-id", track_id, "Track Title", 1),
         audio: crate::import::TrackAudio::Standalone {
             file_path: path.to_path_buf(),
             source_audio: crate::import::folder_scanner::ScannedAudio {

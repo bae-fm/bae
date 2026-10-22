@@ -143,8 +143,8 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
         support::connect_storage(&library_manager, &storage).await;
     }
 
-    // Discogs multi-disc tracklist: positions "1-1".."1-3", "2-1".."2-3".
-    // `parse_side_from_position` maps these to side=1 and side=2.
+    // Discogs multi-disc tracklist: positions "1-1".."1-3", "2-1".."2-3",
+    // read as the release's two discs.
     let discogs_release = DiscogsRelease {
         country: None,
         labels: vec![],
@@ -230,15 +230,17 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
             .get(&segment.file_id)
             .unwrap_or_else(|| panic!("file_id {} not in release_files", segment.file_id));
 
-        let expected = match track.side {
-            Some(1) => "CD1/CDImage.ape",
-            Some(2) => "CD2/CDImage.ape",
-            other => panic!("unexpected side {other:?} for track {}", track.title),
+        let disc_one = bae_core::db::identity::release_medium_id(&release_id, 1);
+        let disc_two = bae_core::db::identity::release_medium_id(&release_id, 2);
+        let expected = match track.medium_id.as_str() {
+            medium if medium == disc_one => "CD1/CDImage.ape",
+            medium if medium == disc_two => "CD2/CDImage.ape",
+            other => panic!("unexpected medium {other:?} for track {}", track.title),
         };
         assert_eq!(
             filename, expected,
-            "track '{}' (side {:?}) should point at {expected}, got {filename}",
-            track.title, track.side,
+            "track '{}' (medium {:?}) should point at {expected}, got {filename}",
+            track.title, track.medium_id,
         );
     }
 }

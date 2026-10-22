@@ -52,7 +52,7 @@ async fn re_identify_with_file_metadata_clears_identities_and_moves_album() {
     let release = create_test_release(&album.id);
 
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     // Two existing track rows align positionally with the two files.
     insert_n_tracks(&manager.database, &release.id, 2).await;
     let now = Utc::now();
@@ -205,17 +205,19 @@ fn make_mb_release_for_re_identify(
     }
 }
 
-/// Insert `n` plain track rows for a release. Mirrors the row shape
-/// `prepared.parsed.tracks` would produce so the track-count check
-/// in `re_identify_release` accepts the picked release.
+/// Insert `n` plain track rows on the release's one CD. Mirrors the row shape
+/// `prepared.parsed.tracks` would produce so the track-count check in
+/// `re_identify_release` accepts the picked release.
 async fn insert_n_tracks(database: &Database, release_id: &str, n: usize) {
     for i in 1..=n {
         let track = crate::db::DbTrack {
             id: Uuid::new_v4().to_string(),
             release_id: release_id.to_string(),
             title: format!("Track {i}"),
-            side: Some(1),
-            track_number: Some(i as i32),
+            medium_id: crate::db::identity::release_medium_id(release_id, 1),
+            side: std::num::NonZeroU8::MIN,
+            track_number: std::num::NonZeroU32::new(u32::try_from(i).expect("a test track number fits u32"))
+                .expect("track numbers count from one"),
             duration_ms: 200_000,
             created_at: Utc::now(),
         };
@@ -232,7 +234,7 @@ async fn re_identify_release_exact_archives_the_picked_release() {
     let release = create_test_release(&album.id);
 
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     manager
         .database
         .insert_release_records(&release.id, &[mb_identity("g-old", "mb-rel-old")])
@@ -369,7 +371,7 @@ async fn re_identify_release_followed_by_reset_succeeds() {
     release.draft_from_tags = true;
 
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     insert_n_tracks(&manager.database, &release.id, 2).await;
 
     let new_release_id = "reset-re-identify-mb-rel-new";
@@ -451,7 +453,7 @@ async fn re_identify_with_file_metadata_reseeds_rows_from_file_tags() {
     let release = create_test_release(&album.id);
 
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     manager
         .database
         .insert_release_records(&release.id, &[mb_identity("g1", "mb-rel-1")])
@@ -470,8 +472,10 @@ async fn re_identify_with_file_metadata_reseeds_rows_from_file_tags() {
             id: id.to_string(),
             release_id: release.id.clone(),
             title: title.to_string(),
-            side: Some(1),
-            track_number: Some(i as i32 + 1),
+            medium_id: crate::db::identity::release_medium_id(&release.id, 1),
+            side: std::num::NonZeroU8::MIN,
+            track_number: std::num::NonZeroU32::new(u32::try_from(i + 1).expect("a test track number fits u32"))
+                .expect("track numbers count from one"),
             duration_ms: 200_000,
             created_at: Utc::now(),
         };
@@ -573,7 +577,7 @@ async fn re_identify_with_file_metadata_replaces_previously_edited_fields() {
     release.pressing.labels = vec![crate::pressing::ReleaseLabel::of(Some("Typed Label"), None)];
 
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     manager
         .database
         .insert_release_records(&release.id, &[mb_identity("g1", "mb-rel-1")])
@@ -584,8 +588,9 @@ async fn re_identify_with_file_metadata_replaces_previously_edited_fields() {
         id: "08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string(),
         release_id: release.id.clone(),
         title: "MB Track One".to_string(),
-        side: Some(1),
-        track_number: Some(1),
+        medium_id: crate::db::identity::release_medium_id(&release.id, 1),
+        side: std::num::NonZeroU8::MIN,
+        track_number: std::num::NonZeroU32::MIN,
         duration_ms: 200_000,
         created_at: Utc::now(),
     };
@@ -654,7 +659,7 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
     let release = create_test_release(&album.id);
 
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     manager
         .database
         .insert_release_records(
@@ -784,7 +789,7 @@ async fn re_identify_with_file_metadata_that_cannot_reseed_changes_nothing() {
     let mut release = create_test_release(&album.id);
     release.draft_from_tags = false;
     manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    insert_release(&manager, &release).await;
     let records = vec![mb_identity("g1", "mb-rel-1")];
     manager
         .database

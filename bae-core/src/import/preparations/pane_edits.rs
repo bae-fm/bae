@@ -334,8 +334,8 @@ fn require_prepared(prep: &CandidatePreparation) -> Result<(), LibraryError> {
     }
 }
 
-/// Replace one row's title and artists. Its audio and numbering are the
-/// folder's, so a row edit that changes either is refused.
+/// Replace one row's title and artists. Its audio is the folder's, so a row
+/// edit that changes it is refused; its place is not in the edit at all.
 fn apply_track_edit(
     draft: &mut CandidateDraft,
     row: &crate::import::RawTrackEdit,
@@ -345,11 +345,6 @@ fn apply_track_edit(
         .iter_mut()
         .find(|track| track.edit.id == row.id)
         .ok_or_else(|| LibraryError::Import(format!("{} is not a row of this draft", row.id)))?;
-    if row.track_number != Some(track.edit.track_number) {
-        return Err(LibraryError::Import(
-            "track metadata edits cannot change numbering".into(),
-        ));
-    }
     if row.file.as_ref() != Some(&track.edit.file) {
         return Err(LibraryError::Import(
             "track metadata edits cannot change a track's audio".into(),

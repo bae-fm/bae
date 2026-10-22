@@ -181,16 +181,16 @@ pub fn compose(
         }
         // The member's own discs, in its own order, become a run of discs
         // starting where the run before it ended.
-        let discs: std::collections::BTreeSet<Option<i32>> =
-            super::audio_layout::direct_entry_track_rows(&member.files)
+        let discs: std::collections::BTreeSet<Option<u32>> =
+            super::audio_layout::folder_tracks(&member.files)
                 .iter()
-                .map(|track| track.side)
+                .map(|track| track.disc)
                 .collect();
         let run_start = next_disc;
         let in_run = |disc: u32| {
             let position = discs
                 .iter()
-                .position(|side| *side == i32::try_from(disc).ok())
+                .position(|known| *known == Some(disc))
                 .unwrap_or(0);
             run_start + u32::try_from(position).unwrap_or(0)
         };

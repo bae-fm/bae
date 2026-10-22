@@ -25,7 +25,7 @@ fun BridgeTrackGroup.sideHeaderText(context: Context): String {
         }
 
         is BridgeTrackSide.Disc -> {
-            context.coreString(key, mapOf("disc" to s.disc))
+            context.coreString(key, mapOf("disc" to s.disc.toLong()))
         }
 
         // Unreachable: headerKey is null for Flat, so the elvis above already

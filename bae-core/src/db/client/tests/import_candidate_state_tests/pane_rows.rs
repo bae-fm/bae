@@ -58,8 +58,6 @@ fn edited_row(id: &str, title: &str, file: Option<AudioFile>) -> RawTrackEdit {
         id: id.to_string(),
         title: title.to_string(),
         artist_assignments: TrackArtistAssignments::Explicit(vec![credit_named("Artist Name")]),
-        side: Some(1),
-        track_number: Some(1),
         file,
     }
 }
@@ -158,8 +156,6 @@ fn metadata_draft(title: &str, artist: &str) -> RawReleaseEdit {
             id: "candidate-track-0".to_string(),
             title: "Track title".to_string(),
             artist_assignments: TrackArtistAssignments::AlbumArtists,
-            side: Some(1),
-            track_number: Some(1),
             file: Some(AudioFile::Standalone {
                 file_id: "01 Track.flac".into(),
             }),

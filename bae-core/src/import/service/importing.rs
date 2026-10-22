@@ -467,6 +467,7 @@ impl ImportService {
         let PreparedMetadata {
             db_album,
             db_release,
+            mediums,
             existing_album_id,
             track_artists,
             album_artists,
@@ -760,6 +761,7 @@ impl ImportService {
                 db_release,
                 tracks_to_files,
                 crate::db::ImportRows {
+                    mediums,
                     track_artists,
                     album_artists,
                     works: &work_graph.works,

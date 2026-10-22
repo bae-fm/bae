@@ -101,14 +101,7 @@ async fn a_master_backlink_is_followed_and_the_stored_release_reads_back() {
     assert_eq!(parsed.album_title, "Selected Album");
     assert_eq!(parsed.album_year, Some(1980));
     assert_eq!(parsed.pressing.year, Some(2005));
-    assert_eq!(
-        parsed
-            .tracks
-            .iter()
-            .map(|track| track.side)
-            .collect::<Vec<_>>(),
-        vec![Some(1), Some(2)]
-    );
+    assert_eq!(crate::import::release_values::value_labels(&parsed), ["A1", "B1"]);
     assert_eq!(
         parsed.album_credits[0].musicbrainz_artist_id.as_deref(),
         Some("artist-id")
@@ -163,7 +156,7 @@ fn selected_pressing_wins_and_linked_release_fills_only_absent_details() {
     );
     assert_eq!(parsed.tracks.len(), 2);
     assert_eq!(parsed.tracks[1].title, "Second Track");
-    assert_eq!(parsed.tracks[1].side, Some(2));
+    assert_eq!(crate::import::release_values::value_labels(&parsed)[1], "B1");
     let detail = payloads.extract().unwrap().detail(&[]);
     assert_eq!(detail.labels, parsed.pressing.labels);
     assert_eq!(detail.facts, parsed.pressing.facts);

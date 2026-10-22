@@ -92,7 +92,7 @@ async fn create_local_release(
         created_at: now,
     };
     let release_id = release.id.clone();
-    mgr.insert_album_with_release_and_tracks(&album, &release, &[], &[])
+    mgr.insert_album_with_release_and_tracks(&album, &release, &[], &[], &[])
         .await
         .unwrap();
 

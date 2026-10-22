@@ -431,23 +431,16 @@ fn side_boundary_between(
     }
     let current_side = current.side.as_ref()?;
     let next_side = next.side.as_ref()?;
-    if current_side.number == next_side.number {
+    if (current_side.medium, current_side.side) == (next_side.medium, next_side.side) {
         return None;
     }
-    let (kind, side_label) = match current_side.medium {
-        PhysicalMedium::Record | PhysicalMedium::Cassette => (
-            PlaybackPauseBoundary::Side,
-            crate::util::format::side_letter(current_side.number),
-        ),
-        PhysicalMedium::Cd => (PlaybackPauseBoundary::Disc, current_side.number.to_string()),
-    };
     Some(SideBoundary {
         id: format!(
-            "{}:{}:{:?}",
-            next.track_id, current_side.number, current_side.medium
+            "{}:{}:{}",
+            next.track_id, current_side.medium, current_side.side
         ),
-        kind,
-        side_label,
+        kind: current_side.boundary,
+        side_label: current_side.label.clone(),
     })
 }
 

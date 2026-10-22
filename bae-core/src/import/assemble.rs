@@ -102,6 +102,20 @@ pub(crate) fn assemble_release(
 
     let works = work_rows(draft, &mut artists, now);
 
+    let mediums: Vec<crate::db::DbReleaseMedium> = draft
+        .mediums
+        .iter()
+        .enumerate()
+        .map(|(index, medium)| {
+            crate::db::DbReleaseMedium::new(
+                &release.id,
+                crate::mediums::medium_position(index),
+                *medium,
+                now,
+            )
+        })
+        .collect();
+
     let mut tracks = Vec::with_capacity(draft.tracks.len());
     let mut bindings = Vec::with_capacity(draft.tracks.len());
     let mut track_artists = Vec::new();
@@ -112,8 +126,18 @@ pub(crate) fn assemble_release(
             id: ids.new_id().to_string(),
             release_id: release.id.clone(),
             title: shaped.title.clone(),
-            side: shaped.side,
-            track_number: shaped.track_number,
+            medium_id: mediums
+                .get(track.place.medium_index())
+                .ok_or_else(|| ImportError::Internal {
+                    detail: format!(
+                        "draft track {} sits on medium {}, which the draft does not hold",
+                        track.edit.id, track.place.medium
+                    ),
+                })?
+                .id
+                .clone(),
+            side: track.place.side,
+            track_number: track.place.number,
             created_at: now,
         };
         if let TrackArtistAssignments::Explicit(assignments) = &shaped.artist_assignments {
@@ -166,6 +190,7 @@ pub(crate) fn assemble_release(
         parsed: ReleaseRows {
             album,
             release,
+            mediums,
             tracks,
             artists: artist_rows,
             album_artists,

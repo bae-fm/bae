@@ -20,6 +20,9 @@ pub struct CandidateDraft {
     pub album_artist_assignments: Vec<ArtistAssignment>,
     pub album_year: String,
     pub pressing: RawPressingEdit,
+    /// The mediums the folder's audio is on, in order, as the source read them.
+    /// Not edited: only applying a source writes them.
+    pub mediums: Vec<crate::mediums::ReleaseMedium>,
     pub tracks: Vec<CandidateTrack>,
     /// Who the source credits in a role on the release itself rather than on
     /// one track.
@@ -29,10 +32,13 @@ pub struct CandidateDraft {
     pub works: WorkGraph,
 }
 
-/// A track of the candidate's draft. Its audio and number are required.
+/// A track of the candidate's draft. Its audio and its place are required.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CandidateTrack {
-    pub edit: RawTrackEdit<AudioFile, i32>,
+    pub edit: RawTrackEdit<AudioFile>,
+    /// Where it sits on the draft's mediums, as the source read it. Not
+    /// edited: only applying a source writes it.
+    pub place: crate::mediums::TrackPlace,
     /// The length the source the draft was read from lists for this track,
     /// shown beside its audio's own; unstated where the source lists none,
     /// and for a track read from the files or from nothing.
@@ -115,15 +121,13 @@ impl WorkGraph {
     }
 }
 
-impl RawTrackEdit<AudioFile, i32> {
+impl RawTrackEdit<AudioFile> {
     /// Cross the editor boundary without weakening the stored draft's shape.
     pub fn as_edit(&self) -> RawTrackEdit {
         RawTrackEdit {
             id: self.id.clone(),
             title: self.title.clone(),
             artist_assignments: self.artist_assignments.clone(),
-            side: self.side,
-            track_number: Some(self.track_number),
             file: Some(self.file.clone()),
         }
     }
@@ -132,10 +136,11 @@ impl RawTrackEdit<AudioFile, i32> {
 impl CandidateTrack {
     /// A track read from no source but the folder: what the person types, or
     /// a track the folder gained after a source was applied. The source
-    /// states nothing about it.
-    pub fn unsourced(edit: RawTrackEdit<AudioFile, i32>) -> Self {
+    /// states nothing about it but where the folder puts it.
+    pub fn unsourced(edit: RawTrackEdit<AudioFile>, place: crate::mediums::TrackPlace) -> Self {
         Self {
             edit,
+            place,
             stated_length_ms: None,
             roles: Vec::new(),
             works: Vec::new(),

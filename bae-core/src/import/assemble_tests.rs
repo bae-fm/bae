@@ -22,17 +22,27 @@ fn credit(name: &str) -> ArtistCredit {
     }
 }
 
+fn place(medium: u16, number: u32) -> crate::mediums::TrackPlace {
+    crate::mediums::TrackPlace {
+        medium: std::num::NonZeroU16::new(medium).expect("mediums count from one"),
+        side: std::num::NonZeroU8::MIN,
+        number: std::num::NonZeroU32::new(number).expect("numbers count from one"),
+    }
+}
+
+/// Track `position + 1` of the draft's first disc.
 fn track(position: usize, title: &str) -> CandidateTrack {
-    CandidateTrack::unsourced(RawTrackEdit {
-        id: format!("candidate-track-{position}"),
-        title: title.to_string(),
-        artist_assignments: TrackArtistAssignments::AlbumArtists,
-        side: Some(1),
-        track_number: position as i32 + 1,
-        file: AudioFile::Standalone {
-            file_id: format!("{position:02}.flac"),
+    CandidateTrack::unsourced(
+        RawTrackEdit {
+            id: format!("candidate-track-{position}"),
+            title: title.to_string(),
+            artist_assignments: TrackArtistAssignments::AlbumArtists,
+            file: AudioFile::Standalone {
+                file_id: format!("{position:02}.flac"),
+            },
         },
-    })
+        place(1, u32::try_from(position + 1).expect("a test position fits u32")),
+    )
 }
 
 fn draft() -> CandidateDraft {
@@ -46,6 +56,9 @@ fn draft() -> CandidateDraft {
             barcode: String::new(),
             facts: Default::default(),
         },
+        mediums: vec![crate::mediums::ReleaseMedium::one_sided(Some(
+            crate::pressing::Medium::Cd,
+        ))],
         tracks: vec![track(0, "First Track"), track(1, "Second Track")],
         release_roles: Vec::new(),
         works: WorkGraph::default(),
@@ -70,9 +83,9 @@ fn the_rows_are_the_drafts_values() {
         parsed
             .tracks
             .iter()
-            .map(|track| (track.title.as_str(), track.track_number))
+            .map(|track| (track.title.as_str(), track.track_number.get()))
             .collect::<Vec<_>>(),
-        [("First Track", Some(1)), ("Second Track", Some(2))]
+        [("First Track", 1), ("Second Track", 2)]
     );
     assert_eq!(
         assembled.bindings,
@@ -297,4 +310,31 @@ fn a_draft_keeps_only_the_works_its_tracks_perform() {
         ["kept", "kept-parent"]
     );
     assert_eq!(kept.works.parts, [part("kept-parent", "kept")]);
+}
+
+/// The draft's mediums become the release's medium rows, in order, and each
+/// track row names the one its place is on.
+#[test]
+fn each_track_row_sits_on_the_medium_row_its_place_names() {
+    let mut draft = draft();
+    draft.mediums.push(crate::mediums::ReleaseMedium::one_sided(Some(
+        crate::pressing::Medium::Cd,
+    )));
+    draft.tracks[1].place = place(2, 1);
+    let parsed = assemble(&draft).parsed;
+
+    assert_eq!(
+        parsed
+            .mediums
+            .iter()
+            .map(|medium| (medium.position.get(), medium.release_id.as_str()))
+            .collect::<Vec<_>>(),
+        [(1, parsed.release.id.as_str()), (2, parsed.release.id.as_str())]
+    );
+    assert_eq!(parsed.tracks[0].medium_id, parsed.mediums[0].id);
+    assert_eq!(parsed.tracks[1].medium_id, parsed.mediums[1].id);
+    assert_eq!(
+        crate::import::release_values::row_labels(&parsed),
+        ["1-1", "2-1"]
+    );
 }

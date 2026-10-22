@@ -102,18 +102,16 @@ object PreviewData {
     fun track(
         id: String = "trk-1",
         title: String = "Track Title",
-        trackNumber: Int? = 1,
+        number: Int = 1,
     ): BridgeTrack =
         BridgeTrack(
             id = id,
             title = title,
-            side = 0,
-            trackNumber = trackNumber,
             durationMs = TRACK_DURATION_MS,
             durationClock = trackDurationClock,
             artistNames = "Artist Name",
             displayArtist = null,
-            positionText = trackNumber?.toString() ?: "",
+            positionText = number.toString(),
         )
 
     fun trackGroup(

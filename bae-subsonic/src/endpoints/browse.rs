@@ -148,6 +148,10 @@ pub(crate) async fn get_album(
         .get_files_for_release(&release_id)
         .await
         .map_err(lib_err)?;
+    let mediums = services
+        .get_release_mediums(&release_id)
+        .await
+        .map_err(lib_err)?;
 
     let mut songs = Vec::with_capacity(tracks.len());
     for track in &tracks {
@@ -158,6 +162,7 @@ pub(crate) async fn get_album(
                 &release,
                 &album_title,
                 &files,
+                &mediums,
                 cover_art.clone(),
             )
             .await?,

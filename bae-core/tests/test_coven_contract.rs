@@ -39,7 +39,7 @@ async fn real_schema_opens_with_the_declarations_and_unattached_files() {
     };
     let release = bae_core::db::DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string());
     database
-        .insert_album_with_release_and_tracks(&album, &release, &[], &[])
+        .insert_album_with_release_and_tracks(&album, &release, &[], &[], &[])
         .await
         .unwrap();
     let file = bae_core::db::DbFile::new(
@@ -108,7 +108,7 @@ async fn upload_cancellation_detaches_the_file_and_restores_its_original() {
     };
     let release = bae_core::db::DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string());
     database
-        .insert_album_with_release_and_tracks(&album, &release, &[], &[])
+        .insert_album_with_release_and_tracks(&album, &release, &[], &[], &[])
         .await
         .unwrap();
     let source = directory.path().join("track.flac");

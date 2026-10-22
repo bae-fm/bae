@@ -50,8 +50,8 @@ fn audio_order(files: &CategorizedFiles) -> Vec<String> {
 }
 
 /// The draft a scan of `root`'s one release starts from: its files' tags, read
-/// the way discovery reads them. Each track as (file, disc, number, title).
-fn tag_draft(root: &Path) -> Vec<(String, Option<i32>, i32, String)> {
+/// the way discovery reads them. Each track as (file, medium, number, title).
+fn tag_draft(root: &Path) -> Vec<(String, u16, u32, String)> {
     let candidates = scan_valid(root.to_path_buf());
     let [candidate] = candidates.as_slice() else {
         panic!("one release under {}", root.display());
@@ -68,8 +68,8 @@ fn tag_draft(root: &Path) -> Vec<(String, Option<i32>, i32, String)> {
         .map(|track| {
             (
                 track.edit.file.file_id().to_string(),
-                track.edit.side,
-                track.edit.track_number,
+                track.place.medium.get(),
+                track.place.number.get(),
                 track.edit.title.clone(),
             )
         })
@@ -90,9 +90,9 @@ fn tagged_files_whose_names_carry_no_numbers_play_in_their_tags_order() {
     assert_eq!(
         tag_draft(tmp.path()),
         [
-            ("Beta.flac".to_string(), Some(1), 1, "Track Title One".to_string()),
-            ("Gamma.flac".to_string(), Some(1), 2, "Track Title Two".to_string()),
-            ("Alpha.flac".to_string(), Some(1), 3, "Track Title Three".to_string()),
+            ("Beta.flac".to_string(), 1, 1, "Track Title One".to_string()),
+            ("Gamma.flac".to_string(), 1, 2, "Track Title Two".to_string()),
+            ("Alpha.flac".to_string(), 1, 3, "Track Title Three".to_string()),
         ]
     );
 }
@@ -170,9 +170,9 @@ fn untagged_files_take_their_disc_and_track_from_the_numbers_their_names_start_w
     assert_eq!(
         tag_draft(tmp.path()),
         [
-            ("1-01 Alpha.flac".to_string(), Some(1), 1, "1-01 Alpha".to_string()),
-            ("1-02 Beta.flac".to_string(), Some(1), 2, "1-02 Beta".to_string()),
-            ("2-01 Gamma.flac".to_string(), Some(2), 1, "2-01 Gamma".to_string()),
+            ("1-01 Alpha.flac".to_string(), 1, 1, "1-01 Alpha".to_string()),
+            ("1-02 Beta.flac".to_string(), 1, 2, "1-02 Beta".to_string()),
+            ("2-01 Gamma.flac".to_string(), 2, 1, "2-01 Gamma".to_string()),
         ]
     );
 }
@@ -210,10 +210,10 @@ fn disc_tags_put_each_disc_s_tracks_together_in_their_order() {
     assert_eq!(
         numbers,
         [
-            ("Delta.flac".to_string(), Some(1), 1),
-            ("Beta.flac".to_string(), Some(1), 2),
-            ("Alpha.flac".to_string(), Some(2), 1),
-            ("Gamma.flac".to_string(), Some(2), 2),
+            ("Delta.flac".to_string(), 1, 1),
+            ("Beta.flac".to_string(), 1, 2),
+            ("Alpha.flac".to_string(), 2, 1),
+            ("Gamma.flac".to_string(), 2, 2),
         ]
     );
 }
@@ -242,11 +242,8 @@ fn a_catalog_tracklist_lands_on_the_files_its_numbers_are_tagged_with() {
             pressing: crate::pressing::Pressing::blank(),
             tracks: ["Catalog One", "Catalog Two", "Catalog Three"]
                 .into_iter()
-                .zip(1..)
-                .map(|(title, number)| crate::import::TrackUserEdit {
+                .map(|title| crate::import::TrackUserEdit {
                     title: title.into(),
-                    side: None,
-                    track_number: Some(number),
                     artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                     file: None,
                 })

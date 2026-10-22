@@ -5,7 +5,7 @@ use super::*;
 async fn coven_connection_enforces_foreign_keys_for_bae_schema() {
     let (db, _tmp) = super::temp_db().await;
 
-    let track = DbTrack::new_test("missing-release", TRACK_A, "Track Title A", Some(1));
+    let track = DbTrack::new_test("missing-release", TRACK_A, "Track Title A", 1);
     let error = db
         .insert_track(&track)
         .await

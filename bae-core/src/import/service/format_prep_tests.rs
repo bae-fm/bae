@@ -230,7 +230,7 @@ INDEX 01 01:00:00
                 "release-id",
                 &format!("track-{index}"),
                 track.title.as_deref().unwrap_or("Track Title"),
-                Some(track.number as i32),
+                track.number,
             ),
             audio: crate::import::TrackAudio::CueBacked {
                 cue_pair: Arc::clone(&cue_pair),
@@ -322,7 +322,7 @@ fn build_audio_formats_uses_stored_standalone_facts() {
         "/tests/fixtures/flac/01 Test Track 1.flac"
     ));
     let track = TrackFile {
-        db_track: crate::db::DbTrack::new_test("release-id", "track-0", "Track Title", Some(1)),
+        db_track: crate::db::DbTrack::new_test("release-id", "track-0", "Track Title", 1),
         audio: crate::import::TrackAudio::Standalone {
             file_path: path.clone(),
             source_audio: scanned_flac(),
@@ -526,7 +526,7 @@ INDEX 01 11:01:30
                 "release-id",
                 &format!("track-{index}"),
                 track.title.as_deref().unwrap_or("Track Title"),
-                Some(track.number as i32),
+                track.number,
             ),
             audio: crate::import::TrackAudio::CueBacked {
                 cue_pair: Arc::clone(&cue_pair),

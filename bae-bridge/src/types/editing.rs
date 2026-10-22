@@ -77,8 +77,6 @@ pub struct BridgePressingEdit {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTrackUserEdit {
     pub title: String,
-    pub side: Option<i32>,
-    pub track_number: Option<i32>,
     pub artist_assignments: BridgeTrackArtistAssignments,
     /// Which of the folder's audio holds this track's samples. An import's rows
     /// are its track slots, so this is the pairing the user left and the one the
@@ -619,6 +617,9 @@ pub struct BridgeReleaseEditTrackContext {
     pub sources: Vec<BridgeReleaseEditTrackSource>,
     /// The track's stored length as a clock label's fields ("3:07").
     pub duration_clock: BridgeDurationClock,
+    /// How the track's place reads ("A1", "3"), which the editor shows and
+    /// never edits.
+    pub position_text: String,
     pub side: BridgeTrackSide,
     pub side_header_key: Option<String>,
 }
@@ -658,8 +659,6 @@ pub struct BridgeRawTrackEdit {
     pub id: String,
     pub title: String,
     pub artist_assignments: BridgeTrackArtistAssignments,
-    pub side: Option<i32>,
-    pub track_number: Option<i32>,
     /// The audio bound to this row. An editor must carry it through untouched:
     /// dropping it when rebuilding a row from its text fields is what unpairs a
     /// track the user had already paired.

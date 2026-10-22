@@ -20,11 +20,11 @@ pub struct AutomationPressingEdit {
     pub facts: bae_core::pressing::PressingFacts,
 }
 
+/// One track's editable fields: its title and artists. Its medium, side and
+/// number are the source's and not edited.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationTrackUserEdit {
     pub title: String,
-    pub side: Option<i32>,
-    pub track_number: Option<i32>,
     pub artist_assignments: AutomationTrackArtistAssignments,
 }
 

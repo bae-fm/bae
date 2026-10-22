@@ -28,7 +28,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
         .unwrap()
         .with_timezone(&chrono::Utc);
     // The track's stored length is the probe's, as an import measures it.
-    let mut db_track = crate::db::DbTrack::new_test("release-id", "track-id", "Track Title", Some(1));
+    let mut db_track = crate::db::DbTrack::new_test("release-id", "track-id", "Track Title", 1);
     db_track.duration_ms = u64::try_from(probe.duration.as_millis()).expect("the probe's length fits");
     let track = TrackFile {
         db_track,

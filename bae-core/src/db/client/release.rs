@@ -20,6 +20,7 @@ mod storage;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Default)]
 pub(crate) struct ImportRows<'a> {
+    pub mediums: &'a [DbReleaseMedium],
     pub track_artists: &'a [DbTrackArtist],
     pub album_artists: &'a [DbAlbumArtist],
     pub works: &'a [DbWork],
@@ -130,13 +131,8 @@ pub(super) fn write_release_metadata_on(
 
     for (existing_id, new_track) in track_updates {
         tx.execute(
-            r#"UPDATE tracks SET title = ?, side = ?, track_number = ? WHERE id = ?"#,
-            params![
-                new_track.title,
-                new_track.side,
-                new_track.track_number,
-                existing_id,
-            ],
+            r#"UPDATE tracks SET title = ? WHERE id = ?"#,
+            params![new_track.title, existing_id],
         )?;
     }
 
@@ -182,12 +178,14 @@ impl Database {
         &self,
         album: &DbAlbum,
         release: &DbRelease,
+        mediums: &[DbReleaseMedium],
         tracks: &[DbTrack],
         track_artists: &[DbTrackArtist],
     ) -> Result<(), DbError> {
-        let (album, release, tracks, track_artists) = (
+        let (album, release, mediums, tracks, track_artists) = (
             album.clone(),
             release.clone(),
+            mediums.to_vec(),
             tracks.to_vec(),
             track_artists.to_vec(),
         );
@@ -196,6 +194,9 @@ impl Database {
 
             insert_album_row(tx, &album)?;
             insert_release_row(tx, &release)?;
+            for medium in &mediums {
+                insert_release_medium_row(tx, medium)?;
+            }
             for track in &tracks {
                 insert_track_row(tx, track)?;
             }
@@ -211,15 +212,23 @@ impl Database {
     pub async fn insert_release_with_tracks(
         &self,
         release: &DbRelease,
+        mediums: &[DbReleaseMedium],
         tracks: &[DbTrack],
         track_artists: &[DbTrackArtist],
     ) -> Result<(), DbError> {
-        let (release, tracks, track_artists) =
-            (release.clone(), tracks.to_vec(), track_artists.to_vec());
+        let (release, mediums, tracks, track_artists) = (
+            release.clone(),
+            mediums.to_vec(),
+            tracks.to_vec(),
+            track_artists.to_vec(),
+        );
         self.call_sql(move |sql| {
             let tx = &sql;
 
             insert_release_row(tx, &release)?;
+            for medium in &mediums {
+                insert_release_medium_row(tx, medium)?;
+            }
             for track in &tracks {
                 insert_track_row(tx, track)?;
             }
@@ -427,6 +436,7 @@ impl Database {
             .iter()
             .map(|tf| tf.db_track.clone())
             .collect();
+        let mediums = rows.mediums.to_vec();
         let track_artists = rows.track_artists.to_vec();
         let album_artists = rows.album_artists.to_vec();
         let works = rows.works.to_vec();
@@ -548,6 +558,10 @@ impl Database {
 
                 for role in &release_artist_roles {
                     insert_release_artist_role_row(tx, role)?;
+                }
+
+                for medium in &mediums {
+                    insert_release_medium_row(tx, medium)?;
                 }
 
                 // The tracks came out of `tracks_to_files`; their `duration_ms`

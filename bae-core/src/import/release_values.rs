@@ -25,6 +25,8 @@ pub(crate) struct ReleaseValues {
     pub album_credits: Vec<ArtistCredit>,
     pub album_year: Option<i32>,
     pub pressing: Pressing,
+    /// The mediums the audio is on, in order.
+    pub mediums: Vec<crate::mediums::ReleaseMedium>,
     /// Who the source credits in a role on the release itself.
     pub release_roles: Vec<CreditedRole>,
     /// Every work a track performs, once.
@@ -37,9 +39,8 @@ pub(crate) struct ReleaseValues {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct TrackValues {
     pub title: String,
-    pub side: Option<i32>,
-    /// The number the source states, `None` where it states none usable.
-    pub number: Option<i32>,
+    /// Where it sits on the reading's mediums.
+    pub place: crate::mediums::TrackPlace,
     /// The length the source lists for the track.
     pub stated_length_ms: Option<u64>,
     pub credits: TrackCredits,
@@ -74,8 +75,6 @@ fn credit_assignment(credit: ArtistCredit) -> ArtistAssignment {
 
 impl ReleaseValues {
     /// The editable fields, as the library editor's form is seeded with them.
-    /// A track's number is the one its source states, else its place in the
-    /// release.
     pub(crate) fn user_edit(&self) -> ReleaseUserEdit {
         ReleaseUserEdit {
             album_title: self.album_title.clone(),
@@ -87,8 +86,6 @@ impl ReleaseValues {
                 .iter()
                 .map(|track| TrackUserEdit {
                     title: track.title.clone(),
-                    side: track.side,
-                    track_number: track.number,
                     artist_assignments: track.credits.assignments(),
                     file: None,
                 })
@@ -97,8 +94,7 @@ impl ReleaseValues {
     }
 
     /// Every value, laid onto the folder's audio `units`: track `i` plays
-    /// unit `i`, under the draft's row identity for that place. A track whose
-    /// source states no number is numbered by its place in the release.
+    /// unit `i`, under the draft's row identity for that place.
     ///
     /// The reader laid the source out against these units, so they are as
     /// many as its tracks.
@@ -119,12 +115,9 @@ impl ReleaseValues {
                     id: crate::import::pane::candidate_track_id(position),
                     title: track.title,
                     artist_assignments: track.credits.assignments(),
-                    side: track.side,
-                    track_number: track.number.unwrap_or_else(|| {
-                        i32::try_from(position + 1).expect("track position fits i32")
-                    }),
                     file,
                 },
+                place: track.place,
                 stated_length_ms: track.stated_length_ms,
                 roles: track.roles,
                 works: track.works,
@@ -138,6 +131,7 @@ impl ReleaseValues {
                 .map(|year| year.to_string())
                 .unwrap_or_default(),
             pressing: RawPressingEdit::from_pressing(&self.pressing),
+            mediums: self.mediums,
             tracks,
             release_roles: self.release_roles,
             works: self.works,
@@ -156,20 +150,19 @@ impl ReleaseValues {
     }
 }
 
-/// Read a positive number from a provider position: 7, A7, or 2-7.
-pub(crate) fn position_number(position: &str) -> Option<i32> {
-    let number = match position.split_once('-') {
-        Some((disc, number)) if disc.bytes().all(|byte| byte.is_ascii_digit()) => number,
-        _ if position
-            .as_bytes()
-            .first()
-            .is_some_and(u8::is_ascii_alphabetic) =>
-        {
-            &position[1..]
-        }
-        _ => position,
+/// The track number a catalog position prints: the digits after its last
+/// `-` (`2-7`, `CD1-7`, `BD-7`), else after its leading letters (`A7`,
+/// `DVD7`), else the whole position (`7`). `None` for a position whose number
+/// is not all digits (`1-10a`, a sub-track) or is zero.
+pub(crate) fn position_number(position: &str) -> Option<std::num::NonZeroU32> {
+    let number = match position.rsplit_once('-') {
+        Some((_, number)) => number,
+        None => position.trim_start_matches(|c: char| c.is_ascii_alphabetic()),
     };
-    number.parse::<i32>().ok().filter(|number| *number > 0)
+    if number.is_empty() || !number.bytes().all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+    number.parse().ok()
 }
 
 /// Builds a [`WorkGraph`] from the works a release's recordings perform.
@@ -311,4 +304,55 @@ pub(crate) fn committed_artists(
         .map(|artist| artist.id.clone())
         .zip(crate::db::resolved_in_an_empty_library(&parsed.artists))
         .collect()
+}
+
+/// How each of `values`' tracks reads on its mediums: `A1` on a lettered
+/// side, `2-3` for track 3 of disc 2, `5` on a release of one medium. What a
+/// reader's test checks places with.
+#[cfg(test)]
+pub(crate) fn place_labels(
+    mediums: &[crate::mediums::ReleaseMedium],
+    places: impl IntoIterator<Item = crate::mediums::TrackPlace>,
+) -> Vec<String> {
+    use crate::album_detail::TrackPosition;
+    places
+        .into_iter()
+        .map(
+            |place| match crate::mediums::track_position(&place, mediums) {
+                TrackPosition::Sided {
+                    side_letter,
+                    number,
+                } => format!("{side_letter}{number}"),
+                TrackPosition::Disc { disc, number } => format!("{disc}-{number}"),
+                TrackPosition::Flat { number } => number.to_string(),
+            },
+        )
+        .collect()
+}
+
+/// [`place_labels`] of a reading's tracks.
+#[cfg(test)]
+pub(crate) fn value_labels(values: &ReleaseValues) -> Vec<String> {
+    place_labels(&values.mediums, values.tracks.iter().map(|track| track.place))
+}
+
+/// [`place_labels`] of an import's track rows.
+#[cfg(test)]
+pub(crate) fn row_labels(rows: &crate::import::ReleaseRows) -> Vec<String> {
+    let mediums: Vec<_> = rows.mediums.iter().map(|medium| medium.medium).collect();
+    place_labels(
+        &mediums,
+        rows.tracks.iter().map(|track| {
+            let medium = rows
+                .mediums
+                .iter()
+                .find(|medium| medium.id == track.medium_id)
+                .expect("a track row's medium is one of the release's");
+            crate::mediums::TrackPlace {
+                medium: medium.position,
+                side: track.side,
+                number: track.track_number,
+            }
+        }),
+    )
 }

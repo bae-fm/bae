@@ -106,6 +106,8 @@ pub struct WorkGraphRows {
 pub struct ReleaseRows {
     pub album: DbAlbum,
     pub release: DbRelease,
+    /// The release's mediums, in order; each track sits on one.
+    pub mediums: Vec<crate::db::DbReleaseMedium>,
     pub tracks: Vec<TrackRow>,
     pub artists: Vec<DbArtist>,
     pub album_artists: Vec<DbAlbumArtist>,
@@ -126,8 +128,9 @@ pub struct TrackRow {
     pub id: String,
     pub release_id: String,
     pub title: String,
-    pub side: Option<i32>,
-    pub track_number: Option<i32>,
+    pub medium_id: String,
+    pub side: std::num::NonZeroU8,
+    pub track_number: std::num::NonZeroU32,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -139,6 +142,7 @@ impl TrackRow {
             id: self.id,
             release_id: self.release_id,
             title: self.title,
+            medium_id: self.medium_id,
             side: self.side,
             track_number: self.track_number,
             duration_ms,

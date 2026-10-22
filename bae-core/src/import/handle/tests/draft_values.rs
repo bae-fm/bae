@@ -349,15 +349,16 @@ async fn a_tags_draft_and_a_blank_draft_import_exactly_the_draft() {
         assert_eq!(
             tracks
                 .iter()
-                .map(|track| (track.title.clone(), track.track_number))
+                .map(|track| (track.title.clone(), track.track_number.get()))
                 .collect::<Vec<_>>(),
             draft
                 .tracks
                 .iter()
                 .zip(["01 Track", "02 Track"])
-                .map(|(track, file)| {
+                .zip(1..)
+                .map(|((track, file), number)| {
                     let title = if track.title.is_empty() { file } else { &track.title };
-                    (title.to_string(), track.track_number)
+                    (title.to_string(), number)
                 })
                 .collect::<Vec<_>>(),
             "from tags: {from_tags}"

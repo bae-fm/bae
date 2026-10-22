@@ -42,12 +42,9 @@ enum PreviewData {
                 // Bound values first: the single-expression form exceeds the
                 // type checker's time budget on CI hardware.
                 let durationMs = UInt64(180_000 + index * 15_000)
-                let trackNumber = Int32(index)
                 return BridgeTrack(
                     id: "t-\(index)",
                     title: "Track Title \(index)",
-                    side: 1,
-                    trackNumber: trackNumber,
                     durationMs: durationMs,
                     durationClock: bridgeLengthClock(ms: durationMs),
                     artistNames: "Artist Name 1",

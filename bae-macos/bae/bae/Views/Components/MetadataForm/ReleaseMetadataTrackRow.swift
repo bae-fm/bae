@@ -9,22 +9,16 @@ struct ReleaseMetadataTrackRow: View {
     let durationDiverges: Bool
     let columns: ReleaseMetadataTrackColumns
     let editingCommands: EditingCommitCommands
-    var displayedPosition: String?
+    /// How the track's place reads ("A1", "3"): core's, and never edited.
+    let position: String
     let onChange: @MainActor (BridgeRawTrackEdit) async -> Void
 
     var body: some View {
         HStack(spacing: ReleaseMetadataTrackColumns.spacing) {
-            Group {
-                if let displayedPosition {
-                    Text(verbatim: displayedPosition)
-                        .themeText(.body)
-                        .monospacedDigit()
-                }
-                else {
-                    TrackNumberCell(value: trackNumberBinding)
-                }
-            }
-            .frame(width: ReleaseMetadataTrackColumns.track)
+            Text(verbatim: position)
+                .themeText(.body)
+                .monospacedDigit()
+                .frame(width: ReleaseMetadataTrackColumns.track)
             CommittedTextField(
                 placeholder: coreString("ui.import.slots.untitled"),
                 value: track.title,
@@ -75,17 +69,6 @@ struct ReleaseMetadataTrackRow: View {
         )
         .modifier(FieldChrome(focused: false, style: .inline))
         .frame(width: columns.artist)
-    }
-
-    private var trackNumberBinding: Binding<Int32?> {
-        Binding(
-            get: { track.trackNumber },
-            set: { value in
-                var edited = track
-                edited.trackNumber = value
-                Task { await onChange(edited) }
-            }
-        )
     }
 
     private var explicitArtists: [BridgeArtistAssignment] {
@@ -192,6 +175,7 @@ func releaseDurationText(_ milliseconds: Int64?) -> String {
             durationDiverges: false,
             columns: columns,
             editingCommands: EditingCommitCommands(),
+            position: "1",
             onChange: { track = $0 }
         )
         .padding(ThemeSpace.section)

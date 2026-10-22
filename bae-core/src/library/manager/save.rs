@@ -31,21 +31,13 @@ impl LibraryManager {
             .get_tracks_for_release(&meta.release.id)
             .await?;
         let total_tracks = release_tracks.len();
-        let has_multiple_sides = release_tracks
-            .iter()
-            .map(|t| t.side)
-            .collect::<std::collections::HashSet<_>>()
-            .len()
-            > 1;
-        let disc = if has_multiple_sides {
-            meta.track.side
-        } else {
-            None
-        };
+        let disc = self
+            .database
+            .get_release_mediums(&meta.release.id)
+            .await?
+            .disc_number(&meta.track);
 
         let year = meta.release.pressing.year.or(album.year);
-        let is_digital =
-            crate::util::format::is_disc_numbered(meta.release.pressing.facts.physical_medium());
 
         let tags = SaveTags {
             title: meta.track.title.clone(),
@@ -57,9 +49,8 @@ impl LibraryManager {
 
         Ok(ResolvedSaveTags {
             tags,
-            track_number: meta.track.track_number,
+            track_number: meta.track.track_number.get(),
             total_tracks,
-            is_digital,
         })
     }
 

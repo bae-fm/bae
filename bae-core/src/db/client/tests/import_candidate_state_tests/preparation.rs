@@ -404,8 +404,6 @@ async fn picked_artist_assignments_resolve_the_canonical_artist_row() {
         id: "candidate-track-0".to_string(),
         title: "Track Title".to_string(),
         artist_assignments: TrackArtistAssignments::Explicit(Vec::new()),
-        side: Some(1),
-        track_number: Some(1),
         file: Some(stored.draft.tracks[0].edit.file.clone()),
     };
     crate::import::CandidatePreparations::new(db.clone())

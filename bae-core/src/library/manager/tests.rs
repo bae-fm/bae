@@ -153,8 +153,15 @@ async fn queued_upload_count(manager: &LibraryManager) -> usize {
         .unwrap()
 }
 
+/// Insert `release` with its first medium, one CD side, which
+/// [`DbTrack::new_test`] tracks sit on.
 async fn insert_release(manager: &LibraryManager, release: &DbRelease) {
     manager.database.insert_release(release).await.unwrap();
+    manager
+        .database
+        .insert_release_medium(&crate::db::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
 }
 
 fn create_test_album() -> DbAlbum {

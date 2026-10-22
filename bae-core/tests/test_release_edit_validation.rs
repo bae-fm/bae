@@ -49,14 +49,18 @@ async fn seed(db: &Database) -> (String, String) {
         id: Uuid::new_v4().to_string(),
         release_id: release.id.clone(),
         title: "Original Track".to_string(),
-        side: Some(1),
-        track_number: Some(1),
+        medium_id: bae_core::db::identity::release_medium_id(&release.id, 1),
+        side: std::num::NonZeroU8::MIN,
+        track_number: std::num::NonZeroU32::MIN,
         duration_ms: 180_000,
         created_at: Utc::now(),
     };
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
     db.insert_release(&release).await.unwrap();
+    db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
     db.insert_track(&track).await.unwrap();
     (album.id, release.id)
 }
@@ -74,8 +78,6 @@ fn wire_edit(album_title: &str, album_artist_seed_names: &[&str]) -> ReleaseUser
         pressing: bae_core::pressing::Pressing::blank(),
         tracks: vec![TrackUserEdit {
             title: "Original Track".to_string(),
-            side: Some(1),
-            track_number: Some(1),
             artist_assignments: TrackArtistAssignments::AlbumArtists,
             file: None,
         }],

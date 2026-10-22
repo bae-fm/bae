@@ -10,6 +10,8 @@ pub(crate) struct SeededAlbum {
     pub(crate) album: DbAlbum,
     pub(crate) credits: Vec<DbAlbumArtist>,
     pub(crate) release: DbRelease,
+    /// The release's one medium, which its tracks sit on.
+    pub(crate) medium: DbReleaseMedium,
     pub(crate) tracks: Vec<DbTrack>,
     pub(crate) cover: Option<(DbLibraryImage, Vec<u8>)>,
     /// `None` for an album whose tracks play nothing.
@@ -62,6 +64,7 @@ impl Database {
                         insert_album_artist_row(tx, credit)?;
                     }
                     insert_release_row(tx, &seeded.release)?;
+                    insert_release_medium_row(tx, &seeded.medium)?;
                     for track in &seeded.tracks {
                         insert_track_row(tx, track)?;
                     }

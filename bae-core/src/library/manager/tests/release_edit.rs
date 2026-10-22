@@ -70,7 +70,7 @@ async fn release_edit_seed_uses_persisted_track_ids() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    let track = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", Some(1));
+    let track = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     manager.database.insert_track(&track).await.unwrap();
@@ -142,7 +142,7 @@ async fn release_edit_seed_refuses_a_track_without_stored_audio() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    let track = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", Some(1));
+    let track = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     manager.database.insert_track(&track).await.unwrap();
@@ -161,11 +161,22 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.pressing.facts = crate::pressing::made_of(crate::pressing::Medium::Cd, 2);
-    let first = crate::db::DbTrack::new_test(&release.id, TRACK_1, "First Track", Some(1));
-    let mut second = crate::db::DbTrack::new_test(&release.id, TRACK_2, "Second Track", Some(1));
-    second.side = Some(2);
+    let first = crate::db::DbTrack::new_test(&release.id, TRACK_1, "First Track", 1);
+    let mut second = crate::db::DbTrack::new_test(&release.id, TRACK_2, "Second Track", 1);
+    let second_disc = crate::db::DbReleaseMedium::new(
+        &release.id,
+        std::num::NonZeroU16::new(2).expect("disc 2"),
+        crate::mediums::ReleaseMedium::one_sided(Some(crate::pressing::Medium::Cd)),
+        chrono::Utc::now(),
+    );
+    second.medium_id.clone_from(&second_disc.id);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
+    manager
+        .database
+        .insert_release_medium(&second_disc)
+        .await
+        .unwrap();
     manager.database.insert_track(&first).await.unwrap();
     manager.database.insert_track(&second).await.unwrap();
     add_track_audio_sources(
@@ -224,7 +235,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    let track = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", Some(1));
+    let track = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     manager.database.insert_track(&track).await.unwrap();
@@ -269,8 +280,6 @@ async fn release_metadata_edit_preserves_records_and_audio() {
                 },
                 tracks: vec![crate::import::TrackUserEdit {
                     title: "Edited Track".to_string(),
-                    side: Some(2),
-                    track_number: Some(3),
                     artist_assignments: crate::import::TrackArtistAssignments::Explicit(vec![
                         crate::import::ArtistAssignment::named("Edited Track Artist"),
                     ]),
@@ -307,8 +316,9 @@ async fn release_metadata_edit_preserves_records_and_audio() {
     assert_eq!(stored_after.release.album_id, album.id);
     assert_eq!(stored_after.release.pressing.year, Some(1991));
     assert_eq!(stored_after.tracks[0].track.title, "Edited Track");
-    assert_eq!(stored_after.tracks[0].track.side, Some(2));
-    assert_eq!(stored_after.tracks[0].track.track_number, Some(3));
+    // The track's place is not in the edit: it stays where the import put it.
+    assert_eq!(stored_after.tracks[0].track.side, track.side);
+    assert_eq!(stored_after.tracks[0].track.track_number, track.track_number);
     assert_eq!(
         manager
             .get_artists_for_track(&track.id)
@@ -377,8 +387,6 @@ fn credited_release_edit(track_artists: [&[&str]; 2]) -> crate::import::ReleaseU
             .enumerate()
             .map(|(index, artists)| crate::import::TrackUserEdit {
                 title: format!("Track {}", index + 1),
-                side: Some(1),
-                track_number: Some(index as i32 + 1),
                 artist_assignments: crate::import::TrackArtistAssignments::Explicit(
                     artists
                         .iter()

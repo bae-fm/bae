@@ -787,6 +787,7 @@ impl ImportServiceHandle {
             })??;
             let draft = crate::import::pane::redraw_draft_for_files(
                 current_files,
+                settled_files,
                 initialized,
                 &preparation.draft,
                 self.ids.as_ref(),

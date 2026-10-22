@@ -163,8 +163,6 @@
                 from: BridgeTrack(
                     id: id,
                     title: title,
-                    side: 1,
-                    trackNumber: 1,
                     durationMs: durationMs,
                     durationClock: bridgeLengthClock(ms: durationMs),
                     artistNames: displayArtist ?? "Artist Name",

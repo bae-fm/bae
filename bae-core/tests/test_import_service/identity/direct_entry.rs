@@ -27,8 +27,6 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
                 pressing: bae_core::pressing::Pressing::blank(),
                 tracks: vec![TrackUserEdit {
                     title: "Track Title".to_string(),
-                    side: Some(1),
-                    track_number: Some(1),
                     artist_assignments: TrackArtistAssignments::AlbumArtists,
                     file: Some(bae_core::import::AudioFile::Standalone {
                         file_id: "01 Track Title.flac".into(),

@@ -189,6 +189,20 @@ fn a_cd_rip_of_the_mixed_box_reads_its_two_cds() {
         assert_eq!(read[0], "CD One 1");
         assert_eq!(read[12], "CD Two 1");
         assert!(read.iter().all(|title| title.starts_with("CD ")), "{read:?}");
+        let values = reading.as_ref().expect("the release reads");
+        assert_eq!(
+            values.mediums,
+            [
+                crate::mediums::ReleaseMedium::one_sided(Some(Medium::Cd)),
+                crate::mediums::ReleaseMedium::one_sided(Some(Medium::Cd)),
+            ],
+            "the release holds the two CDs the rip covers, and none of the box's records"
+        );
+        let labels = crate::import::release_values::value_labels(values);
+        assert_eq!(labels[0], "1-1");
+        assert_eq!(labels[11], "1-12");
+        assert_eq!(labels[12], "2-1", "disc 2 numbers its own tracks");
+        assert_eq!(labels[21], "2-10");
     }
 }
 

@@ -319,8 +319,6 @@
                                         id: "file-tags-track-\(index - 1)",
                                         title: "Track Title \(index)",
                                         artistAssignments: .albumArtists,
-                                        side: 1,
-                                        trackNumber: Int32(index),
                                         file: .standalone(
                                             fileId: "Track \(index).flac"
                                         )
@@ -691,8 +689,6 @@
                         id: "draft-track-\(index - 1)",
                         title: "",
                         artistAssignments: .albumArtists,
-                        side: 1,
-                        trackNumber: Int32(index),
                         file: .standalone(fileId: "Track \(index).flac")
                     )
                 }

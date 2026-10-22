@@ -291,3 +291,6 @@ mod source_release_tests;
 mod watched_folder_tests;
 
 mod local_foreign_keys;
+
+#[cfg(test)]
+mod release_medium_tests;

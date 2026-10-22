@@ -151,14 +151,6 @@ impl PressingFacts {
             self.discogs_details = other.discogs_details;
         }
     }
-
-    /// The physical carrier a player pauses between the sides or discs of:
-    /// the first of the pressing's media that has one.
-    pub fn physical_medium(&self) -> Option<PhysicalMedium> {
-        self.media
-            .iter()
-            .find_map(|counted| counted.medium.physical())
-    }
 }
 
 /// A physical carrier whose side or disc boundaries can pause playback.

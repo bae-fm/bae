@@ -156,16 +156,27 @@ impl LibraryManager {
                 DbAlbumArtist::new(&db_album.id, artist_id, position as i32, added)
             })
             .collect();
+        // One disc of unstated carrier, its tracks numbered in order.
+        let medium = crate::db::DbReleaseMedium::new(
+            &release_id,
+            std::num::NonZeroU16::MIN,
+            crate::mediums::ReleaseMedium::one_sided(None),
+            added,
+        );
         let tracks = album
             .tracks
             .iter()
             .enumerate()
-            .map(|(number, title)| DbTrack {
+            .map(|(index, title)| DbTrack {
                 id: self.ids.new_id().to_string(),
                 release_id: release_id.clone(),
                 title: title.clone(),
-                side: Some(1),
-                track_number: Some(number as i32 + 1),
+                medium_id: medium.id.clone(),
+                side: std::num::NonZeroU8::MIN,
+                track_number: std::num::NonZeroU32::new(
+                    u32::try_from(index + 1).expect("a fixture album's tracks fit u32"),
+                )
+                .expect("numbers count from one"),
                 duration_ms: 180_000,
                 created_at: added,
             })
@@ -190,6 +201,7 @@ impl LibraryManager {
                 created_at: added,
             },
             album: db_album,
+            medium,
             tracks,
             cover,
             audio: None,

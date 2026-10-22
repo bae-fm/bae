@@ -341,12 +341,18 @@ async fn set_records_does_not_touch_metadata_columns() {
         .unwrap();
 
     // Insert a track too — we want to verify it survives.
+    manager
+        .database
+        .insert_release_medium(&crate::db::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
     let track = crate::db::DbTrack {
         id: Uuid::new_v4().to_string(),
         release_id: release.id.clone(),
         title: "My Track".to_string(),
-        side: Some(1),
-        track_number: Some(1),
+        medium_id: crate::db::identity::release_medium_id(&release.id, 1),
+        side: std::num::NonZeroU8::MIN,
+        track_number: std::num::NonZeroU32::MIN,
         duration_ms: 180_000,
         created_at: Utc::now(),
     };
@@ -479,12 +485,18 @@ async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
 
     // A track on release_beta so the primary resolved below has an
     // identifiable target.
+    manager
+        .database
+        .insert_release_medium(&crate::db::DbReleaseMedium::new_test(&release_beta.id))
+        .await
+        .unwrap();
     let beta_track = crate::db::DbTrack {
         id: beta_track_id.clone(),
         release_id: release_beta.id.clone(),
         title: "Track Title".to_string(),
-        side: Some(1),
-        track_number: Some(1),
+        medium_id: crate::db::identity::release_medium_id(&release_beta.id, 1),
+        side: std::num::NonZeroU8::MIN,
+        track_number: std::num::NonZeroU32::MIN,
         duration_ms: 180_000,
         created_at: now,
     };

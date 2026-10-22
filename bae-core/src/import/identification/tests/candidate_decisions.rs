@@ -245,6 +245,7 @@ async fn changing_a_cues_disc_preserves_titles_but_updates_its_group() {
         .unwrap()
         .unwrap()
         .draft;
+    assert_eq!(after.mediums.len(), 2, "the loose audio and the sheet's disc");
     for original in before.tracks {
         let actual = after
             .tracks
@@ -257,7 +258,9 @@ async fn changing_a_cues_disc_preserves_titles_but_updates_its_group() {
             actual.edit.file,
             crate::import::AudioFile::SheetSlice { .. }
         ) {
-            assert_eq!(actual.edit.side, Some(2));
+            // The loose audio, which names no disc, is the first medium;
+            // the sheet's slices are the second.
+            assert_eq!(actual.place.medium.get(), 2);
         }
     }
 }

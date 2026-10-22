@@ -18,8 +18,10 @@ async fn cover_db() -> (Database, tempfile::TempDir) {
              ('2ffa8060-aa00-4147-8ad4-f373ef66c407', '82a53f44-1b76-435b-89f0-42749371ee15', '2026-01-01T00:00:00Z', 1),
              ('ce596bd7-be97-4416-8b6d-47f315bae466', '82a53f44-1b76-435b-89f0-42749371ee15', '2026-01-01T00:00:01Z', 2);
 
-            INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, created_at) VALUES ('03c41035-ce18-4fa0-8e83-c446df26a551', 'fcf4be32-159f-4790-87a1-697700a74462', 'Track On The Only Release', 1, 1, 1000, '2026-01-01T00:00:00Z'),
-             ('69e67928-545a-4dcf-8ae7-ef7778331231', 'ce596bd7-be97-4416-8b6d-47f315bae466', 'Track On The Non-Primary Release', 1, 1, 1000, '2026-01-01T00:00:00Z');
+            INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) VALUES ('963cc1cc-0f18-5b6b-a604-fa66bfad6e3e', 'ce596bd7-be97-4416-8b6d-47f315bae466', 1, 'cd', 1, '2026-01-01T00:00:00Z'), ('9b885716-3e9d-5b85-8d85-8a84db7a0b6d', 'fcf4be32-159f-4790-87a1-697700a74462', 1, 'cd', 1, '2026-01-01T00:00:00Z');
+
+            INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, created_at, medium_id) VALUES ('03c41035-ce18-4fa0-8e83-c446df26a551', 'fcf4be32-159f-4790-87a1-697700a74462', 'Track On The Only Release', 1, 1, 1000, '2026-01-01T00:00:00Z', '9b885716-3e9d-5b85-8d85-8a84db7a0b6d'),
+             ('69e67928-545a-4dcf-8ae7-ef7778331231', 'ce596bd7-be97-4416-8b6d-47f315bae466', 'Track On The Non-Primary Release', 1, 1, 1000, '2026-01-01T00:00:00Z', '963cc1cc-0f18-5b6b-a604-fa66bfad6e3e');
 
             ",
         )

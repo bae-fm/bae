@@ -414,8 +414,6 @@ async fn file_metadata_import_with_user_edit_overlay() {
         },
         tracks: vec![TrackUserEdit {
             title: "Edited Track Title".to_string(),
-            side: Some(1),
-            track_number: Some(1),
             artist_assignments: TrackArtistAssignments::AlbumArtists,
             file: Some(bae_core::import::AudioFile::Standalone {
                 file_id: "01.flac".into(),

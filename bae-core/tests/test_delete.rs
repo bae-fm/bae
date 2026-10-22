@@ -52,8 +52,12 @@ fn create_test_track(release_id: &str, track_number: i32) -> DbTrack {
         id: Uuid::new_v4().to_string(),
         release_id: release_id.to_string(),
         title: format!("Track {}", track_number),
-        side: Some(1),
-        track_number: Some(track_number),
+        medium_id: bae_core::db::identity::release_medium_id(release_id, 1),
+        side: std::num::NonZeroU8::MIN,
+        track_number: std::num::NonZeroU32::new(
+            u32::try_from(track_number).expect("a test track number fits u32"),
+        )
+        .expect("track numbers count from one"),
         duration_ms: 180000,
         created_at: now,
     }
@@ -71,6 +75,10 @@ async fn test_delete_album_integration() {
 
     database.insert_album(&album).await.unwrap();
     database.insert_release(&release).await.unwrap();
+    database
+        .insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
     database.insert_track(&track1).await.unwrap();
     database.insert_track(&track2).await.unwrap();
 
@@ -105,7 +113,15 @@ async fn test_delete_release_integration() {
 
     database.insert_album(&album).await.unwrap();
     database.insert_release(&release1).await.unwrap();
+    database
+        .insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release1.id))
+        .await
+        .unwrap();
     database.insert_release(&release2).await.unwrap();
+    database
+        .insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release2.id))
+        .await
+        .unwrap();
     database.insert_track(&track1).await.unwrap();
     database.insert_track(&track2).await.unwrap();
 
@@ -144,6 +160,10 @@ async fn test_delete_last_release_empties_album() {
 
     database.insert_album(&album).await.unwrap();
     database.insert_release(&release).await.unwrap();
+    database
+        .insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
 
     library_manager.delete_release(&release.id).await.unwrap();
 
@@ -185,6 +205,10 @@ async fn test_deleting_the_primary_release_makes_the_next_one_primary() {
     database.insert_album(&album).await.unwrap();
     for release in [&release1, &release2, &release3] {
         database.insert_release(release).await.unwrap();
+        database
+            .insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
+            .await
+            .unwrap();
     }
     assert_eq!(
         primary_release_of(&library_manager, &album.id).await,
@@ -220,7 +244,15 @@ async fn test_deleting_another_release_keeps_the_primary() {
 
     database.insert_album(&album).await.unwrap();
     database.insert_release(&release1).await.unwrap();
+    database
+        .insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release1.id))
+        .await
+        .unwrap();
     database.insert_release(&release2).await.unwrap();
+    database
+        .insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release2.id))
+        .await
+        .unwrap();
 
     library_manager
         .set_album_primary_release(&album.id, &release2.id)
@@ -248,7 +280,15 @@ async fn test_a_release_of_another_album_cannot_be_made_primary() {
     database.insert_album(&album).await.unwrap();
     database.insert_album(&other).await.unwrap();
     database.insert_release(&release).await.unwrap();
+    database
+        .insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
     database.insert_release(&elsewhere).await.unwrap();
+    database
+        .insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&elsewhere.id))
+        .await
+        .unwrap();
 
     library_manager
         .set_album_primary_release(&album.id, &elsewhere.id)

@@ -175,11 +175,25 @@ audio before a track's index 01 on a CD, such as a count-in or applause. It can
 be stored audio in the same file or the file before, or silence a CUE `PREGAP`
 line asks bae to generate. §7.4 says how playback uses it.
 
+A release holds its *mediums*: the discs, records or tapes its audio was read
+from, in order, each with its carrier where the source states one and its
+number of sides (a CD is one side, a record as many as its tracks' positions
+name). They are what the person has, not every medium the pressing is made
+of: Carol's CD rip of a box of records and CDs holds the CDs alone, while the
+pressing's media still say what the box is.
+
 Each track records:
 
 - its playing order in the release, counted from zero across every side;
-- the side or disc it sits on, where the pressing has them, which playback
-  pauses between (§7.3);
+- its place: the medium it sits on, the side of that medium, and its number
+  on that side. Every track has one, written when a source is applied and
+  never edited (§3.6). Its label is a display of the place: a track on a
+  record or cassette reads by its side's letter, the letters counting the
+  sides of the release's records and cassettes in order (A … Z, then AA, AB,
+  …), so a 2×LP rip reads A1 … D5; a track on any other medium reads by its
+  number, under its disc when the release holds more than one medium (disc =
+  the medium's position among the release's), so the box's CD rip reads
+  "Disc 2 · 3". Playback pauses between sides and discs by it (§7.3);
 - its length, measured from its audio at import (§3.7). Every track has one,
   so every surface that lists tracks (the album page, search, the queue, the
   release editor, a Subsonic song) shows each track's length, and none has a
@@ -702,9 +716,9 @@ candidate, and changing them starts the next run.
 ### 3.6 The draft
 
 A *draft* is the metadata an import will write, as plain values: the album
-fields, the pressing facts, the album's artists, and one track per audio unit
-with its title, artists, side and number, and the length its source lists for
-it. It also holds what the source credits beyond the editable fields: each
+fields, the pressing facts, the album's artists, the mediums the audio is on,
+and one track per audio unit with its title, artists, place (medium, side and
+number), and the length its source lists for it. It also holds what the source credits beyond the editable fields: each
 track's composers and other roles, the works it performs and the works those
 nest among, and the composers the source credits on the release as a whole. An *audio unit* is
 what one track plays: a whole file, or one slice a bound CUE sheet carves out of
@@ -721,6 +735,30 @@ A release read from several folders keeps each folder's files together, the
 folders in name order. Ben's download names its files by title alone, but tags
 `Track Title.mp3` as track 7, so it is the seventh unit: a draft read from the
 tags numbers it 7, and a catalog's tracklist lays its seventh track on it.
+
+**Mediums and places.** Applying a source writes the draft's mediums and each
+track's place, and nothing edits them afterwards: the pane and the library
+editor show a track's position and edit only its title and artists.
+
+- A MusicBrainz release gives each medium it reads its format; a record or
+  cassette has as many sides as its positions name letters, counted from its
+  lowest, and one naming none is one side. A track's number is its position's
+  digits (`A3` and `3` are 3).
+- A Discogs release gives the mediums its tracklist splits into, each with its
+  carrier (§3.4); a track's number is the digits after its side letter or
+  after its last `-`, and a collapsed index takes its first row's.
+- The files' tags, and nothing, give one medium per disc the folder states —
+  a CUE sheet's disc, a folder of a release read from several, a file's disc
+  number — each of unstated carrier and one side, the files stating no disc
+  first; a track's number is its tag's or its name's, a CUE track's its
+  sheet's.
+- A track whose source states no number is one more than the tracks before it
+  on its own side.
+
+A file decision that gains a track, or moves a CUE sheet to another disc,
+places that audio as the folder lays it out, adding a medium of unstated
+carrier where the draft holds fewer; a medium no track sits on any more is
+dropped.
 
 Applying a source — a catalog's release, the folder's tags, or nothing —
 writes everything it says into the draft once. The draft points back at
@@ -1026,7 +1064,9 @@ Two ways put a release back on disk, from desktop:
   its source folder. The copy is staged and moved into place only once every
   file is written.
 - **Save** writes new files with a *preset*: a codec, a filename pattern, where
-  pregaps go, and whether to embed the cover. A lossless preset writes the
+  pregaps go, and whether to embed the cover. Each file's track number is the
+  track's number on its side, and its disc number the track's medium's
+  position, written only for a release of several mediums. A lossless preset writes the
   16, 24 or 32 bits it names, whatever depth the source has. A preset can
   write a release as one image with a CUE sheet. FLAC and MP3 presets come
   built in (Appendix C).
@@ -1717,8 +1757,11 @@ or Next, to start side B. A CD box set pauses between discs the same way.
 - **When it pauses.** Only between two tracks of one release, on different
   sides, while playing that release in order. Up Next entries and a shuffled
   list never pause: they aren't a record being played.
-- **Side or disc.** A record or cassette pauses at a side, named by its letter;
-  a CD at a disc, named by its number.
+- **Side or disc.** A boundary is a change of medium or of side, and the
+  current track's medium says what it is: a record or cassette pauses at a
+  side, named by its letter; a CD at a disc, named by its number among the
+  release's mediums. A medium with no physical carrier, a download or a disc
+  of unstated carrier, never pauses.
 - **The countdown.** The pause can end on its own after 5, 15, 30, 45 or 60
   seconds. Every device's UI counts down to one moment core sets, so they show
   the same number. Closing the prompt stops the countdown and waits for Play.
@@ -2169,7 +2212,8 @@ All sync.
 | `release_files` | file of a release: name, size, type, and the audio facts the scan read; carries a file once attached, whose hash and location coven writes |
 | `release_artist_roles` | credit on a release, as the catalog stated it |
 | `release_records` | catalog record of a release: pressing or album, key, album key, URL |
-| `tracks` | track: title, number, length (required: the import measures every track's audio), playing order, side |
+| `release_mediums` | a release's medium: its position, carrier and number of sides (§2.2) |
+| `tracks` | track: title, place (its medium, side and number, all required), length (required: the import measures every track's audio), playing order |
 | `track_artists` | track's artist, in order |
 | `track_artist_roles` | credit on a track, as the catalog stated it |
 | `track_works` | work a track performs, in order |
@@ -2226,7 +2270,8 @@ Keyed by the candidate's content hash.
 | Table | Holds |
 |---|---|
 | `import_candidate_state`, `import_candidate_folder` | the candidate, its revisions, and where it was found |
-| `import_candidate_edit`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields and each track's listed length (§3.6) |
+| `import_candidate_edit`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields, each track's place and listed length (§3.6) |
+| `import_candidate_medium` | the draft's mediums |
 | `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_composer`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values |
 | `import_candidate_sheet_disc`, `import_candidate_sheet_reference` | the person's CUE decisions |
 | `import_candidate_cover`, `import_candidate_cover_copy`, `import_candidate_remote_cover_asset` | the chosen cover and its fetched bytes |
@@ -2280,6 +2325,7 @@ and `local_history` are not declared, so they never sync.
 | `album_artists` | shared key | store | | |
 | `releases` | independent | store | | |
 | `release_records` | shared key | store | | |
+| `release_mediums` | shared key | store | | |
 | `tracks` | independent | store | | |
 | `track_artists` | shared key | store | | |
 | `works` | shared key | store | | |
@@ -2389,7 +2435,7 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | `output_status` | read the export queue |
 | `release_reidentify` | set a release's pressing |
 | `release_metadata_reset` | re-read a release's metadata from its source |
-| `release_metadata_update` | apply a metadata edit |
+| `release_metadata_update` | apply a metadata edit: the album fields, the pressing, and each track's title and artists (a track's place is the source's, not edited) |
 | `library_search` | search the library |
 
 ---

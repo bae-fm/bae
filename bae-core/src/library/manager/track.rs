@@ -177,8 +177,8 @@ impl LibraryManager {
             .find_track_by_id(track_id)
             .await?
             .ok_or_else(|| LibraryError::TrackMapping(format!("Track not found: {}", track_id)))?;
-        let release = self.database.get_release_for_track(&track).await?;
-        Ok(crate::playback::PlaybackTrackInfo::of(&track, &release))
+        let mediums = self.database.get_release_mediums(&track.release_id).await?;
+        Ok(crate::playback::PlaybackTrackInfo::of(&track, &mediums))
     }
 
     /// What surfaces show of a track, as the library holds it now.

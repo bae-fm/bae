@@ -26,7 +26,7 @@ const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, \
      labels, barcode, country, region, media, status, packaging, discogs_details";
 
 const TRACK_COLUMNS: &str = "content_hash, track_id, position, title, \
-     artist_assignment_kind, side, track_number, stated_length_ms, \
+     artist_assignment_kind, medium, side, track_number, stated_length_ms, \
      file_kind, file_id, sheet_id, slice_index";
 
 pub(super) fn delete_cover(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {
@@ -105,12 +105,24 @@ pub(crate) fn insert_draft(
         ],
     )?;
     insert_album_artist_assignments(sql, content_hash, &draft.album_artist_assignments)?;
+    for (index, medium) in draft.mediums.iter().enumerate() {
+        sql.execute(
+            "INSERT INTO import_candidate_medium (content_hash, position, medium, side_count) \
+             VALUES (?, ?, ?, ?)",
+            params![
+                content_hash,
+                crate::mediums::medium_position(index),
+                medium.carrier.map(crate::pressing::Medium::key),
+                medium.sides,
+            ],
+        )?;
+    }
     for (position, track) in draft.tracks.iter().enumerate() {
         let (file_kind, file_id, sheet_id, slice_index) = mapping_file_columns(&track.edit.file);
         sql.execute(
             &format!(
                 "INSERT INTO import_candidate_track ({TRACK_COLUMNS}) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             ),
             params![
                 content_hash,
@@ -118,8 +130,9 @@ pub(crate) fn insert_draft(
                 position as i64,
                 track.edit.title,
                 assignment_kind_column(&track.edit.artist_assignments),
-                track.edit.side,
-                track.edit.track_number,
+                track.place.medium,
+                track.place.side,
+                track.place.number,
                 track
                     .stated_length_ms
                     .map(|length| i64::try_from(length).expect("a stated length fits SQLite's integer range")),
@@ -288,6 +301,7 @@ pub(crate) fn load_drafts_on(
                 track_id: row.get("track_id")?,
                 title: row.get("title")?,
                 assignment_kind: row.get("artist_assignment_kind")?,
+                medium: row.get("medium")?,
                 side: row.get("side")?,
                 track_number: row.get("track_number")?,
                 stated_length_ms: row.get("stated_length_ms")?,
@@ -345,14 +359,41 @@ pub(crate) fn load_drafts_on(
                     id: track_id,
                     title: row.title,
                     artist_assignments,
-                    side: row.side,
-                    track_number: row.track_number,
                     file,
+                },
+                place: crate::mediums::TrackPlace {
+                    medium: row.medium,
+                    side: row.side,
+                    number: row.track_number,
                 },
                 stated_length_ms,
                 roles,
                 works,
             });
+    }
+    let medium_rows = sql.query(
+        "SELECT content_hash, medium, side_count FROM import_candidate_medium \
+         WHERE :only IS NULL OR content_hash = :only \
+         ORDER BY content_hash, position",
+        named_params! { ":only": only },
+        |row| {
+            let content_hash: String = row.get("content_hash")?;
+            let carrier: Option<String> = row.get("medium")?;
+            Ok((content_hash, carrier, row.get("side_count")?))
+        },
+    )?;
+    let mut mediums: HashMap<String, Vec<crate::mediums::ReleaseMedium>> = HashMap::new();
+    for (content_hash, carrier, sides) in medium_rows {
+        let carrier = carrier
+            .map(|key| {
+                crate::pressing::Medium::from_key(&key)
+                    .ok_or_else(|| unreadable("draft medium", &key))
+            })
+            .transpose()?;
+        mediums
+            .entry(content_hash)
+            .or_default()
+            .push(crate::mediums::ReleaseMedium { carrier, sides });
     }
     let rows = sql.query(
         &format!(
@@ -389,6 +430,7 @@ pub(crate) fn load_drafts_on(
                     barcode: row.barcode,
                     facts: row.facts,
                 },
+                mediums: mediums.remove(&row.content_hash).unwrap_or_default(),
                 tracks: tracks.remove(&row.content_hash).unwrap_or_default(),
                 release_roles: values
                     .release_roles
@@ -430,8 +472,9 @@ struct StoredTrackRow {
     track_id: String,
     title: String,
     assignment_kind: String,
-    side: Option<i32>,
-    track_number: i32,
+    medium: std::num::NonZeroU16,
+    side: std::num::NonZeroU8,
+    track_number: std::num::NonZeroU32,
     stated_length_ms: Option<i64>,
     file_kind: String,
     file_id: String,

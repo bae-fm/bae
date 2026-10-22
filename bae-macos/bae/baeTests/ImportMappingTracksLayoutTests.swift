@@ -369,8 +369,6 @@ extension ImportMappingTracksLayoutTests {
                         MappingFixtures.artistCredit("Artist Name")
                     ]
                 ),
-                side: 1,
-                trackNumber: 1,
                 file: .standalone(fileId: "track.flac")
             ),
             position: "1",
@@ -443,8 +441,6 @@ extension ImportMappingTracksLayoutTests {
                         MappingFixtures.artistCredit("Artist Name")
                     ]
                 ),
-                side: 1,
-                trackNumber: Int32(number),
                 file: .sheetSlice(
                     fileId: entry.containerId,
                     sheetId: entry.sheetId,

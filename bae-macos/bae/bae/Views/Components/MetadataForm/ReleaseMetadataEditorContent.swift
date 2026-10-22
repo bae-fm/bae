@@ -203,6 +203,7 @@ struct ReleaseMetadataEditorContent: View {
                 durationDiverges: false,
                 columns: columns,
                 editingCommands: session.editingCommands,
+                position: item.context.positionText,
                 onChange: { session.updateTrack($0) }
             )
         }

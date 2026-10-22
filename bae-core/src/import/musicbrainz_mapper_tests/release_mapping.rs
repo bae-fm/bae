@@ -130,16 +130,7 @@ fn a_hybrid_sacd_rip_is_read_from_its_cd_layer() {
 
     let parsed = map_for_audio(&response, &[527_200, 284_000, 332_900]).unwrap();
 
-    assert_eq!(parsed.tracks.len(), 3);
-    assert!(parsed.tracks.iter().all(|track| track.side == Some(1)));
-    assert_eq!(
-        parsed
-            .tracks
-            .iter()
-            .map(|track| track.number)
-            .collect::<Vec<_>>(),
-        vec![Some(1), Some(2), Some(3)]
-    );
+    assert_eq!(crate::import::release_values::value_labels(&parsed), ["1", "2", "3"], "one layer is one disc");
 }
 
 /// One disc of a box is read from the medium its lengths match, and the
@@ -170,7 +161,11 @@ fn one_disc_of_a_box_is_read_from_its_own_medium() {
             .collect::<Vec<_>>(),
         vec!["Track 5", "Track 6"]
     );
-    assert!(parsed.tracks.iter().all(|track| track.side == Some(1)));
+    assert_eq!(
+        crate::import::release_values::value_labels(&parsed),
+        ["1", "2"],
+        "the disc read is the reading's only medium"
+    );
 }
 
 /// Audio no set of mediums adds up to is refused, naming the folder's count
@@ -221,21 +216,7 @@ fn test_cd_two_media_each_one_side() {
     ]);
 
     let parsed = map(&response, vec![]).unwrap();
-    let tracks = &parsed.tracks;
-
-    assert_eq!(tracks.len(), 4);
-
-    // Medium 1 = side 1
-    assert_eq!(tracks[0].side, Some(1));
-    assert_eq!(tracks[0].number, Some(1));
-    assert_eq!(tracks[1].side, Some(1));
-    assert_eq!(tracks[1].number, Some(2));
-
-    // Medium 2 = side 2
-    assert_eq!(tracks[2].side, Some(2));
-    assert_eq!(tracks[2].number, Some(1));
-    assert_eq!(tracks[3].side, Some(2));
-    assert_eq!(tracks[3].number, Some(2));
+    assert_eq!(crate::import::release_values::value_labels(&parsed), ["1-1", "1-2", "2-1", "2-2"]);
 }
 
 #[test]
@@ -250,18 +231,15 @@ fn numeric_vinyl_tracks_are_usable_without_side_boundaries() {
     let parsed =
         map(&response, vec![]).expect("absent side information does not invalidate a release");
     assert_eq!(parsed.tracks.len(), 12);
-    assert!(parsed.tracks.iter().all(|track| track.side.is_none()));
+    assert_eq!(parsed.mediums.len(), 1);
+    assert_eq!(parsed.mediums[0].sides.get(), 1, "positions that name no letter are one side");
     assert_eq!(
         parsed.pressing.facts.media,
         crate::pressing::made_of(crate::pressing::Medium::Vinyl, 1).media
     );
     assert_eq!(
-        parsed
-            .tracks
-            .iter()
-            .map(|track| track.number)
-            .collect::<Vec<_>>(),
-        (1..=12).map(Some).collect::<Vec<_>>()
+        crate::import::release_values::value_labels(&parsed),
+        (1..=12).map(|number| format!("A{number}")).collect::<Vec<_>>()
     );
 }
 
@@ -279,25 +257,11 @@ fn test_vinyl_one_medium_two_sides() {
     }]);
 
     let parsed = map(&response, vec![]).unwrap();
-    let tracks = &parsed.tracks;
-
-    assert_eq!(tracks.len(), 4);
-
-    // A tracks = side 1
-    assert_eq!(tracks[0].side, Some(1));
-    assert_eq!(tracks[0].number, Some(1));
-    assert_eq!(tracks[1].side, Some(1));
-    assert_eq!(tracks[1].number, Some(2));
-
-    // B tracks = side 2
-    assert_eq!(tracks[2].side, Some(2));
-    assert_eq!(tracks[2].number, Some(1));
-    assert_eq!(tracks[3].side, Some(2));
-    assert_eq!(tracks[3].number, Some(2));
+    assert_eq!(crate::import::release_values::value_labels(&parsed), ["A1", "A2", "B1", "B2"]);
 }
 
-/// 2LP vinyl: two media, each with two sides (A/B and C/D).
-/// Sides must be 1,2,3,4 — not 1,2,3+2,4+2.
+/// 2LP vinyl: two media, each with two sides of its own (A/B and C/D),
+/// lettered on from the first record's.
 #[test]
 fn test_vinyl_two_media_four_sides() {
     let response = make_response(vec![
@@ -324,21 +288,11 @@ fn test_vinyl_two_media_four_sides() {
     ]);
 
     let parsed = map(&response, vec![]).unwrap();
-    let tracks = &parsed.tracks;
-
-    assert_eq!(tracks.len(), 8);
-
-    // Medium 1: A = side 1, B = side 2
-    assert_eq!(tracks[0].side, Some(1));
-    assert_eq!(tracks[1].side, Some(1));
-    assert_eq!(tracks[2].side, Some(2));
-    assert_eq!(tracks[3].side, Some(2));
-
-    // Medium 2: C = side 3, D = side 4
-    assert_eq!(tracks[4].side, Some(3));
-    assert_eq!(tracks[5].side, Some(3));
-    assert_eq!(tracks[6].side, Some(4));
-    assert_eq!(tracks[7].side, Some(4));
+    assert_eq!(crate::import::release_values::value_labels(&parsed), ["A1", "A2", "B1", "B2", "C1", "C2", "D1", "D2"]);
+    assert!(
+        parsed.mediums.iter().all(|medium| medium.sides.get() == 2),
+        "each record has two sides of its own"
+    );
 }
 
 #[test]
@@ -354,22 +308,13 @@ fn test_single_medium_cd_all_side_one() {
     }]);
 
     let parsed = map(&response, vec![]).unwrap();
-    let tracks = &parsed.tracks;
-
-    assert_eq!(tracks.len(), 3);
-
-    // All tracks on side 1
-    assert_eq!(tracks[0].side, Some(1));
-    assert_eq!(tracks[0].number, Some(1));
-    assert_eq!(tracks[1].side, Some(1));
-    assert_eq!(tracks[1].number, Some(2));
-    assert_eq!(tracks[2].side, Some(1));
-    assert_eq!(tracks[2].number, Some(3));
+    assert_eq!(crate::import::release_values::value_labels(&parsed), ["1", "2", "3"]);
 }
 
-/// Known and unknown side assignments coexist without guessed boundaries.
+/// A track whose position names no side is on the side of the track before
+/// it, numbered by its place there.
 #[test]
-fn vinyl_track_without_a_number_keeps_its_side_unknown() {
+fn vinyl_track_without_a_position_is_on_the_side_before_it() {
     let response = make_response(vec![MbMedium {
         discs: vec![],
         format: Some("12\" Vinyl".to_string()),
@@ -392,13 +337,13 @@ fn vinyl_track_without_a_number_keeps_its_side_unknown() {
     }]);
 
     let parsed = map(&response, vec![]).unwrap();
-    assert_eq!(parsed.tracks[0].side, Some(1));
-    assert_eq!(parsed.tracks[1].side, None);
+    assert_eq!(crate::import::release_values::value_labels(&parsed), ["A1", "A2"]);
 }
 
-/// A printed number does not establish a vinyl side.
+/// A printed number names no side: the track is on the side before it, with
+/// the number it prints.
 #[test]
-fn vinyl_numeric_track_keeps_its_side_unknown() {
+fn vinyl_numeric_track_is_on_the_side_before_it() {
     let response = make_response(vec![MbMedium {
         discs: vec![],
         format: Some("12\" Vinyl".to_string()),
@@ -409,8 +354,7 @@ fn vinyl_numeric_track_keeps_its_side_unknown() {
     }]);
 
     let parsed = map(&response, vec![]).unwrap();
-    assert_eq!(parsed.tracks[0].side, Some(1));
-    assert_eq!(parsed.tracks[1].side, None);
+    assert_eq!(crate::import::release_values::value_labels(&parsed), ["A1", "A1"]);
 }
 
 #[test]

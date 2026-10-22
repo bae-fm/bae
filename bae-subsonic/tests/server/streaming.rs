@@ -470,17 +470,24 @@ async fn musicbrainz_id_surfaces_when_present() {
         album_peak_linear: None,
         created_at: now,
     };
+    let medium = bae_core::db::DbReleaseMedium::new(
+        &release.id,
+        std::num::NonZeroU16::MIN,
+        bae_core::mediums::ReleaseMedium::one_sided(Some(bae_core::pressing::Medium::Cd)),
+        now,
+    );
     let track = DbTrack {
         id: bae_test_support::test_uuid("mb-track-1"),
         release_id: release.id.clone(),
         title: "MB Track".to_string(),
-        side: Some(1),
-        track_number: Some(1),
+        medium_id: medium.id.clone(),
+        side: std::num::NonZeroU8::MIN,
+        track_number: std::num::NonZeroU32::MIN,
         duration_ms: 1000,
         created_at: now,
     };
     manager
-        .insert_album_with_release_and_tracks(&album, &release, &[track], &[])
+        .insert_album_with_release_and_tracks(&album, &release, &[medium], &[track], &[])
         .await
         .unwrap();
 

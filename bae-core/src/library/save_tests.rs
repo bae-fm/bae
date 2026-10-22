@@ -3,9 +3,9 @@ use crate::library::manager::{ResolvedSaveTags, SaveTags};
 
 fn resolved(
     title: &str,
-    track_number: Option<i32>,
+    track_number: u32,
     total_tracks: usize,
-    disc: Option<i32>,
+    disc: Option<u32>,
     year: Option<i32>,
 ) -> ResolvedSaveTags {
     ResolvedSaveTags {
@@ -18,7 +18,6 @@ fn resolved(
         },
         track_number,
         total_tracks,
-        is_digital: true,
     }
 }
 
@@ -26,7 +25,7 @@ use crate::config::SaveFilenameToken::{Album, Artist, Title, TrackNumber, Year};
 
 #[test]
 fn default_pattern_all_present_pads_track_number() {
-    let r = resolved("Track Title", Some(3), 10, None, Some(2001));
+    let r = resolved("Track Title", 3, 10, None, Some(2001));
     assert_eq!(
         render_save_filename(&[TrackNumber, Title], &r),
         "03 Track Title"
@@ -35,16 +34,16 @@ fn default_pattern_all_present_pads_track_number() {
 
 #[test]
 fn absent_values_drop_out_of_the_join() {
-    let r = resolved("Track Title", None, 10, None, None);
+    let r = resolved("Track Title", 3, 10, None, None);
     assert_eq!(
         render_save_filename(&[TrackNumber, Title, Year], &r),
-        "Track Title"
+        "03 Track Title"
     );
 }
 
 #[test]
 fn full_pattern_substitutes_every_token() {
-    let r = resolved("Track Title", Some(3), 10, Some(2), Some(2001));
+    let r = resolved("Track Title", 3, 10, Some(2), Some(2001));
     assert_eq!(
         render_save_filename(&[Artist, Album, TrackNumber, Title], &r),
         "Artist Name Album Title 03 Track Title"
@@ -53,13 +52,13 @@ fn full_pattern_substitutes_every_token() {
 
 #[test]
 fn slash_and_colon_become_dashes() {
-    let r = resolved("Some/Weird:Title", None, 1, None, None);
+    let r = resolved("Some/Weird:Title", 1, 1, None, None);
     assert_eq!(render_save_filename(&[Title], &r), "Some-Weird-Title");
 }
 
 #[test]
 fn path_escape_leaves_no_separator() {
-    let r = resolved("../secret", None, 1, None, None);
+    let r = resolved("../secret", 1, 1, None, None);
     let name = render_save_filename(&[Title], &r);
     assert!(!name.contains('/'), "no forward slash in {name}");
     assert!(!name.contains('\\'), "no backslash in {name}");
@@ -67,8 +66,8 @@ fn path_escape_leaves_no_separator() {
 
 #[test]
 fn empty_render_falls_back_to_title() {
-    let r = resolved("Fallback Title", None, 1, None, None);
-    assert_eq!(render_save_filename(&[TrackNumber], &r), "Fallback Title");
+    let r = resolved("Fallback Title", 1, 1, None, None);
+    assert_eq!(render_save_filename(&[Year], &r), "Fallback Title");
 }
 
 #[test]
@@ -166,7 +165,6 @@ fn write_tags_to_encoded_flac(cover: Option<&[u8]>) -> (tempfile::TempDir, std::
         &tags,
         Some(3),
         10,
-        true,
         cover,
     )
     .unwrap();
@@ -267,16 +265,7 @@ fn write_tags_round_trips_through_mp4_ilst() {
     std::fs::write(&path, &m4a).unwrap();
     let tag_type = codec_tag_type(&crate::config::SaveCodec::Aac { bitrate_kbps: 256 });
     assert_eq!(tag_type, TagType::Mp4Ilst);
-    write_tags(
-        &path,
-        tag_type,
-        &tags,
-        Some(3),
-        10,
-        true,
-        Some(&cover_bytes),
-    )
-    .unwrap();
+    write_tags(&path, tag_type, &tags, Some(3), 10, Some(&cover_bytes)).unwrap();
 
     let tagged = lofty::read_from_path(&path).unwrap();
     let tag = tagged.tag(TagType::Mp4Ilst).expect("MP4 ilst tag present");

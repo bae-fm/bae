@@ -48,6 +48,7 @@ pub(crate) mod live_query;
 // arithmetic, so mobile needs neither.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod loudness;
+pub mod mediums;
 pub mod migrations;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod musicbrainz;

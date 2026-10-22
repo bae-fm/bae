@@ -58,7 +58,7 @@ async fn remote_album_by(
     };
     device
         .database()
-        .insert_album_with_release_and_tracks(&album, &release, &[], &[])
+        .insert_album_with_release_and_tracks(&album, &release, &[], &[], &[])
         .await
         .unwrap();
     (artist_id, album.id, release.id)
@@ -185,17 +185,14 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
             let release = DbRelease {
                 ..DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string())
             };
-            let track = DbTrack::new_test(
-                &release.id,
-                &uuid::Uuid::new_v4().to_string(),
-                "Track",
-                Some(1),
-            );
+            let track =
+                DbTrack::new_test(&release.id, &uuid::Uuid::new_v4().to_string(), "Track", 1);
             device
                 .database()
                 .insert_album_with_release_and_tracks(
                     &album,
                     &release,
+                    &[crate::db::DbReleaseMedium::new_test(&release.id)],
                     std::slice::from_ref(&track),
                     &[],
                 )

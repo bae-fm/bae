@@ -120,8 +120,6 @@ async fn a_user_edit_overlays_the_picked_release() {
         },
         tracks: vec![TrackUserEdit {
             title: "Edited Track".to_string(),
-            side: Some(1),
-            track_number: Some(1),
             artist_assignments: TrackArtistAssignments::AlbumArtists,
             file: Some(bae_core::import::AudioFile::Standalone {
                 file_id: "01 Track One.flac".into(),

@@ -479,7 +479,7 @@ impl BridgeReleaseReseed {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeTrackSide {
     Sided { side_letter: String },
-    Disc { disc: i32 },
+    Disc { disc: u32 },
     Flat,
 }
 
@@ -527,8 +527,6 @@ pub struct BridgeTrackGroup {
 pub struct BridgeTrack {
     pub id: String,
     pub title: String,
-    pub side: Option<i32>,
-    pub track_number: Option<i32>,
     /// Raw track length in milliseconds. Retained alongside `duration_clock`
     /// because a consumer needs the number itself — the media session's
     /// metadata states it for a queued track.

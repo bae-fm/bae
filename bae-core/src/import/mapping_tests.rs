@@ -98,14 +98,31 @@ fn blank_table(files: &CategorizedFiles, durations: &SourceDurations) -> Mapping
         .expect("a blank draft is drawn over its own folder")
 }
 
-/// The draft over `files` with each track's side and number as given.
-fn numbered_draft(files: &CategorizedFiles, positions: &[(i32, i32)]) -> CandidateDraft {
+/// The draft over `files` on `mediums`, each track at its (medium, side,
+/// number).
+fn numbered_draft(
+    files: &CategorizedFiles,
+    mediums: Vec<crate::mediums::ReleaseMedium>,
+    places: &[(u16, u8, u32)],
+) -> CandidateDraft {
     let mut draft = blank_candidate_draft(files);
-    for (track, (side, number)) in draft.tracks.iter_mut().zip(positions) {
-        track.edit.side = Some(*side);
-        track.edit.track_number = *number;
+    draft.mediums = mediums;
+    for (track, (medium, side, number)) in draft.tracks.iter_mut().zip(places) {
+        track.place = crate::mediums::TrackPlace {
+            medium: std::num::NonZeroU16::new(*medium).expect("mediums count from one"),
+            side: std::num::NonZeroU8::new(*side).expect("sides count from one"),
+            number: std::num::NonZeroU32::new(*number).expect("numbers count from one"),
+        };
     }
     draft
+}
+
+/// One record of two sides.
+fn record() -> Vec<crate::mediums::ReleaseMedium> {
+    vec![crate::mediums::ReleaseMedium {
+        carrier: Some(Medium::Vinyl),
+        sides: std::num::NonZeroU8::new(2).expect("two sides"),
+    }]
 }
 
 fn positions(section: &MappingTrackSection) -> Vec<&str> {
@@ -319,8 +336,11 @@ fn standalone_tracks_are_sectioned_by_release_side() {
     }
 
     let files = scan(tmp.path());
-    let mut draft = numbered_draft(&files, &[(1, 1), (1, 2), (2, 1), (2, 2)]);
-    draft.pressing.facts = made_of(Medium::Vinyl, 1);
+    let draft = numbered_draft(
+        &files,
+        record(),
+        &[(1, 1, 1), (1, 1, 2), (1, 2, 1), (1, 2, 2)],
+    );
     let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
 
     assert_eq!(table.track_sections.len(), 2);
@@ -354,8 +374,14 @@ fn each_cue_is_one_section_on_its_assigned_disc() {
 
     let mut files = scan(tmp.path());
     assign_discs(&mut files, &[("alpha.cue", 2), ("beta.cue", 1)]);
-    let mut draft = numbered_draft(&files, &[(1, 1), (1, 2), (2, 1), (2, 2)]);
-    draft.pressing.facts = made_of(Medium::Cd, 2);
+    let draft = numbered_draft(
+        &files,
+        vec![
+            crate::mediums::ReleaseMedium::one_sided(Some(Medium::Cd)),
+            crate::mediums::ReleaseMedium::one_sided(Some(Medium::Cd)),
+        ],
+        &[(1, 1, 1), (1, 1, 2), (2, 1, 1), (2, 1, 2)],
+    );
     let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
 
     assert_eq!(table.track_sections.len(), 2);
@@ -383,8 +409,11 @@ fn a_sheet_the_release_splits_across_sides_heads_each_side() {
     fs::write(tmp.path().join("LP.cue"), cue_sheet_text("LP.flac", 4)).expect("write cue");
 
     let files = scan(tmp.path());
-    let mut draft = numbered_draft(&files, &[(1, 1), (1, 2), (2, 1), (2, 2)]);
-    draft.pressing.facts = made_of(Medium::Vinyl, 1);
+    let draft = numbered_draft(
+        &files,
+        record(),
+        &[(1, 1, 1), (1, 1, 2), (1, 2, 1), (1, 2, 2)],
+    );
     let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
 
     assert_eq!(table.track_sections.len(), 2);
@@ -731,9 +760,9 @@ fn the_first_of_competing_sheets_carves_and_the_rest_stay_listed() {
     );
 }
 
-/// A CUE's slices on a vinyl pressing whose draft states no sides read as one
-/// flat run: the folder's sheets do not make up sides the metadata never
-/// named.
+/// A CUE's slices on a draft whose medium states no carrier read as one flat
+/// run: the folder's sheets do not make up sides the draft never named, even
+/// where the pressing says it is a record.
 #[test]
 fn source_disc_assignments_do_not_invent_sides() {
     let tmp = tempfile::TempDir::new().unwrap();
@@ -742,9 +771,6 @@ fn source_disc_assignments_do_not_invent_sides() {
     let files = scan(tmp.path());
     let mut draft = blank_candidate_draft(&files);
     draft.pressing.facts = made_of(Medium::Vinyl, 1);
-    for track in &mut draft.tracks {
-        track.edit.side = None;
-    }
     let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
     assert!(
         table.track_sections.iter().all(|section| {

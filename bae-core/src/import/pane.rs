@@ -26,20 +26,26 @@ pub(crate) fn candidate_track_id(position: usize) -> String {
 /// and numbers; their names and tags do not become metadata until a source is
 /// explicitly applied.
 pub(crate) fn blank_candidate_draft(files: &CategorizedFiles) -> CandidateDraft {
-    let tracks = crate::import::audio_layout::direct_entry_track_rows(files)
+    let layout = crate::import::audio_layout::folder_tracks(files);
+    let numbering: Vec<_> = layout
+        .iter()
+        .map(|track| (track.disc, Some(track.number)))
+        .collect();
+    let (mediums, places) = crate::mediums::by_disc(&numbering);
+    let tracks = layout
         .into_iter()
+        .zip(places)
         .enumerate()
-        .map(|(position, row)| {
-            CandidateTrack::unsourced(RawTrackEdit {
-                id: candidate_track_id(position),
-                title: row.title,
-                artist_assignments: row.artist_assignments,
-                side: row.side,
-                track_number: row
-                    .track_number
-                    .expect("the folder layout numbers every track"),
-                file: row.file.expect("the folder layout binds every track"),
-            })
+        .map(|(position, (track, place))| {
+            CandidateTrack::unsourced(
+                RawTrackEdit {
+                    id: candidate_track_id(position),
+                    title: String::new(),
+                    artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
+                    file: track.file,
+                },
+                place,
+            )
         })
         .collect();
     CandidateDraft {
@@ -49,6 +55,7 @@ pub(crate) fn blank_candidate_draft(files: &CategorizedFiles) -> CandidateDraft 
         pressing: crate::import::RawPressingEdit::from_pressing(
             &crate::pressing::Pressing::blank(),
         ),
+        mediums,
         tracks,
         release_roles: Vec::new(),
         works: Default::default(),
@@ -96,6 +103,7 @@ pub(crate) fn values_over_audio(
 pub(crate) fn album_over_draft(values: ReleaseValues, current: &CandidateDraft) -> CandidateDraft {
     let album = values.candidate_draft(Vec::new());
     CandidateDraft {
+        mediums: current.mediums.clone(),
         tracks: current.tracks.clone(),
         works: current.works.clone(),
         ..album
@@ -120,18 +128,16 @@ pub(crate) fn edit_over_audio(
         .tracks
         .into_iter()
         .zip(&current.tracks)
-        .enumerate()
-        .map(|(position, (track, existing))| {
-            CandidateTrack::unsourced(RawTrackEdit {
-                id: existing.edit.id.clone(),
-                title: track.title,
-                artist_assignments: track.artist_assignments,
-                side: track.side,
-                track_number: track.track_number.unwrap_or_else(|| {
-                    i32::try_from(position + 1).expect("track position fits i32")
-                }),
-                file: existing.edit.file.clone(),
-            })
+        .map(|(track, existing)| {
+            CandidateTrack::unsourced(
+                RawTrackEdit {
+                    id: existing.edit.id.clone(),
+                    title: track.title,
+                    artist_assignments: track.artist_assignments,
+                    file: existing.edit.file.clone(),
+                },
+                existing.place,
+            )
         })
         .collect();
     Ok(CandidateDraft {
@@ -139,6 +145,7 @@ pub(crate) fn edit_over_audio(
         album_artist_assignments: edit.album_artist_assignments,
         album_year: edit.album_year,
         pressing: edit.pressing,
+        mediums: current.mediums.clone(),
         tracks,
         release_roles: Vec::new(),
         works: Default::default(),
@@ -146,29 +153,35 @@ pub(crate) fn edit_over_audio(
 }
 
 /// The draft a form with its audio bound makes, read from no source: what a
-/// test seeds a candidate with.
+/// test seeds a candidate with. Its tracks are one disc of unstated carrier,
+/// numbered in order.
 #[cfg(test)]
 pub(crate) fn draft_of_edit(edit: RawReleaseEdit) -> CandidateDraft {
+    let mut placer = crate::mediums::Placer::default();
     CandidateDraft {
         album_title: edit.album_title,
         album_artist_assignments: edit.album_artist_assignments,
         album_year: edit.album_year,
         pressing: edit.pressing,
+        mediums: vec![crate::mediums::ReleaseMedium::one_sided(None)],
         tracks: edit
             .tracks
             .into_iter()
             .enumerate()
             .map(|(position, track)| {
-                CandidateTrack::unsourced(RawTrackEdit {
-                    id: candidate_track_id(position),
-                    title: track.title,
-                    artist_assignments: track.artist_assignments,
-                    side: track.side,
-                    track_number: track.track_number.unwrap_or_else(|| {
-                        i32::try_from(position + 1).expect("track position fits i32")
-                    }),
-                    file: track.file.expect("a seeded track names its audio"),
-                })
+                CandidateTrack::unsourced(
+                    RawTrackEdit {
+                        id: candidate_track_id(position),
+                        title: track.title,
+                        artist_assignments: track.artist_assignments,
+                        file: track.file.expect("a seeded track names its audio"),
+                    },
+                    placer.place(
+                        std::num::NonZeroU16::MIN,
+                        std::num::NonZeroU8::MIN,
+                        None,
+                    ),
+                )
             })
             .collect(),
         release_roles: Vec::new(),
@@ -230,12 +243,25 @@ pub(crate) fn draft_pane(
 /// Metadata belongs to its audio identity, never to the position another
 /// file happens to occupy. The draft keeps only the works its tracks still
 /// perform.
+///
+/// A new track, and a retained slice whose sheet the files now put on another
+/// disc, take the place the folder's layout gives them: the draft's medium at
+/// that disc's position, the draft gaining mediums of unstated carrier up to
+/// it when it holds fewer. A medium no track sits on any more is dropped.
 pub(crate) fn redraw_draft_for_files(
     previous_files: &CategorizedFiles,
+    files: &CategorizedFiles,
     initialized: CandidateDraft,
     draft: &CandidateDraft,
     ids: &dyn coven::IdSource,
 ) -> CandidateDraft {
+    let mut mediums = draft.mediums.clone();
+    let mut laid_out = |place: crate::mediums::TrackPlace| {
+        while mediums.len() <= place.medium_index() {
+            mediums.push(crate::mediums::ReleaseMedium::one_sided(None));
+        }
+        place
+    };
     let tracks = initialized
         .tracks
         .into_iter()
@@ -244,23 +270,51 @@ pub(crate) fn redraw_draft_for_files(
             if let Some(existing) = draft.tracks.iter().find(|track| &track.edit.file == audio) {
                 let mut retained = existing.clone();
                 if let crate::import::AudioFile::SheetSlice { sheet_id, .. } = audio {
-                    let previous_disc = previous_files
-                        .carving_sheets()
-                        .into_iter()
-                        .find(|sheet| sheet.file.relative_path == *sheet_id)
-                        .and_then(|sheet| sheet.disc_number());
-                    if previous_disc.map(|disc| disc as i32) != fresh.edit.side {
-                        retained.edit.side = fresh.edit.side;
+                    let disc_of = |files: &CategorizedFiles| {
+                        files
+                            .carving_sheets()
+                            .into_iter()
+                            .find(|sheet| sheet.file.relative_path == *sheet_id)
+                            .and_then(|sheet| sheet.disc_number())
+                    };
+                    if disc_of(previous_files) != disc_of(files) {
+                        retained.place = laid_out(fresh.place);
                     }
                 }
                 return retained;
             }
             let mut edit = fresh.edit;
             edit.id = ids.new_id().to_string();
-            CandidateTrack::unsourced(edit)
+            CandidateTrack::unsourced(edit, laid_out(fresh.place))
         })
         .collect();
-    draft.with_tracks(tracks)
+    let (mediums, tracks) = without_empty_mediums(mediums, tracks);
+    CandidateDraft {
+        mediums,
+        ..draft.with_tracks(tracks)
+    }
+}
+
+/// `mediums` with only the ones a track of `tracks` sits on, in order, and
+/// the tracks placed on them: a medium the folder's audio no longer reaches
+/// is not one of the release's.
+fn without_empty_mediums(
+    mediums: Vec<crate::mediums::ReleaseMedium>,
+    mut tracks: Vec<CandidateTrack>,
+) -> (Vec<crate::mediums::ReleaseMedium>, Vec<CandidateTrack>) {
+    let used: std::collections::BTreeSet<usize> = tracks
+        .iter()
+        .map(|track| track.place.medium_index())
+        .collect();
+    let kept: Vec<usize> = used.into_iter().collect();
+    for track in &mut tracks {
+        let index = kept
+            .iter()
+            .position(|kept| *kept == track.place.medium_index())
+            .expect("every track's medium is kept");
+        track.place.medium = crate::mediums::medium_position(index);
+    }
+    (kept.into_iter().map(|index| mediums[index]).collect(), tracks)
 }
 
 /// The draft a folder's stored file-tag reading makes, one track per audio

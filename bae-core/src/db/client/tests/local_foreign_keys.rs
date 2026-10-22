@@ -19,10 +19,12 @@ async fn deleting_an_artist_removes_local_draft_references() {
              INSERT INTO import_candidate_edit
                  (content_hash, album_title, album_year, year, barcode, author, draft_blank, draft_valid)
              VALUES ('candidate', 'Album Title', '', '', '', 'person', 0, 1);
+             INSERT INTO import_candidate_medium (content_hash, position, side_count)
+             VALUES ('candidate', 1, 1);
              INSERT INTO import_candidate_track
                  (content_hash, track_id, position, title, artist_assignment_kind,
-                  track_number, file_kind, file_id)
-             VALUES ('candidate', 'track', 0, 'Track Title', 'explicit', 1, 'standalone', 'file');
+                  medium, side, track_number, file_kind, file_id)
+             VALUES ('candidate', 'track', 0, 'Track Title', 'explicit', 1, 1, 1, 'standalone', 'file');
              INSERT INTO import_candidate_failure (content_hash, error, failed_at)
              VALUES ('candidate', 'Artist identity conflict', '2026-01-01T00:00:00Z');",
         )

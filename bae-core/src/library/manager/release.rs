@@ -70,6 +70,14 @@ impl LibraryManager {
         Ok(self.database.get_tracks_for_release(release_id).await?)
     }
 
+    /// A release's mediums, in order, which its tracks' places read against.
+    pub async fn get_release_mediums(
+        &self,
+        release_id: &str,
+    ) -> Result<crate::db::DbReleaseMediums, LibraryError> {
+        Ok(self.database.get_release_mediums(release_id).await?)
+    }
+
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn find_existing_album_for_import(
         &self,
@@ -296,11 +304,12 @@ impl LibraryManager {
         &self,
         album: &DbAlbum,
         release: &DbRelease,
+        mediums: &[crate::db::DbReleaseMedium],
         tracks: &[DbTrack],
         track_artists: &[crate::db::DbTrackArtist],
     ) -> Result<(), LibraryError> {
         self.database
-            .insert_album_with_release_and_tracks(album, release, tracks, track_artists)
+            .insert_album_with_release_and_tracks(album, release, mediums, tracks, track_artists)
             .await?;
         Ok(())
     }
@@ -310,11 +319,12 @@ impl LibraryManager {
     pub async fn insert_release_with_tracks(
         &self,
         release: &DbRelease,
+        mediums: &[crate::db::DbReleaseMedium],
         tracks: &[DbTrack],
         track_artists: &[crate::db::DbTrackArtist],
     ) -> Result<(), LibraryError> {
         self.database
-            .insert_release_with_tracks(release, tracks, track_artists)
+            .insert_release_with_tracks(release, mediums, tracks, track_artists)
             .await?;
         Ok(())
     }
@@ -463,8 +473,6 @@ impl LibraryManager {
             .map(|(existing, t)| {
                 let updated = DbTrack {
                     title: t.title.clone(),
-                    side: t.side,
-                    track_number: t.track_number,
                     ..existing.clone()
                 };
                 (existing.id.clone(), updated)

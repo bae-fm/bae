@@ -66,6 +66,11 @@ pub fn release_record_id(release_id: &str, catalog: Catalog) -> String {
     id_for(&format!("release record {release_id} {}", catalog.as_str()))
 }
 
+/// The medium at `position` of a release.
+pub fn release_medium_id(release_id: &str, position: u16) -> String {
+    id_for(&format!("release medium {release_id} {position}"))
+}
+
 /// One artist's credit at one position on a work.
 pub fn work_artist_id(work_id: &str, artist_id: &str, position: i32) -> String {
     id_for(&format!("work artist {work_id} {artist_id} {position}"))

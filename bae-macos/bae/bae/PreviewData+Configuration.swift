@@ -166,8 +166,6 @@
                                         artistCredit("Track Artist \(n)")
                                     ]
                                 ),
-                            side: 1,
-                            trackNumber: Int32(n),
                             file: .standalone(fileId: "\(n).flac")
                         )
                     }
@@ -224,6 +222,7 @@
                                 durationClock: bridgeLengthClock(
                                     ms: UInt64(180_000 + index * 12_000)
                                 ),
+                                positionText: String(index + 1),
                                 side: .flat,
                                 sideHeaderKey: nil
                             )

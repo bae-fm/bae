@@ -133,6 +133,9 @@ pub struct ReleaseEditTrackContext {
     pub track_id: String,
     pub sources: Vec<ReleaseEditTrackSource>,
     pub duration_ms: u64,
+    /// How the track's place reads ("A1", "3"), which the editor shows and
+    /// never edits.
+    pub position_text: String,
     pub side: TrackSide,
 }
 
@@ -161,13 +164,6 @@ pub enum ReleaseEditLoadError {
 impl ReleaseEditDisplayContext {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn from_raw(raw: &DbReleaseDetail) -> Result<Self, ReleaseEditLoadError> {
-        let has_multiple_sides = raw
-            .tracks
-            .iter()
-            .map(|entry| entry.track.side)
-            .collect::<std::collections::HashSet<_>>()
-            .len()
-            > 1;
         let mut contexts = Vec::with_capacity(raw.tracks.len());
         for entry in &raw.tracks {
             let formats = raw
@@ -230,16 +226,12 @@ impl ReleaseEditDisplayContext {
                     layout,
                 });
             }
-            let position = crate::util::format::compute_track_position(
-                raw.release.pressing.facts.physical_medium(),
-                entry.track.side,
-                entry.track.track_number,
-                has_multiple_sides,
-            );
+            let position = raw.mediums.position(&entry.track);
             contexts.push(ReleaseEditTrackContext {
                 track_id: entry.track.id.clone(),
                 sources,
                 duration_ms: entry.track.duration_ms,
+                position_text: crate::util::format::track_position_text(&position),
                 side: crate::util::format::track_side(&position),
             });
         }
@@ -274,14 +266,6 @@ impl ReleaseDetail {
         let release = raw.release;
         let audio_format_orphans = 0u32;
 
-        let has_multiple_sides = {
-            let mut sides = std::collections::HashSet::new();
-            for t in &raw.tracks {
-                sides.insert(t.track.side);
-            }
-            sides.len() > 1
-        };
-
         let tracks: Vec<TrackDetail> = raw
             .tracks
             .into_iter()
@@ -291,12 +275,7 @@ impl ReleaseDetail {
                 } else {
                     join_artist_names(&entry.artists)
                 };
-                let position = crate::util::format::compute_track_position(
-                    release.pressing.facts.physical_medium(),
-                    entry.track.side,
-                    entry.track.track_number,
-                    has_multiple_sides,
-                );
+                let position = raw.mediums.position(&entry.track);
                 let position_text = crate::util::format::track_position_text(&position);
                 // On a compilation each row carries its own artist, because the
                 // album header names no single one; on a single-artist album the
@@ -305,8 +284,6 @@ impl ReleaseDetail {
                 TrackDetail {
                     id: entry.track.id,
                     title: entry.track.title,
-                    side: entry.track.side,
-                    track_number: entry.track.track_number,
                     duration_ms: entry.track.duration_ms,
                     artist_names,
                     display_artist,
@@ -426,7 +403,7 @@ mod release_edit_display_tests {
     #[test]
     fn missing_segment_file_is_an_editor_load_error() {
         let release = crate::db::DbRelease::new_test("album-id", "release-id");
-        let track = crate::db::DbTrack::new_test(&release.id, "track-id", "Track Title", Some(1));
+        let track = crate::db::DbTrack::new_test(&release.id, "track-id", "Track Title", 1);
         let now = chrono::Utc::now();
         let format = crate::db::DbAudioFormat {
             id: "format-id".to_string(),
@@ -442,6 +419,9 @@ mod release_edit_display_tests {
             created_at: now,
         };
         let raw = crate::db::DbReleaseDetail {
+            mediums: crate::db::DbReleaseMediums(vec![crate::db::DbReleaseMedium::new_test(
+                &release.id,
+            )]),
             release,
             tracks: vec![crate::db::DbTrackWithArtists {
                 track,

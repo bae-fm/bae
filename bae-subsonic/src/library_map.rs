@@ -181,14 +181,16 @@ async fn resolve_audio_fields(
 }
 
 /// The `Child` (song) for a track on `release`. `album_title`, the release's
-/// files, and its `coverArt` id are passed in so a whole-album build resolves
-/// them once rather than per track.
+/// files and mediums, and its `coverArt` id are passed in so a whole-album
+/// build resolves them once rather than per track. Its disc is its medium's
+/// position, stated only for a release of several mediums.
 pub(crate) async fn track_child(
     services: &AppServices,
     track: &DbTrack,
     release: &DbRelease,
     album_title: &str,
     files: &[DbFile],
+    mediums: &bae_core::db::DbReleaseMediums,
     cover_art: Option<String>,
 ) -> Result<Child, SubError> {
     let audio = resolve_audio_fields(services, &track.id, Some(files)).await?;
@@ -211,7 +213,7 @@ pub(crate) async fn track_child(
         title: track.title.clone(),
         album: Some(album_title.to_string()),
         artist: artist_name,
-        track: track.track_number,
+        track: Some(track.track_number.get()),
         year: release.pressing.year,
         cover_art,
         size: audio.size,
@@ -219,7 +221,7 @@ pub(crate) async fn track_child(
         suffix: audio.suffix,
         duration: audio.duration_secs,
         bit_rate: None,
-        disc_number: track.side,
+        disc_number: mediums.disc_number(track),
         created: Some(track.created_at.to_rfc3339()),
         album_id: Some(album_wire_id(&release.id)),
         artist_id,

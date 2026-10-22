@@ -85,9 +85,11 @@ pub(super) fn build_release_detail_on(
     let audio_segments = get_audio_segments_for_release_on(sql, &release.id)?;
     let records = get_release_records_on(sql, &release.id)?;
     let unstored_audio = unstored_audio_on(sql, &release.id)?;
+    let mediums = release_mediums_on(sql, &release.id)?;
 
     Ok(ReleaseDetailRows {
         release,
+        mediums,
         tracks,
         files,
         audio_formats,
@@ -144,6 +146,7 @@ pub(super) fn unstored_audio_in_row(
 #[derive(Clone, PartialEq)]
 pub(super) struct ReleaseDetailRows {
     pub(super) release: DbRelease,
+    mediums: DbReleaseMediums,
     tracks: Vec<(DbTrack, Option<DbArtist>)>,
     files: Vec<DbFile>,
     audio_formats: Vec<DbAudioFormat>,
@@ -156,6 +159,7 @@ impl ReleaseDetailRows {
     pub(super) fn process(self) -> DbReleaseDetail {
         DbReleaseDetail {
             release: self.release,
+            mediums: self.mediums,
             tracks: process_tracks(self.tracks),
             files: process_files(self.files),
             audio_formats: self.audio_formats,
@@ -178,6 +182,7 @@ pub(super) fn get_tracks_with_artists_for_release_on(
             track.id AS track_id,
             track.release_id AS track_release_id,
             track.title AS track_title,
+            track.medium_id AS track_medium_id,
             track.side AS track_side,
             track.track_number AS track_track_number,
             track.duration_ms AS track_duration_ms,
@@ -432,11 +437,49 @@ pub(super) fn row_to_track_with_prefix(row: &Row, prefix: &str) -> rusqlite::Res
         id: row.get(column("id").as_str())?,
         release_id: row.get(column("release_id").as_str())?,
         title: row.get(column("title").as_str())?,
+        medium_id: row.get(column("medium_id").as_str())?,
         side: row.get(column("side").as_str())?,
         track_number: row.get(column("track_number").as_str())?,
         duration_ms: row.get(column("duration_ms").as_str())?,
         created_at: rfc3339_column(row, &column("created_at"))?,
     })
+}
+
+pub(super) fn row_to_release_medium(row: &Row) -> rusqlite::Result<DbReleaseMedium> {
+    let medium: Option<String> = row.get("medium")?;
+    let carrier = medium
+        .map(|key| {
+            crate::pressing::Medium::from_key(&key).ok_or_else(|| {
+                rusqlite::Error::FromSqlConversionFailure(
+                    0,
+                    rusqlite::types::Type::Text,
+                    format!("unknown release medium {key:?}").into(),
+                )
+            })
+        })
+        .transpose()?;
+    Ok(DbReleaseMedium {
+        id: row.get("id")?,
+        release_id: row.get("release_id")?,
+        position: row.get("position")?,
+        medium: crate::mediums::ReleaseMedium {
+            carrier,
+            sides: row.get("side_count")?,
+        },
+        created_at: rfc3339_column(row, "created_at")?,
+    })
+}
+
+/// A release's mediums, in order.
+pub(super) fn release_mediums_on(
+    sql: &SqlReadContext<'_>,
+    release_id: &str,
+) -> Result<DbReleaseMediums, DbError> {
+    Ok(DbReleaseMediums(sql.query(
+        "SELECT * FROM release_mediums WHERE release_id = ? ORDER BY position",
+        params![release_id],
+        row_to_release_medium,
+    )?))
 }
 
 pub(super) fn row_to_release(row: &Row) -> rusqlite::Result<DbRelease> {

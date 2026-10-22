@@ -74,8 +74,6 @@ mirror_struct! {
     into_core: fn,
     fields: {
         title,
-        side,
-        track_number,
         artist_assignments: (BridgeTrackArtistAssignments),
         file: (opt BridgeAudioFile),
     },
@@ -121,8 +119,6 @@ mirror_struct! {
         id,
         title,
         artist_assignments: (BridgeTrackArtistAssignments),
-        side,
-        track_number,
         file: (opt BridgeAudioFile),
     },
 }
@@ -154,6 +150,7 @@ impl BridgeReleaseEditTrackContext {
             track_id,
             sources,
             duration_ms,
+            position_text,
             side,
         } = context;
         let side = BridgeTrackSide::from_core(side);
@@ -165,6 +162,7 @@ impl BridgeReleaseEditTrackContext {
                 .map(BridgeReleaseEditTrackSource::from_core)
                 .collect(),
             duration_clock: crate::types::BridgeDurationClock::of_length(duration_ms),
+            position_text,
             side,
             side_header_key,
         }

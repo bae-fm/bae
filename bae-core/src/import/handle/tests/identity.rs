@@ -387,8 +387,10 @@ fn make_track(release_id: &str, number: i32) -> DbTrack {
         id: Uuid::new_v4().to_string(),
         release_id: release_id.to_string(),
         title: format!("Track {}", number),
-        side: Some(1),
-        track_number: Some(number),
+        medium_id: crate::db::identity::release_medium_id(release_id, 1),
+        side: std::num::NonZeroU8::MIN,
+        track_number: std::num::NonZeroU32::new(u32::try_from(number).expect("a test track number fits u32"))
+            .expect("track numbers count from one"),
         duration_ms: 180000,
         created_at: now,
     }
@@ -423,7 +425,7 @@ async fn insert_with_identities(
 ) {
     let track = make_track(&release.id, 1);
     manager
-        .insert_album_with_release_and_tracks(album, release, &[track], &[])
+        .insert_album_with_release_and_tracks(album, release, &[crate::db::DbReleaseMedium::new_test(&release.id)], &[track], &[])
         .await
         .unwrap();
     manager
@@ -599,7 +601,7 @@ async fn test_merge_release_into_existing_album() {
     release2.album_id = existing_album_id.unwrap();
     let track2 = make_track(&release2.id, 1);
     manager
-        .insert_release_with_tracks(&release2, &[track2], &[])
+        .insert_release_with_tracks(&release2, &[crate::db::DbReleaseMedium::new_test(&release2.id)], &[track2], &[])
         .await
         .unwrap();
     manager
@@ -681,7 +683,7 @@ async fn test_check_pressing_match_wins_over_sibling_pressing_row() {
     let named = make_release(&album.id);
     let track = make_track(&named.id, 1);
     manager
-        .insert_release_with_tracks(&named, &[track], &[])
+        .insert_release_with_tracks(&named, &[crate::db::DbReleaseMedium::new_test(&named.id)], &[track], &[])
         .await
         .unwrap();
     manager

@@ -325,7 +325,7 @@ async fn unlinked_cover_gallery_for_library_release() {
     let album = make_album("Album Title");
     let release = make_release(&album.id);
     manager
-        .insert_album_with_release_and_tracks(&album, &release, &[make_track(&release.id, 1)], &[])
+        .insert_album_with_release_and_tracks(&album, &release, &[crate::db::DbReleaseMedium::new_test(&release.id)], &[make_track(&release.id, 1)], &[])
         .await
         .unwrap();
     let handle = manager

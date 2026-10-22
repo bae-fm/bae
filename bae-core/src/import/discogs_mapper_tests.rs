@@ -61,24 +61,6 @@ fn entries(rows: &[DiscogsTrack]) -> Vec<TracklistEntry> {
     tracklist_entries("1", rows)
 }
 
-#[test]
-fn test_parse_side_from_position() {
-    // CD format: disc number = side
-    assert_eq!(parse_side_from_position("1-1"), Some(1));
-    assert_eq!(parse_side_from_position("2-5"), Some(2));
-    assert_eq!(parse_side_from_position("3-12"), Some(3));
-
-    // Vinyl sides: each letter = one side
-    assert_eq!(parse_side_from_position("A1"), Some(1));
-    assert_eq!(parse_side_from_position("B3"), Some(2));
-    assert_eq!(parse_side_from_position("C1"), Some(3));
-    assert_eq!(parse_side_from_position("D2"), Some(4));
-
-    // Plain numbers alone do not specify a side.
-    assert_eq!(parse_side_from_position("1"), None);
-    assert_eq!(parse_side_from_position("12"), None);
-}
-
 fn make_track(position: &str, title: &str) -> DiscogsTrack {
     DiscogsTrack {
         position: position.to_string(),
@@ -245,23 +227,26 @@ fn test_cd_multi_disc() {
         make_track("2-2", "Disc 2 Track 2"),
     ]);
 
+    let release = with_formats(release, &[("CD", "2")]);
     let parsed = map(&release).unwrap();
-    let tracks = &parsed.tracks;
-    assert_eq!(tracks.len(), 5);
+    assert_eq!(
+        crate::import::release_values::row_labels(&parsed),
+        ["1-1", "1-2", "1-3", "2-1", "2-2"],
+        "each disc numbers its own tracks"
+    );
+}
 
-    // Side 1 (disc 1) tracks
-    assert_eq!(tracks[0].side, Some(1));
-    assert_eq!(tracks[0].track_number, Some(1));
-    assert_eq!(tracks[1].side, Some(1));
-    assert_eq!(tracks[1].track_number, Some(2));
-    assert_eq!(tracks[2].side, Some(1));
-    assert_eq!(tracks[2].track_number, Some(3));
-
-    // Side 2 (disc 2) tracks restart at 1
-    assert_eq!(tracks[3].side, Some(2));
-    assert_eq!(tracks[3].track_number, Some(1));
-    assert_eq!(tracks[4].side, Some(2));
-    assert_eq!(tracks[4].track_number, Some(2));
+fn with_formats(mut release: DiscogsRelease, formats: &[(&str, &str)]) -> DiscogsRelease {
+    release.formats = formats
+        .iter()
+        .map(|(name, qty)| crate::discogs::DiscogsFormat {
+            name: (*name).into(),
+            qty: (*qty).into(),
+            descriptions: Vec::new(),
+            text: None,
+        })
+        .collect();
+    release
 }
 
 #[test]
@@ -275,29 +260,13 @@ fn test_vinyl_sides() {
         make_track("D1", "Side D Track 1"),
     ]);
 
+    let release = with_formats(release, &[("Vinyl", "2")]);
     let parsed = map(&release).unwrap();
-    let tracks = &parsed.tracks;
-    assert_eq!(tracks.len(), 6);
-
-    // A = side 1
-    assert_eq!(tracks[0].side, Some(1));
-    assert_eq!(tracks[0].track_number, Some(1));
-    assert_eq!(tracks[1].side, Some(1));
-    assert_eq!(tracks[1].track_number, Some(2));
-
-    // B = side 2
-    assert_eq!(tracks[2].side, Some(2));
-    assert_eq!(tracks[2].track_number, Some(1));
-    assert_eq!(tracks[3].side, Some(2));
-    assert_eq!(tracks[3].track_number, Some(2));
-
-    // C = side 3
-    assert_eq!(tracks[4].side, Some(3));
-    assert_eq!(tracks[4].track_number, Some(1));
-
-    // D = side 4
-    assert_eq!(tracks[5].side, Some(4));
-    assert_eq!(tracks[5].track_number, Some(1));
+    assert_eq!(
+        crate::import::release_values::row_labels(&parsed),
+        ["A1", "A2", "B1", "B2", "C1", "D1"],
+        "the second record's sides letter on from the first's"
+    );
 }
 
 #[test]
@@ -344,53 +313,23 @@ fn test_2lp_vinyl_with_headings() {
         make_track("D2", "Track Eight"),
     ]);
 
+    let release = with_formats(release, &[("Vinyl", "2")]);
     let parsed = map_for_audio(&release, &[1; 9]).unwrap();
     let tracks = &parsed.tracks;
 
     // 9 tracks: 2 on A, 2 on B (heading collapsed + Track Three), 3 on C, 2 on D
-    assert_eq!(tracks.len(), 9);
-
-    // Side A (1)
-    assert_eq!(tracks[0].side, Some(1));
-    assert_eq!(tracks[0].track_number, Some(1));
+    assert_eq!(
+        crate::import::release_values::row_labels(&parsed),
+        ["A1", "A2", "B1", "B2", "C1", "C2", "C3", "D1", "D2"]
+    );
     assert_eq!(tracks[0].title, "Track One");
-
-    assert_eq!(tracks[1].side, Some(1));
-    assert_eq!(tracks[1].track_number, Some(2));
     assert_eq!(tracks[1].title, "Track Two");
-
-    // Side B (2) — heading collapsed sub-tracks into one
-    assert_eq!(tracks[2].side, Some(2));
-    assert_eq!(tracks[2].track_number, Some(1));
     assert_eq!(
         tracks[2].title,
         "Medley: Part I \u{2013} Part II \u{2013} Part III"
     );
-
-    assert_eq!(tracks[3].side, Some(2));
-    assert_eq!(tracks[3].track_number, Some(2));
     assert_eq!(tracks[3].title, "Track Three");
-
-    // Side C (3)
-    assert_eq!(tracks[4].side, Some(3));
-    assert_eq!(tracks[4].track_number, Some(1));
     assert_eq!(tracks[4].title, "Track Four");
-
-    assert_eq!(tracks[5].side, Some(3));
-    assert_eq!(tracks[5].track_number, Some(2));
-    assert_eq!(tracks[5].title, "Track Five");
-
-    assert_eq!(tracks[6].side, Some(3));
-    assert_eq!(tracks[6].track_number, Some(3));
-    assert_eq!(tracks[6].title, "Track Six");
-
-    // Side D (4)
-    assert_eq!(tracks[7].side, Some(4));
-    assert_eq!(tracks[7].track_number, Some(1));
-    assert_eq!(tracks[7].title, "Track Seven");
-
-    assert_eq!(tracks[8].side, Some(4));
-    assert_eq!(tracks[8].track_number, Some(2));
     assert_eq!(tracks[8].title, "Track Eight");
 }
 
@@ -409,15 +348,10 @@ fn test_single_disc() {
         text: None,
     }];
     let parsed = map(&release).unwrap();
-    let tracks = &parsed.tracks;
-    assert_eq!(tracks.len(), 3);
-
-    assert_eq!(tracks[0].side, Some(1));
-    assert_eq!(tracks[0].track_number, Some(1));
-    assert_eq!(tracks[1].side, Some(1));
-    assert_eq!(tracks[1].track_number, Some(2));
-    assert_eq!(tracks[2].side, Some(1));
-    assert_eq!(tracks[2].track_number, Some(3));
+    assert_eq!(
+        crate::import::release_values::row_labels(&parsed),
+        ["1", "2", "3"]
+    );
 }
 
 #[test]
@@ -684,4 +618,25 @@ fn id_less_role_credits_dedup_on_credited_name() {
         .collect();
     assert_eq!(roles.len(), 2);
     assert_eq!(roles[0], roles[1], "both credits commit as one artist");
+}
+
+/// A row of disc 2 printing no position is numbered by its place on disc 2,
+/// not in the whole release.
+#[test]
+fn a_track_with_no_position_is_numbered_by_its_place_on_its_disc() {
+    let release = with_formats(
+        make_release(vec![
+            make_track("1-1", "Disc One Track"),
+            make_track("1-2", "Disc One Track Two"),
+            make_track("2-1", "Disc Two Track"),
+            make_track("2-2", "Disc Two Track Two"),
+            make_track("", "Disc Two Unnumbered"),
+        ]),
+        &[("CD", "2")],
+    );
+    let parsed = map(&release).unwrap();
+    assert_eq!(
+        crate::import::release_values::row_labels(&parsed),
+        ["1-1", "1-2", "2-1", "2-2", "2-3"]
+    );
 }

@@ -10,7 +10,7 @@
 use crate::import::folder_scanner::{BoundTrackSheet, CategorizedFiles, ScannedFile};
 use crate::import::probe::{sheet_analysis, SourceDurations};
 use crate::import::types::{AudioFile, CueFlacAnalysis, TrackAudio, TrackFile};
-use crate::import::{ImportError, TrackUserEdit};
+use crate::import::ImportError;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tracing::debug;
@@ -167,21 +167,30 @@ pub(crate) fn audio_durations(
         .collect()
 }
 
-/// Blank editable tracks over the candidate's physical audio layout. Direct
-/// entry names nothing from files or sheets, but sheet slicing and
-/// disc assignment remain physical facts about where the samples live.
-pub(crate) fn direct_entry_track_rows(files: &CategorizedFiles) -> Vec<TrackUserEdit> {
-    let sheet_discs: HashMap<&str, i32> = files
+/// One audio unit of a folder, where the folder's layout puts it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct FolderTrack {
+    pub file: AudioFile,
+    /// The disc the layout gives it: its CUE sheet's, or its folder's in a
+    /// release read from several folders; `None` for loose audio of a release
+    /// read from one folder.
+    pub disc: Option<u32>,
+    pub number: std::num::NonZeroU32,
+}
+
+/// The candidate's audio units in the folder's order, each with the disc and
+/// number its physical layout gives it. Nothing here is read from tags or
+/// names: sheet slicing and disc assignment are facts about where the samples
+/// live.
+pub(crate) fn folder_tracks(files: &CategorizedFiles) -> Vec<FolderTrack> {
+    let sheet_discs: HashMap<&str, u32> = files
         .carving_sheets()
         .into_iter()
         .map(|sheet| {
             let disc = sheet
                 .disc_number()
                 .expect("a carving sheet has a disc assignment");
-            (
-                sheet.file.relative_path.as_str(),
-                i32::try_from(disc).expect("sheet disc fits the database column"),
-            )
+            (sheet.file.relative_path.as_str(), disc)
         })
         .collect();
 
@@ -202,16 +211,15 @@ pub(crate) fn direct_entry_track_rows(files: &CategorizedFiles) -> Vec<TrackUser
             )
         },
     );
-    let mut numbers = std::collections::HashMap::<Option<i32>, i32>::new();
+    let mut numbers = std::collections::HashMap::<Option<u32>, u32>::new();
     audio_units(files)
         .into_iter()
         .enumerate()
         .map(|(index, audio)| {
-            let side = match &audio {
+            let disc = match &audio {
                 AudioFile::Standalone { file_id } => {
                     crate::import::folder_scanner::part_of(&files.parts, file_id)
                         .and_then(|part| layout.loose_disc(part))
-                        .map(|disc| i32::try_from(disc).expect("disc number fits i32"))
                 }
                 AudioFile::SheetSlice { sheet_id, .. } => Some(
                     *sheet_discs
@@ -221,19 +229,17 @@ pub(crate) fn direct_entry_track_rows(files: &CategorizedFiles) -> Vec<TrackUser
             };
             // Tracks number from one on each disc of a release read from
             // several folders, and straight through one read from one.
-            let track_number = if files.parts.is_empty() {
-                i32::try_from(index + 1).expect("track position fits i32")
+            let number = if files.parts.is_empty() {
+                u32::try_from(index + 1).expect("track position fits u32")
             } else {
-                let number = numbers.entry(side).or_default();
+                let number = numbers.entry(disc).or_default();
                 *number += 1;
                 *number
             };
-            TrackUserEdit {
-                title: String::new(),
-                side,
-                track_number: Some(track_number),
-                artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
-                file: Some(audio),
+            FolderTrack {
+                file: audio,
+                disc,
+                number: std::num::NonZeroU32::new(number).expect("numbers count from one"),
             }
         })
         .collect()

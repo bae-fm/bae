@@ -539,8 +539,10 @@ fn mb_values_number_vinyl_sides_across_media() {
     ]);
 
     let values = mb_release(&response).every_medium_values().unwrap();
-    let sides: Vec<Option<i32>> = values.tracks.iter().map(|t| t.side).collect();
-    assert_eq!(sides, vec![Some(1), Some(2), Some(3), Some(4)]);
+    assert_eq!(
+        crate::import::release_values::value_labels(&values),
+        ["A1", "B1", "C1", "D1"]
+    );
 }
 
 #[test]
@@ -563,9 +565,9 @@ fn parse_duration_to_ms_handles_mm_ss_and_hh_mm_ss() {
     }
 }
 
-/// A reading keeps both known and unknown side assignments.
+/// A track whose position names no side is on the side before it.
 #[test]
-fn mb_values_keep_unknown_sides() {
+fn mb_values_put_an_unlettered_track_on_the_side_before_it() {
     let response = response_with_media(vec![MbMedium {
         discs: vec![],
         format: Some("12\" Vinyl".to_string()),
@@ -576,8 +578,10 @@ fn mb_values_keep_unknown_sides() {
     }]);
 
     let values = mb_release(&response).every_medium_values().unwrap();
-    assert_eq!(values.tracks[0].side, Some(1));
-    assert_eq!(values.tracks[1].side, None);
+    assert_eq!(
+        crate::import::release_values::value_labels(&values),
+        ["A1", "A1"]
+    );
 }
 
 /// The picker's pressing fields are the pressing the commit stores: one

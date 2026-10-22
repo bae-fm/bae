@@ -226,6 +226,8 @@ pub struct ReleaseDetailContext {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseDetail {
     pub release: DbRelease,
+    /// The release's mediums, which its tracks' places are read against.
+    pub mediums: DbReleaseMediums,
     pub tracks: Vec<DbTrackWithArtists>,
     pub files: Vec<DbFile>,
     /// Audio-format rows for this release's tracks: codec, sample rate, bit

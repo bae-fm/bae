@@ -31,8 +31,10 @@ fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
                 id: format!("track-{index}"),
                 release_id: "rel".to_string(),
                 title: format!("Track {index}"),
-                side: Some(1),
-                track_number: Some(index as i32 + 1),
+                medium_id: crate::db::identity::release_medium_id("rel", 1),
+                side: std::num::NonZeroU8::MIN,
+                track_number: std::num::NonZeroU32::new(u32::try_from(index + 1).expect("a test track number fits u32"))
+                    .expect("track numbers count from one"),
                 duration_ms: 180_000,
                 created_at: chrono::DateTime::<chrono::Utc>::from(coven::Clock::now(&test_clock())),
             },

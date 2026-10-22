@@ -24,7 +24,7 @@ struct ImportMappingTrackRow: View {
                 durationDiverges: mapping.lengthsDisagree,
                 columns: columns,
                 editingCommands: editingCommands,
-                displayedPosition: mapping.position,
+                position: mapping.position,
                 onChange: { actions.editTrack($0) }
             )
         }

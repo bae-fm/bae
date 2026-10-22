@@ -1,9 +1,10 @@
 use super::*;
 
-/// A track on side `side` of the release, `duration_ms` long when measured.
-fn track(id: &str, side: i32, number: i32, duration_ms: u64) -> crate::db::DbTrackWithArtists {
-    let mut track = crate::db::DbTrack::new_test("release-id", id, "Track Title", Some(number));
-    track.side = Some(side);
+/// A track on side `side` of the release's record, `duration_ms` long when
+/// measured.
+fn track(id: &str, side: u8, number: u32, duration_ms: u64) -> crate::db::DbTrackWithArtists {
+    let mut track = crate::db::DbTrack::new_test("release-id", id, "Track Title", number);
+    track.side = std::num::NonZeroU8::new(side).expect("sides count from one");
     track.duration_ms = duration_ms;
     crate::db::DbTrackWithArtists {
         track,
@@ -15,6 +16,15 @@ fn track(id: &str, side: i32, number: i32, duration_ms: u64) -> crate::db::DbTra
 fn detail(tracks: Vec<crate::db::DbTrackWithArtists>) -> ReleaseDetail {
     let raw = crate::db::DbReleaseDetail {
         release: crate::db::DbRelease::new_test("album-id", "release-id"),
+        mediums: crate::db::DbReleaseMediums(vec![crate::db::DbReleaseMedium::new(
+            "release-id",
+            std::num::NonZeroU16::MIN,
+            crate::mediums::ReleaseMedium {
+                carrier: Some(crate::pressing::Medium::Vinyl),
+                sides: std::num::NonZeroU8::new(2).expect("two sides"),
+            },
+            chrono::Utc::now(),
+        )]),
         tracks,
         files: Vec::new(),
         audio_formats: Vec::new(),

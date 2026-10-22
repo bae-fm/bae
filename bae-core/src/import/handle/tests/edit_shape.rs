@@ -151,7 +151,9 @@ fn vinyl_response() -> crate::musicbrainz::MbReleaseResponse {
 }
 
 /// The editor seed for a release: its reading's editable values.
-fn seed_for(response: &crate::musicbrainz::MbReleaseResponse) -> crate::import::ReleaseUserEdit {
+fn values_for(
+    response: &crate::musicbrainz::MbReleaseResponse,
+) -> crate::import::release_values::ReleaseValues {
     crate::import::payloads::ReleasePayloads::for_test(
         crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, &response.id),
         serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
@@ -161,20 +163,20 @@ fn seed_for(response: &crate::musicbrainz::MbReleaseResponse) -> crate::import::
     .unwrap()
     .every_medium_values()
     .expect("synthetic MB response reads")
-    .user_edit()
 }
 
-/// The seed carries the mapper's per-side track numbering (A1,A2 -> 1,2 ; B1 ->
-/// 1), not a release-global 1..N index: the draft and the library keep the
-/// number as read, so a flat index would overwrite the correct per-side
-/// numbers of every multi-side vinyl / cassette / multi-disc release.
+fn seed_for(response: &crate::musicbrainz::MbReleaseResponse) -> crate::import::ReleaseUserEdit {
+    values_for(response).user_edit()
+}
+
+/// A reading numbers each track on its own side (A1, A2 -> 1, 2; B1 -> 1),
+/// not by a release-wide 1..N index.
 #[test]
-fn seed_numbers_tracks_per_side() {
-    let edit = seed_for(&vinyl_response());
-    let numbers: Vec<Option<i32>> = edit.tracks.iter().map(|t| t.track_number).collect();
-    assert_eq!(numbers, vec![Some(1), Some(2), Some(1)]);
-    let sides: Vec<Option<i32>> = edit.tracks.iter().map(|t| t.side).collect();
-    assert_eq!(sides, vec![Some(1), Some(1), Some(2)]);
+fn a_reading_numbers_tracks_per_side() {
+    assert_eq!(
+        crate::import::release_values::value_labels(&values_for(&vinyl_response())),
+        ["A1", "A2", "B1"]
+    );
 }
 
 /// Every artist the release credits reaches the editor, in credit order. The

@@ -101,12 +101,12 @@ fn map_tags_with_folder(
 }
 
 /// Each track's number in the draft the reading makes: the number the tags
-/// state, else the track's place in the release.
-fn draft_numbers(values: ReleaseValues) -> Vec<i32> {
+/// state, else the track's place on its disc.
+fn draft_numbers(values: ReleaseValues) -> Vec<u32> {
     crate::import::release_values::committed_rows(values)
         .tracks
         .iter()
-        .map(|track| track.track_number.expect("a draft numbers every track"))
+        .map(|track| track.track_number.get())
         .collect()
 }
 
@@ -263,15 +263,7 @@ fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
             .collect::<Vec<_>>(),
         ["Track One", "Track Two", "Track Three"]
     );
-    assert!(parsed.tracks.iter().all(|t| t.side == Some(1)));
-    assert_eq!(
-        parsed
-            .tracks
-            .iter()
-            .map(|t| t.number)
-            .collect::<Vec<_>>(),
-        vec![Some(1), Some(2), Some(3)]
-    );
+    assert_eq!(crate::import::release_values::value_labels(&parsed), ["1", "2", "3"]);
     assert_eq!(parsed.album_title, "Album Title");
     assert_eq!(parsed.album_year, Some(1970));
     assert_eq!(parsed.album_credits[0].name, "Artist Name");
@@ -322,17 +314,8 @@ fn cue_multi_sheet_assigns_side_per_disc() {
     let parsed = map_cue_folder(vec![disc1, disc2], Some("Folder"));
 
     assert_eq!(
-        parsed
-            .tracks
-            .iter()
-            .map(|track| (track.side, track.number))
-            .collect::<Vec<_>>(),
-        [
-            (Some(1), Some(1)),
-            (Some(1), Some(2)),
-            (Some(2), Some(1)),
-            (Some(2), Some(2)),
-        ]
+        crate::import::release_values::value_labels(&parsed),
+        ["1-1", "1-2", "2-1", "2-2"]
     );
 }
 
@@ -435,10 +418,8 @@ fn flac_with_vorbis_comments_basic() {
 
     assert_eq!(parsed.tracks.len(), 2);
     assert_eq!(parsed.tracks[0].title, "Track One");
-    assert_eq!(parsed.tracks[0].side, None);
-    assert_eq!(parsed.tracks[0].number, Some(1));
     assert_eq!(parsed.tracks[1].title, "Track Two");
-    assert_eq!(parsed.tracks[1].number, Some(2));
+    assert_eq!(crate::import::release_values::value_labels(&parsed), ["1", "2"]);
 
     assert_eq!(
         parsed
@@ -487,19 +468,16 @@ fn flac_multi_disc_groups_by_discnumber() {
 
     let parsed = map_tags(&files).unwrap();
 
-    assert_eq!(parsed.tracks.len(), 4);
-    assert_eq!(parsed.tracks[0].side, Some(1));
-    assert_eq!(parsed.tracks[0].number, Some(1));
-    assert_eq!(parsed.tracks[1].side, Some(1));
-    assert_eq!(parsed.tracks[1].number, Some(2));
-    assert_eq!(parsed.tracks[2].side, Some(2));
-    assert_eq!(parsed.tracks[2].number, Some(1));
-    assert_eq!(parsed.tracks[3].side, Some(2));
-    assert_eq!(parsed.tracks[3].number, Some(2));
+    assert_eq!(crate::import::release_values::value_labels(&parsed), ["1-1", "1-2", "2-1", "2-2"]);
+    assert!(
+        parsed.mediums.iter().all(|medium| medium.carrier.is_none()),
+        "tags state no carrier"
+    );
 }
 
+/// The largest number a tag can state is a track's number as stated.
 #[test]
-fn out_of_range_tag_numbers_do_not_wrap_negative() {
+fn the_largest_tag_number_is_kept_as_stated() {
     let temp = TempDir::new().unwrap();
     let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
 
@@ -519,9 +497,7 @@ fn out_of_range_tag_numbers_do_not_wrap_negative() {
 
     let parsed = map_tags(&[file]).unwrap();
 
-    assert_eq!(parsed.tracks[0].side, None);
-    assert_eq!(parsed.tracks[0].number, None);
-    assert_eq!(draft_numbers(parsed), [1]);
+    assert_eq!(draft_numbers(parsed), [u32::MAX]);
 }
 
 /// Per-track artist different from album artist → adds an extra
@@ -625,10 +601,7 @@ fn missing_optional_tags_yields_none_and_defaults() {
     let parsed = map_tags(&[f1, f2]).unwrap();
     assert_eq!(parsed.album_year, None);
     assert_eq!(parsed.pressing.year, None);
-    assert_eq!(parsed.tracks[0].side, None);
-    assert_eq!(parsed.tracks[1].side, None);
-    assert_eq!(parsed.tracks[0].number, Some(1));
-    assert_eq!(parsed.tracks[1].number, Some(2));
+    assert_eq!(crate::import::release_values::value_labels(&parsed), ["1", "2"]);
 }
 
 /// Supplied numbers remain unchanged; absent numbers use ordered position.
@@ -667,8 +640,6 @@ fn partial_track_numbers_default_to_order() {
     );
 
     let parsed = map_tags(&[f1, f2]).unwrap();
-    assert_eq!(parsed.tracks[0].number, None);
-    assert_eq!(parsed.tracks[1].number, Some(1));
     assert_eq!(
         draft_numbers(parsed),
         [1, 1],
@@ -803,8 +774,9 @@ fn album_and_artist_fallback_ladder() {
     }
 }
 
+/// A file stating no number takes its place on its own disc.
 #[test]
-fn absent_numbers_use_order_across_known_discs() {
+fn absent_numbers_take_their_place_on_their_own_disc() {
     let temp = TempDir::new().unwrap();
     let src = fixtures_dir().join("flac/01 Test Track 1.flac");
     let files = (1..=2)
@@ -825,7 +797,11 @@ fn absent_numbers_use_order_across_known_discs() {
         })
         .collect::<Vec<_>>();
     let parsed = map_tags(&files).unwrap();
-    assert_eq!(draft_numbers(parsed), [1, 2]);
+    assert_eq!(
+        draft_numbers(parsed),
+        [1, 1],
+        "each disc's first track is its number one"
+    );
 }
 
 #[test]
@@ -835,12 +811,5 @@ fn cue_numbers_are_preserved_instead_of_recreated() {
         vec![cue_track(4, "Fourth"), cue_track(7, "Seventh")],
     );
     let parsed = map_cue_folder(vec![sheet], None);
-    assert_eq!(
-        parsed
-            .tracks
-            .iter()
-            .map(|track| track.number)
-            .collect::<Vec<_>>(),
-        [Some(4), Some(7)]
-    );
+    assert_eq!(crate::import::release_values::value_labels(&parsed), ["4", "7"]);
 }

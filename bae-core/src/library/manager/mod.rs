@@ -600,8 +600,8 @@ impl ResolvedTrackAudio {
 /// -18 LUFS is a common reference for quiet-listening normalization.
 const REPLAY_GAIN_TARGET_LUFS: f64 = -18.0;
 
-/// The release a directly-selected track plays from: its full track order (by
-/// `side, track_number, id`) and the selected track's index into it. Everything
+/// The release a directly-selected track plays from: its full track order (its
+/// playing order) and the selected track's index into it. Everything
 /// the playback service needs to seed a context, so it never chases back into the
 /// library for neighbouring track IDs.
 pub struct PlayContext {
@@ -617,9 +617,9 @@ pub struct SaveTags {
     pub artist: String,
     pub album: String,
     pub year: Option<i32>,
-    /// Disc number for multi-disc releases. `None` when the release is
-    /// single-disc — we don't write a disc tag in that case.
-    pub disc: Option<i32>,
+    /// The track's medium among its release's, for a release of several
+    /// mediums. `None` for a release of one, which writes no disc tag.
+    pub disc: Option<u32>,
 }
 
 /// Tag data resolved for one track — everything a filename template or the
@@ -629,9 +629,9 @@ pub struct SaveTags {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub struct ResolvedSaveTags {
     pub tags: SaveTags,
-    pub track_number: Option<i32>,
+    /// The track's number on its side.
+    pub track_number: u32,
     pub total_tracks: usize,
-    pub is_digital: bool,
 }
 
 /// Which image to use when changing an album's cover art.

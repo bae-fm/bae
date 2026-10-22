@@ -401,7 +401,7 @@ private struct ReadOnlyCandidateMappingTable: View {
         HStack(spacing: ReleaseMetadataTrackColumns.spacing) {
             readOnlySource(mapping.source)
                 .frame(width: columns.source, alignment: .leading)
-            Text(mapping.track.trackNumber?.formatted() ?? "\u{2014}")
+            Text(verbatim: mapping.position)
                 .frame(width: ReleaseMetadataTrackColumns.track)
             Text(mapping.track.title)
                 .frame(width: columns.title, alignment: .leading)

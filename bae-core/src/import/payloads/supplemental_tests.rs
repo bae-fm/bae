@@ -60,10 +60,11 @@ fn malformed_group_credit_preserves_selected_tracks_and_valid_supplemental_field
         parsed
             .tracks
             .iter()
-            .map(|track| (track.title.as_str(), track.side))
+            .map(|track| track.title.as_str())
             .collect::<Vec<_>>(),
-        vec![("First Track", Some(1)), ("Second Track", Some(2))]
+        ["First Track", "Second Track"]
     );
+    assert_eq!(crate::import::release_values::value_labels(&parsed), ["A1", "B1"]);
 }
 
 #[test]
@@ -95,7 +96,7 @@ fn malformed_linked_release_credit_keeps_its_pressing_fields_and_valid_credit() 
         Some("linked-artist")
     );
     assert_eq!(parsed.tracks[1].title, "Second Track");
-    assert_eq!(parsed.tracks[1].side, Some(2));
+    assert_eq!(crate::import::release_values::value_labels(&parsed)[1], "B1");
 }
 
 #[test]

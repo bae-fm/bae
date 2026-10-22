@@ -105,7 +105,27 @@ fn file_tag_facts_values(
 
     let year = extracted.iter().find_map(|t| t.year).map(|y| y as i32);
 
-    let tracks: Vec<TrackValues> = extracted
+    Ok(file_tag_release_values(
+        album_title,
+        &album_artist_name,
+        year,
+        tag_tracks(extracted),
+    ))
+}
+
+/// One track as files or a CUE sheet state it, before the folder's discs are
+/// laid out as mediums.
+struct TagTrack {
+    title: String,
+    /// The disc it states, `None` where it states none.
+    disc: Option<u32>,
+    number: Option<std::num::NonZeroU32>,
+    credits: TrackCredits,
+}
+
+/// The tracks loose files' tags state, one per file.
+fn tag_tracks(extracted: &[FileTagFact]) -> Vec<TagTrack> {
+    extracted
         .iter()
         .map(|t| {
             // The scanner only admits files with a recognised audio extension, so
@@ -120,29 +140,16 @@ fn file_tag_facts_values(
 
             // The tags' numbers, else the ones the file's name starts with. A
             // file stating no disc claims no grouping; one stating no track is
-            // numbered by its position.
+            // numbered by its place on its disc.
             let numbers = t.numbers.or_file_name(&t.observation.relative_path);
-            let side = numbers.disc.and_then(|number| i32::try_from(number).ok());
-            let number = numbers.track.and_then(|number| i32::try_from(number).ok());
-
-            TrackValues {
+            TagTrack {
                 title,
-                side,
-                number,
-                stated_length_ms: None,
+                disc: numbers.disc,
+                number: numbers.track.and_then(std::num::NonZeroU32::new),
                 credits: file_tag_credits(t.track_artist.as_deref()),
-                roles: Vec::new(),
-                works: Vec::new(),
             }
         })
-        .collect();
-
-    Ok(file_tag_release_values(
-        album_title,
-        &album_artist_name,
-        year,
-        tracks,
-    ))
+        .collect()
 }
 
 /// The credit of a file-tag ARTIST/PERFORMER value. The source provides only
@@ -165,15 +172,29 @@ fn file_tag_credits(artist: Option<&str>) -> TrackCredits {
     }
 }
 
-/// The values the file-tag and CUE-sheet readers share. A track artist the
-/// album artist does not name is an album artist too, after it, once per
-/// name.
+/// The values the file-tag and CUE-sheet readers share: one medium per disc
+/// the tracks state ([`crate::mediums::by_disc`]). A track artist the album
+/// artist does not name is an album artist too, after it, once per name.
 fn file_tag_release_values(
     album_title: String,
     album_artist_name: &str,
     year: Option<i32>,
-    tracks: Vec<TrackValues>,
+    tags: Vec<TagTrack>,
 ) -> ReleaseValues {
+    let numbering: Vec<_> = tags.iter().map(|track| (track.disc, track.number)).collect();
+    let (mediums, places) = crate::mediums::by_disc(&numbering);
+    let tracks: Vec<TrackValues> = tags
+        .into_iter()
+        .zip(places)
+        .map(|(track, place)| TrackValues {
+            title: track.title,
+            place,
+            stated_length_ms: None,
+            credits: track.credits,
+            roles: Vec::new(),
+            works: Vec::new(),
+        })
+        .collect();
     let mut album_credits = vec![file_tag_artist(album_artist_name)];
     for track in &tracks {
         let TrackCredits::Own(credits) = &track.credits else {
@@ -196,6 +217,7 @@ fn file_tag_release_values(
             year,
             ..Pressing::blank()
         },
+        mediums,
         release_roles: Vec::new(),
         works: Default::default(),
         tracks,
@@ -253,12 +275,7 @@ pub(crate) fn file_metadata_values(
         return file_tag_facts_values(&loose_facts, folder_name);
     }
     let release = cue_sheets_release(&sheets, folder_name);
-    let mut loose_tracks = if loose_facts.is_empty() {
-        Vec::new()
-    } else {
-        file_tag_facts_values(&loose_facts, folder_name)?.tracks
-    }
-    .into_iter();
+    let mut loose_tracks = tag_tracks(&loose_facts).into_iter();
     let mut tracks = Vec::new();
     for (_, contribution) in layout {
         match contribution {
@@ -267,19 +284,14 @@ pub(crate) fn file_metadata_values(
             }
             UnitContribution::Runs(sheets) => {
                 for bound in sheets {
-                    let side = i32::try_from(
-                        bound
-                            .disc_number()
-                            .expect("carving sheet has a disc number"),
-                    )
-                    .map_err(|error| ImportError::FileTags {
-                        detail: format!("CUE disc number exceeds supported range: {error}"),
-                    })?;
+                    let disc = bound
+                        .disc_number()
+                        .expect("carving sheet has a disc number");
                     tracks.extend(
                         bound
                             .sheet
                             .playable_tracks()
-                            .map(|track| cue_track_values(track, side)),
+                            .map(|track| cue_track(track, disc)),
                     );
                 }
             }
@@ -326,17 +338,12 @@ fn cue_sheets_release(sheets: &[&CueSheet], folder_name: Option<&str>) -> Sheets
     }
 }
 
-fn cue_track_values(track: &crate::cue_flac::CueTrack, side: i32) -> TrackValues {
-    TrackValues {
+fn cue_track(track: &crate::cue_flac::CueTrack, disc: u32) -> TagTrack {
+    TagTrack {
         title: non_empty(track.title.clone()).unwrap_or_default(),
-        side: Some(side),
-        number: i32::try_from(track.number)
-            .ok()
-            .filter(|number| *number > 0),
-        stated_length_ms: None,
+        disc: Some(disc),
+        number: std::num::NonZeroU32::new(track.number),
         credits: file_tag_credits(non_empty(track.performer.clone()).as_deref()),
-        roles: Vec::new(),
-        works: Vec::new(),
     }
 }
 

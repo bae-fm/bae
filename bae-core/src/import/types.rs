@@ -555,8 +555,6 @@ impl AudioFile {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TrackUserEdit {
     pub title: String,
-    pub side: Option<i32>,
-    pub track_number: Option<i32>,
     pub artist_assignments: TrackArtistAssignments,
     /// The audio chosen for an import track. Import drafts require it.
     /// The library metadata editor uses `None` because it retains the stored

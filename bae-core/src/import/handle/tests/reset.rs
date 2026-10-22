@@ -180,16 +180,14 @@ async fn reset_setup_preserves_combination_members_and_disc_layout() {
     assert_eq!(reset.candidate.files.parts, source.files.parts);
     assert_eq!(
         reset
-            .metadata_draft
-            .tracks
+            .mapping
+            .track_sections
             .iter()
-            .map(|row| (row.side, row.track_number))
+            .map(|section| section.side.clone())
             .collect::<Vec<_>>(),
         [
-            (Some(1), Some(1)),
-            (Some(1), Some(2)),
-            (Some(2), Some(1)),
-            (Some(2), Some(2))
+            crate::album_detail::TrackSide::Disc { disc: 1 },
+            crate::album_detail::TrackSide::Disc { disc: 2 }
         ]
     );
     assert_eq!(

@@ -372,14 +372,13 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
         draft.pressing.facts.media,
         crate::pressing::made_of(crate::pressing::Medium::Vinyl, 1).media
     );
-    assert!(draft.tracks.iter().all(|track| track.edit.side.is_none()));
     assert_eq!(
-        draft
-            .tracks
-            .iter()
-            .map(|track| track.edit.track_number)
-            .collect::<Vec<_>>(),
-        [9, 3]
+        crate::import::release_values::place_labels(
+            &draft.mediums,
+            draft.tracks.iter().map(|track| track.place)
+        ),
+        ["A9", "A3"],
+        "one record whose positions name no letter is one side, numbered as printed"
     );
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap();
@@ -392,12 +391,9 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
     assert_eq!(
         tracks
             .iter()
-            .map(|track| (track.title.as_str(), track.track_number, track.side))
+            .map(|track| (track.title.as_str(), track.track_number.get(), track.side.get()))
             .collect::<Vec<_>>(),
-        [
-            ("First Listed", Some(9), None),
-            ("Second Listed", Some(3), None)
-        ]
+        [("First Listed", 9, 1), ("Second Listed", 3, 1)]
     );
     shut_down(handle).await;
 }

@@ -13,12 +13,19 @@ async fn chunked_track_db() -> (Database, tempfile::TempDir, Vec<String>) {
         // The ids are minted in Rust, not in SQL: coven takes only canonical
         // UUIDs on a synced row, and the test's assertions need the same
         // values the seed wrote.
+        let medium_id =
+            crate::db::identity::release_medium_id("0252dedb-ee39-4547-8803-438dbeb57a64", 1);
+        conn.execute(
+            "INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) \
+             VALUES (?1, '0252dedb-ee39-4547-8803-438dbeb57a64', 1, 'cd', 1, '2026-01-01T00:00:00Z')",
+            params![medium_id],
+        )?;
         for (index, track_id) in seed_track_ids.iter().enumerate() {
             conn.execute(
                 "INSERT INTO tracks \
-                     (position, id, release_id, title, side, track_number, duration_ms, created_at) \
-                 VALUES (?3, ?1, '0252dedb-ee39-4547-8803-438dbeb57a64', ?2, 1, ?3, 1000, '2026-01-01T00:00:00Z')",
-                params![track_id, format!("Track Title {index}"), index as i64],
+                     (position, id, release_id, title, medium_id, side, track_number, duration_ms, created_at) \
+                 VALUES (?3, ?1, '0252dedb-ee39-4547-8803-438dbeb57a64', ?2, ?4, 1, ?3 + 1, 1000, '2026-01-01T00:00:00Z')",
+                params![track_id, format!("Track Title {index}"), index as i64, medium_id],
             )?;
         }
         Ok(())

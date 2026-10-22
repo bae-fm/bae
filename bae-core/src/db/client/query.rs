@@ -646,9 +646,12 @@ pub(super) fn storage_order_by(sort: &StorageSortCriterion) -> (String, bool) {
         ),
         StorageSortField::Media => (
             format!(
+                // Every stated medium in order, each with its count: the media
+                // the column shows, compared entry by entry.
                 "CASE WHEN json_array_length(r.media) = 0 THEN 1 ELSE 0 END, \
-                 json_extract(r.media, '$[0].medium') {dir}, \
-                 json_extract(r.media, '$[0].count') {dir}, \
+                 (SELECT group_concat(printf('%s:%05d', json_extract(entry.value, '$.medium'), \
+                     json_extract(entry.value, '$.count')), ',') \
+                  FROM json_each(r.media) AS entry) {dir}, \
                  a.title COLLATE NOCASE, r.created_at, r.id"
             ),
             false,

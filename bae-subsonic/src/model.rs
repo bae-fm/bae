@@ -87,7 +87,7 @@ pub(crate) struct Child {
     pub(crate) title: String,
     pub(crate) album: Option<String>,
     pub(crate) artist: Option<String>,
-    pub(crate) track: Option<i32>,
+    pub(crate) track: Option<u32>,
     pub(crate) year: Option<i32>,
     pub(crate) cover_art: Option<String>,
     pub(crate) size: Option<i64>,
@@ -98,7 +98,7 @@ pub(crate) struct Child {
     /// Playing time in whole seconds.
     pub(crate) duration: i64,
     pub(crate) bit_rate: Option<i64>,
-    pub(crate) disc_number: Option<i32>,
+    pub(crate) disc_number: Option<u32>,
     pub(crate) created: Option<String>,
     pub(crate) album_id: Option<String>,
     pub(crate) artist_id: Option<String>,

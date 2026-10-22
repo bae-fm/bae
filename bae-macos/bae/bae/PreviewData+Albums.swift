@@ -8,7 +8,7 @@
         private static func makeTracks(
             _ names: [String],
             artist: String,
-            side: Int32 = 1,
+            side: UInt32 = 1,
             positionText: (Int) -> String = {
                 String($0 + 1)
             },
@@ -19,8 +19,6 @@
                     return BridgeTrack(
                         id: "t-d\(side)-\(index + 1)",
                         title: name,
-                        side: side,
-                        trackNumber: Int32(index + 1),
                         durationMs: durationMs,
                         durationClock: bridgeLengthClock(ms: durationMs),
                         artistNames: artist,
@@ -51,7 +49,7 @@
             disc2: [String],
         ) -> (tracks: [BridgeTrack], groups: [BridgeTrackGroup]) {
             func side(
-                _ sideNumber: Int32,
+                _ sideNumber: UInt32,
                 letter: String,
                 names: [String],
             ) -> (tracks: [BridgeTrack], group: BridgeTrackGroup) {

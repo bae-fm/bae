@@ -1,9 +1,25 @@
 use super::*;
 
 impl Database {
+    /// Write one medium row of a release, for a test that builds a release row
+    /// by row.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn insert_release_medium(&self, medium: &DbReleaseMedium) -> Result<(), DbError> {
+        let medium = medium.clone();
+        self.call_sql(move |sql| insert_release_medium_row(&sql, &medium))
+            .await
+    }
+
     pub async fn insert_track(&self, track: &DbTrack) -> Result<(), DbError> {
         let track = track.clone();
         self.call_sql(move |sql| insert_track_row(&sql, &track))
+            .await
+    }
+
+    /// A release's mediums, in order.
+    pub async fn get_release_mediums(&self, release_id: &str) -> Result<DbReleaseMediums, DbError> {
+        let release_id = release_id.to_string();
+        self.read(move |sql| release_mediums_on(&sql, &release_id))
             .await
     }
 

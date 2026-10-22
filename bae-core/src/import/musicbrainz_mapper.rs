@@ -20,6 +20,7 @@ use crate::import::{ArtistCredit, Catalog, CreditedRole, ImportError};
 use crate::musicbrainz::{release_labels, MbArtistRef, MbRelation, MbReleaseResponse, MbTrack, MbWork};
 use crate::pressing::{Medium, Pressing, StatedMedia};
 use std::collections::HashSet;
+use std::num::NonZeroU8;
 use tracing::{debug, warn};
 
 fn mb_relation_is(relation: &MbRelation, target_type: &str, relation_type: &str) -> bool {
@@ -174,26 +175,23 @@ fn track_title(release_id: &str, track: &TracklistEntry) -> Result<String, Impor
     })
 }
 
-/// Vinyl/cassette side assignment for one medium.
+/// Which side of one medium each of its tracks is on, and how many sides the
+/// medium has.
 pub(crate) struct MediumSides {
-    /// Side offset (0-based, relative to the medium's lowest side letter) for
-    /// each track, in track order.
-    pub offsets: Vec<Option<u32>>,
-    /// Number of sides this medium occupies; advances the running side base
-    /// between media.
-    pub side_span: u32,
+    /// One per track, in track order, counted from one.
+    pub sides: Vec<NonZeroU8>,
+    pub count: NonZeroU8,
 }
 
-/// Assign each track of a medium to a vinyl/cassette side.
+/// The sides of one medium's tracks.
 ///
-/// Media played side by side (a record, a cassette) derive the side
-/// from the leading letter of the track number ("A1" -> offset 0, "B2" ->
-/// offset 1), relative to the medium's lowest side letter — so a second medium
-/// lettered C/D yields offsets 0/1, not 2/3. Single-side media put every track
-/// on offset 0.
+/// A medium played side by side (a record, a cassette) has as many sides as
+/// its positions name letters, counted from its lowest letter — so a second
+/// record lettered C/D has sides 1 and 2 of its own. A track whose position
+/// names no letter is on the side of the track before it. Any other medium,
+/// and a sided one whose positions name no letter, is one side.
 ///
-/// Tracks without a side letter retain an unknown side. An empty medium has
-/// no playable tracks and is rejected.
+/// An empty medium has no playable tracks and is rejected.
 pub(crate) fn medium_sides(
     release_id: &str,
     medium: &SourceMedium,
@@ -207,41 +205,37 @@ pub(crate) fn medium_sides(
             ),
         });
     }
-
-    let is_multi_side = medium.medium.is_some_and(Medium::is_sided);
-
-    if !is_multi_side {
-        return Ok(MediumSides {
-            offsets: vec![Some(0); medium.entries.len()],
-            side_span: 1,
-        });
+    let one_side = || MediumSides {
+        sides: vec![NonZeroU8::MIN; medium.entries.len()],
+        count: NonZeroU8::MIN,
+    };
+    if !medium.medium.is_some_and(Medium::is_sided) {
+        return Ok(one_side());
     }
-
-    let letters: Vec<_> = medium
+    let letters: Vec<Option<u8>> = medium
         .entries
         .iter()
         .map(|track| {
             let position = track.position.as_deref()?;
-            position
-                .chars()
-                .next()
-                .filter(|letter| {
-                    letter.is_ascii_alphabetic()
-                        && position[1..].bytes().all(|byte| byte.is_ascii_digit())
-                })
-                .map(|letter| letter.to_ascii_uppercase() as u32)
+            let letter = *position.as_bytes().first()?;
+            (letter.is_ascii_alphabetic()
+                && position[1..].bytes().all(|byte| byte.is_ascii_digit()))
+            .then(|| letter.to_ascii_uppercase())
         })
         .collect();
-    let base = letters.iter().flatten().copied().min();
-    let offsets: Vec<_> = letters
-        .into_iter()
-        .map(|letter| letter.zip(base).map(|(letter, base)| letter - base))
-        .collect();
-    let side_span = match offsets.iter().flatten().max() {
-        Some(last) => last + 1,
-        None => 0,
+    let Some(base) = letters.iter().flatten().copied().min() else {
+        return Ok(one_side());
     };
-    Ok(MediumSides { offsets, side_span })
+    let mut sides = Vec::with_capacity(letters.len());
+    let mut current = NonZeroU8::MIN;
+    for letter in letters {
+        if let Some(letter) = letter {
+            current = crate::mediums::side_number(usize::from(letter - base));
+        }
+        sides.push(current);
+    }
+    let count = *sides.iter().max().expect("a medium with tracks has a side");
+    Ok(MediumSides { sides, count })
 }
 
 /// Read source artist credits before linked documents fill absent album facts.
@@ -433,14 +427,19 @@ pub(crate) fn values(
     let metadata = release.metadata.clone();
     metadata.album.require_artists(Catalog::MusicBrainz, release_id)?;
 
-    // `side_base` advances per medium so side values never repeat across media.
     let mut tracks: Vec<TrackValues> = Vec::new();
-    let mut side_base = 0i32;
+    let mut mediums = Vec::new();
+    let mut placer = crate::mediums::Placer::default();
     let mut works = WorkGraphBuilder::default();
-    for medium in release.covered_mediums(coverage) {
+    for (index, medium) in release.covered_mediums(coverage).enumerate() {
         let sides = medium_sides(release_id, medium)?;
+        mediums.push(crate::mediums::ReleaseMedium {
+            carrier: medium.medium,
+            sides: sides.count,
+        });
+        let position = crate::mediums::medium_position(index);
 
-        for (track, &side_offset) in medium.entries.iter().zip(&sides.offsets) {
+        for (track, &side) in medium.entries.iter().zip(&sides.sides) {
             let credits: Vec<ArtistCredit> = track
                 .credits
                 .iter()
@@ -448,8 +447,11 @@ pub(crate) fn values(
                 .collect();
             tracks.push(TrackValues {
                 title: track_title(release_id, track)?,
-                side: side_offset.map(|offset| side_base + offset as i32 + 1),
-                number: track.position.as_deref().and_then(position_number),
+                place: placer.place(
+                    position,
+                    side,
+                    track.position.as_deref().and_then(position_number),
+                ),
                 stated_length_ms: track.duration_ms,
                 credits: if credits.is_empty() {
                     TrackCredits::AlbumArtists
@@ -478,8 +480,6 @@ pub(crate) fn values(
                     }),
             });
         }
-
-        side_base += sides.side_span as i32;
     }
 
     Ok(ReleaseValues {
@@ -487,6 +487,7 @@ pub(crate) fn values(
         album_credits: metadata.album.artists,
         album_year: metadata.album.year,
         pressing: metadata.pressing,
+        mediums,
         release_roles: Vec::new(),
         works: works.finish(),
         tracks,

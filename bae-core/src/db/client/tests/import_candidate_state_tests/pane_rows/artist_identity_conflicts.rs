@@ -101,9 +101,14 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
             "INSERT INTO releases (id, album_id, created_at, album_order) VALUES (?, ?, '2026-01-02T03:04:05Z', 0)",
             params![seed_release_id, seed_album_id],
         )?;
+        let medium_id = crate::db::identity::release_medium_id(&seed_release_id, 1);
         sql.execute(
-            "INSERT INTO tracks (id, release_id, title, side, duration_ms, created_at) VALUES (?, ?, 'Track Title', 1, 180000, '2026-01-02T03:04:05Z')",
-            params![seed_track_id, seed_release_id],
+            "INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) VALUES (?, ?, 1, 'cd', 1, '2026-01-02T03:04:05Z')",
+            params![medium_id, seed_release_id],
+        )?;
+        sql.execute(
+            "INSERT INTO tracks (id, release_id, title, medium_id, side, track_number, duration_ms, created_at) VALUES (?, ?, 'Track Title', ?, 1, 1, 180000, '2026-01-02T03:04:05Z')",
+            params![seed_track_id, seed_release_id, medium_id],
         )?;
         sql.execute(
             "INSERT INTO works (id, title, musicbrainz_work_id, created_at) VALUES (?, 'Work Title', 'work-1', '2026-01-02T03:04:05Z')",
@@ -161,9 +166,13 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
             [&seed_pending_hash],
         )?;
         sql.execute(
+            "INSERT INTO import_candidate_medium (content_hash, position, side_count) VALUES (?, 1, 1)",
+            [&seed_pending_hash],
+        )?;
+        sql.execute(
             "INSERT INTO import_candidate_track (content_hash, track_id, position, title, \
-                 artist_assignment_kind, side, track_number, file_kind, file_id) \
-             VALUES (?, 'draft-track', 0, 'Track Title', 'explicit', 1, 1, 'standalone', '01.flac')",
+                 artist_assignment_kind, medium, side, track_number, file_kind, file_id) \
+             VALUES (?, 'draft-track', 0, 'Track Title', 'explicit', 1, 1, 1, 'standalone', '01.flac')",
             [&seed_pending_hash],
         )?;
         for (position, artist_id) in [&seed_discogs_id, &seed_musicbrainz_id]

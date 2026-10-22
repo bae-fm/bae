@@ -33,6 +33,10 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
     let release = DbRelease::new_test(&album.id, "c61a9e19-f3ba-4728-842c-c59dbc82e238");
     database.insert_album(&album).await.unwrap();
     database.insert_release(&release).await.unwrap();
+    database
+        .insert_release_medium(&crate::db::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
     let mut track_ids = Vec::with_capacity(track_count);
     for i in 0..track_count {
         let track_id = bae_test_support::test_uuid(&format!("track-{i}"));
@@ -40,7 +44,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
             &release.id,
             &track_id,
             &format!("Track {i}"),
-            Some(i as i32),
+            u32::try_from(i + 1).expect("a test track number fits u32"),
         );
         database.insert_track(&track).await.unwrap();
         track_ids.push(track_id);
@@ -351,8 +355,6 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
                 pressing: crate::pressing::Pressing::blank(),
                 tracks: vec![crate::import::TrackUserEdit {
                     title: "Track 0".to_string(),
-                    side: None,
-                    track_number: Some(0),
                     artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                     file: None,
                 }],

@@ -78,15 +78,40 @@ impl SharedAlbum {
     }
 }
 
-/// `current` with every field the rows' drafts `offered` agree on — the
+/// What picking one offered row reads onto the folder: its editable fields,
+/// and the mediums and track places it lays the audio on.
+pub(crate) struct OfferedReading {
+    pub edit: RawReleaseEdit,
+    pub mediums: Vec<crate::mediums::ReleaseMedium>,
+    pub places: Vec<crate::mediums::TrackPlace>,
+}
+
+impl OfferedReading {
+    pub(crate) fn of(values: &crate::import::release_values::ReleaseValues) -> Self {
+        Self {
+            edit: RawReleaseEdit::from_user_edit(
+                values.user_edit(),
+                crate::import::pane::CANDIDATE_TRACK_ID_PREFIX,
+            ),
+            mediums: values.mediums.clone(),
+            places: values.tracks.iter().map(|track| track.place).collect(),
+        }
+    }
+}
+
+/// `current` with every field the rows' readings `readings` agree on — the
 /// top-ranked row's first — taken from them, and every other field as it is.
 /// Where they share no pressing year, the year is `folder_year`, the year the
-/// folder names the pressing by, when it names one.
+/// folder names the pressing by, when it names one. The mediums and track
+/// places are taken only as a whole: when every row lays the folder's audio on
+/// the same mediums at the same places.
 pub(crate) fn shared_draft(
     current: &CandidateDraft,
-    offered: &[RawReleaseEdit],
+    readings: &[OfferedReading],
     folder_year: Option<i32>,
 ) -> CandidateDraft {
+    let offered: Vec<RawReleaseEdit> = readings.iter().map(|reading| reading.edit.clone()).collect();
+    let offered = offered.as_slice();
     let mut draft = current.clone();
     if let Some(title) = agreed(
         offered,
@@ -172,15 +197,18 @@ pub(crate) fn shared_draft(
             ) {
                 edit.artist_assignments = artists.clone();
             }
-            if let Some(side) = agreed(offered, |row| row.tracks[position].side, |a, b| a == b) {
-                edit.side = Some(side);
-            }
-            if let Some(number) = agreed(
-                offered,
-                |row| row.tracks[position].track_number,
-                |a, b| a == b,
-            ) {
-                edit.track_number = number;
+        }
+    }
+    if let Some(first) = readings.first() {
+        let one_layout = readings.iter().all(|reading| {
+            reading.mediums == first.mediums
+                && reading.places == first.places
+                && reading.places.len() == draft.tracks.len()
+        });
+        if one_layout {
+            draft.mediums.clone_from(&first.mediums);
+            for (track, place) in draft.tracks.iter_mut().zip(&first.places) {
+                track.place = *place;
             }
         }
     }
