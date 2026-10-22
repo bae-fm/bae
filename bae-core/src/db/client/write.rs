@@ -49,13 +49,12 @@ pub(super) fn insert_album_row(conn: &SqlContext<'_, '_>, album: &DbAlbum) -> Re
     conn.execute(
         r#"
         INSERT INTO albums (
-            id, title, artist_id, year, is_compilation, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?)
+            id, title, year, is_compilation, created_at
+        ) VALUES (?, ?, ?, ?, ?)
         "#,
         params![
             album.id,
             album.title,
-            album.artist_id,
             album.year,
             album.is_compilation,
             album.created_at.to_rfc3339(),
@@ -73,18 +72,16 @@ pub(super) fn upsert_album_row(conn: &SqlContext<'_, '_>, album: &DbAlbum) -> Re
     conn.execute(
         r#"
         INSERT INTO albums (
-            id, title, artist_id, year, is_compilation, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?)
+            id, title, year, is_compilation, created_at
+        ) VALUES (?, ?, ?, ?, ?)
         ON CONFLICT (id) DO UPDATE SET
             title = excluded.title,
-            artist_id = excluded.artist_id,
             year = excluded.year,
             is_compilation = excluded.is_compilation
         "#,
         params![
             album.id,
             album.title,
-            album.artist_id,
             album.year,
             album.is_compilation,
             album.created_at.to_rfc3339(),
@@ -752,18 +749,24 @@ pub(super) fn write_release_records(
     Ok(())
 }
 
-/// Make `album_id`'s further artists exactly `artists`, touching only the
-/// rows that differ (see [`write_credits`]).
+/// Make `album_id`'s credit list exactly `artists`, touching only the rows
+/// that differ (see [`write_credits`]).
 pub(super) fn replace_album_artists(
     conn: &SqlContext<'_, '_>,
     album_id: &str,
     artists: &[DbAlbumArtist],
     now: &str,
 ) -> Result<(), DbError> {
+    if let Some(stray) = artists.iter().find(|aa| aa.album_id != album_id) {
+        return Err(DbError::Message(format!(
+            "an album artist names album {}, whose credits this write does not replace",
+            stray.album_id
+        )));
+    }
     let credits: Vec<Credit<'_>> = artists
         .iter()
         .map(|aa| Credit {
-            id: crate::db::identity::album_artist_id(album_id, &aa.artist_id),
+            id: aa.id(),
             artist_id: &aa.artist_id,
             position: aa.position,
         })
@@ -805,19 +808,20 @@ pub(super) fn replace_track_artists(
     Ok(())
 }
 
-/// One artist's credit as an `album_artists` / `track_artists` row. Its id
-/// spells the credit, so the same credit given again names the same row.
+/// One place of an `album_artists` / `track_artists` list. Its id derives
+/// from the owner and the position, so the same place written again names
+/// the same row.
 struct Credit<'a> {
     id: String,
     artist_id: &'a str,
-    position: i32,
+    position: u32,
 }
 
-/// Make `owner_id`'s rows of `table` exactly `credits`. A credit no longer
-/// given is deleted, a new one inserted, and one given again at another
-/// position moved; one given again at its position is not touched. So a write
-/// that keeps a credit leaves its row, and its `created_at`, as they were, and
-/// syncs nothing for it.
+/// Make `owner_id`'s rows of `table` exactly `credits`. A place no longer
+/// given is deleted, a new one inserted, and one given again naming another
+/// artist rewritten; one given again naming its artist is not touched. So a
+/// write that keeps a credit leaves its row, and its `created_at`, as they
+/// were, and syncs nothing for it.
 fn write_credits(
     conn: &SqlContext<'_, '_>,
     table: &'static str,
@@ -826,11 +830,11 @@ fn write_credits(
     credits: &[Credit<'_>],
     now: &str,
 ) -> Result<(), DbError> {
-    let stored: HashMap<String, i32> = conn
+    let stored: HashMap<String, String> = conn
         .query(
-            &format!("SELECT id, position FROM {table} WHERE {owner_column} = ?"),
+            &format!("SELECT id, artist_id FROM {table} WHERE {owner_column} = ?"),
             params![owner_id],
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, i32>(1)?)),
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
         )?
         .into_iter()
         .collect();
@@ -841,11 +845,11 @@ fn write_credits(
     }
     for credit in credits {
         match stored.get(&credit.id) {
-            Some(position) if *position == credit.position => {}
+            Some(artist_id) if artist_id == credit.artist_id => {}
             Some(_) => {
                 conn.execute(
-                    &format!("UPDATE {table} SET position = ? WHERE id = ?"),
-                    params![credit.position, credit.id],
+                    &format!("UPDATE {table} SET artist_id = ? WHERE id = ?"),
+                    params![credit.artist_id, credit.id],
                 )?;
             }
             None => {

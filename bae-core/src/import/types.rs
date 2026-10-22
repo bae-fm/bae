@@ -503,8 +503,8 @@ pub enum TrackArtistAssignments {
 /// (that's a re-import, not an edit). An import's tracks are the included audio
 /// units, and metadata application must describe that same ordered list.
 ///
-/// `album_artist_assignments` is positional — element 0 is the primary album
-/// artist, later elements get progressively higher `album_artists.position`.
+/// `album_artist_assignments` is the album's credit list in order; element *n*
+/// is the `album_artists` row at position *n*.
 /// Empty is a validation error: every album has at least one artist.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseUserEdit {

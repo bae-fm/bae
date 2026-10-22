@@ -274,12 +274,15 @@ mod tests {
         let album = DbAlbum {
             id: Uuid::new_v4().to_string(),
             title: "Album Title".to_string(),
-            artist_id: bae_test_support::test_uuid("artist-1"),
             year: None,
             is_compilation: false,
             created_at: Utc::now(),
         };
         database.insert_album(&album).await.unwrap();
+        database
+            .insert_album_artist(&crate::db::DbAlbumArtist::new_test(&album.id, &artist.id))
+            .await
+            .unwrap();
 
         let release = DbRelease {
             id: Uuid::new_v4().to_string(),
@@ -406,12 +409,15 @@ mod tests {
         let album = DbAlbum {
             id: Uuid::new_v4().to_string(),
             title: "Test Album".to_string(),
-            artist_id: bae_test_support::test_uuid("artist-1"),
             year: None,
             is_compilation: false,
             created_at: Utc::now(),
         };
         database.insert_album(&album).await.unwrap();
+        database
+            .insert_album_artist(&crate::db::DbAlbumArtist::new_test(&album.id, &artist.id))
+            .await
+            .unwrap();
 
         let release = DbRelease {
             id: Uuid::new_v4().to_string(),

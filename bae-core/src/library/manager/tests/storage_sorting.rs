@@ -19,9 +19,13 @@ async fn storage_page_sort_by_artist_names() {
         manager.database.insert_artist(&artist).await.unwrap();
         let mut album = create_test_album();
         album.title = format!("Album by {artist_name}");
-        album.artist_id = artist_id.to_string();
         let release = create_test_release(&album.id);
         manager.database.insert_album(&album).await.unwrap();
+        manager
+            .database
+            .insert_album_artist(&crate::db::DbAlbumArtist::new_test(&album.id, artist_id))
+            .await
+            .unwrap();
         insert_release(&manager, &release).await;
     }
 

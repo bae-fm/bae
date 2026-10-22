@@ -52,7 +52,7 @@ impl Database {
                 &sql,
                 r#"
                     SELECT
-                        a.id, a.title, a.artist_id, a.year,
+                        a.id, a.title, a.year,
                         a.is_compilation, a.created_at
                     FROM albums a
                     JOIN releases r ON r.album_id = a.id
@@ -197,9 +197,8 @@ pub(crate) struct RecordsChange {
 /// Write `change`:
 ///
 /// 1. Write the destination album when `new_album` is `Some` and that album
-///    holds no release, plus copies of `current_album_id`'s `album_artists`
-///    rows (so it lands fully populated, not a bare row that drops the artist
-///    links the source already had).
+///    holds no release, with a copy of `current_album_id`'s credit list (so it
+///    lands credited as the source was, not a bare row with no artist).
 /// 2. Replace the release's records.
 /// 3. UPDATE the release's `album_id` and `draft_from_tags`; a release that
 ///    moves is ordered after the destination album's others.
@@ -252,7 +251,7 @@ pub(super) fn set_records_on(
                     Ok(DbAlbumArtist::new(
                         &album.id,
                         &row.get::<_, String>("artist_id")?,
-                        row.get::<_, i32>("position")?,
+                        row.get::<_, u32>("position")?,
                         now_dt,
                     ))
                 },

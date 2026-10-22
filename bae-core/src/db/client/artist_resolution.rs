@@ -454,52 +454,25 @@ pub(super) fn relink<T: Clone>(
         .collect()
 }
 
-/// The album's primary artist, resolved.
-pub(super) fn relinked_album(
-    album: &DbAlbum,
-    artist_ids: &HashMap<String, String>,
-) -> Result<DbAlbum, DbError> {
-    let mut album = relink(std::slice::from_ref(album), artist_ids, "album", |album| {
-        &mut album.artist_id
-    })?;
-    Ok(album.remove(0))
-}
-
-/// The album's further artists, resolved. Two credits that resolve to one
-/// artist are one credit: a later one naming the primary artist, or an artist
-/// an earlier position already holds, is dropped.
+/// The album's credits, resolved. Each place keeps its credit even where two
+/// resolve to one artist: the list names that artist twice.
 pub(super) fn relink_album_artists(
-    album: Option<&DbAlbum>,
     links: &[DbAlbumArtist],
     artist_ids: &HashMap<String, String>,
 ) -> Result<Vec<DbAlbumArtist>, DbError> {
-    let mut seen: HashSet<String> = album
-        .map(|album| relinked_album(album, artist_ids))
-        .transpose()?
-        .map(|album| album.artist_id)
-        .into_iter()
-        .collect();
-    let mut links = relink(links, artist_ids, "album artist", |link| {
+    relink(links, artist_ids, "album artist", |link| {
         &mut link.artist_id
-    })?;
-    links.sort_by_key(|link| link.position);
-    links.retain(|link| seen.insert(link.artist_id.clone()));
-    Ok(links)
+    })
 }
 
-/// Each track's artists, resolved, with a later credit dropped where it
-/// resolves to an artist the track already holds.
+/// Each track's own credits, resolved, every place kept.
 pub(super) fn relink_track_artists(
     links: &[DbTrackArtist],
     artist_ids: &HashMap<String, String>,
 ) -> Result<Vec<DbTrackArtist>, DbError> {
-    let mut links = relink(links, artist_ids, "track artist", |link| {
+    relink(links, artist_ids, "track artist", |link| {
         &mut link.artist_id
-    })?;
-    links.sort_by(|a, b| (&a.track_id, a.position).cmp(&(&b.track_id, b.position)));
-    let mut seen: HashSet<(String, String)> = HashSet::new();
-    links.retain(|link| seen.insert((link.track_id.clone(), link.artist_id.clone())));
-    Ok(links)
+    })
 }
 
 /// What the catalog-id step says about one credit.

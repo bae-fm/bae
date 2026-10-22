@@ -7,7 +7,7 @@ pub(super) fn find_album_by_id_on(
     sql.query_row(
         r#"
             SELECT
-                id, title, artist_id, year,
+                id, title, year,
                 is_compilation,
                 created_at
             FROM albums
@@ -24,25 +24,17 @@ pub(super) fn get_artists_for_album_on(
     sql: &SqlReadContext<'_>,
     album_id: &str,
 ) -> Result<Vec<DbArtist>, DbError> {
-    // Primary artist from FK (sort_key = -1 so it's first), then additional
-    // artists from the junction table ordered by position. Each credit shows
-    // the artist it resolves to after merges, once, at its first position.
+    // Each credit in list order, showing the artist it resolves to after
+    // merges; a list naming one artist twice gives it twice.
     sql.query(
         &format!(
             r#"
-            SELECT a.* FROM artists a
-            JOIN (
-                SELECT {primary} AS artist_id, -1 AS sort_key
-                FROM albums alb WHERE alb.id = ?1
-                UNION ALL
-                SELECT {additional} AS artist_id, aa.position AS sort_key
-                FROM album_artists aa WHERE aa.album_id = ?1
-            ) credit ON credit.artist_id = a.id
-            GROUP BY a.id
-            ORDER BY MIN(credit.sort_key)
+            SELECT a.* FROM album_artists aa
+            JOIN artists a ON a.id = {shown}
+            WHERE aa.album_id = ?1
+            ORDER BY aa.position
             "#,
-            primary = shown_artist_id("alb.artist_id"),
-            additional = shown_artist_id("aa.artist_id"),
+            shown = shown_artist_id("aa.artist_id"),
         ),
         params![album_id],
         row_to_artist,
@@ -424,7 +416,6 @@ pub(super) fn row_to_album_with_prefix(row: &Row, prefix: &str) -> rusqlite::Res
     Ok(DbAlbum {
         id: row.get(column("id").as_str())?,
         title: row.get(column("title").as_str())?,
-        artist_id: row.get(column("artist_id").as_str())?,
         year: row.get(column("year").as_str())?,
         is_compilation: row.get(column("is_compilation").as_str())?,
         created_at: rfc3339_column(row, &column("created_at"))?,

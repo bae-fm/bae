@@ -221,7 +221,8 @@ fn seed_artist_album_release(conn: &coven::SqlContext<'_, '_>) -> Result<(), cra
         "
         INSERT INTO artists (id, name, name_key, created_at) VALUES ('7cdf9a34-0746-472b-8c68-0a669c11f2f1', 'Artist Name Primary', 'artist name primary', '2026-01-01T00:00:00Z');
 
-        INSERT INTO albums (id, title, artist_id, year, is_compilation, created_at) VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2026, 0, '2026-01-01T00:00:00Z');
+        INSERT INTO albums (id, title, year, is_compilation, created_at) VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', 2026, 0, '2026-01-01T00:00:00Z');
+            INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('340983b5-a21a-4ee4-ae87-8433261ec057', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 0, '2026-01-01T00:00:00Z');
 
         INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '2026-01-01T00:00:00Z', 0);
         ",
@@ -274,6 +275,9 @@ mod live_query_tests;
 
 #[cfg(test)]
 mod album_group_tests;
+
+#[cfg(test)]
+mod album_credit_tests;
 
 #[cfg(test)]
 mod import_list_live_query_tests;

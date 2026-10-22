@@ -95,7 +95,11 @@ pub(crate) async fn release_album_id3_with(
         id: album_wire_id(&release.id),
         name: album.album.title.clone(),
         artist: Some(album.artist_names.clone()),
-        artist_id: Some(artist_wire_id(&album.album.artist_id)),
+        // The protocol names one artist per album: the first credit.
+        artist_id: album
+            .artists
+            .first()
+            .map(|artist| artist_wire_id(&artist.id)),
         cover_art,
         song_count: tracks.len() as i64,
         duration: total_duration_secs(&tracks),

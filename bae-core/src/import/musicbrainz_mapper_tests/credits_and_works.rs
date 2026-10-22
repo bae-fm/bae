@@ -248,7 +248,7 @@ fn track_level_artist_credit_dedupes_against_release_artist_by_mb_id() {
     let committed = crate::import::release_values::committed_artists(&parsed);
     assert!(
         parsed.track_artists.iter().any(|ta| ta.track_id == parsed.tracks[0].id
-            && committed[&ta.artist_id] == committed[&parsed.album.artist_id]),
+            && committed[&ta.artist_id] == committed[&parsed.album_artists[0].artist_id]),
         "release artist must not be duplicated by a track credit"
     );
 }

@@ -336,7 +336,7 @@ use crate::import::ReleaseRecord;
 async fn setup_test_db_with_artist() -> (LibraryManager, TempDir) {
     let (manager, tmp) = setup_test_manager().await;
     let artist = DbArtist {
-        id: "e36744a5-1a36-460f-891c-e7e558034edf".to_string(),
+        id: TEST_ARTIST_ID.to_string(),
         name: "Artist Name".to_string(),
         sort_name: None,
         discogs_artist_id: None,
@@ -347,12 +347,15 @@ async fn setup_test_db_with_artist() -> (LibraryManager, TempDir) {
     (manager, tmp)
 }
 
+/// The artist `setup_test_db_with_artist` inserts, which every test album
+/// credits.
+const TEST_ARTIST_ID: &str = "e36744a5-1a36-460f-891c-e7e558034edf";
+
 fn make_album(title: &str) -> DbAlbum {
     let now = Utc::now();
     DbAlbum {
         id: Uuid::new_v4().to_string(),
         title: title.to_string(),
-        artist_id: "e36744a5-1a36-460f-891c-e7e558034edf".to_string(),
         year: Some(2024),
         is_compilation: false,
         created_at: now,
@@ -425,7 +428,14 @@ async fn insert_with_identities(
 ) {
     let track = make_track(&release.id, 1);
     manager
-        .insert_album_with_release_and_tracks(album, release, &[crate::db::DbReleaseMedium::new_test(&release.id)], &[track], &[])
+        .insert_album_with_release_and_tracks(
+            album,
+            &[crate::db::DbAlbumArtist::new_test(&album.id, TEST_ARTIST_ID)],
+            release,
+            &[crate::db::DbReleaseMedium::new_test(&release.id)],
+            &[track],
+            &[],
+        )
         .await
         .unwrap();
     manager

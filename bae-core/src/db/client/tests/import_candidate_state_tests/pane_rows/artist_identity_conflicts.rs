@@ -79,7 +79,6 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     let album = DbAlbum {
         id: bae_test_support::test_uuid("conflict-merge-album"),
         title: "Album Title".to_string(),
-        artist_id: musicbrainz.id.clone(),
         year: None,
         is_compilation: false,
         created_at: fixed_now(),
@@ -143,14 +142,15 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
                         "INSERT INTO {table} \
                              (id, {owner_column}, artist_id, position{source_column}, \
                               created_at) \
-                         VALUES (?, ?, ?, 0{source_value}, '2026-01-02T03:04:05Z')"
+                         VALUES (?, ?, ?, ?{source_value}, '2026-01-02T03:04:05Z')"
                     ),
                     params![
                         bae_test_support::test_uuid(&format!(
                             "conflict-merge-{table}-{artist_index}"
                         )),
                         owner_id,
-                        artist_id
+                        artist_id,
+                        artist_index as i64
                     ],
                 )?;
             }
@@ -218,7 +218,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     assert_eq!(survivor.discogs_artist_id.as_deref(), Some("discogs-1"));
     assert_eq!(survivor.musicbrainz_artist_id.as_deref(), Some("mb-1"));
     // The absorbed artist stays, recorded as merged, and every credit shows
-    // the survivor once.
+    // the survivor: the album's list names it twice, as it named the two.
     assert!(db
         .find_artist_by_id(&musicbrainz.id)
         .await
@@ -231,7 +231,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
             .into_iter()
             .map(|artist| artist.id)
             .collect::<Vec<_>>(),
-        vec![discogs.id.clone()]
+        vec![discogs.id.clone(), discogs.id.clone()]
     );
     let absorbed_id = musicbrainz.id.clone();
     let survivor_id = discogs.id.clone();

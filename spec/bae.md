@@ -220,14 +220,28 @@ Artists credit albums, releases, tracks and works:
 
 | Credit | Table | What it says |
 |---|---|---|
-| An album's artists | `albums.artist_id`, then `album_artists` | who the album is by, in credit order |
-| A track's artists | `track_artists` | who the track is by, in credit order |
+| An album's artists | `album_artists` | who the album is by, in credit order |
+| A track's artists | `track_artists` | who the track is by, in credit order; a track with none is by the album's artists |
 | A release's roles | `release_artist_roles` | who did what on the release, as the catalog stated it |
 | A track's roles | `track_artist_roles` | who did what on the track, as the catalog stated it |
 | A work's artists | `work_artists` | who wrote or arranged the work |
 
 An artist row holds a name, a sort name, and the artist's MusicBrainz and
 Discogs ids where known. It may carry one picture, bae's own copy (§4.1).
+
+**An album's and a track's artists are each one ordered list.** No credit is
+the album's "own" artist with the others added: the first credit is position
+0 of the same list. Each place in a list is its own row, so a list that names
+one artist twice keeps both credits. Every reader takes the whole list:
+
+- An album's line names every credit in order.
+- Library search finds an album by its title or by any of its credits' names.
+  A track's search row names the track's own credits, else its album's.
+- Sorting albums by artist compares every credit's sort name (else its name)
+  in list order, so an album by A comes before one by A and B, which comes
+  before one by A and C. The storage table's artist column sorts the same way.
+- The artist list and an artist's page count an album for every artist its
+  list names, once per artist.
 
 Two artists can be merged into one, and only one way: on the import page, when
 an import's credit shows that two library artists are the same person and the
@@ -297,8 +311,8 @@ key that spells the fact.
 | artist | its MusicBrainz artist id, or failing that its Discogs artist id |
 | work | its MusicBrainz work id |
 | album | its MusicBrainz release group, or failing that its Discogs master |
-| album credit | the album and the artist |
-| track credit | the track and the artist |
+| album credit | the album and the place in its list |
+| track credit | the track and the place in its list |
 | work credit | the work, the artist and the position |
 | work part | the parent and child works |
 | release record | the release and the catalog |
@@ -318,6 +332,11 @@ stating one fact write one row
   no group, so its album gets a fresh id.
 - **A second catalog's group.** A Discogs import whose record pairs with the
   MusicBrainz group of an album already in the library joins that album (§3.7).
+- **Two devices editing one credit list.** A credit row is a place in the
+  list, so two devices writing the same place write one row, and the artist it
+  names merges like any other cell. One device shortening a list while another
+  lengthens it can leave a gap in the positions; readers order by position, so
+  a gap changes nothing shown.
 
 ### 2.7 A release's identity
 
@@ -2202,8 +2221,8 @@ All sync.
 | `artists` | artist: name, folded name, sort name, MusicBrainz and Discogs ids |
 | `artist_merges` | artist absorbed into another (§2.3); read through the view `merged_artist_survivors` |
 | `artist_images` | artist's picture, keyed by the artist; carries a file |
-| `albums` | album: title, first artist, year, compilation flag |
-| `album_artists` | album's artist after the first, in order |
+| `albums` | album: title, year, compilation flag |
+| `album_artists` | album's credit, one per place in its list, from position 0 |
 | `works` | MusicBrainz work |
 | `work_artists` | work's credited artist, in order |
 | `work_parts` | work inside a larger work, in order |
@@ -2214,7 +2233,7 @@ All sync.
 | `release_records` | catalog record of a release: pressing or album, key, album key, URL |
 | `release_mediums` | a release's medium: its position, carrier and number of sides (§2.2) |
 | `tracks` | track: title, place (its medium, side and number, all required), length (required: the import measures every track's audio), playing order |
-| `track_artists` | track's artist, in order |
+| `track_artists` | track's own credit, one per place in its list, from position 0 |
 | `track_artist_roles` | credit on a track, as the catalog stated it |
 | `track_works` | work a track performs, in order |
 | `audio_formats` | track's format, pregap, loudness and peak |

@@ -32,14 +32,14 @@ async fn real_schema_opens_with_the_declarations_and_unattached_files() {
     let album = bae_core::db::DbAlbum {
         id: uuid::Uuid::new_v4().to_string(),
         title: "Schema Album".into(),
-        artist_id: artist.id.clone(),
         year: None,
         is_compilation: false,
         created_at: chrono::Utc::now(),
     };
     let release = bae_core::db::DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string());
+    let credit = bae_core::db::DbAlbumArtist::new_test(&album.id, &artist.id);
     database
-        .insert_album_with_release_and_tracks(&album, &release, &[], &[], &[])
+        .insert_album_with_release_and_tracks(&album, &[credit], &release, &[], &[], &[])
         .await
         .unwrap();
     let file = bae_core::db::DbFile::new(
@@ -101,14 +101,14 @@ async fn upload_cancellation_detaches_the_file_and_restores_its_original() {
     let album = bae_core::db::DbAlbum {
         id: uuid::Uuid::new_v4().to_string(),
         title: "Album".into(),
-        artist_id: artist.id,
         year: None,
         is_compilation: false,
         created_at: chrono::Utc::now(),
     };
     let release = bae_core::db::DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string());
+    let credit = bae_core::db::DbAlbumArtist::new_test(&album.id, &artist.id);
     database
-        .insert_album_with_release_and_tracks(&album, &release, &[], &[], &[])
+        .insert_album_with_release_and_tracks(&album, &[credit], &release, &[], &[], &[])
         .await
         .unwrap();
     let source = directory.path().join("track.flac");

@@ -27,11 +27,13 @@ async fn grouped_library() -> (Database, tempfile::TempDir) {
     .enumerate()
     {
         let album = format!("00000000-0000-4000-8000-{index:012}");
+        let credit = format!("20000000-0000-4000-8000-{index:012}");
         let release = format!("10000000-0000-4000-8000-{index:012}");
         exec_batch(
             &db,
             &format!(
-            "INSERT INTO albums (id, title, artist_id, is_compilation, created_at) VALUES ('{album}', '{title}', '{artist}', 0, '2026-01-01T00:00:00Z'); \
+            "INSERT INTO albums (id, title, is_compilation, created_at) VALUES ('{album}', '{title}', 0, '2026-01-01T00:00:00Z'); \
+             INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('{credit}', '{album}', '{artist}', 0, '2026-01-01T00:00:00Z'); \
              INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{release}', '{album}', '2026-01-01T00:00:00Z', 0);"
         ),
         )
@@ -110,7 +112,7 @@ async fn artist_sections_follow_renames_and_disappearing_groups() {
     assert_eq!(renamed.sections[2].window.offset, 4);
     exec(
         &db,
-        "DELETE FROM releases WHERE album_id IN (SELECT id FROM albums WHERE artist_id = ?)",
+        "DELETE FROM releases WHERE album_id IN (SELECT album_id FROM album_artists WHERE artist_id = ?)",
         &[ARTIST_C],
     )
     .await;
@@ -194,7 +196,7 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
     );
     exec(
         &db,
-        "DELETE FROM album_artists WHERE album_id = ?",
+        "DELETE FROM album_artists WHERE album_id = ? AND position = 1",
         &[album_id],
     )
     .await;
@@ -207,10 +209,13 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
 async fn merged_and_repeated_credits_make_one_appearance_per_artist() {
     let (db, _dir) = grouped_library().await;
     let album_id = "00000000-0000-4000-8000-000000000000";
-    for (id, artist) in [("primary-again", ARTIST_A), ("other-credit", ARTIST_B)] {
+    for (id, artist, position) in [
+        ("primary-again", ARTIST_A, "1"),
+        ("other-credit", ARTIST_B, "2"),
+    ] {
         exec(&db,
-            "INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES (?, ?, ?, 1, '2026-01-01T00:00:00Z')",
-            &[id, album_id, artist]).await;
+            "INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES (?, ?, ?, ?, '2026-01-01T00:00:00Z')",
+            &[id, album_id, artist, position]).await;
     }
     let mut browse = db.subscribe_album_browse(
         &[],

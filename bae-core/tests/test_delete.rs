@@ -4,22 +4,10 @@ use bae_test_support as support;
 use chrono::Utc;
 use uuid::Uuid;
 
-fn create_test_artist() -> bae_core::db::DbArtist {
-    bae_core::db::DbArtist {
-        id: Uuid::new_v4().to_string(),
-        name: "Test Artist".to_string(),
-        sort_name: None,
-        discogs_artist_id: None,
-        musicbrainz_artist_id: None,
-        created_at: Utc::now(),
-    }
-}
-
-fn create_test_album(artist_id: &str) -> DbAlbum {
+fn create_test_album() -> DbAlbum {
     DbAlbum {
         id: Uuid::new_v4().to_string(),
         title: "Test Album".to_string(),
-        artist_id: artist_id.to_string(),
         year: Some(2024),
         is_compilation: false,
         created_at: Utc::now(),
@@ -66,9 +54,7 @@ fn create_test_track(release_id: &str, track_number: i32) -> DbTrack {
 #[tokio::test]
 async fn test_delete_album_integration() {
     let (library_manager, database, _temp_dir) = support::setup_test_library().await;
-    let artist = create_test_artist();
-    database.insert_artist(&artist).await.unwrap();
-    let album = create_test_album(&artist.id);
+    let album = create_test_album();
     let release = create_test_release(&album.id);
     let track1 = create_test_track(&release.id, 1);
     let track2 = create_test_track(&release.id, 2);
@@ -103,9 +89,7 @@ async fn test_delete_album_integration() {
 #[tokio::test]
 async fn test_delete_release_integration() {
     let (library_manager, database, _temp_dir) = support::setup_test_library().await;
-    let artist = create_test_artist();
-    database.insert_artist(&artist).await.unwrap();
-    let album = create_test_album(&artist.id);
+    let album = create_test_album();
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
     let track1 = create_test_track(&release1.id, 1);
@@ -153,9 +137,7 @@ async fn test_delete_release_integration() {
 #[tokio::test]
 async fn test_delete_last_release_empties_album() {
     let (library_manager, database, _temp_dir) = support::setup_test_library().await;
-    let artist = create_test_artist();
-    database.insert_artist(&artist).await.unwrap();
-    let album = create_test_album(&artist.id);
+    let album = create_test_album();
     let release = create_test_release(&album.id);
 
     database.insert_album(&album).await.unwrap();
@@ -195,9 +177,7 @@ async fn primary_release_of(
 #[tokio::test]
 async fn test_deleting_the_primary_release_makes_the_next_one_primary() {
     let (library_manager, database, _temp_dir) = support::setup_test_library().await;
-    let artist = create_test_artist();
-    database.insert_artist(&artist).await.unwrap();
-    let album = create_test_album(&artist.id);
+    let album = create_test_album();
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
     let release3 = create_test_release(&album.id);
@@ -236,9 +216,7 @@ async fn test_deleting_the_primary_release_makes_the_next_one_primary() {
 #[tokio::test]
 async fn test_deleting_another_release_keeps_the_primary() {
     let (library_manager, database, _temp_dir) = support::setup_test_library().await;
-    let artist = create_test_artist();
-    database.insert_artist(&artist).await.unwrap();
-    let album = create_test_album(&artist.id);
+    let album = create_test_album();
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
 
@@ -271,10 +249,8 @@ async fn test_deleting_another_release_keeps_the_primary() {
 #[tokio::test]
 async fn test_a_release_of_another_album_cannot_be_made_primary() {
     let (library_manager, database, _temp_dir) = support::setup_test_library().await;
-    let artist = create_test_artist();
-    database.insert_artist(&artist).await.unwrap();
-    let album = create_test_album(&artist.id);
-    let other = create_test_album(&artist.id);
+    let album = create_test_album();
+    let other = create_test_album();
     let release = create_test_release(&album.id);
     let elsewhere = create_test_release(&other.id);
     database.insert_album(&album).await.unwrap();

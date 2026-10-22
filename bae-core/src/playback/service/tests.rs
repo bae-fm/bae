@@ -96,9 +96,13 @@ async fn seed_test_releases(
     };
     database.insert_artist(&artist).await.unwrap();
     for (release_id, track_ids) in releases {
-        let album = DbAlbum::new_test("Album Title", &artist.id);
+        let album = DbAlbum::new_test("Album Title");
         let release = DbRelease::new_test(&album.id, release_id);
         database.insert_album(&album).await.unwrap();
+        database
+            .insert_album_artist(&crate::db::DbAlbumArtist::new_test(&album.id, &artist.id))
+            .await
+            .unwrap();
         database.insert_release(&release).await.unwrap();
         database
             .insert_release_medium(&crate::db::DbReleaseMedium::new_test(release_id))

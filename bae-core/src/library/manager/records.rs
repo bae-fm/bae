@@ -234,7 +234,6 @@ impl LibraryManager {
         Ok(DbAlbum {
             id: self.ids.new_id().to_string(),
             title: source.title,
-            artist_id: source.artist_id,
             year: source.year,
             is_compilation: source.is_compilation,
             created_at: now,

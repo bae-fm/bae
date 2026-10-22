@@ -11,8 +11,10 @@ async fn cover_db() -> (Database, tempfile::TempDir) {
             "
             INSERT INTO artists (id, name, name_key, created_at) VALUES ('d7d8141f-54ff-467d-8b60-4f34a4d2e528', 'Artist Name', 'artist name', '2026-01-01T00:00:00Z');
 
-            INSERT INTO albums (id, title, artist_id, year, is_compilation, created_at) VALUES ('c6648d5a-617e-4b69-87da-b7f1c4fb5e65', 'Album With No Primary', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2026, 0, '2026-01-01T00:00:00Z'),
-             ('82a53f44-1b76-435b-89f0-42749371ee15', 'Album With A Primary', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2026, 0, '2026-01-01T00:00:00Z');
+            INSERT INTO albums (id, title, year, is_compilation, created_at) VALUES ('c6648d5a-617e-4b69-87da-b7f1c4fb5e65', 'Album With No Primary', 2026, 0, '2026-01-01T00:00:00Z'),
+             ('82a53f44-1b76-435b-89f0-42749371ee15', 'Album With A Primary', 2026, 0, '2026-01-01T00:00:00Z');
+            INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('0fc94c90-bb11-4234-a13e-3fe4df508122', 'c6648d5a-617e-4b69-87da-b7f1c4fb5e65', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 0, '2026-01-01T00:00:00Z'),
+             ('7ad05ec6-4f7c-4ce5-ab5f-d97ec80f1a92', '82a53f44-1b76-435b-89f0-42749371ee15', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 0, '2026-01-01T00:00:00Z');
 
             INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('fcf4be32-159f-4790-87a1-697700a74462', 'c6648d5a-617e-4b69-87da-b7f1c4fb5e65', '2026-01-01T00:00:00Z', 0),
              ('2ffa8060-aa00-4147-8ad4-f373ef66c407', '82a53f44-1b76-435b-89f0-42749371ee15', '2026-01-01T00:00:00Z', 1),

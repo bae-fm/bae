@@ -11,7 +11,8 @@ pub struct DbLibrarySearchResults {
     pub works: Vec<DbWorkSummary>,
 }
 
-/// Raw album search-result row with the primary artist name joined in SQL.
+/// Raw album search-result row; `artist_name` is the album's credits,
+/// comma-joined.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbAlbumSearchResult {
     pub id: String,
@@ -22,8 +23,9 @@ pub struct DbAlbumSearchResult {
     pub artist_name: String,
 }
 
-/// Raw track search-result row with album and artist info joined in SQL.
-/// No formatted duration label — the resolver in `LibraryManager` formats it.
+/// Raw track search-result row with album and artist info joined in SQL;
+/// `artist_name` is the track's own credits, else its album's. No formatted
+/// duration label — the resolver in `LibraryManager` formats it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbTrackSearchResult {
     pub id: String,
@@ -45,9 +47,8 @@ pub struct DbComposerSummary {
     pub unlinked_credit_count: i64,
 }
 
-/// Raw artist-summary aggregate: the artist row plus its distinct album
-/// count over both album-artist links (the primary `albums.artist_id` FK
-/// and `album_artists` junction rows).
+/// Raw artist-summary aggregate: the artist row plus the number of distinct
+/// albums whose credit list names it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbArtistSummary {
     pub artist: DbArtist,

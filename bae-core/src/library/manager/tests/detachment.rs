@@ -18,18 +18,6 @@ async fn check_release_detachment(uploaded: bool) {
     let original = TempDir::new().unwrap();
     let destination = TempDir::new().unwrap();
     let album = create_test_album();
-    manager
-        .database
-        .insert_artist(&DbArtist {
-            id: album.artist_id.clone(),
-            name: "Artist Name".into(),
-            sort_name: None,
-            discogs_artist_id: None,
-            musicbrainz_artist_id: None,
-            created_at: album.created_at,
-        })
-        .await
-        .unwrap();
     manager.database.insert_album(&album).await.unwrap();
     let release = insert_local_release_in_album(
         manager,

@@ -50,22 +50,20 @@ pub(crate) fn assemble_release(
         .iter()
         .map(|assignment| artists.assigned(assignment))
         .collect();
+    if album_artist_ids.is_empty() {
+        return Err(crate::import::EditValidationError::NoAlbumArtist.into());
+    }
     let album = DbAlbum {
         id: ids.new_id().to_string(),
         title: edit.album_title.clone(),
-        artist_id: album_artist_ids
-            .first()
-            .cloned()
-            .ok_or(crate::import::EditValidationError::NoAlbumArtist)?,
         year: edit.album_year,
         is_compilation: ArtistAssignment::credit_a_compilation(&edit.album_artist_assignments),
         created_at: now,
     };
     let album_artists = album_artist_ids
         .iter()
-        .enumerate()
-        .skip(1)
-        .map(|(position, artist_id)| DbAlbumArtist::new(&album.id, artist_id, position as i32, now))
+        .zip(0..)
+        .map(|(artist_id, position)| DbAlbumArtist::new(&album.id, artist_id, position, now))
         .collect();
 
     let release = DbRelease {
@@ -141,11 +139,11 @@ pub(crate) fn assemble_release(
             created_at: now,
         };
         if let TrackArtistAssignments::Explicit(assignments) = &shaped.artist_assignments {
-            for (position, assignment) in assignments.iter().enumerate() {
+            for (assignment, position) in assignments.iter().zip(0..) {
                 track_artists.push(DbTrackArtist::new(
                     &row.id,
                     &artists.assigned(assignment),
-                    position as i32,
+                    position,
                     now,
                 ));
             }

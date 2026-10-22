@@ -43,7 +43,7 @@ mod artist_resolution;
 pub(crate) use artist_resolution::resolved_in_an_empty_library;
 pub(crate) use artist_resolution::ArtistCredits;
 pub use artist_resolution::ArtistWriteError;
-use artist_resolution::{relink_album_artists, relink_track_artists, relinked_album};
+use artist_resolution::{relink_album_artists, relink_track_artists};
 // Only the import write resolves credits inside a release's own write.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use artist_resolution::{artist_write_failure, relink};

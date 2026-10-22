@@ -453,7 +453,6 @@ async fn musicbrainz_id_surfaces_when_present() {
     let album = DbAlbum {
         id: bae_test_support::test_uuid("mb-album-1"),
         title: "MB Album".to_string(),
-        artist_id: artist.id.clone(),
         year: Some(2010),
         is_compilation: false,
         created_at: now,
@@ -487,7 +486,14 @@ async fn musicbrainz_id_surfaces_when_present() {
         created_at: now,
     };
     manager
-        .insert_album_with_release_and_tracks(&album, &release, &[medium], &[track], &[])
+        .insert_album_with_release_and_tracks(
+            &album,
+            &[bae_core::db::DbAlbumArtist::new_test(&album.id, &artist.id)],
+            &release,
+            &[medium],
+            &[track],
+            &[],
+        )
         .await
         .unwrap();
 

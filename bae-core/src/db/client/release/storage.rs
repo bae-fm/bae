@@ -143,18 +143,16 @@ impl Database {
     ) -> Result<Vec<DbStorageRow>, DbError> {
         let uploading = self.uploading_release_ids(filter).await?;
         let queue_ordered = filter == StorageFilter::Uploading && !uploading.is_empty();
-        let (order_by, needs_artist_sort_join) = if queue_ordered {
-            ("upload_queue.position".to_string(), false)
+        let order_by = if queue_ordered {
+            "upload_queue.position".to_string()
         } else {
             storage_order_by(sort)
         };
-        let artist_sort_join = album_summary_artist_join(needs_artist_sort_join);
         let where_clause = storage_filter_where(filter, uploading.len());
         let page_where = if queue_ordered { "" } else { &where_clause };
 
         let query = storage_page_query(
             &order_by,
-            &artist_sort_join,
             page_where,
             usize::from(queue_ordered) * uploading.len(),
         );
@@ -178,17 +176,15 @@ impl Database {
                 let uploading = request.uploading.as_slice();
                 let queue_ordered =
                     request.filter == StorageFilter::Uploading && !uploading.is_empty();
-                let (order_by, needs_artist_sort_join) = if queue_ordered {
-                    ("upload_queue.position".to_string(), false)
+                let order_by = if queue_ordered {
+                    "upload_queue.position".to_string()
                 } else {
                     storage_order_by(&request.sort)
                 };
-                let artist_sort_join = album_summary_artist_join(needs_artist_sort_join);
                 let where_clause = storage_filter_where(request.filter, uploading.len());
                 let page_where = if queue_ordered { "" } else { &where_clause };
                 let query = storage_page_query(
                     &order_by,
-                    &artist_sort_join,
                     page_where,
                     usize::from(queue_ordered) * uploading.len(),
                 );

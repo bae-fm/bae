@@ -50,9 +50,8 @@ pub fn bridge_file_evidence_key(evidence: &BridgeFileEvidence) -> String {
 /// metadata edit ready to apply.
 ///
 /// `tracks` MUST line up with the release's existing tracks in order; edits
-/// cannot add or remove tracks. `album_artist_assignments` is positional —
-/// element 0 becomes the primary album artist (`album.artist_id`),
-/// subsequent elements get higher `album_artists.position` rows.
+/// cannot add or remove tracks. `album_artist_assignments` is the album's
+/// credit list in order; element *n* is the `album_artists` row at position *n*.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseUserEdit {
     pub album_title: String,

@@ -87,26 +87,25 @@ CREATE TABLE IF NOT EXISTS artist_images (
 CREATE TABLE IF NOT EXISTS albums (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
-    -- The first credited artist; the rest are in album_artists. Nullable here,
-    -- but the app always sets it.
-    artist_id TEXT REFERENCES artists(id),
     year INTEGER,
     is_compilation INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
 ) STRICT;
 
-CREATE INDEX IF NOT EXISTS idx_albums_artist_id ON albums (artist_id);
-
--- The album's artists after the first (`albums.artist_id`), in credit order.
+-- The album's credits, in credit order from position 0. A row is one place in
+-- the list (its id derives from the album and the position), so a list that
+-- names one artist twice keeps both credits. Positions need not be dense: two
+-- devices editing one list at once can leave a gap, and readers order by
+-- position.
 CREATE TABLE IF NOT EXISTS album_artists (
     id TEXT PRIMARY KEY,
     album_id TEXT NOT NULL,
     artist_id TEXT NOT NULL,
-    position INTEGER NOT NULL,
+    position INTEGER NOT NULL CHECK (position >= 0),
     created_at TEXT NOT NULL,
     FOREIGN KEY (album_id) REFERENCES albums (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
-    UNIQUE(album_id, artist_id)
+    UNIQUE(album_id, position)
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_album_artists_album_id ON album_artists (album_id);
@@ -402,16 +401,17 @@ CREATE INDEX IF NOT EXISTS idx_tracks_release_id ON tracks (release_id);
 
 CREATE UNIQUE INDEX IF NOT EXISTS tracks_release_position ON tracks(release_id, position);
 
--- The artists a track is credited to, in credit order.
+-- A track's own credits, in credit order from position 0, keyed like
+-- `album_artists` by (track, position). A track with none takes the album's.
 CREATE TABLE IF NOT EXISTS track_artists (
     id TEXT PRIMARY KEY,
     track_id TEXT NOT NULL,
     artist_id TEXT NOT NULL,
-    position INTEGER NOT NULL,
+    position INTEGER NOT NULL CHECK (position >= 0),
     created_at TEXT NOT NULL,
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
-    UNIQUE(track_id, artist_id)
+    UNIQUE(track_id, position)
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_track_artists_track_id ON track_artists (track_id);

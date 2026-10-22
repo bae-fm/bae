@@ -121,7 +121,6 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
         let album = DbAlbum {
             id: bae_test_support::test_uuid("choice-album"),
             title: "Album Title".into(),
-            artist_id: incoming.id.clone(),
             year: None,
             is_compilation: false,
             created_at: now,
@@ -232,7 +231,7 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
         let expected = chosen.clone();
         db.read(move |sql| {
             for table in [
-                "albums",
+                "album_artists",
                 "track_artists",
                 "work_artists",
                 "release_artist_roles",

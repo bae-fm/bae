@@ -54,21 +54,9 @@ async fn create_local_release(
     files: &[(&str, &[u8])],
 ) -> (String, String, Vec<(String, Vec<u8>)>) {
     let now = Utc::now();
-    let artist_id = bae_test_support::test_uuid("test-transfer-artist");
-    mgr.insert_artist(&bae_core::db::DbArtist {
-        id: artist_id.to_string(),
-        name: "Artist Name".to_string(),
-        sort_name: None,
-        discogs_artist_id: None,
-        musicbrainz_artist_id: None,
-        created_at: now,
-    })
-    .await
-    .unwrap();
     let album = DbAlbum {
         id: Uuid::new_v4().to_string(),
         title: "Album Title".to_string(),
-        artist_id: artist_id.to_string(),
         year: Some(2024),
         is_compilation: false,
         created_at: now,
@@ -86,7 +74,7 @@ async fn create_local_release(
         created_at: now,
     };
     let (album_id, release_id) = (album.id.clone(), release.id.clone());
-    mgr.insert_album_with_release_and_tracks(&album, &release, &[], &[], &[])
+    mgr.insert_album_with_release_and_tracks(&album, &[], &release, &[], &[], &[])
         .await
         .unwrap();
 

@@ -168,7 +168,6 @@ fn create_test_album() -> DbAlbum {
     DbAlbum {
         id: Uuid::new_v4().to_string(),
         title: "Test Album".to_string(),
-        artist_id: bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
         year: Some(2024),
         is_compilation: false,
         created_at: Utc::now(),

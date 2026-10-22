@@ -40,7 +40,15 @@ async fn fixture_albums_land_in_the_order_they_were_added() {
         .unwrap();
     let titles: Vec<&str> = newest_first.iter().map(|album| album.title.as_str()).collect();
     assert_eq!(titles, ["Third", "Second", "First"]);
-    assert_eq!(newest_first[1].artist_id, newest_first[2].artist_id);
+    let second_artists = manager
+        .get_artists_for_album(&newest_first[1].id)
+        .await
+        .unwrap();
+    let first_artists = manager
+        .get_artists_for_album(&newest_first[2].id)
+        .await
+        .unwrap();
+    assert_eq!(second_artists[0].id, first_artists[0].id);
 
     let third = &newest_first[0];
     let artists = manager.get_artists_for_album(&third.id).await.unwrap();

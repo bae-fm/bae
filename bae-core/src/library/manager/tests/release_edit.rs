@@ -371,6 +371,39 @@ async fn a_named_album_artist_already_in_the_library_is_linked() {
     );
 }
 
+/// A credit list naming one artist twice keeps both credits: each place in
+/// the list is its own row.
+#[tokio::test]
+async fn an_album_credit_list_naming_one_artist_twice_keeps_both_credits() {
+    let (manager, _temp_dir, album, release) = manager_with_release().await;
+    let edit = crate::import::ReleaseUserEdit {
+        album_title: "Album Title".to_string(),
+        album_artist_assignments: vec![
+            crate::import::ArtistAssignment::named("Album Artist One"),
+            crate::import::ArtistAssignment::named("Album Artist Two"),
+            crate::import::ArtistAssignment::named("Album Artist One"),
+        ],
+        album_year: None,
+        pressing: crate::pressing::Pressing::blank(),
+        tracks: Vec::new(),
+    };
+
+    manager
+        .apply_release_metadata_user_edit(&release.id, &edit)
+        .await
+        .unwrap();
+
+    let artists = manager.get_artists_for_album(&album.id).await.unwrap();
+    assert_eq!(
+        artists
+            .iter()
+            .map(|artist| artist.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["Album Artist One", "Album Artist Two", "Album Artist One"]
+    );
+    assert_eq!(artists[0].id, artists[2].id, "one library artist, credited twice");
+}
+
 /// An edit of a two-track release crediting two album artists and, per track,
 /// the artists `track_artists` names, in order.
 fn credited_release_edit(track_artists: [&[&str]; 2]) -> crate::import::ReleaseUserEdit {
@@ -427,8 +460,9 @@ async fn saving_unchanged_metadata_writes_nothing() {
     assert_eq!(queued_write_rows(&manager).await, writes);
 }
 
-/// Changing one track's credit writes that credit's rows and nothing else:
-/// every credit the edit leaves alone is left alone in the store.
+/// Changing one track's credit rewrites the row of that place in its list
+/// and nothing else: every credit the edit leaves alone is left alone in the
+/// store.
 #[tokio::test]
 async fn changing_one_track_credit_writes_only_that_credit() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
@@ -464,8 +498,8 @@ async fn changing_one_track_credit_writes_only_that_credit() {
         .collect::<Vec<_>>();
     assert_eq!(
         credit_rows,
-        ["track_artists", "track_artists"],
-        "the credit removed and the credit added"
+        ["track_artists"],
+        "the one place whose artist changed"
     );
     assert_eq!(
         rows[writes].iter().filter(|row| *row == "artists").count(),

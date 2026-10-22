@@ -1,33 +1,45 @@
 #![cfg(feature = "test-utils")]
 use bae_core::db::{
-    AlbumSortCriterion, AlbumSortField, Database, DbAlbum, DbArtist, DbRelease, SortDirection,
+    AlbumSortCriterion, AlbumSortField, Database, DbAlbum, DbAlbumArtist, DbArtist, DbRelease,
+    SortDirection,
 };
 use chrono::{Duration, Utc};
 use uuid::Uuid;
+
+/// A test album and its one credit, inserted together.
+struct ListedAlbum {
+    album: DbAlbum,
+    credit: DbAlbumArtist,
+}
 
 fn make_album(
     title: &str,
     artist_id: &str,
     year: Option<i32>,
     created_offset_hours: i64,
-) -> DbAlbum {
+) -> ListedAlbum {
     let now = Utc::now();
-    DbAlbum {
+    let album = DbAlbum {
         id: Uuid::new_v4().to_string(),
         title: title.to_string(),
-        artist_id: artist_id.to_string(),
         year,
         is_compilation: false,
         created_at: now + Duration::hours(created_offset_hours),
-    }
+    };
+    let credit = DbAlbumArtist::new_test(&album.id, artist_id);
+    ListedAlbum { album, credit }
 }
 
-/// Insert `album` with one release: listings show only albums that hold one.
-async fn insert_listed_album(db: &Database, album: &DbAlbum) {
-    db.insert_album(album).await.unwrap();
-    db.insert_release(&DbRelease::new_test(&album.id, &Uuid::new_v4().to_string()))
-        .await
-        .unwrap();
+/// Insert `listed` with one release: listings show only albums that hold one.
+async fn insert_listed_album(db: &Database, listed: &ListedAlbum) {
+    db.insert_album(&listed.album).await.unwrap();
+    db.insert_album_artist(&listed.credit).await.unwrap();
+    db.insert_release(&DbRelease::new_test(
+        &listed.album.id,
+        &Uuid::new_v4().to_string(),
+    ))
+    .await
+    .unwrap();
 }
 
 async fn insert_default_artist(db: &Database) -> String {

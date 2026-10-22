@@ -26,7 +26,8 @@ pub(super) async fn live_db() -> (Database, tempfile::TempDir) {
         &db,
         &format!(
             "INSERT INTO artists (id, name, name_key, created_at) VALUES ('{ARTIST_ID}', 'Artist Name', 'artist name', '2026-01-01T00:00:00Z');
-             INSERT INTO albums (id, title, artist_id, is_compilation, created_at) VALUES ('{ALBUM_ID}', 'Album Title', '{ARTIST_ID}', 0, '2026-01-01T00:00:00Z');
+             INSERT INTO albums (id, title, is_compilation, created_at) VALUES ('{ALBUM_ID}', 'Album Title', 0, '2026-01-01T00:00:00Z');
+            INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('22586998-2ee2-4c3d-a50d-696cc9c39b4e', '{ALBUM_ID}', '{ARTIST_ID}', 0, '2026-01-01T00:00:00Z');
              INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{RELEASE_ID}', '{ALBUM_ID}', '2026-01-01T00:00:00Z', 0);"
         ),
     )
@@ -225,7 +226,8 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     exec_batch(
         &db,
         &format!(
-            "INSERT INTO albums (id, title, artist_id, is_compilation, created_at) VALUES ('{OTHER_ALBUM_ID}', 'Album Title Second', '{ARTIST_ID}', 0, '2026-01-02T00:00:00Z');
+            "INSERT INTO albums (id, title, is_compilation, created_at) VALUES ('{OTHER_ALBUM_ID}', 'Album Title Second', 0, '2026-01-02T00:00:00Z');
+            INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('4c8cbe06-0894-442b-b98c-adc509871a89', '{OTHER_ALBUM_ID}', '{ARTIST_ID}', 0, '2026-01-02T00:00:00Z');
              INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{OTHER_RELEASE_ID}', '{OTHER_ALBUM_ID}', '2026-01-02T00:00:00Z', 0);"
         ),
     )
@@ -682,8 +684,8 @@ async fn single_table_subscription_ignores_a_different_primary_key() {
     exec(
         &db,
         "INSERT INTO albums
-         (id, title, artist_id, is_compilation, created_at) VALUES (?1, 'Other Album', ?2, 0, '2026-01-01T00:00:00Z')",
-        &[OTHER_ALBUM_ID, ARTIST_ID],
+         (id, title, is_compilation, created_at) VALUES (?1, 'Other Album', 0, '2026-01-01T00:00:00Z')",
+        &[OTHER_ALBUM_ID],
     )
     .await;
     // The request only gives the test a change of its own to make; the query
@@ -736,7 +738,8 @@ fn album_page_subscription_delivers_a_write_materialized_by_sync() {
         exec_batch(writer, &format!(
             "INSERT INTO artists (id, name, name_key, created_at)
              VALUES ('{ARTIST_ID}', 'Artist Name', 'artist name', '2026-01-01T00:00:00Z');
-             INSERT INTO albums (id, title, artist_id, is_compilation, created_at) VALUES ('{ALBUM_ID}', 'Synced Album', '{ARTIST_ID}', 0, '2026-01-01T00:00:00Z');
+             INSERT INTO albums (id, title, is_compilation, created_at) VALUES ('{ALBUM_ID}', 'Synced Album', 0, '2026-01-01T00:00:00Z');
+            INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('ec0d8e00-2141-4bae-8618-9d7ca8af03c4', '{ALBUM_ID}', '{ARTIST_ID}', 0, '2026-01-01T00:00:00Z');
              INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{RELEASE_ID}', '{ALBUM_ID}', '2026-01-01T00:00:00Z', 0);"
         )).await;
         devices

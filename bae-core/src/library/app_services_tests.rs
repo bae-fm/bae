@@ -29,9 +29,13 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
         created_at: chrono::Utc::now(),
     };
     database.insert_artist(&artist).await.unwrap();
-    let album = DbAlbum::new_test("Album Title", &artist.id);
+    let album = DbAlbum::new_test("Album Title");
     let release = DbRelease::new_test(&album.id, "c61a9e19-f3ba-4728-842c-c59dbc82e238");
     database.insert_album(&album).await.unwrap();
+    database
+        .insert_album_artist(&crate::db::DbAlbumArtist::new_test(&album.id, &artist.id))
+        .await
+        .unwrap();
     database.insert_release(&release).await.unwrap();
     database
         .insert_release_medium(&crate::db::DbReleaseMedium::new_test(&release.id))

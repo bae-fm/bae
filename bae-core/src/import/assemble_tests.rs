@@ -101,7 +101,7 @@ fn the_rows_are_the_drafts_values() {
     let album_artist = parsed
         .artists
         .iter()
-        .find(|artist| artist.id == parsed.album.artist_id)
+        .find(|artist| artist.id == parsed.album_artists[0].artist_id)
         .expect("the album credits its artist");
     assert_eq!(album_artist.name, "Artist Name");
 }
@@ -144,7 +144,7 @@ fn a_picked_artist_is_one_row_linked_as_itself() {
             .count(),
         1
     );
-    assert_eq!(assembled.parsed.album.artist_id, "library-artist");
+    assert_eq!(assembled.parsed.album_artists[0].artist_id, "library-artist");
     assert_eq!(assembled.parsed.track_artists[0].artist_id, "library-artist");
 }
 

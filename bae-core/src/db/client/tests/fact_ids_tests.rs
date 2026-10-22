@@ -39,7 +39,7 @@ async fn fact_rows_take_their_ids_from_their_facts() {
     };
     db.insert_artist(&artist).await.unwrap();
 
-    let mut album = DbAlbum::new_test("Album", &artist.id);
+    let mut album = DbAlbum::new_test("Album");
     album.id = ALBUM_1.to_string();
     db.insert_album(&album).await.unwrap();
     db.insert_album_artist(&DbAlbumArtist::new(&album.id, &artist.id, 0, now))
@@ -61,7 +61,7 @@ async fn fact_rows_take_their_ids_from_their_facts() {
 
     // Moving the release to a fresh album copies its credits under the new
     // album's ids.
-    let target = DbAlbum::new_test("Target Album", &artist.id);
+    let target = DbAlbum::new_test("Target Album");
     db.set_records_atomic(crate::db::RecordsChange {
         release_id: release.id.clone(),
         records: vec![record(Catalog::MusicBrainz, "mb-release-1")],
@@ -75,8 +75,8 @@ async fn fact_rows_take_their_ids_from_their_facts() {
 
     let credits = ids(&db, "SELECT id FROM album_artists").await;
     assert!(
-        credits.contains(&identity::album_artist_id(&target.id, &artist.id)),
-        "the copied credit's id is its (album, artist), got {credits:?}"
+        credits.contains(&identity::album_artist_id(&target.id, 0)),
+        "the copied credit's id is its (album, position), got {credits:?}"
     );
     assert_eq!(
         ids(&db, "SELECT id FROM release_records").await,

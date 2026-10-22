@@ -255,6 +255,9 @@ impl BridgeAlbumDetail {
     pub(super) fn from_core(detail: bae_core::album_detail::AlbumDetail) -> Self {
         let bae_core::album_detail::AlbumDetail {
             album,
+            // The credits' names arrive joined in `artist_names`; no surface
+            // links them from the album detail.
+            artists: _,
             artist_names,
             releases,
             primary_release_id,
@@ -266,9 +269,8 @@ impl BridgeAlbumDetail {
             title,
             year,
             is_compilation,
-            // The album's own artist FK / created_at aren't surfaced; the
-            // primary release comes from the detail-level field below.
-            artist_id: _,
+            // created_at isn't surfaced; the primary release comes from the
+            // detail-level field below.
             created_at: _,
         } = album;
         // Reassemble the album's slim summary from the detail's DbAlbum plus the
@@ -420,7 +422,6 @@ impl BridgeReleaseRoleSummary {
         let bae_core::db::DbAlbum {
             id: album_id,
             title: album_title,
-            artist_id: _,
             year: _,
             is_compilation: _,
             created_at: _,
@@ -465,7 +466,6 @@ impl BridgeTrackRoleSummary {
         let bae_core::db::DbAlbum {
             id: album_id,
             title: album_title,
-            artist_id: _,
             year: _,
             is_compilation: _,
             created_at: _,
@@ -516,7 +516,6 @@ impl BridgeWorkTrackSummary {
         let bae_core::db::DbAlbum {
             id: album_id,
             title: album_title,
-            artist_id: _,
             year: _,
             is_compilation: _,
             created_at: _,

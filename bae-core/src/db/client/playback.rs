@@ -217,41 +217,13 @@ fn track_displays_on(
                 t.id AS track_id, t.title, t.duration_ms, a.id AS album_id, \
                 a.title AS album_title, r.id AS release_id, c.revision AS cover_revision, \
                 c.hash AS cover_hash, \
-                COALESCE( \
-                    NULLIF(( \
-                        SELECT GROUP_CONCAT(art.name, ', ' ORDER BY credit.position) \
-                        FROM ( \
-                            SELECT {track_artist} AS artist_id, MIN(ta.position) AS position \
-                            FROM track_artists ta \
-                            WHERE ta.track_id = t.id \
-                            GROUP BY 1 \
-                        ) credit \
-                        JOIN artists art ON art.id = credit.artist_id \
-                    ), ''), \
-                    ( \
-                        SELECT GROUP_CONCAT(art.name, ', ' ORDER BY credit.position) \
-                        FROM ( \
-                            SELECT album_credit.artist_id, MIN(album_credit.position) AS position \
-                            FROM ( \
-                                SELECT {primary} AS artist_id, -1 AS position \
-                                UNION ALL \
-                                SELECT {album_artist} AS artist_id, aa.position \
-                                FROM album_artists aa \
-                                WHERE aa.album_id = a.id \
-                            ) album_credit \
-                            GROUP BY 1 \
-                        ) credit \
-                        JOIN artists art ON art.id = credit.artist_id \
-                    ) \
-                ) AS artist_names \
+                {artist_names} AS artist_names \
              FROM tracks t \
              JOIN releases r ON r.id = t.release_id \
              JOIN albums a ON a.id = r.album_id \
              LEFT JOIN covers c ON c.id = r.id \
              WHERE t.id IN ({placeholders})",
-            track_artist = shown_artist_id("ta.artist_id"),
-            primary = shown_artist_id("a.artist_id"),
-            album_artist = shown_artist_id("aa.artist_id"),
+            artist_names = track_artist_names_sql("t"),
         );
         meta_by_track.extend(sql.query(
             &query,

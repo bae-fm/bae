@@ -74,7 +74,6 @@ async fn create_local_release(
     let album = DbAlbum {
         id: Uuid::new_v4().to_string(),
         title: "Album Title".to_string(),
-        artist_id: artist_id.to_string(),
         year: Some(2024),
         is_compilation: false,
         created_at: now,
@@ -92,7 +91,8 @@ async fn create_local_release(
         created_at: now,
     };
     let release_id = release.id.clone();
-    mgr.insert_album_with_release_and_tracks(&album, &release, &[], &[], &[])
+    let credit = bae_core::db::DbAlbumArtist::new_test(&album.id, &artist_id);
+    mgr.insert_album_with_release_and_tracks(&album, &[credit], &release, &[], &[], &[])
         .await
         .unwrap();
 

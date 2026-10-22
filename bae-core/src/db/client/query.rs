@@ -200,9 +200,9 @@ pub(super) fn composer_summary_query(filter: Option<&str>, tail: Option<&str>) -
 }
 
 /// The artist-browser summary query: every artist with at least one album link,
-/// plus its distinct album count. Membership comes from album-artist links only —
-/// the primary `albums.artist_id` FK unioned with `album_artists` rows;
-/// track-level credits (`track_artists`) don't confer it. Various Artists gets no
+/// plus its distinct album count. Membership comes from the albums' credit
+/// lists (`album_artists`) only; track-level credits (`track_artists`) don't
+/// confer it. Various Artists gets no
 /// special case: it is a real `artists` row and lists like any other artist.
 pub(super) fn artist_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
     let mut query = format!(
@@ -232,16 +232,49 @@ pub(super) fn artist_summary_query(filter: Option<&str>, tail: Option<&str>) -> 
     query
 }
 
-/// One membership per album and credited artist, including merged identities.
+/// One membership per album and credited artist, including merged identities:
+/// an artist the list names twice is one membership.
 pub(super) fn album_artist_links_sql() -> String {
     format!(
-        "SELECT {primary} AS artist_id, a.id AS album_id FROM albums a \
-         WHERE {ALBUM_A_IS_SHOWN} UNION \
-         SELECT {additional} AS artist_id, aa.album_id FROM album_artists aa \
+        "SELECT DISTINCT {shown} AS artist_id, aa.album_id FROM album_artists aa \
          JOIN albums a ON a.id = aa.album_id WHERE {ALBUM_A_IS_SHOWN}",
-        primary = shown_artist_id("a.artist_id"),
-        additional = shown_artist_id("aa.artist_id"),
+        shown = shown_artist_id("aa.artist_id"),
     )
+}
+
+/// What sorts the album `a` by artist, as `{column} COLLATE NOCASE {dir}`
+/// terms: every credit's sort name (else its name) in list order, joined by a
+/// separator below every printable character, so "A" sorts before "A & B",
+/// and "A & B" before "A & C"; then the credited artists' ids in the same
+/// order, so two artists sharing a sort name keep their albums apart, as the
+/// browse grouped by artist does.
+pub(super) fn album_credit_sort_terms(dir: &str) -> Vec<String> {
+    let key = |column: &str| {
+        format!(
+            "(SELECT GROUP_CONCAT({column}, char(31) ORDER BY sort_credit.position) \
+              FROM album_artists sort_credit \
+              JOIN artists sort_artist ON sort_artist.id = {shown} \
+              WHERE sort_credit.album_id = a.id)",
+            shown = shown_artist_id("sort_credit.artist_id"),
+        )
+    };
+    vec![
+        format!(
+            "{} COLLATE NOCASE {dir}",
+            key("COALESCE(sort_artist.sort_name, sort_artist.name)")
+        ),
+        format!("{} {dir}", key("sort_artist.id")),
+    ]
+}
+
+/// What an album listing's Artist sort compares.
+#[derive(Clone, Copy)]
+pub(super) enum ArtistOrder {
+    /// The album's whole credit list ([`album_credit_sort_terms`]).
+    CreditList,
+    /// The one artist the row is listed under, `art_sort` (the browse grouped
+    /// by artist lists an album under each artist it credits).
+    GroupArtist,
 }
 
 /// The same relation and order serve paging, section ranges, and reveal.
@@ -251,13 +284,9 @@ pub(super) fn album_browse_order(
     group_by_artist: bool,
 ) -> (String, String) {
     if !group_by_artist {
-        let (order, needs_artist) = build_order_by(sort, "a.created_at DESC");
         return (
-            format!(
-                "FROM albums a {} WHERE {ALBUM_A_IS_SHOWN}",
-                album_summary_artist_join(needs_artist)
-            ),
-            order,
+            format!("FROM albums a WHERE {ALBUM_A_IS_SHOWN}"),
+            build_order_by(sort, "a.created_at DESC", ArtistOrder::CreditList),
         );
     }
     let direction = sort
@@ -279,7 +308,7 @@ pub(super) fn album_browse_order(
             direction: SortDirection::Descending,
         });
     }
-    let (order, _) = build_order_by(&grouped_sort, "a.created_at DESC");
+    let order = build_order_by(&grouped_sort, "a.created_at DESC", ArtistOrder::GroupArtist);
     (
         format!(
             "FROM albums a JOIN ({}) link ON link.album_id = a.id \
@@ -575,17 +604,21 @@ pub(super) fn row_to_library_image(
     })
 }
 
-/// Returns `(order_by_clause, needs_artist_join)`.
-pub(super) fn build_order_by(sort: &[AlbumSortCriterion], default: &str) -> (String, bool) {
+/// The ORDER BY clause for an album listing; `artist` says what its Artist
+/// sort compares.
+pub(super) fn build_order_by(
+    sort: &[AlbumSortCriterion],
+    default: &str,
+    artist: ArtistOrder,
+) -> String {
     // Every clause ends with `a.id`, a total order over the album PK. Without it
     // rows sharing a sort value order arbitrarily — and `get_album_page`
     // (LIMIT/OFFSET) and `get_album_index` (a ROW_NUMBER window) are different
     // query shapes, so SQLite could tie-break them differently and a reveal would
     // scroll to the wrong album.
     if sort.is_empty() {
-        return (format!("{default}, a.id"), false);
+        return format!("{default}, a.id");
     }
-    let needs_artist_join = sort.iter().any(|c| c.field == AlbumSortField::Artist);
     let clause = sort
         .iter()
         .flat_map(|c| {
@@ -597,12 +630,13 @@ pub(super) fn build_order_by(sort: &[AlbumSortCriterion], default: &str) -> (Str
                 AlbumSortField::Title => {
                     vec![format!("a.title COLLATE NOCASE {dir}")]
                 }
-                AlbumSortField::Artist => {
-                    vec![
+                AlbumSortField::Artist => match artist {
+                    ArtistOrder::CreditList => album_credit_sort_terms(dir),
+                    ArtistOrder::GroupArtist => vec![
                         format!("COALESCE(art_sort.sort_name, art_sort.name) COLLATE NOCASE {dir}"),
                         format!("art_sort.id {dir}"),
-                    ]
-                }
+                    ],
+                },
                 AlbumSortField::Year => {
                     let nulls_order = match c.direction {
                         SortDirection::Ascending => "ASC",
@@ -620,12 +654,11 @@ pub(super) fn build_order_by(sort: &[AlbumSortCriterion], default: &str) -> (Str
         })
         .collect::<Vec<_>>()
         .join(", ");
-    (format!("{clause}, a.id"), needs_artist_join)
+    format!("{clause}, a.id")
 }
 
-/// ORDER BY for `get_storage_page`. Returns `(order_by_clause,
-/// needs_artist_join)` — the artist join is needed only for artist-derived sorts.
-pub(super) fn storage_order_by(sort: &StorageSortCriterion) -> (String, bool) {
+/// ORDER BY for `get_storage_page`.
+pub(super) fn storage_order_by(sort: &StorageSortCriterion) -> String {
     let dir = match sort.direction {
         SortDirection::Ascending => "ASC",
         SortDirection::Descending => "DESC",
@@ -633,18 +666,14 @@ pub(super) fn storage_order_by(sort: &StorageSortCriterion) -> (String, bool) {
     // Every clause ends with `r.created_at, r.id`; the id keeps pagination
     // deterministic when two releases share a timestamp (bulk imports, tests).
     match sort.field {
-        StorageSortField::AlbumTitle => (
-            format!("a.title COLLATE NOCASE {dir}, r.created_at, r.id"),
-            false,
+        StorageSortField::AlbumTitle => {
+            format!("a.title COLLATE NOCASE {dir}, r.created_at, r.id")
+        }
+        StorageSortField::ArtistNames => format!(
+            "{}, a.title COLLATE NOCASE, r.created_at, r.id",
+            album_credit_sort_terms(dir).join(", ")
         ),
-        StorageSortField::ArtistNames => (
-            format!(
-                "COALESCE(art_sort.sort_name, art_sort.name) COLLATE NOCASE {dir}, \
-                 a.title COLLATE NOCASE, r.created_at, r.id"
-            ),
-            true,
-        ),
-        StorageSortField::Media => (
+        StorageSortField::Media => {
             format!(
                 // Every stated medium in order, each with its count: the media
                 // the column shows, compared entry by entry.
@@ -653,17 +682,14 @@ pub(super) fn storage_order_by(sort: &StorageSortCriterion) -> (String, bool) {
                      json_extract(entry.value, '$.count')), ',') \
                   FROM json_each(r.media) AS entry) {dir}, \
                  a.title COLLATE NOCASE, r.created_at, r.id"
-            ),
-            false,
-        ),
-        StorageSortField::FileCount => (
-            format!("file_count {dir}, a.title COLLATE NOCASE, r.created_at, r.id"),
-            false,
-        ),
-        StorageSortField::TotalSize => (
-            format!("total_size {dir}, a.title COLLATE NOCASE, r.created_at, r.id"),
-            false,
-        ),
+            )
+        }
+        StorageSortField::FileCount => {
+            format!("file_count {dir}, a.title COLLATE NOCASE, r.created_at, r.id")
+        }
+        StorageSortField::TotalSize => {
+            format!("total_size {dir}, a.title COLLATE NOCASE, r.created_at, r.id")
+        }
     }
 }
 
@@ -674,12 +700,11 @@ pub(super) const RELEASE_R_STORED: &str =
     "EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id) AND \
      NOT EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id AND f.hash IS NULL)";
 
-/// Paginated storage-page query. Joins releases × albums × (optional)
-/// primary-artist sort table; both halves of the returned row are the
-/// raw aggregates the resolver maps to `ReleaseSummary` / `AlbumSummary`.
+/// Paginated storage-page query. Joins releases × albums; both halves of the
+/// returned row are the raw aggregates the resolver maps to `ReleaseSummary` /
+/// `AlbumSummary`.
 pub(super) fn storage_page_query(
     order_by: &str,
-    artist_sort_join: &str,
     where_clause: &str,
     uploading_count: usize,
 ) -> String {
@@ -712,7 +737,6 @@ pub(super) fn storage_page_query(
             {album_columns} \
         FROM releases r \
         JOIN albums a ON a.id = r.album_id \
-        {artist_sort_join} \
         {queue_join} \
         {where_clause} \
         ORDER BY {order_by} \
@@ -744,36 +768,31 @@ pub(super) fn storage_filter_where(filter: StorageFilter, uploading_count: usize
     }
 }
 
-/// The album's credited artists as they show after merges, primary first and
-/// each once.
+/// The album's credits as they show after merges, in list order, comma-joined.
 pub(super) fn album_artist_names_sql() -> String {
     format!(
-        "(SELECT CASE \
-            WHEN primary_name = '' THEN extra_names \
-            WHEN extra_names = '' THEN primary_name \
-            ELSE primary_name || ', ' || extra_names \
-        END \
-        FROM ( \
-            SELECT \
-                COALESCE(( \
-                    SELECT art_primary.name \
-                    FROM artists art_primary \
-                    WHERE art_primary.id = {primary} \
-                ), '') AS primary_name, \
-                COALESCE(( \
-                    SELECT GROUP_CONCAT(ar.name, ', ' ORDER BY credit.position) \
-                    FROM ( \
-                        SELECT {additional} AS artist_id, MIN(aa.position) AS position \
-                        FROM album_artists aa \
-                        WHERE aa.album_id = a.id \
-                        GROUP BY 1 \
-                    ) credit \
-                    JOIN artists ar ON ar.id = credit.artist_id \
-                    WHERE credit.artist_id IS NOT {primary} \
-                ), '') AS extra_names \
-        ))",
-        primary = shown_artist_id("a.artist_id"),
-        additional = shown_artist_id("aa.artist_id"),
+        "COALESCE(( \
+            SELECT GROUP_CONCAT(name_artist.name, ', ' ORDER BY name_credit.position) \
+            FROM album_artists name_credit \
+            JOIN artists name_artist ON name_artist.id = {shown} \
+            WHERE name_credit.album_id = a.id \
+        ), '')",
+        shown = shown_artist_id("name_credit.artist_id"),
+    )
+}
+
+/// The artists the track `track_alias` shows, comma-joined: its own credits
+/// in list order, else its album `a`'s.
+pub(super) fn track_artist_names_sql(track_alias: &str) -> String {
+    format!(
+        "COALESCE(NULLIF(( \
+            SELECT GROUP_CONCAT(own_artist.name, ', ' ORDER BY own_credit.position) \
+            FROM track_artists own_credit \
+            JOIN artists own_artist ON own_artist.id = {shown} \
+            WHERE own_credit.track_id = {track_alias}.id \
+        ), ''), {album})",
+        shown = shown_artist_id("own_credit.artist_id"),
+        album = album_artist_names_sql(),
     )
 }
 
@@ -796,7 +815,7 @@ pub(super) fn album_primary_release_sql() -> &'static str {
 }
 
 /// Shared column list for album-summary queries. Emits `artist_names`
-/// (primary artist + album_artists, comma-joined), `release_ids_json`
+/// (the credit list, comma-joined), `release_ids_json`
 /// (releases in album order) and `primary_release_id`.
 pub(super) fn album_summary_columns() -> String {
     format!(
@@ -811,23 +830,9 @@ pub(super) fn album_summary_columns() -> String {
 }
 
 /// Shared SELECT list for album-summary queries. Callers append
-/// `FROM albums a`, any `art_sort` join (see `album_summary_artist_join`),
-/// and their own `ORDER BY` / `WHERE` / `LIMIT`.
+/// `FROM albums a` and their own `ORDER BY` / `WHERE` / `LIMIT`.
 pub(super) fn album_summary_select() -> String {
     format!("SELECT {}", album_summary_columns())
-}
-
-/// The `art_sort` join clause for album-summary queries that sort by an
-/// artist-derived column; empty otherwise.
-pub(super) fn album_summary_artist_join(needs_artist_join: bool) -> String {
-    if needs_artist_join {
-        format!(
-            "JOIN artists art_sort ON art_sort.id = {}",
-            shown_artist_id("a.artist_id")
-        )
-    } else {
-        String::new()
-    }
 }
 
 /// Owned SQL columns; JSON decoding runs after the read connection is released.

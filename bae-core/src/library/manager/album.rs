@@ -352,6 +352,7 @@ impl LibraryManager {
 
         Ok(AlbumDetail {
             album: raw.album,
+            artists: raw.artists,
             artist_names,
             releases,
             primary_release_id,

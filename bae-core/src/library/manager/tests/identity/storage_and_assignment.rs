@@ -404,8 +404,7 @@ async fn set_records_does_not_touch_metadata_columns() {
 async fn set_records_to_a_fresh_album_preserves_album_artists() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
-    // Two extra artists so the album carries multiple album_artists
-    // rows beyond the primary (which lives on `albums.artist_id`).
+    // Two artists so the album's credit list holds two rows.
     let artist = |id: &str, name: &str| DbArtist {
         id: id.to_string(),
         name: name.to_string(),
@@ -423,8 +422,7 @@ async fn set_records_to_a_fresh_album_preserves_album_artists() {
     // primary + secondary as album artists. We're going to move
     // release_alpha out via a non-fitting identity, forcing the
     // creation of a fresh album.
-    let mut album_a = create_test_album();
-    album_a.artist_id = primary.id.clone();
+    let album_a = create_test_album();
     let releases =
         seed_grouped_releases(&manager, &album_a, &[("g1", "g1-rel"), ("g1", "g1-rel")]).await;
     let release_alpha = &releases[0];
@@ -456,16 +454,13 @@ async fn set_records_to_a_fresh_album_preserves_album_artists() {
         .unwrap();
     assert_ne!(new_album_id, album_a.id);
 
-    // The fresh album carries the same album_artists as the source.
-    // get_artists_for_album joins both the primary (via albums.artist_id)
-    // and album_artists rows, ordered by position.
+    // The fresh album carries the same credit list as the source, in order.
     let new_album_artists = manager
         .database
         .get_artists_for_album(&new_album_id)
         .await
         .unwrap();
     let names: Vec<&str> = new_album_artists.iter().map(|a| a.name.as_str()).collect();
-    // The primary is credited twice (the album row and position 0) and shows once.
     assert_eq!(names, vec!["Primary", "Secondary"]);
 }
 
@@ -555,7 +550,6 @@ async fn set_records_atomic_rechecks_the_source_count_inside_the_transaction() {
     let fresh_album = DbAlbum {
         id: Uuid::new_v4().to_string(),
         title: album_a.title.clone(),
-        artist_id: album_a.artist_id.clone(),
         year: album_a.year,
         is_compilation: album_a.is_compilation,
         created_at: now,

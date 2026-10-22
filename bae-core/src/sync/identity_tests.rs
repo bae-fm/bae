@@ -52,13 +52,14 @@ async fn remote_album_by(
         .remove(0);
     // The album arrives with its release in one write, as an import writes
     // them.
-    let album = DbAlbum::new_test(title, &artist_id);
+    let album = DbAlbum::new_test(title);
+    let credit = crate::db::DbAlbumArtist::new_test(&album.id, &artist_id);
     let release = DbRelease {
         ..DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string())
     };
     device
         .database()
-        .insert_album_with_release_and_tracks(&album, &release, &[], &[], &[])
+        .insert_album_with_release_and_tracks(&album, &[credit], &release, &[], &[], &[])
         .await
         .unwrap();
     (artist_id, album.id, release.id)
@@ -181,7 +182,8 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
                 .await
                 .unwrap()
                 .remove(0);
-            let album = DbAlbum::new_test("Album", &artist_id);
+            let album = DbAlbum::new_test("Album");
+            let credit = crate::db::DbAlbumArtist::new_test(&album.id, &artist_id);
             let release = DbRelease {
                 ..DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string())
             };
@@ -191,6 +193,7 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
                 .database()
                 .insert_album_with_release_and_tracks(
                     &album,
+                    &[credit],
                     &release,
                     &[crate::db::DbReleaseMedium::new_test(&release.id)],
                     std::slice::from_ref(&track),

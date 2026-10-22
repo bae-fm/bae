@@ -17,10 +17,9 @@ fn retain_referenced_artists(
     track_artist_roles: &[crate::db::DbTrackArtistRole],
     work_artists: &[crate::db::DbWorkArtist],
 ) {
-    let album_artists = new_album.into_iter().flat_map(|(album, links)| {
-        std::iter::once(album.artist_id.as_str())
-            .chain(links.iter().map(|link| link.artist_id.as_str()))
-    });
+    let album_artists = new_album
+        .into_iter()
+        .flat_map(|(_, links)| links.iter().map(|link| link.artist_id.as_str()));
     let referenced: std::collections::HashSet<&str> = album_artists
         .chain(track_artists.iter().map(|link| link.artist_id.as_str()))
         .chain(
@@ -218,13 +217,18 @@ mod tests {
         let album = crate::db::DbAlbum {
             id: "album-1".into(),
             title: "Album Title".into(),
-            artist_id: "artist-referenced".into(),
             year: None,
             is_compilation: false,
             created_at: now,
         };
+        let credits = [crate::db::DbAlbumArtist::new(
+            &album.id,
+            "artist-referenced",
+            0,
+            now,
+        )];
 
-        retain_referenced_artists(&mut artists, Some((&album, &[])), &[], &[], &[], &[]);
+        retain_referenced_artists(&mut artists, Some((&album, &credits)), &[], &[], &[], &[]);
 
         assert_eq!(artists.len(), 1);
         assert_eq!(artists[0].id, "artist-referenced");

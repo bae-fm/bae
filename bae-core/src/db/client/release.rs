@@ -12,8 +12,7 @@ mod storage;
 /// either has or does not, and `Default` is every one of them empty, so a
 /// caller names only the lists it actually fills.
 ///
-/// Every artist link here — the album's artist, `album_artists`,
-/// `track_artists`, the role rows and `work_artists` — names its artist by the
+/// Every artist link here — `album_artists`, `track_artists`, the role rows and `work_artists` — names its artist by the
 /// id of one of `artists.credits`. The commit resolves those credits to
 /// library artists inside its own transaction and writes each link to the
 /// artist its credit resolved to.
@@ -52,8 +51,7 @@ pub(crate) struct NewArtistImages<'a> {
 /// fields, the track rows named by `track_updates` (existing track ID → edited
 /// row), and the album's and tracks' artist links.
 ///
-/// The album's artist and every link name their artist by the id of one of
-/// `credits`; the credits are resolved to library artists inside the write
+/// Every link names its artist by the id of one of `credits`; the credits are resolved to library artists inside the write
 /// and each link is written to the artist its credit resolved to.
 pub(crate) struct ReleaseMetadataRows {
     pub album: DbAlbum,
@@ -66,8 +64,8 @@ pub(crate) struct ReleaseMetadataRows {
     pub track_artists: Vec<DbTrackArtist>,
 }
 
-/// Write `metadata`: the album's title, artist, year and compilation flag,
-/// the release's pressing fields, each named track's title, side and number,
+/// Write `metadata`: the album's title, year and compilation flag,
+/// the release's pressing fields, each named track's title,
 /// and the album's and those tracks' artist links, which are made exactly the
 /// edit's.
 ///
@@ -95,19 +93,12 @@ pub(super) fn write_release_metadata_on(
     let resolved = ArtistCredits { credits, picked }.resolve_on(tx)?;
     resolved.write_on(tx)?;
     let artist_ids = resolved.id_map(credits);
-    let album_artists = relink_album_artists(Some(album), album_artists, &artist_ids)?;
-    let album = relinked_album(album, &artist_ids)?;
+    let album_artists = relink_album_artists(album_artists, &artist_ids)?;
     let track_artists = relink_track_artists(track_artists, &artist_ids)?;
 
     tx.execute(
-        r#"UPDATE albums SET title = ?, artist_id = ?, year = ?, is_compilation = ? WHERE id = ?"#,
-        params![
-            album.title,
-            album.artist_id,
-            album.year,
-            album.is_compilation,
-            album.id,
-        ],
+        r#"UPDATE albums SET title = ?, year = ?, is_compilation = ? WHERE id = ?"#,
+        params![album.title, album.year, album.is_compilation, album.id,],
     )?;
 
     let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
@@ -171,19 +162,23 @@ impl Database {
         .await
     }
 
-    /// Insert album, release, tracks, and track-artist links in one
-    /// transaction. The `artists` rows and the album's `album_artists` links
-    /// must already exist — insert them first.
+    /// Test-only: insert an album with its credits, a release, its mediums,
+    /// tracks and track-artist links in one transaction. The `artists` rows
+    /// the credits name must already exist — insert them first.
+    #[cfg(any(test, feature = "test-utils"))]
+    #[allow(clippy::too_many_arguments)]
     pub async fn insert_album_with_release_and_tracks(
         &self,
         album: &DbAlbum,
+        album_artists: &[DbAlbumArtist],
         release: &DbRelease,
         mediums: &[DbReleaseMedium],
         tracks: &[DbTrack],
         track_artists: &[DbTrackArtist],
     ) -> Result<(), DbError> {
-        let (album, release, mediums, tracks, track_artists) = (
+        let (album, album_artists, release, mediums, tracks, track_artists) = (
             album.clone(),
+            album_artists.to_vec(),
             release.clone(),
             mediums.to_vec(),
             tracks.to_vec(),
@@ -193,6 +188,9 @@ impl Database {
             let tx = &sql;
 
             insert_album_row(tx, &album)?;
+            for credit in &album_artists {
+                insert_album_artist_row(tx, credit)?;
+            }
             insert_release_row(tx, &release)?;
             for medium in &mediums {
                 insert_release_medium_row(tx, medium)?;
@@ -506,8 +504,7 @@ impl Database {
                 }
                 resolved.write_on(tx)?;
                 let artist_ids = resolved.id_map(&artist_credits);
-                let album_artists =
-                    relink_album_artists(album.as_ref(), &album_artists, &artist_ids)?;
+                let album_artists = relink_album_artists(&album_artists, &artist_ids)?;
                 let track_artists = relink_track_artists(&track_artists, &artist_ids)?;
                 let release_artist_roles = relink(
                     &release_artist_roles,
@@ -529,8 +526,7 @@ impl Database {
                 // its row can be here already, emptied by an earlier delete
                 // or move: the import writes it whole either way.
                 if let Some(album) = &album {
-                    let album = relinked_album(album, &artist_ids)?;
-                    upsert_album_row(tx, &album)?;
+                    upsert_album_row(tx, album)?;
                     replace_album_artists(tx, &album.id, &album_artists, &now)?;
                 }
 

@@ -13,10 +13,10 @@ async fn aggregate_db() -> (Database, tempfile::TempDir) {
              ('c0770501-2551-4e87-8801-93f780248cf3', 'Composer Name First', 'composer name first', '2026-01-01T00:00:00Z'),
              ('0d0e8916-becd-4d2c-89e0-7cc5c7005f83', 'Composer Name Second', 'composer name second', '2026-01-01T00:00:00Z');
 
-            INSERT INTO albums (id, title, artist_id, year, is_compilation, created_at) VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2026, 0, '2026-01-01T00:00:00Z');
-
-            INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('2bd047a8-0ed8-4f71-851d-e168c16cbd36', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '863911c6-a6b6-40a7-8096-b85eb877f7c7', 1, '2026-01-01T00:00:00Z'),
-             ('1c2ab709-4221-4c38-8d0c-ff1d18107cce', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '7e7d8df5-8292-4287-80be-7abd24f5a992', 0, '2026-01-01T00:00:00Z');
+            INSERT INTO albums (id, title, year, is_compilation, created_at) VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', 2026, 0, '2026-01-01T00:00:00Z');
+            INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('2bd047a8-0ed8-4f71-851d-e168c16cbd36', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '863911c6-a6b6-40a7-8096-b85eb877f7c7', 2, '2026-01-01T00:00:00Z'),
+             ('087bc9e6-f2ef-422c-ba5d-1f78f3ed333c', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 0, '2026-01-01T00:00:00Z'),
+             ('1c2ab709-4221-4c38-8d0c-ff1d18107cce', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '7e7d8df5-8292-4287-80be-7abd24f5a992', 1, '2026-01-01T00:00:00Z');
 
             INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('8aa66d48-65a0-42e4-8c1d-e7481e8c1861', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '2026-01-01T00:00:00Z', 0),
              ('64e79a1f-404a-4c34-809a-a3cb44bf1942', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '2026-01-01T00:00:01Z', 1),
@@ -102,7 +102,7 @@ async fn storage_page_orders_album_aggregate_columns_inside_aggregates() {
 }
 
 #[tokio::test]
-async fn album_and_storage_pages_allow_missing_primary_artist() {
+async fn album_and_storage_pages_list_credits_in_order_and_allow_none() {
     let (db, _tmp) = super::temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
@@ -110,8 +110,8 @@ async fn album_and_storage_pages_allow_missing_primary_artist() {
             INSERT INTO artists (id, name, name_key, created_at) VALUES ('7e7d8df5-8292-4287-80be-7abd24f5a992', 'Artist Name First', 'artist name first', '2026-01-01T00:00:00Z'),
              ('863911c6-a6b6-40a7-8096-b85eb877f7c7', 'Artist Name Second', 'artist name second', '2026-01-01T00:00:00Z');
 
-            INSERT INTO albums (id, title, artist_id, year, is_compilation, created_at) VALUES ('f6506bc5-0b41-44de-862f-1668e72c08c6', 'Album Title Empty', NULL, 2026, 0, '2026-01-01T00:00:00Z'),
-             ('049faa5b-52d9-4109-832b-f6853740c876', 'Album Title Extra', NULL, 2026, 0, '2026-01-01T00:00:00Z');
+            INSERT INTO albums (id, title, year, is_compilation, created_at) VALUES ('f6506bc5-0b41-44de-862f-1668e72c08c6', 'Album Title Empty', 2026, 0, '2026-01-01T00:00:00Z'),
+             ('049faa5b-52d9-4109-832b-f6853740c876', 'Album Title Extra', 2026, 0, '2026-01-01T00:00:00Z');
 
             INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('c9966a2c-61b1-40dd-87ef-118587e57fe7', '049faa5b-52d9-4109-832b-f6853740c876', '863911c6-a6b6-40a7-8096-b85eb877f7c7', 1, '2026-01-01T00:00:00Z'),
              ('4953a209-c6c7-4b0c-82dd-cc13e47af890', '049faa5b-52d9-4109-832b-f6853740c876', '7e7d8df5-8292-4287-80be-7abd24f5a992', 0, '2026-01-01T00:00:00Z');

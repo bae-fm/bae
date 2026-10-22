@@ -35,11 +35,10 @@ fn make_artist(name: &str) -> DbArtist {
     }
 }
 
-fn make_album(artist_id: &str, title: &str) -> DbAlbum {
+fn make_album(title: &str) -> DbAlbum {
     DbAlbum {
         id: Uuid::new_v4().to_string(),
         title: title.to_string(),
-        artist_id: artist_id.to_string(),
         year: None,
         is_compilation: false,
         created_at: Utc::now(),
@@ -146,10 +145,15 @@ async fn edit_seed_exposes_reset_eligibility_from_where_the_draft_was_read() {
     .into_iter()
     .enumerate()
     {
-        let album = make_album(&artist.id, &format!("Album {index}"));
+        let album = make_album(&format!("Album {index}"));
         let mut release = make_release(&album.id);
         release.draft_from_tags = matches!(source, DraftSource::FileMetadata);
         db.insert_album(&album).await.unwrap();
+        db.insert_album_artist(&bae_core::db::DbAlbumArtist::new_test(
+            &album.id, &artist.id,
+        ))
+        .await
+        .unwrap();
         db.insert_release(&release).await.unwrap();
         db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
             .await
@@ -169,10 +173,15 @@ async fn edit_seed_exposes_reset_eligibility_from_where_the_draft_was_read() {
 async fn resetting_a_source_less_release_reports_that_it_has_no_provenance() {
     let (lm, db, _tmp) = support::setup_test_library().await;
     let artist = make_artist("Artist Name");
-    let album = make_album(&artist.id, "Album Title");
+    let album = make_album("Album Title");
     let release = make_release(&album.id);
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
+    db.insert_album_artist(&bae_core::db::DbAlbumArtist::new_test(
+        &album.id, &artist.id,
+    ))
+    .await
+    .unwrap();
     db.insert_release(&release).await.unwrap();
     db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
         .await
@@ -270,13 +279,18 @@ async fn reset_mb_returns_full_pressing_data_from_the_stored_release() {
     let (lm, db, _tmp) = support::setup_test_library().await;
 
     let artist = make_artist("Original Artist");
-    let album = make_album(&artist.id, "Original Album");
+    let album = make_album("Original Album");
     let release = make_release(&album.id);
     let t1 = make_track(&release.id, 1, "Original Track 1");
     let t2 = make_track(&release.id, 2, "Original Track 2");
 
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
+    db.insert_album_artist(&bae_core::db::DbAlbumArtist::new_test(
+        &album.id, &artist.id,
+    ))
+    .await
+    .unwrap();
     db.insert_release(&release).await.unwrap();
     db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
         .await
@@ -420,12 +434,17 @@ async fn reset_discogs_returns_full_pressing_data_from_the_stored_release() {
     let (lm, db, _tmp) = support::setup_test_library().await;
 
     let artist = make_artist("Original Artist");
-    let album = make_album(&artist.id, "Original Album");
+    let album = make_album("Original Album");
     let release = make_release(&album.id);
     let t1 = make_track(&release.id, 1, "Original Track");
 
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
+    db.insert_album_artist(&bae_core::db::DbAlbumArtist::new_test(
+        &album.id, &artist.id,
+    ))
+    .await
+    .unwrap();
     db.insert_release(&release).await.unwrap();
     db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
         .await
@@ -540,7 +559,7 @@ async fn reset_file_metadata_unknown_returns_tags_from_disk() {
     );
 
     let artist = make_artist("Original Artist");
-    let album = make_album(&artist.id, "Original Album");
+    let album = make_album("Original Album");
     let mut release = make_release(&album.id);
     release.draft_from_tags = true;
     let t1 = make_track(&release.id, 1, "Original Track 1");
@@ -548,6 +567,11 @@ async fn reset_file_metadata_unknown_returns_tags_from_disk() {
 
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
+    db.insert_album_artist(&bae_core::db::DbAlbumArtist::new_test(
+        &album.id, &artist.id,
+    ))
+    .await
+    .unwrap();
     db.insert_release(&release).await.unwrap();
     db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
         .await
@@ -607,12 +631,17 @@ async fn reset_fetches_a_release_this_device_never_stored() {
     let (lm, db, _tmp) = support::setup_test_library().await;
 
     let artist = make_artist("Artist");
-    let album = make_album(&artist.id, "Album");
+    let album = make_album("Album");
     let release = make_release(&album.id);
     let track = make_track(&release.id, 1, "Original Track");
 
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
+    db.insert_album_artist(&bae_core::db::DbAlbumArtist::new_test(
+        &album.id, &artist.id,
+    ))
+    .await
+    .unwrap();
     db.insert_release(&release).await.unwrap();
     db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
         .await
@@ -661,11 +690,16 @@ async fn reset_to_a_release_that_cannot_be_fetched_fails_loud() {
     let (lm, db, _tmp) = support::setup_test_library().await;
 
     let artist = make_artist("Artist");
-    let album = make_album(&artist.id, "Album");
+    let album = make_album("Album");
     let release = make_release(&album.id);
 
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
+    db.insert_album_artist(&bae_core::db::DbAlbumArtist::new_test(
+        &album.id, &artist.id,
+    ))
+    .await
+    .unwrap();
     db.insert_release(&release).await.unwrap();
     db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
         .await
@@ -697,13 +731,18 @@ async fn reset_mb_reads_only_the_pressing_the_pointer_names() {
     let (lm, db, _tmp) = support::setup_test_library().await;
 
     let artist = make_artist("Artist");
-    let album = make_album(&artist.id, "Album");
+    let album = make_album("Album");
     // The record says we want pressing Y…
     let release = make_release(&album.id);
     let track = make_track(&release.id, 1, "Original Track");
 
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
+    db.insert_album_artist(&bae_core::db::DbAlbumArtist::new_test(
+        &album.id, &artist.id,
+    ))
+    .await
+    .unwrap();
     db.insert_release(&release).await.unwrap();
     db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
         .await

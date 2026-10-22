@@ -51,14 +51,15 @@ pub fn album_id_for_records(records: &[ReleaseRecord]) -> Option<String> {
         .map(|group| id_for(&format!("{} album {}", group.catalog.as_str(), group.key)))
 }
 
-/// One artist's credit on one album.
-pub fn album_artist_id(album_id: &str, artist_id: &str) -> String {
-    id_for(&format!("album artist {album_id} {artist_id}"))
+/// The credit at `position` of an album's credit list. Which artist it names
+/// is a cell of the row, so two devices writing that place write one row.
+pub fn album_artist_id(album_id: &str, position: u32) -> String {
+    id_for(&format!("album artist {album_id} {position}"))
 }
 
-/// One artist's credit on one track.
-pub fn track_artist_id(track_id: &str, artist_id: &str) -> String {
-    id_for(&format!("track artist {track_id} {artist_id}"))
+/// The credit at `position` of a track's own credit list.
+pub fn track_artist_id(track_id: &str, position: u32) -> String {
+    id_for(&format!("track artist {track_id} {position}"))
 }
 
 /// A release's record in one catalog.
@@ -87,8 +88,9 @@ mod tests {
 
     #[test]
     fn a_fact_has_one_id_and_different_facts_do_not_share_one() {
-        assert_eq!(album_artist_id("a", "b"), album_artist_id("a", "b"));
-        assert_ne!(album_artist_id("a", "b"), album_artist_id("b", "a"));
+        assert_eq!(album_artist_id("a", 0), album_artist_id("a", 0));
+        assert_ne!(album_artist_id("a", 0), album_artist_id("a", 1));
+        assert_ne!(album_artist_id("a", 0), track_artist_id("a", 0));
         assert_ne!(
             artist_id(Some("x"), None),
             artist_id(None, Some("x")),

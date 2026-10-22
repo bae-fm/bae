@@ -27,7 +27,6 @@ async fn seed(db: &Database) -> (String, String) {
     let album = DbAlbum {
         id: Uuid::new_v4().to_string(),
         title: "Original Album".to_string(),
-        artist_id: artist.id.clone(),
         year: None,
         is_compilation: false,
         created_at: Utc::now(),

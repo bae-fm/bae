@@ -132,16 +132,14 @@ impl Database {
     /// Every album, sorted by `sort` — or `created_at DESC` (newest first) when
     /// `sort` is empty.
     pub async fn get_albums(&self, sort: &[AlbumSortCriterion]) -> Result<Vec<DbAlbum>, DbError> {
-        let (order_by, needs_artist_join) = build_order_by(sort, "a.created_at DESC");
-        let artist_join = album_summary_artist_join(needs_artist_join);
+        let order_by = build_order_by(sort, "a.created_at DESC", ArtistOrder::CreditList);
 
         let query = format!(
             "SELECT \
-                a.id, a.title, a.artist_id, a.year, \
+                a.id, a.title, a.year, \
                 a.is_compilation, \
                 a.created_at \
             FROM albums a \
-            {artist_join} \
             WHERE {ALBUM_A_IS_SHOWN} \
             ORDER BY {order_by}"
         );
@@ -157,14 +155,12 @@ impl Database {
         offset: u64,
         limit: u64,
     ) -> Result<Vec<DbAlbumSummary>, DbError> {
-        let (order_by, needs_artist_sort_join) = build_order_by(sort, "a.created_at DESC");
-        let artist_sort_join = album_summary_artist_join(needs_artist_sort_join);
+        let order_by = build_order_by(sort, "a.created_at DESC", ArtistOrder::CreditList);
         let select = album_summary_select();
 
         let query = format!(
             "{select} \
             FROM albums a \
-            {artist_sort_join} \
             WHERE {ALBUM_A_IS_SHOWN} \
             ORDER BY {order_by} \
             LIMIT ? OFFSET ?",
@@ -361,7 +357,7 @@ impl Database {
             sql.query_row(
                 r#"
                     SELECT
-                        id, title, artist_id, year,
+                        id, title, year,
                         is_compilation,
                         created_at
                     FROM albums
@@ -538,17 +534,22 @@ fn search_library_on(
         r#"
             SELECT a.id, a.title, a.year,
                    {primary_release} AS primary_release_id,
-                   art.name as artist_name
+                   {artist_names} AS artist_name
             FROM albums a
-            JOIN artists art ON art.id = {primary}
             WHERE {ALBUM_A_IS_SHOWN}
               AND (a.title LIKE ? ESCAPE '\'
-               OR art.name LIKE ? ESCAPE '\')
+               OR EXISTS (
+                   SELECT 1 FROM album_artists search_credit
+                   JOIN artists search_artist ON search_artist.id = {shown}
+                   WHERE search_credit.album_id = a.id
+                     AND search_artist.name LIKE ? ESCAPE '\'
+               ))
             ORDER BY a.title
             LIMIT ?
             "#,
         primary_release = album_primary_release_sql(),
-        primary = shown_artist_id("a.artist_id"),
+        artist_names = album_artist_names_sql(),
+        shown = shown_artist_id("search_credit.artist_id"),
     );
     let albums = sql.query(&album_query, params![pattern, pattern, limit], |row| {
         Ok(AlbumSearchRow {
@@ -563,16 +564,15 @@ fn search_library_on(
         &format!(
             r#"
             SELECT t.id, t.title, t.duration_ms, t.release_id,
-                   r.album_id, a.title as album_title, art.name as artist_name
+                   r.album_id, a.title as album_title, {} as artist_name
             FROM tracks t
             JOIN releases r ON t.release_id = r.id
             JOIN albums a ON r.album_id = a.id
-            JOIN artists art ON art.id = {}
             WHERE t.title LIKE ? ESCAPE '\'
             ORDER BY t.title
             LIMIT ?
             "#,
-            shown_artist_id("a.artist_id")
+            track_artist_names_sql("t")
         ),
         params![pattern, limit],
         |row| {

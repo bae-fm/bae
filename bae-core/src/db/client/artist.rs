@@ -16,24 +16,25 @@ impl Database {
         self.call_sql(move |sql| insert_track_artist_row(&sql, &track_artist))
             .await
     }
-    /// Ordered by position, primary artist first.
+    /// The album's credits in list order, each the artist it shows after
+    /// merges; a list naming one artist twice gives it twice.
     pub async fn get_artists_for_album(&self, album_id: &str) -> Result<Vec<DbArtist>, DbError> {
         let album_id = album_id.to_string();
         self.read(move |sql| get_artists_for_album_on(&sql, &album_id))
             .await
     }
-    /// Ordered by position.
+    /// The track's own credits in list order, each the artist it shows after
+    /// merges; a list naming one artist twice gives it twice.
     pub async fn get_artists_for_track(&self, track_id: &str) -> Result<Vec<DbArtist>, DbError> {
         let track_id = track_id.to_string();
         self.read(move |sql| {
             sql.query(
                 &format!(
                     r#"
-                        SELECT a.* FROM artists a
-                        JOIN track_artists ta ON a.id = {}
+                        SELECT a.* FROM track_artists ta
+                        JOIN artists a ON a.id = {}
                         WHERE ta.track_id = ?
-                        GROUP BY a.id
-                        ORDER BY MIN(ta.position)
+                        ORDER BY ta.position
                         "#,
                     shown_artist_id("ta.artist_id")
                 ),
@@ -239,8 +240,8 @@ impl Database {
             })
     }
 
-    /// The artist's summary row plus every album it is an album artist of
-    /// (primary FK or `album_artists` junction), in discography order: year
+    /// The artist's summary row plus every album whose credit list names it,
+    /// in discography order: year
     /// ascending with unknown years last, then title (case-insensitive), then
     /// id. `None` when the artist doesn't exist or has no album links —
     /// exactly the artists `get_artist_page` never lists.
@@ -454,7 +455,7 @@ fn find_work_detail_on(
                 t.duration_ms AS track_duration_ms,
                 t.created_at AS track_created_at,
                 a.id AS album_id, a.title AS album_title,
-                a.artist_id AS album_artist_id, a.year AS album_year,
+                a.year AS album_year,
                 a.is_compilation AS album_is_compilation,
                 a.created_at AS album_created_at
          FROM track_works tw
@@ -505,17 +506,15 @@ fn find_artist_detail_on(
         "{select} \
          FROM albums a \
          WHERE {album_shown} \
-           AND ({primary} = ?1 \
-            OR EXISTS ( \
+           AND EXISTS ( \
                 SELECT 1 FROM album_artists aa \
-                WHERE aa.album_id = a.id AND {additional} = ?1 \
-            )) \
+                WHERE aa.album_id = a.id AND {credited} = ?1 \
+            ) \
          ORDER BY CASE WHEN a.year IS NULL THEN 1 ELSE 0 END, \
                   a.year, a.title COLLATE NOCASE, a.id",
         select = album_summary_select(),
         album_shown = ALBUM_A_IS_SHOWN,
-        primary = shown_artist_id("a.artist_id"),
-        additional = shown_artist_id("aa.artist_id"),
+        credited = shown_artist_id("aa.artist_id"),
     );
     let albums = sql.query(&albums_query, params![artist_id], AlbumSummaryRow::read)?;
     Ok(Some(ArtistDetailRows { artist, albums }))
@@ -593,7 +592,7 @@ fn find_composer_detail_on(
                 rar.artist_id, rar.position,
                 rar.source AS role_source, rar.source_credit, rar.created_at,
                 a.id AS album_id, a.title AS album_title,
-                a.artist_id AS album_artist_id, a.year AS album_year,
+                a.year AS album_year,
                 a.is_compilation AS album_is_compilation,
                 a.created_at AS album_created_at
          FROM release_artist_roles rar
@@ -629,7 +628,7 @@ fn find_composer_detail_on(
                 t.duration_ms AS track_duration_ms,
                 t.created_at AS track_created_at,
                 a.id AS album_id, a.title AS album_title,
-                a.artist_id AS album_artist_id, a.year AS album_year,
+                a.year AS album_year,
                 a.is_compilation AS album_is_compilation,
                 a.created_at AS album_created_at,
                 art.id AS artist_id, art.name AS artist_name,

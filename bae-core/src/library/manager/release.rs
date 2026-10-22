@@ -303,13 +303,21 @@ impl LibraryManager {
     pub async fn insert_album_with_release_and_tracks(
         &self,
         album: &DbAlbum,
+        album_artists: &[crate::db::DbAlbumArtist],
         release: &DbRelease,
         mediums: &[crate::db::DbReleaseMedium],
         tracks: &[DbTrack],
         track_artists: &[crate::db::DbTrackArtist],
     ) -> Result<(), LibraryError> {
         self.database
-            .insert_album_with_release_and_tracks(album, release, mediums, tracks, track_artists)
+            .insert_album_with_release_and_tracks(
+                album,
+                album_artists,
+                release,
+                mediums,
+                tracks,
+                track_artists,
+            )
             .await?;
         Ok(())
     }
@@ -383,8 +391,8 @@ impl LibraryManager {
     }
 
     /// The rows `edit` leaves `release`, filed under `album`, with: album title
-    /// and artists, release pressing fields, and per-track titles, sides,
-    /// track numbers, and artists. A picked
+    /// and artists, release pressing fields, and per-track titles and
+    /// artists. A picked
     /// library artist is linked as itself; every other credit is resolved by the
     /// artist rule (`db::artist_resolution`) inside the commit that writes the
     /// album/release/track rows and replaces the `album_artists` /
@@ -435,26 +443,20 @@ impl LibraryManager {
             id
         };
 
-        // The `album.artist_id` FK is the primary album artist; additional
-        // artists go in the `album_artists` junction with position >= 1
-        // (mirrors the convention in {discogs,musicbrainz}_mapper.rs).
-        // `get_artists_for_album` UNIONs the FK row in at sort_key = -1, so
-        // including the primary in the junction too would duplicate it.
         let album_credit_ids: Vec<String> = edit
             .album_artist_assignments
             .iter()
             .map(&mut credit_of)
             .collect();
-        let primary_album_artist_id = album_credit_ids.first().ok_or_else(|| {
-            LibraryError::Internal(format!(
+        if album_credit_ids.is_empty() {
+            return Err(LibraryError::Internal(format!(
                 "release {} metadata carries no album artist",
                 release.id
-            ))
-        })?;
+            )));
+        }
 
         let updated_album = DbAlbum {
             title: edit.album_title.clone(),
-            artist_id: primary_album_artist_id.clone(),
             year: edit.album_year,
             is_compilation: crate::import::ArtistAssignment::credit_a_compilation(
                 &edit.album_artist_assignments,
@@ -481,13 +483,12 @@ impl LibraryManager {
 
         let album_artists: Vec<DbAlbumArtist> = album_credit_ids
             .iter()
-            .enumerate()
-            .skip(1)
-            .map(|(i, artist_id)| DbAlbumArtist::new(&updated_album.id, artist_id, i as i32, now))
+            .zip(0..)
+            .map(|(artist_id, position)| {
+                DbAlbumArtist::new(&updated_album.id, artist_id, position, now)
+            })
             .collect();
 
-        // Track artists have no FK on `tracks` — every artist (primary or
-        // additional) goes in `track_artists` with positional ordering.
         let mut track_artists: Vec<DbTrackArtist> = Vec::new();
         for (existing, track) in existing_tracks.iter().zip(edit.tracks.iter()) {
             let crate::import::TrackArtistAssignments::Explicit(assignments) =
@@ -495,11 +496,11 @@ impl LibraryManager {
             else {
                 continue;
             };
-            for (i, assignment) in assignments.iter().enumerate() {
+            for (assignment, position) in assignments.iter().zip(0..) {
                 track_artists.push(DbTrackArtist::new(
                     &existing.id,
                     &credit_of(assignment),
-                    i as i32,
+                    position,
                     now,
                 ));
             }

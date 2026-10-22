@@ -132,28 +132,24 @@ impl LibraryManager {
             .iter()
             .map(|name| self.fixture_artist(name, added, artists))
             .collect();
-        let Some(artist_id) = credited.first().cloned() else {
+        if credited.is_empty() {
             return Err(LibraryFixtureError::NoArtist {
                 album: album.title.clone(),
             });
-        };
+        }
         let release_id = self.ids.new_id().to_string();
         let db_album = DbAlbum {
             id: self.ids.new_id().to_string(),
             title: album.title.clone(),
-            artist_id,
             year: None,
             is_compilation: false,
             created_at: added,
         };
-        // The first credit is the album's own artist; the rest are its
-        // further credits, numbered on from it as an import numbers them.
         let credits = credited
             .iter()
-            .enumerate()
-            .skip(1)
-            .map(|(position, artist_id)| {
-                DbAlbumArtist::new(&db_album.id, artist_id, position as i32, added)
+            .zip(0..)
+            .map(|(artist_id, position)| {
+                DbAlbumArtist::new(&db_album.id, artist_id, position, added)
             })
             .collect();
         // One disc of unstated carrier, its tracks numbered in order.

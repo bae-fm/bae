@@ -210,7 +210,7 @@ fn extraartist_roles_import_as_role_credits_not_works_or_display_artists() {
         .album_artists
         .iter()
         .any(|link| committed[&link.artist_id] == composer));
-    assert!(committed[&parsed.album.artist_id] != composer);
+    assert!(committed[&parsed.album_artists[0].artist_id] != composer);
     assert!(!parsed
         .track_artists
         .iter()
@@ -545,7 +545,7 @@ fn id_less_role_credit_reuses_release_artist_by_name() {
         .first()
         .expect("composer role imported");
     assert_eq!(
-        committed[&role.artist_id], committed[&parsed.album.artist_id],
+        committed[&role.artist_id], committed[&parsed.album_artists[0].artist_id],
         "id-less role credit must commit as the release artist, not a duplicate"
     );
 }
@@ -569,7 +569,7 @@ fn id_less_role_credit_reuses_release_artist_however_it_is_accented() {
         .release_artist_roles
         .first()
         .expect("composer role imported");
-    assert_eq!(committed[&role.artist_id], committed[&parsed.album.artist_id]);
+    assert_eq!(committed[&role.artist_id], committed[&parsed.album_artists[0].artist_id]);
 }
 
 /// An id-less Discogs role credit is its *credited* name — the name stored on

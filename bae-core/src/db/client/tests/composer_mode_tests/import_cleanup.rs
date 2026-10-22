@@ -27,17 +27,11 @@ fn test_artist(id: &str, name: &str, now: chrono::DateTime<chrono::Utc>) -> DbAr
     }
 }
 
-/// A 2026 album by `artist_id`, with no primary release chosen yet.
-fn test_album(
-    id: &str,
-    title: &str,
-    artist_id: &str,
-    now: chrono::DateTime<chrono::Utc>,
-) -> DbAlbum {
+/// A 2026 album; its credits are the import's rows.
+fn test_album(id: &str, title: &str, now: chrono::DateTime<chrono::Utc>) -> DbAlbum {
     DbAlbum {
         id: id.to_string(),
         title: title.to_string(),
-        artist_id: artist_id.to_string(),
         year: Some(2026),
         is_compilation: false,
         created_at: now,
@@ -213,7 +207,8 @@ async fn seeded_db() -> (Database, tempfile::TempDir) {
             INSERT INTO artists (id, name, name_key, sort_name, discogs_artist_id, musicbrainz_artist_id, created_at) VALUES ('85f70840-aba5-4eb9-8e1a-0d319e53b798', 'Album Artist A', 'album artist a', NULL, NULL, NULL, '2026-01-01T00:00:00Z'),
              ('5412b7ad-bdc1-4561-8985-b6d6ef8a2880', 'Displayed Composer A', 'displayed composer a', 'Hidden Composer Sort A', NULL, 'mb-artist-composer-a', '2026-01-01T00:00:00Z');
 
-            INSERT INTO albums (id, title, artist_id, year, is_compilation, created_at) VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', '85f70840-aba5-4eb9-8e1a-0d319e53b798', 2026, 0, '2026-01-01T00:00:00Z');
+            INSERT INTO albums (id, title, year, is_compilation, created_at) VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', 2026, 0, '2026-01-01T00:00:00Z');
+            INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('0f3dddda-6465-4f39-acfc-de0bed691179', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '85f70840-aba5-4eb9-8e1a-0d319e53b798', 0, '2026-01-01T00:00:00Z');
 
             INSERT INTO releases (id, album_id, release_name, year, labels, barcode, media, discogs_details, source_folder_name, content_hash, album_loudness_lufs, album_peak_linear, created_at, album_order) VALUES ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', NULL, 2026, '[]', NULL, '[{\"medium\":\"cd\",\"count\":1}]', '[]', NULL, NULL, NULL, NULL, '2026-01-01T00:00:00Z', 0);
 
@@ -255,7 +250,13 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
     db.insert_artist(&album_artist).await.unwrap();
     db.insert_artist(&composer).await.unwrap();
 
-    let album = test_album(ALBUM_A, "Album Title A", &album_artist.id, now);
+    let album = test_album(ALBUM_A, "Album Title A", now);
+    let album_artists = [crate::db::DbAlbumArtist::new(
+        &album.id,
+        &album_artist.id,
+        0,
+        now,
+    )];
     let release = DbRelease {
         draft_from_tags: false,
 
@@ -328,6 +329,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
                 track_works: &track_works,
                 release_artist_roles: &release_roles,
                 track_artist_roles: &track_roles,
+                album_artists: &album_artists,
                 ..Default::default()
             },
             ..Default::default()

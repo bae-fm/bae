@@ -74,22 +74,22 @@ impl DbArtist {
     }
 }
 
-/// Links artists to albums (many-to-many).
+/// One place in an album's credit list: the artist credited there.
 #[derive(Debug, Clone)]
 pub struct DbAlbumArtist {
     pub album_id: String,
     pub artist_id: String,
-    /// Order of this artist in multi-artist albums (0-indexed)
-    pub position: i32,
+    /// The credit's place in the list, from 0.
+    pub position: u32,
     pub created_at: DateTime<Utc>,
 }
-/// Links artists to tracks (many-to-many).
+/// One place in a track's own credit list.
 #[derive(Debug, Clone)]
 pub struct DbTrackArtist {
     pub track_id: String,
     pub artist_id: String,
-    /// Order of this artist in multi-artist tracks (0-indexed)
-    pub position: i32,
+    /// The credit's place in the list, from 0.
+    pub position: u32,
     pub created_at: DateTime<Utc>,
 }
 
@@ -170,8 +170,6 @@ pub struct DbTrackArtistRole {
 pub struct DbAlbum {
     pub id: String,
     pub title: String,
-    /// FK to the primary artist. Additional artists live in album_artists junction table.
-    pub artist_id: String,
     pub year: Option<i32>,
     /// True for "Various Artists" compilation albums
     pub is_compilation: bool,
@@ -552,13 +550,13 @@ impl DbAudioSegment {
     }
 }
 impl DbAlbumArtist {
-    /// The credit's row id: one artist's credit on one album is one row on
+    /// The credit's row id: one place of one album's list is one row on
     /// every device.
     pub fn id(&self) -> String {
-        crate::db::identity::album_artist_id(&self.album_id, &self.artist_id)
+        crate::db::identity::album_artist_id(&self.album_id, self.position)
     }
 
-    pub fn new(album_id: &str, artist_id: &str, position: i32, now: DateTime<Utc>) -> Self {
+    pub fn new(album_id: &str, artist_id: &str, position: u32, now: DateTime<Utc>) -> Self {
         DbAlbumArtist {
             album_id: album_id.to_string(),
             artist_id: artist_id.to_string(),
@@ -566,15 +564,21 @@ impl DbAlbumArtist {
             created_at: now,
         }
     }
+
+    /// A test album's one credit: `artist_id` at position 0.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn new_test(album_id: &str, artist_id: &str) -> Self {
+        Self::new(album_id, artist_id, 0, chrono::Utc::now())
+    }
 }
 impl DbTrackArtist {
-    /// The credit's row id: one artist's credit on one track is one row on
+    /// The credit's row id: one place of one track's list is one row on
     /// every device.
     pub fn id(&self) -> String {
-        crate::db::identity::track_artist_id(&self.track_id, &self.artist_id)
+        crate::db::identity::track_artist_id(&self.track_id, self.position)
     }
 
-    pub fn new(track_id: &str, artist_id: &str, position: i32, now: DateTime<Utc>) -> Self {
+    pub fn new(track_id: &str, artist_id: &str, position: u32, now: DateTime<Utc>) -> Self {
         DbTrackArtist {
             track_id: track_id.to_string(),
             artist_id: artist_id.to_string(),
@@ -695,12 +699,11 @@ impl DbTrackArtistRole {
 }
 impl DbAlbum {
     #[cfg(test)]
-    pub fn new_test(title: &str, artist_id: &str) -> Self {
+    pub fn new_test(title: &str) -> Self {
         let now = chrono::Utc::now();
         DbAlbum {
             id: uuid::Uuid::new_v4().to_string(),
             title: title.to_string(),
-            artist_id: artist_id.to_string(),
             year: None,
             is_compilation: false,
             created_at: now,

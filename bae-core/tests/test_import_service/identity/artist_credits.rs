@@ -68,12 +68,15 @@ async fn artists_named(f: &ImportFixture, name: &str) -> Vec<bae_core::db::DbArt
         .collect()
 }
 
+/// The artist the album's first credit names.
 async fn album_artist_id(f: &ImportFixture, album_id: &str) -> String {
-    f.db.find_album_by_id(album_id)
+    f.db.get_artists_for_album(album_id)
         .await
         .unwrap()
-        .expect("the imported album")
-        .artist_id
+        .first()
+        .expect("the imported album's first credit")
+        .id
+        .clone()
 }
 
 fn library_artist(name: &str, discogs_artist_id: Option<&str>) -> bae_core::db::DbArtist {
