@@ -25,12 +25,13 @@ pub enum AutomationTool {
     ReleaseStorageAction,
     OutputStatus,
     ReleaseReidentify,
+    ReleaseAlbumSet,
     ReleaseMetadataUpdate,
     LibrarySearch,
 }
 
 impl AutomationTool {
-    const DESCRIPTORS: [AutomationToolDescriptor; 25] = [
+    const DESCRIPTORS: [AutomationToolDescriptor; 26] = [
         AutomationToolDescriptor {
             tool: AutomationTool::ConfigGet,
             name: "config_get",
@@ -166,8 +167,14 @@ impl AutomationTool {
         AutomationToolDescriptor {
             tool: AutomationTool::ReleaseReidentify,
             name: "release_reidentify",
-            description: "Re-identify a library release as a catalog release: apply its every value and save, records and album with it",
+            description: "Re-identify a library release as a catalog release: apply its every value and save, records and album with it, into the library album its records name or the one given",
             schema: Some(schema_object::<ReleaseReidentifyInput>),
+        },
+        AutomationToolDescriptor {
+            tool: AutomationTool::ReleaseAlbumSet,
+            name: "release_album_set",
+            description: "Move a library release into an existing library album, which keeps its own title and artists",
+            schema: Some(schema_object::<ReleaseAlbumInput>),
         },
         AutomationToolDescriptor {
             tool: AutomationTool::ReleaseMetadataUpdate,

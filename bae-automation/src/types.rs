@@ -869,6 +869,17 @@ pub struct ReleaseReidentifyInput {
     /// The catalog release it is, with the other catalogs' releases the pick
     /// pairs with it.
     pub pressing: AutomationPressingLink,
+    /// The library album it files under, over the one its records name,
+    /// which keeps its own title and artists; absent to leave it to its
+    /// records.
+    pub album_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ReleaseAlbumInput {
+    pub release_id: String,
+    /// The library album the release moves into.
+    pub album_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

@@ -443,11 +443,13 @@ impl Automation {
 
     /// Re-identify a library release as the catalog release `pressing`
     /// names: apply it in a fresh edit session and save it as applied —
-    /// every value, the records, and the album they name.
+    /// every value, the records, and the album they name, or the library
+    /// album `album_id` picked over it, in one write as the editor's save.
     pub async fn reidentify_release(
         &self,
         release_id: String,
         pressing: AutomationPressingLink,
+        album_id: Option<String>,
     ) -> Result<(), AutomationError> {
         let link = pressing.into_core();
         // A session of its own: an editor open on the release in the app keeps
@@ -457,8 +459,31 @@ impl Automation {
             .services
             .apply_release_edit_catalog(&session, &link)
             .await?;
+        if album_id.is_some() {
+            self.services
+                .set_release_edit_album(&session, album_id)
+                .await?;
+        }
         self.services
             .save_release_edit(&session, &seed.edit)
+            .await?;
+        Ok(())
+    }
+
+    /// Move a library release into the library album `album_id`, which keeps
+    /// its own title and artists: the editor's album pick, saved with the
+    /// release's values as they stand, in an edit session of its own.
+    pub async fn set_release_album(
+        &self,
+        release_id: String,
+        album_id: String,
+    ) -> Result<(), AutomationError> {
+        let session = self.services.open_release_edit(&release_id).await?;
+        self.services
+            .set_release_edit_album(&session, Some(album_id))
+            .await?;
+        self.services
+            .save_release_edit(&session, &session.opened().edit)
             .await?;
         Ok(())
     }
@@ -618,7 +643,13 @@ impl Automation {
             }
             AutomationTool::ReleaseReidentify => {
                 let input: ReleaseReidentifyInput = from_value(args)?;
-                self.reidentify_release(input.release_id, input.pressing)
+                self.reidentify_release(input.release_id, input.pressing, input.album_id)
+                    .await?;
+                to_value(EmptyResponse {})
+            }
+            AutomationTool::ReleaseAlbumSet => {
+                let input: ReleaseAlbumInput = from_value(args)?;
+                self.set_release_album(input.release_id, input.album_id)
                     .await?;
                 to_value(EmptyResponse {})
             }

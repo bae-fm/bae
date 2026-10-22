@@ -830,3 +830,96 @@ mod release_storage_action {
         assert!(!AutomationTool::ReleaseStorageAction.accepts_missing_arguments());
     }
 }
+
+/// MCP files a library release under a library album as the editor's album
+/// picker does: the release moves in and the album keeps its own title.
+mod release_album {
+    use super::*;
+
+    /// Write one tagged fixture track into `dir`.
+    fn one_track(dir: &std::path::Path) {
+        bae_test_support::write_tagged_flac(dir, "01 Track One.flac", "Track One");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn release_album_set_moves_the_release_into_the_album_it_names() {
+        let (manager, imported) = bae_test_support::imported_release_setup(
+            bae_test_support::discogs_test_release(
+                "album-set-moved",
+                "Moved Album",
+                &[("Track One", "0:10")],
+            ),
+            "moved",
+            "album-set-moved-import".to_string(),
+            one_track,
+        )
+        .await
+        .expect("import the release that moves");
+        let picked_dir = imported.temp_dir.path().join("picked");
+        std::fs::create_dir_all(&picked_dir).expect("the second album's folder");
+        one_track(&picked_dir);
+        let picked_key = bae_test_support::seed_discogs_test_release(
+            manager.providers(),
+            bae_test_support::discogs_test_release(
+                "album-set-picked",
+                "Picked Album",
+                &[("Track One", "0:10")],
+            ),
+        );
+        let picked_release =
+            bae_test_support::import_folder_and_wait(&manager, &picked_dir, picked_key).await;
+        let picked_album = manager
+            .get_album_id_for_release(&picked_release)
+            .await
+            .expect("the picked album");
+        let moved_from = manager
+            .get_album_id_for_release(&imported.release_id)
+            .await
+            .expect("the release's own album");
+        assert_ne!(moved_from, picked_album);
+        let services = AppServices::for_test(manager.clone())
+            .await
+            .expect("the services start");
+        let automation = Automation::new(services, &tokio::runtime::Handle::current());
+
+        automation
+            .call_tool(
+                AutomationTool::from_name("release_album_set").expect("the tool is published"),
+                serde_json::json!({
+                    "release_id": imported.release_id,
+                    "album_id": picked_album,
+                }),
+            )
+            .await
+            .expect("the release moves");
+
+        assert_eq!(
+            manager
+                .get_album_id_for_release(&imported.release_id)
+                .await
+                .unwrap(),
+            picked_album
+        );
+        assert_eq!(
+            manager
+                .get_album_by_id(&picked_album)
+                .await
+                .unwrap()
+                .expect("the picked album stays")
+                .title,
+            "Picked Album",
+            "the album keeps its own title"
+        );
+        let refused = automation
+            .call_tool(
+                AutomationTool::ReleaseAlbumSet,
+                serde_json::json!({
+                    "release_id": imported.release_id,
+                    "album_id": "no-such-album",
+                }),
+            )
+            .await
+            .expect_err("an album the library does not hold cannot be picked");
+        assert_eq!(refused.kind(), "import");
+    }
+}
