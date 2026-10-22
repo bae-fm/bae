@@ -138,19 +138,6 @@ impl PressingFacts {
     pub fn is_empty(&self) -> bool {
         *self == Self::default()
     }
-
-    /// These facts, with each part `self` leaves unstated taken from `other`.
-    pub fn fill_missing(&mut self, other: Self) {
-        self.area = self.area.or(other.area);
-        if self.media.is_empty() {
-            self.media = other.media;
-        }
-        self.status = self.status.or(other.status);
-        self.packaging = self.packaging.or(other.packaging);
-        if self.discogs_details.is_empty() {
-            self.discogs_details = other.discogs_details;
-        }
-    }
 }
 
 /// A physical carrier whose side or disc boundaries can pause playback.
@@ -262,20 +249,6 @@ impl Pressing {
             barcodes: Vec::new(),
             facts: PressingFacts::default(),
         }
-    }
-
-    /// This pressing, with each field `self` leaves unstated taken from
-    /// `other`. The labels and the barcodes are each taken whole, so no name
-    /// is paired with another source's number.
-    pub fn fill_missing(&mut self, other: Self) {
-        self.year = self.year.or(other.year);
-        if self.labels.is_empty() {
-            self.labels = other.labels;
-        }
-        if self.barcodes.is_empty() {
-            self.barcodes = other.barcodes;
-        }
-        self.facts.fill_missing(other.facts);
     }
 }
 

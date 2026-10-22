@@ -68,7 +68,7 @@ fn malformed_group_credit_preserves_selected_tracks_and_valid_supplemental_field
 }
 
 #[test]
-fn malformed_linked_release_credit_keeps_its_pressing_fields_and_valid_credit() {
+fn malformed_linked_release_credit_keeps_its_valid_credit_and_fills_no_pressing_field() {
     let mut payloads = selected_release();
     payloads.supporting.push(SourcePayload::new(
         PayloadSource::MusicBrainzDiscogsXref,
@@ -82,15 +82,11 @@ fn malformed_linked_release_credit_keeps_its_pressing_fields_and_valid_credit() 
     let parsed = parse(&payloads).unwrap();
     assert_eq!(parsed.album_title, "Selected Album");
     assert_eq!(parsed.album_year, Some(1979));
-    assert_eq!(parsed.pressing.year, Some(1985));
-    assert_eq!(
-        parsed.pressing.facts.area,
-        Some(crate::pressing::area("JP"))
-    );
-    assert_eq!(
-        parsed.pressing.barcodes,
-        ["1234567890123"]
-    );
+    // The linked record is the same pressing on the other catalog; the
+    // selected record states none of these, and the linked one fills none.
+    assert_eq!(parsed.pressing.year, None);
+    assert_eq!(parsed.pressing.facts.area, None);
+    assert!(parsed.pressing.barcodes.is_empty());
     assert_eq!(
         parsed.album_credits[0].credit.musicbrainz_artist_id.as_deref(),
         Some("linked-artist")

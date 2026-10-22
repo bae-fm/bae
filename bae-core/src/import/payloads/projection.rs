@@ -89,10 +89,12 @@ impl ReleasePayloads {
         };
         let linked_album_year = counterpart.as_ref().and_then(|value| value.album.year);
         if let Some(mut counterpart) = counterpart {
-            // Album dates are resolved with parent precedence below, separately
-            // from the linked pressing's date.
+            // The linked record is the same pressing on the other catalog: it
+            // speaks for the album they share, never for the pressing, whose
+            // facts are the applied record's alone. Album dates are resolved
+            // with parent precedence below.
             counterpart.album.year = None;
-            metadata.fill_missing(counterpart);
+            metadata.album.fill_missing(counterpart.album);
         }
         metadata.album.year = selected_album_year;
         for (catalog, key, json) in self.album_documents()? {

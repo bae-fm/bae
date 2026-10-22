@@ -650,8 +650,20 @@ number is now worth asking Discogs about. A run therefore goes in rounds:
 **Pressings and albums.** The two catalogs describe the same object in their
 own words. A record from each becomes one *pressing* when what they state
 about the physical object agrees: the barcode with or without spaces, the
-catalog number with or without a dash, the country, the media. Two records of
-one catalog stay two pressings, because that catalog's editors separated them.
+catalog number with or without a dash, the year, the country, the media. A
+record that states nothing about one of them doesn't disagree; one stating a
+different year does. Two records of one catalog stay two pressings, because
+that catalog's editors separated them.
+
+A pressing's records keep their own statements: neither fills in what the
+other leaves out. Its row shows what a pick applies, its lead record's facts,
+and carries each record's own. Picking it applies the picked record alone: the
+draft's pressing facts and year are that record's, or the year the folder
+names where it states none, and the other catalog's record is linked as a
+record of the release and fills nothing of the pressing. The album a pressing
+belongs to is the two records', so either's album documents speak for its
+title, artists and year. An album card names the label every pressing
+naming one agrees on, and none where they name different labels.
 
 Pressings group under albums. A MusicBrainz release group and a Discogs master
 are one album only when a statement says so, never because their titles look

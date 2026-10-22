@@ -412,15 +412,14 @@ fn a_number_no_row_carries_leaves_the_next_standing_to_speak() {
     assert!(!facts.states_catalog("LBL-200"));
 }
 
-/// A pick's year: the year a record of the row states — another catalog's
-/// record of the pressing speaks for the one the draft is read from — and,
-/// where none states one, the year the folder names the pressing by.
+/// The year a draft read from an undated record takes: the one the folder
+/// names the pressing by, never another catalog's record's.
 #[test]
-fn a_pick_s_year_is_a_record_s_else_the_folder_s() {
+fn an_undated_pick_s_year_is_the_folder_s_not_its_partner_s() {
     let folder = text(&["1986 Germany Label AB 12345-2", "1979 Album"]);
     let undated = record(None, Some(1979), None);
     assert_eq!(
-        pressing_year(&folder, std::slice::from_ref(&undated)),
+        folder_pressing_year(&folder, std::slice::from_ref(&undated)),
         Some(1986)
     );
     let partner = MetadataResult {
@@ -428,14 +427,10 @@ fn a_pick_s_year_is_a_record_s_else_the_folder_s() {
         ..MetadataResult::for_test(Catalog::Discogs, "dg-1", Some("m-1"))
     };
     assert_eq!(
-        pressing_year(&folder, &[undated.clone(), partner]),
-        Some(1987)
+        folder_pressing_year(&folder, &[undated.clone(), partner]),
+        Some(1986)
     );
-    assert_eq!(
-        pressing_year(&folder, &[record(Some(1990), Some(1979), None)]),
-        Some(1990)
-    );
-    assert_eq!(pressing_year(&text(&["Album"]), &[undated]), None);
+    assert_eq!(folder_pressing_year(&text(&["Album"]), &[undated]), None);
 }
 
 /// The one year rule: with the album's first year known it is the album's,

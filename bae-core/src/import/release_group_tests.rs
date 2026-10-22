@@ -865,17 +865,31 @@ fn year_span_is_none_when_no_pressing_carries_a_year() {
     assert_eq!(groups[0].year_max, None);
 }
 
+/// The card names the label every pressing naming one agrees on, however
+/// each spells it; pressings naming different labels leave the card none,
+/// never the first one's.
 #[test]
-fn the_card_label_is_the_first_pressing_that_names_one() {
-    let mut unlabelled = mb("rel-1", Some("group-x"), Some(1992));
-    unlabelled.labels = Vec::new();
-    let mut labelled = mb("rel-2", Some("group-x"), Some(1994));
-    labelled.labels = vec![crate::pressing::ReleaseLabel::of(Some("Label Name"), None)];
-    let mut later = mb("rel-3", Some("group-x"), Some(2012));
-    later.labels = vec![crate::pressing::ReleaseLabel::of(Some("Reissue Records"), None)];
-
-    let groups = grouped(vec![unlabelled, labelled, later]);
+fn the_card_label_is_the_one_its_pressings_agree_on() {
+    let labelled = |id: &str, year: i32, names: &[&str]| {
+        let mut record = mb(id, Some("group-x"), Some(year));
+        record.labels = names
+            .iter()
+            .map(|name| crate::pressing::ReleaseLabel::of(Some(name), None))
+            .collect();
+        record
+    };
+    let groups = grouped(vec![
+        labelled("rel-1", 1992, &[]),
+        labelled("rel-2", 1994, &["Label Name"]),
+        labelled("rel-3", 2012, &["Other Imprint", "LABEL NAME"]),
+    ]);
     assert_eq!(groups[0].label.as_deref(), Some("Label Name"));
+
+    let groups = grouped(vec![
+        labelled("rel-2", 1994, &["Label Name"]),
+        labelled("rel-3", 2012, &["Reissue Records"]),
+    ]);
+    assert_eq!(groups[0].label, None);
 }
 
 #[test]
@@ -942,10 +956,10 @@ fn rows_either_side_of_the_disclosure_are_one_card() {
     assert_eq!(ids(&groups[1].sections[0].narrowed_out), vec!["mb-2"]);
 }
 
-/// A row's facts are its records' together: what the lead states, and what
-/// the other catalog states where the lead is silent.
+/// A row of two records keeps each record's own facts: neither fills the
+/// other, and what a pick applies is the lead's.
 #[test]
-fn a_pressings_facts_fill_in_from_its_other_records() {
+fn a_pressings_records_keep_their_own_facts() {
     use crate::pressing::{area, DiscogsDetail, ReleaseStatus};
     let mut musicbrainz = mb("mb-1", Some("group-x"), Some(1992));
     musicbrainz.barcodes = vec!["012345678905".to_string()];
@@ -959,13 +973,12 @@ fn a_pressings_facts_fill_in_from_its_other_records() {
     let groups = grouped(vec![musicbrainz, discogs]);
     let pressing = groups[0].sections[0].pressings[0].clone();
     assert_eq!(pressing.releases.len(), 2, "the two records are one pressing");
-    let facts = pressing.facts();
-    assert_eq!(facts.area, Some(area("JP")));
-    assert_eq!(
-        facts.status,
-        Some(ReleaseStatus::Official),
-        "the lead's own status stands"
-    );
-    assert_eq!(facts.discogs_details, vec![DiscogsDetail::Reissue]);
-    assert_eq!(facts.media, crate::pressing::made_of(Medium::Cd, 1).media);
+    let lead = pressing.lead().facts();
+    assert_eq!(lead.area, Some(area("JP")));
+    assert_eq!(lead.status, Some(ReleaseStatus::Official));
+    assert!(lead.discogs_details.is_empty(), "Discogs's details stay on its record");
+    let other = pressing.releases[1].facts();
+    assert_eq!(other.status, Some(ReleaseStatus::Promotion));
+    assert_eq!(other.discogs_details, vec![DiscogsDetail::Reissue]);
+    assert_eq!(other.area, None, "MusicBrainz's area stays on its record");
 }

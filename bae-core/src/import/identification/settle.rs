@@ -341,7 +341,7 @@ async fn settle_lead(
     };
     let pressing = pick.pressing();
     let (primary, partners) = pressing.claims();
-    let pressing_year = crate::identify::row_facts::pressing_year(text, &pressing.releases);
+    let pressing_year = crate::identify::row_facts::folder_pressing_year(text, &pressing.releases);
 
     let settle = async {
         let release =

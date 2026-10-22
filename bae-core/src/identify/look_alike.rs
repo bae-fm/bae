@@ -89,7 +89,7 @@ impl Shown {
                 .collect(),
             year: row.lead().year,
             labels: row.label_lines(),
-            facts: row.facts(),
+            facts: row.lead().facts(),
             badges: Agreements {
                 title: false,
                 artist: false,

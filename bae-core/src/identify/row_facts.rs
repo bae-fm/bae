@@ -228,20 +228,10 @@ impl StatedYears {
     }
 }
 
-/// The year the pressing `records` name came out, for a draft read from them:
-/// the first year one of them states — the records of one row are one
-/// pressing, so another catalog's record of it speaks for the one the draft
-/// is read from — or, where none states one, the year the folder names the
-/// pressing by (see [`FolderFacts::pressing_year`]).
-pub(crate) fn pressing_year(text: &CandidateText, records: &[MetadataResult]) -> Option<i32> {
-    records
-        .iter()
-        .find_map(|record| record.year)
-        .or_else(|| folder_pressing_year(text, records))
-}
-
 /// The year the folder names the pressing `records` are of by — see
-/// [`FolderFacts::pressing_year`].
+/// [`FolderFacts::pressing_year`]. A draft read from a record that states no
+/// year of its own takes it: another catalog's record of the pressing fills
+/// nothing.
 pub(crate) fn folder_pressing_year(
     text: &CandidateText,
     records: &[MetadataResult],

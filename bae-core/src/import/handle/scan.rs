@@ -250,7 +250,8 @@ impl ImportServiceHandle {
     /// track on its file. A reading of tracks lays every value it states over
     /// the folder's audio; a release that lists none leaves the draft's tracks
     /// as they are. Where the release states no year, the pressing's is
-    /// `pressing_year` — see `identify::row_facts::pressing_year`.
+    /// `pressing_year`, the folder's — see
+    /// `identify::row_facts::folder_pressing_year`.
     pub(crate) fn external_candidate_draft(
         values: crate::import::release_values::ReleaseValues,
         current: &crate::import::CandidateDraft,
@@ -488,7 +489,7 @@ impl ImportServiceHandle {
                 values,
                 prepared_partners,
                 &current.draft,
-                crate::identify::row_facts::pressing_year(&text, &records),
+                crate::identify::row_facts::folder_pressing_year(&text, &records),
             )
             .await?;
         let settled_by_choice = crate::identify::TerminalVerdict::of_pick(picked, folder_tracks);

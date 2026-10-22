@@ -113,7 +113,7 @@ async fn a_master_backlink_is_followed_and_the_stored_release_reads_back() {
 }
 
 #[test]
-fn selected_pressing_wins_and_linked_release_fills_only_absent_details() {
+fn the_pressing_is_the_selected_record_s_alone() {
     let payloads = ReleasePayloads::for_test(
         MetadataRef::new(Catalog::Discogs, "7811"),
         discogs(),
@@ -146,14 +146,10 @@ fn selected_pressing_wins_and_linked_release_fills_only_absent_details() {
         "the selected pressing's own media, not the linked release's CD"
     );
     assert_eq!(
-        parsed.pressing.facts.area,
-        Some(crate::pressing::area("JP")),
-        "the linked release fills the area the selected one leaves out"
+        parsed.pressing.facts.area, None,
+        "the linked release fills nothing the selected one leaves out"
     );
-    assert_eq!(
-        parsed.pressing.barcodes,
-        ["1234567890123"]
-    );
+    assert!(parsed.pressing.barcodes.is_empty());
     assert_eq!(parsed.tracks.len(), 2);
     assert_eq!(parsed.tracks[1].title, "Second Track");
     assert_eq!(crate::import::release_values::value_labels(&parsed)[1], "B1");

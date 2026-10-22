@@ -64,13 +64,6 @@ pub(crate) struct ReleaseMetadata {
     pub pressing: Pressing,
 }
 
-impl ReleaseMetadata {
-    pub(crate) fn fill_missing(&mut self, other: Self) {
-        self.album.fill_missing(other.album);
-        self.pressing.fill_missing(other.pressing);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

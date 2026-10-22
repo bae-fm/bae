@@ -47,10 +47,9 @@ pub struct ReleaseGroup {
     pub id: String,
     pub title: String,
     pub artist: Option<String>,
-    /// The label the card names beside the artist: the first label name of
-    /// the first pressing that states one, MusicBrainz first.
-    /// Which of an album's pressings speaks for it is core's call, not a
-    /// surface's.
+    /// The label the card names beside the artist: the one every pressing
+    /// naming a label agrees on, else none — no pressing speaks for the album
+    /// over another. Core's call, not a surface's.
     pub label: Option<String>,
     /// Representative cover for the card — the first pressing that surfaced
     /// one, MusicBrainz first.
@@ -183,19 +182,6 @@ impl Pressing {
                 .map(|at| releases[at].take().expect("each record is placed once"))
                 .collect(),
         }
-    }
-
-    /// What the pressing is, as its records together state it: the lead's
-    /// facts, with each part the lead leaves unstated taken from the other
-    /// records in their order — MusicBrainz's status beside Discogs's
-    /// details, one catalog's country where the other names none.
-    pub fn facts(&self) -> crate::pressing::PressingFacts {
-        let mut records = self.releases.iter().map(MetadataResult::facts);
-        let mut facts = records.next().unwrap_or_default();
-        for other in records {
-            facts.fill_missing(other);
-        }
-        facts
     }
 
     /// The release a row picks when the person picks the row itself.
@@ -791,12 +777,6 @@ fn build_group(
         .unwrap_or_else(|| lead.release_id.clone());
     let title = lead.title.clone();
     let artist = members.iter().find_map(|&at| read(at).artist.clone());
-    let label = members.iter().find_map(|&at| {
-        read(at)
-            .labels
-            .iter()
-            .find_map(|label| label.name().map(str::to_string))
-    });
     let cover_art = crate::import::cover_art::preferred_cover(
         members.iter().filter_map(|&at| read(at).cover_art.clone()),
     );
@@ -857,6 +837,7 @@ fn build_group(
             },
         });
     }
+    let label = agreed_label(rows.iter().map(|row| &row.row.pressing));
     let best = |offered: bool| {
         rows.iter()
             .filter(|row| row.offered == offered)
@@ -913,6 +894,30 @@ fn build_group(
         },
         rank,
     )
+}
+
+/// The label name every one of `pressings` that names a label agrees on: of
+/// the first naming one's labels, in its order, the first every other names
+/// too (two spellings of one name count as one). None where the pressings
+/// name different labels, or none names any: no pressing speaks for the
+/// album over another.
+fn agreed_label<'a>(pressings: impl Iterator<Item = &'a Pressing>) -> Option<String> {
+    let named: Vec<Vec<crate::pressing::ReleaseLabel>> = pressings
+        .map(Pressing::labels)
+        .filter(|labels| labels.iter().any(|label| label.name().is_some()))
+        .collect();
+    let (first, others) = named.split_first()?;
+    first
+        .iter()
+        .filter_map(crate::pressing::ReleaseLabel::name)
+        .find(|name| {
+            others.iter().all(|labels| {
+                labels.iter().filter_map(crate::pressing::ReleaseLabel::name).any(|other| {
+                    crate::text_match::same_label_name(name, other)
+                })
+            })
+        })
+        .map(str::to_string)
 }
 
 /// One row as its card places it: the album it sits under, and whether it is

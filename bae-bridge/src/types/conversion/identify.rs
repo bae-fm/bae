@@ -336,7 +336,9 @@ mirror_struct! {
 
 impl BridgePressing {
     fn from_core(pressing: bae_core::import::release_group::Pressing) -> Self {
-        let facts = BridgePressingFacts::from_core(pressing.facts());
+        // The row's summary is what a pick applies: its lead record's facts.
+        // Each record's own facts stay on it, in `releases`.
+        let facts = BridgePressingFacts::from_core(pressing.lead().facts());
         BridgePressing {
             document_failure: pressing
                 .document_failure()
