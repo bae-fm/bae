@@ -5,7 +5,8 @@
 #
 # Caps are about twice a fresh build of each: host 9.8G, macOS bridge 7.4G,
 # Android 6.4G, iOS 12G; the macOS app's .build holds two DerivedData trees
-# (check.sh's and run.sh's) of 5.2G each fresh; the others are under 1G.
+# (check.sh's and run.sh's) of 5.2G each fresh; BaeKit's `swift build` 4.4G;
+# the others are under 1G.
 #
 # path                                cap
 target                                20G
@@ -14,7 +15,7 @@ target-ios                            24G
 target-android                        13G
 bae-macos/bae/.build                  20G
 bae-ios/bae/.build                    10G
-BaeKit/.build                         2G
+BaeKit/.build                         9G
 bae-android/.gradle                   1G
 bae-android/app/build                 2G
 bae-avalonia/obj                      1G
