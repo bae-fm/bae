@@ -15,10 +15,11 @@ namespace Bae.Desktop;
 // /tmp-backed named mutex on Unix). Forwarding is a named pipe — a true named
 // pipe on Windows, a Unix-domain-socket-backed pipe under the temp dir on Linux
 // (.NET's System.IO.Pipes). The second instance connects, writes its argv, and
-// exits; the primary's listener hands the argv to the app. Both names carry an edition key (bae / baeium) so
-// the two never redirect into each other, and a per-user token (see UserScope)
-// so a shared multi-user host can't let one user squat or intercept another's
-// channel through the world-writable temp dir.
+// exits; the primary's listener hands the argv to the app. A launch whose
+// handoff fails takes over when the running copy is gone. Both names carry an
+// edition key (bae / baeium) so the two never redirect into each other, and a
+// per-user token (see UserScope) so a shared multi-user host can't let one user
+// squat or intercept another's channel through the world-writable temp dir.
 internal sealed class SingleInstance : IDisposable
 {
     private readonly string _pipeName;
@@ -37,11 +38,10 @@ internal sealed class SingleInstance : IDisposable
     public static SingleInstance? Acquire(
         string edition, IReadOnlyList<string> args, Action<IReadOnlyList<string>> onActivation)
     {
-        var name = $"bae-single-instance-{edition}-{UserScope()}";
+        var name = Name(edition);
         var mutex = new Mutex(initiallyOwned: true, name, out var isPrimary);
-        if (!isPrimary)
+        if (!isPrimary && (Forward(name, args) || !TakeOver(mutex)))
         {
-            Forward(name, args);
             mutex.Dispose();
             return null;
         }
@@ -51,35 +51,107 @@ internal sealed class SingleInstance : IDisposable
         return instance;
     }
 
+    // The mutex and pipe name for an edition and this user.
+    internal static string Name(string edition) => $"bae-single-instance-{edition}-{UserScope()}";
+
+    // After a failed handoff: become the primary when the running copy is gone
+    // — it exited, abandoning the mutex, or released it on its way out — and
+    // leave this launch to exit when that copy still holds it.
+    private static bool TakeOver(Mutex mutex)
+    {
+        bool owned;
+        try
+        {
+            owned = mutex.WaitOne(0);
+        }
+        catch (AbandonedMutexException)
+        {
+            owned = true;
+        }
+        if (owned)
+        {
+            BaeDiagnostics.Logger.Info("The running copy is gone; this launch takes over.");
+        }
+        else
+        {
+            BaeDiagnostics.Logger.Error(
+                "The running copy didn't take this launch and is still running; this launch exits.");
+        }
+        return owned;
+    }
+
     // Accept forwarded launches one at a time, handing each one's argv on. A
-    // single-instance server accepts one connection, so the loop recreates the
-    // server after each; the mutex (not the pipe) is what elects the primary, so
-    // the gap between accepting and recreating can't hand primacy to a third
+    // server instance accepts one connection, so the next instance is opened
+    // as soon as one connects, before that launch is read: a launch arriving
+    // meanwhile connects to it instead of to an instance about to close, which
+    // would take its argv and drop it. The mutex (not the pipe) is what elects
+    // the primary, so no gap between instances can hand primacy to a third
     // launch.
     private void Listen(Action<IReadOnlyList<string>> onActivation) =>
         _ = Task.Run(async () =>
         {
-            while (!_cts.IsCancellationRequested)
+            NamedPipeServerStream? next = null;
+            try
             {
-                try
+                while (!_cts.IsCancellationRequested)
                 {
-                    using var server = new NamedPipeServerStream(
-                        _pipeName, PipeDirection.In, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
-                    await server.WaitForConnectionAsync(_cts.Token);
-                    using var reader = new StreamReader(server, Encoding.UTF8);
-                    var payload = await reader.ReadToEndAsync(_cts.Token);
-                    onActivation(payload.Split('\n', StringSplitOptions.RemoveEmptyEntries));
-                }
-                catch (OperationCanceledException)
-                {
-                    return;
-                }
-                catch (IOException exception)
-                {
-                    BaeDiagnostics.Logger.Warning("Single-instance listener error.", exception);
+                    try
+                    {
+                        next ??= OpenServer();
+                        await next.WaitForConnectionAsync(_cts.Token);
+                    }
+                    catch (Exception exception) when (exception is not OperationCanceledException)
+                    {
+                        // The waiting instance failed: a fresh one takes the next launch.
+                        next?.Dispose();
+                        next = null;
+                        await Recover(exception);
+                        continue;
+                    }
+                    using var connected = next;
+                    next = null;
+                    try
+                    {
+                        next = OpenServer();
+                        using var reader = new StreamReader(connected, Encoding.UTF8);
+                        var payload = await reader.ReadToEndAsync(_cts.Token);
+                        onActivation(payload.Split('\n', StringSplitOptions.RemoveEmptyEntries));
+                    }
+                    catch (Exception exception) when (exception is not OperationCanceledException)
+                    {
+                        await Recover(exception);
+                    }
                 }
             }
+            catch (OperationCanceledException)
+            {
+                // Disposed: the app is exiting.
+            }
+            finally
+            {
+                next?.Dispose();
+            }
         });
+
+    // A launch that hung up mid-handoff is logged. Anything else is a bug,
+    // reported; listening goes on so later launches still reach this copy, and
+    // the pause keeps a failure that repeats from spinning.
+    private async Task Recover(Exception exception)
+    {
+        if (exception is IOException)
+        {
+            BaeDiagnostics.Logger.Warning("A forwarded launch broke off.", exception);
+            return;
+        }
+        BaeDiagnostics.Logger.Error("The single-instance listener failed; listening again.", exception);
+        BaeCrashReporting.CaptureException(exception);
+        await Task.Delay(TimeSpan.FromSeconds(1), _cts.Token);
+    }
+
+    // One server instance; two are open at once while a connected launch is
+    // read and the next waits.
+    private NamedPipeServerStream OpenServer() =>
+        new(_pipeName, PipeDirection.In, 2, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
 
     // A per-user token folded into the mutex and pipe names. The BCL named pipe
     // backs onto a socket in the world-writable temp dir on Unix
@@ -97,7 +169,9 @@ internal sealed class SingleInstance : IDisposable
         return Convert.ToHexString(hash, 0, 6).ToLowerInvariant();
     }
 
-    private static void Forward(string pipeName, IReadOnlyList<string> args)
+    // Hand this launch's argv to the running copy; false, logged, when it
+    // didn't take it — gone, or not answering.
+    private static bool Forward(string pipeName, IReadOnlyList<string> args)
     {
         try
         {
@@ -106,12 +180,12 @@ internal sealed class SingleInstance : IDisposable
             var payload = Encoding.UTF8.GetBytes(string.Join('\n', args));
             client.Write(payload, 0, payload.Length);
             client.Flush();
+            return true;
         }
         catch (Exception exception) when (exception is IOException or TimeoutException)
         {
-            // The primary went away between the mutex check and the connect. The
-            // launch is lost; a fresh mutex acquisition on the next launch will
-            // elect a new primary. Nothing to surface.
+            BaeDiagnostics.Logger.Warning("Couldn't hand this launch to the running copy.", exception);
+            return false;
         }
     }
 

@@ -140,10 +140,12 @@ internal sealed class BaeLogger
         }
     }
 
-    private static string Format(string message, Exception? exception) =>
+    // The whole exception: its type and message, its stack, and every inner
+    // exception's, so a logged failure keeps what caused it.
+    internal static string Format(string message, Exception? exception) =>
         exception is null
             ? message
-            : $"{message}: {exception.GetType().Name}: {exception.Message}";
+            : $"{message}: {exception}";
 
     private static void TraceMessage(string level, string message)
     {

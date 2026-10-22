@@ -95,7 +95,9 @@ catalog lookups and metadata editing out entirely (§11.2).
 
 The macOS app is the full desktop app. On Windows and Linux, bae-avalonia
 holds the desktop app's start-up, update and packaging machinery and one
-window; the desktop views are ported from the macOS app later.
+window; the desktop views are ported from the macOS app later. Opening it
+while it runs hands the launch to the running copy; a launch that can't hand
+over, logged, takes over when that copy is gone.
 
 ### 1.2 Two editions
 
@@ -2089,7 +2091,11 @@ Nothing in bae-core depends on a server crate.
   `~/.bae/install-id`, never coven's device id, and each launch adds an id of
   its own. The baeium edition sends none.
 - **Errors keep their cause.** A failure carries its typed reason to the
-  person who can act on it; nothing defaults over an error.
+  person who can act on it; nothing defaults over an error. A logged error
+  keeps its whole chain of causes and its stack.
+- **Reporting needs its settings.** A bae-edition build missing a telemetry
+  or crash-reporting setting turns that reporting off and logs a warning
+  naming what's missing.
 
 ### 11.3 Checks
 

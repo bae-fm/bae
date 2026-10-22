@@ -23,7 +23,7 @@ internal static class Program
         VelopackApp.Build().Run();
 
         // One instance per edition. A second launch forwards its argv to the
-        // running instance and exits.
+        // running instance and exits, or takes over when that instance is gone.
         var single = SingleInstance.Acquire(App.Edition, args, App.OnRedirectedActivation);
         if (single is null)
         {

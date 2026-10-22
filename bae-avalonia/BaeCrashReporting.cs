@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using Sentry;
@@ -49,16 +50,41 @@ internal static class BaeCrashReporting
 
     private static CrashReportingConfig? Config()
     {
+        // The baeium edition ships without crash reporting by design, so its
+        // absence is expected and silent.
         if (!NativeBae.SupportsOAuthProviders())
         {
             return null;
         }
-        var appVersion = AppAssembly.GetName().Version;
-        var dsn = AppMetadata.ConfiguredString("BaeSentryDsn");
-        var environment = AppMetadata.ConfiguredString("BaeEnvironment");
-        var gitCommit = AppMetadata.ConfiguredString("BaeGitCommit");
+        return Config(
+            AppAssembly.GetName().Version?.ToString(),
+            AppMetadata.ConfiguredString("BaeSentryDsn"),
+            AppMetadata.ConfiguredString("BaeEnvironment"),
+            AppMetadata.ConfiguredString("BaeGitCommit"),
+            BaeDiagnostics.Logger);
+    }
+
+    // The crash-reporting config the build's values make, or null — with a
+    // warning naming what was missing — when any of them is missing.
+    internal static CrashReportingConfig? Config(
+        string? appVersion,
+        string? dsn,
+        string? environment,
+        string? gitCommit,
+        BaeLogger logger)
+    {
         if (appVersion is null || dsn is null || environment is null || gitCommit is null)
         {
+            var missing = new (string Name, string? Value)[]
+            {
+                ("the assembly version", appVersion),
+                ("BaeSentryDsn", dsn),
+                ("BaeEnvironment", environment),
+                ("BaeGitCommit", gitCommit),
+            }.Where(value => value.Value is null).Select(value => value.Name);
+            logger.Warning(
+                $"Crash reporting disabled: not configured at build time (missing {string.Join(", ", missing)}). " +
+                "Crashes will not be reported.");
             return null;
         }
         return new CrashReportingConfig(
