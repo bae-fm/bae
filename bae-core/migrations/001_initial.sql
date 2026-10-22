@@ -1854,9 +1854,11 @@ CREATE TABLE IF NOT EXISTS source_release_role (
         REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
 ) STRICT;
 
--- Every medium of the release, in order. Only MusicBrainz states a carrier (a
--- `crate::pressing::Medium` key, NULL where bae does not know it); a Discogs
--- release's media are the runs of rows its positions number as one disc.
+-- Every medium of the release, in order, with its carrier (a
+-- `crate::pressing::Medium` key, NULL where bae does not know it): the format
+-- a MusicBrainz medium states, or for a Discogs release, whose one tracklist
+-- is split into the mediums its positions name, the carrier a position prefix
+-- or the release's format entries give each.
 CREATE TABLE IF NOT EXISTS source_release_medium (
     catalog    TEXT NOT NULL,
     release_id TEXT NOT NULL,

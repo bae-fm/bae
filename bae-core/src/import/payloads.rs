@@ -231,11 +231,12 @@ impl ReleasePayloads {
             }
             Catalog::Discogs => {
                 let anchor = self.discogs_anchor()?;
+                let media = crate::import::discogs_mapper::pressing(&anchor).1;
                 (
                     anchor.master_id.clone(),
-                    crate::import::discogs_mapper::mediums(&anchor),
+                    crate::import::discogs_mapper::mediums(&anchor, &media),
                     CatalogFacts::Discogs {
-                        media: crate::import::discogs_mapper::pressing(&anchor).1,
+                        media,
                         release_roles: crate::import::discogs_mapper::release_roles(&anchor),
                     },
                     crate::import::search::discogs_release_notes(&anchor),

@@ -158,13 +158,14 @@ pub(crate) fn release_roles(release: &DiscogsRelease) -> Vec<RoleCredit> {
 }
 
 /// A Discogs release's mediums as bae keeps them: the tracklist split into the
-/// runs of rows each disc's positions name, every row with its sub-tracks.
-pub(crate) fn mediums(release: &DiscogsRelease) -> Vec<SourceMedium> {
-    medium_tracklists(&release.tracklist)
-        .iter()
-        .map(|rows| SourceMedium {
-            medium: None,
-            entries: tracklist_entries(&release.id, rows),
+/// mediums its positions name, each with the carrier the release's formats
+/// give it (`media`), every row with its sub-tracks.
+pub(crate) fn mediums(release: &DiscogsRelease, media: &StatedMedia) -> Vec<SourceMedium> {
+    crate::import::discogs_mediums::split(&release.id, &release.tracklist, media)
+        .into_iter()
+        .map(|medium| SourceMedium {
+            medium: medium.medium,
+            entries: tracklist_entries(&release.id, &medium.rows),
         })
         .collect()
 }
@@ -758,46 +759,6 @@ pub(crate) fn parse_duration_to_ms(duration: &str) -> Option<u64> {
         ),
         _ => None,
     }
-}
-
-/// A Discogs tracklist's mediums: the runs of rows whose positions name one
-/// disc (`1-1`, `1-2`, then `2-1`). A tracklist that numbers no discs is one
-/// medium, and a row naming no disc — a heading, an index — belongs with the
-/// disc of the first numbered row after it.
-pub(crate) fn medium_tracklists(
-    tracklist: &[DiscogsTrack],
-) -> Vec<Vec<DiscogsTrack>> {
-    let disc_of = |track: &DiscogsTrack| -> Option<i32> {
-        let (disc, _) = track.position.split_once('-')?;
-        disc.parse::<i32>().ok().filter(|disc| *disc > 0)
-    };
-    if !tracklist.iter().any(|track| disc_of(track).is_some()) {
-        return vec![tracklist.to_vec()];
-    }
-    let mut mediums: Vec<(i32, Vec<DiscogsTrack>)> = Vec::new();
-    let mut unnumbered: Vec<DiscogsTrack> = Vec::new();
-    for track in tracklist {
-        match disc_of(track) {
-            Some(disc) => {
-                match mediums.last_mut() {
-                    Some((current, rows)) if *current == disc => rows.append(&mut unnumbered),
-                    _ => mediums.push((disc, std::mem::take(&mut unnumbered))),
-                }
-                mediums
-                    .last_mut()
-                    .expect("a numbered row has a medium")
-                    .1
-                    .push(track.clone());
-            }
-            None => unnumbered.push(track.clone()),
-        }
-    }
-    mediums
-        .last_mut()
-        .expect("a numbered row has a medium")
-        .1
-        .append(&mut unnumbered);
-    mediums.into_iter().map(|(_, rows)| rows).collect()
 }
 
 /// A known compact disc contains one side even when its track positions

@@ -15,6 +15,8 @@ desktop_only! {
     pub mod discid;
     mod discid_hash;
     pub mod discogs_mapper;
+    /// A Discogs tracklist split into the mediums its positions name.
+    pub(crate) mod discogs_mediums;
 }
 mod error;
 desktop_only! {

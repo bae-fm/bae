@@ -120,9 +120,10 @@ pub(crate) enum CatalogFacts {
 /// One medium: a disc, a side pair of a record, a layer of a hybrid disc.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct SourceMedium {
-    /// The carrier MusicBrainz states for this medium, `None` where its
-    /// format names none bae knows. Discogs states its formats for the whole
-    /// release instead.
+    /// The carrier this medium is, `None` where the catalog does not say one
+    /// bae knows: the format MusicBrainz states for the medium, or the one a
+    /// Discogs release's position prefix or format entries give it (see
+    /// [`crate::import::discogs_mediums`]).
     pub(crate) medium: Option<Medium>,
     pub(crate) entries: Vec<TracklistEntry>,
 }

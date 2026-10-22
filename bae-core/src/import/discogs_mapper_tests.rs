@@ -18,7 +18,7 @@ fn stored(release: &DiscogsRelease) -> SourceRelease {
         },
         archive_release: None,
         archive_groups: Vec::new(),
-        mediums: mediums(release),
+        mediums: mediums(release, &pressing(release).1),
         catalog: CatalogFacts::Discogs {
             media: pressing(release).1,
             release_roles: release_roles(release),
