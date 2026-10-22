@@ -1,15 +1,18 @@
 package fm.bae.app.ui.settings
 
+import android.os.Looper
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.OAuthProviders
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeCloudProvider
@@ -33,6 +36,19 @@ class OneDriveBrowserTest {
     private val root = folder("OneDrive")
     private val music = folder("Music")
     private val albums = folder("Albums")
+
+    /**
+     * The browser's state is Compose state: once any Compose UI has run in
+     * the process, each write posts Compose's snapshot apply to the main
+     * thread. Robolectric drops whatever is still queued there when a test
+     * ends, which leaves Compose's process-wide UI dispatcher waiting on a
+     * dispatch that never runs, so no later Compose test in the process goes
+     * idle. Run that work as the app's main thread would.
+     */
+    @After
+    fun runTheMainThreadsPendingWork() {
+        shadowOf(Looper.getMainLooper()).idle()
+    }
 
     @Test
     fun aFailedOpenKeepsTheFolderShownWithTheFailureAndRetry() =
