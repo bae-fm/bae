@@ -135,6 +135,14 @@ jobs:
         # The only place bae's Rust actually EXECUTES on Windows. Windows-only
         # code paths (the atomic-write directory handling, path semantics) shipped
         # broken while CI merely compiled them; this is the regression gate.
+        #
+        # The tests make their stores under the system temporary directory,
+        # which on the x64 runner is on C:, its OS disk, where file creation
+        # and fsync are slower than on D:, which holds the runner's own
+        # temporary directory. The ARM runner has only C:.
+        env:
+          TMP: ${{ runner.temp }}
+          TEMP: ${{ runner.temp }}
         run: cargo test -p bae-core --lib --target ${{ matrix.target }}
 
       - name: Clippy (baeium / default features)
