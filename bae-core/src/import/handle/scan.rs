@@ -440,9 +440,9 @@ impl ImportServiceHandle {
         let release = self
             .release_for_pick(&candidate_key, &link.record)
             .await?;
-        // Picking a result of a typed search opens it: what its documents
+        // Picking a result of a typed search reads its documents: what they
         // state its album is joins the search's cards.
-        self.land_opened(&candidate_key, release.release(), release.album_links())
+        self.land_picked(&candidate_key, release.release(), release.album_links())
             .await;
         let audio = crate::import::catalog_reading::ReadAudio::of_files(&candidate.files)?;
         let folder_tracks =
@@ -466,7 +466,7 @@ impl ImportServiceHandle {
         )
         .await?;
         for partner in &prepared_partners {
-            self.land_opened(&candidate_key, partner.release(), partner.album_links())
+            self.land_picked(&candidate_key, partner.release(), partner.album_links())
                 .await;
         }
         // The choice is stored as the candidate's result unless a run's result

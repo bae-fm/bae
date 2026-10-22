@@ -250,31 +250,15 @@
             )
         }
 
-        /// An editor's session on `releaseId`, opened on a library holding
-        /// it as `seed` (or on `library`).
-        @MainActor
-        static func releaseEditSession(
-            releaseId: String = "release-preview",
-            seed: BridgeReleaseEditSeed,
-            library: PreviewReleaseLibrary? = nil
-        ) -> ReleaseMetadataEditSession {
-            let library = library ?? PreviewReleaseLibrary(seed: seed)
-            return ReleaseMetadataEditSession(
-                releaseId: releaseId,
-                opened: library.opened(releaseId: releaseId),
-                commands: library.commands()
-            )
-        }
-
         @MainActor
         static func releaseEditor() -> ReleaseEditor {
             ReleaseEditor(
                 outboxStore: OutboxStore(
                     snapshot: OutboxStore.emptySnapshot
                 ),
-                openReleaseEdit: { releaseId in
+                openReleaseEdit: { _ in
                     PreviewReleaseLibrary(seed: releaseEditSeed(trackCount: 5))
-                        .opened(releaseId: releaseId)
+                        .opened()
                 }
             )
         }
@@ -337,42 +321,37 @@
     }
 
     /// A release's library as an edit session's commands meet it: opening
-    /// reads what it holds, a save becomes that, and the last save is kept.
+    /// reads what it holds, and a save becomes that.
     actor PreviewReleaseLibrary {
         /// What the library held before anything was saved to it.
         nonisolated let opening: BridgeReleaseEditSeed
         private var seed: BridgeReleaseEditSeed
-        private(set) var saved: (releaseId: String, edit: BridgeRawReleaseEdit)?
 
         init(seed: BridgeReleaseEditSeed) {
             opening = seed
             self.seed = seed
         }
 
-        /// A session on `releaseId` opened before anything was saved.
-        nonisolated func opened(releaseId: String) -> OpenedReleaseEdit {
-            OpenedReleaseEdit(
-                seed: opening,
-                session: session(releaseId: releaseId)
-            )
+        /// A session opened before anything was saved.
+        nonisolated func opened() -> OpenedReleaseEdit {
+            OpenedReleaseEdit(seed: opening, session: session())
         }
 
         func open() -> BridgeReleaseEditSeed {
             seed
         }
 
-        func save(_ releaseId: String, _ edit: BridgeRawReleaseEdit) -> String {
-            saved = (releaseId, edit)
+        func save(_ edit: BridgeRawReleaseEdit) -> String {
             seed.edit = edit
             return "album-preview"
         }
 
         nonisolated func commands() -> ReleaseEditCommands {
             ReleaseEditCommands(
-                open: { releaseId in
+                open: { _ in
                     OpenedReleaseEdit(
                         seed: await self.open(),
-                        session: self.session(releaseId: releaseId)
+                        session: self.session()
                     )
                 },
                 searchAlbums: { _ in [] },
@@ -380,13 +359,11 @@
             )
         }
 
-        private nonisolated func session(releaseId: String)
-            -> ReleaseEditSessionCommands
-        {
+        private nonisolated func session() -> ReleaseEditSessionCommands {
             ReleaseEditSessionCommands(
                 apply: { _ in await self.open() },
                 setAlbum: { _ in .new },
-                save: { edit in await self.save(releaseId, edit) }
+                save: { edit in await self.save(edit) }
             )
         }
     }

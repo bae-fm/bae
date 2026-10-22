@@ -24,7 +24,7 @@
 //!
 //! Only what is read, and when, differs by caller: an identify run reads the
 //! document of every row it offers before it settles, and a typed search
-//! reads a result's when the person opens it. What was read is carried on
+//! reads a result's when the person picks it. What was read is carried on
 //! each record, so a list read back from the store groups as it did when it
 //! was found.
 

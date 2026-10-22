@@ -533,27 +533,18 @@ impl CandidateRuntime {
         })
     }
 
-    /// Open `release` on `key`'s search: whether its documents are to be read
-    /// now (see [`CandidateSearch::open`]); `false` when the key has no search.
-    pub(super) fn open_search_result(&self, key: &str, release: &crate::import::MetadataRef) -> bool {
-        self.set(key, |_, runtime| match runtime.search.as_mut() {
-            Some(running) => running.search.open(release),
-            None => false,
-        })
-    }
-
     /// Land what `release`'s documents state its album is on whatever search
     /// `key` is on now — a statement about the release stays true whichever
     /// search holds it — returning what to keep; nothing when the key has no
     /// search, or its search does not hold the release.
-    pub(super) fn land_opened(
+    pub(super) fn land_picked(
         &self,
         key: &str,
         release: &crate::import::MetadataRef,
         links: crate::import::album_links::AlbumLinks,
     ) -> Vec<(String, Vec<crate::import::album_links::AlbumLink>)> {
         self.set(key, |_, runtime| match runtime.search.as_mut() {
-            Some(running) => running.search.record_opened(release, links),
+            Some(running) => running.search.record_picked(release, links),
             None => Vec::new(),
         })
     }

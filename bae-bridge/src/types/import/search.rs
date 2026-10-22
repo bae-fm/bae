@@ -285,8 +285,8 @@ impl BridgeCandidateSearch {
             sources,
             groups,
             library_statuses,
-            // Which cards the opened results join is already in `groups`.
-            opened: _,
+            // Which cards the picked results join is already in `groups`.
+            picked: _,
         } = search;
         Self {
             status,

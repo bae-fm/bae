@@ -103,7 +103,7 @@ struct ReleaseEditorSheet: View {
         ReleaseEditorSheet(
             releaseId: "release-preview",
             displayName: "Album Title \u{00B7} 2019 \u{00B7} CD",
-            opened: library.opened(releaseId: "release-preview"),
+            opened: library.opened(),
             commands: library.commands(),
             onSaved: { _ in },
             onViewAlbum: { _ in },

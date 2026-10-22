@@ -8,8 +8,8 @@
 //! provider that fails is named beside what the other found rather than
 //! blanking the pane.
 //!
-//! Nothing more is read about a result until the person opens it: the cards
-//! show at once, each catalog's albums apart. Opening a MusicBrainz result
+//! Nothing more is read about a result until the person picks it: the cards
+//! show at once, each catalog's albums apart. Picking a MusicBrainz result
 //! reads its release's documents, and what they state its album is on Discogs
 //! joins the cards by the one rule set an identify run's rows are joined by
 //! (see [`crate::import::album_links`]).
@@ -107,27 +107,18 @@ pub struct CandidateSearch {
     /// One status per result across every settled source, each carrying its own
     /// release id.
     pub library_statuses: Vec<LibraryStatus>,
-    /// The MusicBrainz results the person opened, in the order they did —
-    /// what their documents state is already folded into `groups`.
-    pub opened: Vec<OpenedResult>,
+    /// The MusicBrainz results a pick read — the release picked, or a
+    /// partner it claimed — in the order they were read. What their documents
+    /// state is already folded into `groups`.
+    pub picked: Vec<PickedResult>,
 }
 
-/// A MusicBrainz result the person opened, by release id.
+/// A MusicBrainz result a pick read: what its documents state its album is on
+/// the other lookup catalog, `Unread` where they could not be had.
 #[derive(Debug, Clone, PartialEq)]
-pub enum OpenedResult {
-    /// Its documents are being read.
-    Reading { release_id: String },
-    /// What its documents state its album is on the other lookup catalog;
-    /// `Unread` where they could not be had.
-    Read { release_id: String, links: AlbumLinks },
-}
-
-impl OpenedResult {
-    fn release_id(&self) -> &str {
-        match self {
-            OpenedResult::Reading { release_id } | OpenedResult::Read { release_id, .. } => release_id,
-        }
-    }
+pub struct PickedResult {
+    pub release_id: String,
+    pub links: AlbumLinks,
 }
 
 impl CandidateSearch {
@@ -143,7 +134,7 @@ impl CandidateSearch {
                 .collect(),
             groups: Vec::new(),
             library_statuses: Vec::new(),
-            opened: Vec::new(),
+            picked: Vec::new(),
         }
     }
 
@@ -227,32 +218,12 @@ impl CandidateSearch {
         }
     }
 
-    /// Open `release`: whether its documents are to be read now — a
-    /// MusicBrainz result on the list that was not opened before, marked as
-    /// being read. Only a MusicBrainz release's documents state its album on
-    /// another catalog.
-    pub fn open(&mut self, release: &MetadataRef) -> bool {
-        let listed = self.landed().any(|(result, _)| {
-            result.source == release.catalog && result.release_id == release.key
-        });
-        let opened = self
-            .opened
-            .iter()
-            .any(|opened| opened.release_id() == release.key);
-        if release.catalog != Catalog::MusicBrainz || !listed || opened {
-            return false;
-        }
-        self.opened.push(OpenedResult::Reading {
-            release_id: release.key.clone(),
-        });
-        true
-    }
-
-    /// Land what an opened MusicBrainz release's documents state its album
+    /// Land what a picked MusicBrainz release's documents state its album
     /// is, and re-derive the result area with it. Answers what its album on
     /// the list was then read to be, to keep; nothing where the release is not
-    /// a MusicBrainz result on the list.
-    pub fn record_opened(
+    /// a MusicBrainz result on the list. Only a MusicBrainz release's
+    /// documents state its album on another catalog.
+    pub fn record_picked(
         &mut self,
         release: &MetadataRef,
         links: AlbumLinks,
@@ -269,17 +240,17 @@ impl CandidateSearch {
         else {
             return Vec::new();
         };
-        let read = OpenedResult::Read {
+        let read = PickedResult {
             release_id: release.key.clone(),
             links,
         };
         match self
-            .opened
+            .picked
             .iter_mut()
-            .find(|opened| opened.release_id() == release.key)
+            .find(|picked| picked.release_id == release.key)
         {
-            Some(opened) => *opened = read,
-            None => self.opened.push(read),
+            Some(picked) => *picked = read,
+            None => self.picked.push(read),
         }
         self.regroup();
         let landed: Vec<&MetadataResult> = self.landed().map(|(result, _)| result).collect();
@@ -296,16 +267,14 @@ impl CandidateSearch {
         self.sources.iter().flat_map(|(_, state)| state.results())
     }
 
-    /// What each MusicBrainz album on `list` was read to be, from the opened
+    /// What each MusicBrainz album on `list` was read to be, from the picked
     /// results' documents.
     fn read_groups(&self, list: &[&MetadataResult]) -> Vec<GroupLinks> {
         album_links::read_groups(list, |release| {
-            self.opened.iter().find_map(|opened| match opened {
-                OpenedResult::Read { release_id, links } if release_id == release => {
-                    Some(links.clone())
-                }
-                OpenedResult::Read { .. } | OpenedResult::Reading { .. } => None,
-            })
+            self.picked
+                .iter()
+                .find(|picked| picked.release_id == release)
+                .map(|picked| picked.links.clone())
         })
     }
 
@@ -363,7 +332,7 @@ impl CandidateSearch {
     /// Re-fold every settled source's results, in source order — so a card two
     /// sources describe reads as the earlier source's with the later one's rows
     /// merged in — each MusicBrainz record carrying what its album was read to
-    /// be from the results opened so far.
+    /// be from the results picked so far.
     fn regroup(&mut self) {
         let (mut results, statuses): (Vec<MetadataResult>, Vec<LibraryStatus>) =
             self.landed().cloned().unzip();
@@ -492,10 +461,10 @@ mod tests {
     }
 
     /// A typed search reads nothing up front: its cards show each catalog's
-    /// album apart until the person opens a result, and then what that
+    /// album apart until the person picks a result, and then what that
     /// release's documents state joins them.
     #[test]
-    fn a_typed_search_s_cards_join_after_a_result_is_opened_and_not_before() {
+    fn a_typed_search_s_cards_join_after_a_result_is_picked_and_not_before() {
         let unpaired = |source: Catalog, release_id: &str, group_id: &str| {
             let mut found = result(source, release_id, group_id);
             found.barcodes = Vec::new();
@@ -510,38 +479,43 @@ mod tests {
             Catalog::Discogs,
             unpaired(Catalog::Discogs, "dg-1", "master-7"),
         );
-        assert_eq!(search.groups.len(), 2, "nothing joins before an open");
-
-        assert!(
-            !search.open(&crate::import::MetadataRef::new(Catalog::Discogs, "dg-1")),
-            "a Discogs release's documents state no other catalog's album"
-        );
-        assert!(search.open(&musicbrainz("mb-1")));
-        assert!(
-            !search.open(&musicbrainz("mb-1")),
-            "a result being read is not read again"
-        );
-        assert!(!search.open(&musicbrainz("mb-9")), "nor one off the list");
-        assert_eq!(search.groups.len(), 2, "nor while its documents are read");
+        assert_eq!(search.groups.len(), 2, "nothing joins before a pick");
 
         let link = AlbumLink {
             album: crate::import::MetadataRef::new(Catalog::Discogs, "master-7"),
             stated: crate::import::album_links::AlbumStatement::Page,
         };
-        let kept = search.record_opened(
+        assert!(
+            search
+                .record_picked(
+                    &crate::import::MetadataRef::new(Catalog::Discogs, "dg-1"),
+                    AlbumLinks::Read(vec![link.clone()]),
+                )
+                .is_empty(),
+            "a Discogs release's documents state no other catalog's album"
+        );
+        assert!(
+            search
+                .record_picked(&musicbrainz("mb-9"), AlbumLinks::Read(vec![link.clone()]))
+                .is_empty(),
+            "nor does a release off the list"
+        );
+        assert_eq!(search.groups.len(), 2);
+
+        let kept = search.record_picked(
             &musicbrainz("mb-1"),
             AlbumLinks::Read(vec![link.clone()]),
         );
-        assert_eq!(search.groups.len(), 1, "the opened result joins the cards");
+        assert_eq!(search.groups.len(), 1, "the picked result joins the cards");
         assert_eq!(kept, vec![("group-x".to_string(), vec![link])]);
     }
 
-    /// An opened result whose documents link nothing is read against what the
+    /// A picked result whose documents link nothing is read against what the
     /// landed list prints: one catalog number under one label joins the
-    /// albums, and that is what the group is kept as. Before it is opened the
+    /// albums, and that is what the group is kept as. Before it is picked the
     /// same numbers join nothing.
     #[test]
-    fn an_opened_result_no_document_links_is_joined_by_what_the_list_prints() {
+    fn a_picked_result_no_document_links_is_joined_by_what_the_list_prints() {
         let numbered = |source: Catalog, release_id: &str, group_id: &str| {
             let mut found = result(source, release_id, group_id);
             found.barcodes = Vec::new();
@@ -556,8 +530,7 @@ mod tests {
         search.record(Catalog::Discogs, numbered(Catalog::Discogs, "dg-1", "master-7"));
         assert_eq!(search.groups.len(), 2);
 
-        assert!(search.open(&musicbrainz("mb-1")));
-        let kept = search.record_opened(&musicbrainz("mb-1"), AlbumLinks::Read(Vec::new()));
+        let kept = search.record_picked(&musicbrainz("mb-1"), AlbumLinks::Read(Vec::new()));
         let joined = AlbumLink {
             album: crate::import::MetadataRef::new(Catalog::Discogs, "master-7"),
             stated: crate::import::album_links::AlbumStatement::CatalogNumber {

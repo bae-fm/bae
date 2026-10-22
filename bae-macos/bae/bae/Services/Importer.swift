@@ -50,7 +50,6 @@ private struct ImportOperations: Sendable {
     let startCandidateSearch:
         @Sendable (String, BridgeSearchQuery) async throws -> Void
     let retryCandidateSearch: @Sendable (String) -> Void
-    let openSearchResult: @Sendable (String, BridgePressingLink) -> Void
     let subscribeLibraryStatuses: @Sendable () -> LibraryStatusQuery
     let editCandidateLookupChoices:
         @Sendable (String, BridgeLookupChoiceEdit) async throws ->
@@ -176,9 +175,6 @@ extension ImportOperations {
             },
             retryCandidateSearch: {
                 handle.retryCandidateSearch(candidateKey: $0)
-            },
-            openSearchResult: {
-                handle.openSearchResult(candidateKey: $0, link: $1)
             },
             subscribeLibraryStatuses: {
                 let subscription = handle.subscribeLibraryStatuses()
@@ -378,9 +374,6 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (String, BridgeSearchQuery) async throws ->
             Void = { _, _ in },
         retryCandidateSearch: @escaping @Sendable (String) -> Void = { _ in },
-        openSearchResult:
-            @escaping @Sendable (String, BridgePressingLink) -> Void = { _, _ in
-            },
         subscribeLibraryStatuses:
             @escaping @Sendable () -> LibraryStatusQuery = { .inert },
         editCandidateLookupChoices:
@@ -481,7 +474,6 @@ final class Importer: Sendable, Observable {
             endReleaseIdentification: endReleaseIdentification,
             startCandidateSearch: startCandidateSearch,
             retryCandidateSearch: retryCandidateSearch,
-            openSearchResult: openSearchResult,
             subscribeLibraryStatuses: subscribeLibraryStatuses,
             editCandidateLookupChoices: editCandidateLookupChoices,
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
@@ -655,12 +647,6 @@ extension Importer {
     /// Re-ask only the providers whose part of the search failed.
     func retryCandidateSearch(_ candidateKey: String) {
         operations.retryCandidateSearch(candidateKey)
-    }
-
-    /// The person opened a result of the candidate's search: core reads its
-    /// release, and the search's cards change when that lands.
-    func openSearchResult(_ candidateKey: String, _ link: BridgePressingLink) {
-        operations.openSearchResult(candidateKey, link)
     }
 
     /// Open one live read of library membership for an import pane's offers.

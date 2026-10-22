@@ -41,9 +41,7 @@ struct ReleaseEditorTests {
             session.save { _ in continuation.resume() }
         }
 
-        let saved = await library.saved
-        #expect(saved?.releaseId == "release-test")
-        #expect(saved?.edit.albumTitle == "Saved title")
+        #expect(await library.open().edit.albumTitle == "Saved title")
         #expect(!session.hasChanges)
 
         await session.fieldWriter.setField(.albumTitle, "Unsaved title")
@@ -102,7 +100,7 @@ struct ReleaseEditorTests {
                 session.save { _ in continuation.resume() }
             }
 
-            #expect(await library.saved?.edit.albumTitle == "Focused title")
+            #expect(await library.open().edit.albumTitle == "Focused title")
         }
     }
 

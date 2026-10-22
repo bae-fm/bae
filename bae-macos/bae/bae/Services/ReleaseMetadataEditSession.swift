@@ -381,10 +381,6 @@ extension ReleaseMetadataEditSession {
     var isBusy: Bool {
         operation != nil
     }
-
-    var isSaving: Bool {
-        operation == .saving
-    }
 }
 
 struct ReleaseMetadataTrackItem: Identifiable {

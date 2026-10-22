@@ -775,7 +775,9 @@ checked, or a medium the folder rules out. The person then:
 
 - **picks** one of the offered pressings;
 - **searches** by artist and album, catalog number or barcode, with each
-  catalog's results landing as they come;
+  catalog's results landing as they come. Nothing more is read about a result
+  until it is picked, so a statement joins two catalogs' albums on the
+  search's cards only once a pick has read a MusicBrainz release's documents;
 - **links the album** when several pressings of one album are offered and they
   can't tell which is theirs. The link names the album, not a pressing, and the
   fields every offered pressing agrees on fill the draft;
