@@ -437,7 +437,7 @@ impl SourceRelease {
             artist: self.artist_line(),
             year: pressing.year,
             labels: pressing.labels,
-            barcode: pressing.barcode,
+            barcodes: pressing.barcodes,
             facts: pressing.facts,
             media: self.stated_media(),
             links: self.links(),

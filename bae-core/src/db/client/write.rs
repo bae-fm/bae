@@ -139,7 +139,7 @@ pub(super) fn insert_release_row(
         INSERT INTO releases (
             id, album_id, release_name, year,
             draft_from_tags,
-            labels, barcode,
+            labels, barcodes,
             country, region, media, status, packaging, discogs_details,
             source_folder_name, content_hash,
             album_loudness_lufs, album_peak_linear,
@@ -154,7 +154,7 @@ pub(super) fn insert_release_row(
             release.pressing.year,
             release.draft_from_tags,
             super::pressing_columns::labels_column(&release.pressing.labels),
-            release.pressing.barcode,
+            super::pressing_columns::barcodes_column(&release.pressing.barcodes),
             facts.country,
             facts.region,
             facts.media,

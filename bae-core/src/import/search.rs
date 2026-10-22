@@ -123,7 +123,7 @@ impl MetadataResult {
             status: detail.facts.status,
             packaging: detail.facts.packaging,
             discogs_details: detail.facts.discogs_details.clone(),
-            barcodes: detail.barcode.iter().cloned().collect(),
+            barcodes: detail.barcodes.clone(),
             media: detail.media.clone(),
             links: detail.links.clone(),
             cover_art: detail.default_cover().cloned(),
@@ -157,7 +157,7 @@ impl MetadataResult {
             status: pressing.facts.status,
             packaging: pressing.facts.packaging,
             discogs_details: pressing.facts.discogs_details.clone(),
-            barcodes: pressing.barcode.iter().cloned().collect(),
+            barcodes: pressing.barcodes.clone(),
             media: release.stated_media(),
             links: release.links(),
             cover_art: release.covers().first().cloned(),
@@ -231,7 +231,7 @@ impl From<&MetadataResult> for crate::db::LibraryCheck {
 
 /// Full release details for the confirmation step.
 ///
-/// `facts` and `barcode` are pressing-level fields the user can review or
+/// `facts` and `barcodes` are pressing-level fields the user can review or
 /// override in the edit-metadata form before commit. `source_group_id` carries
 /// the per-source group (MB release-group ID or Discogs master ID) so the UI can
 /// build a `ReleaseRecord` row from the picked release without a second fetch.
@@ -247,7 +247,7 @@ pub struct ImportSearchReleaseDetail {
     pub artist: Option<String>,
     pub year: Option<i32>,
     pub labels: Vec<ReleaseLabel>,
-    pub barcode: Option<String>,
+    pub barcodes: Vec<String>,
     /// What the pressing is, with what the linked documents supplied where
     /// the release states nothing.
     pub facts: PressingFacts,
@@ -415,7 +415,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
         status: pressing.facts.status,
         packaging: pressing.facts.packaging,
         discogs_details: pressing.facts.discogs_details,
-        barcodes: pressing.barcode.into_iter().collect(),
+        barcodes: pressing.barcodes,
         media,
         links,
         cover_art,

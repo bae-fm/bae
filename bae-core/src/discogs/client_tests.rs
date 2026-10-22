@@ -235,16 +235,20 @@ fn release_without_master_has_no_album_identity() {
     }
 }
 
+/// Every Barcode identifier reaches the pressing as printed, each code once:
+/// an EAN and a UPC are both kept, and one code listed as printed and as
+/// scanned is kept in its first spelling.
 #[test]
-fn release_barcode_reaches_pressing_metadata() {
+fn release_barcodes_reach_pressing_metadata() {
     let json = r#"{"id":123,"title":"Album Title","identifiers":[
             {"type":"Matrix / Runout","value":"MATRIX-7"},
             {"type":"Barcode","value":" \t"},
             {"type":"Barcode","value":"0 12345 67890 5","description":"Text"},
-            {"type":"Barcode","value":"012345678905","description":"Scanned"}
+            {"type":"Barcode","value":"012345678905","description":"Scanned"},
+            {"type":"Barcode","value":"5 012345 678900","description":"EAN"}
         ]}"#;
     let release = parse_discogs_release_json(json).unwrap();
-    assert_eq!(release.barcode.as_deref(), Some("0 12345 67890 5"));
+    assert_eq!(release.barcodes, ["0 12345 67890 5", "5 012345 678900"]);
     let payloads: crate::import::payloads::ReleasePayloads =
         crate::import::payloads::ReleasePayloads::for_test(
             crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "123"),
@@ -252,15 +256,14 @@ fn release_barcode_reaches_pressing_metadata() {
             Vec::new(),
         );
     assert_eq!(
-        payloads.extract().unwrap().detail(&[]).barcode,
-        release.barcode
+        payloads.extract().unwrap().detail(&[]).barcodes,
+        release.barcodes
     );
     assert_eq!(
         crate::import::discogs_mapper::metadata(&release)
             .pressing
-            .barcode
-            .as_deref(),
-        Some("0 12345 67890 5")
+            .barcodes,
+        release.barcodes
     );
 }
 
@@ -280,7 +283,7 @@ fn blank_pressing_fields_are_absent_in_discogs_documents() {
         assert_eq!(media, crate::pressing::StatedMedia::Undescribed);
         assert!(release.labels.is_empty());
         assert!(pressing.labels.is_empty());
-        assert!(release.barcode.is_none());
+        assert!(release.barcodes.is_empty());
     }
 }
 

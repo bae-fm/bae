@@ -615,7 +615,7 @@ fn mb_detail_pressing_matches_the_committed_pressing() {
     assert_eq!(detail.year, committed.year);
     assert_eq!(detail.labels, committed.labels);
     assert_eq!(detail.facts, committed.facts);
-    assert_eq!(detail.barcode, committed.barcode);
+    assert_eq!(detail.barcodes, committed.barcodes);
     assert_eq!(detail.facts.status, Some(crate::pressing::ReleaseStatus::Promotion));
 }
 

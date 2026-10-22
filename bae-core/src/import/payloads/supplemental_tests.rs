@@ -88,8 +88,8 @@ fn malformed_linked_release_credit_keeps_its_pressing_fields_and_valid_credit() 
         Some(crate::pressing::area("JP"))
     );
     assert_eq!(
-        parsed.pressing.barcode.as_deref(),
-        Some("1234567890123")
+        parsed.pressing.barcodes,
+        ["1234567890123"]
     );
     assert_eq!(
         parsed.album_credits[0].credit.musicbrainz_artist_id.as_deref(),

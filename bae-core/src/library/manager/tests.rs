@@ -182,7 +182,7 @@ fn create_test_release(album_id: &str) -> DbRelease {
             year: Some(2024),
             labels: Vec::new(),
             facts: Default::default(),
-            barcode: None,
+            barcodes: Vec::new(),
         },
         draft_from_tags: true,
 

@@ -420,7 +420,7 @@ mod conversion_roundtrip {
                     bae_core::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
                     bae_core::pressing::ReleaseLabel::of(None, Some("CL 719")),
                 ],
-                barcode: Some("012345678905".to_string()),
+                barcodes: vec!["012345678905".to_string(), "5012345678900".to_string()],
                 facts: every_kind_of_fact(),
             },
             tracks: vec![bae_core::import::TrackUserEdit {
@@ -462,7 +462,7 @@ mod conversion_roundtrip {
                     },
                     bae_core::import::RawLabelEdit::default(),
                 ],
-                barcode: "012345678905".to_string(),
+                barcodes: vec!["012345678905".to_string(), String::new()],
                 facts: every_kind_of_fact(),
             },
             tracks: vec![bae_core::import::RawTrackEdit {
@@ -498,7 +498,7 @@ mod conversion_roundtrip {
             pressing: bae_core::import::RawPressingEdit {
                 year: String::new(),
                 labels: Vec::new(),
-                barcode: String::new(),
+                barcodes: Vec::new(),
                 facts: bae_core::pressing::PressingFacts::default(),
             },
             tracks: vec![bae_core::import::RawTrackEdit {

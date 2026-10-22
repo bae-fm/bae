@@ -197,6 +197,11 @@ extension ImportView {
                     try await importer.setCandidateLabels(key, labels)
                 }
             },
+            setBarcodes: { barcodes in
+                await saveCandidateEdit {
+                    try await importer.setCandidateBarcodes(key, barcodes)
+                }
+            },
             setPressingFact: { fact in
                 await saveCandidateEdit {
                     try await importer.setCandidatePressingFact(key, fact)

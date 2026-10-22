@@ -68,7 +68,8 @@ pub struct BridgeReleaseUserEdit {
 pub struct BridgePressingEdit {
     pub year: Option<i32>,
     pub labels: Vec<BridgeReleaseLabel>,
-    pub barcode: Option<String>,
+    /// Every barcode the pressing is printed with, in order.
+    pub barcodes: Vec<String>,
     pub facts: BridgePressingFacts,
 }
 
@@ -553,7 +554,6 @@ pub enum BridgeCandidateEditField {
     AlbumTitle,
     AlbumYear,
     PressingYear,
-    Barcode,
 }
 
 mirror_enum! {
@@ -564,7 +564,6 @@ mirror_enum! {
         AlbumTitle,
         AlbumYear,
         PressingYear,
-        Barcode,
     },
 }
 
@@ -689,13 +688,13 @@ pub struct BridgeReleaseEditDisplayContext {
 /// Raw pressing fields as the editor holds them. Mirrors
 /// `bae_core::import::RawPressingEdit`: each text field is the text the user
 /// typed, empty meaning "not set"; `year` is text (parsed at shape time).
-/// `labels` is one row per label, blank rows included. `facts` is what the
-/// person chose with the form's pickers.
+/// `labels` is one row per label and `barcodes` one row per barcode, blank
+/// rows included. `facts` is what the person chose with the form's pickers.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeRawPressingEdit {
     pub year: String,
     pub labels: Vec<BridgeRawLabelEdit>,
-    pub barcode: String,
+    pub barcodes: Vec<String>,
     pub facts: BridgePressingFacts,
 }
 

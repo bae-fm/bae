@@ -680,7 +680,7 @@
             pressing: BridgeRawPressingEdit(
                 year: "",
                 labels: [],
-                barcode: "",
+                barcodes: [],
                 facts: PreviewData.pressingFacts()
             ),
             tracks: (1...9)

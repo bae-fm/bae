@@ -167,7 +167,13 @@ pub(crate) fn pressing(response: &MbReleaseResponse) -> (Pressing, StatedMedia) 
     let pressing = Pressing {
         year: super::parse_year(response.date.as_deref()),
         labels: release_labels(&response.label_info),
-        barcode: response.barcode.clone(),
+        // MusicBrainz writes an empty barcode for a release it knows has none.
+        barcodes: response
+            .barcode
+            .iter()
+            .filter(|barcode| !barcode.trim().is_empty())
+            .cloned()
+            .collect(),
         facts,
     };
     (pressing, media)

@@ -421,7 +421,7 @@ async fn file_metadata_import_with_user_edit_overlay() {
                 }],
                 ..Default::default()
             },
-            barcode: Some("4943674000000".to_string()),
+            barcodes: vec!["4943674000000".to_string()],
         },
         tracks: vec![TrackUserEdit {
             title: "Edited Track Title".to_string(),
@@ -463,7 +463,7 @@ async fn file_metadata_import_with_user_edit_overlay() {
             bae_core::pressing::Country::from_code("JP").unwrap()
         ))
     );
-    assert_eq!(release.pressing.barcode.as_deref(), Some("4943674000000"));
+    assert_eq!(release.pressing.barcodes, ["4943674000000"]);
     assert!(release.draft_from_tags);
 
     let records = f.db.get_release_records(&release_id).await.unwrap();

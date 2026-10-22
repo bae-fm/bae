@@ -331,7 +331,7 @@ async fn set_records_does_not_touch_metadata_columns() {
         crate::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
         crate::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
     ];
-    release.pressing.barcode = Some("1234567890".to_string());
+    release.pressing.barcodes = vec!["1234567890".to_string(), "5012345678900".to_string()];
     release.pressing.year = Some(1999);
     manager.database.insert_release(&release).await.unwrap();
     manager
@@ -376,7 +376,7 @@ async fn set_records_does_not_touch_metadata_columns() {
         .unwrap();
     assert_eq!(after.pressing.facts, release.pressing.facts);
     assert_eq!(after.pressing.labels, release.pressing.labels);
-    assert_eq!(after.pressing.barcode.as_deref(), Some("1234567890"));
+    assert_eq!(after.pressing.barcodes, ["1234567890", "5012345678900"]);
     assert_eq!(after.pressing.year, Some(1999));
 
     // Album-level fields untouched (still in the same album, since

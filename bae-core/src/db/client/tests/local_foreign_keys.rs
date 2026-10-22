@@ -17,8 +17,8 @@ async fn deleting_an_artist_removes_local_draft_references() {
             "INSERT INTO import_candidate_state (content_hash, folder_path)
              VALUES ('candidate', '/music/candidate');
              INSERT INTO import_candidate_edit
-                 (content_hash, album_title, album_year, year, barcode, author, draft_blank, draft_valid)
-             VALUES ('candidate', 'Album Title', '', '', '', 'person', 0, 1);
+                 (content_hash, album_title, album_year, year, author, draft_blank, draft_valid)
+             VALUES ('candidate', 'Album Title', '', '', 'person', 0, 1);
              INSERT INTO import_candidate_medium (content_hash, position, side_count)
              VALUES ('candidate', 1, 1);
              INSERT INTO import_candidate_track

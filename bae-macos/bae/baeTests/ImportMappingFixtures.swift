@@ -326,7 +326,7 @@ extension MappingFixtures {
         pressing: BridgePressingEdit(
             year: 1996,
             labels: [],
-            barcode: nil,
+            barcodes: [],
             facts: PreviewData.pressingFacts(
                 country: nil,
                 media: PreviewData.media(.cd)
@@ -342,7 +342,7 @@ extension MappingFixtures {
         pressing: BridgeRawPressingEdit(
             year: "1996",
             labels: [],
-            barcode: "",
+            barcodes: [],
             facts: PreviewData.pressingFacts(
                 country: nil,
                 media: PreviewData.media(.cd)
@@ -358,7 +358,7 @@ extension MappingFixtures {
         pressing: BridgeRawPressingEdit(
             year: "",
             labels: [],
-            barcode: "",
+            barcodes: [],
             facts: PreviewData.pressingFacts()
         ),
         tracks: []
@@ -369,7 +369,7 @@ extension MappingFixtures {
     static let exactPressing = BridgeRawPressingEdit(
         year: "1996",
         labels: [],
-        barcode: "",
+        barcodes: [],
         facts: PreviewData.pressingFacts(
             country: nil,
             media: PreviewData.media(.cd)

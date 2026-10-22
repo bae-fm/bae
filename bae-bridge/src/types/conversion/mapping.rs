@@ -104,7 +104,7 @@ impl BridgePressingEdit {
         let bae_core::pressing::Pressing {
             year,
             labels,
-            barcode,
+            barcodes,
             facts,
         } = pressing;
         Self {
@@ -113,7 +113,7 @@ impl BridgePressingEdit {
                 .into_iter()
                 .map(BridgeReleaseLabel::from_core)
                 .collect(),
-            barcode,
+            barcodes,
             facts: BridgePressingFacts::from_core(facts),
         }
     }
@@ -122,13 +122,13 @@ impl BridgePressingEdit {
         let Self {
             year,
             labels,
-            barcode,
+            barcodes,
             facts,
         } = self;
         bae_core::pressing::Pressing {
             year,
             labels: BridgeReleaseLabel::list_into_core(labels),
-            barcode,
+            barcodes,
             facts: facts.into_core(),
         }
     }

@@ -276,7 +276,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
                     year: Some(1991),
                     labels: vec![crate::pressing::ReleaseLabel::of(Some("Edited Label"), Some("CAT-1"))],
                     facts: crate::pressing::PressingFacts { area: Some(crate::pressing::area("US")), ..Default::default() },
-                    barcode: Some("123456789".to_string()),
+                    barcodes: vec!["123456789".to_string()],
                 },
                 tracks: vec![crate::import::TrackUserEdit {
                     title: "Edited Track".to_string(),

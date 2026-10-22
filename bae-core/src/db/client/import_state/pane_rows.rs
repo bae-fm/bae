@@ -23,7 +23,7 @@ use crate::import::{
 };
 
 const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, \
-     labels, barcode, country, region, media, status, packaging, discogs_details";
+     labels, barcodes, country, region, media, status, packaging, discogs_details";
 
 const TRACK_COLUMNS: &str = "content_hash, track_id, position, title, \
      artist_assignment_kind, medium, side, track_number, stated_length_ms, \
@@ -92,7 +92,7 @@ pub(crate) fn insert_draft(
             draft.album_year,
             draft.pressing.year,
             serde_json::to_string(&draft.pressing.labels).expect("label rows serialize"),
-            draft.pressing.barcode,
+            serde_json::to_string(&draft.pressing.barcodes).expect("barcode rows serialize"),
             facts.country,
             facts.region,
             facts.media,
@@ -408,7 +408,7 @@ pub(crate) fn load_drafts_on(
                 album_year: row.get("album_year")?,
                 year: row.get("year")?,
                 labels: read_label_rows(row)?,
-                barcode: row.get("barcode")?,
+                barcodes: super::super::pressing_columns::read_barcodes(row, "barcodes")?,
                 facts: super::super::pressing_columns::read_facts(row, "")?,
             })
         },
@@ -427,7 +427,7 @@ pub(crate) fn load_drafts_on(
                 pressing: RawPressingEdit {
                     year: row.year,
                     labels: row.labels,
-                    barcode: row.barcode,
+                    barcodes: row.barcodes,
                     facts: row.facts,
                 },
                 mediums: mediums.remove(&row.content_hash).unwrap_or_default(),
@@ -450,7 +450,7 @@ struct StoredDraftRow {
     album_year: String,
     year: String,
     labels: Vec<RawLabelEdit>,
-    barcode: String,
+    barcodes: Vec<String>,
     facts: crate::pressing::PressingFacts,
 }
 

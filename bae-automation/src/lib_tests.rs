@@ -92,7 +92,7 @@ mod release_metadata_update_input {
             pressing: AutomationPressingEdit {
                 year: None,
                 labels: Vec::new(),
-                barcode: None,
+                barcodes: Vec::new(),
                 facts: Default::default(),
             },
             tracks: Vec::new(),

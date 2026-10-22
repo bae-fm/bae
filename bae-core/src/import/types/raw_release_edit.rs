@@ -35,7 +35,11 @@ impl RawReleaseEdit {
             && self.album_year.trim().is_empty()
             && self.pressing.year.trim().is_empty()
             && self.pressing.labels.iter().all(RawLabelEdit::is_blank)
-            && self.pressing.barcode.trim().is_empty()
+            && self
+                .pressing
+                .barcodes
+                .iter()
+                .all(|barcode| barcode.trim().is_empty())
             && self.pressing.facts.is_empty()
             && self.tracks.iter().all(|track| {
                 track.title.trim().is_empty()
@@ -71,7 +75,9 @@ pub struct RawPressingEdit {
     pub year: String,
     /// One row per label; shaping leaves out a blank row.
     pub labels: Vec<RawLabelEdit>,
-    pub barcode: String,
+    /// One row per barcode, as typed; shaping leaves out a blank row and a
+    /// repeated one.
+    pub barcodes: Vec<String>,
     pub facts: crate::pressing::PressingFacts,
 }
 
@@ -118,12 +124,6 @@ pub enum EditValidationError {
     EmptyArtistName,
     #[error("Year must be a number")]
     InvalidYear,
-}
-
-/// Render an optional pressing field back to raw editor text: `None`
-/// becomes empty, `Some(v)` becomes `v`.
-fn option_to_raw(value: &Option<String>) -> String {
-    value.clone().unwrap_or_default()
 }
 
 #[expect(
@@ -213,7 +213,8 @@ impl RawTrackEdit {
 impl RawPressingEdit {
     /// Parse and normalize raw pressing text into a wire
     /// [`Pressing`](crate::pressing::Pressing): empty fields become `None`,
-    /// blank and repeated label rows are dropped, and the year parses.
+    /// blank and repeated label and barcode rows are dropped, and the year
+    /// parses.
     fn shape(&self) -> Result<crate::pressing::Pressing, EditValidationError> {
         Ok(crate::pressing::Pressing {
             year: parse_optional_year(&self.year)?,
@@ -223,7 +224,15 @@ impl RawPressingEdit {
                     trim_to_option(&label.catalog_number),
                 )
             })),
-            barcode: trim_to_option(&self.barcode),
+            barcodes: {
+                let mut barcodes: Vec<String> = Vec::new();
+                for barcode in self.barcodes.iter().filter_map(|row| trim_to_option(row)) {
+                    if !barcodes.contains(&barcode) {
+                        barcodes.push(barcode);
+                    }
+                }
+                barcodes
+            },
             facts: self.facts.clone(),
         })
     }
@@ -241,7 +250,7 @@ impl RawPressingEdit {
                     catalog_number: label.catalog_number().unwrap_or_default().to_string(),
                 })
                 .collect(),
-            barcode: option_to_raw(&pressing.barcode),
+            barcodes: pressing.barcodes.clone(),
             facts: pressing.facts.clone(),
         }
     }

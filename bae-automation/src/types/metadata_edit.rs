@@ -15,7 +15,8 @@ pub struct AutomationPressingEdit {
     pub year: Option<i32>,
     #[schemars(schema_with = "labels_schema")]
     pub labels: Vec<bae_core::pressing::ReleaseLabel>,
-    pub barcode: Option<String>,
+    /// Every barcode the pressing is printed with, in order.
+    pub barcodes: Vec<String>,
     #[schemars(schema_with = "pressing_facts_schema")]
     pub facts: bae_core::pressing::PressingFacts,
 }

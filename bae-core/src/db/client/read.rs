@@ -562,7 +562,7 @@ pub(super) fn row_to_release(row: &Row) -> rusqlite::Result<DbRelease> {
         pressing: crate::pressing::Pressing {
             year: row.get("year")?,
             labels: super::pressing_columns::read_labels(row, "labels")?,
-            barcode: row.get("barcode")?,
+            barcodes: super::pressing_columns::read_barcodes(row, "barcodes")?,
             facts: super::pressing_columns::read_facts(row, "")?,
         },
         draft_from_tags: row.get("draft_from_tags")?,

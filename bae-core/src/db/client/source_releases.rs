@@ -96,7 +96,7 @@ pub(super) fn replace_source_release_on(
     sql.execute(
         "INSERT INTO source_release \
              (catalog, release_id, source_group_id, album_title, album_year, \
-              album_first_year, year, labels, barcode, country, region, media, status, \
+              album_first_year, year, labels, barcodes, country, region, media, status, \
               packaging, discogs_details, notes, archive_release_id, archive_group_id, \
               album_links, fetched_at) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
@@ -104,7 +104,7 @@ pub(super) fn replace_source_release_on(
              source_group_id = excluded.source_group_id, \
              album_title = excluded.album_title, album_year = excluded.album_year, \
              album_first_year = excluded.album_first_year, \
-             year = excluded.year, labels = excluded.labels, barcode = excluded.barcode, \
+             year = excluded.year, labels = excluded.labels, barcodes = excluded.barcodes, \
              country = excluded.country, region = excluded.region, media = excluded.media, \
              status = excluded.status, packaging = excluded.packaging, \
              discogs_details = excluded.discogs_details, notes = excluded.notes, \
@@ -120,7 +120,7 @@ pub(super) fn replace_source_release_on(
             metadata.album.first_year,
             pressing.year,
             super::pressing_columns::labels_column(&pressing.labels),
-            pressing.barcode,
+            super::pressing_columns::barcodes_column(&pressing.barcodes),
             facts.country,
             facts.region,
             facts.media,
@@ -366,7 +366,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
     let key = release.key.as_str();
     let head = sql
         .query_row(
-            "SELECT source_group_id, album_title, album_year, year, labels, barcode, \
+            "SELECT source_group_id, album_title, album_year, year, labels, barcodes, \
                     archive_release_id, archive_group_id, country, region, media, \
                     status, packaging, discogs_details, album_first_year, notes, album_links \
              FROM source_release WHERE catalog = ? AND release_id = ?",
@@ -379,7 +379,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
                     Pressing {
                         year: row.get(3)?,
                         labels: super::pressing_columns::read_labels(row, "labels")?,
-                        barcode: row.get(5)?,
+                        barcodes: super::pressing_columns::read_barcodes(row, "barcodes")?,
                         facts: super::pressing_columns::read_facts(row, "")?,
                     },
                     row.get::<_, Option<String>>(6)?,

@@ -148,7 +148,7 @@
                             catalogNumber: "CL 719"
                         ),
                     ],
-                    barcode: "000000000000",
+                    barcodes: ["000000000000"],
                     facts: PreviewData.pressingFacts(
                         country: "US",
                         media: PreviewData.media(.cd)

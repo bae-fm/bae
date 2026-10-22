@@ -9,7 +9,7 @@ use crate::import::MetadataRef;
 fn plain_document(notes: &[&str]) -> ReleaseDocument {
     ReleaseDocument {
         labels: Vec::new(),
-        barcode: None,
+        barcodes: Vec::new(),
         album_first_year: None,
         source_tracks: crate::import::search::SourceTracks::Listed { count: 5 },
         track_titles: Vec::new(),

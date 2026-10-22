@@ -94,7 +94,7 @@ fn make_release(tracklist: Vec<DiscogsTrack>) -> DiscogsRelease {
         country: None,
         labels: vec![],
         covers: vec![],
-        barcode: None,
+        barcodes: Vec::new(),
         artists: vec![DiscogsArtist {
             anv: None,
             join: None,

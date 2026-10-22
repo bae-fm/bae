@@ -151,8 +151,8 @@ fn selected_pressing_wins_and_linked_release_fills_only_absent_details() {
         "the linked release fills the area the selected one leaves out"
     );
     assert_eq!(
-        parsed.pressing.barcode.as_deref(),
-        Some("1234567890123")
+        parsed.pressing.barcodes,
+        ["1234567890123"]
     );
     assert_eq!(parsed.tracks.len(), 2);
     assert_eq!(parsed.tracks[1].title, "Second Track");

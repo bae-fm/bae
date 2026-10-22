@@ -105,7 +105,7 @@ async fn pure_reads_use_the_read_connection() {
                             year: String::new(),
                             labels: Vec::new(),
                             facts: Default::default(),
-                            barcode: String::new(),
+                            barcodes: Vec::new(),
                         },
                         mediums: Vec::new(),
                         tracks: Vec::new(),

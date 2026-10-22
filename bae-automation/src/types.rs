@@ -693,7 +693,8 @@ pub struct CandidateReleaseInput {
 
 /// One text field of a candidate's metadata form. Years are text because the
 /// form is text; the commit parses them. The labels are set with
-/// `import_candidate_labels_set`, and what the pressing is is chosen with
+/// `import_candidate_labels_set`, the barcodes with
+/// `import_candidate_barcodes_set`, and what the pressing is is chosen with
 /// `import_candidate_pressing_fact_set`.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -701,7 +702,6 @@ pub enum AutomationCandidateEditField {
     AlbumTitle,
     AlbumYear,
     PressingYear,
-    Barcode,
 }
 
 /// One label row of a candidate's metadata form, as typed; empty is unset.
@@ -716,6 +716,13 @@ pub struct CandidateLabelsInput {
     pub candidate_key: String,
     /// Every label row, in order.
     pub labels: Vec<AutomationLabelRow>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CandidateBarcodesInput {
+    pub candidate_key: String,
+    /// Every barcode row, in order, as typed; a blank row is unset.
+    pub barcodes: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

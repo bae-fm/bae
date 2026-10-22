@@ -193,7 +193,10 @@ CREATE TABLE IF NOT EXISTS releases (
     -- {"name", "catalog_number"} objects, each stating one or both.
     labels             TEXT NOT NULL DEFAULT '[]'
         CHECK (json_valid(labels) AND json_type(labels) = 'array'),
-    barcode TEXT,
+    -- Every barcode the pressing is printed with, in its source's order: a
+    -- JSON array of strings.
+    barcodes           TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(barcodes) AND json_type(barcodes) = 'array'),
     -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or a
     -- `crate::pressing::Region` key for a region no current code names.
     country            TEXT CHECK (country IS NULL OR (length(country) = 2 AND country = upper(country))),
@@ -1019,7 +1022,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_edit (
     -- {"name", "catalog_number"} objects, each as typed, empty meaning unset.
     labels         TEXT NOT NULL DEFAULT '[]'
         CHECK (json_valid(labels) AND json_type(labels) = 'array'),
-    barcode        TEXT NOT NULL,
+    -- The barcode rows as the form holds them: a JSON array of strings, each
+    -- as typed.
+    barcodes       TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(barcodes) AND json_type(barcodes) = 'array'),
     -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or a
     -- `crate::pressing::Region` key for a region no current code names.
     country            TEXT CHECK (country IS NULL OR (length(country) = 2 AND country = upper(country))),
@@ -1825,7 +1831,9 @@ CREATE TABLE IF NOT EXISTS source_release (
     -- {"name", "catalog_number"} objects, each stating one or both.
     labels             TEXT NOT NULL DEFAULT '[]'
         CHECK (json_valid(labels) AND json_type(labels) = 'array'),
-    barcode            TEXT,
+    -- Every barcode the record states, in its order: a JSON array of strings.
+    barcodes           TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(barcodes) AND json_type(barcodes) = 'array'),
     -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or a
     -- `crate::pressing::Region` key for a region no current code names.
     country            TEXT CHECK (country IS NULL OR (length(country) = 2 AND country = upper(country))),

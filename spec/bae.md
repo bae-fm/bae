@@ -125,7 +125,12 @@ This section describes the library's model; Appendix A lists its tables.
 
 An *album* groups releases. A *release* is one pressing whose audio the library
 holds: a particular CD, LP or download, with its own year, labels, catalog
-numbers, barcode, country, media, status and packaging.
+numbers, barcodes, country, media, status and packaging. A pressing can be
+printed with more than one barcode (an EAN and a UPC): it keeps every one its
+source states, in order, each product once, and the editor shows one row per
+barcode, each removable, with a row to add another, as it does labels. A saved
+CUE sheet's `CATALOG` line states the barcode when every one names the same
+product, and none otherwise.
 
 Ana imports her 1979 CD. bae makes an album, *Album Title*, and under it a
 release with the CD's facts. Ben imports his MP3s. His files are different
@@ -2289,7 +2294,7 @@ All sync.
 | `works` | MusicBrainz work |
 | `work_artists` | work's credited artist, in order |
 | `work_parts` | work inside a larger work, in order |
-| `releases` | pressing: its album and place in the album's order (§2.1), name, year, labels, barcode, country or region, media, status, packaging, Discogs details, source folder name, content hash, album loudness and peak, where its metadata came from |
+| `releases` | pressing: its album and place in the album's order (§2.1), name, year, labels, barcodes, country or region, media, status, packaging, Discogs details, source folder name, content hash, album loudness and peak, where its metadata came from |
 | `covers` | release's cover, keyed by the release; carries a file |
 | `release_files` | file of a release: name, size, type, and the audio facts the scan read; carries a file once attached, whose hash and location coven writes |
 | `release_artist_roles` | credit on a release, as the catalog stated it |
@@ -2509,6 +2514,7 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | `import_candidate_file_tags_read` | read a candidate's draft from its tags, keeping its link |
 | `import_candidate_edit_field_set` | type one album field |
 | `import_candidate_labels_set` | set its labels and catalog numbers |
+| `import_candidate_barcodes_set` | set its barcodes |
 | `import_candidate_pressing_fact_set` | choose its area, media, status, packaging or Discogs details |
 | `import_candidate_cover_set` | choose its cover |
 | `import_start` | import a candidate as stored |

@@ -106,7 +106,7 @@ mirror_struct! {
     fields: {
         year,
         labels: (each BridgeRawLabelEdit),
-        barcode,
+        barcodes,
         facts: (BridgePressingFacts),
     },
 }

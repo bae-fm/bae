@@ -552,6 +552,17 @@ forward! {
                 .await?)
         }
 
+        /// Record the candidate's barcode rows as the user left them.
+        fn set_candidate_barcodes(candidate_key: String, barcodes: Vec<String>) -> () {
+            Ok(this
+                .services
+                .import_set_candidate_edit_field(
+                    &candidate_key,
+                    bae_core::import::DraftFieldEdit::Barcodes(barcodes),
+                )
+                .await?)
+        }
+
         /// Record one choice of what the candidate's pressing is.
         fn set_candidate_pressing_fact(
             candidate_key: String,

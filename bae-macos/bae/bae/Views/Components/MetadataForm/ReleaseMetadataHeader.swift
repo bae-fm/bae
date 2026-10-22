@@ -7,6 +7,8 @@ struct ReleaseFieldWriter {
     let setField: @MainActor (BridgeCandidateEditField, String) async -> Void
     /// Every label row, after one is typed into, added or removed.
     let setLabels: @MainActor ([BridgeRawLabelEdit]) async -> Void
+    /// Every barcode row, after one is typed into, added or removed.
+    let setBarcodes: @MainActor ([String]) async -> Void
     /// A choice of what the pressing is, from one of the form's pickers.
     let setPressingFact: @MainActor (BridgePressingFactEdit) async -> Void
     let setAlbumArtists: @MainActor ([BridgeCredited]) async -> Void
@@ -20,6 +22,10 @@ struct ReleaseFieldWriter {
             @escaping @MainActor (
                 [BridgeRawLabelEdit]
             ) async -> Void = { _ in },
+        setBarcodes:
+            @escaping @MainActor (
+                [String]
+            ) async -> Void = { _ in },
         setPressingFact:
             @escaping @MainActor (
                 BridgePressingFactEdit
@@ -31,6 +37,7 @@ struct ReleaseFieldWriter {
     ) {
         self.setField = setField
         self.setLabels = setLabels
+        self.setBarcodes = setBarcodes
         self.setPressingFact = setPressingFact
         self.setAlbumArtists = setAlbumArtists
     }
@@ -42,11 +49,13 @@ struct ReleaseFieldWriter {
                 case .albumTitle: form.wrappedValue.albumTitle = value
                 case .albumYear: form.wrappedValue.albumYear = value
                 case .pressingYear: form.wrappedValue.pressing.year = value
-                case .barcode: form.wrappedValue.pressing.barcode = value
                 }
             },
             setLabels: { labels in
                 form.wrappedValue.pressing.labels = labels
+            },
+            setBarcodes: { barcodes in
+                form.wrappedValue.pressing.barcodes = barcodes
             },
             setPressingFact: { fact in
                 form.wrappedValue.pressing.facts = bridgeApplyPressingFact(
@@ -208,14 +217,7 @@ struct ReleasePressingFieldsGrid: View {
                         write: writer.setPressingFact
                     )
                 }
-                GridRow {
-                    field(
-                        .barcode,
-                        label: String(localized: "Barcode"),
-                        text: values.pressing.barcode,
-                        monospaced: true
-                    )
-                }
+                barcodeRows
                 GridRow {
                     rowLabel(String(localized: "Status"))
                     ReleaseStatusPicker(
@@ -305,6 +307,55 @@ struct ReleasePressingFieldsGrid: View {
                         .buttonStyle(.plain)
                         .help(String(localized: "Add label"))
                         .accessibilityLabel(String(localized: "Add label"))
+                    }
+                }
+                .themeIcon(.small)
+            }
+        }
+    }
+
+    /// One row per barcode; a blank row when there is none.
+    @ViewBuilder
+    private var barcodeRows: some View {
+        let rows =
+            values.pressing.barcodes.isEmpty ? [""] : values.pressing.barcodes
+        ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+            GridRow {
+                rowLabel(index == 0 ? String(localized: "Barcode") : "")
+                HStack(spacing: ThemeSpace.compact) {
+                    valueText(
+                        row,
+                        placeholder: "\u{2014}",
+                        role: .emptyMark,
+                        monospaced: true
+                    ) { barcode in
+                        var next = rows
+                        next[index] = barcode
+                        await writer.setBarcodes(next)
+                    }
+                    if rows.count > 1 || !row.isEmpty {
+                        Button {
+                            var next = rows
+                            next.remove(at: index)
+                            Task { await writer.setBarcodes(next) }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                        .help(String(localized: "Remove \(row)"))
+                        .accessibilityLabel(String(localized: "Remove \(row)"))
+                    }
+                    if index == rows.count - 1 {
+                        Button {
+                            Task { await writer.setBarcodes(rows + [""]) }
+                        } label: {
+                            Image(systemName: "plus")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .help(String(localized: "Add barcode"))
+                        .accessibilityLabel(String(localized: "Add barcode"))
                     }
                 }
                 .themeIcon(.small)

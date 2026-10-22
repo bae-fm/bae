@@ -139,16 +139,19 @@ pub(crate) fn shared_draft(
         }
     }
     draft.pressing.labels = shared_labels(&current.pressing.labels, offered);
-    if let Some(barcode) = agreed(
+    if let Some((_, barcodes)) = agreed(
         offered,
         |row| {
-            crate::barcode::comparison_key(&row.pressing.barcode)
-                .ok()
-                .map(|key| (key, row.pressing.barcode.trim()))
+            let keys = barcode_keys(&row.pressing.barcodes);
+            (!keys.is_empty()).then_some((keys, &row.pressing.barcodes))
         },
         |a, b| a.0 == b.0,
     ) {
-        draft.pressing.barcode = barcode.1.to_string();
+        draft.pressing.barcodes = barcodes
+            .iter()
+            .map(|barcode| barcode.trim().to_string())
+            .filter(|barcode| !barcode.is_empty())
+            .collect();
     }
     let facts = &mut draft.pressing.facts;
     if let Some(area) = agreed(offered, |row| row.pressing.facts.area, |a, b| a == b) {
@@ -224,6 +227,20 @@ fn agreed<'a, T>(
     same: impl Fn(&T, &T) -> bool,
 ) -> Option<T> {
     agreed_values(rows.iter().map(value), same)
+}
+
+/// The products a form's barcode rows name, each once, in order of their
+/// comparison keys (see [`crate::barcode::comparison_key`]): two readings
+/// agree on their barcodes when they name the same products, however each
+/// prints them.
+fn barcode_keys(barcodes: &[String]) -> Vec<String> {
+    let mut keys: Vec<String> = barcodes
+        .iter()
+        .filter_map(|barcode| crate::barcode::comparison_key(barcode).ok())
+        .collect();
+    keys.sort();
+    keys.dedup();
+    keys
 }
 
 /// The text of a field that states something, trimmed.

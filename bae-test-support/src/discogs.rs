@@ -72,7 +72,7 @@ pub fn discogs_test_release(
         country: Some("US".to_string()),
         labels: bae_core::pressing::ReleaseLabel::list([(Some("Test Label".to_string()), None)]),
         covers: vec![],
-        barcode: None,
+        barcodes: vec![],
         artists: vec![discogs_artist("discogs-artist-1", "Artist Name")],
         extraartists: Some(vec![]),
         tracklist: tracks
@@ -194,7 +194,7 @@ pub fn seed_discogs_test_release(
         "year": release.year,
         "country": release.country,
         "master_id": master_id,
-        "identifiers": release.barcode.iter().map(|value| serde_json::json!({ "type": "Barcode", "value": value }))
+        "identifiers": release.barcodes.iter().map(|value| serde_json::json!({ "type": "Barcode", "value": value }))
             // The projection keeps no identifier's kind; every kind but Barcode reads back the same.
             .chain(release.identifiers.iter().map(|value| serde_json::json!({ "type": "Other", "value": value })))
             .collect::<Vec<_>>(),

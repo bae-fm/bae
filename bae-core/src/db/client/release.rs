@@ -103,13 +103,13 @@ pub(super) fn write_release_metadata_on(
 
     let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
     tx.execute(
-        r#"UPDATE releases SET year = ?, labels = ?, barcode = ?,
+        r#"UPDATE releases SET year = ?, labels = ?, barcodes = ?,
             country = ?, region = ?, media = ?, status = ?, packaging = ?,
             discogs_details = ? WHERE id = ?"#,
         params![
             release.pressing.year,
             super::pressing_columns::labels_column(&release.pressing.labels),
-            release.pressing.barcode,
+            super::pressing_columns::barcodes_column(&release.pressing.barcodes),
             facts.country,
             facts.region,
             facts.media,

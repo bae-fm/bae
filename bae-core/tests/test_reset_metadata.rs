@@ -360,7 +360,7 @@ async fn reset_mb_returns_full_pressing_data_from_the_stored_release() {
             bae_core::pressing::Country::from_code("US").unwrap()
         ))
     );
-    assert_eq!(edit.pressing.barcode.as_deref(), Some("0123456789"));
+    assert_eq!(edit.pressing.barcodes, ["0123456789"]);
     assert_eq!(edit.tracks.len(), 2);
     assert_eq!(edit.tracks[0].title, "Cached Track 1");
     assert_eq!(edit.tracks[1].title, "Cached Track 2");

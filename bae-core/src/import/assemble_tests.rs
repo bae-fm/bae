@@ -54,7 +54,7 @@ fn draft() -> CandidateDraft {
         pressing: RawPressingEdit {
             year: "2005".to_string(),
             labels: Vec::new(),
-            barcode: String::new(),
+            barcodes: Vec::new(),
             facts: Default::default(),
         },
         mediums: vec![crate::mediums::ReleaseMedium::one_sided(Some(

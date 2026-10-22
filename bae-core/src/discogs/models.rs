@@ -31,7 +31,8 @@ pub struct DiscogsRelease {
     /// Every label with its catalog number, in Discogs's order.
     pub labels: Vec<crate::pressing::ReleaseLabel>,
     pub covers: Vec<RemoteCover>,
-    pub barcode: Option<String>,
+    /// Every Barcode identifier's value, in Discogs's order, as printed.
+    pub barcodes: Vec<String>,
     pub artists: Vec<DiscogsArtist>,
     pub extraartists: Option<Vec<DiscogsRoleArtist>>,
     pub tracklist: Vec<DiscogsTrack>,

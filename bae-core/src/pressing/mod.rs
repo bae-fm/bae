@@ -246,7 +246,9 @@ pub struct Pressing {
     pub year: Option<i32>,
     /// Every label the pressing is on, in the order its source lists them.
     pub labels: Vec<ReleaseLabel>,
-    pub barcode: Option<String>,
+    /// Every barcode the pressing is printed with, in the order its source
+    /// lists them, each once: a release can carry an EAN and a UPC.
+    pub barcodes: Vec<String>,
     pub facts: PressingFacts,
 }
 
@@ -257,20 +259,22 @@ impl Pressing {
         Self {
             year: None,
             labels: Vec::new(),
-            barcode: None,
+            barcodes: Vec::new(),
             facts: PressingFacts::default(),
         }
     }
 
     /// This pressing, with each field `self` leaves unstated taken from
-    /// `other`. The labels are taken whole, so no name is paired with another
-    /// source's number.
+    /// `other`. The labels and the barcodes are each taken whole, so no name
+    /// is paired with another source's number.
     pub fn fill_missing(&mut self, other: Self) {
         self.year = self.year.or(other.year);
         if self.labels.is_empty() {
             self.labels = other.labels;
         }
-        self.barcode = self.barcode.take().or(other.barcode);
+        if self.barcodes.is_empty() {
+            self.barcodes = other.barcodes;
+        }
         self.facts.fill_missing(other.facts);
     }
 }

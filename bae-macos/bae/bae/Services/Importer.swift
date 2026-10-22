@@ -72,6 +72,7 @@ private struct ImportOperations: Sendable {
             Void
     let setCandidateLabels:
         @Sendable (String, [BridgeRawLabelEdit]) async throws -> Void
+    let setCandidateBarcodes: @Sendable (String, [String]) async throws -> Void
     let setCandidatePressingFact:
         @Sendable (String, BridgePressingFactEdit) async throws -> Void
     let setCandidateAlbumArtists:
@@ -236,6 +237,12 @@ extension ImportOperations {
                 try await handle.setCandidateLabels(
                     candidateKey: $0,
                     labels: $1
+                )
+            },
+            setCandidateBarcodes: {
+                try await handle.setCandidateBarcodes(
+                    candidateKey: $0,
+                    barcodes: $1
                 )
             },
             setCandidatePressingFact: {
@@ -406,6 +413,9 @@ final class Importer: Sendable, Observable {
         setCandidateLabels:
             @escaping @Sendable (String, [BridgeRawLabelEdit]) async throws
             -> Void = { _, _ in },
+        setCandidateBarcodes:
+            @escaping @Sendable (String, [String]) async throws
+            -> Void = { _, _ in },
         setCandidatePressingFact:
             @escaping @Sendable (String, BridgePressingFactEdit) async throws
             -> Void = { _, _ in },
@@ -476,6 +486,7 @@ final class Importer: Sendable, Observable {
             setCandidateCover: setCandidateCover,
             setCandidateEditField: setCandidateEditField,
             setCandidateLabels: setCandidateLabels,
+            setCandidateBarcodes: setCandidateBarcodes,
             setCandidatePressingFact: setCandidatePressingFact,
             setCandidateAlbumArtists: setCandidateAlbumArtists,
             setCandidateTrackEdit: setCandidateTrackEdit,
@@ -734,6 +745,14 @@ extension Importer {
         _ labels: [BridgeRawLabelEdit]
     ) async throws {
         try await operations.setCandidateLabels(candidateKey, labels)
+    }
+
+    /// Record this candidate's barcode rows as the person left them.
+    func setCandidateBarcodes(
+        _ candidateKey: String,
+        _ barcodes: [String]
+    ) async throws {
+        try await operations.setCandidateBarcodes(candidateKey, barcodes)
     }
 
     /// Record one choice of what this candidate's pressing is.

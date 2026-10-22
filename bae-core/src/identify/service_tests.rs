@@ -376,7 +376,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
     };
     let document = ReleaseDocument {
         labels: Vec::new(),
-        barcode: None,
+        barcodes: Vec::new(),
         album_first_year: None,
         source_tracks: crate::import::search::SourceTracks::Listed { count: 1 },
         track_titles: Vec::new(),

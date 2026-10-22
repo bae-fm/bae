@@ -5,7 +5,22 @@ use crate::import::CandidateEditField;
 
 /// A Discogs release with pressing metadata and no barcode.
 fn seed_discogs_pressing(providers: &crate::providers::Providers, release_id: &str, label: &str, catalog_number: &str) {
+    seed_discogs_release(providers, release_id, label, catalog_number, &[]);
+}
+
+/// [`seed_discogs_pressing`], printed with `barcodes`.
+fn seed_discogs_release(
+    providers: &crate::providers::Providers,
+    release_id: &str,
+    label: &str,
+    catalog_number: &str,
+    barcodes: &[&str],
+) {
     let raw_release = serde_json::json!({
+        "identifiers": barcodes
+            .iter()
+            .map(|value| serde_json::json!({ "type": "Barcode", "value": value }))
+            .collect::<Vec<_>>(),
         "id": release_id.parse::<u64>().expect("a numeric test Discogs release id"),
         "title": "Album Title",
         "year": 1996,
@@ -87,10 +102,7 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
     handle
         .set_candidate_edit_field(
             &key,
-            crate::import::DraftFieldEdit::Text {
-                field: CandidateEditField::Barcode,
-                value: "5099749".to_string(),
-            },
+            crate::import::DraftFieldEdit::Barcodes(vec!["5099749".to_string()]),
         )
         .await
         .unwrap();
@@ -119,7 +131,55 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
         }]
     );
     assert_eq!(
-        pane.metadata_draft.pressing.barcode, "",
+        pane.metadata_draft.pressing.barcodes,
+        Vec::<String>::new(),
         "explicit application replaces typed values, including with absent metadata"
+    );
+}
+
+/// A Discogs release printed with an EAN and a UPC keeps both: applying it
+/// writes both barcode rows into the draft, and the edit the import writes
+/// states both.
+#[tokio::test(flavor = "multi_thread")]
+async fn applying_a_release_with_two_barcodes_keeps_both() {
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    handle
+        .library_manager
+        .set_discogs_key(
+            "test-discogs-token",
+            crate::config::DiscogsValidation::Valid,
+        )
+        .await
+        .unwrap();
+    let release_id = "70000102";
+    seed_discogs_release(
+        handle.library_manager.providers(),
+        release_id,
+        "Label Name",
+        "CAT-1",
+        &["5 012345 678900", "0 12345 67890 5"],
+    );
+    handle
+        .select_candidate_release(key.clone(), crate::import::PressingLink {
+                record: crate::import::MetadataRef::new(
+                    crate::import::Catalog::Discogs,
+                    release_id.to_string(),
+                ),
+                partners: vec![],
+            },
+        )
+        .await
+        .unwrap();
+    let pane = pane(&handle, &key).await;
+    shut_down(handle).await;
+
+    let both = ["5 012345 678900", "0 12345 67890 5"];
+    assert_eq!(pane.metadata_draft.pressing.barcodes, both);
+    let shaped = pane.metadata_draft.shape().expect("the applied draft shapes");
+    assert_eq!(shaped.pressing.barcodes, both);
+    assert_eq!(
+        crate::import::RawPressingEdit::from_pressing(&shaped.pressing).barcodes,
+        both,
+        "the editor's rows read both back"
     );
 }

@@ -258,6 +258,22 @@ impl Automation {
         Ok(EmptyResponse {})
     }
 
+    /// Set the candidate's barcode rows.
+    pub async fn set_candidate_barcodes(
+        &self,
+        candidate_key: String,
+        barcodes: Vec<String>,
+    ) -> Result<EmptyResponse, AutomationError> {
+        let candidate = self.get_candidate(candidate_key).await?;
+        self.services
+            .import_set_candidate_edit_field(
+                candidate.key(),
+                bae_core::import::DraftFieldEdit::Barcodes(barcodes),
+            )
+            .await?;
+        Ok(EmptyResponse {})
+    }
+
     /// Choose one of what the candidate's pressing is.
     pub async fn set_candidate_pressing_fact(
         &self,
@@ -530,6 +546,13 @@ impl Automation {
                 let input: CandidateLabelsInput = from_value(args)?;
                 to_value(
                     self.set_candidate_labels(input.candidate_key, input.labels)
+                        .await?,
+                )
+            }
+            AutomationTool::ImportCandidateBarcodesSet => {
+                let input: CandidateBarcodesInput = from_value(args)?;
+                to_value(
+                    self.set_candidate_barcodes(input.candidate_key, input.barcodes)
                         .await?,
                 )
             }

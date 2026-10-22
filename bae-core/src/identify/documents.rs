@@ -52,8 +52,8 @@ pub struct ReleaseReading {
 pub struct ReleaseDocument {
     /// Every label the release is on, with its catalog number.
     pub labels: Vec<ReleaseLabel>,
-    /// The barcode the document states, as it prints it.
-    pub barcode: Option<String>,
+    /// Every barcode the document states, as it prints them.
+    pub barcodes: Vec<String>,
     /// The year the release's album first came out, as its group or master
     /// states it.
     pub album_first_year: Option<i32>,
@@ -80,7 +80,7 @@ impl ReleaseDocument {
         let reading = release.read(audio);
         Self {
             labels: release.pressing().labels.clone(),
-            barcode: release.pressing().barcode.clone(),
+            barcodes: release.pressing().barcodes.clone(),
             album_first_year: release.metadata.album.first_year,
             source_tracks: crate::import::catalog_reading::listing(&reading, audio),
             track_titles: match reading {
@@ -131,7 +131,7 @@ impl DocumentReading {
                 result.track_titles = document.track_titles.clone();
                 result.notes = document.notes.clone();
                 result.links = document.links.clone();
-                if let Some(barcode) = &document.barcode {
+                for barcode in &document.barcodes {
                     let key = crate::barcode::comparison_key(barcode).ok();
                     let stated = result.barcodes.iter().any(|stated| {
                         stated == barcode

@@ -105,7 +105,7 @@ fn row(title: &str, catalog_number: &str, tracks: &[&str]) -> RawReleaseEdit {
         pressing: RawPressingEdit {
             year: String::new(),
             labels: vec![label("Label Name", catalog_number)],
-            barcode: String::new(),
+            barcodes: Vec::new(),
             facts: PressingFacts::default(),
         },
         tracks: tracks
@@ -152,7 +152,7 @@ fn draft() -> CandidateDraft {
         pressing: RawPressingEdit {
             year: "2005".to_string(),
             labels: vec![label("label from tags", "TAG-1")],
-            barcode: "0123456789012".to_string(),
+            barcodes: vec!["0123456789012".to_string()],
             facts: PressingFacts {
                 area: Some(crate::pressing::ReleaseArea::Country(
                     crate::pressing::Country::from_code("DE").expect("a country"),
@@ -234,7 +234,7 @@ fn what_the_pressings_disagree_on_or_leave_unstated_stays_as_the_draft_has_it() 
     );
     assert_eq!(shared.album_year, current.album_year, "never blanked");
     assert_eq!(shared.pressing.year, current.pressing.year);
-    assert_eq!(shared.pressing.barcode, current.pressing.barcode);
+    assert_eq!(shared.pressing.barcodes, current.pressing.barcodes);
     assert_eq!(shared.pressing.facts.area, current.pressing.facts.area);
     assert_eq!(shared.pressing.labels, vec![label("Label Name", "ABC-100")]);
 }

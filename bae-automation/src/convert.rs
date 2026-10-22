@@ -238,7 +238,6 @@ mirror_enum! {
         AlbumTitle,
         AlbumYear,
         PressingYear,
-        Barcode,
     },
 }
 
@@ -392,7 +391,7 @@ mirror_struct! {
     AutomationPressingEdit = bae_core::pressing::Pressing,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
-    fields: { year, labels, barcode, facts },
+    fields: { year, labels, barcodes, facts },
 }
 
 impl AutomationReleaseUserEdit {

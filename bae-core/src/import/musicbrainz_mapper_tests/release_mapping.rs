@@ -480,7 +480,7 @@ fn pressing_reads_year_every_label_barcode_and_every_fact() {
                 crate::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
                 crate::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
             ],
-            barcode: Some("012345678905".to_string()),
+            barcodes: vec!["012345678905".to_string()],
             facts: crate::pressing::PressingFacts {
                 area: Some(crate::pressing::area("GB")),
                 media: vec![

@@ -127,7 +127,7 @@ pub(crate) fn pressing(release: &DiscogsRelease) -> (Pressing, StatedMedia) {
     let pressing = Pressing {
         year: release.year.map(|y| y as i32),
         labels: release.labels.clone(),
-        barcode: release.barcode.clone(),
+        barcodes: release.barcodes.clone(),
         facts: PressingFacts {
             area: release
                 .country

@@ -151,7 +151,7 @@ fn metadata_draft(title: &str, artist: &str) -> RawReleaseEdit {
             year: String::new(),
             labels: Vec::new(),
             facts: Default::default(),
-            barcode: String::new(),
+            barcodes: Vec::new(),
         },
         tracks: vec![RawTrackEdit {
             id: "candidate-track-0".to_string(),

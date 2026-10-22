@@ -350,7 +350,7 @@ impl LibraryManager {
             cover,
             &output_audio_path,
             &output_cue_path,
-            release.pressing.barcode,
+            media_catalog_number(&release.pressing.barcodes),
             preset,
             |file_id: &String| self.open_save_source(&sources[file_id]),
         )
@@ -509,5 +509,26 @@ fn unique_output_path(
             return path;
         }
         index += 1;
+    }
+}
+
+/// The code a saved CUE sheet's `CATALOG` line states: the one product every
+/// barcode of the pressing names, in the one spelling codes are compared by
+/// (see [`crate::barcode::comparison_key`]). None where the pressing states
+/// none, or names two products — a sheet has room for one, and neither is the
+/// disc's more than the other.
+fn media_catalog_number(barcodes: &[String]) -> Option<String> {
+    let mut codes: Vec<String> = Vec::new();
+    for key in barcodes
+        .iter()
+        .filter_map(|barcode| crate::barcode::comparison_key(barcode).ok())
+    {
+        if !codes.contains(&key) {
+            codes.push(key);
+        }
+    }
+    match <[String; 1]>::try_from(codes) {
+        Ok([code]) => Some(code),
+        Err(_) => None,
     }
 }

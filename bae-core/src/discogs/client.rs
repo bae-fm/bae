@@ -572,9 +572,12 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
         .into_iter()
         .flatten()
         .partition(|identifier| identifier.kind == "Barcode");
-    // The draft has one barcode field. Keep the first supplied Barcode value
-    // in provider order, including its printed spaces and punctuation.
-    let barcode = barcodes.into_iter().find_map(|identifier| identifier.value);
+    // Discogs often lists one code twice: as printed and as scanned.
+    let barcode_values = crate::barcode::each_product_once(
+        barcodes
+            .into_iter()
+            .filter_map(|identifier| identifier.value),
+    );
     let identifiers = identifiers
         .into_iter()
         .filter_map(|identifier| identifier.value)
@@ -594,7 +597,7 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
         formats,
         country: release.country,
         labels,
-        barcode,
+        barcodes: barcode_values,
         covers,
         artists,
         extraartists,

@@ -45,7 +45,7 @@ fn document(labels: &[(&str, &str)], tracks: u32) -> crate::identify::documents:
             .iter()
             .map(|(name, number)| crate::pressing::ReleaseLabel::of(Some(name), Some(number)))
             .collect(),
-        barcode: None,
+        barcodes: Vec::new(),
         source_tracks: crate::import::search::SourceTracks::Listed { count: tracks },
         album_first_year: None,
         track_titles: Vec::new(),
@@ -328,7 +328,7 @@ fn rows_the_documents_raise_are_read_before_the_run_settles() {
 fn a_document_s_barcode_joins_its_result_s() {
     let with_barcode = |barcode: &str| {
         let mut document = document(&[("Label One", "AB-100")], 5);
-        document.barcode = Some(barcode.to_string());
+        document.barcodes = vec![barcode.to_string()];
         document
     };
     let (mut result, _) = first_label_only("dg-1");

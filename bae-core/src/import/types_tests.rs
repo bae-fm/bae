@@ -50,7 +50,7 @@ mod edit_shaping_tests {
                     area: Some(crate::pressing::area("US")),
                     ..crate::pressing::made_of(crate::pressing::Medium::Vinyl, 2)
                 },
-                barcode: "0123456789".to_string(),
+                barcodes: vec!["0123456789".to_string()],
             },
             tracks: vec![RawTrackEdit {
                 id: "track-0".to_string(),
@@ -215,7 +215,7 @@ mod edit_shaping_tests {
             year: "".to_string(),
             labels: vec![RawLabelEdit::default()],
             facts: Default::default(),
-            barcode: "".to_string(),
+            barcodes: Vec::new(),
         };
         let pressing = form.shape().expect("shapes").pressing;
         assert_eq!(pressing, crate::pressing::Pressing::blank());
@@ -310,7 +310,7 @@ mod edit_shaping_tests {
                 year: Some(1999),
                 labels: vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-123"))],
                 facts: Default::default(),
-                barcode: None,
+                barcodes: Vec::new(),
             },
             tracks: vec![
                 TrackUserEdit {

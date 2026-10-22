@@ -82,6 +82,20 @@ pub(super) fn read_labels(row: &Row, column: &str) -> rusqlite::Result<Vec<Relea
     })
 }
 
+/// A pressing's barcodes as their `barcodes` column holds them: a JSON array
+/// of strings.
+pub(super) fn barcodes_column(barcodes: &[String]) -> String {
+    serde_json::to_string(barcodes).expect("barcodes serialize")
+}
+
+/// Read a `barcodes` column: every barcode, in order.
+pub(super) fn read_barcodes(row: &Row, column: &str) -> rusqlite::Result<Vec<String>> {
+    let barcodes: String = row.get(column)?;
+    serde_json::from_str::<Vec<String>>(&barcodes).map_err(|error| {
+        column_conversion_error(row, column, format!("barcodes {barcodes:?}: {error}"))
+    })
+}
+
 /// Read the facts a row's columns hold. `prefix` is what a joined query puts
 /// before each column's name; a single-table query passes `""`.
 pub(super) fn read_facts(row: &Row, prefix: &str) -> rusqlite::Result<PressingFacts> {

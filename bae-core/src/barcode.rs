@@ -150,6 +150,24 @@ pub fn comparison_key(stated: &str) -> Result<String, Unusable> {
     Ok(digits)
 }
 
+/// `stated` barcodes as written, in order, leaving out a blank one and one
+/// naming a product an earlier one names (see [`comparison_key`]), so a code
+/// written twice in two spellings is kept in its first. A value that is no
+/// key is kept unless written the same way before.
+pub fn each_product_once(stated: impl IntoIterator<Item = String>) -> Vec<String> {
+    let mut kept: Vec<String> = Vec::new();
+    for value in stated {
+        let key = comparison_key(&value).ok();
+        let named = kept
+            .iter()
+            .any(|known| *known == value || (key.is_some() && comparison_key(known).ok() == key));
+        if !value.trim().is_empty() && !named {
+            kept.push(value);
+        }
+    }
+    kept
+}
+
 /// The fewest digits any UPC or EAN has — EAN-8 and UPC-E.
 const SHORTEST_CODE: usize = 8;
 
