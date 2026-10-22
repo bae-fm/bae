@@ -270,11 +270,7 @@ artist's `artist_credits`, keyed by the artist and the folded name, so two
 devices meeting one printed name write one row. A credit links one of them,
 or none to print the artist's own name; it is never text. Importing decides
 it once the artist is: a printed name that folds to the artist's own links
-none, any other links that name, added if new. A credit a catalog entry
-identifies that prints no name of its own (a Discogs credit with no `anv`, a
-MusicBrainz credit printing the artist's catalog name) links none, so an
-artist renamed in the library keeps printing its library name and gains no
-other name for the catalog's spelling. A merged artist's credit
+none, any other links that name, added if new. A merged artist's credit
 prints the stored name it links, else the survivor's name. Credits with no
 catalog id match an artist by its own name or any of its other names (the one
 it matches is the name the credit prints). The artist page lists the names,

@@ -270,23 +270,9 @@ impl ArtistAssignment {
     /// write resolves its artist: a picked artist's chosen one; for a credit,
     /// the name it prints, which the write keeps only where it is not the
     /// resolved artist's own (see `db::client::write::settle_credit_name`).
-    ///
-    /// A credit a catalog entry names that prints no name of its own (a
-    /// Discogs credit with no `anv`, a MusicBrainz credit printing the
-    /// artist's catalog name) names none: the catalog entry identifies the
-    /// artist, so the line prints the library artist's own name however the
-    /// catalog spells it. A typed or tagged name is all the credit says, so it
-    /// is kept, and links the artist's other name it may be.
     pub(crate) fn link_credit(&self) -> Option<crate::credits::CreditName> {
         match self {
             Self::Picked { credit, .. } => credit.clone(),
-            Self::Credit { credit }
-                if credit.credited_as.is_none()
-                    && (credit.musicbrainz_artist_id.is_some()
-                        || credit.discogs_artist_id.is_some()) =>
-            {
-                None
-            }
             Self::Credit { credit } => Some(crate::credits::CreditName::of(credit.printed())),
         }
     }
