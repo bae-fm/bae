@@ -579,19 +579,6 @@ pub struct ImportListSnapshot {
     pub cause: coven::LiveQueryCause,
 }
 
-/// The library album an import of a candidate files under.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CandidateAlbum {
-    /// A new album: none is picked and its records name none the library
-    /// holds.
-    New,
-    /// The album its records name (see
-    /// [`crate::db::Database::album_records_name`]).
-    Named { album_id: String, title: String },
-    /// The album the person picked, over what the records name.
-    Picked { album_id: String, title: String },
-}
-
 /// One candidate as the pane reads it, before its runtime is joined.
 ///
 /// The row is built here from what the tables say; a claimed import or a run
@@ -624,7 +611,7 @@ pub struct ImportCandidateDetailProjection {
     /// Whether the linked release is already in the library.
     pub picked_library_status: Option<LibraryStatus>,
     /// The library album an import of it files under.
-    pub album: CandidateAlbum,
+    pub album: crate::import::DraftAlbum,
     /// The candidate's one editable metadata draft.
     pub metadata_draft: RawReleaseEdit,
     /// What the library holds, as this read found it, for every artist credit
@@ -869,7 +856,7 @@ pub struct ImportCandidateDetail {
     pub import_status: Option<CandidateImportStatus>,
     pub picked_library_status: Option<LibraryStatus>,
     /// The library album an import of it files under.
-    pub album: CandidateAlbum,
+    pub album: crate::import::DraftAlbum,
     /// Extracted identifying signals pinned to their source files. Independent
     /// of the selected pressing; result support lives in result provenance.
     pub file_evidence: Vec<FileEvidence>,

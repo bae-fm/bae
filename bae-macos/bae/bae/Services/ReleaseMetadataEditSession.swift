@@ -1,20 +1,42 @@
 import BaeKit
+import OSLog
 import Observation
 
+/// What a release edit session asks core to do, each by release id.
+struct ReleaseEditCommands {
+    /// Open the session afresh: the release as the library holds it, with
+    /// nothing applied or picked.
+    let open: @Sendable (String) async throws -> BridgeReleaseEditSeed
+    /// Pick the album a save files the release under (`nil`: the one its
+    /// records name); returns the album the session files it under now.
+    let setAlbum: @Sendable (String, String?) async throws -> BridgeDraftAlbum
+    let searchAlbums: @MainActor (String) async throws -> [BridgeAlbumChoice]
+    /// Save the session with the form; returns the album the release is on
+    /// after it.
+    let save: @Sendable (String, BridgeRawReleaseEdit) async throws -> String
+    /// Drop the session: nothing is written.
+    let discard: @Sendable (String) async throws -> Void
+}
+
 /// One persisted release-edit session shared by Import Done and the Library
-/// modal. It owns the working form and its save; core holds what a catalog
-/// applied in the session until that save.
+/// modal. It owns the working form and its save; core holds the album the
+/// person picked and what a catalog applied in the session until that save.
 @MainActor
 @Observable
 final class ReleaseMetadataEditSession {
+    private static let logger = Logger.bae("ReleaseMetadataEditSession")
+
     private enum Operation {
         case saving
         case cancelling
+        case pickingAlbum
     }
 
     let releaseId: String
     private(set) var cover: BridgeImageRef?
-    let display: BridgeReleaseEditDisplayContext
+    private(set) var display: BridgeReleaseEditDisplayContext
+    /// The library album a save files the release under.
+    private(set) var album: BridgeDraftAlbum
     let editingCommands = EditingCommitCommands()
 
     private(set) var form: BridgeRawReleaseEdit
@@ -22,27 +44,34 @@ final class ReleaseMetadataEditSession {
     private(set) var failure: DisplayError?
     private(set) var hasChanges = false
 
-    private var persistedForm: BridgeRawReleaseEdit
     private var formRevision = 0
-    private let saveAction:
-        @Sendable (String, BridgeRawReleaseEdit) async throws -> Void
+    private let commands: ReleaseEditCommands
     private var operationTask: Task<Void, Never>?
     private var operationSerial = 0
 
     init(
         releaseId: String,
         seed: BridgeReleaseEditSeed,
-        save:
-            @escaping @Sendable (
-                String, BridgeRawReleaseEdit
-            ) async throws -> Void
+        commands: ReleaseEditCommands
     ) {
         self.releaseId = releaseId
         cover = seed.cover
         display = seed.display
+        album = seed.album
         form = seed.edit
-        persistedForm = seed.edit
-        saveAction = save
+        self.commands = commands
+    }
+
+    /// What the album row does: pick a library album, or leave it to the
+    /// release's records, and find albums to pick.
+    func albumActions(viewInLibrary: @escaping (String) -> Void)
+        -> DraftAlbumActions
+    {
+        DraftAlbumActions(
+            pick: { [weak self] albumId in self?.pickAlbum(albumId) },
+            search: commands.searchAlbums,
+            viewInLibrary: viewInLibrary
+        )
     }
 
     var fieldWriter: ReleaseFieldWriter {
@@ -82,7 +111,9 @@ final class ReleaseMetadataEditSession {
         self.cover = cover
     }
 
-    func save(onSuccess: @escaping @MainActor @Sendable () -> Void) {
+    /// Save the session, then reopen it from what the library now holds.
+    /// `onSuccess` receives the album the release is on after the save.
+    func save(onSuccess: @escaping @MainActor @Sendable (String) -> Void) {
         let serial = begin(.saving)
         failure = nil
         operationTask = Task { @MainActor in
@@ -98,12 +129,16 @@ final class ReleaseMetadataEditSession {
             let submittedForm = form
             let submittedRevision = formRevision
             do {
-                try await saveAction(releaseId, submittedForm)
+                let albumId = try await commands.save(releaseId, submittedForm)
                 try Task.checkCancellation()
-                persistedForm = submittedForm
-                hasChanges = formRevision != submittedRevision
+                if formRevision == submittedRevision {
+                    show(try await commands.open(releaseId))
+                }
+                else {
+                    hasChanges = true
+                }
                 finish(serial)
-                onSuccess()
+                onSuccess(albumId)
             }
             catch is CancellationError {
                 finish(serial)
@@ -119,6 +154,8 @@ final class ReleaseMetadataEditSession {
         }
     }
 
+    /// Discard every change: core drops the session and the editor reopens
+    /// on the release as the library holds it.
     func cancelChanges() {
         let serial = begin(.cancelling)
         operationTask = Task { @MainActor in
@@ -127,11 +164,49 @@ final class ReleaseMetadataEditSession {
                 finish(serial)
                 return
             }
-            form = persistedForm
-            formRevision += 1
-            hasChanges = false
-            failure = nil
+            do {
+                show(try await commands.open(releaseId))
+                failure = nil
+            }
+            catch is CancellationError {}
+            catch {
+                failure = DisplayError(error)
+            }
             finish(serial)
+        }
+    }
+
+    /// Pick the album a save files the release under, or (`nil`) leave it to
+    /// its records.
+    func pickAlbum(_ albumId: String?) {
+        let serial = begin(.pickingAlbum)
+        failure = nil
+        operationTask = Task { @MainActor in
+            do {
+                album = try await commands.setAlbum(releaseId, albumId)
+                hasChanges = true
+            }
+            catch is CancellationError {}
+            catch {
+                failure = DisplayError(error)
+            }
+            finish(serial)
+        }
+    }
+
+    /// Stop the session's work and drop what core holds for it: the editor
+    /// is going away unsaved.
+    func close() {
+        cancelTasks()
+        let commands = commands
+        let releaseId = releaseId
+        Task {
+            do { try await commands.discard(releaseId) }
+            catch {
+                Self.logger.error(
+                    "Could not drop the edit session on \(releaseId): \(error)"
+                )
+            }
         }
     }
 
@@ -140,6 +215,16 @@ final class ReleaseMetadataEditSession {
         operationTask?.cancel()
         operationTask = nil
         operation = nil
+    }
+
+    /// Everything the editor shows, from `seed`, with no changes made.
+    private func show(_ seed: BridgeReleaseEditSeed) {
+        cover = seed.cover
+        display = seed.display
+        album = seed.album
+        form = seed.edit
+        formRevision += 1
+        hasChanges = false
     }
 
     private func setField(_ field: BridgeCandidateEditField, _ value: String) {

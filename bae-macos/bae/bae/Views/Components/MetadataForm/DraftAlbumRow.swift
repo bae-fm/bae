@@ -1,22 +1,23 @@
 import BaeKit
 import SwiftUI
 
-/// What the album row does: pick a library album for the candidate to join,
-/// or leave it to the album its release names, and find albums to pick.
-struct ImportAlbumActions {
+/// What the album row does: pick a library album for the release to file
+/// under, or leave it to the album its records name, and find albums to pick.
+struct DraftAlbumActions {
     /// Pick an album by id, or (`nil`) leave it to the release's album.
     let pick: (String?) -> Void
     let search: @MainActor (String) async throws -> [BridgeAlbumChoice]
     let viewInLibrary: (String) -> Void
 }
 
-/// The library album the import files under: a new album, the one the
-/// release's records name, or one the person picked — with a picker to
-/// choose any library album instead.
-struct ImportAlbumRow: View {
-    let album: BridgeCandidateAlbum
+/// The library album a draft files under — an import's or a library
+/// release's: a new album, the one the release's records name (or, before a
+/// catalog is applied, the one it is in), or one the person picked — with a
+/// picker to choose any library album instead.
+struct DraftAlbumRow: View {
+    let album: BridgeDraftAlbum
     let canEdit: Bool
-    let actions: ImportAlbumActions
+    let actions: DraftAlbumActions
 
     @State
     private var isPresented = false

@@ -265,30 +265,6 @@ pub fn bridge_import_phase_key(phase: BridgeImportPhase) -> String {
     phase.loc_key().to_string()
 }
 
-/// The library album an import of a candidate files under. Mirrors
-/// `bae_core::import::list::CandidateAlbum`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeCandidateAlbum {
-    /// A new album: none is picked and its records name none the library
-    /// holds.
-    New,
-    /// The album its records name.
-    Named { album_id: String, title: String },
-    /// The album the person picked, over what the records name.
-    Picked { album_id: String, title: String },
-}
-
-mirror_enum! {
-    #[cfg(feature = "desktop")]
-    BridgeCandidateAlbum = bae_core::import::list::CandidateAlbum,
-    from_core: pub(crate) fn,
-    variants: {
-        New,
-        Named { album_id, title },
-        Picked { album_id, title },
-    },
-}
-
 /// A library album the album picker offers: its title, credit line and year.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeAlbumChoice {

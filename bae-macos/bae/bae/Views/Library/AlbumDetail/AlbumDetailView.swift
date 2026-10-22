@@ -15,6 +15,8 @@ struct AlbumDetailView: View {
     var library
     @Environment(ReleaseEditor.self)
     var releaseEditor
+    @Environment(Importer.self)
+    var importer
     @Environment(Sync.self)
     var sync
     @Environment(Downloads.self)
@@ -297,6 +299,7 @@ extension AlbumDetailView {
         // seed loads off the release id, so nothing reads the @Observable
         // release/summary fields in the modal builder's render context.
         let releaseEditor = releaseEditor
+        let importer = importer
         Task {
             do {
                 let seed = try await releaseEditor.openReleaseEdit(releaseId)
@@ -304,14 +307,14 @@ extension AlbumDetailView {
                     EditMetadataSheet(
                         releaseId: releaseId,
                         seed: seed,
-                        onSave: { edit in
-                            _ = try await releaseEditor.saveReleaseEdit(
-                                releaseId,
-                                edit,
-                                nil
-                            )
+                        commands: releaseEditor.editCommands(
+                            searchAlbums: importer.searchAlbums
+                        ),
+                        onSaved: { _ in uiStore.dismissModal() },
+                        onViewAlbum: { albumId in
+                            uiStore.dismissModal()
+                            uiStore.navigateToAlbum(albumId)
                         },
-                        onSaved: { uiStore.dismissModal() },
                         onCancel: {
                             uiStore.dismissModal()
                             Task {

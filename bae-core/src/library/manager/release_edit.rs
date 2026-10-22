@@ -2,20 +2,31 @@
 //!
 //! The editor opens a release's values; a catalog applied in the session
 //! replaces every value the release holds — titles, credits, mediums and
-//! places, roles, works, its records and the album they name — and saving
-//! writes the session whole, or discarding drops it. Nothing re-reads a
-//! catalog or the files' tags: the session holds what the apply read.
+//! places, roles and works, its records and the album they name — and the
+//! person can pick the library album it files under. Saving writes the session
+//! whole, or discarding drops it. Nothing re-reads a catalog or the files'
+//! tags: the session holds what the apply read.
 
 use super::release::cover_ref_for;
 use super::*;
 
-/// Each open session's catalog apply, by release id: what its save writes
-/// beyond the edited fields. A session with none writes the fields alone.
+/// What each open session holds beyond the form the editor keeps, by release
+/// id. A release with no entry has nothing applied and no album picked.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Default, Clone)]
 pub(super) struct ReleaseEditSessions(
-    std::sync::Arc<std::sync::Mutex<HashMap<String, AppliedCatalog>>>,
+    std::sync::Arc<std::sync::Mutex<HashMap<String, ReleaseEditSession>>>,
 );
+
+/// One session's catalog apply and album pick: what its save writes beyond
+/// the edited fields.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Default, Clone)]
+struct ReleaseEditSession {
+    applied: Option<AppliedCatalog>,
+    /// The library album the person picked, over the one the records name.
+    picked_album: Option<String>,
+}
 
 /// What applying a catalog release in a session read: every value, laid onto
 /// the release's tracks in order, and the records the pick names, the
@@ -29,30 +40,41 @@ struct AppliedCatalog {
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl ReleaseEditSessions {
-    fn sessions(&self) -> std::sync::MutexGuard<'_, HashMap<String, AppliedCatalog>> {
+    fn sessions(&self) -> std::sync::MutexGuard<'_, HashMap<String, ReleaseEditSession>> {
         self.0
             .lock()
             .expect("the release edit sessions' lock is never held across a panic")
+    }
+
+    fn session(&self, release_id: &str) -> ReleaseEditSession {
+        self.sessions().get(release_id).cloned().unwrap_or_default()
     }
 }
 
 impl LibraryManager {
     /// Open an edit session on a library release: its values as the library
-    /// holds them, with no catalog applied. Opening again starts over.
-    ///
-    /// The read counterpart to `apply_release_metadata_user_edit`.
-    /// Reads the album title and artists, the release pressing fields, and the
-    /// per-track titles/sides/numbers/artists, projects them into a wire
-    /// `ReleaseUserEdit` describing the current state, then renders that into
-    /// the raw editor form via `RawReleaseEdit::from_user_edit`. A track with
-    /// no artist rows of its own seeds an empty artist field ("shares the album
-    /// artist"); the album artists seed the album artist field.
+    /// holds them, with no catalog applied and no album picked. Opening again
+    /// starts over.
     pub async fn open_release_edit(
         &self,
         release_id: &str,
     ) -> Result<crate::import::ReleaseEditSeed, LibraryError> {
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         self.release_edits.sessions().remove(release_id);
+        self.read_release_edit(release_id).await
+    }
+
+    /// The editor's seed for `release_id` as the library holds it, filed under
+    /// the album it is in.
+    ///
+    /// The album title and artists, the release's pressing fields and each
+    /// track's title and artists, rendered into the raw editor form. A track
+    /// with no artist rows of its own seeds an empty artist field ("shares the
+    /// album artist"); the album artists seed the album artist field.
+    async fn read_release_edit(
+        &self,
+        release_id: &str,
+    ) -> Result<crate::import::ReleaseEditSeed, LibraryError> {
         let context = self
             .database
             .find_release_detail_context(release_id)
@@ -104,7 +126,7 @@ impl LibraryManager {
 
         let edit = raw_release_edit_with_persisted_track_ids(
             crate::import::ReleaseUserEdit {
-                album_title: album.title,
+                album_title: album.title.clone(),
                 album_artist_assignments,
                 album_year: album.year,
                 pressing: release.pressing.clone(),
@@ -113,10 +135,16 @@ impl LibraryManager {
             tracks.iter().map(|(id, _)| id.as_str()),
         )?;
 
+        let DbAlbum {
+            id: album_id,
+            title,
+            ..
+        } = album;
         Ok(crate::import::ReleaseEditSeed {
             edit,
             cover,
             display,
+            album: crate::import::DraftAlbum::Named { album_id, title },
         })
     }
 
@@ -159,7 +187,7 @@ impl LibraryManager {
                 },
             ));
         }
-        let mut seed = self.open_release_edit(release_id).await?;
+        let mut seed = self.read_release_edit(release_id).await?;
         let track_ids: Vec<String> = seed
             .display
             .tracks()
@@ -173,14 +201,80 @@ impl LibraryManager {
                 .iter()
                 .map(|track| crate::mediums::track_position(&track.place, &draft.mediums)),
         );
-        self.release_edits.sessions().insert(
-            release_id.to_string(),
-            AppliedCatalog {
-                draft,
-                records: crate::import::service::records_for_commit(&release, &partners),
-            },
-        );
+        self.release_edits
+            .sessions()
+            .entry(release_id.to_string())
+            .or_default()
+            .applied = Some(AppliedCatalog {
+            draft,
+            records: crate::import::service::records_for_commit(&release, &partners),
+        });
+        let session = self.release_edits.session(release_id);
+        seed.album = self.session_album(release_id, &session, seed.album).await?;
         Ok(seed)
+    }
+
+    /// Pick the library album `album_id` for the session on `release_id` to
+    /// file the release under, over the one its records name, or (`None`)
+    /// leave it to its records. Returns the album the session now files it
+    /// under. An album the library does not hold cannot be picked.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn set_release_edit_album(
+        &self,
+        release_id: &str,
+        album_id: Option<String>,
+    ) -> Result<crate::import::DraftAlbum, LibraryError> {
+        if let Some(album_id) = &album_id {
+            self.database
+                .find_album_by_id(album_id)
+                .await?
+                .ok_or_else(|| LibraryError::Import(format!("Album '{album_id}' not found")))?;
+        }
+        self.release_edits
+            .sessions()
+            .entry(release_id.to_string())
+            .or_default()
+            .picked_album = album_id;
+        let session = self.release_edits.session(release_id);
+        let current = self.read_release_edit(release_id).await?.album;
+        self.session_album(release_id, &session, current).await
+    }
+
+    /// The album `session` files the release under: the one picked, else the
+    /// one its applied records name (a new one where they name none the
+    /// library holds), else `current`, the album the release is in.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    async fn session_album(
+        &self,
+        release_id: &str,
+        session: &ReleaseEditSession,
+        current: crate::import::DraftAlbum,
+    ) -> Result<crate::import::DraftAlbum, LibraryError> {
+        let title = |album_id: String| async move {
+            let album = self
+                .database
+                .find_album_by_id(&album_id)
+                .await?
+                .ok_or_else(|| LibraryError::Import(format!("Album '{album_id}' not found")))?;
+            Ok::<_, LibraryError>((album_id, album.title))
+        };
+        if let Some(picked) = &session.picked_album {
+            let (album_id, title) = title(picked.clone()).await?;
+            return Ok(crate::import::DraftAlbum::Picked { album_id, title });
+        }
+        let Some(applied) = &session.applied else {
+            return Ok(current);
+        };
+        let change = self
+            .records_change(release_id, applied.records.clone())
+            .await?;
+        Ok(match change.new_album {
+            Some(_) => crate::import::DraftAlbum::New,
+            None => {
+                let (album_id, title) = title(change.target_album_id).await?;
+                crate::import::DraftAlbum::Named { album_id, title }
+            }
+        })
     }
 
     /// Drop the session on `release_id`: the library keeps what it holds.
@@ -192,17 +286,19 @@ impl LibraryManager {
     /// Save the session on `release_id` with the form `edit` the person left:
     /// in one write, the edited fields, every value a catalog applied in the
     /// session (its mediums and places, roles and works), its records, and the
-    /// album the release lands in — `album` where the person picked one, else
-    /// the one the applied records name. A session with nothing applied
-    /// writes the fields, and moves the release only to a picked album.
+    /// album the release lands in — the one the person picked, else the one
+    /// the applied records name. A session with nothing applied writes the
+    /// fields, and moves the release only to a picked album.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn save_release_edit(
         &self,
         release_id: &str,
         edit: &crate::import::RawReleaseEdit,
-        album: Option<String>,
     ) -> Result<(), LibraryError> {
-        let applied = self.release_edits.sessions().get(release_id).cloned();
+        let ReleaseEditSession {
+            applied,
+            picked_album: album,
+        } = self.release_edits.session(release_id);
         let shaped = edit.shape()?;
         shaped.validate()?;
         let (current_album_id, release, current_album, existing_tracks) =

@@ -532,14 +532,30 @@ pub struct TrackUserEdit {
     pub file: Option<AudioFile>,
 }
 
-/// The current raw edit form for a library release, together with whether its
-/// stored metadata provenance can be projected again. Source-less releases
-/// have no source payload to project; file metadata and external releases do.
+/// The library album a draft files under when it is written: an import's, or
+/// a library release's edit session's.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DraftAlbum {
+    /// A new album: none is picked and the draft's records name none the
+    /// library holds.
+    New,
+    /// The album the draft's records name (see
+    /// [`crate::db::Database::album_records_name`]); for a library release
+    /// with no catalog applied, the album it is in.
+    Named { album_id: String, title: String },
+    /// The album the person picked, over what the records name.
+    Picked { album_id: String, title: String },
+}
+
+/// A library release's edit session as the editor opens it: the raw form,
+/// the cover, what the editor shows beside the form, and the album a save
+/// files the release under.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditSeed {
     pub edit: RawReleaseEdit,
     pub cover: Option<crate::album_detail::ImageRef>,
     pub display: crate::album_detail::ReleaseEditDisplayContext,
+    pub album: DraftAlbum,
 }
 
 /// Trim a raw pressing field; empty (after trim) becomes `None`.

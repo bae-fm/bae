@@ -249,6 +249,7 @@ extension ReIdentifySheet {
         commitTask?.cancel()
         phase = .committing
         let releaseEditor = releaseEditor
+        let importer = importer
         let uiStore = uiStore
         let releaseId = self.releaseId
         let onClose = self.onClose
@@ -263,18 +264,20 @@ extension ReIdentifySheet {
                     EditMetadataSheet(
                         releaseId: releaseId,
                         seed: seed,
-                        onSave: { edit in
-                            let albumId =
-                                try await releaseEditor
-                                .saveReleaseEdit(releaseId, edit, nil)
-                            await MainActor.run {
-                                uiStore.navigateToAlbum(
-                                    albumId,
-                                    releaseId: releaseId
-                                )
-                            }
+                        commands: releaseEditor.editCommands(
+                            searchAlbums: importer.searchAlbums
+                        ),
+                        onSaved: { albumId in
+                            uiStore.dismissModal()
+                            uiStore.navigateToAlbum(
+                                albumId,
+                                releaseId: releaseId
+                            )
                         },
-                        onSaved: { uiStore.dismissModal() },
+                        onViewAlbum: { albumId in
+                            uiStore.dismissModal()
+                            uiStore.navigateToAlbum(albumId)
+                        },
                         onCancel: {
                             uiStore.dismissModal()
                             Task {

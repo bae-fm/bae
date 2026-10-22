@@ -4,7 +4,9 @@ import SwiftUI
 /// Library presentation shell around the shared persisted-release editor.
 struct EditMetadataSheet: View {
     let onCancel: @MainActor @Sendable () -> Void
-    let onSaved: @MainActor @Sendable () -> Void
+    /// The save landed; receives the album the release is on after it.
+    let onSaved: @MainActor @Sendable (String) -> Void
+    let onViewAlbum: (String) -> Void
 
     @State
     private var session: ReleaseMetadataEditSession
@@ -16,20 +18,19 @@ struct EditMetadataSheet: View {
     init(
         releaseId: String,
         seed: BridgeReleaseEditSeed,
-        onSave:
-            @escaping @Sendable (
-                BridgeRawReleaseEdit
-            ) async throws -> Void,
-        onSaved: @escaping @MainActor @Sendable () -> Void,
+        commands: ReleaseEditCommands,
+        onSaved: @escaping @MainActor @Sendable (String) -> Void,
+        onViewAlbum: @escaping (String) -> Void,
         onCancel: @escaping @MainActor @Sendable () -> Void
     ) {
         self.onCancel = onCancel
         self.onSaved = onSaved
+        self.onViewAlbum = onViewAlbum
         _session = State(
             initialValue: ReleaseMetadataEditSession(
                 releaseId: releaseId,
                 seed: seed,
-                save: { _, edit in try await onSave(edit) }
+                commands: commands
             )
         )
     }
@@ -43,7 +44,8 @@ struct EditMetadataSheet: View {
                 ScrollView {
                     ReleaseMetadataEditorContent(
                         session: session,
-                        onEditCover: { showingCoverPicker = true }
+                        onEditCover: { showingCoverPicker = true },
+                        onViewAlbum: onViewAlbum
                     )
                     .padding(ThemeSpace.section)
                 }
@@ -150,8 +152,9 @@ struct EditMetadataSheet: View {
         EditMetadataSheet(
             releaseId: "release-preview",
             seed: seed,
-            onSave: { _ in },
-            onSaved: {},
+            commands: PreviewData.releaseEditCommands(seed: seed),
+            onSaved: { _ in },
+            onViewAlbum: { _ in },
             onCancel: {}
         )
         .frame(width: 1_280, height: 900)

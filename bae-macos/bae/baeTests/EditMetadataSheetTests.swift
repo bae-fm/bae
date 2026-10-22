@@ -6,20 +6,6 @@ import Testing
 
 @Suite("Edit metadata sheet")
 struct EditMetadataSheetTests {
-    private actor SavedEditRecorder {
-        private(set) var releaseId: String?
-        private(set) var edit: BridgeRawReleaseEdit?
-
-        func record(_ releaseId: String, _ edit: BridgeRawReleaseEdit) {
-            self.releaseId = releaseId
-            self.edit = edit
-        }
-
-        func recorded() -> (String?, BridgeRawReleaseEdit?) {
-            (releaseId, edit)
-        }
-    }
-
     @Test("Modal size follows the host with minimum and maximum bounds")
     func modalSize() {
         #expect(
@@ -42,24 +28,22 @@ struct EditMetadataSheetTests {
     @MainActor
     @Test("Done and Library save through one persisted release session")
     func persistedReleaseSessionSavesAndAdvancesItsCancelPoint() async throws {
-        let recorder = SavedEditRecorder()
         let seed = PreviewData.releaseEditSeed(trackCount: 2)
+        let library = PreviewReleaseLibrary(seed: seed)
         let session = ReleaseMetadataEditSession(
             releaseId: "release-test",
             seed: seed,
-            save: { releaseId, edit in
-                await recorder.record(releaseId, edit)
-            }
+            commands: library.commands()
         )
         await session.fieldWriter.setField(.albumTitle, "Saved title")
 
         await withCheckedContinuation { continuation in
-            session.save { continuation.resume() }
+            session.save { _ in continuation.resume() }
         }
 
-        let recorded = await recorder.recorded()
-        #expect(recorded.0 == "release-test")
-        #expect(recorded.1?.albumTitle == "Saved title")
+        let saved = await library.saved
+        #expect(saved?.releaseId == "release-test")
+        #expect(saved?.edit.albumTitle == "Saved title")
         #expect(!session.hasChanges)
 
         await session.fieldWriter.setField(.albumTitle, "Unsaved title")
@@ -73,15 +57,13 @@ struct EditMetadataSheetTests {
     @MainActor
     @Test("Save commits the field that still has focus")
     func saveCommitsFocusedField() async throws {
-        let recorder = SavedEditRecorder()
         var seed = PreviewData.releaseEditSeed(trackCount: 2)
         seed.edit.albumTitle = "Original title"
+        let library = PreviewReleaseLibrary(seed: seed)
         let session = ReleaseMetadataEditSession(
             releaseId: "release-test",
             seed: seed,
-            save: { releaseId, edit in
-                await recorder.record(releaseId, edit)
-            }
+            commands: library.commands()
         )
         let size = NSSize(width: 900, height: 500)
         try await SnapshotTestSupport.withHostedWindow(
@@ -117,10 +99,10 @@ struct EditMetadataSheetTests {
             try await SnapshotTestSupport.settle(host)
 
             await withCheckedContinuation { continuation in
-                session.save { continuation.resume() }
+                session.save { _ in continuation.resume() }
             }
 
-            #expect(await recorder.recorded().1?.albumTitle == "Focused title")
+            #expect(await library.saved?.edit.albumTitle == "Focused title")
         }
     }
 
@@ -200,13 +182,14 @@ struct EditMetadataSheetTests {
         let session = ReleaseMetadataEditSession(
             releaseId: "release-test",
             seed: seed,
-            save: { _, _ in }
+            commands: PreviewData.releaseEditCommands(seed: seed)
         )
         let size = NSSize(width: width, height: 700)
         return try await SnapshotTestSupport.withHostedWindow(
             ScrollView {
                 ReleaseMetadataEditorContent(
                     session: session,
+                    onViewAlbum: { _ in },
                     onPlayTrack: { _ in }
                 )
             }
@@ -239,7 +222,7 @@ extension EditMetadataSheetTests {
         let session = ReleaseMetadataEditSession(
             releaseId: "release-test",
             seed: seed,
-            save: { _, _ in }
+            commands: PreviewData.releaseEditCommands(seed: seed)
         )
         await session.fieldWriter.setField(.albumTitle, "Edited title")
         await session.fieldWriter.setPressingFact(

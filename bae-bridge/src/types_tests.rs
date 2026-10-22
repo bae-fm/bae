@@ -470,8 +470,19 @@ mod conversion_roundtrip {
                         )],
                     }],
                 },
+                album: bae_core::import::DraftAlbum::Named {
+                    album_id: "album-id".to_string(),
+                    title: "Album Title".to_string(),
+                },
             });
             assert_eq!(bridge.edit.album_title, edit.album_title);
+            assert_eq!(
+                bridge.album,
+                BridgeDraftAlbum::Named {
+                    album_id: "album-id".to_string(),
+                    title: "Album Title".to_string(),
+                }
+            );
             let side = &bridge.display.sides[0];
             assert_eq!(side.header_key.as_deref(), Some("core.track.disc"));
             let BridgeReleaseEditTrackRun::Track { track } = &side.runs[0] else {

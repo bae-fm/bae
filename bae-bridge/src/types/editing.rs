@@ -646,13 +646,40 @@ pub struct BridgeRawReleaseEdit {
     pub tracks: Vec<BridgeRawTrackEdit>,
 }
 
-/// The raw edit form for one library release plus core's answer about whether
-/// its stored metadata source can be projected again.
+/// The library album a draft files under when it is written: an import's, or
+/// a library release's edit session's. Mirrors `bae_core::import::DraftAlbum`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeDraftAlbum {
+    /// A new album: none is picked and the draft's records name none the
+    /// library holds.
+    New,
+    /// The album the draft's records name; for a library release with no
+    /// catalog applied, the album it is in.
+    Named { album_id: String, title: String },
+    /// The album the person picked, over what the records name.
+    Picked { album_id: String, title: String },
+}
+
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeDraftAlbum = bae_core::import::DraftAlbum,
+    from_core: pub(crate) fn,
+    variants: {
+        New,
+        Named { album_id, title },
+        Picked { album_id, title },
+    },
+}
+
+/// A library release's edit session as the editor opens it: the raw form, the
+/// cover, what the editor shows beside the form, and the album a save files
+/// the release under. Mirrors `bae_core::import::ReleaseEditSeed`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditSeed {
     pub edit: BridgeRawReleaseEdit,
     pub cover: Option<BridgeImageRef>,
     pub display: BridgeReleaseEditDisplayContext,
+    pub album: BridgeDraftAlbum,
 }
 
 /// One persisted file that supplies samples for a track in the release editor.

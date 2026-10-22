@@ -850,7 +850,7 @@ impl crate::types::BridgeImportCandidateDetail {
                 .collect(),
             picked_library_status: picked_library_status
                 .map(crate::types::BridgeLibraryStatus::from_core),
-            album: crate::types::BridgeCandidateAlbum::from_core(album),
+            album: crate::types::BridgeDraftAlbum::from_core(album),
             file_evidence: file_evidence
                 .into_iter()
                 .map(crate::types::BridgeFileEvidence::from_core)

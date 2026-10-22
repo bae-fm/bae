@@ -7,10 +7,7 @@ struct ImportedReleasePane: View {
     let candidate: Candidate
     let releaseId: String
     let albumId: String
-    let seedReleaseEdit:
-        @Sendable (String) async throws -> BridgeReleaseEditSeed
-    let saveReleaseEdit:
-        @Sendable (String, BridgeRawReleaseEdit) async throws -> Void
+    let editCommands: ReleaseEditCommands
     let changeCover:
         @Sendable (String, BridgeCoverSelection) async throws -> Void
     let fetchRemoteCovers:
@@ -44,6 +41,7 @@ struct ImportedReleasePane: View {
                 ReleaseMetadataEditorContent(
                     session: session,
                     onEditCover: { presentCoverPicker(session) },
+                    onViewAlbum: onViewInLibrary,
                     onPlayTrack: onPlayTrack
                 )
                 if !candidate.mapping.images.isEmpty {
@@ -75,7 +73,7 @@ struct ImportedReleasePane: View {
         .padding(.bottom, ThemeSpace.page)
         .task(id: releaseId) { await load() }
         .onDisappear {
-            session?.cancelTasks()
+            session?.close()
         }
     }
 
@@ -95,7 +93,7 @@ struct ImportedReleasePane: View {
                     .controlSize(.small)
                     .opacity(session.isBusy ? 1 : 0)
                 Button("Save") {
-                    session.save(onSuccess: {})
+                    session.save(onSuccess: { _ in })
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(session.isBusy)
@@ -197,7 +195,7 @@ extension ImportedReleasePane {
                     },
                     onSelect: { selection in
                         try await changeCover(releaseId, selection)
-                        let refreshed = try await seedReleaseEdit(releaseId)
+                        let refreshed = try await editCommands.open(releaseId)
                         session.updateCover(refreshed.cover)
                     },
                     onDone: { uiStore.dismissModal() }
@@ -212,11 +210,11 @@ extension ImportedReleasePane {
         session = nil
         loadError = nil
         do {
-            let seed = try await seedReleaseEdit(releaseId)
+            let seed = try await editCommands.open(releaseId)
             session = ReleaseMetadataEditSession(
                 releaseId: releaseId,
                 seed: seed,
-                save: saveReleaseEdit
+                commands: editCommands
             )
         }
         catch is CancellationError {}

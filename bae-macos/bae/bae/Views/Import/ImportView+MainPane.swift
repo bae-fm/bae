@@ -66,14 +66,9 @@ extension ImportView {
                     candidate: candidate,
                     releaseId: release.releaseId,
                     albumId: release.albumId,
-                    seedReleaseEdit: releaseEditor.openReleaseEdit,
-                    saveReleaseEdit: { releaseId, edit in
-                        _ = try await releaseEditor.saveReleaseEdit(
-                            releaseId,
-                            edit,
-                            nil
-                        )
-                    },
+                    editCommands: releaseEditor.editCommands(
+                        searchAlbums: importer.searchAlbums
+                    ),
                     changeCover: releaseEditor.changeCover,
                     fetchRemoteCovers: {
                         try await releaseEditor.fetchRemoteCovers(
@@ -188,9 +183,9 @@ extension ImportView {
 
     /// The album row's actions: pick a library album for this candidate, or
     /// leave it to its release's album, and find albums to pick.
-    private func albumActions(for candidate: Candidate) -> ImportAlbumActions {
+    private func albumActions(for candidate: Candidate) -> DraftAlbumActions {
         let key = candidate.key
-        return ImportAlbumActions(
+        return DraftAlbumActions(
             pick: { albumId in
                 Task {
                     await saveCandidateEdit {

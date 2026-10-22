@@ -213,5 +213,6 @@ mirror_struct! {
         edit: (BridgeRawReleaseEdit),
         cover: (opt BridgeImageRef),
         display: (BridgeReleaseEditDisplayContext),
+        album: (BridgeDraftAlbum),
     },
 }

@@ -228,8 +228,9 @@
                                     )
                                 }
                         )
-                    ]
-                )
+                    ],
+                ),
+                album: .named(albumId: "album-preview", title: edit.albumTitle)
             )
         }
 
@@ -247,6 +248,13 @@
                 ),
                 positionText: String(index + 1)
             )
+        }
+
+        /// Edit commands over a release the library holds as `seed`.
+        static func releaseEditCommands(seed: BridgeReleaseEditSeed)
+            -> ReleaseEditCommands
+        {
+            PreviewReleaseLibrary(seed: seed).commands()
         }
 
         @MainActor
@@ -315,6 +323,39 @@
                     ),
                 ]
             })
+        }
+    }
+
+    /// A release's library as an edit session's commands meet it: opening
+    /// reads what it holds, a save becomes that, and the last save is kept.
+    actor PreviewReleaseLibrary {
+        private var seed: BridgeReleaseEditSeed
+        private(set) var saved: (releaseId: String, edit: BridgeRawReleaseEdit)?
+
+        init(seed: BridgeReleaseEditSeed) {
+            self.seed = seed
+        }
+
+        func open() -> BridgeReleaseEditSeed {
+            seed
+        }
+
+        func save(_ releaseId: String, _ edit: BridgeRawReleaseEdit) -> String {
+            saved = (releaseId, edit)
+            seed.edit = edit
+            return "album-preview"
+        }
+
+        nonisolated func commands() -> ReleaseEditCommands {
+            ReleaseEditCommands(
+                open: { _ in await self.open() },
+                setAlbum: { _, _ in .new },
+                searchAlbums: { _ in [] },
+                save: { releaseId, edit in
+                    await self.save(releaseId, edit)
+                },
+                discard: { _ in }
+            )
         }
     }
 #endif

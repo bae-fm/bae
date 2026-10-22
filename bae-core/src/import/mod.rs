@@ -277,12 +277,12 @@ pub use types::{
     artists_standing, asked_sources, credited_line, is_the_only_asked_source, parse_catalog_url,
     AlbumLink, ArtistAssignment, ArtistCredit, ArtistStanding, ArtistsStanding, AudioFile,
     CandidateDraft, CandidateEditField, CandidateTrack, Catalog, CatalogAvailability, CatalogPage,
-    CreditResolution, Credited, CreditedRole, DraftFieldEdit, DraftTrack, EditValidationError,
-    ExistingArtist, GraphWork, LibraryDraft, LibraryTrack, MetadataProvenance, MetadataRef,
-    PressingFactEdit, PressingLink, RawLabelEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
-    ReleaseDraft, ReleaseEditSeed, ReleaseLink, ReleaseRecord, ReleaseUserEdit, ResolvedCredit,
-    SourceAvailability, SourceCredit, TrackArtistAssignments, TrackBinding, TrackUserEdit,
-    WorkGraph, WorkPart,
+    CreditResolution, Credited, CreditedRole, DraftAlbum, DraftFieldEdit, DraftTrack,
+    EditValidationError, ExistingArtist, GraphWork, LibraryDraft, LibraryTrack, MetadataProvenance,
+    MetadataRef, PressingFactEdit, PressingLink, RawLabelEdit, RawPressingEdit, RawReleaseEdit,
+    RawTrackEdit, ReleaseDraft, ReleaseEditSeed, ReleaseLink, ReleaseRecord, ReleaseUserEdit,
+    ResolvedCredit, SourceAvailability, SourceCredit, TrackArtistAssignments, TrackBinding,
+    TrackUserEdit, WorkGraph, WorkPart,
 };
 desktop_only! {
     pub use types::{

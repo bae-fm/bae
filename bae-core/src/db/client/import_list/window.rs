@@ -464,7 +464,7 @@ pub(super) struct CandidateDetailRows {
     statuses: Option<Vec<LibraryStatus>>,
     records: Vec<crate::import::ReleaseRecord>,
     picked_library_status: Option<LibraryStatus>,
-    album: crate::import::list::CandidateAlbum,
+    album: crate::import::DraftAlbum,
     embedded_cover: Option<(FileVersion, Vec<u8>)>,
 }
 
@@ -573,8 +573,8 @@ fn candidate_album_on(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
     records: &[crate::import::ReleaseRecord],
-) -> Result<crate::import::list::CandidateAlbum, DbError> {
-    use crate::import::list::CandidateAlbum;
+) -> Result<crate::import::DraftAlbum, DbError> {
+    use crate::import::DraftAlbum;
     let title = |album_id: &str| -> Result<String, DbError> {
         sql.query_row(
             "SELECT title FROM albums WHERE id = ?",
@@ -584,17 +584,17 @@ fn candidate_album_on(
         .map_err(DbError::from)
     };
     if let Some(album_id) = load_album_pick_on(sql, content_hash)? {
-        return Ok(CandidateAlbum::Picked {
+        return Ok(DraftAlbum::Picked {
             title: title(&album_id)?,
             album_id,
         });
     }
     Ok(match album_records_name_on(sql, records, &[])? {
-        Some(album_id) => CandidateAlbum::Named {
+        Some(album_id) => DraftAlbum::Named {
             title: title(&album_id)?,
             album_id,
         },
-        None => CandidateAlbum::New,
+        None => DraftAlbum::New,
     })
 }
 

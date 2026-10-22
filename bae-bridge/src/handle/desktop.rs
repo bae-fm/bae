@@ -324,17 +324,30 @@ forward! {
             Ok(crate::types::BridgeReleaseEditSeed::from_core(seed))
         }
 
+        /// Pick the library album the edit session on a library release files
+        /// it under, over the one its records name, or (`None`) leave it to
+        /// its records. Returns the album the session now files it under.
+        fn set_release_edit_album(
+            release_id: String,
+            album_id: Option<String>,
+        ) -> crate::types::BridgeDraftAlbum {
+            let album = this
+                .services
+                .set_release_edit_album(&release_id, album_id)
+                .await
+                .map_err(BridgeError::import)?;
+            Ok(crate::types::BridgeDraftAlbum::from_core(album))
+        }
+
         /// Save the edit session on a library release with the form the person
-        /// left, into the album they picked (`None`: the one its records name):
-        /// every value, in one write. Returns the album the release is on
-        /// after the save.
+        /// left, into the album the session files it under: every value, in
+        /// one write. Returns the album the release is on after the save.
         fn save_release_edit(
             release_id: String,
             edit: crate::types::BridgeRawReleaseEdit,
-            album_id: Option<String>,
         ) -> String {
             this.services
-                .save_release_edit(&release_id, &edit.into_core(), album_id)
+                .save_release_edit(&release_id, &edit.into_core())
                 .await
                 .map_err(BridgeError::import)?;
             this.services

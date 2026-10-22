@@ -442,14 +442,17 @@ impl Automation {
     }
 
     /// Re-identify a library release as the catalog release `pressing`
-    /// names: apply it in an edit session and save it as applied — every
-    /// value, the records, and the album they name.
+    /// names: apply it in a fresh edit session and save it as applied —
+    /// every value, the records, and the album they name.
     pub async fn reidentify_release(
         &self,
         release_id: String,
         pressing: AutomationPressingLink,
     ) -> Result<(), AutomationError> {
         let link = pressing.into_core();
+        // A session the app left open may hold an album the person picked;
+        // this one files the release where its records say.
+        self.services.open_release_edit(&release_id).await?;
         let applied = self
             .services
             .apply_release_edit_catalog(&release_id, &link)
@@ -457,7 +460,7 @@ impl Automation {
         let saved = match applied {
             Ok(seed) => {
                 self.services
-                    .save_release_edit(&release_id, &seed.edit, None)
+                    .save_release_edit(&release_id, &seed.edit)
                     .await
             }
             Err(error) => Err(error),

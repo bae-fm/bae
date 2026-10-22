@@ -60,7 +60,7 @@
                     chooseArtistIdentity: { _, _ in },
                     viewInLibrary: { _ in },
                 ),
-                albumActions: ImportAlbumActions(
+                albumActions: DraftAlbumActions(
                     pick: { _ in },
                     search: { _ in [] },
                     viewInLibrary: { _ in }

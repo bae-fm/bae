@@ -116,7 +116,7 @@ struct InlineFieldHeightTests {
         let session = ReleaseMetadataEditSession(
             releaseId: "release-test",
             seed: seed,
-            save: { _, _ in }
+            commands: PreviewData.releaseEditCommands(seed: seed)
         )
         return try await SnapshotTestSupport.withHostedWindow(
             ReleaseMetadataHeader(

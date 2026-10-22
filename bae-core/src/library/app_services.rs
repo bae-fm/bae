@@ -438,7 +438,9 @@ impl AppServices {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, apply_release_edit_catalog => apply_release_edit_catalog(release_id: &str, link: &crate::import::PressingLink) -> Result<crate::import::ReleaseEditSeed, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(manager, save_release_edit => save_release_edit(release_id: &str, edit: &crate::import::RawReleaseEdit, album: Option<String>) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, save_release_edit => save_release_edit(release_id: &str, edit: &crate::import::RawReleaseEdit) -> Result<(), crate::library::LibraryError>);
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    delegate_async!(manager, set_release_edit_album => set_release_edit_album(release_id: &str, album_id: Option<String>) -> Result<crate::import::DraftAlbum, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(manager, discard_release_edit => discard_release_edit(release_id: &str) -> ());
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

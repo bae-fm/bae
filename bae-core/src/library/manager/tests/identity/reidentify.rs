@@ -25,7 +25,7 @@ async fn reidentify(manager: &LibraryManager, release_id: &str, link: crate::imp
         .await
         .unwrap();
     manager
-        .save_release_edit(release_id, &seed.edit, None)
+        .save_release_edit(release_id, &seed.edit)
         .await
         .unwrap();
 }
@@ -389,8 +389,18 @@ async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() 
     };
     manager.database.insert_album(&picked).await.unwrap();
     let seed = manager.open_release_edit(&release.id).await.unwrap();
+    assert_eq!(
+        manager
+            .set_release_edit_album(&release.id, Some(picked.id.clone()))
+            .await
+            .unwrap(),
+        crate::import::DraftAlbum::Picked {
+            album_id: picked.id.clone(),
+            title: "Picked Album".to_string(),
+        }
+    );
     manager
-        .save_release_edit(&release.id, &seed.edit, Some(picked.id.clone()))
+        .save_release_edit(&release.id, &seed.edit)
         .await
         .unwrap();
     assert_eq!(
@@ -401,6 +411,104 @@ async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() 
         manager.database.find_album_by_id(&picked.id).await.unwrap().unwrap().title,
         "Picked Album",
         "a picked album keeps its own title"
+    );
+}
+
+/// The session says which album a save files the release under: the one it
+/// is in, the one an applied catalog's records name (new where the library
+/// holds none), or the one the person picked, which an apply keeps and a
+/// fresh open drops.
+#[tokio::test]
+async fn a_release_edit_session_names_the_album_its_save_files_under() {
+    use crate::import::DraftAlbum;
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let grouped = DbAlbum {
+        title: "Grouped Album".to_string(),
+        ..create_test_album()
+    };
+    let sibling = create_test_release(&grouped.id);
+    manager.database.insert_album(&grouped).await.unwrap();
+    insert_release(&manager, &sibling).await;
+    manager
+        .database
+        .insert_release_records(&sibling.id, &[mb_identity("named-group", "named-sibling")])
+        .await
+        .unwrap();
+    let own = DbAlbum {
+        title: "Own Album".to_string(),
+        ..create_test_album()
+    };
+    let release = create_test_release(&own.id);
+    manager.database.insert_album(&own).await.unwrap();
+    insert_release(&manager, &release).await;
+    insert_editable_tracks(&manager, &release.id, 1).await;
+    let picked = DbAlbum {
+        title: "Picked Album".to_string(),
+        ..create_test_album()
+    };
+    manager.database.insert_album(&picked).await.unwrap();
+    seed_musicbrainz(&manager, "named-new", "named-group", 1);
+    seed_musicbrainz(&manager, "unnamed-new", "unnamed-group", 1);
+    let named = |album: &DbAlbum| DraftAlbum::Named {
+        album_id: album.id.clone(),
+        title: album.title.clone(),
+    };
+    let picked_album = DraftAlbum::Picked {
+        album_id: picked.id.clone(),
+        title: picked.title.clone(),
+    };
+
+    assert_eq!(
+        manager.open_release_edit(&release.id).await.unwrap().album,
+        named(&own)
+    );
+    let applied = manager
+        .apply_release_edit_catalog(&release.id, &musicbrainz_link("named-new"))
+        .await
+        .unwrap();
+    assert_eq!(applied.album, named(&grouped));
+    let applied = manager
+        .apply_release_edit_catalog(&release.id, &musicbrainz_link("unnamed-new"))
+        .await
+        .unwrap();
+    assert_eq!(applied.album, DraftAlbum::New);
+
+    assert_eq!(
+        manager
+            .set_release_edit_album(&release.id, Some(picked.id.clone()))
+            .await
+            .unwrap(),
+        picked_album
+    );
+    assert!(
+        manager
+            .set_release_edit_album(&release.id, Some("no-such-album".to_string()))
+            .await
+            .is_err(),
+        "an album the library does not hold cannot be picked"
+    );
+    let applied = manager
+        .apply_release_edit_catalog(&release.id, &musicbrainz_link("named-new"))
+        .await
+        .unwrap();
+    assert_eq!(applied.album, picked_album, "an apply keeps the person's pick");
+    assert_eq!(
+        manager
+            .set_release_edit_album(&release.id, None)
+            .await
+            .unwrap(),
+        named(&grouped),
+        "left to its records, the session files it where they name"
+    );
+
+    manager
+        .set_release_edit_album(&release.id, Some(picked.id.clone()))
+        .await
+        .unwrap();
+    assert_eq!(
+        manager.open_release_edit(&release.id).await.unwrap().album,
+        named(&own),
+        "opening again starts over"
     );
 }
 

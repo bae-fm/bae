@@ -3,7 +3,8 @@ import Foundation
 
 /// Release-level mutations and the remote-cover fetch the editor needs.
 /// Covers cover changes, pinning, deletion, primary-release selection, the
-/// release edit session (open, apply a catalog, save, discard), and the
+/// release edit session (open, apply a catalog, pick its album, save,
+/// discard), and the
 /// remote-cover gallery fetch.
 @MainActor
 final class ReleaseEditor: Observable {
@@ -28,13 +29,16 @@ final class ReleaseEditor: Observable {
     let applyReleaseEditCatalog:
         @Sendable (_ releaseId: String, _ link: BridgePressingLink)
             async throws -> BridgeReleaseEditSeed
-    /// Save the session with the form and the picked album (`nil`: the one
-    /// its records name); returns the album the release is on after it.
+    /// Pick the album the session files the release under (`nil`: the one
+    /// its records name); returns the album it files it under now.
+    let setReleaseEditAlbum:
+        @Sendable (_ releaseId: String, _ albumId: String?) async throws ->
+            BridgeDraftAlbum
+    /// Save the session with the form; returns the album the release is on
+    /// after it.
     let saveReleaseEdit:
-        @Sendable (
-            _ releaseId: String, _ edit: BridgeRawReleaseEdit,
-            _ albumId: String?
-        ) async throws -> String
+        @Sendable (_ releaseId: String, _ edit: BridgeRawReleaseEdit)
+            async throws -> String
     /// Drop the session: nothing is written.
     let discardReleaseEdit: @Sendable (_ releaseId: String) async throws -> Void
     let fetchRemoteCovers:
@@ -69,9 +73,12 @@ final class ReleaseEditor: Observable {
         applyReleaseEditCatalog:
             @escaping @Sendable (String, BridgePressingLink) async throws ->
             BridgeReleaseEditSeed = { _, _ in throw StubError.notImplemented },
+        setReleaseEditAlbum:
+            @escaping @Sendable (String, String?) async throws ->
+            BridgeDraftAlbum = { _, _ in .new },
         saveReleaseEdit:
-            @escaping @Sendable (String, BridgeRawReleaseEdit, String?)
-            async throws -> String = { _, _, _ in "" },
+            @escaping @Sendable (String, BridgeRawReleaseEdit)
+            async throws -> String = { _, _ in "" },
         discardReleaseEdit:
             @escaping @Sendable (String) async throws -> Void = { _ in },
         fetchRemoteCovers:
@@ -88,6 +95,7 @@ final class ReleaseEditor: Observable {
         self.setPrimaryRelease = setPrimaryRelease
         self.openReleaseEdit = openReleaseEdit
         self.applyReleaseEditCatalog = applyReleaseEditCatalog
+        self.setReleaseEditAlbum = setReleaseEditAlbum
         self.saveReleaseEdit = saveReleaseEdit
         self.discardReleaseEdit = discardReleaseEdit
         self.fetchRemoteCovers = fetchRemoteCovers
@@ -124,12 +132,14 @@ final class ReleaseEditor: Observable {
                     link: $1
                 )
             },
-            saveReleaseEdit: {
-                try await handle.saveReleaseEdit(
+            setReleaseEditAlbum: {
+                try await handle.setReleaseEditAlbum(
                     releaseId: $0,
-                    edit: $1,
-                    albumId: $2
+                    albumId: $1
                 )
+            },
+            saveReleaseEdit: {
+                try await handle.saveReleaseEdit(releaseId: $0, edit: $1)
             },
             discardReleaseEdit: {
                 try await handle.discardReleaseEdit(releaseId: $0)
@@ -137,6 +147,22 @@ final class ReleaseEditor: Observable {
             fetchRemoteCovers: {
                 try await handle.fetchRemoteCovers(target: $0)
             }
+        )
+    }
+
+    /// The commands an edit session on a release sends core, finding albums
+    /// to pick with `searchAlbums`.
+    func editCommands(
+        searchAlbums:
+            @escaping @MainActor (String) async throws ->
+            [BridgeAlbumChoice]
+    ) -> ReleaseEditCommands {
+        ReleaseEditCommands(
+            open: openReleaseEdit,
+            setAlbum: setReleaseEditAlbum,
+            searchAlbums: searchAlbums,
+            save: saveReleaseEdit,
+            discard: discardReleaseEdit
         )
     }
 

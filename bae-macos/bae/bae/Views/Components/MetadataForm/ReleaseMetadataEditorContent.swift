@@ -8,6 +8,8 @@ struct ReleaseMetadataEditorContent: View {
 
     let session: ReleaseMetadataEditSession
     var onEditCover: (() -> Void)?
+    /// Show a library album the album row names.
+    let onViewAlbum: (String) -> Void
     var onPlayTrack: ((String) -> Void)?
 
     @State
@@ -35,6 +37,11 @@ struct ReleaseMetadataEditorContent: View {
                 editingCommands: session.editingCommands,
                 cover: { cover },
                 audioFacts: { sourceAudio }
+            )
+            DraftAlbumRow(
+                album: session.album,
+                canEdit: true,
+                actions: session.albumActions(viewInLibrary: onViewAlbum)
             )
             trackTable
         }

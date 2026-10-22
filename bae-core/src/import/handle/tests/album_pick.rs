@@ -6,7 +6,7 @@
 #[tokio::test(flavor = "multi_thread")]
 async fn a_picked_album_shows_over_what_the_records_name() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    assert_eq!(pane(&handle, &key).await.album, crate::import::list::CandidateAlbum::New);
+    assert_eq!(pane(&handle, &key).await.album, crate::import::DraftAlbum::New);
 
     let artist = make_artist("Artist Name", None, None);
     handle.library_manager.insert_artist(&artist).await.unwrap();
@@ -31,7 +31,7 @@ async fn a_picked_album_shows_over_what_the_records_name() {
         .unwrap();
     assert_eq!(
         pane(&handle, &key).await.album,
-        crate::import::list::CandidateAlbum::Picked {
+        crate::import::DraftAlbum::Picked {
             album_id: album.id.clone(),
             title: "Library Album".to_string(),
         }
@@ -40,7 +40,7 @@ async fn a_picked_album_shows_over_what_the_records_name() {
     handle.set_candidate_album(&key, None).await.unwrap();
     let after = pane(&handle, &key).await.album;
     shut_down(handle).await;
-    assert_eq!(after, crate::import::list::CandidateAlbum::New);
+    assert_eq!(after, crate::import::DraftAlbum::New);
 }
 
 /// An album no longer in the library cannot be picked.
@@ -53,5 +53,5 @@ async fn an_album_not_in_the_library_cannot_be_picked() {
     let after = pane(&handle, &key).await.album;
     shut_down(handle).await;
     assert!(picked.is_err());
-    assert_eq!(after, crate::import::list::CandidateAlbum::New);
+    assert_eq!(after, crate::import::DraftAlbum::New);
 }
