@@ -160,7 +160,6 @@ INDEX 01 00:00:00
     )
     .expect("build audio format");
 
-    assert_eq!(format.pregap_ms, Some(2_000));
     assert_eq!(format.pregap_samples, Some(88_200));
 }
 

@@ -148,7 +148,8 @@ async fn served_stream_length(track_length_ms: Option<i64>) -> Option<std::time:
     )
     .await;
     let (mut service, _rx) = playback_service_over(library_manager);
-    seed_track_window(&service.library_manager, RELEASE, TRACK, 0, None, Some(2_000)).await;
+    // Two seconds of generated silence at 44.1 kHz.
+    seed_track_window(&service.library_manager, RELEASE, TRACK, 0, None, Some(88_200)).await;
     service.playback_queue.apply(|queue| {
         queue.play_release(
             ContextSource::Release(RELEASE.to_string()),

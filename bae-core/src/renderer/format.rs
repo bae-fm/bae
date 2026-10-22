@@ -135,8 +135,6 @@ mod tests {
                 span,
             }],
             duration_ms: Some(10_000),
-            pregap_ms: None,
-            generated_pregap_ms: None,
             pregap_samples: None,
             generated_pregap_samples: None,
             sample_rate: std::num::NonZeroU32::new(44_100).unwrap(),

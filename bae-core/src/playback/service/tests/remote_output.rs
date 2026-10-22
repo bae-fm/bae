@@ -23,14 +23,14 @@ async fn seed_playable_track(
 
 /// [`seed_playable_track`] with its one main segment spanning
 /// `start_sample..end_sample` of its file, as a CUE image's track does, after
-/// `generated_pregap_ms` of silence a CUE `PREGAP` generates.
+/// `generated_pregap_samples` of silence a CUE `PREGAP` generates.
 async fn seed_track_window(
     library_manager: &crate::library::LibraryManager,
     release_id: &str,
     track_id: &str,
     start_sample: u64,
     end_sample: Option<u64>,
-    generated_pregap_ms: Option<i64>,
+    generated_pregap_samples: Option<u64>,
 ) {
     use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile};
     use crate::util::content_type::ContentType;
@@ -55,12 +55,7 @@ async fn seed_track_window(
         audio_format_id.clone(),
         now,
     )
-    .with_pregaps(
-        None,
-        generated_pregap_ms,
-        None,
-        generated_pregap_ms.map(|ms| ms as u64 * 44_100 / 1_000),
-    );
+    .with_pregaps(None, generated_pregap_samples);
     let segment = DbAudioSegment {
         id: bae_test_support::test_uuid(&format!("{track_id}-seg")),
         audio_format_id,

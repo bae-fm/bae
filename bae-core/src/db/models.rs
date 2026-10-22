@@ -363,17 +363,13 @@ pub struct DbAudioFormat {
     pub id: String,
     pub track_id: String,
     pub content_type: ContentType,
-    /// Pre-gap duration in milliseconds (CUE tracks with INDEX 00). When present,
-    /// playback starts at INDEX 00 and shows negative time until INDEX 01.
-    pub pregap_ms: Option<i64>,
-    /// Generated silence before INDEX 01 from a CUE `PREGAP` directive. This is
-    /// not bytes in the source file: natural playback emits zero samples for
-    /// this duration before decoding the source audio; direct starts skip it.
-    pub generated_pregap_ms: Option<i64>,
-    /// Exact audio pregap length in source samples. Millisecond fields are for
-    /// display/progress; export uses sample counts to place CUE gaps.
+    /// The stored audio before INDEX 01 (a CUE track's INDEX 00), in source
+    /// samples. When present, playback starts at INDEX 00 and shows negative
+    /// time until INDEX 01; its length in time comes from the sample rate.
     pub pregap_samples: Option<u64>,
-    /// Exact generated-silence pregap length in source samples.
+    /// Silence a CUE `PREGAP` directive puts before INDEX 01, in source
+    /// samples. It is no bytes of the source file: natural playback emits this
+    /// many zero frames before decoding the source audio; direct starts skip it.
     pub generated_pregap_samples: Option<u64>,
     /// Sample rate in Hz (for time-to-sample conversion during seek).
     pub sample_rate: NonZeroU32,
@@ -714,8 +710,6 @@ impl DbAudioFormat {
             id,
             track_id: track_id.to_string(),
             content_type,
-            pregap_ms: None,
-            generated_pregap_ms: None,
             pregap_samples: None,
             generated_pregap_samples: None,
             sample_rate,
@@ -727,18 +721,13 @@ impl DbAudioFormat {
         }
     }
 
-    /// The pregap a CUE-backed track carries: the gap the sheet states and the
-    /// one bae generates, each in milliseconds and in samples. A per-track file
-    /// has none of them.
+    /// The pregap a CUE-backed track carries, in samples: the gap the sheet
+    /// states and the one bae generates. A per-track file has neither.
     pub fn with_pregaps(
         mut self,
-        pregap_ms: Option<i64>,
-        generated_pregap_ms: Option<i64>,
         pregap_samples: Option<u64>,
         generated_pregap_samples: Option<u64>,
     ) -> Self {
-        self.pregap_ms = pregap_ms;
-        self.generated_pregap_ms = generated_pregap_ms;
         self.pregap_samples = pregap_samples;
         self.generated_pregap_samples = generated_pregap_samples;
         self

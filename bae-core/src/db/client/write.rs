@@ -555,15 +555,13 @@ pub(super) fn insert_audio_format_row(
     conn.execute(
         r#"
         INSERT INTO audio_formats (
-            id, track_id, content_type, pregap_ms, generated_pregap_ms, pregap_samples, generated_pregap_samples, sample_rate, bits_per_sample, channels, track_loudness_lufs, track_peak_linear, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, track_id, content_type, pregap_samples, generated_pregap_samples, sample_rate, bits_per_sample, channels, track_loudness_lufs, track_peak_linear, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             af.id,
             af.track_id,
             af.content_type.as_str(),
-            af.pregap_ms,
-            af.generated_pregap_ms,
             optional_sqlite_count(af.pregap_samples, "pregap_samples")?,
             optional_sqlite_count(af.generated_pregap_samples, "generated_pregap_samples")?,
             af.sample_rate.get(),

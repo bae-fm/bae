@@ -435,8 +435,6 @@ CREATE TABLE IF NOT EXISTS audio_formats (
     id TEXT PRIMARY KEY,
     track_id TEXT NOT NULL UNIQUE,
     content_type TEXT NOT NULL,
-    pregap_ms INTEGER,
-    generated_pregap_ms INTEGER,
     -- Sample counts: never negative, whichever device wrote the row.
     pregap_samples INTEGER CHECK (pregap_samples >= 0),
     generated_pregap_samples INTEGER CHECK (generated_pregap_samples >= 0),

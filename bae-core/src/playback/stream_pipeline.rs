@@ -772,7 +772,7 @@ mod tests {
             track_id: "unit".to_string(),
             timeline: crate::playback::TrackTimeline::new(
                 Some(std::time::Duration::from_secs(1)),
-                None,
+                std::time::Duration::ZERO,
             ),
             starts_at: crate::playback::StreamPosition::START,
             replay_gain_linear: 1.0,

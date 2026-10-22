@@ -446,8 +446,6 @@ pub struct ResolvedTrackAudio {
     pub release_id: String,
     pub segments: Vec<ResolvedTrackAudioSegment>,
     pub duration_ms: Option<i64>,
-    pub pregap_ms: Option<i64>,
-    pub generated_pregap_ms: Option<i64>,
     pub pregap_samples: Option<u64>,
     pub generated_pregap_samples: Option<u64>,
     pub sample_rate: std::num::NonZeroU32,
@@ -496,8 +494,6 @@ impl ResolvedTrackAudio {
             release_id: meta.track.release_id.clone(),
             segments,
             duration_ms: meta.track.duration_ms,
-            pregap_ms: meta.audio_format.pregap_ms,
-            generated_pregap_ms: meta.audio_format.generated_pregap_ms,
             pregap_samples: meta.audio_format.pregap_samples,
             generated_pregap_samples: meta.audio_format.generated_pregap_samples,
             sample_rate: meta.audio_format.sample_rate,
@@ -548,21 +544,20 @@ impl ResolvedTrackAudio {
     /// starts with them wherever it is decoded from its start — playback, and
     /// the stream served to a remote renderer.
     pub fn generated_pregap_frames(&self) -> u64 {
-        if let Some(samples) = self.generated_pregap_samples {
-            return samples;
-        }
-        let Some(ms) = self.generated_pregap_ms else {
-            return 0;
-        };
-        if ms < 0 {
-            warn!(
-                track_id = %self.track_id,
-                generated_pregap_ms = ms,
-                "Ignoring negative generated pregap duration"
-            );
-            return 0;
-        }
-        ((ms as f64 / 1000.0) * f64::from(self.sample_rate.get())) as u64
+        self.generated_pregap_samples.unwrap_or(0)
+    }
+
+    /// How long the track's stream runs before INDEX 01: its stored pregap and
+    /// the silence bae generates, counted in samples and timed by the sample
+    /// rate. Zero without either.
+    pub fn pregap(&self) -> std::time::Duration {
+        let frames = self.pregap_samples.unwrap_or(0) + self.generated_pregap_frames();
+        let rate = u64::from(self.sample_rate.get());
+        let nanos = (frames % rate) * 1_000_000_000 / rate;
+        std::time::Duration::new(
+            frames / rate,
+            u32::try_from(nanos).expect("a fraction of a second is under 10^9 ns"),
+        )
     }
 
     /// Linear playback gain for this track under `mode`. `1.0` = no change.

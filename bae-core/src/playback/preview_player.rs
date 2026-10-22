@@ -166,7 +166,7 @@ impl PreviewSource {
     /// The window's timeline: a preview has no pregap, so its stream and its
     /// track start together.
     fn timeline(&self) -> TrackTimeline {
-        TrackTimeline::new(Some(self.duration), None)
+        TrackTimeline::new(Some(self.duration), Duration::ZERO)
     }
 }
 

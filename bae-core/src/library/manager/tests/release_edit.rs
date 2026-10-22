@@ -33,8 +33,6 @@ async fn add_track_audio_sources(
         id: Uuid::new_v4().to_string(),
         track_id: track.id.clone(),
         content_type: ContentType::Flac,
-        pregap_ms: None,
-        generated_pregap_ms: None,
         pregap_samples: None,
         generated_pregap_samples: None,
         sample_rate: std::num::NonZeroU32::new(44_100).unwrap(),

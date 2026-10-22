@@ -116,11 +116,6 @@ impl CueTrack {
             ))
         })
     }
-
-    pub fn generated_pregap_duration_ms(&self) -> Option<u64> {
-        self.generated_pregap_frames
-            .map(|frames| frames * 1000 / 75)
-    }
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]

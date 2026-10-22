@@ -344,11 +344,7 @@ fn finalize_playback_track(
         sample_rate: resolved.sample_rate.get(),
         channels: resolved.channels.get(),
         generated_pregap_frames: resolved.generated_pregap_frames(),
-        // A track has a stored pregap or a generated one, never both.
-        timeline: TrackTimeline::new(
-            duration,
-            resolved.pregap_ms.or(resolved.generated_pregap_ms),
-        ),
+        timeline: TrackTimeline::new(duration, resolved.pregap()),
         content_type: resolved.content_type.clone(),
         replay_gain_linear,
     }

@@ -1719,6 +1719,9 @@ shows time from index 01, negative while the pregap plays.
 - **A generated pregap**, from a CUE `PREGAP` line, is silence bae makes before
   the track's first stored sample.
 
+A pregap, stored or generated, is kept only as a count of samples. Its length
+on the track's timeline comes from that count and the track's sample rate.
+
 ### 7.5 Loudness
 
 Loudness is per track or per album, or off.

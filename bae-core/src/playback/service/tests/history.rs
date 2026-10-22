@@ -8,7 +8,7 @@ async fn listening_counts_consumed_audio_across_decoder_replacement_and_pause() 
         seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
     let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
     prepared.release_id = RELEASE.to_string();
-    prepared.timeline = TrackTimeline::new(Some(Duration::from_secs(40)), None);
+    prepared.timeline = TrackTimeline::new(Some(Duration::from_secs(40)), std::time::Duration::ZERO);
     prepared.sample_rate = 100;
     prepared.channels = 1;
     let fmt = prepared.track_fmt(StreamPosition::START);
@@ -86,7 +86,7 @@ async fn a_counted_play_is_saved_again_only_at_its_next_boundary() {
         seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
     let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
     prepared.release_id = RELEASE.to_string();
-    prepared.timeline = TrackTimeline::new(Some(Duration::from_secs(40)), None);
+    prepared.timeline = TrackTimeline::new(Some(Duration::from_secs(40)), std::time::Duration::ZERO);
     prepared.sample_rate = 100;
     prepared.channels = 1;
     let fmt = prepared.track_fmt(StreamPosition::START);
@@ -214,7 +214,7 @@ async fn airplay_completion_waits_for_the_audio_still_in_the_receiver() {
         service.clock = clock.clone();
         let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
         prepared.release_id = RELEASE.into();
-        prepared.timeline = TrackTimeline::new(Some(Duration::from_secs(40)), None);
+        prepared.timeline = TrackTimeline::new(Some(Duration::from_secs(40)), std::time::Duration::ZERO);
         prepared.sample_rate = 100;
         prepared.channels = 1;
         let (mut sink, stream, _) =
@@ -320,7 +320,7 @@ async fn a_short_track_of_unknown_length_heard_to_its_end_counts_as_played() {
         seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
     let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
     prepared.release_id = RELEASE.into();
-    prepared.timeline = TrackTimeline::new(None, None);
+    prepared.timeline = TrackTimeline::new(None, std::time::Duration::ZERO);
     prepared.sample_rate = 100;
     prepared.channels = 1;
     let (mut sink, stream, _) =

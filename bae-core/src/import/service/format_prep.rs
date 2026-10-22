@@ -167,7 +167,6 @@ struct CueAudioPregap {
     file_reference: String,
     start_sample: u64,
     end_sample: u64,
-    duration_ms: u64,
 }
 
 fn probe_duration_samples(probe: &ProbeResult) -> Result<u64, ImportError> {
@@ -175,12 +174,6 @@ fn probe_duration_samples(probe: &ProbeResult) -> Result<u64, ImportError> {
         .map_err(|error| ImportError::Internal {
             detail: format!("CUE audio duration exceeds the sample-count range: {error}"),
         })
-}
-
-fn cue_audio_measure(value: u64, quantity: &str) -> Result<i64, ImportError> {
-    i64::try_from(value).map_err(|error| ImportError::Internal {
-        detail: format!("CUE {quantity} exceeds the database integer range: {error}"),
-    })
 }
 
 /// Resolve an audio pregap in the coordinate system of the file containing its
@@ -205,24 +198,18 @@ fn cue_audio_pregap(
     } else {
         probe_duration_samples(probe)?
     };
-    let sample_count =
-        end_sample
-            .checked_sub(start_sample)
-            .ok_or_else(|| ImportError::Internal {
-                detail: format!(
-                    "CUE track {} pregap starts after it ends in {}",
-                    cue_track.number, index.file_reference
-                ),
-            })?;
-    let duration_ms = u64::try_from(u128::from(sample_count) * 1_000 / u128::from(sample_rate))
-        .map_err(|error| ImportError::Internal {
-            detail: format!("CUE pregap duration exceeds the millisecond range: {error}"),
-        })?;
+    if end_sample < start_sample {
+        return Err(ImportError::Internal {
+            detail: format!(
+                "CUE track {} pregap starts after it ends in {}",
+                cue_track.number, index.file_reference
+            ),
+        });
+    }
     Ok(Some(CueAudioPregap {
         file_reference: index.file_reference.clone(),
         start_sample,
         end_sample,
-        duration_ms,
     }))
 }
 
@@ -239,16 +226,6 @@ fn cue_backed_audio_format(
     let probe = &audio.probe;
     ensure_probe_audio_format(&audio.path, probe)?;
     let audio_pregap = cue_audio_pregap(cue_pair, cue_index)?;
-    let audio_pregap_ms = audio_pregap
-        .as_ref()
-        .filter(|pregap| pregap.duration_ms > 0)
-        .map(|pregap| cue_audio_measure(pregap.duration_ms, "pregap milliseconds"))
-        .transpose()?;
-    let generated_pregap_ms = cue_track
-        .generated_pregap_duration_ms()
-        .filter(|&ms| ms > 0)
-        .map(|ms| cue_audio_measure(ms, "generated pregap milliseconds"))
-        .transpose()?;
     let audio_pregap_samples = audio_pregap
         .as_ref()
         .map(|pregap| pregap.end_sample - pregap.start_sample)
@@ -267,12 +244,7 @@ fn cue_backed_audio_format(
         id,
         now,
     )
-    .with_pregaps(
-        audio_pregap_ms,
-        generated_pregap_ms,
-        audio_pregap_samples,
-        generated_pregap_samples,
-    ))
+    .with_pregaps(audio_pregap_samples, generated_pregap_samples))
 }
 
 /// Build an audio format for a per-track file from the scan's authoritative facts.

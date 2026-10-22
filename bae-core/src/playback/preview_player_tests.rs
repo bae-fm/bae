@@ -263,7 +263,7 @@ async fn preview_listener_maps_completion_to_preview_completed() {
             track_id: "preview.wav".to_string(),
             timeline: crate::playback::TrackTimeline::new(
                 Some(std::time::Duration::from_secs(1)),
-                None,
+                std::time::Duration::ZERO,
             ),
             starts_at: crate::playback::StreamPosition::START,
             replay_gain_linear: 1.0,

@@ -330,7 +330,10 @@ fn test_prepared_track_with_file(
         sample_rate: 44_100,
         channels: 2,
         generated_pregap_frames: 0,
-        timeline: TrackTimeline::new(Some(std::time::Duration::from_secs(1)), None),
+        timeline: TrackTimeline::new(
+            Some(std::time::Duration::from_secs(1)),
+            std::time::Duration::ZERO,
+        ),
         content_type: crate::util::content_type::ContentType::Flac,
         replay_gain_linear: 1.0,
     }
@@ -342,8 +345,6 @@ fn test_resolved_track_audio(track_id: &str) -> ResolvedTrackAudio {
         release_id: "release-id".to_string(),
         segments: vec![],
         duration_ms: Some(1000),
-        pregap_ms: None,
-        generated_pregap_ms: None,
         pregap_samples: None,
         generated_pregap_samples: None,
         sample_rate: std::num::NonZeroU32::new(44_100).unwrap(),
@@ -381,7 +382,7 @@ fn test_track_fmt(track_id: &str) -> TrackFmt {
         track_id: track_id.to_string(),
         timeline: crate::playback::TrackTimeline::new(
             Some(std::time::Duration::from_secs(1)),
-            None,
+            std::time::Duration::ZERO,
         ),
         starts_at: crate::playback::StreamPosition::START,
         replay_gain_linear: 1.0,

@@ -34,7 +34,7 @@ async fn starvation_onset_reports_the_track_time_it_starved_at() {
     let (_home, manager) = seeded_library_manager_with_diagnostics(&[], diagnostics.clone()).await;
     let (mut service, _progress_rx) = playback_service_over(manager);
     let mut prepared = test_prepared_track("t", create_sparse_buffer(1_024));
-    prepared.timeline = TrackTimeline::new(Some(std::time::Duration::from_secs(10)), Some(2_000));
+    prepared.timeline = TrackTimeline::new(Some(std::time::Duration::from_secs(10)), std::time::Duration::from_millis(2_000));
     let fmt = prepared.track_fmt(StreamPosition::START);
     service.slot = active_slot(prepared, TrackPhase::Playing);
 
@@ -325,8 +325,8 @@ async fn playback_state_mapping() {
 #[test]
 fn track_start_position_cases() {
     use std::time::Duration;
-    let pregapped = TrackTimeline::new(Some(Duration::from_secs(60)), Some(3000));
-    let no_pregap = TrackTimeline::new(Some(Duration::from_secs(60)), None);
+    let pregapped = TrackTimeline::new(Some(Duration::from_secs(60)), std::time::Duration::from_millis(3000));
+    let no_pregap = TrackTimeline::new(Some(Duration::from_secs(60)), std::time::Duration::ZERO);
 
     assert_eq!(
         TrackStart::Direct.position(pregapped),
@@ -346,7 +346,6 @@ fn track_start_position_cases() {
 #[test]
 fn a_generated_pregap_starts_the_track_past_it() {
     let mut resolved = test_resolved_track_audio("track");
-    resolved.generated_pregap_ms = Some(2000);
     resolved.generated_pregap_samples = Some(88_200);
 
     let prepared = finalize_playback_track(
@@ -360,6 +359,27 @@ fn a_generated_pregap_starts_the_track_past_it() {
     assert_eq!(
         prepared.timeline.track_start(),
         StreamPosition::from_millis(2000)
+    );
+}
+
+/// A stored pregap is counted in samples; its length on the track's timeline
+/// comes from them and the sample rate.
+#[test]
+fn a_stored_pregap_is_as_long_as_its_samples() {
+    let mut resolved = test_resolved_track_audio("track");
+    resolved.pregap_samples = Some(66_150);
+
+    let prepared = finalize_playback_track(
+        "track".to_string(),
+        &resolved,
+        Vec::new(),
+        crate::config::ReplayGainMode::Off,
+    );
+
+    assert_eq!(prepared.generated_pregap_frames, 0);
+    assert_eq!(
+        prepared.timeline.track_start(),
+        StreamPosition::from_millis(1500)
     );
 }
 
@@ -405,7 +425,7 @@ async fn a_track_with_no_stored_length_reports_its_position_without_an_end() {
 async fn a_seek_by_ratio_leaves_a_track_with_no_length_where_it_is() {
     let (_home, mut service, _progress) = test_playback_service().await;
     let mut prepared = test_prepared_track("track", create_sparse_buffer(1_024));
-    prepared.timeline = TrackTimeline::new(None, None);
+    prepared.timeline = TrackTimeline::new(None, std::time::Duration::ZERO);
     service.slot = active_slot(prepared, TrackPhase::Playing);
     if let PlaybackSlot::Active(cur) = &mut service.slot {
         cur.position = StreamPosition::from_millis(10_000);
@@ -429,7 +449,7 @@ fn prepared_track_with_pregap_segments(
     let main_buffer = create_sparse_buffer(2_048);
     let mut prepared = test_prepared_track("track", main_buffer.clone());
     prepared.generated_pregap_frames = 441;
-    prepared.timeline = TrackTimeline::new(Some(std::time::Duration::from_secs(1)), Some(1010));
+    prepared.timeline = TrackTimeline::new(Some(std::time::Duration::from_secs(1)), std::time::Duration::from_millis(1010));
     prepared.segments = vec![
         PreparedAudioSegment {
             role: DbAudioSegmentRole::AudioPregap,
@@ -481,14 +501,4 @@ fn natural_start_includes_audio_and_generated_pregap_segments() {
     assert_eq!(decode.segment_buffer_id(0), pregap_buffer.id());
     assert_eq!(decode.segment_target_sample(0), 1_000);
     assert_eq!(decode.segment_seek_to_byte(0), Some(100));
-}
-
-
-#[test]
-fn generated_pregap_frames_clamps_negative_millisecond_value() {
-    let mut resolved = test_resolved_track_audio("track");
-    resolved.generated_pregap_samples = None;
-    resolved.generated_pregap_ms = Some(-10);
-
-    assert_eq!(resolved.generated_pregap_frames(), 0);
 }

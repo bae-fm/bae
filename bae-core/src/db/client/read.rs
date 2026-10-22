@@ -583,8 +583,6 @@ pub(super) fn row_to_audio_format(row: &Row) -> rusqlite::Result<DbAudioFormat> 
     Ok(DbAudioFormat {
         id: row.get("id")?,
         content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
-        pregap_ms: row.get("pregap_ms")?,
-        generated_pregap_ms: row.get("generated_pregap_ms")?,
         pregap_samples: optional_count_column(row, "pregap_samples")?,
         generated_pregap_samples: optional_count_column(row, "generated_pregap_samples")?,
         sample_rate: track_audio_count_column(row, "sample_rate", &track_id)?,
