@@ -427,7 +427,7 @@ async fn a_fixtures_playing_album_lays_its_tracks_over_the_disc_image() {
             .iter()
             .map(|track| (track.title.as_str(), track.duration_ms))
             .collect::<Vec<_>>(),
-        [("Opening Track", Some(3_000)), ("Pregap Track", Some(5_000))]
+        [("Opening Track", 3_000), ("Pregap Track", 5_000)]
     );
     let pregap = manager.resolve_track_audio(&tracks[1].id).await.unwrap();
     assert_eq!(pregap.pregap(), std::time::Duration::from_secs(2));

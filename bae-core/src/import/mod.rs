@@ -106,13 +106,45 @@ pub struct WorkGraphRows {
 pub struct ReleaseRows {
     pub album: DbAlbum,
     pub release: DbRelease,
-    pub tracks: Vec<DbTrack>,
+    pub tracks: Vec<TrackRow>,
     pub artists: Vec<DbArtist>,
     pub album_artists: Vec<DbAlbumArtist>,
     pub track_artists: Vec<DbTrackArtist>,
     pub work_graph: WorkGraphRows,
     pub release_artist_roles: Vec<DbReleaseArtistRole>,
     pub track_artist_roles: Vec<DbTrackArtistRole>,
+}
+
+/// A track row as the import builds it from the draft, before its audio is
+/// bound: every column but the length, which only the audio it plays can
+/// measure. Binding it makes the [`DbTrack`] (see
+/// `audio_layout::resolve_track_files`), so no track row exists without its
+/// length.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Debug, Clone, PartialEq)]
+pub struct TrackRow {
+    pub id: String,
+    pub release_id: String,
+    pub title: String,
+    pub side: Option<i32>,
+    pub track_number: Option<i32>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl TrackRow {
+    /// The row, its audio measuring `duration_ms`.
+    pub(crate) fn measured(self, duration_ms: i64) -> DbTrack {
+        DbTrack {
+            id: self.id,
+            release_id: self.release_id,
+            title: self.title,
+            side: self.side,
+            track_number: self.track_number,
+            duration_ms,
+            created_at: self.created_at,
+        }
+    }
 }
 
 /// The import service's shared dependencies: the library it reads and writes,

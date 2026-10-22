@@ -16,7 +16,7 @@ pub struct QueueItem {
     pub entry_id: String,
     pub track_id: String,
     pub display: crate::playback::TrackDisplay,
-    pub duration_ms: Option<i64>,
+    pub duration_ms: i64,
 }
 
 /// The context lane resolved for display: what it plays from (so the UI labels

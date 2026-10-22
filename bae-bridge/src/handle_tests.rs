@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 fn track_detail(
     position: bae_core::album_detail::TrackPosition,
-    duration_ms: Option<i64>,
+    duration_ms: i64,
 ) -> bae_core::album_detail::TrackDetail {
     bae_core::album_detail::TrackDetail {
         id: "track-1".to_string(),
@@ -47,8 +47,8 @@ fn track_group_precomputes_header_key_per_side() {
     for (side, position, expected) in cases {
         let group = crate::types::BridgeTrackGroup::from_core(bae_core::album_detail::TrackGroup {
             side,
-            tracks: vec![track_detail(position, Some(187_000))],
-            total_duration_ms: Some(187_000),
+            tracks: vec![track_detail(position, 187_000)],
+            total_duration_ms: 187_000,
         });
         assert_eq!(group.header_key.as_deref(), expected);
         assert_eq!(
@@ -62,25 +62,19 @@ fn track_group_precomputes_header_key_per_side() {
 fn track_precomputes_duration_clock() {
     use bae_core::album_detail::TrackPosition;
 
-    // A present duration renders a clock while the raw number is retained.
+    // A track's length renders a clock while the raw number is retained.
     let present = crate::types::BridgeTrack::from_core(track_detail(
         TrackPosition::Flat { number: 1 },
-        Some(187_000),
+        187_000,
     ));
     assert_eq!(present.duration_ms, Some(187_000));
     let clock = present
         .duration_clock
         .expect("clock for a present duration");
     assert_eq!((clock.minutes, clock.seconds), (3, 7));
-
-    // An absent duration has nothing to label.
-    let absent =
-        crate::types::BridgeTrack::from_core(track_detail(TrackPosition::Flat { number: 1 }, None));
-    assert_eq!(absent.duration_ms, None);
-    assert!(absent.duration_clock.is_none());
 }
 
-fn track_search_result(duration_ms: Option<i64>) -> bae_core::album_detail::TrackSearchResult {
+fn track_search_result(duration_ms: i64) -> bae_core::album_detail::TrackSearchResult {
     bae_core::album_detail::TrackSearchResult {
         id: "track-1".to_string(),
         title: "Track".to_string(),
@@ -95,20 +89,15 @@ fn track_search_result(duration_ms: Option<i64>) -> bae_core::album_detail::Trac
 
 #[test]
 fn track_search_result_precomputes_duration_clock() {
-    // A present duration renders a clock; the raw number does not cross.
-    let present =
-        crate::types::BridgeTrackSearchResult::from_core(track_search_result(Some(187_000)));
+    // A track's length renders a clock; the raw number does not cross.
+    let present = crate::types::BridgeTrackSearchResult::from_core(track_search_result(187_000));
     let clock = present
         .duration_clock
         .expect("clock for a present duration");
     assert_eq!((clock.minutes, clock.seconds), (3, 7));
-
-    // An absent duration has nothing to label.
-    let absent = crate::types::BridgeTrackSearchResult::from_core(track_search_result(None));
-    assert!(absent.duration_clock.is_none());
 }
 
-fn queue_item(duration_ms: Option<i64>) -> bae_core::queue::QueueItem {
+fn queue_item(duration_ms: i64) -> bae_core::queue::QueueItem {
     bae_core::queue::QueueItem {
         entry_id: "entry-1".to_string(),
         track_id: "track-1".to_string(),
@@ -126,16 +115,12 @@ fn queue_item(duration_ms: Option<i64>) -> bae_core::queue::QueueItem {
 
 #[test]
 fn queue_entry_precomputes_duration_clock() {
-    // A present duration renders a clock; the raw number does not cross.
-    let present = crate::types::BridgeQueueEntry::from_core(queue_item(Some(187_000)));
+    // A track's length renders a clock; the raw number does not cross.
+    let present = crate::types::BridgeQueueEntry::from_core(queue_item(187_000));
     let clock = present
         .duration_clock
         .expect("clock for a present duration");
     assert_eq!((clock.minutes, clock.seconds), (3, 7));
-
-    // An absent duration has nothing to label.
-    let absent = crate::types::BridgeQueueEntry::from_core(queue_item(None));
-    assert!(absent.duration_clock.is_none());
 }
 
 /// A handle over a fresh, empty library, built the way the app builds one.

@@ -1,3 +1,4 @@
+use crate::db::DbTrack;
 /// Deterministic clock for the audio-format tests — the exact instant is
 /// immaterial to what they assert, only that the same one feeds every row.
 fn test_clock() -> FixedClock {
@@ -32,7 +33,7 @@ fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
                 title: format!("Track {index}"),
                 side: Some(1),
                 track_number: Some(index as i32 + 1),
-                duration_ms: None,
+                duration_ms: 180_000,
                 created_at: chrono::DateTime::<chrono::Utc>::from(coven::Clock::now(&test_clock())),
             },
             audio: crate::import::TrackAudio::CueBacked {

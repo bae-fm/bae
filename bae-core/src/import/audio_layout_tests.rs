@@ -95,20 +95,19 @@ fn file_ids(units: &[AudioFile]) -> Vec<&str> {
 
 /// A blank row over every unit, in the units' order — what the draft commits
 /// when nobody named anything.
-fn rows_for(units: Vec<AudioFile>) -> Vec<(DbTrack, AudioFile)> {
+fn rows_for(units: Vec<AudioFile>) -> Vec<(crate::import::TrackRow, AudioFile)> {
     let now = chrono::Utc::now();
     units
         .into_iter()
         .enumerate()
         .map(|(index, unit)| {
             (
-                DbTrack {
+                crate::import::TrackRow {
                     id: format!("track-{index}"),
                     release_id: "release-1".to_string(),
                     title: format!("Track Title {}", index + 1),
                     side: Some(1),
                     track_number: Some(index as i32 + 1),
-                    duration_ms: None,
                     created_at: now,
                 },
                 unit,
@@ -297,13 +296,12 @@ fn an_unnamed_slot_is_titled_after_its_file() {
 
     let track_files = resolve_track_files(
         vec![(
-            DbTrack {
+            crate::import::TrackRow {
                 id: "track-0".to_string(),
                 release_id: "release-1".to_string(),
                 title: "   ".to_string(),
                 side: Some(1),
                 track_number: Some(1),
-                duration_ms: None,
                 created_at: chrono::Utc::now(),
             },
             AudioFile::Standalone {
@@ -337,7 +335,7 @@ fn sheet_slices_bind_to_their_container_and_share_one_analysis() {
     let mut analyses = Vec::new();
     for (position, track_file) in track_files.iter().enumerate() {
         assert!(
-            track_file.db_track.duration_ms.is_some(),
+            track_file.db_track.duration_ms > 0,
             "every slice gets a duration",
         );
         match &track_file.audio {
@@ -452,13 +450,12 @@ fn audio_that_left_the_folder_refuses() {
 
     let err = resolve_track_files(
         vec![(
-            DbTrack {
+            crate::import::TrackRow {
                 id: "track-0".to_string(),
                 release_id: "release-1".to_string(),
                 title: "Track Title".to_string(),
                 side: Some(1),
                 track_number: Some(1),
-                duration_ms: None,
                 created_at: chrono::Utc::now(),
             },
             AudioFile::Standalone {

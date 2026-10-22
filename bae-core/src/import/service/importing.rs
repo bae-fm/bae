@@ -349,11 +349,11 @@ impl ImportService {
             }
         };
 
-        // Each DbTrack moves into a TrackFile, bound to the audio its
-        // slot named and carrying the `duration_ms` that audio yields. Past here
-        // the DbTracks live in `tracks_to_files`.
+        // Each track row becomes a TrackFile's DbTrack, bound to the audio
+        // its slot named and measured by it. Past here the tracks live in
+        // `tracks_to_files`.
         let tracks_to_files = resolve_track_files(
-            std::mem::take(&mut prepared.db_tracks)
+            std::mem::take(&mut prepared.track_rows)
                 .into_iter()
                 .zip(track_bindings)
                 .collect(),

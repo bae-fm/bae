@@ -80,7 +80,7 @@ const TRACK_T2B: &str = "b98ba0de-5eb5-4c15-a20f-b5df519ed969";
 async fn seed_test_releases(
     database: &crate::db::Database,
     releases: &[(&str, &[&str])],
-    track_length_ms: Option<i64>,
+    track_length_ms: i64,
 ) {
     use crate::db::{DbAlbum, DbArtist, DbRelease, DbTrack};
     if releases.is_empty() {
@@ -117,13 +117,13 @@ async fn seeded_library_manager_with_diagnostics(
     releases: &[(&str, &[&str])],
     diagnostics: crate::diagnostics::Diagnostics,
 ) -> (TempDir, LibraryManager) {
-    seeded_library_manager_with_track_length(releases, diagnostics, None).await
+    seeded_library_manager_with_track_length(releases, diagnostics, 180_000).await
 }
 
 async fn seeded_library_manager_with_track_length(
     releases: &[(&str, &[&str])],
     diagnostics: crate::diagnostics::Diagnostics,
-    track_length_ms: Option<i64>,
+    track_length_ms: i64,
 ) -> (TempDir, LibraryManager) {
     let home = TempDir::new().unwrap();
     let db_path = home.path().join("playback-service-test.db");
@@ -344,7 +344,7 @@ fn test_resolved_track_audio(track_id: &str) -> ResolvedTrackAudio {
         track_id: track_id.to_string(),
         release_id: "release-id".to_string(),
         segments: vec![],
-        duration_ms: Some(1000),
+        duration_ms: 1000,
         pregap_samples: None,
         generated_pregap_samples: None,
         sample_rate: std::num::NonZeroU32::new(44_100).unwrap(),

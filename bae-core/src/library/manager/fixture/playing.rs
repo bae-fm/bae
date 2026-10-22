@@ -103,7 +103,7 @@ impl LibraryManager {
                 title,
                 side: Some(1),
                 track_number: Some(track.number as i32),
-                duration_ms: Some(duration_ms as i64),
+                duration_ms: duration_ms as i64,
                 created_at: added,
             };
             if track.number == playing.track {

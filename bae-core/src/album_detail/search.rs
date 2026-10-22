@@ -109,7 +109,7 @@ pub struct AlbumSearchResult {
 pub struct TrackSearchResult {
     pub id: String,
     pub title: String,
-    pub duration_ms: Option<i64>,
+    pub duration_ms: i64,
     /// The release the track is on — what playing it from a search starts.
     pub release_id: String,
     pub album_id: String,

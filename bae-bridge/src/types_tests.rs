@@ -497,7 +497,7 @@ mod conversion_roundtrip {
                             name: "source.flac".to_string(),
                             layout: bae_core::album_detail::SourceAudioLayout::File,
                         }],
-                        duration_ms: Some(123_000),
+                        duration_ms: 123_000,
                         side: bae_core::album_detail::TrackSide::Disc { disc: 2 },
                     }],
                 },

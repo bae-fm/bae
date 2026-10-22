@@ -48,8 +48,8 @@ impl BridgeTrack {
             title,
             side,
             track_number,
-            duration_clock: crate::types::BridgeDurationClock::from_millis(duration_ms),
-            duration_ms,
+            duration_clock: crate::types::BridgeDurationClock::from_millis(Some(duration_ms)),
+            duration_ms: Some(duration_ms),
             artist_names,
             display_artist,
             position_text,
@@ -69,8 +69,7 @@ impl BridgeTrackGroup {
             header_key: side.header_key().map(str::to_string),
             side,
             tracks: tracks.into_iter().map(BridgeTrack::from_core).collect(),
-            total_duration: total_duration_ms
-                .and_then(bae_core::util::duration::DurationUnits::from_millis)
+            total_duration: bae_core::util::duration::DurationUnits::from_millis(total_duration_ms)
                 .map(crate::types::BridgeDurationUnits::from_core),
         }
     }
@@ -131,8 +130,7 @@ impl BridgeRelease {
             pinned,
             storage_actions,
             transfer_action,
-            total_duration: total_duration_ms
-                .and_then(bae_core::util::duration::DurationUnits::from_millis)
+            total_duration: bae_core::util::duration::DurationUnits::from_millis(total_duration_ms)
                 .map(crate::types::BridgeDurationUnits::from_core),
             tracks: tracks.into_iter().map(BridgeTrack::from_core).collect(),
             track_groups: track_groups
@@ -186,7 +184,7 @@ impl BridgeTrackSearchResult {
         BridgeTrackSearchResult {
             id,
             title,
-            duration_clock: crate::types::BridgeDurationClock::from_millis(duration_ms),
+            duration_clock: crate::types::BridgeDurationClock::from_millis(Some(duration_ms)),
             release_id,
             album_id,
             album_title,

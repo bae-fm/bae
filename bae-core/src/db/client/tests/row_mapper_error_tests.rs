@@ -119,7 +119,7 @@ fn seeded_audio_segment() -> Connection {
     let now = "2026-01-01T00:00:00Z";
     insert_file(&conn, "file-1", Some("file"), Some(("audio/flac", 16))).unwrap();
     conn.execute(
-        "INSERT INTO tracks (id, release_id, title, created_at) VALUES ('track-1', 'cccb6034-5922-40d2-8d0b-d94619230882', 'Track Title', ?1)",
+        "INSERT INTO tracks (id, release_id, title, duration_ms, created_at) VALUES ('track-1', 'cccb6034-5922-40d2-8d0b-d94619230882', 'Track Title', 180000, ?1)",
         params![now],
     )
     .unwrap();

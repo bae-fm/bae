@@ -79,7 +79,7 @@ fn test_track(
         title: title.to_string(),
         side: Some(1),
         track_number: Some(1),
-        duration_ms: Some(1000),
+        duration_ms: 1000,
         created_at: now,
     }
 }

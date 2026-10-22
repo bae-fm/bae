@@ -28,7 +28,7 @@ pub struct DbAlbumSearchResult {
 pub struct DbTrackSearchResult {
     pub id: String,
     pub title: String,
-    pub duration_ms: Option<i64>,
+    pub duration_ms: i64,
     /// The release the track belongs to — the key the resolver looks the
     /// track's cover up by.
     pub release_id: String,

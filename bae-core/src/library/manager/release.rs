@@ -760,20 +760,13 @@ impl LibraryManager {
     }
 }
 
-/// Each of a library release's tracks' stored length, in track order, or why
-/// one has none.
+/// Each of a library release's tracks' stored length, in track order.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn stored_track_lengths(tracks: &[DbTrack]) -> Result<Vec<u64>, LibraryError> {
     tracks
         .iter()
         .map(|track| {
-            let duration = track.duration_ms.ok_or_else(|| {
-                LibraryError::Import(format!(
-                    "release track '{}' has no measured duration",
-                    track.id
-                ))
-            })?;
-            u64::try_from(duration).map_err(|error| {
+            u64::try_from(track.duration_ms).map_err(|error| {
                 LibraryError::Import(format!(
                     "release track '{}' has a negative duration: {error}",
                     track.id

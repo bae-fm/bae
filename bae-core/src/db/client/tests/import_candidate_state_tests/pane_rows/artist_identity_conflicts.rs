@@ -102,7 +102,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
             params![seed_release_id, seed_album_id],
         )?;
         sql.execute(
-            "INSERT INTO tracks (id, release_id, title, side, created_at) VALUES (?, ?, 'Track Title', 1, '2026-01-02T03:04:05Z')",
+            "INSERT INTO tracks (id, release_id, title, side, duration_ms, created_at) VALUES (?, ?, 'Track Title', 1, 180000, '2026-01-02T03:04:05Z')",
             params![seed_track_id, seed_release_id],
         )?;
         sql.execute(

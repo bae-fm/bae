@@ -14,7 +14,7 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     let release = test_uuid("collection-release");
     let first = test_uuid("collection-first");
     let second = test_uuid("collection-second");
-    db.execute_local_sql_for_test(&format!("INSERT INTO albums (id,title,created_at) VALUES ('collection-album','Collection','2026-01-01'); INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{release}','collection-album','2026-01-01', 0); INSERT INTO tracks (id,release_id,title,position,created_at) VALUES ('{first}','{release}','First',0,'2026-01-01'), ('{second}','{release}','Second',1,'2026-01-01');")).await.unwrap();
+    db.execute_local_sql_for_test(&format!("INSERT INTO albums (id,title,created_at) VALUES ('collection-album','Collection','2026-01-01'); INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{release}','collection-album','2026-01-01', 0); INSERT INTO tracks (id,release_id,title,position,duration_ms,created_at) VALUES ('{first}','{release}','First',0,180000,'2026-01-01'), ('{second}','{release}','Second',1,180000,'2026-01-01');")).await.unwrap();
     let target = RatingTarget::Track(first.clone());
     db.set_rating(target.clone(), Some(Stars::Three))
         .await

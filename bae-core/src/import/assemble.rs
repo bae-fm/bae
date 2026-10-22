@@ -9,7 +9,7 @@
 //! writes the release, where two credits naming one artist become one.
 
 use crate::db::{
-    DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrack, DbTrackArtist,
+    DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrackArtist,
     DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart,
 };
 use crate::import::{
@@ -108,14 +108,12 @@ pub(crate) fn assemble_release(
     let mut track_artist_roles = Vec::new();
     let mut track_works = Vec::new();
     for (track, shaped) in draft.tracks.iter().zip(&edit.tracks) {
-        let row = DbTrack {
+        let row = crate::import::TrackRow {
             id: ids.new_id().to_string(),
             release_id: release.id.clone(),
             title: shaped.title.clone(),
             side: shaped.side,
             track_number: shaped.track_number,
-            // Set from the audio the track is bound to (`resolve_track_files`).
-            duration_ms: None,
             created_at: now,
         };
         if let TrackArtistAssignments::Explicit(assignments) = &shaped.artist_assignments {

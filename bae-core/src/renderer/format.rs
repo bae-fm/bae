@@ -134,7 +134,7 @@ mod tests {
                 file_size: 1_000_000,
                 span,
             }],
-            duration_ms: Some(10_000),
+            duration_ms: 10_000,
             pregap_samples: None,
             generated_pregap_samples: None,
             sample_rate: std::num::NonZeroU32::new(44_100).unwrap(),

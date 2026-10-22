@@ -389,7 +389,7 @@ fn make_track(release_id: &str, number: i32) -> DbTrack {
         title: format!("Track {}", number),
         side: Some(1),
         track_number: Some(number),
-        duration_ms: Some(180000),
+        duration_ms: 180000,
         created_at: now,
     }
 }

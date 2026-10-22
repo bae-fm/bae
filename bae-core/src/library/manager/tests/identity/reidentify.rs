@@ -216,7 +216,7 @@ async fn insert_n_tracks(database: &Database, release_id: &str, n: usize) {
             title: format!("Track {i}"),
             side: Some(1),
             track_number: Some(i as i32),
-            duration_ms: Some(200_000),
+            duration_ms: 200_000,
             created_at: Utc::now(),
         };
         database.insert_track(&track).await.unwrap();
@@ -472,7 +472,7 @@ async fn re_identify_with_file_metadata_reseeds_rows_from_file_tags() {
             title: title.to_string(),
             side: Some(1),
             track_number: Some(i as i32 + 1),
-            duration_ms: Some(200_000),
+            duration_ms: 200_000,
             created_at: Utc::now(),
         };
         manager.database.insert_track(&track).await.unwrap();
@@ -586,7 +586,7 @@ async fn re_identify_with_file_metadata_replaces_previously_edited_fields() {
         title: "MB Track One".to_string(),
         side: Some(1),
         track_number: Some(1),
-        duration_ms: Some(200_000),
+        duration_ms: 200_000,
         created_at: Utc::now(),
     };
     manager.database.insert_track(&track).await.unwrap();

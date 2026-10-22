@@ -63,7 +63,7 @@ impl ImportService {
         let crate::import::ReleaseRows {
             album: mut db_album,
             release: mut db_release,
-            tracks: db_tracks,
+            tracks: track_rows,
             mut artists,
             mut album_artists,
             track_artists,
@@ -162,7 +162,7 @@ impl ImportService {
         Ok(PreparedMetadata {
             db_album,
             db_release,
-            db_tracks,
+            track_rows,
             selected_cover: None,
             remote_cover_image: None,
             embedded_cover: None,

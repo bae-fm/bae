@@ -766,7 +766,9 @@ Ana clicks Import. bae:
 6. **Writes everything in one transaction**, from the draft as it stands, read
    from no source again: the album; the release, with a fresh random id and the
    folder's hash; its tracks, files, segments, credits, roles, works, records
-   and cover. A track left untitled takes its file's name. Each credit, role
+   and cover. Each track row is made once its audio is bound, with the
+   length that audio measures, so no track is ever stored without one. A track
+   left untitled takes its file's name. Each credit, role
    and composer is its own artist credit until that transaction decides which
    library artist it is (§2.3), so two credits naming one artist write one.
 
@@ -2140,7 +2142,7 @@ All sync.
 | `release_files` | file of a release: name, size, type, and the audio facts the scan read; carries a file once attached, whose hash and location coven writes |
 | `release_artist_roles` | credit on a release, as the catalog stated it |
 | `release_records` | catalog record of a release: pressing or album, key, album key, URL |
-| `tracks` | track: title, number, duration, playing order, side |
+| `tracks` | track: title, number, length (required: the import measures every track's audio), playing order, side |
 | `track_artists` | track's artist, in order |
 | `track_artist_roles` | credit on a track, as the catalog stated it |
 | `track_works` | work a track performs, in order |

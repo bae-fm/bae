@@ -71,7 +71,7 @@ fn make_track(release_id: &str, n: i32, title: &str) -> DbTrack {
         title: title.to_string(),
         side: Some(1),
         track_number: Some(n),
-        duration_ms: Some(180_000),
+        duration_ms: 180_000,
         created_at: Utc::now(),
     }
 }

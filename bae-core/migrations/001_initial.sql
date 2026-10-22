@@ -365,7 +365,8 @@ CREATE TABLE IF NOT EXISTS tracks (
     release_id TEXT NOT NULL,
     title TEXT NOT NULL,
     track_number INTEGER,
-    duration_ms INTEGER,
+    -- How long the track's audio plays, measured when it was imported.
+    duration_ms INTEGER NOT NULL CHECK (duration_ms >= 0),
     created_at TEXT NOT NULL,
     -- Playing order within the release, from zero across all sides.
     position INTEGER NOT NULL DEFAULT 0 CHECK (position >= 0),

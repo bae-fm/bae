@@ -93,13 +93,7 @@ async fn test_cue_ape_records_correct_durations() {
 
     // Core assertion: each track must have its own duration, NOT the full file duration
     for (i, track) in tracks.iter().enumerate() {
-        let duration_ms = track.duration_ms.unwrap_or_else(|| {
-            panic!(
-                "Track {} '{}' should have duration_ms set",
-                i + 1,
-                track.title
-            )
-        });
+        let duration_ms = track.duration_ms;
 
         // Must NOT be the full file duration
         assert_ne!(

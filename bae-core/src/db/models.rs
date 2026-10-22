@@ -330,7 +330,8 @@ pub struct DbTrack {
     /// disc is side 1; vinyl A = 1, B = 2; a cassette has 2 sides.
     pub side: Option<i32>,
     pub track_number: Option<i32>,
-    pub duration_ms: Option<i64>,
+    /// How long the track's audio plays, measured when it was imported.
+    pub duration_ms: i64,
     pub created_at: DateTime<Utc>,
 }
 /// A physical file belonging to a release — not to an album, and not to a track
@@ -665,7 +666,7 @@ impl DbTrack {
             title: title.to_string(),
             side: Some(1),
             track_number,
-            duration_ms: None,
+            duration_ms: 180_000,
             created_at: now,
         }
     }

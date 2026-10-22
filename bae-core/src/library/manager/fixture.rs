@@ -166,7 +166,7 @@ impl LibraryManager {
                 title: title.clone(),
                 side: Some(1),
                 track_number: Some(number as i32 + 1),
-                duration_ms: Some(180_000),
+                duration_ms: 180_000,
                 created_at: added,
             })
             .collect();

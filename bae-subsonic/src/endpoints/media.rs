@@ -89,8 +89,7 @@ async fn stream_inner(
         let format = transcode_format(&audio, requested_format, max_bitrate);
         let estimated_length = params
             .bool_or("estimateContentLength", false)
-            .then(|| estimated_length(&audio, format))
-            .flatten();
+            .then(|| estimated_length(&audio, format));
         stream_encoded(services, &audio, format, estimated_length).await
     }
 }
@@ -278,9 +277,10 @@ fn transcode_format(
 }
 
 /// The estimated length of the track encoded as `format`, ≈ duration ×
-/// bitrate (bytes = seconds × kbps × 1000 / 8); `None` without a duration.
-fn estimated_length(audio: &ResolvedTrackAudio, format: StreamEncodeFormat) -> Option<u64> {
-    let duration_ms = audio.duration_ms?.max(0) as u64;
+/// bitrate (bytes = seconds × kbps × 1000 / 8).
+fn estimated_length(audio: &ResolvedTrackAudio, format: StreamEncodeFormat) -> u64 {
+    let duration_ms =
+        u64::try_from(audio.duration_ms).expect("a stored track length is never negative");
     let bitrate_kbps = match format {
         StreamEncodeFormat::Mp3 { bitrate_kbps } | StreamEncodeFormat::OpusOgg { bitrate_kbps } => {
             u64::from(bitrate_kbps)
@@ -292,7 +292,7 @@ fn estimated_length(audio: &ResolvedTrackAudio, format: StreamEncodeFormat) -> O
                 / 1000
         }
     };
-    Some(duration_ms.saturating_mul(bitrate_kbps) / 8)
+    duration_ms.saturating_mul(bitrate_kbps) / 8
 }
 
 /// A non-seekable `Write` sink that hands each encoded chunk to the response

@@ -13,8 +13,7 @@ pub struct AutomationRelease {
     pub year: Option<i32>,
     pub labels: Vec<bae_core::pressing::ReleaseLabel>,
     pub facts: bae_core::pressing::PressingFacts,
-    /// `None` when any track's length is unknown.
-    pub total_duration_ms: Option<i64>,
+    pub total_duration_ms: i64,
     pub tracks: Vec<AutomationTrackDetail>,
     pub track_groups: Vec<AutomationTrackGroup>,
     pub files: Vec<AutomationFileDetail>,
@@ -96,7 +95,7 @@ pub struct AutomationTrackDetail {
     pub title: String,
     pub side: Option<i32>,
     pub track_number: Option<i32>,
-    pub duration_ms: Option<i64>,
+    pub duration_ms: i64,
     pub artist_names: String,
     pub position_text: String,
     pub position: AutomationTrackPosition,
@@ -179,7 +178,7 @@ pub struct AutomationAlbumSearchResult {
 pub struct AutomationTrackSearchResult {
     pub id: String,
     pub title: String,
-    pub duration_ms: Option<i64>,
+    pub duration_ms: i64,
     pub album_id: String,
     pub album_title: String,
     pub artist_name: String,

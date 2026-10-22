@@ -16,7 +16,7 @@ fn meta(id: &str) -> TrackQueueMeta {
                 image_type: LibraryImageType::Cover,
             }),
         },
-        duration_ms: Some(1000),
+        duration_ms: 1000,
     }
 }
 

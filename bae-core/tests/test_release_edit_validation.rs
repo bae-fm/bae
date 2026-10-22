@@ -51,7 +51,7 @@ async fn seed(db: &Database) -> (String, String) {
         title: "Original Track".to_string(),
         side: Some(1),
         track_number: Some(1),
-        duration_ms: None,
+        duration_ms: 180_000,
         created_at: Utc::now(),
     };
     db.insert_artist(&artist).await.unwrap();

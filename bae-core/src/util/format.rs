@@ -108,10 +108,7 @@ pub fn group_tracks_by_side(
         if let Some(last) = groups.last_mut() {
             if last.side == side {
                 last.tracks.push(track.clone());
-                last.total_duration_ms = last
-                    .total_duration_ms
-                    .zip(track.duration_ms)
-                    .map(|(total, duration)| total + duration);
+                last.total_duration_ms += track.duration_ms;
                 continue;
             }
         }
@@ -240,7 +237,7 @@ mod tests {
             title: String::new(),
             side: Some(1),
             track_number: None,
-            duration_ms: None,
+            duration_ms: 180_000,
             artist_names: String::new(),
             display_artist: None,
             position_text: track_position_text(&position),

@@ -7,7 +7,6 @@
 //! disc image plus loose bonus tracks offers both — neither set is dropped for
 //! the other. A candidate's draft holds one track per unit, in this order.
 
-use crate::db::DbTrack;
 use crate::import::folder_scanner::{BoundTrackSheet, CategorizedFiles, ScannedFile};
 use crate::import::probe::{sheet_analysis, SourceDurations};
 use crate::import::types::{AudioFile, CueFlacAnalysis, TrackAudio, TrackFile};
@@ -256,10 +255,10 @@ fn sheet_audio_ids<'a>(bound: &BoundTrackSheet<'a>) -> Vec<&'a str> {
 /// [`TrackFile`]s the run pass consumes.
 ///
 /// `rows` is the mapping the commit settled: one `(track, audio)` pair per row
-/// that will be written, in track order. Every `DbTrack` moves into a
-/// `TrackFile` with its `duration_ms` filled in — from the sheet's own
-/// timing for a slice, from a probe for a standalone file — and every slice of
-/// one sheet shares that sheet's single parsed analysis.
+/// that will be written, in track order. Each row becomes the `DbTrack` of a
+/// `TrackFile` with the length its audio measures — the sheet's own timing for
+/// a slice, the probe's for a standalone file — and every slice of one sheet
+/// shares that sheet's single parsed analysis.
 ///
 /// A row whose title is blank is titled after its audio file's name. An empty
 /// title is a track nobody can find again: it renders as a blank row in every
@@ -270,17 +269,17 @@ fn sheet_audio_ids<'a>(bound: &BoundTrackSheet<'a>) -> Vec<&'a str> {
 /// import whose authority the user already chose, and would write something
 /// the table never displayed.
 pub(crate) fn resolve_track_files(
-    rows: Vec<(DbTrack, AudioFile)>,
+    rows: Vec<(crate::import::TrackRow, AudioFile)>,
     files: &CategorizedFiles,
 ) -> Result<Vec<TrackFile>, ImportError> {
     debug!("Binding {} tracks to the folder's audio", rows.len());
     let mut analyses: HashMap<String, Arc<CueFlacAnalysis>> = HashMap::new();
     let mut track_files = Vec::with_capacity(rows.len());
 
-    for (mut db_track, audio) in rows {
+    for (mut row, audio) in rows {
         let file = audio_file(files, &audio)?;
-        if db_track.title.trim().is_empty() {
-            db_track.title = file_title(file);
+        if row.title.trim().is_empty() {
+            row.title = file_title(file);
         }
         let (audio, duration_ms) = match &audio {
             AudioFile::Standalone { .. } => {
@@ -322,15 +321,14 @@ pub(crate) fn resolve_track_files(
                 )
             }
         };
-        db_track.duration_ms =
-            Some(
-                i64::try_from(duration_ms).map_err(|error| ImportError::UnusableFile {
-                    detail: format!(
-                        "{} is too long to represent in milliseconds: {error}",
-                        file.relative_path
-                    ),
-                })?,
-            );
+        let db_track = row.measured(i64::try_from(duration_ms).map_err(|error| {
+            ImportError::UnusableFile {
+                detail: format!(
+                    "{} is too long to represent in milliseconds: {error}",
+                    file.relative_path
+                ),
+            }
+        })?);
         track_files.push(TrackFile { db_track, audio });
     }
     Ok(track_files)

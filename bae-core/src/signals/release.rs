@@ -467,7 +467,7 @@ mod tests {
                 title: format!("Track {n}"),
                 side: Some(1),
                 track_number: Some(n),
-                duration_ms: Some(180_000 + n as i64),
+                duration_ms: 180_000 + n as i64,
                 created_at: Utc::now(),
             };
             database.insert_track(&track).await.unwrap();

@@ -52,11 +52,7 @@ async fn release_cover_art(
 
 /// Sum of track durations in whole seconds.
 fn total_duration_secs(tracks: &[DbTrack]) -> i64 {
-    tracks
-        .iter()
-        .map(|t| t.duration_ms.unwrap_or(0))
-        .sum::<i64>()
-        / 1000
+    tracks.iter().map(|t| t.duration_ms).sum::<i64>() / 1000
 }
 
 /// The `AlbumID3` for a release: its album's title/artist, this release's year
@@ -115,7 +111,7 @@ struct AudioFields {
     content_type: String,
     suffix: Option<String>,
     size: Option<i64>,
-    duration_secs: Option<i64>,
+    duration_secs: i64,
 }
 
 /// Resolve a track's audio and its backing file into the `Child` fields those
@@ -174,7 +170,7 @@ async fn resolve_audio_fields(
         content_type,
         suffix,
         size,
-        duration_secs: audio.duration_ms.map(|ms| ms / 1000),
+        duration_secs: audio.duration_ms / 1000,
     })
 }
 
@@ -215,7 +211,7 @@ pub(crate) async fn track_child(
         size: audio.size,
         content_type: Some(audio.content_type),
         suffix: audio.suffix,
-        duration: audio.duration_secs,
+        duration: Some(audio.duration_secs),
         bit_rate: None,
         disc_number: track.side,
         created: Some(track.created_at.to_rfc3339()),
@@ -259,7 +255,7 @@ pub(crate) async fn search_track_child(
         size: audio.size,
         content_type: Some(audio.content_type),
         suffix: audio.suffix,
-        duration: audio.duration_secs,
+        duration: Some(audio.duration_secs),
         bit_rate: None,
         disc_number: None,
         created: None,

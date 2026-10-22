@@ -383,41 +383,6 @@ fn a_stored_pregap_is_as_long_as_its_samples() {
     );
 }
 
-/// A track with no stored length plays without one: its position runs on with
-/// no end to hold it at, and the seek bar has nothing to fill toward.
-#[tokio::test]
-async fn a_track_with_no_stored_length_reports_its_position_without_an_end() {
-    let (_home, mut service, mut progress) = test_playback_service().await;
-    let mut resolved = test_resolved_track_audio("track");
-    resolved.duration_ms = None;
-    let prepared = finalize_playback_track(
-        "track".to_string(),
-        &resolved,
-        Vec::new(),
-        crate::config::ReplayGainMode::Off,
-    );
-    assert_eq!(PlayingTrack::from_prepared(&prepared).duration_ms, None);
-    service.slot = active_slot(prepared, TrackPhase::Playing);
-    if let PlaybackSlot::Active(cur) = &mut service.slot {
-        cur.position = StreamPosition::from_millis(400_000);
-    }
-
-    service.emit_position_display();
-
-    let Ok(PlaybackProgress::Seeked {
-        position_ms,
-        duration_ms,
-        progress,
-        ..
-    }) = progress.try_recv()
-    else {
-        panic!("the position display emits a Seeked");
-    };
-    assert_eq!(position_ms, 400_000);
-    assert_eq!(duration_ms, None);
-    assert_eq!(progress, 0.0);
-}
-
 /// A seek bar's fill is a fraction of the track's length. A track with no
 /// length has no position at any fill, so a seek by ratio leaves it playing
 /// where it is rather than jumping to a fraction of an assumed length.

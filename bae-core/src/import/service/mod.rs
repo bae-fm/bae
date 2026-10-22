@@ -8,7 +8,7 @@ use crate::util::rate_limiter::CallPriority;
 
 use {
     crate::db::{
-        DbAlbum, DbAlbumArtist, DbFile, DbRelease, DbReleaseArtistRole, DbTrack, DbTrackArtist,
+        DbAlbum, DbAlbumArtist, DbFile, DbRelease, DbReleaseArtistRole, DbTrackArtist,
         DbTrackArtistRole,
     },
     crate::import::folder_scanner::ScanItem,
@@ -71,7 +71,9 @@ pub(super) struct ImportFiles<'a> {
 struct PreparedMetadata {
     db_album: DbAlbum,
     db_release: DbRelease,
-    db_tracks: Vec<DbTrack>,
+    /// The release's tracks, each bound to its audio and measured by the
+    /// commit (`resolve_track_files`).
+    track_rows: Vec<crate::import::TrackRow>,
     /// The cover the person picked for this candidate, whatever its source.
     selected_cover: Option<CoverSelection>,
     /// The exact prepared bytes of a picked remote cover.
