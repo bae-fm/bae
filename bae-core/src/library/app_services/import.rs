@@ -46,7 +46,7 @@ impl AppServices {
     delegate_async!(import, import_move_candidate_pane => move_candidate_pane(candidate_key: &str, pane_move: crate::import::PaneMove) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_search_form => set_candidate_search_form(candidate_key: &str, search: crate::import::SearchForm) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_edit_field => set_candidate_edit_field(candidate_key: &str, edit: crate::import::DraftFieldEdit) -> Result<(), crate::import::ImportError>);
-    delegate_async!(import, import_set_candidate_album_artists => set_candidate_album_artists(candidate_key: &str, assignments: Vec<crate::import::ArtistAssignment>) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_set_candidate_album_artists => set_candidate_album_artists(candidate_key: &str, assignments: Vec<crate::import::Credited>) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_track_edit => set_candidate_track_edit(candidate_key: &str, track: crate::import::RawTrackEdit) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_track_artists => set_candidate_track_artists(candidate_key: &str, track_ids: Vec<String>, assignments: crate::import::TrackArtistAssignments) -> Result<(), crate::import::ImportError>);
 

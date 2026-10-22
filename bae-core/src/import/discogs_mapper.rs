@@ -32,7 +32,34 @@ fn discogs_artist_ref(name: String, discogs_artist_id: Option<String>) -> Artist
         sort_name: Some(name),
         musicbrainz_artist_id: None,
         discogs_artist_id,
+        credited_as: None,
     }
+}
+
+/// What a Discogs `join` prints between two credits: a comma as `", "`, any
+/// other word or sign with a space either side (`&` → `" & "`). `None` where
+/// Discogs states none.
+fn discogs_join(join: Option<&str>) -> Option<String> {
+    let join = join.map(str::trim).filter(|join| !join.is_empty())?;
+    Some(if join == "," {
+        ", ".to_string()
+    } else {
+        format!(" {join} ")
+    })
+}
+
+/// A Discogs display credit list, place by place, with each artist's printed
+/// name and the joins between them; the last credit's join is not kept.
+pub(crate) fn discogs_credits(artists: &[DiscogsArtist]) -> Vec<crate::import::SourceCredit> {
+    let mut stated: Vec<crate::import::SourceCredit> = artists
+        .iter()
+        .map(|artist| crate::import::SourceCredit {
+            credit: discogs_track_artist_ref(artist),
+            join: discogs_join(artist.join.as_deref()),
+        })
+        .collect();
+    crate::credits::drop_last_join(&mut stated, |credit| &mut credit.join);
+    stated
 }
 
 /// The credit of a Discogs role artist. The display name is the
@@ -52,26 +79,34 @@ fn discogs_role_artist_ref(credit: &DiscogsRoleArtist) -> ArtistCredit {
     discogs_artist_ref(name, credit.id.clone())
 }
 
-/// The credit of a Discogs display artist, keyed on its canonical name.
+/// The credit of a Discogs display artist, keyed on its canonical name, with
+/// the name the release prints for it where that is another.
 pub(crate) fn discogs_track_artist_ref(credit: &DiscogsArtist) -> ArtistCredit {
-    discogs_artist_ref(credit.name.clone(), Some(credit.id.clone()))
+    ArtistCredit {
+        credited_as: credit
+            .anv
+            .as_deref()
+            .map(str::trim)
+            .filter(|anv| !anv.is_empty() && *anv != credit.name)
+            .map(str::to_string),
+        ..discogs_artist_ref(credit.name.clone(), Some(credit.id.clone()))
+    }
 }
 
 /// Album and pressing facts from this release, independently of its tracklist.
 pub(crate) fn metadata(release: &DiscogsRelease) -> super::release_metadata::ReleaseMetadata {
     // With no artists list, fall back to the artist half of the "Artist - Album"
     // title split.
-    let release_refs: Vec<ArtistCredit> = if release.artists.is_empty() {
+    let release_refs: Vec<crate::import::SourceCredit> = if release.artists.is_empty() {
         match crate::discogs::split_title(&release.title).and_then(|(artist, _)| artist) {
-            Some(name) => vec![discogs_artist_ref(name.to_owned(), None)],
+            Some(name) => vec![crate::import::SourceCredit::plain(discogs_artist_ref(
+                name.to_owned(),
+                None,
+            ))],
             None => Vec::new(),
         }
     } else {
-        release
-            .artists
-            .iter()
-            .map(discogs_track_artist_ref)
-            .collect()
+        discogs_credits(&release.artists)
     };
 
     super::release_metadata::ReleaseMetadata {
@@ -224,14 +259,14 @@ fn tracklist_entry(release_id: &str, row: &DiscogsTrack, kind: EntryKind) -> Tra
         number: None,
         title: Some(row.title.clone()),
         duration_ms: row.duration.as_deref().and_then(parse_duration_to_ms),
-        credits: row
-            .artists
-            .iter()
+        credits: discogs_credits(&row.artists)
+            .into_iter()
             .enumerate()
-            .map(|(position, artist)| DisplayCredit {
+            .map(|(position, stated)| DisplayCredit {
                 position: position as i32,
-                credited_name: artist.name.clone(),
-                artist: Some(discogs_track_artist_ref(artist)),
+                credited_name: stated.credit.printed().to_string(),
+                artist: Some(stated.credit),
+                join: stated.join,
             })
             .collect(),
         roles,
@@ -395,10 +430,10 @@ fn covered_layout(
 
 /// One track's values from a processed Discogs track at `place`. A collapsed
 /// track holds every source row's composers, and its display artists once each
-/// by Discogs artist id, first occurrence winning.
+/// by Discogs artist id, first occurrence (and its join) winning.
 fn discogs_track_values(pt: &ProcessedTrack, place: crate::mediums::TrackPlace) -> TrackValues {
     let mut roles = Vec::new();
-    let mut credits: Vec<ArtistCredit> = Vec::new();
+    let mut credits: Vec<crate::import::SourceCredit> = Vec::new();
     let mut seen_credit_ids: HashSet<Option<String>> = HashSet::new();
     for discogs_track in &pt.source_tracks {
         roles.extend(discogs_track.roles.iter().map(|role| CreditedRole {
@@ -406,16 +441,13 @@ fn discogs_track_values(pt: &ProcessedTrack, place: crate::mediums::TrackPlace) 
             source: Catalog::Discogs,
             role: role.role.clone(),
         }));
-        for artist in discogs_track
-            .credits
-            .iter()
-            .filter_map(|credit| credit.artist.as_ref())
-        {
-            if seen_credit_ids.insert(artist.discogs_artist_id.clone()) {
-                credits.push(artist.clone());
+        for stated in crate::import::source_release::stated_credits(&discogs_track.credits) {
+            if seen_credit_ids.insert(stated.credit.discogs_artist_id.clone()) {
+                credits.push(stated);
             }
         }
     }
+    crate::credits::drop_last_join(&mut credits, |credit| &mut credit.join);
     TrackValues {
         title: pt.title.clone(),
         place,

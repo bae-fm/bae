@@ -15,6 +15,7 @@ fn clock() -> coven::FixedClock {
 
 fn credit(name: &str) -> ArtistCredit {
     ArtistCredit {
+        credited_as: None,
         name: name.to_string(),
         sort_name: None,
         musicbrainz_artist_id: None,
@@ -48,7 +49,7 @@ fn track(position: usize, title: &str) -> CandidateTrack {
 fn draft() -> CandidateDraft {
     CandidateDraft {
         album_title: " Album Title ".to_string(),
-        album_artist_assignments: vec![ArtistAssignment::named("Artist Name")],
+        album_artist_assignments: vec![crate::import::Credited::plain(ArtistAssignment::named("Artist Name"))],
         album_year: "1971".to_string(),
         pressing: RawPressingEdit {
             year: "2005".to_string(),
@@ -131,8 +132,8 @@ fn a_picked_artist_is_one_row_linked_as_itself() {
         discogs_artist_id: None,
     });
     let mut draft = draft();
-    draft.album_artist_assignments = vec![picked.clone()];
-    draft.tracks[0].edit.artist_assignments = TrackArtistAssignments::Explicit(vec![picked]);
+    draft.album_artist_assignments = vec![crate::import::Credited::plain(picked.clone())];
+    draft.tracks[0].edit.artist_assignments = TrackArtistAssignments::Explicit(vec![crate::import::Credited::plain(picked)]);
     let assembled = assemble(&draft);
     assert_eq!(assembled.picked, HashSet::from(["library-artist".to_string()]));
     assert_eq!(
@@ -154,15 +155,15 @@ fn a_picked_artist_is_one_row_linked_as_itself() {
 #[test]
 fn an_album_credited_to_various_artists_alone_is_a_compilation() {
     let mut draft = draft();
-    draft.album_artist_assignments = vec![ArtistAssignment::named("Various Artists")];
+    draft.album_artist_assignments = vec![crate::import::Credited::plain(ArtistAssignment::named("Various Artists"))];
     assert!(assemble(&draft).parsed.album.is_compilation);
 
     draft
         .album_artist_assignments
-        .push(ArtistAssignment::named("Artist Name"));
+        .push(crate::import::Credited::plain(ArtistAssignment::named("Artist Name")));
     assert!(!assemble(&draft).parsed.album.is_compilation);
 
-    draft.album_artist_assignments = vec![ArtistAssignment::named("Artist Name")];
+    draft.album_artist_assignments = vec![crate::import::Credited::plain(ArtistAssignment::named("Artist Name"))];
     assert!(!assemble(&draft).parsed.album.is_compilation);
 }
 

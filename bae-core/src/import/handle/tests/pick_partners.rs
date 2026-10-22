@@ -292,6 +292,7 @@ fn mb_release_json(release_id: &str, release_group_id: &str) -> String {
         packaging: None,
         barcode: None,
         artist_credit: vec![crate::musicbrainz::MbArtistCredit {
+            joinphrase: None,
             name: "Artist Name".to_string(),
             artist: Some(crate::musicbrainz::MbArtistRef {
                 id: Some("mb-artist-1".to_string()),

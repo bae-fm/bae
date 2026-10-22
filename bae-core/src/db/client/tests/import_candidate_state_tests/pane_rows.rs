@@ -57,13 +57,14 @@ fn edited_row(id: &str, title: &str, file: Option<AudioFile>) -> RawTrackEdit {
     RawTrackEdit {
         id: id.to_string(),
         title: title.to_string(),
-        artist_assignments: TrackArtistAssignments::Explicit(vec![credit_named("Artist Name")]),
+        artist_assignments: TrackArtistAssignments::Explicit(vec![crate::import::Credited::plain(credit_named("Artist Name"))]),
         file,
     }
 }
 
 fn credit_named(name: &str) -> ArtistAssignment {
     ArtistAssignment::Credit { credit: ArtistCredit {
+            credited_as: None,
             name: name.to_string(),
             sort_name: None,
             musicbrainz_artist_id: None,
@@ -143,7 +144,7 @@ fn metadata_draft(title: &str, artist: &str) -> RawReleaseEdit {
         album_artist_assignments: if artist.is_empty() {
             Vec::new()
         } else {
-            vec![credit_named(artist)]
+            vec![crate::import::Credited::plain(credit_named(artist))]
         },
         album_year: String::new(),
         pressing: RawPressingEdit {
@@ -728,13 +729,14 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
     let first = crate::import::PreparedArtistImage::Nothing {
         discogs_artist_id: "101".to_string(),
     };
-    draft.album_artist_assignments[0] = crate::import::ArtistAssignment::Credit { credit: crate::import::ArtistCredit {
+    draft.album_artist_assignments[0] = crate::import::Credited::plain(crate::import::ArtistAssignment::Credit { credit: crate::import::ArtistCredit {
+            credited_as: None,
             name: "Artist Name".to_string(),
             sort_name: None,
             musicbrainz_artist_id: None,
             discogs_artist_id: Some("101".to_string()),
         },
-    };
+    });
     let revision = crate::import::CandidatePreparations::new(db.clone())
         .apply_source(
             &host_root("/music"),
@@ -754,13 +756,14 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
         .await
         .unwrap();
 
-    draft.album_artist_assignments[0] = crate::import::ArtistAssignment::Credit { credit: crate::import::ArtistCredit {
+    draft.album_artist_assignments[0] = crate::import::Credited::plain(crate::import::ArtistAssignment::Credit { credit: crate::import::ArtistCredit {
+            credited_as: None,
             name: "Replacement Artist".to_string(),
             sort_name: None,
             musicbrainz_artist_id: None,
             discogs_artist_id: Some("202".to_string()),
         },
-    };
+    });
     let second = crate::import::PreparedArtistImage::Nothing {
         discogs_artist_id: "202".to_string(),
     };
@@ -792,6 +795,7 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
     );
 
     let third_assignment = crate::import::ArtistAssignment::Credit { credit: crate::import::ArtistCredit {
+            credited_as: None,
             name: "Edited Artist".to_string(),
             sort_name: None,
             musicbrainz_artist_id: None,
@@ -806,7 +810,7 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
             &host_root("/music"),
             &pane_candidate_path(),
             &as_read(&hash, revision),
-            &[third_assignment],
+            &[crate::import::Credited::plain(third_assignment)],
             std::slice::from_ref(&third),
         )
         .await
@@ -833,6 +837,7 @@ async fn preparation_round_trips_a_drafts_roles_works_and_their_answers() {
         discogs_artist_id: "role-artist".to_string(),
     };
     let credit = |name: &str, discogs: Option<&str>| crate::import::ArtistCredit {
+        credited_as: None,
         name: name.to_string(),
         sort_name: None,
         musicbrainz_artist_id: None,

@@ -48,12 +48,12 @@ async fn fixture_albums_land_in_the_order_they_were_added() {
         .get_artists_for_album(&newest_first[2].id)
         .await
         .unwrap();
-    assert_eq!(second_artists[0].id, first_artists[0].id);
+    assert_eq!(second_artists[0].artist.id, first_artists[0].artist.id);
 
     let third = &newest_first[0];
     let artists = manager.get_artists_for_album(&third.id).await.unwrap();
     assert_eq!(artists.len(), 1);
-    assert_eq!(artists[0].name, "Artist B");
+    assert_eq!(artists[0].artist.name, "Artist B");
     let release_id = manager.get_releases_for_album(&third.id).await.unwrap()[0]
         .id
         .clone();
@@ -84,7 +84,7 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
         .await
         .unwrap()
         .into_iter()
-        .map(|artist| artist.name)
+        .map(|artist| artist.artist.name)
         .collect();
     assert_eq!(credited, ["Artist A", "Artist B"]);
 

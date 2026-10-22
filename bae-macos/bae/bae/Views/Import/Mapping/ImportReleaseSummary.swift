@@ -20,10 +20,9 @@ struct ImportReleaseSummary {
             else {
                 values.albumTitle
             }
-        let artistNames = values.albumArtistAssignments.map(\.displayName)
         artist =
-            artistNames.isEmpty
-            ? nil : ListFormatter.localizedString(byJoining: artistNames)
+            values.albumArtistAssignments.isEmpty
+            ? nil : bridgeCreditLine(credits: values.albumArtistAssignments)
         let count = candidate.mapping.trackMappings.count
         let trackText = String(localized: "\(count) tracks")
         switch provenance {
@@ -53,10 +52,7 @@ struct ImportReleaseSummary {
         guard let summary = row.metadataSummary else { return nil }
         titleIsPlaceholder = summary.albumTitle.isEmpty
         title = summary.albumTitle.isEmpty ? "Album title" : summary.albumTitle
-        let artistNames = summary.albumArtistAssignments.map(\.displayName)
-        artist =
-            artistNames.isEmpty
-            ? nil : ListFormatter.localizedString(byJoining: artistNames)
+        artist = summary.albumArtists.isEmpty ? nil : summary.albumArtists
         factsLine = ""
         sourceAudio = nil
     }

@@ -329,7 +329,7 @@ impl LibraryManager {
         pin_states: Vec<bool>,
         originals: &crate::album_detail::OriginalsSeen,
     ) -> Result<AlbumDetail, LibraryError> {
-        let artist_names = join_artist_names(&raw.artists);
+        let artist_names = crate::credits::library_line(&raw.artists);
         let primary_release_id = raw.primary_release_id;
 
         let has_cloud_home = self.has_cloud_home();

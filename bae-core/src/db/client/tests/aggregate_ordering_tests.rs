@@ -241,7 +241,7 @@ async fn release_detail_orders_track_artists_and_keeps_tracks_without_artists() 
     let artist_names: Vec<&str> = detail.tracks[0]
         .artists
         .iter()
-        .map(|artist| artist.name.as_str())
+        .map(|artist| artist.artist.name.as_str())
         .collect();
     assert_eq!(
         artist_names,

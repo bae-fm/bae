@@ -29,8 +29,8 @@ mod candidate_edit_field;
 pub use candidate_edit_field::{CandidateEditField, DraftFieldEdit, PressingFactEdit};
 mod artist_assignment;
 pub use artist_assignment::{
-    artists_standing, ArtistAssignment, ArtistCredit, ArtistStanding, ArtistsStanding,
-    CreditResolution, ExistingArtist, ResolvedCredit,
+    artists_standing, credited_line, ArtistAssignment, ArtistCredit, ArtistStanding,
+    ArtistsStanding, CreditResolution, Credited, ExistingArtist, ResolvedCredit, SourceCredit,
 };
 mod raw_release_edit;
 pub use raw_release_edit::{
@@ -487,7 +487,7 @@ pub enum ReleaseReseed {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TrackArtistAssignments {
     AlbumArtists,
-    Explicit(Vec<ArtistAssignment>),
+    Explicit(Vec<Credited>),
 }
 
 /// Every field the edit-metadata sheet may change. Artist choices preserve
@@ -509,7 +509,7 @@ pub enum TrackArtistAssignments {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseUserEdit {
     pub album_title: String,
-    pub album_artist_assignments: Vec<ArtistAssignment>,
+    pub album_artist_assignments: Vec<Credited>,
     pub album_year: Option<i32>,
     /// The pressing the edit claims: either the whole of a picked release's,
     /// or [`crate::pressing::Pressing::blank()`] filled in with what the person knows (file
@@ -591,11 +591,7 @@ impl ReleaseUserEdit {
     /// writing whatever it was handed. Idempotent.
     pub fn normalized(mut self) -> Self {
         self.album_title = self.album_title.trim().to_string();
-        self.album_artist_assignments = self
-            .album_artist_assignments
-            .into_iter()
-            .map(ArtistAssignment::normalized)
-            .collect();
+        self.album_artist_assignments = Credited::normalized_list(self.album_artist_assignments);
         for track in &mut self.tracks {
             track.title = track.title.trim().to_string();
             track.artist_assignments.normalize();
@@ -631,7 +627,7 @@ impl ReleaseUserEdit {
                     }),
             )
         {
-            if assignment.is_blank() {
+            if assignment.artist.is_blank() {
                 return Err(EditValidationError::EmptyArtistName);
             }
         }
@@ -641,19 +637,18 @@ impl ReleaseUserEdit {
 
 impl TrackArtistAssignments {
     /// The track's own artists; none when it takes the album's.
-    pub fn explicit(&self) -> &[ArtistAssignment] {
+    pub fn explicit(&self) -> &[Credited] {
         match self {
             Self::AlbumArtists => &[],
             Self::Explicit(assignments) => assignments,
         }
     }
 
-    fn normalize(&mut self) {
+    /// Each credit normalized and the joins kept as stored (see
+    /// [`Credited::normalized_list`]).
+    pub(crate) fn normalize(&mut self) {
         if let Self::Explicit(assignments) = self {
-            *assignments = std::mem::take(assignments)
-                .into_iter()
-                .map(ArtistAssignment::normalized)
-                .collect();
+            *assignments = Credited::normalized_list(std::mem::take(assignments));
         }
     }
 }

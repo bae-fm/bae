@@ -21,7 +21,7 @@ use super::*;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct RawReleaseEdit {
     pub album_title: String,
-    pub album_artist_assignments: Vec<ArtistAssignment>,
+    pub album_artist_assignments: Vec<Credited>,
     pub album_year: String,
     pub pressing: RawPressingEdit,
     pub tracks: Vec<RawTrackEdit>,
@@ -58,7 +58,7 @@ impl RawReleaseEdit {
                     .iter()
                     .flat_map(|track| track.artist_assignments.explicit()),
             )
-            .filter_map(ArtistAssignment::credit)
+            .filter_map(|credited| credited.artist.credit())
     }
 }
 

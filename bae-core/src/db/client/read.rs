@@ -23,23 +23,109 @@ pub(super) fn find_album_by_id_on(
 pub(super) fn get_artists_for_album_on(
     sql: &SqlReadContext<'_>,
     album_id: &str,
-) -> Result<Vec<DbArtist>, DbError> {
+) -> Result<Vec<LibraryCredit>, DbError> {
     // Each credit in list order, showing the artist it resolves to after
     // merges; a list naming one artist twice gives it twice.
     sql.query(
         &format!(
             r#"
-            SELECT a.* FROM album_artists aa
-            JOIN artists a ON a.id = {shown}
-            WHERE aa.album_id = ?1
-            ORDER BY aa.position
+            SELECT {columns} FROM album_artists credit
+            JOIN artists artist ON artist.id = {shown}
+            LEFT JOIN artist_credits credit_name
+                ON credit_name.artist_id = credit.artist_id
+               AND credit_name.name_key = credit.credit_key
+            WHERE credit.album_id = ?1
+            ORDER BY credit.position
             "#,
-            shown = shown_artist_id("aa.artist_id"),
+            columns = LIBRARY_CREDIT_COLUMNS,
+            shown = shown_artist_id("credit.artist_id"),
         ),
         params![album_id],
-        row_to_artist,
+        row_to_library_credit,
     )
     .map_err(DbError::from)
+}
+
+/// What [`row_to_library_credit`] reads, from a query joining the credit row
+/// as `credit`, its shown artist as `artist` and its credit name, if any, as
+/// `credit_name`.
+pub(super) const LIBRARY_CREDIT_COLUMNS: &str = "artist.id AS artist_id, \
+     artist.name AS artist_name, artist.sort_name AS artist_sort_name, \
+     artist.discogs_artist_id AS artist_discogs_artist_id, \
+     artist.musicbrainz_artist_id AS artist_musicbrainz_artist_id, \
+     artist.created_at AS artist_created_at, \
+     credit_name.name_key AS credit_key, credit_name.name AS credit_name, \
+     credit.join_phrase AS credit_join";
+
+pub(super) fn row_to_library_credit(row: &Row) -> rusqlite::Result<LibraryCredit> {
+    Ok(LibraryCredit {
+        artist: row_to_artist_with_prefix(row, "artist_")?,
+        credit: match row.get::<_, Option<String>>("credit_key")? {
+            Some(key) => Some(crate::credits::CreditName {
+                key,
+                name: row.get("credit_name")?,
+            }),
+            None => None,
+        },
+        join: row.get("credit_join")?,
+    })
+}
+
+/// One credit as [`super::query::album_credits_json_sql`] spells it.
+#[derive(serde::Deserialize)]
+struct CreditJson {
+    id: String,
+    name: String,
+    sort_name: Option<String>,
+    discogs_artist_id: Option<String>,
+    musicbrainz_artist_id: Option<String>,
+    created_at: String,
+    credit_key: Option<String>,
+    credit_name: Option<String>,
+    join: Option<String>,
+}
+
+/// The credits a JSON column of [`super::query::album_credits_json_sql`] or
+/// [`super::query::track_credits_json_sql`] holds, in list order.
+pub(super) fn credits_from_json(json: &str) -> Result<Vec<LibraryCredit>, DbError> {
+    let credits: Vec<CreditJson> = serde_json::from_str(json)
+        .map_err(|error| DbError::Message(format!("credit list {json:?}: {error}")))?;
+    credits
+        .into_iter()
+        .map(|credit| {
+            let created_at = DateTime::parse_from_rfc3339(&credit.created_at)
+                .map_err(|error| {
+                    DbError::Message(format!(
+                        "artist {} created_at {:?}: {error}",
+                        credit.id, credit.created_at
+                    ))
+                })?
+                .with_timezone(&Utc);
+            Ok(LibraryCredit {
+                artist: DbArtist {
+                    id: credit.id,
+                    name: credit.name,
+                    sort_name: credit.sort_name,
+                    discogs_artist_id: credit.discogs_artist_id,
+                    musicbrainz_artist_id: credit.musicbrainz_artist_id,
+                    created_at,
+                },
+                credit: match (credit.credit_key, credit.credit_name) {
+                    (Some(key), Some(name)) => Some(crate::credits::CreditName { key, name }),
+                    _ => None,
+                },
+                join: credit.join,
+            })
+        })
+        .collect()
+}
+
+/// The line a credit-list JSON column prints, read in a row closure.
+pub(super) fn credit_line_column(row: &Row, column: &str) -> rusqlite::Result<String> {
+    let json: String = row.get(column)?;
+    credits_from_json(&json)
+        .map(|credits| crate::credits::library_line(&credits))
+        .map_err(|error| column_conversion_error(row, column, error.to_string()))
 }
 
 pub(super) fn find_release_by_id_on(
@@ -139,7 +225,7 @@ pub(super) fn unstored_audio_in_row(
 pub(super) struct ReleaseDetailRows {
     pub(super) release: DbRelease,
     mediums: DbReleaseMediums,
-    tracks: Vec<(DbTrack, Option<DbArtist>)>,
+    tracks: Vec<(DbTrack, Option<LibraryCredit>)>,
     files: Vec<DbFile>,
     audio_formats: Vec<DbAudioFormat>,
     audio_segments: Vec<DbAudioSegment>,
@@ -168,7 +254,7 @@ impl ReleaseDetailRows {
 pub(super) fn get_tracks_with_artists_for_release_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
-) -> Result<Vec<(DbTrack, Option<DbArtist>)>, DbError> {
+) -> Result<Vec<(DbTrack, Option<LibraryCredit>)>, DbError> {
     let query = format!(
         "SELECT
             track.id AS track_id,
@@ -179,33 +265,31 @@ pub(super) fn get_tracks_with_artists_for_release_on(
             track.track_number AS track_track_number,
             track.duration_ms AS track_duration_ms,
             track.created_at AS track_created_at,
-            artist.id AS artist_id,
-            artist.name AS artist_name,
-            artist.sort_name AS artist_sort_name,
-            artist.discogs_artist_id AS artist_discogs_artist_id,
-            artist.musicbrainz_artist_id AS artist_musicbrainz_artist_id,
-            artist.created_at AS artist_created_at
+            {LIBRARY_CREDIT_COLUMNS}
          FROM tracks track
-         LEFT JOIN track_artists ta ON ta.track_id = track.id
+         LEFT JOIN track_artists credit ON credit.track_id = track.id
          LEFT JOIN artists artist ON artist.id = {}
+         LEFT JOIN artist_credits credit_name
+             ON credit_name.artist_id = credit.artist_id
+            AND credit_name.name_key = credit.credit_key
          WHERE track.release_id = ?
-         ORDER BY track.position, track.id, ta.position",
-        shown_artist_id("ta.artist_id")
+         ORDER BY track.position, track.id, credit.position",
+        shown_artist_id("credit.artist_id")
     );
     let joined = sql.query(&query, params![release_id], |row| {
         let track = row_to_track_with_prefix(row, "track_")?;
         let artist_id: Option<String> = row.get("artist_id")?;
-        let artist = match artist_id {
-            Some(_) => Some(row_to_artist_with_prefix(row, "artist_")?),
+        let credit = match artist_id {
+            Some(_) => Some(row_to_library_credit(row)?),
             None => None,
         };
-        Ok((track, artist))
+        Ok((track, credit))
     })?;
 
     Ok(joined)
 }
 
-fn process_tracks(joined: Vec<(DbTrack, Option<DbArtist>)>) -> Vec<DbTrackWithArtists> {
+fn process_tracks(joined: Vec<(DbTrack, Option<LibraryCredit>)>) -> Vec<DbTrackWithArtists> {
     let mut tracks: Vec<DbTrackWithArtists> = Vec::new();
     for (track, artist) in joined {
         if tracks.last().map(|last| last.track.id.as_str()) != Some(track.id.as_str()) {
@@ -214,15 +298,12 @@ fn process_tracks(joined: Vec<(DbTrack, Option<DbArtist>)>) -> Vec<DbTrackWithAr
                 artists: Vec::new(),
             });
         }
-        if let Some(artist) = artist {
-            let artists = &mut tracks
+        if let Some(credit) = artist {
+            tracks
                 .last_mut()
                 .expect("the row's track was just pushed")
-                .artists;
-            // Two credits can resolve to one artist after a merge.
-            if !artists.iter().any(|credited| credited.id == artist.id) {
-                artists.push(artist);
-            }
+                .artists
+                .push(credit);
         }
     }
 
@@ -662,7 +743,7 @@ pub(super) fn row_to_release_storage_summary(
         release_id,
         album_id: row.get("album_id")?,
         album_title: row.get("album_title")?,
-        artist_names: row.get("artist_names")?,
+        artist_names: credit_line_column(row, "artist_names")?,
         media: super::pressing_columns::read_media(row, "media")?,
         remote: row.get("remote")?,
         any_file_id: row.get("any_file_id")?,

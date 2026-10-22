@@ -215,7 +215,7 @@ impl SaveService {
         let sample_rate = plans[0].audio_meta.audio_format.sample_rate.get();
         let channels = plans[0].audio_meta.audio_format.channels.get();
         let release_title = plans[0].resolved.tags.album.clone();
-        let release_performer = plans[0].resolved.tags.artist.clone();
+        let release_performer = plans[0].resolved.tags.album_artist.clone();
         let year = plans[0].resolved.tags.year;
         let cue_file_type = cue_file_type(&preset.codec)?;
         let audio_filename = output_audio_path
@@ -234,6 +234,7 @@ impl SaveService {
         let tags = crate::library::manager::SaveTags {
             title: release_title.clone(),
             artist: release_performer.clone(),
+            album_artist: release_performer.clone(),
             album: release_title.clone(),
             year,
             disc: None,
@@ -643,6 +644,7 @@ fn write_tags(
     let mut tag = Tag::new(tag_type);
     tag.set_title(tags.title.clone());
     tag.set_artist(tags.artist.clone());
+    tag.insert_text(ItemKey::AlbumArtist, tags.album_artist.clone());
     tag.set_album(tags.album.clone());
 
     if let Some(year) = tags.year {

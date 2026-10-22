@@ -11,7 +11,9 @@ use bae_core::library::{AppServices, LibraryError};
 
 use crate::error::SubError;
 use crate::id::SubId;
-use crate::model::{album_wire_id, artist_wire_id, track_wire_id, AlbumId3, ArtistId3, Child};
+use crate::model::{
+    album_wire_id, artist_wire_id, track_wire_id, AlbumId3, ArtistId3, Child, CreditedArtist,
+};
 
 /// A library error is opaque to a Subsonic client — surface it as a generic
 /// error (code 0) carrying the message.
@@ -95,11 +97,11 @@ pub(crate) async fn release_album_id3_with(
         id: album_wire_id(&release.id),
         name: album.album.title.clone(),
         artist: Some(album.artist_names.clone()),
-        // The protocol names one artist per album: the first credit.
         artist_id: album
             .artists
             .first()
-            .map(|artist| artist_wire_id(&artist.id)),
+            .map(|credit| artist_wire_id(&credit.artist.id)),
+        artists: CreditedArtist::of(&album.artists),
         cover_art,
         song_count: tracks.len() as i64,
         duration: total_duration_secs(&tracks),
@@ -199,24 +201,14 @@ pub(crate) async fn track_child(
 ) -> Result<Child, SubError> {
     let audio = resolve_audio_fields(services, &track.id, Some(files)).await?;
 
-    let artists = services
-        .get_artists_for_track(&track.id)
-        .await
-        .map_err(lib_err)?;
-    let (artist_name, artist_id) = match artists.first() {
-        Some(artist) => (
-            Some(join_artist_names(&artists)),
-            Some(artist_wire_id(&artist.id)),
-        ),
-        None => (None, None),
-    };
+    let credits = shown_track_credits(services, &track.id, &release.album_id).await?;
 
     Ok(Child {
         id: track_wire_id(&track.id),
         parent: Some(album_wire_id(&release.id)),
         title: track.title.clone(),
         album: Some(album_title.to_string()),
-        artist: artist_name,
+        artist: Some(bae_core::credits::library_line(&credits)).filter(|line| !line.is_empty()),
         track: Some(track.track_number.get()),
         year: release.pressing.year,
         cover_art,
@@ -228,7 +220,10 @@ pub(crate) async fn track_child(
         disc_number: mediums.disc_number(track),
         created: Some(track.created_at.to_rfc3339()),
         album_id: Some(album_wire_id(&release.id)),
-        artist_id,
+        artist_id: credits
+            .first()
+            .map(|credit| artist_wire_id(&credit.artist.id)),
+        artists: CreditedArtist::of(&credits),
         bit_depth: audio.bit_depth,
         sampling_rate: audio.sampling_rate,
         channel_count: audio.channel_count,
@@ -254,6 +249,7 @@ pub(crate) async fn search_track_child(
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
     let cover_art = release_cover_art(services, &audio.release_id).await?;
+    let credits = shown_track_credits(services, track_id, &release.album_id).await?;
 
     Ok(Child {
         id: track_wire_id(track_id),
@@ -272,7 +268,10 @@ pub(crate) async fn search_track_child(
         disc_number: None,
         created: None,
         album_id: Some(album_wire_id(&audio.release_id)),
-        artist_id: None,
+        artist_id: credits
+            .first()
+            .map(|credit| artist_wire_id(&credit.artist.id)),
+        artists: CreditedArtist::of(&credits),
         bit_depth: audio.bit_depth,
         sampling_rate: audio.sampling_rate,
         channel_count: audio.channel_count,
@@ -321,11 +320,21 @@ fn file_suffix(filename: &str) -> String {
         .unwrap_or_default()
 }
 
-/// Join artist display names the way bae does elsewhere: comma-separated.
-fn join_artist_names(artists: &[bae_core::db::DbArtist]) -> String {
-    artists
-        .iter()
-        .map(|a| a.name.as_str())
-        .collect::<Vec<_>>()
-        .join(", ")
+/// The credits a song shows: the track's own, else its album's.
+async fn shown_track_credits(
+    services: &AppServices,
+    track_id: &str,
+    album_id: &str,
+) -> Result<Vec<bae_core::credits::LibraryCredit>, SubError> {
+    let own = services
+        .get_artists_for_track(track_id)
+        .await
+        .map_err(lib_err)?;
+    if !own.is_empty() {
+        return Ok(own);
+    }
+    services
+        .get_artists_for_album(album_id)
+        .await
+        .map_err(lib_err)
 }

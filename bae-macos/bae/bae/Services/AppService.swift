@@ -50,6 +50,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
 
     private let previewAudio: PreviewAudio
     private let releaseEditor: ReleaseEditor
+    private let artistEditor: ArtistEditor
     private let importer: Importer
     private let outputs: Outputs
     private let discogs: Discogs
@@ -112,6 +113,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             handle: appHandle,
             outboxStore: outboxStore
         )
+        artistEditor = ArtistEditor(handle: appHandle)
         self.importer = importer
         outputs = Outputs(handle: appHandle)
         discogs = Discogs(handle: appHandle)
@@ -214,6 +216,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             .environment(settingsNavigation)
             .environment(previewAudio)
             .environment(releaseEditor)
+            .environment(artistEditor)
             .environment(importer)
             .environment(outputs)
             .environment(discogs)

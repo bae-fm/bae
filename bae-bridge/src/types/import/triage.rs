@@ -617,7 +617,8 @@ pub struct BridgeMatchedRelease {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTriageMetadataSummary {
     pub album_title: String,
-    pub album_artist_assignments: Vec<BridgeArtistAssignment>,
+    /// The draft's album credits, printed as one line.
+    pub album_artists: String,
 }
 
 /// Where a candidate's draft was read from.

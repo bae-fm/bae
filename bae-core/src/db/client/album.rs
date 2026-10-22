@@ -537,27 +537,31 @@ fn search_library_on(
                    {artist_names} AS artist_name
             FROM albums a
             WHERE {ALBUM_A_IS_SHOWN}
-              AND (a.title LIKE ? ESCAPE '\'
+              AND (a.title LIKE ?1 ESCAPE '\'
                OR EXISTS (
                    SELECT 1 FROM album_artists search_credit
                    JOIN artists search_artist ON search_artist.id = {shown}
+                   LEFT JOIN artist_credits search_name
+                       ON search_name.artist_id = search_credit.artist_id
+                      AND search_name.name_key = search_credit.credit_key
                    WHERE search_credit.album_id = a.id
-                     AND search_artist.name LIKE ? ESCAPE '\'
+                     AND (search_artist.name LIKE ?1 ESCAPE '\'
+                       OR search_name.name LIKE ?1 ESCAPE '\')
                ))
             ORDER BY a.title
-            LIMIT ?
+            LIMIT ?2
             "#,
         primary_release = album_primary_release_sql(),
-        artist_names = album_artist_names_sql(),
+        artist_names = album_credits_json_sql(),
         shown = shown_artist_id("search_credit.artist_id"),
     );
-    let albums = sql.query(&album_query, params![pattern, pattern, limit], |row| {
+    let albums = sql.query(&album_query, params![pattern, limit], |row| {
         Ok(AlbumSearchRow {
             id: row.get("id")?,
             title: row.get("title")?,
             year: row.get("year")?,
             primary_release_id: row.get("primary_release_id")?,
-            artist_name: row.get("artist_name")?,
+            artist_name: credit_line_column(row, "artist_name")?,
         })
     })?;
     let tracks = sql.query(
@@ -572,7 +576,7 @@ fn search_library_on(
             ORDER BY t.title
             LIMIT ?
             "#,
-            track_artist_names_sql("t")
+            track_credits_json_sql("t")
         ),
         params![pattern, limit],
         |row| {
@@ -583,7 +587,7 @@ fn search_library_on(
                 release_id: row.get("release_id")?,
                 album_id: row.get("album_id")?,
                 album_title: row.get("album_title")?,
-                artist_name: row.get("artist_name")?,
+                artist_name: credit_line_column(row, "artist_name")?,
             })
         },
     )?;
@@ -701,7 +705,7 @@ fn find_album_detail_on(
 #[derive(Clone, PartialEq)]
 struct AlbumDetailRows {
     album: DbAlbum,
-    artists: Vec<DbArtist>,
+    artists: Vec<LibraryCredit>,
     releases: Vec<ReleaseDetailRows>,
     primary_release_id: String,
 }

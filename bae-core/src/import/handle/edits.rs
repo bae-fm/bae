@@ -115,7 +115,7 @@ impl ImportServiceHandle {
     pub async fn set_candidate_album_artists(
         &self,
         candidate_key: &str,
-        assignments: Vec<crate::import::ArtistAssignment>,
+        assignments: Vec<crate::import::Credited>,
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.to_string();
@@ -129,8 +129,9 @@ impl ImportServiceHandle {
     async fn set_candidate_album_artists_write(
         &self,
         candidate_key: &str,
-        assignments: Vec<crate::import::ArtistAssignment>,
+        assignments: Vec<crate::import::Credited>,
     ) -> Result<(), crate::import::ImportError> {
+        let assignments = crate::import::Credited::normalized_list(assignments);
         let replacement = assignments.clone();
         let prepared = self
             .prepared_artist_edit(candidate_key, move |draft| {
@@ -175,8 +176,9 @@ impl ImportServiceHandle {
     async fn set_candidate_track_edit_write(
         &self,
         candidate_key: &str,
-        track: crate::import::RawTrackEdit,
+        mut track: crate::import::RawTrackEdit,
     ) -> Result<(), crate::import::ImportError> {
+        track.artist_assignments.normalize();
         let replacement = track.clone();
         let prepared = self
             .prepared_artist_edit(candidate_key, move |draft| {

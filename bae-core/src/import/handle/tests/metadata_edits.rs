@@ -32,7 +32,7 @@ async fn assert_every_mutation_refused(
         handle
             .set_candidate_album_artists(
                 key,
-                vec![crate::import::ArtistAssignment::named("Blocked artist")],
+                vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Blocked artist"))],
             )
             .await
             .map(drop),
@@ -165,7 +165,7 @@ async fn album_artist_assignments_preserve_existing_and_new_artist_choices() {
     ];
 
     handle
-        .set_candidate_album_artists(&key, assignments.clone())
+        .set_candidate_album_artists(&key, crate::import::Credited::plain_list(assignments.clone()))
         .await
         .unwrap();
 
@@ -174,7 +174,7 @@ async fn album_artist_assignments_preserve_existing_and_new_artist_choices() {
             .await
             .metadata_draft
             .album_artist_assignments,
-        assignments
+        crate::import::Credited::plain_list(assignments)
     );
     shut_down(handle).await;
 }
@@ -232,7 +232,7 @@ async fn an_edited_track_row_redraws_alone() {
             crate::import::RawTrackEdit {
                 title: "Renamed".to_string(),
                 artist_assignments: crate::import::TrackArtistAssignments::Explicit(vec![
-                    crate::import::ArtistAssignment::named("Someone"),
+                    crate::import::Credited::plain(crate::import::ArtistAssignment::named("Someone")),
                 ]),
                 ..first.clone()
             },
@@ -246,7 +246,7 @@ async fn an_edited_track_row_redraws_alone() {
     assert_eq!(
         after[0].artist_assignments,
         crate::import::TrackArtistAssignments::Explicit(vec![
-            crate::import::ArtistAssignment::named("Someone")
+            crate::import::Credited::plain(crate::import::ArtistAssignment::named("Someone"))
         ])
     );
     assert_eq!(
@@ -323,13 +323,14 @@ async fn a_track_edit_that_keeps_artist_ids_keeps_the_prepared_artist_image() {
         .unwrap()
         .expect("the picked candidate has prepared metadata");
     let mut draft = preparation.draft;
-    draft.album_artist_assignments = vec![crate::import::ArtistAssignment::Credit { credit: crate::import::ArtistCredit {
+    draft.album_artist_assignments = vec![crate::import::Credited::plain(crate::import::ArtistAssignment::Credit { credit: crate::import::ArtistCredit {
+            credited_as: None,
             name: "Artist Name".to_string(),
             sort_name: None,
             musicbrainz_artist_id: None,
             discogs_artist_id: Some("discogs-artist".to_string()),
         },
-    }];
+    })];
     let image = crate::import::PreparedArtistImage::Image {
         discogs_artist_id: "discogs-artist".to_string(),
         source_url: "https://images.example/artist.jpg".to_string(),
@@ -481,7 +482,7 @@ async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by
         .await
         .unwrap()
         .into_iter()
-        .find(|artist| artist.discogs_artist_id.as_deref() == Some(&prepared_artist_id))
+        .find(|artist| artist.artist.discogs_artist_id.as_deref() == Some(&prepared_artist_id))
         .expect("the imported track retains the prepared Discogs artist");
     let artist_search = handle
         .library_manager
@@ -492,7 +493,7 @@ async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by
         .await
         .unwrap()
         .into_iter()
-        .find(|result| result.artist.id == artist.id)
+        .find(|result| result.artist.id == artist.artist.id)
         .expect("the imported track artist is searchable");
     let image = artist_search
         .image
@@ -517,7 +518,7 @@ async fn import_admission_refuses_an_incomplete_candidate_revision() {
         .preparations
         .set_album_artists(
             &hash,
-            &[crate::import::ArtistAssignment::named("Changed Artist")],
+            &[crate::import::Credited::plain(crate::import::ArtistAssignment::named("Changed Artist"))],
         )
         .await
         .unwrap();
@@ -575,7 +576,7 @@ async fn editing_a_candidate_preserves_its_imported_copy() {
     handle
         .set_candidate_album_artists(
             &key,
-            vec![crate::import::ArtistAssignment::named("Fixture Artist")],
+            vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Fixture Artist"))],
         )
         .await
         .unwrap();
@@ -675,7 +676,7 @@ async fn track_artist_assignments_fill_across_named_rows() {
     let before = track_rows(&pane(&handle, &key).await.mapping);
     let target_ids = before.iter().map(|track| track.id.clone()).collect();
     let assignments = crate::import::TrackArtistAssignments::Explicit(vec![
-        crate::import::ArtistAssignment::named("Filled Artist"),
+        crate::import::Credited::plain(crate::import::ArtistAssignment::named("Filled Artist")),
     ]);
 
     handle

@@ -30,7 +30,7 @@
 //! (covers, pin state, cloud-home presence) and hands that in, so the derivation
 //! lives with the type it produces.
 
-use crate::db::{DbArtist, LibraryImageType};
+use crate::db::LibraryImageType;
 
 mod album;
 mod artist;
@@ -52,16 +52,6 @@ pub use release::*;
 pub use search::*;
 pub use source_audio::*;
 pub use storage::*;
-
-/// Comma-join artist names for display. Shared by the `from_raw` projections
-/// (track/album/release artist lists) and by the export path.
-pub(crate) fn join_artist_names(artists: &[DbArtist]) -> String {
-    artists
-        .iter()
-        .map(|a| a.name.as_str())
-        .collect::<Vec<_>>()
-        .join(", ")
-}
 
 /// What a release is called where a list of an album's releases names it.
 /// Each surface words it in the reader's language.

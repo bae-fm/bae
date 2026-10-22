@@ -13,7 +13,7 @@ pub struct AlbumDetail {
     pub album: DbAlbum,
     /// The album's credits in list order, each the artist it shows after
     /// merges.
-    pub artists: Vec<crate::db::DbArtist>,
+    pub artists: Vec<crate::credits::LibraryCredit>,
     /// Comma-joined artist names for display.
     pub artist_names: String,
     pub releases: Vec<ReleaseDetail>,

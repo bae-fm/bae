@@ -266,7 +266,7 @@ fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
     assert_eq!(crate::import::release_values::value_labels(&parsed), ["1", "2", "3"]);
     assert_eq!(parsed.album_title, "Album Title");
     assert_eq!(parsed.album_year, Some(1970));
-    assert_eq!(parsed.album_credits[0].name, "Artist Name");
+    assert_eq!(parsed.album_credits[0].credit.name, "Artist Name");
 }
 
 fn cue_track(number: u32, title: &str) -> crate::cue_flac::CueTrack {
@@ -425,7 +425,7 @@ fn flac_with_vorbis_comments_basic() {
         parsed
             .album_credits
             .iter()
-            .map(|credit| credit.name.as_str())
+            .map(|credit| credit.credit.name.as_str())
             .collect::<Vec<_>>(),
         ["Artist Name"],
         "single artist for whole album"
@@ -434,7 +434,7 @@ fn flac_with_vorbis_comments_basic() {
     // the album artist (as the catalogs' readers credit each track).
     assert!(parsed.tracks.iter().all(|track| matches!(
         &track.credits,
-        TrackCredits::Own(credits) if credits.len() == 1 && credits[0].name == "Artist Name"
+        TrackCredits::Own(credits) if credits.len() == 1 && credits[0].credit.name == "Artist Name"
     )));
 }
 
@@ -543,7 +543,7 @@ fn flac_per_track_artist_emits_junction_row() {
     let track_artist = |index: usize| match &parsed.tracks[index].credits {
         TrackCredits::Own(credits) => credits
             .iter()
-            .map(|credit| credit.name.as_str())
+            .map(|credit| credit.credit.name.as_str())
             .collect::<Vec<_>>(),
         TrackCredits::AlbumArtists => Vec::new(),
     };
@@ -557,7 +557,7 @@ fn flac_per_track_artist_emits_junction_row() {
         parsed
             .album_credits
             .iter()
-            .map(|credit| credit.name.as_str())
+            .map(|credit| credit.credit.name.as_str())
             .collect::<Vec<_>>(),
         ["Album Artist", "Featured Artist"]
     );
@@ -766,7 +766,7 @@ fn album_and_artist_fallback_ladder() {
         // The first album credit is the album artist; a divergent per-track
         // ARTIST may add a second, which isn't the ladder's concern here.
         assert_eq!(
-            parsed.album_credits[0].name, row.expect_artist,
+            parsed.album_credits[0].credit.name, row.expect_artist,
             "artist for {}",
             row.name
         );

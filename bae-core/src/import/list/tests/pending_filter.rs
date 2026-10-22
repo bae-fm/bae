@@ -11,7 +11,7 @@ fn drafted(state: CandidateStateListRow) -> CandidateStateListRow {
     CandidateStateListRow {
         metadata_summary: Some(crate::import::TriageMetadataSummary {
             album_title: "Album".to_string(),
-            album_artist_assignments: vec![crate::import::ArtistAssignment::named("Artist")],
+            album_artists: "Artist".to_string(),
         }),
         ..state
     }

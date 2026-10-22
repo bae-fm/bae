@@ -121,9 +121,7 @@ struct ArtistAssignmentsSummaryTests {
             )
         )
 
-        #expect(
-            summary.names == ListFormatter.localizedString(byJoining: names)
-        )
+        #expect(summary.names == names.joined(separator: ", "))
         #expect(summary.identityLabel == "Library")
     }
 
@@ -137,10 +135,38 @@ struct ArtistAssignmentsSummaryTests {
             )
         )
 
-        #expect(
-            summary.names == ListFormatter.localizedString(byJoining: names)
-        )
+        #expect(summary.names == names.joined(separator: ", "))
         #expect(summary.identityLabel == "New")
+    }
+
+    @Test("a credit list prints each credit's printed name and join")
+    func creditLineSummary() throws {
+        let summary = try #require(
+            ArtistAssignmentsSummary(
+                assignments: [
+                    BridgeCredited(
+                        artist: .picked(
+                            artist: BridgeExistingArtist(
+                                artistId: "a-1",
+                                name: "First Artist",
+                                sortName: nil,
+                                musicbrainzArtistId: nil,
+                                discogsArtistId: nil
+                            ),
+                            credit: BridgeCreditName(
+                                key: "first alias",
+                                name: "First Alias"
+                            )
+                        ),
+                        join: " feat. "
+                    ),
+                    PreviewData.artistCredit("Second Artist"),
+                ],
+                resolutions: [PreviewData.resolvedCredit("Second Artist", .new)]
+            )
+        )
+
+        #expect(summary.names == "First Alias feat. Second Artist")
     }
 
     @Test("a mixed set counts the artists new to the library")
@@ -162,12 +188,7 @@ struct ArtistAssignmentsSummaryTests {
 
         #expect(
             summary.names
-                == ListFormatter.localizedString(
-                    byJoining: [
-                        "First Artist", "Second Artist", "Third Artist",
-                        "Fourth Artist",
-                    ]
-                )
+                == "First Artist, Second Artist, Third Artist, Fourth Artist"
         )
         #expect(summary.identityLabel == "2 new")
     }
@@ -184,7 +205,8 @@ extension PreviewData {
                 name: name,
                 sortName: nil,
                 musicbrainzArtistId: nil,
-                discogsArtistId: nil
+                discogsArtistId: nil,
+                creditedAs: nil
             ),
             resolution: resolution
         )

@@ -268,9 +268,9 @@ async fn release_metadata_edit_preserves_records_and_audio() {
             &release.id,
             &crate::import::ReleaseUserEdit {
                 album_title: "Edited Album".to_string(),
-                album_artist_assignments: vec![crate::import::ArtistAssignment::named(
+                album_artist_assignments: vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named(
                     "Edited Album Artist",
-                )],
+                ))],
                 album_year: Some(1984),
                 pressing: crate::pressing::Pressing {
                     year: Some(1991),
@@ -281,7 +281,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
                 tracks: vec![crate::import::TrackUserEdit {
                     title: "Edited Track".to_string(),
                     artist_assignments: crate::import::TrackArtistAssignments::Explicit(vec![
-                        crate::import::ArtistAssignment::named("Edited Track Artist"),
+                        crate::import::Credited::plain(crate::import::ArtistAssignment::named("Edited Track Artist")),
                     ]),
                     file: None,
                 }],
@@ -325,7 +325,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
             .await
             .unwrap()
             .into_iter()
-            .map(|artist| artist.name)
+            .map(|artist| artist.artist.name)
             .collect::<Vec<_>>(),
         vec!["Edited Track Artist"]
     );
@@ -340,8 +340,8 @@ async fn a_named_album_artist_already_in_the_library_is_linked() {
     let edit = crate::import::ReleaseUserEdit {
         album_title: "Album Title".to_string(),
         album_artist_assignments: vec![
-            crate::import::ArtistAssignment::named("Album Artist One"),
-            crate::import::ArtistAssignment::named("Album Artist Two"),
+            crate::import::Credited::plain(crate::import::ArtistAssignment::named("Album Artist One")),
+            crate::import::Credited::plain(crate::import::ArtistAssignment::named("Album Artist Two")),
         ],
         album_year: None,
         pressing: crate::pressing::Pressing::blank(),
@@ -365,7 +365,7 @@ async fn a_named_album_artist_already_in_the_library_is_linked() {
     assert_eq!(
         artists
             .into_iter()
-            .map(|artist| artist.name)
+            .map(|artist| artist.artist.name)
             .collect::<Vec<_>>(),
         vec!["Album Artist One", "Album Artist Two"]
     );
@@ -379,9 +379,9 @@ async fn an_album_credit_list_naming_one_artist_twice_keeps_both_credits() {
     let edit = crate::import::ReleaseUserEdit {
         album_title: "Album Title".to_string(),
         album_artist_assignments: vec![
-            crate::import::ArtistAssignment::named("Album Artist One"),
-            crate::import::ArtistAssignment::named("Album Artist Two"),
-            crate::import::ArtistAssignment::named("Album Artist One"),
+            crate::import::Credited::plain(crate::import::ArtistAssignment::named("Album Artist One")),
+            crate::import::Credited::plain(crate::import::ArtistAssignment::named("Album Artist Two")),
+            crate::import::Credited::plain(crate::import::ArtistAssignment::named("Album Artist One")),
         ],
         album_year: None,
         pressing: crate::pressing::Pressing::blank(),
@@ -397,11 +397,11 @@ async fn an_album_credit_list_naming_one_artist_twice_keeps_both_credits() {
     assert_eq!(
         artists
             .iter()
-            .map(|artist| artist.name.as_str())
+            .map(|artist| artist.artist.name.as_str())
             .collect::<Vec<_>>(),
         vec!["Album Artist One", "Album Artist Two", "Album Artist One"]
     );
-    assert_eq!(artists[0].id, artists[2].id, "one library artist, credited twice");
+    assert_eq!(artists[0].artist.id, artists[2].artist.id, "one library artist, credited twice");
 }
 
 /// An edit of a two-track release crediting two album artists and, per track,
@@ -410,8 +410,8 @@ fn credited_release_edit(track_artists: [&[&str]; 2]) -> crate::import::ReleaseU
     crate::import::ReleaseUserEdit {
         album_title: "Album Title".to_string(),
         album_artist_assignments: vec![
-            crate::import::ArtistAssignment::named("Album Artist One"),
-            crate::import::ArtistAssignment::named("Album Artist Two"),
+            crate::import::Credited::plain(crate::import::ArtistAssignment::named("Album Artist One")),
+            crate::import::Credited::plain(crate::import::ArtistAssignment::named("Album Artist Two")),
         ],
         album_year: Some(2024),
         pressing: crate::pressing::Pressing::blank(),
@@ -423,7 +423,11 @@ fn credited_release_edit(track_artists: [&[&str]; 2]) -> crate::import::ReleaseU
                 artist_assignments: crate::import::TrackArtistAssignments::Explicit(
                     artists
                         .iter()
-                        .map(|name| crate::import::ArtistAssignment::named(*name))
+                        .map(|name| {
+                            crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+                                *name,
+                            ))
+                        })
                         .collect(),
                 ),
                 file: None,
@@ -513,7 +517,7 @@ async fn changing_one_track_credit_writes_only_that_credit() {
             .await
             .unwrap()
             .into_iter()
-            .map(|artist| artist.name)
+            .map(|artist| artist.artist.name)
             .collect::<Vec<_>>(),
         vec!["Track Artist One", "Track Artist Four"]
     );

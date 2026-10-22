@@ -34,12 +34,42 @@ impl ArtistId3 {
     }
 }
 
+/// One artist an album or song credits, as OpenSubsonic's `artists` list
+/// names it: by the artist's id and own name.
+pub(crate) struct CreditedArtist {
+    pub(crate) id: String,
+    pub(crate) name: String,
+}
+
+impl CreditedArtist {
+    fn to_element(&self) -> Element {
+        Element::new("artists")
+            .attr("id", self.id.clone())
+            .attr("name", self.name.clone())
+    }
+
+    /// Every credit of `credits`, in order.
+    pub(crate) fn of(credits: &[bae_core::credits::LibraryCredit]) -> Vec<Self> {
+        credits
+            .iter()
+            .map(|credit| Self {
+                id: artist_wire_id(&credit.artist.id),
+                name: credit.artist.name.clone(),
+            })
+            .collect()
+    }
+}
+
 /// `AlbumID3` — an album (a bae release) in the tag-based browsing tree.
 pub(crate) struct AlbumId3 {
     pub(crate) id: String,
     pub(crate) name: String,
+    /// The album's credits, printed as one line.
     pub(crate) artist: Option<String>,
+    /// The protocol's one artist id: the first credit's. `artists` names
+    /// every credit.
     pub(crate) artist_id: Option<String>,
+    pub(crate) artists: Vec<CreditedArtist>,
     pub(crate) cover_art: Option<String>,
     pub(crate) song_count: i64,
     /// Total playing time in whole seconds.
@@ -62,6 +92,7 @@ impl AlbumId3 {
             .opt_attr("created", self.created.clone())
             .opt_attr("year", self.year.map(i64::from))
             .opt_attr("musicBrainzId", self.music_brainz_id.clone())
+            .children(self.artists.iter().map(CreditedArtist::to_element))
     }
 
     /// As an `<album>` element, for list and search responses.
@@ -86,6 +117,7 @@ pub(crate) struct Child {
     pub(crate) parent: Option<String>,
     pub(crate) title: String,
     pub(crate) album: Option<String>,
+    /// The song's line: its own credits, else its album's.
     pub(crate) artist: Option<String>,
     pub(crate) track: Option<u32>,
     pub(crate) year: Option<i32>,
@@ -101,7 +133,10 @@ pub(crate) struct Child {
     pub(crate) disc_number: Option<u32>,
     pub(crate) created: Option<String>,
     pub(crate) album_id: Option<String>,
+    /// The protocol's one artist id: the first credit's. `artists` names
+    /// every credit.
     pub(crate) artist_id: Option<String>,
+    pub(crate) artists: Vec<CreditedArtist>,
     pub(crate) bit_depth: i64,
     pub(crate) sampling_rate: i64,
     pub(crate) channel_count: i64,
@@ -135,6 +170,7 @@ impl Child {
             .attr("samplingRate", self.sampling_rate)
             .attr("channelCount", self.channel_count)
             .opt_attr("musicBrainzId", self.music_brainz_id.clone())
+            .children(self.artists.iter().map(CreditedArtist::to_element))
     }
 }
 

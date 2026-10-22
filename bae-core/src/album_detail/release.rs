@@ -2,7 +2,7 @@
 //! projections that produce them from raw DB aggregates.
 
 use super::*;
-use crate::db::{DbArtist, DbReleaseDetail, DbReleaseSummary};
+use crate::db::{DbReleaseDetail, DbReleaseSummary};
 
 /// The per-release inputs `LibraryManager` reads from the DB, coven's cache and
 /// this device's disk and threads into the release projections: whether a cloud
@@ -259,7 +259,7 @@ impl ReleaseDetail {
     /// depend on track-format joins and therefore add no orphan cases here.
     pub(crate) fn from_raw(
         raw: DbReleaseDetail,
-        album_artists: &[DbArtist],
+        album_artists: &[crate::credits::LibraryCredit],
         release_index: usize,
         ctx: &ReleaseResolveCtx<'_>,
     ) -> (ReleaseDetail, u32) {
@@ -271,9 +271,9 @@ impl ReleaseDetail {
             .into_iter()
             .map(|entry| {
                 let artist_names = if entry.artists.is_empty() {
-                    join_artist_names(album_artists)
+                    crate::credits::library_line(album_artists)
                 } else {
-                    join_artist_names(&entry.artists)
+                    crate::credits::library_line(&entry.artists)
                 };
                 let position = raw.mediums.position(&entry.track);
                 let position_text = crate::util::format::track_position_text(&position);

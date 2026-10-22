@@ -12,7 +12,7 @@ fn all_files_untagged_seeds_from_folder_and_filenames() {
 
     let parsed = map_tags_with_folder(&[dest], Some("Mystery Rip")).unwrap();
     assert_eq!(parsed.album_title, "Mystery Rip");
-    assert_eq!(parsed.album_credits[0].name, "");
+    assert_eq!(parsed.album_credits[0].credit.name, "");
     assert_eq!(parsed.tracks[0].title, "untitled-track");
 }
 
@@ -109,7 +109,7 @@ fn mp3_with_id3v2_tags() {
     assert!(parsed.pressing.facts.media.is_empty());
     assert_eq!(parsed.tracks.len(), 1);
     assert_eq!(parsed.tracks[0].title, "MP3 Track");
-    assert_eq!(parsed.album_credits[0].name, "MP3 Artist");
+    assert_eq!(parsed.album_credits[0].credit.name, "MP3 Artist");
 }
 
 /// M4A with MP4 ilst tags leaves release media blank.

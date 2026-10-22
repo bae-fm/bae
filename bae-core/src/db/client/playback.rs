@@ -223,7 +223,7 @@ fn track_displays_on(
              JOIN albums a ON a.id = r.album_id \
              LEFT JOIN covers c ON c.id = r.id \
              WHERE t.id IN ({placeholders})",
-            artist_names = track_artist_names_sql("t"),
+            artist_names = track_credits_json_sql("t"),
         );
         meta_by_track.extend(sql.query(
             &query,
@@ -248,7 +248,7 @@ fn track_displays_on(
                     TrackQueueMeta {
                         display: crate::playback::TrackDisplay {
                             title: row.get("title")?,
-                            artist_names: row.get("artist_names")?,
+                            artist_names: credit_line_column(row, "artist_names")?,
                             album_id: row.get("album_id")?,
                             release_id,
                             album_title: row.get("album_title")?,

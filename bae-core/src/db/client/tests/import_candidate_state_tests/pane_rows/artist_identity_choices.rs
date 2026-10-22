@@ -256,7 +256,7 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
                 .await
                 .unwrap()
                 .into_iter()
-                .map(|artist| artist.id)
+                .map(|artist| artist.artist.id)
                 .collect::<Vec<_>>()
                 .as_slice(),
             std::slice::from_ref(&chosen)
@@ -393,6 +393,7 @@ async fn repeated_credits_share_the_neither_artist_and_picked_credits_stay_picke
     assert_eq!(resolved.ids[2], discogs.id);
     assert_eq!(resolved.inserts.len(), 1);
     let credit = crate::import::ArtistCredit {
+        credited_as: None,
         name: incoming.name,
         sort_name: incoming.sort_name,
         discogs_artist_id: incoming.discogs_artist_id,

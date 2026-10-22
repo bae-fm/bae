@@ -69,6 +69,7 @@ fn response_with_media(media: Vec<MbMedium>) -> MbReleaseResponse {
         packaging: None,
         barcode: None,
         artist_credit: vec![MbArtistCredit {
+            joinphrase: None,
             name: "Artist Name".to_string(),
             artist: None,
         }],

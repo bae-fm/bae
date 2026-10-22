@@ -19,7 +19,7 @@
 
 use crate::import::release_group::ReleaseGroup;
 use crate::import::{
-    AlbumLink, ArtistAssignment, CandidateDraft, Catalog, MetadataRef, RawLabelEdit,
+    AlbumLink, Credited, CandidateDraft, Catalog, MetadataRef, RawLabelEdit,
     RawReleaseEdit, TrackArtistAssignments,
 };
 use crate::text_match;
@@ -243,11 +243,15 @@ fn same_track_title(a: &str, b: &str) -> bool {
     !a.is_empty() && a == text_match::track_title_key(b)
 }
 
-fn same_artists(a: &[ArtistAssignment], b: &[ArtistAssignment]) -> bool {
+/// Whether two readings credit the same artists in the same places, printed
+/// alike: the same artist names, printed names and joins.
+fn same_artists(a: &[Credited], b: &[Credited]) -> bool {
     a.len() == b.len()
-        && a.iter()
-            .zip(b)
-            .all(|(a, b)| text_match::same_artist_name(a.name(), b.name()))
+        && a.iter().zip(b).all(|(a, b)| {
+            text_match::same_artist_name(a.artist.name(), b.artist.name())
+                && a.artist.printed() == b.artist.printed()
+                && a.join == b.join
+        })
 }
 
 fn same_track_artists(a: &TrackArtistAssignments, b: &TrackArtistAssignments) -> bool {

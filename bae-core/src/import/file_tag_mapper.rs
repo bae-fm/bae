@@ -154,13 +154,8 @@ fn tag_tracks(extracted: &[FileTagFact]) -> Vec<TagTrack> {
 
 /// The credit of a file-tag ARTIST/PERFORMER value. The source provides only
 /// a display name here, so the sort name and source artist ids stay absent.
-fn file_tag_artist(name: &str) -> ArtistCredit {
-    ArtistCredit {
-        name: name.to_string(),
-        sort_name: None,
-        musicbrainz_artist_id: None,
-        discogs_artist_id: None,
-    }
+fn file_tag_artist(name: &str) -> crate::import::SourceCredit {
+    crate::import::SourceCredit::plain(ArtistCredit::named(name))
 }
 
 /// The track's own artist when the source carries an ARTIST/PERFORMER,
@@ -203,7 +198,9 @@ fn file_tag_release_values(
         for credit in credits {
             if !album_credits
                 .iter()
-                .any(|known| crate::text_match::same_artist_name(&known.name, &credit.name))
+                .any(|known| {
+                    crate::text_match::same_artist_name(&known.credit.name, &credit.credit.name)
+                })
             {
                 album_credits.push(credit.clone());
             }

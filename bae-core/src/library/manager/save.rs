@@ -17,31 +17,36 @@ impl LibraryManager {
     ///
     /// No cover id rides along: the art a track export embeds is its own release's,
     /// which the caller already holds.
-    async fn resolve_save_tags(
+    pub(crate) async fn resolve_save_tags(
         &self,
-        meta: &TrackAudioMeta,
+        release: &DbRelease,
+        track: &DbTrack,
     ) -> Result<ResolvedSaveTags, LibraryError> {
-        let album = self.database.get_album_for_release(&meta.release).await?;
+        let album = self.database.get_album_for_release(release).await?;
 
         let album_artists = self.database.get_artists_for_album(&album.id).await?;
-        let artist = join_artist_names(&album_artists);
+        let album_artist = crate::credits::library_line(&album_artists);
+        let track_artists = self.database.get_artists_for_track(&track.id).await?;
+        let artist = if track_artists.is_empty() {
+            album_artist.clone()
+        } else {
+            crate::credits::library_line(&track_artists)
+        };
 
-        let release_tracks = self
-            .database
-            .get_tracks_for_release(&meta.release.id)
-            .await?;
+        let release_tracks = self.database.get_tracks_for_release(&release.id).await?;
         let total_tracks = release_tracks.len();
         let disc = self
             .database
-            .get_release_mediums(&meta.release.id)
+            .get_release_mediums(&release.id)
             .await?
-            .disc_number(&meta.track);
+            .disc_number(track);
 
-        let year = meta.release.pressing.year.or(album.year);
+        let year = release.pressing.year.or(album.year);
 
         let tags = SaveTags {
-            title: meta.track.title.clone(),
+            title: track.title.clone(),
             artist,
+            album_artist,
             album: album.title,
             year,
             disc,
@@ -49,7 +54,7 @@ impl LibraryManager {
 
         Ok(ResolvedSaveTags {
             tags,
-            track_number: meta.track.track_number.get(),
+            track_number: track.track_number.get(),
             total_tracks,
         })
     }
@@ -62,7 +67,7 @@ impl LibraryManager {
         meta: TrackAudioMeta,
         window: SaveWindow,
     ) -> Result<SaveTrackPlan, LibraryError> {
-        let resolved = self.resolve_save_tags(&meta).await?;
+        let resolved = self.resolve_save_tags(&meta.release, &meta.track).await?;
         Ok(SaveTrackPlan {
             resolved,
             audio_meta: meta,
@@ -151,7 +156,7 @@ impl LibraryManager {
                 ))
             })?;
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
-        let resolved = self.resolve_save_tags(&meta).await?;
+        let resolved = self.resolve_save_tags(&meta.release, &meta.track).await?;
         Ok(crate::library::save::render_save_filename(
             &preset.filename_tokens,
             &resolved,

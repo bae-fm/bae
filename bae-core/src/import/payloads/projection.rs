@@ -112,11 +112,7 @@ impl ReleasePayloads {
                     let master = crate::discogs::client::parse_discogs_master_json(json)?;
                     AlbumMetadata {
                         title: master.title.unwrap_or_default(),
-                        artists: master
-                            .artists
-                            .iter()
-                            .map(crate::import::discogs_mapper::discogs_track_artist_ref)
-                            .collect(),
+                        artists: crate::import::discogs_mapper::discogs_credits(&master.artists),
                         year: master.year.map(|year| year as i32),
                         first_year: master.year.map(|year| year as i32),
                     }

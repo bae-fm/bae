@@ -105,7 +105,7 @@ async fn album_artist_ids(database: &Database, album_id: &str) -> Vec<String> {
         .await
         .unwrap()
         .into_iter()
-        .map(|artist| artist.id)
+        .map(|artist| artist.artist.id)
         .collect()
 }
 
@@ -298,12 +298,13 @@ async fn album_artist_edit(device: &TestDevice, artist_ids: &[&str]) -> ReleaseU
             .unwrap()
             .expect("the credited artist is in the library");
         assignments.push(ArtistAssignment::Picked {
+            credit: None,
             artist: ExistingArtist::from(artist),
         });
     }
     ReleaseUserEdit {
         album_title: "Album".to_string(),
-        album_artist_assignments: assignments,
+        album_artist_assignments: crate::import::Credited::plain_list(assignments),
         album_year: None,
         pressing: crate::pressing::Pressing::blank(),
         tracks: Vec::new(),

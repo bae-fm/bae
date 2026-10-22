@@ -724,14 +724,15 @@ impl Fixture {
             .expect("the scanned candidate is answerable");
         let mut draft = candidate.blank_draft();
         draft.album_title = "Album".to_string();
-        draft.album_artist_assignments = vec![crate::import::ArtistAssignment::Credit {
+        draft.album_artist_assignments = vec![crate::import::Credited::plain(crate::import::ArtistAssignment::Credit {
             credit: crate::import::ArtistCredit {
+                credited_as: None,
                 name: "Artist".to_string(),
                 sort_name: None,
                 musicbrainz_artist_id: None,
                 discogs_artist_id: None,
             },
-        }];
+        })];
         for (index, track) in draft.tracks.iter_mut().enumerate() {
             track.edit.title = format!("Track {}", index + 1);
         }

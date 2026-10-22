@@ -4,7 +4,7 @@ mirror_struct! {
     BridgeArtistCredit = bae_core::import::ArtistCredit,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
-    fields: { name, sort_name, musicbrainz_artist_id, discogs_artist_id },
+    fields: { name, sort_name, musicbrainz_artist_id, discogs_artist_id, credited_as },
 }
 
 mirror_enum! {
@@ -12,9 +12,16 @@ mirror_enum! {
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
-        Picked { artist: (BridgeExistingArtist) },
+        Picked { artist: (BridgeExistingArtist), credit: (opt BridgeCreditName) },
         Credit { credit: (BridgeArtistCredit) },
     },
+}
+
+mirror_struct! {
+    BridgeCredited = bae_core::import::Credited,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: { artist: (BridgeArtistAssignment), join },
 }
 
 mirror_enum! {
@@ -64,7 +71,7 @@ mirror_enum! {
     into_core: pub(crate) fn,
     variants: {
         AlbumArtists,
-        Explicit(assignments: (each BridgeArtistAssignment)),
+        Explicit(assignments: (each BridgeCredited)),
     },
 }
 
@@ -85,7 +92,7 @@ mirror_struct! {
     into_core: pub(crate) fn,
     fields: {
         album_title,
-        album_artist_assignments: (each BridgeArtistAssignment),
+        album_artist_assignments: (each BridgeCredited),
         album_year,
         pressing: (BridgePressingEdit),
         tracks: (each BridgeTrackUserEdit),
@@ -129,7 +136,7 @@ mirror_struct! {
     into_core: pub(crate) fn,
     fields: {
         album_title,
-        album_artist_assignments: (each BridgeArtistAssignment),
+        album_artist_assignments: (each BridgeCredited),
         album_year,
         pressing: (BridgeRawPressingEdit),
         tracks: (each BridgeRawTrackEdit),

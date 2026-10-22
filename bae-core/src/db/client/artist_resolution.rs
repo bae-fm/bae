@@ -12,8 +12,9 @@
 //!    settles on the import page; a matched artist holding a different id of the
 //!    same catalog is refused outright.
 //! 2. **Otherwise the name.** A credit is the one library artist whose
-//!    `name_key` equals the credit's folded name and whose catalog ids do not
-//!    contradict the credit's. Several such artists leave it ambiguous, which
+//!    `name_key`, or one of whose other printed names (`artist_credits`),
+//!    equals the credit's folded name and whose catalog ids do not contradict
+//!    the credit's. Several such artists leave it ambiguous, which
 //!    commits as a new artist; none commits as a new artist.
 //!
 //! A credit linked to an existing artist fills in that artist's missing catalog
@@ -612,10 +613,16 @@ pub(super) fn name_matches_on<Q: QueryRows>(
     if key.is_empty() {
         return Ok(Vec::new());
     }
+    // An artist goes by its own name and by each of its other printed names;
+    // a printed name an absorbed artist held names the artist it shows as.
     let named = sql.query(
         &format!(
-            "SELECT * FROM artists WHERE name_key = ?1 AND {shown} ORDER BY id",
-            shown = artist_is_shown("artists")
+            "SELECT * FROM artists WHERE {shown} AND (name_key = ?1 OR id IN ( \
+                 SELECT {credit_artist} FROM artist_credits credit_name \
+                 WHERE credit_name.name_key = ?1)) \
+             ORDER BY id",
+            shown = artist_is_shown("artists"),
+            credit_artist = shown_artist_id("credit_name.artist_id"),
         ),
         params![key],
         row_to_artist,

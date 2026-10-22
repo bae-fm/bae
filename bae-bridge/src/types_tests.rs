@@ -319,6 +319,13 @@ mod conversion_roundtrip {
     #[test]
     fn artist_search_result_keeps_identity_fields() {
         let core = bae_core::album_detail::ArtistSearchResult {
+            credit_names: vec![bae_core::credits::ArtistCreditName {
+                artist_id: "artist-1".to_string(),
+                credit: bae_core::credits::CreditName {
+                    key: "printed name".to_string(),
+                    name: "Printed Name".to_string(),
+                },
+            }],
             artist: bae_core::db::DbArtist {
                 id: "artist-1".to_string(),
                 name: "Artist Name".to_string(),
@@ -349,6 +356,16 @@ mod conversion_roundtrip {
         assert_eq!(
             bridge.image.map(|image| image.id),
             Some("artist-1".to_string())
+        );
+        assert_eq!(
+            bridge.credit_names,
+            [BridgeArtistCreditName {
+                artist_id: "artist-1".to_string(),
+                credit: BridgeCreditName {
+                    key: "printed name".to_string(),
+                    name: "Printed Name".to_string(),
+                },
+            }]
         );
     }
 
@@ -382,8 +399,19 @@ mod conversion_roundtrip {
         let core = bae_core::import::ReleaseUserEdit {
             album_title: "Album Title".to_string(),
             album_artist_assignments: vec![
-                bae_core::import::ArtistAssignment::picked(existing_artist()),
-                bae_core::import::ArtistAssignment::named("Artist Beta"),
+                bae_core::import::Credited {
+                    artist: bae_core::import::ArtistAssignment::Picked {
+                        artist: existing_artist(),
+                        credit: Some(bae_core::credits::CreditName {
+                            key: "artist printed".to_string(),
+                            name: "Artist Printed".to_string(),
+                        }),
+                    },
+                    join: Some(" & ".to_string()),
+                },
+                bae_core::import::Credited::plain(bae_core::import::ArtistAssignment::named(
+                    "Artist Beta",
+                )),
             ],
             album_year: Some(1987),
             pressing: bae_core::pressing::Pressing {
@@ -398,7 +426,9 @@ mod conversion_roundtrip {
             tracks: vec![bae_core::import::TrackUserEdit {
                 title: "Track Title".to_string(),
                 artist_assignments: bae_core::import::TrackArtistAssignments::Explicit(vec![
-                    bae_core::import::ArtistAssignment::named("Track Artist"),
+                    bae_core::import::Credited::plain(bae_core::import::ArtistAssignment::named(
+                        "Track Artist",
+                    )),
                 ]),
                 file: Some(bae_core::import::AudioFile::SheetSlice {
                     file_id: "CDImage.flac".to_string(),
@@ -418,10 +448,10 @@ mod conversion_roundtrip {
     fn raw_release_edit_round_trips() {
         let core = bae_core::import::RawReleaseEdit {
             album_title: "Album Title".to_string(),
-            album_artist_assignments: vec![
+            album_artist_assignments: bae_core::import::Credited::plain_list([
                 bae_core::import::ArtistAssignment::named("Artist Name"),
                 bae_core::import::ArtistAssignment::named("Artist Beta"),
-            ],
+            ]),
             album_year: "1987".to_string(),
             pressing: bae_core::import::RawPressingEdit {
                 year: "1990".to_string(),
@@ -439,7 +469,9 @@ mod conversion_roundtrip {
                 id: "row-1".to_string(),
                 title: "Track Title".to_string(),
                 artist_assignments: bae_core::import::TrackArtistAssignments::Explicit(vec![
-                    bae_core::import::ArtistAssignment::named("Track Artist"),
+                    bae_core::import::Credited::plain(bae_core::import::ArtistAssignment::named(
+                        "Track Artist",
+                    )),
                 ]),
                 // Not a form field, so the round trip must keep it or a
                 // corrected file pairing is lost before the commit.
@@ -459,9 +491,9 @@ mod conversion_roundtrip {
     fn release_edit_seed_carries_the_persisted_editor_projection() {
         let edit = bae_core::import::RawReleaseEdit {
             album_title: "Album Title".to_string(),
-            album_artist_assignments: vec![bae_core::import::ArtistAssignment::named(
-                "Artist Name",
-            )],
+            album_artist_assignments: bae_core::import::Credited::plain_list([
+                bae_core::import::ArtistAssignment::named("Artist Name"),
+            ]),
             album_year: String::new(),
             pressing: bae_core::import::RawPressingEdit {
                 year: String::new(),

@@ -22,6 +22,8 @@ pub fn discogs_artist(id: &str, name: &str) -> bae_core::discogs::DiscogsArtist 
     bae_core::discogs::DiscogsArtist {
         id: id.to_string(),
         name: name.to_string(),
+        anv: None,
+        join: None,
     }
 }
 
@@ -150,7 +152,14 @@ pub fn seed_discogs_test_release(
             .parse()
             .expect("a rendered Discogs id is numeric")
     };
-    let credit = |artist: &bae_core::discogs::DiscogsArtist| serde_json::json!({ "id": numeric(&artist.id), "name": artist.name });
+    let credit = |artist: &bae_core::discogs::DiscogsArtist| {
+        serde_json::json!({
+            "id": numeric(&artist.id),
+            "name": artist.name,
+            "anv": artist.anv.clone().unwrap_or_default(),
+            "join": artist.join.clone().unwrap_or_default(),
+        })
+    };
     let role_credit = |artist: &bae_core::discogs::DiscogsRoleArtist| {
         serde_json::json!({
             "id": artist.id.as_deref().map(numeric),

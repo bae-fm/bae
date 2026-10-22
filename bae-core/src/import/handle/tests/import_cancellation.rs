@@ -24,7 +24,7 @@ async fn two_importable() -> (ImportServiceHandle, [TempDir; 2], String, String)
         handle
             .set_candidate_album_artists(
                 key,
-                vec![crate::import::ArtistAssignment::named("Artist")],
+                vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Artist"))],
             )
             .await
             .unwrap();

@@ -111,7 +111,7 @@ async fn a_user_edit_overlays_the_picked_release() {
 
     let edit = ReleaseUserEdit {
         album_title: "Edited Title".to_string(),
-        album_artist_assignments: vec![ArtistAssignment::named("Artist Edited")],
+        album_artist_assignments: vec![bae_core::import::Credited::plain(ArtistAssignment::named("Artist Edited"))],
         album_year: Some(1977),
         pressing: bae_core::pressing::Pressing {
             // User typed JP — we expect this to land on the release row.

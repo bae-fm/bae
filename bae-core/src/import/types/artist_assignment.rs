@@ -7,15 +7,115 @@ use serde::{Deserialize, Serialize};
 /// One artist credited on an album or track.
 ///
 /// Either a library artist a person picked in the artist field, linked by its
-/// library id, or a credit: what a catalog, the files' tags, or the person's
-/// typing said. A credit claims nothing about the library. Which library
-/// artist it names, if any, is read against the library whenever the draft is
-/// shown ([`CreditResolution`]), and decided for good inside the write that
-/// commits it.
+/// library id and, where they picked one, one of its other printed names; or
+/// a credit: what a catalog, the files' tags, or the person's typing said. A
+/// credit claims nothing about the library. Which library artist it names, if
+/// any, is read against the library whenever the draft is shown
+/// ([`CreditResolution`]), and decided for good inside the write that commits
+/// it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ArtistAssignment {
-    Picked { artist: ExistingArtist },
-    Credit { credit: ArtistCredit },
+    Picked {
+        artist: ExistingArtist,
+        credit: Option<crate::credits::CreditName>,
+    },
+    Credit {
+        credit: ArtistCredit,
+    },
+}
+
+/// One place in an album's or track's credit list: who is credited there, and
+/// what is printed after it when another credit follows (`None`: the default
+/// separator).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Credited {
+    pub artist: ArtistAssignment,
+    pub join: Option<String>,
+}
+
+impl Credited {
+    /// A credit list as stored: each credit normalized, each join kept only
+    /// where it states something, and the last credit's join dropped, since
+    /// nothing follows it.
+    pub(crate) fn normalized_list(credits: Vec<Self>) -> Vec<Self> {
+        let mut credits: Vec<Self> = credits
+            .into_iter()
+            .map(|credited| Self {
+                artist: credited.artist.normalized(),
+                join: crate::credits::stated_join(credited.join.as_deref()),
+            })
+            .collect();
+        crate::credits::drop_last_join(&mut credits, |credited| &mut credited.join);
+        credits
+    }
+
+    /// A library credit as the editor holds it: its artist picked, with the
+    /// credit name and join it names.
+    pub fn of_library(credit: crate::credits::LibraryCredit) -> Self {
+        Self {
+            artist: ArtistAssignment::Picked {
+                artist: credit.artist.into(),
+                credit: credit.credit,
+            },
+            join: credit.join,
+        }
+    }
+
+    /// `artist`, followed by the default separator.
+    pub fn plain(artist: ArtistAssignment) -> Self {
+        Self { artist, join: None }
+    }
+
+    /// A list of `artists` that states no joins.
+    pub fn plain_list(artists: impl IntoIterator<Item = ArtistAssignment>) -> Vec<Self> {
+        artists.into_iter().map(Self::plain).collect()
+    }
+}
+
+/// One place in a credit list as a source states it: the artist, and what the
+/// source prints after it (`None` where it prints nothing of its own).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SourceCredit {
+    pub credit: ArtistCredit,
+    pub join: Option<String>,
+}
+
+impl SourceCredit {
+    /// `credit`, followed by the default separator: what a source that prints
+    /// no joining words states.
+    pub fn plain(credit: ArtistCredit) -> Self {
+        Self { credit, join: None }
+    }
+
+    /// The draft's credit for this place: the source's credit, left to be
+    /// resolved when the draft is imported.
+    pub fn credited(self) -> Credited {
+        Credited {
+            artist: ArtistAssignment::Credit {
+                credit: self.credit,
+            },
+            join: self.join,
+        }
+    }
+
+    /// The line `credits` print, as the picker's row shows a release's
+    /// artists.
+    pub fn line(credits: &[Self]) -> String {
+        crate::credits::credit_line(
+            credits
+                .iter()
+                .map(|credit| (credit.credit.printed(), credit.join.as_deref())),
+        )
+    }
+}
+
+/// The line `credits` print (see [`crate::credits::credit_line`]).
+pub fn credited_line(credits: &[Credited]) -> String {
+    crate::credits::credit_line(
+        credits
+            .iter()
+            .map(|credited| (credited.artist.printed(), credited.join.as_deref())),
+    )
 }
 
 /// One artist already in the library, with the fields an editor needs to show
@@ -42,17 +142,35 @@ impl From<crate::db::DbArtist> for ExistingArtist {
     }
 }
 
-/// What a source or a person said about an artist: the name it goes by, and
-/// the catalog entries that name it.
+/// What a source or a person said about an artist: the name it goes by, the
+/// catalog entries that name it, and the name the source printed for it where
+/// that is another (a MusicBrainz credit name, a Discogs `anv`).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ArtistCredit {
     pub name: String,
     pub sort_name: Option<String>,
     pub musicbrainz_artist_id: Option<String>,
     pub discogs_artist_id: Option<String>,
+    pub credited_as: Option<String>,
 }
 
 impl ArtistCredit {
+    /// A credit known only by `name`, printed as itself.
+    pub fn named(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            sort_name: None,
+            musicbrainz_artist_id: None,
+            discogs_artist_id: None,
+            credited_as: None,
+        }
+    }
+
+    /// What the credit prints: the name its source printed, else its name.
+    pub fn printed(&self) -> &str {
+        self.credited_as.as_deref().unwrap_or(&self.name)
+    }
+
     /// A fresh artist row carrying what the credit says, which the write that
     /// links it resolves to a library artist when it commits.
     pub(crate) fn write_row(
@@ -125,17 +243,38 @@ impl ArtistAssignment {
     /// A credit known only by name: what a person types.
     pub fn named(name: impl Into<String>) -> Self {
         Self::Credit {
-            credit: ArtistCredit {
-                name: name.into(),
-                sort_name: None,
-                musicbrainz_artist_id: None,
-                discogs_artist_id: None,
-            },
+            credit: ArtistCredit::named(name),
         }
     }
 
+    /// A library artist, printed by its own name.
     pub fn picked(artist: ExistingArtist) -> Self {
-        Self::Picked { artist }
+        Self::Picked {
+            artist,
+            credit: None,
+        }
+    }
+
+    /// What this credit prints: a picked artist's chosen credit name, else
+    /// its name; a credit's printed name, else its name.
+    pub fn printed(&self) -> &str {
+        match self {
+            Self::Picked { artist, credit } => credit
+                .as_ref()
+                .map_or(artist.name.as_str(), |credit| credit.name.as_str()),
+            Self::Credit { credit } => credit.printed(),
+        }
+    }
+
+    /// The credit name a write's link for this credit names, before the
+    /// write resolves its artist: a picked artist's chosen one; for a credit,
+    /// the name it prints, which the write keeps only where it is not the
+    /// resolved artist's own (see `db::client::write::settle_credit_name`).
+    pub(crate) fn link_credit(&self) -> Option<crate::credits::CreditName> {
+        match self {
+            Self::Picked { credit, .. } => credit.clone(),
+            Self::Credit { credit } => Some(crate::credits::CreditName::of(credit.printed())),
+        }
     }
 
     /// How this artist stands to the library, read from `resolutions`: a
@@ -169,7 +308,7 @@ impl ArtistAssignment {
         now: chrono::DateTime<chrono::Utc>,
     ) -> crate::db::DbArtist {
         match self {
-            Self::Picked { artist } => crate::db::DbArtist {
+            Self::Picked { artist, .. } => crate::db::DbArtist {
                 id: artist.artist_id.clone(),
                 name: artist.name.clone(),
                 sort_name: artist.sort_name.clone(),
@@ -183,19 +322,26 @@ impl ArtistAssignment {
 
     pub(super) fn normalized(self) -> Self {
         match self {
-            Self::Picked { artist } => Self::Picked { artist },
-            Self::Credit { credit } => Self::Credit {
-                credit: ArtistCredit {
-                    name: credit.name.trim().to_string(),
-                    sort_name: credit.sort_name.and_then(|value| trim_to_option(&value)),
-                    musicbrainz_artist_id: credit
-                        .musicbrainz_artist_id
-                        .and_then(|value| trim_to_option(&value)),
-                    discogs_artist_id: credit
-                        .discogs_artist_id
-                        .and_then(|value| trim_to_option(&value)),
-                },
-            },
+            Self::Picked { artist, credit } => Self::Picked { artist, credit },
+            Self::Credit { credit } => {
+                let name = credit.name.trim().to_string();
+                Self::Credit {
+                    credit: ArtistCredit {
+                        sort_name: credit.sort_name.and_then(|value| trim_to_option(&value)),
+                        musicbrainz_artist_id: credit
+                            .musicbrainz_artist_id
+                            .and_then(|value| trim_to_option(&value)),
+                        discogs_artist_id: credit
+                            .discogs_artist_id
+                            .and_then(|value| trim_to_option(&value)),
+                        credited_as: credit
+                            .credited_as
+                            .and_then(|value| trim_to_option(&value))
+                            .filter(|printed| *printed != name),
+                        name,
+                    },
+                }
+            }
         }
     }
 
@@ -204,7 +350,7 @@ impl ArtistAssignment {
     /// and what decides a compilation.
     pub(crate) fn name(&self) -> &str {
         match self {
-            Self::Picked { artist } => &artist.name,
+            Self::Picked { artist, .. } => &artist.name,
             Self::Credit { credit } => &credit.name,
         }
     }
@@ -212,10 +358,10 @@ impl ArtistAssignment {
     /// Whether an album credited to `album_artists` is a compilation: its one
     /// credit is the various-artists artist. Every write of an album's credits
     /// derives the flag from them, so it never outlives an edit of them.
-    pub(crate) fn credit_a_compilation(album_artists: &[Self]) -> bool {
+    pub(crate) fn credit_a_compilation(album_artists: &[Credited]) -> bool {
         matches!(
             album_artists,
-            [only] if crate::text_match::is_various_artists(only.name())
+            [only] if crate::text_match::is_various_artists(only.artist.name())
         )
     }
 
@@ -229,7 +375,7 @@ impl ArtistAssignment {
 
     pub(crate) fn is_blank(&self) -> bool {
         match self {
-            Self::Picked { artist } => {
+            Self::Picked { artist, .. } => {
                 artist.artist_id.trim().is_empty() || artist.name.trim().is_empty()
             }
             Self::Credit { credit } => credit.name.trim().is_empty(),

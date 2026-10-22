@@ -32,15 +32,8 @@ enum MappingFixtures {
         channels: 2
     )
 
-    static func artistCredit(_ name: String) -> BridgeArtistAssignment {
-        .credit(
-            credit: BridgeArtistCredit(
-                name: name,
-                sortName: nil,
-                musicbrainzArtistId: nil,
-                discogsArtistId: nil
-            )
-        )
+    static func artistCredit(_ name: String) -> BridgeCredited {
+        .typed(name)
     }
 }
 

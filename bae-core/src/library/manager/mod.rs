@@ -27,11 +27,10 @@ use thiserror::Error;
 use tracing::{debug, warn};
 
 use crate::album_detail::{
-    image_refs, join_artist_names, AlbumDetail, AlbumSummary, ArtistDetail, ArtistSearchResult,
-    ArtistSummary, ComposerDetail, ComposerSummary, ComposerWorkGroup, GallerySource, ImageRef,
-    ReleaseDetail, ReleaseResolveCtx, ReleaseStorageAction, ReleaseStorageState,
-    ReleaseStorageSummary, SearchResults, StoragePage, StorageRow, WorkDetail, WorkReleaseSummary,
-    WorkSummary,
+    image_refs, AlbumDetail, AlbumSummary, ArtistDetail, ArtistSearchResult, ArtistSummary,
+    ComposerDetail, ComposerSummary, ComposerWorkGroup, GallerySource, ImageRef, ReleaseDetail,
+    ReleaseResolveCtx, ReleaseStorageAction, ReleaseStorageState, ReleaseStorageSummary,
+    SearchResults, StoragePage, StorageRow, WorkDetail, WorkReleaseSummary, WorkSummary,
 };
 use crate::config::ConfigHandle;
 use crate::db::{
@@ -614,7 +613,10 @@ pub struct PlayContext {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub struct SaveTags {
     pub title: String,
+    /// The track's line: its own credits, else the album's (ARTIST).
     pub artist: String,
+    /// The album's line (ALBUMARTIST).
+    pub album_artist: String,
     pub album: String,
     pub year: Option<i32>,
     /// The track's medium among its release's, for a release of several

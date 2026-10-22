@@ -367,7 +367,11 @@ impl BridgeArtistSummary {
 mirror_struct! {
     BridgeArtistDetail = bae_core::album_detail::ArtistDetail,
     from_core: pub(super) fn,
-    fields: { artist: (BridgeArtistSummary), albums: (each BridgeAlbum) },
+    fields: {
+        artist: (BridgeArtistSummary),
+        credit_names: (each crate::types::BridgeArtistCreditName),
+        albums: (each BridgeAlbum),
+    },
 }
 
 impl BridgeWorkSummary {

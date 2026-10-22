@@ -17,7 +17,7 @@ use crate::db::client::candidate_state_rows::COVER_COLUMNS;
 use crate::import::cover_art::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
 use std::str::FromStr;
 use crate::import::{
-    ArtistAssignment, ArtistCredit, AudioFile, CandidateDraft, CandidateTrack, CoverSelection,
+    ArtistAssignment, ArtistCredit, AudioFile, CandidateDraft, CandidateTrack, CoverSelection, Credited,
     ExistingArtist, MetadataAuthor, RawLabelEdit, RawPressingEdit, RawTrackEdit,
     TrackArtistAssignments,
 };
@@ -489,17 +489,24 @@ struct AssignmentColumns<'a> {
     sort_name: Option<&'a str>,
     musicbrainz_id: Option<&'a str>,
     discogs_id: Option<&'a str>,
+    credit_key: Option<&'a str>,
+    credited_as: Option<&'a str>,
+    join_phrase: Option<&'a str>,
 }
 
-fn assignment_columns(assignment: &ArtistAssignment) -> AssignmentColumns<'_> {
-    match assignment {
-        ArtistAssignment::Picked { artist } => AssignmentColumns {
+fn assignment_columns(credited: &Credited) -> AssignmentColumns<'_> {
+    let join_phrase = credited.join.as_deref();
+    match &credited.artist {
+        ArtistAssignment::Picked { artist, credit } => AssignmentColumns {
             kind: "picked",
             artist_id: Some(&artist.artist_id),
             name: None,
             sort_name: None,
             musicbrainz_id: None,
             discogs_id: None,
+            credit_key: credit.as_ref().map(|credit| credit.key.as_str()),
+            credited_as: None,
+            join_phrase,
         },
         ArtistAssignment::Credit { credit } => AssignmentColumns {
             kind: "credit",
@@ -508,57 +515,117 @@ fn assignment_columns(assignment: &ArtistAssignment) -> AssignmentColumns<'_> {
             sort_name: credit.sort_name.as_deref(),
             musicbrainz_id: credit.musicbrainz_artist_id.as_deref(),
             discogs_id: credit.discogs_artist_id.as_deref(),
+            credit_key: None,
+            credited_as: credit.credited_as.as_deref(),
+            join_phrase,
         },
     }
 }
 
-fn assignment_from_columns(
+/// One stored assignment row, the picked artist's fields read from the
+/// library and its credit name, if it names one still there.
+struct StoredAssignment {
     kind: String,
     artist_id: Option<String>,
     name: Option<String>,
     sort_name: Option<String>,
     musicbrainz_artist_id: Option<String>,
     discogs_artist_id: Option<String>,
-) -> Result<ArtistAssignment, DbError> {
-    match kind.as_str() {
-        "picked" => Ok(ArtistAssignment::Picked {
-            artist: ExistingArtist {
-                artist_id: artist_id.ok_or_else(|| {
-                    DbError::Message("a picked artist assignment names no artist".into())
-                })?,
-                name: name.ok_or_else(|| {
-                    DbError::Message("a picked artist assignment names a missing artist".into())
-                })?,
-                sort_name,
-                musicbrainz_artist_id,
-                discogs_artist_id,
+    credit_key: Option<String>,
+    credit_name: Option<String>,
+    credited_as: Option<String>,
+    join_phrase: Option<String>,
+}
+
+/// The columns [`StoredAssignment::read`] reads from an assignment table
+/// aliased `assignment`, joined to its picked artist as `picked` and that
+/// artist's credit name as `picked_credit`.
+const STORED_ASSIGNMENT_COLUMNS: &str = "assignment.assignment_kind, assignment.artist_id, \
+     CASE assignment.assignment_kind WHEN 'picked' THEN picked.name \
+         WHEN 'credit' THEN assignment.name END AS name, \
+     CASE assignment.assignment_kind WHEN 'picked' THEN picked.sort_name \
+         WHEN 'credit' THEN assignment.sort_name END AS sort_name, \
+     CASE assignment.assignment_kind WHEN 'picked' THEN picked.musicbrainz_artist_id \
+         WHEN 'credit' THEN assignment.musicbrainz_artist_id END AS musicbrainz_artist_id, \
+     CASE assignment.assignment_kind WHEN 'picked' THEN picked.discogs_artist_id \
+         WHEN 'credit' THEN assignment.discogs_artist_id END AS discogs_artist_id, \
+     picked_credit.name_key AS credit_key, picked_credit.name AS credit_name, \
+     assignment.credited_as, assignment.join_phrase";
+
+const STORED_ASSIGNMENT_JOINS: &str = "LEFT JOIN artists picked ON picked.id = assignment.artist_id \
+     LEFT JOIN artist_credits picked_credit \
+         ON picked_credit.artist_id = assignment.artist_id \
+        AND picked_credit.name_key = assignment.credit_key";
+
+impl StoredAssignment {
+    fn read(row: &rusqlite::Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            kind: row.get("assignment_kind")?,
+            artist_id: row.get("artist_id")?,
+            name: row.get("name")?,
+            sort_name: row.get("sort_name")?,
+            musicbrainz_artist_id: row.get("musicbrainz_artist_id")?,
+            discogs_artist_id: row.get("discogs_artist_id")?,
+            credit_key: row.get("credit_key")?,
+            credit_name: row.get("credit_name")?,
+            credited_as: row.get("credited_as")?,
+            join_phrase: row.get("join_phrase")?,
+        })
+    }
+
+    /// The draft's credit. A picked artist's credit name another device
+    /// removed since prints the artist's own name.
+    fn credited(self) -> Result<Credited, DbError> {
+        let artist = match self.kind.as_str() {
+            "picked" => ArtistAssignment::Picked {
+                artist: ExistingArtist {
+                    artist_id: self.artist_id.ok_or_else(|| {
+                        DbError::Message("a picked artist assignment names no artist".into())
+                    })?,
+                    name: self.name.ok_or_else(|| {
+                        DbError::Message("a picked artist assignment names a missing artist".into())
+                    })?,
+                    sort_name: self.sort_name,
+                    musicbrainz_artist_id: self.musicbrainz_artist_id,
+                    discogs_artist_id: self.discogs_artist_id,
+                },
+                credit: match (self.credit_key, self.credit_name) {
+                    (Some(key), Some(name)) => Some(crate::credits::CreditName { key, name }),
+                    _ => None,
+                },
             },
-        }),
-        "credit" => Ok(ArtistAssignment::Credit {
-            credit: ArtistCredit {
-                name: name.ok_or_else(|| {
-                    DbError::Message("an artist credit has no name".into())
-                })?,
-                sort_name,
-                musicbrainz_artist_id,
-                discogs_artist_id,
+            "credit" => ArtistAssignment::Credit {
+                credit: ArtistCredit {
+                    name: self.name.ok_or_else(|| {
+                        DbError::Message("an artist credit has no name".into())
+                    })?,
+                    sort_name: self.sort_name,
+                    musicbrainz_artist_id: self.musicbrainz_artist_id,
+                    discogs_artist_id: self.discogs_artist_id,
+                    credited_as: self.credited_as,
+                },
             },
-        }),
-        other => Err(unreadable("artist assignment kind", other)),
+            other => return Err(unreadable("artist assignment kind", other)),
+        };
+        Ok(Credited {
+            artist,
+            join: self.join_phrase,
+        })
     }
 }
 
 fn insert_album_artist_assignments(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
-    assignments: &[ArtistAssignment],
+    assignments: &[Credited],
 ) -> Result<(), DbError> {
     for (position, assignment) in assignments.iter().enumerate() {
         let columns = assignment_columns(assignment);
         sql.execute(
             "INSERT INTO import_candidate_album_artist_assignment \
              (content_hash, position, assignment_kind, artist_id, name, sort_name, \
-              musicbrainz_artist_id, discogs_artist_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+              musicbrainz_artist_id, discogs_artist_id, credit_key, credited_as, join_phrase) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
                 position as i64,
@@ -567,7 +634,10 @@ fn insert_album_artist_assignments(
                 columns.name,
                 columns.sort_name,
                 columns.musicbrainz_id,
-                columns.discogs_id
+                columns.discogs_id,
+                columns.credit_key,
+                columns.credited_as,
+                columns.join_phrase
             ],
         )?;
     }
@@ -578,14 +648,15 @@ fn insert_track_artist_assignments(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     track_id: &str,
-    assignments: &[ArtistAssignment],
+    assignments: &[Credited],
 ) -> Result<(), DbError> {
     for (position, assignment) in assignments.iter().enumerate() {
         let columns = assignment_columns(assignment);
         sql.execute(
             "INSERT INTO import_candidate_track_artist_assignment \
              (content_hash, track_id, position, assignment_kind, artist_id, name, sort_name, \
-              musicbrainz_artist_id, discogs_artist_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              musicbrainz_artist_id, discogs_artist_id, credit_key, credited_as, join_phrase) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
                 track_id,
@@ -595,7 +666,10 @@ fn insert_track_artist_assignments(
                 columns.name,
                 columns.sort_name,
                 columns.musicbrainz_id,
-                columns.discogs_id
+                columns.discogs_id,
+                columns.credit_key,
+                columns.credited_as,
+                columns.join_phrase
             ],
         )?;
     }
@@ -605,47 +679,21 @@ fn insert_track_artist_assignments(
 pub(crate) fn load_album_artist_assignments_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
-) -> Result<HashMap<String, Vec<ArtistAssignment>>, DbError> {
+) -> Result<HashMap<String, Vec<Credited>>, DbError> {
     let rows = sql.query(
-        "SELECT assignment.content_hash, assignment.assignment_kind, assignment.artist_id, \
-                CASE assignment.assignment_kind WHEN 'picked' THEN picked.name \
-                    WHEN 'credit' THEN assignment.name END, \
-                CASE assignment.assignment_kind WHEN 'picked' THEN picked.sort_name \
-                    WHEN 'credit' THEN assignment.sort_name END, \
-                CASE assignment.assignment_kind WHEN 'picked' \
-                    THEN picked.musicbrainz_artist_id \
-                    WHEN 'credit' THEN assignment.musicbrainz_artist_id END, \
-                CASE assignment.assignment_kind WHEN 'picked' THEN picked.discogs_artist_id \
-                    WHEN 'credit' THEN assignment.discogs_artist_id END \
-         FROM import_candidate_album_artist_assignment assignment \
-         LEFT JOIN artists picked ON picked.id = assignment.artist_id \
-         WHERE :only IS NULL OR assignment.content_hash = :only \
-         ORDER BY assignment.content_hash, assignment.position",
+        &format!(
+            "SELECT assignment.content_hash, {STORED_ASSIGNMENT_COLUMNS} \
+             FROM import_candidate_album_artist_assignment assignment \
+             {STORED_ASSIGNMENT_JOINS} \
+             WHERE :only IS NULL OR assignment.content_hash = :only \
+             ORDER BY assignment.content_hash, assignment.position"
+        ),
         named_params! { ":only": only },
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, Option<String>>(2)?,
-                row.get::<_, Option<String>>(3)?,
-                row.get::<_, Option<String>>(4)?,
-                row.get::<_, Option<String>>(5)?,
-                row.get::<_, Option<String>>(6)?,
-            ))
-        },
+        |row| Ok((row.get::<_, String>("content_hash")?, StoredAssignment::read(row)?)),
     )?;
-    let mut out: HashMap<String, Vec<ArtistAssignment>> = HashMap::new();
-    for (content_hash, kind, artist_id, name, sort_name, musicbrainz_id, discogs_id) in rows {
-        out.entry(content_hash)
-            .or_default()
-            .push(assignment_from_columns(
-                kind,
-                artist_id,
-                name,
-                sort_name,
-                musicbrainz_id,
-                discogs_id,
-            )?);
+    let mut out: HashMap<String, Vec<Credited>> = HashMap::new();
+    for (content_hash, stored) in rows {
+        out.entry(content_hash).or_default().push(stored.credited()?);
     }
     Ok(out)
 }
@@ -653,51 +701,29 @@ pub(crate) fn load_album_artist_assignments_on(
 fn load_track_artist_assignments_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
-) -> Result<HashMap<(String, String), Vec<ArtistAssignment>>, DbError> {
+) -> Result<HashMap<(String, String), Vec<Credited>>, DbError> {
     let rows = sql.query(
-        "SELECT assignment.content_hash, assignment.track_id, assignment.assignment_kind, \
-                assignment.artist_id, \
-                CASE assignment.assignment_kind WHEN 'picked' THEN picked.name \
-                    WHEN 'credit' THEN assignment.name END, \
-                CASE assignment.assignment_kind WHEN 'picked' THEN picked.sort_name \
-                    WHEN 'credit' THEN assignment.sort_name END, \
-                CASE assignment.assignment_kind WHEN 'picked' \
-                    THEN picked.musicbrainz_artist_id \
-                    WHEN 'credit' THEN assignment.musicbrainz_artist_id END, \
-                CASE assignment.assignment_kind WHEN 'picked' THEN picked.discogs_artist_id \
-                    WHEN 'credit' THEN assignment.discogs_artist_id END \
-         FROM import_candidate_track_artist_assignment assignment \
-         LEFT JOIN artists picked ON picked.id = assignment.artist_id \
-         WHERE :only IS NULL OR assignment.content_hash = :only \
-         ORDER BY assignment.content_hash, assignment.track_id, assignment.position",
+        &format!(
+            "SELECT assignment.content_hash, assignment.track_id, {STORED_ASSIGNMENT_COLUMNS} \
+             FROM import_candidate_track_artist_assignment assignment \
+             {STORED_ASSIGNMENT_JOINS} \
+             WHERE :only IS NULL OR assignment.content_hash = :only \
+             ORDER BY assignment.content_hash, assignment.track_id, assignment.position"
+        ),
         named_params! { ":only": only },
         |row| {
             Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, Option<String>>(3)?,
-                row.get::<_, Option<String>>(4)?,
-                row.get::<_, Option<String>>(5)?,
-                row.get::<_, Option<String>>(6)?,
-                row.get::<_, Option<String>>(7)?,
+                row.get::<_, String>("content_hash")?,
+                row.get::<_, String>("track_id")?,
+                StoredAssignment::read(row)?,
             ))
         },
     )?;
-    let mut out: HashMap<(String, String), Vec<ArtistAssignment>> = HashMap::new();
-    for (content_hash, track_id, kind, artist_id, name, sort_name, musicbrainz_id, discogs_id) in
-        rows
-    {
+    let mut out: HashMap<(String, String), Vec<Credited>> = HashMap::new();
+    for (content_hash, track_id, stored) in rows {
         out.entry((content_hash, track_id))
             .or_default()
-            .push(assignment_from_columns(
-                kind,
-                artist_id,
-                name,
-                sort_name,
-                musicbrainz_id,
-                discogs_id,
-            )?);
+            .push(stored.credited()?);
     }
     Ok(out)
 }

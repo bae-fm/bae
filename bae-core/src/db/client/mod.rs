@@ -1,3 +1,4 @@
+use crate::credits::LibraryCredit;
 use crate::db::models::*;
 // The catalogs a record names belong to the import path, which the mobile
 // builds do not carry; the modules that read one are gated with it.
@@ -34,6 +35,8 @@ pub use artist::{
     ComposerDetailProjection, WorkDetailProjection,
 };
 mod artist;
+mod artist_credit_names;
+use artist_credit_names::settle_credit_name;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod artist_identity_choice;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

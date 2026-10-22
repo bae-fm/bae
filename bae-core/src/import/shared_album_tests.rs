@@ -100,7 +100,7 @@ fn label(name: &str, catalog_number: &str) -> RawLabelEdit {
 fn row(title: &str, catalog_number: &str, tracks: &[&str]) -> RawReleaseEdit {
     RawReleaseEdit {
         album_title: title.to_string(),
-        album_artist_assignments: vec![ArtistAssignment::named("Artist Name")],
+        album_artist_assignments: vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Artist Name"))],
         album_year: "1990".to_string(),
         pressing: RawPressingEdit {
             year: String::new(),
@@ -147,7 +147,7 @@ fn offered(rows: Vec<RawReleaseEdit>) -> Vec<OfferedReading> {
 fn draft() -> CandidateDraft {
     CandidateDraft {
         album_title: "album title (tags)".to_string(),
-        album_artist_assignments: vec![ArtistAssignment::named("artist from tags")],
+        album_artist_assignments: vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("artist from tags"))],
         album_year: "1985".to_string(),
         pressing: RawPressingEdit {
             year: "2005".to_string(),
@@ -201,7 +201,7 @@ fn what_the_pressings_agree_on_is_taken_as_the_top_row_spells_it() {
     assert_eq!(shared.album_title, "Album Title");
     assert_eq!(
         shared.album_artist_assignments,
-        vec![ArtistAssignment::named("Artist Name")]
+        vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Artist Name"))]
     );
     assert_eq!(shared.album_year, "1990");
     assert_eq!(

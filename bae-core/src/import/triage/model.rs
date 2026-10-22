@@ -130,7 +130,8 @@ pub struct MatchedRelease {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TriageMetadataSummary {
     pub album_title: String,
-    pub album_artist_assignments: Vec<crate::import::ArtistAssignment>,
+    /// The draft's album credits, printed as one line.
+    pub album_artists: String,
 }
 
 impl TriageMetadataSummary {
@@ -142,14 +143,14 @@ impl TriageMetadataSummary {
         }
         Some(Self {
             album_title: draft.album_title.clone(),
-            album_artist_assignments: draft.album_artist_assignments.clone(),
+            album_artists: crate::import::credited_line(&draft.album_artist_assignments),
         })
     }
 
     /// The same summary from the stored draft's columns.
     pub(crate) fn of_columns(
         album_title: String,
-        album_artist_assignments: Vec<crate::import::ArtistAssignment>,
+        album_artist_assignments: Vec<crate::import::Credited>,
         blank: bool,
         answered: bool,
     ) -> Option<Self> {
@@ -158,7 +159,7 @@ impl TriageMetadataSummary {
         }
         Some(Self {
             album_title,
-            album_artist_assignments,
+            album_artists: crate::import::credited_line(&album_artist_assignments),
         })
     }
 }
@@ -303,14 +304,7 @@ impl TriageRow {
     pub(crate) fn shown_text(&self) -> Vec<&str> {
         match &self.metadata_summary {
             None => vec![self.folder_name.as_str()],
-            Some(summary) => std::iter::once(summary.album_title.as_str())
-                .chain(
-                    summary
-                        .album_artist_assignments
-                        .iter()
-                        .map(crate::import::ArtistAssignment::name),
-                )
-                .collect(),
+            Some(summary) => vec![summary.album_title.as_str(), summary.album_artists.as_str()],
         }
     }
 }

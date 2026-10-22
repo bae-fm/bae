@@ -55,7 +55,7 @@ pub fn bridge_file_evidence_key(evidence: &BridgeFileEvidence) -> String {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseUserEdit {
     pub album_title: String,
-    pub album_artist_assignments: Vec<BridgeArtistAssignment>,
+    pub album_artist_assignments: Vec<BridgeCredited>,
     pub album_year: Option<i32>,
     pub pressing: BridgePressingEdit,
     pub tracks: Vec<BridgeTrackUserEdit>,
@@ -93,8 +93,41 @@ pub struct BridgeTrackUserEdit {
 /// `bridge_artist_standing` / `bridge_artists_standing`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeArtistAssignment {
-    Picked { artist: BridgeExistingArtist },
-    Credit { credit: BridgeArtistCredit },
+    /// A library artist, printed by `credit` (one of its other printed
+    /// names) where the person picked one, else by its own name.
+    Picked {
+        artist: BridgeExistingArtist,
+        credit: Option<BridgeCreditName>,
+    },
+    Credit {
+        credit: BridgeArtistCredit,
+    },
+}
+
+/// One place in an album's or track's credit list. Mirror of
+/// `bae_core::import::Credited`: who is credited, and what is printed after
+/// it when another credit follows (`None`: ", ").
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeCredited {
+    pub artist: BridgeArtistAssignment,
+    pub join: Option<String>,
+}
+
+/// One of an artist's other printed names. Mirror of
+/// `bae_core::credits::CreditName`: its folded key and the name as printed.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Record)]
+pub struct BridgeCreditName {
+    pub key: String,
+    pub name: String,
+}
+
+/// One of an artist's other printed names with the artist whose row holds
+/// it (the artist, or one merged into it). Mirror of
+/// `bae_core::credits::ArtistCreditName`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeArtistCreditName {
+    pub artist_id: String,
+    pub credit: BridgeCreditName,
 }
 
 /// One selected artist already in the library. The assignment carries the
@@ -107,6 +140,20 @@ pub struct BridgeExistingArtist {
     pub sort_name: Option<String>,
     pub musicbrainz_artist_id: Option<String>,
     pub discogs_artist_id: Option<String>,
+}
+
+mirror_struct! {
+    BridgeCreditName = bae_core::credits::CreditName,
+    from_core: pub(crate) fn,
+    #[cfg(feature = "desktop")]
+    into_core: pub(crate) fn,
+    fields: { key, name },
+}
+
+mirror_struct! {
+    BridgeArtistCreditName = bae_core::credits::ArtistCreditName,
+    from_core: pub(crate) fn,
+    fields: { artist_id, credit: (BridgeCreditName) },
 }
 
 mirror_struct! {
@@ -131,6 +178,8 @@ pub struct BridgeArtistCredit {
     pub sort_name: Option<String>,
     pub musicbrainz_artist_id: Option<String>,
     pub discogs_artist_id: Option<String>,
+    /// The name the source printed for the artist, where it is another.
+    pub credited_as: Option<String>,
 }
 
 /// What the library holds for one credit, as it stood when read. Mirror of
@@ -223,12 +272,19 @@ pub fn bridge_artists_standing(
         .map(BridgeArtistsStanding::from_core)
 }
 
+/// The line a credit list prints: each credit's printed name, then its join
+/// (", " where it states none), the last credit's join never printed.
+#[cfg(feature = "desktop")]
+#[uniffi::export]
+pub fn bridge_credit_line(credits: Vec<BridgeCredited>) -> String {
+    let credits: Vec<_> = credits.into_iter().map(BridgeCredited::into_core).collect();
+    bae_core::import::credited_line(&credits)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeTrackArtistAssignments {
     AlbumArtists,
-    Explicit {
-        assignments: Vec<BridgeArtistAssignment>,
-    },
+    Explicit { assignments: Vec<BridgeCredited> },
 }
 
 /// The audio a track's samples come from. Mirrors
@@ -585,7 +641,7 @@ pub fn bridge_apply_pressing_fact(
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeRawReleaseEdit {
     pub album_title: String,
-    pub album_artist_assignments: Vec<BridgeArtistAssignment>,
+    pub album_artist_assignments: Vec<BridgeCredited>,
     pub album_year: String,
     pub pressing: BridgeRawPressingEdit,
     pub tracks: Vec<BridgeRawTrackEdit>,

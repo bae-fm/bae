@@ -71,7 +71,7 @@ struct ReleaseMetadataTrackRow: View {
         .frame(width: columns.artist)
     }
 
-    private var explicitArtists: [BridgeArtistAssignment] {
+    private var explicitArtists: [BridgeCredited] {
         switch track.artistAssignments {
         case .albumArtists: []
         case .explicit(let artists): artists

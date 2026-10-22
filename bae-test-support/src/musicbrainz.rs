@@ -57,6 +57,7 @@ pub fn mb_release(
         packaging: None,
         barcode: None,
         artist_credit: vec![bae_core::musicbrainz::MbArtistCredit {
+            joinphrase: None,
             name: "Artist Name".to_string(),
             artist: Some(bae_core::musicbrainz::MbArtistRef {
                 id: Some("mb-artist-1".to_string()),

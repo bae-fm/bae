@@ -74,22 +74,34 @@ impl DbArtist {
     }
 }
 
-/// One place in an album's credit list: the artist credited there.
+/// One place in an album's credit list: the artist credited there, the other
+/// printed name of the artist's it prints if any, and what follows it.
+///
+/// An import or edit builds these before its credits are resolved, `credit`
+/// holding the name the credit prints; the write resolves the artist and
+/// keeps `credit` only where it is not the artist's own name, adding it to
+/// the artist's `artist_credits` if it is new there.
 #[derive(Debug, Clone)]
 pub struct DbAlbumArtist {
     pub album_id: String,
     pub artist_id: String,
     /// The credit's place in the list, from 0.
     pub position: u32,
+    pub credit: Option<crate::credits::CreditName>,
+    /// Printed after the credit when another follows; `None` prints ", ".
+    pub join_phrase: Option<String>,
     pub created_at: DateTime<Utc>,
 }
-/// One place in a track's own credit list.
+/// One place in a track's own credit list, as [`DbAlbumArtist`] is for an
+/// album's.
 #[derive(Debug, Clone)]
 pub struct DbTrackArtist {
     pub track_id: String,
     pub artist_id: String,
     /// The credit's place in the list, from 0.
     pub position: u32,
+    pub credit: Option<crate::credits::CreditName>,
+    pub join_phrase: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -556,11 +568,15 @@ impl DbAlbumArtist {
         crate::db::identity::album_artist_id(&self.album_id, self.position)
     }
 
+    /// `artist_id` at `position`, printed by its own name, followed by the
+    /// default separator.
     pub fn new(album_id: &str, artist_id: &str, position: u32, now: DateTime<Utc>) -> Self {
         DbAlbumArtist {
             album_id: album_id.to_string(),
             artist_id: artist_id.to_string(),
             position,
+            credit: None,
+            join_phrase: None,
             created_at: now,
         }
     }
@@ -578,11 +594,15 @@ impl DbTrackArtist {
         crate::db::identity::track_artist_id(&self.track_id, self.position)
     }
 
+    /// `artist_id` at `position`, printed by its own name, followed by the
+    /// default separator.
     pub fn new(track_id: &str, artist_id: &str, position: u32, now: DateTime<Utc>) -> Self {
         DbTrackArtist {
             track_id: track_id.to_string(),
             artist_id: artist_id.to_string(),
             position,
+            credit: None,
+            join_phrase: None,
             created_at: now,
         }
     }

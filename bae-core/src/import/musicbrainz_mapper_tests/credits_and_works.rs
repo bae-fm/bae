@@ -306,7 +306,7 @@ fn known_mb_artist_id_does_not_merge_into_same_name_artist_without_id() {
 fn id_less_track_credit_does_not_merge_into_id_bearing_release_artist() {
     // Release artist "Artist Name A" carries MB id "artist-1".
     let mut track = make_mb_track("1", "Track 1");
-    track.artist_credit = vec![MbArtistCredit {
+    track.artist_credit = vec![MbArtistCredit { joinphrase: None, 
         name: "Artist Name A".to_string(),
         artist: Some(MbArtistRef {
             id: None,
@@ -646,7 +646,7 @@ fn work_parts_relation_without_work_payload_is_logged_and_skipped() {
 #[test]
 fn track_artist_credit_without_resolvable_name_is_logged_and_skipped() {
     let mut track = make_mb_track("1", "Track 1");
-    track.artist_credit = vec![MbArtistCredit {
+    track.artist_credit = vec![MbArtistCredit { joinphrase: None, 
         name: String::new(),
         artist: Some(MbArtistRef {
             id: Some("artist-nameless".to_string()),
@@ -671,5 +671,62 @@ fn track_artist_credit_without_resolvable_name_is_logged_and_skipped() {
     assert!(
         logs.contains("unresolvable artist name"),
         "expected a skip warning, got: {logs}"
+    );
+}
+
+/// A track credited "Artist A feat. Artist B" keeps both credits, the join
+/// after the first, and the name the credit prints where it is not the
+/// artist's own; a credit naming no artist object keeps its printed name.
+#[test]
+fn a_track_credit_keeps_each_printed_name_and_join() {
+    let mut track = make_mb_track("1", "Track 1");
+    track.artist_credit = vec![
+        MbArtistCredit {
+            joinphrase: Some(" feat. ".to_string()),
+            ..credit("artist-a", "Artist A")
+        },
+        MbArtistCredit {
+            name: "B Printed".to_string(),
+            joinphrase: Some(" & ".to_string()),
+            ..credit("artist-b", "Artist B")
+        },
+        MbArtistCredit {
+            name: "Nobody Named".to_string(),
+            artist: None,
+            joinphrase: Some("".to_string()),
+        },
+    ];
+    let response = make_response(vec![MbMedium {
+        discs: vec![],
+        format: Some("CD".to_string()),
+        tracks: vec![track],
+    }]);
+
+    let values = map(&response, vec![]).unwrap();
+
+    let TrackCredits::Own(credits) = &values.tracks[0].credits else {
+        panic!("the track credits its own artists");
+    };
+    let stated: Vec<(&str, &str, Option<&str>)> = credits
+        .iter()
+        .map(|stated| {
+            (
+                stated.credit.name.as_str(),
+                stated.credit.printed(),
+                stated.join.as_deref(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        stated,
+        [
+            ("Artist A", "Artist A", Some(" feat. ")),
+            ("Artist B", "B Printed", Some(" & ")),
+            ("Nobody Named", "Nobody Named", None),
+        ]
+    );
+    assert_eq!(
+        crate::import::SourceCredit::line(credits),
+        "Artist A feat. B Printed & Nobody Named"
     );
 }

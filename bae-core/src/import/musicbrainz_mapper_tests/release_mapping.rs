@@ -60,7 +60,7 @@ fn make_response(media: Vec<MbMedium>) -> MbReleaseResponse {
         status: None,
         packaging: None,
         barcode: None,
-        artist_credit: vec![MbArtistCredit {
+        artist_credit: vec![MbArtistCredit { joinphrase: None, 
             name: "Artist Name A".to_string(),
             artist: Some(MbArtistRef {
                 id: Some("artist-1".to_string()),
@@ -546,7 +546,7 @@ fn release_with_no_artist_credits_returns_err() {
 }
 
 fn credit(id: &str, name: &str) -> MbArtistCredit {
-    MbArtistCredit {
+    MbArtistCredit { joinphrase: None, 
         name: name.to_string(),
         artist: Some(MbArtistRef {
             id: Some(id.to_string()),
@@ -571,10 +571,10 @@ fn release_artist_credit_name_is_used_when_artist_payload_name_is_missing() {
 
     let artist = &parsed.album_credits[0];
     assert_eq!(
-        artist.musicbrainz_artist_id.as_deref(),
+        artist.credit.musicbrainz_artist_id.as_deref(),
         Some("artist-credit-name-only")
     );
-    assert_eq!(artist.name, "Credit Artist Name");
+    assert_eq!(artist.credit.name, "Credit Artist Name");
 }
 
 #[test]
@@ -604,7 +604,7 @@ fn missing_mb_sort_names_remain_absent() {
     let release_artist = parsed
         .album_credits
         .iter()
-        .find(|artist| artist.musicbrainz_artist_id.as_deref() == Some("artist-1"))
+        .find(|artist| artist.credit.musicbrainz_artist_id.as_deref() == Some("artist-1"))
         .expect("release artist read");
     let composer = &parsed.tracks[0].roles[0].artist;
     assert_eq!(
@@ -612,6 +612,6 @@ fn missing_mb_sort_names_remain_absent() {
         Some("composer-artist-a")
     );
 
-    assert_eq!(release_artist.sort_name, None);
+    assert_eq!(release_artist.credit.sort_name, None);
     assert_eq!(composer.sort_name, None);
 }

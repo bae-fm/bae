@@ -390,7 +390,7 @@ async fn an_automatic_import_that_cannot_start_is_recorded_as_its_failed_import(
         .preparations
         .set_album_artists(
             &fixture.content_hash(&dir),
-            &[crate::import::ArtistAssignment::named("Changed Artist")],
+            &[crate::import::Credited::plain(crate::import::ArtistAssignment::named("Changed Artist"))],
         )
         .await
         .unwrap();

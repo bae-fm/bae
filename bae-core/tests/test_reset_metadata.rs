@@ -226,6 +226,7 @@ fn mb_release_json(
         packaging: None,
         barcode: Some("0123456789".to_string()),
         artist_credit: vec![MbArtistCredit {
+            joinphrase: None,
             name: artist.to_string(),
             artist: Some(MbArtistRef {
                 id: Some(format!("mb-art-{artist}")),
@@ -328,14 +329,15 @@ async fn reset_mb_returns_full_pressing_data_from_the_stored_release() {
     assert_eq!(edit.album_title, "Cached Album");
     assert_eq!(
         edit.album_artist_assignments,
-        vec![ArtistAssignment::Credit {
+        bae_core::import::Credited::plain_list(vec![ArtistAssignment::Credit {
             credit: ArtistCredit {
+                credited_as: None,
                 name: "Cached Artist".to_string(),
                 sort_name: Some("Cached Artist".to_string()),
                 musicbrainz_artist_id: Some("mb-art-Cached Artist".to_string()),
                 discogs_artist_id: None,
             },
-        }]
+        }])
     );
     assert_eq!(edit.pressing.year, Some(1999));
     assert_eq!(
@@ -485,14 +487,15 @@ async fn reset_discogs_returns_full_pressing_data_from_the_stored_release() {
     assert_eq!(edit.album_title, "Cached Discogs Album");
     assert_eq!(
         edit.album_artist_assignments,
-        vec![ArtistAssignment::Credit {
+        bae_core::import::Credited::plain_list(vec![ArtistAssignment::Credit {
             credit: ArtistCredit {
+                credited_as: None,
                 name: "Cached Discogs Artist".to_string(),
                 sort_name: Some("Cached Discogs Artist".to_string()),
                 musicbrainz_artist_id: None,
                 discogs_artist_id: Some("999".to_string()),
             },
-        }]
+        }])
     );
     assert_eq!(edit.pressing.year, Some(1985));
     assert_eq!(
@@ -608,7 +611,7 @@ async fn reset_file_metadata_unknown_returns_tags_from_disk() {
     assert_eq!(edit.album_title, "Tag Album");
     assert_eq!(
         edit.album_artist_assignments,
-        vec![ArtistAssignment::named("Tag Artist")]
+        bae_core::import::Credited::plain_list(vec![ArtistAssignment::named("Tag Artist")])
     );
     assert_eq!(edit.pressing.year, Some(2010));
     assert!(edit.pressing.facts.media.is_empty());

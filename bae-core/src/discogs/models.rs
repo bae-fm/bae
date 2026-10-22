@@ -4,6 +4,13 @@ use crate::import::cover_art::RemoteCover;
 pub struct DiscogsArtist {
     pub id: String,
     pub name: String,
+    /// The name the release prints for the artist (Discogs's artist name
+    /// variation), as Discogs states it: empty or the artist's own name where
+    /// it prints no other.
+    pub anv: Option<String>,
+    /// What Discogs prints after the artist when another follows (`,`, `&`,
+    /// `Feat.`), as Discogs spells it; empty for nothing.
+    pub join: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

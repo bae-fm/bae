@@ -150,6 +150,7 @@ pub(super) fn load_draft_values_on(
                     sort_name: row.get(3)?,
                     musicbrainz_artist_id: row.get(4)?,
                     discogs_artist_id: row.get(5)?,
+                    credited_as: None,
                 },
             ))
         },
@@ -269,6 +270,7 @@ fn role_columns(row: &rusqlite::Row<'_>, first: usize) -> rusqlite::Result<RoleC
             sort_name: row.get(first + 1)?,
             musicbrainz_artist_id: row.get(first + 2)?,
             discogs_artist_id: row.get(first + 3)?,
+            credited_as: None,
         },
         source: row.get(first + 4)?,
         role: row.get(first + 5)?,

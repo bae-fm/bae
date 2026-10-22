@@ -103,7 +103,7 @@ async fn a_master_backlink_is_followed_and_the_stored_release_reads_back() {
     assert_eq!(parsed.pressing.year, Some(2005));
     assert_eq!(crate::import::release_values::value_labels(&parsed), ["A1", "B1"]);
     assert_eq!(
-        parsed.album_credits[0].musicbrainz_artist_id.as_deref(),
+        parsed.album_credits[0].credit.musicbrainz_artist_id.as_deref(),
         Some("artist-id")
     );
     let (db, _temp) = database().await;
@@ -184,7 +184,7 @@ fn linked_album_fills_missing_title_and_artists_without_setting_pressing_year() 
         .every_medium_values()
         .unwrap();
     assert_eq!(parsed.album_title, "Master Album");
-    assert_eq!(parsed.album_credits[0].name, "Selected Artist");
+    assert_eq!(parsed.album_credits[0].credit.name, "Selected Artist");
     assert_eq!(parsed.album_year, Some(1980));
     assert_eq!(parsed.pressing.year, None);
 }
@@ -276,7 +276,7 @@ fn selected_album_credits_keep_every_artist_in_detail_and_import() {
         parsed
             .album_credits
             .iter()
-            .map(|artist| artist.name.as_str())
+            .map(|artist| artist.credit.name.as_str())
             .collect::<Vec<_>>(),
         vec!["Selected Artist", "Second Artist"]
     );

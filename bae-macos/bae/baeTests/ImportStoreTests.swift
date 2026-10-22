@@ -364,7 +364,7 @@ struct ImportStoreSidebarCoverTests {
                 ),
                 metadataSummary: BridgeTriageMetadataSummary(
                     albumTitle: "Applied Draft",
-                    albumArtistAssignments: []
+                    albumArtists: ""
                 ),
                 cover: choice.image
             )

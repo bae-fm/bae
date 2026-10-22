@@ -229,7 +229,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
             .await
             .unwrap()
             .into_iter()
-            .map(|artist| artist.id)
+            .map(|artist| artist.artist.id)
             .collect::<Vec<_>>(),
         vec![discogs.id.clone(), discogs.id.clone()]
     );

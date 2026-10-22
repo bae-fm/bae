@@ -9,7 +9,7 @@ struct ReleaseFieldWriter {
     let setLabels: @MainActor ([BridgeRawLabelEdit]) async -> Void
     /// A choice of what the pressing is, from one of the form's pickers.
     let setPressingFact: @MainActor (BridgePressingFactEdit) async -> Void
-    let setAlbumArtists: @MainActor ([BridgeArtistAssignment]) async -> Void
+    let setAlbumArtists: @MainActor ([BridgeCredited]) async -> Void
 
     init(
         setField:
@@ -26,7 +26,7 @@ struct ReleaseFieldWriter {
             ) async -> Void = { _ in },
         setAlbumArtists:
             @escaping @MainActor (
-                [BridgeArtistAssignment]
+                [BridgeCredited]
             ) async -> Void = { _ in }
     ) {
         self.setField = setField
@@ -365,11 +365,43 @@ struct ReleasePressingFieldsGrid: View {
 }
 
 extension BridgeArtistAssignment {
+    /// The name this credit prints: a picked artist's chosen credit name or
+    /// its own; a credit's printed name or its name.
     var displayName: String {
         switch self {
-        case .picked(let artist): artist.name
-        case .credit(let credit): credit.name
+        case .picked(let artist, let credit): credit?.name ?? artist.name
+        case .credit(let credit): credit.creditedAs ?? credit.name
         }
+    }
+}
+
+extension BridgeCredited {
+    /// A library artist in a new place of a credit list, printed by `credit`
+    /// (one of its other names) or its own name.
+    static func picked(
+        _ artist: BridgeExistingArtist,
+        credit: BridgeCreditName? = nil
+    ) -> Self {
+        BridgeCredited(
+            artist: .picked(artist: artist, credit: credit),
+            join: nil
+        )
+    }
+
+    /// A typed name in a new place of a credit list.
+    static func typed(_ name: String) -> Self {
+        BridgeCredited(
+            artist: .credit(
+                credit: BridgeArtistCredit(
+                    name: name,
+                    sortName: nil,
+                    musicbrainzArtistId: nil,
+                    discogsArtistId: nil,
+                    creditedAs: nil
+                )
+            ),
+            join: nil
+        )
     }
 }
 
@@ -416,16 +448,14 @@ struct ArtistAssignmentsSummary: Equatable {
 
     /// `nil` when nothing is assigned, so the field shows its placeholder.
     init?(
-        assignments: [BridgeArtistAssignment],
+        assignments: [BridgeCredited],
         resolutions: [BridgeResolvedCredit]
     ) {
         guard !assignments.isEmpty else { return nil }
-        names = ListFormatter.localizedString(
-            byJoining: assignments.map(\.displayName)
-        )
+        names = bridgeCreditLine(credits: assignments)
         identityLabel =
             bridgeArtistsStanding(
-                assignments: assignments,
+                assignments: assignments.map(\.artist),
                 resolutions: resolutions
             )?
             .label
@@ -466,12 +496,12 @@ struct ArtistAssignmentsField: View {
         case column
     }
 
-    let assignments: [BridgeArtistAssignment]
+    let assignments: [BridgeCredited]
     let placeholder: String
     var width: Width = .value
     var inheritsAlbumArtists = false
     var onUseAlbumArtists: (() -> Void)?
-    let onChange: ([BridgeArtistAssignment]) -> Void
+    let onChange: ([BridgeCredited]) -> Void
 
     @Environment(Library.self)
     private var library
@@ -548,13 +578,13 @@ struct ArtistAssignmentsField: View {
                 index,
                 assignment in
                 let standing = bridgeArtistStanding(
-                    assignment: assignment,
+                    assignment: assignment.artist,
                     resolutions: resolutions
                 )
                 VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                     HStack(spacing: ThemeSpace.related) {
                         ArtistAssignmentLabel(
-                            assignment: assignment,
+                            assignment: assignment.artist,
                             standing: standing
                         )
                         Spacer(minLength: 0)
@@ -589,14 +619,29 @@ struct ArtistAssignmentsField: View {
             ForEach(results, id: \.artist.artistId) { result in
                 VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
                     Button {
-                        onChange(
-                            assignments + [.picked(artist: result.artist)]
-                        )
+                        onChange(assignments + [.picked(result.artist)])
                         query = ""
                     } label: {
                         ArtistSearchResultLabel(artist: result.artist)
                     }
                     .buttonStyle(.plain)
+                    // The artist's other printed names, under it: picking one
+                    // credits the artist printed by that name.
+                    ForEach(result.creditNames, id: \.credit.key) { name in
+                        Button {
+                            onChange(
+                                assignments + [
+                                    .picked(result.artist, credit: name.credit)
+                                ]
+                            )
+                            query = ""
+                        } label: {
+                            Text(verbatim: name.credit.name)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.leading, ThemeSpace.group)
+                    }
                     Button("View in Library") {
                         isPresented = false
                         uiStore.navigateToArtist(result.artist.artistId)
@@ -622,7 +667,10 @@ struct ArtistAssignmentsField: View {
             ForEach(choices, id: \.artistId) { choice in
                 Button {
                     var next = assignments
-                    next[index] = .picked(artist: choice)
+                    next[index] = BridgeCredited(
+                        artist: .picked(artist: choice, credit: nil),
+                        join: next[index].join
+                    )
                     onChange(next)
                 } label: {
                     ArtistSearchResultLabel(artist: choice)
@@ -639,18 +687,7 @@ struct ArtistAssignmentsField: View {
 
     private func addTypedArtist() {
         guard !trimmedQuery.isEmpty else { return }
-        onChange(
-            assignments + [
-                .credit(
-                    credit: BridgeArtistCredit(
-                        name: query,
-                        sortName: nil,
-                        musicbrainzArtistId: nil,
-                        discogsArtistId: nil
-                    )
-                )
-            ]
-        )
+        onChange(assignments + [.typed(query)])
         query = ""
     }
 

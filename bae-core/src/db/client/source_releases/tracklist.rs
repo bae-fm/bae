@@ -48,8 +48,8 @@ pub(super) fn insert_entry(
         sql.execute(
             "INSERT INTO source_release_entry_credit \
                  (catalog, release_id, entry, position, credited_name, name, sort_name, \
-                  musicbrainz_artist_id, discogs_artist_id) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  musicbrainz_artist_id, discogs_artist_id, join_phrase) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 catalog,
                 key,
@@ -60,6 +60,7 @@ pub(super) fn insert_entry(
                 artist.and_then(|artist| artist.sort_name.as_deref()),
                 artist.and_then(|artist| artist.musicbrainz_artist_id.as_deref()),
                 artist.and_then(|artist| artist.discogs_artist_id.as_deref()),
+                credit.join,
             ],
         )?;
     }
@@ -276,19 +277,24 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
     };
     for (entry, credit) in sql.query(
         "SELECT entry, position, credited_name, name, sort_name, musicbrainz_artist_id, \
-                discogs_artist_id \
+                discogs_artist_id, join_phrase \
          FROM source_release_entry_credit WHERE catalog = ? AND release_id = ? \
          ORDER BY entry, position",
         params![catalog, key],
         |row| {
+            let credited_name: String = row.get(2)?;
             let name: Option<String> = row.get(3)?;
             Ok((
                 row.get::<_, i64>(0)?,
                 DisplayCredit {
                     position: row.get(1)?,
-                    credited_name: row.get(2)?,
                     artist: match name {
+                        // The printed name is the credit's own where it is
+                        // another than the artist's.
                         Some(name) => Some(crate::import::ArtistCredit {
+                            credited_as: Some(credited_name.trim())
+                                .filter(|printed| !printed.is_empty() && *printed != name)
+                                .map(str::to_string),
                             name,
                             sort_name: row.get(4)?,
                             musicbrainz_artist_id: row.get(5)?,
@@ -296,6 +302,8 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
                         }),
                         None => None,
                     },
+                    credited_name,
+                    join: row.get(7)?,
                 },
             ))
         },

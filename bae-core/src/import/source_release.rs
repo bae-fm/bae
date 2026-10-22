@@ -192,6 +192,30 @@ pub(crate) struct DisplayCredit {
     pub(crate) position: i32,
     pub(crate) credited_name: String,
     pub(crate) artist: Option<ArtistCredit>,
+    /// What the catalog prints after the credit when another follows.
+    pub(crate) join: Option<String>,
+}
+
+/// A track's own credits as its display credits state them, place by place:
+/// a credit naming an artist as that artist, a printed name with no artist
+/// behind it as a credit of that name. The last credit's join is not kept.
+pub(crate) fn stated_credits(credits: &[DisplayCredit]) -> Vec<crate::import::SourceCredit> {
+    let mut stated: Vec<crate::import::SourceCredit> = credits
+        .iter()
+        .filter_map(|credit| {
+            let artist = match &credit.artist {
+                Some(artist) => artist.clone(),
+                None if credit.credited_name.trim().is_empty() => return None,
+                None => ArtistCredit::named(credit.credited_name.trim()),
+            };
+            Some(crate::import::SourceCredit {
+                credit: artist,
+                join: credit.join.clone(),
+            })
+        })
+        .collect();
+    crate::credits::drop_last_join(&mut stated, |credit| &mut credit.join);
+    stated
 }
 
 /// One composer credit and the words its catalog credits it with.
@@ -385,16 +409,10 @@ impl SourceRelease {
         }
     }
 
-    /// The album artists, joined the way a picker's row prints them.
+    /// The album's credits, printed as the catalog prints them.
     pub(crate) fn artist_line(&self) -> Option<String> {
         let artists = &self.metadata.album.artists;
-        (!artists.is_empty()).then(|| {
-            artists
-                .iter()
-                .map(|artist| artist.name.as_str())
-                .collect::<Vec<_>>()
-                .join(", ")
-        })
+        (!artists.is_empty()).then(|| crate::import::SourceCredit::line(artists))
     }
 
     /// The pressing this release describes.

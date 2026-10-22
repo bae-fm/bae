@@ -329,6 +329,22 @@ impl DiscogsSearchResult {
 struct ArtistCredit {
     id: u64,
     name: String,
+    // Discogs prints "" for neither; the mapper reads an empty one as none.
+    #[serde(default)]
+    anv: Option<String>,
+    #[serde(default)]
+    join: Option<String>,
+}
+
+impl ArtistCredit {
+    fn into_model(self) -> DiscogsArtist {
+        DiscogsArtist {
+            id: self.id.to_string(),
+            name: self.name,
+            anv: self.anv,
+            join: self.join,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -501,10 +517,7 @@ fn track_to_model(track: TrackResponse) -> DiscogsTrack {
         artists: track
             .artists
             .into_iter()
-            .map(|artist| DiscogsArtist {
-                id: artist.id.to_string(),
-                name: artist.name,
-            })
+            .map(ArtistCredit::into_model)
             .collect(),
         extraartists: track.extraartists.map(|extraartists| {
             extraartists
@@ -536,10 +549,7 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
         .artists
         .unwrap_or_default()
         .into_iter()
-        .map(|a| DiscogsArtist {
-            id: a.id.to_string(),
-            name: a.name,
-        })
+        .map(ArtistCredit::into_model)
         .collect();
     let extraartists = release.extraartists.map(|extraartists| {
         extraartists
@@ -606,10 +616,7 @@ pub fn parse_discogs_master_json(raw_json: &str) -> Result<DiscogsMaster, Discog
             .artists
             .into_iter()
             .flatten()
-            .map(|artist| DiscogsArtist {
-                id: artist.id.to_string(),
-                name: artist.name,
-            })
+            .map(ArtistCredit::into_model)
             .collect(),
         covers: image_covers(master.images, "m", master.id),
     })

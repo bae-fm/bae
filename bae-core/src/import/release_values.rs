@@ -10,8 +10,8 @@
 
 use crate::import::source_release::{PartDirection, SourceWork, SourceWorkEvent};
 use crate::import::{
-    ArtistAssignment, ArtistCredit, AudioFile, CandidateDraft, CandidateTrack, CreditedRole,
-    GraphWork, RawPressingEdit, RawTrackEdit, ReleaseUserEdit, TrackArtistAssignments,
+    ArtistCredit, AudioFile, CandidateDraft, CandidateTrack, Credited, CreditedRole, GraphWork,
+    RawPressingEdit, RawTrackEdit, ReleaseUserEdit, SourceCredit, TrackArtistAssignments,
     TrackUserEdit, WorkGraph, WorkPart,
 };
 use crate::pressing::Pressing;
@@ -21,8 +21,9 @@ use std::collections::HashSet;
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ReleaseValues {
     pub album_title: String,
-    /// The album's artists, in credit order.
-    pub album_credits: Vec<ArtistCredit>,
+    /// The album's artists, in credit order, with what the source prints
+    /// after each.
+    pub album_credits: Vec<SourceCredit>,
     pub album_year: Option<i32>,
     pub pressing: Pressing,
     /// The mediums the audio is on, in order.
@@ -55,22 +56,22 @@ pub(crate) enum TrackCredits {
     /// The album's artists: the source names none of the track's own.
     AlbumArtists,
     /// The track's own artists, in credit order.
-    Own(Vec<ArtistCredit>),
+    Own(Vec<SourceCredit>),
 }
 
 impl TrackCredits {
     fn assignments(&self) -> TrackArtistAssignments {
         match self {
             Self::AlbumArtists => TrackArtistAssignments::AlbumArtists,
-            Self::Own(credits) => TrackArtistAssignments::Explicit(
-                credits.iter().cloned().map(credit_assignment).collect(),
-            ),
+            Self::Own(credits) => TrackArtistAssignments::Explicit(credited_list(credits.iter())),
         }
     }
 }
 
-fn credit_assignment(credit: ArtistCredit) -> ArtistAssignment {
-    ArtistAssignment::Credit { credit }
+/// The draft's credit list for `credits`, as stored (see
+/// [`Credited::normalized_list`]).
+fn credited_list<'a>(credits: impl Iterator<Item = &'a SourceCredit>) -> Vec<Credited> {
+    Credited::normalized_list(credits.cloned().map(SourceCredit::credited).collect())
 }
 
 impl ReleaseValues {
@@ -140,13 +141,12 @@ impl ReleaseValues {
 
     /// The album credits as assignments. A credit with no name — tags that
     /// name no album artist — is no assignment at all.
-    fn album_assignments(&self) -> Vec<ArtistAssignment> {
-        self.album_credits
-            .iter()
-            .filter(|credit| !credit.name.trim().is_empty())
-            .cloned()
-            .map(credit_assignment)
-            .collect()
+    fn album_assignments(&self) -> Vec<Credited> {
+        credited_list(
+            self.album_credits
+                .iter()
+                .filter(|credit| !credit.credit.name.trim().is_empty()),
+        )
     }
 }
 

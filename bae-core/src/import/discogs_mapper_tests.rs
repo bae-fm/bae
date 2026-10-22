@@ -96,6 +96,8 @@ fn make_release(tracklist: Vec<DiscogsTrack>) -> DiscogsRelease {
         covers: vec![],
         barcode: None,
         artists: vec![DiscogsArtist {
+            anv: None,
+            join: None,
             name: "Artist Name A".to_string(),
             id: "artist-1".to_string(),
         }],
@@ -357,6 +359,8 @@ fn test_single_disc() {
 #[test]
 fn test_collapsed_sub_tracks_preserve_per_track_artists() {
     let sub_artist = DiscogsArtist {
+        anv: None,
+        join: None,
         name: "Sub Artist".to_string(),
         id: "sub-artist-1".to_string(),
     };
@@ -638,5 +642,58 @@ fn a_track_with_no_position_is_numbered_by_its_place_on_its_disc() {
     assert_eq!(
         crate::import::release_values::row_labels(&parsed),
         ["1-1", "1-2", "2-1", "2-2", "2-3"]
+    );
+}
+
+/// A Discogs album credit keeps its artist name variation as the name it
+/// prints and its `join` with the spaces Discogs prints it with: a comma as
+/// ", ", any other join between spaces. The last credit keeps no join.
+#[test]
+fn album_credits_keep_their_printed_names_and_joins() {
+    let mut release = make_release(vec![make_track("1", "Track 1")]);
+    release.artists = vec![
+        DiscogsArtist {
+            id: "artist-a".to_string(),
+            name: "Artist A".to_string(),
+            anv: Some("A Variation".to_string()),
+            join: Some("&".to_string()),
+        },
+        DiscogsArtist {
+            id: "artist-b".to_string(),
+            name: "Artist B".to_string(),
+            anv: None,
+            join: Some(",".to_string()),
+        },
+        DiscogsArtist {
+            id: "artist-c".to_string(),
+            name: "Artist C".to_string(),
+            anv: Some("Artist C".to_string()),
+            join: Some("Feat.".to_string()),
+        },
+    ];
+
+    let credits = metadata(&release).album.artists;
+
+    let stated: Vec<(&str, &str, Option<&str>)> = credits
+        .iter()
+        .map(|stated| {
+            (
+                stated.credit.name.as_str(),
+                stated.credit.printed(),
+                stated.join.as_deref(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        stated,
+        [
+            ("Artist A", "A Variation", Some(" & ")),
+            ("Artist B", "Artist B", Some(", ")),
+            ("Artist C", "Artist C", None),
+        ]
+    );
+    assert_eq!(
+        crate::import::SourceCredit::line(&credits),
+        "A Variation & Artist B, Artist C"
     );
 }

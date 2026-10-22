@@ -281,6 +281,7 @@ pub(super) fn seed_mb_release_with_catalog(
         packaging: None,
         barcode: None,
         artist_credit: vec![crate::musicbrainz::MbArtistCredit {
+            joinphrase: None,
             name: "Artist Name".to_string(),
             artist: Some(crate::musicbrainz::MbArtistRef {
                 id: Some("mb-artist-1".to_string()),

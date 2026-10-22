@@ -456,8 +456,7 @@ private struct ReadOnlyCandidateMappingTable: View {
     ) -> String {
         switch assignments {
         case .albumArtists: String(localized: "Album artist")
-        case .explicit(let artists):
-            artists.map(\.displayName).formatted(.list(type: .and))
+        case .explicit(let artists): bridgeCreditLine(credits: artists)
         }
     }
 

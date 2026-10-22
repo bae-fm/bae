@@ -95,17 +95,22 @@ pub(super) fn insert_album_artist_row(
     conn: &SqlContext<'_, '_>,
     aa: &DbAlbumArtist,
 ) -> Result<(), DbError> {
+    let created_at = aa.created_at.to_rfc3339();
+    let credit_key = settle_credit_name(conn, &aa.artist_id, aa.credit.as_ref(), &created_at)?;
     conn.execute(
         r#"
-        INSERT INTO album_artists (id, album_id, artist_id, position, created_at)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO album_artists
+            (id, album_id, artist_id, position, credit_key, join_phrase, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             aa.id(),
             aa.album_id,
             aa.artist_id,
             aa.position,
-            aa.created_at.to_rfc3339()
+            credit_key,
+            aa.join_phrase,
+            created_at
         ],
     )
     .map(|_| ())
@@ -217,17 +222,22 @@ pub(super) fn insert_track_artist_row(
     conn: &SqlContext<'_, '_>,
     ta: &DbTrackArtist,
 ) -> Result<(), DbError> {
+    let created_at = ta.created_at.to_rfc3339();
+    let credit_key = settle_credit_name(conn, &ta.artist_id, ta.credit.as_ref(), &created_at)?;
     conn.execute(
         r#"
-        INSERT INTO track_artists (id, track_id, artist_id, position, created_at)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO track_artists
+            (id, track_id, artist_id, position, credit_key, join_phrase, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             ta.id(),
             ta.track_id,
             ta.artist_id,
             ta.position,
-            ta.created_at.to_rfc3339()
+            credit_key,
+            ta.join_phrase,
+            created_at
         ],
     )
     .map(|_| ())
@@ -765,12 +775,16 @@ pub(super) fn replace_album_artists(
     }
     let credits: Vec<Credit<'_>> = artists
         .iter()
-        .map(|aa| Credit {
-            id: aa.id(),
-            artist_id: &aa.artist_id,
-            position: aa.position,
+        .map(|aa| {
+            Ok(Credit {
+                id: aa.id(),
+                artist_id: &aa.artist_id,
+                position: aa.position,
+                credit_key: settle_credit_name(conn, &aa.artist_id, aa.credit.as_ref(), now)?,
+                join_phrase: aa.join_phrase.as_deref(),
+            })
         })
-        .collect();
+        .collect::<Result<_, DbError>>()?;
     write_credits(conn, "album_artists", "album_id", album_id, &credits, now)
 }
 
@@ -797,12 +811,16 @@ pub(super) fn replace_track_artists(
         let credits: Vec<Credit<'_>> = artists
             .iter()
             .filter(|ta| ta.track_id == *track_id)
-            .map(|ta| Credit {
-                id: ta.id(),
-                artist_id: &ta.artist_id,
-                position: ta.position,
+            .map(|ta| {
+                Ok(Credit {
+                    id: ta.id(),
+                    artist_id: &ta.artist_id,
+                    position: ta.position,
+                    credit_key: settle_credit_name(conn, &ta.artist_id, ta.credit.as_ref(), now)?,
+                    join_phrase: ta.join_phrase.as_deref(),
+                })
             })
-            .collect();
+            .collect::<Result<_, DbError>>()?;
         write_credits(conn, "track_artists", "track_id", track_id, &credits, now)?;
     }
     Ok(())
@@ -815,13 +833,18 @@ struct Credit<'a> {
     id: String,
     artist_id: &'a str,
     position: u32,
+    credit_key: Option<String>,
+    join_phrase: Option<&'a str>,
 }
 
+/// What one stored place says: its artist, credit name and join.
+type StoredCredit = (String, Option<String>, Option<String>);
+
 /// Make `owner_id`'s rows of `table` exactly `credits`. A place no longer
-/// given is deleted, a new one inserted, and one given again naming another
-/// artist rewritten; one given again naming its artist is not touched. So a
-/// write that keeps a credit leaves its row, and its `created_at`, as they
-/// were, and syncs nothing for it.
+/// given is deleted, a new one inserted, and one given again saying anything
+/// else (another artist, credit name or join) rewritten; one given again as
+/// it stands is not touched. So a write that keeps a credit leaves its row,
+/// and its `created_at`, as they were, and syncs nothing for it.
 fn write_credits(
     conn: &SqlContext<'_, '_>,
     table: &'static str,
@@ -830,11 +853,13 @@ fn write_credits(
     credits: &[Credit<'_>],
     now: &str,
 ) -> Result<(), DbError> {
-    let stored: HashMap<String, String> = conn
+    let stored: HashMap<String, StoredCredit> = conn
         .query(
-            &format!("SELECT id, artist_id FROM {table} WHERE {owner_column} = ?"),
+            &format!(
+                "SELECT id, artist_id, credit_key, join_phrase FROM {table} WHERE {owner_column} = ?"
+            ),
             params![owner_id],
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            |row| Ok((row.get::<_, String>(0)?, (row.get(1)?, row.get(2)?, row.get(3)?))),
         )?
         .into_iter()
         .collect();
@@ -845,20 +870,34 @@ fn write_credits(
     }
     for credit in credits {
         match stored.get(&credit.id) {
-            Some(artist_id) if artist_id == credit.artist_id => {}
+            Some((artist_id, credit_key, join_phrase))
+                if artist_id == credit.artist_id
+                    && *credit_key == credit.credit_key
+                    && join_phrase.as_deref() == credit.join_phrase => {}
             Some(_) => {
                 conn.execute(
-                    &format!("UPDATE {table} SET artist_id = ? WHERE id = ?"),
-                    params![credit.artist_id, credit.id],
+                    &format!(
+                        "UPDATE {table} SET artist_id = ?, credit_key = ?, join_phrase = ? WHERE id = ?"
+                    ),
+                    params![credit.artist_id, credit.credit_key, credit.join_phrase, credit.id],
                 )?;
             }
             None => {
                 conn.execute(
                     &format!(
-                        "INSERT INTO {table} (id, {owner_column}, artist_id, position, created_at) \
-                         VALUES (?, ?, ?, ?, ?)"
+                        "INSERT INTO {table} \
+                             (id, {owner_column}, artist_id, position, credit_key, join_phrase, created_at) \
+                         VALUES (?, ?, ?, ?, ?, ?, ?)"
                     ),
-                    params![credit.id, owner_id, credit.artist_id, credit.position, now],
+                    params![
+                        credit.id,
+                        owner_id,
+                        credit.artist_id,
+                        credit.position,
+                        credit.credit_key,
+                        credit.join_phrase,
+                        now
+                    ],
                 )?;
             }
         }

@@ -1,4 +1,4 @@
-use super::{ArtistCredit, Catalog, ImportError};
+use super::{Catalog, ImportError, SourceCredit};
 use crate::pressing::Pressing;
 
 /// Album facts can come from a release or its parent without claiming a
@@ -6,7 +6,8 @@ use crate::pressing::Pressing;
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct AlbumMetadata {
     pub title: String,
-    pub artists: Vec<ArtistCredit>,
+    /// The album's credits, with what the catalog prints after each.
+    pub artists: Vec<SourceCredit>,
     pub year: Option<i32>,
     /// The year the album first came out, as its MusicBrainz release group's
     /// first release date or its Discogs master's year states it — never a
@@ -24,12 +25,10 @@ impl AlbumMetadata {
         if self.artists.is_empty() {
             self.artists = other.artists;
         } else {
-            for artist in &mut self.artists {
-                if let Some(linked) = other
-                    .artists
-                    .iter()
-                    .find(|linked| crate::text_match::same_artist_name(&linked.name, &artist.name))
-                {
+            for SourceCredit { credit: artist, .. } in &mut self.artists {
+                if let Some(linked) = other.artists.iter().map(|linked| &linked.credit).find(
+                    |linked| crate::text_match::same_artist_name(&linked.name, &artist.name),
+                ) {
                     artist.musicbrainz_artist_id = artist
                         .musicbrainz_artist_id
                         .take()
@@ -76,16 +75,14 @@ impl ReleaseMetadata {
 mod tests {
     use super::*;
 
-    fn artist(name: &str, musicbrainz_artist_id: Option<&str>) -> ArtistCredit {
-        ArtistCredit {
-            name: name.to_string(),
-            sort_name: None,
+    fn artist(name: &str, musicbrainz_artist_id: Option<&str>) -> SourceCredit {
+        SourceCredit::plain(crate::import::ArtistCredit {
             musicbrainz_artist_id: musicbrainz_artist_id.map(str::to_string),
-            discogs_artist_id: None,
-        }
+            ..crate::import::ArtistCredit::named(name)
+        })
     }
 
-    fn album(artists: Vec<ArtistCredit>) -> AlbumMetadata {
+    fn album(artists: Vec<SourceCredit>) -> AlbumMetadata {
         AlbumMetadata {
             title: "Album Title".to_string(),
             artists,
@@ -101,12 +98,12 @@ mod tests {
         let mut own = album(vec![artist("Ärtist Name", None)]);
         own.fill_missing(album(vec![artist("ARTIST NAME", Some("mb-artist-1"))]));
         assert_eq!(
-            own.artists[0].musicbrainz_artist_id.as_deref(),
+            own.artists[0].credit.musicbrainz_artist_id.as_deref(),
             Some("mb-artist-1")
         );
 
         let mut other = album(vec![artist("Other Name", None)]);
         other.fill_missing(album(vec![artist("Artist Name", Some("mb-artist-1"))]));
-        assert_eq!(other.artists[0].musicbrainz_artist_id, None);
+        assert_eq!(other.artists[0].credit.musicbrainz_artist_id, None);
     }
 }

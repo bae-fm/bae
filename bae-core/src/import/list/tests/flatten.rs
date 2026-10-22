@@ -189,7 +189,7 @@ fn the_filter_finds_a_drafted_row_by_the_draft_it_shows() {
         CandidateStateListRow {
             metadata_summary: Some(crate::import::TriageMetadataSummary {
                 album_title: "Album".to_string(),
-                album_artist_assignments: vec![crate::import::ArtistAssignment::named("Artist")],
+                album_artists: "Artist".to_string(),
             }),
             ..several_matches_state()
         },
@@ -233,7 +233,7 @@ fn the_filter_finds_a_done_row_by_its_library_release() {
         CandidateStateListRow {
             metadata_summary: Some(crate::import::TriageMetadataSummary {
                 album_title: "Draft".to_string(),
-                album_artist_assignments: vec![],
+                album_artists: String::new(),
             }),
             ..auto_importable_state("mb-2")
         },

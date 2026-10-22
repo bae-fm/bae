@@ -12,6 +12,7 @@ fn resolved(
         tags: SaveTags {
             title: title.to_string(),
             artist: "Artist Name".to_string(),
+            album_artist: "Artist Name".to_string(),
             album: "Album Title".to_string(),
             year,
             disc,
@@ -151,6 +152,7 @@ fn write_tags_to_encoded_flac(cover: Option<&[u8]>) -> (tempfile::TempDir, std::
     let tags = SaveTags {
         title: "Track Title".to_string(),
         artist: "Artist Name".to_string(),
+        album_artist: "Artist Name".to_string(),
         album: "Album Title".to_string(),
         year: Some(2001),
         disc: Some(1),
@@ -255,6 +257,7 @@ fn write_tags_round_trips_through_mp4_ilst() {
     let tags = SaveTags {
         title: "Track Title".to_string(),
         artist: "Artist Name".to_string(),
+        album_artist: "Artist Name".to_string(),
         album: "Album Title".to_string(),
         year: Some(2001),
         disc: Some(1),

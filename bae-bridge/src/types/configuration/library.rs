@@ -157,14 +157,24 @@ pub struct BridgeArtistSummary {
 pub struct BridgeArtistSearchResult {
     pub artist: BridgeExistingArtist,
     pub image: Option<BridgeImageRef>,
+    /// The artist's other printed names, which the picker offers under it.
+    pub credit_names: Vec<BridgeArtistCreditName>,
 }
 
 impl BridgeArtistSearchResult {
     pub(crate) fn from_core(result: bae_core::album_detail::ArtistSearchResult) -> Self {
-        let bae_core::album_detail::ArtistSearchResult { artist, image } = result;
+        let bae_core::album_detail::ArtistSearchResult {
+            artist,
+            image,
+            credit_names,
+        } = result;
         Self {
             artist: BridgeExistingArtist::from_core(bae_core::import::ExistingArtist::from(artist)),
             image: image.map(BridgeImageRef::from_core),
+            credit_names: credit_names
+                .into_iter()
+                .map(BridgeArtistCreditName::from_core)
+                .collect(),
         }
     }
 }
@@ -172,6 +182,9 @@ impl BridgeArtistSearchResult {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeArtistDetail {
     pub artist: BridgeArtistSummary,
+    /// The artist's other printed names, in name order, which its page lists
+    /// and edits.
+    pub credit_names: Vec<BridgeArtistCreditName>,
     /// The artist's albums in discography order: year ascending with unknown
     /// years last, then title.
     pub albums: Vec<BridgeAlbum>,

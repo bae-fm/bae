@@ -14,7 +14,7 @@ async fn importable(handle: &ImportServiceHandle, key: &str) {
         .await
         .unwrap();
     handle
-        .set_candidate_album_artists(key, vec![crate::import::ArtistAssignment::named("Artist")])
+        .set_candidate_album_artists(key, vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Artist"))])
         .await
         .unwrap();
 }

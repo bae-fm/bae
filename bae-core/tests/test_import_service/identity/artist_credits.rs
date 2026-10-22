@@ -75,7 +75,7 @@ async fn album_artist_id(f: &ImportFixture, album_id: &str) -> String {
         .unwrap()
         .first()
         .expect("the imported album's first credit")
-        .id
+        .artist.id
         .clone()
 }
 
@@ -344,4 +344,38 @@ async fn a_pane_offers_the_library_artists_a_shared_name_could_be() {
     let mut expected = vec![first.id, second.id];
     expected.sort();
     assert_eq!(offered, expected);
+}
+
+/// A Discogs album credit printing an artist name variation and a join
+/// imports as stated: the album prints the variation and the join, and the
+/// credit links the artist by its own name.
+#[tokio::test]
+async fn a_discogs_credit_imports_with_its_printed_name_and_join() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    let mut release = discogs_release("Album Credited", &["Track One"]);
+    release.artists = vec![
+        bae_core::discogs::DiscogsArtist {
+            anv: Some("A Variation".to_string()),
+            join: Some("&".to_string()),
+            ..support::discogs_artist("discogs-artist-a", "Artist A")
+        },
+        support::discogs_artist("discogs-artist-b", "Artist B"),
+    ];
+    let release_key = seed_discogs_test_release(f.library_manager.providers(), release);
+    let dir = f.temp_path().join("album-credited");
+    fs::create_dir_all(&dir).unwrap();
+    generate_album_files(&dir, &["01 Track One.flac"]);
+
+    let (_, album_id) = import_and_wait(&f, dir, support::discogs_release(release_key)).await;
+
+    let album = f
+        .library_manager
+        .find_album_detail(&album_id)
+        .await
+        .unwrap()
+        .expect("the imported album");
+    assert_eq!(album.artist_names, "A Variation & Artist B");
+    assert_eq!(album.artists[0].artist.name, "Artist A");
+    assert_eq!(album.artists[0].printed(), "A Variation");
 }

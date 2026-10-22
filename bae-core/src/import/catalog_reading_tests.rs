@@ -47,12 +47,9 @@ fn release(catalog: Catalog, mediums: Vec<SourceMedium>) -> SourceRelease {
         metadata: ReleaseMetadata {
             album: AlbumMetadata {
                 title: "Album Title".to_string(),
-                artists: vec![ArtistCredit {
-                    name: "Artist Name".to_string(),
-                    sort_name: None,
-                    musicbrainz_artist_id: None,
-                    discogs_artist_id: None,
-                }],
+                artists: vec![crate::import::SourceCredit::plain(ArtistCredit::named(
+                    "Artist Name",
+                ))],
                 year: None,
                 first_year: None,
             },

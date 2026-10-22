@@ -81,6 +81,8 @@ pub fn synced_tables() -> Vec<SyncedTable> {
     vec![
         SyncedTable::new("artists", RowIdentity::SharedKey),
         SyncedTable::new("artist_merges", RowIdentity::SharedKey),
+        SyncedTable::new("artist_credits", RowIdentity::SharedKey)
+            .key_columns(["artist_id", "name_key"]),
         SyncedTable::new("albums", RowIdentity::SharedKey),
         SyncedTable::new("album_artists", RowIdentity::SharedKey),
         SyncedTable::new("releases", RowIdentity::IndependentUuid),
@@ -159,6 +161,7 @@ mod tests {
             BTreeSet::from([
                 "artists",
                 "artist_merges",
+                "artist_credits",
                 "albums",
                 "album_artists",
                 "releases",
@@ -189,6 +192,7 @@ mod tests {
                 table.name(),
                 "artists"
                     | "artist_merges"
+                    | "artist_credits"
                     | "albums"
                     | "album_artists"
                     | "release_records"
@@ -211,10 +215,10 @@ mod tests {
                     &RowIdentity::IndependentUuid
                 }
             );
-            let keys: &[&str] = if table.name() == "playlist_entries" {
-                &["playlist_id", "position_id"]
-            } else {
-                &["id"]
+            let keys: &[&str] = match table.name() {
+                "playlist_entries" => &["playlist_id", "position_id"],
+                "artist_credits" => &["artist_id", "name_key"],
+                _ => &["id"],
             };
             assert_eq!(table.get_key_columns(), keys);
             assert_eq!(

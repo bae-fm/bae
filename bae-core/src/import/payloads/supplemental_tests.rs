@@ -51,9 +51,9 @@ fn malformed_group_credit_preserves_selected_tracks_and_valid_supplemental_field
     assert_eq!(parsed.album_title, "Selected Album");
     assert_eq!(parsed.album_year, Some(1979));
     assert_eq!(parsed.pressing.year, None);
-    assert_eq!(parsed.album_credits[0].name, "Selected Artist");
+    assert_eq!(parsed.album_credits[0].credit.name, "Selected Artist");
     assert_eq!(
-        parsed.album_credits[0].musicbrainz_artist_id.as_deref(),
+        parsed.album_credits[0].credit.musicbrainz_artist_id.as_deref(),
         Some("linked-artist")
     );
     assert_eq!(
@@ -92,7 +92,7 @@ fn malformed_linked_release_credit_keeps_its_pressing_fields_and_valid_credit() 
         Some("1234567890123")
     );
     assert_eq!(
-        parsed.album_credits[0].musicbrainz_artist_id.as_deref(),
+        parsed.album_credits[0].credit.musicbrainz_artist_id.as_deref(),
         Some("linked-artist")
     );
     assert_eq!(parsed.tracks[1].title, "Second Track");

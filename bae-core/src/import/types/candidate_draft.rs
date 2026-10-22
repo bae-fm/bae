@@ -17,7 +17,7 @@ use super::*;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CandidateDraft {
     pub album_title: String,
-    pub album_artist_assignments: Vec<ArtistAssignment>,
+    pub album_artist_assignments: Vec<Credited>,
     pub album_year: String,
     pub pressing: RawPressingEdit,
     /// The mediums the folder's audio is on, in order, as the source read them.
@@ -175,7 +175,7 @@ impl CandidateDraft {
                     .iter()
                     .flat_map(|track| track.edit.artist_assignments.explicit()),
             )
-            .filter_map(ArtistAssignment::credit)
+            .filter_map(|credited| credited.artist.credit())
     }
 
     /// The Discogs identity of every artist the import may create, and so may

@@ -121,7 +121,7 @@ impl CandidatePreparations {
     pub async fn set_album_artists(
         &self,
         content_hash: &str,
-        assignments: &[crate::import::ArtistAssignment],
+        assignments: &[crate::import::Credited],
     ) -> Result<u64, LibraryError> {
         if assignments.is_empty() {
             return Err(LibraryError::Import(
@@ -142,7 +142,7 @@ impl CandidatePreparations {
         watched_folder_path: &str,
         candidate_path: &str,
         read: &CandidateAsRead,
-        assignments: &[crate::import::ArtistAssignment],
+        assignments: &[crate::import::Credited],
         assets: &[crate::import::PreparedArtistImage],
     ) -> Result<u64, LibraryError> {
         if assignments.is_empty() {

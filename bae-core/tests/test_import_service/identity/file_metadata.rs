@@ -2,6 +2,7 @@
 
 fn file_tag_artist_assignment(name: &str) -> ArtistAssignment {
     ArtistAssignment::Credit { credit: bae_core::import::ArtistCredit {
+            credited_as: None,
             name: name.to_string(),
             sort_name: None,
             musicbrainz_artist_id: None,
@@ -103,7 +104,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     assert_eq!(draft.album_title, "Test Album");
     assert_eq!(
         draft.album_artist_assignments,
-        vec![file_tag_artist_assignment("Test Artist")]
+        bae_core::import::Credited::plain_list(vec![file_tag_artist_assignment("Test Artist")])
     );
     assert_eq!(draft.pressing.year, "");
     assert!(draft.pressing.facts.is_empty());
@@ -118,15 +119,15 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
         vec![
             (
                 "Track One (Silence)".to_string(),
-                TrackArtistAssignments::Explicit(vec![file_tag_artist_assignment("Test Artist")]),
+                TrackArtistAssignments::Explicit(vec![bae_core::import::Credited::plain(file_tag_artist_assignment("Test Artist"))]),
             ),
             (
                 "Track Two (White Noise)".to_string(),
-                TrackArtistAssignments::Explicit(vec![file_tag_artist_assignment("Test Artist")]),
+                TrackArtistAssignments::Explicit(vec![bae_core::import::Credited::plain(file_tag_artist_assignment("Test Artist"))]),
             ),
             (
                 "Track Three (Brown Noise)".to_string(),
-                TrackArtistAssignments::Explicit(vec![file_tag_artist_assignment("Test Artist")]),
+                TrackArtistAssignments::Explicit(vec![bae_core::import::Credited::plain(file_tag_artist_assignment("Test Artist"))]),
             ),
         ],
     );
@@ -157,15 +158,15 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     let committed_album_artist_assignments: Vec<ArtistAssignment> = album_detail
         .artists
         .iter()
-        .map(|artist| file_tag_artist_assignment(&artist.name))
+        .map(|artist| file_tag_artist_assignment(&artist.artist.name))
         .collect();
     assert!(album_detail
         .artists
         .iter()
-        .all(|artist| artist.sort_name.is_none()));
+        .all(|artist| artist.artist.sort_name.is_none()));
     assert_eq!(
         draft.album_artist_assignments,
-        committed_album_artist_assignments
+        bae_core::import::Credited::plain_list(committed_album_artist_assignments)
     );
 
     let release_detail =
@@ -183,7 +184,11 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
                     track
                         .artists
                         .iter()
-                        .map(|artist| file_tag_artist_assignment(&artist.name))
+                        .map(|artist| {
+                            bae_core::import::Credited::plain(file_tag_artist_assignment(
+                                &artist.artist.name,
+                            ))
+                        })
                         .collect(),
                 ),
             )
@@ -395,7 +400,7 @@ async fn file_metadata_import_with_user_edit_overlay() {
 
     let edit = ReleaseUserEdit {
         album_title: "Edited Title".to_string(),
-        album_artist_assignments: vec![ArtistAssignment::named("Artist Edited")],
+        album_artist_assignments: vec![bae_core::import::Credited::plain(ArtistAssignment::named("Artist Edited"))],
         album_year: Some(1998),
         pressing: bae_core::pressing::Pressing {
             year: Some(2010),
@@ -508,7 +513,7 @@ async fn file_metadata_import_with_no_tags_seeds_title_from_folder_name() {
     f.handle
         .set_candidate_album_artists(
             &candidate_key,
-            vec![file_tag_artist_assignment("Artist Name")],
+            vec![bae_core::import::Credited::plain(file_tag_artist_assignment("Artist Name"))],
         )
         .await
         .unwrap();

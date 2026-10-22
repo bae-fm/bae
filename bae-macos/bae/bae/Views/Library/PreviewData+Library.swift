@@ -181,6 +181,15 @@
 
         static let artistDetail = BridgeArtistDetail(
             artist: artistSummary,
+            creditNames: [
+                BridgeArtistCreditName(
+                    artistId: artistSummary.artistId,
+                    credit: BridgeCreditName(
+                        key: "artist alias",
+                        name: "Artist Alias"
+                    )
+                )
+            ],
             albums: Array(albums.prefix(6)),
         )
 

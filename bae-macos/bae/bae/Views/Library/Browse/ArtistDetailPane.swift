@@ -14,6 +14,10 @@ struct ArtistDetailPane: View {
             VStack(alignment: .leading, spacing: ThemeSpace.section) {
                 if let detail {
                     BrowseDetailHeader(summary: detail.artist)
+                    ArtistCreditNamesSection(
+                        artistId: detail.artist.artistId,
+                        names: detail.creditNames
+                    )
                     LazyVGrid(
                         columns: [
                             GridItem(
@@ -62,6 +66,7 @@ struct ArtistDetailPane: View {
             .frame(width: 520, height: 640)
             .environment(session)
             .environment(uiStore)
+            .environment(ArtistEditor())
             .environment(ImageStore.stub())
     }
 
@@ -76,6 +81,7 @@ struct ArtistDetailPane: View {
             .frame(width: 520, height: 640)
             .environment(session)
             .environment(uiStore)
+            .environment(ArtistEditor())
             .environment(ImageStore.stub())
     }
 #endif

@@ -25,6 +25,18 @@ CREATE INDEX IF NOT EXISTS idx_artists_discogs_id ON artists (discogs_artist_id)
 
 CREATE INDEX IF NOT EXISTS idx_artists_mb_id ON artists (musicbrainz_artist_id);
 
+-- An artist's other printed names: a name a credit prints for it that is not
+-- its own (`artists.name`). A row is keyed by the artist and the folded name,
+-- so two devices meeting one printed name write one row.
+CREATE TABLE IF NOT EXISTS artist_credits (
+    artist_id TEXT NOT NULL,
+    name_key TEXT NOT NULL,
+    name TEXT NOT NULL CHECK (name <> ''),
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (artist_id, name_key),
+    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE
+) STRICT;
+
 -- Two library artists the user confirmed are one: `id` was absorbed into
 -- `into_artist_id`. Both rows stay so credits another device gave the absorbed
 -- artist still resolve; reads go through `merged_artist_survivors`.
@@ -96,17 +108,24 @@ CREATE TABLE IF NOT EXISTS albums (
 -- the list (its id derives from the album and the position), so a list that
 -- names one artist twice keeps both credits. Positions need not be dense: two
 -- devices editing one list at once can leave a gap, and readers order by
--- position.
+-- position. `credit_key` names one of the artist's other printed names
+-- (`artist_credits`); NULL prints the artist's own name. `join_phrase` is
+-- printed after the credit when another follows; NULL prints ", ".
 CREATE TABLE IF NOT EXISTS album_artists (
     id TEXT PRIMARY KEY,
     album_id TEXT NOT NULL,
     artist_id TEXT NOT NULL,
     position INTEGER NOT NULL CHECK (position >= 0),
+    credit_key TEXT,
+    join_phrase TEXT CHECK (join_phrase IS NULL OR join_phrase <> ''),
     created_at TEXT NOT NULL,
     FOREIGN KEY (album_id) REFERENCES albums (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id, credit_key) REFERENCES artist_credits (artist_id, name_key),
     UNIQUE(album_id, position)
 ) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_album_artists_credit ON album_artists (artist_id, credit_key);
 
 CREATE INDEX IF NOT EXISTS idx_album_artists_album_id ON album_artists (album_id);
 
@@ -402,17 +421,23 @@ CREATE INDEX IF NOT EXISTS idx_tracks_release_id ON tracks (release_id);
 CREATE UNIQUE INDEX IF NOT EXISTS tracks_release_position ON tracks(release_id, position);
 
 -- A track's own credits, in credit order from position 0, keyed like
--- `album_artists` by (track, position). A track with none takes the album's.
+-- `album_artists` by (track, position), with the same printed name and join.
+-- A track with none takes the album's.
 CREATE TABLE IF NOT EXISTS track_artists (
     id TEXT PRIMARY KEY,
     track_id TEXT NOT NULL,
     artist_id TEXT NOT NULL,
     position INTEGER NOT NULL CHECK (position >= 0),
+    credit_key TEXT,
+    join_phrase TEXT CHECK (join_phrase IS NULL OR join_phrase <> ''),
     created_at TEXT NOT NULL,
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id, credit_key) REFERENCES artist_credits (artist_id, name_key),
     UNIQUE(track_id, position)
 ) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_track_artists_credit ON track_artists (artist_id, credit_key);
 
 CREATE INDEX IF NOT EXISTS idx_track_artists_track_id ON track_artists (track_id);
 
@@ -1024,14 +1049,22 @@ CREATE TABLE IF NOT EXISTS import_candidate_album_artist_assignment (
     sort_name             TEXT,
     musicbrainz_artist_id TEXT,
     discogs_artist_id     TEXT,
+    -- A picked artist's printed name: one of its `artist_credits`, NULL for
+    -- its own name.
+    credit_key            TEXT,
+    -- A credit's printed name, where it is not `name`.
+    credited_as           TEXT CHECK (credited_as IS NULL OR credited_as <> ''),
+    join_phrase           TEXT CHECK (join_phrase IS NULL OR join_phrase <> ''),
     PRIMARY KEY (content_hash, position),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_edit (content_hash) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
     CHECK (
         (assignment_kind = 'picked' AND artist_id IS NOT NULL AND name IS NULL
-            AND sort_name IS NULL AND musicbrainz_artist_id IS NULL AND discogs_artist_id IS NULL)
+            AND sort_name IS NULL AND musicbrainz_artist_id IS NULL AND discogs_artist_id IS NULL
+            AND credited_as IS NULL)
         OR
-        (assignment_kind = 'credit' AND artist_id IS NULL AND name IS NOT NULL AND name <> '')
+        (assignment_kind = 'credit' AND artist_id IS NULL AND name IS NOT NULL AND name <> ''
+            AND credit_key IS NULL)
     )
 ) STRICT;
 
@@ -1086,15 +1119,23 @@ CREATE TABLE IF NOT EXISTS import_candidate_track_artist_assignment (
     sort_name             TEXT,
     musicbrainz_artist_id TEXT,
     discogs_artist_id     TEXT,
+    -- A picked artist's printed name: one of its `artist_credits`, NULL for
+    -- its own name.
+    credit_key            TEXT,
+    -- A credit's printed name, where it is not `name`.
+    credited_as           TEXT CHECK (credited_as IS NULL OR credited_as <> ''),
+    join_phrase           TEXT CHECK (join_phrase IS NULL OR join_phrase <> ''),
     PRIMARY KEY (content_hash, track_id, position),
     FOREIGN KEY (content_hash, track_id)
         REFERENCES import_candidate_track (content_hash, track_id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
     CHECK (
         (assignment_kind = 'picked' AND artist_id IS NOT NULL AND name IS NULL
-            AND sort_name IS NULL AND musicbrainz_artist_id IS NULL AND discogs_artist_id IS NULL)
+            AND sort_name IS NULL AND musicbrainz_artist_id IS NULL AND discogs_artist_id IS NULL
+            AND credited_as IS NULL)
         OR
-        (assignment_kind = 'credit' AND artist_id IS NULL AND name IS NOT NULL AND name <> '')
+        (assignment_kind = 'credit' AND artist_id IS NULL AND name IS NOT NULL AND name <> ''
+            AND credit_key IS NULL)
     )
 ) STRICT;
 
@@ -1821,6 +1862,10 @@ CREATE TABLE IF NOT EXISTS source_release_album_artist (
     sort_name             TEXT,
     musicbrainz_artist_id TEXT,
     discogs_artist_id     TEXT,
+    -- The name the catalog prints for the credit, where it is not `name`.
+    credited_as           TEXT CHECK (credited_as IS NULL OR credited_as <> ''),
+    -- What the catalog prints after the credit when another follows.
+    join_phrase           TEXT CHECK (join_phrase IS NULL OR join_phrase <> ''),
     PRIMARY KEY (catalog, release_id, position),
     FOREIGN KEY (catalog, release_id)
         REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
@@ -2052,6 +2097,8 @@ CREATE TABLE IF NOT EXISTS source_release_entry_credit (
     sort_name             TEXT,
     musicbrainz_artist_id TEXT,
     discogs_artist_id     TEXT,
+    -- What the catalog prints after the credit when another follows.
+    join_phrase           TEXT CHECK (join_phrase IS NULL OR join_phrase <> ''),
     PRIMARY KEY (catalog, release_id, entry, position),
     FOREIGN KEY (catalog, release_id, entry)
         REFERENCES source_release_entry (catalog, release_id, entry) ON DELETE CASCADE,

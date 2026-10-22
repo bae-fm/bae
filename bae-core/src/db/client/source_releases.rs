@@ -146,12 +146,13 @@ pub(super) fn replace_source_release_on(
             params![catalog, key],
         )?;
     }
-    for (position, artist) in metadata.album.artists.iter().enumerate() {
+    for (position, stated) in metadata.album.artists.iter().enumerate() {
+        let artist = &stated.credit;
         sql.execute(
             "INSERT INTO source_release_album_artist \
                  (catalog, release_id, position, name, sort_name, musicbrainz_artist_id, \
-                  discogs_artist_id) \
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
+                  discogs_artist_id, credited_as, join_phrase) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 catalog,
                 key,
@@ -160,6 +161,8 @@ pub(super) fn replace_source_release_on(
                 artist.sort_name,
                 artist.musicbrainz_artist_id,
                 artist.discogs_artist_id,
+                artist.credited_as,
+                stated.join,
             ],
         )?;
     }
@@ -339,6 +342,7 @@ fn artist_at(row: &Row<'_>, first: usize) -> rusqlite::Result<crate::import::Art
         sort_name: row.get(first + 1)?,
         musicbrainz_artist_id: row.get(first + 2)?,
         discogs_artist_id: row.get(first + 3)?,
+        credited_as: None,
     })
 }
 
@@ -412,11 +416,20 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
     let notes: Vec<String> =
         serde_json::from_str(&notes).map_err(|error| unreadable("notes", (&notes, error)))?;
     let album_artists = sql.query(
-        "SELECT name, sort_name, musicbrainz_artist_id, discogs_artist_id \
+        "SELECT name, sort_name, musicbrainz_artist_id, discogs_artist_id, credited_as, \
+                join_phrase \
          FROM source_release_album_artist WHERE catalog = ? AND release_id = ? \
          ORDER BY position",
         params![catalog, key],
-        |row| artist_at(row, 0),
+        |row| {
+            Ok(crate::import::SourceCredit {
+                credit: crate::import::ArtistCredit {
+                    credited_as: row.get(4)?,
+                    ..artist_at(row, 0)?
+                },
+                join: row.get(5)?,
+            })
+        },
     )?;
     let catalog_facts = match release.catalog {
         Catalog::MusicBrainz => CatalogFacts::MusicBrainz {

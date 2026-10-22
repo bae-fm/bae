@@ -234,14 +234,46 @@ the album's "own" artist with the others added: the first credit is position
 0 of the same list. Each place in a list is its own row, so a list that names
 one artist twice keeps both credits. Every reader takes the whole list:
 
-- An album's line names every credit in order.
-- Library search finds an album by its title or by any of its credits' names.
-  A track's search row names the track's own credits, else its album's.
+- An album's line names every credit in order (see "Credit lines" below).
+- Library search finds an album by its title or by any of its credits' names
+  (an artist's own name or the other name the credit prints). A track's search
+  row names the track's own credits, else its album's.
 - Sorting albums by artist compares every credit's sort name (else its name)
   in list order, so an album by A comes before one by A and B, which comes
   before one by A and C. The storage table's artist column sorts the same way.
 - The artist list and an artist's page count an album for every artist its
   list names, once per artist.
+
+**Credit lines.** A credit prints a name and, when another credit follows it,
+what the source prints between them: MusicBrainz's join phrase (" feat. ",
+" & "), Discogs's `join` (a comma as ", ", any other word or sign with a space
+either side). A credit that states nothing prints ", "; the last credit's
+join is never printed, and is not kept. One builder makes every line from
+those values: the album page and its track rows, the grid, the queue and now
+playing (and what AirPlay and DLNA devices are sent), search results, the
+import list and catalog picker rows, the identification title search,
+Subsonic's `artist`, and Save As's ARTIST (the track's line) and ALBUMARTIST
+(the album's). A track's line is its own credits, else its album's. Each
+credit still names its artist, so the artist's page lists the album and
+Subsonic lists every credited artist in `artists` (its one `artistId` is the
+first credit's).
+
+**An artist's other names.** `artists.name` is the name an artist goes by.
+The other names a credit prints for it, a MusicBrainz credit name or a
+Discogs name variation (`anv`) that is not the artist's own, are the
+artist's `artist_credits`, keyed by the artist and the folded name, so two
+devices meeting one printed name write one row. A credit links one of them,
+or none to print the artist's own name; it is never text. Importing decides
+it once the artist is: a printed name that folds to the artist's own links
+none, any other links that name, added if new. A merged artist's credit
+prints the stored name it links, else the survivor's name. Credits with no
+catalog id match an artist by its own name or any of its other names (the one
+it matches is the name the credit prints). The artist page lists the names,
+and renames or removes each in one write with every credit linking it:
+renamed, they print the new name; removed, the artist's own. The artist field
+of an editor lists each found artist with its other names under it; picking
+one prints the artist by that name. Typing a name, or picking an artist for a
+tag credit that spelled it differently, prints the artist's own name.
 
 Two artists can be merged into one, and only one way: on the import page, when
 an import's credit shows that two library artists are the same person and the
@@ -337,6 +369,11 @@ stating one fact write one row
   names merges like any other cell. One device shortening a list while another
   lengthens it can leave a gap in the positions; readers order by position, so
   a gap changes nothing shown.
+- **A credit name removed while another device links it.** Removing an
+  artist's other name unlinks every credit linking it in the same write. A
+  credit another device linked to it meanwhile names a row that is gone, and
+  coven takes that credit out (recorded as lost, back once relinked), so no
+  device shows a credit printing a name its artist no longer holds.
 
 ### 2.7 A release's identity
 
@@ -2219,10 +2256,11 @@ All sync.
 | Table | One row per |
 |---|---|
 | `artists` | artist: name, folded name, sort name, MusicBrainz and Discogs ids |
+| `artist_credits` | another name a credit prints for an artist, keyed by the artist and the folded name (§2.3) |
 | `artist_merges` | artist absorbed into another (§2.3); read through the view `merged_artist_survivors` |
 | `artist_images` | artist's picture, keyed by the artist; carries a file |
 | `albums` | album: title, year, compilation flag |
-| `album_artists` | album's credit, one per place in its list, from position 0 |
+| `album_artists` | album's credit, one per place in its list, from position 0: its artist, the other name it prints (none: the artist's own) and what follows it |
 | `works` | MusicBrainz work |
 | `work_artists` | work's credited artist, in order |
 | `work_parts` | work inside a larger work, in order |
@@ -2233,7 +2271,7 @@ All sync.
 | `release_records` | catalog record of a release: pressing or album, key, album key, URL |
 | `release_mediums` | a release's medium: its position, carrier and number of sides (§2.2) |
 | `tracks` | track: title, place (its medium, side and number, all required), length (required: the import measures every track's audio), playing order |
-| `track_artists` | track's own credit, one per place in its list, from position 0 |
+| `track_artists` | track's own credit, one per place in its list, from position 0, as an album's |
 | `track_artist_roles` | credit on a track, as the catalog stated it |
 | `track_works` | work a track performs, in order |
 | `audio_formats` | track's format, pregap, loudness and peak |
@@ -2339,6 +2377,7 @@ and `local_history` are not declared, so they never sync.
 | Table | Identity | Audience | Owner | File |
 |---|---|---|---|---|
 | `artists` | shared key | store | | |
+| `artist_credits` | shared key (artist, folded name) | store | | |
 | `artist_merges` | shared key | store | | |
 | `albums` | shared key | store | | |
 | `album_artists` | shared key | store | | |

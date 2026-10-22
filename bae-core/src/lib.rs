@@ -23,6 +23,7 @@ pub mod cast;
 pub mod collections;
 #[doc(hidden)]
 pub mod config;
+pub mod credits;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod cue_flac;
 pub mod db;

@@ -361,6 +361,9 @@ impl AppServices {
     delegate_async!(manager, get_artist_page => get_artist_page(sort: &[crate::db::ArtistSortCriterion], offset: u64, limit: u64) -> Result<Vec<crate::album_detail::ArtistSummary>, crate::library::LibraryError>);
     delegate_async!(manager, get_artist_detail => get_artist_detail(artist_id: &str) -> Result<Option<crate::album_detail::ArtistDetail>, crate::library::LibraryError>);
     delegate_async!(manager, search_artists => search_artists(query: &crate::library::LibrarySearchQuery) -> Result<Vec<crate::album_detail::ArtistSearchResult>, crate::library::LibraryError>);
+    delegate_async!(manager, add_artist_credit_name => add_artist_credit_name(artist_id: &str, name: &str) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, rename_artist_credit_name => rename_artist_credit_name(artist_id: &str, key: &str, name: &str) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, remove_artist_credit_name => remove_artist_credit_name(artist_id: &str, key: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, get_album_index => get_album_index(sort: &[crate::db::AlbumSortCriterion], album_id: &str, group_by_artist: bool) -> Result<Option<u64>, crate::library::LibraryError>);
     delegate_async!(manager, find_album_detail => find_album_detail(album_id: &str) -> Result<Option<crate::album_detail::AlbumDetail>, crate::library::LibraryError>);
     delegate_async!(manager, find_release_detail => find_release_detail(release_id: &str) -> Result<Option<crate::album_detail::ReleaseDetail>, crate::library::LibraryError>);
@@ -380,7 +383,8 @@ impl AppServices {
     delegate_async!(manager, read_library_image_bytes => read_library_image_bytes(id: &str, image_type: &crate::db::LibraryImageType) -> Result<Option<Vec<u8>>, crate::library::LibraryError>);
     delegate_async!(manager, read_gallery_bytes => read_gallery_bytes(release_id: &str, source: &crate::album_detail::GallerySource) -> Result<Vec<u8>, crate::library::LibraryError>);
     delegate_async!(manager, read_cover_image_bytes => read_cover_image_bytes(release_id: &str) -> Result<Option<Vec<u8>>, crate::library::LibraryError>);
-    delegate_async!(manager, get_artists_for_track => get_artists_for_track(track_id: &str) -> Result<Vec<crate::db::DbArtist>, crate::library::LibraryError>);
+    delegate_async!(manager, get_artists_for_track => get_artists_for_track(track_id: &str) -> Result<Vec<crate::credits::LibraryCredit>, crate::library::LibraryError>);
+    delegate_async!(manager, get_artists_for_album => get_artists_for_album(album_id: &str) -> Result<Vec<crate::credits::LibraryCredit>, crate::library::LibraryError>);
     delegate_async!(manager, get_all_track_ids => get_all_track_ids() -> Result<Vec<String>, crate::library::LibraryError>);
     delegate_async!(manager, filter_existing_track_ids => filter_existing_track_ids(ids: &[String]) -> Result<Vec<String>, crate::library::LibraryError>);
     delegate_async!(manager, resolve_track_audio => resolve_track_audio(track_id: &str) -> Result<crate::library::ResolvedTrackAudio, crate::library::LibraryError>);

@@ -45,7 +45,7 @@ pub(super) fn find_release_detail_context_on(
 #[derive(Clone, PartialEq)]
 pub(super) struct ReleaseContextRows {
     detail: ReleaseDetailRows,
-    album_artists: Vec<DbArtist>,
+    album_artists: Vec<LibraryCredit>,
     release_index: usize,
     is_compilation: bool,
 }

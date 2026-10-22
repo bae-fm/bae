@@ -139,10 +139,10 @@ pub(super) fn load_imported_release_text_on(
     Ok(sql
         .query(
             &format!(
-                "SELECT r.id, a.title, NULLIF({artist_names}, ''), a.year \
+                "SELECT r.id, a.title, {artist_names} AS artist_credits, a.year \
                  FROM releases r JOIN albums a ON a.id = r.album_id \
                  WHERE r.content_hash IS NOT NULL AND (?1 IS NULL OR r.id = ?1)",
-                artist_names = super::query::album_artist_names_sql(),
+                artist_names = super::query::album_credits_json_sql(),
             ),
             params![only],
             |row| {
@@ -150,7 +150,8 @@ pub(super) fn load_imported_release_text_on(
                     row.get::<_, String>(0)?,
                     crate::import::ImportedReleaseText {
                         title: row.get(1)?,
-                        artist: row.get(2)?,
+                        artist: Some(super::read::credit_line_column(row, "artist_credits")?)
+                            .filter(|line| !line.is_empty()),
                         year: row.get(3)?,
                     },
                 ))

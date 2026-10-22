@@ -39,6 +39,10 @@ pub struct MbUrlResource {
 pub struct MbArtistCredit {
     pub name: String,
     pub artist: Option<MbArtistRef>,
+    /// What MusicBrainz prints after the credit (" feat. ", " & "); empty or
+    /// absent for nothing.
+    #[serde(default)]
+    pub joinphrase: Option<String>,
 }
 
 /// Reference to a MusicBrainz artist within an artist-credit

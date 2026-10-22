@@ -75,7 +75,7 @@ private struct ImportOperations: Sendable {
     let setCandidatePressingFact:
         @Sendable (String, BridgePressingFactEdit) async throws -> Void
     let setCandidateAlbumArtists:
-        @Sendable (String, [BridgeArtistAssignment]) async throws -> Void
+        @Sendable (String, [BridgeCredited]) async throws -> Void
     let setCandidateTrackEdit:
         @Sendable (String, BridgeRawTrackEdit) async throws -> Void
     let candidateRuntime: @Sendable (String) -> BridgeCandidateRuntimeSnapshot?
@@ -410,7 +410,7 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (String, BridgePressingFactEdit) async throws
             -> Void = { _, _ in },
         setCandidateAlbumArtists:
-            @escaping @Sendable (String, [BridgeArtistAssignment]) async throws
+            @escaping @Sendable (String, [BridgeCredited]) async throws
             -> Void = { _, _ in },
         setCandidateTrackEdit:
             @escaping @Sendable (String, BridgeRawTrackEdit) async throws ->
@@ -747,7 +747,7 @@ extension Importer {
     /// Replace the ordered album artists this candidate commits with.
     func setCandidateAlbumArtists(
         _ candidateKey: String,
-        _ assignments: [BridgeArtistAssignment]
+        _ assignments: [BridgeCredited]
     ) async throws {
         try await operations.setCandidateAlbumArtists(candidateKey, assignments)
     }

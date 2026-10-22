@@ -24,7 +24,7 @@ async fn concurrent_imports_keep_one_owner_and_later_imports_make_new_copies() {
     handle
         .set_candidate_album_artists(
             &key,
-            vec![crate::import::ArtistAssignment::named("Artist Name")],
+            vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Artist Name"))],
         )
         .await
         .unwrap();

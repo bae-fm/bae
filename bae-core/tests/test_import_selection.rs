@@ -378,7 +378,12 @@ async fn a_bulk_import_starts_the_rows_as_the_list_shows_them() {
             .await
             .unwrap();
         services
-            .import_set_candidate_album_artists(&key, vec![ArtistAssignment::named("Artist Name")])
+            .import_set_candidate_album_artists(
+                &key,
+                vec![bae_core::import::Credited::plain(ArtistAssignment::named(
+                    "Artist Name",
+                ))],
+            )
             .await
             .unwrap();
     }

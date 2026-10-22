@@ -37,6 +37,8 @@ fn track_artist(artist_id: &str) -> crate::db::DbTrackArtist {
         track_id: TRACK_1.to_string(),
         artist_id: artist_id.to_string(),
         position: 3,
+        credit: None,
+        join_phrase: None,
         created_at: Utc::now(),
     }
 }
@@ -83,6 +85,7 @@ fn remap_links_errors_on_unmapped_id() {
 
 fn mb_credit(id: &str, name: &str) -> crate::musicbrainz::MbArtistCredit {
     crate::musicbrainz::MbArtistCredit {
+        joinphrase: None,
         name: name.to_string(),
         artist: Some(crate::musicbrainz::MbArtistRef {
             id: Some(id.to_string()),
@@ -197,8 +200,8 @@ fn seed_carries_every_album_artist() {
         .album_artist_assignments
         .iter()
         .map(|assignment| match assignment {
-            crate::import::ArtistAssignment::Credit { credit } => credit.name.as_str(),
-            crate::import::ArtistAssignment::Picked { .. } => {
+            crate::import::Credited { artist: crate::import::ArtistAssignment::Credit { credit }, .. } => credit.name.as_str(),
+            crate::import::Credited { artist: crate::import::ArtistAssignment::Picked { .. }, .. } => {
                 panic!("a parsed source artist is not a library selection")
             }
         })
@@ -230,7 +233,7 @@ fn seed_per_track_artist_override() {
     };
     assert!(matches!(
         assignments.as_slice(),
-        [crate::import::ArtistAssignment::Credit { credit }]
+        [crate::import::Credited { artist: crate::import::ArtistAssignment::Credit { credit }, .. }]
             if credit.name == "Guest Artist"
                 && credit.musicbrainz_artist_id.as_deref() == Some("mb-guest")
     ));

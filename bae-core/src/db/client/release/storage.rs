@@ -29,7 +29,7 @@ impl Database {
         FROM releases r \
         JOIN albums a ON a.id = r.album_id \
         WHERE r.id = ?1",
-            artist_names = album_artist_names_sql()
+            artist_names = album_credits_json_sql()
         )
     }
 

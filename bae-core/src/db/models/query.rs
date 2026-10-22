@@ -60,6 +60,8 @@ pub struct DbArtistSummary {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbArtistDetail {
     pub artist: DbArtistSummary,
+    /// The artist's other printed names, its merged artists' too.
+    pub credit_names: Vec<crate::credits::ArtistCreditName>,
     pub albums: Vec<DbAlbumSummary>,
 }
 
@@ -203,7 +205,7 @@ pub struct ArtistSortCriterion {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbAlbumDetail {
     pub album: DbAlbum,
-    pub artists: Vec<DbArtist>,
+    pub artists: Vec<crate::credits::LibraryCredit>,
     /// The album's releases in album order.
     pub releases: Vec<DbReleaseDetail>,
     /// The album's lowest-ordered release.
@@ -217,7 +219,7 @@ pub struct DbAlbumDetail {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseDetailContext {
     pub detail: DbReleaseDetail,
-    pub album_artists: Vec<DbArtist>,
+    pub album_artists: Vec<crate::credits::LibraryCredit>,
     pub release_index: usize,
     pub is_compilation: bool,
 }
@@ -267,7 +269,9 @@ pub struct RecordedOriginal {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbTrackWithArtists {
     pub track: DbTrack,
-    pub artists: Vec<DbArtist>,
+    /// The track's own credits, in list order; none when it takes the
+    /// album's.
+    pub artists: Vec<crate::credits::LibraryCredit>,
 }
 
 /// Raw per-release slim aggregate for summary views (storage rows, release

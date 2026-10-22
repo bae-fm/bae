@@ -446,7 +446,7 @@ impl LibraryManager {
         let album_credit_ids: Vec<String> = edit
             .album_artist_assignments
             .iter()
-            .map(&mut credit_of)
+            .map(|credited| credit_of(&credited.artist))
             .collect();
         if album_credit_ids.is_empty() {
             return Err(LibraryError::Internal(format!(
@@ -483,9 +483,12 @@ impl LibraryManager {
 
         let album_artists: Vec<DbAlbumArtist> = album_credit_ids
             .iter()
+            .zip(&edit.album_artist_assignments)
             .zip(0..)
-            .map(|(artist_id, position)| {
-                DbAlbumArtist::new(&updated_album.id, artist_id, position, now)
+            .map(|((artist_id, credited), position)| DbAlbumArtist {
+                credit: credited.artist.link_credit(),
+                join_phrase: credited.join.clone(),
+                ..DbAlbumArtist::new(&updated_album.id, artist_id, position, now)
             })
             .collect();
 
@@ -496,13 +499,12 @@ impl LibraryManager {
             else {
                 continue;
             };
-            for (assignment, position) in assignments.iter().zip(0..) {
-                track_artists.push(DbTrackArtist::new(
-                    &existing.id,
-                    &credit_of(assignment),
-                    position,
-                    now,
-                ));
+            for (credited, position) in assignments.iter().zip(0..) {
+                track_artists.push(DbTrackArtist {
+                    credit: credited.artist.link_credit(),
+                    join_phrase: credited.join.clone(),
+                    ..DbTrackArtist::new(&existing.id, &credit_of(&credited.artist), position, now)
+                });
             }
         }
 
@@ -619,7 +621,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
         raw: crate::db::DbReleaseDetail,
-        album_artists: Vec<DbArtist>,
+        album_artists: Vec<crate::credits::LibraryCredit>,
         release_index: usize,
         is_compilation: bool,
         cover: Option<ImageRef>,

@@ -248,6 +248,7 @@ fn read_credit(
     resolve_credit_on(
         conn,
         &crate::import::ArtistCredit {
+            credited_as: None,
             name: name.to_string(),
             sort_name: None,
             musicbrainz_artist_id: None,
@@ -322,6 +323,7 @@ fn a_read_credit_whose_ids_name_two_artists_is_conflicting() {
     let resolution = resolve_credit_on(
         &conn,
         &crate::import::ArtistCredit {
+            credited_as: None,
             name: "Artist Name".to_string(),
             sort_name: None,
             musicbrainz_artist_id: Some("mb-1".to_string()),

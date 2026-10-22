@@ -11,14 +11,14 @@ impl LibraryManager {
     pub async fn get_artists_for_album(
         &self,
         album_id: &str,
-    ) -> Result<Vec<DbArtist>, LibraryError> {
+    ) -> Result<Vec<crate::credits::LibraryCredit>, LibraryError> {
         Ok(self.database.get_artists_for_album(album_id).await?)
     }
 
     pub async fn get_artists_for_track(
         &self,
         track_id: &str,
-    ) -> Result<Vec<DbArtist>, LibraryError> {
+    ) -> Result<Vec<crate::credits::LibraryCredit>, LibraryError> {
         Ok(self.database.get_artists_for_track(track_id).await?)
     }
 
@@ -63,13 +63,65 @@ impl LibraryManager {
             .map(|artist| artist.id.clone())
             .collect::<Vec<_>>();
         let images = self.artist_image_refs(&artist_ids).await?;
+        let mut credit_names = self.database.get_artist_credit_names(&artist_ids).await?;
         Ok(artists
             .into_iter()
             .map(|artist| {
                 let image = images.get(&artist.id).cloned();
-                ArtistSearchResult { artist, image }
+                let credit_names = credit_names.remove(&artist.id).unwrap_or_default();
+                ArtistSearchResult {
+                    artist,
+                    image,
+                    credit_names,
+                }
             })
             .collect())
+    }
+
+    /// Give an artist another printed name, which credits can then print for
+    /// it. A name it already goes by adds nothing.
+    pub async fn add_artist_credit_name(
+        &self,
+        artist_id: &str,
+        name: &str,
+    ) -> Result<(), LibraryError> {
+        if name.trim().is_empty() {
+            return Err(LibraryError::Import("a credit name cannot be blank".into()));
+        }
+        Ok(self
+            .database
+            .add_artist_credit_name(artist_id, name)
+            .await?)
+    }
+
+    /// Rename one of an artist's other printed names; every credit printing
+    /// it prints the new name.
+    pub async fn rename_artist_credit_name(
+        &self,
+        artist_id: &str,
+        key: &str,
+        name: &str,
+    ) -> Result<(), LibraryError> {
+        if name.trim().is_empty() {
+            return Err(LibraryError::Import("a credit name cannot be blank".into()));
+        }
+        Ok(self
+            .database
+            .rename_artist_credit_name(artist_id, key, name)
+            .await?)
+    }
+
+    /// Remove one of an artist's other printed names; every credit printing
+    /// it prints the artist's own name.
+    pub async fn remove_artist_credit_name(
+        &self,
+        artist_id: &str,
+        key: &str,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .remove_artist_credit_name(artist_id, key)
+            .await?)
     }
 
     pub async fn get_artist_count(&self) -> Result<u64, LibraryError> {
@@ -160,6 +212,7 @@ impl LibraryManager {
         let image = images.get(&raw.artist.artist.id).cloned();
         Ok(Some(ArtistDetail {
             artist: ArtistSummary::from_raw(raw.artist, image),
+            credit_names: raw.credit_names,
             albums,
         }))
     }
@@ -181,6 +234,7 @@ impl LibraryManager {
         let image = images.get(&raw.artist.artist.id).cloned();
         Some(ArtistDetail {
             artist: ArtistSummary::from_raw(raw.artist, image),
+            credit_names: raw.credit_names,
             albums: raw
                 .albums
                 .into_iter()

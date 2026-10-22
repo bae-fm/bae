@@ -124,7 +124,7 @@ struct ArtistAssignmentsFieldTests {
 
     @MainActor
     private func render(
-        _ assignments: [BridgeArtistAssignment],
+        _ assignments: [BridgeCredited],
         resolutions: [BridgeResolvedCredit]
     ) async throws -> Data {
         let size = NSSize(width: 280, height: 40)

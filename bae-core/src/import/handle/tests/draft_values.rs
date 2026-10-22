@@ -305,7 +305,7 @@ async fn a_tags_draft_and_a_blank_draft_import_exactly_the_draft() {
         handle
             .set_candidate_album_artists(
                 &key,
-                vec![crate::import::ArtistAssignment::named("Typed Artist")],
+                vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Typed Artist"))],
             )
             .await
             .unwrap();

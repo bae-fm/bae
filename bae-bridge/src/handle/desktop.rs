@@ -598,7 +598,7 @@ forward! {
         /// are carried by library ID; new artists carry their explicit metadata.
         fn set_candidate_album_artists(
             candidate_key: String,
-            assignments: Vec<crate::types::BridgeArtistAssignment>,
+            assignments: Vec<crate::types::BridgeCredited>,
         ) -> () {
             Ok(this
                 .services
@@ -606,10 +606,37 @@ forward! {
                     &candidate_key,
                     assignments
                         .into_iter()
-                        .map(crate::types::BridgeArtistAssignment::into_core)
+                        .map(crate::types::BridgeCredited::into_core)
                         .collect(),
                 )
                 .await?)
+        }
+
+        /// Give an artist another printed name, which credits can then print
+        /// for it; a name it already goes by adds nothing.
+        fn add_artist_credit_name(artist_id: String, name: String) -> () {
+            this.services
+                .add_artist_credit_name(&artist_id, &name)
+                .await
+                .map_err(BridgeError::database)
+        }
+
+        /// Rename one of an artist's other printed names; every credit
+        /// printing it prints the new name.
+        fn rename_artist_credit_name(artist_id: String, key: String, name: String) -> () {
+            this.services
+                .rename_artist_credit_name(&artist_id, &key, &name)
+                .await
+                .map_err(BridgeError::database)
+        }
+
+        /// Remove one of an artist's other printed names; every credit
+        /// printing it prints the artist's own name.
+        fn remove_artist_credit_name(artist_id: String, key: String) -> () {
+            this.services
+                .remove_artist_credit_name(&artist_id, &key)
+                .await
+                .map_err(BridgeError::database)
         }
 
         /// Apply a user-supplied metadata edit (from the edit-metadata sheet) to a

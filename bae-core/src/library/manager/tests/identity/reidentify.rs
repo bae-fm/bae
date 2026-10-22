@@ -170,6 +170,7 @@ fn make_mb_release_for_re_identify(
         packaging: None,
         barcode: None,
         artist_credit: vec![MbArtistCredit {
+            joinphrase: None,
             name: "Artist Name".to_string(),
             artist: Some(MbArtistRef {
                 id: Some("mb-artist-1".to_string()),

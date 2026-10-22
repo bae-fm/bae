@@ -16,7 +16,7 @@ use crate::import::source_release::{
     DisplayCredit, EntryKind, PartDirection, PerformedWork, RoleCredit, SourceMedium,
     SourceRelease, SourceWork, SourceWorkEvent, TracklistEntry,
 };
-use crate::import::{ArtistCredit, Catalog, CreditedRole, ImportError};
+use crate::import::{ArtistCredit, Catalog, CreditedRole, ImportError, SourceCredit};
 use crate::musicbrainz::{release_labels, MbArtistRef, MbRelation, MbReleaseResponse, MbTrack, MbWork};
 use crate::pressing::{Medium, Pressing, StatedMedia};
 use std::collections::HashSet;
@@ -28,6 +28,8 @@ fn mb_relation_is(relation: &MbRelation, target_type: &str, relation_type: &str)
         && relation.relation_type.as_deref() == Some(relation_type)
 }
 
+/// The name a role or composer credit goes by: the name the relation
+/// credits, else the artist's own.
 fn mb_artist_name(artist: &MbArtistRef, credit: Option<&str>) -> Option<String> {
     credit
         .filter(|c| !c.trim().is_empty())
@@ -35,20 +37,43 @@ fn mb_artist_name(artist: &MbArtistRef, credit: Option<&str>) -> Option<String> 
         .or_else(|| artist.name.clone())
 }
 
-fn mb_relation_is_composer(relation: &MbRelation) -> bool {
-    relation.relation_type.as_deref() == Some("composer")
-}
-
-/// The credit of a MusicBrainz artist: `name` is the resolved credit name;
-/// sort name and MB id come from the artist payload. Linked album metadata may
-/// later supply another catalog identity for matching credits.
+/// A role or composer credit of a MusicBrainz artist: `name` is the resolved
+/// credit name; sort name and MB id come from the artist payload.
 fn mb_artist_ref(name: String, artist: &MbArtistRef) -> ArtistCredit {
     ArtistCredit {
         name,
         sort_name: artist.sort_name.clone(),
         musicbrainz_artist_id: artist.id.clone(),
         discogs_artist_id: None,
+        credited_as: None,
     }
+}
+
+/// The artist a MusicBrainz credit names, by the artist's own name (else the
+/// name the credit prints), with the printed name kept where it is another.
+/// `None` where neither names anyone.
+fn mb_credited_artist(artist: &MbArtistRef, printed: &str) -> Option<ArtistCredit> {
+    let printed = Some(printed.trim()).filter(|printed| !printed.is_empty());
+    let name = artist
+        .name
+        .as_deref()
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .or(printed)?
+        .to_string();
+    Some(ArtistCredit {
+        credited_as: printed
+            .filter(|printed| *printed != name)
+            .map(str::to_string),
+        name,
+        sort_name: artist.sort_name.clone(),
+        musicbrainz_artist_id: artist.id.clone(),
+        discogs_artist_id: None,
+    })
+}
+
+fn mb_relation_is_composer(relation: &MbRelation) -> bool {
+    relation.relation_type.as_deref() == Some("composer")
 }
 
 /// Read an `MbWork` as one reference states it, validating its relations:
@@ -238,44 +263,38 @@ pub(crate) fn medium_sides(
     Ok(MediumSides { sides, count })
 }
 
-/// Read source artist credits before linked documents fill absent album facts.
+/// A release's or track's MusicBrainz artist credit, place by place, with
+/// what MusicBrainz prints after each. A credit naming no artist object keeps
+/// its printed name as a credit of its own; the last credit's join is not
+/// kept, since nothing follows it.
 pub(crate) fn artist_credits(
     credits: &[crate::musicbrainz::MbArtistCredit],
     entity_id: &str,
-) -> Result<Vec<ArtistCredit>, ImportError> {
-    let mut release_refs: Vec<ArtistCredit> = Vec::new();
+) -> Result<Vec<SourceCredit>, ImportError> {
+    let mut stated: Vec<SourceCredit> = Vec::new();
     for credit in credits {
-        if let Some(artist_obj) = &credit.artist {
-            let artist_name = mb_artist_name(artist_obj, Some(&credit.name)).ok_or_else(|| {
-                ImportError::SourceData {
-                    catalog: Catalog::MusicBrainz,
-                    detail: format!(
-                        "MusicBrainz release {} artist credit {:?} has no artist name",
-                        entity_id, artist_obj.id
-                    ),
-                }
-            })?;
-            release_refs.push(ArtistCredit {
-                name: artist_name,
-                sort_name: artist_obj.sort_name.clone(),
-                musicbrainz_artist_id: artist_obj.id.clone(),
-                discogs_artist_id: None,
-            });
-        }
-    }
-    if release_refs.is_empty() {
-        if let Some(credit) = credits.first() {
-            if !credit.name.trim().is_empty() {
-                release_refs.push(ArtistCredit {
-                    name: credit.name.clone(),
-                    sort_name: None,
-                    musicbrainz_artist_id: None,
-                    discogs_artist_id: None,
-                });
+        let artist = match &credit.artist {
+            Some(artist_obj) => {
+                mb_credited_artist(artist_obj, &credit.name).ok_or_else(|| {
+                    ImportError::SourceData {
+                        catalog: Catalog::MusicBrainz,
+                        detail: format!(
+                            "MusicBrainz release {} artist credit {:?} has no artist name",
+                            entity_id, artist_obj.id
+                        ),
+                    }
+                })?
             }
-        }
+            None if credit.name.trim().is_empty() => continue,
+            None => ArtistCredit::named(credit.name.trim()),
+        };
+        stated.push(SourceCredit {
+            credit: artist,
+            join: crate::credits::stated_join(credit.joinphrase.as_deref()),
+        });
     }
-    Ok(release_refs)
+    crate::credits::drop_last_join(&mut stated, |credit| &mut credit.join);
+    Ok(stated)
 }
 
 pub(crate) fn metadata(
@@ -337,17 +356,18 @@ fn tracklist_entry(track: &MbTrack, reported: &mut HashSet<String>) -> Tracklist
                 // A credit with no resolvable name (empty credit, no artist
                 // payload name) is malformed sub-data: its artist is dropped
                 // and the track kept rather than the whole release refused.
-                let Some(name) = mb_artist_name(artist, Some(credit.name.as_str())) else {
+                let credited = mb_credited_artist(artist, &credit.name);
+                if credited.is_none() {
                     warn!(
                         musicbrainz_artist_id = ?artist.id,
                         track_number = ?track.number,
                         track_title = ?title,
                         "Skipping MusicBrainz track artist credit with unresolvable artist name"
                     );
-                    return None;
-                };
-                Some(mb_artist_ref(name, artist))
+                }
+                credited
             }),
+            join: crate::credits::stated_join(credit.joinphrase.as_deref()),
         })
         .collect();
     let mut roles = Vec::new();
@@ -440,11 +460,7 @@ pub(crate) fn values(
         let position = crate::mediums::medium_position(index);
 
         for (track, &side) in medium.entries.iter().zip(&sides.sides) {
-            let credits: Vec<ArtistCredit> = track
-                .credits
-                .iter()
-                .filter_map(|credit| credit.artist.clone())
-                .collect();
+            let credits = crate::import::source_release::stated_credits(&track.credits);
             tracks.push(TrackValues {
                 title: track_title(release_id, track)?,
                 place: placer.place(

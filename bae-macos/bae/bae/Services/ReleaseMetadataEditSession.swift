@@ -212,7 +212,7 @@ final class ReleaseMetadataEditSession {
         failure = nil
     }
 
-    private func setAlbumArtists(_ assignments: [BridgeArtistAssignment]) {
+    private func setAlbumArtists(_ assignments: [BridgeCredited]) {
         form.albumArtistAssignments = assignments
         formRevision += 1
         hasChanges = true

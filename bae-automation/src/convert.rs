@@ -402,7 +402,7 @@ impl AutomationReleaseUserEdit {
             album_artist_assignments: edit
                 .album_artist_assignments
                 .into_iter()
-                .map(AutomationArtistAssignment::from_core)
+                .map(AutomationCredited::from_core)
                 .collect(),
             album_year: edit.album_year,
             pressing: AutomationPressingEdit::from_core(edit.pressing),
@@ -420,7 +420,7 @@ impl AutomationReleaseUserEdit {
             album_artist_assignments: self
                 .album_artist_assignments
                 .into_iter()
-                .map(AutomationArtistAssignment::into_core)
+                .map(AutomationCredited::into_core)
                 .collect(),
             album_year: self.album_year,
             pressing: self.pressing.into_core(),
@@ -471,7 +471,14 @@ mirror_struct! {
     AutomationArtistCredit = bae_core::import::ArtistCredit,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
-    fields: { name, sort_name, musicbrainz_artist_id, discogs_artist_id },
+    fields: { name, sort_name, musicbrainz_artist_id, discogs_artist_id, credited_as },
+}
+
+mirror_struct! {
+    AutomationCreditName = bae_core::credits::CreditName,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: { key, name },
 }
 
 mirror_enum! {
@@ -479,9 +486,16 @@ mirror_enum! {
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
-        Picked { artist: (AutomationExistingArtist) },
+        Picked { artist: (AutomationExistingArtist), credit: (opt AutomationCreditName) },
         Credit { credit: (AutomationArtistCredit) },
     },
+}
+
+mirror_struct! {
+    AutomationCredited = bae_core::import::Credited,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: { artist: (AutomationArtistAssignment), join },
 }
 
 mirror_enum! {
@@ -490,7 +504,7 @@ mirror_enum! {
     into_core: pub(crate) fn,
     variants: {
         AlbumArtists,
-        Explicit(assignments: (each AutomationArtistAssignment)),
+        Explicit(assignments: (each AutomationCredited)),
     },
 }
 

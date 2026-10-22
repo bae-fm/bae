@@ -247,23 +247,16 @@
             )
         }
 
-        static func artistCredit(_ name: String) -> BridgeArtistAssignment {
-            .credit(
-                credit: BridgeArtistCredit(
-                    name: name,
-                    sortName: nil,
-                    musicbrainzArtistId: nil,
-                    discogsArtistId: nil
-                )
-            )
+        static func artistCredit(_ name: String) -> BridgeCredited {
+            .typed(name)
         }
 
         static func pickedArtist(
             _ name: String,
             artistId: String
-        ) -> BridgeArtistAssignment {
+        ) -> BridgeCredited {
             .picked(
-                artist: BridgeExistingArtist(
+                BridgeExistingArtist(
                     artistId: artistId,
                     name: name,
                     sortName: nil,
@@ -284,7 +277,16 @@
                             musicbrainzArtistId: nil,
                             discogsArtistId: nil
                         ),
-                        image: nil
+                        image: nil,
+                        creditNames: [
+                            BridgeArtistCreditName(
+                                artistId: "artist-1",
+                                credit: BridgeCreditName(
+                                    key: "artist alias",
+                                    name: "Artist Alias"
+                                )
+                            )
+                        ]
                     ),
                     BridgeArtistSearchResult(
                         artist: BridgeExistingArtist(
@@ -294,7 +296,8 @@
                             musicbrainzArtistId: nil,
                             discogsArtistId: nil
                         ),
-                        image: nil
+                        image: nil,
+                        creditNames: []
                     ),
                 ]
             })

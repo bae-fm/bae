@@ -108,6 +108,7 @@ fn seed_two_credit_mb_release(
     f: &ImportFixture,
     mb_release_id: &str, mb_group_id: &str) -> String {
     let credit = |id: &str, name: &str| MbArtistCredit {
+        joinphrase: None,
         name: name.to_string(),
         artist: Some(MbArtistRef {
             id: Some(id.to_string()),
@@ -173,10 +174,10 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     let (_release_id, album_id) = support::wait_for_import_complete(&mut rx).await;
 
     let artists = f.db.get_artists_for_album(&album_id).await.unwrap();
-    let names: Vec<&str> = artists.iter().map(|a| a.name.as_str()).collect();
+    let names: Vec<&str> = artists.iter().map(|a| a.artist.name.as_str()).collect();
     assert_eq!(names, vec!["Artist A", "Artist B"]);
     assert_eq!(
-        artists[1].musicbrainz_artist_id.as_deref(),
+        artists[1].artist.musicbrainz_artist_id.as_deref(),
         Some("mb-artist-b")
     );
 }
@@ -213,6 +214,7 @@ fn seed_mb_release_with_media(
         status: None,
         packaging: None,
         artist_credit: vec![MbArtistCredit {
+            joinphrase: None,
             name: "Artist Name".to_string(),
             artist: Some(MbArtistRef {
                 id: Some("mb-artist-slots".to_string()),
@@ -505,6 +507,7 @@ fn seed_mb_release_with_front_cover(
         status: None,
         packaging: None,
         artist_credit: vec![MbArtistCredit {
+            joinphrase: None,
             name: "Artist Name".to_string(),
             artist: None,
         }],

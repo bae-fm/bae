@@ -197,7 +197,8 @@ async fn an_existing_library_artist_needs_no_candidate_image_answer() {
     let artist = existing_artist();
     db.insert_artist(&artist).await.unwrap();
     let mut draft = candidate_draft("Release Title", "Artist Name");
-    draft.album_artist_assignments = vec![ArtistAssignment::Picked {
+    draft.album_artist_assignments = vec![crate::import::Credited::plain(ArtistAssignment::Picked {
+        credit: None,
         artist: ExistingArtist {
             artist_id: artist.id,
             name: artist.name,
@@ -205,7 +206,7 @@ async fn an_existing_library_artist_needs_no_candidate_image_answer() {
             musicbrainz_artist_id: artist.musicbrainz_artist_id,
             discogs_artist_id: artist.discogs_artist_id,
         },
-    }];
+    })];
 
     crate::import::CandidatePreparations::new(db.clone())
         .apply_source(
@@ -382,16 +383,17 @@ async fn picked_artist_assignments_resolve_the_canonical_artist_row() {
     let existing = existing_artist();
     db.insert_artist(&existing).await.unwrap();
 
-    let assignments = vec![
+    let assignments = crate::import::Credited::plain_list(vec![
         ArtistAssignment::picked(existing.into()),
         ArtistAssignment::Credit { credit: ArtistCredit {
+                credited_as: None,
                 name: "New Artist".to_string(),
                 sort_name: Some("Artist, New".to_string()),
                 musicbrainz_artist_id: Some("mb-new".to_string()),
                 discogs_artist_id: Some("discogs-new".to_string()),
             },
         },
-    ];
+    ]);
     crate::import::CandidatePreparations::new(db.clone())
         .set_album_artists(&hash, &assignments)
         .await
@@ -430,13 +432,13 @@ async fn a_picked_artist_assignment_to_a_missing_row_is_rejected() {
     let error = crate::import::CandidatePreparations::new(db.clone())
         .set_album_artists(
             &hash,
-            &[ArtistAssignment::picked(ExistingArtist {
+            &[crate::import::Credited::plain(ArtistAssignment::picked(ExistingArtist {
                 artist_id: bae_test_support::test_uuid("missing-artist"),
                 name: "Missing Artist".to_string(),
                 sort_name: None,
                 musicbrainz_artist_id: None,
                 discogs_artist_id: None,
-            })],
+            }))],
         )
         .await
         .expect_err("a missing referenced artist cannot be stored");
@@ -722,7 +724,7 @@ async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
     );
     assert_eq!(
         crate::import::CandidatePreparations::new(db.clone())
-            .set_album_artists(&hash, &[credit_named("Different Artist")],)
+            .set_album_artists(&hash, &[crate::import::Credited::plain(credit_named("Different Artist"))],)
             .await
             .unwrap(),
         4

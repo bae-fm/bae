@@ -262,7 +262,7 @@ mod tests {
     fn a_draft() -> TriageMetadataSummary {
         TriageMetadataSummary {
             album_title: "Album Title".to_string(),
-            album_artist_assignments: Vec::new(),
+            album_artists: String::new(),
         }
     }
 

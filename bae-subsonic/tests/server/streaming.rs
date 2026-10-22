@@ -658,3 +658,93 @@ fn decode_bytes(bytes: &[u8]) -> bae_core::audio_codec::DecodedAudio {
     reader.start_reading(buffer.clone(), Box::new(|_| {}));
     bae_core::audio_codec::decode_audio(buffer, None, None).expect("decode transcoded bytes")
 }
+
+// ─────────────────────────── credit lines ───────────────────────────────────
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
+    // OpenSubsonic: `artist` is the display line, `artists` every credited
+    // artist; `artistId` stays the protocol's one id, the first credit's.
+    let (manager, _t) = new_manager().await;
+    let now = chrono::Utc::now();
+    let artist_a = bae_test_support::test_uuid("credit-artist-a");
+    let artist_b = bae_test_support::test_uuid("credit-artist-b");
+    for (id, name) in [(&artist_a, "Artist A"), (&artist_b, "Artist B")] {
+        manager
+            .insert_artist(&DbArtist {
+                id: id.clone(),
+                name: name.to_string(),
+                sort_name: None,
+                discogs_artist_id: None,
+                musicbrainz_artist_id: None,
+                created_at: now,
+            })
+            .await
+            .unwrap();
+    }
+    let album = DbAlbum {
+        id: bae_test_support::test_uuid("credit-album"),
+        title: "Credited Album".to_string(),
+        year: None,
+        is_compilation: false,
+        created_at: now,
+    };
+    let release = DbRelease {
+        id: bae_test_support::test_uuid("credit-release"),
+        album_id: album.id.clone(),
+        release_name: None,
+        pressing: bae_core::pressing::Pressing::blank(),
+        draft_from_tags: false,
+        source_folder_name: None,
+        content_hash: None,
+        album_loudness_lufs: None,
+        album_peak_linear: None,
+        created_at: now,
+    };
+    let credits = [
+        bae_core::db::DbAlbumArtist {
+            join_phrase: Some(" & ".to_string()),
+            ..bae_core::db::DbAlbumArtist::new(&album.id, &artist_a, 0, now)
+        },
+        bae_core::db::DbAlbumArtist {
+            credit: Some(bae_core::credits::CreditName {
+                key: "b alias".to_string(),
+                name: "B Alias".to_string(),
+            }),
+            ..bae_core::db::DbAlbumArtist::new(&album.id, &artist_b, 1, now)
+        },
+    ];
+    manager
+        .insert_album_with_release_and_tracks(&album, &credits, &release, &[], &[], &[])
+        .await
+        .unwrap();
+    let services = AppServices::for_test(manager.clone())
+        .await
+        .expect("app services");
+    let router = bae_subsonic::router(services, credential());
+
+    let response = call(
+        &router,
+        "getAlbumList2",
+        &authed("f=json&type=alphabeticalByName"),
+    )
+    .await;
+
+    let sub = response.sub();
+    let listed = &sub["albumList2"]["album"][0];
+    assert_eq!(listed["artist"], "Artist A & B Alias");
+    assert_eq!(listed["artistId"], format!("ar-{artist_a}"));
+    let artists: Vec<(&str, &str)> = listed["artists"]
+        .as_array()
+        .expect("every credited artist")
+        .iter()
+        .map(|artist| (artist["id"].as_str().unwrap(), artist["name"].as_str().unwrap()))
+        .collect();
+    assert_eq!(
+        artists,
+        [
+            (format!("ar-{artist_a}").as_str(), "Artist A"),
+            (format!("ar-{artist_b}").as_str(), "Artist B"),
+        ]
+    );
+}

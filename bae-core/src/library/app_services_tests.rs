@@ -344,17 +344,20 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
             release_id,
             &crate::import::ReleaseUserEdit {
                 album_title: "Renamed Album".to_string(),
-                album_artist_assignments: vec![crate::import::ArtistAssignment::Picked {
-                    artist: crate::import::ExistingArtist {
-                        artist_id: bae_test_support::test_uuid(
-                            "e36744a5-1a36-460f-891c-e7e558034edf",
-                        ),
-                        name: "Test Artist".to_string(),
-                        sort_name: None,
-                        musicbrainz_artist_id: None,
-                        discogs_artist_id: None,
+                album_artist_assignments: vec![crate::import::Credited::plain(
+                    crate::import::ArtistAssignment::Picked {
+                        credit: None,
+                        artist: crate::import::ExistingArtist {
+                            artist_id: bae_test_support::test_uuid(
+                                "e36744a5-1a36-460f-891c-e7e558034edf",
+                            ),
+                            name: "Test Artist".to_string(),
+                            sort_name: None,
+                            musicbrainz_artist_id: None,
+                            discogs_artist_id: None,
+                        },
                     },
-                }],
+                )],
                 album_year: None,
                 pressing: crate::pressing::Pressing::blank(),
                 tracks: vec![crate::import::TrackUserEdit {

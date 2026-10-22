@@ -524,7 +524,7 @@ mirror_struct! {
     from_core: fn,
     fields: {
         album_title,
-        album_artist_assignments: (each crate::types::BridgeArtistAssignment),
+        album_artists,
     },
 }
 

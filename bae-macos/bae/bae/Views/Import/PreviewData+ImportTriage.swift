@@ -293,7 +293,7 @@
             matched: nil,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title Twelve",
-                albumArtistAssignments: [artistCredit("Artist Name")]
+                albumArtists: "Artist Name"
             ),
             cover: .local(file: previewArtFile("Front.png")),
             metadataProvenance: .fileMetadata,
@@ -319,7 +319,7 @@
             matched: nil,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title Thirteen",
-                albumArtistAssignments: [artistCredit("Artist Name")]
+                albumArtists: "Artist Name"
             ),
             cover: .local(file: previewArtFile("Front.png")),
             metadataProvenance: .externalRelease(
@@ -338,7 +338,7 @@
             matched: nil,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title Fourteen",
-                albumArtistAssignments: [artistCredit("Artist Name")]
+                albumArtists: "Artist Name"
             ),
             cover: .local(file: previewArtFile("Front.png")),
             metadataProvenance: .externalRelease(

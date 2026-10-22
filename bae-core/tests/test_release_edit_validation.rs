@@ -71,7 +71,7 @@ fn wire_edit(album_title: &str, album_artist_seed_names: &[&str]) -> ReleaseUser
         album_title: album_title.to_string(),
         album_artist_assignments: album_artist_seed_names
             .iter()
-            .map(|name| ArtistAssignment::named(*name))
+            .map(|name| bae_core::import::Credited::plain(ArtistAssignment::named(*name)))
             .collect(),
         album_year: None,
         pressing: bae_core::pressing::Pressing::blank(),
@@ -157,9 +157,9 @@ async fn new_artist_names_are_stored_trimmed() {
 
     let artists = db.get_artists_for_album(&album_id).await.unwrap();
     assert!(
-        artists.iter().any(|a| a.name == "Artist Alpha"),
+        artists.iter().any(|a| a.artist.name == "Artist Alpha"),
         "expected a trimmed artist name, got {:?}",
-        artists.iter().map(|a| &a.name).collect::<Vec<_>>(),
+        artists.iter().map(|a| &a.artist.name).collect::<Vec<_>>(),
     );
 }
 

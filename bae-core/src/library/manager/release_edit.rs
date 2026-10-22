@@ -38,12 +38,10 @@ impl LibraryManager {
         let display = crate::album_detail::ReleaseEditDisplayContext::from_raw(&context.detail)?;
         let cover = cover_ref_for(&self.database, release_id).await?;
 
-        let album_artist_assignments: Vec<crate::import::ArtistAssignment> = context
+        let album_artist_assignments: Vec<crate::import::Credited> = context
             .album_artists
             .into_iter()
-            .map(|artist| crate::import::ArtistAssignment::Picked {
-                artist: artist.into(),
-            })
+            .map(crate::import::Credited::of_library)
             .collect();
 
         let mut tracks = Vec::with_capacity(context.detail.tracks.len());
@@ -51,13 +49,11 @@ impl LibraryManager {
             // Empty when the track has no artist rows of its own — the wire edit
             // reads that as "shares the album artist", matching how
             // `apply_release_metadata_user_edit` writes it back.
-            let artists: Vec<crate::import::ArtistAssignment> = entry
+            let artists: Vec<crate::import::Credited> = entry
                 .artists
                 .clone()
                 .into_iter()
-                .map(|artist| crate::import::ArtistAssignment::Picked {
-                    artist: artist.into(),
-                })
+                .map(crate::import::Credited::of_library)
                 .collect();
             tracks.push((
                 entry.track.id.clone(),

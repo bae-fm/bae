@@ -93,13 +93,10 @@ pub(super) async fn candidate_run_start(
         .load_import_candidate_pane_rows(&content_hash)
         .await?
         .draft;
-    let artist = draft
-        .album_artist_assignments
-        .first()
-        .map_or("", crate::import::ArtistAssignment::name);
+    let artist = crate::import::credited_line(&draft.album_artist_assignments);
     let title_search = match &state.lookup_choices.search_words {
         Some(words) => TitleSearch::of(&words.album, &words.artist),
-        None => TitleSearch::of_draft(&draft.album_title, artist),
+        None => TitleSearch::of_draft(&draft.album_title, &artist),
     };
     Ok(CandidateRunStart {
         choices: state.lookup_choices,

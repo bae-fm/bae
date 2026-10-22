@@ -460,7 +460,7 @@ async fn set_records_to_a_fresh_album_preserves_album_artists() {
         .get_artists_for_album(&new_album_id)
         .await
         .unwrap();
-    let names: Vec<&str> = new_album_artists.iter().map(|a| a.name.as_str()).collect();
+    let names: Vec<&str> = new_album_artists.iter().map(|a| a.artist.name.as_str()).collect();
     assert_eq!(names, vec!["Primary", "Secondary"]);
 }
 

@@ -768,31 +768,53 @@ pub(super) fn storage_filter_where(filter: StorageFilter, uploading_count: usize
     }
 }
 
-/// The album's credits as they show after merges, in list order, comma-joined.
-pub(super) fn album_artist_names_sql() -> String {
+/// The credits of `owner_expr` in `table` (`album_artists` or
+/// `track_artists`), in list order, as a JSON array (see
+/// [`super::read::credits_from_json`]): each the artist it shows after merges,
+/// the other printed name it names, and its join. `prefix` keeps the
+/// subquery's aliases apart from the query it sits in. An owner with no
+/// credits gives NULL.
+fn credits_json_sql(table: &str, owner_column: &str, owner_expr: &str, prefix: &str) -> String {
     format!(
-        "COALESCE(( \
-            SELECT GROUP_CONCAT(name_artist.name, ', ' ORDER BY name_credit.position) \
-            FROM album_artists name_credit \
-            JOIN artists name_artist ON name_artist.id = {shown} \
-            WHERE name_credit.album_id = a.id \
-        ), '')",
-        shown = shown_artist_id("name_credit.artist_id"),
+        "(SELECT json_group_array(json_object( \
+             'id', {prefix}_artist.id, 'name', {prefix}_artist.name, \
+             'sort_name', {prefix}_artist.sort_name, \
+             'discogs_artist_id', {prefix}_artist.discogs_artist_id, \
+             'musicbrainz_artist_id', {prefix}_artist.musicbrainz_artist_id, \
+             'created_at', {prefix}_artist.created_at, \
+             'credit_key', {prefix}_name.name_key, 'credit_name', {prefix}_name.name, \
+             'join', {prefix}_credit.join_phrase) ORDER BY {prefix}_credit.position) \
+          FROM {table} {prefix}_credit \
+          JOIN artists {prefix}_artist ON {prefix}_artist.id = {shown} \
+          LEFT JOIN artist_credits {prefix}_name \
+              ON {prefix}_name.artist_id = {prefix}_credit.artist_id \
+             AND {prefix}_name.name_key = {prefix}_credit.credit_key \
+          WHERE {prefix}_credit.{owner_column} = {owner_expr} \
+          HAVING COUNT(*) > 0)",
+        shown = shown_artist_id(&format!("{prefix}_credit.artist_id")),
     )
 }
 
-/// The artists the track `track_alias` shows, comma-joined: its own credits
-/// in list order, else its album `a`'s.
-pub(super) fn track_artist_names_sql(track_alias: &str) -> String {
+/// The album `a`'s credits as a JSON array, `[]` for none.
+pub(super) fn album_credits_json_sql() -> String {
     format!(
-        "COALESCE(NULLIF(( \
-            SELECT GROUP_CONCAT(own_artist.name, ', ' ORDER BY own_credit.position) \
-            FROM track_artists own_credit \
-            JOIN artists own_artist ON own_artist.id = {shown} \
-            WHERE own_credit.track_id = {track_alias}.id \
-        ), ''), {album})",
-        shown = shown_artist_id("own_credit.artist_id"),
-        album = album_artist_names_sql(),
+        "COALESCE({}, '[]')",
+        credits_json_sql("album_artists", "album_id", "a.id", "album_credits")
+    )
+}
+
+/// The credits the track `track_alias` shows, as a JSON array: its own, else
+/// its album `a`'s.
+pub(super) fn track_credits_json_sql(track_alias: &str) -> String {
+    format!(
+        "COALESCE({}, {})",
+        credits_json_sql(
+            "track_artists",
+            "track_id",
+            &format!("{track_alias}.id"),
+            "track_credits"
+        ),
+        album_credits_json_sql(),
     )
 }
 
@@ -814,17 +836,17 @@ pub(super) fn album_primary_release_sql() -> &'static str {
       ORDER BY album_release.album_order, album_release.id LIMIT 1)"
 }
 
-/// Shared column list for album-summary queries. Emits `artist_names`
-/// (the credit list, comma-joined), `release_ids_json`
+/// Shared column list for album-summary queries. Emits `album_credits` (the
+/// credit list as JSON), `release_ids_json`
 /// (releases in album order) and `primary_release_id`.
 pub(super) fn album_summary_columns() -> String {
     format!(
         "a.id, a.title, a.year, a.is_compilation, \
             {primary} AS primary_release_id, \
-            {artist_names} AS artist_names, \
+            {album_credits} AS album_credits, \
             {release_ids} AS release_ids_json",
         primary = album_primary_release_sql(),
-        artist_names = album_artist_names_sql(),
+        album_credits = album_credits_json_sql(),
         release_ids = album_release_ids_json_sql()
     )
 }
@@ -842,7 +864,7 @@ pub(super) struct AlbumSummaryRow {
     title: String,
     year: Option<i32>,
     is_compilation: bool,
-    artist_names: String,
+    album_credits: String,
     release_ids_json: String,
     primary_release_id: String,
 }
@@ -854,7 +876,7 @@ impl AlbumSummaryRow {
             title: row.get("title")?,
             year: row.get("year")?,
             is_compilation: row.get("is_compilation")?,
-            artist_names: row.get("artist_names")?,
+            album_credits: row.get("album_credits")?,
             release_ids_json: row.get("release_ids_json")?,
             primary_release_id: row.get("primary_release_id")?,
         })
@@ -868,7 +890,9 @@ impl AlbumSummaryRow {
             title: self.title,
             year: self.year,
             is_compilation: self.is_compilation,
-            artist_names: self.artist_names,
+            artist_names: crate::credits::library_line(&super::read::credits_from_json(
+                &self.album_credits,
+            )?),
             release_ids,
             primary_release_id: self.primary_release_id,
         })

@@ -18,28 +18,38 @@ impl Database {
     }
     /// The album's credits in list order, each the artist it shows after
     /// merges; a list naming one artist twice gives it twice.
-    pub async fn get_artists_for_album(&self, album_id: &str) -> Result<Vec<DbArtist>, DbError> {
+    pub async fn get_artists_for_album(
+        &self,
+        album_id: &str,
+    ) -> Result<Vec<LibraryCredit>, DbError> {
         let album_id = album_id.to_string();
         self.read(move |sql| get_artists_for_album_on(&sql, &album_id))
             .await
     }
     /// The track's own credits in list order, each the artist it shows after
     /// merges; a list naming one artist twice gives it twice.
-    pub async fn get_artists_for_track(&self, track_id: &str) -> Result<Vec<DbArtist>, DbError> {
+    pub async fn get_artists_for_track(
+        &self,
+        track_id: &str,
+    ) -> Result<Vec<LibraryCredit>, DbError> {
         let track_id = track_id.to_string();
         self.read(move |sql| {
             sql.query(
                 &format!(
                     r#"
-                        SELECT a.* FROM track_artists ta
-                        JOIN artists a ON a.id = {}
-                        WHERE ta.track_id = ?
-                        ORDER BY ta.position
+                        SELECT {columns} FROM track_artists credit
+                        JOIN artists artist ON artist.id = {shown}
+                        LEFT JOIN artist_credits credit_name
+                            ON credit_name.artist_id = credit.artist_id
+                           AND credit_name.name_key = credit.credit_key
+                        WHERE credit.track_id = ?
+                        ORDER BY credit.position
                         "#,
-                    shown_artist_id("ta.artist_id")
+                    columns = LIBRARY_CREDIT_COLUMNS,
+                    shown = shown_artist_id("credit.artist_id")
                 ),
                 params![track_id],
-                row_to_artist,
+                row_to_library_credit,
             )
             .map_err(DbError::from)
         })
@@ -80,7 +90,10 @@ impl Database {
                        OR discogs_artist_id = ?1
                        OR musicbrainz_artist_id = ?1
                        OR instr(lower(name), lower(?1)) > 0
-                       OR instr(lower(COALESCE(sort_name, '')), lower(?1)) > 0)
+                       OR instr(lower(COALESCE(sort_name, '')), lower(?1)) > 0
+                       OR id IN (
+                           SELECT {credit_artist} FROM artist_credits credit_name
+                           WHERE instr(lower(credit_name.name), lower(?1)) > 0))
                     ORDER BY
                         CASE
                             WHEN id = ?1
@@ -96,7 +109,8 @@ impl Database {
                         id
                     LIMIT ?2
                     "#,
-                    shown = artist_is_shown("artists")
+                    shown = artist_is_shown("artists"),
+                    credit_artist = shown_artist_id("credit_name.artist_id"),
                 ),
                 params![query, limit as i64],
                 row_to_artist,
@@ -517,12 +531,23 @@ fn find_artist_detail_on(
         credited = shown_artist_id("aa.artist_id"),
     );
     let albums = sql.query(&albums_query, params![artist_id], AlbumSummaryRow::read)?;
-    Ok(Some(ArtistDetailRows { artist, albums }))
+    let credit_names = super::artist_credit_names::credit_names_of_on(
+        sql,
+        std::slice::from_ref(&artist.artist.id),
+    )?
+    .remove(&artist.artist.id)
+    .unwrap_or_default();
+    Ok(Some(ArtistDetailRows {
+        artist,
+        credit_names,
+        albums,
+    }))
 }
 
 #[derive(Clone, PartialEq)]
 struct ArtistDetailRows {
     artist: DbArtistSummary,
+    credit_names: Vec<crate::credits::ArtistCreditName>,
     albums: Vec<AlbumSummaryRow>,
 }
 
@@ -530,6 +555,7 @@ impl ArtistDetailRows {
     fn process(self) -> Result<DbArtistDetail, DbError> {
         Ok(DbArtistDetail {
             artist: self.artist,
+            credit_names: self.credit_names,
             albums: self
                 .albums
                 .into_iter()

@@ -244,16 +244,29 @@ pub(super) fn set_records_on(
         if !holds_releases {
             upsert_album_row(tx, album)?;
             let source_artists: Vec<DbAlbumArtist> = tx.query(
-                "SELECT artist_id, position FROM album_artists \
-                         WHERE album_id = ? ORDER BY position",
+                "SELECT aa.artist_id, aa.position, aa.join_phrase, ac.name_key, ac.name \
+                 FROM album_artists aa \
+                 LEFT JOIN artist_credits ac \
+                     ON ac.artist_id = aa.artist_id AND ac.name_key = aa.credit_key \
+                 WHERE aa.album_id = ? ORDER BY aa.position",
                 params![current_album_id],
                 |row| {
-                    Ok(DbAlbumArtist::new(
-                        &album.id,
-                        &row.get::<_, String>("artist_id")?,
-                        row.get::<_, u32>("position")?,
-                        now_dt,
-                    ))
+                    Ok(DbAlbumArtist {
+                        credit: match row.get::<_, Option<String>>("name_key")? {
+                            Some(key) => Some(crate::credits::CreditName {
+                                key,
+                                name: row.get("name")?,
+                            }),
+                            None => None,
+                        },
+                        join_phrase: row.get("join_phrase")?,
+                        ..DbAlbumArtist::new(
+                            &album.id,
+                            &row.get::<_, String>("artist_id")?,
+                            row.get::<_, u32>("position")?,
+                            now_dt,
+                        )
+                    })
                 },
             )?;
             replace_album_artists(tx, &album.id, &source_artists, &now)?;

@@ -75,13 +75,17 @@ mod release_metadata_update_input {
             album_title: album_title.to_string(),
             album_artist_assignments: album_artist_credit_names
                 .iter()
-                .map(|name| AutomationArtistAssignment::Credit {
-                    credit: AutomationArtistCredit {
-                        name: (*name).to_string(),
-                        sort_name: None,
-                        musicbrainz_artist_id: None,
-                        discogs_artist_id: None,
+                .map(|name| AutomationCredited {
+                    artist: AutomationArtistAssignment::Credit {
+                        credit: AutomationArtistCredit {
+                            name: (*name).to_string(),
+                            sort_name: None,
+                            musicbrainz_artist_id: None,
+                            discogs_artist_id: None,
+                            credited_as: None,
+                        },
                     },
+                    join: None,
                 })
                 .collect(),
             album_year: None,
@@ -123,7 +127,9 @@ mod release_metadata_update_input {
         assert_eq!(wire.album_title, "Album Alpha");
         assert_eq!(
             wire.album_artist_assignments,
-            vec![bae_core::import::ArtistAssignment::named("Artist Alpha")]
+            bae_core::import::Credited::plain_list([bae_core::import::ArtistAssignment::named(
+                "Artist Alpha"
+            )])
         );
     }
 
@@ -137,14 +143,19 @@ mod release_metadata_update_input {
             discogs_artist_id: Some("discogs-artist".to_string()),
         };
         let mut edit = edit("Album Alpha", &[]);
-        edit.album_artist_assignments = vec![AutomationArtistAssignment::Picked {
-            artist: artist.clone(),
+        edit.album_artist_assignments = vec![AutomationCredited {
+            artist: AutomationArtistAssignment::Picked {
+                credit: None,
+                artist: artist.clone(),
+            },
+            join: None,
         }];
 
         let round_trip = AutomationReleaseUserEdit::from_core(edit.into_core());
         let AutomationArtistAssignment::Picked {
+            credit: None,
             artist: round_trip_artist,
-        } = &round_trip.album_artist_assignments[0]
+        } = &round_trip.album_artist_assignments[0].artist
         else {
             panic!("the existing artist remains an existing artist");
         };
