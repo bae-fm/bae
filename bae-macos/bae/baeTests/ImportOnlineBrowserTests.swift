@@ -38,7 +38,6 @@ struct ImportOnlineBrowserTests {
             onMovePane: { moves.append($0) },
             onIdentify: {},
             onSearchForRelease: {},
-            onReset: {},
             onResetToFileMetadata: {},
             onClearMetadata: {},
             onUnlink: {},

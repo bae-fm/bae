@@ -71,14 +71,6 @@ enum ImportMappingFlow {
         )
     }
 
-    /// Restore the whole scanned setup through core's atomic reset operation.
-    @MainActor
-    static func reset(key: String, services: ImportMappingServices) {
-        replaceMetadata(services: services) {
-            try await services.importer.resetCandidateSetup(key)
-        }
-    }
-
     @MainActor
     static func clearMetadata(
         key: String,

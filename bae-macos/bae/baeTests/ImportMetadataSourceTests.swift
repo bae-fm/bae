@@ -15,8 +15,7 @@ private struct ExternalMetadataApplication: Equatable {
 private final class MetadataSourceRecorder {
     var externalApplications: [ExternalMetadataApplication] = []
     var fileTagApplications: [String] = []
-    var resetKeys: [String] = []
-    var resetError: (any Error)?
+    var clearError: (any Error)?
     var events: [String] = []
     var clearedKeys: [String] = []
     var identifiedKeys: [String] = []
@@ -42,15 +41,12 @@ private final class MetadataSourceRecorder {
                     return .done
                 }
             },
-            resetCandidateSetup: { [self] key in
-                try await MainActor.run {
-                    events.append("reset")
-                    resetKeys.append(key)
-                    if let resetError { throw resetError }
-                }
-            },
             clearCandidateMetadata: { [self] key in
-                await MainActor.run { clearedKeys.append(key) }
+                try await MainActor.run {
+                    events.append("clear")
+                    if let clearError { throw clearError }
+                    clearedKeys.append(key)
+                }
                 return 1
             },
             // Core's re-run is fire-and-forget from any isolation; every
@@ -83,32 +79,31 @@ private final class MetadataSourceRecorder {
 struct ImportMetadataSourceTests {}
 
 extension ImportMetadataSourceTests {
-    @Test("Reset finishes editing then resets the complete import setup")
-    func resetUsesTheCanonicalOperation() async throws {
+    @Test("Clear metadata finishes editing then clears the draft")
+    func clearFinishesEditingFirst() async throws {
         let store = MappingFixtures.store(mapping: nil)
         let recorder = MetadataSourceRecorder()
-        ImportMappingFlow.reset(
+        ImportMappingFlow.clearMetadata(
             key: MappingFixtures.candidateKey,
             services: recorder.services(store)
         )
-        try await Wait.until { !recorder.resetKeys.isEmpty }
+        try await Wait.until { !recorder.clearedKeys.isEmpty }
 
-        #expect(recorder.resetKeys == [MappingFixtures.candidateKey])
-        #expect(recorder.events == ["end editing", "reset"])
+        #expect(recorder.clearedKeys == [MappingFixtures.candidateKey])
+        #expect(recorder.events == ["end editing", "clear"])
         #expect(recorder.fileTagApplications.isEmpty)
-        #expect(recorder.clearedKeys.isEmpty)
         #expect(recorder.errors.isEmpty)
     }
 
-    @Test("Reset failures reach the existing error presentation")
-    func resetReportsFailure() async throws {
+    @Test("Clear metadata failures reach the existing error presentation")
+    func clearReportsFailure() async throws {
         let recorder = MetadataSourceRecorder()
-        recorder.resetError = NSError(
-            domain: "ResetTest",
+        recorder.clearError = NSError(
+            domain: "ClearTest",
             code: 1,
             userInfo: [NSLocalizedDescriptionKey: "Source changed"]
         )
-        ImportMappingFlow.reset(
+        ImportMappingFlow.clearMetadata(
             key: MappingFixtures.candidateKey,
             services: recorder.services(MappingFixtures.store(mapping: nil))
         )
@@ -120,7 +115,6 @@ extension ImportMetadataSourceTests {
             ]
         )
         #expect(recorder.fileTagApplications.isEmpty)
-        #expect(recorder.clearedKeys.isEmpty)
     }
 
 }
@@ -348,7 +342,6 @@ struct ImportReleaseEntryTests {
                 sourceActions: ImportReleaseSourceActions(
                     identifyAutomatically: {},
                     searchForRelease: {},
-                    reset: {},
                     resetToFileMetadata: {},
                     clearMetadata: {},
                     unlink: {}
@@ -604,7 +597,6 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         ImportReleaseSourceActions(
             identifyAutomatically: { recorder.identifyCount += 1 },
             searchForRelease: { recorder.searchCount += 1 },
-            reset: { recorder.resetCount += 1 },
             resetToFileMetadata: { recorder.tagsCount += 1 },
             clearMetadata: { recorder.clearCount += 1 },
             unlink: {}
@@ -677,24 +669,23 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
 }
 
 extension ImportMetadataCardLayoutTests {
-    /// The metadata menu lists every draft command, reset first, and each
-    /// confirmed command runs its own action and no other.
+    /// The metadata menu lists every draft command, and each confirmed
+    /// command runs its own action and no other.
     func testEachDraftCommandRunsOnlyItsOwnAction() {
         XCTAssertEqual(
             ImportDraftCommand.allCases.map(\.title),
-            ["Reset", "Reset to file metadata", "Clear metadata"]
+            ["Reset to file metadata", "Clear metadata"]
         )
-        // Each command's runs of reset, reset to tags, and clear.
+        // Each command's runs of reset to tags, and clear.
         let runs: [ImportDraftCommand: [Int]] = [
-            .reset: [1, 0, 0],
-            .resetToFileMetadata: [0, 1, 0],
-            .clearMetadata: [0, 0, 1],
+            .resetToFileMetadata: [1, 0],
+            .clearMetadata: [0, 1],
         ]
         for command in ImportDraftCommand.allCases {
             let recorder = MetadataCardActionRecorder()
             command.run(with: sourceActions(recording: recorder))
             XCTAssertEqual(
-                [recorder.resetCount, recorder.tagsCount, recorder.clearCount],
+                [recorder.tagsCount, recorder.clearCount],
                 runs[command],
                 "\(command)"
             )
@@ -832,7 +823,6 @@ extension ImportMetadataCardLayoutTests {
 private final class MetadataCardActionRecorder {
     var identifyCount = 0
     var searchCount = 0
-    var resetCount = 0
     var tagsCount = 0
     var clearCount = 0
 }

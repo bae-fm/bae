@@ -26,7 +26,7 @@ pub(super) use pane_rows::{
 };
 pub(crate) use preparation_rows::{
     CandidatePaneWrite, CandidateSaveExpectation,
-    CandidateSaveExtras, CandidateSaved, CandidateScanExpectation, ScannedCandidateKey,
+    CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
 };
 pub(super) use rows::{
     load_candidate_file_edits_on, load_matches_on, load_provenance_on, load_release_links_on,

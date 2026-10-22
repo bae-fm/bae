@@ -68,6 +68,20 @@ async fn the_candidate_s_lookup_choices_read_back_on_its_pane() {
     shut_down(handle).await;
 }
 
+/// Applying the files' tags again, the pane's way to start over, keeps what
+/// the person chose to look up by.
+#[tokio::test(flavor = "multi_thread")]
+async fn applying_the_tags_again_keeps_the_lookup_choices() {
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    edit(&handle, &key, [barcode("0123456789012"), catalog("WPCR-80001")]).await;
+    let chosen = pane(&handle, &key).await.lookup_choices;
+
+    handle.select_candidate_file_tags(key.clone()).await.unwrap();
+
+    assert_eq!(pane(&handle, &key).await.lookup_choices, chosen);
+    shut_down(handle).await;
+}
+
 /// Two changes made one right after the other both land: each is made to the
 /// choices the one before it left, not to a copy read before either.
 #[tokio::test(flavor = "multi_thread")]

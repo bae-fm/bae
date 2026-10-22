@@ -18,7 +18,7 @@ use crate::import::folder_scanner::FolderCandidate;
 pub(crate) struct CandidateSaveExpectation {
     pub edit_revision: u64,
     pub metadata_revision: u64,
-    pub scanned: Option<CandidateScanExpectation>,
+    pub scanned: Option<ScannedCandidateKey>,
 }
 
 /// Where the scan tables list a candidate: the root it is under and its key.
@@ -28,46 +28,22 @@ pub(crate) struct ScannedCandidateKey {
     pub candidate_path: String,
 }
 
-/// Whether a write only pins the current source or also the scan it read.
-#[derive(Debug, Clone)]
-pub(crate) enum CandidateScanExpectation {
-    Current(ScannedCandidateKey),
-    AtGeneration {
-        key: ScannedCandidateKey,
-        generation: u64,
-    },
-}
-
-impl CandidateScanExpectation {
-    fn key(&self) -> &ScannedCandidateKey {
-        match self {
-            Self::Current(key) | Self::AtGeneration { key, .. } => key,
-        }
-    }
-
+impl ScannedCandidateKey {
+    /// Refuse the write unless the scan tables still list this candidate with
+    /// the files the write was prepared against; returns its scan generation.
     fn verify(
         &self,
         sql: &SqlContext<'_, '_>,
         content_hash: &str,
         file_revision: u64,
     ) -> Result<u64, DbError> {
-        let key = self.key();
-        let current = require_current_candidate(
+        require_current_candidate(
             sql,
-            &key.watched_folder_path,
-            &key.candidate_path,
+            &self.watched_folder_path,
+            &self.candidate_path,
             content_hash,
             file_revision,
-        )?;
-        if let Self::AtGeneration { generation, .. } = self {
-            if current != *generation {
-                return Err(DbError::Message(format!(
-                    "candidate {} changed scan generation before its setup was stored",
-                    key.candidate_path,
-                )));
-            }
-        }
-        Ok(current)
+        )
     }
 }
 
@@ -83,14 +59,6 @@ pub(crate) struct CandidateSaveExtras {
     /// the saved file decisions. Their scan rows are rewritten to this shape
     /// and stamped with the saved file revision.
     pub reshaped_files: Option<Vec<(String, CategorizedFiles)>>,
-    /// For a reset of the whole setup: the lookup choices the reset was
-    /// prepared against. The stored choices return to their initial value in
-    /// this transaction, and the save is refused when they are no longer
-    /// these, so a choice made while the reset was being prepared survives
-    /// and the reset fails. `None` leaves the choices alone — no other save
-    /// writes them: only the person's own choices change what identification
-    /// looks up.
-    pub reset_lookup_choices_from: Option<crate::import::LookupChoices>,
     pub pane: CandidatePaneWrite,
 }
 
@@ -110,7 +78,6 @@ impl Default for CandidateSaveExtras {
         Self {
             file_tag_snapshot: None,
             reshaped_files: None,
-            reset_lookup_choices_from: None,
             pane: CandidatePaneWrite::Keep,
         }
     }
@@ -213,11 +180,10 @@ pub(super) fn save_preparation_on(
         .remove(content_hash);
     if previous_link != prep.link
         || previous_provenance != prep.metadata.provenance
-        || extras.reset_lookup_choices_from.is_some()
         || prep.metadata.draft.release_edit().is_blank()
     {
-        // An answer belongs to these source credits. Changing their source or
-        // resetting the setup requires the person to decide any new conflict.
+        // An answer belongs to these source credits. Changing their source
+        // requires the person to decide any new conflict.
         sql.execute("DELETE FROM import_candidate_artist_identity_choice WHERE content_hash = ?", [content_hash])?;
         sql.execute("DELETE FROM import_candidate_failure WHERE content_hash = ? AND content_hash IN (SELECT content_hash FROM import_candidate_artist_identity_conflict)", [content_hash])?;
     }
@@ -251,23 +217,6 @@ pub(super) fn save_preparation_on(
     )?;
     delete_file_edits(sql, content_hash)?;
     insert_file_edits(sql, content_hash, &prep.file_edits)?;
-    if let Some(expected) = &extras.reset_lookup_choices_from {
-        let current = lookup_choice_rows::load_lookup_choice_rows_on(sql, Some(content_hash))?
-            .assemble()
-            .remove(content_hash)
-            .unwrap_or_default();
-        if &current != expected {
-            return Err(DbError::Message(
-                "candidate lookup choices changed before its setup was reset".into(),
-            ));
-        }
-        lookup_choice_rows::replace_lookup_choices_on(
-            sql,
-            content_hash,
-            &crate::import::LookupChoices::default(),
-        )?;
-    }
-
     match extras.pane {
         CandidatePaneWrite::Keep => {}
         CandidatePaneWrite::OpenOnDraftUnlessCheckFailed => {
@@ -330,8 +279,7 @@ pub(super) fn save_preparation_on(
                 DbError::Message(
                     "a file-tag snapshot is stored under a scanned candidate key".into(),
                 )
-            })?
-            .key();
+            })?;
         if snapshot.file_edit_revision != prep.file_edits.revision
             || Some(snapshot.scan_generation) != scan_generation
             || !super::folder_scans::replace_candidate_file_tag_snapshot_on(

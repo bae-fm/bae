@@ -22,9 +22,6 @@ struct ImportReleaseSourceActions {
     let identifyAutomatically: () -> Void
     /// Open the same pane on its typed search, starting nothing.
     let searchForRelease: () -> Void
-    /// Restore the initial source tracks, audio assignments, cover, and
-    /// metadata.
-    let reset: () -> Void
     /// Replace the draft with what the candidate's own files say.
     let resetToFileMetadata: () -> Void
     let clearMetadata: () -> Void
@@ -35,9 +32,6 @@ struct ImportReleaseSourceActions {
 /// A command in the card's metadata menu. Each replaces what the person has,
 /// so the card asks before running it.
 enum ImportDraftCommand: CaseIterable, Identifiable {
-    /// Restore the initial source tracks, audio assignments, cover, and
-    /// metadata.
-    case reset
     /// Replace the draft with what the candidate's own files say.
     case resetToFileMetadata
     case clearMetadata
@@ -46,7 +40,6 @@ enum ImportDraftCommand: CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .reset: String(localized: "Reset")
         case .resetToFileMetadata: String(localized: "Reset to file metadata")
         case .clearMetadata: String(localized: "Clear metadata")
         }
@@ -55,7 +48,6 @@ enum ImportDraftCommand: CaseIterable, Identifiable {
     /// What the confirmation asks.
     var question: String {
         switch self {
-        case .reset: String(localized: "Reset?")
         case .resetToFileMetadata: String(localized: "Reset to file metadata?")
         case .clearMetadata: String(localized: "Clear metadata?")
         }
@@ -64,11 +56,6 @@ enum ImportDraftCommand: CaseIterable, Identifiable {
     /// What the confirmation says the command changes and keeps.
     var consequence: String {
         switch self {
-        case .reset:
-            String(
-                localized:
-                    "Restore all tracks, automatic audio assignments, artwork, and initial metadata. Your files will not be changed."
-            )
         case .resetToFileMetadata:
             String(
                 localized:
@@ -84,7 +71,6 @@ enum ImportDraftCommand: CaseIterable, Identifiable {
 
     func run(with actions: ImportReleaseSourceActions) {
         switch self {
-        case .reset: actions.reset()
         case .resetToFileMetadata: actions.resetToFileMetadata()
         case .clearMetadata: actions.clearMetadata()
         }
@@ -270,7 +256,7 @@ struct ImportReleaseHeader: View {
         }
     }
 
-    /// Commands that replace metadata or restore the whole import setup.
+    /// Commands that replace the draft's metadata.
     private var candidateMenu: some View {
         Menu {
             ForEach(ImportDraftCommand.allCases) { command in
@@ -409,7 +395,6 @@ struct ImportCoverWell: View {
             sourceActions: ImportReleaseSourceActions(
                 identifyAutomatically: {},
                 searchForRelease: {},
-                reset: {},
                 resetToFileMetadata: {},
                 clearMetadata: {},
                 unlink: {}

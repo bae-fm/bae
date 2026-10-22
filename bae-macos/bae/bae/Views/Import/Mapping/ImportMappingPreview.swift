@@ -68,7 +68,6 @@
                 onMovePane: { _ in },
                 onIdentify: {},
                 onSearchForRelease: {},
-                onReset: {},
                 onResetToFileMetadata: {},
                 onClearMetadata: {},
                 onUnlink: {},

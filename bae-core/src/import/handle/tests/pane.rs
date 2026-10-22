@@ -11,7 +11,6 @@ mod metadata_author;
 mod metadata_edits;
 mod pick_partners;
 mod release_link;
-mod reset;
 mod session;
 mod shared_album;
 // The pane's own controls, from the handle down to the next read.

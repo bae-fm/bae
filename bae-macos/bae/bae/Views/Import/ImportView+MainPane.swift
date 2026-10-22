@@ -124,12 +124,6 @@ extension ImportView {
             onMovePane: { movePane($0, for: candidate) },
             onIdentify: { identify(candidate) },
             onSearchForRelease: { searchForRelease(candidate) },
-            onReset: {
-                ImportMappingFlow.reset(
-                    key: candidate.key,
-                    services: mappingServices
-                )
-            },
             onResetToFileMetadata: {
                 ImportMappingFlow.resetToFileMetadata(
                     key: candidate.key,

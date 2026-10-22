@@ -34,7 +34,6 @@ impl AppServices {
     delegate_async!(import, import_remove_discogs_token => remove_discogs_token() -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_select_candidate_release => select_candidate_release(candidate_key: String, link: crate::import::PressingLink) -> Result<u64, crate::import::ImportError>);
     delegate_async!(import, import_select_candidate_file_tags => select_candidate_file_tags(candidate_key: String) -> Result<u64, crate::import::ImportError>);
-    delegate_async!(import, import_reset_candidate_setup => reset_candidate_setup(candidate_key: &str) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_clear_candidate_metadata => clear_candidate_metadata(candidate_key: String) -> Result<u64, crate::import::ImportError>);
     delegate_async!(import, import_refresh_watched_folder => refresh_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_sheet_binding_options => sheet_binding_options(candidate_key: String, sheet_file_id: String) -> Result<Vec<crate::import::folder_scanner::SheetReferenceOptions>, crate::import::ImportError>);

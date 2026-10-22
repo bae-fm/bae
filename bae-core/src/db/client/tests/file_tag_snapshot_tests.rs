@@ -440,12 +440,10 @@ fn save_expectation(
     crate::db::CandidateSaveExpectation {
         edit_revision: preparation.file_edits.revision,
         metadata_revision: preparation.metadata_revision,
-        scanned: Some(crate::db::CandidateScanExpectation::Current(
-            crate::db::ScannedCandidateKey {
-                watched_folder_path: candidate.watched_folder_path.clone(),
-                candidate_path: candidate.path.to_string_lossy().into_owned(),
-            },
-        )),
+        scanned: Some(crate::db::ScannedCandidateKey {
+            watched_folder_path: candidate.watched_folder_path.clone(),
+            candidate_path: candidate.path.to_string_lossy().into_owned(),
+        }),
     }
 }
 

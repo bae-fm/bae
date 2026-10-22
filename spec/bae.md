@@ -876,7 +876,10 @@ Every draft records who wrote it: nobody yet, the folder's tags, an
 identification, or the person. Every pane control is stored the moment it's
 used, under the candidate's hash, so the person can leave a candidate half
 done and come back to it, even after a restart. Where the pane was, such as a
-half-typed search, is stored too.
+half-typed search, is stored too. Since each edit is written as it is made,
+the pane has no reset and no undo: to start over, the person applies a source
+again (a catalog release, or the files' tags) or clears the metadata, and the
+file decisions stay as they are.
 
 The mapping table pairs each unit with its draft track, showing the length the
 track's source listed beside the folder's own, and marking the two when they

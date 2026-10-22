@@ -4,7 +4,7 @@
 
 use super::CandidatePreparations;
 use crate::db::{
-    CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, CandidateScanExpectation, ScannedCandidateKey,
+    CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
 };
 use crate::import::preparation::{CandidateAsRead, CandidatePreparation, CandidateWrite};
 use crate::import::{CandidateDraft, TrackArtistAssignments};
@@ -292,7 +292,7 @@ impl CandidatePreparations {
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
             metadata_revision: prep.metadata_revision,
-            scanned: scanned.map(CandidateScanExpectation::Current),
+            scanned,
         };
         change(&mut prep)?;
         // An edit is the person working on the draft, whoever wrote it before:

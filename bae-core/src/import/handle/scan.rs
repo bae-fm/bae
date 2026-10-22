@@ -2,6 +2,16 @@ use super::*;
 use crate::util::rate_limiter::CallPriority;
 
 impl ImportServiceHandle {
+    /// Tell surfaces a folder candidate's files were bound anew.
+    pub(super) fn announce_source_candidate(
+        &self,
+        candidate: crate::import::folder_scanner::FolderCandidate,
+    ) {
+        self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateBindingChanged {
+            candidate,
+        }));
+    }
+
     /// Mark the candidate at `path` skipped or unskipped and announce the
     /// change; a request that changes nothing writes nothing and sends no event.
     ///

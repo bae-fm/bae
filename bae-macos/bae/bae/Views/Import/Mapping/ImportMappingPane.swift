@@ -39,7 +39,6 @@ struct ImportMappingPane: View {
     let onMovePane: (BridgePaneMove) -> Void
     let onIdentify: () -> Void
     let onSearchForRelease: () -> Void
-    let onReset: () -> Void
     let onResetToFileMetadata: () -> Void
     let onClearMetadata: () -> Void
     let onUnlink: () -> Void
@@ -139,7 +138,6 @@ struct ImportMappingPane: View {
             onMovePane: onMovePane,
             onIdentify: onIdentify,
             onSearchForRelease: onSearchForRelease,
-            onReset: onReset,
             onResetToFileMetadata: onResetToFileMetadata,
             onClearMetadata: onClearMetadata,
             onUnlink: onUnlink,

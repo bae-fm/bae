@@ -40,7 +40,6 @@ private struct ImportOperations: Sendable {
         @Sendable (String) async throws -> BridgePaneOutcome
     let unlinkCandidateRelease:
         @Sendable (String) async throws -> BridgePaneOutcome
-    let resetCandidateSetup: @Sendable (String) async throws -> Void
     let clearCandidateMetadata: @Sendable (String) async throws -> UInt64
     let setSheetDisc:
         @Sendable (String, String, BridgeSheetDisc) async throws -> Void
@@ -145,9 +144,6 @@ extension ImportOperations {
             },
             unlinkCandidateRelease: {
                 try await handle.unlinkCandidateRelease(candidateKey: $0)
-            },
-            resetCandidateSetup: {
-                try await handle.resetCandidateSetup(candidateKey: $0)
             },
             clearCandidateMetadata: {
                 try await handle.clearCandidateMetadata(candidateKey: $0)
@@ -362,10 +358,6 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (String) async throws -> BridgePaneOutcome = {
                 _ in throw StubError.notImplemented
             },
-        resetCandidateSetup:
-            @escaping @Sendable (String) async throws -> Void = { _ in
-                throw StubError.notImplemented
-            },
         clearCandidateMetadata:
             @escaping @Sendable (String) async throws -> UInt64 = { _ in
                 throw StubError.notImplemented
@@ -482,7 +474,6 @@ final class Importer: Sendable, Observable {
             keepCandidateDraft: keepCandidateDraft,
             linkCandidateSharedAlbum: linkCandidateSharedAlbum,
             unlinkCandidateRelease: unlinkCandidateRelease,
-            resetCandidateSetup: resetCandidateSetup,
             clearCandidateMetadata: clearCandidateMetadata,
             setSheetDisc: setSheetDisc,
             autoIdentifyRelease: autoIdentifyRelease,
@@ -615,10 +606,6 @@ extension Importer {
         -> BridgePaneOutcome
     {
         try await operations.unlinkCandidateRelease(candidateKey)
-    }
-
-    func resetCandidateSetup(_ candidateKey: String) async throws {
-        try await operations.resetCandidateSetup(candidateKey)
     }
 
     func clearCandidateMetadata(_ candidateKey: String) async throws -> UInt64 {

@@ -8,11 +8,10 @@
 //! about when it may change.
 
 mod pane_edits;
-mod reset;
 
 use crate::db::{
     CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras,
-    CandidateSaved, CandidateScanExpectation, Database, DbCandidateIdentifyResult,
+    CandidateSaved, Database, DbCandidateIdentifyResult,
     NewImportCandidateVerdict, ScannedCandidateKey,
 };
 use crate::import::folder_scanner::CandidateFileEdits;
@@ -181,7 +180,6 @@ impl CandidatePreparations {
         let extras = CandidateSaveExtras {
             file_tag_snapshot: None,
             reshaped_files: Some(settled_candidates.to_vec()),
-            reset_lookup_choices_from: None,
             pane: CandidatePaneWrite::Keep,
         };
         match self
@@ -361,10 +359,10 @@ impl CandidatePreparations {
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
             metadata_revision: prep.metadata_revision,
-            scanned: Some(CandidateScanExpectation::Current(ScannedCandidateKey {
+            scanned: Some(ScannedCandidateKey {
                 watched_folder_path: watched_folder_path.to_string(),
                 candidate_path: folder_path.to_string(),
-            })),
+            }),
         };
         prep.link = Some(crate::import::ReleaseLink::Album(link.clone()));
         prep.folder_path = folder_path.to_string();
@@ -509,7 +507,7 @@ impl CandidatePreparations {
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
             metadata_revision: prep.metadata_revision,
-            scanned: scanned.map(CandidateScanExpectation::Current),
+            scanned,
         };
         prep.folder_path = folder_path.to_string();
         prep.author = MetadataAuthor::Person;
@@ -520,7 +518,6 @@ impl CandidatePreparations {
         let extras = CandidateSaveExtras {
             file_tag_snapshot,
             reshaped_files: None,
-            reset_lookup_choices_from: None,
             pane: CandidatePaneWrite::Keep,
         };
         match self
