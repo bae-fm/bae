@@ -356,6 +356,17 @@ forward! {
                 .map_err(BridgeError::database)
         }
 
+        /// A library release's cover as it stands now: what its editor shows
+        /// once the cover picker writes one, leaving the session as it is.
+        fn release_cover(release_id: String) -> Option<crate::types::BridgeImageRef> {
+            Ok(this
+                .services
+                .cover_ref(&release_id)
+                .await
+                .map_err(BridgeError::database)?
+                .map(crate::types::BridgeImageRef::from_core))
+        }
+
         /// Drop the edit session on a library release: nothing is written.
         fn discard_release_edit(release_id: String) -> () {
             this.services.discard_release_edit(&release_id);

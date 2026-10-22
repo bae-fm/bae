@@ -41,6 +41,9 @@ final class ReleaseEditor: Observable {
             async throws -> String
     /// Drop the session: nothing is written.
     let discardReleaseEdit: @Sendable (_ releaseId: String) async throws -> Void
+    /// The release's cover as it stands now, leaving any session as it is.
+    let releaseCover:
+        @Sendable (_ releaseId: String) async throws -> BridgeImageRef?
     let fetchRemoteCovers:
         @Sendable (_ target: BridgeCoverTarget) async throws ->
             BridgeRemoteCoverGallery
@@ -81,6 +84,10 @@ final class ReleaseEditor: Observable {
             async throws -> String = { _, _ in "" },
         discardReleaseEdit:
             @escaping @Sendable (String) async throws -> Void = { _ in },
+        releaseCover:
+            @escaping @Sendable (String) async throws -> BridgeImageRef? = {
+                _ in nil
+            },
         fetchRemoteCovers:
             @escaping @Sendable (BridgeCoverTarget) async throws ->
             BridgeRemoteCoverGallery = {
@@ -98,6 +105,7 @@ final class ReleaseEditor: Observable {
         self.setReleaseEditAlbum = setReleaseEditAlbum
         self.saveReleaseEdit = saveReleaseEdit
         self.discardReleaseEdit = discardReleaseEdit
+        self.releaseCover = releaseCover
         self.fetchRemoteCovers = fetchRemoteCovers
     }
 
@@ -144,6 +152,7 @@ final class ReleaseEditor: Observable {
             discardReleaseEdit: {
                 try await handle.discardReleaseEdit(releaseId: $0)
             },
+            releaseCover: { try await handle.releaseCover(releaseId: $0) },
             fetchRemoteCovers: {
                 try await handle.fetchRemoteCovers(target: $0)
             }
@@ -162,7 +171,8 @@ final class ReleaseEditor: Observable {
             setAlbum: setReleaseEditAlbum,
             searchAlbums: searchAlbums,
             save: saveReleaseEdit,
-            discard: discardReleaseEdit
+            discard: discardReleaseEdit,
+            cover: releaseCover
         )
     }
 

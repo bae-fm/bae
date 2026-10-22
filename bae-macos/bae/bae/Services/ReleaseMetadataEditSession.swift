@@ -16,6 +16,8 @@ struct ReleaseEditCommands {
     let save: @Sendable (String, BridgeRawReleaseEdit) async throws -> String
     /// Drop the session: nothing is written.
     let discard: @Sendable (String) async throws -> Void
+    /// The release's cover as it stands now; the session stays as it is.
+    let cover: @Sendable (String) async throws -> BridgeImageRef?
 }
 
 /// One persisted release-edit session shared by Import Done and the Library
@@ -107,8 +109,10 @@ final class ReleaseMetadataEditSession {
         failure = nil
     }
 
-    func updateCover(_ cover: BridgeImageRef?) {
-        self.cover = cover
+    /// Show the cover the release has now: the cover picker writes its
+    /// choice at once, outside the session.
+    func refreshCover() async throws {
+        cover = try await commands.cover(releaseId)
     }
 
     /// Save the session, then reopen it from what the library now holds.

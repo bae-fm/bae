@@ -195,8 +195,7 @@ extension ImportedReleasePane {
                     },
                     onSelect: { selection in
                         try await changeCover(releaseId, selection)
-                        let refreshed = try await editCommands.open(releaseId)
-                        session.updateCover(refreshed.cover)
+                        try await session.refreshCover()
                     },
                     onDone: { uiStore.dismissModal() }
                 )

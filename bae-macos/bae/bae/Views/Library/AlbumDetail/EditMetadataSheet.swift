@@ -68,10 +68,7 @@ struct EditMetadataSheet: View {
                             session.releaseId,
                             selection
                         )
-                        let seed = try await releaseEditor.openReleaseEdit(
-                            session.releaseId
-                        )
-                        session.updateCover(seed.cover)
+                        try await session.refreshCover()
                     },
                     onDone: { showingCoverPicker = false }
                 )

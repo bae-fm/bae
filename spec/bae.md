@@ -1005,10 +1005,11 @@ picked, which keeps its own title and artists. The editor names that album
 with the import pane's album picker: the album the release is in, the one an
 applied catalog's records name, or a new album where they name none the
 library holds, until the person picks one; a pick holds over a catalog
-applied after it. Cancelling discards the
-session; nothing is re-read, and there is no reset to a source: the library
-holds no pointer back into one. A release with nothing applied saves its
-edited fields alone, its mediums, roles and works as stored.
+applied after it. The cover is not part of the session: a cover picked in the
+editor is written at once, and the session keeps what was applied and picked.
+Cancelling discards the session; nothing is re-read, and there is no reset to
+a source: the library holds no pointer back into one. A release with nothing
+applied saves its edited fields alone, its mediums, roles and works as stored.
 
 The editor lays the tracks out as the import's mapping table does: a heading
 for each disc or record side where the release has several, and two or more

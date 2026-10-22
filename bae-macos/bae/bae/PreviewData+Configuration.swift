@@ -354,7 +354,8 @@
                 save: { releaseId, edit in
                     await self.save(releaseId, edit)
                 },
-                discard: { _ in }
+                discard: { _ in },
+                cover: { _ in nil }
             )
         }
     }
