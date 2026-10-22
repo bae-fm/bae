@@ -47,7 +47,7 @@ enum WelcomeWindow {
 /// The main window's chrome around the shell: its size limits, the themed
 /// background, and the bottom line for a library load error.
 struct MainWindowChrome<Content: View>: View {
-    let loadError: DisplayError?
+    let loadError: LoadError?
     @ViewBuilder
     let content: Content
 
@@ -118,13 +118,14 @@ struct WelcomeWindowChrome<Content: View>: View {
     }
 }
 
-/// The bottom-of-window line reporting a failed library switch under the shell.
+/// The bottom-of-window notice reporting a load-time failure under the
+/// shell: a failed library switch, close or removal.
 private struct LoadErrorLine: View {
-    let loadError: DisplayError?
+    let loadError: LoadError?
 
     var body: some View {
         if let loadError {
-            ErrorDetailDisclosure(error: loadError)
+            LoadErrorNotice(loadError: loadError)
                 .padding()
         }
     }
@@ -156,7 +157,7 @@ private struct LoadErrorLine: View {
 
     #Preview("Main window — load error") {
         MainWindowChrome(
-            loadError: PreviewData.displayErrorWithDetail
+            loadError: LoadError(.shutdown, PreviewData.displayErrorWithDetail)
         ) {
             ChromeSampleContent()
         }

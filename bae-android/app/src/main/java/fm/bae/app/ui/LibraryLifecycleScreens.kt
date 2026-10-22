@@ -26,6 +26,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.ScreenFailure
 import fm.bae.app.coreString
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -33,6 +34,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.PersonNameField
 import fm.bae.app.ui.components.PrimaryButton
+import fm.bae.app.ui.components.ScreenFailureNotice
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeErrorCategory
@@ -68,12 +70,12 @@ internal fun DeviceResetDialog(
 @Composable
 internal fun ResetOfferedScreen(
     libraryId: String,
-    error: DisplayError,
+    error: ScreenFailure,
     onReset: (BridgeDeviceReset) -> Unit,
 ) {
     val context = LocalContext.current
     var reset by remember(libraryId) { mutableStateOf<BridgeDeviceReset?>(null) }
-    LifecycleError(error) {
+    LifecycleFailure(error) {
         PrimaryButton(onClick = { reset = AppSessionHolder.prepareDeviceReset(context, libraryId) }) {
             Text(stringResource(R.string.reset_device))
         }
@@ -97,7 +99,7 @@ internal fun ResetOfferedScreen(
  */
 @Composable
 internal fun ResetUnfinishedScreen(
-    error: DisplayError?,
+    error: ScreenFailure?,
     onFinish: () -> Unit,
     onLeave: () -> Unit,
 ) {
@@ -106,7 +108,7 @@ internal fun ResetUnfinishedScreen(
     LifecycleMessage(
         context.coreString(bridgeErrorCategoryKey(BridgeErrorCategory.ReplacementUnfinished(BridgeReplacedBy.RESET))),
     ) {
-        error?.let { ErrorDetailDisclosure(it) }
+        error?.let { ScreenFailureNotice(it) }
         PrimaryButton(onClick = onFinish) { Text(stringResource(R.string.finish_reset)) }
         TextButton(onClick = onLeave) { Text(stringResource(R.string.cancel)) }
     }
@@ -158,7 +160,18 @@ internal fun RemovalIncompleteScreen(
     error: DisplayError,
     onRetry: () -> Unit,
 ) {
-    LifecycleError(error) {
+    val context = LocalContext.current
+    Column(
+        modifier = Modifier.fillMaxSize().padding(ThemeSpace.page),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.group, Alignment.CenterVertically),
+    ) {
+        Text(
+            text = context.coreString("ui.load_error.removal.title"),
+            style = ThemeText.heading.style,
+            textAlign = TextAlign.Center,
+        )
+        ErrorDetailDisclosure(error = error, lineColor = MaterialTheme.colorScheme.onSurfaceVariant)
         PrimaryButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
     }
 }
@@ -183,10 +196,10 @@ private fun LifecycleMessage(
     }
 }
 
-/** A failure in place of the message, with its details, above what the screen offers. */
+/** A failure in place of the message, titled by its step, above what the screen offers. */
 @Composable
-private fun LifecycleError(
-    error: DisplayError,
+private fun LifecycleFailure(
+    failure: ScreenFailure,
     content: @Composable () -> Unit,
 ) {
     Column(
@@ -194,7 +207,7 @@ private fun LifecycleError(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.group, Alignment.CenterVertically),
     ) {
-        ErrorDetailDisclosure(error = error, lineColor = MaterialTheme.colorScheme.onSurfaceVariant)
+        ScreenFailureNotice(failure)
         content()
     }
 }

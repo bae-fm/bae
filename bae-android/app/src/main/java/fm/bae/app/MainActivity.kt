@@ -51,9 +51,11 @@ class MainActivity : ComponentActivity() {
             ContentView(
                 oauthProviders = app.oauthProviders,
                 oauthProvidersError = app.oauthProvidersError,
-                startupError =
-                    app.platformStartupError?.let(::DisplayError)
-                        ?: app.startupError?.let { displayError(it) ?: DisplayError(it.toString()) },
+                startupFailure =
+                    app.platformStartupError?.let { ScreenFailure(FailedStep.STARTUP, DisplayError(it)) }
+                        ?: app.startupError?.let { (step, error) ->
+                            ScreenFailure(step, displayError(error) ?: DisplayError(error.toString()))
+                        },
                 bugs = app.bugs,
                 shortcutAction = pendingShortcut,
                 onShortcutHandled = { pendingShortcut = null },

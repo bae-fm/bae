@@ -29,18 +29,18 @@ enum AppScreen {
     /// Opening found a damaged database, or sync found another copy of this
     /// device: the person can reset the device for this library after its
     /// warning. `error` is why it didn't open, or why the last reset failed.
-    case resetRequired(libraryId: String, error: DisplayError?)
+    case resetRequired(libraryId: String, error: ScreenFailure?)
     /// Another of the person's devices replaced their keys: the library is
     /// closed, and the person restores it with their current restore code.
     case restoreRequired(libraryId: String)
     /// A reset of this device's copy stopped partway; resetting again
     /// finishes it. `error` is why the last attempt failed.
-    case resetUnfinished(libraryId: String, error: DisplayError?)
+    case resetUnfinished(libraryId: String, error: ScreenFailure?)
     /// A restore of this device's copy stopped partway; restoring again with
     /// the person's current restore code finishes it.
     case restoreUnfinished(libraryId: String)
     case library(AppService)
-    case failed(DisplayError)
+    case failed(ScreenFailure)
 
     /// The screen that finishes a reset or restore of `libraryId` that
     /// stopped partway: the one call `by` names.
@@ -52,7 +52,7 @@ enum AppScreen {
     }
 
     /// This reset screen again, showing why the last reset failed.
-    func showingResetFailure(_ error: DisplayError?) -> Self {
+    func showingResetFailure(_ error: ScreenFailure?) -> Self {
         switch self {
         case .resetRequired(let libraryId, _):
             .resetRequired(libraryId: libraryId, error: error)
@@ -171,7 +171,9 @@ final class AppSessionHolder {
                 logger.error(
                     "Failed to list libraries: \(error.localizedDescription)"
                 )
-                guard let failure = DisplayError(error) else { return }
+                guard let failure = ScreenFailure(.libraryList, error) else {
+                    return
+                }
                 self.screen = .failed(failure)
             }
         )
@@ -235,7 +237,7 @@ final class AppSessionHolder {
             if case BridgeError.Diagnostic(.deviceResetRequired, _) = error {
                 screen = .resetRequired(
                     libraryId: libraryId,
-                    error: DisplayError(error)
+                    error: ScreenFailure(.resetOffered, error)
                 )
             }
             else if case BridgeError.Diagnostic(
@@ -246,7 +248,7 @@ final class AppSessionHolder {
                 // only one offered.
                 screen = .finishing(libraryId: libraryId, by: by)
             }
-            else if let failure = DisplayError(error) {
+            else if let failure = ScreenFailure(.libraryOpen, error) {
                 screen = .failed(failure)
             }
         }
@@ -343,7 +345,7 @@ extension AppSessionHolder {
             catch {
                 logger.error("Device reset failed: \(error.localizedDescription)")
                 self.screen = startedFrom.showingResetFailure(
-                    DisplayError(error)
+                    ScreenFailure(.deviceReset, error)
                 )
             }
         }
@@ -370,7 +372,15 @@ extension AppSessionHolder {
                 logger.error(
                     "Closing the library to restore it failed: \(error.localizedDescription)"
                 )
-                self.openLibrary(id: libraryId, notice: DisplayError(error))
+                self.openLibrary(
+                    id: libraryId,
+                    notice: DisplayError(error)?
+                        .addingContext(
+                            localizedCoreString(
+                                "ui.load_error.restore_close.title"
+                            )
+                        )
+                )
             }
         }
     }
@@ -407,7 +417,7 @@ extension AppSessionHolder {
                     service,
                     notice: DisplayError(error)?
                         .addingContext(
-                            String(localized: "Couldn't remove library")
+                            localizedCoreString("ui.load_error.removal.title")
                         )
                 )
             }

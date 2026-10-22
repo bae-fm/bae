@@ -20,9 +20,7 @@ struct MainWindowRoot: View {
             if appDelegate.hasShell, let appService = appDelegate.appService {
                 appService.installEnvironment(
                     libraryModals(
-                        MainWindowChrome(
-                            loadError: appDelegate.loadError?.error
-                        ) {
+                        MainWindowChrome(loadError: appDelegate.loadError) {
                             detailContent
                         }
                     )
@@ -104,7 +102,7 @@ struct MainWindowRoot: View {
     ) -> some View {
         DeviceResetView(
             prompt: prompt,
-            error: appDelegate.loadError?.error,
+            error: appDelegate.loadError,
             onReset: { appDelegate.resetDevice(libraryId: libraryId) },
             onCancel: appDelegate.leaveRecovery
         )

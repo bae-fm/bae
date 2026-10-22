@@ -18,7 +18,7 @@ struct DeviceResetScreen: View {
 
     let prompt: Prompt
     /// Why the library didn't open, or why the last reset failed.
-    let error: DisplayError?
+    let error: ScreenFailure?
     let onReset: () -> Void
     let onCancel: () -> Void
 
@@ -35,7 +35,7 @@ struct DeviceResetScreen: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 320)
             if let error {
-                ErrorDetailDisclosure(error: error)
+                ScreenFailureNotice(failure: error)
                     .frame(maxWidth: 320)
             }
             HStack(spacing: ThemeSpace.group) {

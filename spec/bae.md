@@ -2227,6 +2227,13 @@ the Rust error chain, untranslated, to copy. A category says what the person
 can do: fix credentials, retry the network, unlock the keyring, wait for an
 identification. Appendix G lists them.
 
+A failure while bringing a library up has a step as well as a category: bae
+starting, opening secure storage, reading sign-in settings, listing this
+device's libraries, or opening, resetting, closing or removing one. Each app
+titles the failure by its step and says what to do next for that step, above
+the category's line and the detail, so a keychain that won't open never reads
+as a library that failed to open.
+
 ---
 
 ## 10. Bridge

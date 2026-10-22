@@ -8,6 +8,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.ConflatedProgressDelivery
 import fm.bae.app.DisplayError
 import fm.bae.app.R
+import fm.bae.app.coreString
 import fm.bae.app.deviceName
 import fm.bae.app.displayError
 import kotlinx.coroutines.CancellationException
@@ -185,7 +186,7 @@ internal class OnboardingFlow(
         // A provider that needs a sign-in can't be reached when the app's
         // registrations failed to load; say why rather than starting.
         if (metadata.oauthAccess != null && oauthProvidersError != null) {
-            error = DisplayError(oauthProvidersError)
+            error = DisplayError(context.coreString("ui.load_error.sign_in_settings.advice"), oauthProvidersError)
             return
         }
         error = null

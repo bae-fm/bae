@@ -113,7 +113,7 @@ sealed interface AppScreen {
      */
     data class ResetOffered(
         override val libraryId: String,
-        val error: DisplayError,
+        val error: ScreenFailure,
     ) : Recovery
 
     /**
@@ -132,7 +132,7 @@ sealed interface AppScreen {
      */
     data class ResetUnfinished(
         override val libraryId: String,
-        val error: DisplayError?,
+        val error: ScreenFailure?,
     ) : Recovery
 
     /**
@@ -163,7 +163,7 @@ sealed interface AppScreen {
     ) : AppScreen
 
     data class Failed(
-        val error: DisplayError,
+        val failure: ScreenFailure,
     ) : AppScreen
 
     companion object {
@@ -188,9 +188,17 @@ sealed interface AppScreen {
             shown: DisplayError,
         ): AppScreen =
             when (val category = (error as? BridgeException.Diagnostic)?.category) {
-                is BridgeErrorCategory.DeviceResetRequired -> ResetOffered(libraryId, shown)
-                is BridgeErrorCategory.ReplacementUnfinished -> finishing(libraryId, category.by)
-                else -> Failed(shown)
+                is BridgeErrorCategory.DeviceResetRequired -> {
+                    ResetOffered(libraryId, ScreenFailure(FailedStep.RESET_OFFERED, shown))
+                }
+
+                is BridgeErrorCategory.ReplacementUnfinished -> {
+                    finishing(libraryId, category.by)
+                }
+
+                else -> {
+                    Failed(ScreenFailure(FailedStep.LIBRARY_OPEN, shown))
+                }
             }
     }
 }
@@ -284,7 +292,7 @@ object AppSessionHolder {
                 throw e
             } catch (e: BridgeException) {
                 logger.error("listing libraries failed", e)
-                onScreen(AppScreen.Failed(errorMessage(context, e)))
+                onScreen(AppScreen.Failed(ScreenFailure(FailedStep.LIBRARY_LIST, errorMessage(context, e))))
                 return
             }
         val next = remaining.firstOrNull()
@@ -374,7 +382,7 @@ object AppSessionHolder {
                 throw e
             } catch (e: BridgeException) {
                 logger.error("opening the restored library failed", e)
-                onScreen(AppScreen.Failed(errorMessage(context, e)))
+                onScreen(AppScreen.Failed(ScreenFailure(FailedStep.LIBRARY_OPEN, errorMessage(context, e))))
                 return
             }
         refreshLibraries(app.host, context)
@@ -426,7 +434,7 @@ object AppSessionHolder {
         libraryId: String,
         reset: BridgeDeviceReset,
         onScreen: (AppScreen) -> Unit,
-        failed: (DisplayError) -> AppScreen,
+        failed: (ScreenFailure) -> AppScreen,
     ) {
         onScreen(AppScreen.Loading)
         current?.takeIf { it.libraryId == libraryId }?.let { open ->
@@ -440,7 +448,7 @@ object AppSessionHolder {
                 throw e
             } catch (e: BridgeException) {
                 logger.error("resetting the device for $libraryId failed", e)
-                onScreen(failed(errorMessage(context, e)))
+                onScreen(failed(ScreenFailure(FailedStep.DEVICE_RESET, errorMessage(context, e))))
                 return
             }
         openBootstrapped(context, result, onScreen)
@@ -487,7 +495,9 @@ object AppSessionHolder {
                 throw e
             } catch (e: BridgeException) {
                 logger.error("removing library ${session.libraryId} failed", e)
-                val message = errorMessage(context, e)
+                val failure = errorMessage(context, e)
+                val message =
+                    failure.copy(line = "${context.coreString("ui.load_error.removal.title")}: ${failure.line}")
                 openLibrary(context, session.libraryId) { screen ->
                     if (screen is AppScreen.LibraryOpen) screen.session.messages.show(message)
                     onScreen(screen)

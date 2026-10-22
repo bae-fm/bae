@@ -28,17 +28,19 @@ import fm.bae.app.AppScreen
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
+import fm.bae.app.FailedStep
 import fm.bae.app.LibraryListing
 import fm.bae.app.LocalBugReports
 import fm.bae.app.OAuthProviders
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.ScreenFailure
 import fm.bae.app.ShortcutAction
 import fm.bae.app.coreString
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.data.SessionMessage
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.ErrorDetailDisclosure
+import fm.bae.app.ui.components.ScreenFailureNotice
 import fm.bae.app.ui.library.LibraryScreen
 import fm.bae.app.ui.onboarding.OnboardingScreen
 import fm.bae.app.ui.onboarding.RestoreOver
@@ -57,21 +59,21 @@ import uniffi.bae_bridge.bridgeErrorCategoryKey
 fun ContentView(
     oauthProviders: OAuthProviders?,
     oauthProvidersError: String?,
-    startupError: DisplayError?,
+    startupFailure: ScreenFailure?,
     bugs: BugReports,
     shortcutAction: ShortcutAction?,
     onShortcutHandled: () -> Unit,
 ) {
     val context = LocalContext.current
-    var screen by remember(startupError) {
+    var screen by remember(startupFailure) {
         mutableStateOf<AppScreen>(
-            startupError?.let(AppScreen::Failed) ?: AppScreen.Loading,
+            startupFailure?.let(AppScreen::Failed) ?: AppScreen.Loading,
         )
     }
 
     // Reuse a session that is already open, else open the first discovered library or onboard.
-    LaunchedEffect(startupError) {
-        if (startupError != null) return@LaunchedEffect
+    LaunchedEffect(startupFailure) {
+        if (startupFailure != null) return@LaunchedEffect
         val open = AppSessionHolder.currentSession()
         if (open != null) {
             screen = AppScreen.LibraryOpen(open)
@@ -191,7 +193,7 @@ private fun AppScreenRouter(
         }
 
         is AppScreen.Failed -> {
-            FailedScreen(error = current.error)
+            FailedScreen(failure = current.failure)
         }
     }
 }
@@ -210,7 +212,7 @@ private fun RecoveryScreen(
     // A failed reset shows [failed], the screen it started from, with why.
     fun reset(
         prepared: BridgeDeviceReset,
-        failed: (DisplayError) -> AppScreen,
+        failed: (ScreenFailure) -> AppScreen,
     ) {
         scope.launch { AppSessionHolder.resetDevice(context, libraryId, prepared, onScreen, failed) }
     }
@@ -399,12 +401,12 @@ private fun LoadingScreen() {
 }
 
 @Composable
-private fun FailedScreen(error: DisplayError) {
+private fun FailedScreen(failure: ScreenFailure) {
     Box(
         modifier = Modifier.fillMaxSize().padding(ThemeSpace.page),
         contentAlignment = Alignment.Center,
     ) {
-        ErrorDetailDisclosure(error)
+        ScreenFailureNotice(failure)
     }
 }
 
@@ -420,6 +422,12 @@ private fun LoadingScreenPreview() {
 @Composable
 private fun FailedScreenPreview() {
     BaeTheme {
-        FailedScreen(error = DisplayError("Couldn't open the library.", "database error: disk I/O error"))
+        FailedScreen(
+            failure =
+                ScreenFailure(
+                    FailedStep.LIBRARY_OPEN,
+                    DisplayError("Couldn't open the library.", "database error: disk I/O error"),
+                ),
+        )
     }
 }

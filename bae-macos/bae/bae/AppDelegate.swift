@@ -238,7 +238,7 @@ extension AppDelegate {
                 baeAppLogger.error(
                     "Failed to list libraries: \(error.localizedDescription)"
                 )
-                loadError = LoadError(libraryOpen: error)
+                loadError = LoadError(.libraryList, error)
                 screen = .welcome
                 return
             }
@@ -320,11 +320,11 @@ extension AppDelegate {
                 screen = recovery
                 // A screen that finishes a reset or restore says so itself.
                 if case .resetRequired = recovery {
-                    loadError = LoadError(libraryOpen: error)
+                    loadError = LoadError(.resetOffered, error)
                 }
             }
             else {
-                loadError = LoadError(libraryOpen: error)
+                loadError = LoadError(.libraryOpen, error)
                 if !hasShell {
                     // A failed bootstrap open returns to the welcome.
                     screen = .welcome
@@ -363,7 +363,7 @@ extension AppDelegate {
                 baeAppLogger.error(
                     "Closing the library to restore it failed: \(error.localizedDescription)"
                 )
-                self.loadError = LoadError(libraryOpen: error)
+                self.loadError = LoadError(.restoreClose, error)
                 self.screen = .welcome
             }
         }
@@ -416,7 +416,7 @@ extension AppDelegate {
                 baeAppLogger.error(
                     "Device reset failed: \(error.localizedDescription)"
                 )
-                self.loadError = LoadError(libraryOpen: error)
+                self.loadError = LoadError(.deviceReset, error)
                 self.screen = startedFrom
             }
         }
@@ -491,7 +491,7 @@ extension AppDelegate {
             baeAppLogger.error(
                 "Failed to shut down library: \(failure.diagnostic)"
             )
-            loadError = failure.displayedError.map(LoadError.init(libraryOpen:))
+            loadError = failure.displayedError.map { LoadError(.shutdown, $0) }
             screen = .library
         }
     }
@@ -594,13 +594,7 @@ extension AppDelegate {
                 baeAppLogger.error(
                     "Failed to remove library: \(error.localizedDescription)"
                 )
-                await self.reopen(
-                    service,
-                    error: DisplayError(error)?
-                        .addingContext(
-                            String(localized: "Couldn't remove library")
-                        )
-                )
+                await self.reopen(service, error: DisplayError(error))
             }
         }
     }
@@ -619,6 +613,6 @@ extension AppDelegate {
         }
         releaseLibrarySession(service)
         openLocalLibrary(id: libraryId)
-        loadError = error.map(LoadError.init(libraryOpen:))
+        loadError = error.map { LoadError(.removal, $0) }
     }
 }

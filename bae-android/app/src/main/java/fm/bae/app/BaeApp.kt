@@ -45,7 +45,7 @@ class BaeApp : Application() {
     var oauthProvidersError: String? = null
         private set
 
-    var startupError: BridgeException? = null
+    var startupError: StartupError? = null
         private set
 
     var platformStartupError: String? = null
@@ -77,14 +77,16 @@ class BaeApp : Application() {
         // processes have no home directory of their own to put it under.
         // Building it creates it. The host's one failure is the OS refusing its
         // onboarding runtime's worker threads. Any of these failing stops the
-        // launch at the startup error, and the exception names which one it was.
+        // launch at the startup error, titled by the step that was running.
+        var step = FailedStep.STARTUP
         try {
             audioFocus = AudioFocus(this)
             host = BridgeHost(diagnostics, BridgeAppDir(filesDir.absolutePath), audioFocus)
+            step = FailedStep.SECURE_STORAGE
             initKeyring(diagnostics)
         } catch (error: BridgeException) {
-            startupError = error
-            logger.error("Failed to create bae's directory or start the bridge host or secure storage", error)
+            startupError = StartupError(step, error)
+            logger.error("Launch step $step failed", error)
             return
         }
         // Register the app's OAuth clients and sign-in presenter (if a creds

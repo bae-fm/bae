@@ -18,7 +18,7 @@ struct DeviceResetView: View {
 
     let prompt: Prompt
     /// Why the library didn't open, or why the last reset failed.
-    let error: DisplayError?
+    let error: LoadError?
     let onReset: () -> Void
     let onCancel: () -> Void
 
@@ -36,7 +36,7 @@ struct DeviceResetView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: WelcomeLayout.columnWidth)
             if let error {
-                ErrorDetailDisclosure(error: error)
+                LoadErrorNotice(loadError: error)
                     .frame(maxWidth: WelcomeLayout.columnWidth)
             }
             HStack(spacing: ThemeSpace.group) {
@@ -84,7 +84,10 @@ struct DeviceResetView: View {
         WelcomeWindowChrome {
             DeviceResetView(
                 prompt: .offered,
-                error: PreviewData.displayErrorWithDetail,
+                error: LoadError(
+                    .deviceReset,
+                    PreviewData.displayErrorWithDetail
+                ),
                 onReset: {},
                 onCancel: {}
             )

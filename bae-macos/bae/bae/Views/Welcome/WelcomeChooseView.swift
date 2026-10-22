@@ -121,9 +121,9 @@ struct WelcomeChooseView: View {
                 .foregroundStyle(.secondary)
             if let loadError {
                 WelcomeLoadErrorCallout(
-                    title: loadError.step.title,
+                    title: Text(verbatim: loadError.step.title),
                     error: loadError.error,
-                    guidance: loadError.step.guidance
+                    guidance: loadError.step.advice.map { Text(verbatim: $0) }
                 )
             }
             if let removalError = removals.error {
@@ -131,7 +131,7 @@ struct WelcomeChooseView: View {
             }
             if let failure = listings.localLibraries.failure {
                 WelcomeLoadErrorCallout(
-                    title: "Couldn't list the libraries on this Mac",
+                    title: Text("Couldn't list the libraries on this Mac"),
                     error: failure
                 )
             }
@@ -148,14 +148,16 @@ struct WelcomeChooseView: View {
             }
             if let failure = listings.savedCodes.list.failure {
                 WelcomeLoadErrorCallout(
-                    title: "Couldn't read recovery codes from your keychain",
+                    title: Text(
+                        "Couldn't read recovery codes from your keychain"
+                    ),
                     error: failure
                 )
             }
             else if listings.savedCodes.list.value?.isEmpty == false {
                 if let deleteError = listings.savedCodes.deleteError {
                     WelcomeLoadErrorCallout(
-                        title: "Couldn't delete the recovery code",
+                        title: Text("Couldn't delete the recovery code"),
                         error: deleteError
                     )
                 }
@@ -265,10 +267,10 @@ enum WelcomeLayout {
 /// A danger notice for a failed open, lookup or delete: a title naming what
 /// failed, the error, and optional guidance.
 private struct WelcomeLoadErrorCallout: View {
-    let title: LocalizedStringKey
+    let title: Text
     let error: DisplayError
     /// What the user can do next, if the screen has a suggestion.
-    var guidance: LocalizedStringKey?
+    var guidance: Text?
 
     var body: some View {
         HStack(alignment: .top, spacing: ThemeSpace.related) {
@@ -277,11 +279,11 @@ private struct WelcomeLoadErrorCallout: View {
                     .foregroundStyle(StatusTone.danger.color)
             }
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                Text(title)
+                title
                     .themeText(.heading)
                 ErrorDetailDisclosure(error: error, showIcon: false)
                 if let guidance {
-                    Text(guidance)
+                    guidance
                         .themeText(.body)
                         .foregroundStyle(.secondary)
                 }
@@ -290,32 +292,6 @@ private struct WelcomeLoadErrorCallout: View {
         }
         .notice(.danger)
         .frame(maxWidth: WelcomeLayout.columnWidth, alignment: .leading)
-    }
-}
-
-extension LoadError.Step {
-    /// The welcome callout's title: what failed.
-    fileprivate var title: LocalizedStringKey {
-        switch self {
-        case .libraryOpen:
-            "Library failed to open"
-        #if BAE_DEV_RESET
-            case .devReset:
-                "Dev reset failed"
-        #endif
-        }
-    }
-
-    /// What the person can do next.
-    fileprivate var guidance: LocalizedStringKey {
-        switch self {
-        case .libraryOpen:
-            "Choose another library, or restore it with “Add device”."
-        #if BAE_DEV_RESET
-            case .devReset:
-                "Nothing after the failed step ran. Fix what the error names, then run scripts/reset-bae.py again."
-        #endif
-        }
     }
 }
 
@@ -392,7 +368,8 @@ private struct RemovalErrorCallout: View {
         WelcomeWindowChrome {
             WelcomeChooseView(
                 loadError: LoadError(
-                    libraryOpen: PreviewData.displayErrorWithDetail
+                    .libraryOpen,
+                    PreviewData.displayErrorWithDetail
                 ),
                 canDeleteActiveLibrary: true,
                 onLibraryReady: { _, _ in },
@@ -412,7 +389,8 @@ private struct RemovalErrorCallout: View {
             WelcomeWindowChrome {
                 WelcomeChooseView(
                     loadError: LoadError(
-                        devReset: BridgeError.Diagnostic(
+                        .devReset,
+                        BridgeError.Diagnostic(
                             category: .s3Prefix(problem: .emptySegment),
                             detail:
                                 "dev profile profile.toml: s3.key_prefix: the S3 prefix has two slashes in a row"
