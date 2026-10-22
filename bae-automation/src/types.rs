@@ -65,9 +65,10 @@ pub enum AutomationCandidate {
         content_hash: String,
         /// What identification and import have recorded for this candidate.
         runtime: AutomationCandidateRuntime,
-        /// The release this candidate is picked as; `None` while nothing is
-        /// picked, and for a folder read as its own tags.
-        picked_release: Option<AutomationReleaseDetail>,
+        /// The pressing this candidate is linked to; `None` while nothing is
+        /// picked, for a folder read as its own tags, and for a candidate
+        /// linked to an album.
+        picked_pressing: Option<AutomationPressingLink>,
         /// What identified the picked release, with the file each piece was
         /// read off.
         file_evidence: Vec<AutomationFileEvidence>,
@@ -572,22 +573,6 @@ pub struct AutomationFileEvidence {
 pub enum AutomationEvidenceSignal {
     Barcode,
     DiscId,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct AutomationReleaseDetail {
-    pub release_id: String,
-    pub source: AutomationCatalog,
-    pub source_group_id: Option<String>,
-    pub title: String,
-    pub artist: Option<String>,
-    pub year: Option<i32>,
-    #[schemars(schema_with = "labels_schema")]
-    pub labels: Vec<bae_core::pressing::ReleaseLabel>,
-    pub barcode: Option<String>,
-    #[schemars(schema_with = "pressing_facts_schema")]
-    pub facts: bae_core::pressing::PressingFacts,
-    pub cover_art: Vec<AutomationRemoteCover>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

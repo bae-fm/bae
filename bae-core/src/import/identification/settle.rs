@@ -243,6 +243,7 @@ async fn lead_metadata(
     Ok(Some(crate::import::external_metadata_with_assets(
         source_draft,
         release,
+        &partners,
         assets,
     )))
 }

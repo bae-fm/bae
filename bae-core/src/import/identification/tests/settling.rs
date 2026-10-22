@@ -172,14 +172,18 @@ async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offl
         after_apply,
         "reading the candidate does not fetch metadata"
     );
-    let release = detail.release.expect("the pick names a release");
-    assert_eq!(release.release_id, "mb-offline-1");
+    let link = detail
+        .release_link
+        .as_ref()
+        .and_then(crate::import::ReleaseLink::pressing)
+        .expect("the pick names a release");
+    assert_eq!(link.record.key, "mb-offline-1");
     let edit = detail.metadata_draft;
     assert_eq!(edit.tracks.len(), 2);
     assert_eq!(edit.album_title, "Album");
     assert_eq!(
-        release
-            .cover_art
+        detail
+            .remote_covers
             .iter()
             .map(|cover| cover.image.url.as_str())
             .collect::<Vec<_>>(),
@@ -188,7 +192,7 @@ async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offl
             crate::import::cover_art::ARCHIVE
         )],
         "the pressing states no front image of its own, so the album's is the \
-         only option — and it is read off the stored release, not asked for"
+         only option — stored with the draft when it was applied, not asked for"
     );
     let requested = &fixture.provider.requests()[before..];
     assert_eq!(requested.len(), 3, "{requested:?}");

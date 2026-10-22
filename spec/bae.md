@@ -774,7 +774,11 @@ import completes.
 
 **The cover.** The cover comes from the folder's own image files, an image
 embedded in a tag, or a catalog's image (the Cover Art Archive for
-MusicBrainz, or Discogs). A catalog's cover, and the Discogs pictures of the
+MusicBrainz, or Discogs). Applying a catalog's release stores, with the
+draft, the covers it offers the picker: every claimed release's own images,
+then their albums'. The first is the draft's cover until the person picks
+another. A draft read from the tags, typed in, or linked to an album offers no
+catalog's covers. A catalog's cover, and the Discogs pictures of the
 release's new artists, are fetched before the import runs, so the import
 itself needs no network. Every stored image is downscaled to at most 600
 pixels on a side and stored as JPEG.
@@ -2180,6 +2184,7 @@ Keyed by the candidate's content hash.
 | `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_composer`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values |
 | `import_candidate_sheet_disc`, `import_candidate_sheet_reference` | the person's CUE decisions |
 | `import_candidate_cover`, `import_candidate_cover_copy`, `import_candidate_remote_cover_asset` | the chosen cover and its fetched bytes |
+| `import_candidate_cover_option`, `import_candidate_cover_option_copy` | the covers the applied release offers the picker, in order |
 | `import_candidate_artist_asset`, `import_candidate_asset_preparation` | the fetched pictures of every Discogs artist the draft credits, and that all are ready |
 | `import_candidate_draft_provenance` | where the draft was read from |
 | `import_candidate_release_link`, `import_candidate_release_link_partner`, `import_candidate_release_link_album` | the pressing or album the candidate is linked to |

@@ -590,9 +590,12 @@ async fn a_release_no_identifier_names_is_found_by_its_title() {
         "identification wrote the draft from the lone row"
     );
     assert_eq!(
-        pane.release
+        pane.release_link
+            .as_ref()
+            .and_then(crate::import::ReleaseLink::pressing)
             .expect("the settled row is the candidate's release")
-            .release_id,
+            .record
+            .key,
         "mb-by-title"
     );
 }

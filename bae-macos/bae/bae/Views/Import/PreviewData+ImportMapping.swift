@@ -153,25 +153,16 @@
             return edit
         }()
 
-        private static let moreTracksReleaseDetail = BridgeReleaseDetail(
+        private static let moreTracksReleaseDetail = PreviewPickedRelease(
             releaseId: "rel-more-tracks",
             source: .musicBrainz,
-            sourceGroupId: "rg-more-tracks",
             title: moreTracksEditValues.albumTitle,
             artist: "Artist Name",
             year: 1997,
-            labels: [
-                BridgeReleaseLabel(
-                    name: "Some Label",
-                    catalogNumber: "CAT-0001"
-                )
-            ],
-            barcode: "000000000000",
             facts: PreviewData.pressingFacts(
                 country: "US",
                 media: PreviewData.media(.cd)
             ),
-            coverArt: [],
             defaultCover: nil
         )
 
@@ -389,7 +380,7 @@
             folder: BridgeFolderCandidate,
             metadataProvenance: BridgeMetadataProvenance? = nil,
             releaseLink: BridgeReleaseLink? = nil,
-            release: BridgeReleaseDetail? = nil,
+            remoteCovers: [BridgeRemoteCover] = [],
             edit: BridgeRawReleaseEdit = blankDraftValues,
             mapping: BridgeMappingTable,
             cover: BridgeCoverChoice? = nil,
@@ -415,7 +406,7 @@
                         badge: nil
                     ),
                     importStatus: nil,
-                    release: release,
+                    remoteCovers: remoteCovers,
                     pickedLibraryStatus: nil,
                     fileEvidence: [],
                     metadataDraft: edit,
@@ -459,13 +450,12 @@
                     partners: []
                 )
             ),
-            release: releaseDetailBridge,
             edit: confirmEditValues,
             mapping: mappingTable,
             cover: releaseDetailBridge.defaultCover,
         )
 
-        private static let discogsReleaseDetail: BridgeReleaseDetail = {
+        private static let discogsReleaseDetail: PreviewPickedRelease = {
             var release = releaseDetailBridge
             release.source = .discogs
             release.releaseId = "preview-discogs-release"
@@ -495,7 +485,6 @@
                     partners: []
                 )
             ),
-            release: discogsReleaseDetail,
             edit: confirmEditValues,
             mapping: mappingTable,
             cover: discogsReleaseDetail.defaultCover,
@@ -529,7 +518,6 @@
                     ]
                 )
             ),
-            release: releaseDetailBridge,
             edit: confirmEditValues,
             mapping: mappingTable,
             cover: releaseDetailBridge.defaultCover,
@@ -603,7 +591,6 @@
                     partners: []
                 )
             ),
-            release: releaseDetailBridge,
             edit: confirmEditValues,
             mapping: sheetMappingTable,
             cover: releaseDetailBridge.defaultCover,
@@ -638,7 +625,6 @@
                     partners: []
                 )
             ),
-            release: moreTracksReleaseDetail,
             edit: moreTracksEditValues,
             mapping: moreTracksMappingTable,
             cover: moreTracksReleaseDetail.defaultCover,
@@ -669,7 +655,6 @@
                     partners: []
                 )
             ),
-            release: releaseDetailBridge,
             edit: confirmEditValues,
             mapping: everyRowKindMappingTable,
             cover: releaseDetailBridge.defaultCover,

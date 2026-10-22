@@ -119,6 +119,9 @@ pub struct DbCandidatePaneRows {
     /// The cover the user chose. `None` leaves the picked release's default
     /// cover standing.
     pub cover: Option<crate::import::CoverSelection>,
+    /// The cover images the applied catalog release offers the picker, in
+    /// the order it shows them.
+    pub cover_options: Vec<crate::import::cover_art::RemoteCover>,
     /// The candidate's one stored draft: album fields and one row per audio
     /// slot, each carrying its physical decision.
     pub draft: crate::import::CandidateDraft,

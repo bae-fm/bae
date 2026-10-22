@@ -462,7 +462,6 @@ pub(super) struct CandidateDetailRows {
     artist_resolutions: Vec<crate::import::ResolvedCredit>,
     metadata_revision: u64,
     statuses: Option<Vec<LibraryStatus>>,
-    claimed: Vec<crate::import::source_release::SourceRelease>,
     records: Vec<crate::import::ReleaseRecord>,
     picked_library_status: Option<LibraryStatus>,
     embedded_cover: Option<(FileVersion, Vec<u8>)>,
@@ -530,8 +529,8 @@ pub(super) fn load_candidate_detail_on(
     let statuses = identify
         .map(|identify| library_statuses(sql, &identify.verdict))
         .transpose()?;
-    // Only identity keys are needed for the next SQL query. Track and artwork
-    // processing runs after the snapshot ends.
+    // The linked pressing's stored releases: what names its records and
+    // checks it against the library.
     let claimed = claimed_releases_on(
         sql,
         &candidate,
@@ -562,13 +561,13 @@ pub(super) fn load_candidate_detail_on(
     };
     Ok(Some(CandidateDetailRows { candidate, source_error, actionable, skipped,
         imported_releases, current, pane_rows, artist_resolutions, metadata_revision,
-        statuses, claimed, records, picked_library_status, embedded_cover }))
+        statuses, records, picked_library_status, embedded_cover }))
 }
 
 impl CandidateDetailRows {
     pub(super) fn process(self) -> Result<ImportCandidateDetailProjection, DbError> {
         let Self { candidate, source_error, actionable, skipped, imported_releases, current,
-            pane_rows, artist_resolutions, metadata_revision, statuses, claimed,
+            pane_rows, artist_resolutions, metadata_revision, statuses,
             records, picked_library_status, embedded_cover } = self;
         let metadata_provenance = current.as_ref().and_then(|state| state.metadata_provenance.clone());
         let release_link = current.as_ref().and_then(|state| state.release_link.clone());
@@ -586,9 +585,6 @@ impl CandidateDetailRows {
         let audio = crate::signals::AudioFacts::of_files(&candidate.files)
             .map_err(|error| DbError::Message(error.to_string()))?;
         let durations = &audio.durations;
-        let release = claimed
-            .split_first()
-            .map(|(primary, partners)| primary.detail(partners));
         let mut verdict = None;
         let mut resumed_identify_state = crate::identify::IdentifyState::Idle;
         let identify = current.as_ref().and_then(|state| state.identify.as_ref());
@@ -619,7 +615,6 @@ impl CandidateDetailRows {
                     .resume_state(&status_of, text, audio.clone());
         }
         let pane = crate::import::pane::draft_pane(
-            release,
             &candidate.files,
             durations,
             &pane_rows.draft,
@@ -630,11 +625,6 @@ impl CandidateDetailRows {
                 candidate.key()
             ))
         })?;
-        let remote_covers = pane
-            .release
-            .as_ref()
-            .map(|release| release.cover_art.clone())
-            .unwrap_or_default();
         let cover = chosen_cover(
             &candidate.files,
             pane_rows.cover.as_ref(),
@@ -653,14 +643,13 @@ impl CandidateDetailRows {
             metadata_author,
             metadata_revision,
             imported_releases,
-            release: pane.release,
             records,
             picked_library_status,
             metadata_draft: pane.edit,
             artist_resolutions,
             mapping: pane.mapping,
             cover,
-            remote_covers,
+            remote_covers: pane_rows.cover_options,
             signals,
             lookup_choices,
             failure: pane_rows.failure,

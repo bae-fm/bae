@@ -206,9 +206,10 @@ pub struct BridgeImportCandidateDetail {
     /// Where the candidate's import stands for the pane: the one running now,
     /// or what the last one left in the tables.
     pub import_status: Option<BridgeCandidateImportStatus>,
-    /// The picked release as its stored release rows describe it. `None` with
-    /// no pick, and for a folder read as its own tags.
-    pub release: Option<BridgeReleaseDetail>,
+    /// The covers the picker offers from the catalogs: what the applied
+    /// release offered, stored with the draft. Empty for a draft read from
+    /// the files' tags, typed in, or linked to an album.
+    pub remote_covers: Vec<BridgeRemoteCover>,
     /// Whether the picked release is already in the library.
     pub picked_library_status: Option<BridgeLibraryStatus>,
     /// Extracted identifying signals pinned to their source files. Independent

@@ -51,7 +51,7 @@ pub(crate) const ARCHIVE: &str = "https://coverartarchive.org";
 ///
 /// `Serialize`/`Deserialize`: reachable from `MetadataResult::cover_art`, which
 /// `identify::TerminalVerdict` persists.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct RemoteCover {
     pub image: RemoteImageSet,
     pub label: String,

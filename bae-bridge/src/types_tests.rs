@@ -513,57 +513,6 @@ mod conversion_roundtrip {
             );
         }
     }
-
-    /// The detail only goes from core to the UI, so this checks derived and
-    /// carried fields rather than a round trip.
-    #[cfg(feature = "desktop")]
-    #[test]
-    fn release_detail_derives_default_cover() {
-        let core = bae_core::import::search::ImportSearchReleaseDetail {
-            release_id: "rel-123".to_string(),
-            source: bae_core::import::Catalog::MusicBrainz,
-            source_group_id: Some("rg-1".to_string()),
-            title: "Album Title".to_string(),
-            artist: Some("Artist Name".to_string()),
-            year: Some(1990),
-            labels: vec![
-                bae_core::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
-                bae_core::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
-            ],
-            barcode: Some("012345678905".to_string()),
-            facts: every_kind_of_fact(),
-            media: bae_core::pressing::StatedMedia::PerMedium(vec![Some(
-                bae_core::pressing::Medium::Cd,
-            )]),
-            links: vec![bae_core::import::MetadataRef::new(
-                bae_core::import::Catalog::Discogs,
-                "42",
-            )],
-            cover_art: vec![bae_core::import::cover_art::RemoteCover {
-                image: bae_core::import::cover_art::RemoteImageSet::with_copies(
-                    "https://example.test/cover.jpg".to_string(),
-                    vec![bae_core::import::cover_art::DownscaledCopy {
-                        url: "https://example.test/thumb.jpg".to_string(),
-                        max_edge: 250,
-                    }],
-                ),
-                label: "Front".to_string(),
-                source: bae_core::import::Catalog::MusicBrainz,
-                standing: bae_core::import::cover_art::CoverStanding::Stated,
-            }],
-        };
-        // `default_cover` is derived from the first cover.
-        let bridge = BridgeReleaseDetail::from_core(core.clone());
-        assert!(bridge.default_cover.is_some());
-        assert_eq!(bridge.release_id, core.release_id);
-        assert_eq!(bridge.cover_art.len(), core.cover_art.len());
-        assert_eq!(bridge.barcode, core.barcode);
-        assert_eq!(
-            BridgeReleaseLabel::list_into_core(bridge.labels),
-            core.labels
-        );
-        assert_eq!(bridge.facts.into_core(), core.facts);
-    }
 }
 
 /// Facts stating one of every kind: a region, two media, a status, a

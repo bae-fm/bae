@@ -285,7 +285,7 @@ impl ImportServiceHandle {
             .fetch_release_assets(&draft, release, &partners)
             .await
             .map_err(|failure| failure.error)?;
-        Ok(external_metadata_with_assets(draft, release, assets))
+        Ok(external_metadata_with_assets(draft, release, &partners, assets))
     }
 
     /// The artist images and cover `source_draft`, read from an external
@@ -577,6 +577,7 @@ impl ImportServiceHandle {
                     draft,
                     provenance: None,
                     cover: None,
+                    cover_options: Vec::new(),
                     assets: crate::import::CandidatePreparedAssets::default(),
                 },
             )
@@ -902,10 +903,12 @@ pub(crate) struct ReleaseAssets {
 }
 
 /// The metadata `draft`, read from an external release, makes with the
-/// assets fetched for it.
+/// assets fetched for it, and the covers `release` and the `partners` picked
+/// with it offer the picker.
 pub(crate) fn external_metadata_with_assets(
     draft: crate::import::CandidateDraft,
     release: &crate::import::source_release::SourceRelease,
+    partners: &[crate::import::source_release::SourceRelease],
     assets: ReleaseAssets,
 ) -> crate::import::CandidateMetadataDraft {
     let (cover, remote_cover) = match assets.cover {
@@ -924,6 +927,7 @@ pub(crate) fn external_metadata_with_assets(
             record: release.release().clone(),
         }),
         cover,
+        cover_options: crate::import::source_release::pick_covers(release, partners),
         assets: crate::import::CandidatePreparedAssets {
             remote_cover,
             artist_images: assets.artist_images,

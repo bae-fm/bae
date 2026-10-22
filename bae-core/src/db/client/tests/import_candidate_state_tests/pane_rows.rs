@@ -748,6 +748,7 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
                 draft: draft.clone(),
                 provenance: Some(release_pick("release-1")),
                 cover: None,
+                cover_options: Vec::new(),
                 assets: crate::import::CandidatePreparedAssets {
                     remote_cover: None,
                     artist_images: vec![first],
@@ -776,6 +777,7 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
                 draft,
                 provenance: Some(release_pick("release-2")),
                 cover: None,
+                cover_options: Vec::new(),
                 assets: crate::import::CandidatePreparedAssets {
                     remote_cover: None,
                     artist_images: vec![second.clone()],
@@ -885,6 +887,7 @@ async fn preparation_round_trips_a_drafts_roles_works_and_their_answers() {
                 draft: draft.clone(),
                 provenance: Some(release_pick("release-with-role")),
                 cover: None,
+                cover_options: Vec::new(),
                 assets: crate::import::CandidatePreparedAssets {
                     remote_cover: None,
                     artist_images: vec![answer.clone()],
@@ -901,4 +904,77 @@ async fn preparation_round_trips_a_drafts_roles_works_and_their_answers() {
         .expect("the candidate is prepared");
     assert_eq!(preparation.draft, draft);
     assert_eq!(preparation.assets.artist_images, vec![answer]);
+}
+
+/// The covers an applied release offers are stored with the draft, in their
+/// order and with their copies, and a draft applied from nowhere offers none.
+#[tokio::test]
+async fn an_applied_releases_cover_options_are_stored_with_the_draft() {
+    let (db, _tmp) = empty_db().await;
+    fetched(&db, "release-1").await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+    let options = vec![
+        crate::import::cover_art::RemoteCover {
+            image: crate::import::cover_art::RemoteImageSet::with_copies(
+                "https://example.test/front.jpg".to_string(),
+                vec![crate::import::cover_art::DownscaledCopy {
+                    url: "https://example.test/front-250.jpg".to_string(),
+                    max_edge: 250,
+                }],
+            ),
+            label: "Front".to_string(),
+            source: crate::import::Catalog::MusicBrainz,
+            standing: crate::import::cover_art::CoverStanding::Stated,
+        },
+        crate::import::cover_art::RemoteCover {
+            image: crate::import::cover_art::RemoteImageSet::with_copies(
+                "https://example.test/album.jpg".to_string(),
+                Vec::new(),
+            ),
+            label: "Album".to_string(),
+            source: crate::import::Catalog::Discogs,
+            standing: crate::import::cover_art::CoverStanding::Unstated,
+        },
+    ];
+    let revision = crate::import::CandidatePreparations::new(db.clone())
+        .apply_source(
+            &host_root("/music"),
+            &as_read(&hash, 0),
+            &pane_candidate_path(),
+            &crate::import::CandidateMetadataDraft {
+                draft: candidate_draft("Release Title", "Artist Name"),
+                provenance: Some(release_pick("release-1")),
+                cover: None,
+                cover_options: options.clone(),
+                assets: crate::import::CandidatePreparedAssets::default(),
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        db.load_import_candidate_pane_rows(&hash).await.unwrap().cover_options,
+        options
+    );
+
+    crate::import::CandidatePreparations::new(db.clone())
+        .apply_source(
+            &host_root("/music"),
+            &as_read(&hash, revision),
+            &pane_candidate_path(),
+            &crate::import::CandidateMetadataDraft {
+                draft: candidate_draft("Typed Title", "Artist Name"),
+                provenance: None,
+                cover: None,
+                cover_options: Vec::new(),
+                assets: crate::import::CandidatePreparedAssets::default(),
+            },
+        )
+        .await
+        .unwrap();
+    assert!(db
+        .load_import_candidate_pane_rows(&hash)
+        .await
+        .unwrap()
+        .cover_options
+        .is_empty());
 }

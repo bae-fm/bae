@@ -14,7 +14,8 @@ mod writes;
 use super::verdict_rows::unreadable;
 use super::*;
 use crate::db::client::candidate_state_rows::COVER_COLUMNS;
-use crate::import::cover_art::{DownscaledCopy, RemoteImageSet};
+use crate::import::cover_art::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
+use std::str::FromStr;
 use crate::import::{
     ArtistAssignment, ArtistCredit, AudioFile, CandidateDraft, CandidateTrack, CoverSelection,
     ExistingArtist, MetadataAuthor, RawLabelEdit, RawPressingEdit, RawTrackEdit,
@@ -173,6 +174,7 @@ pub(crate) fn load_pane_rows_on(
         })?;
     Ok(DbCandidatePaneRows {
         cover: load_covers_on(sql, Some(content_hash))?.remove(content_hash),
+        cover_options: load_cover_options_on(sql, content_hash)?,
         draft: metadata_draft,
         failure: load_failure_on(sql, content_hash)?,
         session: load_session_on(sql, content_hash)?,
@@ -655,4 +657,91 @@ fn load_track_artist_assignments_on(
             )?);
     }
     Ok(out)
+}
+
+// ── The covers an applied catalog release offers the candidate's picker ──
+
+/// Replace the candidate's offered covers with `options`, in their order.
+pub(super) fn replace_cover_options(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    options: &[RemoteCover],
+) -> Result<(), DbError> {
+    // The copies hang off their option, so this takes them too.
+    sql.execute(
+        "DELETE FROM import_candidate_cover_option WHERE content_hash = ?",
+        [content_hash],
+    )?;
+    for (position, option) in options.iter().enumerate() {
+        let position = i64::try_from(position)
+            .map_err(|error| DbError::Message(format!("too many cover options: {error}")))?;
+        sql.execute(
+            "INSERT INTO import_candidate_cover_option \
+                 (content_hash, position, url, label, source, standing) \
+             VALUES (?, ?, ?, ?, ?, ?)",
+            params![
+                content_hash,
+                position,
+                option.image.url,
+                option.label,
+                option.source.as_str(),
+                option.standing.as_str(),
+            ],
+        )?;
+        for copy in &option.image.downscaled {
+            sql.execute(
+                "INSERT INTO import_candidate_cover_option_copy \
+                     (content_hash, position, max_edge, url) VALUES (?, ?, ?, ?)",
+                params![content_hash, position, copy.max_edge, copy.url],
+            )?;
+        }
+    }
+    Ok(())
+}
+
+/// The candidate's offered covers, in their order.
+pub(super) fn load_cover_options_on(
+    sql: &SqlReadContext<'_>,
+    content_hash: &str,
+) -> Result<Vec<RemoteCover>, DbError> {
+    let mut copies: HashMap<i64, Vec<DownscaledCopy>> = HashMap::new();
+    for (position, max_edge, url) in sql.query(
+        "SELECT position, max_edge, url FROM import_candidate_cover_option_copy \
+         WHERE content_hash = ? ORDER BY position, max_edge",
+        [content_hash],
+        |row| Ok((row.get::<_, i64>(0)?, row.get::<_, u32>(1)?, row.get::<_, String>(2)?)),
+    )? {
+        copies
+            .entry(position)
+            .or_default()
+            .push(DownscaledCopy { url, max_edge });
+    }
+    sql.query(
+        "SELECT position, url, label, source, standing FROM import_candidate_cover_option \
+         WHERE content_hash = ? ORDER BY position",
+        [content_hash],
+        |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, String>(4)?,
+            ))
+        },
+    )?
+    .into_iter()
+    .map(|(position, url, label, source, standing)| {
+        Ok(RemoteCover {
+            // An option the catalog serves no copies of has none.
+            image: RemoteImageSet::with_copies(url, copies.remove(&position).unwrap_or_default()),
+            label,
+            source: crate::import::Catalog::from_str(&source).map_err(|error| {
+                DbError::Message(format!("a stored cover option's catalog is unreadable: {error}"))
+            })?,
+            standing: CoverStanding::from_column(&standing)
+                .ok_or_else(|| unreadable("cover option standing", &standing))?,
+        })
+    })
+    .collect()
 }

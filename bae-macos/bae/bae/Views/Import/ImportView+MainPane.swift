@@ -242,7 +242,7 @@ extension ImportView {
         uiStore.presentModal {
             CoverPickerFrame {
                 CoverPickerView(
-                    remoteCoverArts: candidate.release?.coverArt ?? [],
+                    remoteCoverArts: candidate.remoteCovers,
                     localArtwork: candidate.files.coverFiles,
                     selectedCover: candidate.cover,
                     fetchRemoteCovers: {

@@ -6,28 +6,6 @@ use super::{
     BridgeSourceAudioSummary, BridgeTrackSide,
 };
 
-#[cfg(feature = "desktop")]
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeReleaseDetail {
-    pub release_id: String,
-    pub source: BridgeCatalog,
-    /// Per-source release group: MB release-group ID for MusicBrainz,
-    /// Discogs master ID for Discogs. `None` when the source didn't
-    /// surface a group — the picked release commits without a group
-    /// identity row, but Approximate is still meaningful as "I don't
-    /// claim this specific pressing."
-    pub source_group_id: Option<String>,
-    pub title: String,
-    pub artist: Option<String>,
-    pub year: Option<i32>,
-    /// Every label the release is on, each with its catalog number.
-    pub labels: Vec<BridgeReleaseLabel>,
-    pub barcode: Option<String>,
-    pub facts: BridgePressingFacts,
-    pub cover_art: Vec<BridgeRemoteCover>,
-    pub default_cover: Option<BridgeCoverChoice>,
-}
-
 /// One kind of identifying signal extracted from a candidate file. Mirrors
 /// `bae_core::import::FileEvidence`.
 ///

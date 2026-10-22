@@ -2,6 +2,18 @@
     import BaeKit
     import Foundation
 
+    /// A release a preview candidate is picked as: the values the previews
+    /// spread over the candidate's link, its row and its cover.
+    struct PreviewPickedRelease {
+        var releaseId: String
+        var source: BridgeCatalog
+        var title: String
+        var artist: String?
+        var year: Int32?
+        var facts: BridgePressingFacts
+        var defaultCover: BridgeCoverChoice?
+    }
+
     extension PreviewData {
         private static let previewSourceAudioFormat = BridgeAudioFormat(
             codec: "FLAC",
@@ -165,32 +177,21 @@
             )
         )
 
-        static let releaseDetailBridge: BridgeReleaseDetail = {
-            BridgeReleaseDetail(
-                releaseId: "rel-123",
-                source: .musicBrainz,
-                sourceGroupId: "rg-123",
-                title: "Album Title One",
-                artist: "Artist Name",
-                year: 1996,
-                labels: [
-                    BridgeReleaseLabel(
-                        name: "Label Name",
-                        catalogNumber: "6006-2"
-                    )
-                ],
-                barcode: nil,
-                facts: PreviewData.pressingFacts(
-                    country: "US",
-                    media: PreviewData.media(.cd)
-                ),
-                coverArt: [],
-                defaultCover: BridgeCoverChoice(
-                    selection: .releaseImage(fileId: "Front.png"),
-                    image: .local(file: previewArtFile("Front.png"))
-                )
+        static let releaseDetailBridge = PreviewPickedRelease(
+            releaseId: "rel-123",
+            source: .musicBrainz,
+            title: "Album Title One",
+            artist: "Artist Name",
+            year: 1996,
+            facts: PreviewData.pressingFacts(
+                country: "US",
+                media: PreviewData.media(.cd)
+            ),
+            defaultCover: BridgeCoverChoice(
+                selection: .releaseImage(fileId: "Front.png"),
+                image: .local(file: previewArtFile("Front.png"))
             )
-        }()
+        )
 
         /// Editor seed for the confirming previews — the raw release edit the
         /// prefetch's seed projects into.

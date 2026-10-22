@@ -163,6 +163,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
                     draft: preparation.draft,
                     provenance: preparation.metadata_provenance,
                     cover: explicit.then(|| CoverSelection::Embedded("01.flac".to_string())),
+                    cover_options: Vec::new(),
                     assets: preparation.assets,
                 },
             )

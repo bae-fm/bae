@@ -145,6 +145,7 @@ pub(super) fn load_preparation_on(
             draft: rows.draft,
             provenance: state.metadata_provenance,
             cover: rows.cover,
+            cover_options: rows.cover_options,
             assets,
         },
         link: state.release_link,
@@ -241,6 +242,7 @@ pub(super) fn save_preparation_on(
     if let Some(cover) = &prep.metadata.cover {
         super::candidate_state_rows::save_cover(sql, content_hash, cover)?;
     }
+    pane_rows::replace_cover_options(sql, content_hash, &prep.metadata.cover_options)?;
     prepared_asset_rows::replace_asset_rows(
         sql,
         content_hash,

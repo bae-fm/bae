@@ -820,6 +820,7 @@ impl Fixture {
                                     crate::import::MetadataProvenance::ExternalRelease { record },
                                 ),
                                 cover: None,
+                                cover_options: Vec::new(),
                                 assets: crate::import::CandidatePreparedAssets::default(),
                             },
                         }

@@ -9,7 +9,6 @@ use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::mapping::{mapping_table, MappingTable};
 use crate::import::probe::SourceDurations;
 use crate::import::release_values::ReleaseValues;
-use crate::import::search::ImportSearchReleaseDetail;
 use crate::import::types::{CandidateDraft, CandidateTrack, RawReleaseEdit, RawTrackEdit};
 use crate::import::ImportError;
 
@@ -56,10 +55,8 @@ pub(crate) fn blank_candidate_draft(files: &CategorizedFiles) -> CandidateDraft 
     }
 }
 
-/// The release preview, editable metadata, and audio rows presented by a pane.
+/// The editable metadata and audio rows a pane presents.
 pub struct PanePick {
-    /// `None` when no external release was applied.
-    pub release: Option<ImportSearchReleaseDetail>,
     pub edit: RawReleaseEdit,
     pub mapping: MappingTable,
 }
@@ -212,18 +209,16 @@ pub(crate) fn keep_row_identities(
     Ok(())
 }
 
-/// Project the stored draft onto the candidate's physical units, beside the
-/// linked `release`. The draft holds every value; the mapping shows each
-/// track's stated length beside its audio's own.
+/// Project the stored draft onto the candidate's physical units. The draft
+/// holds every value; the mapping shows each track's stated length beside its
+/// audio's own.
 pub(crate) fn draft_pane(
-    release: Option<ImportSearchReleaseDetail>,
     files: &CategorizedFiles,
     durations: &SourceDurations,
     draft: &CandidateDraft,
 ) -> Result<PanePick, ImportError> {
     let mapping = mapping_table(files, durations, draft)?;
     Ok(PanePick {
-        release,
         edit: draft.release_edit(),
         mapping,
     })

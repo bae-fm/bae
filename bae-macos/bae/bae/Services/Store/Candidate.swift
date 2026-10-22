@@ -397,9 +397,10 @@ struct Candidate: Equatable, Identifiable {
         )
     }
 
-    /// The selected external release as its stored release rows describe it.
-    var release: BridgeReleaseDetail? {
-        detail?.release
+    /// The covers the picker offers from the catalogs: what the applied
+    /// release offered, stored with the draft.
+    var remoteCovers: [BridgeRemoteCover] {
+        detail?.remoteCovers ?? []
     }
 
     /// Identifying signals extracted from the candidate, each entry naming

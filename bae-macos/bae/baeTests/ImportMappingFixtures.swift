@@ -375,25 +375,6 @@ extension MappingFixtures {
         tracks: []
     )
 
-    /// The release the fixture folder is picked as, as its documents describe
-    /// it.
-    static let releaseDetail = BridgeReleaseDetail(
-        releaseId: releaseId,
-        source: source,
-        sourceGroupId: nil,
-        title: "Album Title",
-        artist: "Artist Name",
-        year: 1996,
-        labels: [],
-        barcode: nil,
-        facts: PreviewData.pressingFacts(
-            country: nil,
-            media: PreviewData.media(.cd)
-        ),
-        coverArt: [],
-        defaultCover: nil
-    )
-
     /// The pressing the fixture release states — what claiming it exactly is a
     /// claim about, and what an edit is read against.
     static let exactPressing = BridgeRawPressingEdit(
@@ -453,7 +434,7 @@ extension MappingFixtures {
                 badge: nil
             ),
             importStatus: nil,
-            release: releaseLink == nil ? nil : releaseDetail,
+            remoteCovers: [],
             pickedLibraryStatus: nil,
             fileEvidence: [],
             metadataDraft: edit,

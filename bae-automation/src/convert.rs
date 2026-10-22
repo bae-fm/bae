@@ -388,28 +388,6 @@ mirror_struct! {
     fields: { url, max_edge },
 }
 
-impl AutomationReleaseDetail {
-    /// Drops core's `media` and `links`, which are pairing evidence.
-    pub(crate) fn from_core(detail: ImportSearchReleaseDetail) -> Self {
-        Self {
-            release_id: detail.release_id,
-            source: detail.source.into(),
-            source_group_id: detail.source_group_id,
-            title: detail.title,
-            artist: detail.artist,
-            year: detail.year,
-            labels: detail.labels,
-            barcode: detail.barcode,
-            facts: detail.facts,
-            cover_art: detail
-                .cover_art
-                .into_iter()
-                .map(AutomationRemoteCover::from_core)
-                .collect(),
-        }
-    }
-}
-
 mirror_struct! {
     AutomationPressingEdit = bae_core::pressing::Pressing,
     from_core: pub(crate) fn,

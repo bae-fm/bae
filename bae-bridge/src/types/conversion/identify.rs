@@ -68,51 +68,6 @@ impl BridgeRemoteCover {
     }
 }
 
-impl BridgeReleaseDetail {
-    pub(crate) fn from_core(d: bae_core::import::search::ImportSearchReleaseDetail) -> Self {
-        // Derived values borrow `&d`; compute them before destructuring `d`.
-        let default_cover = d
-            .default_cover()
-            .cloned()
-            .map(BridgeRemoteCover::from_core)
-            .map(|c| c.cover_choice);
-        let bae_core::import::search::ImportSearchReleaseDetail {
-            release_id,
-            source,
-            source_group_id,
-            title,
-            artist,
-            year,
-            labels,
-            barcode,
-            facts,
-            cover_art,
-            // Pairing evidence; the picker renders the facts.
-            media: _,
-            links: _,
-        } = d;
-        BridgeReleaseDetail {
-            release_id,
-            source: BridgeCatalog::from_core(source),
-            source_group_id,
-            title,
-            artist,
-            year,
-            labels: labels
-                .into_iter()
-                .map(BridgeReleaseLabel::from_core)
-                .collect(),
-            barcode,
-            facts: BridgePressingFacts::from_core(facts),
-            cover_art: cover_art
-                .into_iter()
-                .map(BridgeRemoteCover::from_core)
-                .collect(),
-            default_cover,
-        }
-    }
-}
-
 impl BridgeCoverChoice {
     pub(crate) fn from_core(choice: bae_core::import::CoverChoice) -> Self {
         let bae_core::import::CoverChoice { selection, image } = choice;

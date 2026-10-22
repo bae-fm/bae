@@ -362,6 +362,7 @@ async fn reset_setup_invalidates_prepared_metadata_and_refuses_claimed_candidate
         draft: before.draft.clone(),
         provenance: before.metadata_provenance.clone(),
         cover: before.cover.clone(),
+        cover_options: Vec::new(),
         assets: before.assets.clone(),
     };
     handle.reset_candidate_setup(&key).await.unwrap();
@@ -520,6 +521,7 @@ async fn reset_setup_rejects_an_unchanged_source_rescanned_after_preparation() {
         draft: before.draft.clone(),
         provenance: Some(MetadataProvenance::FileMetadata),
         cover: None,
+        cover_options: Vec::new(),
         assets: CandidatePreparedAssets::default(),
     };
     rescan_into(&manager, candidate.clone()).await;

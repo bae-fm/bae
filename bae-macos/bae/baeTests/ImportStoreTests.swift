@@ -197,7 +197,7 @@ private func detail(
     skipped: Bool = false,
     resumedIdentifyState: BridgeIdentifyState = .idle,
     cover: BridgeCoverChoice? = nil,
-    release: BridgeReleaseDetail? = nil,
+    remoteCovers: [BridgeRemoteCover] = [],
     presentation: BridgeMetadataPresentation = .draft
 ) -> BridgeImportCandidateDetail {
     BridgeImportCandidateDetail(
@@ -221,7 +221,7 @@ private func detail(
             badge: nil
         ),
         importStatus: nil,
-        release: release,
+        remoteCovers: remoteCovers,
         pickedLibraryStatus: nil,
         fileEvidence: [],
         metadataDraft: MappingFixtures.albumEdit,

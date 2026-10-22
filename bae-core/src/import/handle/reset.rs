@@ -111,6 +111,7 @@ impl ImportServiceHandle {
                     draft: seed.draft,
                     provenance: Some(crate::import::MetadataProvenance::FileMetadata),
                     cover,
+                    cover_options: Vec::new(),
                     assets: CandidatePreparedAssets::default(),
                 },
                 seed.snapshot,

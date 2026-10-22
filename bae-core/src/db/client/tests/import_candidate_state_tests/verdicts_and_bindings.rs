@@ -127,6 +127,7 @@ fn concluding(mut row: NewImportCandidateVerdict, release_id: &str) -> NewImport
             draft: candidate_draft("", ""),
             provenance: Some(release_pick(release_id)),
             cover: None,
+            cover_options: Vec::new(),
             assets: crate::import::CandidatePreparedAssets::default(),
         },
     });

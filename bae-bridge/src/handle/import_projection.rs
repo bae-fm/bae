@@ -803,7 +803,6 @@ impl crate::types::BridgeImportCandidateDetail {
             placement,
             live,
             import_status,
-            release,
             picked_library_status,
             file_evidence,
             metadata_draft,
@@ -815,8 +814,7 @@ impl crate::types::BridgeImportCandidateDetail {
             metadata_revision,
             mapping,
             cover,
-            // The same list as `release.cover_art`.
-            remote_covers: _,
+            remote_covers,
             signals,
             // Changed through `edit_candidate_lookup_choices`; nothing on the
             // pane reads it back.
@@ -836,7 +834,10 @@ impl crate::types::BridgeImportCandidateDetail {
             placement: crate::types::BridgeCandidatePanePlacement::from_core(placement, rate),
             live: crate::types::BridgeCandidateLiveState::from_core(live),
             import_status: import_status.map(crate::types::BridgeCandidateImportStatus::from_core),
-            release: release.map(crate::types::BridgeReleaseDetail::from_core),
+            remote_covers: remote_covers
+                .into_iter()
+                .map(crate::types::BridgeRemoteCover::from_core)
+                .collect(),
             picked_library_status: picked_library_status
                 .map(crate::types::BridgeLibraryStatus::from_core),
             file_evidence: file_evidence

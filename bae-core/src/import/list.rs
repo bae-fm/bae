@@ -27,7 +27,6 @@ use super::cover_art::{CoverChoice, RemoteCover};
 use super::folder_scanner::FolderCandidate;
 use super::folder_scanner::{FolderReleaseDecisionKey, InvalidCandidate};
 use super::mapping::MappingTable;
-use super::search::ImportSearchReleaseDetail;
 use super::triage::{
     import_status_of, place, stated_folder_check, CandidateActionBasis, CandidateLiveState,
     ImportedRow, LiveStanding, PendingStanding, PendingState, StoredLookup, TriageGroup,
@@ -544,9 +543,6 @@ pub struct ImportCandidateDetailProjection {
     pub metadata_revision: u64,
     /// Every library copy carrying this candidate's folder hash.
     pub imported_releases: Vec<ImportedRelease>,
-    /// The linked release as its stored release describes it. `None` with no
-    /// link.
-    pub release: Option<ImportSearchReleaseDetail>,
     /// Every catalog the linked releases describe the release in, in the
     /// order surfaces list catalogs. Empty with no link.
     pub records: Vec<crate::import::ReleaseRecord>,
@@ -563,7 +559,8 @@ pub struct ImportCandidateDetailProjection {
     /// The cover this candidate commits with: its selection, the picked
     /// release's default, or the folder's default image.
     pub cover: Option<CoverChoice>,
-    /// Every cover the picker offers: the picked release's remote art.
+    /// The covers the picker offers from the catalogs: what the applied
+    /// release offered, stored with the draft when it was applied.
     pub remote_covers: Vec<RemoteCover>,
     /// The signals identification settled on, or `None` before it has.
     pub signals: Option<Signals>,
@@ -604,7 +601,6 @@ impl ImportCandidateDetailProjection {
             metadata_author,
             metadata_revision,
             imported_releases,
-            release,
             records,
             picked_library_status,
             metadata_draft,
@@ -688,7 +684,6 @@ impl ImportCandidateDetailProjection {
             placement: pane_placement,
             live,
             import_status,
-            release,
             picked_library_status,
             file_evidence,
             metadata_draft,
@@ -793,7 +788,6 @@ pub struct ImportCandidateDetail {
     /// Where the candidate's import stands for the pane: the one running now,
     /// or what the last one left in the tables.
     pub import_status: Option<CandidateImportStatus>,
-    pub release: Option<ImportSearchReleaseDetail>,
     pub picked_library_status: Option<LibraryStatus>,
     /// Extracted identifying signals pinned to their source files. Independent
     /// of the selected pressing; result support lives in result provenance.

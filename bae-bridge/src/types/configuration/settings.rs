@@ -460,7 +460,7 @@ pub fn bridge_playback_error_reason_key(reason: &BridgePlaybackErrorReason) -> O
 // `handle.rs`, and in `bridge_utils.rs`: a conversion is an associated function
 // on the `Bridge*` type, `BridgeX::from_core(core) -> Self` and
 // `BridgeX::into_core(self) -> core::X`. Two exceptions: some `from_core`s take
-// extra bridge-only arguments (`BridgeReleaseDetail`), and `LibraryError`
+// extra bridge-only arguments (`BridgeFolderCandidate`), and `LibraryError`
 // crosses through a `From` impl.
 //
 // Record converters exhaustively destructure their core input(s) — no `..` in

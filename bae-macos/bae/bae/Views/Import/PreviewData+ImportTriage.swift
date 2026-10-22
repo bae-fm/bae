@@ -217,7 +217,6 @@
                     key: releaseDetailBridge.releaseId
                 )
             ),
-            release: releaseDetailBridge,
             edit: confirmEditValues,
             mapping: everyRowKindMappingTable,
             cover: releaseDetailBridge.defaultCover

@@ -57,10 +57,12 @@ pub(crate) fn automation_candidate_from_folder(
                 live.and_then(|live| live.import.as_ref()),
             ),
         },
-        picked_release: folder
-            .release
-            .clone()
-            .map(AutomationReleaseDetail::from_core),
+        picked_pressing: folder
+            .release_link
+            .as_ref()
+            .and_then(bae_core::import::ReleaseLink::pressing)
+            .cloned()
+            .map(AutomationPressingLink::from_core),
         file_evidence: folder
             .file_evidence
             .iter()

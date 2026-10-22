@@ -21,10 +21,12 @@ async fn a_pick_reads_back_as_the_same_answer() {
         .await;
 
     let resumed = fixture.pane(&dir).await.expect("the candidate reads back");
-    let release = resumed
-        .release
+    let link = resumed
+        .release_link
+        .as_ref()
+        .and_then(crate::import::ReleaseLink::pressing)
         .expect("a settled single match is a decision");
-    assert_eq!(release.release_id, "mb-answer-1");
+    assert_eq!(link.record.key, "mb-answer-1");
     assert_eq!(resumed.metadata_draft.tracks.len(), 2);
     assert_eq!(
         resumed.file_evidence,
@@ -67,11 +69,10 @@ async fn a_pick_reads_back_as_the_same_answer() {
         .expect("deciding file metadata succeeds");
     let resumed = fixture.pane(&dir).await.expect("the candidate reads back");
     assert_eq!(
-        resumed.release.map(|release| release.release_id),
-        Some("mb-answer-1".to_string()),
+        resumed.release_link,
+        Some(picked),
         "the candidate stays linked to the release identification picked"
     );
-    assert_eq!(resumed.release_link, Some(picked));
     assert_eq!(
         resumed.metadata_provenance,
         Some(crate::import::MetadataProvenance::FileMetadata)

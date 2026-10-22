@@ -223,6 +223,7 @@ impl CandidatePreparations {
             draft,
             provenance: provenance.cloned(),
             cover: None,
+            cover_options: Vec::new(),
             assets: crate::import::CandidatePreparedAssets::default(),
         };
         self.apply_metadata(
@@ -369,6 +370,8 @@ impl CandidatePreparations {
         prep.folder_path = folder_path.to_string();
         prep.author = MetadataAuthor::Person;
         prep.metadata.draft = draft;
+        // An album is no pressing: no release's covers are offered for it.
+        prep.metadata.cover_options = Vec::new();
         prep.metadata.assets.artist_images = artist_images;
         prep.assets_prepared = assets_are_prepared(&prep.metadata);
         prep.metadata_revision += 1;
@@ -414,6 +417,8 @@ impl CandidatePreparations {
         read: &CandidateAsRead,
     ) -> Result<u64, LibraryError> {
         prep.link = None;
+        // The covers were the linked release's to offer.
+        prep.metadata.cover_options = Vec::new();
         if let Some(identification) = prep.identification.as_mut() {
             identification.kept_own_draft = true;
         }
@@ -458,6 +463,7 @@ impl CandidatePreparations {
             draft: draft.clone(),
             provenance: Some(crate::import::MetadataProvenance::FileMetadata),
             cover: cover.cloned(),
+            cover_options: Vec::new(),
             assets: crate::import::CandidatePreparedAssets::default(),
         };
         self.apply_metadata(

@@ -1201,6 +1201,33 @@ CREATE TABLE IF NOT EXISTS import_candidate_cover_copy (
         REFERENCES import_candidate_cover (content_hash, url) ON DELETE CASCADE
 ) STRICT;
 
+-- The cover images the catalog release last applied to the draft offers the
+-- picker — every claimed release's own images, then their albums' — in the
+-- order the picker shows them. The apply writes them; a draft read from the
+-- files' tags, typed in, or linked to an album offers none.
+CREATE TABLE IF NOT EXISTS import_candidate_cover_option (
+    content_hash TEXT NOT NULL,
+    position     INTEGER NOT NULL CHECK (position >= 0),
+    url          TEXT NOT NULL CHECK (url <> ''),
+    label        TEXT NOT NULL,
+    source       TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
+    standing     TEXT NOT NULL CHECK (standing IN ('stated', 'unstated')),
+    PRIMARY KEY (content_hash, position),
+    UNIQUE (content_hash, url),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
+) STRICT;
+
+-- The downscaled copies the catalog serves of an offered cover, one per size.
+CREATE TABLE IF NOT EXISTS import_candidate_cover_option_copy (
+    content_hash TEXT NOT NULL,
+    position     INTEGER NOT NULL,
+    max_edge     INTEGER NOT NULL CHECK (max_edge > 0),
+    url          TEXT NOT NULL CHECK (url <> ''),
+    PRIMARY KEY (content_hash, position, max_edge),
+    FOREIGN KEY (content_hash, position)
+        REFERENCES import_candidate_cover_option (content_hash, position) ON DELETE CASCADE
+) STRICT;
+
 -- The bytes of a catalog-offered cover, fetched before the import runs.
 CREATE TABLE IF NOT EXISTS import_candidate_remote_cover_asset (
     content_hash TEXT PRIMARY KEY,

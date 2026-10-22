@@ -338,6 +338,8 @@ mod tests {
         "import_candidate_sheet_reference",
         "import_candidate_cover",
         "import_candidate_cover_copy",
+        "import_candidate_cover_option",
+        "import_candidate_cover_option_copy",
         "import_candidate_remote_cover_asset",
         "import_candidate_artist_asset",
         "import_candidate_asset_preparation",

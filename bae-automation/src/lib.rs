@@ -13,7 +13,7 @@ use bae_core::db::LibraryStatus;
 use bae_core::import::cover_art::RemoteCover;
 use bae_core::import::folder_scanner::InvalidCandidate;
 use bae_core::import::release_group::ReleaseGroup;
-use bae_core::import::search::{ImportSearchReleaseDetail, MetadataResult};
+use bae_core::import::search::MetadataResult;
 use bae_core::import::{
     CandidateEditField, CandidateImportStatus, CandidateRuntimeSnapshot, Catalog, CoverSelection,
     GroupedSearchResults, ImportCandidateDetail, ImportError, ImportInFlight, ImportListItem,
