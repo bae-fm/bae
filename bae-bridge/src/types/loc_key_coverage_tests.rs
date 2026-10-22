@@ -251,6 +251,7 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::TiedMediums {
             mediums: vec![2, 4],
         },
+        BridgeErrorCategory::ReleaseChangedSinceOpened,
         BridgeErrorCategory::CandidateImportInProgress,
         BridgeErrorCategory::CandidateBeingIdentified,
         BridgeErrorCategory::Export,
