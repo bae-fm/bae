@@ -285,7 +285,7 @@ mod conversion_roundtrip {
             }
         );
         assert_eq!(
-            bridge_error_category_key(*category),
+            bridge_error_category_key(category.clone()),
             "core.import.grouping.folder_files_taken"
         );
         assert!(

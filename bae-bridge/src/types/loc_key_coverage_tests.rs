@@ -481,7 +481,9 @@ fn produced_keys() -> Vec<String> {
         let expected: Option<String> = match &e {
             BridgeError::Cancelled => None,
             BridgeError::NotFound { entity, .. } => Some(bridge_entity_not_found_key(*entity)),
-            BridgeError::Diagnostic { category, .. } => Some(bridge_error_category_key(*category)),
+            BridgeError::Diagnostic { category, .. } => {
+                Some(bridge_error_category_key(category.clone()))
+            }
         };
         assert_eq!(bridge_error_line_key(&e), expected);
     }

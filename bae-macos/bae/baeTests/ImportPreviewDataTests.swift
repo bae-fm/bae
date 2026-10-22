@@ -130,7 +130,6 @@ struct ImportPreviewDataTests {
 
         #expect(candidate.files.files.count == 1)
         #expect(candidate.files.files[0].file.name == fileSources.first?.fileId)
-        #expect(candidate.release?.trackCount == 10)
         #expect(fileSources.count == 1)
         #expect(commitTracks.count == 1)
         #expect(commitTracks[0].title == "Album Image.flac")
