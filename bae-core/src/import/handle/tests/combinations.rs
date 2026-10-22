@@ -108,7 +108,7 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
         .unwrap_or_else(|error| panic!("combined import failed: {error}"));
     let imported = handle
         .library_manager
-        .release_edit_seed(&release_id)
+        .open_release_edit(&release_id)
         .await
         .unwrap();
     assert_eq!(imported.edit.album_title, "Collected Volumes");
@@ -126,7 +126,7 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
     assert!(pane(&handle, &key).await.is_added);
     handle.separate_candidate(&key).await.unwrap();
     assert_eq!(
-        handle.library_manager.release_edit_seed(&release_id).await.unwrap(),
+        handle.library_manager.open_release_edit(&release_id).await.unwrap(),
         imported,
         "separating source folders preserves the imported copy"
     );

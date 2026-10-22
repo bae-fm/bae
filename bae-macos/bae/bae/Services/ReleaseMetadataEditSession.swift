@@ -2,20 +2,19 @@ import BaeKit
 import Observation
 
 /// One persisted release-edit session shared by Import Done and the Library
-/// modal. It owns the working form and every save/reset transition.
+/// modal. It owns the working form and its save; core holds what a catalog
+/// applied in the session until that save.
 @MainActor
 @Observable
 final class ReleaseMetadataEditSession {
     private enum Operation {
         case saving
-        case resetting
         case cancelling
     }
 
     let releaseId: String
     private(set) var cover: BridgeImageRef?
     let display: BridgeReleaseEditDisplayContext
-    let canResetToSource: Bool
     let editingCommands = EditingCommitCommands()
 
     private(set) var form: BridgeRawReleaseEdit
@@ -27,9 +26,7 @@ final class ReleaseMetadataEditSession {
     private var formRevision = 0
     private let trackContextById: [String: BridgeReleaseEditTrackContext]
     private let saveAction:
-        @Sendable (String, BridgeReleaseUserEdit) async throws -> Void
-    private let resetAction:
-        @Sendable (String) async throws -> BridgeRawReleaseEdit
+        @Sendable (String, BridgeRawReleaseEdit) async throws -> Void
     private var operationTask: Task<Void, Never>?
     private var operationSerial = 0
 
@@ -38,15 +35,12 @@ final class ReleaseMetadataEditSession {
         seed: BridgeReleaseEditSeed,
         save:
             @escaping @Sendable (
-                String, BridgeReleaseUserEdit
-            ) async throws -> Void,
-        reset:
-            @escaping @Sendable (String) async throws -> BridgeRawReleaseEdit
+                String, BridgeRawReleaseEdit
+            ) async throws -> Void
     ) {
         self.releaseId = releaseId
         cover = seed.cover
         display = seed.display
-        canResetToSource = seed.canResetToSource
         form = seed.edit
         persistedForm = seed.edit
         trackContextById = Dictionary(
@@ -55,7 +49,6 @@ final class ReleaseMetadataEditSession {
             }
         )
         saveAction = save
-        resetAction = reset
     }
 
     var fieldWriter: ReleaseFieldWriter {
@@ -104,14 +97,14 @@ final class ReleaseMetadataEditSession {
                 finish(serial)
                 return
             }
-            guard case .valid(let edit) = shapeReleaseEdit(raw: form) else {
+            guard case .valid = shapeReleaseEdit(raw: form) else {
                 finish(serial)
                 return
             }
             let submittedForm = form
             let submittedRevision = formRevision
             do {
-                try await saveAction(releaseId, edit)
+                try await saveAction(releaseId, submittedForm)
                 try Task.checkCancellation()
                 persistedForm = submittedForm
                 hasChanges = formRevision != submittedRevision
@@ -127,37 +120,6 @@ final class ReleaseMetadataEditSession {
                 failure = DisplayError(error)?
                     .rewording {
                         String(localized: "Save failed: \($0)")
-                    }
-            }
-        }
-    }
-
-    func resetToSource() {
-        let serial = begin(.resetting)
-        failure = nil
-        operationTask = Task { @MainActor in
-            await editingCommands.commitActiveEdits()
-            guard !Task.isCancelled else {
-                finish(serial)
-                return
-            }
-            do {
-                let reset = try await resetAction(releaseId)
-                try Task.checkCancellation()
-                form = reset
-                formRevision += 1
-                hasChanges = true
-                finish(serial)
-            }
-            catch is CancellationError {
-                finish(serial)
-            }
-            catch {
-                guard serial == operationSerial else { return }
-                finish(serial)
-                failure = DisplayError(error)?
-                    .rewording {
-                        String(localized: "Reset failed: \($0)")
                     }
             }
         }

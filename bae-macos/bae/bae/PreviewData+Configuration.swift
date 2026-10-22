@@ -199,7 +199,6 @@
             )
             return BridgeReleaseEditSeed(
                 edit: edit,
-                canResetToSource: true,
                 cover: nil,
                 display: BridgeReleaseEditDisplayContext(
                     sourceAudio: .uniform(
@@ -237,12 +236,8 @@
                 outboxStore: OutboxStore(
                     snapshot: OutboxStore.emptySnapshot
                 ),
-                seedReleaseEdit: { _ in
+                openReleaseEdit: { _ in
                     releaseEditSeed(trackCount: 5)
-                },
-                resetReleaseEditToSource: { _ in
-                    let seed = releaseEditSeed(trackCount: 5)
-                    return seed.edit
                 }
             )
         }

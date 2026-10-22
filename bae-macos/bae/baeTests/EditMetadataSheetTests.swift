@@ -8,14 +8,14 @@ import Testing
 struct EditMetadataSheetTests {
     private actor SavedEditRecorder {
         private(set) var releaseId: String?
-        private(set) var edit: BridgeReleaseUserEdit?
+        private(set) var edit: BridgeRawReleaseEdit?
 
-        func record(_ releaseId: String, _ edit: BridgeReleaseUserEdit) {
+        func record(_ releaseId: String, _ edit: BridgeRawReleaseEdit) {
             self.releaseId = releaseId
             self.edit = edit
         }
 
-        func recorded() -> (String?, BridgeReleaseUserEdit?) {
+        func recorded() -> (String?, BridgeRawReleaseEdit?) {
             (releaseId, edit)
         }
     }
@@ -49,9 +49,6 @@ struct EditMetadataSheetTests {
             seed: seed,
             save: { releaseId, edit in
                 await recorder.record(releaseId, edit)
-            },
-            reset: { _ in
-                seed.edit
             }
         )
         await session.fieldWriter.setField(.albumTitle, "Saved title")
@@ -79,14 +76,12 @@ struct EditMetadataSheetTests {
         let recorder = SavedEditRecorder()
         var seed = PreviewData.releaseEditSeed(trackCount: 2)
         seed.edit.albumTitle = "Original title"
-        let reset = seed.edit
         let session = ReleaseMetadataEditSession(
             releaseId: "release-test",
             seed: seed,
             save: { releaseId, edit in
                 await recorder.record(releaseId, edit)
-            },
-            reset: { _ in reset }
+            }
         )
         let size = NSSize(width: 900, height: 500)
         try await SnapshotTestSupport.withHostedWindow(
@@ -127,18 +122,6 @@ struct EditMetadataSheetTests {
 
             #expect(await recorder.recorded().1?.albumTitle == "Focused title")
         }
-    }
-
-    @MainActor
-    @Test("Direct-entry metadata omits Reset to Source")
-    func directEntryMetadataOmitsReset() {
-        #expect(!sheet(canResetToSource: false).resetButtonIsVisible)
-    }
-
-    @MainActor
-    @Test("source-backed metadata offers Reset to Source")
-    func sourceBackedMetadataOffersReset() {
-        #expect(sheet(canResetToSource: true).resetButtonIsVisible)
     }
 
     @MainActor
@@ -200,12 +183,10 @@ struct EditMetadataSheetTests {
                 )
             ]
         }
-        let reset = seed.edit
         let session = ReleaseMetadataEditSession(
             releaseId: "release-test",
             seed: seed,
-            save: { _, _ in },
-            reset: { _ in reset }
+            save: { _, _ in }
         )
         let size = NSSize(width: width, height: 700)
         return try await SnapshotTestSupport.withHostedWindow(
@@ -234,49 +215,22 @@ struct EditMetadataSheetTests {
             }
         }
     }
-
-    @MainActor
-    private func sheet(canResetToSource: Bool) -> EditMetadataSheet {
-        var seed = PreviewData.releaseEditSeed(trackCount: 2)
-        seed.canResetToSource = canResetToSource
-        return EditMetadataSheet(
-            releaseId: "release-test",
-            seed: seed,
-            onSave: { _ in },
-            onReset: {
-                seed.edit
-            },
-            onSaved: {},
-            onCancel: {}
-        )
-    }
 }
 
 extension EditMetadataSheetTests {
     @MainActor
-    @Test("Reset replaces edited values and cancel restores the saved form")
-    func resetReplacesEditsAndCancelRestoresSavedForm() async throws {
+    @Test("cancel restores the saved form")
+    func cancelRestoresSavedForm() async throws {
         let seed = PreviewData.releaseEditSeed(trackCount: 2)
-        var source = seed.edit
-        source.albumTitle = "Source title"
-        source.pressing.facts = PreviewData.pressingFacts()
-        let sourceForm = source
         let session = ReleaseMetadataEditSession(
             releaseId: "release-test",
             seed: seed,
-            save: { _, _ in },
-            reset: { _ in sourceForm }
+            save: { _, _ in }
         )
         await session.fieldWriter.setField(.albumTitle, "Edited title")
         await session.fieldWriter.setPressingFact(
             .area(area: .country(code: "JP"))
         )
-
-        session.resetToSource()
-        try await Wait.until { !session.isBusy }
-        #expect(!session.isBusy)
-        #expect(session.form.albumTitle == "Source title")
-        #expect(session.form.pressing.facts.area == nil)
         #expect(session.hasChanges)
 
         session.cancelChanges()

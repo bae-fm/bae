@@ -299,24 +299,27 @@ extension AlbumDetailView {
         let releaseEditor = releaseEditor
         Task {
             do {
-                let seed = try await releaseEditor.seedReleaseEdit(
-                    releaseId
-                )
+                let seed = try await releaseEditor.openReleaseEdit(releaseId)
                 uiStore.presentModal {
                     EditMetadataSheet(
                         releaseId: releaseId,
                         seed: seed,
                         onSave: { edit in
-                            try await releaseEditor
-                                .updateReleaseMetadataUserEdit(releaseId, edit)
-                        },
-                        onReset: {
-                            try await releaseEditor.resetReleaseEditToSource(
-                                releaseId
+                            _ = try await releaseEditor.saveReleaseEdit(
+                                releaseId,
+                                edit,
+                                nil
                             )
                         },
                         onSaved: { uiStore.dismissModal() },
-                        onCancel: { uiStore.dismissModal() },
+                        onCancel: {
+                            uiStore.dismissModal()
+                            Task {
+                                try? await releaseEditor.discardReleaseEdit(
+                                    releaseId
+                                )
+                            }
+                        },
                     )
                 }
             }

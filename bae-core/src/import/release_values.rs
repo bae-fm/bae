@@ -10,7 +10,7 @@
 
 use crate::import::source_release::{PartDirection, SourceWork, SourceWorkEvent};
 use crate::import::{
-    ArtistCredit, AudioFile, CandidateDraft, CandidateTrack, Credited, CreditedRole, GraphWork,
+    ArtistCredit, AudioFile, CandidateDraft, Credited, CreditedRole, GraphWork,
     RawPressingEdit, RawTrackEdit, ReleaseUserEdit, SourceCredit, TrackArtistAssignments,
     TrackUserEdit, WorkGraph, WorkPart,
 };
@@ -100,20 +100,44 @@ impl ReleaseValues {
     /// The reader laid the source out against these units, so they are as
     /// many as its tracks.
     pub(crate) fn candidate_draft(self, units: Vec<AudioFile>) -> CandidateDraft {
+        let tracks = units
+            .into_iter()
+            .enumerate()
+            .map(|(position, unit)| (crate::import::pane::candidate_track_id(position), unit))
+            .collect();
+        self.draft(tracks)
+    }
+
+    /// Every value, laid onto a library release's tracks in order: track `i`
+    /// is track row `i`.
+    pub(crate) fn library_draft(self, track_ids: Vec<String>) -> crate::import::LibraryDraft {
+        let tracks = track_ids
+            .into_iter()
+            .map(|id| (id.clone(), crate::import::LibraryTrack(id)))
+            .collect();
+        self.draft(tracks)
+    }
+
+    /// Every value, laid onto `tracks` in order: each the draft row identity
+    /// and what that track is bound to. The reader laid the source out
+    /// against these, so they are as many as its tracks.
+    fn draft<Binding>(
+        self,
+        tracks: Vec<(String, Binding)>,
+    ) -> crate::import::ReleaseDraft<Binding> {
         assert_eq!(
             self.tracks.len(),
-            units.len(),
-            "a reading lays one track on each audio unit"
+            tracks.len(),
+            "a reading lays one track on each track it was read against"
         );
         let album_artist_assignments = self.album_assignments();
         let tracks = self
             .tracks
             .into_iter()
-            .zip(units)
-            .enumerate()
-            .map(|(position, (track, file))| CandidateTrack {
+            .zip(tracks)
+            .map(|(track, (id, file))| crate::import::DraftTrack {
                 edit: RawTrackEdit {
-                    id: crate::import::pane::candidate_track_id(position),
+                    id,
                     title: track.title,
                     artist_assignments: track.credits.assignments(),
                     file,
@@ -124,7 +148,7 @@ impl ReleaseValues {
                 works: track.works,
             })
             .collect();
-        CandidateDraft {
+        crate::import::ReleaseDraft {
             album_title: self.album_title,
             album_artist_assignments,
             album_year: self
@@ -281,7 +305,7 @@ pub(crate) fn committed_rows(values: ReleaseValues) -> crate::import::ReleaseRow
             .with_timezone(&chrono::Utc)
             .into(),
     );
-    crate::import::assemble::assemble_release(&draft, None, &clock, &coven::SequentialIds::new())
+    crate::import::assemble::assemble_release(&draft, &clock, &coven::SequentialIds::new())
         .expect("the reading's draft commits")
         .parsed
 }

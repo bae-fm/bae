@@ -602,8 +602,9 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
         ],
         "the row names every catalog the pick claims, each with its own page"
     );
-    assert!(
-        records[0].reads_draft() && !records[1].reads_draft(),
-        "only the release the draft was read from reads it"
+    assert_eq!(
+        records[0].catalog(),
+        crate::import::Catalog::MusicBrainz,
+        "the release the draft was read from is the list's first"
     );
 }

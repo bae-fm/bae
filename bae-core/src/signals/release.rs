@@ -289,7 +289,6 @@ mod tests {
             album_id: album.id.clone(),
             release_name: None,
             pressing: crate::pressing::Pressing::blank(),
-            draft_from_tags: true,
 
             source_folder_name: None,
             content_hash: None,
@@ -424,7 +423,6 @@ mod tests {
             album_id: album.id.clone(),
             release_name: None,
             pressing: crate::pressing::Pressing::blank(),
-            draft_from_tags: true,
 
             source_folder_name: None,
             content_hash: None,

@@ -376,10 +376,8 @@ pub(super) fn get_release_records_on(
 ) -> Result<Vec<crate::import::ReleaseRecord>, DbError> {
     let mut records = sql.query(
         r#"
-            SELECT rr.catalog, rr.kind, rr.key, rr.album_key,
-                   rr.catalog IS r.draft_catalog AS reads_draft
+            SELECT rr.catalog, rr.kind, rr.key, rr.album_key
             FROM release_records rr
-            JOIN releases r ON r.id = rr.release_id
             WHERE rr.release_id = ?
             "#,
         params![release_id],
@@ -392,7 +390,6 @@ pub(super) fn get_release_records_on(
                 "pressing" => Ok(crate::import::ReleaseRecord::new(
                     &identity,
                     row.get("album_key")?,
-                    row.get("reads_draft")?,
                 )),
                 "album" => Ok(crate::import::ReleaseRecord::album(&identity)),
                 kind => Err(rusqlite::Error::FromSqlConversionFailure(
@@ -565,7 +562,6 @@ pub(super) fn row_to_release(row: &Row) -> rusqlite::Result<DbRelease> {
             barcodes: super::pressing_columns::read_barcodes(row, "barcodes")?,
             facts: super::pressing_columns::read_facts(row, "")?,
         },
-        draft_from_tags: row.get("draft_from_tags")?,
         source_folder_name: row.get("source_folder_name")?,
         content_hash: row.get("content_hash")?,
         album_loudness_lufs: row.get("album_loudness_lufs")?,

@@ -424,24 +424,6 @@ struct FindOnlinePressingPickTests {
         )
     }
 
-    /// The re-identify footer commits the same claim, only in the shape a
-    /// library release takes.
-    @Test("the reseed says the same thing as the pick")
-    func theReseedSaysTheSameThing() throws {
-        let bridge = PreviewData.exactPressings[1]
-        let pressing = try #require(Pressing(bridge: bridge))
-
-        let link = pressing.link
-        #expect(
-            pressing.reseed
-                == .externalRelease(
-                    releaseId: link.record.key,
-                    source: link.record.catalog,
-                    partners: link.partners
-                )
-        )
-    }
-
     /// A pressing only one source lists claims only that source.
     @Test("an unpaired row carries no partner")
     func anUnpairedRowCarriesNoPartner() throws {

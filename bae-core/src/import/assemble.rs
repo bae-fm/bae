@@ -13,8 +13,8 @@ use crate::db::{
     DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart,
 };
 use crate::import::{
-    ArtistAssignment, AudioFile, CandidateDraft, Catalog, ImportError, MetadataProvenance,
-    ReleaseRows, WorkGraphRows, TrackArtistAssignments,
+    ArtistAssignment, AudioFile, CandidateDraft, Catalog, ImportError, ReleaseDraft, ReleaseRows,
+    TrackArtistAssignments, TrackBinding, WorkGraphRows,
 };
 use chrono::{DateTime, Utc};
 use coven::{Clock, IdSource};
@@ -22,10 +22,10 @@ use std::collections::{HashMap, HashSet};
 
 /// The rows one import writes, before its artists are resolved and its
 /// tracks bound to their audio.
-pub(crate) struct AssembledRelease {
+pub(crate) struct AssembledRelease<Binding = AudioFile> {
     pub parsed: ReleaseRows,
-    /// Each track's audio, in the order of `parsed.tracks`.
-    pub bindings: Vec<AudioFile>,
+    /// What each track is bound to, in the order of `parsed.tracks`.
+    pub bindings: Vec<Binding>,
     /// The artist rows that are library artists a person picked; the commit
     /// links them as they are.
     pub picked: HashSet<String>,
@@ -37,10 +37,33 @@ pub(crate) struct AssembledRelease {
 /// artist alone is a compilation.
 pub(crate) fn assemble_release(
     draft: &CandidateDraft,
-    provenance: Option<&MetadataProvenance>,
     clock: &dyn Clock,
     ids: &dyn IdSource,
 ) -> Result<AssembledRelease, ImportError> {
+    let keys = RowKeys {
+        album_id: ids.new_id().to_string(),
+        release_id: ids.new_id().to_string(),
+        track_id: &|_: &AudioFile| ids.new_id().to_string(),
+    };
+    assemble_rows(draft, &keys, clock, ids)
+}
+
+/// The ids the rows a draft makes are written under: fresh ones for an
+/// import, a library release's own for its edit.
+pub(crate) struct RowKeys<'a, Binding> {
+    pub album_id: String,
+    pub release_id: String,
+    /// The id of the track row a draft track bound to this makes.
+    pub track_id: &'a dyn Fn(&Binding) -> String,
+}
+
+/// The rows `draft` makes under `keys`; see [`assemble_release`].
+pub(crate) fn assemble_rows<Binding: TrackBinding>(
+    draft: &ReleaseDraft<Binding>,
+    keys: &RowKeys<'_, Binding>,
+    clock: &dyn Clock,
+    ids: &dyn IdSource,
+) -> Result<AssembledRelease<Binding>, ImportError> {
     let edit = draft.release_edit().shape()?;
     let now = DateTime::<Utc>::from(clock.now());
     let mut artists = ArtistRows::new(ids, now);
@@ -54,7 +77,7 @@ pub(crate) fn assemble_release(
         return Err(crate::import::EditValidationError::NoAlbumArtist.into());
     }
     let album = DbAlbum {
-        id: ids.new_id().to_string(),
+        id: keys.album_id.clone(),
         title: edit.album_title.clone(),
         year: edit.album_year,
         is_compilation: ArtistAssignment::credit_a_compilation(&edit.album_artist_assignments),
@@ -72,11 +95,10 @@ pub(crate) fn assemble_release(
         .collect();
 
     let release = DbRelease {
-        id: ids.new_id().to_string(),
+        id: keys.release_id.clone(),
         album_id: album.id.clone(),
         release_name: None,
         pressing: edit.pressing.clone(),
-        draft_from_tags: matches!(provenance, Some(MetadataProvenance::FileMetadata)),
         // The folder's name and hash are the candidate's, and the loudness is
         // measured from the audio; `run_import` stamps them on.
         source_folder_name: None,
@@ -126,7 +148,7 @@ pub(crate) fn assemble_release(
     let mut track_works = Vec::new();
     for (track, shaped) in draft.tracks.iter().zip(&edit.tracks) {
         let row = crate::import::TrackRow {
-            id: ids.new_id().to_string(),
+            id: (keys.track_id)(&track.edit.file),
             release_id: release.id.clone(),
             title: shaped.title.clone(),
             medium_id: mediums
@@ -263,7 +285,11 @@ struct WorkRows {
 /// Each work's composers are numbered in the work's order, and each part in
 /// its parent's: one composer credit or one part of one work is the same row
 /// on every device that imports it.
-fn work_rows(draft: &CandidateDraft, artists: &mut ArtistRows<'_>, now: DateTime<Utc>) -> WorkRows {
+fn work_rows<Binding>(
+    draft: &ReleaseDraft<Binding>,
+    artists: &mut ArtistRows<'_>,
+    now: DateTime<Utc>,
+) -> WorkRows {
     let mut rows = WorkRows {
         works: Vec::with_capacity(draft.works.works.len()),
         work_artists: Vec::new(),

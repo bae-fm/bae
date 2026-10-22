@@ -272,14 +272,10 @@ mod tests {
         vec![
             crate::import::ReleaseRecord::new(
                 &crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
-                None,
-                true,
-            ),
+                None),
             crate::import::ReleaseRecord::new(
                 &crate::import::MetadataRef::new(Catalog::Discogs, "discogs-1".to_string()),
-                None,
-                false,
-            ),
+                None),
         ]
     }
 

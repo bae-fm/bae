@@ -18,9 +18,8 @@ struct EditMetadataSheet: View {
         seed: BridgeReleaseEditSeed,
         onSave:
             @escaping @Sendable (
-                BridgeReleaseUserEdit
+                BridgeRawReleaseEdit
             ) async throws -> Void,
-        onReset: @escaping @Sendable () async throws -> BridgeRawReleaseEdit,
         onSaved: @escaping @MainActor @Sendable () -> Void,
         onCancel: @escaping @MainActor @Sendable () -> Void
     ) {
@@ -30,8 +29,7 @@ struct EditMetadataSheet: View {
             initialValue: ReleaseMetadataEditSession(
                 releaseId: releaseId,
                 seed: seed,
-                save: { _, edit in try await onSave(edit) },
-                reset: { _ in try await onReset() }
+                save: { _, edit in try await onSave(edit) }
             )
         )
     }
@@ -68,7 +66,7 @@ struct EditMetadataSheet: View {
                             session.releaseId,
                             selection
                         )
-                        let seed = try await releaseEditor.seedReleaseEdit(
+                        let seed = try await releaseEditor.openReleaseEdit(
                             session.releaseId
                         )
                         session.updateCover(seed.cover)
@@ -100,10 +98,6 @@ struct EditMetadataSheet: View {
         )
     }
 
-    var resetButtonIsVisible: Bool {
-        session.canResetToSource
-    }
-
     private var header: some View {
         HStack {
             Text("Edit Metadata").themeText(.heading)
@@ -126,14 +120,10 @@ struct EditMetadataSheet: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             HStack(spacing: ThemeSpace.group) {
-                Button("Reset to Source") { session.resetToSource() }
-                    .disabled(session.isBusy)
-                    .opacity(resetButtonIsVisible ? 1 : 0)
-                    .allowsHitTesting(resetButtonIsVisible)
                 Spacer()
                 if session.isBusy {
                     ProgressView().controlSize(.small)
-                    Text(session.isSaving ? "Saving..." : "Resetting...")
+                    Text("Saving...")
                         .themeText(.body)
                         .foregroundStyle(.secondary)
                 }
@@ -161,9 +151,6 @@ struct EditMetadataSheet: View {
             releaseId: "release-preview",
             seed: seed,
             onSave: { _ in },
-            onReset: {
-                seed.edit
-            },
             onSaved: {},
             onCancel: {}
         )

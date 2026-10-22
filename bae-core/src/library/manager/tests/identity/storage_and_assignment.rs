@@ -48,17 +48,13 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
 fn mb_identity(group: &str, release: &str) -> crate::import::ReleaseRecord {
     crate::import::ReleaseRecord::new(
         &crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, release),
-        Some(group.to_string()),
-        true,
-    )
+        Some(group.to_string()))
 }
 
 fn discogs_identity(group: &str, release: &str) -> crate::import::ReleaseRecord {
     crate::import::ReleaseRecord::new(
         &crate::import::MetadataRef::new(crate::import::Catalog::Discogs, release),
-        Some(group.to_string()),
-        false,
-    )
+        Some(group.to_string()))
 }
 
 /// Insert `album`, then one release under it per `(group, release)` MusicBrainz
@@ -100,7 +96,7 @@ async fn set_records_to_file_metadata_moves_release_to_fresh_album() {
         .unwrap();
 
     manager
-        .set_records(&release.id, vec![], true)
+        .set_records(&release.id, vec![])
         .await
         .unwrap();
 
@@ -130,13 +126,6 @@ async fn set_records_to_file_metadata_moves_release_to_fresh_album() {
         .await
         .unwrap();
     assert!(identities.is_empty());
-    let updated = manager
-        .database
-        .find_release_by_id(&release.id)
-        .await
-        .unwrap()
-        .unwrap();
-    assert!(updated.draft_from_tags);
 }
 
 #[tokio::test]
@@ -152,7 +141,7 @@ async fn set_records_replaces_rows_when_the_new_records_fit_the_current_album() 
     // Re-point release1 at another pressing within g1. The new row still
     // agrees with release2's group, so release1 stays put.
     manager
-        .set_records(&release1.id, vec![mb_identity("g1", "mb-rel-99")], false)
+        .set_records(&release1.id, vec![mb_identity("g1", "mb-rel-99")])
         .await
         .unwrap();
 
@@ -176,13 +165,6 @@ async fn set_records_replaces_rows_when_the_new_records_fit_the_current_album() 
     );
     assert_eq!(identities[0].key(), "mb-rel-99");
 
-    let updated = manager
-        .database
-        .find_release_by_id(&release1.id)
-        .await
-        .unwrap()
-        .unwrap();
-    assert!(!updated.draft_from_tags);
 
     // Source album still holds both releases.
     let siblings = manager
@@ -211,7 +193,7 @@ async fn set_records_creates_a_new_album_when_no_existing_album_fits() {
     // album (album_a) holds release_beta on g1, so it can't stay.
     // No other album holds g2 either → fresh album.
     manager
-        .set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")], false)
+        .set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")])
         .await
         .unwrap();
 
@@ -253,7 +235,6 @@ async fn set_records_moves_the_release_to_the_matching_album() {
         .set_records(
             &release_alpha.id,
             vec![mb_identity("g2", "mb-rel-pressing")],
-            false,
         )
         .await
         .unwrap();
@@ -290,7 +271,7 @@ async fn set_records_keeps_the_vacated_album_when_other_releases_remain() {
     let release_beta = &releases[1];
 
     manager
-        .set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")], false)
+        .set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")])
         .await
         .unwrap();
 
@@ -362,7 +343,6 @@ async fn set_records_does_not_touch_metadata_columns() {
         .set_records(
             &release.id,
             vec![discogs_identity("dg1", "dg-rel-1")],
-            false,
         )
         .await
         .unwrap();
@@ -442,7 +422,7 @@ async fn set_records_to_a_fresh_album_preserves_album_artists() {
     // release_alpha takes a different group → can't stay in album_a
     // (g1 disagrees with g2), no other album holds g2 → fresh album.
     manager
-        .set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")], false)
+        .set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")])
         .await
         .unwrap();
 
@@ -505,7 +485,7 @@ async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
         .unwrap();
 
     manager
-        .set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")], false)
+        .set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")])
         .await
         .unwrap();
 
@@ -570,7 +550,6 @@ async fn set_records_atomic_rechecks_the_source_count_inside_the_transaction() {
         .set_records_atomic(crate::db::RecordsChange {
             release_id: release_alpha.id.clone(),
             records: vec![mb_identity("g2", "g2-rel")],
-            draft_from_tags: false,
             current_album_id: album_a.id.clone(),
             target_album_id: fresh_album.id.clone(),
             new_album: Some(fresh_album.clone()),
@@ -632,10 +611,8 @@ async fn album_records_merge_albums_but_never_match_pressings() {
     // album the album record "42" files.
     let pressing = ReleaseRecord::new(
         &MetadataRef::new(Catalog::Discogs, "42"),
-        Some("42".into()),
-        true,
-    );
-    let ungrouped = ReleaseRecord::new(&MetadataRef::new(Catalog::Discogs, "42"), None, true);
+        Some("42".into()));
+    let ungrouped = ReleaseRecord::new(&MetadataRef::new(Catalog::Discogs, "42"), None);
     assert_eq!(name(vec![ungrouped.clone()]).await, None);
     assert_eq!(name(vec![pressing.clone()]).await, Some(album.id.clone()));
     let checks = [
@@ -667,7 +644,7 @@ async fn album_records_merge_albums_but_never_match_pressings() {
         .await
         .unwrap();
     manager
-        .set_records(&another_release.id, vec![pressing.clone()], false)
+        .set_records(&another_release.id, vec![pressing.clone()])
         .await
         .unwrap();
     assert_eq!(
@@ -692,9 +669,7 @@ async fn ungrouped_pressings_do_not_invent_album_matches() {
     manager.database.insert_release(&release).await.unwrap();
     let records = [ReleaseRecord::new(
         &MetadataRef::new(Catalog::Discogs, "42"),
-        None,
-        true,
-    )];
+        None)];
     manager
         .database
         .insert_release_records(&release.id, &records)

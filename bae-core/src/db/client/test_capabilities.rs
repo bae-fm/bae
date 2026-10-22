@@ -1,6 +1,37 @@
 use super::*;
 
 impl Database {
+    /// Run `statement` with `params` in one write: how a test seeds rows no
+    /// one call writes on its own.
+    pub async fn execute_for_test(
+        &self,
+        statement: &str,
+        params: Vec<String>,
+    ) -> Result<(), DbError> {
+        let statement = statement.to_string();
+        self.call_sql(move |sql| {
+            sql.execute(&statement, rusqlite::params_from_iter(params.iter()))?;
+            Ok(())
+        })
+        .await
+    }
+
+    /// How many rows of `table` have `column` equal to `value`.
+    pub async fn count_rows_for_test(
+        &self,
+        table: &str,
+        column: &str,
+        value: &str,
+    ) -> Result<i64, DbError> {
+        let query = format!("SELECT COUNT(*) FROM \"{table}\" WHERE \"{column}\" = ?");
+        let value = value.to_string();
+        self.read(move |sql| {
+            sql.query_row(&query, rusqlite::params![value], |row| row.get(0))
+                .map_err(DbError::from)
+        })
+        .await
+    }
+
     pub fn store_id_for_test(&self) -> coven::StoreId {
         self.store_id()
     }

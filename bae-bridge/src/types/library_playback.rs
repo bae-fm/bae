@@ -420,60 +420,6 @@ pub struct BridgeRelease {
     pub cover: Option<BridgeImageRef>,
 }
 
-/// A new metadata source for a release already in the library. Mirrors
-/// `bae_core::import::ReleaseReseed`.
-#[cfg(feature = "desktop")]
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeReleaseReseed {
-    ExternalRelease {
-        release_id: String,
-        source: BridgeCatalog,
-        /// The other sources' releases the picked pressing paired with.
-        partners: Vec<BridgeMetadataRef>,
-    },
-    FileMetadata,
-}
-
-#[cfg(feature = "desktop")]
-impl BridgeReleaseReseed {
-    pub fn into_core(self) -> bae_core::import::ReleaseReseed {
-        match self {
-            Self::ExternalRelease {
-                release_id,
-                source,
-                partners,
-            } => bae_core::import::ReleaseReseed::ExternalRelease {
-                release_ref: bae_core::import::MetadataRef::new(source.into_core(), release_id),
-                partners: partners
-                    .into_iter()
-                    .map(BridgeMetadataRef::into_core)
-                    .collect(),
-            },
-            Self::FileMetadata => bae_core::import::ReleaseReseed::FileMetadata,
-        }
-    }
-
-    /// The claim core recorded for a candidate — the direction `into_core`
-    /// doesn't cover, since a pick's claim is settled in core and travels
-    /// outward.
-    pub fn from_core(choice: bae_core::import::ReleaseReseed) -> Self {
-        match choice {
-            bae_core::import::ReleaseReseed::ExternalRelease {
-                release_ref,
-                partners,
-            } => Self::ExternalRelease {
-                release_id: release_ref.key,
-                source: BridgeCatalog::from_core(release_ref.catalog),
-                partners: partners
-                    .into_iter()
-                    .map(BridgeMetadataRef::from_core)
-                    .collect(),
-            },
-            bae_core::import::ReleaseReseed::FileMetadata => Self::FileMetadata,
-        }
-    }
-}
-
 /// A track group's side discriminant — the header the UI renders ("Side A" /
 /// "Disc 2"). `Flat` means no header (single-disc digital).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]

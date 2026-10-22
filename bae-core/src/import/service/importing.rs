@@ -268,7 +268,6 @@ impl ImportService {
             }
             .into());
         }
-        let metadata_provenance = preparation.metadata_provenance;
         let release_link = preparation.release_link;
         let selected_cover = preparation.cover;
         let mut prepared_assets = preparation.assets;
@@ -300,7 +299,7 @@ impl ImportService {
 
         let records = match &release_link {
             Some(link) => {
-                linked_records(library_manager, link, metadata_provenance.as_ref()).await?
+                linked_records(library_manager, link).await?
             }
             None => Vec::new(),
         };
@@ -308,7 +307,6 @@ impl ImportService {
         // is read from its source again.
         let assembled = crate::import::assemble::assemble_release(
             &preparation.draft,
-            metadata_provenance.as_ref(),
             self.clock.as_ref(),
             self.ids.as_ref(),
         )?;
@@ -816,16 +814,12 @@ impl ImportService {
 
 /// The records an import of a candidate linked to `link` stores.
 ///
-/// A linked album is stored as each catalog's album record, none of which
-/// the draft is read from. A linked pressing is stored as every catalog its
-/// stored releases describe it in; the linked primary's record reads the
-/// draft only while the draft is still read from that release, and a draft
-/// re-read from the files or from another release makes none of them the
-/// draft's source.
+/// A linked album is stored as each catalog's album record. A linked
+/// pressing is stored as every catalog its stored releases describe it in,
+/// the linked primary's own record first.
 async fn linked_records(
     library_manager: &LibraryManager,
     link: &crate::import::ReleaseLink,
-    provenance: Option<&crate::import::MetadataProvenance>,
 ) -> Result<Vec<crate::import::ReleaseRecord>, crate::import::ImportError> {
     let link = match link {
         crate::import::ReleaseLink::Album(album) => return Ok(album.records()),
@@ -849,17 +843,5 @@ async fn linked_records(
     let (primary, partners) = claimed
         .split_first()
         .expect("a link claims at least its primary");
-    let mut records = records_for_commit(primary, partners);
-    let read_from_link = provenance
-        == Some(&crate::import::MetadataProvenance::ExternalRelease {
-            record: link.record.clone(),
-        });
-    if !read_from_link {
-        for record in &mut records {
-            if let crate::import::ReleaseRecord::Pressing { reads_draft, .. } = record {
-                *reads_draft = false;
-            }
-        }
-    }
-    Ok(records)
+    Ok(records_for_commit(primary, partners))
 }

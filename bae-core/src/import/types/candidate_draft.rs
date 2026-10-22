@@ -10,12 +10,13 @@
 
 use super::*;
 
-/// A candidate's draft: the editor's album fields, one [`CandidateTrack`] per
-/// audio unit of the folder in the folder's order, and the release-level
-/// values the source stated. Track `i` plays unit `i`; the folder's order, not
-/// an edit, decides which audio a track plays.
+/// A release's draft: the editor's album fields, one [`DraftTrack`] per
+/// track, and the release-level values the source stated. Its tracks are
+/// bound to what they play by `Binding`: an import candidate's to its audio
+/// units (track `i` plays unit `i`; the folder's order, not an edit, decides
+/// which audio a track plays), a library release's to its track rows.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CandidateDraft {
+pub struct ReleaseDraft<Binding> {
     pub album_title: String,
     pub album_artist_assignments: Vec<Credited>,
     pub album_year: String,
@@ -23,7 +24,7 @@ pub struct CandidateDraft {
     /// The mediums the folder's audio is on, in order, as the source read them.
     /// Not edited: only applying a source writes them.
     pub mediums: Vec<crate::mediums::ReleaseMedium>,
-    pub tracks: Vec<CandidateTrack>,
+    pub tracks: Vec<DraftTrack<Binding>>,
     /// Who the source credits in a role on the release itself rather than on
     /// one track.
     pub release_roles: Vec<CreditedRole>,
@@ -32,10 +33,41 @@ pub struct CandidateDraft {
     pub works: WorkGraph,
 }
 
-/// A track of the candidate's draft. Its audio and its place are required.
+/// An import candidate's draft: each track bound to the audio unit it plays.
+pub type CandidateDraft = ReleaseDraft<AudioFile>;
+
+/// A library release's draft: each track bound to its track row's id.
+pub type LibraryDraft = ReleaseDraft<LibraryTrack>;
+
+/// The track row a library draft's track is.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CandidateTrack {
-    pub edit: RawTrackEdit<AudioFile>,
+pub struct LibraryTrack(pub String);
+
+/// What a draft's track is bound to, as the editor's form carries it: the
+/// audio an import track plays, nothing for a library track.
+pub trait TrackBinding: Clone {
+    fn form_file(&self) -> Option<AudioFile>;
+}
+
+impl TrackBinding for AudioFile {
+    fn form_file(&self) -> Option<AudioFile> {
+        Some(self.clone())
+    }
+}
+
+impl TrackBinding for LibraryTrack {
+    fn form_file(&self) -> Option<AudioFile> {
+        None
+    }
+}
+
+/// An import candidate's track.
+pub type CandidateTrack = DraftTrack<AudioFile>;
+
+/// A track of a draft. What it is bound to and its place are required.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DraftTrack<Binding> {
+    pub edit: RawTrackEdit<Binding>,
     /// Where it sits on the draft's mediums, as the source read it. Not
     /// edited: only applying a source writes it.
     pub place: crate::mediums::TrackPlace,
@@ -121,14 +153,14 @@ impl WorkGraph {
     }
 }
 
-impl RawTrackEdit<AudioFile> {
+impl<Binding: TrackBinding> RawTrackEdit<Binding> {
     /// Cross the editor boundary without weakening the stored draft's shape.
     pub fn as_edit(&self) -> RawTrackEdit {
         RawTrackEdit {
             id: self.id.clone(),
             title: self.title.clone(),
             artist_assignments: self.artist_assignments.clone(),
-            file: Some(self.file.clone()),
+            file: self.file.form_file(),
         }
     }
 }
@@ -148,7 +180,7 @@ impl CandidateTrack {
     }
 }
 
-impl CandidateDraft {
+impl<Binding: TrackBinding> ReleaseDraft<Binding> {
     /// The editor's form: the draft's editable fields.
     pub fn release_edit(&self) -> RawReleaseEdit {
         RawReleaseEdit {
@@ -198,7 +230,7 @@ impl CandidateDraft {
 
     /// This draft with `tracks` in place of its own, and only the works those
     /// tracks perform.
-    pub fn with_tracks(&self, tracks: Vec<CandidateTrack>) -> Self {
+    pub fn with_tracks(&self, tracks: Vec<DraftTrack<Binding>>) -> Self {
         let works = self.works.keeping_performed(
             tracks
                 .iter()

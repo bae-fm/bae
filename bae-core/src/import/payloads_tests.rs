@@ -322,7 +322,7 @@ fn a_musicbrainz_release_records_every_catalog_it_links_out_to() {
     );
 
     let records = payloads.extract().expect("the stored documents read").records();
-    let described: Vec<(Catalog, &str, Option<String>, String, bool)> = records
+    let described: Vec<(Catalog, &str, Option<String>, String)> = records
         .iter()
         .map(|record| {
             (
@@ -330,7 +330,6 @@ fn a_musicbrainz_release_records_every_catalog_it_links_out_to() {
                 record.key(),
                 record.album_ref().map(|album| album.key),
                 record.url(),
-                record.reads_draft(),
             )
         })
         .collect();
@@ -342,42 +341,36 @@ fn a_musicbrainz_release_records_every_catalog_it_links_out_to() {
                 "mb-release",
                 Some("mb-group".to_owned()),
                 "https://musicbrainz.org/release/mb-release".to_owned(),
-                true,
             ),
             (
                 Catalog::Discogs,
                 "4242",
                 None,
                 "https://www.discogs.com/release/4242".to_owned(),
-                false,
             ),
             (
                 Catalog::AllMusic,
                 "mw0000424242",
                 Some("mw0000424242".to_owned()),
                 "https://www.allmusic.com/album/mw0000424242".to_owned(),
-                false,
             ),
             (
                 Catalog::Bandcamp,
                 "artist-name.bandcamp.com/album/album-title",
                 Some("artist-name.bandcamp.com/album/album-title".to_owned()),
                 "https://artist-name.bandcamp.com/album/album-title".to_owned(),
-                false,
             ),
             (
                 Catalog::RateYourMusic,
                 "album/artist-name/album-title",
                 Some("album/artist-name/album-title".to_owned()),
                 "https://rateyourmusic.com/release/album/artist-name/album-title".to_owned(),
-                false,
             ),
             (
                 Catalog::Wikidata,
                 "Q424242",
                 Some("Q424242".to_owned()),
                 "https://www.wikidata.org/wiki/Q424242".to_owned(),
-                false,
             ),
         ],
         "a catalog that groups nothing files every release as its own group"
@@ -598,7 +591,6 @@ fn a_partner_outranks_what_the_primary_says_about_its_catalog() {
 
     assert_eq!(records.len(), 2);
     assert_eq!(records[0].catalog(), Catalog::MusicBrainz);
-    assert!(records[0].reads_draft());
     assert_eq!(records[1].catalog(), Catalog::Discogs);
     assert_eq!(
         records[1].key(),
@@ -609,7 +601,6 @@ fn a_partner_outranks_what_the_primary_says_about_its_catalog() {
         records[1].album_ref().map(|album| album.key),
         Some("909090".to_owned())
     );
-    assert!(!records[1].reads_draft());
 }
 
 async fn test_database() -> (Database, tempfile::TempDir) {

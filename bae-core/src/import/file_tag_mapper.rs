@@ -16,18 +16,23 @@
 //! release media, so the pressing's media stay unstated.
 
 use super::file_tag_snapshot::{
-    extract_file_tag_snapshot, non_empty, years_in_date, FileTagFact, FileTagSnapshot, FileTags,
-    LoftyFileTagReader,
+    non_empty, years_in_date, FileTagFact, FileTagSnapshot, FileTags,
 };
+#[cfg(test)]
+use super::file_tag_snapshot::{extract_file_tag_snapshot, LoftyFileTagReader};
 use super::release_values::{ReleaseValues, TrackCredits, TrackValues};
 use crate::cue_flac::CueSheet;
 use crate::identify::row_facts::StatedYears;
-use crate::import::folder_scanner::{CategorizedFiles, ScannedFile};
+use crate::import::folder_scanner::CategorizedFiles;
+#[cfg(test)]
+use crate::import::folder_scanner::ScannedFile;
 use crate::import::{ArtistCredit, ImportError};
 use crate::pressing::Pressing;
 #[cfg(test)]
 use crate::util::content_type::ContentType;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(test)]
+use std::path::PathBuf;
 
 /// Read the embedded tags of a rip's audio files.
 ///
@@ -47,6 +52,10 @@ use std::path::{Path, PathBuf};
 ///
 /// Errors only when `audio_files` is empty (an album has at least one track) or
 /// a file fails to open or have its tags read.
+///
+/// The reader's tests reach it through here, with real tagged files; an import
+/// reads a candidate's stored tag reading ([`file_metadata_values`]).
+#[cfg(test)]
 pub(crate) fn read_file_tags(
     audio_files: &[PathBuf],
     folder_name: Option<&str>,

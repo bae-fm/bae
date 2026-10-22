@@ -441,26 +441,32 @@ impl Automation {
         ))
     }
 
+    /// Re-identify a library release as the catalog release `pressing`
+    /// names: apply it in an edit session and save it as applied — every
+    /// value, the records, and the album they name.
     pub async fn reidentify_release(
         &self,
         release_id: String,
-        choice: AutomationReleaseReseed,
+        pressing: AutomationPressingLink,
     ) -> Result<(), AutomationError> {
-        self.services
-            .re_identify_release(&release_id, release_reseed(choice))
-            .await?;
+        let link = pressing.into_core();
+        let applied = self
+            .services
+            .apply_release_edit_catalog(&release_id, &link)
+            .await;
+        let saved = match applied {
+            Ok(seed) => {
+                self.services
+                    .save_release_edit(&release_id, &seed.edit, None)
+                    .await
+            }
+            Err(error) => Err(error),
+        };
+        if saved.is_err() {
+            self.services.discard_release_edit(&release_id);
+        }
+        saved?;
         Ok(())
-    }
-
-    pub async fn reset_release_metadata(
-        &self,
-        release_id: String,
-    ) -> Result<AutomationReleaseUserEdit, AutomationError> {
-        self.services
-            .reset_metadata_to_source(&release_id)
-            .await
-            .map(AutomationReleaseUserEdit::from_core)
-            .map_err(AutomationError::from)
     }
 
     pub async fn update_release_metadata(
@@ -618,13 +624,9 @@ impl Automation {
             }
             AutomationTool::ReleaseReidentify => {
                 let input: ReleaseReidentifyInput = from_value(args)?;
-                self.reidentify_release(input.release_id, input.choice)
+                self.reidentify_release(input.release_id, input.pressing)
                     .await?;
                 to_value(EmptyResponse {})
-            }
-            AutomationTool::ReleaseMetadataReset => {
-                let input: ReleaseIdInput = from_value(args)?;
-                to_value(self.reset_release_metadata(input.release_id).await?)
             }
             AutomationTool::ReleaseMetadataUpdate => {
                 let input: ReleaseMetadataUpdateInput = from_value(args)?;

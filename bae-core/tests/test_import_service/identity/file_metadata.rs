@@ -54,7 +54,6 @@ async fn file_metadata_import_seeds_from_the_folder_and_writes_no_identity() {
     let (release_id, album_id) = support::wait_for_import_complete(&mut progress_rx).await;
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
-    assert!(release.draft_from_tags);
     // One year the tags state is the album's; it names no pressing.
     assert_eq!(release.pressing.year, None);
     assert!(release.pressing.facts.media.is_empty());
@@ -464,7 +463,6 @@ async fn file_metadata_import_with_user_edit_overlay() {
         ))
     );
     assert_eq!(release.pressing.barcodes, ["4943674000000"]);
-    assert!(release.draft_from_tags);
 
     let records = f.db.get_release_records(&release_id).await.unwrap();
     assert!(
@@ -533,8 +531,6 @@ async fn file_metadata_import_with_no_tags_seeds_title_from_folder_name() {
         album.title, "Mystery Rip",
         "untagged rip takes the folder name as its album title",
     );
-    let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
-    assert!(release.draft_from_tags);
     let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(tracks.len(), 2, "both untagged files import as tracks");
 }

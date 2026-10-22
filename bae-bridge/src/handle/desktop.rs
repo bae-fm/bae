@@ -309,28 +309,44 @@ forward! {
                 .await?)
         }
 
-        /// Re-identify commit. Translates the user's `ReleaseReseed` into a fully
-        /// cross-linked identity vec plus the new metadata provenance, then writes via
-        /// `set_identity` — the outcome is indistinguishable from re-importing the
-        /// release with the same choice.
-        ///
-        /// Returns the album id the release lives on after the commit, which may have
-        /// changed if the new identity vec didn't fit the source album
-        /// (`set_identity` move semantics). Reseeding metadata is the caller's call:
-        /// `reset_release_edit_to_source` + `update_release_metadata_user_edit`.
-        fn re_identify_release(
+        /// Apply the catalog release `link` picks to the edit session on a
+        /// library release: every value it gives, held until the session
+        /// saves. Returns the editor's form filled with them.
+        fn apply_release_edit_catalog(
             release_id: String,
-            reseed: crate::types::BridgeReleaseReseed,
+            link: crate::types::BridgePressingLink,
+        ) -> crate::types::BridgeReleaseEditSeed {
+            let seed = this
+                .services
+                .apply_release_edit_catalog(&release_id, &link.into_core())
+                .await
+                .map_err(BridgeError::import)?;
+            Ok(crate::types::BridgeReleaseEditSeed::from_core(seed))
+        }
+
+        /// Save the edit session on a library release with the form the person
+        /// left, into the album they picked (`None`: the one its records name):
+        /// every value, in one write. Returns the album the release is on
+        /// after the save.
+        fn save_release_edit(
+            release_id: String,
+            edit: crate::types::BridgeRawReleaseEdit,
+            album_id: Option<String>,
         ) -> String {
-            let core_reseed = reseed.into_core();
             this.services
-                .re_identify_release(&release_id, core_reseed)
+                .save_release_edit(&release_id, &edit.into_core(), album_id)
                 .await
                 .map_err(BridgeError::import)?;
             this.services
                 .get_album_id_for_release(&release_id)
                 .await
                 .map_err(BridgeError::database)
+        }
+
+        /// Drop the edit session on a library release: nothing is written.
+        fn discard_release_edit(release_id: String) -> () {
+            this.services.discard_release_edit(&release_id);
+            Ok(())
         }
 
         /// Take in a folder someone chose to import: watch it, or read again
@@ -675,27 +691,13 @@ forward! {
                 .map_err(BridgeError::database)
         }
 
-        /// Apply a user-supplied metadata edit (from the edit-metadata sheet) to a
-        /// release. Writes the user's edited values directly without touching
-        /// identity, metadata provenance, or cached source payloads.
-        fn update_release_metadata_user_edit(
-            release_id: String,
-            edit: crate::types::BridgeReleaseUserEdit,
-        ) -> () {
-            let core_edit = crate::types::BridgeReleaseUserEdit::into_core(edit);
-            this.services
-                .apply_release_metadata_user_edit(&release_id, &core_edit)
-                .await
-                .map_err(BridgeError::import)
-        }
-
-        /// Seed the edit-metadata form from a library release's current metadata,
-        /// including core's answer about whether its source can be projected again.
-        /// bae-core does the projection; this is pure type translation.
-        fn seed_release_edit(release_id: String) -> crate::types::BridgeReleaseEditSeed {
+        /// Open an edit session on a library release: its form, seeded from
+        /// the release's values as the library holds them, with nothing
+        /// applied.
+        fn open_release_edit(release_id: String) -> crate::types::BridgeReleaseEditSeed {
             let seed = this
                 .services
-                .release_edit_seed(&release_id)
+                .open_release_edit(&release_id)
                 .await
                 .map_err(BridgeError::import)?;
             Ok(crate::types::BridgeReleaseEditSeed::from_core(seed))
@@ -715,22 +717,6 @@ forward! {
                 .into_iter()
                 .map(crate::types::BridgeResolvedCredit::from_core)
                 .collect())
-        }
-
-        /// Re-project a release's metadata from its stored provenance. Returns the
-        /// projected raw edit without writing — the editor populates its
-        /// form with the result; the user re-edits or saves via
-        /// `update_release_metadata_user_edit`. Identity and provenance are not
-        /// touched.
-        fn reset_release_edit_to_source(
-            release_id: String,
-        ) -> crate::types::BridgeRawReleaseEdit {
-            let reset = this
-                .services
-                .reset_release_edit_to_source(&release_id)
-                .await
-                .map_err(BridgeError::import)?;
-            Ok(crate::types::BridgeRawReleaseEdit::from_core(reset))
         }
 
         fn fetch_remote_covers(

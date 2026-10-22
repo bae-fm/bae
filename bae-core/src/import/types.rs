@@ -38,7 +38,8 @@ pub use raw_release_edit::{
 };
 mod candidate_draft;
 pub use candidate_draft::{
-    CandidateDraft, CandidateTrack, CreditedRole, GraphWork, WorkGraph, WorkPart,
+    CandidateDraft, CandidateTrack, CreditedRole, DraftTrack, GraphWork, LibraryDraft,
+    LibraryTrack, ReleaseDraft, TrackBinding, WorkGraph, WorkPart,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::{path::PathBuf, sync::Arc};
@@ -384,13 +385,14 @@ impl MetadataRef {
 }
 
 /// A known pressing or album in one catalog. Album links do not claim that
-/// any particular pressing was selected. At most one record per catalog is kept.
+/// any particular pressing was selected. At most one record per catalog is
+/// kept, and a release's list of them names the applied record — the one its
+/// draft was read from, or the linked pressing — first.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ReleaseRecord {
     Pressing {
         release: MetadataRef,
         album_key: Option<String>,
-        reads_draft: bool,
     },
     Album {
         album: MetadataRef,
@@ -398,11 +400,10 @@ pub enum ReleaseRecord {
 }
 
 impl ReleaseRecord {
-    pub fn new(release: &MetadataRef, album_key: Option<String>, reads_draft: bool) -> Self {
+    pub fn new(release: &MetadataRef, album_key: Option<String>) -> Self {
         Self::Pressing {
             release: release.clone(),
             album_key,
-            reads_draft,
         }
     }
 
@@ -433,16 +434,6 @@ impl ReleaseRecord {
         }
     }
 
-    pub fn reads_draft(&self) -> bool {
-        matches!(
-            self,
-            Self::Pressing {
-                reads_draft: true,
-                ..
-            }
-        )
-    }
-
     pub fn release_ref(&self) -> Option<&MetadataRef> {
         match self {
             Self::Pressing { release, .. } => Some(release),
@@ -460,27 +451,6 @@ impl ReleaseRecord {
             Self::Album { album } => Some(album.clone()),
         }
     }
-}
-
-/// A new catalog release chosen for a release already in the library.
-///
-/// - **ExternalRelease** — "this IS my pressing." The record carries
-///   `key = release_ref.key`, pressing-level metadata (year, label, catalog
-///   number, and what the pressing is) seeds from the picked release, and the release
-///   records that exact external provenance.
-/// - **FileMetadata** — no catalog claim. No records, file-metadata
-///   provenance, and a fresh album. Metadata seeds from what the folder's own
-///   files, sheets and name say.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ReleaseReseed {
-    ExternalRelease {
-        release_ref: MetadataRef,
-        /// The other sources' releases the picked pressing paired with — the
-        /// same claim a [`PressingLink`] records for an import candidate.
-        partners: Vec<MetadataRef>,
-    },
-    FileMetadata,
 }
 
 /// Whether a track inherits its album artists or has its own ordered credits.
@@ -568,7 +538,6 @@ pub struct TrackUserEdit {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditSeed {
     pub edit: RawReleaseEdit,
-    pub can_reset_to_source: bool,
     pub cover: Option<crate::album_detail::ImageRef>,
     pub display: crate::album_detail::ReleaseEditDisplayContext,
 }

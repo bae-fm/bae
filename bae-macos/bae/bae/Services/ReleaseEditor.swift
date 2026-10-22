@@ -1,10 +1,10 @@
 import BaeKit
 import Foundation
 
-/// Release-level mutations and the remote-cover / edit-seed fetches
-/// the editor needs to populate forms. Covers cover changes, pinning,
-/// deletion, primary-release selection, re-identify, metadata
-/// seeding/save/reset, and the remote-cover gallery fetch.
+/// Release-level mutations and the remote-cover fetch the editor needs.
+/// Covers cover changes, pinning, deletion, primary-release selection, the
+/// release edit session (open, apply a catalog, save, discard), and the
+/// remote-cover gallery fetch.
 @MainActor
 final class ReleaseEditor: Observable {
     let changeCover:
@@ -20,16 +20,23 @@ final class ReleaseEditor: Observable {
     let deleteRelease: @Sendable (_ releaseId: String) async throws -> Void
     let setPrimaryRelease:
         @Sendable (_ albumId: String, _ releaseId: String) async throws -> Void
-    let reIdentifyRelease:
-        @Sendable (_ releaseId: String, _ reseed: BridgeReleaseReseed)
-            async throws -> String
-    let seedReleaseEdit:
+    /// Open an edit session on a release: its form as the library holds it.
+    let openReleaseEdit:
         @Sendable (_ releaseId: String) async throws -> BridgeReleaseEditSeed
-    let updateReleaseMetadataUserEdit:
-        @Sendable (_ releaseId: String, _ edit: BridgeReleaseUserEdit)
-            async throws -> Void
-    let resetReleaseEditToSource:
-        @Sendable (_ releaseId: String) async throws -> BridgeRawReleaseEdit
+    /// Apply a catalog release to the session; the form comes back filled
+    /// with its every value, held until the save.
+    let applyReleaseEditCatalog:
+        @Sendable (_ releaseId: String, _ link: BridgePressingLink)
+            async throws -> BridgeReleaseEditSeed
+    /// Save the session with the form and the picked album (`nil`: the one
+    /// its records name); returns the album the release is on after it.
+    let saveReleaseEdit:
+        @Sendable (
+            _ releaseId: String, _ edit: BridgeRawReleaseEdit,
+            _ albumId: String?
+        ) async throws -> String
+    /// Drop the session: nothing is written.
+    let discardReleaseEdit: @Sendable (_ releaseId: String) async throws -> Void
     let fetchRemoteCovers:
         @Sendable (_ target: BridgeCoverTarget) async throws ->
             BridgeRemoteCoverGallery
@@ -56,18 +63,17 @@ final class ReleaseEditor: Observable {
                 _,
                 _ in
             },
-        reIdentifyRelease:
-            @escaping @Sendable (String, BridgeReleaseReseed) async throws ->
-            String = { _, _ in "" },
-        seedReleaseEdit:
+        openReleaseEdit:
             @escaping @Sendable (String) async throws -> BridgeReleaseEditSeed =
             { _ in throw StubError.notImplemented },
-        updateReleaseMetadataUserEdit:
-            @escaping @Sendable (String, BridgeReleaseUserEdit) async throws ->
-            Void = { _, _ in },
-        resetReleaseEditToSource:
-            @escaping @Sendable (String) async throws -> BridgeRawReleaseEdit =
-            { _ in throw StubError.notImplemented },
+        applyReleaseEditCatalog:
+            @escaping @Sendable (String, BridgePressingLink) async throws ->
+            BridgeReleaseEditSeed = { _, _ in throw StubError.notImplemented },
+        saveReleaseEdit:
+            @escaping @Sendable (String, BridgeRawReleaseEdit, String?)
+            async throws -> String = { _, _, _ in "" },
+        discardReleaseEdit:
+            @escaping @Sendable (String) async throws -> Void = { _ in },
         fetchRemoteCovers:
             @escaping @Sendable (BridgeCoverTarget) async throws ->
             BridgeRemoteCoverGallery = {
@@ -80,10 +86,10 @@ final class ReleaseEditor: Observable {
         self.makeReleaseLocal = makeReleaseLocal
         self.deleteRelease = deleteRelease
         self.setPrimaryRelease = setPrimaryRelease
-        self.reIdentifyRelease = reIdentifyRelease
-        self.seedReleaseEdit = seedReleaseEdit
-        self.updateReleaseMetadataUserEdit = updateReleaseMetadataUserEdit
-        self.resetReleaseEditToSource = resetReleaseEditToSource
+        self.openReleaseEdit = openReleaseEdit
+        self.applyReleaseEditCatalog = applyReleaseEditCatalog
+        self.saveReleaseEdit = saveReleaseEdit
+        self.discardReleaseEdit = discardReleaseEdit
         self.fetchRemoteCovers = fetchRemoteCovers
     }
 
@@ -109,23 +115,24 @@ final class ReleaseEditor: Observable {
             setPrimaryRelease: {
                 try await handle.setPrimaryRelease(albumId: $0, releaseId: $1)
             },
-            reIdentifyRelease: {
-                try await handle.reIdentifyRelease(
+            openReleaseEdit: {
+                try await handle.openReleaseEdit(releaseId: $0)
+            },
+            applyReleaseEditCatalog: {
+                try await handle.applyReleaseEditCatalog(
                     releaseId: $0,
-                    reseed: $1
+                    link: $1
                 )
             },
-            seedReleaseEdit: {
-                try await handle.seedReleaseEdit(releaseId: $0)
-            },
-            updateReleaseMetadataUserEdit: {
-                try await handle.updateReleaseMetadataUserEdit(
+            saveReleaseEdit: {
+                try await handle.saveReleaseEdit(
                     releaseId: $0,
-                    edit: $1
+                    edit: $1,
+                    albumId: $2
                 )
             },
-            resetReleaseEditToSource: {
-                try await handle.resetReleaseEditToSource(releaseId: $0)
+            discardReleaseEdit: {
+                try await handle.discardReleaseEdit(releaseId: $0)
             },
             fetchRemoteCovers: {
                 try await handle.fetchRemoteCovers(target: $0)

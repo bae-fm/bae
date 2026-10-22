@@ -78,11 +78,9 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
     );
 
     // The record the draft was read from points at the picked release.
-    assert!(!release.draft_from_tags);
     let records = f.db.get_release_records(&release.id).await.unwrap();
     assert_eq!(records.len(), 1);
     assert_eq!(records[0].catalog(), Catalog::Discogs);
-    assert!(records[0].reads_draft());
     assert_eq!(
         records[0].album_ref().expect("known parent album").key,
         support::discogs_fixture_id("master-exact")
@@ -217,7 +215,6 @@ async fn a_linked_draft_read_from_the_tags_imports_under_the_link() {
     let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
-    assert!(release.draft_from_tags, "the draft was the files' tags");
     let album = f.db.find_album_by_id(&release.album_id).await.unwrap().unwrap();
     assert_eq!(album.title, "Tagged Title");
     let tracks = f.db.get_tracks_for_release(&release.id).await.unwrap();
@@ -227,10 +224,6 @@ async fn a_linked_draft_read_from_the_tags_imports_under_the_link() {
     let records = f.db.get_release_records(&release.id).await.unwrap();
     assert_eq!(records.len(), 1, "the link's release is recorded: {records:?}");
     assert_eq!(records[0].key(), release_id_key);
-    assert!(
-        !records[0].reads_draft(),
-        "the draft was not read from the linked release"
-    );
 }
 
 // ── cross-catalog records ───────────────────────────────────────────────────
@@ -426,7 +419,6 @@ async fn a_pick_with_a_partner_writes_both_records() {
         "partner-mb-group"
     );
     assert_eq!(mb.key(), mb_id);
-    assert!(mb.reads_draft(), "the draft was read from the primary");
 
     let discogs = records
         .iter()
@@ -437,7 +429,6 @@ async fn a_pick_with_a_partner_writes_both_records() {
         support::discogs_fixture_id("partner-d-master")
     );
     assert_eq!(discogs.key(), discogs_id);
-    assert!(!discogs.reads_draft());
 }
 
 /// The partner is what the person picked, so it replaces the Discogs record

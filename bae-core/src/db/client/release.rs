@@ -72,9 +72,52 @@ pub(crate) struct ReleaseMetadataRows {
 /// Deliberately untouched: the stored catalog release (what the source said,
 /// independent of a user edit) and the release's records and where the draft
 /// was read (a record is orthogonal to editable metadata).
+/// Whether a release's write writes its album's fields and credits too: not
+/// where the person moved the release into another album they picked, which
+/// keeps its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum AlbumFields {
+    Written,
+    #[cfg_attr(
+        any(target_os = "ios", target_os = "android"),
+        expect(
+            dead_code,
+            reason = "only a desktop edit session moves a release into an album the person picked"
+        )
+    )]
+    Kept,
+}
+
+/// Write `release`'s pressing over its row.
+pub(super) fn update_release_pressing_on(
+    tx: &SqlContext<'_, '_>,
+    release: &DbRelease,
+) -> Result<(), DbError> {
+    let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
+    tx.execute(
+        r#"UPDATE releases SET year = ?, labels = ?, barcodes = ?,
+            country = ?, region = ?, media = ?, status = ?, packaging = ?,
+            discogs_details = ? WHERE id = ?"#,
+        params![
+            release.pressing.year,
+            super::pressing_columns::labels_column(&release.pressing.labels),
+            super::pressing_columns::barcodes_column(&release.pressing.barcodes),
+            facts.country,
+            facts.region,
+            facts.media,
+            facts.status,
+            facts.packaging,
+            facts.discogs_details,
+            release.id,
+        ],
+    )?;
+    Ok(())
+}
+
 pub(super) fn write_release_metadata_on(
     tx: &SqlContext<'_, '_>,
     metadata: &ReleaseMetadataRows,
+    album_fields: AlbumFields,
     now: &str,
 ) -> Result<(), ArtistWriteError> {
     let ReleaseMetadataRows {
@@ -96,29 +139,15 @@ pub(super) fn write_release_metadata_on(
     let album_artists = relink_album_artists(album_artists, &artist_ids)?;
     let track_artists = relink_track_artists(track_artists, &artist_ids)?;
 
-    tx.execute(
-        r#"UPDATE albums SET title = ?, year = ?, is_compilation = ? WHERE id = ?"#,
-        params![album.title, album.year, album.is_compilation, album.id,],
-    )?;
+    if album_fields == AlbumFields::Written {
+        tx.execute(
+            r#"UPDATE albums SET title = ?, year = ?, is_compilation = ? WHERE id = ?"#,
+            params![album.title, album.year, album.is_compilation, album.id,],
+        )?;
+        replace_album_artists(tx, &album.id, &album_artists, now)?;
+    }
 
-    let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
-    tx.execute(
-        r#"UPDATE releases SET year = ?, labels = ?, barcodes = ?,
-            country = ?, region = ?, media = ?, status = ?, packaging = ?,
-            discogs_details = ? WHERE id = ?"#,
-        params![
-            release.pressing.year,
-            super::pressing_columns::labels_column(&release.pressing.labels),
-            super::pressing_columns::barcodes_column(&release.pressing.barcodes),
-            facts.country,
-            facts.region,
-            facts.media,
-            facts.status,
-            facts.packaging,
-            facts.discogs_details,
-            release.id,
-        ],
-    )?;
+    update_release_pressing_on(tx, release)?;
 
     for (existing_id, new_track) in track_updates {
         tx.execute(
@@ -126,8 +155,6 @@ pub(super) fn write_release_metadata_on(
             params![new_track.title, existing_id],
         )?;
     }
-
-    replace_album_artists(tx, &album.id, &album_artists, now)?;
 
     let track_ids: Vec<&str> = track_updates.iter().map(|(id, _)| id.as_str()).collect();
     replace_track_artists(tx, &track_ids, &track_artists, now)?;
@@ -246,8 +273,10 @@ impl Database {
         metadata: ReleaseMetadataRows,
     ) -> Result<(), ArtistWriteError> {
         let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).to_rfc3339();
-        self.write_resolving_artists(move |sql| write_release_metadata_on(&sql, &metadata, &now))
-            .await
+        self.write_resolving_artists(move |sql| {
+            write_release_metadata_on(&sql, &metadata, AlbumFields::Written, &now)
+        })
+        .await
     }
 
     /// Follow `DbTrack.release_id` → `DbRelease`. FK navigation — the row must

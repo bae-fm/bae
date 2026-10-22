@@ -1,9 +1,8 @@
-// ── re_identify_release ────────────────────────────────────────────
+// ── Re-identify: a catalog applied in an edit session, then saved ─────
 //
-// Exact / Approximate fetch through MB / Discogs, so these tests seed the
-// release documents and the cover-art lookups first and `prepare_release` reads
-// them instead of hitting the network. The file-metadata path makes no external
-// source claim, so it needs no seeding. Each test's manager has its own
+// The applied release is fetched through `prepare_release`, so these tests
+// seed the release documents and the cover-art lookups first and it reads
+// them instead of hitting the network. Each test's manager has its own
 // providers, so what one test seeds no other test sees.
 
 /// The stored release under one source release's own key.
@@ -19,125 +18,61 @@ async fn stored_for(
         .unwrap()
 }
 
-#[tokio::test]
-async fn re_identify_with_file_metadata_clears_identities_and_moves_album() {
-    use lofty::config::WriteOptions;
-    use lofty::prelude::*;
-    use lofty::tag::{Tag, TagType};
-    use std::fs;
-
-    let (manager, _temp_dir) = setup_test_manager().await;
-
-    // Local audio files so the post-`set_identity` reseed can read tags.
-    let media = TempDir::new().unwrap();
-    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("flac");
-    let mut filenames = Vec::new();
-    for (name, title) in [("01.flac", "Tag One"), ("02.flac", "Tag Two")] {
-        let dest = media.path().join(name);
-        fs::copy(fixtures.join("01 Test Track 1.flac"), &dest).unwrap();
-        let mut tagged = lofty::read_from_path(&dest).unwrap();
-        let mut tag = Tag::new(TagType::VorbisComments);
-        tag.set_title(title.to_string());
-        tag.set_artist("Tag Artist".to_string());
-        tag.set_album("Tag Album".to_string());
-        tagged.insert_tag(tag);
-        tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
-        filenames.push(name.to_string());
-    }
-
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
-    // Two existing track rows align positionally with the two files.
-    insert_n_tracks(&manager.database, &release.id, 2).await;
-    let now = Utc::now();
-    for name in &filenames {
-        let path = media.path().join(name);
-        let file = crate::db::DbFile::new(
-            &release.id,
-            name,
-            std::fs::metadata(&path).unwrap().len() as i64,
-            crate::util::content_type::ContentType::Flac,
-            Uuid::new_v4().to_string(),
-            now,
-        );
-        manager
-            .database
-            .insert_external_file_for_test(&file, &path)
-            .await
-            .unwrap();
-    }
-    manager
-        .database
-        .insert_release_records(&release.id, &[mb_identity("g1", "mb-rel-1")])
+/// Apply `link` to an edit session on `release_id` and save it as applied.
+async fn reidentify(manager: &LibraryManager, release_id: &str, link: crate::import::PressingLink) {
+    let seed = manager
+        .apply_release_edit_catalog(release_id, &link)
         .await
         .unwrap();
-
-    // The source release this one was seeded from is stored.
     manager
+        .save_release_edit(release_id, &seed.edit, None)
+        .await
+        .unwrap();
+}
+
+/// Seed the MusicBrainz release `release_id` of group `group_id`, listing
+/// `tracks` tracks, where `prepare_release` reads it.
+fn seed_musicbrainz(manager: &LibraryManager, release_id: &str, group_id: &str, tracks: usize) {
+    let response = make_mb_release_for_re_identify(release_id, group_id, tracks);
+    manager
+        .providers()
+        .musicbrainz()
+        .seed_release_cache(release_id, serde_json::to_string(&response).unwrap());
+    manager
+        .providers()
+        .musicbrainz()
+        .seed_release_group_json_cache(group_id, serde_json::json!({ "id": group_id }).to_string());
+}
+
+/// [`insert_n_tracks`], each track playing a file of its own, as the editor
+/// reads a release's tracks.
+async fn insert_editable_tracks(manager: &LibraryManager, release_id: &str, n: usize) {
+    insert_n_tracks(&manager.database, release_id, n).await;
+    for (index, track) in manager
         .database
-        .save_source_release(
-            &crate::import::payloads::ReleasePayloads::for_test(
-                crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-rel-1"),
-                serde_json::json!({
-                    "id": "mb-rel-1",
-                    "title": "Album",
-                    "artist-credit": [{ "name": "Artist" }],
-                    "cover-art-archive": { "front": false, "darkened": false }
-                })
-                .to_string(),
-                Vec::new(),
-            )
-            .extract()
-            .unwrap(),
+        .get_tracks_for_release(release_id)
+        .await
+        .unwrap()
+        .iter()
+        .enumerate()
+    {
+        add_track_audio_sources(
+            manager,
+            track,
+            &[(
+                &format!("{index:02}.flac"),
+                crate::album_detail::SourceAudioLayout::File,
+            )],
         )
-        .await
-        .unwrap();
+        .await;
+    }
+}
 
-    manager
-        .re_identify_release(&release.id, crate::import::ReleaseReseed::FileMetadata)
-        .await
-        .unwrap();
-
-    // Original (single-release) album is empty, so no longer shown; the
-    // release sits on a fresh one.
-    assert!(manager.find_album_detail(&album.id).await.unwrap().is_none());
-    let new_album_id = manager
-        .database
-        .find_album_id_for_release(&release.id)
-        .await
-        .unwrap()
-        .unwrap();
-    assert_ne!(new_album_id, album.id);
-
-    // Identity rows are cleared and the metadata provenance becomes file metadata.
-    let records = manager
-        .database
-        .get_release_records(&release.id)
-        .await
-        .unwrap();
-    assert!(records.is_empty());
-    let updated = manager
-        .database
-        .find_release_by_id(&release.id)
-        .await
-        .unwrap()
-        .unwrap();
-    assert!(updated.draft_from_tags);
-    // The stored release describes `mb-rel-1`, not this release, and is
-    // shared with every candidate that matched it. Dropping the pointer is what
-    // stops it being read here; nothing deletes it.
-    assert!(
-        stored_for(&manager, Catalog::MusicBrainz, "mb-rel-1")
-            .await
-            .is_some(),
-        "releases are keyed by the source release, so re-pointing must not delete them"
-    );
+fn musicbrainz_link(release_id: &str) -> crate::import::PressingLink {
+    crate::import::PressingLink {
+        record: crate::import::MetadataRef::new(Catalog::MusicBrainz, release_id),
+        partners: vec![],
+    }
 }
 
 // ── re_identify_release Exact / Approximate (MB cache-seeded) ────
@@ -226,14 +161,14 @@ async fn insert_n_tracks(database: &Database, release_id: &str, n: usize) {
     }
 }
 
+/// Saving the applied release writes its records, the applied one first, and
+/// every value it gives: the tracks take its titles. The picked release is
+/// stored under its own key with its release group.
 #[tokio::test]
-async fn re_identify_release_exact_archives_the_picked_release() {
-    use crate::import::{Catalog, MetadataRef, ReleaseReseed};
+async fn a_saved_reidentify_writes_the_picked_release_s_records_and_values() {
     let (manager, _temp_dir) = setup_test_manager().await;
-
     let album = create_test_album();
     let release = create_test_release(&album.id);
-
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     manager
@@ -241,413 +176,237 @@ async fn re_identify_release_exact_archives_the_picked_release() {
         .insert_release_records(&release.id, &[mb_identity("g-old", "mb-rel-old")])
         .await
         .unwrap();
-    insert_n_tracks(&manager.database, &release.id, 3).await;
+    insert_editable_tracks(&manager, &release.id, 3).await;
 
-    // Cache the picked release so `prepare_release` skips the network.
     let new_release_id = "exact-re-identify-mb-rel-new";
     let new_group_id = "exact-re-identify-mb-group-new";
-    let new_response = make_mb_release_for_re_identify(new_release_id, new_group_id, 3);
-    let new_raw_json = serde_json::to_string(&new_response).unwrap();
-    manager.providers().musicbrainz().seed_release_cache(new_release_id, new_raw_json);
-    manager
-        .providers()
-        .musicbrainz()
-        .seed_release_group_json_cache(
-        new_group_id,
-        r#"{"id":"exact-re-identify-mb-group-new"}"#.to_string(),
-    );
+    seed_musicbrainz(&manager, new_release_id, new_group_id, 3);
+    reidentify(&manager, &release.id, musicbrainz_link(new_release_id)).await;
 
-    manager
-        .re_identify_release(
-            &release.id,
-            ReleaseReseed::ExternalRelease {
-                release_ref: MetadataRef::new(Catalog::MusicBrainz, new_release_id),
-                partners: vec![],
-            },
-        )
-        .await
-        .unwrap();
-
-    // The record now names the new pressing, and reads the draft.
     let records = manager
         .database
         .get_release_records(&release.id)
         .await
         .unwrap();
     assert_eq!(records.len(), 1);
-    assert_eq!(records[0].catalog(), Catalog::MusicBrainz);
+    assert_eq!(records[0].key(), new_release_id);
     assert_eq!(
         records[0].album_ref().expect("known parent album").key,
         new_group_id
     );
-    assert_eq!(records[0].key(), new_release_id);
-    assert!(records[0].reads_draft());
-
-    let updated = manager
+    let titles: Vec<String> = manager
         .database
-        .find_release_by_id(&release.id)
+        .get_tracks_for_release(&release.id)
         .await
         .unwrap()
-        .unwrap();
-    assert!(!updated.draft_from_tags);
-
-    // The picked release is stored under its own key, which is what the new
-    // pointer names, with its release group fetched alongside it.
+        .into_iter()
+        .map(|track| track.title)
+        .collect();
+    assert_eq!(titles, ["Track 1", "Track 2", "Track 3"]);
     let stored = stored_for(&manager, Catalog::MusicBrainz, new_release_id)
         .await
         .expect("the picked release is stored");
     assert_eq!(stored.source_group_id.as_deref(), Some(new_group_id));
-    assert!(
-        stored.unfetched.is_empty(),
-        "the release group was fetched alongside the release: {:?}",
-        stored.unfetched
-    );
+    assert!(stored.unfetched.is_empty(), "{:?}", stored.unfetched);
 }
 
+/// A release whose tracks the picked release cannot lay out is refused with
+/// both counts, before anything is held or written.
 #[tokio::test]
-async fn re_identify_release_rejects_track_count_mismatch() {
-    // Re-identify re-points the identity without re-binding any audio, so a
-    // source naming a different number of tracks leaves rows with nothing to
-    // point at: a 12-track release can't replace a 10-track rip. A folder
-    // import maps its own audio into track slots instead, where a count
-    // disagreement is a row to look at rather than a refusal.
-    use crate::import::{Catalog, MetadataRef, ReleaseReseed};
+async fn a_reidentify_that_does_not_fit_the_stored_tracks_is_refused() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
-
-    // Local release has 10 tracks; picked release has 12.
-    insert_n_tracks(&manager.database, &release.id, 10).await;
-
+    insert_editable_tracks(&manager, &release.id, 10).await;
     let new_release_id = "mismatch-re-identify-mb-rel-new";
-    let new_group_id = "mismatch-re-identify-mb-group-new";
-    let new_response = make_mb_release_for_re_identify(new_release_id, new_group_id, 12);
-    let new_raw_json = serde_json::to_string(&new_response).unwrap();
-    manager.providers().musicbrainz().seed_release_cache(new_release_id, new_raw_json);
-    manager
-        .providers()
-        .musicbrainz()
-        .seed_release_group_json_cache(
-        new_group_id,
-        r#"{"id":"mismatch-re-identify-mb-group-new"}"#.to_string(),
-    );
+    seed_musicbrainz(&manager, new_release_id, "mismatch-re-identify-mb-group-new", 12);
 
     let err = manager
-        .re_identify_release(
-            &release.id,
-            ReleaseReseed::ExternalRelease {
-                release_ref: MetadataRef::new(Catalog::MusicBrainz, new_release_id),
-                partners: vec![],
-            },
-        )
+        .apply_release_edit_catalog(&release.id, &musicbrainz_link(new_release_id))
         .await
-        .expect_err("track-count mismatch must error before identity write");
+        .expect_err("a release of 12 tracks cannot lay out 10");
     let msg = err.to_string();
-    assert!(
-        msg.contains("10") && msg.contains("12"),
-        "error must name both counts so the UI can render a useful banner: {msg}"
-    );
-
-    // No identity row written.
-    let identities = manager
+    assert!(msg.contains("10") && msg.contains("12"), "{msg}");
+    assert!(manager
         .database
         .get_release_records(&release.id)
         .await
-        .unwrap();
-    assert!(
-        identities.is_empty(),
-        "mismatched commit must not leave a partial identity row"
-    );
+        .unwrap()
+        .is_empty());
 }
 
+/// Discarding a session with a catalog applied writes nothing: the library's
+/// values, records and album are exactly as they were.
 #[tokio::test]
-async fn re_identify_release_followed_by_reset_succeeds() {
-    // End to end: after a re-identify commit, `reset_metadata_to_source`
-    // projects through the new pointer and reaches the documents that commit
-    // archived. A regression here means re-identify pointed the release at a
-    // source release whose documents it never wrote.
-    use crate::import::{Catalog, MetadataRef, ReleaseReseed};
+async fn discarding_a_session_restores_the_library_s_values_exactly() {
     let (manager, _temp_dir) = setup_test_manager().await;
-
     let album = create_test_album();
-    let mut release = create_test_release(&album.id);
-    release.draft_from_tags = true;
-
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
-    insert_n_tracks(&manager.database, &release.id, 2).await;
-
-    let new_release_id = "reset-re-identify-mb-rel-new";
-    let new_group_id = "reset-re-identify-mb-group-new";
-    let new_response = make_mb_release_for_re_identify(new_release_id, new_group_id, 2);
-    let new_raw_json = serde_json::to_string(&new_response).unwrap();
-    manager.providers().musicbrainz().seed_release_cache(new_release_id, new_raw_json);
-    manager
-        .providers()
-        .musicbrainz()
-        .seed_release_group_json_cache(
-        new_group_id,
-        r#"{"id":"reset-re-identify-mb-group-new"}"#.to_string(),
-    );
-
-    manager
-        .re_identify_release(
-            &release.id,
-            ReleaseReseed::ExternalRelease {
-                release_ref: MetadataRef::new(Catalog::MusicBrainz, new_release_id),
-                partners: vec![],
-            },
-        )
-        .await
-        .unwrap();
-
-    // Reset replays the seed through the new pointer. A stale
-    // cache would surface here as a missing key, a
-    // parse error, or a divergence-guard `Err`. Success means
-    // re_identify_release left the cache aligned.
-    let edit = manager
-        .reset_metadata_to_source(&release.id)
-        .await
-        .expect("reset must replay through aligned cache after re-identify");
-    assert_eq!(edit.album_title, "Album Title");
-    assert_eq!(edit.tracks.len(), 2);
-}
-
-#[tokio::test]
-async fn re_identify_with_file_metadata_reseeds_rows_from_file_tags() {
-    // A release carrying MusicBrainz-shaped rows, with local audio
-    // files whose embedded tags say something different. Re-identifying
-    // as file metadata must reseed the album/track rows from those tags — not
-    // leave the old MB metadata displayed under a "use my files" claim.
-    use crate::import::ReleaseReseed;
-    use lofty::config::WriteOptions;
-    use lofty::prelude::*;
-    use lofty::tag::{Tag, TagType};
-    use std::fs;
-
-    let (manager, _temp_dir) = setup_test_manager().await;
-
-    // Local files live in a local folder so `local_file_path`
-    // resolves to disk where lofty can read the embedded tags.
-    let media = TempDir::new().unwrap();
-    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("flac");
-
-    let tag_file = |name: &str, title: &str| -> String {
-        let src = fixtures.join("01 Test Track 1.flac");
-        let dest = media.path().join(name);
-        fs::copy(&src, &dest).unwrap();
-        let mut tagged = lofty::read_from_path(&dest).unwrap();
-        let mut tag = Tag::new(TagType::VorbisComments);
-        tag.set_title(title.to_string());
-        tag.set_artist("Tagged Artist".to_string());
-        tag.set_album("Tagged Album".to_string());
-        tagged.insert_tag(tag);
-        tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
-        name.to_string()
-    };
-    let f1 = tag_file("01.flac", "Tagged One");
-    let f2 = tag_file("02.flac", "Tagged Two");
-
-    let album = create_test_album();
-    // The record inserted below is MusicBrainz's; the rows carry MB metadata.
     let release = create_test_release(&album.id);
-
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
-    manager
-        .database
-        .insert_release_records(&release.id, &[mb_identity("g1", "mb-rel-1")])
+    insert_editable_tracks(&manager, &release.id, 2).await;
+    let before = manager.open_release_edit(&release.id).await.unwrap();
+
+    let new_release_id = "discard-re-identify-mb-rel-new";
+    seed_musicbrainz(&manager, new_release_id, "discard-re-identify-mb-group-new", 2);
+    let applied = manager
+        .apply_release_edit_catalog(&release.id, &musicbrainz_link(new_release_id))
         .await
         .unwrap();
+    assert_ne!(applied.edit, before.edit, "the apply filled the form");
+    manager.discard_release_edit(&release.id);
 
-    // MB-shaped track rows — distinct from the embedded tags.
-    for (i, (id, title)) in [
-        ("08c7ff07-b56a-4e16-8df6-ae2967fa0806", "MB Track One"),
-        ("08c7fe07-b56a-4c63-8df6-ad2967fa0653", "MB Track Two"),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        let track = crate::db::DbTrack {
-            id: id.to_string(),
-            release_id: release.id.clone(),
-            title: title.to_string(),
-            medium_id: crate::db::identity::release_medium_id(&release.id, 1),
-            side: std::num::NonZeroU8::MIN,
-            track_number: std::num::NonZeroU32::new(u32::try_from(i + 1).expect("a test track number fits u32"))
-                .expect("track numbers count from one"),
-            duration_ms: 200_000,
-            created_at: Utc::now(),
-        };
-        manager.database.insert_track(&track).await.unwrap();
-    }
-    let now = Utc::now();
-    for name in [&f1, &f2] {
-        let path = media.path().join(name);
-        let file = crate::db::DbFile::new(
-            &release.id,
-            name,
-            std::fs::metadata(&path).unwrap().len() as i64,
-            crate::util::content_type::ContentType::Flac,
-            Uuid::new_v4().to_string(),
-            now,
-        );
-        manager
-            .database
-            .insert_external_file_for_test(&file, &path)
-            .await
-            .unwrap();
-    }
-
-    manager
-        .re_identify_release(&release.id, ReleaseReseed::FileMetadata)
-        .await
-        .unwrap();
-
-    // Pointer flipped to file_tags.
-    let updated = manager
+    assert_eq!(manager.open_release_edit(&release.id).await.unwrap(), before);
+    assert!(manager
         .database
-        .find_release_by_id(&release.id)
+        .get_release_records(&release.id)
         .await
         .unwrap()
-        .unwrap();
-    assert!(updated.draft_from_tags);
-
-    // Album + track rows now reflect the embedded tags, not the MB seed.
-    let landing_album_id = manager
-        .database
-        .find_album_id_for_release(&release.id)
-        .await
-        .unwrap()
-        .unwrap();
-    let landing_album = manager
-        .database
-        .find_album_by_id(&landing_album_id)
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(landing_album.title, "Tagged Album");
-
-    let tracks = manager
-        .database
-        .get_tracks_for_release(&release.id)
-        .await
-        .unwrap();
-    let titles: Vec<&str> = tracks.iter().map(|t| t.title.as_str()).collect();
-    assert!(
-        titles.contains(&"Tagged One") && titles.contains(&"Tagged Two"),
-        "track rows must carry the embedded tag titles, got {titles:?}"
-    );
-    assert!(
-        !titles.iter().any(|t| t.starts_with("MB ")),
-        "old MusicBrainz track titles must be gone, got {titles:?}"
-    );
+        .is_empty());
 }
 
-/// Applying file tags replaces edited fields, including clearing values
-/// absent from the tags.
+/// Re-identifying a MusicBrainz release as a Discogs release and saving
+/// leaves none of what MusicBrainz credited: its composers' roles and the
+/// works its tracks performed go with it.
 #[tokio::test]
-async fn re_identify_with_file_metadata_replaces_previously_edited_fields() {
-    use crate::import::ReleaseReseed;
-    use lofty::config::WriteOptions;
-    use lofty::prelude::*;
-    use lofty::tag::{Tag, TagType};
-    use std::fs;
-
+async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    let media = TempDir::new().unwrap();
-    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("flac");
-    let src = fixtures.join("01 Test Track 1.flac");
-    let dest = media.path().join("01.flac");
-    fs::copy(&src, &dest).unwrap();
-    let mut tagged = lofty::read_from_path(&dest).unwrap();
-    let mut tag = Tag::new(TagType::VorbisComments);
-    tag.set_title("Tagged One".to_string());
-    tag.set_artist("Tagged Artist".to_string());
-    tag.set_album("Tagged Album".to_string());
-    tagged.insert_tag(tag);
-    tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
-
-    let album = create_test_album();
-    let mut release = create_test_release(&album.id);
-    // A release read from MusicBrainz with one field a person typed over it.
-    release.pressing.labels = vec![crate::pressing::ReleaseLabel::of(Some("Typed Label"), None)];
-
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
     manager
-        .database
-        .insert_release_records(&release.id, &[mb_identity("g1", "mb-rel-1")])
+        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
-
-    let track = crate::db::DbTrack {
-        id: "08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string(),
-        release_id: release.id.clone(),
-        title: "MB Track One".to_string(),
-        medium_id: crate::db::identity::release_medium_id(&release.id, 1),
-        side: std::num::NonZeroU8::MIN,
-        track_number: std::num::NonZeroU32::MIN,
-        duration_ms: 200_000,
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    insert_release(&manager, &release).await;
+    insert_editable_tracks(&manager, &release.id, 1).await;
+    let track = manager.database.get_tracks_for_release(&release.id).await.unwrap()[0].clone();
+    let composer = DbArtist {
+        id: Uuid::new_v4().to_string(),
+        name: "Composer Name".to_string(),
+        sort_name: None,
+        discogs_artist_id: None,
+        musicbrainz_artist_id: Some("mb-composer-1".to_string()),
         created_at: Utc::now(),
     };
-    manager.database.insert_track(&track).await.unwrap();
-    let file = crate::db::DbFile::new(
+    manager.database.insert_artist(&composer).await.unwrap();
+    let work_id = crate::db::identity::work_id("mb-work-1");
+    for (statement, params) in [
+        (
+            "INSERT INTO works (id, title, musicbrainz_work_id, created_at) \
+             VALUES (?, 'Work Title', 'mb-work-1', '2026-01-01T00:00:00Z')",
+            vec![work_id.clone()],
+        ),
+        (
+            "INSERT INTO track_works (id, track_id, work_id, position, source, created_at) \
+             VALUES ('9a1d3b7e-0000-4000-8000-000000000001', ?, ?, 0, 'musicbrainz', '2026-01-01T00:00:00Z')",
+            vec![track.id.clone(), work_id.clone()],
+        ),
+        (
+            "INSERT INTO track_artist_roles (id, track_id, artist_id, position, source, source_credit, created_at) \
+             VALUES ('9a1d3b7e-0000-4000-8000-000000000002', ?, ?, 0, 'musicbrainz', 'composer', '2026-01-01T00:00:00Z')",
+            vec![track.id.clone(), composer.id.clone()],
+        ),
+    ] {
+        manager.database.execute_for_test(statement, params).await.unwrap();
+    }
+
+    let discogs_release_id = "80000201";
+    let discogs_raw = serde_json::json!({
+        "id": 80000201u64,
+        "title": "Album Title",
+        "year": 1996,
+        "formats": [{ "name": "CD" }],
+        "artists": [{ "id": 1, "name": "Artist Name" }],
+        "tracklist": [{
+            "position": "1", "title": "Track One", "duration": "0:01",
+            "type_": "track", "artists": [],
+        }],
+    })
+    .to_string();
+    manager.providers().discogs().seed_release_cache(discogs_release_id, discogs_raw);
+    manager.providers().discogs().seed_artist_image_response("1", None);
+    manager.providers().musicbrainz().seed_discogs_url_lookup(discogs_release_id, None);
+    reidentify(
+        &manager,
         &release.id,
-        "01.flac",
-        std::fs::metadata(&dest).unwrap().len() as i64,
-        crate::util::content_type::ContentType::Flac,
-        Uuid::new_v4().to_string(),
-        Utc::now(),
-    );
-    manager
-        .database
-        .insert_external_file_for_test(&file, &dest)
-        .await
-        .unwrap();
+        crate::import::PressingLink {
+            record: crate::import::MetadataRef::new(Catalog::Discogs, discogs_release_id),
+            partners: vec![],
+        },
+    )
+    .await;
 
-    manager
-        .re_identify_release(&release.id, ReleaseReseed::FileMetadata)
-        .await
-        .unwrap();
-
-    let updated = manager
-        .database
-        .find_release_by_id(&release.id)
-        .await
-        .unwrap()
-        .unwrap();
+    let mut left = Vec::new();
+    for table in ["track_works", "track_artist_roles"] {
+        left.push(
+            manager
+                .database
+                .count_rows_for_test(table, "track_id", &track.id)
+                .await
+                .unwrap(),
+        );
+    }
+    assert_eq!(left, [0, 0]);
     assert_eq!(
-        updated.pressing.labels,
-        Vec::new(),
-        "applying file tags clears an edited field when the tags do not state it"
+        manager.database.get_tracks_for_release(&release.id).await.unwrap()[0].title,
+        "Track One"
     );
-
-    let landing_album_id = manager
-        .database
-        .find_album_id_for_release(&release.id)
-        .await
-        .unwrap()
-        .unwrap();
-    let landing_album = manager
-        .database
-        .find_album_by_id(&landing_album_id)
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(landing_album.title, "Tagged Album");
 }
 
-/// Re-identifying onto a paired pressing keeps both sources: the picked
-/// release's own identity row and one for each partner, naming the release
-/// that source lists.
+/// Saving moves the release to the album its new records name; a picked
+/// album wins over them and keeps its own title.
+#[tokio::test]
+async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let grouped = create_test_album();
+    let sibling = create_test_release(&grouped.id);
+    manager.database.insert_album(&grouped).await.unwrap();
+    insert_release(&manager, &sibling).await;
+    manager
+        .database
+        .insert_release_records(&sibling.id, &[mb_identity("move-group", "move-sibling")])
+        .await
+        .unwrap();
+
+    let own = DbAlbum {
+        title: "Own Album".to_string(),
+        ..create_test_album()
+    };
+    let release = create_test_release(&own.id);
+    manager.database.insert_album(&own).await.unwrap();
+    insert_release(&manager, &release).await;
+    insert_editable_tracks(&manager, &release.id, 1).await;
+
+    seed_musicbrainz(&manager, "move-new", "move-group", 1);
+    reidentify(&manager, &release.id, musicbrainz_link("move-new")).await;
+    assert_eq!(
+        manager.database.find_album_id_for_release(&release.id).await.unwrap(),
+        Some(grouped.id.clone())
+    );
+
+    let picked = DbAlbum {
+        title: "Picked Album".to_string(),
+        ..create_test_album()
+    };
+    manager.database.insert_album(&picked).await.unwrap();
+    let seed = manager.open_release_edit(&release.id).await.unwrap();
+    manager
+        .save_release_edit(&release.id, &seed.edit, Some(picked.id.clone()))
+        .await
+        .unwrap();
+    assert_eq!(
+        manager.database.find_album_id_for_release(&release.id).await.unwrap(),
+        Some(picked.id.clone())
+    );
+    assert_eq!(
+        manager.database.find_album_by_id(&picked.id).await.unwrap().unwrap().title,
+        "Picked Album",
+        "a picked album keeps its own title"
+    );
+}
+
 #[tokio::test]
 async fn re_identify_with_a_partner_writes_both_identity_rows() {
-    use crate::import::{Catalog, MetadataRef, ReleaseReseed};
+    use crate::import::{Catalog, MetadataRef};
     let (manager, _temp_dir) = setup_test_manager().await;
     manager
         .set_discogs_key(
@@ -669,7 +428,7 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
         )
         .await
         .unwrap();
-    insert_n_tracks(&manager.database, &release.id, 1).await;
+    insert_editable_tracks(&manager, &release.id, 1).await;
 
     let mb_release_id = "partner-re-identify-mb-rel-new";
     let mb_group_id = "partner-re-identify-mb-group-new";
@@ -711,16 +470,15 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
     manager.providers().discogs().seed_release_cache(discogs_release_id, discogs_raw);
     manager.providers().musicbrainz().seed_discogs_url_lookup(discogs_release_id, None);
 
-    manager
-        .re_identify_release(
-            &release.id,
-            ReleaseReseed::ExternalRelease {
-                release_ref: MetadataRef::new(Catalog::MusicBrainz, mb_release_id),
-                partners: vec![MetadataRef::new(Catalog::Discogs, discogs_release_id)],
-            },
-        )
-        .await
-        .unwrap();
+    reidentify(
+        &manager,
+        &release.id,
+        crate::import::PressingLink {
+            record: MetadataRef::new(Catalog::MusicBrainz, mb_release_id),
+            partners: vec![MetadataRef::new(Catalog::Discogs, discogs_release_id)],
+        },
+    )
+    .await;
 
     let identities = manager
         .database
@@ -754,79 +512,4 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
             .is_some(),
         "the partner's own release is stored by the re-identify"
     );
-}
-
-/// Re-identifying a release as read from its files writes its records and the
-/// rows its file tags reseed together. When the reseed cannot be written —
-/// the files list fewer tracks than the release holds — neither is: the
-/// release keeps the records, album and provenance it had.
-#[tokio::test]
-async fn re_identify_with_file_metadata_that_cannot_reseed_changes_nothing() {
-    use lofty::config::WriteOptions;
-    use lofty::prelude::*;
-    use lofty::tag::{Tag, TagType};
-
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let media = TempDir::new().unwrap();
-    let dest = media.path().join("01.flac");
-    std::fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("tests")
-            .join("fixtures")
-            .join("flac")
-            .join("01 Test Track 1.flac"),
-        &dest,
-    )
-    .unwrap();
-    let mut tagged = lofty::read_from_path(&dest).unwrap();
-    let mut tag = Tag::new(TagType::VorbisComments);
-    tag.set_title("Tagged One".to_string());
-    tag.set_artist("Tagged Artist".to_string());
-    tag.set_album("Tagged Album".to_string());
-    tagged.insert_tag(tag);
-    tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
-
-    let album = create_test_album();
-    let mut release = create_test_release(&album.id);
-    release.draft_from_tags = false;
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &release).await;
-    let records = vec![mb_identity("g1", "mb-rel-1")];
-    manager
-        .database
-        .insert_release_records(&release.id, &records)
-        .await
-        .unwrap();
-    // Two track rows, one audio file: the tags describe one track.
-    insert_n_tracks(&manager.database, &release.id, 2).await;
-    let file = crate::db::DbFile::new(
-        &release.id,
-        "01.flac",
-        std::fs::metadata(&dest).unwrap().len() as i64,
-        crate::util::content_type::ContentType::Flac,
-        Uuid::new_v4().to_string(),
-        Utc::now(),
-    );
-    manager
-        .database
-        .insert_external_file_for_test(&file, &dest)
-        .await
-        .unwrap();
-    let before = manager.database.every_row_for_test().await.unwrap();
-
-    let error = manager
-        .re_identify_release(&release.id, crate::import::ReleaseReseed::FileMetadata)
-        .await
-        .expect_err("one track's tags cannot reseed a two-track release");
-
-    assert!(error.to_string().contains("Track count mismatch"), "{error}");
-    assert_eq!(
-        manager
-            .database
-            .get_release_records(&release.id)
-            .await
-            .unwrap(),
-        records
-    );
-    assert_eq!(manager.database.every_row_for_test().await.unwrap(), before);
 }

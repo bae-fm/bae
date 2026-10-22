@@ -81,16 +81,16 @@ async fn release_edit_seed_uses_persisted_track_ids() {
     )
     .await;
 
-    let seed = manager.release_edit_seed(&release.id).await.unwrap();
+    let seed = manager.open_release_edit(&release.id).await.unwrap();
 
     assert_eq!(seed.edit.tracks[0].id, track.id);
 }
 
 #[tokio::test]
-async fn release_edit_reset_preserves_persisted_track_ids() {
-    use crate::import::{Catalog, MetadataRef, ReleaseReseed};
+async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
+    use crate::import::{Catalog, MetadataRef};
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    insert_n_tracks(&manager.database, &release.id, 2).await;
+    insert_editable_tracks(&manager, &release.id, 2).await;
     let persisted_ids = manager
         .database
         .get_tracks_for_release(&release.id)
@@ -112,23 +112,19 @@ async fn release_edit_reset_preserves_persisted_track_ids() {
         source_group_id,
         r#"{"id":"reset-editor-group"}"#.to_string(),
     );
-    manager
-        .re_identify_release(
+    let applied = manager
+        .apply_release_edit_catalog(
             &release.id,
-            ReleaseReseed::ExternalRelease {
-                release_ref: MetadataRef::new(Catalog::MusicBrainz, source_release_id),
+            &crate::import::PressingLink {
+                record: MetadataRef::new(Catalog::MusicBrainz, source_release_id),
                 partners: vec![],
             },
         )
         .await
         .unwrap();
-
-    let reset = manager
-        .reset_release_edit_to_source(&release.id)
-        .await
-        .unwrap();
     assert_eq!(
-        reset
+        applied
+            .edit
             .tracks
             .into_iter()
             .map(|track| track.id)
@@ -148,7 +144,7 @@ async fn release_edit_seed_refuses_a_track_without_stored_audio() {
     manager.database.insert_track(&track).await.unwrap();
 
     let error = manager
-        .release_edit_seed(&release.id)
+        .open_release_edit(&release.id)
         .await
         .expect_err("an editor seed needs the track's stored audio relationship");
 
@@ -196,7 +192,7 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
     .await;
     store_test_cover(&manager, &release.id, b"cover").await;
 
-    let seed = manager.release_edit_seed(&release.id).await.unwrap();
+    let seed = manager.open_release_edit(&release.id).await.unwrap();
 
     assert_eq!(
         seed.cover.as_ref().map(|cover| cover.id.as_str()),
@@ -247,9 +243,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
     .await;
     let identity = crate::import::ReleaseRecord::new(
         &crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "source-release"),
-        Some("source-group".to_string()),
-        true,
-    );
+        Some("source-group".to_string()));
     manager
         .database
         .insert_release_records(&release.id, std::slice::from_ref(&identity))
@@ -307,10 +301,6 @@ async fn release_metadata_edit_preserves_records_and_audio() {
             .await
             .unwrap(),
         vec![identity]
-    );
-    assert_eq!(
-        stored_after.release.draft_from_tags,
-        release.draft_from_tags
     );
     assert_eq!(stored_after.release.id, release.id);
     assert_eq!(stored_after.release.album_id, album.id);

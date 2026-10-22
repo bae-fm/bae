@@ -90,16 +90,6 @@ impl BridgeReleaseLabel {
             catalog_number: label.catalog_number().map(str::to_string),
         }
     }
-
-    /// The core labels `labels` name; an entry naming neither half is none.
-    #[cfg(feature = "desktop")]
-    pub(crate) fn list_into_core(labels: Vec<Self>) -> Vec<bae_core::pressing::ReleaseLabel> {
-        bae_core::pressing::ReleaseLabel::list(
-            labels
-                .into_iter()
-                .map(|label| (label.name, label.catalog_number)),
-        )
-    }
 }
 
 /// What a pressing is. Mirrors `bae_core::pressing::PressingFacts`.

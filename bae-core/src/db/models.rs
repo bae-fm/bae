@@ -275,11 +275,6 @@ pub struct DbRelease {
     /// Pressing-level editorial metadata. `Pressing::blank()` means "user claimed
     /// an album, not a specific pressing" (Approximate imports).
     pub pressing: crate::pressing::Pressing,
-    /// Whether the draft's facts were read off the files' own tags. The other
-    /// two answers are records: the one carrying `reads_draft` names the
-    /// document a draft was read from, and a release with neither started
-    /// blank.
-    pub draft_from_tags: bool,
     /// Name of the source folder this release was imported from (just the final
     /// path component, not the full path).
     pub source_folder_name: Option<String>,
@@ -757,7 +752,6 @@ impl DbRelease {
             album_id: album_id.to_string(),
             release_name: None,
             pressing: crate::pressing::Pressing::blank(),
-            draft_from_tags: false,
             source_folder_name: None,
             content_hash: None,
             album_loudness_lufs: None,

@@ -282,16 +282,16 @@ impl SourceRelease {
     }
 
     /// Every catalog identity known for this release at pressing or album
-    /// level: its own, which reads the draft, then what the other catalogs
-    /// say, in catalog order.
+    /// level: its own first, then what the other catalogs say, in catalog
+    /// order.
     pub fn records(&self) -> Vec<ReleaseRecord> {
+        let mut others = self.other_records.clone();
+        others.sort_by_key(|record| catalog_rank(record.catalog()));
         let mut records = vec![ReleaseRecord::new(
             &self.release,
             self.source_group_id.clone(),
-            true,
         )];
-        records.extend(self.other_records.iter().cloned());
-        records.sort_by_key(|record| catalog_rank(record.catalog()));
+        records.extend(others);
         records
     }
 
@@ -506,20 +506,13 @@ pub(crate) async fn pick_gallery_covers(
 /// The primary's facts are read first, so what they say about another catalog
 /// stands unless that catalog is one the person themselves claimed — a
 /// claimed release's own record outranks what an editor cross-linked to it.
-/// Only the primary's own record reads the draft.
+/// The primary's own record is the list's first, the applied one; the rest
+/// follow in the order surfaces list catalogs.
 pub fn claimed_records(claimed: &[&SourceRelease]) -> Vec<ReleaseRecord> {
     let mut records: Vec<ReleaseRecord> = Vec::new();
-    for (index, release) in claimed.iter().enumerate() {
-        let reads_draft = index == 0;
-        for mut record in release.records() {
+    for release in claimed {
+        for record in release.records() {
             let claimed_by_the_person = record.catalog() == release.release.catalog;
-            if let ReleaseRecord::Pressing {
-                reads_draft: record_reads,
-                ..
-            } = &mut record
-            {
-                *record_reads = reads_draft && claimed_by_the_person;
-            }
             match records
                 .iter_mut()
                 .find(|existing| existing.catalog() == record.catalog())
@@ -530,6 +523,12 @@ pub fn claimed_records(claimed: &[&SourceRelease]) -> Vec<ReleaseRecord> {
             }
         }
     }
-    records.sort_by_key(|record| catalog_rank(record.catalog()));
+    let applied = claimed.first().map(|primary| primary.release.catalog);
+    records.sort_by_key(|record| {
+        (
+            Some(record.catalog()) != applied,
+            catalog_rank(record.catalog()),
+        )
+    });
     records
 }

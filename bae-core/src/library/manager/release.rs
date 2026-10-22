@@ -91,159 +91,11 @@ impl LibraryManager {
             .map_err(|e| crate::import::ImportError::Db(LibraryError::Database(e)))
     }
 
-    /// Re-run the seeding projection from the release's provenance and return
-    /// the projected `ReleaseUserEdit`.
-    /// Read-only — the editor populates its form from the result, and the user
-    /// re-edits or saves through `apply_release_metadata_user_edit`.
-    ///
-    /// - A record reads the draft — re-read the release that record names under
-    ///   the same rules import uses: as stored on this device, or fetched and
-    ///   stored now when this device never fetched it.
-    /// - The draft came off the files' tags — re-read the embedded tags from the
-    ///   release's local audio files. Errors if they aren't reachable on disk
-    ///   (cloud-only, no local copy).
-    ///
-    /// The records are untouched: reset replays from the stored seed rather
-    /// than changing it. Record changes go through `set_records`.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn reset_metadata_to_source(
-        &self,
-        release_id: &str,
-    ) -> Result<crate::import::ReleaseUserEdit, LibraryError> {
-        let release = self
-            .database
-            .find_release_by_id(release_id)
-            .await?
-            .ok_or_else(|| LibraryError::Import(format!("Release '{release_id}' not found")))?;
-
-        let records = self.database.get_release_records(release_id).await?;
-        let draft_record = records.iter().find(|record| record.reads_draft());
-        let values = match (draft_record, release.draft_from_tags) {
-            (Some(record), _) => {
-                // The record names which release seeded this one, and stored
-                // releases are keyed by exactly that — so what is read back
-                // cannot belong to a pressing the release was pointed away
-                // from.
-                let release_ref = record
-                    .release_ref()
-                    .expect("only a pressing reads the draft");
-                let source = match self.database.load_source_release(release_ref).await? {
-                    Some(stored) => stored,
-                    None => {
-                        crate::import::service::prepare_release(
-                            self,
-                            release_ref,
-                            crate::util::rate_limiter::CallPriority::Interactive,
-                        )
-                        .await?
-                    }
-                };
-                source
-                    .read(&self.release_read_audio(release_id).await?)
-                    .map_err(|refusal| {
-                        LibraryError::from(crate::import::ImportError::from(refusal))
-                    })?
-            }
-            (None, true) => project_file_metadata(&self.database, &release).await?,
-            (None, false) => {
-                return Err(LibraryError::Import(format!(
-                    "release '{release_id}' was read from nothing to reset to"
-                )))
-            }
-        };
-
-        Ok(values.user_edit())
-    }
-
-    /// Re-identify commit: translate the user's `ReleaseReseed` into a fully
-    /// cross-linked records, then `set_records`. Mirrors the import commit
-    /// pipeline, so a re-identified release lands with the same records an
-    /// initial import would produce.
-    ///
-    /// - **Release** — resolve the picked release's documents through
-    ///   `prepare_release` (which composes the MB↔Discogs cross-linking, fetching
-    ///   and storing when nothing has yet) and read the records off those
-    ///   documents. They are keyed by the picked
-    ///   release, which is what the new seed names, so reset-to-source replays
-    ///   the same seed. The picked release's track count is checked against the existing
-    ///   track rows, and a mismatch errors before the records are written — a 12-track
-    ///   release can't replace a 10-track rip. Each partner the pick carries is
-    ///   prepared the same way and its own record replaces whatever the
-    ///   picked document inferred about that catalog. Album/release/track row
-    ///   data is not touched: the records change; the rows stay as the user
-    ///   last had them.
-    /// - **File metadata** — no records, and the draft reads what the folder's
-    ///   own files say; the release always lands on a fresh album, and its rows
-    ///   are reseeded from the local file tags in the same write (see
-    ///   `reseed_release_from_file_metadata`).
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn re_identify_release(
-        &self,
-        release_id: &str,
-        reseed: crate::import::ReleaseReseed,
-    ) -> Result<(), LibraryError> {
-        use crate::import::ReleaseReseed;
-
-        let new_records = match &reseed {
-            ReleaseReseed::ExternalRelease {
-                release_ref,
-                partners,
-            } => {
-                let release = crate::import::service::prepare_release(
-                    self,
-                    release_ref,
-                    crate::util::rate_limiter::CallPriority::Interactive,
-                )
-                .await?;
-                // Keep the prepared partner answers through this operation;
-                // concurrent archive writes cannot change the selected identity.
-                let prepared_partners = crate::import::service::prepare_partners(
-                    self,
-                    release_ref,
-                    partners,
-                    crate::util::rate_limiter::CallPriority::Interactive,
-                )
-                .await?;
-                // Re-identify changes record associations without changing
-                // existing audio rows, so the picked release, read against
-                // those rows' lengths and the release's own files as
-                // identification reads it, must lay its tracks onto them.
-                let audio = self.release_read_audio(release_id).await?;
-                let values = release.read(&audio).map_err(|refusal| {
-                    LibraryError::from(crate::import::ImportError::from(refusal))
-                })?;
-                if values.tracks.is_empty() {
-                    return Err(LibraryError::Import(format!(
-                        "Track count mismatch: release has {} tracks, picked release lists none",
-                        audio.lengths.len()
-                    )));
-                }
-
-                crate::import::service::records_for_commit(&release, &prepared_partners)
-            }
-            ReleaseReseed::FileMetadata => {
-                return self.reseed_release_from_file_metadata(release_id).await;
-            }
-        };
-
-        self.set_records(release_id, new_records, false).await
-    }
-
-    /// Re-point a release at what its own files say, and reseed its rows from
-    /// their tags, in one write. Without the reseed the old source's rows
-    /// would still show its metadata under a claim that the files' tags are
-    /// the source. The tags are read and projected before anything is
-    /// written; a release whose tags cannot be read, or cannot be written over
-    /// its rows, keeps its records and rows as they were.
-    ///
-    /// A tag-sparse rip projects to a blank-but-editable title/artist — the
-    /// prompt the user answers in the editor — so this is not held to the
-    /// user-edit gate, which would reject the blank.
     /// The audio a catalog release is read against for the library release
     /// `release_id`: its tracks' stored lengths, and what its own files say
     /// it was copied from.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    async fn release_read_audio(
+    pub(super) async fn release_read_audio(
         &self,
         release_id: &str,
     ) -> Result<crate::import::catalog_reading::ReadAudio, LibraryError> {
@@ -252,32 +104,6 @@ impl LibraryManager {
             .map_err(LibraryError::Import)?
             .read_audio()
             .map_err(LibraryError::from)
-    }
-
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    async fn reseed_release_from_file_metadata(
-        &self,
-        release_id: &str,
-    ) -> Result<(), LibraryError> {
-        let release = self
-            .database
-            .find_release_by_id(release_id)
-            .await?
-            .ok_or_else(|| LibraryError::Import(format!("Release '{release_id}' not found")))?;
-        let edit = project_file_metadata(&self.database, &release)
-            .await?
-            .user_edit();
-        let change = self.records_change(release_id, Vec::new(), true).await?;
-        let album = change
-            .new_album
-            .clone()
-            .expect("a release no catalog describes lands on a fresh album");
-        let existing_tracks = self.database.get_tracks_for_release(release_id).await?;
-        let metadata = self.release_metadata_rows(album, release, &existing_tracks, &edit)?;
-        self.database
-            .reseed_release_atomic(change, metadata)
-            .await?;
-        Ok(())
     }
 
     /// Test-only: seed a full album/release/tracks in one call. Production imports
@@ -396,7 +222,7 @@ impl LibraryManager {
     /// blank-but-editable title and artist, which the user fills in the editor.
     /// A *user's* edit is held to [`crate::import::ReleaseUserEdit::validate`] —
     /// it arrives through [`Self::apply_release_metadata_user_edit`].
-    fn release_metadata_rows(
+    pub(super) fn release_metadata_rows(
         &self,
         album: DbAlbum,
         release: DbRelease,
@@ -758,51 +584,6 @@ impl LibraryManager {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn stored_track_lengths(tracks: &[DbTrack]) -> Vec<u64> {
     tracks.iter().map(|track| track.duration_ms).collect()
-}
-
-/// Read the embedded tags of a release's local audio files. Errors if any
-/// audio file is unreachable on disk (a cloud-only release with no local
-/// copy).
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-async fn project_file_metadata(
-    database: &Database,
-    release: &DbRelease,
-) -> Result<crate::import::release_values::ReleaseValues, LibraryError> {
-    let files = database.get_files_for_release(&release.id).await?;
-    let mut audio_paths = Vec::new();
-    for file in &files {
-        if !file.content_type.is_audio() {
-            continue;
-        }
-        // Read tags from this device's original. Coven's cached copies expose
-        // no filesystem path.
-        let path = database
-            .external_file(&file.id)
-            .await?
-            .map(|ext| ext.path)
-            .ok_or_else(|| {
-            LibraryError::Import(format!(
-                "audio file '{}' is remote — make the release local before resetting from file tags",
-                file.original_filename
-            ))
-        })?;
-        audio_paths.push(path);
-    }
-    if audio_paths.is_empty() {
-        return Err(LibraryError::Import(format!(
-            "release '{}' has no audio files to read tags from",
-            release.id
-        )));
-    }
-    // Album-title fallback when no file carries an ALBUM tag: the folder the
-    // release was originally imported from.
-    let folder_name = release.source_folder_name.clone();
-    tokio::task::spawn_blocking(move || {
-        crate::import::file_tag_mapper::read_file_tags(&audio_paths, folder_name.as_deref())
-    })
-    .await
-    .map_err(|e| LibraryError::Import(format!("file-tag mapping task failed: {e}")))?
-    .map_err(LibraryError::from)
 }
 
 /// The cover [`ImageRef`] for one release from its cover's version, or `None`

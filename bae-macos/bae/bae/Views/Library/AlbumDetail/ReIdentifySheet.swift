@@ -12,8 +12,8 @@ enum ReIdentifyKey {
 }
 
 /// Re-runs identification on a library release's files through the import
-/// search pane, commits the pick via `re_identify_release`, then offers to
-/// refresh metadata from the new source.
+/// search pane, applies the pick to the release's edit session — every value
+/// it gives, held until the save — and opens the editor on the result.
 struct ReIdentifySheet: View {
     let releaseId: String
     let displayName: String
@@ -43,16 +43,12 @@ struct ReIdentifySheet: View {
     private var openSection: BridgeFindOnlineSection = .automatic
     @State
     private var commitTask: Task<Void, Never>?
-    @State
-    private var landingAlbumId: String?
     /// The picked pressing, awaiting the footer's Set identity.
     @State
     private var selectedPressing: Pressing?
     private enum Phase: Equatable {
         case identifying
         case committing
-        case askRefresh
-        case refreshing
         case error(DisplayError)
     }
 
@@ -99,14 +95,7 @@ struct ReIdentifySheet: View {
                     .lineLimit(1)
             }
             Spacer()
-            // Commits the release from its own file tags when no source knows
-            // it.
-            Button(coreString("ui.import.metadata.file_metadata") + "\u{2026}")
-            {
-                commit(.fileMetadata)
-            }
-            .buttonStyle(.link)
-            Button("Close") { closeAndNavigate() }
+            Button("Close") { onClose() }
                 .keyboardShortcut(.cancelAction)
         }
         .padding()
@@ -135,11 +124,6 @@ struct ReIdentifySheet: View {
             }
         case .committing:
             ProgressView("Committing identity...")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        case .askRefresh:
-            refreshPrompt
-        case .refreshing:
-            ProgressView("Refreshing metadata from new source...")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .error(let failure):
             errorBanner(failure)
@@ -207,7 +191,7 @@ struct ReIdentifySheet: View {
         HStack(alignment: .center, spacing: ThemeSpace.group) {
             Spacer(minLength: 0)
             Button("Set identity") {
-                commit(pressing.reseed)
+                commit(pressing.link)
             }
             .buttonStyle(PrimaryButtonStyle())
         }
@@ -216,45 +200,6 @@ struct ReIdentifySheet: View {
         .background(Theme.surface)
         .overlay(alignment: .top) {
             Rectangle().fill(Theme.hairline).frame(height: 1)
-        }
-    }
-
-    // MARK: - Refresh prompt
-
-    // Only reachable after a source-backed commit.
-    private var refreshPrompt: some View {
-        VStack(spacing: ThemeSpace.edge) {
-            Image(systemName: "checkmark.circle.fill")
-                .themeIcon(.hero)
-                .foregroundStyle(Theme.success)
-            Text("Identity updated.")
-                .themeText(.heading)
-            Text(
-                "Pull the album, track, and pressing fields from the newly-identified source? Edits you've made are overwritten."
-            )
-            .themeText(.body)
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: Self.messageWidth)
-            HStack(spacing: ThemeSpace.group) {
-                Button("Keep current metadata") { finish() }
-                Button("Refresh from new source") {
-                    refreshMetadata()
-                }
-                .buttonStyle(PrimaryButtonStyle())
-                .keyboardShortcut(.defaultAction)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    /// Close the sheet and, if a commit landed, navigate to the album the
-    /// release now lives on, since the commit may have moved it.
-    private func closeAndNavigate() {
-        let target = landingAlbumId
-        onClose()
-        if let target {
-            uiStore.navigateToAlbum(target, releaseId: releaseId)
         }
     }
 
@@ -273,9 +218,7 @@ struct ReIdentifySheet: View {
                 showIcon: false
             )
             .frame(maxWidth: Self.messageWidth)
-            // Still navigates when the commit landed and only the refresh
-            // failed.
-            Button("Close") { closeAndNavigate() }
+            Button("Close") { onClose() }
                 .buttonStyle(PrimaryButtonStyle())
                 .keyboardShortcut(.defaultAction)
         }
@@ -299,34 +242,58 @@ extension ReIdentifySheet {
         importer.autoIdentifyRelease(key, releaseId)
     }
 
-    fileprivate func commit(_ choice: BridgeReleaseReseed) {
+    /// Apply the picked pressing to the release's edit session, then close
+    /// this sheet and open the editor on what the apply filled in. Saving
+    /// there writes it all; cancelling drops the session.
+    fileprivate func commit(_ link: BridgePressingLink) {
         commitTask?.cancel()
         phase = .committing
         let releaseEditor = releaseEditor
+        let uiStore = uiStore
         let releaseId = self.releaseId
+        let onClose = self.onClose
         commitTask = Task { @MainActor in
             do {
-                let albumId = try await releaseEditor.reIdentifyRelease(
+                let seed = try await releaseEditor.applyReleaseEditCatalog(
                     releaseId,
-                    choice
+                    link
                 )
-                landingAlbumId = albumId
-                switch choice {
-                case .fileMetadata:
-                    // The commit already reseeded from the file tags.
-                    closeAndNavigate()
-                case .externalRelease:
-                    phase = .askRefresh
+                onClose()
+                uiStore.presentModal {
+                    EditMetadataSheet(
+                        releaseId: releaseId,
+                        seed: seed,
+                        onSave: { edit in
+                            let albumId =
+                                try await releaseEditor
+                                .saveReleaseEdit(releaseId, edit, nil)
+                            await MainActor.run {
+                                uiStore.navigateToAlbum(
+                                    albumId,
+                                    releaseId: releaseId
+                                )
+                            }
+                        },
+                        onSaved: { uiStore.dismissModal() },
+                        onCancel: {
+                            uiStore.dismissModal()
+                            Task {
+                                try? await releaseEditor.discardReleaseEdit(
+                                    releaseId
+                                )
+                            }
+                        },
+                    )
                 }
             }
             catch is CancellationError {
                 logger.debug(
-                    "Re-identify commit cancelled for release \(releaseId)"
+                    "Re-identify apply cancelled for release \(releaseId)"
                 )
             }
             catch {
                 logger.error(
-                    "Re-identify commit failed: \(error.localizedDescription)"
+                    "Re-identify apply failed: \(error.localizedDescription)"
                 )
                 // A failure with nothing to show gets no error phase.
                 if let failure = DisplayError(error) {
@@ -334,52 +301,6 @@ extension ReIdentifySheet {
                 }
             }
         }
-    }
-
-    fileprivate func refreshMetadata() {
-        commitTask?.cancel()
-        phase = .refreshing
-        let releaseEditor = releaseEditor
-        let releaseId = self.releaseId
-        commitTask = Task { @MainActor in
-            do {
-                let reset = try await releaseEditor.resetReleaseEditToSource(
-                    releaseId
-                )
-                let shaped = shapeReleaseEdit(raw: reset)
-                guard case .valid(let edit) = shaped else {
-                    if case .invalid(let reason) = shaped {
-                        phase = .error(
-                            DisplayError(line: reason.localizedMessage)
-                        )
-                    }
-                    return
-                }
-                try await releaseEditor.updateReleaseMetadataUserEdit(
-                    releaseId,
-                    edit
-                )
-                finish()
-            }
-            catch is CancellationError {
-                logger.debug(
-                    "Refresh cancelled for release \(releaseId)"
-                )
-            }
-            catch {
-                logger.error(
-                    "Refresh failed: \(error.localizedDescription)"
-                )
-                // A failure with nothing to show gets no error phase.
-                if let failure = DisplayError(error) {
-                    phase = .error(failure)
-                }
-            }
-        }
-    }
-
-    fileprivate func finish() {
-        closeAndNavigate()
     }
 }
 

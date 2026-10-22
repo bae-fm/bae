@@ -188,7 +188,6 @@ impl LibraryManager {
                 album_id: db_album.id.clone(),
                 release_name: None,
                 pressing: crate::pressing::Pressing::blank(),
-                draft_from_tags: false,
 
                 source_folder_name: None,
                 content_hash: None,

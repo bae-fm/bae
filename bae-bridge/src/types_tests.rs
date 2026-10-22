@@ -65,17 +65,6 @@ mod triage_tests {
 mod conversion_roundtrip {
     use super::*;
 
-    #[cfg(feature = "desktop")]
-    fn existing_artist() -> bae_core::import::ExistingArtist {
-        bae_core::import::ExistingArtist {
-            artist_id: "artist-1".to_string(),
-            name: "Existing Artist".to_string(),
-            sort_name: Some("Artist, Existing".to_string()),
-            musicbrainz_artist_id: Some("musicbrainz-1".to_string()),
-            discogs_artist_id: Some("discogs-1".to_string()),
-        }
-    }
-
     /// The UI tells a person's answer from a proposed one by this value, so
     /// each variant must cross as itself.
     #[cfg(feature = "desktop")]
@@ -395,56 +384,6 @@ mod conversion_roundtrip {
 
     #[cfg(feature = "desktop")]
     #[test]
-    fn release_user_edit_round_trips() {
-        let core = bae_core::import::ReleaseUserEdit {
-            album_title: "Album Title".to_string(),
-            album_artist_assignments: vec![
-                bae_core::import::Credited {
-                    artist: bae_core::import::ArtistAssignment::Picked {
-                        artist: existing_artist(),
-                        credit: Some(bae_core::credits::CreditName {
-                            key: "artist printed".to_string(),
-                            name: "Artist Printed".to_string(),
-                        }),
-                    },
-                    join: Some(" & ".to_string()),
-                },
-                bae_core::import::Credited::plain(bae_core::import::ArtistAssignment::named(
-                    "Artist Beta",
-                )),
-            ],
-            album_year: Some(1987),
-            pressing: bae_core::pressing::Pressing {
-                year: Some(1990),
-                labels: vec![
-                    bae_core::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
-                    bae_core::pressing::ReleaseLabel::of(None, Some("CL 719")),
-                ],
-                barcodes: vec!["012345678905".to_string(), "5012345678900".to_string()],
-                facts: every_kind_of_fact(),
-            },
-            tracks: vec![bae_core::import::TrackUserEdit {
-                title: "Track Title".to_string(),
-                artist_assignments: bae_core::import::TrackArtistAssignments::Explicit(vec![
-                    bae_core::import::Credited::plain(bae_core::import::ArtistAssignment::named(
-                        "Track Artist",
-                    )),
-                ]),
-                file: Some(bae_core::import::AudioFile::SheetSlice {
-                    file_id: "CDImage.flac".to_string(),
-                    sheet_id: "CDImage.cue".to_string(),
-                    index: 0,
-                }),
-            }],
-        };
-        assert_eq!(
-            core,
-            BridgeReleaseUserEdit::from_core(core.clone()).into_core()
-        );
-    }
-
-    #[cfg(feature = "desktop")]
-    #[test]
     fn raw_release_edit_round_trips() {
         let core = bae_core::import::RawReleaseEdit {
             album_title: "Album Title".to_string(),
@@ -509,10 +448,9 @@ mod conversion_roundtrip {
             }],
         };
 
-        for expected in [false, true] {
+        {
             let bridge = BridgeReleaseEditSeed::from_core(bae_core::import::ReleaseEditSeed {
                 edit: edit.clone(),
-                can_reset_to_source: expected,
                 cover: None,
                 display: bae_core::album_detail::ReleaseEditDisplayContext {
                     source_audio: None,
@@ -529,7 +467,6 @@ mod conversion_roundtrip {
                     }],
                 },
             });
-            assert_eq!(bridge.can_reset_to_source, expected);
             assert_eq!(bridge.edit.album_title, edit.album_title);
             assert_eq!(bridge.display.tracks[0].track_id, "track-id");
             assert_eq!(bridge.display.tracks[0].sources[0].name, "source.flac");

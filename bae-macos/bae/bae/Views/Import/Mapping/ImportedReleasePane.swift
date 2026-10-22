@@ -10,9 +10,7 @@ struct ImportedReleasePane: View {
     let seedReleaseEdit:
         @Sendable (String) async throws -> BridgeReleaseEditSeed
     let saveReleaseEdit:
-        @Sendable (String, BridgeReleaseUserEdit) async throws -> Void
-    let resetReleaseEdit:
-        @Sendable (String) async throws -> BridgeRawReleaseEdit
+        @Sendable (String, BridgeRawReleaseEdit) async throws -> Void
     let changeCover:
         @Sendable (String, BridgeCoverSelection) async throws -> Void
     let fetchRemoteCovers:
@@ -89,10 +87,6 @@ struct ImportedReleasePane: View {
                 Button("View in Library") { onViewInLibrary(albumId) }
                     .buttonStyle(.link)
                 Spacer(minLength: ThemeSpace.group)
-                Button("Reset to Source") { session.resetToSource() }
-                    .opacity(session.canResetToSource ? 1 : 0)
-                    .allowsHitTesting(session.canResetToSource)
-                    .disabled(session.isBusy)
                 Button("Cancel") { session.cancelChanges() }
                     .opacity(session.hasChanges ? 1 : 0)
                     .allowsHitTesting(session.hasChanges)
@@ -222,8 +216,7 @@ extension ImportedReleasePane {
             session = ReleaseMetadataEditSession(
                 releaseId: releaseId,
                 seed: seed,
-                save: saveReleaseEdit,
-                reset: resetReleaseEdit
+                save: saveReleaseEdit
             )
         }
         catch is CancellationError {}

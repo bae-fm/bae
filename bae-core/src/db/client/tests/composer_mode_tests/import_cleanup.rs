@@ -50,7 +50,6 @@ fn test_release(id: &str, album_id: &str, now: chrono::DateTime<chrono::Utc>) ->
             barcodes: Vec::new(),
             facts: crate::pressing::made_of(crate::pressing::Medium::Cd, 1),
         },
-        draft_from_tags: true,
 
         source_folder_name: None,
         content_hash: None,
@@ -258,7 +257,6 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         now,
     )];
     let release = DbRelease {
-        draft_from_tags: false,
 
         ..test_release(RELEASE_A, &album.id, now)
     };

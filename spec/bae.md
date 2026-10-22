@@ -329,9 +329,10 @@ either the pressing itself or only its album:
 - Other catalogs, such as Wikidata or a streaming service, are reached by
   links. Their records name the album's page.
 
-One record is the one the release's metadata was read from (`draft_catalog`),
-or the release says its metadata came from the folder's own tags. Re-reading
-a release's metadata reads that source again (§3.6).
+A release's list of records names the applied one first: the record its
+draft was read from, or the pressing its import linked. Nothing reads a
+record's catalog again after the import: the library holds every value, and
+editing a release changes those values (§3.8).
 
 ### 2.6 The same fact gets the same id
 
@@ -410,8 +411,8 @@ household probably already has a folder (§3.2).
 still differ. A copy to another disk usually changes the modification times,
 so the same rip copied elsewhere usually hashes differently.
 
-To have bae read edited tags again, Ana resets the release's metadata from its
-source (§3.7); she doesn't import it again.
+Tags edited after an import are not read again: the library holds the values
+the import wrote, and the release editor changes them (§3.8).
 
 The hash covers files, never decisions. Carol tells bae which disc each CUE
 sheet is; that is stored under the candidate's hash, and a hash that moved with
@@ -982,13 +983,28 @@ import. Turning import on imports nothing already identified.
 - **Identifying a library release again.** A release already in the library
   can be identified again from its own files; its Disc IDs come from the rip
   logs and CUE sheets this device holds of it, and its track lengths from its
-  stored tracks. The person then names its pressing, whose records replace the old
-  ones and whose facts seed its metadata, or says it is no catalog's pressing:
-  then it keeps no records and moves to a fresh album.
-- **Resetting.** A release's metadata can be re-read from its source: the
-  catalog release its record names, or the files' tags if its files are on this
-  device.
+  stored tracks. The person then picks its pressing, which is applied to the
+  release's edit session (below) and opens in the editor; a pressing whose
+  tracks don't lay out on the stored ones is refused with both counts.
 - **One import at a time.** Imports run one after another on one worker.
+
+### 3.8 Editing a library release
+
+A library release is edited in a *session* the editor opens on it: its form
+holds the release's values as the library holds them. Applying a catalog
+release in the session reads it once, against the release's stored track
+lengths and its files, and replaces every value the release holds — the
+album fields, the pressing, each track's title, artists, medium, side and
+number, the roles and works the catalog credits, the release's records (the
+applied one first) and the album those name — none of which is written yet;
+the cover stays the release's own. Saving writes the whole session in one
+transaction: the edited fields, and where a catalog was applied, its every
+value too, so nothing a previous source credited survives. The release lands
+in the album its records name (§3.7), or in a library album the person
+picked, which keeps its own title and artists. Cancelling discards the
+session; nothing is re-read, and there is no reset to a source: the library
+holds no pointer back into one. A release with nothing applied saves its
+edited fields alone, its mediums, roles and works as stored.
 
 ---
 ## 4. Files
@@ -2318,7 +2334,7 @@ All sync.
 | `works` | MusicBrainz work |
 | `work_artists` | work's credited artist, in order |
 | `work_parts` | work inside a larger work, in order |
-| `releases` | pressing: its album and place in the album's order (§2.1), name, year, labels, barcodes, country or region, media, status, packaging, Discogs details, source folder name, content hash, album loudness and peak, where its metadata came from |
+| `releases` | pressing: its album and place in the album's order (§2.1), name, year, labels, barcodes, country or region, media, status, packaging, Discogs details, source folder name, content hash, album loudness and peak |
 | `covers` | release's cover, keyed by the release; carries a file |
 | `release_files` | file of a release: name, size, type, and the audio facts the scan read; carries a file once attached, whose hash and location coven writes |
 | `release_artist_roles` | credit on a release, as the catalog stated it |
@@ -2548,8 +2564,7 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | `release_export` | queue an export of a release's files |
 | `release_storage_action` | move to the cloud, pin, unpin, make local, or cancel |
 | `output_status` | read the export queue |
-| `release_reidentify` | set a release's pressing |
-| `release_metadata_reset` | re-read a release's metadata from its source |
+| `release_reidentify` | re-identify a release as a catalog release: apply its every value in an edit session and save it, records and album with it |
 | `release_metadata_update` | apply a metadata edit: the album fields, the pressing, and each track's title and artists (a track's place is the source's, not edited) |
 | `library_search` | search the library |
 

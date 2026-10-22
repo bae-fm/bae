@@ -30,8 +30,8 @@ impl Database {
     }
 
     /// The library album `records` file a release under, leaving out the
-    /// releases `excluding`. The applied record — the one the draft reads —
-    /// decides, then each other record in order: the first that names an
+    /// releases `excluding`. The applied record — the list's first — decides,
+    /// then each other record in order: the first that names an
     /// album the library holds names it, by a copy of its pressing, else by
     /// its album (MusicBrainz release group, Discogs master). Where one record
     /// names several, its group's own album is it if the library holds it,
@@ -47,32 +47,14 @@ impl Database {
             .await
     }
 
-    /// Replace a release's record rows, set whether its draft was read off
-    /// the files' own tags, and move the release between albums when the
-    /// target differs from the source, in one transaction (see
+    /// Replace a release's record rows and move the release between albums
+    /// when the target differs from the source, in one transaction (see
     /// [`set_records_on`]).
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn set_records_atomic(&self, change: RecordsChange) -> Result<(), DbError> {
         let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
         self.call_sql(move |sql| set_records_on(&sql, &change, now))
             .await
-    }
-
-    /// Re-point a release at what its files' tags say and write the metadata
-    /// those tags project, in one transaction: the release's records change
-    /// and its rows are reseeded together, or neither is.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) async fn reseed_release_atomic(
-        &self,
-        change: RecordsChange,
-        metadata: ReleaseMetadataRows,
-    ) -> Result<(), ArtistWriteError> {
-        let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
-        self.write_resolving_artists(move |sql| {
-            set_records_on(&sql, &change, now)?;
-            write_release_metadata_on(&sql, &metadata, &now.to_rfc3339())
-        })
-        .await
     }
 
     /// Check, for each candidate in `checks`, whether the library already
@@ -115,8 +97,6 @@ impl Database {
 pub(crate) struct RecordsChange {
     pub release_id: String,
     pub records: Vec<crate::import::ReleaseRecord>,
-    /// Whether the release's draft is read off its files' own tags.
-    pub draft_from_tags: bool,
     /// The album the release is in now.
     pub current_album_id: String,
     /// The album the release lands in.
@@ -131,8 +111,8 @@ pub(crate) struct RecordsChange {
 ///    holds no release, with a copy of `current_album_id`'s credit list (so it
 ///    lands credited as the source was, not a bare row with no artist).
 /// 2. Replace the release's records.
-/// 3. UPDATE the release's `album_id` and `draft_from_tags`; a release that
-///    moves is ordered after the destination album's others.
+/// 3. UPDATE the release's `album_id`; a release that moves is ordered after
+///    the destination album's others.
 /// 4. If the release vacated `current_album_id` (the source), the source's
 ///    primary release is whichever release left there is ordered lowest. An
 ///    emptied source stays.
@@ -154,7 +134,6 @@ pub(super) fn set_records_on(
     let RecordsChange {
         release_id,
         records,
-        draft_from_tags,
         current_album_id,
         target_album_id,
         new_album,
@@ -218,13 +197,8 @@ pub(super) fn set_records_on(
         )?;
     }
     tx.execute(
-        r#"
-            UPDATE releases SET
-                album_id = ?,
-                draft_from_tags = ?
-            WHERE id = ?
-            "#,
-        params![target_album_id, draft_from_tags, release_id],
+        "UPDATE releases SET album_id = ? WHERE id = ?",
+        params![target_album_id, release_id],
     )?;
 
     // 4. Source-album cleanup. Only runs when the release actually moved;
@@ -239,8 +213,8 @@ pub(super) fn set_records_on(
 }
 
 /// The library album `records` file a release under, leaving out the
-/// releases `excluding`. The applied record — the one the draft reads —
-/// decides, then each other record in order: the first that names an album
+/// releases `excluding`. The applied record — the list's first — decides,
+/// then each other record in order: the first that names an album
 /// the library holds names it, by a copy of its pressing, else by its album
 /// (MusicBrainz release group, Discogs master). Library albums are the
 /// curator's: two albums the records name stay two, and the applied record's
@@ -251,9 +225,7 @@ pub(crate) fn album_records_name_on(
     records: &[crate::import::ReleaseRecord],
     excluding: &[String],
 ) -> Result<Option<String>, DbError> {
-    let mut ordered: Vec<&crate::import::ReleaseRecord> = records.iter().collect();
-    ordered.sort_by_key(|record| !record.reads_draft());
-    for record in ordered {
+    for record in records {
         let pressing: Vec<(String, String)> = record
             .release_ref()
             .map(|release| (release.catalog.as_str().to_string(), release.key.clone()))

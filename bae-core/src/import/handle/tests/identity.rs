@@ -374,7 +374,6 @@ fn make_release(album_id: &str) -> DbRelease {
             facts: Default::default(),
             barcodes: Vec::new(),
         },
-        draft_from_tags: true,
 
         source_folder_name: None,
         content_hash: None,
@@ -404,17 +403,13 @@ fn make_track(release_id: &str, number: i32) -> DbTrack {
 fn mb_identity(group: &str, release: &str) -> ReleaseRecord {
     ReleaseRecord::new(
         &crate::import::MetadataRef::new(Catalog::MusicBrainz, release),
-        Some(group.to_string()),
-        true,
-    )
+        Some(group.to_string()))
 }
 
 fn discogs_identity(master: &str, release: &str) -> ReleaseRecord {
     ReleaseRecord::new(
         &crate::import::MetadataRef::new(Catalog::Discogs, release),
-        Some(master.to_string()),
-        false,
-    )
+        Some(master.to_string()))
 }
 
 /// Insert an album + release with the supplied identity rows. Mirrors
@@ -766,26 +761,26 @@ async fn two_albums() -> (LibraryManager, TempDir, DbAlbum, DbAlbum) {
     (manager, tmp, x, y)
 }
 
-/// The record the draft reads names the album, never the row SQLite returns
-/// first: applied from MusicBrainz it joins X, applied from Discogs Y.
+/// The applied record — the list's first — names the album, never the row
+/// SQLite returns first: applied from MusicBrainz it joins X, applied from
+/// Discogs Y.
 #[tokio::test]
 async fn the_applied_record_decides_between_two_albums() {
     let (manager, _tmp, x, y) = two_albums().await;
-    let pressing = |catalog, release: &str, album: &str, applied| {
+    let pressing = |catalog, release: &str, album: &str| {
         ReleaseRecord::new(
             &crate::import::MetadataRef::new(catalog, release),
             Some(album.to_string()),
-            applied,
         )
     };
     let musicbrainz_applied = vec![
-        pressing(Catalog::Discogs, "d-rel-new", "d-master-y", false),
-        pressing(Catalog::MusicBrainz, "mb-rel-new", "mb-rg-x", true),
+        pressing(Catalog::MusicBrainz, "mb-rel-new", "mb-rg-x"),
+        pressing(Catalog::Discogs, "d-rel-new", "d-master-y"),
     ];
     assert_eq!(album_for_import(&manager, &musicbrainz_applied).await, Some(x.id));
     let discogs_applied = vec![
-        pressing(Catalog::MusicBrainz, "mb-rel-new", "mb-rg-x", false),
-        pressing(Catalog::Discogs, "d-rel-new", "d-master-y", true),
+        pressing(Catalog::Discogs, "d-rel-new", "d-master-y"),
+        pressing(Catalog::MusicBrainz, "mb-rel-new", "mb-rg-x"),
     ];
     assert_eq!(album_for_import(&manager, &discogs_applied).await, Some(y.id));
 }
@@ -798,17 +793,13 @@ async fn an_applied_record_naming_no_album_takes_its_partner_s() {
     let records = vec![
         ReleaseRecord::new(
             &crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-rel-new"),
-            Some("mb-rg-unknown".to_string()),
-            true,
-        ),
+            Some("mb-rg-unknown".to_string())),
         discogs_identity("d-master-y", "d-rel-new"),
     ];
     assert_eq!(album_for_import(&manager, &records).await, Some(y.id));
     let neither = vec![ReleaseRecord::new(
         &crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-rel-new"),
-        Some("mb-rg-unknown".to_string()),
-        true,
-    )];
+        Some("mb-rg-unknown".to_string()))];
     assert_eq!(album_for_import(&manager, &neither).await, None);
 }
 

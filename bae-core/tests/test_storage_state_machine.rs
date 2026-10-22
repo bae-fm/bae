@@ -83,7 +83,6 @@ async fn create_local_release(
         album_id: album.id.clone(),
         release_name: None,
         pressing: bae_core::pressing::Pressing::blank(),
-        draft_from_tags: true,
         source_folder_name: None,
         content_hash: None,
         album_loudness_lufs: None,

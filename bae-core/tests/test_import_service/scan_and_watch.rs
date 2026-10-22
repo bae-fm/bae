@@ -792,7 +792,7 @@ async fn a_done_row_follows_the_library_release_it_became() {
 
     let mut form = f
         .library_manager
-        .release_edit_seed(&release_id)
+        .open_release_edit(&release_id)
         .await
         .unwrap()
         .edit;

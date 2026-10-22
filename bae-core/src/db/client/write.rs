@@ -138,13 +138,12 @@ pub(super) fn insert_release_row(
         r#"
         INSERT INTO releases (
             id, album_id, release_name, year,
-            draft_from_tags,
             labels, barcodes,
             country, region, media, status, packaging, discogs_details,
             source_folder_name, content_hash,
             album_loudness_lufs, album_peak_linear,
             created_at, album_order
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             (SELECT COALESCE(MAX(album_order) + 1, 0) FROM releases WHERE album_id = ?))
         "#,
         params![
@@ -152,7 +151,6 @@ pub(super) fn insert_release_row(
             release.album_id,
             release.release_name,
             release.pressing.year,
-            release.draft_from_tags,
             super::pressing_columns::labels_column(&release.pressing.labels),
             super::pressing_columns::barcodes_column(&release.pressing.barcodes),
             facts.country,
@@ -711,16 +709,6 @@ pub(super) fn write_release_records(
     records: &[crate::import::ReleaseRecord],
     now: &str,
 ) -> Result<(), DbError> {
-    let mut draft_catalogs = records
-        .iter()
-        .filter(|record| record.reads_draft())
-        .map(|record| record.catalog());
-    let draft_catalog = draft_catalogs.next().map(|catalog| catalog.as_str());
-    if draft_catalogs.next().is_some() {
-        return Err(DbError::Message(format!(
-            "release {release_id} names more than one record its draft was read from"
-        )));
-    }
     conn.execute(
         "DELETE FROM release_records WHERE release_id = ?",
         params![release_id],
@@ -751,11 +739,6 @@ pub(super) fn write_release_records(
             ],
         )?;
     }
-    conn.execute(
-        "UPDATE releases SET draft_catalog = ? \
-         WHERE id = ? AND draft_catalog IS NOT ?",
-        params![draft_catalog, release_id, draft_catalog],
-    )?;
     Ok(())
 }
 

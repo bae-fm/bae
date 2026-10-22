@@ -40,15 +40,6 @@ struct Pressing: Equatable, Identifiable {
             }
     }
 
-    /// The same claim, in the shape a release already in the library takes.
-    var reseed: BridgeReleaseReseed {
-        .externalRelease(
-            releaseId: link.record.key,
-            source: link.record.catalog,
-            partners: link.partners
-        )
-    }
-
     /// `nil` for a pressing carrying no releases, which core does not build:
     /// a pressing exists because at least one source listed it.
     init?(bridge: BridgePressing) {

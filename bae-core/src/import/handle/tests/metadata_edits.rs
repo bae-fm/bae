@@ -590,7 +590,7 @@ async fn editing_a_candidate_preserves_its_imported_copy() {
         .unwrap_or_else(|error| panic!("import failed: {error}"));
     let release_before = handle
         .library_manager
-        .release_edit_seed(&release_id)
+        .open_release_edit(&release_id)
         .await
         .unwrap();
 
@@ -607,7 +607,7 @@ async fn editing_a_candidate_preserves_its_imported_copy() {
     assert_eq!(
         handle
             .library_manager
-            .release_edit_seed(&release_id)
+            .open_release_edit(&release_id)
             .await
             .unwrap(),
         release_before
@@ -632,7 +632,7 @@ async fn editing_a_candidate_preserves_its_imported_copy() {
     assert_eq!(
         handle
             .library_manager
-            .release_edit_seed(&release_id)
+            .open_release_edit(&release_id)
             .await
             .unwrap()
             .edit

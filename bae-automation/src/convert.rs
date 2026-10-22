@@ -156,24 +156,6 @@ pub(super) fn search_query(query: AutomationSearchQuery) -> (SearchQuery, Catalo
     }
 }
 
-/// Joins the catalog and key into core's one `MetadataRef`.
-pub(super) fn release_reseed(choice: AutomationReleaseReseed) -> ReleaseReseed {
-    match choice {
-        AutomationReleaseReseed::ExternalRelease {
-            source,
-            release_id,
-            partners,
-        } => ReleaseReseed::ExternalRelease {
-            release_ref: MetadataRef::new(source.into(), release_id),
-            partners: partners
-                .into_iter()
-                .map(AutomationMetadataRef::into_core)
-                .collect(),
-        },
-        AutomationReleaseReseed::FileMetadata => ReleaseReseed::FileMetadata,
-    }
-}
-
 mirror_struct! {
     AutomationMetadataRef = MetadataRef,
     from_core: pub(crate) fn,
@@ -189,14 +171,9 @@ impl AutomationReleaseRecord {
     pub(crate) fn from_core(record: bae_core::import::ReleaseRecord) -> Self {
         let url = record.url();
         match record {
-            bae_core::import::ReleaseRecord::Pressing {
-                release,
-                album_key,
-                reads_draft,
-            } => Self::Pressing {
+            bae_core::import::ReleaseRecord::Pressing { release, album_key } => Self::Pressing {
                 release: AutomationMetadataRef::from_core(release),
                 album_key,
-                reads_draft,
                 url,
             },
             bae_core::import::ReleaseRecord::Album { album } => Self::Album {
@@ -795,11 +772,10 @@ mod record_tests {
     }
 
     #[test]
-    fn pressing_identity_keeps_its_known_parent_and_draft_source() {
+    fn pressing_identity_keeps_its_known_parent() {
         let record = bae_core::import::ReleaseRecord::new(
             &MetadataRef::new(Catalog::Discogs, "42"),
             Some("73".into()),
-            true,
         );
         let value = serde_json::to_value(AutomationReleaseRecord::from_core(record)).unwrap();
         assert_eq!(
@@ -808,7 +784,6 @@ mod record_tests {
                 "kind": "pressing",
                 "release": { "catalog": "discogs", "key": "42" },
                 "album_key": "73",
-                "reads_draft": true,
                 "url": "https://www.discogs.com/release/42"
             })
         );

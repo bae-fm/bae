@@ -265,9 +265,7 @@ fn one_release_group_identified_on_two_devices_is_one_album() {
                     vec![ReleaseRecord::new(
                         &MetadataRef::new(Catalog::MusicBrainz, pressing),
                         Some(MB_GROUP.to_string()),
-                        true,
                     )],
-                    false,
                 )
                 .await
                 .unwrap();
@@ -362,12 +360,11 @@ fn the_same_record_set_on_two_devices_merges() {
         let musicbrainz = ReleaseRecord::new(
             &MetadataRef::new(Catalog::MusicBrainz, "7a3e1b2c-4d5e-4f60-8a9b-0c1d2e3f4a5b"),
             Some(MB_GROUP.to_string()),
-            true,
         );
         devices
             .a()
             .manager()
-            .set_records(&release_id, vec![musicbrainz.clone()], false)
+            .set_records(&release_id, vec![musicbrainz.clone()])
             .await
             .unwrap();
         let records_of =
@@ -384,16 +381,11 @@ fn the_same_record_set_on_two_devices_merges() {
         let discogs = ReleaseRecord::new(
             &MetadataRef::new(Catalog::Discogs, "249504"),
             Some("20170".to_string()),
-            false,
         );
         for device in [devices.a(), devices.b()] {
             device
                 .manager()
-                .set_records(
-                    &release_id,
-                    vec![musicbrainz.clone(), discogs.clone()],
-                    false,
-                )
+                .set_records(&release_id, vec![musicbrainz.clone(), discogs.clone()])
                 .await
                 .unwrap();
         }

@@ -8,7 +8,6 @@ fn record(source: Catalog, release_id: &str) -> ReleaseRecord {
     ReleaseRecord::new(
         &crate::import::MetadataRef::new(source, release_id),
         Some(format!("group-{release_id}")),
-        source == Catalog::MusicBrainz,
     )
 }
 
@@ -65,7 +64,6 @@ async fn fact_rows_take_their_ids_from_their_facts() {
     db.set_records_atomic(crate::db::RecordsChange {
         release_id: release.id.clone(),
         records: vec![record(Catalog::MusicBrainz, "mb-release-1")],
-        draft_from_tags: false,
         current_album_id: album.id.clone(),
         target_album_id: target.id.clone(),
         new_album: Some(target.clone()),

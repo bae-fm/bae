@@ -89,7 +89,6 @@ mirror_struct! {
 mirror_struct! {
     BridgeReleaseUserEdit = bae_core::import::ReleaseUserEdit,
     from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
     fields: {
         album_title,
         album_artist_assignments: (each BridgeCredited),
@@ -190,7 +189,6 @@ mirror_struct! {
     from_core: pub(crate) fn,
     fields: {
         edit: (BridgeRawReleaseEdit),
-        can_reset_to_source,
         cover: (opt BridgeImageRef),
         display: (BridgeReleaseEditDisplayContext),
     },

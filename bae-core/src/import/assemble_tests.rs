@@ -67,7 +67,7 @@ fn draft() -> CandidateDraft {
 }
 
 fn assemble(draft: &CandidateDraft) -> AssembledRelease {
-    assemble_release(draft, None, &clock(), &coven::SequentialIds::new()).unwrap()
+    assemble_release(draft, &clock(), &coven::SequentialIds::new()).unwrap()
 }
 
 /// The rows are the draft's values as the form shapes them, each track bound
@@ -79,7 +79,6 @@ fn the_rows_are_the_drafts_values() {
     assert_eq!(parsed.album.title, "Album Title");
     assert_eq!(parsed.album.year, Some(1971));
     assert_eq!(parsed.release.pressing.year, Some(2005));
-    assert!(!parsed.release.draft_from_tags);
     assert_eq!(
         parsed
             .tracks
@@ -105,19 +104,6 @@ fn the_rows_are_the_drafts_values() {
         .find(|artist| artist.id == parsed.album_artists[0].artist_id)
         .expect("the album credits its artist");
     assert_eq!(album_artist.name, "Artist Name");
-}
-
-/// A draft read from the files' tags says so on the release.
-#[test]
-fn a_draft_read_from_the_tags_marks_its_release() {
-    let assembled = assemble_release(
-        &draft(),
-        Some(&MetadataProvenance::FileMetadata),
-        &clock(),
-        &coven::SequentialIds::new(),
-    )
-    .unwrap();
-    assert!(assembled.parsed.release.draft_from_tags);
 }
 
 /// A picked library artist is linked as itself, once however often the
@@ -274,7 +260,7 @@ fn a_track_performing_a_work_the_draft_lacks_is_refused() {
     let mut draft = draft();
     draft.tracks[0].works = vec!["mb-missing".to_string()];
     assert!(matches!(
-        assemble_release(&draft, None, &clock(), &coven::SequentialIds::new()),
+        assemble_release(&draft, &clock(), &coven::SequentialIds::new()),
         Err(ImportError::Internal { .. })
     ));
 }

@@ -716,6 +716,10 @@ pub struct LibraryManager {
     /// The one writer of import candidates' stored state.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     preparations: crate::import::CandidatePreparations,
+    /// Each open library release edit session's catalog apply, waiting for
+    /// its save, by release id (see `release_edit`).
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    release_edits: release_edit::ReleaseEditSessions,
     /// Where a test holds every look at this device's originals.
     #[cfg(test)]
     disk_hold: Arc<originals::DiskHold>,

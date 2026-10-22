@@ -97,9 +97,15 @@ mod release;
 pub(crate) use release::ReleaseMetadataRows;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use release::{ImportRows, NewArtistImages};
-// Only re-identifying from file tags writes metadata alongside records.
+// Only saving a release edit session writes metadata alongside records.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use release::write_release_metadata_on;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod release_edit_save;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) use release::AlbumFields;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) use release_edit_save::ReleaseEditWrite;
 mod release_file;
 mod release_locality;
 mod release_pins;

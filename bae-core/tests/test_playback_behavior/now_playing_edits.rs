@@ -172,7 +172,7 @@ async fn renamed_titles_reach_the_paused_track_and_the_queue() {
     first_upcoming_until(&mut queue, |_| true).await;
 
     let mut edit = services
-        .release_edit_seed(&release_id)
+        .open_release_edit(&release_id)
         .await
         .expect("read the release's edit form")
         .edit;

@@ -162,6 +162,8 @@ impl LibraryManager {
             downloads: crate::library::Downloads::new(),
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             outputs: crate::library::Outputs::new(),
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            release_edits: Default::default(),
             #[cfg(test)]
             disk_hold: Arc::default(),
         };

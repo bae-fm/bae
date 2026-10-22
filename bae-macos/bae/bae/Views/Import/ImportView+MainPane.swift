@@ -66,11 +66,14 @@ extension ImportView {
                     candidate: candidate,
                     releaseId: release.releaseId,
                     albumId: release.albumId,
-                    seedReleaseEdit: releaseEditor.seedReleaseEdit,
-                    saveReleaseEdit: releaseEditor
-                        .updateReleaseMetadataUserEdit,
-                    resetReleaseEdit: releaseEditor
-                        .resetReleaseEditToSource,
+                    seedReleaseEdit: releaseEditor.openReleaseEdit,
+                    saveReleaseEdit: { releaseId, edit in
+                        _ = try await releaseEditor.saveReleaseEdit(
+                            releaseId,
+                            edit,
+                            nil
+                        )
+                    },
                     changeCover: releaseEditor.changeCover,
                     fetchRemoteCovers: {
                         try await releaseEditor.fetchRemoteCovers(

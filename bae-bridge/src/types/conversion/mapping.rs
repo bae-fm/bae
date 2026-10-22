@@ -117,21 +117,6 @@ impl BridgePressingEdit {
             facts: BridgePressingFacts::from_core(facts),
         }
     }
-
-    pub(super) fn into_core(self) -> bae_core::pressing::Pressing {
-        let Self {
-            year,
-            labels,
-            barcodes,
-            facts,
-        } = self;
-        bae_core::pressing::Pressing {
-            year,
-            labels: BridgeReleaseLabel::list_into_core(labels),
-            barcodes,
-            facts: facts.into_core(),
-        }
-    }
 }
 
 mirror_enum! {

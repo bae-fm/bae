@@ -419,25 +419,12 @@ pub enum AutomationReleaseRecord {
     Pressing {
         release: AutomationMetadataRef,
         album_key: Option<String>,
-        reads_draft: bool,
         url: String,
     },
     Album {
         album: AutomationMetadataRef,
         url: String,
     },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationReleaseReseed {
-    ExternalRelease {
-        source: AutomationCatalog,
-        release_id: String,
-        /// The other sources' releases the picked pressing paired with.
-        partners: Vec<AutomationMetadataRef>,
-    },
-    FileMetadata,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -879,7 +866,9 @@ pub struct AutomationOutputSnapshot {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ReleaseReidentifyInput {
     pub release_id: String,
-    pub choice: AutomationReleaseReseed,
+    /// The catalog release it is, with the other catalogs' releases the pick
+    /// pairs with it.
+    pub pressing: AutomationPressingLink,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

@@ -137,7 +137,6 @@ impl ReleasePayloads {
         let mut records = vec![ReleaseRecord::new(
             &self.release,
             parent.map(|parent| parent.key),
-            true,
         )];
         if let Some(counterpart) = self.counterpart()? {
             let parent = match counterpart.catalog {
@@ -149,17 +148,23 @@ impl ReleasePayloads {
             };
             merge_record(
                 &mut records,
-                ReleaseRecord::new(&counterpart, parent, false),
+                ReleaseRecord::new(&counterpart, parent),
             );
         }
         for album in self.album_links()? {
             merge_record(&mut records, ReleaseRecord::album(&album));
         }
+        // The release's own record first, the applied one; the rest in the
+        // order surfaces list catalogs.
+        let own = self.release.catalog;
         records.sort_by_key(|record| {
-            Catalog::ALL
-                .iter()
-                .position(|catalog| *catalog == record.catalog())
-                .expect("known catalog")
+            (
+                record.catalog() != own,
+                Catalog::ALL
+                    .iter()
+                    .position(|catalog| *catalog == record.catalog())
+                    .expect("known catalog"),
+            )
         });
         Ok(records)
     }

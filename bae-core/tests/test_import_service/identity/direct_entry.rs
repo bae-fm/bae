@@ -40,8 +40,6 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, album_id) = support::wait_for_import_complete(&mut progress_rx).await;
 
-    let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
-    assert!(!release.draft_from_tags);
     assert!(f
         .db
         .get_release_records(&release_id)

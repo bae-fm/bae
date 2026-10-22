@@ -17,12 +17,11 @@ impl LibraryManager {
             .await?)
     }
 
-    /// Replace a release's records and where its draft was read from in one
-    /// shot, moving the release between albums when the new records don't fit
-    /// its current one.
+    /// Replace a release's records in one shot, moving the release between
+    /// albums when the new records don't fit its current one.
     ///
-    /// `new_records` is empty (file metadata), or carries the already-cross-linked
-    /// rows, one per catalog. Nothing about the stored catalog releases
+    /// `new_records` is empty (no catalog describes it), or carries the
+    /// already-cross-linked rows, one per catalog, the applied one first. Nothing about the stored catalog releases
     /// changes: they are keyed by the catalog's release, so re-pointing at
     /// another one already reads other rows, and the rows this release used may
     /// be another candidate's.
@@ -48,11 +47,8 @@ impl LibraryManager {
         &self,
         release_id: &str,
         new_records: Vec<crate::import::ReleaseRecord>,
-        draft_from_tags: bool,
     ) -> Result<(), LibraryError> {
-        let change = self
-            .records_change(release_id, new_records, draft_from_tags)
-            .await?;
+        let change = self.records_change(release_id, new_records).await?;
         // The atomic call does all source-album bookkeeping inside its transaction
         // (empty-check, the moved release's order, album_artists copy) — those
         // decisions live there so a separate read and write can't race.
@@ -66,7 +62,6 @@ impl LibraryManager {
         &self,
         release_id: &str,
         new_records: Vec<crate::import::ReleaseRecord>,
-        draft_from_tags: bool,
     ) -> Result<crate::db::RecordsChange, LibraryError> {
         let current_album_id = self
             .database
@@ -79,7 +74,6 @@ impl LibraryManager {
         Ok(crate::db::RecordsChange {
             release_id: release_id.to_string(),
             records: new_records,
-            draft_from_tags,
             current_album_id,
             target_album_id: target.album_id,
             new_album: target.new_album,

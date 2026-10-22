@@ -25,7 +25,6 @@ fn create_test_release(album_id: &str) -> DbRelease {
             facts: Default::default(),
             barcodes: Vec::new(),
         },
-        draft_from_tags: true,
         source_folder_name: None,
         content_hash: None,
         album_loudness_lufs: None,

@@ -651,7 +651,6 @@ pub struct BridgeRawReleaseEdit {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditSeed {
     pub edit: BridgeRawReleaseEdit,
-    pub can_reset_to_source: bool,
     pub cover: Option<BridgeImageRef>,
     pub display: BridgeReleaseEditDisplayContext,
 }

@@ -19,7 +19,7 @@ fn catalog_links_preserve_the_known_entity_kind() {
     ] {
         let identity = MetadataRef::new(catalog, key);
         let album = BridgeReleaseRecord::from_core(ReleaseRecord::album(&identity));
-        let pressing = BridgeReleaseRecord::from_core(ReleaseRecord::new(&identity, None, true));
+        let pressing = BridgeReleaseRecord::from_core(ReleaseRecord::new(&identity, None));
         assert_eq!(album.url, album_url);
         assert_eq!(pressing.url, release_url);
         assert_eq!(album.catalog, pressing.catalog);

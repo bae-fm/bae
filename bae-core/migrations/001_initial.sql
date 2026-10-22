@@ -223,13 +223,6 @@ CREATE TABLE IF NOT EXISTS releases (
     -- playback caps the gain at 1.0/peak.
     album_peak_linear REAL,
     created_at TEXT NOT NULL,
-    -- Whether the stored metadata came from the folder's file tags rather than
-    -- a catalog record.
-    draft_from_tags INTEGER NOT NULL DEFAULT 0 CHECK (draft_from_tags IN (0, 1)),
-    -- The catalog of the `release_records` entry the stored metadata came from.
-    -- One value per release, so devices that chose different records settle on
-    -- one.
-    draft_catalog TEXT,
     CHECK (country IS NULL OR region IS NULL),
     FOREIGN KEY (album_id) REFERENCES albums (id) ON DELETE CASCADE
 ) STRICT;
@@ -360,7 +353,7 @@ CREATE INDEX IF NOT EXISTS idx_release_artist_roles_release ON release_artist_ro
 CREATE INDEX IF NOT EXISTS idx_release_artist_roles_artist ON release_artist_roles(artist_id);
 
 -- The catalog entries describing a release, one per catalog, each naming the
--- pressing or its album. `releases.draft_catalog` names the one in use.
+-- pressing or its album.
 CREATE TABLE IF NOT EXISTS release_records (
     id          TEXT NOT NULL PRIMARY KEY,
     release_id  TEXT NOT NULL,

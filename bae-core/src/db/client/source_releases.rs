@@ -526,7 +526,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         .map(|(record_catalog, kind, record_key, album_key)| {
             let reference = MetadataRef::new(catalog_column(&record_catalog)?, record_key);
             match kind.as_str() {
-                "pressing" => Ok(ReleaseRecord::new(&reference, album_key, false)),
+                "pressing" => Ok(ReleaseRecord::new(&reference, album_key)),
                 "album" => Ok(ReleaseRecord::album(&reference)),
                 other => Err(unreadable("record kind", other)),
             }
