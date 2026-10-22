@@ -144,8 +144,19 @@ pub enum LibraryError {
     Database(#[from] crate::db::DbError),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    #[error("Import error: {0}")]
-    Import(String),
+    /// An import step the library ran failed — reading a catalog release
+    /// against a release's tracks, fetching a cover, a candidate's paths —
+    /// as the import error itself, so every surface words the refusal it is
+    /// (another number of tracks, discs that fit alike) rather than a
+    /// generic line.
+    #[error(transparent)]
+    Import(Box<crate::import::ImportError>),
+    /// An operation on a release, an album, an artist or an import
+    /// candidate could not go ahead as asked — what it names is not in the
+    /// library, the candidate moved under it, an input is blank — with why
+    /// as text. Shown as the generic import line.
+    #[error("{0}")]
+    Refused(String),
     #[error("Import error: {0}")]
     ArtistIdentityConflict(#[source] Box<crate::import::ArtistIdentityConflict>),
     /// A verbatim release export (reproducing the imported file set) failed.
@@ -250,7 +261,7 @@ impl From<crate::db::ArtistWriteError> for LibraryError {
             }
             crate::db::ArtistWriteError::Db(error) => Self::Database(error),
             other @ (crate::db::ArtistWriteError::Unresolvable(_)
-            | crate::db::ArtistWriteError::LibraryChanged) => Self::Import(other.to_string()),
+            | crate::db::ArtistWriteError::LibraryChanged) => Self::Refused(other.to_string()),
         }
     }
 }
@@ -288,7 +299,7 @@ pub enum UploadReleasesOutcome {
 /// failure: the row it came from is unusable, and the copy it was for does not run.
 impl From<crate::storage::path_fragment::PathFragmentError> for LibraryError {
     fn from(error: crate::storage::path_fragment::PathFragmentError) -> Self {
-        LibraryError::Import(error.to_string())
+        LibraryError::Refused(error.to_string())
     }
 }
 
@@ -308,7 +319,8 @@ impl LibraryError {
             LibraryError::CloudUnlock(error) => cloud_unlock_category(error),
             LibraryError::Sync(e) => sync_category(e),
             LibraryError::RetryBlockedOperation(_) => C::Membership,
-            LibraryError::Import(_) | LibraryError::Edit(_) => C::Import,
+            LibraryError::Import(error) => error.category(),
+            LibraryError::Refused(_) | LibraryError::Edit(_) => C::Import,
             LibraryError::ReleaseEditStale { .. } => C::ReleaseChangedSinceOpened,
             LibraryError::ArtistIdentityConflict(_) => C::Import,
             LibraryError::Export(_) => C::Export,
@@ -335,14 +347,17 @@ impl From<tokio::task::JoinError> for LibraryError {
     }
 }
 
+/// Library operations that run import steps (a release editor's catalog
+/// apply, a cover download) report the import error itself. One that is a
+/// library error already (`ImportError::Db`) is that library error again, so
+/// the two never wrap each other.
 impl From<crate::import::ImportError> for LibraryError {
-    /// The re-identify / reset-from-source paths run import mappers but report
-    /// through `LibraryError`; a mapper failure becomes an `Import` error with
-    /// the typed error's Display as the message. (`ImportError` carries
-    /// `Db(#[from] LibraryError)` for the other direction — the two are
-    /// distinct conversions.)
-    fn from(value: crate::import::ImportError) -> Self {
-        LibraryError::Import(value.to_string())
+    fn from(error: crate::import::ImportError) -> Self {
+        match error {
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            crate::import::ImportError::Db(error) => error,
+            other => LibraryError::Import(Box::new(other)),
+        }
     }
 }
 

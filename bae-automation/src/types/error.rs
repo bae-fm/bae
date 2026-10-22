@@ -67,7 +67,9 @@ impl From<LibraryError> for AutomationError {
         match value {
             LibraryError::Database(e) => Self::Database(e.to_string()),
             LibraryError::Io(e) => Self::Unavailable(e.to_string()),
-            LibraryError::Import(e) => Self::Import(e),
+            // An import step's failure crosses as any import error does.
+            LibraryError::Import(error) => Self::from(*error),
+            LibraryError::Refused(e) => Self::Import(e),
             LibraryError::ArtistIdentityConflict(e) => Self::Import(e.to_string()),
             LibraryError::Export(e) | LibraryError::Save(e) => Self::Unavailable(e),
             // A rejected metadata edit is the caller's bad input, not an import

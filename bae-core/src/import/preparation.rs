@@ -66,7 +66,7 @@ impl CandidateAsRead {
 
     /// The refusal for a candidate whose file decisions moved past `expected`.
     pub(crate) fn files_moved(expected: u64, write: CandidateWrite) -> LibraryError {
-        LibraryError::Import(match write {
+        LibraryError::Refused(match write {
             CandidateWrite::Metadata => format!(
                 "candidate changed before its metadata was stored: its files moved past \
                  revision {expected}"
@@ -83,7 +83,7 @@ impl CandidateAsRead {
 
     /// The refusal for a candidate whose metadata moved past `expected`.
     pub(crate) fn metadata_moved(expected: u64) -> LibraryError {
-        LibraryError::Import(format!(
+        LibraryError::Refused(format!(
             "candidate metadata changed from revision {expected}"
         ))
     }

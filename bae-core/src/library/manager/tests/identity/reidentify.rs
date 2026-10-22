@@ -223,8 +223,14 @@ async fn a_reidentify_that_does_not_fit_the_stored_tracks_is_refused() {
         .apply_release_edit_catalog(&session, &musicbrainz_link(new_release_id))
         .await
         .expect_err("a release of 12 tracks cannot lay out 10");
-    let msg = err.to_string();
-    assert!(msg.contains("10") && msg.contains("12"), "{msg}");
+    assert_eq!(
+        err.category(),
+        crate::ui::UiErrorCategory::MetadataTrackCount {
+            folder_tracks: 10,
+            release_tracks: 12,
+        },
+        "the editor names the refusal, not a generic import failure: {err}"
+    );
     assert!(manager
         .database
         .get_release_records(&release.id)

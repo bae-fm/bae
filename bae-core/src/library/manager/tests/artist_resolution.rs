@@ -76,5 +76,5 @@ async fn cross_provider_mismatch_is_not_offered_as_a_two_artist_merge() {
         .await
         .expect_err("a third provider identity cannot be resolved by merging two artists");
 
-    assert!(matches!(error, LibraryError::Import(_)));
+    assert!(matches!(error, LibraryError::Refused(_)));
 }

@@ -102,14 +102,14 @@ impl LibraryManager {
             .database
             .find_release_detail_context(release_id)
             .await?
-            .ok_or_else(|| LibraryError::Import(format!("Release '{release_id}' not found")))?;
+            .ok_or_else(|| LibraryError::Refused(format!("Release '{release_id}' not found")))?;
         let release = &context.detail.release;
         let album = self
             .database
             .find_album_by_id(&release.album_id)
             .await?
             .ok_or_else(|| {
-                LibraryError::Import(format!("Album '{}' not found", release.album_id))
+                LibraryError::Refused(format!("Album '{}' not found", release.album_id))
             })?;
         let display = crate::album_detail::ReleaseEditDisplayContext::from_raw(&context.detail)?;
         let cover = cover_ref_for(&self.database, release_id).await?;
@@ -250,7 +250,7 @@ impl LibraryManager {
             self.database
                 .find_album_by_id(album_id)
                 .await?
-                .ok_or_else(|| LibraryError::Import(format!("Album '{album_id}' not found")))?;
+                .ok_or_else(|| LibraryError::Refused(format!("Album '{album_id}' not found")))?;
         }
         let work = {
             let mut work = session.work();
@@ -276,7 +276,7 @@ impl LibraryManager {
                 .database
                 .find_album_by_id(&album_id)
                 .await?
-                .ok_or_else(|| LibraryError::Import(format!("Album '{album_id}' not found")))?;
+                .ok_or_else(|| LibraryError::Refused(format!("Album '{album_id}' not found")))?;
             Ok::<_, LibraryError>((album_id, album.title))
         };
         if let Some(picked) = &work.picked_album {
@@ -400,7 +400,7 @@ impl LibraryManager {
                         .find_album_by_id(&target_album_id)
                         .await?
                         .ok_or_else(|| {
-                            LibraryError::Import(format!("Album '{target_album_id}' not found"))
+                            LibraryError::Refused(format!("Album '{target_album_id}' not found"))
                         })?
                 };
                 crate::db::ReleaseEditWrite::Fields(self.release_metadata_rows(

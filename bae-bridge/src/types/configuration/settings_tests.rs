@@ -47,7 +47,7 @@ fn wrapped_library_failures_preserve_the_library_category() {
             BridgeErrorCategory::Internal,
         ),
         (
-            || LibraryError::Import("identity needs review".into()),
+            || LibraryError::Refused("identity needs review".into()),
             BridgeErrorCategory::Import,
         ),
     ];
@@ -57,6 +57,40 @@ fn wrapped_library_failures_preserve_the_library_category() {
             matches!(&direct, BridgeError::Diagnostic { category: actual, .. } if *actual == category)
         );
         assert_eq!(BridgeError::from(ImportError::Db(make_error())), direct);
+    }
+}
+
+/// A library operation that ran an import step (the release editor's
+/// catalog apply) crosses with the import refusal's own category, so every
+/// app words that refusal rather than a generic import failure.
+#[test]
+fn an_import_refusal_inside_a_library_error_crosses_as_itself() {
+    use bae_core::library::LibraryError;
+    let cases = [
+        (
+            ImportError::MetadataTrackCount {
+                folder_tracks: 10,
+                release_tracks: 12,
+            },
+            BridgeErrorCategory::MetadataTrackCount {
+                folder_tracks: 10,
+                release_tracks: 12,
+            },
+        ),
+        (
+            ImportError::TiedMediums {
+                mediums: vec![1, 3],
+            },
+            BridgeErrorCategory::TiedMediums {
+                mediums: vec![1, 3],
+            },
+        ),
+    ];
+    for (error, category) in cases {
+        assert!(matches!(
+            BridgeError::from(LibraryError::from(error)),
+            BridgeError::Diagnostic { category: actual, .. } if actual == category
+        ));
     }
 }
 

@@ -101,7 +101,7 @@ impl LibraryManager {
     ) -> Result<crate::import::catalog_reading::ReadAudio, LibraryError> {
         crate::signals::release::resolve_release_identity(self, release_id)
             .await
-            .map_err(LibraryError::Import)?
+            .map_err(LibraryError::Refused)?
             .read_audio()
             .map_err(LibraryError::from)
     }
@@ -157,17 +157,17 @@ impl LibraryManager {
             .database
             .find_album_id_for_release(release_id)
             .await?
-            .ok_or_else(|| LibraryError::Import(format!("Release '{release_id}' not found")))?;
+            .ok_or_else(|| LibraryError::Refused(format!("Release '{release_id}' not found")))?;
         let release = self
             .database
             .find_release_by_id(release_id)
             .await?
-            .ok_or_else(|| LibraryError::Import(format!("Release '{release_id}' not found")))?;
+            .ok_or_else(|| LibraryError::Refused(format!("Release '{release_id}' not found")))?;
         let album = self
             .database
             .find_album_by_id(&album_id)
             .await?
-            .ok_or_else(|| LibraryError::Import(format!("Album '{album_id}' not found")))?;
+            .ok_or_else(|| LibraryError::Refused(format!("Album '{album_id}' not found")))?;
         let existing_tracks = self.database.get_tracks_for_release(release_id).await?;
         Ok((album_id, release, album, existing_tracks))
     }
@@ -233,7 +233,7 @@ impl LibraryManager {
         use crate::db::{DbAlbumArtist, DbTrackArtist};
 
         if existing_tracks.len() != edit.tracks.len() {
-            return Err(LibraryError::Import(format!(
+            return Err(LibraryError::Refused(format!(
                 "Track count mismatch: release has {} tracks, edit supplies {}",
                 existing_tracks.len(),
                 edit.tracks.len()

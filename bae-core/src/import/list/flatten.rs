@@ -421,8 +421,7 @@ pub(super) fn place_row(
         Some(grouping) => grouping.skipped,
         None => rows.skipped.contains(&(
             row.watched_folder_path.clone(),
-            candidate_relative_path(&row.watched_folder_path, Path::new(&row.folder))
-                .map_err(|error| LibraryError::Internal(error.to_string()))?,
+            candidate_relative_path(&row.watched_folder_path, Path::new(&row.folder))?,
         )),
     };
     let metadata_provenance = state.and_then(|state| state.metadata_provenance.clone());

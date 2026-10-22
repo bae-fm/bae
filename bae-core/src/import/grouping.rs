@@ -53,16 +53,22 @@ impl GroupingBlock {
     /// act on it, the generic import failure when its releases make no
     /// release, and its text as the untranslated detail.
     pub fn ui_error(&self) -> crate::ui::UiError {
+        crate::ui::UiError::diagnostic(self.category(), self)
+    }
+
+    /// The class a surface words this block in: its own line when the
+    /// person can act on it, the generic import failure when its releases
+    /// make no release.
+    pub fn category(&self) -> crate::ui::UiErrorCategory {
         use crate::ui::{GroupingBlockReason as R, UiErrorCategory as C};
-        let category = match self {
+        match self {
             Self::SourceChanged { .. } => C::GroupingBlocked(R::SourceChanged),
             Self::SourceGone { .. } => C::GroupingBlocked(R::SourceGone),
             Self::FolderFilesTaken { .. } => C::GroupingBlocked(R::FolderFilesTaken),
             Self::FolderFilesContested { .. } => C::GroupingBlocked(R::FolderFilesContested),
             Self::FolderFilesDownloading { .. } => C::GroupingBlocked(R::FolderFilesDownloading),
             Self::Unbuildable { .. } => C::Import,
-        };
-        crate::ui::UiError::diagnostic(category, self)
+        }
     }
 }
 

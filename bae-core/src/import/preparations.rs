@@ -126,7 +126,7 @@ impl CandidatePreparations {
         mapping_preparation: &crate::import::CandidateMappingPreparation,
     ) -> Result<(u64, Vec<crate::import::folder_scanner::FolderCandidate>), LibraryError> {
         let next_revision = read.file_edit_revision.checked_add(1).ok_or_else(|| {
-            crate::library::LibraryError::Import(
+            crate::library::LibraryError::Refused(
                 "candidate edit revision exhausted the u64 range".to_string(),
             )
         })?;
@@ -139,7 +139,7 @@ impl CandidatePreparations {
             })?;
         read.verify(&prep, CandidateWrite::FileDecisions)?;
         if !prep.assets_prepared {
-            return Err(crate::library::LibraryError::Import(format!(
+            return Err(crate::library::LibraryError::Refused(format!(
                 "candidate {} has no complete prepared asset set",
                 read.content_hash
             )));
@@ -167,7 +167,7 @@ impl CandidatePreparations {
             .map(|asset| (asset.discogs_artist_id(), asset))
             .collect();
         if let Some(missing) = required.iter().find(|id| !by_id.contains_key(id.as_str())) {
-            return Err(crate::library::LibraryError::Import(format!(
+            return Err(crate::library::LibraryError::Refused(format!(
                 "candidate file edit has no prepared image answer for Discogs artist {missing}"
             )));
         }
@@ -211,12 +211,11 @@ impl CandidatePreparations {
             .load_candidate_preparation(content_hash)
             .await?
             .ok_or_else(|| {
-                crate::library::LibraryError::Import(
+                crate::library::LibraryError::Refused(
                     "metadata replacement has no candidate state row".into(),
                 )
             })?;
-        let draft = super::pane::edit_over_audio(draft.clone(), &prep.metadata.draft)
-            .map_err(|error| LibraryError::Import(error.to_string()))?;
+        let draft = super::pane::edit_over_audio(draft.clone(), &prep.metadata.draft)?;
         let metadata = crate::import::CandidateMetadataDraft {
             draft,
             provenance: provenance.cloned(),
@@ -248,7 +247,7 @@ impl CandidatePreparations {
             .load_candidate_preparation(content_hash)
             .await?
             .ok_or_else(|| {
-                crate::library::LibraryError::Import(
+                crate::library::LibraryError::Refused(
                     "link replacement has no candidate state row".into(),
                 )
             })?;
@@ -264,7 +263,7 @@ impl CandidatePreparations {
             .await?
         {
             CandidateSaved::Landed(_) => Ok(()),
-            CandidateSaved::Superseded => Err(LibraryError::Import(format!(
+            CandidateSaved::Superseded => Err(LibraryError::Refused(format!(
                 "{content_hash} changed while its link was replaced"
             ))),
         }
@@ -350,7 +349,7 @@ impl CandidatePreparations {
         // Linking the album answers the folder, so the person keeping their
         // own draft over the verdict stands no more.
         let identification = prep.identification.as_mut().ok_or_else(|| {
-            LibraryError::Import(format!(
+            LibraryError::Refused(format!(
                 "{} has no lookup whose pressings to link the album of",
                 read.content_hash
             ))
@@ -380,7 +379,7 @@ impl CandidatePreparations {
             .await?
         {
             CandidateSaved::Landed(_) => Ok(revision),
-            CandidateSaved::Superseded => Err(LibraryError::Import(format!(
+            CandidateSaved::Superseded => Err(LibraryError::Refused(format!(
                 "{} changed while its album was being linked",
                 read.content_hash
             ))),
@@ -393,7 +392,7 @@ impl CandidatePreparations {
     pub(crate) async fn keep_own_draft(&self, read: &CandidateAsRead) -> Result<u64, LibraryError> {
         let prep = self.loaded_at(read).await?;
         if prep.identification.is_none() {
-            return Err(LibraryError::Import(format!(
+            return Err(LibraryError::Refused(format!(
                 "{} has no lookup whose offer to set aside",
                 read.content_hash
             )));
@@ -432,7 +431,7 @@ impl CandidatePreparations {
             .await?
         {
             CandidateSaved::Landed(_) => Ok(revision),
-            CandidateSaved::Superseded => Err(LibraryError::Import(format!(
+            CandidateSaved::Superseded => Err(LibraryError::Refused(format!(
                 "{} changed while its release link was being set aside",
                 read.content_hash
             ))),
@@ -485,7 +484,7 @@ impl CandidatePreparations {
             .load_candidate_preparation(&read.content_hash)
             .await?
             .ok_or_else(|| {
-                crate::library::LibraryError::Import("candidate metadata row is missing".into())
+                crate::library::LibraryError::Refused("candidate metadata row is missing".into())
             })?;
         read.verify(&prep, CandidateWrite::Metadata)?;
         Ok(prep)
@@ -526,7 +525,7 @@ impl CandidatePreparations {
             .await?
         {
             CandidateSaved::Landed(_) => Ok(revision),
-            CandidateSaved::Superseded => Err(crate::library::LibraryError::Import(
+            CandidateSaved::Superseded => Err(crate::library::LibraryError::Refused(
                 "candidate changed before its metadata was stored".into(),
             )),
         }

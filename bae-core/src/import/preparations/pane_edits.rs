@@ -124,7 +124,7 @@ impl CandidatePreparations {
         assignments: &[crate::import::Credited],
     ) -> Result<u64, LibraryError> {
         if assignments.is_empty() {
-            return Err(LibraryError::Import(
+            return Err(LibraryError::Refused(
                 "a candidate album artist override cannot be empty".into(),
             ));
         }
@@ -146,7 +146,7 @@ impl CandidatePreparations {
         assets: &[crate::import::PreparedArtistImage],
     ) -> Result<u64, LibraryError> {
         if assignments.is_empty() {
-            return Err(LibraryError::Import(
+            return Err(LibraryError::Refused(
                 "a candidate album artist override cannot be empty".into(),
             ));
         }
@@ -209,7 +209,7 @@ impl CandidatePreparations {
         assets: &[crate::import::PreparedArtistImage],
     ) -> Result<u64, LibraryError> {
         if track_ids.is_empty() {
-            return Err(LibraryError::Import(
+            return Err(LibraryError::Refused(
                 "a track artist fill must name at least one track".into(),
             ));
         }
@@ -272,7 +272,7 @@ impl CandidatePreparations {
             .load_candidate_preparation(content_hash)
             .await?
             .ok_or_else(|| {
-                LibraryError::Import(format!(
+                LibraryError::Refused(format!(
                     "the metadata edit for {content_hash} has no candidate state row"
                 ))
             })?;
@@ -307,7 +307,7 @@ impl CandidatePreparations {
             .await?
         {
             CandidateSaved::Landed(_) => Ok(revision),
-            CandidateSaved::Superseded => Err(LibraryError::Import(format!(
+            CandidateSaved::Superseded => Err(LibraryError::Refused(format!(
                 "candidate {content_hash} changed while its edit was being stored"
             ))),
         }
@@ -327,7 +327,7 @@ fn require_prepared(prep: &CandidatePreparation) -> Result<(), LibraryError> {
     if prep.assets_prepared {
         Ok(())
     } else {
-        Err(LibraryError::Import(format!(
+        Err(LibraryError::Refused(format!(
             "candidate {} has no complete prepared asset set",
             prep.content_hash
         )))
@@ -344,9 +344,9 @@ fn apply_track_edit(
         .tracks
         .iter_mut()
         .find(|track| track.edit.id == row.id)
-        .ok_or_else(|| LibraryError::Import(format!("{} is not a row of this draft", row.id)))?;
+        .ok_or_else(|| LibraryError::Refused(format!("{} is not a row of this draft", row.id)))?;
     if row.file.as_ref() != Some(&track.edit.file) {
-        return Err(LibraryError::Import(
+        return Err(LibraryError::Refused(
             "track metadata edits cannot change a track's audio".into(),
         ));
     }
@@ -369,7 +369,7 @@ fn fill_track_artists(
             .iter_mut()
             .find(|track| &track.edit.id == track_id)
             .ok_or_else(|| {
-                LibraryError::Import(format!(
+                LibraryError::Refused(format!(
                     "track artist fill names {track_id}, which is not a row of this draft"
                 ))
             })?;

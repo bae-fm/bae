@@ -67,7 +67,7 @@ impl LibraryManager {
             .database
             .find_album_id_for_release(release_id)
             .await?
-            .ok_or_else(|| LibraryError::Import(format!("Release '{release_id}' not found")))?;
+            .ok_or_else(|| LibraryError::Refused(format!("Release '{release_id}' not found")))?;
         let target = self
             .resolve_records_target_album(release_id, &current_album_id, &new_records)
             .await?;
@@ -222,7 +222,7 @@ impl LibraryManager {
             .find_album_by_id(seed_album_id)
             .await?
             .ok_or_else(|| {
-                LibraryError::Import(format!("Source album '{seed_album_id}' not found"))
+                LibraryError::Refused(format!("Source album '{seed_album_id}' not found"))
             })?;
         let now = chrono::DateTime::<chrono::Utc>::from(self.clock.now());
         Ok(DbAlbum {

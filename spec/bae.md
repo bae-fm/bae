@@ -991,8 +991,12 @@ import. Turning import on imports nothing already identified.
   logs and CUE sheets this device holds of it, and its track lengths from its
   stored tracks. The person searches from the release editor (§3.8) and picks
   its pressing, which is applied to the release's edit session at once, with
-  no confirm step, and the editor shows what it gave; a pressing whose tracks
-  don't lay out on the stored ones is refused with both counts.
+  no confirm step, and the editor shows what it gave. A pressing whose tracks
+  don't lay out on the stored ones is refused with both counts, and one
+  several of whose disc sets fit them alike is refused naming those discs.
+  The editor on every app states that refusal in its own line (G.1), as the
+  import does, never as a generic import failure, and MCP's re-identify
+  returns the refusal's own text.
 - **One import at a time.** Imports run one after another on one worker.
 
 ### 3.8 Editing a library release

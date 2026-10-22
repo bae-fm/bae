@@ -374,7 +374,7 @@ impl LibraryManager {
             )
         })
         .await
-        .map_err(|error| LibraryError::Import(format!("file tag read task failed: {error}")))?;
+        .map_err(|error| LibraryError::Internal(format!("file tag read task failed: {error}")))?;
         match read {
             Ok(seed) => Ok(Some(seed)),
             Err(error) => {

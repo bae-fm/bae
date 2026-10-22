@@ -210,10 +210,12 @@ pub enum ImportError {
     Edit(#[from] crate::import::EditValidationError),
 
     /// A library/DB operation failed (insert_import, finalize_import_atomic,
-    /// the artist credits it resolves, upload_release).
+    /// the artist credits it resolves, upload_release). Never a library
+    /// error that is itself an import error: that converts back to the
+    /// import error it carries.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error(transparent)]
-    Db(#[from] crate::library::LibraryError),
+    Db(crate::library::LibraryError),
 
     /// A sheet-binding change could not be applied: the candidate, the sheet,
     /// or the audio named is not what it was when the picker offered it. Every
@@ -277,23 +279,48 @@ impl ImportError {
     }
 }
 
+/// A library error that is an import error is that import error again, so
+/// the two never wrap each other.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl From<crate::library::LibraryError> for ImportError {
+    fn from(error: crate::library::LibraryError) -> Self {
+        match error {
+            crate::library::LibraryError::Import(error) => *error,
+            other => Self::Db(other),
+        }
+    }
+}
+
 impl ImportError {
     /// This failure as a surface states it: its class, which the surface
     /// words in the person's language, and its own text as the untranslated
-    /// detail. Expected refusals and provider failures are kept apart from
-    /// unusable source data and internal faults, and every variant chooses its
-    /// class, so a new failure has to say how it is shown.
+    /// detail.
     pub fn ui_error(&self) -> crate::ui::UiError {
+        crate::ui::UiError::diagnostic(self.category(), self)
+    }
+
+    /// The class a surface words this failure in. Expected refusals and
+    /// provider failures are kept apart from unusable source data and
+    /// internal faults, and every variant chooses its class, so a new failure
+    /// has to say how it is shown.
+    pub fn category(&self) -> crate::ui::UiErrorCategory {
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
         use crate::discogs::client::DiscogsError;
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
         use crate::musicbrainz::MusicBrainzError;
-        use crate::ui::{UiError, UiErrorCategory as C};
-        let category = match self {
-            Self::GroupingBlocked { reason } => return reason.ui_error(),
-            Self::Db(error) => return UiError::diagnostic(error.category(), error),
+        use crate::ui::UiErrorCategory as C;
+        match self {
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            Self::GroupingBlocked { reason } => reason.category(),
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            Self::Db(error) => error.category(),
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
             Self::ImportWriting => C::Import,
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
             Self::CandidateImportInProgress => C::CandidateImportInProgress,
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
             Self::CandidateBeingIdentified => C::CandidateBeingIdentified,
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
             Self::MetadataTrackCount {
                 folder_tracks,
                 release_tracks,
@@ -301,10 +328,14 @@ impl ImportError {
                 folder_tracks: *folder_tracks,
                 release_tracks: *release_tracks,
             },
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
             Self::TiedMediums { mediums } => C::TiedMediums {
                 mediums: mediums.clone(),
             },
-            Self::SourceData { .. } | Self::CoverArt { .. } => C::ImportData,
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            Self::SourceData { .. } => C::ImportData,
+            Self::CoverArt { .. } => C::ImportData,
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
             Self::MusicBrainz(error) => match error {
                 MusicBrainzError::Other(_) => C::ImportData,
                 MusicBrainzError::Request(_) => C::Internal,
@@ -313,6 +344,7 @@ impl ImportError {
                 | MusicBrainzError::Timeout
                 | MusicBrainzError::Provider { .. } => C::Import,
             },
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
             Self::Discogs(error) => match error {
                 DiscogsError::Serialization(_) => C::ImportData,
                 DiscogsError::Transport(error) if error.is_builder() || error.is_redirect() => {
@@ -328,7 +360,9 @@ impl ImportError {
             }
             Self::CoverArtTransport { .. } | Self::CoverArtStatus { .. } => C::Import,
             Self::Internal { .. } => C::Internal,
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
             Self::Config { .. } => C::Config,
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
             Self::Scan(_)
             | Self::InvalidFolder(_)
             | Self::UnreadableAudio(_)
@@ -342,8 +376,7 @@ impl ImportError {
             | Self::SheetBinding { .. }
             | Self::WatchedFolder { .. }
             | Self::Watch { .. } => C::Import,
-        };
-        UiError::diagnostic(category, self)
+        }
     }
 }
 
@@ -414,6 +447,46 @@ mod tests {
             "{}",
             failure.detail
         );
+    }
+
+    /// An import error that crosses into a library error stays the refusal it
+    /// is, so the library's category is the import's own; crossing back gives
+    /// the same import error, and a library error the import carried is that
+    /// library error again rather than a wrapped one.
+    #[test]
+    fn an_import_error_keeps_its_kind_through_a_library_error() {
+        use crate::library::LibraryError;
+        use crate::ui::UiErrorCategory;
+        let library = LibraryError::from(ImportError::TiedMediums {
+            mediums: vec![1, 3],
+        });
+        assert_eq!(
+            library.category(),
+            UiErrorCategory::TiedMediums {
+                mediums: vec![1, 3]
+            }
+        );
+        assert!(matches!(
+            ImportError::from(library),
+            ImportError::TiedMediums { mediums } if mediums == [1, 3]
+        ));
+
+        let library = LibraryError::from(ImportError::MetadataTrackCount {
+            folder_tracks: 10,
+            release_tracks: 12,
+        });
+        assert_eq!(
+            library.category(),
+            UiErrorCategory::MetadataTrackCount {
+                folder_tracks: 10,
+                release_tracks: 12,
+            }
+        );
+
+        let from_db = LibraryError::from(ImportError::Db(LibraryError::Database(
+            crate::db::DbError::Message("read failed".into()),
+        )));
+        assert!(matches!(from_db, LibraryError::Database(_)), "{from_db:?}");
     }
 
     /// Only an error a provider answered with is a lookup that failed; one

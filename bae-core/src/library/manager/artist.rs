@@ -86,7 +86,9 @@ impl LibraryManager {
         name: &str,
     ) -> Result<(), LibraryError> {
         if name.trim().is_empty() {
-            return Err(LibraryError::Import("a credit name cannot be blank".into()));
+            return Err(LibraryError::Refused(
+                "a credit name cannot be blank".into(),
+            ));
         }
         Ok(self
             .database
@@ -103,7 +105,9 @@ impl LibraryManager {
         name: &str,
     ) -> Result<(), LibraryError> {
         if name.trim().is_empty() {
-            return Err(LibraryError::Import("a credit name cannot be blank".into()));
+            return Err(LibraryError::Refused(
+                "a credit name cannot be blank".into(),
+            ));
         }
         Ok(self
             .database
