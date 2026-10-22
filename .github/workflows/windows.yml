@@ -33,6 +33,10 @@ jobs:
             ffmpeg_arch: aarch64
     env:
       FFMPEG_VERSION: v8.1.2-bae7
+      # Every step builds into the bridge's target dir (build-windows.sh sets
+      # the same), so the tests and clippy reuse the dependencies the bridge
+      # build compiled instead of compiling them again in `target`.
+      CARGO_TARGET_DIR: target-windows
     steps:
       - uses: actions/checkout@v6
         with:
