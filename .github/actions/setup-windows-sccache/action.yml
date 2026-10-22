@@ -1,0 +1,18 @@
+name: 'Setup sccache on Windows'
+description: 'Cache Rust compiles through sccache on Windows, except the ones whose command line only fits in an argfile'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup sccache
+      uses: mozilla-actions/sccache-action@v0.0.10
+
+    - name: Build the rustc wrapper
+      shell: bash
+      run: |
+        wrapper="$RUNNER_TEMP/rustc-wrapper.exe"
+        rustc --edition 2024 -O "$GITHUB_ACTION_PATH/rustc-wrapper.rs" -o "$wrapper"
+        {
+          echo "SCCACHE_GHA_ENABLED=true"
+          echo "RUSTC_WRAPPER=$(cygpath -w "$wrapper")"
+        } >> "$GITHUB_ENV"

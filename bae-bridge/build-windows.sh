@@ -78,7 +78,12 @@ export CARGO_PROFILE_RELEASE_LTO=thin
 # CodeView for the whole dependency graph (5.8 GB at last measure), which
 # uniffi-bindgen-cs cannot even read. The DLL keeps its debug info in the
 # adjacent PDB, so bindgen reads it and WinDbg still symbolizes.
-RUSTC_WRAPPER="" cargo rustc $CARGO_FLAGS \
+#
+# .cargo/config.toml's plain sccache wrapper can't build here: ffmpeg-next's
+# command line only fits Windows' 32K limit in an argfile, which sccache expands
+# again (os error 206). A caller's own wrapper is kept (CI passes one that
+# leaves argfile compiles to rustc); with none, the build is uncached.
+RUSTC_WRAPPER="${RUSTC_WRAPPER-}" cargo rustc $CARGO_FLAGS \
     --target "$BAE_BRIDGE_TARGET" \
     -p bae-bridge \
     --lib \
