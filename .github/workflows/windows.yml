@@ -84,7 +84,7 @@ jobs:
           dotnet-version: "8.0.x"
 
       - name: Install uniffi-bindgen-cs
-        run: cargo install --git https://github.com/bae-fm/uniffi-bindgen-cs --branch uniffi-0.32-bae uniffi-bindgen-cs --locked
+        uses: ./.github/actions/install-uniffi-bindgen-cs
 
       - name: Build the Windows bridge (full edition, OAuth + desktop)
         # Windows has no cloudkit (Apple-only); full here is OAuth plus desktop.

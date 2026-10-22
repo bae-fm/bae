@@ -143,7 +143,7 @@ jobs:
       uses: ./.github/actions/setup-rust
 
     - name: Install uniffi-bindgen-cs
-      run: cargo install --git https://github.com/bae-fm/uniffi-bindgen-cs --branch uniffi-0.32-bae uniffi-bindgen-cs --locked
+      uses: ./.github/actions/install-uniffi-bindgen-cs
 
     - name: Build the Linux bridge (full edition, OAuth + desktop)
       run: BAE_BRIDGE_FEATURES=oauth-providers,desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-linux.sh

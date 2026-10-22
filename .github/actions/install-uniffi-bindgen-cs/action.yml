@@ -1,0 +1,39 @@
+name: 'Install uniffi-bindgen-cs'
+description: 'Install the C# bindings generator from the bae fork, cached by the fork commit'
+
+# build-linux.sh and build-windows.sh check the installed version; this installs
+# the branch they name, at the commit the branch points to now, and keeps the
+# built binary under that commit so a later run skips the compile.
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve the fork commit
+      id: rev
+      shell: bash
+      env:
+        BRANCH: uniffi-0.32-bae
+      run: |
+        rev=$(git ls-remote https://github.com/bae-fm/uniffi-bindgen-cs "refs/heads/$BRANCH" | cut -f1)
+        [ -n "$rev" ] || { echo "no branch $BRANCH in bae-fm/uniffi-bindgen-cs" >&2; exit 1; }
+        echo "rev=$rev" >> "$GITHUB_OUTPUT"
+
+    - name: Restore the built generator
+      id: cache
+      uses: actions/cache@v5
+      with:
+        path: ${{ runner.tool_cache }}/uniffi-bindgen-cs
+        key: uniffi-bindgen-cs-${{ runner.os }}-${{ runner.arch }}-${{ steps.rev.outputs.rev }}
+
+    - name: Build the generator (on cache miss)
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        REV: ${{ steps.rev.outputs.rev }}
+        ROOT: ${{ runner.tool_cache }}/uniffi-bindgen-cs
+      run: cargo install --git https://github.com/bae-fm/uniffi-bindgen-cs --rev "$REV" uniffi-bindgen-cs --locked --root "$ROOT"
+
+    - name: Put the generator on the path
+      shell: bash
+      env:
+        ROOT: ${{ runner.tool_cache }}/uniffi-bindgen-cs
+      run: echo "$ROOT/bin" >> "$GITHUB_PATH"
