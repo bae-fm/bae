@@ -11,6 +11,9 @@ struct WelcomeChooseView: View {
     /// A failed library open or dev reset, shown as a callout under the
     /// subtitle, titled by the step that failed.
     let loadError: LoadError?
+    /// What launch found wrong, shown above `loadError` and never replaced by
+    /// it.
+    var launchProblems = LaunchProblems.none
     let canDeleteActiveLibrary: Bool
     let onLibraryReady: (OpenedLibrary, BridgeError?) -> Void
     let onOpenLibrary: (String) -> Void
@@ -119,6 +122,8 @@ struct WelcomeChooseView: View {
             Text("Get started with your music library.")
                 .themeText(.heading)
                 .foregroundStyle(.secondary)
+            LaunchProblemNotices(launchProblems)
+                .frame(maxWidth: WelcomeLayout.columnWidth)
             if let loadError {
                 WelcomeLoadErrorCallout(
                     title: Text(verbatim: loadError.step.title),

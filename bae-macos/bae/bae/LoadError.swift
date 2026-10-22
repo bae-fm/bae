@@ -1,7 +1,8 @@
 import BaeKit
 
-/// Why a step the app runs before or around opening a library failed, and
-/// which step it was. Each step titles the failure by what failed and says
+/// Why a step the app runs to open, reset, close or remove a library
+/// failed, and which step it was. Launch's own problems are `LaunchProblems`,
+/// kept apart so neither replaces the other. Each step titles the failure by what failed and says
 /// what the person can do next, wherever the failure shows: the welcome
 /// screen, the shell's bottom line, or the reset screen.
 struct LoadError: Equatable {
@@ -13,10 +14,6 @@ struct LoadError: Equatable {
         case resetOffered
         /// Reading which libraries are on this Mac.
         case libraryList
-        /// Starting the keychain every library's keys live in.
-        case secureStorage
-        /// Reading the bundled Dropbox and OneDrive sign-in settings.
-        case signInSettings
         /// Closing the open library to restore it over this Mac's copy.
         case restoreClose
         /// Resetting this Mac's copy of a library.
@@ -39,10 +36,6 @@ struct LoadError: Equatable {
                 localizedCoreString("ui.load_error.reset_offered.title")
             case .libraryList:
                 localizedCoreString("ui.load_error.library_list.title")
-            case .secureStorage:
-                localizedCoreString("ui.load_error.secure_storage.title")
-            case .signInSettings:
-                localizedCoreString("ui.load_error.sign_in_settings.title")
             case .restoreClose:
                 localizedCoreString("ui.load_error.restore_close.title")
             case .deviceReset:
@@ -71,10 +64,6 @@ struct LoadError: Equatable {
                 nil
             case .libraryList:
                 localizedCoreString("ui.load_error.library_list.advice")
-            case .secureStorage:
-                localizedCoreString("ui.load_error.secure_storage.advice")
-            case .signInSettings:
-                localizedCoreString("ui.load_error.sign_in_settings.advice")
             case .restoreClose:
                 localizedCoreString("ui.load_error.restore_close.advice")
             case .deviceReset:

@@ -20,7 +20,10 @@ struct MainWindowRoot: View {
             if appDelegate.hasShell, let appService = appDelegate.appService {
                 appService.installEnvironment(
                     libraryModals(
-                        MainWindowChrome(loadError: appDelegate.loadError) {
+                        MainWindowChrome(
+                            launchProblems: appDelegate.launchProblems,
+                            loadError: appDelegate.loadError
+                        ) {
                             detailContent
                         }
                     )
@@ -46,9 +49,12 @@ struct MainWindowRoot: View {
     }
 
     /// The welcome flow in the mode a menu item asked for, showing
-    /// `loadError` (nil in the Add Library sheet, whose failures the shell
-    /// shows).
-    private func welcomeView(loadError: LoadError?) -> some View {
+    /// `loadError` and `launchProblems` (none in the Add Library sheet, whose
+    /// failures the shell shows).
+    private func welcomeView(
+        loadError: LoadError?,
+        launchProblems: LaunchProblems
+    ) -> some View {
         Group {
             if let mode = appDelegate.welcomeInitialMode {
                 WelcomeView(
@@ -65,6 +71,7 @@ struct MainWindowRoot: View {
                     onOpenLibrary: appDelegate.openLocalLibrary(id:),
                     onFinishReplacement: appDelegate.presentFinishing,
                     loadError: loadError,
+                    launchProblems: launchProblems,
                     canDeleteActiveLibrary: !appDelegate.hasShell
                 )
             }
@@ -146,7 +153,7 @@ struct MainWindowRoot: View {
                     set: { appDelegate.showAddLibrarySheet = $0 }
                 )
             ) {
-                welcomeView(loadError: nil)
+                welcomeView(loadError: nil, launchProblems: .none)
             }
             .sheet(
                 item: Binding(
@@ -177,7 +184,10 @@ struct MainWindowRoot: View {
             ProgressView("Loading...")
             Spacer()
         case .welcome:
-            welcomeView(loadError: appDelegate.loadError)
+            welcomeView(
+                loadError: appDelegate.loadError,
+                launchProblems: appDelegate.launchProblems
+            )
         case .resetRequired(let libraryId):
             deviceResetView(libraryId: libraryId, prompt: .offered)
         case .restoreRequired(let libraryId):

@@ -2,6 +2,7 @@ package fm.bae.app.ui
 
 import android.content.Context
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -40,6 +41,7 @@ import fm.bae.app.coreString
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.data.SessionMessage
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.LaunchProblemBanner
 import fm.bae.app.ui.components.ScreenFailureNotice
 import fm.bae.app.ui.library.LibraryScreen
 import fm.bae.app.ui.onboarding.OnboardingScreen
@@ -96,16 +98,21 @@ fun ContentView(
         }
     }
     BaeAppChrome {
-        CompositionLocalProvider(LocalBugReports provides bugs) {
-            AppScreenRouter(
-                screen = screen,
-                oauthProviders = oauthProviders,
-                oauthProvidersError = oauthProvidersError,
-                shortcutAction = shortcutAction,
-                onShortcutHandled = onShortcutHandled,
-                snackbarHostState = snackbarHostState,
-                onScreen = { screen = it },
-            )
+        Column(modifier = Modifier.fillMaxSize()) {
+            LaunchProblemBanner(oauthProvidersError)
+            Box(modifier = Modifier.weight(1f)) {
+                CompositionLocalProvider(LocalBugReports provides bugs) {
+                    AppScreenRouter(
+                        screen = screen,
+                        oauthProviders = oauthProviders,
+                        oauthProvidersError = oauthProvidersError,
+                        shortcutAction = shortcutAction,
+                        onShortcutHandled = onShortcutHandled,
+                        snackbarHostState = snackbarHostState,
+                        onScreen = { screen = it },
+                    )
+                }
+            }
         }
         Box(modifier = Modifier.fillMaxSize()) {
             SnackbarHost(

@@ -63,6 +63,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var uiStore = UiStore()
     var screen: AppScreen = .loading
     var loadError: LoadError?
+    /// What launch found wrong. Set once, at launch, and kept for the run
+    /// whatever opens or fails after.
+    var launchProblems = LaunchProblems.none
     /// The welcome mode a menu item asked for; nil is the chooser.
     var welcomeInitialMode: WelcomeView.Mode?
     /// True once the first library has opened and replaced the bootstrap

@@ -45,8 +45,10 @@ enum WelcomeWindow {
 }
 
 /// The main window's chrome around the shell: its size limits, the themed
-/// background, and the bottom line for a library load error.
+/// background, and the bottom notices for what launch found wrong and for a
+/// library load error, each its own.
 struct MainWindowChrome<Content: View>: View {
+    var launchProblems = LaunchProblems.none
     let loadError: LoadError?
     @ViewBuilder
     let content: Content
@@ -57,7 +59,11 @@ struct MainWindowChrome<Content: View>: View {
         }
         .windowBackground()
         .overlay(alignment: .bottom) {
-            LoadErrorLine(loadError: loadError)
+            VStack(spacing: ThemeSpace.related) {
+                LaunchProblemNotices(launchProblems)
+                LoadErrorLine(loadError: loadError)
+            }
+            .padding()
         }
     }
 }
@@ -126,7 +132,6 @@ private struct LoadErrorLine: View {
     var body: some View {
         if let loadError {
             LoadErrorNotice(loadError: loadError)
-                .padding()
         }
     }
 }

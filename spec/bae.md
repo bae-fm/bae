@@ -2234,6 +2234,13 @@ titles the failure by its step and says what to do next for that step, above
 the category's line and the detail, so a keychain that won't open never reads
 as a library that failed to open.
 
+What launch finds wrong without stopping the app is kept apart from those
+failures for the whole run: sign-in settings bae can't read, and on the Mac a
+keychain that won't start, which leaves its libraries listed but closed. It
+shows beside whatever opens or fails later, so a library that opens doesn't
+hide it and a later failure doesn't replace it. On phones a keychain that won't
+start stops the launch.
+
 ---
 
 ## 10. Bridge

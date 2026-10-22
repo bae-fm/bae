@@ -19,6 +19,9 @@ struct WelcomeView: View {
     /// callout. Only the first-run bootstrap carries it; a flow a menu item
     /// opens directly shows its own errors.
     let loadError: LoadError?
+    /// What launch found wrong, shown above `loadError` and never replaced by
+    /// it.
+    let launchProblems: LaunchProblems
     let canDeleteActiveLibrary: Bool
 
     enum Mode {
@@ -41,6 +44,7 @@ struct WelcomeView: View {
         onOpenLibrary: @escaping (String) -> Void,
         onFinishReplacement: @escaping (String, BridgeReplacedBy) -> Void,
         loadError: LoadError? = nil,
+        launchProblems: LaunchProblems = .none,
         initialMode: Mode = .choose,
         canDeleteActiveLibrary: Bool
     ) {
@@ -48,6 +52,7 @@ struct WelcomeView: View {
         self.onOpenLibrary = onOpenLibrary
         self.onFinishReplacement = onFinishReplacement
         self.loadError = loadError
+        self.launchProblems = launchProblems
         self.canDeleteActiveLibrary = canDeleteActiveLibrary
         _mode = State(initialValue: initialMode)
     }
@@ -57,6 +62,7 @@ struct WelcomeView: View {
         case .choose:
             WelcomeChooseView(
                 loadError: loadError,
+                launchProblems: launchProblems,
                 canDeleteActiveLibrary: canDeleteActiveLibrary,
                 onLibraryReady: onLibraryReady,
                 onOpenLibrary: onOpenLibrary,

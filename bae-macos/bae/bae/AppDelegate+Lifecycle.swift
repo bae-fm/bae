@@ -49,6 +49,8 @@ extension AppDelegate {
     func applicationDidFinishLaunching(_: Notification) {
         guard runtime.startsApplicationServices else { return }
         var keyringReady = true
+        var signInSettings: DisplayError?
+        var secureStorage: DisplayError?
         // Telemetry is already up (built at delegate construction, from
         // compiled-in values only), so every step from here on has a sink
         // for any failure it reports.
@@ -66,7 +68,7 @@ extension AppDelegate {
                 baeAppLogger.error(
                     "OAuth registration failed: \(error.localizedDescription)"
                 )
-                loadError = LoadError(.signInSettings, error)
+                signInSettings = DisplayError(error)
             }
         #endif
         do {
@@ -84,9 +86,13 @@ extension AppDelegate {
             baeAppLogger.error(
                 "Keyring initialization failed: \(error.localizedDescription)"
             )
-            loadError = LoadError(.secureStorage, error)
+            secureStorage = DisplayError(error)
             keyringReady = false
         }
+        launchProblems = LaunchProblems(
+            signInSettings: signInSettings,
+            secureStorage: secureStorage
+        )
         startWatchingForKeychainUnlock()
         observeDeviceWake()
         #if BAE_DEV_RESET

@@ -261,10 +261,13 @@ extension LibraryView {
 private struct LibraryBanner: View {
     @Environment(ConfigStore.self)
     private var configStore
+    @Environment(\.launchProblems)
+    private var launchProblems
 
     // Group, so with nothing to show nothing takes the padding.
     var body: some View {
         Group {
+            LaunchProblemNotices(launchProblems)
             if let error = configStore.lastError {
                 HStack(alignment: .top, spacing: ThemeSpace.related) {
                     ErrorDetailDisclosure(error: error)

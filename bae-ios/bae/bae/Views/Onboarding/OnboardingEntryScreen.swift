@@ -12,6 +12,8 @@ struct OnboardingEntryScreen: View {
 
     @Environment(LibraryRemovals.self)
     private var removals
+    @Environment(\.launchProblems)
+    private var launchProblems
 
     /// Restore codes coven saved in iCloud Keychain.
     @State
@@ -46,6 +48,7 @@ struct OnboardingEntryScreen: View {
                 }
                 .padding(.top, ThemeSpace.edge)
 
+                LaunchProblemNotices(launchProblems)
                 savedCodesSection
                 LibraryRemovalNotice()
             }

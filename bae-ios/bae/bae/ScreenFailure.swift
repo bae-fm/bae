@@ -9,8 +9,6 @@ struct ScreenFailure {
         case startup
         /// Starting the keychain every library's keys live in.
         case secureStorage
-        /// Reading the bundled Dropbox and OneDrive sign-in settings.
-        case signInSettings
         /// Reading which libraries are on this device.
         case libraryList
         /// Opening a library.
@@ -27,8 +25,6 @@ struct ScreenFailure {
             case .startup: localizedCoreString("ui.load_error.startup.title")
             case .secureStorage:
                 localizedCoreString("ui.load_error.secure_storage.title")
-            case .signInSettings:
-                localizedCoreString("ui.load_error.sign_in_settings.title")
             case .libraryList:
                 localizedCoreString("ui.load_error.library_list.title")
             case .libraryOpen:
@@ -47,8 +43,6 @@ struct ScreenFailure {
             case .startup: localizedCoreString("ui.load_error.startup.advice")
             case .secureStorage:
                 localizedCoreString("ui.load_error.secure_storage.advice")
-            case .signInSettings:
-                localizedCoreString("ui.load_error.sign_in_settings.advice")
             case .libraryList:
                 localizedCoreString("ui.load_error.library_list.advice")
             case .libraryOpen:

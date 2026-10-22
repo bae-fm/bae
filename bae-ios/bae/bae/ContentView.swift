@@ -1,10 +1,11 @@
 import BaeKit
 import SwiftUI
 
-/// What launch brought up: the process-lifetime host, or why launch stopped
-/// before the app could run.
+/// What launch brought up: the process-lifetime host, with what launch found
+/// wrong that doesn't stop the app, or why launch stopped before the app
+/// could run.
 enum AppLaunch {
-    case ready(BridgeHost)
+    case ready(BridgeHost, LaunchProblems)
     case failed(ScreenFailure)
 }
 
@@ -17,12 +18,13 @@ struct ContentView: View {
     var body: some View {
         Group {
             switch launch {
-            case .ready(let host):
+            case .ready(let host, let problems):
                 AppSessionView(
                     diagnostics: diagnostics,
                     host: host,
                     deviceName: deviceName
                 )
+                .environment(\.launchProblems, problems)
 
             case .failed(let error):
                 ScreenError(error: error)

@@ -47,7 +47,8 @@ struct BaeApp: App {
     }
 
     /// Bring up crash reporting, bae's directory, the host, and the keychain,
-    /// stopping at the first that fails, named by its step.
+    /// stopping at the first that fails, named by its step. Unreadable
+    /// sign-in settings don't stop it: they're a launch problem for the run.
     private static func launch(diagnostics: BridgeDiagnostics) -> AppLaunch {
         BaeCrashReporting.configure(edition: appEdition)
         Logger.bae("BaeApp").info("application launched")
@@ -69,18 +70,32 @@ struct BaeApp: App {
         catch {
             return failed(.secureStorage, error)
         }
+        let signInSettings = registerSignIn(host: host)
+        return .ready(
+            host,
+            LaunchProblems(signInSettings: signInSettings, secureStorage: nil)
+        )
+    }
+
+    /// Register the build's Dropbox and OneDrive applications and the system
+    /// sign-in sheet, before anything can restore, join or sign in. Without a
+    /// bundled config, provider sign-in stays unavailable; an unreadable one
+    /// is returned as a launch problem, since libraries on other storage
+    /// still open.
+    private static func registerSignIn(host: BridgeHost) -> DisplayError? {
         #if BAE_OAUTH_PROVIDERS
         do {
-            // The build's Dropbox and OneDrive applications and the system
-            // sign-in sheet, before anything can restore, join or sign in.
-            // Without a bundled config, provider sign-in stays unavailable.
             try OAuthLinking.load()?.register(host: host)
         }
         catch {
-            return failed(.signInSettings, error)
+            Logger.bae("BaeApp")
+                .error(
+                    "OAuth registration failed: \(error.localizedDescription)"
+                )
+            return DisplayError(error)
         }
         #endif
-        return .ready(host)
+        return nil
     }
 
     /// The launch stopped at `step`. Only a cancellation has no line, and
