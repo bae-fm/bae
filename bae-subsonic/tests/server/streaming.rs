@@ -462,7 +462,6 @@ async fn musicbrainz_id_surfaces_when_present() {
         album_id: album.id.clone(),
         release_name: None,
         pressing: bae_core::pressing::Pressing::blank(),
-        draft_from_tags: true,
         source_folder_name: None,
         content_hash: None,
         album_loudness_lufs: None,
@@ -525,12 +524,12 @@ async fn musicbrainz_id_surfaces_when_present() {
     for (record, expected) in [
         (bae_core::import::ReleaseRecord::album(&group), None),
         (
-            bae_core::import::ReleaseRecord::new(&pressing, Some(group.key.clone()), false),
+            bae_core::import::ReleaseRecord::new(&pressing, Some(group.key.clone())),
             Some(pressing.key.as_str()),
         ),
     ] {
         manager
-            .set_records(&release.id, vec![record], true)
+            .set_records(&release.id, vec![record])
             .await
             .unwrap();
         let response = call(
@@ -694,7 +693,6 @@ async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
         album_id: album.id.clone(),
         release_name: None,
         pressing: bae_core::pressing::Pressing::blank(),
-        draft_from_tags: false,
         source_folder_name: None,
         content_hash: None,
         album_loudness_lufs: None,
