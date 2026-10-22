@@ -15,7 +15,7 @@ struct ReleaseDownloadSection: View {
     @State
     private var unpinTask: Task<Void, Never>?
     @State
-    private var unpinError: DisplayError?
+    private var actionError: DisplayError?
 
     var body: some View {
         let status = bridgeReleaseDownloadStatus(
@@ -26,8 +26,8 @@ struct ReleaseDownloadSection: View {
         )
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             control(status)
-            if let unpinError {
-                ErrorDetailDisclosure(error: unpinError)
+            if let actionError {
+                ErrorDetailDisclosure(error: actionError)
             }
         }
         .onDisappear { unpinTask?.cancel() }
@@ -42,7 +42,7 @@ struct ReleaseDownloadSection: View {
             // Progress arrives through the download snapshot; core skips
             // releases already queued or pinned.
             actionButton("Download", systemImage: "arrow.down.circle") {
-                Task { try await downloads.queuePins([releaseId]) }
+                queueDownload()
             }
         case .queued:
             HStack(spacing: ThemeSpace.related) {
@@ -115,9 +115,24 @@ struct ReleaseDownloadSection: View {
         }
     }
 
+    /// Queue the release's download; a request core refuses shows its
+    /// error under the control.
+    private func queueDownload() {
+        actionError = nil
+        Task {
+            do {
+                try await downloads.queuePins([releaseId])
+            }
+            catch is CancellationError {}
+            catch {
+                actionError = DisplayError(error)
+            }
+        }
+    }
+
     private func removeDownload() {
         unpinTask?.cancel()
-        unpinError = nil
+        actionError = nil
         unpinTask = Task {
             defer { unpinTask = nil }
             do {
@@ -125,7 +140,7 @@ struct ReleaseDownloadSection: View {
             }
             catch is CancellationError {}
             catch {
-                unpinError = DisplayError(error)
+                actionError = DisplayError(error)
             }
         }
     }

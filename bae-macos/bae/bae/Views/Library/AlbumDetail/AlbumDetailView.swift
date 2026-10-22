@@ -452,7 +452,11 @@ extension AlbumDetailView {
         // a per-release transition. The sheet's existing `release.summary.transfer`
         // bar tracks the action from subscribed release values; the storage state
         // flips when the live album detail delivers the worker's database commit.
-        Task { try await downloads.queuePins([releaseId]) }
+        // Queueing itself can fail, and shows why where the other transitions do.
+        let downloads = downloads
+        runStorageTransition {
+            try await downloads.queuePins([releaseId])
+        }
     }
 
     private func unpinRelease(releaseId: String) {

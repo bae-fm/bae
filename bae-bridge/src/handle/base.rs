@@ -208,12 +208,11 @@ forward! { async this => {
     }
 
     /// Enqueue releases to pin for offline. They join the in-memory serial
-    /// download queue; the worker drains them one at a time. The DB lookups
-    /// (resolving each release's title/size for its pane row) happen here; the
-    /// deep cloud download runs on the queue worker.
+    /// download queue; the worker drains them one at a time. Fails, queueing
+    /// none of them, when a release's storage can't be read; the deep cloud
+    /// download runs on the queue worker.
     fn queue_pin_releases(release_ids: Vec<String>) -> () {
-        this.services.enqueue_pins(release_ids).await;
-        Ok(())
+        Ok(this.services.enqueue_pins(release_ids).await?)
     }
 } }
 

@@ -237,7 +237,10 @@ async fn cancelling_a_cover_upload_preserves_completed_audio_and_its_download() 
     let (manager, _temp, release, _) = queued_upload_fixture("completed").await;
     manager.drain_uploads_expecting_work().await.unwrap();
     manager.set_downloads_paused(true);
-    manager.enqueue_pins(vec![release.id.clone()]).await;
+    manager
+        .enqueue_pins(vec![release.id.clone()])
+        .await
+        .unwrap();
     store_test_cover(&manager, &release.id, b"cover").await;
     assert_eq!(manager.download_queue().ops.len(), 1);
     manager.cancel_all_release_uploads().await.unwrap();

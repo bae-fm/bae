@@ -366,7 +366,7 @@ impl Automation {
                 // The pin joins the download queue rather than running inline —
                 // the same path the Storage Manager's Pin uses, so a batch
                 // serializes and reports through the Downloads pane.
-                self.services.enqueue_pins(vec![release_id.clone()]).await;
+                self.services.enqueue_pins(vec![release_id.clone()]).await?;
                 Ok(AutomationStorageActionOutcome::PinQueued { release_id })
             }
             AutomationStorageAction::Unpin => {

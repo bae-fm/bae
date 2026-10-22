@@ -411,7 +411,7 @@ impl AppServices {
     delegate_async!(manager, cancel_release_transition => cancel_release_transition(release_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, cancel_all_release_uploads => cancel_all_release_uploads() -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, set_sync_paused => set_sync_paused(paused: bool) -> Result<(), crate::library::LibraryError>);
-    delegate_async!(manager, enqueue_pins => enqueue_pins(release_ids: Vec<String>) -> ());
+    delegate_async!(manager, enqueue_pins => enqueue_pins(release_ids: Vec<String>) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, use_cloudkit => use_cloudkit(device_name: &str) -> Result<coven::StorageSetup, crate::library::LibraryError>);
     #[cfg(feature = "oauth-providers")]
     delegate_async!(manager, sign_in => sign_in(provider: crate::config::CloudProvider) -> Result<(), crate::library::LibraryError>);

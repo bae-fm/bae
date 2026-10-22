@@ -978,6 +978,11 @@ queue lives in memory: after a restart it is empty, and a release that wasn't
 fully pinned stays as it was. Unpinning moves the files into the cache, still
 readable, now evictable.
 
+Asking to pin several releases queues each that can be: one already queued,
+pinned, local, or deleted meanwhile is passed over. If one of them can't be
+read, the whole request fails before anything is queued; the person sees the
+error and the failed read is reported as a bug.
+
 ### 4.4 Making a release local again
 
 Making an uploaded release local again copies its files into a folder the

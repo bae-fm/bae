@@ -104,11 +104,13 @@ impl LibraryManager {
     }
 
     /// Enqueue releases to pin for offline. Skips ids already in the queue (in any
-    /// state), missing from the library, local, or already pinned. The entry
-    /// names the release by id only; the Downloads pane reads its title, file
-    /// count, and size from the library as it shows the row. Wakes the parked
-    /// worker and publishes the queue's new contents.
-    pub async fn enqueue_pins(&self, release_ids: Vec<String>) {
+    /// state), missing from the library (deleted meanwhile), local, or already
+    /// pinned. A release whose storage can't be read fails the whole request
+    /// before anything is queued, reported as a bug: the library's own rows
+    /// failed to read. The entry names the release by id only; the Downloads
+    /// pane reads its title, file count, and size from the library as it shows
+    /// the row. Wakes the parked worker and publishes the queue's new contents.
+    pub async fn enqueue_pins(&self, release_ids: Vec<String>) -> Result<(), LibraryError> {
         // One timestamp for the whole batch — read the clock once, not per row.
         let enqueued_at =
             chrono::DateTime::<chrono::Utc>::from(self.clock.now()).timestamp_millis();
@@ -121,12 +123,15 @@ impl LibraryManager {
             let summary = match self.find_release_storage_summary(&release_id).await {
                 Ok(Some(summary)) => summary,
                 Ok(None) => {
-                    warn!("enqueue_pins: release {release_id} not found, skipping");
+                    debug!("enqueue_pins: release {release_id} is gone from the library, skipping");
                     continue;
                 }
-                Err(e) => {
-                    warn!("enqueue_pins: failed to load storage summary for {release_id}: {e}");
-                    continue;
+                Err(error) => {
+                    self.diagnostics.report_bug(
+                        &format!("read release {release_id}'s storage to pin it"),
+                        &crate::util::error_text::CauseChain(&error),
+                    );
+                    return Err(error);
                 }
             };
             if summary.storage_state == ReleaseStorageState::Local {
@@ -150,6 +155,7 @@ impl LibraryManager {
             });
         }
         self.downloads.enqueue_all(ops);
+        Ok(())
     }
 
     /// Pause or resume the download queue. While paused the worker parks instead

@@ -692,6 +692,27 @@ impl Database {
         .await
     }
 
+    /// Test-only: write a release's media column as text, the way a changeset
+    /// another device wrote lands, so a test can make the release's read fail.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn set_release_media_text_for_test(
+        &self,
+        release_id: &str,
+        media: &str,
+    ) -> Result<(), DbError> {
+        let release_id = release_id.to_string();
+        let media = media.to_string();
+        self.call(move |conn| {
+            conn.execute(
+                "UPDATE releases SET media = ?1 WHERE id = ?2",
+                params![media, release_id],
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+    }
+
     /// The audio uploads still queued for this release.
     pub async fn count_pending_uploads_for_release(
         &self,

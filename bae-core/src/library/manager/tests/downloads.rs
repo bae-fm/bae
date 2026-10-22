@@ -22,7 +22,8 @@ async fn download_queue_enqueue_dedups_and_cancels_while_paused() {
     // Park the worker up front so nothing drains while we inspect state.
     manager.set_downloads_paused(true);
 
-    manager.enqueue_pins(vec![release_id.clone()]).await;
+    manager.enqueue_pins(vec![release_id.clone()]).await
+        .unwrap();
     let snap = manager.download_queue();
     assert_eq!(snap.total().queued, 1);
     assert_eq!(snap.ops.len(), 1);
@@ -30,7 +31,8 @@ async fn download_queue_enqueue_dedups_and_cancels_while_paused() {
     assert!(snap.paused);
 
     // Re-enqueuing the same release is a no-op: still one entry.
-    manager.enqueue_pins(vec![release_id.clone()]).await;
+    manager.enqueue_pins(vec![release_id.clone()]).await
+        .unwrap();
     assert_eq!(manager.download_queue().ops.len(), 1);
 
     // Cancel drops the entry.
@@ -70,8 +72,36 @@ async fn download_queue_skips_already_pinned() {
     );
 
     manager.set_downloads_paused(true);
-    manager.enqueue_pins(vec![release_id.clone()]).await;
+    manager.enqueue_pins(vec![release_id.clone()]).await
+        .unwrap();
     assert!(manager.download_queue().ops.is_empty());
+}
+
+/// A release whose storage can't be read fails the whole pin request before
+/// anything is queued — not a skip that leaves the pin silently doing nothing.
+#[tokio::test]
+async fn a_failed_release_read_fails_the_whole_pin_request() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let readable = insert_pinnable_release(&manager).await;
+    let source = manager.get_config().library_path().join("unreadable-source");
+    let unreadable = uploaded_release(&manager, &source, "Album Title", false).await;
+    manager.set_downloads_paused(true);
+    manager
+        .database
+        .set_release_media_text_for_test(&unreadable, r#"[{"medium":"not-a-medium","count":1}]"#)
+        .await
+        .unwrap();
+
+    let error = manager
+        .enqueue_pins(vec![readable.clone(), unreadable.clone()])
+        .await
+        .expect_err("a release that can't be read fails the request");
+
+    assert!(error.to_string().contains("not-a-medium"), "{error}");
+    assert!(
+        manager.download_queue().ops.is_empty(),
+        "nothing is queued when the request fails"
+    );
 }
 
 /// A Local release has nothing to pin — it is already fully on disk —
@@ -100,7 +130,8 @@ async fn download_queue_skips_local_release() {
         crate::album_detail::ReleaseStorageState::Local
     );
 
-    manager.enqueue_pins(vec![release.id.clone()]).await;
+    manager.enqueue_pins(vec![release.id.clone()]).await
+        .unwrap();
     assert!(
         manager.download_queue().ops.is_empty(),
         "a local release is not enqueued for pinning"
@@ -116,7 +147,8 @@ async fn download_queue_failed_pin_retries() {
 
     manager.storage.set_online(false);
     // The evicted file cannot be fetched while storage is offline.
-    manager.enqueue_pins(vec![release_id.clone()]).await;
+    manager.enqueue_pins(vec![release_id.clone()]).await
+        .unwrap();
 
     // Let the worker pick it up, fail, and mark it Failed. Poll the snapshot
     // rather than sleeping a fixed interval.
