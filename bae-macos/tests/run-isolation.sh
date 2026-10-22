@@ -74,6 +74,7 @@ binding_install_capture="$test_root/binding-installs"
 mkdir -p \
     "$rust_fixture/bae-macos/bae" \
     "$rust_fixture/bae-bridge" \
+    "$rust_fixture/scripts" \
     "$rust_fixture/bae-ffmpeg/dist/include/libavutil"
 cp "$repo_root/bae-macos/run.sh" "$rust_fixture/bae-macos/run.sh"
 cp "$repo_root/bae-macos/prepare-build.sh" \
@@ -93,7 +94,11 @@ printf '%s\n' \
     '#!/usr/bin/env bash' \
     "printf '%s\\n' \"\$*\" >> '$binding_install_capture'" \
     > "$rust_fixture/bae-bridge/install-swift-bindings.sh"
+# run.sh links the checkout's build folders first; the fixture is no git
+# checkout, so it gets a no-op in place of scripts/build-layout.sh.
+printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > "$rust_fixture/scripts/build-layout.sh"
 chmod +x \
+    "$rust_fixture/scripts/build-layout.sh" \
     "$rust_fixture/bae-macos/run.sh" \
     "$rust_fixture/bae-macos/prepare-build.sh" \
     "$rust_fixture/bae-bridge/build-macos.sh" \
