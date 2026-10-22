@@ -78,6 +78,18 @@ case ",$BAE_BRIDGE_FEATURES," in
     *) ENTITLEMENTS_OVERRIDE="CODE_SIGN_ENTITLEMENTS = bae/bae-baeium.entitlements" ;;
 esac
 
+# The staticlib links into the app, so build it for the app's deployment
+# target. The scheme pre-action receives it from Xcode; a build from a terminal
+# (CI, check.sh, open.sh) reads it from project.yml. cc-built dependencies
+# (aws-lc-sys, libsqlite3-sys, ffmpeg-sys-next, objc2, ...) watch this variable,
+# so without it the two kinds of build rebuilt them and everything above them
+# each time they alternated.
+if [ -z "${MACOSX_DEPLOYMENT_TARGET:-}" ]; then
+    MACOSX_DEPLOYMENT_TARGET="$(sed -n 's/^ *macOS: "\(.*\)"$/\1/p' bae-macos/bae/project.yml)"
+    [ -n "$MACOSX_DEPLOYMENT_TARGET" ] || { echo "no macOS deploymentTarget in bae-macos/bae/project.yml" >&2; exit 1; }
+fi
+export MACOSX_DEPLOYMENT_TARGET
+
 # Use sccache if available, unless the caller already selected a wrapper.
 if [ -z "${RUSTC_WRAPPER+x}" ] && command -v sccache &> /dev/null; then
     export RUSTC_WRAPPER=sccache

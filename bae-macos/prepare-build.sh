@@ -22,12 +22,11 @@ if [ "${BAE_MACOS_PREPARE_CLEAN_ENV:-0}" != 1 ]; then
     PATH="$PATH" \
     TMPDIR="${TMPDIR:-/tmp}" \
     DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}" \
-    MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-15.0}" \
     CONFIGURATION="${CONFIGURATION:-Debug}" \
     BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES:-oauth-providers,cloudkit,desktop}" \
     BAE_MACOS_PREPARE_CLEAN_ENV=1
-  for var in FFMPEG_DIR PKG_CONFIG_PATH LIBRARY_PATH DYLD_LIBRARY_PATH \
-    BINDGEN_EXTRA_CLANG_ARGS C_INCLUDE_PATH; do
+  for var in MACOSX_DEPLOYMENT_TARGET FFMPEG_DIR PKG_CONFIG_PATH LIBRARY_PATH \
+    DYLD_LIBRARY_PATH BINDGEN_EXTRA_CLANG_ARGS C_INCLUDE_PATH; do
     eval "val=\${$var:-}"
     if [ -n "$val" ]; then
       set -- "$@" "$var=$val"
