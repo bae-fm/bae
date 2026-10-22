@@ -20,7 +20,7 @@ on:
         type: string
         default: full
       version:
-        description: 'BAE_VERSION stamped into the build. Blank keeps build.gradle.kts / build.rs dev defaults.'
+        description: 'BAE_VERSION stamped into the build. Blank keeps build.gradle.kts dev defaults.'
         type: string
         default: ''
       version_code:
@@ -162,8 +162,8 @@ jobs:
 
     - name: Set release version + stamps
       # Release stamps an explicit version/code and the source commits into the
-      # build; debug leaves these unset so build.gradle.kts / build.rs use their
-      # dev defaults.
+      # build; debug leaves these unset so build.gradle.kts uses its dev
+      # defaults.
       if: inputs.profile == 'release'
       env:
         BAE_DATADOG_SITE: ${{ secrets.BAE_DATADOG_SITE }}

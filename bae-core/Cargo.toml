@@ -5,7 +5,6 @@ authors = ["dima"]
 edition = "2021"
 license = "LicenseRef-UNLICENSED"
 publish = false
-build = "build.rs"
 
 [lib]
 name = "bae_core"
