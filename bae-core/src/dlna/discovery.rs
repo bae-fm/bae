@@ -205,8 +205,10 @@ pub(super) fn parse_ssdp_location(response: &str) -> Option<String> {
 }
 
 /// Parse a device-description document (fetched from `location`) into a UPnP
-/// [`RendererDevice`]. Returns `None` when the XML doesn't parse or the device
-/// has no AVTransport service (it can't be played to). Control URLs are resolved to
+/// [`RendererDevice`]. Returns `None` when the XML doesn't parse, the device
+/// has no UDN (UPnP tells devices apart by it, so without one the renderer has
+/// no identity that survives its address changing; logged with its address),
+/// or it has no AVTransport service (it can't be played to). Control URLs are resolved to
 /// absolute form against `URLBase` when present, else against `location` — so a
 /// relative `controlURL`, an absolute-path one, and one naming another host/port
 /// all land as a full URL.
@@ -221,10 +223,17 @@ pub(super) fn parse_device_description(xml: &str, location: &str) -> Option<Rend
         .filter(|s| !s.is_empty())
         .unwrap_or(location);
 
-    let id = local_text(&doc, "UDN")
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| location.to_string());
+    let Some(id) = local_text(&doc, "UDN")
+        .map(str::trim)
+        .filter(|udn| !udn.is_empty())
+        .map(str::to_string)
+    else {
+        warn!(
+            "dlna discovery: the renderer at {location} states no UDN, which UPnP \
+             needs to tell devices apart; leaving it out of the picker"
+        );
+        return None;
+    };
 
     let name = local_text(&doc, "friendlyName")
         .map(|s| s.trim().to_string())

@@ -1795,6 +1795,10 @@ iOS lets its own service browser find them, since sending multicast from the
 app needs an entitlement Apple grants by application; it finds Chromecast and
 AirPlay receivers but no UPnP ones.
 
+A UPnP renderer is known by its UDN, so it stays the same entry when its
+address changes. One that states no UDN is left out of the picker, and the
+log names its address.
+
 **This device.** On macOS, playback follows a change of the default output
 device. Volume and mute live in core, so unmuting restores the level last set.
 

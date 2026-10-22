@@ -182,6 +182,33 @@ fn description_without_av_transport_is_unusable() {
     );
 }
 
+/// UPnP tells devices apart by their UDN. A renderer without one has no
+/// identity that survives its address changing, so it stays out of the picker.
+#[test]
+fn description_without_a_udn_is_left_out() {
+    for udn in ["", "<UDN>  </UDN>"] {
+        let xml = format!(
+            r#"<?xml version="1.0"?>
+<root xmlns="urn:schemas-upnp-org:device-1-0">
+  <device>
+    <friendlyName>No Identity</friendlyName>
+    {udn}
+    <serviceList>
+      <service>
+        <serviceType>urn:schemas-upnp-org:service:AVTransport:1</serviceType>
+        <controlURL>avt</controlURL>
+      </service>
+    </serviceList>
+  </device>
+</root>"#
+        );
+        assert!(
+            parse_device_description(&xml, "http://10.0.0.9:49152/dev.xml").is_none(),
+            "a renderer without a UDN ({udn:?}) is not offered"
+        );
+    }
+}
+
 // -- SOAP envelope construction -----------------------------------------------
 
 #[test]
