@@ -663,6 +663,7 @@ impl crate::types::BridgeImportQueueSummary {
             narrowed,
             narrowing,
             first_selected_position,
+            done_upload_status,
         } = summary;
         let bae_core::import::FolderScanProgress { statuses, activity } = folder_scans;
         Self {
@@ -687,8 +688,16 @@ impl crate::types::BridgeImportQueueSummary {
             narrowed: narrowed.map(crate::types::BridgeNarrowedCount::from_core),
             narrowing: crate::types::BridgeImportListNarrowing::from_core(narrowing),
             first_selected_position,
+            done_upload_status: done_upload_status
+                .map(crate::types::BridgeUploadStatusKnown::from_core),
         }
     }
+}
+
+mirror_enum! {
+    crate::types::BridgeUploadStatusKnown = bae_core::import::UploadStatusKnown,
+    from_core: pub(super) fn,
+    variants: { Waiting, Read, Unreadable },
 }
 
 mirror_struct! {

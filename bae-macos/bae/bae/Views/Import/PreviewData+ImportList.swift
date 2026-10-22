@@ -137,7 +137,8 @@
                     filterText: filterText,
                     pendingFilter: .all
                 ),
-                firstSelectedPosition: nil
+                firstSelectedPosition: nil,
+                doneUploadStatus: nil
             )
         }
 

@@ -23,7 +23,7 @@ pub(super) fn list_request(
             .into_iter()
             .map(|(offset, limit)| crate::library::LibraryPageWindow { offset, limit })
             .collect(),
-        upload_standing: Default::default(),
+        upload_status: crate::import::list::UploadStatus::Read(Default::default()),
         live_standings: Default::default(),
         selected: Default::default(),
     }

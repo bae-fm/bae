@@ -57,7 +57,8 @@ class ImportStore {
             filterText: "",
             pendingFilter: .all
         ),
-        firstSelectedPosition: nil
+        firstSelectedPosition: nil,
+        doneUploadStatus: nil
     )
 
     /// The fault each watched root was last reported as having. A summary is

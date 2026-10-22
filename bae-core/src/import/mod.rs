@@ -239,6 +239,7 @@ desktop_only! {
         ImportListOrder, ImportListProjection, ImportListRequest, ImportListSnapshot,
         ImportListSubscription, ImportListSubscriptionError, ImportListView, ImportListWindow,
         ImportListNarrowing, ImportQueueSummary, NarrowedCount, PendingFilter, PendingFilterEntry,
+        UploadStatus, UploadStatusKnown,
     };
     pub use mapping::{
         mapping_tracks, InvalidCandidateDetail, MappingContainer, MappingEntry, MappingFile,

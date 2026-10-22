@@ -132692,6 +132692,352 @@
           }
         }
       }
+    },
+    "Waiting for the upload queue" : {
+      "comment" : "Import list, Done tab: shown in place of the rows until the cloud upload queue first reports where uploads stand, since Done is ordered by upload state.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "بانتظار قائمة الرفع"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изчакване на опашката за качване"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Čeká se na frontu nahrávání"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Venter på uploadkøen"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warten auf die Upload-Warteschlange"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Αναμονή για την ουρά μεταφόρτωσης"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for the upload queue"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esperando la cola de subida"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odotetaan latausjonoa"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente de la file d'envoi"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ממתין לתור ההעלאה"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Čeka se red za prijenos"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Várakozás a feltöltési sorra"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In attesa della coda di caricamento"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アップロードキューを待っています"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "업로드 대기열을 기다리는 중"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Venter på opplastingskøen"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wachten op de uploadwachtrij"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oczekiwanie na kolejkę przesyłania"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aguardando a fila de envio"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A aguardar a fila de carregamento"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se așteaptă coada de încărcare"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Čaká sa na frontu nahrávania"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Väntar på uppladdningskön"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yükleme kuyruğu bekleniyor"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очікування черги вивантаження"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在等待上传队列"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在等待上傳佇列"
+          }
+        }
+      }
+    },
+    "Upload status couldn't be read. Releases are in the order they were imported." : {
+      "comment" : "Import list, Done tab: line above the rows when the cloud upload queue couldn't be read; the rows are then ordered by import time instead of upload state.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّرت قراءة حالة الرفع. الإصدارات مرتبة حسب وقت استيرادها."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Състоянието на качването не можа да бъде прочетено. Изданията са подредени по реда на импортиране."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stav nahrávání se nepodařilo přečíst. Vydání jsou seřazena podle pořadí importu."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uploadstatus kunne ikke læses. Udgivelserne står i den rækkefølge, de blev importeret."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Upload-Status konnte nicht gelesen werden. Die Veröffentlichungen stehen in der Reihenfolge ihres Imports."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Δεν ήταν δυνατή η ανάγνωση της κατάστασης μεταφόρτωσης. Οι κυκλοφορίες εμφανίζονται με τη σειρά εισαγωγής τους."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upload status couldn't be read. Releases are in the order they were imported."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo leer el estado de subida. Los lanzamientos aparecen en el orden en que se importaron."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Latauksen tilaa ei voitu lukea. Julkaisut ovat tuontijärjestyksessä."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de lire l'état des envois. Les parutions sont dans l'ordre de leur importation."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן היה לקרוא את מצב ההעלאה. ההוצאות מסודרות לפי סדר הייבוא שלהן."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stanje prijenosa nije bilo moguće pročitati. Izdanja su poredana redoslijedom uvoza."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A feltöltés állapotát nem sikerült beolvasni. A kiadások az importálás sorrendjében vannak."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile leggere lo stato del caricamento. Le uscite sono nell'ordine in cui sono state importate."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アップロード状況を読み取れませんでした。リリースは取り込んだ順に並んでいます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "업로드 상태를 읽을 수 없습니다. 릴리스는 가져온 순서대로 표시됩니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opplastingsstatusen kunne ikke leses. Utgivelsene står i rekkefølgen de ble importert."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De uploadstatus kon niet worden gelezen. De releases staan in de volgorde waarin ze zijn geïmporteerd."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie udało się odczytać stanu przesyłania. Wydania są w kolejności importu."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível ler o status do envio. Os lançamentos estão na ordem em que foram importados."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível ler o estado do carregamento. As edições estão pela ordem em que foram importadas."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starea încărcării nu a putut fi citită. Lansările sunt în ordinea în care au fost importate."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stav nahrávania sa nepodarilo prečítať. Vydania sú v poradí, v akom boli importované."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uppladdningsstatusen kunde inte läsas. Utgåvorna står i den ordning de importerades."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yükleme durumu okunamadı. Sürümler içe aktarıldıkları sırayla gösteriliyor."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не вдалося прочитати стан вивантаження. Видання впорядковано за часом імпорту."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法读取上传状态。发行版按导入顺序排列。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法讀取上傳狀態。發行版本依匯入順序排列。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

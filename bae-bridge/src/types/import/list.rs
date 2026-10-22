@@ -133,6 +133,21 @@ pub struct BridgeImportQueueSummary {
     /// Where the first selected row sits in this read's list; `None` with no
     /// selected row in it.
     pub first_selected_position: Option<u64>,
+    /// How much the Done tab knows of where its uploads stand, when this
+    /// read shows Done; absent on the other tabs.
+    pub done_upload_status: Option<BridgeUploadStatusKnown>,
+}
+
+/// How much the Done tab knows of where uploads stand. `Waiting`: the upload
+/// queue hasn't answered yet, and Done shows no rows until it does. `Read`:
+/// Done is ordered by upload standing. `Unreadable`: the queue couldn't be
+/// read, and Done is ordered by import time alone. Mirrors
+/// `bae_core::import::UploadStatusKnown`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeUploadStatusKnown {
+    Waiting,
+    Read,
+    Unreadable,
 }
 
 /// What a view narrows its rows by. Mirrors

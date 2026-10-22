@@ -241,7 +241,7 @@ impl AppServices {
             live_standings: view.pending_filter.live_standings(runtime_facts.facts()),
             view,
             windows: crate::library::LibraryPageWindows::new(),
-            upload_standing: upload_standing_of(&outbox),
+            upload_status: crate::import::list::UploadStatus::of(&outbox.borrow()),
             // A new list opens with nothing selected.
             selected: Default::default(),
         };
@@ -267,7 +267,9 @@ impl AppServices {
             live_standings: view.pending_filter.live_standings(&self.runtime_facts()),
             view,
             windows,
-            upload_standing: upload_standing_of(&self.subscribe_outbox_values()),
+            upload_status: crate::import::list::UploadStatus::of(
+                &self.subscribe_outbox_values().borrow(),
+            ),
             // A read no list owns has no selection.
             selected: Default::default(),
         }
@@ -419,18 +421,5 @@ impl AppServices {
             }
         });
         crate::library::DetailSubscription::new(key_tx, rx, task)
-    }
-}
-
-/// Where every release the outbox still holds work for stands, from the
-/// channel's current value. Nothing yet published, or a failed read, means the
-/// order starts with everything settled and corrects itself on the next
-/// snapshot.
-fn upload_standing_of(
-    outbox: &tokio::sync::watch::Receiver<Option<Result<crate::library::OutboxSnapshot, String>>>,
-) -> std::collections::BTreeMap<String, crate::import::list::UploadStanding> {
-    match &*outbox.borrow() {
-        Some(Ok(snapshot)) => crate::import::list::UploadStanding::of_outbox(snapshot),
-        Some(Err(_)) | None => std::collections::BTreeMap::new(),
     }
 }

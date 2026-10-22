@@ -163,7 +163,7 @@ async fn request(tab: TriageTab) -> ImportListRequest {
             limit: 50,
         })
         .collect(),
-        upload_standing: Default::default(),
+        upload_status: crate::import::list::UploadStatus::Read(Default::default()),
         live_standings: Default::default(),
         selected: Default::default(),
     }

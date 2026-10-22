@@ -439,11 +439,21 @@ struct ImportCandidateListContent: View {
                     .onTapGesture { filterFocused = true }
                 }
             } content: {
-                if activeTabIsEmpty {
-                    emptyState
-                }
-                else {
-                    tabList(proxy)
+                switch summary.doneUploadStatus {
+                case .waiting:
+                    UploadQueueWaiting()
+                case .read, .unreadable, nil:
+                    if activeTabIsEmpty {
+                        emptyState
+                    }
+                    else {
+                        VStack(spacing: 0) {
+                            if summary.doneUploadStatus == .unreadable {
+                                UploadStatusUnreadableNotice()
+                            }
+                            tabList(proxy)
+                        }
+                    }
                 }
             }
             .task(id: summary.groupKeys) {
@@ -895,3 +905,29 @@ extension ImportCandidateListContent {
     }
 
 #endif
+
+/// Done before the upload queue first answers: its rows are ordered by where
+/// their uploads stand, so it shows none until then.
+private struct UploadQueueWaiting: View {
+    var body: some View {
+        ProgressView("Waiting for the upload queue")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Theme.surface)
+    }
+}
+
+/// Above Done's rows when the upload queue couldn't be read: they are in import
+/// order instead of upload order.
+private struct UploadStatusUnreadableNotice: View {
+    var body: some View {
+        Label(
+            "Upload status couldn't be read. Releases are in the order they were imported.",
+            systemImage: "exclamationmark.triangle"
+        )
+        .font(.callout)
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, ThemeSpace.group)
+        .padding(.vertical, ThemeSpace.compact)
+    }
+}

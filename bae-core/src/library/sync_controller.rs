@@ -3,7 +3,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use tracing::{debug, error, warn};
+use tracing::debug;
 
 use crate::config::CloudProvider;
 use crate::db::{Database, OutboxDisplayContext, OutboxDisplayRequest};
@@ -140,7 +140,14 @@ impl SyncController {
                     let mut projection=self.outbox.lock().await;
                     match records {
                         Ok(_) => self.publish_if_labelled(&mut projection).await,
-                        Err(error) => { self.publish(&mut projection,Err(error.to_string())).await; }
+                        Err(error) => {
+                            self.publish_failure(
+                                &mut projection,
+                                "read the records waiting to upload",
+                                cause_text(&error),
+                            )
+                            .await;
+                        }
                     }
                 }
                 delivered = subscription.next() => {
@@ -163,8 +170,12 @@ impl SyncController {
         let snapshot = match delivered {
             Ok(snapshot) => snapshot,
             Err(error) => {
-                warn!(%error, "Failed to read the durable cloud outbox");
-                self.publish(&mut projection, Err(error.to_string())).await;
+                self.publish_failure(
+                    &mut projection,
+                    "read the durable cloud outbox",
+                    cause_text(&error),
+                )
+                .await;
                 return;
             }
         };
@@ -185,8 +196,12 @@ impl SyncController {
                 self.publish_if_labelled(&mut projection).await;
             }
             Err(error) => {
-                warn!(%error, "Failed to identify durable outbox display rows");
-                self.publish(&mut projection, Err(error.to_string())).await;
+                self.publish_failure(
+                    &mut projection,
+                    "identify the durable outbox's display rows",
+                    cause_text(&error),
+                )
+                .await;
             }
         }
     }
@@ -203,8 +218,12 @@ impl SyncController {
                 self.publish_if_labelled(&mut projection).await;
             }
             Err(error) => {
-                warn!(%error, "Failed to read durable outbox display rows");
-                self.publish(&mut projection, Err(error.to_string())).await;
+                self.publish_failure(
+                    &mut projection,
+                    "read the durable outbox's display rows",
+                    cause_text(&error),
+                )
+                .await;
             }
         }
     }
@@ -230,8 +249,12 @@ impl SyncController {
                 self.publish(projection, Ok(snapshot)).await;
             }
             Err(error) => {
-                error!(%error, "Failed to label the durable cloud outbox");
-                self.publish(projection, Err(error.to_string())).await;
+                self.publish_failure(
+                    projection,
+                    "label the durable cloud outbox",
+                    cause_text(&error),
+                )
+                .await;
             }
         }
     }
@@ -257,16 +280,37 @@ impl SyncController {
                         self.publish(projection, Ok(snapshot)).await
                     }
                     Err(error) => {
-                        error!(%error, "Failed to label the durable cloud outbox");
-                        self.publish(projection, Err(error.to_string())).await
+                        self.publish_failure(
+                            projection,
+                            "label the durable cloud outbox",
+                            cause_text(&error),
+                        )
+                        .await
                     }
                 }
             }
             Err(error) => {
-                warn!(%error, "Failed to read the durable cloud outbox");
-                self.publish(projection, Err(error.to_string())).await
+                self.publish_failure(
+                    projection,
+                    "read the durable cloud outbox",
+                    cause_text(&error),
+                )
+                .await
             }
         }
+    }
+
+    /// Report a failed read of the upload queue as the bug it is — the
+    /// queue's own tables, which nothing else writes, failed to read — and
+    /// publish the failure, which every reader of the queue shows.
+    async fn publish_failure(
+        &self,
+        projection: &mut OutboxProjection,
+        operation: &str,
+        detail: String,
+    ) -> u64 {
+        self.diagnostics.report_bug(operation, &detail);
+        self.publish(projection, Err(detail)).await
     }
 
     /// Number and send one outbox value.
@@ -287,7 +331,12 @@ impl SyncController {
                     .pending()
                     .await
                     .map(|records| snapshot.with_pending(records))
-                    .map_err(|error| error.to_string())
+                    .map_err(|error| {
+                        let detail = cause_text(&error);
+                        self.diagnostics
+                            .report_bug("read the records waiting to upload", &detail);
+                        detail
+                    })
             }
             Err(error) => Err(error),
         };
@@ -411,4 +460,9 @@ impl SyncController {
         self.database.unlock_store_key().await?;
         Ok(())
     }
+}
+
+/// An error with its whole chain of causes, as one line of text.
+fn cause_text(error: &(dyn std::error::Error + 'static)) -> String {
+    crate::util::error_text::CauseChain(error).to_string()
 }

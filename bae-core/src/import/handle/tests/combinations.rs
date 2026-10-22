@@ -149,7 +149,7 @@ async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
             }]
             .into_iter()
             .collect(),
-            upload_standing: Default::default(),
+            upload_status: crate::import::list::UploadStatus::Read(Default::default()),
             live_standings: Default::default(),
             selected: Default::default(),
         })

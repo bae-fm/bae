@@ -6,7 +6,7 @@
 use super::{
     FoundStates, GroupHeaderRow, ImportCandidateListLocation, ImportListItem,
     ImportListNarrowing, ImportListOrder, ImportListRequest, ImportListView, ImportQueueSummary,
-    NarrowedCount, PendingFilter, PlacedRow, UploadStanding,
+    NarrowedCount, PendingFilter, PlacedRow, UploadStanding, UploadStatus,
 };
 use crate::db::{ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
 use crate::import::triage::{
@@ -18,7 +18,7 @@ use crate::import::watched_folder::candidate_relative_path;
 use crate::import::FolderReleaseDecisionKey;
 use crate::library::LibraryError;
 use std::borrow::Cow;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::Path;
 
 /// Where one item in the list comes from; only the requested windows build
@@ -120,7 +120,7 @@ pub(crate) fn flatten(
     }
     let summary = summarise(
         rows,
-        &request.view,
+        request,
         &ordered,
         &placed,
         counts,
@@ -201,7 +201,10 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
                     TriageTab::Pending => view
                         .pending_filter
                         .holds(request.pending_state(&triage_row)),
-                    TriageTab::Done | TriageTab::Skipped => true,
+                    // Done is ordered by where uploads stand; until the queue
+                    // first answers there is no order to show its rows in.
+                    TriageTab::Done => request.upload_status != UploadStatus::Waiting,
+                    TriageTab::Skipped => true,
                 };
                 let matches_filter = kept && filter.keeps(|| shown_text(rows, &triage_row))?;
                 ordered.push(OrderedEntry {
@@ -216,7 +219,7 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
                         is_group_member: false,
                     },
                     done_order: (tab == TriageTab::Done)
-                        .then(|| done_order(rows, row, &triage_row, &request.upload_standing)),
+                        .then(|| done_order(rows, row, &triage_row, &request.upload_status)),
                 });
                 placed.push(PlacedRow {
                     row: triage_row,
@@ -470,20 +473,27 @@ fn tab_rank(tab: TriageTab) -> u8 {
     }
 }
 
-/// Where one Done row sorts: by upload standing, then import time.
+/// Where one Done row sorts: by upload standing, then import time. With the
+/// queue unreadable every row ranks alike, so import time alone orders them.
 fn done_order(
     rows: &ImportQueueRows,
     row: &ScanCandidateListRow,
     triage_row: &TriageRow,
-    upload_standing: &BTreeMap<String, UploadStanding>,
+    upload_status: &UploadStatus,
 ) -> DoneOrder {
     let Some(TriageImportStatus::Complete { releases }) = &triage_row.import_status else {
         unreachable!("a Done row carries its imported releases");
     };
+    let upload_rank = match upload_status {
+        UploadStatus::Read(standing) => releases
+            .iter()
+            .map(|release| UploadStanding::rank(standing.get(&release.release_id).copied()))
+            .min()
+            .expect("a Done row has at least one release"),
+        UploadStatus::Unreadable | UploadStatus::Waiting => 0,
+    };
     DoneOrder {
-        upload_rank: releases.iter()
-            .map(|release| UploadStanding::rank(upload_standing.get(&release.release_id).copied()))
-            .min().expect("a Done row has at least one release"),
+        upload_rank,
         imported_at: row
             .content_hash
             .as_deref()
@@ -649,12 +659,13 @@ fn shown_text<'a>(
 /// narrows the tab `view` shows.
 fn summarise(
     rows: &ImportQueueRows,
-    view: &ImportListView,
+    request: &ImportListRequest,
     ordered: &[OrderedEntry],
     placed: &[PlacedRow],
     counts: TriageTabCounts,
     first_selected_position: Option<u64>,
 ) -> ImportQueueSummary {
+    let view = &request.view;
     let mut group_keys = Vec::new();
     let mut seen_groups = HashSet::new();
     let mut pending_covers = Vec::new();
@@ -691,6 +702,7 @@ fn summarise(
         pending_covers,
         narrowing: ImportListNarrowing::of(view),
         first_selected_position,
+        done_upload_status: (view.tab == TriageTab::Done).then(|| request.upload_status.known()),
     }
 }
 

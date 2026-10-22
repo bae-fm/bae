@@ -618,11 +618,12 @@ impl ImportServiceHandle {
         window: crate::library::LibraryPageWindow,
     ) -> crate::import::ImportListSubscription {
         let runtime_facts = self.watch_runtime_facts();
+        let outbox = self.library_manager.subscribe_outbox_values();
         let request = crate::import::ImportListRequest {
             live_standings: view.pending_filter.live_standings(runtime_facts.facts()),
             view,
             windows: std::iter::once(window).collect(),
-            upload_standing: Default::default(),
+            upload_status: crate::import::list::UploadStatus::of(&outbox.borrow()),
             selected: Default::default(),
         };
         let query = self.library_manager.subscribe_import_list(request.clone());
@@ -630,7 +631,7 @@ impl ImportServiceHandle {
             query,
             self.library_manager.subscribe_folder_scan_progress(),
             request,
-            self.library_manager.subscribe_outbox_values(),
+            outbox,
             runtime_facts,
             &self.runtime_handle,
         )

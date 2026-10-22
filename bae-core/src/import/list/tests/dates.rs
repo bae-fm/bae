@@ -201,7 +201,10 @@ fn done_honors_selected_order_within_upload_standings() {
                     order,
                     ..ImportListView::default()
                 },
-                upload_standing: BTreeMap::from([("rel-a-copy".into(), UploadStanding::Working)]),
+                upload_status: crate::import::list::UploadStatus::Read(BTreeMap::from([(
+                    "rel-a-copy".into(),
+                    UploadStanding::Working,
+                )])),
                 ..ImportListRequest::default()
             },
         )

@@ -158,18 +158,62 @@ impl UploadStanding {
     }
 }
 
+/// What the Done tab knows of where each release's upload stands, from the
+/// upload queue's latest answer.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UploadStatus {
+    /// The queue hasn't answered yet: the Done tab waits for it.
+    Waiting,
+    /// Where each release the queue still holds work for stands; a release
+    /// with nothing outstanding is absent.
+    Read(BTreeMap<String, UploadStanding>),
+    /// The queue couldn't be read: the Done tab says so and orders its rows
+    /// by import time alone.
+    Unreadable,
+}
+
+impl UploadStatus {
+    /// The status the upload queue's latest value gives.
+    pub fn of(outbox: &Option<Result<crate::library::OutboxSnapshot, String>>) -> Self {
+        match outbox {
+            None => Self::Waiting,
+            Some(Ok(snapshot)) => Self::Read(UploadStanding::of_outbox(snapshot)),
+            Some(Err(_)) => Self::Unreadable,
+        }
+    }
+
+    /// How far it goes, without the standings: what the Done tab shows.
+    pub fn known(&self) -> UploadStatusKnown {
+        match self {
+            Self::Waiting => UploadStatusKnown::Waiting,
+            Self::Read(_) => UploadStatusKnown::Read,
+            Self::Unreadable => UploadStatusKnown::Unreadable,
+        }
+    }
+}
+
+/// How much the Done tab knows of where uploads stand, as it shows it: still
+/// waiting for the queue's first answer, ordered by upload standing, or
+/// unable to read the queue.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UploadStatusKnown {
+    Waiting,
+    Read,
+    Unreadable,
+}
+
 /// Everything the list query is a function of.
 ///
-/// `upload_standing`, `live_standings` and `selected` are held in memory
+/// `upload_status`, `live_standings` and `selected` are held in memory
 /// rather than in a table this query reads — by the upload pipeline, the
 /// candidate runtime and the list subscription — so whoever builds the request
 /// reads them in: [`ImportListSubscription`] keeps them current.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ImportListRequest {
     pub view: ImportListView,
     pub windows: LibraryPageWindows,
-    /// Only the releases the cloud outbox still holds work for, by release id.
-    pub upload_standing: BTreeMap<String, UploadStanding>,
+    /// Where the Done tab's uploads stand, as the queue last answered.
+    pub upload_status: UploadStatus,
     /// The state what is running puts each candidate in, while the view's
     /// filter entry narrows Found's rows; empty under All.
     pub live_standings: BTreeMap<String, LiveStanding>,
@@ -177,6 +221,21 @@ pub struct ImportListRequest {
     /// for, by key — the list subscription's selection, which only ever holds
     /// rows the list shows. Empty for a read no list owns.
     pub selected: BTreeSet<String>,
+}
+
+/// A test's request: the default view and windows, an upload queue that
+/// answered with nothing outstanding, nothing running and nothing selected.
+#[cfg(test)]
+impl Default for ImportListRequest {
+    fn default() -> Self {
+        Self {
+            view: ImportListView::default(),
+            windows: LibraryPageWindows::default(),
+            upload_status: UploadStatus::Read(BTreeMap::new()),
+            live_standings: BTreeMap::new(),
+            selected: BTreeSet::new(),
+        }
+    }
 }
 
 impl ImportListRequest {
@@ -393,6 +452,9 @@ pub struct ImportQueueSummary {
     /// `None` with no selected row in it: what a list narrowed anew keeps in
     /// view, where it would otherwise open at its top.
     pub first_selected_position: Option<u64>,
+    /// How much the Done tab knows of where its uploads stand, when the view
+    /// shows Done; `None` on the other tabs, which no upload orders.
+    pub done_upload_status: Option<UploadStatusKnown>,
 }
 
 /// What a view narrows its rows by: the tab, the text filter and the filter

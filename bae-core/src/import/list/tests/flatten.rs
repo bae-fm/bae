@@ -352,10 +352,10 @@ fn done_orders_by_upload_then_newest_import_first() {
         &rows,
         &ImportListRequest {
             view: view(TriageTab::Done),
-            upload_standing: BTreeMap::from([
+            upload_status: crate::import::list::UploadStatus::Read(BTreeMap::from([
                 ("rel-working".to_string(), UploadStanding::Working),
                 ("rel-queued".to_string(), UploadStanding::Queued),
-            ]),
+            ])),
             ..ImportListRequest::default()
         },
     )
@@ -369,6 +369,58 @@ fn done_orders_by_upload_then_newest_import_first() {
             "candidate C settled new".to_string(),
             "candidate A settled old".to_string(),
         ]
+    );
+}
+
+/// The Done tab with two imported rows, the newer one uploading, read under
+/// `upload_status`.
+fn done_under(upload_status: crate::import::list::UploadStatus) -> (ImportQueueRows, Flattened) {
+    let mut rows = queue();
+    rows.candidates = vec![candidate("A uploading old"), candidate("B settled new")];
+    imported(&mut rows, "A uploading old", "rel-uploading", 100);
+    imported(&mut rows, "B settled new", "rel-settled", 200);
+    let flat = flatten(
+        &rows,
+        &ImportListRequest {
+            view: view(TriageTab::Done),
+            upload_status,
+            ..ImportListRequest::default()
+        },
+    )
+    .expect("the queue flattens");
+    (rows, flat)
+}
+
+/// Until the upload queue first answers, Done has no order to show its rows
+/// in, so it shows none and says it is waiting. Its count still counts them.
+#[test]
+fn done_waits_for_the_upload_queues_first_answer() {
+    let (rows, flat) = done_under(crate::import::list::UploadStatus::Waiting);
+
+    assert!(sequence(&rows, &flat).is_empty());
+    assert_eq!(flat.summary.counts.of(TriageTab::Done), 2);
+    assert_eq!(
+        flat.summary.done_upload_status,
+        Some(crate::import::list::UploadStatusKnown::Waiting)
+    );
+}
+
+/// With the upload queue unreadable, Done says so and orders by import time
+/// alone: an upload it can't see doesn't move a row.
+#[test]
+fn an_unreadable_upload_queue_orders_done_by_import_time() {
+    let (rows, flat) = done_under(crate::import::list::UploadStatus::Unreadable);
+
+    assert_eq!(
+        sequence(&rows, &flat),
+        vec![
+            "candidate B settled new".to_string(),
+            "candidate A uploading old".to_string(),
+        ]
+    );
+    assert_eq!(
+        flat.summary.done_upload_status,
+        Some(crate::import::list::UploadStatusKnown::Unreadable)
     );
 }
 

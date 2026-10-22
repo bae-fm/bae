@@ -429,6 +429,11 @@ The import list shows every candidate in one of three tabs:
 | Done | some library release carries the folder's hash; ordered by upload, what is moving first |
 | Skipped | dismissed by the person, or broken |
 
+Done is ordered by where each release's upload stands, then newest import
+first. Until the upload queue first answers, Done shows no rows and says it is
+waiting. If the queue can't be read, Done says so and orders its rows by import
+time alone; the failed read is reported as a bug.
+
 Each Pending row is in exactly one state. The first that applies wins:
 
 1. **Importing**: an import is queued or running.

@@ -39,7 +39,7 @@
 
 use super::{
     FolderScanProgress, FoundStates, ImportListProjection, ImportListRequest, ImportListSnapshot,
-    ImportListView, PendingFilterEntry, UploadStanding,
+    ImportListView, PendingFilterEntry, UploadStatus,
 };
 use crate::import::candidate_runtime::RuntimeFactsWatch;
 use crate::import::selection::{SelectedRows, SelectionChange, SelectionSummary};
@@ -567,8 +567,9 @@ impl Drop for ImportListSubscription {
 /// query the request it already has, which reruns nothing — as does a run
 /// starting or ending while Found's filter is on All.
 ///
-/// A failed outbox read says nothing about where an upload stands, so the order
-/// keeps what it had rather than reporting everything settled.
+/// The upload status comes from [`UploadStatus::of`], the same reading the
+/// request opened with: a failed outbox read makes it unreadable, which the
+/// Done tab says and orders by import time.
 async fn merge(
     request: Arc<StandingRequest>,
     mut outbox: watch::Receiver<Option<Result<OutboxSnapshot, String>>>,
@@ -577,13 +578,8 @@ async fn merge(
     let mut outbox_changed = true;
     loop {
         let result = if outbox_changed {
-            match &*outbox.borrow_and_update() {
-                Some(Ok(snapshot)) => {
-                    let next = UploadStanding::of_outbox(snapshot);
-                    request.update(|standing| standing.request.upload_standing = next)
-                }
-                Some(Err(_)) | None => Ok(0),
-            }
+            let next = UploadStatus::of(&outbox.borrow_and_update());
+            request.update(|standing| standing.request.upload_status = next)
         } else {
             request.set_runtime_facts(runtime_facts.facts().clone())
         };
