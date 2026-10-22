@@ -9,7 +9,7 @@ source "$(git rev-parse --show-toplevel)/scripts/hooks/lib/file-list.sh"
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 
 # The checks below build into the checkout's build output paths.
-./scripts/build-layout.sh
+"$(git rev-parse --show-toplevel)/scripts/build-layout.sh"
 
 WORKSPACE_CRATES=(
     bae-automation
