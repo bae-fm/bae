@@ -1,7 +1,6 @@
 use crate::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack};
 use crate::import::medium_coverage::MediumCoverage;
 use crate::import::release_values::{position_number, ReleaseValues, TrackCredits, TrackValues};
-use crate::import::search::ReleaseTrack;
 use crate::import::source_release::{
     CatalogFacts, DisplayCredit, EntryKind, RoleCredit, SourceMedium, SourceRelease,
     TracklistEntry,
@@ -262,30 +261,6 @@ fn formats(release: &SourceRelease) -> &StatedMedia {
             unreachable!("a Discogs reading is asked only of a Discogs release")
         }
     }
-}
-
-/// The picker's tracklist for the covered mediums of a Discogs release, laid
-/// out against the measured lengths.
-pub(crate) fn detail_tracks(
-    release: &SourceRelease,
-    coverage: &MediumCoverage,
-    audio_durations_ms: &[u64],
-) -> Vec<ReleaseTrack> {
-    let entries = release.covered_entries(coverage);
-    process_tracklist(&entries, Some(audio_durations_ms))
-        .iter()
-        .map(|pt| ReleaseTrack {
-            title: pt.title.clone(),
-            artist: pt
-                .source_tracks
-                .iter()
-                .find_map(|track| track.credits.first())
-                .map(|credit| credit.credited_name.clone()),
-            duration_ms: pt.duration_ms,
-            position: pt.position.clone(),
-            side: release_track_side(formats(release), pt).map(|side| side as u32),
-        })
-        .collect()
 }
 
 /// What the covered mediums of a Discogs release say the audio's tracks are,

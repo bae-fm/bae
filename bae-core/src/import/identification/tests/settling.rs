@@ -174,8 +174,8 @@ async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offl
     );
     let release = detail.release.expect("the pick names a release");
     assert_eq!(release.release_id, "mb-offline-1");
-    assert_eq!(release.tracks.len(), 2);
     let edit = detail.metadata_draft;
+    assert_eq!(edit.tracks.len(), 2);
     assert_eq!(edit.album_title, "Album");
     assert_eq!(
         release

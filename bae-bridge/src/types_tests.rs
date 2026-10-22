@@ -539,14 +539,6 @@ mod conversion_roundtrip {
                 bae_core::import::Catalog::Discogs,
                 "42",
             )],
-            track_count: 10,
-            tracks: vec![bae_core::import::search::ReleaseTrack {
-                title: "Track Title".to_string(),
-                artist: Some("Track Artist".to_string()),
-                duration_ms: Some(210_000),
-                position: "A1".to_string(),
-                side: Some(1),
-            }],
             cover_art: vec![bae_core::import::cover_art::RemoteCover {
                 image: bae_core::import::cover_art::RemoteImageSet::with_copies(
                     "https://example.test/cover.jpg".to_string(),
@@ -564,10 +556,6 @@ mod conversion_roundtrip {
         let bridge = BridgeReleaseDetail::from_core(core.clone());
         assert!(bridge.default_cover.is_some());
         assert_eq!(bridge.release_id, core.release_id);
-        assert_eq!(bridge.track_count, core.track_count);
-        assert_eq!(bridge.tracks.len(), core.tracks.len());
-        assert_eq!(bridge.tracks[0].title, core.tracks[0].title);
-        assert_eq!(bridge.tracks[0].position, core.tracks[0].position);
         assert_eq!(bridge.cover_art.len(), core.cover_art.len());
         assert_eq!(bridge.barcode, core.barcode);
         assert_eq!(

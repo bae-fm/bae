@@ -468,27 +468,16 @@ impl SourceRelease {
         &self.metadata.pressing
     }
 
-    /// The picker's detail for this release as the primary of a pick.
+    /// What the picker shows of this release as the primary of a pick: its
+    /// album and pressing facts and the cover options. It shows no tracklist:
+    /// picking a release applies it, and the draft it writes is what the pane
+    /// shows.
     ///
     /// `partners` are the pick's other claimed releases, because the cover
     /// options the detail carries are the pick's, not this release's alone.
-    pub fn detail_for_audio(
-        &self,
-        audio_durations_ms: &[u64],
-        partners: &[SourceRelease],
-    ) -> Result<ImportSearchReleaseDetail, ImportError> {
-        let coverage = self.coverage(audio_durations_ms);
-        let tracks = match self.release.catalog {
-            Catalog::MusicBrainz => {
-                crate::import::musicbrainz_mapper::detail_tracks(self, &coverage)?
-            }
-            Catalog::Discogs => {
-                crate::import::discogs_mapper::detail_tracks(self, &coverage, audio_durations_ms)
-            }
-            other => not_fetched(other),
-        };
+    pub fn detail(&self, partners: &[SourceRelease]) -> ImportSearchReleaseDetail {
         let pressing = self.pressing().clone();
-        Ok(ImportSearchReleaseDetail {
+        ImportSearchReleaseDetail {
             release_id: self.release.key.clone(),
             source: self.release.catalog,
             source_group_id: self.source_group_id.clone(),
@@ -500,10 +489,8 @@ impl SourceRelease {
             facts: pressing.facts,
             media: self.stated_media(),
             links: self.links(),
-            track_count: tracks.len() as u32,
-            tracks,
             cover_art: pick_covers(self, partners),
-        })
+        }
     }
 
     /// What this release says the audio's tracks are: its covered mediums'

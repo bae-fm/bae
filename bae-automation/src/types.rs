@@ -587,18 +587,7 @@ pub struct AutomationReleaseDetail {
     pub barcode: Option<String>,
     #[schemars(schema_with = "pressing_facts_schema")]
     pub facts: bae_core::pressing::PressingFacts,
-    pub track_count: u32,
-    pub tracks: Vec<AutomationReleaseTrack>,
     pub cover_art: Vec<AutomationRemoteCover>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct AutomationReleaseTrack {
-    pub title: String,
-    pub artist: Option<String>,
-    pub duration_ms: Option<u64>,
-    pub position: String,
-    pub side: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

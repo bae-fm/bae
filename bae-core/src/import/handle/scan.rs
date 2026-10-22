@@ -472,7 +472,7 @@ impl ImportServiceHandle {
         }
         // The choice is stored as the candidate's result unless a run's result
         // already stands.
-        let detail = release.detail_for_audio(&audio_durations, &prepared_partners)?;
+        let detail = release.detail(&prepared_partners);
         let picked = crate::import::search::MetadataResult::of_pick(&detail, listed);
         // The records of the pressing picked, as the folder's text reads them
         // now: what the year falls back on.

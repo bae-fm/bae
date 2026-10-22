@@ -388,12 +388,6 @@ mirror_struct! {
     fields: { url, max_edge },
 }
 
-mirror_struct! {
-    AutomationReleaseTrack = bae_core::import::search::ReleaseTrack,
-    from_core: pub(crate) fn,
-    fields: { title, artist, duration_ms, position, side },
-}
-
 impl AutomationReleaseDetail {
     /// Drops core's `media` and `links`, which are pairing evidence.
     pub(crate) fn from_core(detail: ImportSearchReleaseDetail) -> Self {
@@ -407,12 +401,6 @@ impl AutomationReleaseDetail {
             labels: detail.labels,
             barcode: detail.barcode,
             facts: detail.facts,
-            track_count: detail.track_count,
-            tracks: detail
-                .tracks
-                .into_iter()
-                .map(AutomationReleaseTrack::from_core)
-                .collect(),
             cover_art: detail
                 .cover_art
                 .into_iter()

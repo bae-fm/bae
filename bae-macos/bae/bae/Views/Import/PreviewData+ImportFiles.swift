@@ -166,18 +166,7 @@
         )
 
         static let releaseDetailBridge: BridgeReleaseDetail = {
-            let tracks: [BridgeReleaseTrack] = (1...9)
-                .map { i in
-                    let ms = UInt64(180_000 + i * 15000)
-                    return BridgeReleaseTrack(
-                        title: "Track Title \(i)",
-                        artist: i == 5 ? "Featured Artist" : nil,
-                        durationMs: ms,
-                        position: "\(i)",
-                        side: 1
-                    )
-                }
-            return BridgeReleaseDetail(
+            BridgeReleaseDetail(
                 releaseId: "rel-123",
                 source: .musicBrainz,
                 sourceGroupId: "rg-123",
@@ -195,8 +184,6 @@
                     country: "US",
                     media: PreviewData.media(.cd)
                 ),
-                trackCount: 9,
-                tracks: tracks,
                 coverArt: [],
                 defaultCover: BridgeCoverChoice(
                     selection: .releaseImage(fileId: "Front.png"),

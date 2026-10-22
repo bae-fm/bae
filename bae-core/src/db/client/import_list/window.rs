@@ -299,9 +299,7 @@ impl PickedReleaseRows {
             .claimed
             .split_first()
             .expect("a pick claims at least its primary");
-        let detail = primary
-            .detail_for_audio(&audio_durations, partners)
-            .map_err(|error| DbError::Message(error.to_string()))?;
+        let detail = primary.detail(partners);
         Ok(PickedRelease {
             matched: MatchedRelease::of_pick(
                 primary.release().catalog,
@@ -588,17 +586,9 @@ impl CandidateDetailRows {
         let audio = crate::signals::AudioFacts::of_files(&candidate.files)
             .map_err(|error| DbError::Message(error.to_string()))?;
         let durations = &audio.durations;
-        let audio_durations =
-            crate::import::audio_layout::audio_durations(&candidate.files, durations)
-                .map_err(|error| DbError::Message(error.to_string()))?;
         let release = claimed
             .split_first()
-            .map(|(primary, partners)| {
-                primary
-                    .detail_for_audio(&audio_durations, partners)
-                    .map_err(|error| DbError::Message(error.to_string()))
-            })
-            .transpose()?;
+            .map(|(primary, partners)| primary.detail(partners));
         let mut verdict = None;
         let mut resumed_identify_state = crate::identify::IdentifyState::Idle;
         let identify = current.as_ref().and_then(|state| state.identify.as_ref());

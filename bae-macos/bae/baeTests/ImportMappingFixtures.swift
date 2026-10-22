@@ -390,8 +390,6 @@ extension MappingFixtures {
             country: nil,
             media: PreviewData.media(.cd)
         ),
-        trackCount: 12,
-        tracks: [],
         coverArt: [],
         defaultCover: nil
     )

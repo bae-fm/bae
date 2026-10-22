@@ -12,7 +12,6 @@ use crate::import::medium_coverage::MediumCoverage;
 use crate::import::release_values::{
     position_number, ReleaseValues, TrackCredits, TrackValues, WorkGraphBuilder,
 };
-use crate::import::search::ReleaseTrack;
 use crate::import::source_release::{
     DisplayCredit, EntryKind, PartDirection, PerformedWork, RoleCredit, SourceMedium,
     SourceRelease, SourceWork, SourceWorkEvent, TracklistEntry,
@@ -160,8 +159,7 @@ fn stated_title(track: &MbTrack) -> Option<String> {
         .map(str::to_string)
 }
 
-/// A stored track's title. Shared by the DB mapper and the picker's detail so
-/// the picker and the committed rows can't show different titles.
+/// A stored track's title.
 ///
 /// Errors when the track carries no non-blank title: there is no title to
 /// show, and an empty string in its place is a lie the user can't see
@@ -176,8 +174,7 @@ fn track_title(release_id: &str, track: &TracklistEntry) -> Result<String, Impor
     })
 }
 
-/// Vinyl/cassette side assignment for one medium, shared by the DB mapper and
-/// the picker's detail so the two never diverge.
+/// Vinyl/cassette side assignment for one medium.
 pub(crate) struct MediumSides {
     /// Side offset (0-based, relative to the medium's lowest side letter) for
     /// each track, in track order.
@@ -423,39 +420,6 @@ fn tracklist_entry(track: &MbTrack, reported: &mut HashSet<String>) -> Tracklist
         works,
         children: Vec::new(),
     }
-}
-
-/// The picker's tracklist for the covered mediums of a MusicBrainz release,
-/// sides numbered from the first covered medium.
-pub(crate) fn detail_tracks(
-    release: &SourceRelease,
-    coverage: &MediumCoverage,
-) -> Result<Vec<ReleaseTrack>, ImportError> {
-    let release_id = &release.release.key;
-    let mut side_base: u32 = 0;
-    let mut tracks = Vec::new();
-    for medium in release.covered_mediums(coverage) {
-        let sides = medium_sides(release_id, medium)?;
-        for (track, &side_offset) in medium.entries.iter().zip(&sides.offsets) {
-            tracks.push(ReleaseTrack {
-                title: track_title(release_id, track)?,
-                artist: track
-                    .credits
-                    .first()
-                    .map(|credit| credit.credited_name.clone()),
-                duration_ms: track.duration_ms,
-                position: track.position.clone().unwrap_or_else(|| {
-                    track
-                        .number
-                        .map(|number| number.to_string())
-                        .unwrap_or_default()
-                }),
-                side: side_offset.map(|offset| side_base + offset + 1),
-            });
-        }
-        side_base += sides.side_span;
-    }
-    Ok(tracks)
 }
 
 /// What the covered mediums of a release say the audio's tracks are: their

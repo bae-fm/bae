@@ -264,8 +264,6 @@ pub struct ImportSearchReleaseDetail {
     /// What the release's own document says it is made of.
     pub media: StatedMedia,
     pub links: Vec<MetadataRef>,
-    pub track_count: u32,
-    pub tracks: Vec<ReleaseTrack>,
     pub cover_art: Vec<RemoteCover>,
 }
 
@@ -273,19 +271,6 @@ impl ImportSearchReleaseDetail {
     pub fn default_cover(&self) -> Option<&RemoteCover> {
         self.cover_art.first()
     }
-}
-
-/// A track within a release detail.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ReleaseTrack {
-    pub title: String,
-    pub artist: Option<String>,
-    pub duration_ms: Option<u64>,
-    /// Raw position string as the metadata source reports it ("A1", "1",
-    /// "1-2", or arbitrary prose like "Bonus"). The import preview shows it
-    /// verbatim; it is not the structured library-display position.
-    pub position: String,
-    pub side: Option<u32>,
 }
 
 /// Convert a Discogs search result to a MetadataResult.

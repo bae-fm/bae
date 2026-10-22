@@ -171,19 +171,6 @@
                 country: "US",
                 media: PreviewData.media(.cd)
             ),
-            trackCount: 10,
-            tracks: editMetadataDraft(trackCount: 10).tracks.enumerated()
-                .map {
-                    index,
-                    track in
-                    BridgeReleaseTrack(
-                        title: track.title,
-                        artist: nil,
-                        durationMs: UInt64(252_000 + index * 9000),
-                        position: "\(index + 1)",
-                        side: 1
-                    )
-                },
             coverArt: [],
             defaultCover: nil
         )

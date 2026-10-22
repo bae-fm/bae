@@ -17,13 +17,13 @@ fn mb_release(response: &MbReleaseResponse) -> crate::import::source_release::So
     .expect("the MusicBrainz fixture extracts")
 }
 
-/// The picker's detail for a MusicBrainz document with no folder to fit.
-fn mb_detail(response: &MbReleaseResponse) -> Result<ImportSearchReleaseDetail, ImportError> {
-    mb_release(response).detail_for_audio(&[], &[])
+/// The picker's detail for a MusicBrainz document.
+fn mb_detail(response: &MbReleaseResponse) -> ImportSearchReleaseDetail {
+    mb_release(response).detail(&[])
 }
 
-/// The picker's detail for a Discogs document laid out against `audio`.
-fn discogs_detail(json: &str, audio: &[u64]) -> ImportSearchReleaseDetail {
+/// The titles a Discogs document reads for the folder's `audio`.
+fn discogs_titles(json: &str, audio: &[u64]) -> Vec<String> {
     let release = crate::discogs::client::parse_discogs_release_json(json)
         .expect("the Discogs fixture parses");
     crate::import::payloads::ReleasePayloads::for_test(
@@ -33,8 +33,12 @@ fn discogs_detail(json: &str, audio: &[u64]) -> ImportSearchReleaseDetail {
     )
     .extract()
     .expect("the Discogs fixture extracts")
-    .detail_for_audio(audio, &[])
+    .values(audio)
     .expect("the Discogs fixture reads")
+    .tracks
+    .into_iter()
+    .map(|track| track.title)
+    .collect()
 }
 
 fn make_mb_track(number: &str, title: &str) -> MbTrack {
@@ -500,7 +504,7 @@ fn mb_detail_offers_the_stated_archive_front_alone() {
         tracks: vec![make_mb_track("1", "Track Title")],
     }]);
 
-    let detail = mb_detail(&response).unwrap();
+    let detail = mb_detail(&response);
 
     assert_eq!(
         detail.cover_art,
@@ -512,10 +516,9 @@ fn mb_detail_offers_the_stated_archive_front_alone() {
 }
 
 /// Vinyl side numbering runs continuously across media: medium 1 (A/B) is
-/// sides 1-2, medium 2 (C/D) is sides 3-4. Same shared assignment the DB
-/// mapper uses.
+/// sides 1-2, medium 2 (C/D) is sides 3-4.
 #[test]
-fn mb_detail_numbers_vinyl_sides_across_media() {
+fn mb_values_number_vinyl_sides_across_media() {
     let response = response_with_media(vec![
         MbMedium {
             discs: vec![],
@@ -535,8 +538,8 @@ fn mb_detail_numbers_vinyl_sides_across_media() {
         },
     ]);
 
-    let detail = mb_detail(&response).unwrap();
-    let sides: Vec<Option<u32>> = detail.tracks.iter().map(|t| t.side).collect();
+    let values = mb_release(&response).values(&[]).unwrap();
+    let sides: Vec<Option<i32>> = values.tracks.iter().map(|t| t.side).collect();
     assert_eq!(sides, vec![Some(1), Some(2), Some(3), Some(4)]);
 }
 
@@ -560,9 +563,9 @@ fn parse_duration_to_ms_handles_mm_ss_and_hh_mm_ss() {
     }
 }
 
-/// The search detail preserves both known and unknown side assignments.
+/// A reading keeps both known and unknown side assignments.
 #[test]
-fn mb_detail_preserves_unknown_sides() {
+fn mb_values_keep_unknown_sides() {
     let response = response_with_media(vec![MbMedium {
         discs: vec![],
         format: Some("12\" Vinyl".to_string()),
@@ -572,9 +575,9 @@ fn mb_detail_preserves_unknown_sides() {
         ],
     }]);
 
-    let detail = mb_detail(&response).unwrap();
-    assert_eq!(detail.tracks[0].side, Some(1));
-    assert_eq!(detail.tracks[1].side, None);
+    let values = mb_release(&response).values(&[]).unwrap();
+    assert_eq!(values.tracks[0].side, Some(1));
+    assert_eq!(values.tracks[1].side, None);
 }
 
 /// The picker's pressing fields are the pressing the commit stores: one
@@ -598,7 +601,7 @@ fn mb_detail_pressing_matches_the_committed_pressing() {
         catalog_number: Some("CAT-8556".to_string()),
     }];
 
-    let detail = mb_detail(&response).unwrap();
+    let detail = mb_detail(&response);
     let parsed = mb_release(&response)
     .values(&[])
     .unwrap();
@@ -611,13 +614,10 @@ fn mb_detail_pressing_matches_the_committed_pressing() {
     assert_eq!(detail.facts.status, Some(crate::pressing::ReleaseStatus::Promotion));
 }
 
-/// The picker's track titles resolve exactly as the commit mapper's do —
-/// recording title first, the track's own title only as the fallback. The two
-/// used to read the pair in opposite orders, so a release whose track and
-/// recording titles differ showed one title in the picker and committed the
-/// other.
+/// A track's title is the recording's first, the track's own title only as
+/// the fallback.
 #[test]
-fn mb_detail_track_title_prefers_the_recording_title() {
+fn a_track_title_prefers_the_recording_title() {
     let mut track = make_mb_track("1", "Recording Title");
     track.title = Some("Track Title".to_string());
     let fallback = MbTrack {
@@ -639,22 +639,17 @@ fn mb_detail_track_title_prefers_the_recording_title() {
         tracks: vec![track, fallback],
     }]);
 
-    let detail = mb_detail(&response).unwrap();
-    let titles: Vec<&str> = detail.tracks.iter().map(|t| t.title.as_str()).collect();
-    assert_eq!(titles, vec!["Recording Title", "Only A Track Title"]);
-
     let parsed = mb_release(&response)
     .values(&[])
     .unwrap();
-    let committed: Vec<&str> = parsed.tracks.iter().map(|t| t.title.as_str()).collect();
-    assert_eq!(titles, committed);
+    let titles: Vec<&str> = parsed.tracks.iter().map(|t| t.title.as_str()).collect();
+    assert_eq!(titles, vec!["Recording Title", "Only A Track Title"]);
 }
 
-/// A track with no title anywhere fails the prefetch rather than rendering as
-/// an empty row the user can't tell from a real one — the same error the
-/// commit mapper raises.
+/// A track with no title anywhere fails the reading rather than becoming an
+/// empty row the user can't tell from a real one.
 #[test]
-fn mb_detail_errors_on_track_without_any_title() {
+fn a_track_without_any_title_fails_the_reading() {
     let response = response_with_media(vec![MbMedium {
         discs: vec![],
         format: Some("CD".to_string()),
@@ -673,7 +668,8 @@ fn mb_detail_errors_on_track_without_any_title() {
         }],
     }]);
 
-    let err = mb_detail(&response)
+    let err = mb_release(&response)
+        .values(&[])
         .expect_err("expected error for a title-less track");
     assert!(
         matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no track title")),
@@ -719,19 +715,14 @@ fn nested_discogs_release() -> String {
 }
 
 #[test]
-fn discogs_detail_collapses_an_index_for_one_matching_audio_file() {
-    let detail = discogs_detail(&nested_discogs_release(), &[300_000, 240_000]);
-    let titles: Vec<&str> = detail
-        .tracks
-        .iter()
-        .map(|track| track.title.as_str())
-        .collect();
+fn a_discogs_reading_collapses_an_index_for_one_matching_audio_file() {
+    let titles = discogs_titles(&nested_discogs_release(), &[300_000, 240_000]);
 
     assert_eq!(titles, vec!["Suite Title", "Track Title"]);
 }
 
 #[test]
-fn discogs_detail_selects_each_index_layout_from_ordered_durations() {
+fn a_discogs_reading_selects_each_index_layout_from_ordered_durations() {
     let release = serde_json::json!({
             "id": 456,
             "title": "Album Title",
@@ -761,12 +752,7 @@ fn discogs_detail_selects_each_index_layout_from_ordered_durations() {
         })
         .to_string();
 
-    let detail = discogs_detail(&release, &[60_000, 120_000, 540_000]);
-    let titles: Vec<&str> = detail
-        .tracks
-        .iter()
-        .map(|track| track.title.as_str())
-        .collect();
+    let titles = discogs_titles(&release, &[60_000, 120_000, 540_000]);
 
     assert_eq!(
         titles,
@@ -813,12 +799,7 @@ fn nested_index_durations_align_after_preceding_tracks() {
         })
         .to_string();
 
-    let detail = discogs_detail(&release, &[600_000, 60_000, 120_000, 540_000]);
-    let titles: Vec<&str> = detail
-        .tracks
-        .iter()
-        .map(|track| track.title.as_str())
-        .collect();
+    let titles = discogs_titles(&release, &[600_000, 60_000, 120_000, 540_000]);
 
     assert_eq!(
         titles,

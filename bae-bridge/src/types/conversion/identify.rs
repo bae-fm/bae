@@ -86,8 +86,6 @@ impl BridgeReleaseDetail {
             labels,
             barcode,
             facts,
-            track_count,
-            tracks,
             cover_art,
             // Pairing evidence; the picker renders the facts.
             media: _,
@@ -106,11 +104,6 @@ impl BridgeReleaseDetail {
                 .collect(),
             barcode,
             facts: BridgePressingFacts::from_core(facts),
-            track_count,
-            tracks: tracks
-                .into_iter()
-                .map(BridgeReleaseTrack::from_core)
-                .collect(),
             cover_art: cover_art
                 .into_iter()
                 .map(BridgeRemoteCover::from_core)
@@ -118,12 +111,6 @@ impl BridgeReleaseDetail {
             default_cover,
         }
     }
-}
-
-mirror_struct! {
-    BridgeReleaseTrack = bae_core::import::search::ReleaseTrack,
-    from_core: pub(crate) fn,
-    fields: { title, artist, duration_ms, position, side },
 }
 
 impl BridgeCoverChoice {

@@ -164,7 +164,7 @@ fn selected_pressing_wins_and_linked_release_fills_only_absent_details() {
     assert_eq!(parsed.tracks.len(), 2);
     assert_eq!(parsed.tracks[1].title, "Second Track");
     assert_eq!(parsed.tracks[1].side, Some(2));
-    let detail = payloads.extract().unwrap().detail_for_audio(&[], &[]).unwrap();
+    let detail = payloads.extract().unwrap().detail(&[]);
     assert_eq!(detail.labels, parsed.pressing.labels);
     assert_eq!(detail.facts, parsed.pressing.facts);
     assert_eq!(detail.year, parsed.pressing.year);
@@ -271,7 +271,7 @@ fn selected_album_credits_keep_every_artist_in_detail_and_import() {
         )],
     );
     assert_eq!(
-        payloads.extract().unwrap().detail_for_audio(&[], &[]).unwrap().artist.as_deref(),
+        payloads.extract().unwrap().detail(&[]).artist.as_deref(),
         Some("Selected Artist, Second Artist")
     );
     let parsed = payloads

@@ -54,7 +54,7 @@ fn library_check_matches_detail_keys_with_and_without_source_groups() {
         Vec::new(),
     );
             let check = payloads.extract().unwrap().library_check();
-            let detail = payloads.extract().unwrap().detail_for_audio(&[], &[]).unwrap();
+            let detail = payloads.extract().unwrap().detail(&[]);
             assert_eq!(check.source, detail.source);
             assert_eq!(check.release_id, detail.release_id);
             assert_eq!(check.source_group_id, detail.source_group_id);

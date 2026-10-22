@@ -361,7 +361,7 @@
                 artist: releaseDetailBridge.artist,
                 year: releaseDetailBridge.year,
                 media: releaseDetailBridge.facts.media,
-                trackCount: releaseDetailBridge.trackCount
+                trackCount: 9
             ),
             metadataSummary: nil,
             metadataProvenance: .externalRelease(
@@ -588,7 +588,7 @@
                     artist: releaseDetailBridge.artist,
                     year: releaseDetailBridge.year,
                     media: releaseDetailBridge.facts.media,
-                    trackCount: releaseDetailBridge.trackCount
+                    trackCount: 9
                 ),
                 metadataSummary: nil,
                 metadataProvenance: .externalRelease(

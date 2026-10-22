@@ -647,6 +647,9 @@ checked, or a medium the folder rules out. The person then:
   fields every offered pressing agrees on fill the draft;
 - **keeps their own draft**, from the folder's tags or typed by hand.
 
+A pick applies its release to the draft at once (§3.6). Nothing previews the
+release's tracklist first: the draft the pick writes is what the pane shows.
+
 The person also decides which clues a run asks about. Ben unchecks a barcode
 that belongs to a box set rather than his disc; Carol picks the one catalog
 number of thirty that names her pressing. Those choices are stored with the

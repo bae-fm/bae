@@ -24,22 +24,8 @@ pub struct BridgeReleaseDetail {
     pub labels: Vec<BridgeReleaseLabel>,
     pub barcode: Option<String>,
     pub facts: BridgePressingFacts,
-    pub track_count: u32,
-    pub tracks: Vec<BridgeReleaseTrack>,
     pub cover_art: Vec<BridgeRemoteCover>,
     pub default_cover: Option<BridgeCoverChoice>,
-}
-
-#[cfg(feature = "desktop")]
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeReleaseTrack {
-    pub title: String,
-    pub artist: Option<String>,
-    pub duration_ms: Option<u64>,
-    /// Raw position string as the metadata source reports it ("A1", "1",
-    /// "1-2", or arbitrary prose). Shown verbatim in the import preview.
-    pub position: String,
-    pub side: Option<u32>,
 }
 
 /// One kind of identifying signal extracted from a candidate file. Mirrors

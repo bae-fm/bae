@@ -25,7 +25,7 @@ async fn a_pick_reads_back_as_the_same_answer() {
         .release
         .expect("a settled single match is a decision");
     assert_eq!(release.release_id, "mb-answer-1");
-    assert_eq!(release.tracks.len(), 2);
+    assert_eq!(resumed.metadata_draft.tracks.len(), 2);
     assert_eq!(
         resumed.file_evidence,
         vec![crate::import::FileEvidence {

@@ -151,7 +151,7 @@ fn malformed_optional_documents_do_not_block_extraction() {
         assert_eq!(payloads.extract().unwrap().records().len(), 1);
         assert!(payloads.extract().unwrap().covers().is_empty());
         assert_eq!(
-            payloads.extract().unwrap().detail_for_audio(&[], &[]).unwrap().title,
+            payloads.extract().unwrap().detail(&[]).title,
             "Selected Album"
         );
         assert_eq!(

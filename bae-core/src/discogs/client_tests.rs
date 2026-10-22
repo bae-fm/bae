@@ -252,12 +252,7 @@ fn release_barcode_reaches_pressing_metadata() {
             Vec::new(),
         );
     assert_eq!(
-        payloads
-            .extract()
-            .unwrap()
-            .detail_for_audio(&[], &[])
-            .unwrap()
-            .barcode,
+        payloads.extract().unwrap().detail(&[]).barcode,
         release.barcode
     );
     assert_eq!(
