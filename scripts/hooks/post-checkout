@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # post-checkout: fires after `git checkout` and `git worktree add`.
 # On new-worktree creation, run per-worktree setup (build output links, the
-# CLAUDE.md symlink, shared FFmpeg and xcconfigs), then prime: build the Rust
-# bridge and the macOS app once, so the checkout's first build is incremental.
+# CLAUDE.md symlink, shared FFmpeg, xcconfigs and Android local.properties),
+# then prime: build the Rust bridge and the macOS app once, so the checkout's
+# first build is incremental.
 # BUILDS_SKIP_PRIME=1 (`builds new --no-prime`) skips the prime. Skip on normal
 # branch checkouts.
 
@@ -53,6 +54,15 @@ for cfg in Signing.local.xcconfig Features.xcconfig; do
         echo "Linked bae-macos/bae/$cfg -> $main_checkout"
     fi
 done
+
+# Gradle finds the Android SDK through bae-android/local.properties (gitignored,
+# only `sdk.dir`), so a worktree without it fails every Gradle build until
+# someone copies it over. Symlink the main checkout's copy.
+if [ -f "$main_checkout/bae-android/local.properties" ] \
+    && [ ! -e bae-android/local.properties ]; then
+    ln -s "$main_checkout/bae-android/local.properties" bae-android/local.properties
+    echo "Linked bae-android/local.properties -> $main_checkout"
+fi
 
 if [ "${BUILDS_SKIP_PRIME:-0}" = 1 ]; then
     echo
