@@ -17,6 +17,7 @@ fi
 
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
+./scripts/build-layout.sh
 
 # Resolve the output directory to an absolute path before any `cd`, and create
 # it so the test's write target exists.

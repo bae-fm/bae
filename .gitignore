@@ -7,8 +7,9 @@
 # But keep config.toml for project-specific build configuration
 !.cargo/config.toml
 
-# Rust build artifacts
-target/
+# Rust build artifacts. No trailing slash: in a checkout set up by
+# scripts/build-layout.sh these paths are symlinks, not directories.
+/target
 target-macos
 target-ios
 target-android

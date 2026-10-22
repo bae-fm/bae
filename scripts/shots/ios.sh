@@ -22,6 +22,7 @@ fi
 
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
+./scripts/build-layout.sh
 
 OUT_DIR="$1"
 mkdir -p "$OUT_DIR"

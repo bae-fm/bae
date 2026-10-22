@@ -37,6 +37,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 cd "$(dirname "$0")/.."
+./scripts/build-layout.sh
 
 # FFmpeg comes from the configured bae-ffmpeg distribution, or the local
 # distribution populated by scripts/setup-ffmpeg.sh when none is configured.

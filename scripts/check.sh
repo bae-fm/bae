@@ -12,6 +12,7 @@ fi
 # ── Environment ───────────────────────────────────────────────────────────────
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
+./scripts/build-layout.sh
 
 if command -v brew &>/dev/null; then
   BREW_PREFIX="$(brew --prefix)"

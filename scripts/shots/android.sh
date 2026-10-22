@@ -21,6 +21,7 @@ OUT_DIR=$(mkdir -p "$1" && cd "$1" && pwd)
 
 cd "$(dirname "$0")/../.."
 REPO_ROOT=$(pwd)
+./scripts/build-layout.sh
 
 export ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
 export JAVA_HOME="${JAVA_HOME:-/Applications/Android Studio.app/Contents/jbr/Contents/Home}"

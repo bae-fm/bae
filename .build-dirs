@@ -1,0 +1,23 @@
+# Build output paths and the size each may reach before the `builds` tool
+# deletes it whole for the next build to refill (cargo mostly from sccache).
+# scripts/build-layout.sh, run first by the hooks and every build script, links
+# each path to /Volumes/Builds/bae/<checkout>/<path> and applies the caps.
+#
+# Caps are about twice a fresh build of each: host 9.8G, macOS bridge 7.4G,
+# Android 6.4G, iOS 12G; the macOS app's .build holds two DerivedData trees
+# (check.sh's and run.sh's) of 5.2G each fresh; the others are under 1G.
+#
+# path                                cap
+target                                20G
+target-macos                          15G
+target-ios                            24G
+target-android                        13G
+bae-macos/bae/.build                  20G
+bae-ios/bae/.build                    10G
+BaeKit/.build                         2G
+bae-android/.gradle                   1G
+bae-android/app/build                 2G
+bae-avalonia/obj                      1G
+bae-avalonia/bin                      1G
+bae-avalonia/bae-avalonia.Tests/obj   1G
+bae-avalonia/bae-avalonia.Tests/bin   1G

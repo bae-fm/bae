@@ -29,6 +29,7 @@ targets:
         basedOnDependencyAnalysis: false
         script: |
           cd "$SRCROOT/../.."
+          ./scripts/build-layout.sh
           MARKER="BaeKit/Frameworks/BaeBridgeFFI-ios.xcframework/Info.plist"
           BINDINGS_SOURCE="bae-bridge/swift-bindings-ios/bae_bridge.swift"
           BINDINGS="BaeKit/Sources/BaeBridge/bae_bridge_ios.swift"

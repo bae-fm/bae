@@ -31,6 +31,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 cd "$(dirname "$0")/.."
+./scripts/build-layout.sh
 
 case "$EDITION" in
     bae)

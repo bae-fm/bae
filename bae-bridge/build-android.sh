@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+./scripts/build-layout.sh
 
 # This script reads the staticlib it builds back out of the target dir, so it
 # owns that dir: a shared one can be rewritten by another checkout in between.

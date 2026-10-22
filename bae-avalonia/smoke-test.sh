@@ -27,6 +27,7 @@ fi
 
 cd "$(dirname "$0")/.."
 REPO="$PWD"
+./scripts/build-layout.sh
 for tool in cargo dotnet python3 uniffi-bindgen-cs; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "Required command missing: $tool" >&2
