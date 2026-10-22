@@ -67,7 +67,7 @@ struct ImportedReleasePane: View {
         .padding(.bottom, ThemeSpace.page)
         .task(id: releaseId) { await load() }
         .onDisappear {
-            session?.close()
+            session?.cancelTasks()
         }
     }
 
@@ -163,10 +163,10 @@ extension ImportedReleasePane {
         session = nil
         loadError = nil
         do {
-            let seed = try await editCommands.open(releaseId)
+            let opened = try await editCommands.open(releaseId)
             session = ReleaseMetadataEditSession(
                 releaseId: releaseId,
-                seed: seed,
+                opened: opened,
                 commands: editCommands
             )
         }

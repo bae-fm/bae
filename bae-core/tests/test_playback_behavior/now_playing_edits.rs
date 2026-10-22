@@ -175,6 +175,8 @@ async fn renamed_titles_reach_the_paused_track_and_the_queue() {
         .open_release_edit(&release_id)
         .await
         .expect("read the release's edit form")
+        .opened()
+        .clone()
         .edit;
     edit.album_title = "Renamed Album".to_string();
     edit.tracks[0].title = "Renamed Opening Track".to_string();

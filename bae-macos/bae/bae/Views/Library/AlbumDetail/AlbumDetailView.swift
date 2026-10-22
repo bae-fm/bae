@@ -282,12 +282,12 @@ extension AlbumDetailView {
         let importer = importer
         Task {
             do {
-                let seed = try await releaseEditor.openReleaseEdit(releaseId)
+                let opened = try await releaseEditor.openReleaseEdit(releaseId)
                 uiStore.presentModal {
                     ReleaseEditorSheet(
                         releaseId: releaseId,
                         displayName: displayName,
-                        seed: seed,
+                        opened: opened,
                         commands: releaseEditor.editCommands(
                             searchAlbums: importer.searchAlbums
                         ),

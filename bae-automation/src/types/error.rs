@@ -83,6 +83,9 @@ impl From<LibraryError> for AutomationError {
             }
             LibraryError::Playback(e) => Self::Unavailable(e),
             LibraryError::ReleaseEditLoad(e) => Self::Internal(e.to_string()),
+            // Another write reached the release between this call's open and
+            // its save; calling again works on what the library holds now.
+            error @ LibraryError::ReleaseEditStale { .. } => Self::Import(error.to_string()),
             LibraryError::Internal(e) => Self::Internal(e),
             LibraryError::Config(e) => Self::Internal(e.to_string()),
             LibraryError::Keyring(e) => Self::Unavailable(e.to_string()),
@@ -108,6 +111,7 @@ impl From<bae_core::ui::UiError> for AutomationError {
             | UiErrorCategory::CandidateBeingIdentified
             | UiErrorCategory::MetadataTrackCount { .. }
             | UiErrorCategory::TiedMediums { .. }
+            | UiErrorCategory::ReleaseChangedSinceOpened
             | UiErrorCategory::GroupingBlocked(_) => Self::Import(detail),
             UiErrorCategory::Config => Self::Validation(detail),
             UiErrorCategory::Internal => Self::Internal(detail),

@@ -30,10 +30,10 @@ struct ReleaseEditorTests {
     func persistedReleaseSessionSavesAndAdvancesItsCancelPoint() async throws {
         let seed = PreviewData.releaseEditSeed(trackCount: 2)
         let library = PreviewReleaseLibrary(seed: seed)
-        let session = ReleaseMetadataEditSession(
+        let session = PreviewData.releaseEditSession(
             releaseId: "release-test",
             seed: seed,
-            commands: library.commands()
+            library: library
         )
         await session.fieldWriter.setField(.albumTitle, "Saved title")
 
@@ -60,10 +60,10 @@ struct ReleaseEditorTests {
         var seed = PreviewData.releaseEditSeed(trackCount: 2)
         seed.edit.albumTitle = "Original title"
         let library = PreviewReleaseLibrary(seed: seed)
-        let session = ReleaseMetadataEditSession(
+        let session = PreviewData.releaseEditSession(
             releaseId: "release-test",
             seed: seed,
-            commands: library.commands()
+            library: library
         )
         let size = NSSize(width: 900, height: 500)
         try await SnapshotTestSupport.withHostedWindow(
@@ -179,10 +179,9 @@ struct ReleaseEditorTests {
                     : contexts.map { .track(track: $0) }
             )
         ]
-        let session = ReleaseMetadataEditSession(
+        let session = PreviewData.releaseEditSession(
             releaseId: "release-test",
-            seed: seed,
-            commands: PreviewData.releaseEditCommands(seed: seed)
+            seed: seed
         )
         let size = NSSize(width: width, height: 700)
         return try await SnapshotTestSupport.withHostedWindow(
@@ -219,10 +218,9 @@ extension ReleaseEditorTests {
     @Test("cancel restores the saved form")
     func cancelRestoresSavedForm() async throws {
         let seed = PreviewData.releaseEditSeed(trackCount: 2)
-        let session = ReleaseMetadataEditSession(
+        let session = PreviewData.releaseEditSession(
             releaseId: "release-test",
-            seed: seed,
-            commands: PreviewData.releaseEditCommands(seed: seed)
+            seed: seed
         )
         await session.fieldWriter.setField(.albumTitle, "Edited title")
         await session.fieldWriter.setPressingFact(

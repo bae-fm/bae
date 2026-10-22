@@ -1,38 +1,49 @@
 import BaeKit
-import OSLog
 import Observation
 
-/// What a release edit session asks core to do, each by release id.
-struct ReleaseEditCommands {
-    /// Open the session afresh: the release as the library holds it, with
-    /// nothing applied or picked.
-    let open: @Sendable (String) async throws -> BridgeReleaseEditSeed
+/// What one session core opened on a release does. Every editor holds its
+/// own, so two editors on one release never share an apply or a pick; core
+/// keeps the session for as long as these commands are held, and drops it,
+/// writing nothing, once they are not.
+struct ReleaseEditSessionCommands: Sendable {
     /// Apply a catalog release to the session; the seed comes back filled
     /// with its every value, held until the save.
     let apply:
-        @Sendable (String, BridgePressingLink) async throws ->
-            BridgeReleaseEditSeed
+        @Sendable (BridgePressingLink) async throws -> BridgeReleaseEditSeed
     /// Pick the album a save files the release under (`nil`: the one its
     /// records name); returns the album the session files it under now.
-    let setAlbum: @Sendable (String, String?) async throws -> BridgeDraftAlbum
-    let searchAlbums: @MainActor (String) async throws -> [BridgeAlbumChoice]
+    let setAlbum: @Sendable (String?) async throws -> BridgeDraftAlbum
     /// Save the session with the form; returns the album the release is on
-    /// after it.
-    let save: @Sendable (String, BridgeRawReleaseEdit) async throws -> String
-    /// Drop the session: nothing is written.
-    let discard: @Sendable (String) async throws -> Void
+    /// after it. Refused, writing nothing, when the release changed after
+    /// the session opened on it.
+    let save: @Sendable (BridgeRawReleaseEdit) async throws -> String
+}
+
+/// A session core just opened on a release, and the release as the editor
+/// first shows it.
+struct OpenedReleaseEdit: Sendable {
+    let seed: BridgeReleaseEditSeed
+    let session: ReleaseEditSessionCommands
+}
+
+/// What a release editor asks core to do beyond its open session, each by
+/// release id.
+struct ReleaseEditCommands {
+    /// Open a session of the editor's own: the release as the library holds
+    /// it, with nothing applied or picked.
+    let open: @Sendable (String) async throws -> OpenedReleaseEdit
+    let searchAlbums: @MainActor (String) async throws -> [BridgeAlbumChoice]
     /// The release's cover as it stands now; the session stays as it is.
     let cover: @Sendable (String) async throws -> BridgeImageRef?
 }
 
-/// One persisted release-edit session, behind the one release editor in the
-/// Library sheet and the import pane of an imported folder. It owns the working form and its save; core holds the album the
-/// person picked and what a catalog applied in the session until that save.
+/// One release editor's working state, behind the one release editor in the
+/// Library sheet and the import pane of an imported folder. It owns the
+/// working form and its save; its session in core holds the album the person
+/// picked and what a catalog applied in it until that save.
 @MainActor
 @Observable
 final class ReleaseMetadataEditSession {
-    private static let logger = Logger.bae("ReleaseMetadataEditSession")
-
     private enum Operation {
         case saving
         case cancelling
@@ -54,19 +65,23 @@ final class ReleaseMetadataEditSession {
 
     private var formRevision = 0
     private let commands: ReleaseEditCommands
+    /// The session in core this editor works in; replaced by a fresh one
+    /// whenever the editor opens the release again.
+    private var core: ReleaseEditSessionCommands
     private var operationTask: Task<Void, Never>?
     private var operationSerial = 0
 
     init(
         releaseId: String,
-        seed: BridgeReleaseEditSeed,
+        opened: OpenedReleaseEdit,
         commands: ReleaseEditCommands
     ) {
         self.releaseId = releaseId
-        cover = seed.cover
-        display = seed.display
-        album = seed.album
-        form = seed.edit
+        cover = opened.seed.cover
+        display = opened.seed.display
+        album = opened.seed.album
+        form = opened.seed.edit
+        core = opened.session
         self.commands = commands
     }
 
@@ -121,8 +136,10 @@ final class ReleaseMetadataEditSession {
         cover = try await commands.cover(releaseId)
     }
 
-    /// Save the session, then reopen it from what the library now holds.
-    /// `onSuccess` receives the album the release is on after the save.
+    /// Save the session, then open a fresh one on what the library now
+    /// holds. `onSuccess` receives the album the release is on after the
+    /// save. A release another editor or device changed after this session
+    /// opened is refused, writing nothing; Cancel opens it as it is now.
     func save(onSuccess: @escaping @MainActor @Sendable (String) -> Void) {
         let serial = begin(.saving)
         failure = nil
@@ -139,7 +156,7 @@ final class ReleaseMetadataEditSession {
             let submittedForm = form
             let submittedRevision = formRevision
             do {
-                let albumId = try await commands.save(releaseId, submittedForm)
+                let albumId = try await core.save(submittedForm)
                 try Task.checkCancellation()
                 if formRevision == submittedRevision {
                     show(try await commands.open(releaseId))
@@ -164,8 +181,8 @@ final class ReleaseMetadataEditSession {
         }
     }
 
-    /// Discard every change: core drops the session and the editor reopens
-    /// on the release as the library holds it.
+    /// Discard every change: the editor opens a fresh session on the release
+    /// as the library holds it, and core drops this one.
     func cancelChanges() {
         let serial = begin(.cancelling)
         operationTask = Task { @MainActor in
@@ -198,7 +215,7 @@ final class ReleaseMetadataEditSession {
                 return
             }
             do {
-                let seed = try await commands.apply(releaseId, link)
+                let seed = try await core.apply(link)
                 try Task.checkCancellation()
                 show(seed)
                 hasChanges = true
@@ -218,7 +235,7 @@ final class ReleaseMetadataEditSession {
         failure = nil
         operationTask = Task { @MainActor in
             do {
-                album = try await commands.setAlbum(releaseId, albumId)
+                album = try await core.setAlbum(albumId)
                 hasChanges = true
             }
             catch is CancellationError {}
@@ -229,27 +246,18 @@ final class ReleaseMetadataEditSession {
         }
     }
 
-    /// Stop the session's work and drop what core holds for it: the editor
-    /// is going away unsaved.
-    func close() {
-        cancelTasks()
-        let commands = commands
-        let releaseId = releaseId
-        Task {
-            do { try await commands.discard(releaseId) }
-            catch {
-                Self.logger.error(
-                    "Could not drop the edit session on \(releaseId): \(error)"
-                )
-            }
-        }
-    }
-
     func cancelTasks() {
         operationSerial += 1
         operationTask?.cancel()
         operationTask = nil
         operation = nil
+    }
+
+    /// Everything the editor shows, from the session just opened, with no
+    /// changes made: that session is the one the editor works in from now.
+    private func show(_ opened: OpenedReleaseEdit) {
+        core = opened.session
+        show(opened.seed)
     }
 
     /// Everything the editor shows, from `seed`, with no changes made.

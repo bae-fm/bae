@@ -31,6 +31,10 @@ pub enum UiErrorCategory {
     TiedMediums {
         mediums: Vec<u32>,
     },
+    /// A release edit session's save found the release changed since the
+    /// session opened on it — another editor saved it, or another device's
+    /// edit arrived — and wrote nothing.
+    ReleaseChangedSinceOpened,
     /// A release read from several folders cannot be worked on as it stands,
     /// or cannot be made, for a reason the person can act on.
     GroupingBlocked(GroupingBlockReason),

@@ -4565,6 +4565,39 @@ da = "Diskene {discs} i denne udgivelse passer lige godt til mappen. Vælg en an
 nb = "Platene {discs} i denne utgivelsen passer like godt til mappen. Velg en annen utgivelse, eller bruk filenes metadata."
 fi = "Tämän julkaisun levyt {discs} sopivat kansioon yhtä hyvin. Valitse toinen julkaisu tai käytä tiedostojen metatietoja."
 
+[messages."core.release_edit.error.changed_since_opened"]
+comment = "Why saving a release in the release editor wrote nothing: the release was changed elsewhere (in another editor open on it, or on another device) after this editor opened it. Shown after \"Save failed:\" in the editor. \"Cancel\" names the editor's Cancel button, which reopens the release as the library now holds it."
+value = "This release changed after the editor opened it. Cancel to see it as it is now."
+
+[messages."core.release_edit.error.changed_since_opened".translations]
+es = "Esta edición cambió después de abrirse el editor. Cancela para verla tal como está ahora."
+fr = "Cette édition a changé après l'ouverture de l'éditeur. Annulez pour la voir telle qu'elle est maintenant."
+de = "Diese Veröffentlichung wurde geändert, nachdem der Editor geöffnet wurde. Brich ab, um sie so zu sehen, wie sie jetzt ist."
+pt-BR = "Esta edição mudou depois que o editor foi aberto. Cancele para vê-la como está agora."
+ja = "エディタを開いた後にこのリリースが変更されました。キャンセルすると現在の内容が表示されます。"
+ko = "편집기를 연 뒤 이 릴리스가 변경되었습니다. 취소하면 지금 상태를 볼 수 있습니다."
+zh-Hans = "此发行版本在编辑器打开后已更改。请取消以查看其当前内容。"
+ar = "تغيّر هذا الإصدار بعد فتح المحرر. ألغِ لعرضه كما هو الآن."
+he = "המהדורה הזו השתנתה אחרי שהעורך נפתח. בטל כדי לראות אותה כפי שהיא עכשיו."
+uk = "Це видання змінилося після того, як редактор відкрили. Скасуйте, щоб побачити його в поточному вигляді."
+bg = "Това издание е променено, след като редакторът е отворен. Откажете, за да го видите такова, каквото е сега."
+pl = "To wydanie zmieniło się po otwarciu edytora. Anuluj, aby zobaczyć je w obecnej postaci."
+cs = "Toto vydání se změnilo poté, co byl editor otevřen. Zrušte, abyste ho viděli v současné podobě."
+hr = "Ovo se izdanje promijenilo nakon otvaranja uređivača. Odustanite da biste ga vidjeli kakvo je sada."
+zh-Hant = "此發行版本在編輯器開啟後已變更。請取消以查看其目前內容。"
+it = "Questa edizione è cambiata dopo l'apertura dell'editor. Annulla per vederla com'è ora."
+tr = "Bu sürüm, düzenleyici açıldıktan sonra değişti. Şu anki hâlini görmek için iptal edin."
+nl = "Deze uitgave is gewijzigd nadat de editor werd geopend. Annuleer om haar te zien zoals ze nu is."
+sk = "Toto vydanie sa zmenilo po otvorení editora. Zruš, aby si ho videl v súčasnej podobe."
+hu = "Ez a kiadvány megváltozott a szerkesztő megnyitása után. Válaszd a Mégsem lehetőséget, hogy a jelenlegi állapotában lásd."
+ro = "Această ediție s-a schimbat după ce editorul a fost deschis. Anulează ca să o vezi așa cum este acum."
+el = "Αυτή η έκδοση άλλαξε αφού άνοιξε ο επεξεργαστής. Ακυρώστε για να τη δείτε όπως είναι τώρα."
+pt-PT = "Esta edição mudou depois de o editor ser aberto. Cancele para a ver tal como está agora."
+sv = "Den här utgåvan ändrades efter att redigeraren öppnades. Avbryt för att se den som den är nu."
+da = "Denne udgivelse blev ændret, efter at editoren blev åbnet. Annuller for at se den, som den er nu."
+nb = "Denne utgivelsen ble endret etter at redigeringsprogrammet ble åpnet. Avbryt for å se den slik den er nå."
+fi = "Tämä julkaisu muuttui editorin avaamisen jälkeen. Peru nähdäksesi sen nykyisessä muodossaan."
+
 
 
 [messages."core.pressing.discogs.advance"]

@@ -1028,6 +1028,18 @@ Cancelling discards the session; nothing is re-read, and there is no reset to
 a source: the library holds no pointer back into one. A release with nothing
 applied saves its edited fields alone, its mediums, roles and works as stored.
 
+Every editor opens a session of its own, so the editor sheet and the import
+pane open on the same release, or MCP's re-identify while either is open,
+never share an apply or a pick. A save first checks the release against what
+its session opened on: if the library no longer holds it so — another
+session saved it, MCP wrote its fields, another device's edit arrived, or an
+artist it credits was renamed — the save is refused, writes nothing, and the
+editor says the release changed after it opened; *Cancel* opens it again as
+it is now. Only the cover, which is written at once, never makes a session
+out of date. No other save or field edit on the device runs between a save's
+check and its write. After a save, the editor works in a fresh
+session opened on what it saved.
+
 The editor lays the tracks out as the import's mapping table does: a heading
 for each disc or record side where the release has several, and two or more
 consecutive tracks a CUE sheet carves from one file under that file's name,
@@ -2592,7 +2604,7 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | `release_export` | queue an export of a release's files |
 | `release_storage_action` | move to the cloud, pin, unpin, make local, or cancel |
 | `output_status` | read the export queue |
-| `release_reidentify` | re-identify a release as a catalog release: apply its every value in an edit session and save it, records and album with it |
+| `release_reidentify` | re-identify a release as a catalog release: apply its every value in an edit session of its own and save it, records and album with it |
 | `release_metadata_update` | apply a metadata edit: the album fields, the pressing, and each track's title and artists (a track's place is the source's, not edited) |
 | `library_search` | search the library |
 
@@ -2642,6 +2654,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `CandidateImportInProgress`, `CandidateBeingIdentified` | waits |
 | `MetadataTrackCount` | picks another release: it lists another number of tracks |
 | `TiedMediums` | picks another release or uses the file metadata: several of its discs fit the folder alike, and the line names them |
+| `ReleaseChangedSinceOpened` | cancels to see the release as it is now: it changed after the editor opened it (§3.8) |
 | `GroupingBlocked` | combines again, separates, or waits for a download |
 | `Export`, `Save` | reads the detail |
 | `CloudSetup`, `StorageCheck` | changes what the setup, or the check of the storage it failed, names |

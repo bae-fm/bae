@@ -304,53 +304,6 @@ forward! {
                 .await?)
         }
 
-        /// Apply the catalog release `link` picks to the edit session on a
-        /// library release: every value it gives, held until the session
-        /// saves. Returns the editor's form filled with them.
-        fn apply_release_edit_catalog(
-            release_id: String,
-            link: crate::types::BridgePressingLink,
-        ) -> crate::types::BridgeReleaseEditSeed {
-            let seed = this
-                .services
-                .apply_release_edit_catalog(&release_id, &link.into_core())
-                .await
-                .map_err(BridgeError::import)?;
-            Ok(crate::types::BridgeReleaseEditSeed::from_core(seed))
-        }
-
-        /// Pick the library album the edit session on a library release files
-        /// it under, over the one its records name, or (`None`) leave it to
-        /// its records. Returns the album the session now files it under.
-        fn set_release_edit_album(
-            release_id: String,
-            album_id: Option<String>,
-        ) -> crate::types::BridgeDraftAlbum {
-            let album = this
-                .services
-                .set_release_edit_album(&release_id, album_id)
-                .await
-                .map_err(BridgeError::import)?;
-            Ok(crate::types::BridgeDraftAlbum::from_core(album))
-        }
-
-        /// Save the edit session on a library release with the form the person
-        /// left, into the album the session files it under: every value, in
-        /// one write. Returns the album the release is on after the save.
-        fn save_release_edit(
-            release_id: String,
-            edit: crate::types::BridgeRawReleaseEdit,
-        ) -> String {
-            this.services
-                .save_release_edit(&release_id, &edit.into_core())
-                .await
-                .map_err(BridgeError::import)?;
-            this.services
-                .get_album_id_for_release(&release_id)
-                .await
-                .map_err(BridgeError::database)
-        }
-
         /// A library release's cover as it stands now: what its editor shows
         /// once the cover picker writes one, leaving the session as it is.
         fn release_cover(release_id: String) -> Option<crate::types::BridgeImageRef> {
@@ -360,12 +313,6 @@ forward! {
                 .await
                 .map_err(BridgeError::database)?
                 .map(crate::types::BridgeImageRef::from_core))
-        }
-
-        /// Drop the edit session on a library release: nothing is written.
-        fn discard_release_edit(release_id: String) -> () {
-            this.services.discard_release_edit(&release_id);
-            Ok(())
         }
 
         /// Take in a folder someone chose to import: watch it, or read again
@@ -708,18 +655,6 @@ forward! {
                 .remove_artist_credit_name(&artist_id, &key)
                 .await
                 .map_err(BridgeError::database)
-        }
-
-        /// Open an edit session on a library release: its form, seeded from
-        /// the release's values as the library holds them, with nothing
-        /// applied.
-        fn open_release_edit(release_id: String) -> crate::types::BridgeReleaseEditSeed {
-            let seed = this
-                .services
-                .open_release_edit(&release_id)
-                .await
-                .map_err(BridgeError::import)?;
-            Ok(crate::types::BridgeReleaseEditSeed::from_core(seed))
         }
 
         /// What the library holds, as it stands now, for every artist credit

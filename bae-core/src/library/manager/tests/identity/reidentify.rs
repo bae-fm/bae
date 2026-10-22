@@ -18,16 +18,15 @@ async fn stored_for(
         .unwrap()
 }
 
-/// Apply `link` to an edit session on `release_id` and save it as applied.
+/// Apply `link` in an edit session of its own on `release_id` and save it as
+/// applied.
 async fn reidentify(manager: &LibraryManager, release_id: &str, link: crate::import::PressingLink) {
+    let session = manager.open_release_edit(release_id).await.unwrap();
     let seed = manager
-        .apply_release_edit_catalog(release_id, &link)
+        .apply_release_edit_catalog(&session, &link)
         .await
         .unwrap();
-    manager
-        .save_release_edit(release_id, &seed.edit)
-        .await
-        .unwrap();
+    manager.save_release_edit(&session, &seed.edit).await.unwrap();
 }
 
 /// Seed the MusicBrainz release `release_id` of group `group_id`, listing
@@ -219,8 +218,9 @@ async fn a_reidentify_that_does_not_fit_the_stored_tracks_is_refused() {
     let new_release_id = "mismatch-re-identify-mb-rel-new";
     seed_musicbrainz(&manager, new_release_id, "mismatch-re-identify-mb-group-new", 12);
 
+    let session = manager.open_release_edit(&release.id).await.unwrap();
     let err = manager
-        .apply_release_edit_catalog(&release.id, &musicbrainz_link(new_release_id))
+        .apply_release_edit_catalog(&session, &musicbrainz_link(new_release_id))
         .await
         .expect_err("a release of 12 tracks cannot lay out 10");
     let msg = err.to_string();
@@ -243,18 +243,22 @@ async fn discarding_a_session_restores_the_library_s_values_exactly() {
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     insert_editable_tracks(&manager, &release.id, 2).await;
-    let before = manager.open_release_edit(&release.id).await.unwrap();
+    let session = manager.open_release_edit(&release.id).await.unwrap();
+    let before = session.opened().clone();
 
     let new_release_id = "discard-re-identify-mb-rel-new";
     seed_musicbrainz(&manager, new_release_id, "discard-re-identify-mb-group-new", 2);
     let applied = manager
-        .apply_release_edit_catalog(&release.id, &musicbrainz_link(new_release_id))
+        .apply_release_edit_catalog(&session, &musicbrainz_link(new_release_id))
         .await
         .unwrap();
     assert_ne!(applied.edit, before.edit, "the apply filled the form");
-    manager.discard_release_edit(&release.id);
+    drop(session);
 
-    assert_eq!(manager.open_release_edit(&release.id).await.unwrap(), before);
+    assert_eq!(
+        manager.open_release_edit(&release.id).await.unwrap().opened(),
+        &before
+    );
     assert!(manager
         .database
         .get_release_records(&release.id)
@@ -388,10 +392,10 @@ async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() 
         ..create_test_album()
     };
     manager.database.insert_album(&picked).await.unwrap();
-    let seed = manager.open_release_edit(&release.id).await.unwrap();
+    let session = manager.open_release_edit(&release.id).await.unwrap();
     assert_eq!(
         manager
-            .set_release_edit_album(&release.id, Some(picked.id.clone()))
+            .set_release_edit_album(&session, Some(picked.id.clone()))
             .await
             .unwrap(),
         crate::import::DraftAlbum::Picked {
@@ -400,7 +404,7 @@ async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() 
         }
     );
     manager
-        .save_release_edit(&release.id, &seed.edit)
+        .save_release_edit(&session, &session.opened().edit)
         .await
         .unwrap();
     assert_eq!(
@@ -458,58 +462,186 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
         title: picked.title.clone(),
     };
 
-    assert_eq!(
-        manager.open_release_edit(&release.id).await.unwrap().album,
-        named(&own)
-    );
+    let session = manager.open_release_edit(&release.id).await.unwrap();
+    assert_eq!(session.opened().album, named(&own));
     let applied = manager
-        .apply_release_edit_catalog(&release.id, &musicbrainz_link("named-new"))
+        .apply_release_edit_catalog(&session, &musicbrainz_link("named-new"))
         .await
         .unwrap();
     assert_eq!(applied.album, named(&grouped));
     let applied = manager
-        .apply_release_edit_catalog(&release.id, &musicbrainz_link("unnamed-new"))
+        .apply_release_edit_catalog(&session, &musicbrainz_link("unnamed-new"))
         .await
         .unwrap();
     assert_eq!(applied.album, DraftAlbum::New);
 
     assert_eq!(
         manager
-            .set_release_edit_album(&release.id, Some(picked.id.clone()))
+            .set_release_edit_album(&session, Some(picked.id.clone()))
             .await
             .unwrap(),
         picked_album
     );
     assert!(
         manager
-            .set_release_edit_album(&release.id, Some("no-such-album".to_string()))
+            .set_release_edit_album(&session, Some("no-such-album".to_string()))
             .await
             .is_err(),
         "an album the library does not hold cannot be picked"
     );
     let applied = manager
-        .apply_release_edit_catalog(&release.id, &musicbrainz_link("named-new"))
+        .apply_release_edit_catalog(&session, &musicbrainz_link("named-new"))
         .await
         .unwrap();
     assert_eq!(applied.album, picked_album, "an apply keeps the person's pick");
     assert_eq!(
-        manager
-            .set_release_edit_album(&release.id, None)
-            .await
-            .unwrap(),
+        manager.set_release_edit_album(&session, None).await.unwrap(),
         named(&grouped),
         "left to its records, the session files it where they name"
     );
+}
 
-    manager
-        .set_release_edit_album(&release.id, Some(picked.id.clone()))
+/// Two editors open on one release each hold their own session: what one
+/// applies and picks is never the other's, and opening one more leaves both
+/// as they were.
+#[tokio::test]
+async fn two_sessions_on_one_release_keep_their_own_apply_and_pick() {
+    use crate::import::DraftAlbum;
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let own = DbAlbum {
+        title: "Own Album".to_string(),
+        ..create_test_album()
+    };
+    let release = create_test_release(&own.id);
+    manager.database.insert_album(&own).await.unwrap();
+    insert_release(&manager, &release).await;
+    insert_editable_tracks(&manager, &release.id, 2).await;
+    let picked = DbAlbum {
+        title: "Picked Album".to_string(),
+        ..create_test_album()
+    };
+    manager.database.insert_album(&picked).await.unwrap();
+    seed_musicbrainz(&manager, "two-sessions-new", "two-sessions-group", 2);
+
+    let sheet = manager.open_release_edit(&release.id).await.unwrap();
+    let pane = manager.open_release_edit(&release.id).await.unwrap();
+    let applied = manager
+        .apply_release_edit_catalog(&sheet, &musicbrainz_link("two-sessions-new"))
         .await
         .unwrap();
+    manager
+        .set_release_edit_album(&sheet, Some(picked.id.clone()))
+        .await
+        .unwrap();
+    let third = manager.open_release_edit(&release.id).await.unwrap();
+
     assert_eq!(
-        manager.open_release_edit(&release.id).await.unwrap().album,
-        named(&own),
-        "opening again starts over"
+        manager.set_release_edit_album(&pane, None).await.unwrap(),
+        DraftAlbum::Named {
+            album_id: own.id.clone(),
+            title: own.title.clone(),
+        },
+        "the other editor's pick and apply are not this one's"
     );
+    assert_eq!(third.opened(), pane.opened());
+    manager.save_release_edit(&sheet, &applied.edit).await.unwrap();
+
+    assert_eq!(
+        manager.database.find_album_id_for_release(&release.id).await.unwrap(),
+        Some(picked.id.clone()),
+        "opening other sessions left this one's pick in place"
+    );
+    let records = manager.database.get_release_records(&release.id).await.unwrap();
+    assert_eq!(
+        records.iter().map(|record| record.key()).collect::<Vec<_>>(),
+        ["two-sessions-new"],
+        "and its apply"
+    );
+}
+
+/// Once one session saves a release, another session opened before that save
+/// is refused, writing nothing: the library keeps what the first saved. So
+/// does one opened before a field write from elsewhere, and a session opened
+/// after the save saves as usual.
+#[tokio::test]
+async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    insert_release(&manager, &release).await;
+    insert_editable_tracks(&manager, &release.id, 2).await;
+    let titled = |session: &ReleaseEditSession, title: &str| {
+        let mut edit = session.opened().edit.clone();
+        edit.album_title = title.to_string();
+        edit.album_artist_assignments = vec![crate::import::Credited::plain(
+            crate::import::ArtistAssignment::named("Artist Name"),
+        )];
+        edit
+    };
+
+    let first = manager.open_release_edit(&release.id).await.unwrap();
+    let second = manager.open_release_edit(&release.id).await.unwrap();
+    manager
+        .save_release_edit(&first, &titled(&first, "Saved First"))
+        .await
+        .unwrap();
+    let refused = manager
+        .save_release_edit(&second, &titled(&second, "Saved Second"))
+        .await
+        .expect_err("the release changed after the second session opened");
+    assert!(
+        matches!(&refused, LibraryError::ReleaseEditStale { release_id } if *release_id == release.id),
+        "{refused}"
+    );
+    assert_eq!(
+        refused.category(),
+        crate::ui::UiErrorCategory::ReleaseChangedSinceOpened
+    );
+    let held = |manager: &LibraryManager| {
+        let release_id = release.id.clone();
+        let manager = manager.clone();
+        async move {
+            manager
+                .open_release_edit(&release_id)
+                .await
+                .unwrap()
+                .opened()
+                .edit
+                .album_title
+                .clone()
+        }
+    };
+    assert_eq!(held(&manager).await, "Saved First");
+    assert!(
+        manager
+            .save_release_edit(&first, &titled(&first, "Saved Again"))
+            .await
+            .is_err(),
+        "a saved session opened on what the library held before its save"
+    );
+
+    let opened_before_write = manager.open_release_edit(&release.id).await.unwrap();
+    let written = titled(&opened_before_write, "Written Elsewhere");
+    manager
+        .apply_release_metadata_user_edit(&release.id, &written.shape().unwrap())
+        .await
+        .unwrap();
+    assert!(manager
+        .save_release_edit(
+            &opened_before_write,
+            &titled(&opened_before_write, "Saved Over It")
+        )
+        .await
+        .is_err());
+    assert_eq!(held(&manager).await, "Written Elsewhere");
+
+    let fresh = manager.open_release_edit(&release.id).await.unwrap();
+    manager
+        .save_release_edit(&fresh, &titled(&fresh, "Saved Fresh"))
+        .await
+        .unwrap();
+    assert_eq!(held(&manager).await, "Saved Fresh");
 }
 
 #[tokio::test]

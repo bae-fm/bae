@@ -131,6 +131,7 @@ fn category_column(category: UiErrorCategory) -> String {
                 .collect::<Vec<_>>()
                 .join(".")
         ),
+        C::ReleaseChangedSinceOpened => "release_changed_since_opened".to_string(),
         C::GroupingBlocked(reason) => format!("grouping_blocked.{}", block_column(reason)),
         C::Export => "export".to_string(),
         C::Save => "save".to_string(),
@@ -270,6 +271,7 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
             "import_data" => C::ImportData,
             "candidate_import_in_progress" => C::CandidateImportInProgress,
             "candidate_being_identified" => C::CandidateBeingIdentified,
+            "release_changed_since_opened" => C::ReleaseChangedSinceOpened,
             "export" => C::Export,
             "save" => C::Save,
             "storage_location_change" => C::StorageLocationChangeUnsupported,
@@ -516,6 +518,7 @@ mod tests {
             C::TiedMediums {
                 mediums: vec![2, 4],
             },
+            C::ReleaseChangedSinceOpened,
             C::GroupingBlocked(B::SourceChanged),
             C::GroupingBlocked(B::SourceGone),
             C::GroupingBlocked(B::FolderFilesTaken),

@@ -139,6 +139,9 @@ pub enum BridgeErrorCategory {
     TiedMediums {
         mediums: Vec<u32>,
     },
+    /// A release edit session's save found the release changed since the
+    /// session opened on it, and wrote nothing.
+    ReleaseChangedSinceOpened,
     Export,
     Save,
     /// Storage failed — in setup, in sync, reading a file — with coven's
@@ -324,6 +327,9 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         }
         BridgeErrorCategory::MetadataTrackCount { .. } => "core.import.error.metadata_track_count",
         BridgeErrorCategory::TiedMediums { .. } => "core.import.error.tied_mediums",
+        BridgeErrorCategory::ReleaseChangedSinceOpened => {
+            "core.release_edit.error.changed_since_opened"
+        }
         BridgeErrorCategory::Export => "core.error.category.export",
         BridgeErrorCategory::Save => "core.error.category.save",
         BridgeErrorCategory::Storage { failure } => {
@@ -518,6 +524,7 @@ mirror_enum! {
         CandidateBeingIdentified,
         MetadataTrackCount { folder_tracks, release_tracks },
         TiedMediums { mediums },
+        ReleaseChangedSinceOpened,
         GroupingBlocked(reason: (BridgeGroupingBlock)),
         Export,
         Save,

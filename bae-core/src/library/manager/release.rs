@@ -191,6 +191,7 @@ impl LibraryManager {
     ) -> Result<(), LibraryError> {
         let edit = edit.clone().normalized();
         edit.validate()?;
+        let _writing = self.release_writes.lock().await;
         let (_, release, album, existing_tracks) = self.load_release_for_edit(release_id).await?;
         let metadata = self.release_metadata_rows(album, release, &existing_tracks, &edit)?;
         self.database

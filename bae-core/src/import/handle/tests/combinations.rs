@@ -110,7 +110,9 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
         .library_manager
         .open_release_edit(&release_id)
         .await
-        .unwrap();
+        .unwrap()
+        .opened()
+        .clone();
     assert_eq!(imported.edit.album_title, "Collected Volumes");
     assert_eq!(imported.edit.tracks.len(), 4);
     let disc = |disc| crate::album_detail::TrackSide::Disc { disc };
@@ -126,7 +128,9 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
     assert!(pane(&handle, &key).await.is_added);
     handle.separate_candidate(&key).await.unwrap();
     assert_eq!(
-        handle.library_manager.open_release_edit(&release_id).await.unwrap(),
+        handle.library_manager.open_release_edit(&release_id).await.unwrap()
+        .opened()
+        .clone(),
         imported,
         "separating source folders preserves the imported copy"
     );

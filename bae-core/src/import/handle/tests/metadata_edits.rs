@@ -592,7 +592,9 @@ async fn editing_a_candidate_preserves_its_imported_copy() {
         .library_manager
         .open_release_edit(&release_id)
         .await
-        .unwrap();
+        .unwrap()
+        .opened()
+        .clone();
 
     handle.set_candidate_edit_field(
         &key,
@@ -609,7 +611,9 @@ async fn editing_a_candidate_preserves_its_imported_copy() {
             .library_manager
             .open_release_edit(&release_id)
             .await
-            .unwrap(),
+            .unwrap()
+        .opened()
+        .clone(),
         release_before
     );
 
@@ -635,6 +639,8 @@ async fn editing_a_candidate_preserves_its_imported_copy() {
             .open_release_edit(&release_id)
             .await
             .unwrap()
+        .opened()
+        .clone()
             .edit
             .album_title,
         "Edited imported release"

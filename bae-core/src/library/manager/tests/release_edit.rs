@@ -81,7 +81,9 @@ async fn release_edit_seed_uses_persisted_track_ids() {
     )
     .await;
 
-    let seed = manager.open_release_edit(&release.id).await.unwrap();
+    let seed = manager.open_release_edit(&release.id).await.unwrap()
+        .opened()
+        .clone();
 
     assert_eq!(seed.edit.tracks[0].id, track.id);
 }
@@ -112,9 +114,10 @@ async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
         source_group_id,
         r#"{"id":"reset-editor-group"}"#.to_string(),
     );
+    let session = manager.open_release_edit(&release.id).await.unwrap();
     let applied = manager
         .apply_release_edit_catalog(
-            &release.id,
+            &session,
             &crate::import::PressingLink {
                 record: MetadataRef::new(Catalog::MusicBrainz, source_release_id),
                 partners: vec![],
@@ -192,7 +195,9 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
     .await;
     store_test_cover(&manager, &release.id, b"cover").await;
 
-    let seed = manager.open_release_edit(&release.id).await.unwrap();
+    let seed = manager.open_release_edit(&release.id).await.unwrap()
+        .opened()
+        .clone();
 
     assert_eq!(
         seed.cover.as_ref().map(|cover| cover.id.as_str()),

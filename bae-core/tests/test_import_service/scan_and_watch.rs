@@ -795,6 +795,8 @@ async fn a_done_row_follows_the_library_release_it_became() {
         .open_release_edit(&release_id)
         .await
         .unwrap()
+        .opened()
+        .clone()
         .edit;
     form.album_title = "Album (Edited)".to_string();
     f.library_manager

@@ -16,7 +16,7 @@ struct ReleaseEditorSheet: View {
     init(
         releaseId: String,
         displayName: String,
-        seed: BridgeReleaseEditSeed,
+        opened: OpenedReleaseEdit,
         commands: ReleaseEditCommands,
         onSaved: @escaping @MainActor @Sendable (String) -> Void,
         onViewAlbum: @escaping (String) -> Void,
@@ -29,7 +29,7 @@ struct ReleaseEditorSheet: View {
         _session = State(
             initialValue: ReleaseMetadataEditSession(
                 releaseId: releaseId,
-                seed: seed,
+                opened: opened,
                 commands: commands
             )
         )
@@ -56,8 +56,9 @@ struct ReleaseEditorSheet: View {
             .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        // However the sheet goes, what it did not save is dropped.
-        .onDisappear { session.close() }
+        // However the sheet goes, its work stops; what it did not save goes
+        // with its session.
+        .onDisappear { session.cancelTasks() }
     }
 
     /// How much narrower and shorter than its host the sheet sits.
@@ -96,12 +97,14 @@ struct ReleaseEditorSheet: View {
 
 #if DEBUG
     #Preview("Edit Release") {
-        let seed = PreviewData.releaseEditSeed(trackCount: 6)
+        let library = PreviewReleaseLibrary(
+            seed: PreviewData.releaseEditSeed(trackCount: 6)
+        )
         ReleaseEditorSheet(
             releaseId: "release-preview",
             displayName: "Album Title \u{00B7} 2019 \u{00B7} CD",
-            seed: seed,
-            commands: PreviewData.releaseEditCommands(seed: seed),
+            opened: library.opened(releaseId: "release-preview"),
+            commands: library.commands(),
             onSaved: { _ in },
             onViewAlbum: { _ in },
             onClose: {}

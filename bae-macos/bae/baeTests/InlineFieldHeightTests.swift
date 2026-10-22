@@ -113,10 +113,9 @@ struct InlineFieldHeightTests {
     ) async throws -> Value {
         var seed = PreviewData.releaseEditSeed(trackCount: 2)
         seed.edit.albumTitle = Self.title
-        let session = ReleaseMetadataEditSession(
+        let session = PreviewData.releaseEditSession(
             releaseId: "release-test",
-            seed: seed,
-            commands: PreviewData.releaseEditCommands(seed: seed)
+            seed: seed
         )
         return try await SnapshotTestSupport.withHostedWindow(
             ReleaseMetadataHeader(

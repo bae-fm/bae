@@ -558,6 +558,21 @@ pub struct ReleaseEditSeed {
     pub album: DraftAlbum,
 }
 
+impl ReleaseEditSeed {
+    /// Whether this seed holds every value `opened` held — the form, the
+    /// tracks and the album — whatever its cover: the cover is written at
+    /// once outside any session, so it never makes a session's values stale.
+    pub fn holds_the_values_of(&self, opened: &Self) -> bool {
+        let Self {
+            edit,
+            cover: _,
+            display,
+            album,
+        } = self;
+        *edit == opened.edit && *display == opened.display && *album == opened.album
+    }
+}
+
 /// Trim a raw pressing field; empty (after trim) becomes `None`.
 fn trim_to_option(raw: &str) -> Option<String> {
     let trimmed = raw.trim();

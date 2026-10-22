@@ -450,25 +450,16 @@ impl Automation {
         pressing: AutomationPressingLink,
     ) -> Result<(), AutomationError> {
         let link = pressing.into_core();
-        // A session the app left open may hold an album the person picked;
-        // this one files the release where its records say.
-        self.services.open_release_edit(&release_id).await?;
-        let applied = self
+        // A session of its own: an editor open on the release in the app keeps
+        // its apply and pick, and this save makes that editor's save refuse.
+        let session = self.services.open_release_edit(&release_id).await?;
+        let seed = self
             .services
-            .apply_release_edit_catalog(&release_id, &link)
-            .await;
-        let saved = match applied {
-            Ok(seed) => {
-                self.services
-                    .save_release_edit(&release_id, &seed.edit)
-                    .await
-            }
-            Err(error) => Err(error),
-        };
-        if saved.is_err() {
-            self.services.discard_release_edit(&release_id);
-        }
-        saved?;
+            .apply_release_edit_catalog(&session, &link)
+            .await?;
+        self.services
+            .save_release_edit(&session, &seed.edit)
+            .await?;
         Ok(())
     }
 

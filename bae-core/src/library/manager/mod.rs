@@ -104,6 +104,8 @@ pub(crate) use release::stored_track_lengths;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod release_edit;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use release_edit::ReleaseEditSession;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod save;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use save::SaveWindow;
@@ -159,6 +161,10 @@ pub enum LibraryError {
     Edit(#[from] crate::import::EditValidationError),
     #[error("Release editor cannot load: {0}")]
     ReleaseEditLoad(#[from] crate::album_detail::ReleaseEditLoadError),
+    /// A release edit session's save found the release changed since the
+    /// session opened on it, and wrote nothing.
+    #[error("Release '{release_id}' changed since its edit session opened")]
+    ReleaseEditStale { release_id: String },
     #[error("Track mapping error: {0}")]
     TrackMapping(String),
     #[error("Encryption error: {0}")]
@@ -303,6 +309,7 @@ impl LibraryError {
             LibraryError::Sync(e) => sync_category(e),
             LibraryError::RetryBlockedOperation(_) => C::Membership,
             LibraryError::Import(_) | LibraryError::Edit(_) => C::Import,
+            LibraryError::ReleaseEditStale { .. } => C::ReleaseChangedSinceOpened,
             LibraryError::ArtistIdentityConflict(_) => C::Import,
             LibraryError::Export(_) => C::Export,
             LibraryError::Save(_) => C::Save,
@@ -716,10 +723,10 @@ pub struct LibraryManager {
     /// The one writer of import candidates' stored state.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     preparations: crate::import::CandidatePreparations,
-    /// Each open library release edit session's catalog apply, waiting for
-    /// its save, by release id (see `release_edit`).
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    release_edits: release_edit::ReleaseEditSessions,
+    /// Held by every edit session's save and every field edit of a release,
+    /// so a save compares the release with what its session opened on and
+    /// writes with no other of them on this device between the two.
+    release_writes: Arc<tokio::sync::Mutex<()>>,
     /// Where a test holds every look at this device's originals.
     #[cfg(test)]
     disk_hold: Arc<originals::DiskHold>,

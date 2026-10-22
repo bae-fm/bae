@@ -434,15 +434,13 @@ impl AppServices {
     delegate_async!(manager, dropbox_shared_folders => dropbox_shared_folders() -> Result<Vec<coven::StorageFolder>, crate::library::LibraryError>);
     delegate_async!(manager, get_album_id_for_release => get_album_id_for_release(release_id: &str) -> Result<String, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(manager, open_release_edit => open_release_edit(release_id: &str) -> Result<crate::import::ReleaseEditSeed, crate::library::LibraryError>);
+    delegate_async!(manager, open_release_edit => open_release_edit(release_id: &str) -> Result<crate::library::ReleaseEditSession, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(manager, apply_release_edit_catalog => apply_release_edit_catalog(release_id: &str, link: &crate::import::PressingLink) -> Result<crate::import::ReleaseEditSeed, crate::library::LibraryError>);
+    delegate_async!(manager, apply_release_edit_catalog => apply_release_edit_catalog(session: &crate::library::ReleaseEditSession, link: &crate::import::PressingLink) -> Result<crate::import::ReleaseEditSeed, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(manager, save_release_edit => save_release_edit(release_id: &str, edit: &crate::import::RawReleaseEdit) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, save_release_edit => save_release_edit(session: &crate::library::ReleaseEditSession, edit: &crate::import::RawReleaseEdit) -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(manager, set_release_edit_album => set_release_edit_album(release_id: &str, album_id: Option<String>) -> Result<crate::import::DraftAlbum, crate::library::LibraryError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_sync!(manager, discard_release_edit => discard_release_edit(release_id: &str) -> ());
+    delegate_async!(manager, set_release_edit_album => set_release_edit_album(session: &crate::library::ReleaseEditSession, album_id: Option<String>) -> Result<crate::import::DraftAlbum, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, enqueue_export => enqueue_export(release_id: &str, target_dir: std::path::PathBuf) -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

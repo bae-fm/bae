@@ -2,10 +2,9 @@ import BaeKit
 import Foundation
 
 /// Release-level mutations and the remote-cover fetch the editor needs.
-/// Covers cover changes, pinning, deletion, primary-release selection, the
-/// release edit session (open, apply a catalog, pick its album, save,
-/// discard), and the
-/// remote-cover gallery fetch.
+/// Covers cover changes, pinning, deletion, primary-release selection,
+/// opening a release edit session (whose own commands apply a catalog, pick
+/// its album and save), and the remote-cover gallery fetch.
 @MainActor
 final class ReleaseEditor: Observable {
     let changeCover:
@@ -21,26 +20,10 @@ final class ReleaseEditor: Observable {
     let deleteRelease: @Sendable (_ releaseId: String) async throws -> Void
     let setPrimaryRelease:
         @Sendable (_ albumId: String, _ releaseId: String) async throws -> Void
-    /// Open an edit session on a release: its form as the library holds it.
+    /// Open an edit session of the caller's own on a release: its form as
+    /// the library holds it, and the session's commands.
     let openReleaseEdit:
-        @Sendable (_ releaseId: String) async throws -> BridgeReleaseEditSeed
-    /// Apply a catalog release to the session; the form comes back filled
-    /// with its every value, held until the save.
-    let applyReleaseEditCatalog:
-        @Sendable (_ releaseId: String, _ link: BridgePressingLink)
-            async throws -> BridgeReleaseEditSeed
-    /// Pick the album the session files the release under (`nil`: the one
-    /// its records name); returns the album it files it under now.
-    let setReleaseEditAlbum:
-        @Sendable (_ releaseId: String, _ albumId: String?) async throws ->
-            BridgeDraftAlbum
-    /// Save the session with the form; returns the album the release is on
-    /// after it.
-    let saveReleaseEdit:
-        @Sendable (_ releaseId: String, _ edit: BridgeRawReleaseEdit)
-            async throws -> String
-    /// Drop the session: nothing is written.
-    let discardReleaseEdit: @Sendable (_ releaseId: String) async throws -> Void
+        @Sendable (_ releaseId: String) async throws -> OpenedReleaseEdit
     /// The release's cover as it stands now, leaving any session as it is.
     let releaseCover:
         @Sendable (_ releaseId: String) async throws -> BridgeImageRef?
@@ -71,19 +54,8 @@ final class ReleaseEditor: Observable {
                 _ in
             },
         openReleaseEdit:
-            @escaping @Sendable (String) async throws -> BridgeReleaseEditSeed =
+            @escaping @Sendable (String) async throws -> OpenedReleaseEdit =
             { _ in throw StubError.notImplemented },
-        applyReleaseEditCatalog:
-            @escaping @Sendable (String, BridgePressingLink) async throws ->
-            BridgeReleaseEditSeed = { _, _ in throw StubError.notImplemented },
-        setReleaseEditAlbum:
-            @escaping @Sendable (String, String?) async throws ->
-            BridgeDraftAlbum = { _, _ in .new },
-        saveReleaseEdit:
-            @escaping @Sendable (String, BridgeRawReleaseEdit)
-            async throws -> String = { _, _ in "" },
-        discardReleaseEdit:
-            @escaping @Sendable (String) async throws -> Void = { _ in },
         releaseCover:
             @escaping @Sendable (String) async throws -> BridgeImageRef? = {
                 _ in nil
@@ -101,10 +73,6 @@ final class ReleaseEditor: Observable {
         self.deleteRelease = deleteRelease
         self.setPrimaryRelease = setPrimaryRelease
         self.openReleaseEdit = openReleaseEdit
-        self.applyReleaseEditCatalog = applyReleaseEditCatalog
-        self.setReleaseEditAlbum = setReleaseEditAlbum
-        self.saveReleaseEdit = saveReleaseEdit
-        self.discardReleaseEdit = discardReleaseEdit
         self.releaseCover = releaseCover
         self.fetchRemoteCovers = fetchRemoteCovers
     }
@@ -132,25 +100,15 @@ final class ReleaseEditor: Observable {
                 try await handle.setPrimaryRelease(albumId: $0, releaseId: $1)
             },
             openReleaseEdit: {
-                try await handle.openReleaseEdit(releaseId: $0)
-            },
-            applyReleaseEditCatalog: {
-                try await handle.applyReleaseEditCatalog(
-                    releaseId: $0,
-                    link: $1
+                let session = try await handle.openReleaseEdit(releaseId: $0)
+                return OpenedReleaseEdit(
+                    seed: session.opened(),
+                    session: ReleaseEditSessionCommands(
+                        apply: { try await session.applyCatalog(link: $0) },
+                        setAlbum: { try await session.setAlbum(albumId: $0) },
+                        save: { try await session.save(edit: $0) }
+                    )
                 )
-            },
-            setReleaseEditAlbum: {
-                try await handle.setReleaseEditAlbum(
-                    releaseId: $0,
-                    albumId: $1
-                )
-            },
-            saveReleaseEdit: {
-                try await handle.saveReleaseEdit(releaseId: $0, edit: $1)
-            },
-            discardReleaseEdit: {
-                try await handle.discardReleaseEdit(releaseId: $0)
             },
             releaseCover: { try await handle.releaseCover(releaseId: $0) },
             fetchRemoteCovers: {
@@ -168,11 +126,7 @@ final class ReleaseEditor: Observable {
     ) -> ReleaseEditCommands {
         ReleaseEditCommands(
             open: openReleaseEdit,
-            apply: applyReleaseEditCatalog,
-            setAlbum: setReleaseEditAlbum,
             searchAlbums: searchAlbums,
-            save: saveReleaseEdit,
-            discard: discardReleaseEdit,
             cover: releaseCover
         )
     }
