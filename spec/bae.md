@@ -1818,6 +1818,13 @@ log names its address.
 **This device.** On macOS, playback follows a change of the default output
 device. Volume and mute live in core, so unmuting restores the level last set.
 
+**When the output won't start.** Playback that can't start its output — on
+this device or a receiver — stops and says why: the audio device was
+disconnected or isn't available, it can't play the track's sample rate, or the
+AirPlay speaker didn't accept the connection. These are the device's or the
+speaker's doing. Any other failure is bae's own: it shows as an error, is
+reported as a bug, and the log keeps the whole error with its causes.
+
 **Sharing the speaker.** Android and iOS let one app play at a time: Android
 through audio focus, iOS through its audio session. Every start of playback
 asks the system first — Play, playing a release or the library, skipping to an

@@ -43,6 +43,10 @@ pub enum PlaybackError {
     /// since import.
     #[error("This release's original files are missing or changed on this device")]
     OriginalMissing,
+    /// The audio output didn't start: the device's, the speaker's, or bae's
+    /// own audio path's doing, as the error says.
+    #[error("the audio output didn't start: {0}")]
+    AudioOutput(#[source] crate::playback::AudioError),
 }
 impl PlaybackError {
     /// Project this domain error onto the UI-facing reason. The cases where
@@ -56,9 +60,31 @@ impl PlaybackError {
             PlaybackError::UploadPending => PlaybackErrorReason::UploadPending,
             PlaybackError::NotUploaded => PlaybackErrorReason::NotUploaded,
             PlaybackError::OriginalMissing => PlaybackErrorReason::OriginalMissing,
+            PlaybackError::AudioOutput(error) => {
+                use crate::playback::AudioError;
+                use crate::ui::AudioOutputProblem;
+                let problem = match error {
+                    AudioError::DeviceUnavailable => AudioOutputProblem::DeviceUnavailable,
+                    AudioError::UnsupportedFormat { .. } => AudioOutputProblem::UnsupportedFormat,
+                    AudioError::AirPlayRefused(_) => AudioOutputProblem::AirPlayRefused,
+                    AudioError::Unexpected(_) => return PlaybackErrorReason::internal(self),
+                };
+                PlaybackErrorReason::AudioOutput { problem }
+            }
             other => PlaybackErrorReason::internal(other),
         }
     }
+    /// Whether this failure is bae's own — a bug for the crash reporter —
+    /// rather than the person's, the device's, the speaker's or the network's.
+    pub fn is_bug(&self) -> bool {
+        matches!(
+            self,
+            PlaybackError::AudioOutput(crate::playback::AudioError::Unexpected(_))
+                | PlaybackError::TaskFailed(_)
+                | PlaybackError::Internal(_)
+        )
+    }
+
     pub fn not_found(what: &'static str, id: impl Into<String>) -> Self {
         Self::NotFound(what, id.into())
     }
@@ -79,5 +105,49 @@ impl PlaybackError {
             context: context.into(),
             source,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::playback::AudioError;
+    use crate::ui::{AudioOutputProblem, PlaybackErrorReason};
+
+    /// A device's or a speaker's problem reaches the person by name and is no
+    /// bug; bae's own failure is a bug and reads as one.
+    #[test]
+    fn an_audio_output_failure_names_its_reason() {
+        for (error, problem) in [
+            (
+                AudioError::DeviceUnavailable,
+                AudioOutputProblem::DeviceUnavailable,
+            ),
+            (
+                AudioError::UnsupportedFormat {
+                    sample_rate: 352_800,
+                    channels: 2,
+                },
+                AudioOutputProblem::UnsupportedFormat,
+            ),
+            (
+                AudioError::AirPlayRefused("connection refused".to_string()),
+                AudioOutputProblem::AirPlayRefused,
+            ),
+        ] {
+            let error = PlaybackError::AudioOutput(error);
+            assert!(!error.is_bug(), "{error}");
+            assert!(
+                matches!(error.ui_reason(), PlaybackErrorReason::AudioOutput { problem: p } if p == problem),
+                "{error}"
+            );
+        }
+
+        let error = PlaybackError::AudioOutput(AudioError::Unexpected("RAOP key wrap".to_string()));
+        assert!(error.is_bug());
+        let PlaybackErrorReason::Diagnostic { error: shown } = error.ui_reason() else {
+            panic!("an unexpected failure is a diagnostic");
+        };
+        assert!(format!("{shown:?}").contains("RAOP key wrap"));
     }
 }

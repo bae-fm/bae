@@ -293,6 +293,9 @@ pub enum BridgePlaybackErrorReason {
     NotUploaded,
     /// A local release's original files are gone or changed on this device.
     OriginalMissing,
+    /// The audio output didn't start, for a reason of the device's or the
+    /// speaker's.
+    AudioOutput { problem: BridgeAudioOutputProblem },
     /// Any other failure. Carries the underlying `BridgeError`; the UI renders
     /// its generic per-category line plus the opaque diagnostic detail.
     Diagnostic { error: BridgeError },
@@ -431,6 +434,18 @@ pub fn bridge_error_line_key(error: &BridgeError) -> Option<String> {
     }
 }
 
+/// What kept the audio output from starting. Mirrors
+/// `bae_core::ui::AudioOutputProblem`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeAudioOutputProblem {
+    /// The audio device was disconnected or is no longer available.
+    DeviceUnavailable,
+    /// The audio device can't play the track's sample rate and channels.
+    UnsupportedFormat,
+    /// The AirPlay speaker couldn't be reached or didn't accept the session.
+    AirPlayRefused,
+}
+
 /// Localization key for the actionable `BridgePlaybackErrorReason` variants, or
 /// `None` for `Diagnostic` (which the UI renders through the `BridgeError`
 /// category path instead). One source of these keys for every platform.
@@ -449,6 +464,18 @@ pub fn bridge_playback_error_reason_key(reason: &BridgePlaybackErrorReason) -> O
         BridgePlaybackErrorReason::OriginalMissing => {
             bridge_release_playability_key(BridgeReleasePlayability::OriginalMissing)
         }
+        BridgePlaybackErrorReason::AudioOutput { problem } => Some(
+            match problem {
+                BridgeAudioOutputProblem::DeviceUnavailable => {
+                    "core.playback.error.audio_device_unavailable"
+                }
+                BridgeAudioOutputProblem::UnsupportedFormat => {
+                    "core.playback.error.audio_format_unsupported"
+                }
+                BridgeAudioOutputProblem::AirPlayRefused => "core.playback.error.airplay_refused",
+            }
+            .to_string(),
+        ),
         BridgePlaybackErrorReason::Diagnostic { .. } => None,
     }
 }
@@ -576,8 +603,15 @@ mirror_enum! {
         UploadPending,
         NotUploaded,
         OriginalMissing,
+        AudioOutput { problem: (BridgeAudioOutputProblem) },
         Diagnostic { error: (BridgeError) },
     },
+}
+
+mirror_enum! {
+    BridgeAudioOutputProblem = bae_core::ui::AudioOutputProblem,
+    from_core: pub(crate) fn,
+    variants: { DeviceUnavailable, UnsupportedFormat, AirPlayRefused },
 }
 
 #[cfg(feature = "desktop")]

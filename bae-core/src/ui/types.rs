@@ -162,10 +162,24 @@ pub enum PlaybackErrorReason {
     /// A local release's original files are gone or changed on this device.
     /// Actionable, keyed.
     OriginalMissing,
+    /// The audio output didn't start, for a reason of the device's or the
+    /// speaker's. Actionable, keyed.
+    AudioOutput { problem: AudioOutputProblem },
     /// Any other failure (decode, audio output, IO, DB, missing file). Carries
     /// the underlying `UiError`; the UI renders its generic per-category line
     /// plus the opaque, log-only detail.
     Diagnostic { error: UiError },
+}
+
+/// What kept the audio output from starting, as the person can act on it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AudioOutputProblem {
+    /// The audio device was disconnected or is no longer available.
+    DeviceUnavailable,
+    /// The audio device can't play the track's sample rate and channels.
+    UnsupportedFormat,
+    /// The AirPlay speaker couldn't be reached or didn't accept the session.
+    AirPlayRefused,
 }
 
 impl PlaybackErrorReason {

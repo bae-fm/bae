@@ -71,6 +71,7 @@ fun Context.localizedLine(reason: BridgePlaybackErrorReason): String? =
         is BridgePlaybackErrorReason.UploadPending,
         is BridgePlaybackErrorReason.NotUploaded,
         is BridgePlaybackErrorReason.OriginalMissing,
+        is BridgePlaybackErrorReason.AudioOutput,
         -> {
             // Core owns a key for exactly the actionable cases; non-null here.
             coreString(bridgePlaybackErrorReasonKey(reason)!!)

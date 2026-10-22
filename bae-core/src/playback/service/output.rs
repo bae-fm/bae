@@ -60,6 +60,24 @@ impl PlaybackService {
         self.build_output_over(source, sample_rate, channels, Vec::new())
     }
 
+    /// What the person is told when `operation` couldn't start the audio
+    /// output: the device's or the speaker's problem by name, or bae's own
+    /// failure, which goes to the crash reporter. Either way the log keeps the
+    /// whole error with its causes.
+    pub(super) fn output_start_failed(
+        &self,
+        operation: &str,
+        error: &PlaybackError,
+    ) -> crate::ui::PlaybackErrorReason {
+        let detail = crate::util::error_text::CauseChain(error);
+        if error.is_bug() {
+            self.library_manager.report_bug(operation, &detail);
+        } else {
+            warn!("{operation}: the audio output didn't start: {detail}");
+        }
+        error.ui_reason()
+    }
+
     /// Promote the stream already staged inside the live source. The source
     /// performs the ownership-preserving swap; this owner synchronizes it with
     /// event draining and output notification exactly like `attach_track`.
@@ -125,15 +143,13 @@ impl PlaybackService {
                 // No output will drain this source's ring. Cancel it so a decoder
                 // filling it exits rather than parking on a full ring forever.
                 source.lock().unwrap().cancel();
-                return Err(PlaybackError::task(format!("Audio stream: {:?}", e)));
+                return Err(PlaybackError::AudioOutput(e));
             }
         };
 
         if let Err(e) = stream.play() {
             source.lock().unwrap().cancel();
-            return Err(PlaybackError::task(format!(
-                "Failed to start streaming playback: {e:?}"
-            )));
+            return Err(PlaybackError::AudioOutput(e));
         }
 
         self.output = Some(OutputStream {
@@ -177,14 +193,15 @@ impl PlaybackService {
             pending.push(event);
         }
         info!("Default output device changed; rebuilding the output stream in place");
-        if let Err(e) = self.build_output_over(source, sample_rate, channels, pending) {
-            error!("Failed to rebuild output after a device change: {e}");
+        if let Err(error) = self.build_output_over(source, sample_rate, channels, pending) {
             self.telemetry_playback_failed(PlaybackOperation::DeviceRebuild);
+            let reason = self.output_start_failed(
+                "rebuild the audio output after the default device changed",
+                &error,
+            );
             emit_progress(
                 &self.progress_tx,
-                PlaybackProgress::PlaybackError {
-                    reason: e.ui_reason(),
-                },
+                PlaybackProgress::PlaybackError { reason },
             );
             self.stop().await;
         }

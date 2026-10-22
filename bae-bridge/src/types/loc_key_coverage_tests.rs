@@ -494,6 +494,15 @@ fn produced_keys() -> Vec<String> {
         BridgePlaybackErrorReason::UploadPending,
         BridgePlaybackErrorReason::NotUploaded,
         BridgePlaybackErrorReason::OriginalMissing,
+        BridgePlaybackErrorReason::AudioOutput {
+            problem: BridgeAudioOutputProblem::DeviceUnavailable,
+        },
+        BridgePlaybackErrorReason::AudioOutput {
+            problem: BridgeAudioOutputProblem::UnsupportedFormat,
+        },
+        BridgePlaybackErrorReason::AudioOutput {
+            problem: BridgeAudioOutputProblem::AirPlayRefused,
+        },
         BridgePlaybackErrorReason::Diagnostic {
             error: BridgeError::internal(""),
         },

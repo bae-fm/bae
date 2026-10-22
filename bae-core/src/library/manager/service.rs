@@ -292,6 +292,12 @@ impl LibraryManager {
         self.diagnostics.event(event);
     }
 
+    /// Report a bug found outside the library's own operations — playback's —
+    /// to the log and the platform's crash reporter.
+    pub(crate) fn report_bug(&self, operation: &str, error: &dyn std::fmt::Display) {
+        self.diagnostics.report_bug(operation, error);
+    }
+
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn search_musicbrainz(
         &self,

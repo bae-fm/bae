@@ -140,14 +140,14 @@ impl PlaybackService {
             .await
         {
             Ok(()) => {}
-            Err(_) => {
+            Err(error) => {
+                let reason = self.output_start_failed(
+                    &format!("restart the audio output for track {track_id} after a seek"),
+                    &error,
+                );
                 emit_progress(
                     &self.progress_tx,
-                    PlaybackProgress::PlaybackError {
-                        reason: crate::ui::PlaybackErrorReason::internal(
-                            "Couldn't restart audio output after the seek.",
-                        ),
-                    },
+                    PlaybackProgress::PlaybackError { reason },
                 );
                 self.stop().await;
                 return;

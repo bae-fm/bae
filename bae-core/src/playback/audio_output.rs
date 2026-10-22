@@ -241,14 +241,24 @@ impl AudioDrain {
     }
 }
 
+/// Why an audio output couldn't start or keep playing. The first three are the
+/// device's or the speaker's doing, which the person can act on; `Unexpected`
+/// is bae's own failure, a bug.
 #[derive(Debug, thiserror::Error)]
 pub enum AudioError {
-    #[error("Audio device not found")]
-    DeviceNotFound,
-    #[error("Stream config error: {0}")]
-    StreamConfigError(String),
-    #[error("Stream build error: {0}")]
-    StreamBuildError(String),
+    /// There is no output device, or the one there was went away: unplugged,
+    /// switched off, or taken by the system.
+    #[error("the audio device is unavailable")]
+    DeviceUnavailable,
+    /// The device doesn't take the track's sample rate and channel count.
+    #[error("the audio device can't play {sample_rate} Hz with {channels} channels")]
+    UnsupportedFormat { sample_rate: u32, channels: u32 },
+    /// The AirPlay speaker couldn't be reached or didn't accept the session.
+    #[error("the AirPlay speaker didn't accept the connection: {0}")]
+    AirPlayRefused(String),
+    /// Anything else: a failure bae didn't expect from its own audio path.
+    #[error("{0}")]
+    Unexpected(String),
 }
 
 /// A running audio stream. Drop to stop.
@@ -466,9 +476,9 @@ impl CaptureOutputCore {
     fn rotate_capture_buffer(&self) -> Result<(), AudioError> {
         let captured = Arc::new(Mutex::new(Vec::<f32>::new()));
         *self.active.lock().unwrap() = captured.clone();
-        self.notify_tx.send(captured).map_err(|error| {
-            AudioError::StreamBuildError(format!("capture receiver dropped: {error}"))
-        })
+        self.notify_tx
+            .send(captured)
+            .map_err(|error| AudioError::Unexpected(format!("capture receiver dropped: {error}")))
     }
 
     /// The one capture thread keeps running across a same-format swap; rotate
@@ -683,9 +693,7 @@ impl AudioOutput for FailingAudioOutput {
         _audio_events: AudioEventSender,
         _position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
-        Err(AudioError::StreamBuildError(
-            "stream build failure".to_string(),
-        ))
+        Err(AudioError::Unexpected("stream build failure".to_string()))
     }
 
     fn controls(&self) -> &AudioOutputControls {

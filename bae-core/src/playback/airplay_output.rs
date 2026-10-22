@@ -329,7 +329,7 @@ impl AirPlaySink for RaopSink {
         let cipher = match self.encryption {
             RaopEncryption::None => RaopCipher::none(),
             RaopEncryption::RsaAes => RaopCipher::new_aes(&apple_public_key())
-                .map_err(|e| AudioError::StreamBuildError(format!("RAOP key wrap: {e}")))?,
+                .map_err(|e| AudioError::Unexpected(format!("RAOP key wrap: {e}")))?,
         };
         let session = RaopSession::start(
             self.receiver,
@@ -340,7 +340,7 @@ impl AirPlaySink for RaopSink {
             self.initial_volume,
             Arc::new(SystemClock::new()),
         )
-        .map_err(|e| AudioError::StreamBuildError(e.to_string()))?;
+        .map_err(|e| AudioError::AirPlayRefused(e.to_string()))?;
 
         Ok(Arc::new(session))
     }
@@ -396,7 +396,7 @@ impl AirPlaySink for Ap2Sink {
             self.timing,
             Arc::new(SystemClock::new()),
         )
-        .map_err(|e| AudioError::StreamBuildError(e.to_string()))?;
+        .map_err(|e| AudioError::AirPlayRefused(e.to_string()))?;
 
         Ok(Arc::new(session))
     }

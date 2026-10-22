@@ -13,8 +13,12 @@ use tracing::{error, info};
 
 impl AudioStream for Stream {
     fn play(&self) -> Result<(), AudioError> {
-        cpal::traits::StreamTrait::play(self)
-            .map_err(|e| AudioError::StreamBuildError(e.to_string()))
+        cpal::traits::StreamTrait::play(self).map_err(|error| match error {
+            cpal::PlayStreamError::DeviceNotAvailable => AudioError::DeviceUnavailable,
+            cpal::PlayStreamError::BackendSpecific { err } => {
+                AudioError::Unexpected(format!("starting the stream: {err}"))
+            }
+        })
     }
 }
 
@@ -32,7 +36,7 @@ impl CpalAudioOutput {
     pub fn new() -> Result<Self, AudioError> {
         let host = cpal::default_host();
         host.default_output_device()
-            .ok_or(AudioError::DeviceNotFound)?;
+            .ok_or(AudioError::DeviceUnavailable)?;
 
         Ok(Self {
             controls: AudioOutputControls::new(1.0),
@@ -73,10 +77,13 @@ impl AudioOutput for CpalAudioOutput {
         let host = cpal::default_host();
         let device = host
             .default_output_device()
-            .ok_or(AudioError::DeviceNotFound)?;
+            .ok_or(AudioError::DeviceUnavailable)?;
         let default_config = device
             .default_output_config()
-            .map_err(|e| AudioError::StreamConfigError(e.to_string()))?;
+            .map_err(|error| match error {
+                cpal::DefaultStreamConfigError::DeviceNotAvailable => AudioError::DeviceUnavailable,
+                other => AudioError::Unexpected(format!("reading the device's format: {other}")),
+            })?;
         let mut stream_config = StreamConfig::from(default_config);
         stream_config.sample_rate = SampleRate(source_sample_rate);
         stream_config.channels = source_channels as u16;
@@ -107,7 +114,14 @@ impl AudioOutput for CpalAudioOutput {
                 },
                 None,
             )
-            .map_err(|e| AudioError::StreamBuildError(e.to_string()))?;
+            .map_err(|error| match error {
+                cpal::BuildStreamError::DeviceNotAvailable => AudioError::DeviceUnavailable,
+                cpal::BuildStreamError::StreamConfigNotSupported => AudioError::UnsupportedFormat {
+                    sample_rate: source_sample_rate,
+                    channels: source_channels,
+                },
+                other => AudioError::Unexpected(format!("building the stream: {other}")),
+            })?;
 
         Ok(Box::new(stream))
     }
@@ -188,7 +202,7 @@ pub(crate) mod device_listener {
                 // Registration failed, so nothing will ever call the callback —
                 // reclaim the box we couldn't hand off.
                 drop(unsafe { Box::from_raw(callback) });
-                return Err(AudioError::StreamBuildError(format!(
+                return Err(AudioError::Unexpected(format!(
                     "AudioObjectAddPropertyListener failed with OSStatus {status}"
                 )));
             }

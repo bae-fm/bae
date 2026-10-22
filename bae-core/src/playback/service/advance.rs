@@ -725,9 +725,17 @@ impl PlaybackService {
         // A staged stream stays inside the live source and is promoted there.
         // A held stream is attached through the format-aware output path.
         let attached = match preloaded_source {
-            PreloadedNextSource::Staged => self.promote_staged_track(),
-            PreloadedNextSource::Held(track_stream) => self
-                .attach_track(
+            PreloadedNextSource::Staged => {
+                if self.promote_staged_track() {
+                    Ok(())
+                } else {
+                    Err(PlaybackError::internal(
+                        "the staged next track was no longer in the live source",
+                    ))
+                }
+            }
+            PreloadedNextSource::Held(track_stream) => {
+                self.attach_track(
                     track_stream,
                     next_prepared.track_fmt(StreamPosition::START),
                     sample_rate,
@@ -735,21 +743,24 @@ impl PlaybackService {
                     StagedNextOnReplace::Discard,
                 )
                 .await
-                .is_ok(),
+            }
         };
-        if !attached {
+        if let Err(error) = attached {
             cancel_token.store(true, std::sync::atomic::Ordering::Release);
             for segment in &next_prepared.segments {
                 segment.buffer.wake_readers();
             }
             drop(decoder_handle);
+            let reason = self.output_start_failed(
+                &format!(
+                    "start the audio output for track {}",
+                    next_prepared.track_id
+                ),
+                &error,
+            );
             emit_progress(
                 &self.progress_tx,
-                PlaybackProgress::PlaybackError {
-                    reason: crate::ui::PlaybackErrorReason::internal(
-                        "Couldn't start audio output for the next track.",
-                    ),
-                },
+                PlaybackProgress::PlaybackError { reason },
             );
             self.stop().await;
             return;

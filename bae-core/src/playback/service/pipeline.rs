@@ -160,7 +160,7 @@ impl PlaybackService {
                 started_at: play_started_at,
             });
 
-        if self
+        if let Err(error) = self
             .start_decoder_and_install(
                 prepared,
                 decode,
@@ -171,16 +171,15 @@ impl PlaybackService {
                 None,
             )
             .await
-            .is_err()
         {
             self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::AudioOutputInit);
+            let reason = self.output_start_failed(
+                &format!("start the audio output for track {track_id}"),
+                &error,
+            );
             emit_progress(
                 &self.progress_tx,
-                PlaybackProgress::PlaybackError {
-                    reason: crate::ui::PlaybackErrorReason::internal(
-                        "Couldn't start audio output for the track.",
-                    ),
-                },
+                PlaybackProgress::PlaybackError { reason },
             );
             self.stop().await;
             return;
