@@ -58,19 +58,22 @@ fn cue_and_loose_audio_both_keep_their_metadata_in_playback_order() {
                     size: file.size,
                     modified_at_ns: file.modified_at_ns,
                 },
-                title: Some(format!("Tags {}", file.relative_path)),
-                track_artist: Some("Track Artist".into()),
-                album_title: Some("Tagged Album".into()),
-                album_artist: Some("Album Artist".into()),
-                year: None,
-                numbers: crate::import::track_numbers::TrackNumbers {
-                    disc: None,
-                    track: None,
+                tags: crate::import::file_tag_snapshot::FileTags {
+                    title: Some(format!("Tags {}", file.relative_path)),
+                    track_artists: vec!["Track Artist".into()],
+                    album_title: Some("Tagged Album".into()),
+                    album_artists: vec!["Album Artist".into()],
+                    compilation: false,
+                    years: Vec::new(),
+                    numbers: crate::import::track_numbers::TrackNumbers {
+                        disc: None,
+                        track: None,
+                    },
+                    isrcs: Vec::new(),
+                    labels: Vec::new(),
+                    copyrights: Vec::new(),
+                    store: None,
                 },
-                isrc: None,
-                copyright: None,
-                label: None,
-                store: None,
             })
             .collect(),
     };
@@ -137,19 +140,22 @@ fn stored_file_tag_facts_project_without_opening_the_source_file() {
                 size: 123,
                 modified_at_ns: 456,
             },
-            title: Some("Track Alpha".to_string()),
-            track_artist: Some("Artist Alpha".to_string()),
-            album_title: Some("Album Alpha".to_string()),
-            album_artist: Some("Artist Alpha".to_string()),
-            year: Some(2001),
-            numbers: crate::import::track_numbers::TrackNumbers {
-                disc: None,
-                track: Some(1),
+            tags: crate::import::file_tag_snapshot::FileTags {
+                title: Some("Track Alpha".to_string()),
+                track_artists: vec!["Artist Alpha".to_string()],
+                album_title: Some("Album Alpha".to_string()),
+                album_artists: vec!["Artist Alpha".to_string()],
+                compilation: false,
+                years: vec![2001],
+                numbers: crate::import::track_numbers::TrackNumbers {
+                    disc: None,
+                    track: Some(1),
+                },
+                isrcs: Vec::new(),
+                labels: Vec::new(),
+                copyrights: Vec::new(),
+                store: None,
             },
-            isrc: None,
-            copyright: None,
-            label: None,
-            store: None,
         }],
         embedded_cover: None,
     };
@@ -217,19 +223,7 @@ fn map_cue_folder(sheets: Vec<CueSheet>, folder_name: Option<&str>) -> ReleaseVa
                     size: file.size,
                     modified_at_ns: file.modified_at_ns,
                 },
-                title: None,
-                track_artist: None,
-                album_title: None,
-                album_artist: None,
-                year: None,
-                numbers: crate::import::track_numbers::TrackNumbers {
-                    disc: None,
-                    track: None,
-                },
-                isrc: None,
-                copyright: None,
-                label: None,
-                store: None,
+                tags: crate::import::file_tag_snapshot::FileTags::untagged(),
             })
             .collect(),
     };
@@ -412,8 +406,9 @@ fn flac_with_vorbis_comments_basic() {
     let parsed = map_tags(&[f1, f2]).unwrap();
 
     assert_eq!(parsed.album_title, "Album Title");
+    // One year is the album's; it names no pressing.
     assert_eq!(parsed.album_year, Some(1999));
-    assert_eq!(parsed.pressing.year, Some(1999));
+    assert_eq!(parsed.pressing.year, None);
     assert!(parsed.pressing.facts.media.is_empty());
 
     assert_eq!(parsed.tracks.len(), 2);
@@ -430,12 +425,11 @@ fn flac_with_vorbis_comments_basic() {
         ["Artist Name"],
         "single artist for whole album"
     );
-    // Every track ARTIST tag is the track's own credit, even when it matches
-    // the album artist (as the catalogs' readers credit each track).
-    assert!(parsed.tracks.iter().all(|track| matches!(
-        &track.credits,
-        TrackCredits::Own(credits) if credits.len() == 1 && credits[0].credit.name == "Artist Name"
-    )));
+    // A track ARTIST naming the album artist takes the album's credit.
+    assert!(parsed
+        .tracks
+        .iter()
+        .all(|track| track.credits == TrackCredits::AlbumArtists));
 }
 
 /// Multi-disc rip: DISCNUMBER + TRACKNUMBER produce side groupings.
@@ -500,13 +494,11 @@ fn the_largest_tag_number_is_kept_as_stated() {
     assert_eq!(draft_numbers(parsed), [u32::MAX]);
 }
 
-/// Per-track artist different from album artist → adds an extra
-/// artist row, and every track ARTIST tag emits a junction row
-/// (the matching one points at the album artist; the divergent one
-/// at the per-track artist). The external-source mappers likewise emit a
-/// junction for every credit.
+/// A track whose ARTIST names the album artist takes the album's credit; one
+/// naming another artist is credited to it alone, and the album keeps only
+/// its own artist.
 #[test]
-fn flac_per_track_artist_emits_junction_row() {
+fn a_track_artist_unlike_the_album_s_is_the_track_s_own_credit() {
     let temp = TempDir::new().unwrap();
     let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
     let src2 = fixtures_dir().join("flac").join("02 Test Track 2.flac");
@@ -547,19 +539,15 @@ fn flac_per_track_artist_emits_junction_row() {
             .collect::<Vec<_>>(),
         TrackCredits::AlbumArtists => Vec::new(),
     };
-    assert_eq!(track_artist(0), ["Album Artist"]);
+    assert_eq!(parsed.tracks[0].credits, TrackCredits::AlbumArtists);
     assert_eq!(track_artist(1), ["Featured Artist"]);
-
-    // The divergent per-track artist is an album artist too, after the
-    // album's own: the file-tag reader credits the album with every artist
-    // its tracks name.
     assert_eq!(
         parsed
             .album_credits
             .iter()
             .map(|credit| credit.credit.name.as_str())
             .collect::<Vec<_>>(),
-        ["Album Artist", "Featured Artist"]
+        ["Album Artist"]
     );
 }
 
@@ -648,7 +636,7 @@ fn partial_track_numbers_default_to_order() {
 }
 
 /// The album-title ladder (ALBUM tag → folder name → empty) and the
-/// album-artist ladder (ALBUMARTIST → ARTIST → empty), with blank and
+/// album-artist ladder (ALBUMARTIST → ARTIST → none), with blank and
 /// whitespace-only tags dropping to `None` and taking the same ladder.
 /// The file-metadata path never hard-fails on a missing album-level tag — the
 /// editable form gates save on the non-empty fields.
@@ -661,7 +649,7 @@ fn album_and_artist_fallback_ladder() {
         album_artist: Option<&'static str>,
         folder: Option<&'static str>,
         expect_title: &'static str,
-        expect_artist: &'static str,
+        expect_artist: &'static [&'static str],
     }
     let rows = [
         // Album title ladder.
@@ -672,7 +660,7 @@ fn album_and_artist_fallback_ladder() {
             album_artist: None,
             folder: Some("Folder Name"),
             expect_title: "Folder Name",
-            expect_artist: "Track Artist",
+            expect_artist: &["Track Artist"],
         },
         Row {
             name: "no-album-no-folder",
@@ -681,7 +669,7 @@ fn album_and_artist_fallback_ladder() {
             album_artist: None,
             folder: None,
             expect_title: "",
-            expect_artist: "Track Artist",
+            expect_artist: &["Track Artist"],
         },
         Row {
             name: "empty-album-folder",
@@ -690,7 +678,7 @@ fn album_and_artist_fallback_ladder() {
             album_artist: None,
             folder: Some("Folder Name"),
             expect_title: "Folder Name",
-            expect_artist: "Track Artist",
+            expect_artist: &["Track Artist"],
         },
         Row {
             name: "ws-album-folder",
@@ -699,7 +687,7 @@ fn album_and_artist_fallback_ladder() {
             album_artist: None,
             folder: Some("Folder Name"),
             expect_title: "Folder Name",
-            expect_artist: "Track Artist",
+            expect_artist: &["Track Artist"],
         },
         // Album-artist ladder: prefer ALBUMARTIST, fall back to ARTIST,
         // then empty; blank tags drop to None.
@@ -710,7 +698,7 @@ fn album_and_artist_fallback_ladder() {
             album_artist: Some("Album Artist"),
             folder: None,
             expect_title: "Album Title",
-            expect_artist: "Album Artist",
+            expect_artist: &["Album Artist"],
         },
         Row {
             name: "artist-fallback",
@@ -719,7 +707,7 @@ fn album_and_artist_fallback_ladder() {
             album_artist: None,
             folder: None,
             expect_title: "Album Title",
-            expect_artist: "Track Artist",
+            expect_artist: &["Track Artist"],
         },
         Row {
             name: "no-artist-empty",
@@ -728,7 +716,7 @@ fn album_and_artist_fallback_ladder() {
             album_artist: None,
             folder: None,
             expect_title: "Album Title",
-            expect_artist: "",
+            expect_artist: &[],
         },
         Row {
             name: "blank-artist-empty",
@@ -737,7 +725,7 @@ fn album_and_artist_fallback_ladder() {
             album_artist: Some(""),
             folder: None,
             expect_title: "Album Title",
-            expect_artist: "",
+            expect_artist: &[],
         },
     ];
 
@@ -763,10 +751,13 @@ fn album_and_artist_fallback_ladder() {
             "title for {}",
             row.name
         );
-        // The first album credit is the album artist; a divergent per-track
-        // ARTIST may add a second, which isn't the ladder's concern here.
         assert_eq!(
-            parsed.album_credits[0].credit.name, row.expect_artist,
+            parsed
+                .album_credits
+                .iter()
+                .map(|credit| credit.credit.name.as_str())
+                .collect::<Vec<_>>(),
+            row.expect_artist,
             "artist for {}",
             row.name
         );

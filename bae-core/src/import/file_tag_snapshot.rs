@@ -24,28 +24,61 @@ pub(crate) struct FileObservation {
     pub modified_at_ns: i64,
 }
 
+/// One audio file's tags, beside the file as they were read from it.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct FileTagFact {
     pub observation: FileObservation,
+    pub tags: FileTags,
+}
+
+/// What one file's tags state. A tag that holds a value more than once — two
+/// `ARTIST` comments, an ID3v2.4 frame of two values — states each, in its
+/// order; a blank value states nothing.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct FileTags {
     pub title: Option<String>,
-    pub track_artist: Option<String>,
+    pub track_artists: Vec<String>,
     pub album_title: Option<String>,
-    pub album_artist: Option<String>,
-    pub year: Option<u16>,
+    pub album_artists: Vec<String>,
+    /// Whether the tags mark the file part of a compilation (Vorbis
+    /// `COMPILATION`, ID3 `TCMP`, iTunes `cpil`).
+    pub compilation: bool,
+    /// Every year a date the tags state names — the recording date (`DATE`,
+    /// ID3 `TDRC`, MP4 `©day`), `YEAR`, the release date and the original
+    /// release date — each once, in the order the tags state them.
+    pub years: Vec<u16>,
     /// The disc and track numbers the tags state.
     pub numbers: TrackNumbers,
-    /// The code the track's recording is registered under, as the tag writes
-    /// it.
-    pub isrc: Option<String>,
-    /// The label the tag names (Vorbis `LABEL` or `ORGANIZATION`, ID3
+    /// The codes the track's recording is registered under, as the tag
+    /// writes them.
+    pub isrcs: Vec<String>,
+    /// The labels the tag names (Vorbis `LABEL` or `ORGANIZATION`, ID3
     /// `TPUB`, iTunes `LABEL`).
-    pub label: Option<String>,
-    /// The copyright line, as the tag writes it.
-    pub copyright: Option<String>,
-    /// The store the tag says sold the file, when it says so.
+    pub labels: Vec<String>,
+    /// The copyright lines, as the tag writes them.
+    pub copyrights: Vec<String>,
+    /// The store the tags say sold the file, when they say so.
     pub store: Option<StoreMarker>,
 }
 
+impl FileTags {
+    /// What a file carrying no tag states: nothing.
+    pub(crate) fn untagged() -> Self {
+        Self {
+            title: None,
+            track_artists: Vec::new(),
+            album_title: None,
+            album_artists: Vec::new(),
+            compilation: false,
+            years: Vec::new(),
+            numbers: TrackNumbers::unstated(),
+            isrcs: Vec::new(),
+            labels: Vec::new(),
+            copyrights: Vec::new(),
+            store: None,
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct EmbeddedCoverFact {
@@ -100,29 +133,19 @@ impl FileTagSnapshot {
             && *embedded_cover == other.embedded_cover
     }
 
-    /// Each file's ISRC, as [`crate::isrc::code`] reads its tag, in the files'
-    /// order; a file whose tag holds none, or none that reads as one, adds
-    /// nothing.
+    /// Each file's ISRCs, as [`crate::isrc::code`] reads its tag, in the
+    /// files' order; a value that reads as no code adds nothing.
     pub(crate) fn isrcs(&self) -> Vec<String> {
         self.files
             .iter()
-            .filter_map(|fact| fact.isrc.as_deref())
-            .filter_map(crate::isrc::code)
+            .flat_map(|fact| &fact.tags.isrcs)
+            .filter_map(|isrc| crate::isrc::code(isrc))
             .collect()
     }
 }
 
 pub(crate) struct FileTagRead {
-    pub title: Option<String>,
-    pub track_artist: Option<String>,
-    pub album_title: Option<String>,
-    pub album_artist: Option<String>,
-    pub year: Option<u16>,
-    pub numbers: TrackNumbers,
-    pub isrc: Option<String>,
-    pub label: Option<String>,
-    pub copyright: Option<String>,
-    pub store: Option<StoreMarker>,
+    pub tags: FileTags,
     pub embedded_cover: Option<(Vec<u8>, ContentType)>,
 }
 
@@ -165,64 +188,72 @@ impl FileTagReader for LoftyFileTagReader {
             .read()
             .map_err(|error| ImportError::file_tags("read tags from", path, error))?;
         let tag = primary_tag(&tagged);
-        let legacy_text = match tag.map(TagExt::tag_type) {
-            Some(TagType::Id3v2) => legacy_id3v2_text(path, file_type)?,
-            Some(TagType::Id3v1) => legacy_id3v1_text(path)?,
-            Some(_) | None => LegacyTagText::default(),
+        let store = store_marker(path, file_type, tag)?;
+        let Some(tag) = tag else {
+            return Ok(FileTagRead {
+                tags: FileTags {
+                    store,
+                    ..FileTags::untagged()
+                },
+                embedded_cover: None,
+            });
         };
-        let (title, track_artist, album_title, album_artist, numbers, year) = match tag {
-            Some(tag) => (
-                non_empty(legacy_text.title.or_else(|| tag.title().map(String::from))),
-                non_empty(
-                    legacy_text
-                        .track_artist
-                        .or_else(|| tag.artist().map(String::from)),
-                ),
-                non_empty(
-                    legacy_text
-                        .album_title
-                        .or_else(|| tag.album().map(String::from)),
-                ),
-                non_empty(
-                    legacy_text
-                        .album_artist
-                        .or_else(|| tag.get_string(ItemKey::AlbumArtist).map(String::from)),
-                ),
-                TrackNumbers::of_tag(tag),
-                year_from_tag(tag),
-            ),
-            None => (None, None, None, None, TrackNumbers::unstated(), None),
+        let legacy = match tag.tag_type() {
+            TagType::Id3v2 => legacy_id3v2_text(path, file_type)?,
+            TagType::Id3v1 => legacy_id3v1_text(path)?,
+            _ => LegacyTagText::default(),
+        };
+        let values = |legacy: Option<Vec<String>>, key: ItemKey| {
+            stated_values(legacy.unwrap_or_else(|| {
+                tag.get_strings(key).map(String::from).collect()
+            }))
         };
         Ok(FileTagRead {
-            title,
-            track_artist,
-            album_title,
-            album_artist,
-            year,
-            numbers,
-            isrc: non_empty(tag.and_then(|tag| tag.get_string(ItemKey::Isrc).map(String::from))),
-            label: non_empty(
-                legacy_text
-                    .label
-                    .or_else(|| tag.and_then(|tag| tag.get_string(ItemKey::Label).map(String::from))),
-            ),
-            copyright: non_empty(legacy_text.copyright.or_else(|| {
-                tag.and_then(|tag| tag.get_string(ItemKey::CopyrightMessage).map(String::from))
-            })),
-            store: store_marker(path, file_type, tag)?,
-            embedded_cover: tag.and_then(embedded_cover_from_tag),
+            tags: FileTags {
+                title: non_empty(legacy.title.or_else(|| tag.title().map(String::from))),
+                track_artists: values(legacy.track_artists, ItemKey::TrackArtist),
+                album_title: non_empty(legacy.album_title.or_else(|| tag.album().map(String::from))),
+                album_artists: values(legacy.album_artists, ItemKey::AlbumArtist),
+                compilation: tag
+                    .get_string(ItemKey::FlagCompilation)
+                    .is_some_and(|flag| flag.trim() == "1"),
+                years: tag_years(tag),
+                numbers: TrackNumbers::of_tag(tag),
+                isrcs: values(None, ItemKey::Isrc),
+                labels: values(legacy.labels, ItemKey::Label),
+                copyrights: values(legacy.copyrights, ItemKey::CopyrightMessage),
+                store,
+            },
+            embedded_cover: embedded_cover_from_tag(tag),
         })
     }
 }
 
+/// `values` as a tag states them: each trimmed, blank ones dropped, and a
+/// value written twice kept once.
+fn stated_values(values: Vec<String>) -> Vec<String> {
+    let mut stated: Vec<String> = Vec::with_capacity(values.len());
+    for value in values {
+        if let Some(value) = non_empty(Some(value)) {
+            if !stated.contains(&value) {
+                stated.push(value);
+            }
+        }
+    }
+    stated
+}
+
+/// The text of a tag that names its own encoding wrongly, decoded from its
+/// bytes (see [`crate::text_encoding`]). A field is `None` where the tag holds
+/// no such text for it, and the tag's own reading of it stands.
 #[derive(Default)]
 struct LegacyTagText {
     title: Option<String>,
-    track_artist: Option<String>,
+    track_artists: Option<Vec<String>>,
     album_title: Option<String>,
-    album_artist: Option<String>,
-    label: Option<String>,
-    copyright: Option<String>,
+    album_artists: Option<Vec<String>>,
+    labels: Option<Vec<String>>,
+    copyrights: Option<Vec<String>>,
 }
 
 /// The store a file's tags say sold it, if any — see [`StoreMarker`].
@@ -319,13 +350,14 @@ where
             ),
         });
     };
+    let joined = |values: Option<Vec<String>>| values.map(|values| values.join("/"));
     Ok(LegacyTagText {
-        title: decoded_latin1_frame(tag, "TIT2"),
-        track_artist: decoded_latin1_frame(tag, "TPE1"),
-        album_title: decoded_latin1_frame(tag, "TALB"),
-        album_artist: decoded_latin1_frame(tag, "TPE2"),
-        label: decoded_latin1_frame(tag, "TPUB"),
-        copyright: decoded_latin1_frame(tag, "TCOP"),
+        title: joined(decoded_latin1_frame(tag, "TIT2")),
+        track_artists: decoded_latin1_frame(tag, "TPE1"),
+        album_title: joined(decoded_latin1_frame(tag, "TALB")),
+        album_artists: decoded_latin1_frame(tag, "TPE2"),
+        labels: decoded_latin1_frame(tag, "TPUB"),
+        copyrights: decoded_latin1_frame(tag, "TCOP"),
     })
 }
 
@@ -349,11 +381,11 @@ fn legacy_id3v1_text(path: &Path) -> Result<LegacyTagText, ImportError> {
     }
     Ok(LegacyTagText {
         title: decoded_id3v1_field(&tag[3..33]),
-        track_artist: decoded_id3v1_field(&tag[33..63]),
+        track_artists: decoded_id3v1_field(&tag[33..63]).map(|artist| vec![artist]),
         album_title: decoded_id3v1_field(&tag[63..93]),
-        album_artist: None,
-        label: None,
-        copyright: None,
+        album_artists: None,
+        labels: None,
+        copyrights: None,
     })
 }
 
@@ -365,7 +397,9 @@ fn decoded_id3v1_field(bytes: &[u8]) -> Option<String> {
     (end > 0).then(|| crate::text_encoding::decode_text(&bytes[..end]).text)
 }
 
-fn decoded_latin1_frame(tag: &Id3v2Tag, id: &str) -> Option<String> {
+/// The values of the Latin-1 text frame `id`, each decoded from its bytes: an
+/// ID3v2.4 frame separates its values with a NUL, an older one holds one.
+fn decoded_latin1_frame(tag: &Id3v2Tag, id: &str) -> Option<Vec<String>> {
     let frame = tag.into_iter().find(|frame| frame.id_str() == id)?;
     let Frame::Text(text) = frame else {
         return None;
@@ -386,11 +420,10 @@ fn decoded_latin1_frame(tag: &Id3v2Tag, id: &str) -> Option<String> {
             bytes
                 .split(|byte| *byte == 0)
                 .map(|value| crate::text_encoding::decode_text(value).text)
-                .collect::<Vec<_>>()
-                .join("/"),
+                .collect(),
         );
     }
-    Some(crate::text_encoding::decode_text(&bytes).text)
+    Some(vec![crate::text_encoding::decode_text(&bytes).text])
 }
 
 pub(crate) fn observe_audio_files(
@@ -425,16 +458,7 @@ pub(crate) fn extract_file_tag_snapshot(
         }
         facts.push(FileTagFact {
             observation: before,
-            title: read.title,
-            track_artist: read.track_artist,
-            album_title: read.album_title,
-            album_artist: read.album_artist,
-            year: read.year,
-            numbers: read.numbers,
-            isrc: read.isrc,
-            label: read.label,
-            copyright: read.copyright,
-            store: read.store,
+            tags: read.tags,
         });
     }
     Ok(FileTagSnapshot {
@@ -540,34 +564,41 @@ pub(crate) fn image_content_type(mime: &lofty::picture::MimeType) -> Option<Cont
     content_type.is_supported_cover().then_some(content_type)
 }
 
-pub(crate) fn year_from_tag(tag: &lofty::tag::Tag) -> Option<u16> {
-    if let Some(timestamp) = tag.date() {
-        return Some(timestamp.year);
-    }
-    if let Some(value) = tag.get_string(ItemKey::Year) {
-        if let Ok(year) = value.parse::<u16>() {
-            return Some(year);
+/// Every year the dates `tag` states name, each once, in the order stated:
+/// the recording date, the year, the release date and the original release
+/// date, each as many times as the tag holds it.
+fn tag_years(tag: &lofty::tag::Tag) -> Vec<u16> {
+    let mut years = Vec::new();
+    for key in [
+        ItemKey::RecordingDate,
+        ItemKey::Year,
+        ItemKey::ReleaseDate,
+        ItemKey::OriginalReleaseDate,
+    ] {
+        for value in tag.get_strings(key) {
+            for year in years_in_date(value) {
+                if !years.contains(&year) {
+                    years.push(year);
+                }
+            }
         }
     }
-    if let Some(value) = tag.get_string(ItemKey::ReleaseDate) {
-        if let Some(year) = value
-            .split('-')
-            .next()
-            .and_then(|year| year.parse::<u16>().ok())
-        {
-            return Some(year);
-        }
-    }
-    if let Some(value) = tag.get_string(ItemKey::OriginalReleaseDate) {
-        if let Some(year) = value
-            .split('-')
-            .next()
-            .and_then(|year| year.parse::<u16>().ok())
-        {
-            return Some(year);
-        }
-    }
-    None
+    years
+}
+
+/// The years a date as a tag or CUE sheet writes it names: the first four
+/// digits of each run of four or more — a bare year ("1970"), a date
+/// ("1970-03-01", "19700301"), a range ("2000 / 2004"). A run of zeros names
+/// no year.
+pub(crate) fn years_in_date(date: &str) -> impl Iterator<Item = u16> + '_ {
+    date.split(|c: char| !c.is_ascii_digit())
+        .filter(|run| run.len() >= 4)
+        .map(|run| {
+            run[..4]
+                .parse::<u16>()
+                .expect("four ASCII digits parse as u16")
+        })
+        .filter(|year| *year != 0)
 }
 
 #[cfg(test)]

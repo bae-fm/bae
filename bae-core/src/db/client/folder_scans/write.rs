@@ -73,34 +73,42 @@ pub(crate) fn replace_candidate_file_tag_snapshot(
         ],
     )?;
     for fact in &snapshot.files {
+        let tags = &fact.tags;
         sql.execute(
             "INSERT INTO scan_candidate_file_tag \
                  (watched_folder_path, candidate_path, relative_path, file_size, \
-                  modified_at_ns, title, track_artist, album_title, \
-                  album_artist, year, track_number, disc_number, isrc, label, \
-                  copyright, store) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  modified_at_ns, title, track_artists, album_title, \
+                  album_artists, compilation, years, track_number, disc_number, isrcs, \
+                  labels, copyrights, store) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 watched_folder_path,
                 candidate_path,
                 fact.observation.relative_path,
                 to_i64(fact.observation.size, "a file-tag observation's size")?,
                 fact.observation.modified_at_ns,
-                fact.title,
-                fact.track_artist,
-                fact.album_title,
-                fact.album_artist,
-                fact.year.map(i64::from),
-                fact.numbers.track.map(i64::from),
-                fact.numbers.disc.map(i64::from),
-                fact.isrc,
-                fact.label,
-                fact.copyright,
-                fact.store.map(crate::signals::StoreMarker::key),
+                tags.title,
+                tag_values_json(&tags.track_artists)?,
+                tags.album_title,
+                tag_values_json(&tags.album_artists)?,
+                tags.compilation,
+                tag_values_json(&tags.years)?,
+                tags.numbers.track.map(i64::from),
+                tags.numbers.disc.map(i64::from),
+                tag_values_json(&tags.isrcs)?,
+                tag_values_json(&tags.labels)?,
+                tag_values_json(&tags.copyrights)?,
+                tags.store.map(crate::signals::StoreMarker::key),
             ],
         )?;
     }
     Ok(())
+}
+
+/// A multi-valued tag's values as their JSON array column holds them.
+fn tag_values_json<T: serde::Serialize>(values: &[T]) -> Result<String, DbError> {
+    serde_json::to_string(values)
+        .map_err(|error| DbError::Message(format!("a file tag's values do not encode: {error}")))
 }
 
 /// Delete every scanned row, not a grouping's, stamped with another

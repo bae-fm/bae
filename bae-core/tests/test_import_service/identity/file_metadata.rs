@@ -55,7 +55,8 @@ async fn file_metadata_import_seeds_from_the_folder_and_writes_no_identity() {
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert!(release.draft_from_tags);
-    assert_eq!(release.pressing.year, Some(2003));
+    // One year the tags state is the album's; it names no pressing.
+    assert_eq!(release.pressing.year, None);
     assert!(release.pressing.facts.media.is_empty());
 
     let records = f.db.get_release_records(&release_id).await.unwrap();
@@ -66,6 +67,7 @@ async fn file_metadata_import_seeds_from_the_folder_and_writes_no_identity() {
 
     let album = f.db.find_album_by_id(&album_id).await.unwrap().unwrap();
     assert_eq!(album.title, "Album From Tags");
+    assert_eq!(album.year, Some(2003));
 
     let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(tracks.len(), 2);
@@ -119,15 +121,15 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
         vec![
             (
                 "Track One (Silence)".to_string(),
-                TrackArtistAssignments::Explicit(vec![bae_core::import::Credited::plain(file_tag_artist_assignment("Test Artist"))]),
+                TrackArtistAssignments::AlbumArtists,
             ),
             (
                 "Track Two (White Noise)".to_string(),
-                TrackArtistAssignments::Explicit(vec![bae_core::import::Credited::plain(file_tag_artist_assignment("Test Artist"))]),
+                TrackArtistAssignments::AlbumArtists,
             ),
             (
                 "Track Three (Brown Noise)".to_string(),
-                TrackArtistAssignments::Explicit(vec![bae_core::import::Credited::plain(file_tag_artist_assignment("Test Artist"))]),
+                TrackArtistAssignments::AlbumArtists,
             ),
         ],
     );
@@ -180,17 +182,21 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
         .map(|track| {
             (
                 track.track.title.clone(),
-                TrackArtistAssignments::Explicit(
-                    track
-                        .artists
-                        .iter()
-                        .map(|artist| {
-                            bae_core::import::Credited::plain(file_tag_artist_assignment(
-                                &artist.artist.name,
-                            ))
-                        })
-                        .collect(),
-                ),
+                if track.artists.is_empty() {
+                    TrackArtistAssignments::AlbumArtists
+                } else {
+                    TrackArtistAssignments::Explicit(
+                        track
+                            .artists
+                            .iter()
+                            .map(|artist| {
+                                bae_core::import::Credited::plain(file_tag_artist_assignment(
+                                    &artist.artist.name,
+                                ))
+                            })
+                            .collect(),
+                    )
+                },
             )
         })
         .collect();

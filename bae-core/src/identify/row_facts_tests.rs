@@ -437,3 +437,24 @@ fn a_pick_s_year_is_a_record_s_else_the_folder_s() {
     );
     assert_eq!(pressing_year(&text(&["Album"]), &[undated]), None);
 }
+
+/// The one year rule: with the album's first year known it is the album's,
+/// and the latest later year the pressing's; with it unknown, the earliest of
+/// two or more years is the album's and the latest the pressing's, and a
+/// lone year is the album's alone.
+#[test]
+fn stated_years_name_the_album_and_the_pressing() {
+    let years = |years: &[i32], first| {
+        let read = StatedYears::of(years, first);
+        (read.album, read.pressing)
+    };
+    assert_eq!(
+        years(&[1963, 2005, 1999], Some(1963)),
+        (Some(1963), Some(2005))
+    );
+    assert_eq!(years(&[1963], Some(1963)), (Some(1963), None));
+    assert_eq!(years(&[1960], Some(1963)), (Some(1963), None));
+    assert_eq!(years(&[2005, 1971], None), (Some(1971), Some(2005)));
+    assert_eq!(years(&[2005], None), (Some(2005), None));
+    assert_eq!(years(&[], None), (None, None));
+}

@@ -161,14 +161,13 @@ pub(super) fn gather_non_ocr_sources(
             }
             let mut seen = HashSet::new();
             for fact in &tags.files {
-                for value in [
-                    &fact.album_title,
-                    &fact.album_artist,
-                    &fact.track_artist,
-                    &fact.label,
-                ]
-                .into_iter()
-                .flatten()
+                let tagged = &fact.tags;
+                for value in tagged
+                    .album_title
+                    .iter()
+                    .chain(&tagged.album_artists)
+                    .chain(&tagged.track_artists)
+                    .chain(&tagged.labels)
                 {
                     if seen.insert(value.clone()) {
                         pass.lines.push(SourcedLine::new(
@@ -236,7 +235,7 @@ fn track_titles(
             .iter()
             .find(|fact| fact.observation.relative_path == file_id);
         let numbers = match fact {
-            Some(fact) => fact.numbers,
+            Some(fact) => fact.tags.numbers,
             None => crate::import::track_numbers::TrackNumbers::unstated(),
         }
         .or_file_name(&file_id);
@@ -249,7 +248,7 @@ fn track_titles(
         }
         previous = Some(position);
         let tagged = fact
-            .and_then(|fact| fact.title.as_deref())
+            .and_then(|fact| fact.tags.title.as_deref())
             .map(str::trim)
             .filter(|title| !title.is_empty())
             .map(str::to_string);
@@ -346,7 +345,8 @@ fn download_proof(
     categorized: &CategorizedFiles,
 ) -> Option<DownloadProof> {
     if let Some((marker, file)) = tags.files.iter().find_map(|fact| {
-        fact.store
+        fact.tags
+            .store
             .map(|marker| (marker, fact.observation.relative_path.clone()))
     }) {
         return Some(DownloadProof::Store { marker, file });
@@ -357,12 +357,13 @@ fn download_proof(
     });
     let delivered = !tags.files.is_empty()
         && tags.files.iter().all(|fact| {
-            fact.isrc.is_some()
-                && fact.label.is_some()
+            !fact.tags.isrcs.is_empty()
+                && !fact.tags.labels.is_empty()
                 && fact
-                    .copyright
-                    .as_deref()
-                    .is_some_and(super::rip::states_phonographic_copyright)
+                    .tags
+                    .copyrights
+                    .iter()
+                    .any(|line| super::rip::states_phonographic_copyright(line))
         });
     (delivered && !read_off_a_disc).then_some(DownloadProof::DeliverySet)
 }

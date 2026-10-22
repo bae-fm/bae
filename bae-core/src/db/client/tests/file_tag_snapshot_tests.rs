@@ -66,19 +66,22 @@ fn snapshot(generation: u64, revision: u64) -> FileTagSnapshot {
                     size: 1_000,
                     modified_at_ns: 100,
                 },
-                title: Some("Track Title A".to_string()),
-                track_artist: Some("Artist Name".to_string()),
-                album_title: Some("Album Title".to_string()),
-                album_artist: Some("Album Artist".to_string()),
-                year: Some(2020),
-                numbers: crate::import::track_numbers::TrackNumbers {
-                    disc: Some(1),
-                    track: Some(1),
+                tags: crate::import::file_tag_snapshot::FileTags {
+                    title: Some("Track Title A".to_string()),
+                    track_artists: vec!["Artist Name".to_string()],
+                    album_title: Some("Album Title".to_string()),
+                    album_artists: vec!["Album Artist".to_string()],
+                    compilation: false,
+                    years: vec![2020],
+                    numbers: crate::import::track_numbers::TrackNumbers {
+                        disc: Some(1),
+                        track: Some(1),
+                    },
+                    isrcs: vec!["IT0000000001".to_string()],
+                    labels: Vec::new(),
+                    copyrights: Vec::new(),
+                    store: None,
                 },
-                isrc: Some("IT0000000001".to_string()),
-                copyright: None,
-                label: None,
-                store: None,
             },
             FileTagFact {
                 observation: FileObservation {
@@ -86,19 +89,22 @@ fn snapshot(generation: u64, revision: u64) -> FileTagSnapshot {
                     size: 2_000,
                     modified_at_ns: 200,
                 },
-                title: Some("Track Title B".to_string()),
-                track_artist: None,
-                album_title: None,
-                album_artist: None,
-                year: None,
-                numbers: crate::import::track_numbers::TrackNumbers {
-                    disc: None,
-                    track: Some(2),
+                tags: crate::import::file_tag_snapshot::FileTags {
+                    title: Some("Track Title B".to_string()),
+                    track_artists: Vec::new(),
+                    album_title: None,
+                    album_artists: Vec::new(),
+                    compilation: false,
+                    years: Vec::new(),
+                    numbers: crate::import::track_numbers::TrackNumbers {
+                        disc: None,
+                        track: Some(2),
+                    },
+                    isrcs: Vec::new(),
+                    labels: Vec::new(),
+                    copyrights: Vec::new(),
+                    store: None,
                 },
-                isrc: None,
-                copyright: None,
-                label: None,
-                store: None,
             },
         ],
         embedded_cover: Some(EmbeddedCoverFact {
@@ -159,19 +165,22 @@ async fn replacement_removes_every_prior_file_and_embedded_cover() {
                     size: 1_000,
                     modified_at_ns: 300,
                 },
-                title: None,
-                track_artist: None,
-                album_title: None,
-                album_artist: None,
-                year: None,
-                numbers: crate::import::track_numbers::TrackNumbers {
-                    disc: None,
-                    track: None,
+                tags: crate::import::file_tag_snapshot::FileTags {
+                    title: None,
+                    track_artists: Vec::new(),
+                    album_title: None,
+                    album_artists: Vec::new(),
+                    compilation: false,
+                    years: Vec::new(),
+                    numbers: crate::import::track_numbers::TrackNumbers {
+                        disc: None,
+                        track: None,
+                    },
+                    isrcs: Vec::new(),
+                    labels: Vec::new(),
+                    copyrights: Vec::new(),
+                    store: None,
                 },
-                isrc: None,
-                copyright: None,
-                label: None,
-                store: None,
             },
             FileTagFact {
                 observation: FileObservation {
@@ -179,19 +188,22 @@ async fn replacement_removes_every_prior_file_and_embedded_cover() {
                     size: 2_000,
                     modified_at_ns: 400,
                 },
-                title: None,
-                track_artist: None,
-                album_title: None,
-                album_artist: None,
-                year: None,
-                numbers: crate::import::track_numbers::TrackNumbers {
-                    disc: None,
-                    track: None,
+                tags: crate::import::file_tag_snapshot::FileTags {
+                    title: None,
+                    track_artists: Vec::new(),
+                    album_title: None,
+                    album_artists: Vec::new(),
+                    compilation: false,
+                    years: Vec::new(),
+                    numbers: crate::import::track_numbers::TrackNumbers {
+                        disc: None,
+                        track: None,
+                    },
+                    isrcs: Vec::new(),
+                    labels: Vec::new(),
+                    copyrights: Vec::new(),
+                    store: None,
                 },
-                isrc: None,
-                copyright: None,
-                label: None,
-                store: None,
             },
         ],
         embedded_cover: None,
@@ -460,7 +472,7 @@ async fn superseded_preparation_leaves_snapshot_facts_and_cover_unchanged() {
     let before = db.load_candidate_preparation(&hash).await.unwrap().unwrap();
     stale.metadata_revision += 1;
     let mut replacement = reading.clone();
-    replacement.files[0].title = Some("Stale title".into());
+    replacement.files[0].tags.title = Some("Stale title".into());
     replacement.embedded_cover.as_mut().unwrap().data = vec![9, 8, 7];
     let result = db
         .save_candidate_preparation(

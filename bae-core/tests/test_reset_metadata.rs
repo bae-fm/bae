@@ -613,7 +613,9 @@ async fn reset_file_metadata_unknown_returns_tags_from_disk() {
         edit.album_artist_assignments,
         bae_core::import::Credited::plain_list(vec![ArtistAssignment::named("Tag Artist")])
     );
-    assert_eq!(edit.pressing.year, Some(2010));
+    // One year the tags state is the album's; it names no pressing.
+    assert_eq!(edit.album_year, Some(2010));
+    assert_eq!(edit.pressing.year, None);
     assert!(edit.pressing.facts.media.is_empty());
     assert_eq!(edit.tracks.len(), 2);
     assert_eq!(edit.tracks[0].title, "Tag Track 1");

@@ -443,14 +443,17 @@ impl crate::import::file_tag_snapshot::FileTagReader for CountingFileTagReader {
             });
         }
         Ok(crate::import::file_tag_snapshot::FileTagRead {
-            title: Some(format!("Track Title {}", index + 1)),
-            track_artist: Some("Artist Name".to_string()),
-            album_title: Some("Album Title".to_string()),
-            album_artist: Some("Album Artist".to_string()),
-            year: Some(2020),
-            numbers: crate::import::track_numbers::TrackNumbers {
-                disc: Some(1),
-                track: Some(u32::try_from(index + 1).unwrap()),
+            tags: crate::import::file_tag_snapshot::FileTags {
+                title: Some(format!("Track Title {}", index + 1)),
+                track_artists: vec!["Artist Name".to_string()],
+                album_title: Some("Album Title".to_string()),
+                album_artists: vec!["Album Artist".to_string()],
+                years: vec![2020],
+                numbers: crate::import::track_numbers::TrackNumbers {
+                    disc: Some(1),
+                    track: Some(u32::try_from(index + 1).unwrap()),
+                },
+                ..crate::import::file_tag_snapshot::FileTags::untagged()
             },
             embedded_cover: if index == 0 {
                 self.embedded_cover
@@ -459,10 +462,6 @@ impl crate::import::file_tag_snapshot::FileTagReader for CountingFileTagReader {
             } else {
                 None
             },
-            isrc: None,
-            copyright: None,
-            label: None,
-            store: None,
         })
     }
 }
@@ -499,7 +498,7 @@ fn titles(snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot) -> Vec<O
     snapshot
         .files
         .iter()
-        .map(|fact| fact.title.as_deref())
+        .map(|fact| fact.tags.title.as_deref())
         .collect()
 }
 

@@ -816,6 +816,31 @@ places that audio as the folder lays it out, adding a medium of unstated
 carrier where the draft holds fewer; a medium no track sits on any more is
 dropped.
 
+**What the files' tags say.** The tags are read whole: a tag stating a value
+more than once (two `ARTIST` comments, an ID3v2.4 frame of two values) states
+each, so a file naming two artists gives its track two credits. The album's
+fields are what every file that states one agrees on; files that state
+different values leave the field empty for the person to fill, never the first
+file's or the most common. A folder whose units are CUE sheets reads its album
+from the sheets' `TITLE`, `PERFORMER` and `REM DATE` the same way, and with no
+title stated anywhere the folder's name is the title.
+
+- The album artist is the `ALBUMARTIST` the files agree on; where no file
+  names one, the `ARTIST` they agree on; else none, and the draft asks for
+  one before it imports.
+- A track whose `ARTIST` names the album's artists is credited to the album;
+  one naming others is credited to them.
+- A folder every file of which says it is a compilation, by its compilation
+  flag (`COMPILATION`, ID3 `TCMP`, MP4 `cpil`) or by naming "Various Artists"
+  or "Various" as its album artist, is credited to Various Artists, and each
+  track keeps the artists it names.
+- Each file's dates (`DATE`, `YEAR`, `RELEASEDATE`, `ORIGINALRELEASEDATE`)
+  name its years by the rule identification reads a folder's name by: two or
+  more years make the earliest the album's year and the latest the pressing's;
+  one year is the album's, the pressing's left unknown. With the year the
+  album first came out known (a record states it), that year is the album's
+  and the latest later one the pressing's.
+
 Applying a source — a catalog's release, the folder's tags, or nothing —
 writes everything it says into the draft once. The draft points back at
 nothing in the source: the import, the pane, and every later edit read the

@@ -139,14 +139,9 @@ impl ReleaseValues {
         }
     }
 
-    /// The album credits as assignments. A credit with no name — tags that
-    /// name no album artist — is no assignment at all.
+    /// The album credits as assignments.
     fn album_assignments(&self) -> Vec<Credited> {
-        credited_list(
-            self.album_credits
-                .iter()
-                .filter(|credit| !credit.credit.name.trim().is_empty()),
-        )
+        credited_list(self.album_credits.iter())
     }
 }
 

@@ -795,16 +795,27 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file_tag (
     file_size           INTEGER NOT NULL CHECK (file_size >= 0),
     modified_at_ns      INTEGER NOT NULL CHECK (modified_at_ns >= 0),
     title               TEXT,
-    track_artist        TEXT,
+    -- Every value a multi-valued tag states, in order, as a JSON array of
+    -- strings: the track's artists, the album's artists, the ISRCs the file's
+    -- recording is registered under, its labels and copyright lines.
+    track_artists       TEXT NOT NULL
+        CHECK (json_valid(track_artists) AND json_type(track_artists) = 'array'),
     album_title         TEXT,
-    album_artist        TEXT,
-    year                INTEGER,
+    album_artists       TEXT NOT NULL
+        CHECK (json_valid(album_artists) AND json_type(album_artists) = 'array'),
+    -- Whether the tags flag the file part of a compilation.
+    compilation         INTEGER NOT NULL CHECK (compilation IN (0, 1)),
+    -- Every year the file's dates name, each once, as a JSON array of integers.
+    years               TEXT NOT NULL
+        CHECK (json_valid(years) AND json_type(years) = 'array'),
     track_number        INTEGER,
     disc_number         INTEGER,
-    -- The ISRC the file's recording is registered under, as its tag writes it.
-    isrc                TEXT CHECK (isrc IS NULL OR isrc <> ''),
-    label               TEXT CHECK (label IS NULL OR label <> ''),
-    copyright           TEXT CHECK (copyright IS NULL OR copyright <> ''),
+    isrcs               TEXT NOT NULL
+        CHECK (json_valid(isrcs) AND json_type(isrcs) = 'array'),
+    labels              TEXT NOT NULL
+        CHECK (json_valid(labels) AND json_type(labels) = 'array'),
+    copyrights          TEXT NOT NULL
+        CHECK (json_valid(copyrights) AND json_type(copyrights) = 'array'),
     -- The store the tags say sold the file: 'itunes_purchase', the atoms iTunes
     -- writes only into a purchase; 'bandcamp', Bandcamp's "Visit" comment.
     store               TEXT CHECK (store IS NULL OR store IN ('itunes_purchase', 'bandcamp')),

@@ -1,4 +1,4 @@
-/// All tracks completely untagged → folder-name title, empty artist,
+/// All tracks completely untagged → folder-name title, no album artist,
 /// filename-stem track titles. A fully-untagged rip is still importable
 /// via the editable form.
 #[test]
@@ -12,7 +12,7 @@ fn all_files_untagged_seeds_from_folder_and_filenames() {
 
     let parsed = map_tags_with_folder(&[dest], Some("Mystery Rip")).unwrap();
     assert_eq!(parsed.album_title, "Mystery Rip");
-    assert_eq!(parsed.album_credits[0].credit.name, "");
+    assert!(parsed.album_credits.is_empty());
     assert_eq!(parsed.tracks[0].title, "untitled-track");
 }
 
@@ -349,70 +349,6 @@ fn unsupported_front_picture_does_not_hide_supported_embedded_cover() {
             Some((bytes.to_vec(), expected_type))
         );
     }
-}
-
-#[test]
-fn year_from_tag_reads_structured_date_first() {
-    // The structured date() field (ID3v2.4 TDRC / Vorbis DATE) is the
-    // primary source, taken ahead of any text-key fallback.
-    let mut tag = Tag::new(TagType::Id3v2);
-    tag.set_date(Timestamp {
-        year: 2020,
-        month: None,
-        day: None,
-        hour: None,
-        minute: None,
-        second: None,
-    });
-    tag.insert_text(ItemKey::Year, "1999".to_string());
-    assert_eq!(year_from_tag(&tag), Some(2020));
-
-    // A tag with no date information at all yields no year.
-    assert_eq!(year_from_tag(&Tag::new(TagType::Id3v2)), None);
-}
-
-/// With no structured `date()`, year_from_tag falls back to the text keys
-/// in order: Year, then ReleaseDate (TDRL), then OriginalReleaseDate. The
-/// date-shaped keys take the leading four digits.
-#[test]
-fn year_from_tag_reads_text_key_fallbacks() {
-    // VorbisComments accepts these text keys (Id3v2 remaps Year onto its
-    // structured recording-time frame, so it can't hold a bare Year text
-    // item). No structured date() is set, so year_from_tag takes the
-    // text-key branch under test.
-    let with_key = |key: ItemKey, value: &str| {
-        let mut tag = Tag::new(TagType::VorbisComments);
-        tag.insert_text(key, value.to_string());
-        // Guard: the key must actually be stored, or the test would pass
-        // vacuously via the None fallthrough.
-        assert!(
-            tag.get_string(key).is_some(),
-            "VorbisComments did not store {key:?}"
-        );
-        tag
-    };
-
-    assert_eq!(year_from_tag(&with_key(ItemKey::Year, "1988")), Some(1988));
-    assert_eq!(
-        year_from_tag(&with_key(ItemKey::ReleaseDate, "1991-05-01")),
-        Some(1991)
-    );
-    assert_eq!(
-        year_from_tag(&with_key(ItemKey::OriginalReleaseDate, "1972-11")),
-        Some(1972)
-    );
-
-    // A non-numeric text value is ignored rather than mis-parsed.
-    assert_eq!(year_from_tag(&with_key(ItemKey::Year, "notayear")), None);
-}
-
-#[test]
-fn year_from_cue_date_reads_first_four_digit_run() {
-    assert_eq!(year_from_cue_date(Some("1970")), Some(1970));
-    assert_eq!(year_from_cue_date(Some("1970-02-03")), Some(1970));
-    assert_eq!(year_from_cue_date(Some("2000 / 2004")), Some(2000));
-    assert_eq!(year_from_cue_date(Some("rem 99")), None);
-    assert_eq!(year_from_cue_date(None), None);
 }
 
 #[test]

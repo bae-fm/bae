@@ -9,14 +9,19 @@
 //! records. The release provenance is `FileMetadata`. Lookup signals such as OCR,
 //! DiscID, and barcode are not part of this path.
 //!
-//! Year comes from any tag carrying a date. Source codecs are physical audio
-//! facts, not release media, so the pressing's media stay unstated.
+//! Album facts are what every file (or every CUE sheet) that states one
+//! agrees on: files that disagree leave the field for the person to fill.
+//! Each file's dates name the album's year and the pressing's by the one year
+//! rule (`StatedYears::of`). Source codecs are physical audio facts, not
+//! release media, so the pressing's media stay unstated.
 
 use super::file_tag_snapshot::{
-    extract_file_tag_snapshot, non_empty, FileTagFact, FileTagSnapshot, LoftyFileTagReader,
+    extract_file_tag_snapshot, non_empty, years_in_date, FileTagFact, FileTagSnapshot, FileTags,
+    LoftyFileTagReader,
 };
 use super::release_values::{ReleaseValues, TrackCredits, TrackValues};
 use crate::cue_flac::CueSheet;
+use crate::identify::row_facts::StatedYears;
 use crate::import::folder_scanner::{CategorizedFiles, ScannedFile};
 use crate::import::{ArtistCredit, ImportError};
 use crate::pressing::Pressing;
@@ -34,8 +39,9 @@ use std::path::{Path, PathBuf};
 ///
 /// Seeds whatever the files carry and leaves the rest for the user. Missing
 /// album-level fields become editable blanks, never errors: the album title
-/// falls back to `folder_name` then to empty, the artist to empty, a missing
-/// track TITLE to the file stem. The form's save-gate (`RawReleaseEdit::shape` →
+/// falls back to `folder_name` where no file states one and is empty where
+/// files disagree, the album artist is none where the files name none they
+/// agree on, and a missing track TITLE falls back to the file stem. The form's save-gate (`RawReleaseEdit::shape` →
 /// `EmptyAlbumTitle` / `NoAlbumArtist`) makes the user fill any blank before
 /// committing, so no fabricated default is ever written.
 ///
@@ -83,34 +89,158 @@ fn file_tag_facts_values(
             detail: "file-tag seeding requires at least one audio file".to_string(),
         });
     }
+    let album = TaggedAlbum::agreed(
+        extracted.iter().map(|fact| UnitAlbum::of_file(&fact.tags)),
+        folder_name,
+    );
+    Ok(file_tag_release_values(album, tag_tracks(extracted)))
+}
 
-    // A blank title here is a prompt to the user, not a committed value — the
-    // editable form gates save on a non-empty one.
-    let album_title = extracted
-        .iter()
-        .find_map(|t| t.album_title.as_ref())
-        .cloned()
-        .or_else(|| folder_name.map(str::to_string))
-        .unwrap_or_default();
+/// What one unit that states album facts — a file's tags, or a CUE sheet —
+/// says of the album.
+struct UnitAlbum {
+    title: Option<String>,
+    /// The album artists it names (ALBUMARTIST, a sheet's PERFORMER).
+    album_artists: Vec<String>,
+    /// The track artists it names (a file's ARTIST), which name the album's
+    /// artists where no unit names an album artist.
+    track_artists: Vec<String>,
+    /// Whether it says the album is a compilation: a compilation flag, or the
+    /// various-artists credit as its album artist.
+    compilation: bool,
+    years: StatedYears,
+}
 
-    // ALBUMARTIST, else ARTIST — rippers commonly populate only ARTIST for a
-    // single-artist album. No folder-name fallback: the folder name is the album,
-    // not a reliable artist.
-    let album_artist_name = extracted
-        .iter()
-        .find_map(|t| t.album_artist.as_ref())
-        .or_else(|| extracted.iter().find_map(|t| t.track_artist.as_ref()))
-        .cloned()
-        .unwrap_or_default();
+impl UnitAlbum {
+    fn of_file(tags: &FileTags) -> Self {
+        let years: Vec<i32> = tags.years.iter().copied().map(i32::from).collect();
+        Self {
+            title: tags.album_title.clone(),
+            album_artists: tags.album_artists.clone(),
+            track_artists: tags.track_artists.clone(),
+            compilation: tags.compilation || names_various_artists(&tags.album_artists),
+            years: StatedYears::of(&years, None),
+        }
+    }
 
-    let year = extracted.iter().find_map(|t| t.year).map(|y| y as i32);
+    fn of_sheet(sheet: &CueSheet) -> Self {
+        let album_artists: Vec<String> = non_empty(sheet.performer.clone()).into_iter().collect();
+        let years: Vec<i32> = sheet
+            .date
+            .as_deref()
+            .map(|date| years_in_date(date).map(i32::from).collect())
+            .unwrap_or_default();
+        Self {
+            title: non_empty(sheet.title.clone()),
+            compilation: names_various_artists(&album_artists),
+            album_artists,
+            track_artists: Vec::new(),
+            years: StatedYears::of(&years, None),
+        }
+    }
+}
 
-    Ok(file_tag_release_values(
-        album_title,
-        &album_artist_name,
-        year,
-        tag_tracks(extracted),
-    ))
+/// Whether `artists` is the one credit a compilation is given.
+fn names_various_artists(artists: &[String]) -> bool {
+    matches!(artists, [only] if crate::text_match::is_various_artists(only))
+}
+
+/// What the folder's units, together, say of the album: each value every
+/// unit that states one agrees on. Units that state different values leave
+/// the value unstated; neither the first nor the most common wins.
+struct TaggedAlbum {
+    title: String,
+    /// The album's artists, by name, in order; empty where the units name
+    /// none they agree on.
+    artists: Vec<String>,
+    /// Every unit says the album is a compilation: it is credited to the
+    /// various-artists artist, and each track keeps its own artists.
+    compilation: bool,
+    years: StatedYears,
+}
+
+impl TaggedAlbum {
+    /// The album the units agree on. Its title falls back to `folder_name`
+    /// where no unit states one (not where they disagree). Its artists are the
+    /// album artists the units agree on where any names one, else the track
+    /// artists they agree on.
+    fn agreed(units: impl Iterator<Item = UnitAlbum>, folder_name: Option<&str>) -> Self {
+        let units: Vec<UnitAlbum> = units.collect();
+        let title = match agreement(units.iter().map(|unit| unit.title.as_ref()), |a, b| a == b) {
+            Agreement::Agreed(title) => title.clone(),
+            Agreement::Unstated => folder_name.map(str::to_string).unwrap_or_default(),
+            Agreement::Disagreed => String::new(),
+        };
+        let stated = |artists: &[String]| (!artists.is_empty()).then(|| artists.to_vec());
+        let artists = match agreement(
+            units.iter().map(|unit| stated(&unit.album_artists)),
+            |a, b| same_names(a, b),
+        ) {
+            Agreement::Agreed(artists) => artists,
+            Agreement::Disagreed => Vec::new(),
+            Agreement::Unstated => match agreement(
+                units.iter().map(|unit| stated(&unit.track_artists)),
+                |a, b| same_names(a, b),
+            ) {
+                Agreement::Agreed(artists) => artists,
+                Agreement::Unstated | Agreement::Disagreed => Vec::new(),
+            },
+        };
+        let year = |year: fn(&StatedYears) -> Option<i32>| {
+            agreement(units.iter().map(|unit| year(&unit.years)), |a, b| a == b).agreed()
+        };
+        Self {
+            title,
+            artists,
+            compilation: units.iter().all(|unit| unit.compilation),
+            years: StatedYears {
+                album: year(|years| years.album),
+                pressing: year(|years| years.pressing),
+            },
+        }
+    }
+}
+
+/// What the units stating a value say of it.
+enum Agreement<T> {
+    /// Every unit stating it states this.
+    Agreed(T),
+    /// No unit states it.
+    Unstated,
+    /// Two units state different values.
+    Disagreed,
+}
+
+impl<T> Agreement<T> {
+    fn agreed(self) -> Option<T> {
+        match self {
+            Self::Agreed(value) => Some(value),
+            Self::Unstated | Self::Disagreed => None,
+        }
+    }
+}
+
+/// Whether the units stating a value agree on it, by `same`; a unit stating
+/// nothing (`None`) never disagrees.
+fn agreement<T>(values: impl Iterator<Item = Option<T>>, same: impl Fn(&T, &T) -> bool) -> Agreement<T> {
+    let mut agreed: Option<T> = None;
+    for value in values.flatten() {
+        match &agreed {
+            None => agreed = Some(value),
+            Some(known) if same(known, &value) => {}
+            Some(_) => return Agreement::Disagreed,
+        }
+    }
+    agreed.map_or(Agreement::Unstated, Agreement::Agreed)
+}
+
+/// Whether two lists of artist names name the same artists in the same
+/// order.
+fn same_names(a: &[String], b: &[String]) -> bool {
+    a.len() == b.len()
+        && a.iter()
+            .zip(b)
+            .all(|(a, b)| crate::text_match::same_artist_name(a, b))
 }
 
 /// One track as files or a CUE sheet state it, before the folder's discs are
@@ -120,7 +250,9 @@ struct TagTrack {
     /// The disc it states, `None` where it states none.
     disc: Option<u32>,
     number: Option<std::num::NonZeroU32>,
-    credits: TrackCredits,
+    /// The artists it names (a file's ARTIST, a CUE track's PERFORMER), in
+    /// order.
+    artists: Vec<String>,
 }
 
 /// The tracks loose files' tags state, one per file.
@@ -131,7 +263,7 @@ fn tag_tracks(extracted: &[FileTagFact]) -> Vec<TagTrack> {
             // The scanner only admits files with a recognised audio extension, so
             // every path here has a stem. A `None` would mean that invariant broke
             // upstream — panic rather than fabricate a "Track N" placeholder.
-            let title = t.title.clone().unwrap_or_else(|| {
+            let title = t.tags.title.clone().unwrap_or_else(|| {
                 Path::new(&t.observation.relative_path)
                     .file_stem()
                     .map(|s| s.to_string_lossy().into_owned())
@@ -141,43 +273,40 @@ fn tag_tracks(extracted: &[FileTagFact]) -> Vec<TagTrack> {
             // The tags' numbers, else the ones the file's name starts with. A
             // file stating no disc claims no grouping; one stating no track is
             // numbered by its place on its disc.
-            let numbers = t.numbers.or_file_name(&t.observation.relative_path);
+            let numbers = t.tags.numbers.or_file_name(&t.observation.relative_path);
             TagTrack {
                 title,
                 disc: numbers.disc,
                 number: numbers.track.and_then(std::num::NonZeroU32::new),
-                credits: file_tag_credits(t.track_artist.as_deref()),
+                artists: t.tags.track_artists.clone(),
             }
         })
         .collect()
 }
 
-/// The credit of a file-tag ARTIST/PERFORMER value. The source provides only
-/// a display name here, so the sort name and source artist ids stay absent.
-fn file_tag_artist(name: &str) -> crate::import::SourceCredit {
-    crate::import::SourceCredit::plain(ArtistCredit::named(name))
-}
-
-/// The track's own artist when the source carries an ARTIST/PERFORMER,
-/// whether or not it matches the album artist; else the album's.
-fn file_tag_credits(artist: Option<&str>) -> TrackCredits {
-    match artist {
-        Some(name) => TrackCredits::Own(vec![file_tag_artist(name)]),
-        None => TrackCredits::AlbumArtists,
-    }
+/// The credits of artists files or sheets name. The source provides only
+/// display names here, so the sort names and source artist ids stay absent,
+/// and no joining words: the line prints the default separator.
+fn named_credits(names: &[String]) -> Vec<crate::import::SourceCredit> {
+    names
+        .iter()
+        .map(|name| crate::import::SourceCredit::plain(ArtistCredit::named(name)))
+        .collect()
 }
 
 /// The values the file-tag and CUE-sheet readers share: one medium per disc
-/// the tracks state ([`crate::mediums::by_disc`]). A track artist the album
-/// artist does not name is an album artist too, after it, once per name.
-fn file_tag_release_values(
-    album_title: String,
-    album_artist_name: &str,
-    year: Option<i32>,
-    tags: Vec<TagTrack>,
-) -> ReleaseValues {
+/// the tracks state ([`crate::mediums::by_disc`]). A track naming the album's
+/// artists, or none, takes the album's credits; one naming others has its own.
+/// A compilation is credited to the various-artists artist, and each of its
+/// tracks keeps the artists it names.
+fn file_tag_release_values(album: TaggedAlbum, tags: Vec<TagTrack>) -> ReleaseValues {
     let numbering: Vec<_> = tags.iter().map(|track| (track.disc, track.number)).collect();
     let (mediums, places) = crate::mediums::by_disc(&numbering);
+    let album_artists = if album.compilation {
+        vec![VARIOUS_ARTISTS_NAME.to_string()]
+    } else {
+        album.artists
+    };
     let tracks: Vec<TrackValues> = tags
         .into_iter()
         .zip(places)
@@ -185,33 +314,23 @@ fn file_tag_release_values(
             title: track.title,
             place,
             stated_length_ms: None,
-            credits: track.credits,
+            credits: if track.artists.is_empty()
+                || (!album.compilation && same_names(&track.artists, &album_artists))
+            {
+                TrackCredits::AlbumArtists
+            } else {
+                TrackCredits::Own(named_credits(&track.artists))
+            },
             roles: Vec::new(),
             works: Vec::new(),
         })
         .collect();
-    let mut album_credits = vec![file_tag_artist(album_artist_name)];
-    for track in &tracks {
-        let TrackCredits::Own(credits) = &track.credits else {
-            continue;
-        };
-        for credit in credits {
-            if !album_credits
-                .iter()
-                .any(|known| {
-                    crate::text_match::same_artist_name(&known.credit.name, &credit.credit.name)
-                })
-            {
-                album_credits.push(credit.clone());
-            }
-        }
-    }
     ReleaseValues {
-        album_title,
-        album_credits,
-        album_year: year,
+        album_title: album.title,
+        album_credits: named_credits(&album_artists),
+        album_year: album.years.album,
         pressing: Pressing {
-            year,
+            year: album.years.pressing,
             ..Pressing::blank()
         },
         mediums,
@@ -220,6 +339,10 @@ fn file_tag_release_values(
         tracks,
     }
 }
+
+/// The name a compilation's album credit is given where the tags only flag
+/// one.
+const VARIOUS_ARTISTS_NAME: &str = "Various Artists";
 
 /// What a folder's stored tag reading says its audio units are, one track per
 /// unit in the folder's order: a loose file's tags for it, and a bound CUE
@@ -271,7 +394,7 @@ pub(crate) fn file_metadata_values(
     if sheets.is_empty() {
         return file_tag_facts_values(&loose_facts, folder_name);
     }
-    let release = cue_sheets_release(&sheets, folder_name);
+    let album = TaggedAlbum::agreed(sheets.iter().map(|sheet| UnitAlbum::of_sheet(sheet)), folder_name);
     let mut loose_tracks = tag_tracks(&loose_facts).into_iter();
     let mut tracks = Vec::new();
     for (_, contribution) in layout {
@@ -295,44 +418,7 @@ pub(crate) fn file_metadata_values(
             UnitContribution::SpokenFor => {}
         }
     }
-    Ok(file_tag_release_values(
-        release.album_title,
-        &release.album_artist_name,
-        release.year,
-        tracks,
-    ))
-}
-
-/// The album facts a folder's carving sheets state.
-struct SheetsRelease {
-    album_title: String,
-    album_artist_name: String,
-    year: Option<i32>,
-}
-
-/// The release a folder's carving sheets describe, before its tracks: the
-/// album title from the first sheet's `TITLE` (the folder name when none has
-/// one), the artist from the first `PERFORMER`, the year from the first
-/// `REM DATE`. The tracks are the folder's layout's to lay down.
-fn cue_sheets_release(sheets: &[&CueSheet], folder_name: Option<&str>) -> SheetsRelease {
-    // Blank is allowed — the editable file-metadata form gates save on a title.
-    let album_title = sheets
-        .iter()
-        .find_map(|s| non_empty(s.title.clone()))
-        .or_else(|| folder_name.map(str::to_string))
-        .unwrap_or_default();
-    let album_artist_name = sheets
-        .iter()
-        .find_map(|s| non_empty(s.performer.clone()))
-        .unwrap_or_default();
-    let year = sheets
-        .iter()
-        .find_map(|s| year_from_cue_date(s.date.as_deref()));
-    SheetsRelease {
-        album_title,
-        album_artist_name,
-        year,
-    }
+    Ok(file_tag_release_values(album, tracks))
 }
 
 fn cue_track(track: &crate::cue_flac::CueTrack, disc: u32) -> TagTrack {
@@ -340,22 +426,8 @@ fn cue_track(track: &crate::cue_flac::CueTrack, disc: u32) -> TagTrack {
         title: non_empty(track.title.clone()).unwrap_or_default(),
         disc: Some(disc),
         number: std::num::NonZeroU32::new(track.number),
-        credits: file_tag_credits(non_empty(track.performer.clone()).as_deref()),
+        artists: non_empty(track.performer.clone()).into_iter().collect(),
     }
-}
-
-/// Parse a year from a CUE `REM DATE` value. Rippers write a bare year
-/// ("1970"), a range ("2000 / 2004"), or a full date; take the first 4-digit
-/// run.
-fn year_from_cue_date(date: Option<&str>) -> Option<i32> {
-    let digits = date?
-        .split(|c: char| !c.is_ascii_digit())
-        .find(|part| part.len() >= 4)?;
-    Some(
-        digits[..4]
-            .parse::<i32>()
-            .expect("four ASCII digits parse as i32"),
-    )
 }
 
 #[cfg(test)]

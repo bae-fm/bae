@@ -128,13 +128,9 @@ impl FolderFacts {
     /// which the Year badge, whether a row is offered, and the ranking all
     /// read.
     ///
-    /// A year the row's own title writes ("1990-2000") is the title's. Of the
-    /// rest, one no later than the album's first year names the album, and
-    /// the latest later one names the pressing. Where the album's first year
-    /// is not known, only a folder writing two years ("1963 … 2005
-    /// remaster") names a pressing, by the later: most folders are named with
-    /// the year the album first came out, so a lone year cannot be read as the
-    /// pressing's.
+    /// A year the row's own title writes ("1990-2000") is the title's; the
+    /// rest are read as [`StatedYears::of`] reads them, against the year the
+    /// row's album first came out.
     pub(crate) fn pressing_year(&self, records: &[MetadataResult]) -> Option<i32> {
         let titled: Vec<i32> = records
             .iter()
@@ -146,11 +142,7 @@ impl FolderFacts {
             .copied()
             .filter(|year| !titled.contains(year))
             .collect();
-        match self.album_first_year(records) {
-            Some(first) => years.into_iter().filter(|year| *year > first).max(),
-            None if years.len() >= 2 => years.into_iter().max(),
-            None => None,
-        }
+        StatedYears::of(&years, self.album_first_year(records)).pressing
     }
 
     /// Whether the row was released in the year the folder names its pressing
@@ -200,6 +192,38 @@ impl FolderFacts {
             Fact::Disagrees
         } else {
             Fact::StatesNothing
+        }
+    }
+}
+
+/// Which of the years a source states is the album's — the year it first
+/// came out — and which the pressing's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct StatedYears {
+    pub album: Option<i32>,
+    pub pressing: Option<i32>,
+}
+
+impl StatedYears {
+    /// What `years` say, beside the album's first year where a record knows
+    /// it. With it known, it is the album's year, and the latest stated year
+    /// after it names the pressing; one no later names the album. With it
+    /// unknown, two or more years give the earliest as the album's and the
+    /// latest as the pressing's ("1963 … 2005 remaster"), and one year is the
+    /// album's alone: most folders and tags write the year the album first
+    /// came out, so a lone year cannot be read as the pressing's.
+    pub(crate) fn of(years: &[i32], album_first_year: Option<i32>) -> Self {
+        if let Some(first) = album_first_year {
+            return Self {
+                album: Some(first),
+                pressing: years.iter().copied().filter(|year| *year > first).max(),
+            };
+        }
+        let earliest = years.iter().copied().min();
+        let latest = years.iter().copied().max();
+        Self {
+            album: earliest,
+            pressing: latest.filter(|latest| Some(*latest) != earliest),
         }
     }
 }

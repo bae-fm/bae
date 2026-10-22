@@ -13,7 +13,7 @@ use super::*;
 use crate::album_detail::AudioFormat;
 use crate::cue_flac::{CueIndex, CueSheet, CueTrack, CueTrackMode};
 use crate::import::file_tag_snapshot::{
-    EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot,
+    EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot, FileTags,
 };
 use crate::import::folder_scanner::{
     CandidateFile, CategorizedFiles, Coverage, FileRole, FileVersion, FolderCandidate,
@@ -255,9 +255,9 @@ fn load_file_tag_facts(
 ) -> Result<Vec<FileTagFact>, DbError> {
     let rows = sql.query(
         "SELECT tags.relative_path, tags.file_size, tags.modified_at_ns, \
-                tags.title, tags.track_artist, tags.album_title, tags.album_artist, \
-                tags.year, tags.track_number, tags.disc_number, tags.isrc, \
-                tags.label, tags.copyright, tags.store \
+                tags.title, tags.track_artists, tags.album_title, tags.album_artists, \
+                tags.compilation, tags.years, tags.track_number, tags.disc_number, \
+                tags.isrcs, tags.labels, tags.copyrights, tags.store \
          FROM scan_candidate_file_tag AS tags \
          INNER JOIN scan_candidate_file AS files \
              ON files.watched_folder_path = tags.watched_folder_path \
@@ -267,85 +267,92 @@ fn load_file_tag_facts(
          ORDER BY files.position",
         params![watched_folder_path, candidate_path],
         |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, i64>(1)?,
-                row.get::<_, i64>(2)?,
-                row.get::<_, Option<String>>(3)?,
-                row.get::<_, Option<String>>(4)?,
-                row.get::<_, Option<String>>(5)?,
-                row.get::<_, Option<String>>(6)?,
-                row.get::<_, Option<i64>>(7)?,
-                row.get::<_, Option<i64>>(8)?,
-                row.get::<_, Option<i64>>(9)?,
-                row.get::<_, Option<String>>(10)?,
-                row.get::<_, Option<String>>(11)?,
-                row.get::<_, Option<String>>(12)?,
-                row.get::<_, Option<String>>(13)?,
-            ))
+            Ok(StoredFileTags {
+                relative_path: row.get(0)?,
+                size: row.get(1)?,
+                modified_at_ns: row.get(2)?,
+                title: row.get(3)?,
+                track_artists: row.get(4)?,
+                album_title: row.get(5)?,
+                album_artists: row.get(6)?,
+                compilation: row.get(7)?,
+                years: row.get(8)?,
+                track_number: row.get(9)?,
+                disc_number: row.get(10)?,
+                isrcs: row.get(11)?,
+                labels: row.get(12)?,
+                copyrights: row.get(13)?,
+                store: row.get(14)?,
+            })
         },
     )?;
-    rows.into_iter()
-        .map(
-            |(
-                relative_path,
-                size,
-                modified_at_ns,
-                title,
-                track_artist,
-                album_title,
-                album_artist,
-                year,
-                track_number,
-                disc_number,
-                isrc,
-                label,
-                copyright,
-                store,
-            )| {
-                Ok(FileTagFact {
-                    observation: FileObservation {
-                        relative_path,
-                        size: to_u64(size, "a file-tag observation's size")?,
-                        modified_at_ns,
-                    },
-                    title,
-                    track_artist,
-                    album_title,
-                    album_artist,
-                    year: year
-                        .map(|value| {
-                            u16::try_from(value).map_err(|error| {
-                                DbError::Message(format!(
-                                    "a file-tag year is outside the range it counts over: {error}"
-                                ))
-                            })
-                        })
-                        .transpose()?,
-                    numbers: crate::import::track_numbers::TrackNumbers {
-                        disc: disc_number
-                            .map(|value| to_u32(value, "a file-tag disc number"))
-                            .transpose()?,
-                        track: track_number
-                            .map(|value| to_u32(value, "a file-tag track number"))
-                            .transpose()?,
-                    },
-                    isrc,
-                    label,
-                    copyright,
-                    store: store
-                        .map(|key| {
-                            crate::signals::StoreMarker::from_key(&key).ok_or_else(|| {
-                                DbError::Message(format!(
-                                    "a file-tag store {key:?} is no store bae reads"
-                                ))
-                            })
-                        })
-                        .transpose()?,
-                })
+    rows.into_iter().map(StoredFileTags::fact).collect()
+}
+
+/// One `scan_candidate_file_tag` row as SQLite returns it.
+struct StoredFileTags {
+    relative_path: String,
+    size: i64,
+    modified_at_ns: i64,
+    title: Option<String>,
+    track_artists: String,
+    album_title: Option<String>,
+    album_artists: String,
+    compilation: bool,
+    years: String,
+    track_number: Option<i64>,
+    disc_number: Option<i64>,
+    isrcs: String,
+    labels: String,
+    copyrights: String,
+    store: Option<String>,
+}
+
+impl StoredFileTags {
+    fn fact(self) -> Result<FileTagFact, DbError> {
+        Ok(FileTagFact {
+            observation: FileObservation {
+                relative_path: self.relative_path,
+                size: to_u64(self.size, "a file-tag observation's size")?,
+                modified_at_ns: self.modified_at_ns,
             },
-        )
-        .collect()
+            tags: FileTags {
+                title: self.title,
+                track_artists: tag_values(&self.track_artists, "track artists")?,
+                album_title: self.album_title,
+                album_artists: tag_values(&self.album_artists, "album artists")?,
+                compilation: self.compilation,
+                years: tag_values(&self.years, "years")?,
+                numbers: crate::import::track_numbers::TrackNumbers {
+                    disc: self
+                        .disc_number
+                        .map(|value| to_u32(value, "a file-tag disc number"))
+                        .transpose()?,
+                    track: self
+                        .track_number
+                        .map(|value| to_u32(value, "a file-tag track number"))
+                        .transpose()?,
+                },
+                isrcs: tag_values(&self.isrcs, "ISRCs")?,
+                labels: tag_values(&self.labels, "labels")?,
+                copyrights: tag_values(&self.copyrights, "copyright lines")?,
+                store: self
+                    .store
+                    .map(|key| {
+                        crate::signals::StoreMarker::from_key(&key).ok_or_else(|| {
+                            DbError::Message(format!("a file-tag store {key:?} is no store bae reads"))
+                        })
+                    })
+                    .transpose()?,
+            },
+        })
+    }
+}
+
+/// A multi-valued tag's values, read back from their JSON array column.
+fn tag_values<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<Vec<T>, DbError> {
+    serde_json::from_str(json)
+        .map_err(|error| DbError::Message(format!("a file tag's stored {what} do not read: {error}")))
 }
 
 /// Whether a valid or invalid entry, rather than a tentative one or none, is

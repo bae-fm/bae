@@ -164,20 +164,19 @@ impl FileTagReader for CountingReader {
     fn read(&self, _path: &Path) -> Result<FileTagRead, ImportError> {
         self.0.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         Ok(FileTagRead {
-            title: Some("Track Alpha".to_string()),
-            track_artist: Some("Artist Alpha".to_string()),
-            album_title: Some("Album Alpha".to_string()),
-            album_artist: Some("Artist Alpha".to_string()),
-            year: Some(2001),
-            numbers: crate::import::track_numbers::TrackNumbers {
-                disc: None,
-                track: Some(1),
+            tags: FileTags {
+                title: Some("Track Alpha".to_string()),
+                track_artists: vec!["Artist Alpha".to_string()],
+                album_title: Some("Album Alpha".to_string()),
+                album_artists: vec!["Artist Alpha".to_string()],
+                years: vec![2001],
+                numbers: crate::import::track_numbers::TrackNumbers {
+                    disc: None,
+                    track: Some(1),
+                },
+                ..FileTags::untagged()
             },
             embedded_cover: None,
-            isrc: None,
-            copyright: None,
-            label: None,
-            store: None,
         })
     }
 }
@@ -200,8 +199,8 @@ fn a_tag_s_isrc_is_read() {
     std::fs::write(&path, file).unwrap();
 
     assert_eq!(
-        LoftyFileTagReader.read(&path).unwrap().isrc.as_deref(),
-        Some("IT-00G-91-70501")
+        LoftyFileTagReader.read(&path).unwrap().tags.isrcs,
+        ["IT-00G-91-70501"]
     );
 }
 
@@ -220,7 +219,7 @@ fn embedded_cover_in_an_unsynchronised_id3v24_tag_reads_as_the_original_image() 
     assert_eq!(content_type, ContentType::Jpeg);
     assert_eq!(bytes, PLACEHOLDER_JPEG);
     assert_eq!(
-        LoftyFileTagReader.read(&path).unwrap().title.as_deref(),
+        LoftyFileTagReader.read(&path).unwrap().tags.title.as_deref(),
         Some("Track Alpha")
     );
 }
@@ -231,26 +230,24 @@ fn lofty_reader_decodes_legacy_cyrillic_id3_text() {
     let path = dir.path().join("01.mp3");
     std::fs::write(&path, legacy_cyrillic_mp3()).unwrap();
 
-    let read = LoftyFileTagReader.read(&path).unwrap();
+    let read = LoftyFileTagReader.read(&path).unwrap().tags;
 
     assert_eq!(read.title.as_deref(), Some("Название дорожки"));
-    assert_eq!(read.track_artist.as_deref(), Some("Имя исполнителя"));
+    assert_eq!(read.track_artists, ["Имя исполнителя"]);
     assert_eq!(read.album_title.as_deref(), Some("Название альбома"));
-    assert_eq!(read.album_artist.as_deref(), Some("Исполнитель альбома"));
+    assert_eq!(read.album_artists, ["Исполнитель альбома"]);
 }
 
+/// An ID3v2.4 frame of two values states both, each decoded.
 #[test]
-fn lofty_reader_preserves_id3v24_multivalue_normalization() {
+fn lofty_reader_keeps_each_value_of_an_id3v24_multivalue_frame() {
     let dir = tempfile::TempDir::new().unwrap();
     let path = dir.path().join("01.mp3");
     std::fs::write(&path, legacy_cyrillic_multivalue_mp3()).unwrap();
 
-    let read = LoftyFileTagReader.read(&path).unwrap();
+    let read = LoftyFileTagReader.read(&path).unwrap().tags;
 
-    assert_eq!(
-        read.track_artist.as_deref(),
-        Some("Исполнитель Один/Исполнитель Два")
-    );
+    assert_eq!(read.track_artists, ["Исполнитель Один", "Исполнитель Два"]);
 }
 
 #[test]
@@ -259,10 +256,10 @@ fn lofty_reader_decodes_legacy_cyrillic_id3v1_text() {
     let path = dir.path().join("01.mp3");
     std::fs::write(&path, legacy_cyrillic_id3v1_mp3()).unwrap();
 
-    let read = LoftyFileTagReader.read(&path).unwrap();
+    let read = LoftyFileTagReader.read(&path).unwrap().tags;
 
     assert_eq!(read.title.as_deref(), Some("Название дорожки"));
-    assert_eq!(read.track_artist.as_deref(), Some("Имя исполнителя"));
+    assert_eq!(read.track_artists, ["Имя исполнителя"]);
     assert_eq!(read.album_title.as_deref(), Some("Название альбома"));
 }
 
@@ -401,17 +398,27 @@ fn a_tag_s_label_and_copyright_are_read() {
                 ("COPYRIGHT", "(C) 1999 Imprint Name (P) 1999 Imprint Name"),
             ],
         ))
-        .unwrap();
-    assert_eq!(read.label.as_deref(), Some("Imprint Name"));
+        .unwrap()
+        .tags;
+    assert_eq!(read.labels, ["Imprint Name"]);
     assert_eq!(
-        read.copyright.as_deref(),
-        Some("(C) 1999 Imprint Name (P) 1999 Imprint Name")
+        read.copyrights,
+        ["(C) 1999 Imprint Name (P) 1999 Imprint Name"]
     );
     let read = LoftyFileTagReader
         .read(&flac_with(dir.path(), &[("ORGANIZATION", "Other Imprint")]))
-        .unwrap();
-    assert_eq!(read.label.as_deref(), Some("Other Imprint"));
+        .unwrap()
+        .tags;
+    assert_eq!(read.labels, ["Other Imprint"]);
     assert_eq!(read.store, None);
+    let read = LoftyFileTagReader
+        .read(&flac_with(
+            dir.path(),
+            &[("LABEL", "Imprint Name"), ("LABEL", "Second Imprint")],
+        ))
+        .unwrap()
+        .tags;
+    assert_eq!(read.labels, ["Imprint Name", "Second Imprint"]);
 }
 
 /// Bandcamp's own comment marks a Bandcamp download; a comment of any other
@@ -425,11 +432,11 @@ fn bandcamp_s_comment_marks_a_bandcamp_download() {
             &[("COMMENT", "Visit https://artistname.bandcamp.com")],
         ))
         .unwrap();
-    assert_eq!(read.store, Some(StoreMarker::Bandcamp));
+    assert_eq!(read.tags.store, Some(StoreMarker::Bandcamp));
     let read = LoftyFileTagReader
         .read(&flac_with(dir.path(), &[("COMMENT", "Ripped with care")]))
         .unwrap();
-    assert_eq!(read.store, None);
+    assert_eq!(read.tags.store, None);
 }
 
 /// The atoms iTunes writes only into a purchase mark an iTunes purchase; its
@@ -441,10 +448,85 @@ fn an_itunes_purchase_is_marked_by_its_purchase_atoms() {
         let read = LoftyFileTagReader
             .read(&m4a_with(dir.path(), &[(atom, "placeholder")]))
             .unwrap();
-        assert_eq!(read.store, Some(StoreMarker::ITunesPurchase), "{atom:?}");
+        assert_eq!(read.tags.store, Some(StoreMarker::ITunesPurchase), "{atom:?}");
     }
     let read = LoftyFileTagReader
         .read(&m4a_with(dir.path(), &[(*b"cnID", "1")]))
         .unwrap();
-    assert_eq!(read.store, None);
+    assert_eq!(read.tags.store, None);
+}
+
+/// Every value of a multi-valued comment is its own: two `ARTIST` comments
+/// are two artists, and a value written twice is stated once.
+#[test]
+fn every_artist_a_file_names_is_read() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let read = LoftyFileTagReader
+        .read(&flac_with(
+            dir.path(),
+            &[
+                ("ARTIST", "Artist Alpha"),
+                ("ARTIST", "Artist Beta"),
+                ("ARTIST", "Artist Alpha"),
+                ("ALBUMARTIST", "Artist Alpha"),
+                ("ALBUMARTIST", " "),
+            ],
+        ))
+        .unwrap()
+        .tags;
+    assert_eq!(read.track_artists, ["Artist Alpha", "Artist Beta"]);
+    assert_eq!(read.album_artists, ["Artist Alpha"]);
+}
+
+/// Every date a file's tags state names its year, each once, in the order
+/// the keys are read: the recording date, the year, the release date, the
+/// original release date.
+#[test]
+fn every_year_a_file_s_dates_name_is_read() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let read = LoftyFileTagReader
+        .read(&flac_with(
+            dir.path(),
+            &[
+                ("DATE", "2005-03-01"),
+                ("ORIGINALDATE", "1971"),
+                ("RELEASEDATE", "2005"),
+                ("YEAR", "notayear"),
+            ],
+        ))
+        .unwrap()
+        .tags;
+    assert_eq!(read.years, [2005, 1971]);
+    let read = LoftyFileTagReader
+        .read(&flac_with(dir.path(), &[("TITLE", "Track Alpha")]))
+        .unwrap()
+        .tags;
+    assert!(read.years.is_empty());
+}
+
+/// A date names the first four digits of each run of four or more.
+#[test]
+fn a_date_names_each_year_it_writes() {
+    let years = |date| years_in_date(date).collect::<Vec<_>>();
+    assert_eq!(years("1970"), [1970]);
+    assert_eq!(years("1970-02-03"), [1970]);
+    assert_eq!(years("19700203"), [1970]);
+    assert_eq!(years("2000 / 2004"), [2000, 2004]);
+    assert!(years("rem 99").is_empty());
+    assert!(years("0000").is_empty());
+}
+
+/// The compilation flag is read as set only when it says 1.
+#[test]
+fn the_compilation_flag_is_read() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let flagged = |value: &str| {
+        LoftyFileTagReader
+            .read(&flac_with(dir.path(), &[("COMPILATION", value)]))
+            .unwrap()
+            .tags
+            .compilation
+    };
+    assert!(flagged("1"));
+    assert!(!flagged("0"));
 }

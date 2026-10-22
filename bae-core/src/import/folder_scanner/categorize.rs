@@ -562,7 +562,7 @@ fn skipped_files(proposed: &[(ScannedFile, ProposedRole)]) -> Vec<SkippedFile> {
 
 /// What the tags of `proposed`'s playable audio call the release: the album
 /// title the first of them in name order to state one gives, and that file's
-/// album artist, else its track artist. A file whose tags can't be read is
+/// album artists' line, else its track artists'. A file whose tags can't be read is
 /// passed over, said in the log.
 fn skipped_tags(proposed: &[(ScannedFile, ProposedRole)]) -> Option<SkippedTags> {
     use crate::import::file_tag_snapshot::FileTagReader;
@@ -584,10 +584,18 @@ fn skipped_tags(proposed: &[(ScannedFile, ProposedRole)]) -> Option<SkippedTags>
                 continue;
             }
         };
-        if let Some(album_title) = read.album_title {
+        let tags = read.tags;
+        if let Some(album_title) = tags.album_title {
+            let artists = if tags.album_artists.is_empty() {
+                tags.track_artists
+            } else {
+                tags.album_artists
+            };
             return Some(SkippedTags {
                 album_title,
-                artist: read.album_artist.or(read.track_artist),
+                artist: (!artists.is_empty()).then(|| {
+                    crate::credits::credit_line(artists.iter().map(|name| (name.as_str(), None)))
+                }),
             });
         }
     }
