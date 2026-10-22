@@ -43,8 +43,12 @@ struct SavePresetEditor: View {
                     scopeRow
                 }
                 DisclosureGroup(isExpanded: $advancedExpanded) {
-                    if preset.codec.bitDepth != nil {
-                        PresetBitDepthRow(preset: preset, update: update)
+                    if let bitDepth = preset.codec.bitDepth {
+                        PresetBitDepthRow(
+                            preset: preset,
+                            bitDepth: bitDepth,
+                            update: update
+                        )
                     }
                     pregapRow
                 } label: {

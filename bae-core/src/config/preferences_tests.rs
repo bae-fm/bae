@@ -144,7 +144,7 @@ fn save_codec_variants_roundtrip() {
     let mut config = make_test_config(tmp.path().to_path_buf());
     for codec in [
         SaveCodec::Flac {
-            bit_depth: SaveBitDepth::Source,
+            bit_depth: SaveBitDepth::Bits24,
         },
         SaveCodec::Mp3 { bitrate_kbps: 192 },
         SaveCodec::Aac { bitrate_kbps: 256 },
@@ -163,6 +163,26 @@ fn save_codec_variants_roundtrip() {
             codec
         );
     }
+}
+
+/// A save format names the bit depth it writes; there is no depth that
+/// follows the source, so a preset asking for one does not load.
+#[test]
+fn a_source_bit_depth_fails_to_load() {
+    let mut value = default_preferences_value();
+    value["save_presets"][0]["codec"]["Flac"]["bit_depth"] = "Source".into();
+    let error = read_preferences_value(&value).unwrap_err();
+    assert!(matches!(error, ConfigError::Serialization(_)));
+}
+
+#[test]
+fn the_default_flac_preset_writes_24_bit() {
+    assert_eq!(
+        Preferences::default().save_presets[0].codec,
+        SaveCodec::Flac {
+            bit_depth: SaveBitDepth::Bits24,
+        }
+    );
 }
 
 #[test]

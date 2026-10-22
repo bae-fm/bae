@@ -63,13 +63,9 @@ async fn import_single_m4a_fixture(
 // ─────────────────────────────── Probe tests ────────────────────────────────
 
 /// Probe on an ALAC `.m4a` fixture must return `ContentType::Alac` with the
-/// real sample rate / channel count / bit depth.
-///
-/// The `bits_per_sample == Some(16)` assertion exercises the ALAC-0 deep
-/// probe: if FFmpeg's codecpar reports 0 (as it does for some ALAC streams
-/// before the decoder has parsed the magic cookie), the fallback must decode
-/// a frame to recover the real 16. If this lands as `None` or `Some(0)`, the
-/// fallback is broken.
+/// real sample rate / channel count / bit depth. FFmpeg reads the ALAC depth
+/// from the stream's codec parameters when it opens the file, so the probe
+/// states it without decoding anything.
 #[test]
 fn probe_alac_returns_content_type_alac() {
     let path = fixture_dir().join("silence-alac.m4a");
@@ -81,8 +77,7 @@ fn probe_alac_returns_content_type_alac() {
     assert_eq!(
         probe.bits_per_sample,
         Some(16),
-        "ALAC bit depth must be 16. If this is None/Some(0), the \
-         ALAC-0 deep probe fallback is broken."
+        "the probe states the ALAC fixture's 16-bit depth"
     );
 }
 

@@ -23,12 +23,12 @@ enum SavePresetKind: CaseIterable {
 
     var defaultCodec: BridgeSaveCodec {
         switch self {
-        case .flac: .flac(bitDepth: .source)
+        case .flac: .flac(bitDepth: .bits24)
         case .mp3: .mp3(bitrateKbps: 320)
         case .aac: .aac(bitrateKbps: 256)
         case .opusOgg: .opusOgg(bitrateKbps: 192)
-        case .wav: .wav(bitDepth: .source)
-        case .aiff: .aiff(bitDepth: .source)
+        case .wav: .wav(bitDepth: .bits24)
+        case .aiff: .aiff(bitDepth: .bits24)
         }
     }
 

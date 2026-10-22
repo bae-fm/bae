@@ -306,7 +306,7 @@ object BridgeFixtures {
                     BridgeSavePreset(
                         id = "flac",
                         name = "FLAC",
-                        codec = BridgeSaveCodec.Flac(bitDepth = BridgeSaveBitDepth.SOURCE),
+                        codec = BridgeSaveCodec.Flac(bitDepth = BridgeSaveBitDepth.BITS24),
                         extension = "flac",
                         filenameTokens =
                             listOf(

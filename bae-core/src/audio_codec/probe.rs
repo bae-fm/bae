@@ -68,74 +68,6 @@ pub(super) fn content_type_from_codec_id(id: ffmpeg_sys_next::AVCodecID) -> Cont
     }
 }
 
-/// Decode one frame to recover `bits_per_raw_sample` when the container
-/// didn't surface it. ALAC streams report 0 on `codecpar` until the decoder
-/// has parsed the magic cookie in its first frame. Returns `None` if the
-/// decoder still can't determine the bit depth (shouldn't happen for valid
-/// ALAC, but we never fabricate a value).
-///
-/// # Safety
-///
-/// Caller must ensure `fmt_ctx` is a valid open format context and
-/// `stream_index` points at an audio stream with codecpar populated.
-unsafe fn decode_one_frame_for_bit_depth(
-    fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
-    stream_index: c_int,
-) -> Option<u32> {
-    use ffmpeg_sys_next::*;
-
-    let stream = *(*fmt_ctx).streams.add(stream_index as usize);
-    let codecpar = (*stream).codecpar;
-
-    let codec = avcodec_find_decoder((*codecpar).codec_id);
-    if codec.is_null() {
-        return None;
-    }
-
-    let mut codec_ctx = avcodec_alloc_context3(codec);
-    if codec_ctx.is_null() {
-        return None;
-    }
-
-    if avcodec_parameters_to_context(codec_ctx, codecpar) < 0 {
-        avcodec_free_context(&mut codec_ctx);
-        return None;
-    }
-
-    if avcodec_open2(codec_ctx, codec, ptr::null_mut()) < 0 {
-        avcodec_free_context(&mut codec_ctx);
-        return None;
-    }
-
-    let mut packet = av_packet_alloc();
-    let mut frame = av_frame_alloc();
-    let mut bits: Option<u32> = None;
-
-    // Read packets until we decode a frame from our stream (or EOF).
-    while av_read_frame(fmt_ctx, packet) >= 0 {
-        if (*packet).stream_index != stream_index {
-            av_packet_unref(packet);
-            continue;
-        }
-        if avcodec_send_packet(codec_ctx, packet) >= 0
-            && avcodec_receive_frame(codec_ctx, frame) >= 0
-        {
-            let raw = (*codec_ctx).bits_per_raw_sample;
-            if raw > 0 {
-                bits = Some(raw as u32);
-            }
-            av_packet_unref(packet);
-            break;
-        }
-        av_packet_unref(packet);
-    }
-
-    av_frame_free(&mut frame);
-    av_packet_free(&mut packet);
-    avcodec_free_context(&mut codec_ctx);
-    bits
-}
-
 /// Open `path` and find its best audio stream. Returns the format context --
 /// which the caller must `avformat_close_input` when done -- and the stream
 /// index, or `None` (already logged with `ctx` as the prefix) if the file can't
@@ -343,7 +275,7 @@ fn open_and_probe(path: &str) -> Option<ProbeResult> {
         let codec_id = (*codecpar).codec_id;
         let content_type = content_type_from_codec_id(codec_id);
         let sample_rate = (*codecpar).sample_rate as u32;
-        let mut bits_per_sample = if !content_type.is_lossless_audio() {
+        let bits_per_sample = if !content_type.is_lossless_audio() {
             None
         } else if (*codecpar).bits_per_raw_sample > 0 {
             Some((*codecpar).bits_per_raw_sample as u32)
@@ -353,13 +285,6 @@ fn open_and_probe(path: &str) -> Option<ProbeResult> {
             None
         };
         let channels = (*codecpar).ch_layout.nb_channels as u32;
-
-        // ALAC-in-MP4 doesn't populate bits_per_raw_sample on codecpar until
-        // the decoder has processed the magic cookie. Fall back to decoding
-        // a single frame just to recover the real bit depth.
-        if bits_per_sample.is_none() && codec_id == AVCodecID::AV_CODEC_ID_ALAC {
-            bits_per_sample = decode_one_frame_for_bit_depth(fmt_ctx, stream_index);
-        }
 
         let bitrate_kbps = if content_type.is_lossless_audio() {
             None

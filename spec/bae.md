@@ -971,8 +971,10 @@ Two ways put a release back on disk, from desktop:
   its source folder. The copy is staged and moved into place only once every
   file is written.
 - **Save** writes new files with a *preset*: a codec, a filename pattern, where
-  pregaps go, and whether to embed the cover. A preset can write a release as
-  one image with a CUE sheet. FLAC and MP3 presets come built in (Appendix C).
+  pregaps go, and whether to embed the cover. A lossless preset writes the
+  16, 24 or 32 bits it names, whatever depth the source has. A preset can
+  write a release as one image with a CUE sheet. FLAC and MP3 presets come
+  built in (Appendix C).
 
 Both run from a queue that can be paused, cancelled and retried. Either reads
 files from wherever they are: the person's own path, the cache, or storage.
@@ -2197,7 +2199,7 @@ shows the complete TOML layout.
 |---|---|---|
 | `discogs` | none | the stored Discogs key's state: unvalidated, valid or rejected; the key is in the keyring |
 | `replay_gain_mode` | off | loudness: off, track or album (§7.5) |
-| `save_presets` | FLAC, MP3 320 | the save presets (§4.6) |
+| `save_presets` | FLAC 24-bit, MP3 320 | the save presets (§4.6) |
 | `default_track_save_preset`, `default_release_save_preset` | FLAC | which preset a save starts with |
 | `pause_between_sides` | on | pausing between sides and discs (§7.3) |
 | `side_pause_countdown` | off | when such a pause ends on its own |
@@ -2214,8 +2216,8 @@ shows the complete TOML layout.
 | `mcp.enabled`, `mcp.port` | off, 47777 | the MCP server; its token is in the keyring |
 | `subsonic.enabled`, `.port`, `.username`, `.bind_address` | off, 4533, none, 127.0.0.1 | the Subsonic server; its password is in the keyring |
 
-A save preset holds a codec (FLAC, WAV or AIFF at a bit depth; MP3, AAC or
-Opus at a bitrate), a filename pattern of tokens (title, artist, album, year,
+A save preset holds a codec (FLAC, WAV or AIFF at 16, 24 or 32 bits; MP3, AAC
+or Opus at a bitrate), a filename pattern of tokens (title, artist, album, year,
 track number, disc number, track total), where pregaps go (appended to the
 track before, with or without the hidden first-track audio; left out; or one
 file with a CUE sheet), and whether it embeds the cover.

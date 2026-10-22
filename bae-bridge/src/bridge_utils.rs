@@ -32,7 +32,7 @@ mirror_enum! {
     BridgeSaveBitDepth = bae_core::config::SaveBitDepth,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
-    variants: { Source, Bits16, Bits24, Bits32 },
+    variants: { Bits16, Bits24, Bits32 },
 }
 
 impl BridgeSaveCodec {

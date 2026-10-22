@@ -23,21 +23,18 @@ fn default_save_filename_tokens() -> Vec<SaveFilenameToken> {
     vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title]
 }
 
+/// The bit depth a lossless save format writes. Always one of these three, so
+/// a saved file's depth never depends on what the source happens to state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SaveBitDepth {
-    Source,
     Bits16,
     Bits24,
     Bits32,
 }
 
 impl SaveBitDepth {
-    pub fn resolve(self, source_bits: Option<i64>) -> u32 {
+    pub fn bits(self) -> u32 {
         match self {
-            Self::Source => source_bits
-                .and_then(|bits| u32::try_from(bits).ok())
-                .filter(|bits| (1..=32).contains(bits))
-                .unwrap_or(32),
             Self::Bits16 => 16,
             Self::Bits24 => 24,
             Self::Bits32 => 32,
@@ -171,7 +168,7 @@ pub(super) fn default_save_presets() -> Vec<SavePreset> {
             id: "flac".to_string(),
             name: "FLAC".to_string(),
             codec: SaveCodec::Flac {
-                bit_depth: SaveBitDepth::Source,
+                bit_depth: SaveBitDepth::Bits24,
             },
             filename_tokens: default_save_filename_tokens(),
             pregap_placement: default_export_pregap_placement(),
@@ -202,7 +199,7 @@ mod tests {
             id: "flac-image".to_string(),
             name: "FLAC image".to_string(),
             codec: SaveCodec::Flac {
-                bit_depth: SaveBitDepth::Source,
+                bit_depth: SaveBitDepth::Bits24,
             },
             filename_tokens: default_save_filename_tokens(),
             pregap_placement: SavePregapPlacement::SingleFileWithCue,

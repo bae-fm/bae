@@ -28,7 +28,7 @@ fn release_only_image_preset() -> crate::config::SavePreset {
         id: "flac-image".to_string(),
         name: "FLAC image".to_string(),
         codec: crate::config::SaveCodec::Flac {
-            bit_depth: crate::config::SaveBitDepth::Source,
+            bit_depth: crate::config::SaveBitDepth::Bits16,
         },
         filename_tokens: vec![crate::config::SaveFilenameToken::Title],
         pregap_placement: crate::config::SavePregapPlacement::SingleFileWithCue,

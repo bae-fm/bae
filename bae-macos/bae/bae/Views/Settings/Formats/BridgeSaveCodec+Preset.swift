@@ -19,9 +19,9 @@ extension BridgeSaveCodec {
     /// family default.
     func switched(to kind: SavePresetKind) -> BridgeSaveCodec {
         switch kind {
-        case .flac: .flac(bitDepth: bitDepth ?? .source)
-        case .wav: .wav(bitDepth: bitDepth ?? .source)
-        case .aiff: .aiff(bitDepth: bitDepth ?? .source)
+        case .flac: .flac(bitDepth: bitDepth ?? .bits24)
+        case .wav: .wav(bitDepth: bitDepth ?? .bits24)
+        case .aiff: .aiff(bitDepth: bitDepth ?? .bits24)
         case .mp3: .mp3(bitrateKbps: min(max(bitrateKbps ?? 320, 32), 320))
         case .aac: .aac(bitrateKbps: min(max(bitrateKbps ?? 256, 32), 512))
         case .opusOgg: .opusOgg(bitrateKbps: bitrateKbps ?? 192)

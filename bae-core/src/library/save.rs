@@ -217,7 +217,6 @@ impl SaveService {
         let cancel = Arc::new(AtomicBool::new(false));
         let _cancel_guard = CancelOnDrop(Arc::clone(&cancel));
 
-        let source_bits_per_sample = plans[0].audio_meta.audio_format.bits_per_sample;
         let sample_rate = stored_sample_rate(&plans[0])?;
         let channels = stored_channels(&plans[0])?;
         let release_title = plans[0].resolved.tags.album.clone();
@@ -236,7 +235,7 @@ impl SaveService {
             })?
             .to_string();
 
-        let format = encode_format(&preset.codec, source_bits_per_sample);
+        let format = encode_format(&preset.codec);
         let tag_type = codec_tag_type(&preset.codec);
         let tags = crate::library::manager::SaveTags {
             title: release_title.clone(),
@@ -390,7 +389,7 @@ impl SaveService {
         let cancel = Arc::new(AtomicBool::new(false));
         let _cancel_guard = CancelOnDrop(Arc::clone(&cancel));
 
-        let format = encode_format(&codec, plan.audio_meta.audio_format.bits_per_sample);
+        let format = encode_format(&codec);
         let tag_type = codec_tag_type(&codec);
         let sample_rate = stored_sample_rate(&plan)?;
         let channels = stored_channels(&plan)?;
@@ -524,16 +523,12 @@ fn stored_channels(plan: &SaveTrackPlan) -> Result<u32, String> {
         })
 }
 
-/// The encoder format for a save codec, with bit depths resolved against the
-/// source.
-fn encode_format(
-    codec: &crate::config::SaveCodec,
-    source_bits_per_sample: Option<i64>,
-) -> EncodeFormat {
+/// The encoder format for a save codec.
+fn encode_format(codec: &crate::config::SaveCodec) -> EncodeFormat {
     use crate::config::SaveCodec;
     match codec {
         SaveCodec::Flac { bit_depth } => EncodeFormat::Flac {
-            bits_per_sample: bit_depth.resolve(source_bits_per_sample),
+            bits_per_sample: bit_depth.bits(),
         },
         SaveCodec::Mp3 { bitrate_kbps } => EncodeFormat::Mp3 {
             bitrate_kbps: *bitrate_kbps,
@@ -545,10 +540,10 @@ fn encode_format(
             bitrate_kbps: *bitrate_kbps,
         },
         SaveCodec::Wav { bit_depth } => EncodeFormat::PcmWav {
-            bits_per_sample: bit_depth.resolve(source_bits_per_sample),
+            bits_per_sample: bit_depth.bits(),
         },
         SaveCodec::Aiff { bit_depth } => EncodeFormat::PcmAiff {
-            bits_per_sample: bit_depth.resolve(source_bits_per_sample),
+            bits_per_sample: bit_depth.bits(),
         },
     }
 }

@@ -22,7 +22,7 @@ applies_to_release = true
 embed_cover = true
 
 [save_presets.codec.Flac]
-bit_depth = "Source"
+bit_depth = "Bits24"
 
 [[save_presets]]
 id = "mp3"

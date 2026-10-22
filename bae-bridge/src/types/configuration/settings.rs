@@ -22,7 +22,6 @@ pub struct BridgeSortCriterion {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSaveBitDepth {
-    Source,
     Bits16,
     Bits24,
     Bits32,

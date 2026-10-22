@@ -149,7 +149,7 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
         id: "title-only".to_string(),
         name: "Title only".to_string(),
         codec: SaveCodec::Flac {
-            bit_depth: SaveBitDepth::Source,
+            bit_depth: SaveBitDepth::Bits16,
         },
         filename_tokens: vec![SaveFilenameToken::Title],
         pregap_placement: SavePregapPlacement::AppendToPreviousExceptHtoa,
@@ -161,7 +161,7 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
         id: "num-title".to_string(),
         name: "Number and title".to_string(),
         codec: SaveCodec::Flac {
-            bit_depth: SaveBitDepth::Source,
+            bit_depth: SaveBitDepth::Bits16,
         },
         filename_tokens: vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title],
         pregap_placement: SavePregapPlacement::AppendToPreviousExceptHtoa,
@@ -276,7 +276,7 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
         id: "flac-image".to_string(),
         name: "FLAC image".to_string(),
         codec: SaveCodec::Flac {
-            bit_depth: SaveBitDepth::Source,
+            bit_depth: SaveBitDepth::Bits16,
         },
         filename_tokens: vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title],
         pregap_placement: SavePregapPlacement::SingleFileWithCue,
@@ -379,7 +379,7 @@ fn flac_save_preset(id: &str, placement: SavePregapPlacement) -> SavePreset {
         id: id.to_string(),
         name: id.to_string(),
         codec: SaveCodec::Flac {
-            bit_depth: SaveBitDepth::Source,
+            bit_depth: SaveBitDepth::Bits16,
         },
         filename_tokens: vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title],
         pregap_placement: placement,
