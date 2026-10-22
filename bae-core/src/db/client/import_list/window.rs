@@ -6,9 +6,9 @@
 //! the one key a selection names — never for the queue.
 
 use super::super::release_groupings::{load_candidate_on, skipped_on};
-use super::super::import_state::{load_pane_rows_on, load_states_on};
+use super::super::import_state::{load_album_pick_on, load_pane_rows_on, load_states_on};
 use super::super::source_releases::load_source_release_on;
-use super::super::records::check_releases_in_library_on;
+use super::super::records::{album_records_name_on, check_releases_in_library_on};
 use super::*;
 use crate::identify::{TerminalVerdict, VerdictSummary};
 use crate::import::cover_art::CoverChoice;
@@ -464,6 +464,7 @@ pub(super) struct CandidateDetailRows {
     statuses: Option<Vec<LibraryStatus>>,
     records: Vec<crate::import::ReleaseRecord>,
     picked_library_status: Option<LibraryStatus>,
+    album: crate::import::list::CandidateAlbum,
     embedded_cover: Option<(FileVersion, Vec<u8>)>,
 }
 
@@ -550,6 +551,7 @@ pub(super) fn load_candidate_detail_on(
             .next(),
         None => None,
     };
+    let album = candidate_album_on(sql, &content_hash, &records)?;
     let embedded_cover = match pane_rows.cover.as_ref() {
         Some(CoverSelection::Embedded(source_file_id)) => Some(stored_embedded_cover(
             sql,
@@ -561,14 +563,46 @@ pub(super) fn load_candidate_detail_on(
     };
     Ok(Some(CandidateDetailRows { candidate, source_error, actionable, skipped,
         imported_releases, current, pane_rows, artist_resolutions, metadata_revision,
-        statuses, records, picked_library_status, embedded_cover }))
+        statuses, records, picked_library_status, album, embedded_cover }))
+}
+
+/// The album an import of the candidate `content_hash`, linked to what
+/// `records` describe, files under: the one picked, else the one its records
+/// name, else a new one.
+fn candidate_album_on(
+    sql: &SqlReadContext<'_>,
+    content_hash: &str,
+    records: &[crate::import::ReleaseRecord],
+) -> Result<crate::import::list::CandidateAlbum, DbError> {
+    use crate::import::list::CandidateAlbum;
+    let title = |album_id: &str| -> Result<String, DbError> {
+        sql.query_row(
+            "SELECT title FROM albums WHERE id = ?",
+            params![album_id],
+            |row| row.get(0),
+        )
+        .map_err(DbError::from)
+    };
+    if let Some(album_id) = load_album_pick_on(sql, content_hash)? {
+        return Ok(CandidateAlbum::Picked {
+            title: title(&album_id)?,
+            album_id,
+        });
+    }
+    Ok(match album_records_name_on(sql, records, &[])? {
+        Some(album_id) => CandidateAlbum::Named {
+            title: title(&album_id)?,
+            album_id,
+        },
+        None => CandidateAlbum::New,
+    })
 }
 
 impl CandidateDetailRows {
     pub(super) fn process(self) -> Result<ImportCandidateDetailProjection, DbError> {
         let Self { candidate, source_error, actionable, skipped, imported_releases, current,
             pane_rows, artist_resolutions, metadata_revision, statuses,
-            records, picked_library_status, embedded_cover } = self;
+            records, picked_library_status, album, embedded_cover } = self;
         let metadata_provenance = current.as_ref().and_then(|state| state.metadata_provenance.clone());
         let release_link = current.as_ref().and_then(|state| state.release_link.clone());
     let metadata_author = current
@@ -645,6 +679,7 @@ impl CandidateDetailRows {
             imported_releases,
             records,
             picked_library_status,
+            album,
             metadata_draft: pane.edit,
             artist_resolutions,
             mapping: pane.mapping,
@@ -723,7 +758,7 @@ fn chosen_cover(
 /// check does not answer for is a read that must fail rather than a release
 /// silently resumed as "not in the library".
 fn library_statuses(
-    sql: &impl super::super::query::QueryOne,
+    sql: &(impl super::super::query::QueryOne + super::super::query::QueryRows),
     verdict: &TerminalVerdict,
 ) -> Result<Vec<LibraryStatus>, DbError> {
     let mut seen = HashSet::new();

@@ -524,7 +524,7 @@ async fn the_detail_resumes_the_stored_verdict_with_live_statuses() {
         library_statuses
             .matches
             .iter()
-            .map(|status| (status.release_id.as_str(), status.release_in_library))
+            .map(|status| (status.release_id.as_str(), status.release_in_library()))
             .collect::<Vec<_>>(),
         vec![("mb-verdict", false)],
         "statuses ride the resumed state, aligned with its matches"

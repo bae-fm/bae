@@ -128,6 +128,7 @@ extension ImportView {
             storagePinned: storagePinned,
             mappingActions: mappingActions(for: candidate),
             commitActions: commitActions(for: candidate),
+            albumActions: albumActions(for: candidate),
             onMovePane: { movePane($0, for: candidate) },
             onIdentify: { identify(candidate) },
             onSearchForRelease: { searchForRelease(candidate) },
@@ -178,6 +179,23 @@ extension ImportView {
                     choice: $1
                 )
             },
+            viewInLibrary: { uiStore.navigateToAlbum($0) }
+        )
+    }
+
+    /// The album row's actions: pick a library album for this candidate, or
+    /// leave it to its release's album, and find albums to pick.
+    private func albumActions(for candidate: Candidate) -> ImportAlbumActions {
+        let key = candidate.key
+        return ImportAlbumActions(
+            pick: { albumId in
+                Task {
+                    await saveCandidateEdit {
+                        try await importer.setCandidateAlbum(key, albumId)
+                    }
+                }
+            },
+            search: { try await importer.searchAlbums($0) },
             viewInLibrary: { uiStore.navigateToAlbum($0) }
         )
     }

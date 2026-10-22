@@ -246,7 +246,7 @@ pub fn combine_results(
         .collect();
     let in_library: HashSet<ReleaseKey> = all
         .iter()
-        .filter(|(_, status)| status.release_in_library)
+        .filter(|(_, status)| status.release_in_library())
         .map(|(result, _)| (result.source, result.release_id.clone()))
         .collect();
     let (offered, set_aside, medium_conflict, notes) = split_rows(

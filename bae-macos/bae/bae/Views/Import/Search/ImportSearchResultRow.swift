@@ -318,8 +318,13 @@ struct ImportSearchResultRow: View {
                     releaseId: "rel-456",
                     releaseInLibrary: true,
                     albumInLibrary: true,
-                    albumTitle: "Album Title",
-                    albumId: "album-1",
+                    albums: [
+                        BridgeLibraryAlbumMatch(
+                            albumId: "album-1",
+                            albumTitle: "Album Title",
+                            holdsRelease: true
+                        )
+                    ],
                 ),
                 agreements: nil,
                 isSelected: false,

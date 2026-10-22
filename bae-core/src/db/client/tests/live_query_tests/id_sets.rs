@@ -32,7 +32,7 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
         .unwrap();
     let initial = live.next().await.result.unwrap();
     assert_eq!(initial.len(), 2);
-    assert!(initial.iter().all(|status| !status.album_in_library));
+    assert!(initial.iter().all(|status| !status.album_in_library()));
 
     exec(
         &db,
@@ -54,10 +54,10 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
             .expect("a status per check")
     };
     let held = status(&updated, "source-release-1");
-    assert!(held.release_in_library);
-    assert!(held.album_in_library);
-    assert_eq!(held.album_id.as_deref(), Some(ALBUM_ID));
-    assert!(!status(&updated, "source-release-2").album_in_library);
+    assert!(held.release_in_library());
+    assert!(held.album_in_library());
+    assert_eq!(held.albums[0].album_id, ALBUM_ID);
+    assert!(!status(&updated, "source-release-2").album_in_library());
 
     exec(&db,
         "UPDATE release_records SET kind = 'album', key = 'source-group-1', album_key = NULL, url = 'https://musicbrainz.org/release-group/source-group-1' WHERE id = ?1",
@@ -69,8 +69,8 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
         .result
         .unwrap();
     let held = status(&album_only, "source-release-1");
-    assert!(!held.release_in_library);
-    assert!(held.album_in_library);
+    assert!(!held.release_in_library());
+    assert!(held.album_in_library());
 
     requests.set([other].into_iter().collect()).unwrap();
     let narrowed = live.next().await.result.unwrap();

@@ -368,7 +368,9 @@ stating one fact write one row
 - **An album with no group.** A release whose metadata came from its tags names
   no group, so its album gets a fresh id.
 - **A second catalog's group.** A Discogs import whose record pairs with the
-  MusicBrainz group of an album already in the library joins that album (§3.7).
+  MusicBrainz group of an album already in the library joins that album
+  (§3.7); where the two records name two library albums, the one the draft
+  was read from decides.
 - **Two devices editing one credit list.** A credit row is a place in the
   list, so two devices writing the same place write one row, and the artist it
   names merges like any other cell. One device shortening a list while another
@@ -904,10 +906,20 @@ Ana clicks Import. bae:
 4. **Checks the audio decodes**, in the same pass. A track that fails, or
    decodes short, fails the import rather than failing later at play time.
    This check is a setting, on by default.
-5. **Finds the album.** A release whose record's album matches an album in the
-   library joins it, even when the library already holds that pressing: the
-   import is another copy (§2.7). Otherwise the album takes its id from its
-   group (§2.6).
+5. **Finds the album.** The album the person picked on the pane, if any,
+   else the album the release's records name: the record the draft was read
+   from decides, then the other catalog's record — the first naming a
+   library album by a copy of its pressing (the import is another copy, §2.7)
+   or by its album (release group, master). Library albums are the
+   curator's: two albums the records name stay two, and no question is
+   asked. Where one record names several, its group's own album wins if the
+   library holds it, else the oldest. With neither, the album is new and
+   takes its id from its group (§2.6). The pane shows which: "New album", the
+   album the records name, or the one picked, and its album picker lists any
+   library album to pick instead; a picked album deleted meanwhile takes its
+   pick with it. Re-identifying a library release files it the same way.
+   The "already in your library" banner names every album holding the
+   release, or another release of its album.
 6. **Writes everything in one transaction**, from the draft as it stands, read
    from no source again: the album; the release, with a fresh random id and the
    folder's hash; its tracks, files, segments, credits, roles, works, records
@@ -2375,6 +2387,7 @@ Keyed by the candidate's content hash.
 | `import_candidate_sheet_disc`, `import_candidate_sheet_reference` | the person's CUE decisions |
 | `import_candidate_cover`, `import_candidate_cover_copy`, `import_candidate_remote_cover_asset` | the chosen cover and its fetched bytes |
 | `import_candidate_cover_option`, `import_candidate_cover_option_copy` | the covers the applied release offers the picker, in order |
+| `import_candidate_album_pick` | the library album the person picked for it to join |
 | `import_candidate_artist_asset`, `import_candidate_asset_preparation` | the fetched pictures of every Discogs artist the draft credits, and that all are ready |
 | `import_candidate_draft_provenance` | where the draft was read from |
 | `import_candidate_release_link`, `import_candidate_release_link_partner`, `import_candidate_release_link_album` | the pressing or album the candidate is linked to |
@@ -2527,6 +2540,7 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | `import_candidate_edit_field_set` | type one album field |
 | `import_candidate_labels_set` | set its labels and catalog numbers |
 | `import_candidate_barcodes_set` | set its barcodes |
+| `import_candidate_album_set` | pick the library album it joins, or leave it to its records |
 | `import_candidate_pressing_fact_set` | choose its area, media, status, packaging or Discogs details |
 | `import_candidate_cover_set` | choose its cover |
 | `import_start` | import a candidate as stored |

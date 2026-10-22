@@ -543,6 +543,30 @@ impl LibraryManager {
         Ok(self.database.load_import_candidate_states().await?)
     }
 
+    /// Pick the library album the candidate `content_hash` joins, or
+    /// (`None`) leave it to its records.
+    pub(crate) async fn set_candidate_album_pick(
+        &self,
+        content_hash: &str,
+        album_id: Option<&str>,
+    ) -> Result<(), crate::import::ImportError> {
+        self.database
+            .set_candidate_album_pick(content_hash, album_id)
+            .await
+            .map_err(|error| crate::import::ImportError::Db(LibraryError::Database(error)))
+    }
+
+    /// The library album picked for the candidate `content_hash`, if one is.
+    pub(crate) async fn candidate_album_pick(
+        &self,
+        content_hash: &str,
+    ) -> Result<Option<String>, crate::import::ImportError> {
+        self.database
+            .candidate_album_pick(content_hash)
+            .await
+            .map_err(|error| crate::import::ImportError::Db(LibraryError::Database(error)))
+    }
+
     pub async fn load_import_candidate_state(
         &self,
         content_hash: &str,

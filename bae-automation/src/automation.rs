@@ -258,6 +258,19 @@ impl Automation {
         Ok(EmptyResponse {})
     }
 
+    /// Pick the library album the candidate joins, or leave it to its records.
+    pub async fn set_candidate_album(
+        &self,
+        candidate_key: String,
+        album_id: Option<String>,
+    ) -> Result<EmptyResponse, AutomationError> {
+        let candidate = self.get_candidate(candidate_key).await?;
+        self.services
+            .import_set_candidate_album(candidate.key(), album_id)
+            .await?;
+        Ok(EmptyResponse {})
+    }
+
     /// Set the candidate's barcode rows.
     pub async fn set_candidate_barcodes(
         &self,
@@ -546,6 +559,13 @@ impl Automation {
                 let input: CandidateLabelsInput = from_value(args)?;
                 to_value(
                     self.set_candidate_labels(input.candidate_key, input.labels)
+                        .await?,
+                )
+            }
+            AutomationTool::ImportCandidateAlbumSet => {
+                let input: CandidateAlbumInput = from_value(args)?;
+                to_value(
+                    self.set_candidate_album(input.candidate_key, input.album_id)
                         .await?,
                 )
             }

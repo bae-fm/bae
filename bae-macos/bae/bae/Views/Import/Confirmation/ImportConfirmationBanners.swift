@@ -26,12 +26,7 @@ struct ImportConfirmationBanners: View {
                         .themeText(.body)
                         .foregroundStyle(StatusTone.warning.color)
                     Spacer()
-                    if let albumId = libStatus.albumId {
-                        Button("View in Library") {
-                            onViewInLibrary(albumId)
-                        }
-                        .controlSize(.small)
-                    }
+                    viewInLibrary(libStatus.albums.filter(\.holdsRelease))
                 }
                 .notice(.warning)
             }
@@ -43,12 +38,7 @@ struct ImportConfirmationBanners: View {
                     )
                     .themeText(.body)
                     Spacer()
-                    if let albumId = libStatus.albumId {
-                        Button("View in Library") {
-                            onViewInLibrary(albumId)
-                        }
-                        .controlSize(.small)
-                    }
+                    viewInLibrary(libStatus.albums)
                 }
                 .notice(.info)
             }
@@ -60,6 +50,26 @@ struct ImportConfirmationBanners: View {
             ErrorDetailDisclosure(error: DisplayError(line: error))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .notice(.danger)
+        }
+    }
+
+    /// The way to the library album the release is in: a button for one
+    /// album, a menu naming each when several hold it.
+    @ViewBuilder
+    private func viewInLibrary(_ albums: [BridgeLibraryAlbumMatch]) -> some View
+    {
+        if albums.count == 1, let album = albums.first {
+            Button("View in Library") { onViewInLibrary(album.albumId) }
+                .controlSize(.small)
+        }
+        else if !albums.isEmpty {
+            Menu("View in Library") {
+                ForEach(albums, id: \.albumId) { album in
+                    Button(album.albumTitle) { onViewInLibrary(album.albumId) }
+                }
+            }
+            .controlSize(.small)
+            .fixedSize()
         }
     }
 
@@ -190,8 +200,13 @@ struct ImportConfirmationBanners: View {
                     releaseId: "rel-123",
                     releaseInLibrary: true,
                     albumInLibrary: true,
-                    albumTitle: "Album Title",
-                    albumId: "preview-album"
+                    albums: [
+                        BridgeLibraryAlbumMatch(
+                            albumId: "preview-album",
+                            albumTitle: "Album Title",
+                            holdsRelease: true
+                        )
+                    ]
                 ),
                 importStatus: nil,
                 error: "Couldn't shape the edit: missing album title",

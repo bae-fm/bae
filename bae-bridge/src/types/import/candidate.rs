@@ -265,26 +265,91 @@ pub fn bridge_import_phase_key(phase: BridgeImportPhase) -> String {
     phase.loc_key().to_string()
 }
 
+/// The library album an import of a candidate files under. Mirrors
+/// `bae_core::import::list::CandidateAlbum`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeCandidateAlbum {
+    /// A new album: none is picked and its records name none the library
+    /// holds.
+    New,
+    /// The album its records name.
+    Named { album_id: String, title: String },
+    /// The album the person picked, over what the records name.
+    Picked { album_id: String, title: String },
+}
+
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeCandidateAlbum = bae_core::import::list::CandidateAlbum,
+    from_core: pub(crate) fn,
+    variants: {
+        New,
+        Named { album_id, title },
+        Picked { album_id, title },
+    },
+}
+
+/// A library album the album picker offers: its title, credit line and year.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeAlbumChoice {
+    pub album_id: String,
+    pub title: String,
+    pub artist_name: String,
+    pub year: Option<i32>,
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeAlbumChoice {
+    pub(crate) fn from_core(album: bae_core::db::DbAlbumSearchResult) -> Self {
+        Self {
+            album_id: album.id,
+            title: album.title,
+            artist_name: album.artist_name,
+            year: album.year,
+        }
+    }
+}
+
+/// What the library holds of one release: every album holding it or another
+/// release of its album, those holding the release first.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeLibraryStatus {
     pub release_id: String,
     pub release_in_library: bool,
     pub album_in_library: bool,
-    pub album_title: Option<String>,
-    pub album_id: Option<String>,
+    pub albums: Vec<BridgeLibraryAlbumMatch>,
+}
+
+/// One library album a release's records name.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeLibraryAlbumMatch {
+    pub album_id: String,
+    pub album_title: String,
+    /// It holds a copy of the release itself.
+    pub holds_release: bool,
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeLibraryStatus {
+    pub(crate) fn from_core(status: bae_core::db::LibraryStatus) -> Self {
+        Self {
+            release_in_library: status.release_in_library(),
+            album_in_library: status.album_in_library(),
+            release_id: status.release_id,
+            albums: status
+                .albums
+                .into_iter()
+                .map(BridgeLibraryAlbumMatch::from_core)
+                .collect(),
+        }
+    }
 }
 
 mirror_struct! {
     #[cfg(feature = "desktop")]
-    BridgeLibraryStatus = bae_core::db::LibraryStatus,
+    BridgeLibraryAlbumMatch = bae_core::db::LibraryAlbumMatch,
     from_core: pub(crate) fn,
-    fields: {
-        release_id,
-        release_in_library,
-        album_in_library,
-        album_title,
-        album_id,
-    },
+    fields: { album_id, album_title, holds_release },
 }
 
 // ── Unified UI event system ─────────────────────────────────────────────

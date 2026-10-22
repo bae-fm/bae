@@ -224,10 +224,19 @@ pub struct LibraryCheck {
 #[derive(Debug, Clone, PartialEq)]
 pub struct LibraryStatus {
     pub release_id: String,
-    pub release_in_library: bool,
-    pub album_in_library: bool,
-    pub album_title: Option<String>,
-    pub album_id: Option<String>,
+    /// Every library album holding this release or another release of its
+    /// album: those holding the release itself first, then by age.
+    pub albums: Vec<LibraryAlbumMatch>,
+}
+
+/// One library album a release's records name.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LibraryAlbumMatch {
+    pub album_id: String,
+    pub album_title: String,
+    /// It holds a copy of the release itself, not only another release of
+    /// its album.
+    pub holds_release: bool,
 }
 
 impl LibraryStatus {
@@ -236,11 +245,18 @@ impl LibraryStatus {
     pub fn absent(release_id: impl Into<String>) -> Self {
         Self {
             release_id: release_id.into(),
-            release_in_library: false,
-            album_in_library: false,
-            album_title: None,
-            album_id: None,
+            albums: Vec::new(),
         }
+    }
+
+    /// Whether some album holds a copy of the release itself.
+    pub fn release_in_library(&self) -> bool {
+        self.albums.iter().any(|album| album.holds_release)
+    }
+
+    /// Whether some album holds the release or another release of its album.
+    pub fn album_in_library(&self) -> bool {
+        !self.albums.is_empty()
     }
 }
 

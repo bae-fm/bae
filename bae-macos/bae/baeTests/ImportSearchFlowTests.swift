@@ -568,6 +568,7 @@ struct ImportSearchFlowLibraryStatusTests {
         try await Wait.until {
             store.candidate(forKey: candidate.key)?
                 .libraryStatuses["rel-live"]?
+                .albums.first?
                 .albumId == "album-live"
         }
 
@@ -610,6 +611,7 @@ struct ImportSearchFlowLibraryStatusTests {
         try await Wait.until {
             store.candidate(forKey: candidate.key)?
                 .libraryStatuses["rel-live"]?
+                .albums.first?
                 .albumId == "album-new"
         }
     }
@@ -619,8 +621,13 @@ struct ImportSearchFlowLibraryStatusTests {
             releaseId: "rel-live",
             releaseInLibrary: true,
             albumInLibrary: true,
-            albumTitle: "Album Title",
-            albumId: albumId
+            albums: [
+                BridgeLibraryAlbumMatch(
+                    albumId: albumId,
+                    albumTitle: "Album Title",
+                    holdsRelease: true
+                )
+            ]
         )
     }
 

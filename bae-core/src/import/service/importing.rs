@@ -314,10 +314,14 @@ impl ImportService {
         )?;
         let track_bindings = assembled.bindings;
 
+        let picked_album = library_manager
+            .candidate_album_pick(&categorized.content_hash())
+            .await?;
         let mut prepared = self
             .reconcile_prepared_release(
                 assembled.parsed,
                 records,
+                picked_album,
                 assembled.picked,
                 std::mem::take(&mut prepared_assets.artist_images),
             )

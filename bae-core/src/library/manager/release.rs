@@ -78,34 +78,17 @@ impl LibraryManager {
         Ok(self.database.get_release_mediums(release_id).await?)
     }
 
+    /// The library album an import carrying `records` joins, or `None` for a
+    /// new one (see [`crate::db::Database::album_records_name`]).
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn find_existing_album_for_import(
         &self,
         records: &[crate::import::ReleaseRecord],
     ) -> Result<Option<String>, crate::import::ImportError> {
-        if records.is_empty() {
-            return Ok(None);
-        }
-
-        // Another copy of the same pressing belongs to the existing album,
-        // including a pressing with no catalog album key.
-        if let Some(existing) = self
-            .database
-            .find_album_by_record_key(records)
+        self.database
+            .album_records_name(records, &[])
             .await
-            .map_err(|e| crate::import::ImportError::Db(LibraryError::Database(e)))?
-        {
-            return Ok(Some(existing.id));
-        }
-
-        // Cross-catalog merge: a record's group matching a row already there.
-        let album_id = self
-            .database
-            .find_album_by_record_group_excluding(records, &[])
-            .await
-            .map_err(|e| crate::import::ImportError::Db(LibraryError::Database(e)))?;
-
-        Ok(album_id)
+            .map_err(|e| crate::import::ImportError::Db(LibraryError::Database(e)))
     }
 
     /// Re-run the seeding projection from the release's provenance and return

@@ -425,6 +425,7 @@ extension MappingFixtures {
             importStatus: nil,
             remoteCovers: [],
             pickedLibraryStatus: nil,
+            album: .new,
             fileEvidence: [],
             metadataDraft: edit,
             artistResolutions: [],

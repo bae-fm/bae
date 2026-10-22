@@ -640,10 +640,10 @@ async fn test_check_release_in_library_exact_match() {
     }];
     let statuses = manager.check_releases_in_library(&checks).await.unwrap();
     assert_eq!(statuses.len(), 1);
-    assert!(statuses[0].release_in_library);
-    assert!(statuses[0].album_in_library);
-    assert_eq!(statuses[0].album_id.as_deref(), Some(album.id.as_str()));
-    assert_eq!(statuses[0].album_title.as_deref(), Some("Album Title"));
+    assert!(statuses[0].release_in_library());
+    assert!(statuses[0].album_in_library());
+    assert_eq!(statuses[0].albums[0].album_id, album.id);
+    assert_eq!(statuses[0].albums[0].album_title, "Album Title");
 }
 
 #[tokio::test]
@@ -659,9 +659,9 @@ async fn test_check_album_in_library_group_only() {
     }];
     let statuses = manager.check_releases_in_library(&checks).await.unwrap();
     assert_eq!(statuses.len(), 1);
-    assert!(!statuses[0].release_in_library);
-    assert!(statuses[0].album_in_library);
-    assert_eq!(statuses[0].album_id.as_deref(), Some(album.id.as_str()));
+    assert!(!statuses[0].release_in_library());
+    assert!(statuses[0].album_in_library());
+    assert_eq!(statuses[0].albums[0].album_id, album.id);
 }
 
 #[tokio::test]
@@ -679,9 +679,9 @@ async fn test_check_album_in_library_other_pressing_of_the_group() {
     }];
     let statuses = manager.check_releases_in_library(&checks).await.unwrap();
     assert_eq!(statuses.len(), 1);
-    assert!(!statuses[0].release_in_library);
-    assert!(statuses[0].album_in_library);
-    assert_eq!(statuses[0].album_id.as_deref(), Some(album.id.as_str()));
+    assert!(!statuses[0].release_in_library());
+    assert!(statuses[0].album_in_library());
+    assert_eq!(statuses[0].albums[0].album_id, album.id);
 }
 
 #[tokio::test]
@@ -708,8 +708,8 @@ async fn test_check_pressing_match_wins_over_sibling_pressing_row() {
     }];
     let statuses = manager.check_releases_in_library(&checks).await.unwrap();
     assert_eq!(statuses.len(), 1);
-    assert!(statuses[0].release_in_library);
-    assert!(statuses[0].album_in_library);
+    assert!(statuses[0].release_in_library());
+    assert!(statuses[0].album_in_library());
 }
 
 #[tokio::test]
@@ -723,9 +723,9 @@ async fn test_check_release_not_in_library() {
     }];
     let statuses = manager.check_releases_in_library(&checks).await.unwrap();
     assert_eq!(statuses.len(), 1);
-    assert!(!statuses[0].release_in_library);
-    assert!(!statuses[0].album_in_library);
-    assert!(statuses[0].album_id.is_none());
+    assert!(!statuses[0].release_in_library());
+    assert!(!statuses[0].album_in_library());
+    assert!(statuses[0].albums.is_empty());
 }
 
 #[tokio::test]
@@ -741,8 +741,100 @@ async fn test_check_cross_source_doesnt_leak() {
         source_group_id: Some("mb-rg-1".to_string()),
     }];
     let statuses = manager.check_releases_in_library(&checks).await.unwrap();
-    assert!(!statuses[0].release_in_library);
-    assert!(!statuses[0].album_in_library);
+    assert!(!statuses[0].release_in_library());
+    assert!(!statuses[0].album_in_library());
 }
 
 // -- Pure helpers: validation folding and artist-id remapping --
+
+// ── An import whose records name two library albums (the applied record decides) ──
+
+/// A library holding album X filed under MusicBrainz group `mb-rg-x` and
+/// album Y filed under Discogs master `d-master-y`.
+async fn two_albums() -> (LibraryManager, TempDir, DbAlbum, DbAlbum) {
+    let (manager, tmp, x, _) =
+        album_with("Album X", &[mb_identity("mb-rg-x", "mb-rel-x")]).await;
+    let y = make_album("Album Y");
+    let release_y = make_release(&y.id);
+    insert_with_identities(
+        &manager,
+        &y,
+        &release_y,
+        &[discogs_identity("d-master-y", "d-rel-y")],
+    )
+    .await;
+    (manager, tmp, x, y)
+}
+
+/// The record the draft reads names the album, never the row SQLite returns
+/// first: applied from MusicBrainz it joins X, applied from Discogs Y.
+#[tokio::test]
+async fn the_applied_record_decides_between_two_albums() {
+    let (manager, _tmp, x, y) = two_albums().await;
+    let pressing = |catalog, release: &str, album: &str, applied| {
+        ReleaseRecord::new(
+            &crate::import::MetadataRef::new(catalog, release),
+            Some(album.to_string()),
+            applied,
+        )
+    };
+    let musicbrainz_applied = vec![
+        pressing(Catalog::Discogs, "d-rel-new", "d-master-y", false),
+        pressing(Catalog::MusicBrainz, "mb-rel-new", "mb-rg-x", true),
+    ];
+    assert_eq!(album_for_import(&manager, &musicbrainz_applied).await, Some(x.id));
+    let discogs_applied = vec![
+        pressing(Catalog::MusicBrainz, "mb-rel-new", "mb-rg-x", false),
+        pressing(Catalog::Discogs, "d-rel-new", "d-master-y", true),
+    ];
+    assert_eq!(album_for_import(&manager, &discogs_applied).await, Some(y.id));
+}
+
+/// An applied record naming no album the library holds leaves it to its
+/// partner's; neither naming one is a new album.
+#[tokio::test]
+async fn an_applied_record_naming_no_album_takes_its_partner_s() {
+    let (manager, _tmp, _x, y) = two_albums().await;
+    let records = vec![
+        ReleaseRecord::new(
+            &crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-rel-new"),
+            Some("mb-rg-unknown".to_string()),
+            true,
+        ),
+        discogs_identity("d-master-y", "d-rel-new"),
+    ];
+    assert_eq!(album_for_import(&manager, &records).await, Some(y.id));
+    let neither = vec![ReleaseRecord::new(
+        &crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-rel-new"),
+        Some("mb-rg-unknown".to_string()),
+        true,
+    )];
+    assert_eq!(album_for_import(&manager, &neither).await, None);
+}
+
+/// The status probe names every album holding a release of the group, those
+/// holding the release itself first.
+#[tokio::test]
+async fn the_status_probe_names_every_album_of_the_group() {
+    let (manager, _tmp, x, _) =
+        album_with("Album X", &[mb_identity("mb-rg-1", "mb-rel-1")]).await;
+    let other = make_album("Album Other");
+    let release = make_release(&other.id);
+    insert_with_identities(&manager, &other, &release, &[mb_identity("mb-rg-1", "mb-rel-2")])
+        .await;
+
+    let statuses = manager
+        .check_releases_in_library(&[crate::db::LibraryCheck {
+            release_id: "mb-rel-2".to_string(),
+            source: Catalog::MusicBrainz,
+            source_group_id: Some("mb-rg-1".to_string()),
+        }])
+        .await
+        .unwrap();
+    let albums: Vec<(&str, bool)> = statuses[0]
+        .albums
+        .iter()
+        .map(|album| (album.album_id.as_str(), album.holds_release))
+        .collect();
+    assert_eq!(albums, [(other.id.as_str(), true), (x.id.as_str(), false)]);
+}

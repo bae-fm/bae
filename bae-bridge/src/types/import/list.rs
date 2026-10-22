@@ -227,6 +227,8 @@ pub struct BridgeImportCandidateDetail {
     pub remote_covers: Vec<BridgeRemoteCover>,
     /// Whether the picked release is already in the library.
     pub picked_library_status: Option<BridgeLibraryStatus>,
+    /// The library album an import of it files under.
+    pub album: BridgeCandidateAlbum,
     /// Extracted identifying signals pinned to their source files. Independent
     /// of the selected pressing; support for a search result is carried by its
     /// result provenance instead.

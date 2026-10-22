@@ -60,6 +60,11 @@
                     chooseArtistIdentity: { _, _ in },
                     viewInLibrary: { _ in },
                 ),
+                albumActions: ImportAlbumActions(
+                    pick: { _ in },
+                    search: { _ in [] },
+                    viewInLibrary: { _ in }
+                ),
                 onMovePane: { _ in },
                 onIdentify: {},
                 onSearchForRelease: {},

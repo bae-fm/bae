@@ -345,6 +345,7 @@ mod tests {
         "import_candidate_sheet_disc",
         "import_candidate_sheet_reference",
         "import_candidate_cover",
+        "import_candidate_album_pick",
         "import_candidate_cover_copy",
         "import_candidate_cover_option",
         "import_candidate_cover_option_copy",

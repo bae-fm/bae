@@ -42,9 +42,9 @@ impl ImportService {
     /// the [`PreparedMetadata`] the worker runs the import from. Pure DB reads
     /// and string remapping — no network.
     ///
-    /// A release whose records name an album already in the library joins it;
-    /// one with no records — read from its files or from nothing — lands on
-    /// a fresh album. `picked` are the artist rows that are library artists a
+    /// A release joins the library album `picked_album` names, else the one its
+    /// records name; one with neither — read from its files or from nothing —
+    /// lands on a fresh album. `picked` are the artist rows that are library artists a
     /// person picked.
     ///
     /// Artists are not decided here. Every artist link keeps naming its credit,
@@ -54,6 +54,7 @@ impl ImportService {
         &self,
         parsed: crate::import::ReleaseRows,
         records: Vec<crate::import::ReleaseRecord>,
+        picked_album: Option<String>,
         picked_artists: std::collections::HashSet<String>,
         prepared_artist_images: Vec<crate::import::PreparedArtistImage>,
     ) -> Result<PreparedMetadata, crate::import::ImportError> {
@@ -74,9 +75,17 @@ impl ImportService {
 
         let album_title = db_album.title.clone();
 
-        let existing_album_id = library_manager
-            .find_existing_album_for_import(&records)
-            .await?;
+        // The album the person picked, else the one the records name. A
+        // picked album deleted since fails the commit on the release's
+        // foreign key.
+        let existing_album_id = match picked_album {
+            Some(album_id) => Some(album_id),
+            None => {
+                library_manager
+                    .find_existing_album_for_import(&records)
+                    .await?
+            }
+        };
         match &existing_album_id {
             Some(album_id) => {
                 db_release.album_id = album_id.clone();

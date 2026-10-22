@@ -34,6 +34,7 @@ struct ImportMappingPane: View {
     var storagePinned: Bool
     let mappingActions: ImportMappingActions
     let commitActions: ImportCommitActions
+    let albumActions: ImportAlbumActions
     /// Move the pane as the person asked.
     let onMovePane: (BridgePaneMove) -> Void
     let onIdentify: () -> Void
@@ -64,6 +65,13 @@ struct ImportMappingPane: View {
                 )
                 metadataSourceSection
                 banners
+                if let detail = candidate.detail {
+                    ImportAlbumRow(
+                        album: detail.album,
+                        canEdit: detail.actionable,
+                        actions: albumActions
+                    )
+                }
                 if candidate.detail != nil {
                     if !mapping.images.isEmpty {
                         imagesSection

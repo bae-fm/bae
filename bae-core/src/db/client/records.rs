@@ -29,80 +29,22 @@ impl Database {
             .await
     }
 
-    /// Look up an album by record rows. Returns the first album that
-    /// has a release with a record matching any of `records` on
-    /// `(catalog, key)`.
-    ///
-    /// Another import of the same pressing joins this album as its own copy.
-    pub async fn find_album_by_record_key(
+    /// The library album `records` file a release under, leaving out the
+    /// releases `excluding`. The applied record — the one the draft reads —
+    /// decides, then each other record in order: the first that names an
+    /// album the library holds names it, by a copy of its pressing, else by
+    /// its album (MusicBrainz release group, Discogs master). Where one record
+    /// names several, its group's own album is it if the library holds it,
+    /// else the oldest.
+    pub async fn album_records_name(
         &self,
         records: &[crate::import::ReleaseRecord],
-    ) -> Result<Option<DbAlbum>, DbError> {
-        let pressing_pairs: Vec<(String, String)> = records
-            .iter()
-            .filter_map(crate::import::ReleaseRecord::release_ref)
-            .map(|release| (release.catalog.as_str().to_string(), release.key.clone()))
-            .collect();
-        if pressing_pairs.is_empty() {
-            return Ok(None);
-        }
-
-        self.read(move |sql| {
-            find_album_by_record_pairs(
-                &sql,
-                r#"
-                    SELECT
-                        a.id, a.title, a.year,
-                        a.is_compilation, a.created_at
-                    FROM albums a
-                    JOIN releases r ON r.album_id = a.id
-                    JOIN release_records rr ON rr.release_id = r.id
-                "#,
-                "CASE WHEN rr.kind = 'pressing' THEN rr.key END",
-                &pressing_pairs,
-                &[],
-                row_to_album,
-            )
-        })
-        .await
-    }
-
-    /// Look up an album by explicit album identities or known pressing parents.
-    /// Returns the first album matching `(catalog, album key)`, ignoring rows
-    /// that belong to `exclude_release_ids`.
-    /// Used to attach an import to its album and by `set_records` (excluding the
-    /// release whose about-to-be-replaced records must not match against
-    /// themselves).
-    pub async fn find_album_by_record_group_excluding(
-        &self,
-        records: &[crate::import::ReleaseRecord],
-        exclude_release_ids: &[String],
+        excluding: &[String],
     ) -> Result<Option<String>, DbError> {
-        let pairs: Vec<(String, String)> = records
-            .iter()
-            .filter_map(crate::import::ReleaseRecord::album_ref)
-            .map(|album| (album.catalog.as_str().to_string(), album.key))
-            .collect();
-        if pairs.is_empty() {
-            return Ok(None);
-        }
-        let exclude_release_ids = exclude_release_ids.to_vec();
-
-        self.read(move |sql| {
-            find_album_by_record_pairs(
-                &sql,
-                r#"
-                    SELECT r.album_id
-                    FROM releases r
-                    JOIN release_records rr ON rr.release_id = r.id
-                "#,
-                "CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END",
-                &pairs,
-                &exclude_release_ids,
-                |row| row.get::<_, String>("album_id"),
-            )
-        })
-        .await
+        let records = records.to_vec();
+        let excluding = excluding.to_vec();
+        self.read(move |sql| album_records_name_on(&sql, &records, &excluding))
+            .await
     }
 
     /// Replace a release's record rows, set whether its draft was read off
@@ -137,21 +79,10 @@ impl Database {
     /// holds the same pressing or the same album (group). Drives the
     /// "in library" badges shown in the identify-pipeline result lists.
     ///
-    /// Per check:
-    ///
-    /// - `release_in_library` is true when a record
-    ///   matches `(check.catalog, check.release_id)` — a record at
-    ///   this specific pressing. The `ORDER BY` puts a pressing match
-    ///   ahead of a group-only one.
-    /// - `album_in_library` is true when a record
-    ///   matches `(check.catalog, check.source_group_id)` — i.e. some
-    ///   release in the library shares the candidate's group.
-    ///
-    /// `album_title` / `album_id` carry the matched album's display
-    /// info. When both flags are true, they describe the album holding
-    /// the matching pressing; when only `album_in_library` is true,
-    /// they describe the album holding a different release in the same
-    /// group.
+    /// Per check, every album holding a release whose record matches
+    /// `(check.catalog, check.release_id)` — a copy of this pressing — or
+    /// `(check.catalog, check.source_group_id)` — another release of its
+    /// group — each once, those holding the pressing first, then by age.
     pub async fn check_releases_in_library(
         &self,
         checks: &[LibraryCheck],
@@ -307,20 +238,72 @@ pub(super) fn set_records_on(
     Ok(())
 }
 
-/// The shared body of the two record lookups above: match `pairs` against
-/// `(rr.catalog, {key_expression})`, skip records belonging to
-/// `exclude_release_ids`, and map the first row the query produces.
-///
-/// `select` supplies the projection and joined tables; `key_expression` chooses
-/// the pressing or album identity. The pair predicate binds the requested keys.
-fn find_album_by_record_pairs<T>(
+/// The library album `records` file a release under, leaving out the
+/// releases `excluding`. The applied record — the one the draft reads —
+/// decides, then each other record in order: the first that names an album
+/// the library holds names it, by a copy of its pressing, else by its album
+/// (MusicBrainz release group, Discogs master). Library albums are the
+/// curator's: two albums the records name stay two, and the applied record's
+/// wins over a partner's. Where one record names several, its group's own
+/// album is it if the library holds it, else the oldest.
+pub(crate) fn album_records_name_on(
     sql: &SqlReadContext<'_>,
-    select: &str,
+    records: &[crate::import::ReleaseRecord],
+    excluding: &[String],
+) -> Result<Option<String>, DbError> {
+    let mut ordered: Vec<&crate::import::ReleaseRecord> = records.iter().collect();
+    ordered.sort_by_key(|record| !record.reads_draft());
+    for record in ordered {
+        let pressing: Vec<(String, String)> = record
+            .release_ref()
+            .map(|release| (release.catalog.as_str().to_string(), release.key.clone()))
+            .into_iter()
+            .collect();
+        let mut albums = find_albums_by_record_pairs(
+            sql,
+            "CASE WHEN rr.kind = 'pressing' THEN rr.key END",
+            &pressing,
+            excluding,
+        )?;
+        if albums.is_empty() {
+            let album: Vec<(String, String)> = record
+                .album_ref()
+                .map(|album| (album.catalog.as_str().to_string(), album.key))
+                .into_iter()
+                .collect();
+            albums = find_albums_by_record_pairs(
+                sql,
+                "CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END",
+                &album,
+                excluding,
+            )?;
+        }
+        let own = crate::db::identity::album_id_for_records(std::slice::from_ref(record));
+        if let Some(album) = own
+            .filter(|own| albums.contains(own))
+            .or_else(|| albums.into_iter().next())
+        {
+            return Ok(Some(album));
+        }
+    }
+    Ok(None)
+}
+
+/// The lookup [`album_records_name_on`] reads each record by: every album holding a
+/// release with a record matching `pairs` on `(rr.catalog, {key_expression})`,
+/// skipping records of `exclude_release_ids`, each once, oldest first (ties
+/// by id): a stated order, so every device reads one list.
+///
+/// `key_expression` chooses the pressing or album identity.
+fn find_albums_by_record_pairs(
+    sql: &SqlReadContext<'_>,
     key_expression: &str,
     pairs: &[(String, String)],
     exclude_release_ids: &[String],
-    row_to: impl FnOnce(&Row<'_>) -> rusqlite::Result<T>,
-) -> Result<Option<T>, DbError> {
+) -> Result<Vec<String>, DbError> {
+    if pairs.is_empty() {
+        return Ok(Vec::new());
+    }
     let placeholders = pairs
         .iter()
         .map(|_| "(?, ?)")
@@ -339,10 +322,13 @@ fn find_album_by_record_pairs<T>(
         )
     };
     let query = format!(
-        "{select}
-         WHERE (rr.catalog, {key_expression}) IN ({placeholders})
-           {exclude_predicate}
-         LIMIT 1"
+        "SELECT a.id FROM albums a
+         WHERE a.id IN (
+             SELECT r.album_id FROM releases r
+             JOIN release_records rr ON rr.release_id = r.id
+             WHERE (rr.catalog, {key_expression}) IN ({placeholders})
+               {exclude_predicate})
+         ORDER BY a.created_at, a.id"
     );
     let mut binds: Vec<&str> = Vec::with_capacity(pairs.len() * 2 + exclude_release_ids.len());
     for (catalog, key) in pairs {
@@ -352,13 +338,14 @@ fn find_album_by_record_pairs<T>(
     for release_id in exclude_release_ids {
         binds.push(release_id);
     }
-    sql.query_row(&query, rusqlite::params_from_iter(binds.iter()), row_to)
-        .optional()
-        .map_err(DbError::from)
+    sql.query(&query, rusqlite::params_from_iter(binds.iter()), |row| {
+        row.get::<_, String>(0)
+    })
+    .map_err(DbError::from)
 }
 
 pub(super) fn check_releases_in_library_on(
-    sql: &impl super::query::QueryOne,
+    sql: &(impl super::query::QueryOne + super::query::QueryRows),
     checks: &[LibraryCheck],
 ) -> Result<Vec<LibraryStatus>, DbError> {
     let mut statuses = Vec::with_capacity(checks.len());
@@ -366,52 +353,41 @@ pub(super) fn check_releases_in_library_on(
     for check in checks {
         let catalog = check.source.as_str();
         let group_id = check.source_group_id.as_deref();
-        let matched = sql
-            .query_row(
-                r#"
-                            SELECT
-                                a.id AS album_id,
-                                a.title AS album_title,
-                                (rr.kind = 'pressing' AND rr.key = ?) AS release_match
-                            FROM albums a
-                            JOIN releases r ON r.album_id = a.id
-                            JOIN release_records rr ON rr.release_id = r.id
-                            WHERE rr.catalog = ?
-                              AND (
-                                  (rr.kind = 'pressing' AND rr.key = ?)
-                                  OR (? IS NOT NULL AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) = ?)
-                              )
-                            ORDER BY release_match DESC
-                            LIMIT 1
-                            "#,
-                params![
-                    check.release_id,
-                    catalog,
-                    check.release_id,
-                    group_id,
-                    group_id
-                ],
-                |row| {
-                    Ok((
-                        row.get::<_, String>("album_id")?,
-                        row.get::<_, String>("album_title")?,
-                        row.get::<_, i64>("release_match")? != 0,
-                    ))
-                },
-            )
-            .optional()?;
-
-        let (album_id, album_title, release_in_library) = matched
-            .map(|(album_id, album_title, release_match)| {
-                (Some(album_id), Some(album_title), release_match)
-            })
-            .unwrap_or((None, None, false));
+        let albums = sql.query(
+            r#"
+                SELECT
+                    a.id AS album_id,
+                    a.title AS album_title,
+                    MAX(rr.kind = 'pressing' AND rr.key = ?) AS holds_release
+                FROM albums a
+                JOIN releases r ON r.album_id = a.id
+                JOIN release_records rr ON rr.release_id = r.id
+                WHERE rr.catalog = ?
+                  AND (
+                      (rr.kind = 'pressing' AND rr.key = ?)
+                      OR (? IS NOT NULL AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) = ?)
+                  )
+                GROUP BY a.id
+                ORDER BY holds_release DESC, a.created_at, a.id
+            "#,
+            params![
+                check.release_id,
+                catalog,
+                check.release_id,
+                group_id,
+                group_id
+            ],
+            |row| {
+                Ok(crate::db::LibraryAlbumMatch {
+                    album_id: row.get("album_id")?,
+                    album_title: row.get("album_title")?,
+                    holds_release: row.get::<_, i64>("holds_release")? != 0,
+                })
+            },
+        )?;
         statuses.push(LibraryStatus {
             release_id: check.release_id.clone(),
-            release_in_library,
-            album_in_library: album_id.is_some(),
-            album_title,
-            album_id,
+            albums,
         });
     }
 

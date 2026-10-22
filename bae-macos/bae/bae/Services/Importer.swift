@@ -73,6 +73,8 @@ private struct ImportOperations: Sendable {
     let setCandidateLabels:
         @Sendable (String, [BridgeRawLabelEdit]) async throws -> Void
     let setCandidateBarcodes: @Sendable (String, [String]) async throws -> Void
+    let setCandidateAlbum: @Sendable (String, String?) async throws -> Void
+    let searchAlbums: @Sendable (String) async throws -> [BridgeAlbumChoice]
     let setCandidatePressingFact:
         @Sendable (String, BridgePressingFactEdit) async throws -> Void
     let setCandidateAlbumArtists:
@@ -245,6 +247,15 @@ extension ImportOperations {
                     barcodes: $1
                 )
             },
+            setCandidateAlbum: {
+                try await handle.setCandidateAlbum(
+                    candidateKey: $0,
+                    albumId: $1
+                )
+            },
+            searchAlbums: {
+                try await handle.searchAlbums(query: $0)
+            },
             setCandidatePressingFact: {
                 try await handle.setCandidatePressingFact(
                     candidateKey: $0,
@@ -416,6 +427,12 @@ final class Importer: Sendable, Observable {
         setCandidateBarcodes:
             @escaping @Sendable (String, [String]) async throws
             -> Void = { _, _ in },
+        setCandidateAlbum:
+            @escaping @Sendable (String, String?) async throws
+            -> Void = { _, _ in },
+        searchAlbums:
+            @escaping @Sendable (String) async throws
+            -> [BridgeAlbumChoice] = { _ in [] },
         setCandidatePressingFact:
             @escaping @Sendable (String, BridgePressingFactEdit) async throws
             -> Void = { _, _ in },
@@ -487,6 +504,8 @@ final class Importer: Sendable, Observable {
             setCandidateEditField: setCandidateEditField,
             setCandidateLabels: setCandidateLabels,
             setCandidateBarcodes: setCandidateBarcodes,
+            setCandidateAlbum: setCandidateAlbum,
+            searchAlbums: searchAlbums,
             setCandidatePressingFact: setCandidatePressingFact,
             setCandidateAlbumArtists: setCandidateAlbumArtists,
             setCandidateTrackEdit: setCandidateTrackEdit,
@@ -745,6 +764,20 @@ extension Importer {
         _ labels: [BridgeRawLabelEdit]
     ) async throws {
         try await operations.setCandidateLabels(candidateKey, labels)
+    }
+
+    /// Pick the library album this candidate joins, or (`nil`) leave it to
+    /// the album its release names.
+    func setCandidateAlbum(
+        _ candidateKey: String,
+        _ albumId: String?
+    ) async throws {
+        try await operations.setCandidateAlbum(candidateKey, albumId)
+    }
+
+    /// The library albums a query finds, for the album picker.
+    func searchAlbums(_ query: String) async throws -> [BridgeAlbumChoice] {
+        try await operations.searchAlbums(query)
     }
 
     /// Record this candidate's barcode rows as the person left them.

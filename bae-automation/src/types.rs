@@ -520,10 +520,18 @@ pub struct AutomationMetadataResult {
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationLibraryStatus {
     pub release_id: String,
-    pub release_in_library: bool,
-    pub album_in_library: bool,
-    pub album_title: Option<String>,
-    pub album_id: Option<String>,
+    /// Every library album holding the release or another release of its
+    /// album, those holding the release first.
+    pub albums: Vec<AutomationLibraryAlbumMatch>,
+}
+
+/// One library album a release's records name.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationLibraryAlbumMatch {
+    pub album_id: String,
+    pub album_title: String,
+    /// It holds a copy of the release itself.
+    pub holds_release: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -716,6 +724,14 @@ pub struct CandidateLabelsInput {
     pub candidate_key: String,
     /// Every label row, in order.
     pub labels: Vec<AutomationLabelRow>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CandidateAlbumInput {
+    pub candidate_key: String,
+    /// The library album the candidate joins, over the one its records
+    /// name; absent to leave it to its records.
+    pub album_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

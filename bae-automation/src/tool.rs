@@ -16,6 +16,7 @@ pub enum AutomationTool {
     ImportCandidateEditFieldSet,
     ImportCandidateLabelsSet,
     ImportCandidateBarcodesSet,
+    ImportCandidateAlbumSet,
     ImportCandidatePressingFactSet,
     ImportCandidateCoverSet,
     ImportStart,
@@ -30,7 +31,7 @@ pub enum AutomationTool {
 }
 
 impl AutomationTool {
-    const DESCRIPTORS: [AutomationToolDescriptor; 25] = [
+    const DESCRIPTORS: [AutomationToolDescriptor; 26] = [
         AutomationToolDescriptor {
             tool: AutomationTool::ConfigGet,
             name: "config_get",
@@ -114,6 +115,12 @@ impl AutomationTool {
             name: "import_candidate_barcodes_set",
             description: "Set a candidate's barcode rows, each one barcode as printed, in order",
             schema: Some(schema_object::<CandidateBarcodesInput>),
+        },
+        AutomationToolDescriptor {
+            tool: AutomationTool::ImportCandidateAlbumSet,
+            name: "import_candidate_album_set",
+            description: "Pick the library album a candidate joins over the one its records name, or leave it to its records",
+            schema: Some(schema_object::<CandidateAlbumInput>),
         },
         AutomationToolDescriptor {
             tool: AutomationTool::ImportCandidatePressingFactSet,

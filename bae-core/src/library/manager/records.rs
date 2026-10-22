@@ -89,11 +89,11 @@ impl LibraryManager {
     /// Pick the album a release lands in after a `set_records` (policy in
     /// `set_records`). In order:
     ///
-    /// 1. **Cross-catalog merge.** If another release in the library carries a
-    ///    record matching one of `new_records` on `(catalog, album key)`, its
-    ///    album is the target — per-catalog agreement makes that album unique.
-    ///    It wins even when the current album would also fit, since two albums
-    ///    cannot both legitimately claim one group.
+    /// 1. **The album the records name.** If another release in the library
+    ///    carries a record of one of `new_records`' pressings or albums, the
+    ///    album `Database::album_records_name` reads is the target, the applied
+    ///    record's before a partner's. It wins even when the current album
+    ///    would also fit.
     /// 2. **The group's album** when the release is alone in its album.
     /// 3. **Stay put** when the current album's other releases don't disagree
     ///    with `new_records` on a shared catalog.
@@ -119,7 +119,7 @@ impl LibraryManager {
         // never matches against the records we are about to overwrite.
         if let Some(candidate_album_id) = self
             .database
-            .find_album_by_record_group_excluding(new_records, &[release_id.to_string()])
+            .album_records_name(new_records, &[release_id.to_string()])
             .await?
         {
             return Ok(RecordsTargetAlbum {

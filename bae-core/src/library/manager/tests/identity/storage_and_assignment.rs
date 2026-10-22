@@ -622,41 +622,22 @@ async fn album_records_merge_albums_but_never_match_pressings() {
             .unwrap(),
         records
     );
-    assert!(manager
-        .database
-        .find_album_by_record_key(&records)
-        .await
-        .unwrap()
-        .is_none());
+    let name = |records: Vec<ReleaseRecord>| {
+        let database = manager.database.clone();
+        async move { database.album_records_name(&records, &[]).await.unwrap() }
+    };
+    assert_eq!(name(records.clone()).await, Some(album.id.clone()));
     // Numeric Discogs release and master identifiers can coincide; their kinds
-    // still denote different objects.
+    // still denote different objects: a pressing "42" with no album names no
+    // album the album record "42" files.
     let pressing = ReleaseRecord::new(
         &MetadataRef::new(Catalog::Discogs, "42"),
         Some("42".into()),
         true,
     );
-    assert!(manager
-        .database
-        .find_album_by_record_key(std::slice::from_ref(&pressing))
-        .await
-        .unwrap()
-        .is_none());
-    assert_eq!(
-        manager
-            .database
-            .find_album_by_record_group_excluding(std::slice::from_ref(&pressing), &[])
-            .await
-            .unwrap(),
-        Some(album.id.clone())
-    );
-    assert_eq!(
-        manager
-            .database
-            .find_album_by_record_group_excluding(&records, &[])
-            .await
-            .unwrap(),
-        Some(album.id.clone())
-    );
+    let ungrouped = ReleaseRecord::new(&MetadataRef::new(Catalog::Discogs, "42"), None, true);
+    assert_eq!(name(vec![ungrouped.clone()]).await, None);
+    assert_eq!(name(vec![pressing.clone()]).await, Some(album.id.clone()));
     let checks = [
         crate::db::LibraryCheck {
             source: Catalog::Discogs,
@@ -674,8 +655,8 @@ async fn album_records_merge_albums_but_never_match_pressings() {
         .check_releases_in_library(&checks)
         .await
         .unwrap();
-    assert!(!statuses[0].release_in_library && !statuses[0].album_in_library);
-    assert!(!statuses[1].release_in_library && statuses[1].album_in_library);
+    assert!(!statuses[0].release_in_library() && !statuses[0].album_in_library());
+    assert!(!statuses[1].release_in_library() && statuses[1].album_in_library());
 
     let another_album = create_test_album();
     manager.database.insert_album(&another_album).await.unwrap();
@@ -697,22 +678,8 @@ async fn album_records_merge_albums_but_never_match_pressings() {
             .unwrap(),
         Some(album.id.clone())
     );
-    assert_eq!(
-        manager
-            .database
-            .find_album_by_record_key(&[pressing])
-            .await
-            .unwrap()
-            .unwrap()
-            .id,
-        album.id
-    );
-    assert!(manager
-        .database
-        .find_album_by_record_key(&records)
-        .await
-        .unwrap()
-        .is_none());
+    // A copy of the pressing now files under its album too.
+    assert_eq!(name(vec![ungrouped]).await, Some(album.id.clone()));
 }
 
 #[tokio::test]
@@ -741,32 +708,25 @@ async fn ungrouped_pressings_do_not_invent_album_matches() {
             .unwrap(),
         records
     );
-    assert!(manager
-        .database
-        .find_album_by_record_group_excluding(&records, &[])
-        .await
-        .unwrap()
-        .is_none());
-    assert!(manager
-        .database
-        .find_album_by_record_group_excluding(
-            &[ReleaseRecord::album(&MetadataRef::new(
-                Catalog::Discogs,
-                "42"
-            ))],
-            &[]
-        )
-        .await
-        .unwrap()
-        .is_none());
+    // A copy of the ungrouped pressing files under its album; an album record
+    // of the same number names none.
     assert_eq!(
         manager
             .database
-            .find_album_by_record_key(&records)
+            .album_records_name(&records, &[])
             .await
-            .unwrap()
-            .unwrap()
-            .id,
-        album.id
+            .unwrap(),
+        Some(album.id.clone())
+    );
+    assert_eq!(
+        manager
+            .database
+            .album_records_name(
+                &[ReleaseRecord::album(&MetadataRef::new(Catalog::Discogs, "42"))],
+                &[]
+            )
+            .await
+            .unwrap(),
+        None
     );
 }

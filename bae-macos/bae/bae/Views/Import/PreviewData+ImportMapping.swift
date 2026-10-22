@@ -406,6 +406,7 @@
                     importStatus: nil,
                     remoteCovers: remoteCovers,
                     pickedLibraryStatus: nil,
+                    album: .new,
                     fileEvidence: [],
                     metadataDraft: edit,
                     artistResolutions: [],

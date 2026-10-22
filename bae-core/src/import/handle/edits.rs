@@ -71,6 +71,33 @@ impl ImportServiceHandle {
         Ok(())
     }
 
+    /// Pick the library album `album_id` for this candidate to join, over
+    /// the one its records name, or (`None`) leave it to its records.
+    pub async fn set_candidate_album(
+        &self,
+        candidate_key: &str,
+        album_id: Option<String>,
+    ) -> Result<(), crate::import::ImportError> {
+        let this = self.clone();
+        let candidate_key = candidate_key.to_string();
+        self.committed(async move {
+            let candidate = this.editable_candidate(&candidate_key).await?;
+            let hash = candidate.files.content_hash();
+            let _commit = this
+                .commit_lock_for_revision(
+                    "pick the album",
+                    &candidate_key,
+                    &hash,
+                    candidate.file_edit_revision,
+                )
+                .await?;
+            this.library_manager
+                .set_candidate_album_pick(&hash, album_id.as_deref())
+                .await
+        })
+        .await
+    }
+
     /// Record one album-level field the user typed or chose.
     pub async fn set_candidate_edit_field(
         &self,

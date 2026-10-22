@@ -457,6 +457,31 @@ forward! {
                 .await?)
         }
 
+        /// Pick the library album a candidate joins, over the one its records
+        /// name, or (`None`) leave it to its records.
+        fn set_candidate_album(candidate_key: String, album_id: Option<String>) -> () {
+            Ok(this
+                .services
+                .import_set_candidate_album(&candidate_key, album_id)
+                .await?)
+        }
+
+        /// The library albums a query finds, for the album picker. A blank
+        /// query is not a search and finds none.
+        fn search_albums(query: String) -> Vec<crate::types::BridgeAlbumChoice> {
+            let Some(query) = bae_core::library::LibrarySearchQuery::parse(&query) else {
+                return Ok(Vec::new());
+            };
+            Ok(this
+                .services
+                .search_albums(&query)
+                .await
+                .map_err(crate::types::BridgeError::database)?
+                .into_iter()
+                .map(crate::types::BridgeAlbumChoice::from_core)
+                .collect())
+        }
+
         /// Move the candidate's pane as the person asked, by the rule core
         /// moves every pane by, so clicking away and back lands where it was.
         fn move_candidate_pane(

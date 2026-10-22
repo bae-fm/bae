@@ -375,10 +375,11 @@ fn pair_in_library(release_id: &str, group_id: Option<&str>) -> (MetadataResult,
         mk_result(release_id, group_id),
         LibraryStatus {
             release_id: release_id.to_string(),
-            release_in_library: true,
-            album_in_library: true,
-            album_title: Some("Album".to_string()),
-            album_id: Some("9fd7bfa8-3c7c-4026-8559-da66af02f636".to_string()),
+            albums: vec![crate::db::LibraryAlbumMatch {
+                album_id: "9fd7bfa8-3c7c-4026-8559-da66af02f636".to_string(),
+                album_title: "Album".to_string(),
+                holds_release: true,
+            }],
         },
     )
 }
@@ -406,11 +407,11 @@ fn found_carries_in_library_status_through() {
             assert_eq!(matches.len(), 1);
             let library_statuses = &library_statuses.matches;
             assert_eq!(library_statuses.len(), 1);
-            assert!(library_statuses[0].release_in_library);
-            assert!(library_statuses[0].album_in_library);
+            assert!(library_statuses[0].release_in_library());
+            assert!(library_statuses[0].album_in_library());
             assert_eq!(
-                library_statuses[0].album_id.as_deref(),
-                Some("9fd7bfa8-3c7c-4026-8559-da66af02f636")
+                library_statuses[0].albums[0].album_id,
+                "9fd7bfa8-3c7c-4026-8559-da66af02f636"
             );
         }
         other => panic!("expected Found, got {other:?}"),

@@ -17,8 +17,13 @@ private func makeStatus(albumId: String) -> BridgeLibraryStatus {
         releaseId: "unused",
         releaseInLibrary: true,
         albumInLibrary: true,
-        albumTitle: "Album Title",
-        albumId: albumId
+        albums: [
+            BridgeLibraryAlbumMatch(
+                albumId: albumId,
+                albumTitle: "Album Title",
+                holdsRelease: true
+            )
+        ]
     )
 }
 
@@ -223,6 +228,7 @@ private func detail(
         importStatus: nil,
         remoteCovers: remoteCovers,
         pickedLibraryStatus: nil,
+        album: .new,
         fileEvidence: [],
         metadataDraft: MappingFixtures.albumEdit,
         artistResolutions: [],

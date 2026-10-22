@@ -349,11 +349,14 @@ mirror_struct! {
     from_core: pub(crate) fn,
     fields: {
         release_id,
-        release_in_library,
-        album_in_library,
-        album_title,
-        album_id,
+        albums: (each AutomationLibraryAlbumMatch),
     },
+}
+
+mirror_struct! {
+    AutomationLibraryAlbumMatch = bae_core::db::LibraryAlbumMatch,
+    from_core: pub(crate) fn,
+    fields: { album_id, album_title, holds_release },
 }
 
 mirror_struct! {

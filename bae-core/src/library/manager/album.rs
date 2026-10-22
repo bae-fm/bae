@@ -193,6 +193,20 @@ impl LibraryManager {
             .map(Some)
     }
 
+    /// The library albums a parsed, non-blank query finds, as the album
+    /// picker lists them: title, the album's credit line and year.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn search_albums(
+        &self,
+        query: &crate::library::LibrarySearchQuery,
+    ) -> Result<Vec<crate::db::DbAlbumSearchResult>, LibraryError> {
+        Ok(self
+            .database
+            .search_library(query.as_str(), crate::library::SEARCH_RESULT_LIMIT)
+            .await?
+            .albums)
+    }
+
     /// Search the library for a parsed, non-blank query. The result count is the
     /// core-owned [`crate::library::SEARCH_RESULT_LIMIT`]; no caller passes one.
     pub async fn search_library(

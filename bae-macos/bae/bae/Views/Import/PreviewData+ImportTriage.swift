@@ -162,8 +162,13 @@
                 releaseId: releaseDetailBridge.releaseId,
                 releaseInLibrary: true,
                 albumInLibrary: true,
-                albumTitle: releaseDetailBridge.title,
-                albumId: "album-in-library"
+                albums: [
+                    BridgeLibraryAlbumMatch(
+                        albumId: "album-in-library",
+                        albumTitle: releaseDetailBridge.title,
+                        holdsRelease: true
+                    )
+                ]
             )
 
         static let importTabAlreadyInLibraryCandidate = importTabFolder(

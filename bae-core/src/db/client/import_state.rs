@@ -1,5 +1,6 @@
 use super::*;
 
+mod album_pick_rows;
 mod edit_rows;
 pub(super) mod failure_rows;
 mod import_commit;
@@ -14,6 +15,7 @@ mod signal_rows;
 mod verdict_rows;
 mod watched_folder_removal;
 
+pub(super) use album_pick_rows::load_album_pick_on;
 use edit_rows::{delete_file_edits, insert_file_edits};
 use failure_rows::{delete_failure_on, load_failure_on};
 pub(super) use import_commit::{
