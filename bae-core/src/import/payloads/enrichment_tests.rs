@@ -96,7 +96,7 @@ async fn a_master_backlink_is_followed_and_the_stored_release_reads_back() {
         .iter()
         .any(|record| record.catalog() == Catalog::MusicBrainz && record.release_ref().is_some()));
     let parsed = fetched
-        .values(&[])
+        .every_medium_values()
         .unwrap();
     assert_eq!(parsed.album_title, "Selected Album");
     assert_eq!(parsed.album_year, Some(1980));
@@ -138,7 +138,7 @@ fn selected_pressing_wins_and_linked_release_fills_only_absent_details() {
     let parsed = payloads
         .extract()
         .unwrap()
-        .values(&[])
+        .every_medium_values()
         .unwrap();
     assert_eq!(parsed.album_title, "Selected Album");
     assert_eq!(parsed.album_year, Some(1980));
@@ -188,7 +188,7 @@ fn linked_album_fills_missing_title_and_artists_without_setting_pressing_year() 
     let parsed = payloads
         .extract()
         .unwrap()
-        .values(&[])
+        .every_medium_values()
         .unwrap();
     assert_eq!(parsed.album_title, "Master Album");
     assert_eq!(parsed.album_credits[0].name, "Selected Artist");
@@ -250,7 +250,7 @@ fn linked_release_album_date_survives_an_unavailable_parent_document() {
     let parsed = payloads
         .extract()
         .unwrap()
-        .values(&[])
+        .every_medium_values()
         .unwrap();
     assert_eq!(parsed.album_year, Some(1979));
     assert_eq!(parsed.pressing.year, Some(2005));
@@ -277,7 +277,7 @@ fn selected_album_credits_keep_every_artist_in_detail_and_import() {
     let parsed = payloads
         .extract()
         .unwrap()
-        .values(&[])
+        .every_medium_values()
         .unwrap();
     assert_eq!(
         parsed

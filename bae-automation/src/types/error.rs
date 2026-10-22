@@ -107,6 +107,7 @@ impl From<bae_core::ui::UiError> for AutomationError {
             | UiErrorCategory::CandidateImportInProgress
             | UiErrorCategory::CandidateBeingIdentified
             | UiErrorCategory::MetadataTrackCount { .. }
+            | UiErrorCategory::TiedMediums { .. }
             | UiErrorCategory::GroupingBlocked(_) => Self::Import(detail),
             UiErrorCategory::Config => Self::Validation(detail),
             UiErrorCategory::Internal => Self::Internal(detail),

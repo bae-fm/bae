@@ -159,7 +159,7 @@ fn seed_for(response: &crate::musicbrainz::MbReleaseResponse) -> crate::import::
     )
     .extract()
     .unwrap()
-    .values(&[])
+    .every_medium_values()
     .expect("synthetic MB response reads")
     .user_edit()
 }

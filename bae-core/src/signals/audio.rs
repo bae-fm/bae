@@ -15,9 +15,8 @@ pub struct AudioFacts {
     /// Empty for a library release, which no settle fits.
     pub durations: SourceDurations,
     /// The same lengths in the order the tracks are laid out, which a
-    /// release's tracklist is read against to count the tracks it holds for
-    /// this audio. A library release's are its tracks' stored lengths, empty
-    /// where one was never measured, and its tracklist is then read whole.
+    /// release's tracklist is read against. A library release's are its
+    /// tracks' stored lengths.
     pub track_lengths_ms: Vec<u64>,
     /// Every audio file carries one channel.
     pub mono: bool,

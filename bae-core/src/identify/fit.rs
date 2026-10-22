@@ -23,6 +23,9 @@ pub enum TracklistFit {
     Disagrees { source: u32 },
     /// Its source answered and lists no tracks for this audio.
     ListsNothing,
+    /// The tracks it lists for the audio cannot be read, so it cannot be
+    /// applied.
+    Unreadable,
 }
 
 impl TracklistFit {
@@ -37,6 +40,7 @@ impl TracklistFit {
             Some(SourceTracks::Nothing) => Self::ListsNothing,
             Some(SourceTracks::Listed { count }) if *count == folder_track_count => Self::Fits,
             Some(SourceTracks::Listed { count }) => Self::Disagrees { source: *count },
+            Some(SourceTracks::Unreadable) => Self::Unreadable,
         }
     }
 
@@ -47,7 +51,7 @@ impl TracklistFit {
     pub fn admits(self) -> bool {
         match self {
             Self::Fits | Self::Unread => true,
-            Self::Disagrees { .. } | Self::ListsNothing => false,
+            Self::Disagrees { .. } | Self::ListsNothing | Self::Unreadable => false,
         }
     }
 
@@ -59,15 +63,15 @@ impl TracklistFit {
         match self {
             Self::Fits => 0,
             Self::Unread => 1,
-            Self::Disagrees { .. } | Self::ListsNothing => 2,
+            Self::Disagrees { .. } | Self::ListsNothing | Self::Unreadable => 2,
         }
     }
 }
 
 /// Whether a row's read tracklists say it is not the folder's: one of its
-/// records lists another number of tracks than the folder holds, and none
-/// fits or is still to be read. Such a row is not a match — the run neither
-/// offers it nor sets it aside. A row whose records list no tracks proves
+/// records lists another number of tracks than the folder holds, or lists
+/// tracks that cannot be read, and none fits or is still to be read. Such a
+/// row is not a match — the run neither offers it nor sets it aside. A row whose records list no tracks proves
 /// nothing either way and stands; so does a row one of whose sources fits
 /// where another disagrees, since the row is picked whole and the fitting
 /// record leads it.
@@ -78,7 +82,12 @@ pub(crate) fn rules_out(records: &[MetadataResult], folder_track_count: u32) -> 
             .map(|record| TracklistFit::of(record.source_tracks.as_ref(), folder_track_count))
     };
     !fits().any(TracklistFit::admits)
-        && fits().any(|fit| matches!(fit, TracklistFit::Disagrees { .. }))
+        && fits().any(|fit| {
+            matches!(
+                fit,
+                TracklistFit::Disagrees { .. } | TracklistFit::Unreadable
+            )
+        })
 }
 
 /// Why a found verdict picks none of its releases unattended.
@@ -167,11 +176,13 @@ pub(crate) fn decline(
     match (lead, unread_document) {
         (_, true) => Some(Declined::UnreadDocument),
         (TracklistFit::Fits, false) => None,
-        // A lead whose read tracklist numbers other than the folder's is no
-        // match, so nothing was found: a run leaves out every row
+        // A lead whose read tracklist numbers other than the folder's, or
+        // lists tracks that cannot be read, is no match, so nothing was found: a run leaves out every row
         // [`rules_out`] names, and a person's pick of one is refused before
         // anything is stored.
-        (TracklistFit::Disagrees { .. }, false) => Some(Declined::NothingFound),
+        (TracklistFit::Disagrees { .. } | TracklistFit::Unreadable, false) => {
+            Some(Declined::NothingFound)
+        }
         // Not read, or read and listing nothing: the count is unchecked, and
         // a release is never admitted unverified.
         (TracklistFit::Unread | TracklistFit::ListsNothing, false) => {

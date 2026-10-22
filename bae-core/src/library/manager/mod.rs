@@ -101,7 +101,7 @@ mod playback_state;
 mod records;
 mod release;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) use release::measured_track_lengths_or_whole;
+pub(crate) use release::stored_track_lengths;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod release_edit;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

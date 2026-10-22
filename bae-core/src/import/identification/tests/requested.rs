@@ -235,12 +235,12 @@ async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
     );
 }
 
-/// A release document can carry a readable tracklist yet still be impossible
-/// to read into the candidate's draft. That is no lookup that failed: an
-/// explicit run ends on it, stores nothing, and states the failure on the row
-/// with no way to ask again, since another run would reach the same answer.
+/// A release document can list a tracklist the candidate's draft cannot be
+/// read from — here, a release crediting nobody. Its reading is unreadable,
+/// so it is no match: the run rules its row out rather than picking it and
+/// failing to apply it.
 #[tokio::test(flavor = "multi_thread")]
-async fn explicit_lookup_ends_on_a_release_its_draft_cannot_be_read_from() {
+async fn a_release_its_draft_cannot_be_read_from_is_no_match() {
     let fixture = Fixture::new("interactive-projection-failure").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
@@ -255,8 +255,8 @@ async fn explicit_lookup_ends_on_a_release_its_draft_cannot_be_read_from() {
         &[probed, 0],
     ))
     .unwrap();
-    // No artist credits: the tracklist still reads, and the mapper refuses a
-    // release with nobody credited. The release group goes too — not because
+    // No artist credits: the tracklist lists the folder's tracks, and the
+    // reader refuses a release with nobody credited. The release group goes too — not because
     // its absence fails anything, but because a document that names one sends
     // the fetch after it, and this run has no group route to answer with.
     let incomplete = incomplete.as_object_mut().unwrap();
@@ -281,22 +281,19 @@ async fn explicit_lookup_ends_on_a_release_its_draft_cannot_be_read_from() {
         fixture.identification().drained_for_test(),
     )
     .await
-    .expect("the explicit run ends on the projection failure");
+    .expect("the explicit run ends");
 
-    assert!(
-        fixture.identified_for(&dir).await.is_none(),
-        "nothing is stored, least of all a failed lookup"
-    );
+    let (admitted, _) = fixture.judgement_for(&dir).await;
+    assert!(!admitted, "an unreadable release is never admitted");
     let key = dir.to_string_lossy().into_owned();
-    let Some(crate::import::IdentificationStatus::FinalizationFailed { failure }) =
+    assert!(
+        !matches!(
+            fixture.identification_status(&key),
+            Some(crate::import::IdentificationStatus::FinalizationFailed { .. })
+        ),
+        "nothing was picked to fail applying, got {:?}",
         fixture.identification_status(&key)
-    else {
-        panic!(
-            "the row states the failure, got {:?}",
-            fixture.identification_status(&key)
-        );
-    };
-    assert!(!failure.retryable(), "{failure:?}");
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

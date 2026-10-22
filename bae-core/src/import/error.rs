@@ -110,6 +110,14 @@ pub enum ImportError {
         release_tracks: u32,
     },
 
+    /// Several sets of the release's mediums fit the folder's audio equally —
+    /// by Disc ID, carrier and lengths — and read as different tracks, so
+    /// which of them the folder is a rip of is not known. `mediums` names
+    /// every medium of those sets as the release numbers them, ascending.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[error("discs {mediums:?} of the release fit the folder's audio equally")]
+    TiedMediums { mediums: Vec<u32> },
+
     /// Local file-tag evidence can't seed a file-metadata import (no audio files,
     /// a file failed to open / parse, embedded-cover read failure).
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -292,6 +300,9 @@ impl ImportError {
             } => C::MetadataTrackCount {
                 folder_tracks: *folder_tracks,
                 release_tracks: *release_tracks,
+            },
+            Self::TiedMediums { mediums } => C::TiedMediums {
+                mediums: mediums.clone(),
             },
             Self::SourceData { .. } | Self::CoverArt { .. } => C::ImportData,
             Self::MusicBrainz(error) => match error {

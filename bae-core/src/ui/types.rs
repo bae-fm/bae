@@ -2,7 +2,7 @@
 /// category; the paired `detail` is the underlying Rust error chain — logged and
 /// offered in a copyable disclosure, never translated. Mirrors
 /// `BridgeErrorCategory`; the bridge maps one to the other.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UiErrorCategory {
     Database,
     Config,
@@ -25,6 +25,11 @@ pub enum UiErrorCategory {
     MetadataTrackCount {
         folder_tracks: u32,
         release_tracks: u32,
+    },
+    /// Several sets of the release's mediums fit the candidate's audio
+    /// equally and read differently; the line names every medium of them.
+    TiedMediums {
+        mediums: Vec<u32>,
     },
     /// A release read from several folders cannot be worked on as it stands,
     /// or cannot be made, for a reason the person can act on.

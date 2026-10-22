@@ -481,10 +481,7 @@ fn dispatch_effect(
 
         // Each record is fetched through the one place a pick reads it from,
         // so picking an offered row later asks for nothing again.
-        Effect::ReadReleases {
-            releases,
-            track_lengths_ms,
-        } => {
+        Effect::ReadReleases { releases, audio } => {
             let library_manager = inner.library_manager.clone();
             spawn_until_cancelled(&runtime, &token, async move {
                 let mut read = Vec::with_capacity(releases.len());
@@ -495,7 +492,7 @@ fn dispatch_effect(
                         return;
                     };
                     let document = stored.map(|stored| {
-                        crate::identify::documents::ReleaseDocument::of(&stored, &track_lengths_ms)
+                        crate::identify::documents::ReleaseDocument::of(&stored, &audio)
                     });
                     read.push(crate::identify::documents::ReleaseReading { release, document });
                 }

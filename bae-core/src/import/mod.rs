@@ -44,6 +44,8 @@ desktop_only! {
     // The folder's audio units beside the draft's tracks — the desktop import
     // pane's one structure, and desktop-only like the scan it reads.
     pub mod mapping;
+    /// Reading a catalog release against a candidate's audio, once.
+    pub(crate) mod catalog_reading;
     /// Which of a release's mediums a folder's audio is a rip of.
     pub(crate) mod medium_coverage;
     pub mod musicbrainz_mapper;

@@ -16,7 +16,7 @@ fn map(
         serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
         supporting,
     );
-    payloads.extract().unwrap().values(&[])
+    payloads.extract().unwrap().every_medium_values()
 }
 
 use crate::import::release_values::committed_rows as rows;
@@ -95,7 +95,11 @@ fn map_for_audio(
         serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
         Vec::new(),
     );
-    payloads.extract().unwrap().values(audio_durations_ms)
+    payloads
+        .extract()
+        .unwrap()
+        .read(&crate::import::catalog_reading::ReadAudio::of_lengths(audio_durations_ms))
+        .map_err(ImportError::from)
 }
 
 fn timed_mb_track(number: &str, title: &str, length_ms: u64) -> MbTrack {
@@ -169,11 +173,10 @@ fn one_disc_of_a_box_is_read_from_its_own_medium() {
     assert!(parsed.tracks.iter().all(|track| track.side == Some(1)));
 }
 
-/// Audio no set of mediums adds up to is read as the whole release. The
-/// refusal stays where it always was, when the metadata is applied to a
-/// draft, where both counts are named.
+/// Audio no set of mediums adds up to is refused, naming the folder's count
+/// and every track the release lists.
 #[test]
-fn audio_no_mediums_hold_is_read_as_the_whole_release() {
+fn audio_no_mediums_hold_is_refused_with_both_counts() {
     let response = make_response(vec![
         MbMedium {
             discs: vec![],
@@ -187,15 +190,18 @@ fn audio_no_mediums_hold_is_read_as_the_whole_release() {
         },
     ]);
 
-    let parsed = map_for_audio(&response, &[100_000, 100_000, 100_000]).unwrap();
+    let refused = map_for_audio(&response, &[100_000, 100_000, 100_000])
+        .expect_err("no set of mediums holds three tracks");
 
-    assert_eq!(
-        parsed
-            .tracks
-            .iter()
-            .map(|track| track.title.as_str())
-            .collect::<Vec<_>>(),
-        vec!["Track 1", "Track 2"]
+    assert!(
+        matches!(
+            refused,
+            ImportError::MetadataTrackCount {
+                folder_tracks: 3,
+                release_tracks: 2
+            }
+        ),
+        "{refused}"
     );
 }
 

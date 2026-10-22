@@ -104,6 +104,12 @@ impl IdentifyState {
         self.context().map(|context| &context.audio)
     }
 
+    /// The audio this state read its offered releases against; `None` for
+    /// `Idle` and before the audio is measured.
+    pub(crate) fn read_audio(&self) -> Option<crate::import::catalog_reading::ReadAudio> {
+        self.context().and_then(SignalsContext::read_audio)
+    }
+
     /// The candidate's own text this run judged its results against, which a
     /// [`super::TerminalVerdict`] does not keep.
     pub fn candidate_text(&self) -> super::CandidateText {
@@ -330,11 +336,11 @@ pub enum Effect {
         source: Catalog,
         key: PressingKey,
     },
-    /// Fetch and store these records' full documents, reading each one's
-    /// tracklist against `track_lengths_ms`.
+    /// Fetch and store these records' full documents, reading each one
+    /// against `audio`.
     ReadReleases {
         releases: Vec<crate::import::MetadataRef>,
-        track_lengths_ms: Vec<u64>,
+        audio: crate::import::catalog_reading::ReadAudio,
     },
     /// Keep what these release groups were read to be beyond the run. Nothing
     /// answers it.

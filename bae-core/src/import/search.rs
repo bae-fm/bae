@@ -214,19 +214,9 @@ pub enum SourceTracks {
     /// or one with no media. There is nothing left to ask, so a verdict
     /// carrying this is finished rather than waiting on a top-up.
     Nothing,
-}
-
-impl SourceTracks {
-    /// What a tracklist of these titles says: as many tracks as it holds,
-    /// or nothing where it holds none.
-    pub(crate) fn of_titles(titles: &[Option<String>]) -> Self {
-        match titles.len() {
-            0 => Self::Nothing,
-            count => Self::Listed {
-                count: count as u32,
-            },
-        }
-    }
+    /// It lists tracks for the audio that cannot be read: one with no title,
+    /// or an album credited to no one. Nothing it says can be applied.
+    Unreadable,
 }
 
 impl From<&MetadataResult> for crate::db::LibraryCheck {

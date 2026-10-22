@@ -5,7 +5,7 @@ use serde_json::json;
 fn parse(payloads: &ReleasePayloads) -> Result<crate::import::release_values::ReleaseValues, ImportError> {
     payloads
         .extract()
-        .and_then(|release| release.values(&[]))
+        .and_then(|release| release.every_medium_values())
 }
 
 fn selected_release() -> ReleasePayloads {

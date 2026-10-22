@@ -642,7 +642,7 @@ mod tests {
             crate::BridgeErrorCategory::KeychainEntitlementMissing
         );
         assert_eq!(
-            crate::bridge_error_category_key(*category),
+            crate::bridge_error_category_key(category.clone()),
             "core.error.keyring.entitlement_missing"
         );
     }

@@ -147,8 +147,11 @@ impl LibraryManager {
                         .await?
                     }
                 };
-                let existing_tracks = self.database.get_tracks_for_release(release_id).await?;
-                values_for_existing_release(&source, record.catalog(), &existing_tracks)?
+                source
+                    .read(&self.release_read_audio(release_id).await?)
+                    .map_err(|refusal| {
+                        LibraryError::from(crate::import::ImportError::from(refusal))
+                    })?
             }
             (None, true) => project_file_metadata(&self.database, &release).await?,
             (None, false) => {
@@ -210,31 +213,19 @@ impl LibraryManager {
                     crate::util::rate_limiter::CallPriority::Interactive,
                 )
                 .await?;
-                let existing_tracks = self.database.get_tracks_for_release(release_id).await?;
                 // Re-identify changes record associations without changing
-                // existing audio rows, so the picked release's tracklist,
-                // read against those rows' lengths as identification reads
-                // it, must fit them.
-                let existing_track_count = existing_tracks.len() as u32;
-                let listed = release.source_tracks_for_audio(&layout_lengths(
-                    release_ref.catalog,
-                    &existing_tracks,
-                )?);
-                match crate::identify::TracklistFit::of(Some(&listed), existing_track_count) {
-                    crate::identify::TracklistFit::Fits => {}
-                    crate::identify::TracklistFit::Disagrees { source } => {
-                        return Err(LibraryError::Import(format!(
-                            "Track count mismatch: release has {existing_track_count} tracks, \
-                             picked release has {source}"
-                        )));
-                    }
-                    crate::identify::TracklistFit::ListsNothing
-                    | crate::identify::TracklistFit::Unread => {
-                        return Err(LibraryError::Import(format!(
-                            "Track count mismatch: release has {existing_track_count} tracks, \
-                             picked release lists none"
-                        )));
-                    }
+                // existing audio rows, so the picked release, read against
+                // those rows' lengths and the release's own files as
+                // identification reads it, must lay its tracks onto them.
+                let audio = self.release_read_audio(release_id).await?;
+                let values = release.read(&audio).map_err(|refusal| {
+                    LibraryError::from(crate::import::ImportError::from(refusal))
+                })?;
+                if values.tracks.is_empty() {
+                    return Err(LibraryError::Import(format!(
+                        "Track count mismatch: release has {} tracks, picked release lists none",
+                        audio.lengths.len()
+                    )));
                 }
 
                 crate::import::service::records_for_commit(&release, &prepared_partners)
@@ -257,6 +248,21 @@ impl LibraryManager {
     /// A tag-sparse rip projects to a blank-but-editable title/artist — the
     /// prompt the user answers in the editor — so this is not held to the
     /// user-edit gate, which would reject the blank.
+    /// The audio a catalog release is read against for the library release
+    /// `release_id`: its tracks' stored lengths, and what its own files say
+    /// it was copied from.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    async fn release_read_audio(
+        &self,
+        release_id: &str,
+    ) -> Result<crate::import::catalog_reading::ReadAudio, LibraryError> {
+        crate::signals::release::resolve_release_identity(self, release_id)
+            .await
+            .map_err(LibraryError::Import)?
+            .read_audio()
+            .map_err(LibraryError::from)
+    }
+
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     async fn reseed_release_from_file_metadata(
         &self,
@@ -752,49 +758,6 @@ impl LibraryManager {
 
         Ok(())
     }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn values_for_existing_release(
-    release: &crate::import::source_release::SourceRelease,
-    source: crate::import::Catalog,
-    tracks: &[DbTrack],
-) -> Result<crate::import::release_values::ReleaseValues, LibraryError> {
-    release
-        .values(&layout_lengths(source, tracks)?)
-        .map_err(LibraryError::from)
-}
-
-/// The lengths a picked release's tracklist is laid out against for a library
-/// release's `tracks`. The stored durations say which of the release's mediums
-/// these tracks are: one disc of a box, the CD layer of a hybrid SACD. A
-/// Discogs tracklist is also laid out against them, and reads none of its own,
-/// so it alone refuses a release whose files were never measured. A
-/// MusicBrainz document states its own track times, so a release with a track
-/// nothing measured is read as the whole release, which is what a
-/// single-medium release is either way.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn layout_lengths(
-    source: crate::import::Catalog,
-    tracks: &[DbTrack],
-) -> Result<Vec<u64>, LibraryError> {
-    Ok(match source {
-        crate::import::Catalog::MusicBrainz => measured_track_lengths_or_whole(tracks),
-        crate::import::Catalog::Discogs => stored_track_lengths(tracks)?,
-        other => unreachable!("nothing fetches documents from {}", other.as_str()),
-    })
-}
-
-/// The stored lengths a document that states its own track times is laid out
-/// against, or none — the whole release, which is what a single-medium release
-/// is either way — when a track was never measured. Laying it out whole is
-/// logged with the track that went unmeasured.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) fn measured_track_lengths_or_whole(tracks: &[DbTrack]) -> Vec<u64> {
-    stored_track_lengths(tracks).unwrap_or_else(|error| {
-        warn!("laying the document out against the whole release: {error}");
-        Vec::new()
-    })
 }
 
 /// Each of a library release's tracks' stored length, in track order, or why

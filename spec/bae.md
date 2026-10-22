@@ -599,6 +599,33 @@ sided formats (vinyl, cassette, shellac) in format order, and the other discs
 the remaining units in order. Where a group's mediums and units don't count
 alike, the group takes the one carrier its units name, else none.
 
+**Which of its mediums the folder holds.** A release is read against the
+folder's audio once, and the run's documents, a pick, the draft it writes, the
+shared album and a library re-identify all read that one reading. The mediums
+it reads are a set whose tracks, laid out against the folder's audio — a
+Discogs index or heading read as one track or as its sub-tracks — number
+exactly as many as the folder's; a medium listing no tracks is in none.
+Between such sets, in order:
+
+1. the folder's Disc IDs: the set more of whose mediums MusicBrainz registers
+   one of them against wins;
+2. the carrier: audio proven a CD rip rules out a medium that plays no CD
+   audio (a record, a Blu-ray), and audio at a rate no CD plays rules out a
+   CD;
+3. the lengths: fewer tracks whose stated length is more than three seconds
+   off, then fewer tracks with no stated length, then the smaller total
+   difference.
+
+A CD rip of a box of records and CDs reads the CDs, and a record stating no
+lengths never beats a CD whose lengths agree. Sets still tied that read the
+same tracks, such as a hybrid SACD's two layers, are one answer. Sets that
+read different tracks are not chosen between, and never by which comes first:
+the release can't be applied, the error naming every disc of those sets, and
+the person picks another release or uses the file metadata. A release no set
+of whose mediums holds the folder's tracks is refused, naming the folder's
+count and every track the release lists; one whose chosen tracks can't be read
+(a track with no title, an album credited to no one) is no match.
+
 **Ranking.** Each pressing is scored by what it states against what the folder
 states. For each fact, a pressing agrees, says nothing, or disagrees; one that
 says nothing never loses to one that disagrees. Which lookup found a pressing
@@ -610,8 +637,9 @@ tied at the top are offered; the rest are set aside under "N more releases".
 Two kinds of pressing never stand:
 
 - **One whose tracklist doesn't fit.** A pressing whose read tracklists all
-  list another number of tracks than the folder holds is not a match. Lengths
-  are not compared: catalogs round them and count pregaps differently.
+  list another number of tracks than the folder holds, or tracks that can't be
+  read, is not a match. Lengths only choose which mediums are read; they never
+  rule a pressing out: catalogs round them and count pregaps differently.
 - **Look-alikes.** Pressings that would show exactly the same on screen are
   kept once; nobody could choose between them in bae.
 
@@ -2335,6 +2363,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `Import`, `ImportData` | reads the detail; the source couldn't be read |
 | `CandidateImportInProgress`, `CandidateBeingIdentified` | waits |
 | `MetadataTrackCount` | picks another release: it lists another number of tracks |
+| `TiedMediums` | picks another release or uses the file metadata: several of its discs fit the folder alike, and the line names them |
 | `GroupingBlocked` | combines again, separates, or waits for a download |
 | `Export`, `Save` | reads the detail |
 | `CloudSetup`, `StorageCheck` | changes what the setup, or the check of the storage it failed, names |

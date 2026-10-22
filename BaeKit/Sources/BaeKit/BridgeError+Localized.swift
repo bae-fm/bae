@@ -8,8 +8,8 @@ public func localizedCoreString(_ key: String) -> String {
 
 extension BridgeErrorCategory {
     /// The user-facing line for this category, resolved from the generated
-    /// `Core` string table via the key bae-core owns, with the counts a
-    /// category carries formatted for the current locale. The underlying Rust
+    /// `Core` string table via the key bae-core owns, with the counts and
+    /// disc numbers a category carries formatted for the current locale. The underlying Rust
     /// error chain travels separately as opaque `detail` and is never
     /// translated.
     public var localizedLine: String {
@@ -22,6 +22,16 @@ extension BridgeErrorCategory {
                 Int(folderTracks),
                 Int(releaseTracks)
             )
+        case .tiedMediums(let mediums):
+            let discs = ListFormatter.localizedString(
+                byJoining: mediums.map {
+                    NumberFormatter.localizedString(
+                        from: NSNumber(value: $0),
+                        number: .none
+                    )
+                }
+            )
+            return String(format: line, locale: Locale.current, discs)
         default:
             return line
         }

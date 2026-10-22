@@ -59,7 +59,8 @@ pub struct ReleaseDocument {
     pub album_first_year: Option<i32>,
     /// The tracks it lists for the audio being identified.
     pub source_tracks: SourceTracks,
-    /// Their titles, in order; empty where a track has none.
+    /// Their titles, in order; empty where the release cannot be read onto
+    /// the audio.
     pub track_titles: Vec<String>,
     /// What it writes about which pressing it is, in free text.
     pub notes: Vec<String>,
@@ -71,21 +72,21 @@ pub struct ReleaseDocument {
 }
 
 impl ReleaseDocument {
-    /// What `release` states, its tracklist read against `track_lengths_ms`.
+    /// What `release` states, read against the audio being identified.
     pub(crate) fn of(
         release: &crate::import::source_release::SourceRelease,
-        track_lengths_ms: &[u64],
+        audio: &crate::import::catalog_reading::ReadAudio,
     ) -> Self {
-        let titles = release.track_titles_for_audio(track_lengths_ms);
+        let reading = release.read(audio);
         Self {
             labels: release.pressing().labels.clone(),
             barcode: release.pressing().barcode.clone(),
             album_first_year: release.metadata.album.first_year,
-            source_tracks: SourceTracks::of_titles(&titles),
-            track_titles: titles
-                .into_iter()
-                .collect::<Option<_>>()
-                .unwrap_or_default(),
+            source_tracks: crate::import::catalog_reading::listing(&reading, audio),
+            track_titles: match reading {
+                Ok(values) => values.tracks.into_iter().map(|track| track.title).collect(),
+                Err(_) => Vec::new(),
+            },
             notes: release.notes.clone(),
             links: release.links(),
             album_links: release.album_links(),

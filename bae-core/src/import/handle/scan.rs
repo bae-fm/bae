@@ -246,21 +246,16 @@ impl ImportServiceHandle {
         .await
     }
 
-    /// Build a candidate draft from an external release, keeping each current
-    /// track on its file. A release that lists tracks lays every value it
-    /// states over the folder's audio, and is refused when it lists another
-    /// number of them; one that lists none leaves the draft's tracks as they
-    /// are. Where the release states no year, the pressing's is
+    /// The candidate draft a release's reading writes, keeping each current
+    /// track on its file. A reading of tracks lays every value it states over
+    /// the folder's audio; a release that lists none leaves the draft's tracks
+    /// as they are. Where the release states no year, the pressing's is
     /// `pressing_year` — see `identify::row_facts::pressing_year`.
     pub(crate) fn external_candidate_draft(
-        &self,
-        release: &crate::import::source_release::SourceRelease,
-        durations: &crate::import::probe::SourceDurations,
+        values: crate::import::release_values::ReleaseValues,
         current: &crate::import::CandidateDraft,
         pressing_year: Option<i32>,
     ) -> Result<crate::import::CandidateDraft, crate::import::ImportError> {
-        let audio_durations = current.audio_durations(durations)?;
-        let values = release.values(&audio_durations)?;
         let mut draft = if values.tracks.is_empty() {
             crate::import::pane::album_over_draft(values, current)
         } else {
@@ -274,18 +269,18 @@ impl ImportServiceHandle {
         Ok(draft)
     }
 
-    /// Build the metadata for an external release and fetch the artist images
-    /// and cover it needs, before anything is written. A fetch that fails
-    /// fails the whole with its error.
+    /// Build the metadata a release's reading writes and fetch the artist
+    /// images and cover it needs, before anything is written. A fetch that
+    /// fails fails the whole with its error.
     pub(crate) async fn external_candidate_metadata(
         &self,
         release: &crate::import::source_release::SourceRelease,
+        values: crate::import::release_values::ReleaseValues,
         partners: Vec<crate::import::source_release::SourceRelease>,
-        durations: &crate::import::probe::SourceDurations,
         current: &crate::import::CandidateDraft,
         pressing_year: Option<i32>,
     ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
-        let draft = self.external_candidate_draft(release, durations, current, pressing_year)?;
+        let draft = Self::external_candidate_draft(values, current, pressing_year)?;
         let assets = self
             .fetch_release_assets(&draft, release, &partners)
             .await
@@ -431,7 +426,6 @@ impl ImportServiceHandle {
     ) -> Result<u64, crate::import::ImportError> {
         let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
         let content_hash = candidate.files.content_hash();
-        let durations = crate::import::probe::source_durations(&candidate.files)?;
         let release = self
             .release_for_pick(&candidate_key, &link.record)
             .await?;
@@ -439,24 +433,18 @@ impl ImportServiceHandle {
         // state its album is joins the search's cards.
         self.land_opened(&candidate_key, release.release(), release.album_links())
             .await;
-        let audio_durations =
-            crate::import::audio_layout::audio_durations(&candidate.files, &durations)?;
-        let folder_tracks = u32::try_from(audio_durations.len()).expect("a folder's tracks fit u32");
-        // A release whose tracklist, read against the folder's audio, lists
-        // another number of tracks than the folder holds is not the folder's,
-        // however a person found it: the pick is refused before anything else
-        // is fetched or written; only the folder's files, changed outside bae,
-        // can make it fit. One that lists no tracks says nothing either way
-        // and is applied.
-        let listed = release.source_tracks_for_audio(&audio_durations);
-        if let crate::identify::TracklistFit::Disagrees { source } =
-            crate::identify::TracklistFit::of(Some(&listed), folder_tracks)
-        {
-            return Err(crate::import::ImportError::MetadataTrackCount {
-                folder_tracks,
-                release_tracks: source,
-            });
-        }
+        let audio = crate::import::catalog_reading::ReadAudio::of_files(&candidate.files)?;
+        let folder_tracks =
+            u32::try_from(audio.lengths.len()).expect("a folder's tracks fit u32");
+        // A release that cannot be read onto the folder's audio — it lists
+        // another number of tracks than the folder holds, several sets of its
+        // discs fit alike, or a track it lays on the audio has no title — is
+        // not applied, however a person found it: the pick is refused before
+        // anything else is fetched or written. One that lists no tracks says
+        // nothing either way and is applied.
+        let reading = release.read(&audio);
+        let listed = crate::import::catalog_reading::listing(&reading, &audio);
+        let values = reading?;
         // A partner that fails to load fails the pick, leaving the previous
         // one in place.
         let prepared_partners = crate::import::service::prepare_partners(
@@ -497,8 +485,8 @@ impl ImportServiceHandle {
         let metadata = self
             .external_candidate_metadata(
                 &release,
+                values,
                 prepared_partners,
-                &durations,
                 &current.draft,
                 crate::identify::row_facts::pressing_year(&text, &records),
             )

@@ -284,9 +284,9 @@ pub(super) struct PickedRelease {
 
 impl PickedReleaseRows {
     fn process(self) -> Result<PickedRelease, DbError> {
-        let durations = crate::import::probe::source_durations(&self.files)
-            .map_err(|error| DbError::Message(error.to_string()))?;
-        let audio_durations = crate::import::audio_layout::audio_durations(&self.files, &durations)
+        // The folder's audio as it stands — its rip logs and sheets read
+        // now — which the primary's tracklist is counted against.
+        let audio = crate::import::catalog_reading::ReadAudio::of_files(&self.files)
             .map_err(|error| DbError::Message(error.to_string()))?;
         let records = crate::import::source_release::claimed_records(
             &self.claimed.iter().collect::<Vec<_>>(),
@@ -304,7 +304,7 @@ impl PickedReleaseRows {
             matched: MatchedRelease::of_pick(
                 primary.release().catalog,
                 &detail,
-                primary.source_tracks_for_audio(&audio_durations),
+                crate::import::catalog_reading::listing(&primary.read(&audio), &audio),
             ),
             records,
         })

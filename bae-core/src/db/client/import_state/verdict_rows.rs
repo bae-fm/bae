@@ -237,6 +237,7 @@ fn insert_match(
     let (tracks_kind, tracks_count) = match &result.source_tracks {
         None => (None, None),
         Some(SourceTracks::Nothing) => (Some("nothing"), None),
+        Some(SourceTracks::Unreadable) => (Some("unreadable"), None),
         Some(SourceTracks::Listed { count }) => (Some("listed"), Some(i64::from(*count))),
     };
     let album_links_kind = match &result.album_links {
@@ -599,6 +600,7 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
     let source_tracks = match tracks_kind.as_deref() {
         None => None,
         Some("nothing") => Some(SourceTracks::Nothing),
+        Some("unreadable") => Some(SourceTracks::Unreadable),
         Some("listed") => {
             let count: i64 = row
                 .get::<_, Option<i64>>("source_tracks_count")?

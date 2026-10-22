@@ -417,6 +417,19 @@ impl Default for SignalsContext {
 }
 
 impl SignalsContext {
+    /// The audio an offered release's document is read against: its tracks'
+    /// lengths, where its files say it came from, and its Disc IDs. `None`
+    /// before the audio is measured.
+    pub(crate) fn read_audio(&self) -> Option<crate::import::catalog_reading::ReadAudio> {
+        Some(crate::import::catalog_reading::ReadAudio {
+            lengths: crate::import::catalog_reading::MeasuredLengths::new(
+                self.audio.track_lengths_ms.clone(),
+            )?,
+            origin: self.origin.clone(),
+            disc_ids: self.disc.signal.disc_ids(),
+        })
+    }
+
     /// What the folder's files say about its audio, as combine reads it.
     pub(crate) fn folder_audio(&self) -> crate::identify::medium::FolderAudio<'_> {
         crate::identify::medium::FolderAudio {

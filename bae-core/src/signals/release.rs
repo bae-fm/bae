@@ -12,6 +12,25 @@ pub(crate) struct ReleaseIdentity {
     pub(crate) audio: super::AudioFacts,
 }
 
+impl ReleaseIdentity {
+    /// The audio a catalog release is read against for this release: its
+    /// tracks' stored lengths, its files' origin and their Disc IDs.
+    pub(crate) fn read_audio(
+        self,
+    ) -> Result<crate::import::catalog_reading::ReadAudio, crate::import::ImportError> {
+        let lengths = crate::import::catalog_reading::MeasuredLengths::new(
+            self.audio.track_lengths_ms,
+        )
+        .ok_or_else(|| crate::import::ImportError::Internal {
+            detail: "a library release with no tracks has nothing to read a release against"
+                .to_string(),
+        })?;
+        Ok(crate::import::catalog_reading::ReadAudio::of_rip(
+            lengths, self.rip,
+        ))
+    }
+}
+
 /// Resolve the release's local files, pick out its rip documents, track
 /// sheets and audio, and read them the way a folder's are read (see
 /// [`crate::import::discid::read_rip_artifacts_from_paths`]). The track count
@@ -38,9 +57,9 @@ pub(crate) async fn resolve_release_identity(
         .await
         .map_err(|e| format!("Failed to load tracks: {e}"))?;
     // The lengths a pick of this release is laid out against, so a document
-    // is read against the discs these tracks are; a release with a track
-    // nothing measured is read whole, as a MusicBrainz pick of it is.
-    let track_lengths_ms = crate::library::measured_track_lengths_or_whole(&tracks);
+    // is read against the discs these tracks are.
+    let track_lengths_ms =
+        crate::library::stored_track_lengths(&tracks).map_err(|error| error.to_string())?;
     // Original paths are the ones this device recorded at import.
     // A release imported elsewhere has no originals here, so yields no paths or
     // disc ID.

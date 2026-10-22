@@ -1,6 +1,8 @@
 package fm.bae.app
 
 import android.content.Context
+import android.icu.text.ListFormatter
+import android.icu.text.NumberFormat
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
@@ -32,7 +34,8 @@ import java.util.Date
  */
 fun Context.localizedLine(error: BridgeException): String? =
     bridgeErrorLineKey(error)?.let { key ->
-        // The line takes the counts its category carries, formatted for the locale.
+        // The line takes the counts and disc numbers its category carries,
+        // formatted for the locale.
         when (val category = (error as? BridgeException.Diagnostic)?.category) {
             is BridgeErrorCategory.MetadataTrackCount -> {
                 coreString(
@@ -42,6 +45,12 @@ fun Context.localizedLine(error: BridgeException): String? =
                         "release_tracks" to category.releaseTracks.toLong(),
                     ),
                 )
+            }
+
+            is BridgeErrorCategory.TiedMediums -> {
+                val numbers = NumberFormat.getIntegerInstance(currentLocale())
+                val discs = category.mediums.map { numbers.format(it.toLong()) }
+                coreString(key, mapOf("discs" to ListFormatter.getInstance(currentLocale()).format(discs)))
             }
 
             else -> {

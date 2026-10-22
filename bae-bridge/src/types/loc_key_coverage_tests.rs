@@ -248,6 +248,9 @@ fn produced_keys() -> Vec<String> {
             folder_tracks: 12,
             release_tracks: 10,
         },
+        BridgeErrorCategory::TiedMediums {
+            mediums: vec![2, 4],
+        },
         BridgeErrorCategory::CandidateImportInProgress,
         BridgeErrorCategory::CandidateBeingIdentified,
         BridgeErrorCategory::Export,

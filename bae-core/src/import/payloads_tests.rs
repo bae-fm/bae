@@ -658,7 +658,7 @@ fn a_discogs_release_reaches_its_master_through_the_anchor() {
     let parsed = payloads
         .extract()
         .unwrap()
-        .values(&[])
+        .every_medium_values()
         .expect("the documents map");
     assert_eq!(
         parsed.album_year,
@@ -866,7 +866,7 @@ fn discogs_master_cross_reference_retains_album_links_without_claiming_a_pressin
     let parsed = payloads
         .extract()
         .unwrap()
-        .values(&[])
+        .every_medium_values()
         .unwrap();
     assert_eq!(parsed.album_year, Some(1966));
     assert_eq!(parsed.pressing.year, None);

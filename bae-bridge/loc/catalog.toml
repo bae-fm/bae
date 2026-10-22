@@ -4399,6 +4399,40 @@ da = "Numre i mappen: {folder_tracks}, på denne udgivelse: {release_tracks}"
 nb = "Spor i mappen: {folder_tracks}, på denne utgivelsen: {release_tracks}"
 fi = "Raitoja kansiossa: {folder_tracks}, tässä julkaisussa: {release_tracks}"
 
+[messages."core.import.error.tied_mediums"]
+comment = "A release refused for a folder because several sets of its discs fit the folder's audio equally well and read as different tracks, so which discs the folder holds is not known. Shown on the release the person picked. discs: the release's disc numbers as a list formatted for the locale, e.g. \"2 and 4\"."
+args = { discs = "Str" }
+value = "Discs {discs} of this release fit the folder equally well. Pick another release or use the file metadata."
+
+[messages."core.import.error.tied_mediums".translations]
+es = "Los discos {discs} de esta edición encajan igual de bien con la carpeta. Elige otra edición o usa los metadatos de los archivos."
+fr = "Les disques {discs} de cette édition correspondent aussi bien au dossier. Choisissez une autre édition ou utilisez les métadonnées des fichiers."
+de = "Die Discs {discs} dieser Veröffentlichung passen gleich gut zum Ordner. Wähle eine andere Veröffentlichung oder nutze die Metadaten der Dateien."
+pt-BR = "Os discos {discs} desta edição combinam igualmente bem com a pasta. Escolha outra edição ou use os metadados dos arquivos."
+ja = "このリリースのディスク {discs} は、どれも同じようにフォルダに一致します。別のリリースを選ぶか、ファイルのメタデータを使用してください。"
+ko = "이 릴리스의 디스크 {discs}이(가) 폴더와 똑같이 잘 맞습니다. 다른 릴리스를 선택하거나 파일 메타데이터를 사용해 주세요."
+zh-Hans = "此发行版本的光盘 {discs} 与文件夹同样吻合。请选择其他发行版本，或使用文件的元数据。"
+ar = "تتطابق الأقراص {discs} من هذا الإصدار مع المجلد بالقدر نفسه. اختر إصدارًا آخر أو استخدم البيانات الوصفية للملفات."
+he = "הדיסקים {discs} במהדורה הזו מתאימים לתיקייה באותה מידה. בחר מהדורה אחרת או השתמש במטא-נתונים של הקבצים."
+uk = "Диски {discs} цього видання однаково добре відповідають папці. Виберіть інше видання або скористайтеся метаданими файлів."
+bg = "Дисковете {discs} от това издание съответстват еднакво добре на папката. Изберете друго издание или използвайте метаданните на файловете."
+pl = "Płyty {discs} tego wydania pasują do folderu równie dobrze. Wybierz inne wydanie lub użyj metadanych plików."
+cs = "Disky {discs} tohoto vydání odpovídají složce stejně dobře. Vyberte jiné vydání nebo použijte metadata souborů."
+hr = "Diskovi {discs} ovog izdanja jednako dobro odgovaraju mapi. Odaberite drugo izdanje ili upotrijebite metapodatke datoteka."
+zh-Hant = "此發行版本的光碟 {discs} 與資料夾同樣吻合。請選擇其他發行版本，或使用檔案的中繼資料。"
+it = "I dischi {discs} di questa edizione corrispondono alla cartella allo stesso modo. Scegli un'altra edizione o usa i metadati dei file."
+tr = "Bu sürümün {discs} numaralı diskleri klasörle aynı derecede eşleşiyor. Başka bir sürüm seçin veya dosyaların meta verilerini kullanın."
+nl = "De schijven {discs} van deze uitgave passen even goed bij de map. Kies een andere uitgave of gebruik de metadata van de bestanden."
+sk = "Disky {discs} tohto vydania zodpovedajú priečinku rovnako dobre. Vyber iné vydanie alebo použi metadáta súborov."
+hu = "A kiadvány {discs} lemeze egyformán illik a mappához. Válassz másik kiadványt, vagy használd a fájlok metaadatait."
+ro = "Discurile {discs} ale acestei ediții se potrivesc la fel de bine cu dosarul. Alege altă ediție sau folosește metadatele fișierelor."
+el = "Οι δίσκοι {discs} αυτής της έκδοσης ταιριάζουν εξίσου με τον φάκελο. Επιλέξτε άλλη έκδοση ή χρησιμοποιήστε τα μεταδεδομένα των αρχείων."
+pt-PT = "Os discos {discs} desta edição correspondem igualmente bem à pasta. Escolha outra edição ou utilize os metadados dos ficheiros."
+sv = "Skivorna {discs} i den här utgåvan passar lika bra till mappen. Välj en annan utgåva eller använd filernas metadata."
+da = "Diskene {discs} i denne udgivelse passer lige godt til mappen. Vælg en anden udgivelse, eller brug filernes metadata."
+nb = "Platene {discs} i denne utgivelsen passer like godt til mappen. Velg en annen utgivelse, eller bruk filenes metadata."
+fi = "Tämän julkaisun levyt {discs} sopivat kansioon yhtä hyvin. Valitse toinen julkaisu tai käytä tiedostojen metatietoja."
+
 
 
 [messages."core.pressing.discogs.advance"]

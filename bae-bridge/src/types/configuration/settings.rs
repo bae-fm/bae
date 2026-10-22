@@ -114,7 +114,7 @@ impl From<&bae_core::import::GroupingBlock> for BridgeError {
 /// The kind of diagnostic failure. The UI shows one generic localized line per
 /// category; `detail` is the underlying Rust error chain — logged and offered in
 /// a copyable disclosure, never translated.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeErrorCategory {
     Database,
     Config,
@@ -133,6 +133,11 @@ pub enum BridgeErrorCategory {
     MetadataTrackCount {
         folder_tracks: u32,
         release_tracks: u32,
+    },
+    /// Several sets of the release's mediums fit the candidate's audio
+    /// equally and read differently; the line names every medium of them.
+    TiedMediums {
+        mediums: Vec<u32>,
     },
     Export,
     Save,
@@ -311,6 +316,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
             "core.import.error.candidate_being_identified"
         }
         BridgeErrorCategory::MetadataTrackCount { .. } => "core.import.error.metadata_track_count",
+        BridgeErrorCategory::TiedMediums { .. } => "core.import.error.tied_mediums",
         BridgeErrorCategory::Export => "core.error.category.export",
         BridgeErrorCategory::Save => "core.error.category.save",
         BridgeErrorCategory::Storage { failure } => {
@@ -412,7 +418,9 @@ pub fn bridge_error_line_key(error: &BridgeError) -> Option<String> {
     match error {
         BridgeError::Cancelled => None,
         BridgeError::NotFound { entity, .. } => Some(bridge_entity_not_found_key(*entity)),
-        BridgeError::Diagnostic { category, .. } => Some(bridge_error_category_key(*category)),
+        BridgeError::Diagnostic { category, .. } => {
+            Some(bridge_error_category_key(category.clone()))
+        }
     }
 }
 
@@ -475,6 +483,7 @@ mirror_enum! {
         CandidateImportInProgress,
         CandidateBeingIdentified,
         MetadataTrackCount { folder_tracks, release_tracks },
+        TiedMediums { mediums },
         GroupingBlocked(reason: (BridgeGroupingBlock)),
         Export,
         Save,

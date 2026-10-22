@@ -33,7 +33,7 @@ fn discogs_titles(json: &str, audio: &[u64]) -> Vec<String> {
     )
     .extract()
     .expect("the Discogs fixture extracts")
-    .values(audio)
+    .read(&crate::import::catalog_reading::ReadAudio::of_lengths(audio))
     .expect("the Discogs fixture reads")
     .tracks
     .into_iter()
@@ -538,7 +538,7 @@ fn mb_values_number_vinyl_sides_across_media() {
         },
     ]);
 
-    let values = mb_release(&response).values(&[]).unwrap();
+    let values = mb_release(&response).every_medium_values().unwrap();
     let sides: Vec<Option<i32>> = values.tracks.iter().map(|t| t.side).collect();
     assert_eq!(sides, vec![Some(1), Some(2), Some(3), Some(4)]);
 }
@@ -575,7 +575,7 @@ fn mb_values_keep_unknown_sides() {
         ],
     }]);
 
-    let values = mb_release(&response).values(&[]).unwrap();
+    let values = mb_release(&response).every_medium_values().unwrap();
     assert_eq!(values.tracks[0].side, Some(1));
     assert_eq!(values.tracks[1].side, None);
 }
@@ -603,7 +603,7 @@ fn mb_detail_pressing_matches_the_committed_pressing() {
 
     let detail = mb_detail(&response);
     let parsed = mb_release(&response)
-    .values(&[])
+    .every_medium_values()
     .unwrap();
     let committed = parsed.pressing;
 
@@ -640,7 +640,7 @@ fn a_track_title_prefers_the_recording_title() {
     }]);
 
     let parsed = mb_release(&response)
-    .values(&[])
+    .every_medium_values()
     .unwrap();
     let titles: Vec<&str> = parsed.tracks.iter().map(|t| t.title.as_str()).collect();
     assert_eq!(titles, vec!["Recording Title", "Only A Track Title"]);
@@ -669,7 +669,7 @@ fn a_track_without_any_title_fails_the_reading() {
     }]);
 
     let err = mb_release(&response)
-        .values(&[])
+        .every_medium_values()
         .expect_err("expected error for a title-less track");
     assert!(
         matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no track title")),

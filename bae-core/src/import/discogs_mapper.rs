@@ -264,7 +264,8 @@ fn formats(release: &SourceRelease) -> &StatedMedia {
 }
 
 /// What the covered mediums of a Discogs release say the audio's tracks are,
-/// its tracklist laid out against `audio_durations_ms`.
+/// its tracklist laid out against `audio_durations_ms`; with none, every
+/// index and heading read out to its sub-tracks.
 pub(crate) fn values(
     release: &SourceRelease,
     coverage: &MediumCoverage,
@@ -373,6 +374,14 @@ pub(crate) fn process_tracklist<'a>(
         .min_by(|left, right| compare_layouts(left, right, audio_durations_ms))
         .expect("Discogs layout generation always yields a candidate")
         .tracks
+}
+
+/// Every number of tracks a layout of `entries` gives, each index and heading
+/// either collapsed into one track or read out to its sub-tracks: what a
+/// reading weighs a Discogs medium by. A medium that lists no playable row
+/// gives zero alone.
+pub(crate) fn layout_counts(entries: &[TracklistEntry]) -> std::collections::BTreeSet<usize> {
+    candidate_layouts(entries, None, 0).into_keys().collect()
 }
 
 /// The durations still unmatched once a layout starts at `offset`.

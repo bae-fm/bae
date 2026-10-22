@@ -107,11 +107,7 @@ async fn settle_verdict(
     priority: CallPriority,
     token: &CancellationToken,
 ) -> Settled {
-    let durations = state
-        .audio()
-        .expect("a terminal state carries the audio it was identified over")
-        .durations
-        .clone();
+    let audio = state.read_audio();
     // The text the run judged its rows against, which the verdict does not
     // keep: what the pick's year falls back on.
     let text = state.candidate_text();
@@ -146,7 +142,7 @@ async fn settle_verdict(
             context,
             candidate,
             &mut verdict,
-            &durations,
+            &audio.expect("a terminal state that offers a release read it against measured audio"),
             &release,
             partners,
             pressing_year,
@@ -171,7 +167,7 @@ async fn lead_metadata(
     context: &Context,
     candidate: &FolderCandidate,
     verdict: &mut TerminalVerdict,
-    durations: &crate::import::probe::SourceDurations,
+    audio: &crate::import::catalog_reading::ReadAudio,
     release: &crate::import::source_release::SourceRelease,
     partners: Vec<crate::import::source_release::SourceRelease>,
     pressing_year: Option<i32>,
@@ -198,9 +194,16 @@ async fn lead_metadata(
     if current.file_edit_revision != candidate.file_edit_revision {
         return Err(Settled::Abandoned);
     }
-    let source_draft = context
-        .import
-        .external_candidate_draft(release, durations, &current.draft, pressing_year)
+    let source_draft = release
+        .read(audio)
+        .map_err(crate::import::ImportError::from)
+        .and_then(|values| {
+            crate::import::ImportServiceHandle::external_candidate_draft(
+                values,
+                &current.draft,
+                pressing_year,
+            )
+        })
         .map_err(|error| {
             tracing::error!(
                 "identification: {} matched a release its draft cannot be read from: {error}",

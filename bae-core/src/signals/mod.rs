@@ -19,7 +19,7 @@ desktop_only! {
     pub mod disc_id;
     mod fast_pass;
     mod pool;
-    mod release;
+    pub(crate) mod release;
     pub mod rip;
     pub mod service;
     pub mod text;

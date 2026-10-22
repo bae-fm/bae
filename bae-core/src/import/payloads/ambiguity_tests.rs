@@ -43,7 +43,7 @@ fn parsed(payloads: &ReleasePayloads) -> crate::import::release_values::ReleaseV
     payloads
         .extract()
         .unwrap()
-        .values(&[])
+        .every_medium_values()
         .unwrap()
 }
 

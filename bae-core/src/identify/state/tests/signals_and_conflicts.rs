@@ -111,6 +111,7 @@ fn badge(state: &IdentifyState, kind: SignalKind) -> ToolbarSignal {
 fn five_tracks() -> crate::signals::AudioFacts {
     crate::signals::AudioFacts {
         track_count: 5,
+        track_lengths_ms: vec![200_000; 5],
         ..Default::default()
     }
 }

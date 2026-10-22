@@ -9,8 +9,6 @@
 //! source, so nothing reads it again.
 
 use super::*;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-use crate::import::ImportError;
 
 /// A candidate's draft: the editor's album fields, one [`CandidateTrack`] per
 /// audio unit of the folder in the folder's order, and the release-level
@@ -146,23 +144,6 @@ impl CandidateTrack {
 }
 
 impl CandidateDraft {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn audio_durations(
-        &self,
-        durations: &crate::import::probe::SourceDurations,
-    ) -> Result<Vec<u64>, ImportError> {
-        self.tracks
-            .iter()
-            .map(|track| {
-                durations
-                    .duration_of(&track.edit.file)
-                    .ok_or_else(|| ImportError::Internal {
-                        detail: format!("draft track {} has no measured audio", track.edit.id),
-                    })
-            })
-            .collect()
-    }
-
     /// The editor's form: the draft's editable fields.
     pub fn release_edit(&self) -> RawReleaseEdit {
         RawReleaseEdit {

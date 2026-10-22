@@ -30,6 +30,7 @@ fn mk_context(track_count: u32) -> SignalsContext {
         text_settled: true,
         audio: crate::signals::AudioFacts {
             track_count,
+            track_lengths_ms: vec![200_000; track_count as usize],
             ..Default::default()
         },
         documents: crate::identify::documents::DocumentReading::Pending,

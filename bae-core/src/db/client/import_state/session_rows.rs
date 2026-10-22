@@ -123,6 +123,14 @@ fn category_column(category: UiErrorCategory) -> String {
             folder_tracks,
             release_tracks,
         } => format!("metadata_track_count.{folder_tracks}.{release_tracks}"),
+        C::TiedMediums { mediums } => format!(
+            "tied_mediums.{}",
+            mediums
+                .iter()
+                .map(u32::to_string)
+                .collect::<Vec<_>>()
+                .join(".")
+        ),
         C::GroupingBlocked(reason) => format!("grouping_blocked.{}", block_column(reason)),
         C::Export => "export".to_string(),
         C::Save => "save".to_string(),
@@ -237,6 +245,12 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
         Some(("versioning_unsupported", stored)) => {
             C::S3VersioningUnsupported(versioning_of(stored).ok_or_else(unreadable)?)
         }
+        Some(("tied_mediums", stored)) => C::TiedMediums {
+            mediums: stored
+                .split('.')
+                .map(|medium| medium.parse().map_err(|error| unreadable_because(&error)))
+                .collect::<Result<_, _>>()?,
+        },
         Some(("metadata_track_count", stored)) => {
             let (folder_tracks, release_tracks) = stored.split_once('.').ok_or_else(unreadable)?;
             C::MetadataTrackCount {
@@ -361,7 +375,7 @@ fn save_session_on(
             let UiError::Diagnostic { category, detail } = &failure.error;
             (
                 Some(command_column(failure.command)),
-                Some(category_column(*category)),
+                Some(category_column(category.clone())),
                 Some(detail.clone()),
             )
         }
@@ -499,6 +513,9 @@ mod tests {
                 folder_tracks: 12,
                 release_tracks: 10,
             },
+            C::TiedMediums {
+                mediums: vec![2, 4],
+            },
             C::GroupingBlocked(B::SourceChanged),
             C::GroupingBlocked(B::SourceGone),
             C::GroupingBlocked(B::FolderFilesTaken),
@@ -534,7 +551,7 @@ mod tests {
             C::Renderer,
         ];
         for class in classes {
-            assert_eq!(category_of(&category_column(class)).unwrap(), class);
+            assert_eq!(category_of(&category_column(class.clone())).unwrap(), class);
         }
         assert!(category_of("grouping_blocked.nowhere").is_err());
         assert!(category_of("nothing").is_err());

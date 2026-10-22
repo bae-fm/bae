@@ -215,7 +215,7 @@ impl MatchedRelease {
 fn source_track_count(source_tracks: &Option<SourceTracks>) -> Option<u32> {
     match source_tracks {
         Some(SourceTracks::Listed { count }) => Some(*count),
-        Some(SourceTracks::Nothing) | None => None,
+        Some(SourceTracks::Nothing | SourceTracks::Unreadable) | None => None,
     }
 }
 

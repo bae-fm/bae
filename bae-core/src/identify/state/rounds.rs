@@ -89,7 +89,9 @@ pub(super) fn next_round(
         context.documents = DocumentReading::Reading(context.documents.read().to_vec());
         effects.push(Effect::ReadReleases {
             releases: unread,
-            track_lengths_ms: context.audio.track_lengths_ms.clone(),
+            audio: context
+                .read_audio()
+                .expect("a run reads documents only once its audio is measured"),
         });
     }
     for lookup in pressings {

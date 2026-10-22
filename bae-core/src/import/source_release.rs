@@ -6,16 +6,15 @@
 //! release's documents once, when it is fetched, into a [`SourceRelease`].
 //! What depends on the folder's audio is not extracted: which of the release's
 //! mediums the audio is a rip of, and how a Discogs tracklist's index and
-//! heading rows are laid out against it, are chosen here from the stored
-//! tracklist and the lengths the caller measured.
+//! heading rows are laid out against it, are chosen when the release is read
+//! against the audio (see `import::catalog_reading`).
 
 use crate::pressing::Pressing;
 use crate::import::cover_art::RemoteCover;
 use crate::import::medium_coverage::MediumCoverage;
 use crate::import::release_metadata::ReleaseMetadata;
-use crate::import::search::{ImportSearchReleaseDetail, SourceTracks};
+use crate::import::search::ImportSearchReleaseDetail;
 use crate::pressing::{Medium, StatedMedia};
-use crate::import::release_values::ReleaseValues;
 use crate::import::{ArtistCredit, Catalog, ImportError, MetadataRef, ReleaseRecord};
 
 /// The catalogs bae fetches releases from are exactly the ones it asks, so a
@@ -272,43 +271,6 @@ impl SourceRelease {
         records
     }
 
-    /// Each medium's stated track lengths, read the way a tracklist with no
-    /// audio to fit is read.
-    fn medium_lengths(&self) -> Vec<Vec<Option<u64>>> {
-        match self.release.catalog {
-            Catalog::MusicBrainz => self
-                .mediums
-                .iter()
-                .map(|medium| {
-                    medium
-                        .entries
-                        .iter()
-                        .map(|track| track.duration_ms)
-                        .collect()
-                })
-                .collect(),
-            Catalog::Discogs => self
-                .mediums
-                .iter()
-                .map(|medium| {
-                    crate::import::discogs_mapper::process_tracklist(&medium.entries, None)
-                        .iter()
-                        .map(|track| track.duration_ms)
-                        .collect()
-                })
-                .collect(),
-            other => not_fetched(other),
-        }
-    }
-
-    /// The mediums of this release the audio is a rip of — the CD layer of a
-    /// hybrid SACD, one disc of a box. Every reading below reads those
-    /// mediums' tracks and no others, so the draft, the picker's tracklist,
-    /// and the auto-import check all describe the same discs.
-    pub(crate) fn coverage(&self, audio_durations_ms: &[u64]) -> MediumCoverage {
-        crate::import::medium_coverage::choose(&self.medium_lengths(), audio_durations_ms)
-    }
-
     /// The mediums the coverage names, in release order.
     pub(crate) fn covered_mediums<'a>(
         &'a self,
@@ -319,34 +281,6 @@ impl SourceRelease {
             .enumerate()
             .filter(move |(position, _)| coverage.covers(*position))
             .map(|(_, medium)| medium)
-    }
-
-    /// What the source says about this release's own tracklist — the half of
-    /// the auto-import check the folder's track count is checked against.
-    pub fn source_tracks_for_audio(&self, audio_durations_ms: &[u64]) -> SourceTracks {
-        SourceTracks::of_titles(&self.track_titles_for_audio(audio_durations_ms))
-    }
-
-    /// The title of each track this release lists for the audio, in its
-    /// order: the covered mediums' tracks, as the tracklist is laid out
-    /// against the audio. `None` for a track the catalog gives no title.
-    pub(crate) fn track_titles_for_audio(&self, audio_durations_ms: &[u64]) -> Vec<Option<String>> {
-        let coverage = self.coverage(audio_durations_ms);
-        match self.release.catalog {
-            Catalog::MusicBrainz => self
-                .covered_mediums(&coverage)
-                .flat_map(|medium| &medium.entries)
-                .map(|entry| entry.title.clone())
-                .collect(),
-            Catalog::Discogs => crate::import::discogs_mapper::process_tracklist(
-                &self.covered_entries(&coverage),
-                Some(audio_durations_ms),
-            )
-            .into_iter()
-            .map(|track| Some(track.title))
-            .collect(),
-            other => not_fetched(other),
-        }
     }
 
     /// The rows of the covered mediums, in tracklist order.
@@ -493,25 +427,6 @@ impl SourceRelease {
         }
     }
 
-    /// What this release says the audio's tracks are: its covered mediums'
-    /// tracks laid onto the audio, with every credit, role and work it states.
-    ///
-    /// `audio_durations_ms` is what the audio measures. It chooses which of
-    /// the release's mediums are read and, for a Discogs tracklist, its
-    /// index/sub-track layout; a MusicBrainz tracklist states its own track
-    /// times. Empty means unmeasured, and reads the whole release.
-    pub(crate) fn values(&self, audio_durations_ms: &[u64]) -> Result<ReleaseValues, ImportError> {
-        let coverage = self.coverage(audio_durations_ms);
-        match self.release.catalog {
-            Catalog::MusicBrainz => crate::import::musicbrainz_mapper::values(self, &coverage),
-            Catalog::Discogs => crate::import::discogs_mapper::values(
-                self,
-                &coverage,
-                Some(audio_durations_ms),
-            ),
-            other => not_fetched(other),
-        }
-    }
 }
 
 pub(crate) fn catalog_rank(catalog: Catalog) -> usize {

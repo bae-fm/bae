@@ -55,11 +55,10 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key}'s lookup offers no several pressings of one album"),
             },
         )?;
-        let durations = crate::import::probe::source_durations(&candidate.files)?;
-        let audio_durations =
-            crate::import::audio_layout::audio_durations(&candidate.files, &durations)?;
+        let audio = crate::import::catalog_reading::ReadAudio::of_files(&candidate.files)?;
         // What picking each row would read, top-ranked first. A release that
-        // fails to load fails the whole, leaving the candidate as it was.
+        // fails to load, or cannot be read onto the folder's audio, fails the
+        // whole, leaving the candidate as it was.
         let mut offered = Vec::with_capacity(shared.leads.len());
         let mut records = Vec::with_capacity(shared.leads.len());
         for lead in &shared.leads {
@@ -71,7 +70,10 @@ impl ImportServiceHandle {
             .await?;
             records.push(crate::import::search::MetadataResult::of_release(&release));
             offered.push(crate::import::RawReleaseEdit::from_user_edit(
-                release.values(&audio_durations)?.user_edit(),
+                release
+                    .read(&audio)
+                    .map_err(crate::import::ImportError::from)?
+                    .user_edit(),
                 crate::import::pane::CANDIDATE_TRACK_ID_PREFIX,
             ));
         }

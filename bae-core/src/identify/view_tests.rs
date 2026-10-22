@@ -48,6 +48,7 @@ fn context() -> SignalsContext {
         text_settled: true,
         audio: crate::signals::AudioFacts {
             track_count: 9,
+            track_lengths_ms: vec![200_000; 9],
             ..Default::default()
         },
         ..SignalsContext::default()

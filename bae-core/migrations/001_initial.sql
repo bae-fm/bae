@@ -1545,8 +1545,9 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- 'unread': a needed document could not be fetched and nothing named an
     -- album.
     album_links         TEXT NOT NULL CHECK (album_links IN ('not_asked', 'read', 'unread')),
-    -- NULL until the source is asked for its tracklist.
-    source_tracks_kind  TEXT CHECK (source_tracks_kind IS NULL OR source_tracks_kind IN ('listed', 'nothing')),
+    -- NULL until the source is asked for its tracklist. 'unreadable': it
+    -- lists tracks for the audio that cannot be read into values.
+    source_tracks_kind  TEXT CHECK (source_tracks_kind IS NULL OR source_tracks_kind IN ('listed', 'nothing', 'unreadable')),
     source_tracks_count INTEGER CHECK (source_tracks_count IS NULL OR source_tracks_count >= 0),
     -- Which of the run's keys returned this release. Matches against the
     -- folder's text are not stored; they are read from the text lines each
