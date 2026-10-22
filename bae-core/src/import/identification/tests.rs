@@ -310,15 +310,7 @@ impl Fixture {
     }
 
     async fn with_ids(_name: &str, ids: coven::IdSourceRef) -> Self {
-        #[expect(
-            clippy::let_underscore_must_use,
-            reason = "only the first test in the process installs the subscriber; later calls find it installed"
-        )]
-        let _ = tracing_subscriber::fmt()
-            .with_env_filter("warn,bae_core=debug")
-            .with_test_writer()
-            .with_ansi(false)
-            .try_init();
+        crate::test_logs::install();
         let temp = TempDir::new().unwrap();
         let clock: coven::ClockRef = Arc::new(coven::FixedClock::new((fixed_now()).into()));
         let database =
