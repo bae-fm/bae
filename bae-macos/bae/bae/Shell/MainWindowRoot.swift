@@ -20,7 +20,9 @@ struct MainWindowRoot: View {
             if appDelegate.hasShell, let appService = appDelegate.appService {
                 appService.installEnvironment(
                     libraryModals(
-                        MainWindowChrome(loadError: appDelegate.loadError) {
+                        MainWindowChrome(
+                            loadError: appDelegate.loadError?.error
+                        ) {
                             detailContent
                         }
                     )
@@ -48,7 +50,7 @@ struct MainWindowRoot: View {
     /// The welcome flow in the mode a menu item asked for, showing
     /// `loadError` (nil in the Add Library sheet, whose failures the shell
     /// shows).
-    private func welcomeView(loadError: DisplayError?) -> some View {
+    private func welcomeView(loadError: LoadError?) -> some View {
         Group {
             if let mode = appDelegate.welcomeInitialMode {
                 WelcomeView(
@@ -102,7 +104,7 @@ struct MainWindowRoot: View {
     ) -> some View {
         DeviceResetView(
             prompt: prompt,
-            error: appDelegate.loadError,
+            error: appDelegate.loadError?.error,
             onReset: { appDelegate.resetDevice(libraryId: libraryId) },
             onCancel: appDelegate.leaveRecovery
         )

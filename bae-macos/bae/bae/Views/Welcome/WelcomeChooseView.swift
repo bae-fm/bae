@@ -8,8 +8,9 @@ private let logger = Logger.bae("WelcomeChooseView")
 /// saved in iCloud Keychain, create one, join someone's library with an
 /// invite, or add this Mac to one of the person's own libraries with its code.
 struct WelcomeChooseView: View {
-    /// A failed library open, shown as a callout under the subtitle.
-    let loadError: DisplayError?
+    /// A failed library open or dev reset, shown as a callout under the
+    /// subtitle, titled by the step that failed.
+    let loadError: LoadError?
     let canDeleteActiveLibrary: Bool
     let onLibraryReady: (OpenedLibrary, BridgeError?) -> Void
     let onOpenLibrary: (String) -> Void
@@ -120,10 +121,9 @@ struct WelcomeChooseView: View {
                 .foregroundStyle(.secondary)
             if let loadError {
                 WelcomeLoadErrorCallout(
-                    title: "Library failed to open",
-                    error: loadError,
-                    guidance:
-                        "Choose another library, or restore it with “Add device”."
+                    title: loadError.step.title,
+                    error: loadError.error,
+                    guidance: loadError.step.guidance
                 )
             }
             if let removalError = removals.error {
@@ -293,6 +293,32 @@ private struct WelcomeLoadErrorCallout: View {
     }
 }
 
+extension LoadError.Step {
+    /// The welcome callout's title: what failed.
+    fileprivate var title: LocalizedStringKey {
+        switch self {
+        case .libraryOpen:
+            "Library failed to open"
+        #if BAE_DEV_RESET
+            case .devReset:
+                "Dev reset failed"
+        #endif
+        }
+    }
+
+    /// What the person can do next.
+    fileprivate var guidance: LocalizedStringKey {
+        switch self {
+        case .libraryOpen:
+            "Choose another library, or restore it with “Add device”."
+        #if BAE_DEV_RESET
+            case .devReset:
+                "Nothing after the failed step ran. Fix what the error names, then run scripts/reset-bae.py again."
+        #endif
+        }
+    }
+}
+
 /// A library the person is asked to remove, with what removing it loses.
 private struct PendingRemoval {
     let library: BridgeLibrary
@@ -365,7 +391,9 @@ private struct RemovalErrorCallout: View {
     #Preview("Library failed to open") {
         WelcomeWindowChrome {
             WelcomeChooseView(
-                loadError: PreviewData.displayErrorWithDetail,
+                loadError: LoadError(
+                    libraryOpen: PreviewData.displayErrorWithDetail
+                ),
                 canDeleteActiveLibrary: true,
                 onLibraryReady: { _, _ in },
                 onOpenLibrary: { _ in },
@@ -378,4 +406,29 @@ private struct RemovalErrorCallout: View {
         .environment(PreviewData.welcomeSetup())
         .environment(PreviewData.welcomeRemovals())
     }
+
+    #if BAE_DEV_RESET
+        #Preview("Dev reset failed") {
+            WelcomeWindowChrome {
+                WelcomeChooseView(
+                    loadError: LoadError(
+                        devReset: BridgeError.Diagnostic(
+                            category: .s3Prefix(problem: .emptySegment),
+                            detail:
+                                "dev profile profile.toml: s3.key_prefix: the S3 prefix has two slashes in a row"
+                        )
+                    ),
+                    canDeleteActiveLibrary: true,
+                    onLibraryReady: { _, _ in },
+                    onOpenLibrary: { _ in },
+                    onFinishReplacement: { _, _ in },
+                    onRestoreSaved: { _ in },
+                    onJoin: {},
+                    onAddDevice: {}
+                )
+            }
+            .environment(PreviewData.welcomeSetup())
+            .environment(PreviewData.welcomeRemovals())
+        }
+    #endif
 #endif

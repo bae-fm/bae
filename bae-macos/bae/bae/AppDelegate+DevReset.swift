@@ -36,7 +36,7 @@
                     baeAppLogger.error(
                         "Dev reset failed: \(String(reflecting: error))"
                     )
-                    loadError = DisplayError(error)
+                    loadError = LoadError(devReset: error)
                     screen = .welcome
                 }
             }

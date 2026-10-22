@@ -62,7 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     var uiStore = UiStore()
     var screen: AppScreen = .loading
-    var loadError: DisplayError?
+    var loadError: LoadError?
     /// The welcome mode a menu item asked for; nil is the chooser.
     var welcomeInitialMode: WelcomeView.Mode?
     /// True once the first library has opened and replaced the bootstrap
@@ -238,7 +238,7 @@ extension AppDelegate {
                 baeAppLogger.error(
                     "Failed to list libraries: \(error.localizedDescription)"
                 )
-                loadError = DisplayError(error)
+                loadError = LoadError(libraryOpen: error)
                 screen = .welcome
                 return
             }
@@ -320,11 +320,11 @@ extension AppDelegate {
                 screen = recovery
                 // A screen that finishes a reset or restore says so itself.
                 if case .resetRequired = recovery {
-                    loadError = DisplayError(error)
+                    loadError = LoadError(libraryOpen: error)
                 }
             }
             else {
-                loadError = DisplayError(error)
+                loadError = LoadError(libraryOpen: error)
                 if !hasShell {
                     // A failed bootstrap open returns to the welcome.
                     screen = .welcome
@@ -363,7 +363,7 @@ extension AppDelegate {
                 baeAppLogger.error(
                     "Closing the library to restore it failed: \(error.localizedDescription)"
                 )
-                self.loadError = DisplayError(error)
+                self.loadError = LoadError(libraryOpen: error)
                 self.screen = .welcome
             }
         }
@@ -416,7 +416,7 @@ extension AppDelegate {
                 baeAppLogger.error(
                     "Device reset failed: \(error.localizedDescription)"
                 )
-                self.loadError = DisplayError(error)
+                self.loadError = LoadError(libraryOpen: error)
                 self.screen = startedFrom
             }
         }
@@ -491,7 +491,7 @@ extension AppDelegate {
             baeAppLogger.error(
                 "Failed to shut down library: \(failure.diagnostic)"
             )
-            loadError = failure.displayedError
+            loadError = failure.displayedError.map(LoadError.init(libraryOpen:))
             screen = .library
         }
     }
@@ -619,6 +619,6 @@ extension AppDelegate {
         }
         releaseLibrarySession(service)
         openLocalLibrary(id: libraryId)
-        loadError = error
+        loadError = error.map(LoadError.init(libraryOpen:))
     }
 }

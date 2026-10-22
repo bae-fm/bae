@@ -52317,6 +52317,352 @@
         }
       }
     },
+    "Dev reset failed" : {
+      "comment" : "Welcome screen callout title in a debug build when the dev reset launch (--dev-reset) stopped partway; the error follows",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "فشلت إعادة التعيين التطويرية"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нулирането за разработка не успя"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vývojářský reset selhal"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Udviklernulstillingen mislykkedes"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entwicklungs-Reset fehlgeschlagen"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Η επαναφορά ανάπτυξης απέτυχε"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dev reset failed"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Falló el restablecimiento de desarrollo"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kehityskäytön nollaus epäonnistui"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La réinitialisation de développement a échoué"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "איפוס הפיתוח נכשל"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Razvojno vraćanje na početno nije uspjelo"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A fejlesztői visszaállítás nem sikerült"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ripristino di sviluppo non riuscito"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開発用リセットに失敗しました"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "개발용 초기화에 실패했습니다"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utviklertilbakestillingen mislyktes"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ontwikkelreset mislukt"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset deweloperski nie powiódł się"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Falha na redefinição de desenvolvimento"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A reposição de desenvolvimento falhou"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resetarea de dezvoltare a eșuat"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vývojársky reset zlyhal"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utvecklingsåterställningen misslyckades"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geliştirme sıfırlaması başarısız oldu"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скидання для розробки не вдалося"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开发重置失败"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開發重設失敗"
+          }
+        }
+      }
+    },
+    "Nothing after the failed step ran. Fix what the error names, then run scripts/reset-bae.py again." : {
+      "comment" : "Welcome screen guidance under a failed dev reset in a debug build; scripts/reset-bae.py is the developer script that starts the reset and stays untranslated",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لم يُنفَّذ شيء بعد الخطوة التي فشلت. أصلح ما يذكره الخطأ، ثم شغّل scripts/reset-bae.py مرة أخرى."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нищо след неуспешната стъпка не беше изпълнено. Поправете посоченото в грешката и стартирайте scripts/reset-bae.py отново."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nic po neúspěšném kroku neproběhlo. Opravte, co chyba uvádí, a spusťte scripts/reset-bae.py znovu."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Intet efter det mislykkede trin blev kørt. Ret det, fejlen nævner, og kør scripts/reset-bae.py igen."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach dem fehlgeschlagenen Schritt wurde nichts mehr ausgeführt. Behebe, was der Fehler nennt, und führe scripts/reset-bae.py erneut aus."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Δεν εκτελέστηκε τίποτα μετά το βήμα που απέτυχε. Διορθώστε ό,τι αναφέρει το σφάλμα και εκτελέστε ξανά το scripts/reset-bae.py."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing after the failed step ran. Fix what the error names, then run scripts/reset-bae.py again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se ejecutó nada después del paso que falló. Corrige lo que indica el error y vuelve a ejecutar scripts/reset-bae.py."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Epäonnistuneen vaiheen jälkeen mitään ei suoritettu. Korjaa virheen mainitsema asia ja suorita scripts/reset-bae.py uudelleen."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien n’a été exécuté après l’étape qui a échoué. Corrigez ce que l’erreur indique, puis relancez scripts/reset-bae.py."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שום דבר לא רץ אחרי השלב שנכשל. תקנו את מה שהשגיאה מציינת, ואז הריצו שוב את scripts/reset-bae.py."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ništa nakon neuspjelog koraka nije pokrenuto. Ispravite ono što pogreška navodi, a zatim ponovno pokrenite scripts/reset-bae.py."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A sikertelen lépés után semmi sem futott le. Javítsd ki, amit a hiba megnevez, majd futtasd újra a scripts/reset-bae.py szkriptet."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dopo il passaggio non riuscito non è stato eseguito nulla. Correggi ciò che indica l’errore, poi esegui di nuovo scripts/reset-bae.py."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "失敗した手順より後は何も実行されていません。エラーに示された問題を直してから、scripts/reset-bae.py をもう一度実行してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "실패한 단계 이후로는 아무것도 실행되지 않았습니다. 오류에 나온 문제를 고친 다음 scripts/reset-bae.py를 다시 실행하세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingenting etter steget som mislyktes, ble kjørt. Rett det feilen nevner, og kjør scripts/reset-bae.py på nytt."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Na de mislukte stap is niets meer uitgevoerd. Los op wat de fout noemt en voer scripts/reset-bae.py opnieuw uit."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Po kroku, który się nie powiódł, nic nie zostało wykonane. Popraw to, co wskazuje błąd, i uruchom ponownie scripts/reset-bae.py."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada depois da etapa que falhou foi executado. Corrija o que o erro indica e execute scripts/reset-bae.py novamente."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada foi executado depois do passo que falhou. Corrija o que o erro indica e execute novamente scripts/reset-bae.py."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nimic după pasul care a eșuat nu a rulat. Corectează ce indică eroarea, apoi rulează din nou scripts/reset-bae.py."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Po neúspešnom kroku sa nič nespustilo. Oprav, čo uvádza chyba, a spusti scripts/reset-bae.py znova."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inget efter steget som misslyckades kördes. Åtgärda det som felet nämner och kör sedan scripts/reset-bae.py igen."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Başarısız olan adımdan sonra hiçbir şey çalışmadı. Hatanın belirttiği sorunu düzeltin, ardından scripts/reset-bae.py dosyasını yeniden çalıştırın."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Після кроку, що не вдався, нічого не виконувалося. Виправте те, що вказує помилка, і знову запустіть scripts/reset-bae.py."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "失败步骤之后的操作都没有运行。请修正错误中指出的问题，然后再次运行 scripts/reset-bae.py。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "失敗步驟之後的操作都沒有執行。請修正錯誤中指出的問題，然後再次執行 scripts/reset-bae.py。"
+          }
+        }
+      }
+    },
     "Library failed to open" : {
       "comment" : "Welcome screen callout title when a library fails to open",
       "localizations" : {

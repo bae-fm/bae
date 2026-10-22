@@ -66,7 +66,7 @@ extension AppDelegate {
                 baeAppLogger.error(
                     "OAuth registration failed: \(error.localizedDescription)"
                 )
-                loadError = DisplayError(error)
+                loadError = LoadError(libraryOpen: error)
             }
         #endif
         do {
@@ -84,7 +84,7 @@ extension AppDelegate {
             baeAppLogger.error(
                 "Keyring initialization failed: \(error.localizedDescription)"
             )
-            loadError = DisplayError(error)
+            loadError = LoadError(libraryOpen: error)
             keyringReady = false
         }
         startWatchingForKeychainUnlock()

@@ -15,10 +15,10 @@ struct WelcomeView: View {
     /// Finish the reset or restore of a library's copy on this Mac that
     /// stopped partway, with the one call that finishes it.
     let onFinishReplacement: (String, BridgeReplacedBy) -> Void
-    /// A failed library open, shown as the chooser's inline callout. Only the
-    /// first-run bootstrap carries it; a flow a menu item opens directly shows
-    /// its own errors.
-    let loadError: DisplayError?
+    /// A failed library open or dev reset, shown as the chooser's inline
+    /// callout. Only the first-run bootstrap carries it; a flow a menu item
+    /// opens directly shows its own errors.
+    let loadError: LoadError?
     let canDeleteActiveLibrary: Bool
 
     enum Mode {
@@ -40,7 +40,7 @@ struct WelcomeView: View {
             @escaping @MainActor (OpenedLibrary, BridgeError?) -> Void,
         onOpenLibrary: @escaping (String) -> Void,
         onFinishReplacement: @escaping (String, BridgeReplacedBy) -> Void,
-        loadError: DisplayError? = nil,
+        loadError: LoadError? = nil,
         initialMode: Mode = .choose,
         canDeleteActiveLibrary: Bool
     ) {
