@@ -8,7 +8,7 @@ pub(super) fn identifiers_found_something(
     barcode: &BarcodeProgress,
     catalog: &CatalogProgress,
 ) -> bool {
-    let disc = matches!(discid, DiscidProgress::Done { results, .. } if !results.is_empty());
+    let disc = discid.answers().iter().any(|results| !results.is_empty());
     let code = !barcode.results().is_empty();
     let number = matches!(catalog, CatalogProgress::Lookups { values }
     if values.iter().flat_map(|lookup| &lookup.providers).any(|provider| {
@@ -62,10 +62,11 @@ pub(super) fn search_step(
     }
 }
 
-/// The disc-ID step: the value from the context, its lookup from the pipe.
+/// The disc-ID step: one row per disc ID with its lookup — the disc IDs as
+/// their lookups were started once they were, else as the context read them.
 pub(super) fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) -> DiscIdStepView {
-    let disc_id = match &context.disc.signal {
-        DiscIdSignal::Computed { disc_id, .. } => disc_id.clone(),
+    let discs = match &context.disc.signal {
+        DiscIdSignal::Computed { discs } => discs,
         DiscIdSignal::Absent => {
             return match progress {
                 DiscidProgress::Computing => DiscIdStepView::Reading,
@@ -77,19 +78,41 @@ pub(super) fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) 
             unreachable!("a run whose disc ID could not be derived ended as an error")
         }
     };
-    let lookup = match progress {
+    let row = |disc_id: &str, lookup: LookupView| DiscIdRow {
+        disc_id: disc_id.to_string(),
+        lookup,
+    };
+    let discs = match progress {
+        // The disc IDs as their lookups were started.
+        DiscidProgress::Lookups { discs } => discs
+            .iter()
+            .map(|disc| {
+                row(
+                    &disc.disc_id,
+                    match &disc.state {
+                        LookupState::LookingUp => LookupView::LookingUp,
+                        LookupState::Done { results } => found_or_no_match(results),
+                        LookupState::Failed { failure } => LookupView::Failed {
+                            failure: failure.clone(),
+                        },
+                    },
+                )
+            })
+            .collect(),
         // The track count reaches a surface through the terminal state.
-        DiscidProgress::Computing | DiscidProgress::LookingUp => LookupView::LookingUp,
-        DiscidProgress::Done { results, .. } => found_or_no_match(results),
-        DiscidProgress::NotAsked { reason, .. } => LookupView::NotAsked { reason: *reason },
+        DiscidProgress::Computing => discs
+            .iter()
+            .map(|disc| row(&disc.disc_id, LookupView::LookingUp))
+            .collect(),
+        DiscidProgress::NotAsked { reason } => discs
+            .iter()
+            .map(|disc| row(&disc.disc_id, LookupView::NotAsked { reason: *reason }))
+            .collect(),
         DiscidProgress::Skipped => {
             unreachable!("only a disc ID that was never computed is skipped")
         }
-        DiscidProgress::Failed { failure, .. } => LookupView::Failed {
-            failure: failure.clone(),
-        },
     };
-    DiscIdStepView::Read { disc_id, lookup }
+    DiscIdStepView::Read { discs }
 }
 
 /// The ISRC step: the codes from the context, their lookup from the pipe.

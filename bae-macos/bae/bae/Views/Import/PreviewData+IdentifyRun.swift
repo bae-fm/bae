@@ -8,10 +8,12 @@
         /// answered, and the second is left out.
         static let identifyRunInFlight = BridgeIdentifyRun(
             providers: [.musicBrainz, .discogs],
-            discId: .read(
-                discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                lookup: .found(count: 1, groups: [searchGroupExactBridge])
-            ),
+            discId: .read(discs: [
+                BridgeDiscIdRow(
+                    discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
+                    lookup: .found(count: 1, groups: [searchGroupExactBridge])
+                )
+            ]),
             barcode: .rows(
                 scanning: false,
                 rows: [
@@ -52,10 +54,12 @@
         /// Discogs alone, which does not answer disc IDs.
         static let identifyRunOneSource = BridgeIdentifyRun(
             providers: [.discogs],
-            discId: .read(
-                discId: "aB7cD9eFgH2iJkL3mN4oP5qR6sT=",
-                lookup: .notAsked(reason: .noCatalog)
-            ),
+            discId: .read(discs: [
+                BridgeDiscIdRow(
+                    discId: "aB7cD9eFgH2iJkL3mN4oP5qR6sT=",
+                    lookup: .notAsked(reason: .noCatalog)
+                )
+            ]),
             barcode: .rows(
                 scanning: false,
                 rows: [
@@ -82,10 +86,12 @@
         /// The one-source run with its disc ID left out.
         static let identifyRunDiscIdLeftOut = BridgeIdentifyRun(
             providers: identifyRunOneSource.providers,
-            discId: .read(
-                discId: "aB7cD9eFgH2iJkL3mN4oP5qR6sT=",
-                lookup: leftOut
-            ),
+            discId: .read(discs: [
+                BridgeDiscIdRow(
+                    discId: "aB7cD9eFgH2iJkL3mN4oP5qR6sT=",
+                    lookup: leftOut
+                )
+            ]),
             barcode: identifyRunOneSource.barcode,
             catalog: identifyRunOneSource.catalog,
             isrc: identifyRunOneSource.isrc,
@@ -194,10 +200,12 @@
         /// Every lookup answered empty.
         static let identifyRunNothingFound = BridgeIdentifyRun(
             providers: [.musicBrainz, .discogs],
-            discId: .read(
-                discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                lookup: .noMatch
-            ),
+            discId: .read(discs: [
+                BridgeDiscIdRow(
+                    discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
+                    lookup: .noMatch
+                )
+            ]),
             barcode: .rows(
                 scanning: false,
                 rows: [
@@ -224,10 +232,12 @@
         /// Settled, with the disc ID and the barcode both matched.
         static let identifyRunFound = BridgeIdentifyRun(
             providers: [.musicBrainz, .discogs],
-            discId: .read(
-                discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                lookup: .found(count: 1, groups: [searchGroupExactBridge])
-            ),
+            discId: .read(discs: [
+                BridgeDiscIdRow(
+                    discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
+                    lookup: .found(count: 1, groups: [searchGroupExactBridge])
+                )
+            ]),
             barcode: .rows(
                 scanning: false,
                 rows: [

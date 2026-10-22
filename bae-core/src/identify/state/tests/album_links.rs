@@ -159,7 +159,13 @@ fn disc_run_reading(
         matches!(effects.as_slice(), [Effect::LookupDiscid { .. }]),
         "the disc ID is looked up: {effects:?}"
     );
-    super::step(state, IdentifyEvent::DiscidLookupCompleted { results })
+    super::step(
+        state,
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(results),
+        },
+    )
 }
 
 /// Each MusicBrainz release a disc ID names links its own Discogs release,

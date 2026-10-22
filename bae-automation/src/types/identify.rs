@@ -73,10 +73,17 @@ pub enum AutomationDiscIdStep {
     Absent,
     /// A CUE over audio sampled at a rate no CD plays at.
     NotCdAudio,
+    /// One row per disc ID, in the order they were read.
     Read {
-        disc_id: String,
-        lookup: AutomationLookupState,
+        discs: Vec<AutomationDiscIdRow>,
     },
+}
+
+/// Mirrors bae-core's `identify::DiscIdRow`.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationDiscIdRow {
+    pub disc_id: String,
+    pub lookup: AutomationLookupState,
 }
 
 /// Mirrors bae-core's `identify::BarcodeStepView`.

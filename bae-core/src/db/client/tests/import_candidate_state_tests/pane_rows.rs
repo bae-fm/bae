@@ -199,8 +199,17 @@ async fn every_settled_signal_shape_round_trips() {
             "computed disc ID, settled barcodes and text",
             cd_rip(CdProof::RipLog, Some("rip.log")),
             DiscIdSignal::Computed {
-                disc_id: "disc-hash".to_string(),
-                source_file: Some("rip.log".to_string()),
+                // One disc ID per disc, each with the log it was read off.
+                discs: vec![
+                    crate::signals::ComputedDiscId {
+                        disc_id: "disc-hash".to_string(),
+                        source_file: Some("rip.log".to_string()),
+                    },
+                    crate::signals::ComputedDiscId {
+                        disc_id: "second-disc-hash".to_string(),
+                        source_file: Some("Disc 2/rip.log".to_string()),
+                    },
+                ],
             },
             BarcodeSignal::Settled {
                 codes: vec![

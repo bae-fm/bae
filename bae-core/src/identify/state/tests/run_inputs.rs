@@ -76,8 +76,9 @@ fn a_run_that_leaves_the_barcode_out_never_asks_about_it() {
 
     let (state, _) = step(
         state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))]),
         },
     );
     match state {
@@ -214,4 +215,73 @@ fn leaving_every_code_out_asks_about_none_of_them() {
         }
     );
     assert!(barcode.options.iter().all(|option| !option.chosen));
+}
+
+/// A folder of two discs asks about each disc's ID, settles once both have
+/// answered, and offers the release that holds both discs over one that
+/// holds only the first.
+#[test]
+fn every_disc_id_is_asked_and_a_release_holding_every_disc_ranks_first() {
+    let mut folder = signals(DiscIdSignal::Absent, BarcodeSignal::Absent, &[]);
+    folder.disc_id = DiscIdSignal::Computed {
+        discs: ["disc-one", "disc-two"]
+            .into_iter()
+            .map(|disc_id| crate::signals::ComputedDiscId {
+                disc_id: disc_id.to_string(),
+                source_file: None,
+            })
+            .collect(),
+    };
+    let (state, effects) = update(started(), folder);
+    assert_eq!(
+        effects,
+        vec![
+            Effect::LookupDiscid {
+                disc_id: "disc-one".into()
+            },
+            Effect::LookupDiscid {
+                disc_id: "disc-two".into()
+            },
+        ],
+        "each disc's ID is looked up"
+    );
+
+    let (state, _) = step(
+        state,
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "disc-one".into(),
+            outcome: Ok(vec![pair("both-discs", Some("g")), pair("first-disc-only", Some("g"))]),
+        },
+    );
+    assert!(
+        matches!(state, IdentifyState::Triangulating { .. }),
+        "the run waits for the second disc's answer: {state:?}"
+    );
+    let (state, _) = step(
+        state,
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "disc-two".into(),
+            outcome: Ok(vec![pair("both-discs", Some("g"))]),
+        },
+    );
+    let IdentifyState::Found { findings, .. } = state else {
+        panic!("both answers settle the run: {state:?}");
+    };
+    assert_eq!(
+        findings
+            .matches
+            .iter()
+            .map(|release| release.release_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["both-discs"]
+    );
+    assert_eq!(
+        findings
+            .narrowed_out
+            .matches
+            .iter()
+            .map(|release| release.release_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["first-disc-only"]
+    );
 }

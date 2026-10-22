@@ -187,8 +187,9 @@ pub struct AutomationInternalFailure {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationDiscIdSignal {
+    /// Every disc ID computed, in reading order.
     Computed {
-        disc_id: String,
+        disc_ids: Vec<String>,
     },
     Absent,
     /// A CUE over audio sampled at a rate no CD plays at.

@@ -246,7 +246,7 @@ fn a_resumed_verdict_stands_its_narrowed_out_releases_back_up() {
 #[test]
 fn a_recorded_discid_failure_derives_and_stores_as_failed() {
     let mut context = mk_context(11);
-    context.disc.failure = Some(crate::signals::LookupFailure::Provider { status: None });
+    context.disc.failures = vec![crate::signals::LookupFailure::Provider { status: None }];
     let state = crate::identify::state::re_derive_for_tests(context);
     assert!(matches!(state, IdentifyState::Failed { .. }));
     let verdict = TerminalVerdict::try_from(state).unwrap();
@@ -269,7 +269,7 @@ fn signals_that_share_no_result_store_as_one_match_list() {
     let context = SignalsContext {
         disc: DiscIdEvidence {
             signal: crate::signals::DiscIdSignal::Absent,
-            results: vec![(mk_result("rel-a"), LibraryStatus::absent("rel-a"))],
+            answers: vec![vec![(mk_result("rel-a"), LibraryStatus::absent("rel-a"))]],
             ..Default::default()
         },
         barcode: BarcodeEvidence {
@@ -317,7 +317,7 @@ fn a_union_reached_with_a_recorded_discid_failure_is_failed() {
     let context = SignalsContext {
         disc: DiscIdEvidence {
             signal: crate::signals::DiscIdSignal::Absent,
-            failure: Some(crate::signals::LookupFailure::Network),
+            failures: vec![crate::signals::LookupFailure::Network],
             ..Default::default()
         },
         barcode: BarcodeEvidence {
@@ -360,7 +360,7 @@ fn clean_not_found_anywhere_is_terminal() {
 #[test]
 fn discid_failure_derives_to_failed() {
     let mut context = mk_context(7);
-    context.disc.failure = Some(crate::signals::LookupFailure::Network);
+    context.disc.failures = vec![crate::signals::LookupFailure::Network];
     let state = crate::identify::state::re_derive_for_tests(context);
     assert!(matches!(state, IdentifyState::Failed { .. }));
     let verdict = TerminalVerdict::try_from(state).unwrap();

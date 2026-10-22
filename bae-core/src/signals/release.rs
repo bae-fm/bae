@@ -463,7 +463,7 @@ mod tests {
         let (rip, track_count) = (identity.rip, identity.audio.track_count);
 
         assert!(
-            rip.disc_id.computed().is_some(),
+            rip.disc_id.computed().len() == 1,
             "LOG file in local folder must produce a disc ID"
         );
         assert_eq!(track_count, 2, "track count comes from the DB tracks");

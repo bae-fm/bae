@@ -481,7 +481,7 @@ mod tests {
             .computed();
         let track_count = categorized.track_count();
 
-        assert!(disc_id.is_some(), "LOG fixture should produce a disc ID");
+        assert_eq!(disc_id.len(), 1, "LOG fixture should produce a disc ID");
         assert_eq!(
             track_count, 2,
             "track_count must equal the number of audio files, not 0"

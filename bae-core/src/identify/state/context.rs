@@ -20,19 +20,18 @@ use crate::signals::{
     SourcedValue, TextSignal,
 };
 
-/// The disc-ID signal and what asking about it produced; one provider, so one
-/// failure.
+/// The disc-ID signal and what asking about each of its disc IDs produced.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DiscIdEvidence {
     pub signal: DiscIdSignal,
-    /// Whether the person left the disc ID out.
+    /// Whether the person left the disc IDs out.
     pub excluded: bool,
-    /// The lookup's results, once settled.
-    pub results: Vec<(MetadataResult, LibraryStatus)>,
-    /// Why the disc ID could not be computed or looked up, which tells
-    /// "nothing was learned" from an empty `results`.
-    pub failure: Option<LookupFailure>,
-    /// Why nobody was asked about the disc ID, where nobody was.
+    /// Each disc ID's lookup results, in the signal's order, once settled.
+    pub answers: Vec<Vec<(MetadataResult, LibraryStatus)>>,
+    /// Why disc IDs could not be looked up, each distinct failure once, which
+    /// tells "nothing was learned" from empty `answers`.
+    pub failures: Vec<LookupFailure>,
+    /// Why nobody was asked about the disc IDs, where nobody was.
     pub not_asked: Option<NotAskedReason>,
 }
 
@@ -41,8 +40,8 @@ impl Default for DiscIdEvidence {
         Self {
             signal: DiscIdSignal::Absent,
             excluded: false,
-            results: Vec::new(),
-            failure: None,
+            answers: Vec::new(),
+            failures: Vec::new(),
             not_asked: None,
         }
     }
@@ -56,22 +55,22 @@ impl DiscIdEvidence {
 
     /// Record what the settled pipe found.
     fn record(&mut self, progress: &DiscidProgress) {
-        self.results = progress.results();
-        self.failure = match progress {
-            DiscidProgress::Failed { failure, .. } => Some(failure.clone()),
-            _ => None,
-        };
+        self.answers = progress.answers();
+        self.failures = progress.failures();
         self.not_asked = match progress {
             DiscidProgress::NotAsked { reason, .. } => Some(*reason),
             _ => None,
         };
     }
 
-    /// The disc ID's failure, where it has one.
+    /// Every release any disc ID's lookup returned, each once.
+    pub fn results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
+        crate::identify::combine::union_all(&self.answers)
+    }
+
+    /// The disc IDs' failures.
     fn active_failures(&self, into: &mut Vec<IdentifyFailure>) {
-        if let Some(failure) = &self.failure {
-            into.push(IdentifyFailure::DiscId(failure.clone()));
-        }
+        into.extend(self.failures.iter().cloned().map(IdentifyFailure::DiscId));
     }
 }
 
@@ -513,7 +512,7 @@ impl SignalsContext {
                 .collect()
         };
         let mut answers = LookupAnswers {
-            disc_id: read(self.disc.results.clone()),
+            disc_id: self.disc.answers.iter().cloned().map(read).collect(),
             barcode: read(self.barcode.results.clone()),
             catalog: read(self.catalog.active_results()),
             isrc: read(self.isrc.results.clone()),
@@ -526,16 +525,17 @@ impl SignalsContext {
             ),
         };
         let groups = self.album_groups(&answers);
-        for (result, _) in [
-            &mut answers.disc_id,
-            &mut answers.barcode,
-            &mut answers.catalog,
-            &mut answers.isrc,
-            &mut answers.search,
-            &mut answers.pressing,
-        ]
-        .into_iter()
-        .flatten()
+        for (result, _) in answers
+            .disc_id
+            .iter_mut()
+            .chain([
+                &mut answers.barcode,
+                &mut answers.catalog,
+                &mut answers.isrc,
+                &mut answers.search,
+                &mut answers.pressing,
+            ])
+            .flatten()
         {
             album_links::apply(result, &groups);
         }

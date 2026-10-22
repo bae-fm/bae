@@ -154,17 +154,20 @@ impl IdentifyState {
         }
     }
 
+    /// Shows the first disc ID, with every disc ID as an option: all of them
+    /// are asked about, and left out together.
     fn disc_badge(&self, context: &SignalsContext) -> ToolbarSignal {
+        let disc_ids = context.disc.signal.disc_ids();
         let state = match self {
             IdentifyState::Triangulating { discid, .. } => discid_progress_state(discid),
             _ => settled_identity_state(context),
         };
         ToolbarSignal {
             kind: SignalKind::DiscId,
-            shown: context.disc.signal.discid_value(),
+            shown: disc_ids.first().cloned(),
             state,
             excluded: context.disc.excluded,
-            options: Vec::new(),
+            options: signal_options(&disc_ids, |_| !context.disc.excluded),
         }
     }
 
@@ -246,11 +249,10 @@ pub enum IdentifyEvent {
         artwork: ArtworkScan,
     },
 
-    DiscidLookupCompleted {
-        results: LookupResults,
-    },
-    DiscidLookupFailed {
-        failure: LookupFailure,
+    /// MusicBrainz answered about one disc ID.
+    DiscidLookupAnswered {
+        disc_id: String,
+        outcome: LookupOutcome,
     },
 
     /// One provider answered about one barcode.
@@ -402,41 +404,25 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
 
         (
             IdentifyState::Triangulating {
-                discid: DiscidProgress::Computing | DiscidProgress::LookingUp,
+                mut discid,
                 barcode,
                 catalog,
                 isrc,
                 search,
                 context,
             },
-            IdentifyEvent::DiscidLookupFailed { failure },
-        ) => settle_if_ready(IdentifyState::Triangulating {
-            discid: DiscidProgress::Failed { failure },
-            barcode,
-            catalog,
-            isrc,
-            search,
-            context,
-        }),
-
-        (
-            IdentifyState::Triangulating {
-                discid: DiscidProgress::LookingUp,
+            IdentifyEvent::DiscidLookupAnswered { disc_id, outcome },
+        ) => {
+            discid.answer(&disc_id, outcome);
+            settle_if_ready(IdentifyState::Triangulating {
+                discid,
                 barcode,
                 catalog,
                 isrc,
                 search,
                 context,
-            },
-            IdentifyEvent::DiscidLookupCompleted { results },
-        ) => settle_if_ready(IdentifyState::Triangulating {
-            discid: DiscidProgress::Done { results },
-            barcode,
-            catalog,
-            isrc,
-            search,
-            context,
-        }),
+            })
+        }
 
         (
             IdentifyState::Triangulating {
@@ -878,8 +864,8 @@ use progress::{
     start_search_progress,
 };
 pub use progress::{
-    BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, LookupResults, LookupState,
-    ProviderLookup, SearchProgress, ValueLookup,
+    BarcodeProgress, CatalogProgress, DiscLookup, DiscidProgress, IsrcProgress, LookupResults,
+    LookupState, ProviderLookup, SearchProgress, ValueLookup,
 };
 
 // ── Tests ───────────────────────────────────────────────────────────────────

@@ -399,7 +399,9 @@ fn a_log_carves_its_disc_and_names_the_file_it_was_read_off() {
     let disc_id = read_rip_artifacts(&categorized)
         .disc_id
         .computed()
-        .expect("the log carves a disc");
+        .try_into()
+        .map(|[disc]: [crate::signals::ComputedDiscId; 1]| disc)
+        .expect("the log carves one disc");
     assert_eq!(disc_id.source_file.as_deref(), Some("Album.log"));
 }
 
@@ -433,7 +435,9 @@ fn test_compute_discid_routes_cue_ape() {
     let computed = read_rip_artifacts(&categorized)
         .disc_id
         .computed()
-        .expect("CUE+APE pair must compute a disc ID");
+        .try_into()
+        .map(|[disc]: [crate::signals::ComputedDiscId; 1]| disc)
+        .expect("CUE+APE pair must compute one disc ID");
     assert_eq!(
         crate::audio_codec::probe_opens_for(&audio_path),
         opens_before,
@@ -503,7 +507,9 @@ fn test_compute_discid_routes_cue_mp3() {
     let disc_id = read_rip_artifacts_from_paths(&[], &[cue_path], &[mp3])
         .disc_id
         .computed()
-        .expect("CUE+MP3 pair must compute a disc ID");
+        .try_into()
+        .map(|[disc]: [crate::signals::ComputedDiscId; 1]| disc)
+        .expect("CUE+MP3 pair must compute one disc ID");
     assert_eq!(
         disc_id.disc_id.len(),
         28,

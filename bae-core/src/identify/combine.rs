@@ -144,7 +144,8 @@ type ReleaseKey = (Catalog, String);
 /// status.
 #[derive(Debug, Clone, Default)]
 pub struct LookupAnswers {
-    pub disc_id: Results,
+    /// One set per disc ID the folder's files hash to, in their order.
+    pub disc_id: Vec<Results>,
     pub barcode: Results,
     pub catalog: Results,
     pub isrc: Results,
@@ -159,6 +160,7 @@ impl LookupAnswers {
     pub(crate) fn all(&self) -> impl Iterator<Item = &(MetadataResult, LibraryStatus)> {
         self.disc_id
             .iter()
+            .flatten()
             .chain(&self.barcode)
             .chain(&self.catalog)
             .chain(&self.isrc)
@@ -174,9 +176,20 @@ pub fn combine_results(
     text: &CandidateText,
     folder: FolderAudio<'_>,
 ) -> (Findings, LibraryStatuses) {
-    let ripped_from = RippedFrom::of(folder.origin, !answers.disc_id.is_empty());
+    let disc_id = union_all(&answers.disc_id);
+    let ripped_from = RippedFrom::of(folder.origin, !disc_id.is_empty());
+    // How many of the folder's discs each release holds: each disc ID's
+    // lookup returns a release only where exactly one of its mediums carries
+    // that disc, and the folder's discs are distinct discs, so each disc ID
+    // that returned it is another of its mediums.
+    let mut discs_held: HashMap<ReleaseKey, u32> = HashMap::new();
+    for disc in &answers.disc_id {
+        for key in release_keys(disc) {
+            *discs_held.entry(key).or_default() += 1;
+        }
+    }
     let by_signal = [
-        &answers.disc_id,
+        &disc_id,
         &answers.barcode,
         &answers.catalog,
         &answers.isrc,
@@ -194,7 +207,7 @@ pub fn combine_results(
     }
 
     // Every release once, in key order.
-    let all = union_all(&present);
+    let all = union_all(present);
 
     let lookup_of = |result: &MetadataResult| {
         let key = (result.source, result.release_id.clone());
@@ -240,6 +253,7 @@ pub fn combine_results(
         rows,
         &judgements,
         &returned_by,
+        &discs_held,
         ripped_from,
         folder,
         text,
@@ -322,12 +336,14 @@ struct Support {
     /// name some other record. Which searches returned the row adds nothing:
     /// a search only brings releases in.
     names_pressing: u32,
-    /// Whether the row carries the folder's disc ID: the disc ID lookup
-    /// returned it. No record states the disc IDs it carries, so a row the
-    /// lookup did not return — a Discogs one, which holds none — states
-    /// nothing about it rather than another. Below what names one pressing,
-    /// since every pressing cut from one master shares a table of contents.
-    shares_toc: bool,
+    /// How many of the folder's discs the row holds: how many of its disc
+    /// IDs' lookups returned the row's release, so a release holding every
+    /// disc of the folder ranks above one holding only some. No record states
+    /// the disc IDs it carries, so a row no lookup returned — a Discogs one,
+    /// which holds none — states nothing about them rather than others.
+    /// Below what names one pressing, since every pressing cut from one
+    /// master shares a table of contents.
+    shares_toc: u32,
     /// How many of the album's title, artist and first year the folder's text
     /// states, and whether its recordings are the folder's, as the search by
     /// the audio's ISRCs says. They name the album, not the pressing, so they
@@ -407,6 +423,7 @@ fn support_of(
     row: &Pressing,
     judgements: &Judgements,
     provenance: &HashMap<ReleaseKey, LookupProvenance>,
+    discs_held: &HashMap<ReleaseKey, u32>,
     ripped_from: RippedFrom,
     folder: FolderAudio<'_>,
     facts: &FolderFacts,
@@ -416,15 +433,23 @@ fn support_of(
         let found = provenance
             .get(&(release.source, release.release_id.clone()))
             .expect("a pressing is built from the run's own records");
-        returned.by_disc_id |= found.by_disc_id;
         returned.by_isrc |= found.by_isrc;
     }
+    // A row holds one record per catalog, and only MusicBrainz answers disc
+    // IDs, so at most one of its records holds any.
+    let shares_toc = row
+        .releases
+        .iter()
+        .filter_map(|release| discs_held.get(&(release.source, release.release_id.clone())))
+        .copied()
+        .max()
+        .unwrap_or(0);
     let agreements = row.agreements(judgements);
     let offered = agreements.offered();
     Support {
         medium: ripped_from.admits(row.releases.iter().map(|release| &release.media)),
         names_pressing: u32::from(agreements.catalog) + u32::from(agreements.barcode && offered),
-        shares_toc: returned.by_disc_id,
+        shares_toc,
         names_album: agreements.names_album()
             + u32::from(facts.names_the_album_year(&row.releases))
             + u32::from(returned.by_isrc),
@@ -456,10 +481,12 @@ fn support_of(
 
 /// Offer the rows tied at the highest [`Support`] and set the rest aside,
 /// each in ranked order, with the medium conflict when every row fails it.
+#[allow(clippy::too_many_arguments)]
 fn split_rows(
     rows: Vec<Pressing>,
     judgements: &Judgements,
     provenance: &HashMap<ReleaseKey, LookupProvenance>,
+    discs_held: &HashMap<ReleaseKey, u32>,
     ripped_from: RippedFrom,
     folder: FolderAudio<'_>,
     text: &CandidateText,
@@ -472,7 +499,17 @@ fn split_rows(
 ) {
     let mut support: Vec<Support> = rows
         .iter()
-        .map(|row| support_of(row, judgements, provenance, ripped_from, folder, facts))
+        .map(|row| {
+            support_of(
+                row,
+                judgements,
+                provenance,
+                discs_held,
+                ripped_from,
+                folder,
+                facts,
+            )
+        })
         .collect();
     weigh_title_agreement(&rows, &mut support);
     let notes = weigh_notes(&rows, &mut support, text);
@@ -508,7 +545,7 @@ impl Support {
 
     /// The fields declared above `track_titles`: what a row ties with the
     /// others on before its titles are weighed.
-    fn above_track_titles(&self) -> (bool, u32, bool, u32, bool) {
+    fn above_track_titles(&self) -> (bool, u32, u32, u32, bool) {
         (
             self.medium,
             self.names_pressing,
@@ -585,7 +622,7 @@ fn release_keys(results: &Results) -> HashSet<ReleaseKey> {
 }
 
 /// Every release any set names, once, in signal order.
-fn union_all(sets: &[&Results]) -> Results {
+pub(crate) fn union_all<'a>(sets: impl IntoIterator<Item = &'a Results>) -> Results {
     let mut seen: HashSet<ReleaseKey> = HashSet::new();
     let mut out = Results::new();
     for set in sets {

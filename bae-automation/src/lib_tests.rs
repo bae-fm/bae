@@ -472,7 +472,12 @@ mod identify_mirrors {
     #[test]
     fn triangulating_lists_each_code_with_one_cell_per_provider() {
         let state = IdentifyState::Triangulating {
-            discid: DiscidProgress::LookingUp,
+            discid: DiscidProgress::Lookups {
+                discs: vec![bae_core::identify::DiscLookup {
+                    disc_id: "disc-hash".to_string(),
+                    state: LookupState::LookingUp,
+                }],
+            },
             barcode: BarcodeProgress::Lookups {
                 codes: vec![
                     ValueLookup {
@@ -522,8 +527,10 @@ mod identify_mirrors {
                 providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
                 disc: DiscIdEvidence {
                     signal: DiscIdSignal::Computed {
-                        disc_id: "disc-hash".to_string(),
-                        source_file: Some("rip.log".to_string()),
+                        discs: vec![bae_core::signals::ComputedDiscId {
+                            disc_id: "disc-hash".to_string(),
+                            source_file: Some("rip.log".to_string()),
+                        }],
                     },
                     ..Default::default()
                 },
@@ -548,8 +555,8 @@ mod identify_mirrors {
             serde_json::json!(["music_brainz", "discogs"])
         );
         assert_eq!(run["disc_id"]["kind"], "read");
-        assert_eq!(run["disc_id"]["disc_id"], "disc-hash");
-        assert_eq!(run["disc_id"]["lookup"]["kind"], "looking_up");
+        assert_eq!(run["disc_id"]["discs"][0]["disc_id"], "disc-hash");
+        assert_eq!(run["disc_id"]["discs"][0]["lookup"]["kind"], "looking_up");
         assert_eq!(run["barcode"]["kind"], "rows");
         assert_eq!(run["barcode"]["scanning"], false);
         let rows = run["barcode"]["rows"].as_array().unwrap();
@@ -610,8 +617,10 @@ mod identify_mirrors {
                 not_cd_rate: None,
             },
             disc_id: DiscIdSignal::Computed {
-                disc_id: "disc-hash".to_string(),
-                source_file: None,
+                discs: vec![bae_core::signals::ComputedDiscId {
+                    disc_id: "disc-hash".to_string(),
+                    source_file: None,
+                }],
             },
             barcode: BarcodeSignal::Settled {
                 codes: vec![SourcedValue::new("0123456789012".to_string())],
@@ -631,7 +640,10 @@ mod identify_mirrors {
         assert_eq!(json["origin"]["source"]["file"], "Album.log");
         assert_eq!(json["origin"]["not_cd_rate"], serde_json::Value::Null);
         assert_eq!(json["disc_id"]["kind"], "computed");
-        assert_eq!(json["disc_id"]["disc_id"], "disc-hash");
+        assert_eq!(
+            json["disc_id"]["disc_ids"],
+            serde_json::json!(["disc-hash"])
+        );
         assert_eq!(json["barcode"]["kind"], "settled");
         assert_eq!(json["barcode"]["codes"][0], "0123456789012");
         assert_eq!(json["text"]["kind"], "settled");

@@ -69,7 +69,17 @@ mirror_enum! {
         Reading,
         Absent,
         NotCdAudio,
-        Read { disc_id, lookup: (AutomationLookupState) },
+        Read { discs: (each AutomationDiscIdRow) },
+    },
+}
+
+mirror_struct! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationDiscIdRow = bae_core::identify::DiscIdRow,
+    from_core: pub(crate) fn,
+    fields: {
+        disc_id,
+        lookup: (AutomationLookupState),
     },
 }
 

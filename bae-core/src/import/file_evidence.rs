@@ -27,17 +27,14 @@ pub struct FileEvidence {
 /// release's, which name none, are left out.
 pub fn file_evidence(signals: &Signals) -> Vec<FileEvidence> {
     let mut evidence = Vec::new();
-    if let DiscIdSignal::Computed {
-        disc_id,
-        source_file: Some(file_id),
-        ..
-    } = &signals.disc_id
-    {
-        evidence.push(FileEvidence {
-            signal: EvidenceSignal::DiscId,
-            value: disc_id.clone(),
-            file_id: file_id.clone(),
-        });
+    if let DiscIdSignal::Computed { discs } = &signals.disc_id {
+        evidence.extend(discs.iter().filter_map(|disc| {
+            Some(FileEvidence {
+                signal: EvidenceSignal::DiscId,
+                value: disc.disc_id.clone(),
+                file_id: disc.source_file.clone()?,
+            })
+        }));
     }
     evidence.extend(signals.barcode.codes().iter().filter_map(|code| {
         Some(FileEvidence {
@@ -52,14 +49,22 @@ pub fn file_evidence(signals: &Signals) -> Vec<FileEvidence> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::signals::{BarcodeSignal, SourcedValue, TextSignal};
+    use crate::signals::{BarcodeSignal, ComputedDiscId, SourcedValue, TextSignal};
 
     fn signals() -> Signals {
         Signals {
             origin: crate::signals::AudioOrigin::default(),
             disc_id: DiscIdSignal::Computed {
-                disc_id: "XwqRcz4RhAqRTfhE5nRxRKF4iFY-".to_string(),
-                source_file: Some("Album.log".to_string()),
+                discs: vec![
+                    ComputedDiscId {
+                        disc_id: "XwqRcz4RhAqRTfhE5nRxRKF4iFY-".to_string(),
+                        source_file: Some("Disc 1/Album.log".to_string()),
+                    },
+                    ComputedDiscId {
+                        disc_id: "aB7cD9eFgH2iJkL3mN4oP5qR6sT-".to_string(),
+                        source_file: Some("Disc 2/Album.log".to_string()),
+                    },
+                ],
             },
             barcode: BarcodeSignal::Settled {
                 codes: vec![
@@ -86,7 +91,12 @@ mod tests {
                 FileEvidence {
                     signal: EvidenceSignal::DiscId,
                     value: "XwqRcz4RhAqRTfhE5nRxRKF4iFY-".to_string(),
-                    file_id: "Album.log".to_string(),
+                    file_id: "Disc 1/Album.log".to_string(),
+                },
+                FileEvidence {
+                    signal: EvidenceSignal::DiscId,
+                    value: "aB7cD9eFgH2iJkL3mN4oP5qR6sT-".to_string(),
+                    file_id: "Disc 2/Album.log".to_string(),
                 },
                 FileEvidence {
                     signal: EvidenceSignal::Barcode,
@@ -111,8 +121,10 @@ mod tests {
     fn signals_without_candidate_files_have_no_file_evidence() {
         let mut fileless = signals();
         fileless.disc_id = DiscIdSignal::Computed {
-            disc_id: "XwqRcz4RhAqRTfhE5nRxRKF4iFY-".to_string(),
-            source_file: None,
+            discs: vec![ComputedDiscId {
+                disc_id: "XwqRcz4RhAqRTfhE5nRxRKF4iFY-".to_string(),
+                source_file: None,
+            }],
         };
         fileless.barcode = BarcodeSignal::Settled {
             codes: vec![SourcedValue::new("5099969394522".to_string())],

@@ -36,17 +36,17 @@ pub use medium::MediumConflict;
 pub use not_asked::NotAskedReason;
 pub use service::{IdentifyRunId, IdentifyServiceHandle};
 pub use state::{
-    BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyEvent, IdentifyState, IsrcProgress,
-    LookupOutcome, LookupResults, LookupState, ProviderLookup, SearchProgress, TitleSearch,
-    ValueLookup,
+    BarcodeProgress, CatalogProgress, DiscLookup, DiscidProgress, IdentifyEvent, IdentifyState,
+    IsrcProgress, LookupOutcome, LookupResults, LookupState, ProviderLookup, SearchProgress,
+    TitleSearch, ValueLookup,
 };
 pub use toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 pub use verdict::{IdentifyFailure, TerminalVerdict};
 pub use verdict_summary::{FolderCheck, LeadMatch, VerdictKind, VerdictSummary};
 pub use view::{
-    BarcodeStepView, CatalogCandidateView, CatalogStepView, DiscIdStepView, IdentifyRunView,
-    IdentifyStateView, IsrcStepView, LookupView, ProviderCell, RowAgreements, SearchStepView,
-    SignalValueRow,
+    BarcodeStepView, CatalogCandidateView, CatalogStepView, DiscIdRow, DiscIdStepView,
+    IdentifyRunView, IdentifyStateView, IsrcStepView, LookupView, ProviderCell, RowAgreements,
+    SearchStepView, SignalValueRow,
 };
 
 use crate::db::{LibraryCheck, LibraryStatus};

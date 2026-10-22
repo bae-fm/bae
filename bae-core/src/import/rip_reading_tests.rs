@@ -152,15 +152,29 @@ fn an_accuraterip_report_that_found_the_disc_proves_a_cd() {
 }
 
 /// A rip log whose table of contents reads is the proof and the disc ID
-/// both, whatever else the folder holds.
+/// both, and the sheet beside it, which lays out the same disc, is not
+/// hashed again.
 #[test]
 fn a_rip_log_proves_a_cd_and_is_the_disc_id() {
     let log = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/logs/test_album.log");
-    let reading = read_folder(
-        &sheet(None),
-        &lossless(96_000, 24, 2),
-        &[(&log, "Album.log")],
-    );
+    let sheet = sheet(None);
+    let format = lossless(96_000, 24, 2);
+    let reading = read(RipArtifacts {
+        documents: vec![RipDocument {
+            path: &log,
+            file: Some("Album.log"),
+        }],
+        sheets: vec![RipSheet {
+            sheet: &sheet,
+            audio: vec![SheetAudioDuration {
+                file_reference: "Album.flac",
+                duration_ms: 120_000,
+            }],
+            path: &log.with_file_name("Album.cue"),
+            file: Some("Album.cue"),
+        }],
+        audio: vec![&format],
+    });
     assert_eq!(
         reading.origin,
         AudioOrigin {
@@ -172,10 +186,130 @@ fn a_rip_log_proves_a_cd_and_is_the_disc_id() {
         },
         "the rate is read beside the proof"
     );
-    let DiscIdReading::Computed(computed) = reading.disc_id else {
+    let DiscIdReading::Computed(discs) = reading.disc_id else {
         panic!("the log's table of contents hashes to a disc ID");
     };
-    assert_eq!(computed.source_file.as_deref(), Some("Album.log"));
+    assert_eq!(
+        discs
+            .iter()
+            .map(|disc| disc.source_file.as_deref())
+            .collect::<Vec<_>>(),
+        vec![Some("Album.log")]
+    );
+}
+
+/// A rip log's table of contents with tracks of the given sector lengths.
+fn log_text(track_sectors: &[i32]) -> String {
+    let mut text = String::from(
+        "TOC of the extracted CD\n\n     Track |   Start  |  Length  | Start sector | End sector\n    -----------------------------------------------------------\n",
+    );
+    let mut start = 0;
+    for (index, sectors) in track_sectors.iter().enumerate() {
+        text.push_str(&format!(
+            "        {}  |  0:00.00 |  0:00.00 |    {start}    |    {}\n",
+            index + 1,
+            start + sectors - 1
+        ));
+        start += sectors;
+    }
+    text.push('\n');
+    text
+}
+
+/// A folder holding one rip per disc — a log and a sheet in each disc's
+/// directory — computes one disc ID per disc, each from its own log.
+#[test]
+fn a_folder_with_a_log_per_disc_computes_every_disc_id() {
+    let folder = tempfile::tempdir().unwrap();
+    let mut logs = Vec::new();
+    for (disc, sectors) in [("Disc 1", [18_000, 13_500]), ("Disc 2", [21_000, 9_000])] {
+        let directory = folder.path().join(disc);
+        std::fs::create_dir(&directory).unwrap();
+        let log = directory.join("Album.log");
+        std::fs::write(&log, log_text(&sectors)).unwrap();
+        logs.push((log, format!("{disc}/Album.log")));
+    }
+    let sheet = sheet(None);
+    let format = lossless(44_100, 16, 2);
+    let sheet_paths: Vec<_> = logs
+        .iter()
+        .map(|(log, _)| log.with_file_name("Album.cue"))
+        .collect();
+    let reading = read(RipArtifacts {
+        documents: logs
+            .iter()
+            .map(|(path, file)| RipDocument {
+                path,
+                file: Some(file),
+            })
+            .collect(),
+        sheets: sheet_paths
+            .iter()
+            .map(|path| RipSheet {
+                sheet: &sheet,
+                audio: vec![SheetAudioDuration {
+                    file_reference: "Album.flac",
+                    duration_ms: 120_000,
+                }],
+                path,
+                file: Some("Album.cue"),
+            })
+            .collect(),
+        audio: vec![&format],
+    });
+
+    let DiscIdReading::Computed(discs) = reading.disc_id else {
+        panic!("each log hashes to a disc ID");
+    };
+    assert_eq!(
+        discs
+            .iter()
+            .map(|disc| disc.source_file.as_deref())
+            .collect::<Vec<_>>(),
+        vec![Some("Disc 1/Album.log"), Some("Disc 2/Album.log")],
+        "one disc ID per log, and no sheet beside a log is hashed"
+    );
+    assert_ne!(discs[0].disc_id, discs[1].disc_id);
+}
+
+/// Two sheets of one disc hash to one disc ID, which is kept once; a sheet
+/// of another disc, with no log beside it, adds its own.
+#[test]
+fn every_sheet_without_a_log_is_hashed_and_one_disc_is_kept_once() {
+    let one = sheet(None);
+    let other = CueSheet {
+        tracks: vec![track(1, 0), track(2, 90 * 75), track(3, 150 * 75)],
+        ..sheet(None)
+    };
+    let format = lossless(44_100, 16, 2);
+    let rip_sheet = |sheet, path, file| RipSheet {
+        sheet,
+        audio: vec![SheetAudioDuration {
+            file_reference: "Album.flac",
+            duration_ms: 200_000,
+        }],
+        path,
+        file: Some(file),
+    };
+    let reading = read(RipArtifacts {
+        documents: Vec::new(),
+        sheets: vec![
+            rip_sheet(&one, Path::new("/folder/Disc 1/Album.cue"), "Disc 1/Album.cue"),
+            rip_sheet(&one, Path::new("/folder/Disc 1/Copy.cue"), "Disc 1/Copy.cue"),
+            rip_sheet(&other, Path::new("/folder/Disc 2/Album.cue"), "Disc 2/Album.cue"),
+        ],
+        audio: vec![&format],
+    });
+    let DiscIdReading::Computed(discs) = reading.disc_id else {
+        panic!("the sheets hash to disc IDs");
+    };
+    assert_eq!(
+        discs
+            .iter()
+            .map(|disc| disc.source_file.as_deref())
+            .collect::<Vec<_>>(),
+        vec![Some("Disc 1/Album.cue"), Some("Disc 2/Album.cue")]
+    );
 }
 
 /// Audio that rules a CD out with no sheet to hash leaves no disc ID to

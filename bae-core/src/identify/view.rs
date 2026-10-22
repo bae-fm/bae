@@ -62,8 +62,8 @@ pub struct SignalValueRow {
     pub cells: Vec<ProviderCell>,
 }
 
-/// The disc ID, read off a LOG or CUE and looked up on
-/// [`Catalog::DISC_ID_CATALOG`] alone, so it has one lookup and no cells.
+/// The disc IDs, read off the LOGs and CUEs and each looked up on
+/// [`Catalog::DISC_ID_CATALOG`] alone, so each has one lookup and no cells.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum DiscIdStepView {
     /// Extraction has not reported yet.
@@ -72,10 +72,15 @@ pub enum DiscIdStepView {
     Absent,
     /// The CUE lays out audio at a sample rate no CD has, so it was not read.
     NotCdAudio,
-    Read {
-        disc_id: String,
-        lookup: LookupView,
-    },
+    /// One row per disc ID, in the order they were read.
+    Read { discs: Vec<DiscIdRow> },
+}
+
+/// One disc ID and its lookup.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct DiscIdRow {
+    pub disc_id: String,
+    pub lookup: LookupView,
 }
 
 /// The barcodes, read off the artwork and the CUE sheets, each asked of every
@@ -190,7 +195,8 @@ impl IdentifyRunView {
         match failure {
             IdentifyFailure::DiscId(failed) => matches!(
                 &self.disc_id,
-                DiscIdStepView::Read { lookup, .. } if failed_as(lookup, failed)
+                DiscIdStepView::Read { discs }
+                    if discs.iter().any(|disc| failed_as(&disc.lookup, failed))
             ),
             IdentifyFailure::Isrc(failed) => matches!(
                 &self.isrc,
@@ -401,7 +407,7 @@ fn live_findings(
 ) -> (Findings, LibraryStatuses) {
     combine_results(
         LookupAnswers {
-            disc_id: discid.results(),
+            disc_id: discid.answers(),
             barcode: barcode.results(),
             catalog: catalog.results(),
             isrc: isrc.results(),

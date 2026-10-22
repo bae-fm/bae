@@ -13,41 +13,86 @@ use crate::signals::{DiscIdSignal, LookupFailure};
 /// What one lookup produced: each match paired with its library status.
 pub type LookupResults = Vec<(MetadataResult, LibraryStatus)>;
 
-/// The disc-ID lookup's progress. Only MusicBrainz answers disc IDs, so there
-/// is one provider and no list.
+/// The disc-ID lookups' progress. Only MusicBrainz answers disc IDs, so each
+/// of the candidate's disc IDs has one lookup.
 #[derive(Clone, Debug, PartialEq)]
 pub enum DiscidProgress {
     Computing,
-    LookingUp,
-    Done {
-        results: LookupResults,
+    /// One lookup per disc ID, in the signal's order.
+    Lookups {
+        discs: Vec<DiscLookup>,
     },
     /// No disc ID was derived.
     Skipped,
-    /// A disc ID was derived and nobody was asked about it, for `reason`.
+    /// Disc IDs were derived and nobody was asked about them, for `reason`.
     NotAsked {
         reason: NotAskedReason,
     },
-    Failed {
-        failure: LookupFailure,
-    },
+}
+
+/// One disc ID's lookup.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DiscLookup {
+    pub disc_id: String,
+    pub state: LookupState,
 }
 
 impl DiscidProgress {
     pub fn is_settled(&self) -> bool {
-        matches!(
-            self,
-            DiscidProgress::Done { .. }
-                | DiscidProgress::Skipped
-                | DiscidProgress::NotAsked { .. }
-                | DiscidProgress::Failed { .. }
-        )
+        match self {
+            DiscidProgress::Computing => false,
+            DiscidProgress::Lookups { discs } => discs.iter().all(|disc| disc.state.is_settled()),
+            DiscidProgress::Skipped | DiscidProgress::NotAsked { .. } => true,
+        }
     }
 
-    pub fn results(&self) -> LookupResults {
+    /// What each disc ID's lookup found, in disc order; a lookup that has
+    /// not answered, or failed, found nothing.
+    pub fn answers(&self) -> Vec<LookupResults> {
+        self.lookups()
+            .iter()
+            .map(|disc| match &disc.state {
+                LookupState::Done { results } => results.clone(),
+                LookupState::LookingUp | LookupState::Failed { .. } => Vec::new(),
+            })
+            .collect()
+    }
+
+    /// Every disc ID lookup's failure, each distinct one once.
+    pub fn failures(&self) -> Vec<LookupFailure> {
+        let mut failures: Vec<LookupFailure> = Vec::new();
+        for disc in self.lookups() {
+            if let LookupState::Failed { failure } = &disc.state {
+                if !failures.contains(failure) {
+                    failures.push(failure.clone());
+                }
+            }
+        }
+        failures
+    }
+
+    pub fn lookups(&self) -> &[DiscLookup] {
         match self {
-            DiscidProgress::Done { results, .. } => results.clone(),
-            _ => Vec::new(),
+            DiscidProgress::Lookups { discs } => discs,
+            DiscidProgress::Computing
+            | DiscidProgress::Skipped
+            | DiscidProgress::NotAsked { .. } => &[],
+        }
+    }
+
+    /// Land the answer about `disc_id`, where it is still being waited for.
+    pub(super) fn answer(&mut self, disc_id: &str, outcome: LookupOutcome) {
+        let DiscidProgress::Lookups { discs } = self else {
+            return;
+        };
+        if let Some(disc) = discs
+            .iter_mut()
+            .find(|disc| disc.disc_id == disc_id && disc.state == LookupState::LookingUp)
+        {
+            disc.state = match outcome {
+                Ok(results) => LookupState::Done { results },
+                Err(failure) => LookupState::Failed { failure },
+            };
         }
     }
 }
@@ -415,15 +460,22 @@ impl CatalogProgress {
 
 // ── Toolbar badge states ────────────────────────────────────────────────────
 
+/// Results beat failures: only lookups that found nothing read as failed.
 pub(super) fn discid_progress_state(progress: &DiscidProgress) -> SignalState {
     match progress {
-        DiscidProgress::Computing | DiscidProgress::LookingUp => SignalState::LookingUp,
-        DiscidProgress::Done { results, .. } => found_or_no_match(results.len() as u32),
+        DiscidProgress::Computing => SignalState::LookingUp,
+        DiscidProgress::Lookups { .. } if !progress.is_settled() => SignalState::LookingUp,
+        DiscidProgress::Lookups { .. } => {
+            let found = crate::identify::combine::union_all(&progress.answers()).len();
+            match progress.failures().first() {
+                Some(failure) if found == 0 => SignalState::Failed {
+                    failure: failure.clone(),
+                },
+                _ => found_or_no_match(found as u32),
+            }
+        }
         DiscidProgress::Skipped => SignalState::Skipped,
-        DiscidProgress::NotAsked { reason, .. } => SignalState::NotAsked { reason: *reason },
-        DiscidProgress::Failed { failure, .. } => SignalState::Failed {
-            failure: failure.clone(),
-        },
+        DiscidProgress::NotAsked { reason } => SignalState::NotAsked { reason: *reason },
     }
 }
 
@@ -479,10 +531,12 @@ fn settled_lookup_state(n_results: usize, failures: &[SourceFailure]) -> SignalS
 
 // ── The badges a settled run wears, read off what it recorded ───────────────
 
-/// The disc-ID badge of a settled run. The lookup's failure comes first, since
-/// the signal only says whether a disc ID could be computed.
+/// The disc-ID badge of a settled run. A lookup's failure comes first where
+/// no disc ID found anything, since the signal only says whether disc IDs
+/// could be computed.
 pub(super) fn settled_identity_state(context: &SignalsContext) -> SignalState {
-    if let Some(failure) = &context.disc.failure {
+    let found = context.disc.results().len();
+    if let Some(failure) = context.disc.failures.first().filter(|_| found == 0) {
         return SignalState::Failed {
             failure: failure.clone(),
         };
@@ -494,7 +548,7 @@ pub(super) fn settled_identity_state(context: &SignalsContext) -> SignalState {
         }
         DiscIdSignal::Computed { .. } => match context.disc.not_asked {
             Some(reason) => SignalState::NotAsked { reason },
-            None => found_or_no_match(context.disc.results.len() as u32),
+            None => found_or_no_match(found as u32),
         },
     }
 }
@@ -560,7 +614,7 @@ pub(super) fn start_discid_progress(
     effects: &mut Vec<Effect>,
 ) -> DiscidProgress {
     match signal {
-        DiscIdSignal::Computed { disc_id, .. } => {
+        DiscIdSignal::Computed { discs } => {
             // The reason nearest the value wins: see `NotAskedReason`.
             let reason = if excluded {
                 Some(NotAskedReason::LeftOut)
@@ -572,10 +626,20 @@ pub(super) fn start_discid_progress(
             if let Some(reason) = reason {
                 return DiscidProgress::NotAsked { reason };
             }
-            effects.push(Effect::LookupDiscid {
-                disc_id: disc_id.clone(),
-            });
-            DiscidProgress::LookingUp
+            DiscidProgress::Lookups {
+                discs: discs
+                    .iter()
+                    .map(|disc| {
+                        effects.push(Effect::LookupDiscid {
+                            disc_id: disc.disc_id.clone(),
+                        });
+                        DiscLookup {
+                            disc_id: disc.disc_id.clone(),
+                            state: LookupState::LookingUp,
+                        }
+                    })
+                    .collect(),
+            }
         }
         DiscIdSignal::Absent | DiscIdSignal::NotCdAudio => DiscidProgress::Skipped,
         DiscIdSignal::Failed { .. } => {
@@ -685,7 +749,7 @@ pub(super) fn start_search_progress(
     context: &SignalsContext,
     effects: &mut Vec<Effect>,
 ) -> SearchProgress {
-    let identifiers_answered = !context.disc.results.is_empty()
+    let identifiers_answered = !context.disc.results().is_empty()
         || !context.barcode.results.is_empty()
         || !context.catalog.active_results().is_empty();
     let Some(query) = context.search.query.clone() else {

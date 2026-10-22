@@ -23,7 +23,7 @@ struct IdentifierBand: View {
 
     var body: some View {
         FlowLayout(spacing: ThemeSpace.compact) {
-            discIdChip
+            discIdChips
             barcodeChips
             catalogChips
             isrcChip
@@ -54,10 +54,11 @@ struct IdentifierBand: View {
 
     // MARK: - Disc ID
 
-    /// One chip with MusicBrainz's capsule, the only catalog that answers disc
-    /// IDs; a read disc ID toggles in and out of the run.
+    /// One chip per disc ID with MusicBrainz's capsule, the only catalog that
+    /// answers disc IDs; a read disc ID toggles the disc IDs in and out of the
+    /// run.
     @ViewBuilder
-    private var discIdChip: some View {
+    private var discIdChips: some View {
         let label = SignalBadgeStyle.label(for: BridgeSignalKind.discId)
         switch run.discId {
         case .reading:
@@ -77,16 +78,26 @@ struct IdentifierBand: View {
                         )
                     } ?? ""
                 )
+        case .read(let discs):
+            ForEach(discs, id: \.discId) { disc in
+                discIdChip(label: label, disc: disc)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func discIdChip(label: String, disc: BridgeDiscIdRow) -> some View {
+        switch disc.lookup {
         // Left out: clicking the chip asks about it again.
-        case .read(let discId, .notAsked(reason: .leftOut)):
-            discIdButton(label: label, discId: discId, lookup: nil)
+        case .notAsked(reason: .leftOut):
+            discIdButton(label: label, discId: disc.discId, lookup: nil)
         // Only Settings can switch on the catalog that answers disc IDs.
-        case .read(let discId, .notAsked(reason: .noCatalog)):
-            IdentifierChip(label: label, value: discId) {
+        case .notAsked(reason: .noCatalog):
+            IdentifierChip(label: label, value: disc.discId) {
                 IdentifierDash()
             }
-        case .read(let discId, let lookup):
-            discIdButton(label: label, discId: discId, lookup: lookup)
+        case let lookup:
+            discIdButton(label: label, discId: disc.discId, lookup: lookup)
         }
     }
 

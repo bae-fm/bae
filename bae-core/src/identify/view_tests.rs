@@ -211,8 +211,10 @@ fn a_disc_id_nobody_looked_up_says_why() {
     for reason in [NotAskedReason::LeftOut, NotAskedReason::NoCatalog] {
         let mut context = context();
         context.disc.signal = DiscIdSignal::Computed {
-            disc_id: "d".to_string(),
-            source_file: Some("rip/Album.LOG".to_string()),
+            discs: vec![crate::signals::ComputedDiscId {
+                disc_id: "d".to_string(),
+                source_file: Some("rip/Album.LOG".to_string()),
+            }],
         };
         let step = run_of(IdentifyState::Triangulating {
             discid: DiscidProgress::NotAsked { reason },
@@ -226,8 +228,10 @@ fn a_disc_id_nobody_looked_up_says_why() {
         assert_eq!(
             step,
             DiscIdStepView::Read {
-                disc_id: "d".to_string(),
-                lookup: LookupView::NotAsked { reason },
+                discs: vec![crate::identify::DiscIdRow {
+                    disc_id: "d".to_string(),
+                    lookup: LookupView::NotAsked { reason },
+                }],
             }
         );
     }
@@ -555,12 +559,19 @@ fn a_sheet_over_audio_no_cd_holds_says_why_it_was_not_read() {
 fn a_found_lookup_names_its_releases() {
     let mut context = context();
     context.disc.signal = DiscIdSignal::Computed {
-        disc_id: "d".to_string(),
-        source_file: Some("rip/Album.LOG".to_string()),
+        discs: vec![crate::signals::ComputedDiscId {
+            disc_id: "d".to_string(),
+            source_file: Some("rip/Album.LOG".to_string()),
+        }],
     };
     let state = IdentifyState::Triangulating {
-        discid: DiscidProgress::Done {
-            results: vec![result(MB, "mb-1"), result(MB, "mb-2")],
+        discid: DiscidProgress::Lookups {
+            discs: vec![crate::identify::DiscLookup {
+                disc_id: "d".to_string(),
+                state: crate::identify::LookupState::Done {
+                    results: vec![result(MB, "mb-1"), result(MB, "mb-2")],
+                },
+            }],
         },
         barcode: BarcodeProgress::NoCodes,
         catalog: CatalogProgress::Skipped,
@@ -569,13 +580,17 @@ fn a_found_lookup_names_its_releases() {
         context,
     };
     let run = run_of(state);
-    let DiscIdStepView::Read {
+    let DiscIdStepView::Read { discs } = &run.disc_id else {
+        panic!("a found disc ID, got {:?}", run.disc_id);
+    };
+    let [crate::identify::DiscIdRow {
         lookup: LookupView::Found { count, groups },
         ..
-    } = run.disc_id
+    }] = discs.as_slice()
     else {
         panic!("a found disc ID, got {:?}", run.disc_id);
     };
+    let count = *count;
     assert_eq!(count, 2);
     assert_eq!(groups.len(), 1);
     assert_eq!(groups[0].pressings().count(), 2);
@@ -589,14 +604,16 @@ fn recorded_ledger() -> IdentifyRunView {
     IdentifyRunView {
         providers: vec![MB, DG],
         disc_id: DiscIdStepView::Read {
-            disc_id: "disc-1".to_string(),
-            lookup: LookupView::Found {
-                count: 1,
-                groups: group_results(
-                    unranked(vec![MetadataResult::for_test(MB, "mb-1", Some("g"))]),
-                    None,
-                ),
-            },
+            discs: vec![crate::identify::DiscIdRow {
+                disc_id: "disc-1".to_string(),
+                lookup: LookupView::Found {
+                    count: 1,
+                    groups: group_results(
+                        unranked(vec![MetadataResult::for_test(MB, "mb-1", Some("g"))]),
+                        None,
+                    ),
+                },
+            }],
         },
         barcode: BarcodeStepView::Rows {
             scanning: false,
@@ -702,15 +719,21 @@ fn a_verdict_with_no_recorded_ledger_resumes_without_one() {
 fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
     let mut context = context();
     context.disc.signal = DiscIdSignal::Computed {
-        disc_id: "d".to_string(),
-        source_file: None,
+        discs: vec![crate::signals::ComputedDiscId {
+            disc_id: "d".to_string(),
+            source_file: None,
+        }],
     };
     let other_album = (
         MetadataResult::for_test(MB, "mb-other", Some("g-other")),
         LibraryStatus::absent("mb-other"),
     );
     let shared = printing_the_folder_s_code(result(MB, "mb-shared"));
-    context.disc.results = vec![shared.clone(), result(MB, "mb-only"), other_album.clone()];
+    context.disc.answers = vec![vec![
+        shared.clone(),
+        result(MB, "mb-only"),
+        other_album.clone(),
+    ]];
     context.barcode.results = vec![shared];
     context.barcode.matched = Some("A".to_string());
 
@@ -765,10 +788,12 @@ fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
 fn the_disc_id_s_release_outranks_a_barcode_that_named_another() {
     let mut context = context();
     context.disc.signal = DiscIdSignal::Computed {
-        disc_id: "d".to_string(),
-        source_file: None,
+        discs: vec![crate::signals::ComputedDiscId {
+            disc_id: "d".to_string(),
+            source_file: None,
+        }],
     };
-    context.disc.results = vec![result(MB, "mb-disc")];
+    context.disc.answers = vec![vec![result(MB, "mb-disc")]];
     context.barcode.results = vec![result(MB, "mb-barcode")];
     context.barcode.matched = Some("A".to_string());
 
@@ -850,8 +875,10 @@ fn a_found_release_states_the_check_against_the_folder_it_failed() {
 fn the_notes_badge_is_on_the_row_the_folder_names_by_its_notes() {
     let mut context = context();
     context.disc.signal = DiscIdSignal::Computed {
-        disc_id: "d".to_string(),
-        source_file: None,
+        discs: vec![crate::signals::ComputedDiscId {
+            disc_id: "d".to_string(),
+            source_file: None,
+        }],
     };
     let noted = |release_id: &str, note: &str| {
         (
@@ -862,10 +889,10 @@ fn the_notes_badge_is_on_the_row_the_folder_names_by_its_notes() {
             LibraryStatus::absent(release_id),
         )
     };
-    context.disc.results = vec![
+    context.disc.answers = vec![vec![
         noted("mb-alpha", "Pressed By Plant Alpha"),
         noted("mb-beta", "Made In Nordland By Plant Beta"),
-    ];
+    ]];
     context.text = crate::identify::CandidateText::of(
         &[crate::signals::TextLine {
             text: "Album (Nordland)".to_string(),
@@ -901,8 +928,10 @@ fn the_notes_badge_is_on_the_row_the_folder_names_by_its_notes() {
 fn the_notes_badge_reads_the_ranking_s_answer() {
     let mut context = context();
     context.disc.signal = DiscIdSignal::Computed {
-        disc_id: "d".to_string(),
-        source_file: None,
+        discs: vec![crate::signals::ComputedDiscId {
+            disc_id: "d".to_string(),
+            source_file: None,
+        }],
     };
     let noted = |release_id: &str, note: &str| {
         (
@@ -914,11 +943,11 @@ fn the_notes_badge_reads_the_ranking_s_answer() {
             LibraryStatus::absent(release_id),
         )
     };
-    context.disc.results = vec![
+    context.disc.answers = vec![vec![
         noted("mb-alpha", "Plant Alpha"),
         noted("mb-alpha-copy", "Plant Alpha"),
         noted("mb-beta", "Plant Beta"),
-    ];
+    ]];
     context.text = crate::identify::CandidateText::of(
         &[crate::signals::TextLine {
             text: "Album (Alpha)".to_string(),

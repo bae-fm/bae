@@ -146,8 +146,8 @@ pub struct BridgeSignalValueRow {
     pub cells: Vec<BridgeProviderCell>,
 }
 
-/// The disc-ID step: one lookup, since only MusicBrainz answers disc IDs.
-/// Mirrors `bae_core::identify::DiscIdStepView`.
+/// The disc-ID step: one lookup per disc ID, since only MusicBrainz answers
+/// disc IDs. Mirrors `bae_core::identify::DiscIdStepView`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeDiscIdStep {
     Reading,
@@ -158,10 +158,17 @@ pub enum BridgeDiscIdStep {
     NotCdAudio {
         sample_rate_hz: Option<u32>,
     },
+    /// One row per disc ID, in the order they were read.
     Read {
-        disc_id: String,
-        lookup: BridgeLookupState,
+        discs: Vec<BridgeDiscIdRow>,
     },
+}
+
+/// One disc ID and its lookup. Mirrors `bae_core::identify::DiscIdRow`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeDiscIdRow {
+    pub disc_id: String,
+    pub lookup: BridgeLookupState,
 }
 
 /// Mirrors `bae_core::identify::BarcodeStepView`.

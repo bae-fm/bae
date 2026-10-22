@@ -221,6 +221,12 @@ mirror_struct! {
 }
 
 mirror_struct! {
+    BridgeDiscIdRow = bae_core::identify::DiscIdRow,
+    from_core: fn,
+    fields: { disc_id, lookup: (BridgeLookupState) },
+}
+
+mirror_struct! {
     BridgeSignalValueRow = bae_core::identify::SignalValueRow,
     from_core: fn,
     fields: { value, excluded, cells: (each BridgeProviderCell) },
@@ -237,9 +243,8 @@ impl BridgeDiscIdStep {
             DiscIdStepView::NotCdAudio => Self::NotCdAudio {
                 sample_rate_hz: rate,
             },
-            DiscIdStepView::Read { disc_id, lookup } => Self::Read {
-                disc_id,
-                lookup: BridgeLookupState::from_core(lookup),
+            DiscIdStepView::Read { discs } => Self::Read {
+                discs: discs.into_iter().map(BridgeDiscIdRow::from_core).collect(),
             },
         }
     }
@@ -752,11 +757,16 @@ mod tests {
             };
             *discid = DiscidProgress::NotAsked { reason };
             context.disc.signal = DiscIdSignal::Computed {
-                disc_id: "d".to_string(),
-                source_file: None,
+                discs: vec![bae_core::signals::ComputedDiscId {
+                    disc_id: "d".to_string(),
+                    source_file: None,
+                }],
             };
             match BridgeIdentifyState::from_core(state) {
-                BridgeIdentifyState::Triangulating { run, .. } => run.disc_id,
+                BridgeIdentifyState::Triangulating { run, .. } => match run.disc_id {
+                    BridgeDiscIdStep::Read { discs } => discs,
+                    other => panic!("expected read disc IDs, got {other:?}"),
+                },
                 other => panic!("expected a run in flight, got {other:?}"),
             }
         };
@@ -765,11 +775,11 @@ mod tests {
             (NotAskedReason::NoCatalog, BridgeNotAskedReason::NoCatalog),
         ] {
             assert!(matches!(
-                step(reason),
-                BridgeDiscIdStep::Read {
+                step(reason).as_slice(),
+                [BridgeDiscIdRow {
                     lookup: BridgeLookupState::NotAsked { reason },
                     ..
-                } if reason == crossed
+                }] if *reason == crossed
             ));
         }
     }

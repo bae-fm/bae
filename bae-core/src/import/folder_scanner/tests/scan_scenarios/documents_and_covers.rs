@@ -217,7 +217,8 @@ fn folder_identifies_from_its_rip_log_with_the_sheet_unbound() {
         crate::import::discid::read_rip_artifacts(&files)
             .disc_id
             .computed()
-            .is_some(),
+            .len()
+            == 1,
         "the rip log's TOC still yields a disc ID with the sheet unbound",
     );
 }

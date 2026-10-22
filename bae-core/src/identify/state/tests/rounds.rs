@@ -58,15 +58,16 @@ fn a_number_the_text_prints_that_a_found_release_carries_is_searched_on_both_cat
     let state = disc_run_of_folder("1986 Germany Label AB 12345-2", &["AB 12345-2"]);
     let (state, effects) = super::step(
         state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(vec![
                 (
                     labelled(MB, "mb-1", "Label", "AB 12345-2"),
                     LibraryStatus::absent("mb-1"),
                 ),
                 pair("mb-2", Some("g")),
-            ],
-        },
+            ]),
+            },
     );
     assert!(
         effects.contains(&catalog_lookup(MB, "AB 12345-2"))
@@ -149,8 +150,9 @@ fn a_number_only_the_artwork_prints_is_not_confirmed_over_the_folder_names() {
     );
     let (state, effects) = super::step(
         state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(vec![
                 (
                     labelled(MB, "mb-1", "Label", "AB-100"),
                     LibraryStatus::absent("mb-1"),
@@ -159,8 +161,8 @@ fn a_number_only_the_artwork_prints_is_not_confirmed_over_the_folder_names() {
                     labelled(MB, "mb-2", "Other", "XY-250"),
                     LibraryStatus::absent("mb-2"),
                 ),
-            ],
-        },
+            ]),
+            },
     );
     let IdentifyState::Triangulating { context, .. } = &state else {
         panic!("the run goes round: {state:?}");
@@ -206,8 +208,9 @@ fn a_row_with_no_link_and_no_barcode_is_looked_up_by_its_number_under_its_label(
     let state = disc_run_of_folder("Some Album", &[]);
     let reading = super::step(
         state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("mb-1", Some("g"))],
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(vec![pair("mb-1", Some("g"))]),
         },
     );
     let (state, effects, asked) = answer_rounds(
@@ -260,8 +263,9 @@ fn a_failed_pressing_lookup_fails_the_run() {
     record.barcodes = vec!["5012345678900".to_string()];
     let (mut state, mut effects) = super::step(
         state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![(record, LibraryStatus::absent("mb-1"))],
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(vec![(record, LibraryStatus::absent("mb-1"))]),
         },
     );
     while let Some(effect) = effects.pop() {

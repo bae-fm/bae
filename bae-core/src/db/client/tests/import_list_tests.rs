@@ -539,18 +539,20 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
     let ledger = crate::identify::IdentifyRunView {
         providers: vec![Catalog::MusicBrainz],
         disc_id: crate::identify::DiscIdStepView::Read {
-            disc_id: "disc-1".to_string(),
-            lookup: crate::identify::LookupView::Found {
-                count: 1,
-                groups: crate::import::release_group::group_results(
-                    crate::import::release_group::unranked(vec![MetadataResult::for_test(
-                        Catalog::MusicBrainz,
-                        "mb-verdict",
-                        Some("group-1"),
-                    )]),
-                    None,
-                ),
-            },
+            discs: vec![crate::identify::DiscIdRow {
+                disc_id: "disc-1".to_string(),
+                lookup: crate::identify::LookupView::Found {
+                    count: 1,
+                    groups: crate::import::release_group::group_results(
+                        crate::import::release_group::unranked(vec![MetadataResult::for_test(
+                            Catalog::MusicBrainz,
+                            "mb-verdict",
+                            Some("group-1"),
+                        )]),
+                        None,
+                    ),
+                },
+            }],
         },
         barcode: crate::identify::BarcodeStepView::Absent,
         catalog: crate::identify::CatalogStepView::NoneFound,
@@ -572,14 +574,13 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
     };
     assert_eq!(run, ledger);
     assert_eq!(run.providers, vec![Catalog::MusicBrainz]);
-    let crate::identify::DiscIdStepView::Read { disc_id, lookup } = run.disc_id else {
+    let crate::identify::DiscIdStepView::Read { discs } = run.disc_id else {
         panic!("the disc ID the run read");
     };
-    assert_eq!(disc_id, "disc-1");
-    assert!(matches!(
-        lookup,
-        crate::identify::LookupView::Found { count: 1, .. }
-    ));
+    assert!(matches!(discs.as_slice(), [crate::identify::DiscIdRow {
+        disc_id,
+        lookup: crate::identify::LookupView::Found { count: 1, .. },
+    }] if disc_id == "disc-1"));
 }
 
 /// A verdict stored for another file-edit revision does not resume.

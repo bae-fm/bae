@@ -2,7 +2,7 @@ use crate::album_detail::AudioFormat;
 use crate::cue_flac::CueSheet;
 use crate::import::folder_scanner::resolve_cue_audio_paths;
 use crate::signals::rip::rate_ruling_out_cd;
-use crate::signals::{AudioOrigin, AudioSource, CdProof, DiscIdSignal};
+use crate::signals::{AudioOrigin, AudioSource, CdProof, ComputedDiscId, DiscIdSignal};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tracing::{debug, trace, warn};
@@ -271,19 +271,6 @@ fn reports_accuraterip_found(text: &str) -> bool {
         .any(|line| line.starts_with("[AccurateRip ID:") && line.ends_with("] found."))
 }
 
-/// A disc ID and the file it was derived from — the rip log, or the sheet that
-/// carves the tracks. The file rides along so a surface can put the disc ID on
-/// the row for that file rather than beside the release.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ComputedDiscId {
-    pub disc_id: String,
-    /// The candidate-relative path of the LOG or CUE it came from. `None`
-    /// where the artifact is not a file of a scanned folder — a library
-    /// release's own files, resolved for a re-identify pass, which no row
-    /// points at.
-    pub source_file: Option<String>,
-}
-
 /// What a candidate's rip artifacts say: the CD rip they prove and the rate
 /// that rules one out, and the disc they hash to. One reading, because the
 /// first decides the second — a track sheet laying out audio no CD could hold
@@ -295,10 +282,12 @@ pub struct RipReading {
     pub disc_id: DiscIdReading,
 }
 
-/// The disc ID a candidate's rip artifacts hash to.
+/// The disc IDs a candidate's rip artifacts hash to.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DiscIdReading {
-    Computed(ComputedDiscId),
+    /// One per disc the logs and sheets describe, in reading order. Never
+    /// empty.
+    Computed(Vec<ComputedDiscId>),
     /// No log or sheet hashes to one.
     Absent,
     /// A sheet was there and the audio rules a CD out (see
@@ -307,21 +296,18 @@ pub enum DiscIdReading {
 }
 
 impl DiscIdReading {
-    /// The disc ID, where one was computed.
-    pub fn computed(self) -> Option<ComputedDiscId> {
+    /// The disc IDs, where any was computed.
+    pub fn computed(self) -> Vec<ComputedDiscId> {
         match self {
-            Self::Computed(computed) => Some(computed),
-            Self::Absent | Self::NotCdAudio => None,
+            Self::Computed(discs) => discs,
+            Self::Absent | Self::NotCdAudio => Vec::new(),
         }
     }
 
     /// The signal this reading is.
     pub fn into_signal(self) -> DiscIdSignal {
         match self {
-            Self::Computed(computed) => DiscIdSignal::Computed {
-                disc_id: computed.disc_id,
-                source_file: computed.source_file,
-            },
+            Self::Computed(discs) => DiscIdSignal::Computed { discs },
             Self::Absent => DiscIdSignal::Absent,
             Self::NotCdAudio => DiscIdSignal::NotCdAudio,
         }
@@ -371,13 +357,16 @@ pub(crate) fn is_rip_document(path: &Path) -> bool {
     has_extension(path, "log") || has_extension(path, "accurip")
 }
 
-/// Read the artifacts. A log whose table of contents reads is both the proof
-/// and the disc ID, and is read first — most accurate, since EAC and XLD put
-/// the disc's sector offsets in it directly. Otherwise the proof is an
+/// Read the artifacts. Every log whose table of contents reads is a disc ID
+/// and the proof of a CD rip — the most accurate disc ID, since EAC and XLD
+/// put the disc's sector offsets in it directly. Without one the proof is an
 /// AccurateRip report or a sheet a CD ripper wrote. The audio's rate is read
 /// whatever proves a rip, and the sheets are hashed unless the rate rules a
-/// CD out and nothing proves one. Failures along the way log at `debug!` so
-/// the chain shows up in traces.
+/// CD out and nothing proves one — every sheet but one beside a log that
+/// read, which describes the disc that log already hashed. A folder holding
+/// one rip per disc yields one disc ID per disc; one hashed twice is kept
+/// once. Failures along the way log at `debug!` so the chain shows up in
+/// traces.
 fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
     let not_cd_rate = rate_ruling_out_cd(artifacts.audio.iter().copied());
     // Logs first: a log's table of contents is the disc ID as well as the
@@ -385,6 +374,8 @@ fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
     artifacts
         .documents
         .sort_by_key(|document| !document.is_log());
+    let mut discs: Vec<ComputedDiscId> = Vec::new();
+    let mut read_logs: Vec<&RipDocument<'_>> = Vec::new();
     let mut report = None;
     for document in &artifacts.documents {
         let Some(text) = read_document(document.path) else {
@@ -394,20 +385,9 @@ fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
             trace!("Reading LOG file: {:?}", document.path);
             match discid_from_log_text(&text) {
                 Ok(disc_id) => {
-                    let file = document.file.map(str::to_string);
-                    return RipReading {
-                        origin: AudioOrigin {
-                            source: Some(AudioSource::CdRip {
-                                proof: CdProof::RipLog,
-                                file: file.clone(),
-                            }),
-                            not_cd_rate,
-                        },
-                        disc_id: DiscIdReading::Computed(ComputedDiscId {
-                            disc_id,
-                            source_file: file,
-                        }),
-                    };
+                    keep_disc(&mut discs, disc_id, document.file);
+                    read_logs.push(document);
+                    continue;
                 }
                 Err(e) => warn!("DiscID from LOG failed for {:?}: {}", document.path, e),
             }
@@ -417,12 +397,16 @@ fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
         }
     }
 
-    let source = match report {
-        Some(file) => Some(AudioSource::CdRip {
+    let source = match (read_logs.first(), report) {
+        (Some(log), _) => Some(AudioSource::CdRip {
+            proof: CdProof::RipLog,
+            file: log.file.map(str::to_string),
+        }),
+        (None, Some(file)) => Some(AudioSource::CdRip {
             proof: CdProof::AccurateRipReport,
             file: file.map(str::to_string),
         }),
-        None => artifacts
+        (None, None) => artifacts
             .sheets
             .iter()
             .find(|sheet| sheet.sheet.ripper.is_some())
@@ -436,28 +420,54 @@ fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
         not_cd_rate,
     };
 
-    let disc_id = if origin.not_cd_rate.is_some() && !origin.is_cd_rip() {
-        if artifacts.sheets.is_empty() {
+    if origin.not_cd_rate.is_some() && !origin.is_cd_rip() {
+        // Nothing proves a CD rip, so no log read.
+        let disc_id = if artifacts.sheets.is_empty() {
             DiscIdReading::Absent
         } else {
             debug!("not hashing a track sheet whose audio no CD holds");
             DiscIdReading::NotCdAudio
-        }
-    } else {
-        artifacts
-            .sheets
+        };
+        return RipReading { origin, disc_id };
+    }
+    for sheet in &artifacts.sheets {
+        if read_logs
             .iter()
-            .find_map(|sheet| {
-                discid_from_cue_audio(sheet.sheet, &sheet.audio, sheet.path).map(|disc_id| {
-                    DiscIdReading::Computed(ComputedDiscId {
-                        disc_id,
-                        source_file: sheet.file.map(str::to_string),
-                    })
-                })
-            })
-            .unwrap_or(DiscIdReading::Absent)
+            .any(|log| log.path.parent() == sheet.path.parent())
+        {
+            debug!(
+                "not hashing {:?}: a log beside it already hashed its disc",
+                sheet.path
+            );
+            continue;
+        }
+        if let Some(disc_id) = discid_from_cue_audio(sheet.sheet, &sheet.audio, sheet.path) {
+            keep_disc(&mut discs, disc_id, sheet.file);
+        }
+    }
+    let disc_id = if discs.is_empty() {
+        DiscIdReading::Absent
+    } else {
+        DiscIdReading::Computed(discs)
     };
     RipReading { origin, disc_id }
+}
+
+/// Add a disc ID read off `file`, unless another file already hashed to it.
+fn keep_disc(discs: &mut Vec<ComputedDiscId>, disc_id: String, file: Option<&str>) {
+    if let Some(kept) = discs.iter().find(|kept| kept.disc_id == disc_id) {
+        debug!(
+            disc_id,
+            kept_from = ?kept.source_file,
+            again_from = ?file,
+            "two rip files hash to one disc ID; it is kept once"
+        );
+        return;
+    }
+    discs.push(ComputedDiscId {
+        disc_id,
+        source_file: file.map(str::to_string),
+    });
 }
 
 /// One of a library release's audio files: where it is, how long it plays,

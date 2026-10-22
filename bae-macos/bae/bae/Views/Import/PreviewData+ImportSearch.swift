@@ -713,10 +713,12 @@
             identifyState: .failed(
                 run: BridgeIdentifyRun(
                     providers: [.musicBrainz, .discogs],
-                    discId: .read(
-                        discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                        lookup: .failed(failure: .network)
-                    ),
+                    discId: .read(discs: [
+                        BridgeDiscIdRow(
+                            discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
+                            lookup: .failed(failure: .network)
+                        )
+                    ]),
                     barcode: .rows(
                         scanning: false,
                         rows: [

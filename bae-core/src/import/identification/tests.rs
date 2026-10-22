@@ -797,8 +797,10 @@ impl Fixture {
                     // A disc ID naming its log, for the evidence chip.
                     signals: Signals {
                         disc_id: DiscIdSignal::Computed {
-                            disc_id: SEEDED_DISC_ID.to_string(),
-                            source_file: Some(SEEDED_DISC_ID_FILE.to_string()),
+                            discs: vec![crate::signals::ComputedDiscId {
+                                disc_id: SEEDED_DISC_ID.to_string(),
+                                source_file: Some(SEEDED_DISC_ID_FILE.to_string()),
+                            }],
                         },
                         ..settled_signals()
                     },

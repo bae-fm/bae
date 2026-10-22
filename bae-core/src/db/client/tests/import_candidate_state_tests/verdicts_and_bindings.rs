@@ -30,14 +30,16 @@ fn sample_ledger() -> IdentifyRunView {
     IdentifyRunView {
         providers: vec![Catalog::MusicBrainz],
         disc_id: DiscIdStepView::Read {
-            disc_id: "disc-1".to_string(),
-            lookup: LookupView::Found {
+            discs: vec![crate::identify::DiscIdRow {
+                disc_id: "disc-1".to_string(),
+                lookup: LookupView::Found {
                 count: 1,
                 groups: crate::import::release_group::group_results(
                     crate::import::release_group::unranked(vec![sample_match()]), None,
                 ),
             },
-        },
+                }],
+            },
         barcode: crate::identify::BarcodeStepView::Absent,
         catalog: crate::identify::CatalogStepView::NoneFound,
         isrc: crate::identify::IsrcStepView::Absent,
@@ -548,8 +550,10 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
             signals: Signals {
                 origin: crate::signals::AudioOrigin::default(),
                 disc_id: DiscIdSignal::Computed {
-                    disc_id: "disc-hash".to_string(),
-                    source_file: None,
+                    discs: vec![crate::signals::ComputedDiscId {
+                        disc_id: "disc-hash".to_string(),
+                        source_file: None,
+                    }],
                 },
                 barcode: BarcodeSignal::Absent,
                 text: TextSignal::Settled {
@@ -566,8 +570,9 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
     );
     let (state, _) = identify_step(
         state,
-        IdentifyEvent::DiscidLookupFailed {
-            failure: LookupFailure::Provider { status: Some(503) },
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "disc-hash".into(),
+            outcome: Err(LookupFailure::Provider { status: Some(503) }),
         },
     );
 

@@ -198,9 +198,11 @@ fn signals_with_catalogs(
 /// A disc ID computed from no named file.
 fn disc(disc_id: &str) -> DiscIdSignal {
     DiscIdSignal::Computed {
-        disc_id: disc_id.to_string(),
-        source_file: None,
-    }
+        discs: vec![crate::signals::ComputedDiscId {
+            disc_id: disc_id.to_string(),
+            source_file: None,
+        }],
+        }
 }
 
 /// A disc ID for five tracks, no barcode source, and the named catalog numbers.
@@ -359,8 +361,10 @@ fn an_artwork_reading_that_breaks_ends_the_run_mid_lookup() {
         started(),
         signals(
             DiscIdSignal::Computed {
-                disc_id: "disc-1".to_string(),
-                source_file: None,
+                discs: vec![crate::signals::ComputedDiscId {
+                    disc_id: "disc-1".to_string(),
+                    source_file: None,
+                }],
             },
             BarcodeSignal::Scanning { codes: vec![] },
             &[],
@@ -371,8 +375,10 @@ fn an_artwork_reading_that_breaks_ends_the_run_mid_lookup() {
         state,
         signals(
             DiscIdSignal::Computed {
-                disc_id: "disc-1".to_string(),
-                source_file: None,
+                discs: vec![crate::signals::ComputedDiscId {
+                    disc_id: "disc-1".to_string(),
+                    source_file: None,
+                }],
             },
             BarcodeSignal::Failed {
                 failure: failure.clone(),
@@ -387,7 +393,10 @@ fn an_artwork_reading_that_breaks_ends_the_run_mid_lookup() {
     );
     let (after, effects) = step(
         state.clone(),
-        IdentifyEvent::DiscidLookupCompleted { results: vec![] },
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "disc-1".into(),
+            outcome: Ok(vec![]),
+        },
     );
     assert_eq!(after, state, "a lookup landing after the error changes nothing");
     assert!(effects.is_empty());
@@ -400,8 +409,10 @@ fn bae_breaking_during_a_lookup_ends_the_run_as_its_error() {
         started(),
         signals(
             DiscIdSignal::Computed {
-                disc_id: "disc-1".to_string(),
-                source_file: None,
+                discs: vec![crate::signals::ComputedDiscId {
+                    disc_id: "disc-1".to_string(),
+                    source_file: None,
+                }],
             },
             BarcodeSignal::Absent,
             &[],
@@ -499,8 +510,9 @@ fn disc_only_resolves_to_found_with_provenance() {
     let (state, _) = disc_only_started();
     let (state, _) = step(
         state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))]),
         },
     );
     match state {
@@ -525,12 +537,13 @@ fn both_signals_intersect_to_found_combined() {
     let (state, _) = update(started(), disc_and_codes("d", &["BAR"]));
     let (state, _) = step(
         state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(vec![
                 pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x")),
                 pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-x")),
-            ],
-        },
+            ]),
+            },
     );
     let (state, _) = step(
         state,
@@ -568,8 +581,9 @@ fn a_barcode_that_named_something_else_waits_under_the_disc_id_s_answer() {
     let (state, _) = update(started(), disc_and_codes("d", &["BAR"]));
     let (state, _) = step(
         state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))]),
         },
     );
     let (state, _) = step(
@@ -593,7 +607,7 @@ fn a_barcode_that_named_something_else_waits_under_the_disc_id_s_answer() {
         } => {
             assert_eq!(matches.len(), 1);
             assert!(provenance[0].by_disc_id && !provenance[0].by_barcode);
-            assert_eq!(context.disc.results.len(), 1);
+            assert_eq!(context.disc.results().len(), 1);
             assert_eq!(context.barcode.results.len(), 1);
             assert_eq!(context.barcode.matched.as_deref(), Some("BAR"));
         }
@@ -759,8 +773,9 @@ fn failed_discid_lookup_preserves_track_count() {
     let (state, _) = disc_only_started();
     let (state, _) = step(
         state,
-        IdentifyEvent::DiscidLookupFailed {
-            failure: LookupFailure::Provider { status: Some(503) },
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Err(LookupFailure::Provider { status: Some(503) }),
         },
     );
     match state {
@@ -791,12 +806,13 @@ fn an_unchosen_catalog_number_narrows_nothing() {
     r_b.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("LBL-002"))];
     let (state, _) = step(
         state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(vec![
                 (r_a, LibraryStatus::absent("rel-a")),
                 (r_b, LibraryStatus::absent("rel-b")),
-            ],
-        },
+            ]),
+            },
     );
     match state {
         IdentifyState::Found {
@@ -820,8 +836,9 @@ fn both_lookups_empty_is_not_found_anywhere() {
     let (state, _) = update(started(), disc_and_codes("d", &["BAR"]));
     let (state, _) = step(
         state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![],
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(vec![]),
         },
     );
     let (state, _) = step(state, barcode_missed(MB, "BAR"));
@@ -857,10 +874,9 @@ fn a_run_without_the_disc_id_source_dispatches_no_disc_id_lookup() {
     let no_catalog = crate::identify::NotAskedReason::NoCatalog;
     assert!(matches!(
         ledger_of(&next).disc_id,
-        crate::identify::DiscIdStepView::Read {
-            lookup: crate::identify::LookupView::NotAsked { reason },
-            ..
-        } if reason == no_catalog
+        crate::identify::DiscIdStepView::Read { discs }
+            if discs.iter().all(|disc| disc.lookup
+                == crate::identify::LookupView::NotAsked { reason: no_catalog })
     ));
     assert_eq!(
         badge(&next, SignalKind::DiscId).state,

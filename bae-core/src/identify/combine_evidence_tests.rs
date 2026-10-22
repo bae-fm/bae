@@ -215,7 +215,7 @@ fn a_matched_disc_id_proves_a_cd() {
     let vinyl = pressing("rel-vinyl", made_of(&[Medium::Vinyl]));
     let outcome = combine_results(
         LookupAnswers {
-            disc_id: vec![pressing("rel-cd", made_of(&[Medium::Cd]))],
+            disc_id: vec![vec![pressing("rel-cd", made_of(&[Medium::Cd]))]],
             barcode: vec![vinyl.clone()],
             catalog: vec![vinyl],
             ..LookupAnswers::default()
@@ -251,7 +251,7 @@ fn the_pressing_the_barcode_and_catalog_number_name_outranks_the_disc_id_s() {
     other.0.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("L1-999"))];
     let outcome = combine_results(
         LookupAnswers {
-            disc_id: vec![other],
+            disc_id: vec![vec![other]],
             barcode: vec![named],
             ..LookupAnswers::default()
         },

@@ -56,12 +56,14 @@ mirror_enum! {
 }
 
 impl AutomationDiscIdSignal {
-    /// Not a copy: the file a computed disc ID came from does not cross.
+    /// Not a copy: the file each computed disc ID came from does not cross.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn from_core(signal: bae_core::signals::DiscIdSignal) -> Self {
         use bae_core::signals::DiscIdSignal;
         match signal {
-            DiscIdSignal::Computed { disc_id, .. } => Self::Computed { disc_id },
+            DiscIdSignal::Computed { discs } => Self::Computed {
+                disc_ids: discs.into_iter().map(|disc| disc.disc_id).collect(),
+            },
             DiscIdSignal::Absent => Self::Absent,
             DiscIdSignal::NotCdAudio => Self::NotCdAudio,
             DiscIdSignal::Failed { failure } => Self::Failed {

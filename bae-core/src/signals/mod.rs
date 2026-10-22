@@ -28,7 +28,7 @@ desktop_only! {
     pub use artwork::ArtworkScan;
     pub use audio::AudioFacts;
     pub use barcode::BarcodeSignal;
-    pub use disc_id::DiscIdSignal;
+    pub use disc_id::{ComputedDiscId, DiscIdSignal};
     pub use rip::{AudioOrigin, AudioSource, CdProof, DownloadProof, StoreMarker};
     pub use service::{
         ExtractionService, ExtractionServiceHandle, ExtractionSource, ExtractionWatch,

@@ -196,8 +196,9 @@ fn a_failed_search_stores_what_the_other_provider_found() {
     assert!(matches!(effects.as_slice(), [Effect::LookupDiscid { .. }]));
     let (state, effects) = step(
         state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: Vec::new(),
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(Vec::new()),
         },
     );
     assert_eq!(

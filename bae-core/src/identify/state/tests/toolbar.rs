@@ -10,8 +10,9 @@ fn state_with_catalog_offered(providers: Vec<Catalog>) -> IdentifyState {
     );
     let (state, _) = step(
         state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-x"))],
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "disc-hash".into(),
+            outcome: Ok(vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-x"))]),
         },
     );
     state
@@ -31,8 +32,9 @@ fn run_with_catalog_chosen(providers: Vec<Catalog>) -> (IdentifyState, Vec<Effec
     numbered.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("LBL 001"))];
     let (state, _) = step(
         state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("rel-a", Some("g-x")), (numbered, status)],
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "disc-hash".into(),
+            outcome: Ok(vec![pair("rel-a", Some("g-x")), (numbered, status)]),
         },
     );
     (state, chosen_effects)
@@ -251,8 +253,9 @@ fn toolbar_shows_failed_disc_id_lookup() {
     let (state, _) = update(started(), disc_and_codes("disc-hash", &["012345678905"]));
     let (state, _) = step(
         state,
-        IdentifyEvent::DiscidLookupFailed {
-            failure: LookupFailure::Provider { status: Some(503) },
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "disc-hash".into(),
+            outcome: Err(LookupFailure::Provider { status: Some(503) }),
         },
     );
     let disc = state
@@ -328,8 +331,9 @@ fn toolbar_keeps_failed_disc_id_lookup_after_settle() {
     let failure = LookupFailure::Provider { status: Some(503) };
     let (state, _) = step(
         state,
-        IdentifyEvent::DiscidLookupFailed {
-            failure: failure.clone(),
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "disc-hash".into(),
+            outcome: Err(failure.clone()),
         },
     );
     assert!(matches!(state, IdentifyState::Failed { .. }));
@@ -385,11 +389,12 @@ fn found_carries_in_library_status_through() {
     let (state, _) = disc_only_started();
     let (state, _) = step(
         state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair_in_library(
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(vec![pair_in_library(
                 "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
                 Some("g-x"),
-            )],
+            )]),
         },
     );
     match state {
@@ -432,8 +437,9 @@ fn barcode_failure_before_disc_settles_is_retained_through_combine() {
 
     let (state, _) = step(
         state,
-        IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))]),
         },
     );
 

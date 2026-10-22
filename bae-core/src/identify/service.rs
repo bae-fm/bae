@@ -413,8 +413,14 @@ fn dispatch_effect(
             let library_manager = inner.library_manager.clone();
             spawn_until_cancelled(&runtime, &token, async move {
                 let event = match lookup_and_resolve(&disc_id, &library_manager, priority).await {
-                    Ok(results) => IdentifyEvent::DiscidLookupCompleted { results },
-                    Err(Failure::Lookup(failure)) => IdentifyEvent::DiscidLookupFailed { failure },
+                    Ok(results) => IdentifyEvent::DiscidLookupAnswered {
+                        disc_id,
+                        outcome: Ok(results),
+                    },
+                    Err(Failure::Lookup(failure)) => IdentifyEvent::DiscidLookupAnswered {
+                        disc_id,
+                        outcome: Err(failure),
+                    },
                     Err(Failure::Internal(failure)) => IdentifyEvent::Broke { failure },
                 };
                 emit_step(&event_tx, event);

@@ -348,7 +348,9 @@ fn cue_alac_disc_id_is_stable() {
     let disc_id = read_rip_artifacts(&categorized).disc_id.computed();
 
     assert_eq!(track_count, 3, "three tracks in the CUE sheet");
-    let computed = disc_id.expect("CUE+ALAC pair must produce a disc ID");
+    let [computed]: [bae_core::signals::ComputedDiscId; 1] = disc_id
+        .try_into()
+        .expect("CUE+ALAC pair must produce one disc ID");
     assert_eq!(
         computed.disc_id.len(),
         28,

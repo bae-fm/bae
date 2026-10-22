@@ -6,7 +6,8 @@
 use super::verdict_rows::unreadable;
 use super::*;
 use crate::signals::{
-    AudioOrigin, AudioSource, BarcodeSignal, CdProof, DiscIdSignal, DownloadProof, InternalFailure,
+    AudioOrigin, AudioSource, BarcodeSignal, CdProof, ComputedDiscId, DiscIdSignal, DownloadProof,
+    InternalFailure,
     Signals,
     SourcedValue, StoreMarker,
     TextLine, TextSignal,
@@ -14,7 +15,7 @@ use crate::signals::{
 
 const SIGNALS_COLUMNS: &str = "content_hash, audio_source, cd_rip_proof, download_proof, \
      audio_source_file, not_cd_rate, \
-     disc_id_state, disc_id, disc_id_source_file, \
+     disc_id_state, \
      disc_id_failure, barcode_state, barcode_failure, text_state, text_failure";
 
 /// The stored `download_proof` of a label's delivery set; a store's marker is
@@ -41,20 +42,11 @@ pub(super) fn insert_signals(
     content_hash: &str,
     signals: &Signals,
 ) -> Result<(), DbError> {
-    let (disc_id_state, disc_id, disc_id_source_file, disc_id_failure) = match &signals.disc_id {
-        DiscIdSignal::Computed {
-            disc_id,
-            source_file,
-            ..
-        } => (
-            "computed",
-            Some(disc_id.as_str()),
-            source_file.clone(),
-            None,
-        ),
-        DiscIdSignal::Absent => ("absent", None, None, None),
-        DiscIdSignal::NotCdAudio => ("not_cd_audio", None, None, None),
-        DiscIdSignal::Failed { failure } => ("failed", None, None, Some(failure)),
+    let (disc_id_state, discs, disc_id_failure) = match &signals.disc_id {
+        DiscIdSignal::Computed { discs } => ("computed", discs.as_slice(), None),
+        DiscIdSignal::Absent => ("absent", [].as_slice(), None),
+        DiscIdSignal::NotCdAudio => ("not_cd_audio", [].as_slice(), None),
+        DiscIdSignal::Failed { failure } => ("failed", [].as_slice(), Some(failure)),
     };
     let (audio_source, cd_rip_proof, download_proof, audio_source_file) =
         match &signals.origin.source {
@@ -96,7 +88,7 @@ pub(super) fn insert_signals(
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_signals ({SIGNALS_COLUMNS}) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ),
         params![
             content_hash,
@@ -106,8 +98,6 @@ pub(super) fn insert_signals(
             audio_source_file,
             signals.origin.not_cd_rate,
             disc_id_state,
-            disc_id,
-            disc_id_source_file,
             detail(disc_id_failure),
             barcode_state,
             detail(barcode_failure),
@@ -120,6 +110,13 @@ pub(super) fn insert_signals(
         values.iter().map(|value| (value.clone(), None)).collect()
     };
     let lists = [
+        (
+            "disc_id",
+            discs
+                .iter()
+                .map(|disc| (disc.disc_id.clone(), disc.source_file.clone()))
+                .collect(),
+        ),
         (
             "barcode",
             signals
@@ -220,8 +217,6 @@ pub(super) fn load_signals_on(
                     row.get::<_, Option<u32>>("not_cd_rate")?,
                 ),
                 row.get::<_, String>("disc_id_state")?,
-                row.get::<_, Option<String>>("disc_id")?,
-                row.get::<_, Option<String>>("disc_id_source_file")?,
                 row.get::<_, Option<String>>("disc_id_failure")?,
                 row.get::<_, String>("barcode_state")?,
                 row.get::<_, Option<String>>("barcode_failure")?,
@@ -236,6 +231,10 @@ pub(super) fn load_signals_on(
         for (content_hash, list, value, origin_path) in values {
             let entry = lists.entry(content_hash).or_default();
             match list.as_str() {
+                "disc_id" => entry.discs.push(ComputedDiscId {
+                    disc_id: value,
+                    source_file: origin_path,
+                }),
                 "barcode" => entry.barcodes.push(SourcedValue { value, origin_path }),
                 "catalog" => entry.catalogs.push(value),
                 "free_text" => entry.free_text.push(value),
@@ -258,8 +257,6 @@ pub(super) fn load_signals_on(
                 content_hash,
                 (audio_source, cd_rip_proof, download_proof, audio_source_file, not_cd_rate),
                 disc_id_state,
-                disc_id,
-                disc_id_source_file,
                 disc_id_failure,
                 barcode_state,
                 barcode_failure,
@@ -271,7 +268,7 @@ pub(super) fn load_signals_on(
                     .map(|detail| InternalFailure { detail })
                     .ok_or_else(|| DbError::Message(format!("a failed {what} states no error")))
             };
-            let values = lists.remove(&content_hash).unwrap_or_default();
+            let mut values = lists.remove(&content_hash).unwrap_or_default();
             let source = match (audio_source.as_deref(), cd_rip_proof, download_proof) {
                 (None, None, None) => None,
                 (Some("cd_rip"), Some(proof), None) => Some(AudioSource::CdRip {
@@ -298,13 +295,15 @@ pub(super) fn load_signals_on(
                 source,
                 not_cd_rate,
             };
+            let discs = std::mem::take(&mut values.discs);
+            if (disc_id_state == "computed") == discs.is_empty() {
+                return Err(DbError::Message(format!(
+                    "a {disc_id_state} disc ID signal states {} disc IDs",
+                    discs.len()
+                )));
+            }
             let disc_id = match disc_id_state.as_str() {
-                "computed" => DiscIdSignal::Computed {
-                    disc_id: disc_id.ok_or_else(|| {
-                        DbError::Message("a computed disc ID signal states no hash".into())
-                    })?,
-                    source_file: disc_id_source_file,
-                },
+                "computed" => DiscIdSignal::Computed { discs },
                 "absent" => DiscIdSignal::Absent,
                 "not_cd_audio" => DiscIdSignal::NotCdAudio,
                 "failed" => DiscIdSignal::Failed {
@@ -355,6 +354,7 @@ pub(super) fn load_signals_on(
 
 #[derive(Default)]
 struct SignalValues {
+    discs: Vec<ComputedDiscId>,
     barcodes: Vec<SourcedValue>,
     catalogs: Vec<String>,
     free_text: Vec<String>,

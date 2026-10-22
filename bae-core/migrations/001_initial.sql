@@ -1299,12 +1299,9 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
     audio_source_file      TEXT,
     -- The lossless rate, off a CD's, that rules a CD out.
     not_cd_rate            INTEGER CHECK (not_cd_rate IS NULL OR not_cd_rate > 0),
+    -- A computed state's disc IDs are its `disc_id` signal values, one per
+    -- disc, at least one.
     disc_id_state          TEXT NOT NULL CHECK (disc_id_state IN ('computed', 'absent', 'not_cd_audio', 'failed')),
-    disc_id                TEXT,
-    -- The candidate-relative path of the LOG or CUE the disc ID came from, so a
-    -- surface can mark that file's row. NULL when re-identifying a library
-    -- release, whose ID comes from stored tracks.
-    disc_id_source_file    TEXT,
     -- How bae broke reading each signal off the folder's files, as the error
     -- chain the person is shown.
     disc_id_failure        TEXT CHECK (disc_id_failure IS NULL OR disc_id_failure <> ''),
@@ -1322,23 +1319,22 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
     -- proves a CD rip.
     CHECK (disc_id_state <> 'not_cd_audio'
         OR (not_cd_rate IS NOT NULL AND audio_source IS NOT 'cd_rip')),
-    CHECK ((disc_id_state = 'computed') = (disc_id IS NOT NULL)),
-    CHECK (disc_id_source_file IS NULL OR disc_id_state = 'computed'),
     CHECK ((disc_id_state = 'failed') = (disc_id_failure IS NOT NULL)),
     CHECK ((barcode_state = 'failed') = (barcode_failure IS NOT NULL)),
     CHECK ((text_state = 'failed') = (text_failure IS NOT NULL))
 ) STRICT;
 
--- The barcodes, catalog numbers and free-text candidates read off a candidate,
--- in reading order.
+-- The disc IDs, barcodes, catalog numbers and free-text candidates read off a
+-- candidate, in reading order.
 CREATE TABLE IF NOT EXISTS import_candidate_signal_value (
     content_hash TEXT NOT NULL,
-    list         TEXT NOT NULL CHECK (list IN ('barcode', 'catalog', 'free_text', 'isrc', 'track_title')),
+    list         TEXT NOT NULL CHECK (list IN ('disc_id', 'barcode', 'catalog', 'free_text', 'isrc', 'track_title')),
     position     INTEGER NOT NULL CHECK (position >= 0),
     value        TEXT NOT NULL,
-    -- The candidate-relative path of the file a barcode was read off; NULL for
-    -- a library release's stored images.
-    origin_path  TEXT CHECK (origin_path IS NULL OR list = 'barcode'),
+    -- The candidate-relative path of the file a barcode was read off, or of the
+    -- LOG or CUE a disc ID was hashed from, so a surface can mark that file's
+    -- row; NULL for a library release's stored files.
+    origin_path  TEXT CHECK (origin_path IS NULL OR list IN ('disc_id', 'barcode')),
     PRIMARY KEY (content_hash, list, position),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE
 ) STRICT;
