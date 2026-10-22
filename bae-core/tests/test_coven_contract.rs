@@ -34,7 +34,6 @@ async fn real_schema_opens_with_the_declarations_and_unattached_files() {
         title: "Schema Album".into(),
         artist_id: artist.id.clone(),
         year: None,
-        primary_release_id: None,
         is_compilation: false,
         created_at: chrono::Utc::now(),
     };
@@ -104,7 +103,6 @@ async fn upload_cancellation_detaches_the_file_and_restores_its_original() {
         title: "Album".into(),
         artist_id: artist.id,
         year: None,
-        primary_release_id: None,
         is_compilation: false,
         created_at: chrono::Utc::now(),
     };

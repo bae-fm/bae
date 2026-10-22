@@ -52,7 +52,7 @@ impl Database {
                 &sql,
                 r#"
                     SELECT
-                        a.id, a.title, a.artist_id, a.year, a.primary_release_id,
+                        a.id, a.title, a.artist_id, a.year,
                         a.is_compilation, a.created_at
                     FROM albums a
                     JOIN releases r ON r.album_id = a.id
@@ -201,10 +201,11 @@ pub(crate) struct RecordsChange {
 ///    rows (so it lands fully populated, not a bare row that drops the artist
 ///    links the source already had).
 /// 2. Replace the release's records.
-/// 3. UPDATE the release's `album_id` and `draft_from_tags`.
-/// 4. If the release vacated `current_album_id` (the source), clear its
-///    `primary_release_id` if it pointed at the moved release (read paths fall
-///    back to the first release). An emptied source stays.
+/// 3. UPDATE the release's `album_id` and `draft_from_tags`; a release that
+///    moves is ordered after the destination album's others.
+/// 4. If the release vacated `current_album_id` (the source), the source's
+///    primary release is whichever release left there is ordered lowest. An
+///    emptied source stays.
 ///
 /// Metadata columns (pressing fields, album fields, tracks) are deliberately
 /// untouched. Caller decides whether to reseed the metadata.
@@ -263,7 +264,16 @@ pub(super) fn set_records_on(
     // 2. Replace the records and the catalog the draft was read from.
     write_release_records(tx, release_id, records, &now)?;
 
-    // 3. Update release: album and where its draft was read.
+    // 3. Update release: album and where its draft was read. A release
+    //    joining another album goes after that album's others.
+    if target_album_id != current_album_id {
+        tx.execute(
+            "UPDATE releases SET album_order = \
+                 (SELECT COALESCE(MAX(album_order) + 1, 0) FROM releases WHERE album_id = ?1) \
+             WHERE id = ?2",
+            params![target_album_id, release_id],
+        )?;
+    }
     tx.execute(
         r#"
             UPDATE releases SET
@@ -279,7 +289,7 @@ pub(super) fn set_records_on(
     //    transaction (TOCTOU: a writer may have added a release to the source
     //    since the manager's pre-flight read).
     if target_album_id != current_album_id {
-        vacate_album_on(tx, current_album_id, release_id)?;
+        vacate_album_on(tx, current_album_id)?;
     }
 
     Ok(())

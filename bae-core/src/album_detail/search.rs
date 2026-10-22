@@ -31,14 +31,7 @@ impl SearchResults {
                 .albums
                 .into_iter()
                 .map(|raw| {
-                    // Always resolves: every album has at least one release
-                    // (enforced by `delete_release`).
-                    let primary_release_id = crate::db::resolve_primary_release_id(
-                        raw.primary_release_id.as_deref(),
-                        raw.release_ids.iter().map(String::as_str),
-                    )
-                    .expect("album has at least one release");
-                    let cover = release_covers.get(&primary_release_id).cloned();
+                    let cover = release_covers.get(&raw.primary_release_id).cloned();
                     AlbumSearchResult {
                         id: raw.id,
                         title: raw.title,

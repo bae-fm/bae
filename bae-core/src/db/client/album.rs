@@ -9,27 +9,32 @@ fn escape_like_pattern(value: &str) -> String {
 
 impl Database {
     /// Track ids for an album's primary release. `None` means no album carries
-    /// this id; `Some(vec![])` means the album exists but its primary release has
-    /// no tracks.
+    /// this id; `Some(vec![])` means the album exists but holds no release, or
+    /// its primary release has no tracks.
     pub async fn get_primary_release_track_ids_for_album(
         &self,
         album_id: &str,
     ) -> Result<Option<Vec<String>>, DbError> {
-        let Some(album) = self.find_album_by_id(album_id).await? else {
-            return Ok(None);
-        };
-
-        let releases = self.get_releases_for_album(album_id).await?;
-        let release_id = resolve_primary_release_id(
-            album.primary_release_id.as_deref(),
-            releases.iter().map(|release| release.id.as_str()),
-        );
-
-        let Some(release_id) = release_id else {
-            return Ok(Some(Vec::new()));
-        };
-
-        self.get_track_ids_for_release(&release_id).await.map(Some)
+        let album_id = album_id.to_string();
+        let primary: Option<Option<String>> = self
+            .read(move |sql| {
+                sql.query_row(
+                    &format!(
+                        "SELECT {} FROM albums a WHERE a.id = ?",
+                        album_primary_release_sql()
+                    ),
+                    params![album_id],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(DbError::from)
+            })
+            .await?;
+        match primary {
+            None => Ok(None),
+            Some(None) => Ok(Some(Vec::new())),
+            Some(Some(release_id)) => self.get_track_ids_for_release(&release_id).await.map(Some),
+        }
     }
 
     /// Search albums, tracks, composers, and works by title/name.
@@ -132,7 +137,7 @@ impl Database {
 
         let query = format!(
             "SELECT \
-                a.id, a.title, a.artist_id, a.year, a.primary_release_id, \
+                a.id, a.title, a.artist_id, a.year, \
                 a.is_compilation, \
                 a.created_at \
             FROM albums a \
@@ -356,7 +361,7 @@ impl Database {
             sql.query_row(
                 r#"
                     SELECT
-                        id, title, artist_id, year, primary_release_id,
+                        id, title, artist_id, year,
                         is_compilation,
                         created_at
                     FROM albums
@@ -490,12 +495,35 @@ impl Database {
     ) -> Result<(), DbError> {
         let (album_id, primary_release_id) = (album_id.to_string(), primary_release_id.to_string());
         self.call_sql(move |sql| {
-            sql.execute(
-                "UPDATE albums SET primary_release_id = ? WHERE id = ?",
-                params![primary_release_id, album_id],
-            )
-            .map(|_| ())
-            .map_err(DbError::from)
+            // The release is ordered below the album's lowest, so it is the
+            // album's primary on every device that applies this write. One
+            // already primary stays where it is.
+            let current: Option<String> = sql
+                .query_row(
+                    &format!(
+                        "SELECT {} FROM albums a WHERE a.id = ?",
+                        album_primary_release_sql()
+                    ),
+                    params![album_id],
+                    |row| row.get(0),
+                )
+                .optional()?
+                .flatten();
+            if current.as_deref() == Some(primary_release_id.as_str()) {
+                return Ok(());
+            }
+            let moved = sql.execute(
+                "UPDATE releases SET album_order = \
+                     (SELECT MIN(album_order) - 1 FROM releases WHERE album_id = ?1) \
+                 WHERE id = ?2 AND album_id = ?1",
+                params![album_id, primary_release_id],
+            )?;
+            if moved != 1 {
+                return Err(DbError::Message(format!(
+                    "release {primary_release_id} is not one of album {album_id}'s releases"
+                )));
+            }
+            Ok(())
         })
         .await
     }
@@ -508,8 +536,8 @@ fn search_library_on(
 ) -> Result<LibrarySearchRows, DbError> {
     let album_query = format!(
         r#"
-            SELECT a.id, a.title, a.year, a.primary_release_id,
-                   {release_ids} AS release_ids_json,
+            SELECT a.id, a.title, a.year,
+                   {primary_release} AS primary_release_id,
                    art.name as artist_name
             FROM albums a
             JOIN artists art ON art.id = {primary}
@@ -519,7 +547,7 @@ fn search_library_on(
             ORDER BY a.title
             LIMIT ?
             "#,
-        release_ids = album_release_ids_json_sql(),
+        primary_release = album_primary_release_sql(),
         primary = shown_artist_id("a.artist_id"),
     );
     let albums = sql.query(&album_query, params![pattern, pattern, limit], |row| {
@@ -528,7 +556,6 @@ fn search_library_on(
             title: row.get("title")?,
             year: row.get("year")?,
             primary_release_id: row.get("primary_release_id")?,
-            release_ids_json: row.get("release_ids_json")?,
             artist_name: row.get("artist_name")?,
         })
     })?;
@@ -601,8 +628,7 @@ struct AlbumSearchRow {
     id: String,
     title: String,
     year: Option<i32>,
-    primary_release_id: Option<String>,
-    release_ids_json: String,
+    primary_release_id: String,
     artist_name: String,
 }
 
@@ -621,19 +647,11 @@ impl LibrarySearchRows {
             .albums
             .into_iter()
             .map(|row| {
-                let release_ids = serde_json::from_str(&row.release_ids_json).map_err(|error| {
-                    rusqlite::Error::FromSqlConversionFailure(
-                        0,
-                        rusqlite::types::Type::Text,
-                        format!("malformed release_ids_json: {error}").into(),
-                    )
-                })?;
                 Ok(DbAlbumSearchResult {
                     id: row.id,
                     title: row.title,
                     year: row.year,
                     primary_release_id: row.primary_release_id,
-                    release_ids,
                     artist_name: row.artist_name,
                 })
             })
@@ -660,6 +678,14 @@ fn find_album_detail_on(
     if db_releases.is_empty() {
         return Ok(None);
     }
+    let primary_release_id: String = sql.query_row(
+        &format!(
+            "SELECT {} FROM albums a WHERE a.id = ?",
+            album_primary_release_sql()
+        ),
+        params![album_id],
+        |row| row.get(0),
+    )?;
     let releases = db_releases
         .into_iter()
         .map(|release| build_release_detail_on(sql, release))
@@ -668,6 +694,7 @@ fn find_album_detail_on(
         album,
         artists,
         releases,
+        primary_release_id,
     }))
 }
 
@@ -676,6 +703,7 @@ struct AlbumDetailRows {
     album: DbAlbum,
     artists: Vec<DbArtist>,
     releases: Vec<ReleaseDetailRows>,
+    primary_release_id: String,
 }
 
 impl AlbumDetailRows {
@@ -688,6 +716,7 @@ impl AlbumDetailRows {
                 .into_iter()
                 .map(ReleaseDetailRows::process)
                 .collect(),
+            primary_release_id: self.primary_release_id,
         }
     }
 }

@@ -217,12 +217,11 @@ pub struct BridgeAlbum {
     pub is_compilation: bool,
     /// Comma-joined artist names for display
     pub artist_names: String,
-    /// All release IDs for this album, ordered by created_at
+    /// All release IDs for this album, in album order
     pub release_ids: Vec<String>,
-    /// Canonical release. Provides the album's cover art; default playback target.
-    /// User-settable via `set_album_primary_release`. Falls back to the first
-    /// release when unset in the DB. Always set: every album has at least one
-    /// release.
+    /// The album's primary release, its lowest-ordered one: it provides the
+    /// album's cover art and is the default playback target.
+    /// `set_album_primary_release` orders another release first.
     pub primary_release_id: String,
     /// Reference to the album's cover (the primary release's cover), or `None`
     /// when it has no cover. The UI fetches the bytes by id and caches under

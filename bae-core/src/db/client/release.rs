@@ -420,7 +420,6 @@ impl Database {
         files: Vec<crate::import::service::PreparedImportFile>,
         library_image: Option<(&DbLibraryImage, &[u8])>,
         artist_images: NewArtistImages<'_>,
-        primary_release_id: Option<(&str, &str)>, // (album_id, release_id)
     ) -> Result<(), ArtistWriteError> {
         let album = album.cloned();
         let release = release.clone();
@@ -460,7 +459,6 @@ impl Database {
                 )
             })
             .collect();
-        let primary_release_id = primary_release_id.map(|(a, r)| (a.to_string(), r.to_string()));
         let records = rows.records.to_vec();
         let now_dt = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
         let now = now_dt.to_rfc3339();
@@ -599,13 +597,6 @@ impl Database {
                     upsert_library_image_row(tx, image)?;
                 }
 
-                if let Some((album_id, release_id)) = &primary_release_id {
-                    tx.execute(
-                        "UPDATE albums SET primary_release_id = ? WHERE id = ?",
-                        params![release_id, album_id],
-                    )?;
-                }
-
                 Ok(())
             },
         )
@@ -632,7 +623,7 @@ impl Database {
                     "DELETE FROM releases WHERE id = ?",
                     params![plan.release_id()],
                 )?;
-                vacate_album_on(&sql, plan.album_id(), plan.release_id())
+                vacate_album_on(&sql, plan.album_id())
             })
             .await?;
         self.dismiss_own_abandonments(&abandoned).await;

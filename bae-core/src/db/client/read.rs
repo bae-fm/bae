@@ -7,7 +7,7 @@ pub(super) fn find_album_by_id_on(
     sql.query_row(
         r#"
             SELECT
-                id, title, artist_id, year, primary_release_id,
+                id, title, artist_id, year,
                 is_compilation,
                 created_at
             FROM albums
@@ -68,7 +68,7 @@ pub(super) fn get_releases_for_album_on(
     album_id: &str,
 ) -> Result<Vec<DbRelease>, DbError> {
     sql.query(
-        "SELECT * FROM releases WHERE album_id = ? ORDER BY created_at",
+        "SELECT * FROM releases WHERE album_id = ? ORDER BY album_order, id",
         params![album_id],
         row_to_release,
     )
@@ -422,7 +422,6 @@ pub(super) fn row_to_album_with_prefix(row: &Row, prefix: &str) -> rusqlite::Res
         title: row.get(column("title").as_str())?,
         artist_id: row.get(column("artist_id").as_str())?,
         year: row.get(column("year").as_str())?,
-        primary_release_id: row.get(column("primary_release_id").as_str())?,
         is_compilation: row.get(column("is_compilation").as_str())?,
         created_at: rfc3339_column(row, &column("created_at"))?,
     })

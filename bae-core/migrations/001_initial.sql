@@ -91,9 +91,6 @@ CREATE TABLE IF NOT EXISTS albums (
     -- but the app always sets it.
     artist_id TEXT REFERENCES artists(id),
     year INTEGER,
-    -- The release whose cover the album shows and that opens by default; NULL
-    -- means the first release.
-    primary_release_id TEXT,
     is_compilation INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
 ) STRICT;
@@ -166,6 +163,12 @@ CREATE INDEX IF NOT EXISTS idx_work_parts_child ON work_parts(child_work_id);
 CREATE TABLE IF NOT EXISTS releases (
     id TEXT PRIMARY KEY,
     album_id TEXT NOT NULL,
+    -- Where the release stands among its album's: the album's primary release
+    -- — the one whose cover the album shows and that plays by default — is its
+    -- lowest, ties broken by release id. A release joining an album is ordered
+    -- after the album's others; making one primary orders it below the
+    -- album's lowest.
+    album_order REAL NOT NULL,
     release_name TEXT,
     year INTEGER,
     -- Every label the pressing is on, in its source's order: a JSON array of
@@ -210,7 +213,7 @@ CREATE TABLE IF NOT EXISTS releases (
     FOREIGN KEY (album_id) REFERENCES albums (id) ON DELETE CASCADE
 ) STRICT;
 
-CREATE INDEX IF NOT EXISTS idx_releases_album_id ON releases (album_id);
+CREATE INDEX IF NOT EXISTS idx_releases_album_id ON releases (album_id, album_order, id);
 
 CREATE INDEX IF NOT EXISTS idx_releases_content_hash
     ON releases (content_hash)

@@ -32,7 +32,7 @@ async fn grouped_library() -> (Database, tempfile::TempDir) {
             &db,
             &format!(
             "INSERT INTO albums (id, title, artist_id, is_compilation, created_at) VALUES ('{album}', '{title}', '{artist}', 0, '2026-01-01T00:00:00Z'); \
-             INSERT INTO releases (id, album_id, created_at) VALUES ('{release}', '{album}', '2026-01-01T00:00:00Z');"
+             INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{release}', '{album}', '2026-01-01T00:00:00Z', 0);"
         ),
         )
         .await;

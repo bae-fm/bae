@@ -53,9 +53,7 @@ impl LibraryManager {
     }
 
     /// Resolve a mix of album and track IDs into track IDs. An album expands to the
-    /// tracks of its primary release — the user's chosen release when set, otherwise
-    /// the earliest-imported one, which is the fallback `primary_release_id` already
-    /// encodes.
+    /// tracks of its primary release, its lowest-ordered one.
     pub async fn resolve_to_track_ids(&self, ids: &[String]) -> Result<Vec<String>, LibraryError> {
         let mut track_ids = Vec::new();
         for id in ids {

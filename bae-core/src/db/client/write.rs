@@ -49,16 +49,14 @@ pub(super) fn insert_album_row(conn: &SqlContext<'_, '_>, album: &DbAlbum) -> Re
     conn.execute(
         r#"
         INSERT INTO albums (
-            id, title, artist_id, year, primary_release_id, is_compilation,
-            created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            id, title, artist_id, year, is_compilation, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?)
         "#,
         params![
             album.id,
             album.title,
             album.artist_id,
             album.year,
-            album.primary_release_id,
             album.is_compilation,
             album.created_at.to_rfc3339(),
         ],
@@ -75,14 +73,12 @@ pub(super) fn upsert_album_row(conn: &SqlContext<'_, '_>, album: &DbAlbum) -> Re
     conn.execute(
         r#"
         INSERT INTO albums (
-            id, title, artist_id, year, primary_release_id, is_compilation,
-            created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            id, title, artist_id, year, is_compilation, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT (id) DO UPDATE SET
             title = excluded.title,
             artist_id = excluded.artist_id,
             year = excluded.year,
-            primary_release_id = excluded.primary_release_id,
             is_compilation = excluded.is_compilation
         "#,
         params![
@@ -90,7 +86,6 @@ pub(super) fn upsert_album_row(conn: &SqlContext<'_, '_>, album: &DbAlbum) -> Re
             album.title,
             album.artist_id,
             album.year,
-            album.primary_release_id,
             album.is_compilation,
             album.created_at.to_rfc3339(),
         ],
@@ -122,7 +117,8 @@ pub(super) fn insert_album_artist_row(
 
 /// `source_folder_name` is the folder an export reconstructs under the user's
 /// target directory, so it is held to the same fragment policy as a file's name
-/// (see [`with_file_row_params`]).
+/// (see [`with_file_row_params`]). The release is ordered after its album's
+/// others, so an album's first release stays its primary one.
 pub(super) fn insert_release_row(
     conn: &SqlContext<'_, '_>,
     release: &DbRelease,
@@ -145,8 +141,9 @@ pub(super) fn insert_release_row(
             country, region, media, status, packaging, discogs_details,
             source_folder_name, content_hash,
             album_loudness_lufs, album_peak_linear,
-            created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            created_at, album_order
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            (SELECT COALESCE(MAX(album_order) + 1, 0) FROM releases WHERE album_id = ?))
         "#,
         params![
             release.id,
@@ -167,6 +164,7 @@ pub(super) fn insert_release_row(
             release.album_loudness_lufs,
             release.album_peak_linear,
             release.created_at.to_rfc3339(),
+            release.album_id,
         ],
     )
     .map(|_| ())

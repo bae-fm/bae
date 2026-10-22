@@ -21,7 +21,6 @@ fn create_test_album(artist_id: &str) -> DbAlbum {
         title: "Test Album".to_string(),
         artist_id: artist_id.to_string(),
         year: Some(2024),
-        primary_release_id: None,
         is_compilation: false,
         created_at: Utc::now(),
     }
@@ -159,8 +158,60 @@ async fn test_delete_last_release_empties_album() {
     assert!(releases.is_empty());
 }
 
+/// The album's primary release, as its detail names it.
+async fn primary_release_of(
+    library_manager: &bae_core::library::LibraryManager,
+    album_id: &str,
+) -> String {
+    library_manager
+        .find_album_detail(album_id)
+        .await
+        .unwrap()
+        .expect("an album with a release has a detail")
+        .primary_release_id
+}
+
+/// Deleting the primary release makes the next-ordered one primary in the
+/// same write: nothing points at the release that went.
 #[tokio::test]
-async fn test_delete_primary_release_clears_album_primary_pointer() {
+async fn test_deleting_the_primary_release_makes_the_next_one_primary() {
+    let (library_manager, database, _temp_dir) = support::setup_test_library().await;
+    let artist = create_test_artist();
+    database.insert_artist(&artist).await.unwrap();
+    let album = create_test_album(&artist.id);
+    let release1 = create_test_release(&album.id);
+    let release2 = create_test_release(&album.id);
+    let release3 = create_test_release(&album.id);
+
+    database.insert_album(&album).await.unwrap();
+    for release in [&release1, &release2, &release3] {
+        database.insert_release(release).await.unwrap();
+    }
+    assert_eq!(
+        primary_release_of(&library_manager, &album.id).await,
+        release1.id,
+        "an album's first release is its primary"
+    );
+    library_manager
+        .set_album_primary_release(&album.id, &release3.id)
+        .await
+        .unwrap();
+    assert_eq!(
+        primary_release_of(&library_manager, &album.id).await,
+        release3.id
+    );
+
+    library_manager.delete_release(&release3.id).await.unwrap();
+
+    assert_eq!(
+        primary_release_of(&library_manager, &album.id).await,
+        release1.id,
+        "the lowest-ordered release left is the primary"
+    );
+}
+
+#[tokio::test]
+async fn test_deleting_another_release_keeps_the_primary() {
     let (library_manager, database, _temp_dir) = support::setup_test_library().await;
     let artist = create_test_artist();
     database.insert_artist(&artist).await.unwrap();
@@ -173,53 +224,39 @@ async fn test_delete_primary_release_clears_album_primary_pointer() {
     database.insert_release(&release2).await.unwrap();
 
     library_manager
-        .set_album_primary_release(&album.id, &release1.id)
+        .set_album_primary_release(&album.id, &release2.id)
         .await
         .unwrap();
 
     library_manager.delete_release(&release1.id).await.unwrap();
 
-    let album_after = database
-        .find_album_by_id(&album.id)
-        .await
-        .unwrap()
-        .expect("album survives deletion of one of two releases");
     assert_eq!(
-        album_after.primary_release_id, None,
-        "deleting the primary must clear the stored pointer to NULL, not leave it \
-         dangling at the deleted release (the effective primary is derived at read \
-         time by COALESCE to the surviving release)",
+        primary_release_of(&library_manager, &album.id).await,
+        release2.id
     );
 }
 
+/// Making a release primary that is not one of the album's is refused.
 #[tokio::test]
-async fn test_delete_non_primary_release_preserves_primary_pointer() {
+async fn test_a_release_of_another_album_cannot_be_made_primary() {
     let (library_manager, database, _temp_dir) = support::setup_test_library().await;
     let artist = create_test_artist();
     database.insert_artist(&artist).await.unwrap();
     let album = create_test_album(&artist.id);
-    let release1 = create_test_release(&album.id);
-    let release2 = create_test_release(&album.id);
-
+    let other = create_test_album(&artist.id);
+    let release = create_test_release(&album.id);
+    let elsewhere = create_test_release(&other.id);
     database.insert_album(&album).await.unwrap();
-    database.insert_release(&release1).await.unwrap();
-    database.insert_release(&release2).await.unwrap();
+    database.insert_album(&other).await.unwrap();
+    database.insert_release(&release).await.unwrap();
+    database.insert_release(&elsewhere).await.unwrap();
 
     library_manager
-        .set_album_primary_release(&album.id, &release1.id)
+        .set_album_primary_release(&album.id, &elsewhere.id)
         .await
-        .unwrap();
-
-    library_manager.delete_release(&release2.id).await.unwrap();
-
-    let album_after = database
-        .find_album_by_id(&album.id)
-        .await
-        .unwrap()
-        .expect("album survives deletion of non-primary release");
+        .expect_err("another album's release is not this album's to make primary");
     assert_eq!(
-        album_after.primary_release_id.as_deref(),
-        Some(release1.id.as_str()),
-        "primary_release_id must be preserved when a non-primary release is deleted",
+        primary_release_of(&library_manager, &album.id).await,
+        release.id
     );
 }

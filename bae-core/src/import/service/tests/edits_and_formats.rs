@@ -56,7 +56,6 @@ fn make_seed_album_release_track() -> (
         title: "Album Title".to_string(),
         artist_id: artist.id.clone(),
         year: Some(2020),
-        primary_release_id: None,
         is_compilation: false,
         created_at: now,
     };
@@ -270,7 +269,6 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
         title: "Album Title".to_string(),
         artist_id: seed_artist.id.clone(),
         year: Some(2020),
-        primary_release_id: None,
         is_compilation: false,
         created_at: now,
     };

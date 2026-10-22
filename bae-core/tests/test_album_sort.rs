@@ -17,7 +17,6 @@ fn make_album(
         title: title.to_string(),
         artist_id: artist_id.to_string(),
         year,
-        primary_release_id: None,
         is_compilation: false,
         created_at: now + Duration::hours(created_offset_hours),
     }

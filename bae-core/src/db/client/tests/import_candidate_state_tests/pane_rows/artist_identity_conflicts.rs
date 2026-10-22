@@ -81,7 +81,6 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
         title: "Album Title".to_string(),
         artist_id: musicbrainz.id.clone(),
         year: None,
-        primary_release_id: None,
         is_compilation: false,
         created_at: fixed_now(),
     };
@@ -99,7 +98,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     let seed_pending_hash = pending_hash.clone();
     db.call(move |sql| {
         sql.execute(
-            "INSERT INTO releases (id, album_id, created_at) VALUES (?, ?, '2026-01-02T03:04:05Z')",
+            "INSERT INTO releases (id, album_id, created_at, album_order) VALUES (?, ?, '2026-01-02T03:04:05Z', 0)",
             params![seed_release_id, seed_album_id],
         )?;
         sql.execute(

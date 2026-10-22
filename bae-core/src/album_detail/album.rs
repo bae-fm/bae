@@ -14,9 +14,8 @@ pub struct AlbumDetail {
     /// Comma-joined artist names for display.
     pub artist_names: String,
     pub releases: Vec<ReleaseDetail>,
-    /// The user's chosen primary release, else the first. Always set: every album has
-    /// at least one release, enforced by `delete_release`, which removes the album row
-    /// when its last release goes.
+    /// The album's lowest-ordered release: the one whose cover it shows and
+    /// that plays by default.
     pub primary_release_id: String,
     /// The album's cover — its primary release's — or `None` when there is no cover
     /// row. The version moves when the bytes do, so subscribers receive a changed
@@ -24,8 +23,8 @@ pub struct AlbumDetail {
     pub cover: Option<ImageRef>,
 }
 
-/// The slim projection a list view renders, with the `primary_release_id` fallback
-/// already applied. Composed into [`AlbumDetail`] for detail views.
+/// The slim projection a list view renders. Composed into [`AlbumDetail`] for
+/// detail views.
 #[derive(Debug, Clone)]
 pub struct AlbumSummary {
     pub id: String,
@@ -33,9 +32,10 @@ pub struct AlbumSummary {
     pub year: Option<i32>,
     pub is_compilation: bool,
     pub artist_names: String,
+    /// The album's releases in album order.
     pub release_ids: Vec<String>,
-    /// The user's chosen primary release, else the first. Always set: every album has
-    /// at least one release, enforced by `delete_release`.
+    /// The album's lowest-ordered release: the one whose cover it shows and
+    /// that plays by default.
     pub primary_release_id: String,
     /// The album's cover — its primary release's — or `None` when there is no cover
     /// row. Carried on the *summary* so a cover change updates its subscribed
@@ -44,10 +44,6 @@ pub struct AlbumSummary {
 }
 
 impl AlbumSummary {
-    /// Applies the `primary_release_id` fallback through
-    /// [`crate::db::resolve_primary_release_id`], the one definition of it. It
-    /// always succeeds: every album has at least one release.
-    ///
     /// `resolve_cover` maps that primary release id to its cover reference. It is
     /// passed in rather than reached for through `&self`, so one resolver serves the
     /// SQL-page, search, and event paths without each duplicating the
@@ -56,11 +52,7 @@ impl AlbumSummary {
         raw: DbAlbumSummary,
         resolve_cover: impl Fn(&str) -> Option<ImageRef>,
     ) -> AlbumSummary {
-        let primary_release_id = crate::db::resolve_primary_release_id(
-            raw.primary_release_id.as_deref(),
-            raw.release_ids.iter().map(String::as_str),
-        )
-        .expect("album has at least one release");
+        let primary_release_id = raw.primary_release_id;
         let cover = resolve_cover(&primary_release_id);
         AlbumSummary {
             id: raw.id,

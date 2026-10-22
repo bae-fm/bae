@@ -470,18 +470,16 @@ async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
     let now = Utc::now();
     let beta_track_id = TRACK_BETA.to_string();
 
-    // album_a carries two releases on g1 and points
-    // primary_release_id at release_alpha. Move release_alpha out.
-    // The chosen release is gone, so primary_release_id becomes NULL
-    // and the read path falls back to the remaining release_beta.
+    // album_a carries two releases on g1, release_alpha made primary. Move
+    // release_alpha out: the release left, release_beta, is the primary.
     let album_a = create_test_album();
     let releases =
         seed_grouped_releases(&manager, &album_a, &[("g1", "g1-rel"), ("g1", "g1-rel")]).await;
     let release_alpha = &releases[0];
     let release_beta = &releases[1];
 
-    // A track on release_beta so the read-path resolution below has an
-    // identifiable target: the fallback should surface beta's tracks.
+    // A track on release_beta so the primary resolved below has an
+    // identifiable target.
     let beta_track = crate::db::DbTrack {
         id: beta_track_id.clone(),
         release_id: release_beta.id.clone(),
@@ -494,8 +492,7 @@ async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
     };
     manager.database.insert_track(&beta_track).await.unwrap();
 
-    // Point album_a.primary_release_id at release_alpha — the
-    // release we're about to move out.
+    // Make release_alpha — the release about to move out — primary.
     manager
         .database
         .set_album_primary_release(&album_a.id, &release_alpha.id)
@@ -507,21 +504,15 @@ async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
         .await
         .unwrap();
 
-    // album_a survives; its primary_release_id is cleared to NULL now
-    // that the release it pointed at has left.
-    let surviving_album = manager
+    // album_a survives, holding release_beta.
+    manager
         .database
         .find_album_by_id(&album_a.id)
         .await
         .unwrap()
         .expect("album should still exist with release_beta");
-    assert_eq!(
-        surviving_album.primary_release_id, None,
-        "primary_release_id should be cleared when its release moves out",
-    );
 
-    // Read path falls back to the first remaining release: album_a now
-    // resolves its primary to release_beta.
+    // The primary release is the lowest-ordered one left: release_beta.
     let resolved_track_ids = manager
         .database
         .get_primary_release_track_ids_for_album(&album_a.id)
@@ -530,7 +521,7 @@ async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
     assert_eq!(
         resolved_track_ids,
         Some(vec![beta_track_id.clone()]),
-        "read path should resolve the cleared primary to release_beta",
+        "the release left in the album is its primary",
     );
 }
 
@@ -556,7 +547,6 @@ async fn set_records_atomic_rechecks_the_source_count_inside_the_transaction() {
         title: album_a.title.clone(),
         artist_id: album_a.artist_id.clone(),
         year: album_a.year,
-        primary_release_id: None,
         is_compilation: album_a.is_compilation,
         created_at: now,
     };

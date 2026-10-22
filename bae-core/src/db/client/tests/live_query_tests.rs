@@ -26,9 +26,8 @@ pub(super) async fn live_db() -> (Database, tempfile::TempDir) {
         &db,
         &format!(
             "INSERT INTO artists (id, name, name_key, created_at) VALUES ('{ARTIST_ID}', 'Artist Name', 'artist name', '2026-01-01T00:00:00Z');
-             INSERT INTO albums
-               (id, title, artist_id, primary_release_id, is_compilation, created_at) VALUES ('{ALBUM_ID}', 'Album Title', '{ARTIST_ID}', '{RELEASE_ID}', 0, '2026-01-01T00:00:00Z');
-             INSERT INTO releases (id, album_id, created_at) VALUES ('{RELEASE_ID}', '{ALBUM_ID}', '2026-01-01T00:00:00Z');"
+             INSERT INTO albums (id, title, artist_id, is_compilation, created_at) VALUES ('{ALBUM_ID}', 'Album Title', '{ARTIST_ID}', 0, '2026-01-01T00:00:00Z');
+             INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{RELEASE_ID}', '{ALBUM_ID}', '2026-01-01T00:00:00Z', 0);"
         ),
     )
     .await;
@@ -188,7 +187,7 @@ async fn album_browse_reads_only_the_primary_releases_cover() {
     let (db, _temp) = live_db().await;
     exec(
         &db,
-        "INSERT INTO releases (id, album_id, created_at) VALUES (?1, ?2, '2026-01-02T00:00:00Z')",
+        "INSERT INTO releases (id, album_id, created_at, album_order) VALUES (?1, ?2, '2026-01-02T00:00:00Z', 0)",
         &[OTHER_RELEASE_ID, ALBUM_ID],
     )
     .await;
@@ -226,9 +225,8 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     exec_batch(
         &db,
         &format!(
-            "INSERT INTO albums
-               (id, title, artist_id, primary_release_id, is_compilation, created_at) VALUES ('{OTHER_ALBUM_ID}', 'Album Title Second', '{ARTIST_ID}', '{OTHER_RELEASE_ID}', 0, '2026-01-02T00:00:00Z');
-             INSERT INTO releases (id, album_id, created_at) VALUES ('{OTHER_RELEASE_ID}', '{OTHER_ALBUM_ID}', '2026-01-02T00:00:00Z');"
+            "INSERT INTO albums (id, title, artist_id, is_compilation, created_at) VALUES ('{OTHER_ALBUM_ID}', 'Album Title Second', '{ARTIST_ID}', 0, '2026-01-02T00:00:00Z');
+             INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{OTHER_RELEASE_ID}', '{OTHER_ALBUM_ID}', '2026-01-02T00:00:00Z', 0);"
         ),
     )
     .await;
@@ -738,10 +736,8 @@ fn album_page_subscription_delivers_a_write_materialized_by_sync() {
         exec_batch(writer, &format!(
             "INSERT INTO artists (id, name, name_key, created_at)
              VALUES ('{ARTIST_ID}', 'Artist Name', 'artist name', '2026-01-01T00:00:00Z');
-             INSERT INTO albums (id, title, artist_id, primary_release_id, is_compilation, created_at)
-             VALUES ('{ALBUM_ID}', 'Synced Album', '{ARTIST_ID}', '{RELEASE_ID}', 0, '2026-01-01T00:00:00Z');
-             INSERT INTO releases (id, album_id, created_at)
-             VALUES ('{RELEASE_ID}', '{ALBUM_ID}', '2026-01-01T00:00:00Z');"
+             INSERT INTO albums (id, title, artist_id, is_compilation, created_at) VALUES ('{ALBUM_ID}', 'Synced Album', '{ARTIST_ID}', 0, '2026-01-01T00:00:00Z');
+             INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{RELEASE_ID}', '{ALBUM_ID}', '2026-01-01T00:00:00Z', 0);"
         )).await;
         devices
             .settle("the remote album", |_, db| async move {

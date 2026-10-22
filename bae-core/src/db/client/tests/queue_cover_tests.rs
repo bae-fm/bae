@@ -2,8 +2,8 @@ use super::super::*;
 use super::*;
 use crate::playback::QueueEntryId;
 
-/// `album-null` has no primary release at all; `album-set` has one, pointing at
-/// a release that the queued track is NOT on.
+/// One album holds one release; the other holds two, and the queued track is
+/// on the one that is NOT its primary.
 async fn cover_db() -> (Database, tempfile::TempDir) {
     let (db, tmp) = super::temp_db().await;
     db.call(move |conn| {
@@ -11,12 +11,12 @@ async fn cover_db() -> (Database, tempfile::TempDir) {
             "
             INSERT INTO artists (id, name, name_key, created_at) VALUES ('d7d8141f-54ff-467d-8b60-4f34a4d2e528', 'Artist Name', 'artist name', '2026-01-01T00:00:00Z');
 
-            INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, created_at) VALUES ('c6648d5a-617e-4b69-87da-b7f1c4fb5e65', 'Album With No Primary', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2026, NULL, 0, '2026-01-01T00:00:00Z'),
-             ('82a53f44-1b76-435b-89f0-42749371ee15', 'Album With A Primary', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2026, '2ffa8060-aa00-4147-8ad4-f373ef66c407', 0, '2026-01-01T00:00:00Z');
+            INSERT INTO albums (id, title, artist_id, year, is_compilation, created_at) VALUES ('c6648d5a-617e-4b69-87da-b7f1c4fb5e65', 'Album With No Primary', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2026, 0, '2026-01-01T00:00:00Z'),
+             ('82a53f44-1b76-435b-89f0-42749371ee15', 'Album With A Primary', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2026, 0, '2026-01-01T00:00:00Z');
 
-            INSERT INTO releases (id, album_id, created_at) VALUES ('fcf4be32-159f-4790-87a1-697700a74462', 'c6648d5a-617e-4b69-87da-b7f1c4fb5e65', '2026-01-01T00:00:00Z'),
-             ('2ffa8060-aa00-4147-8ad4-f373ef66c407', '82a53f44-1b76-435b-89f0-42749371ee15', '2026-01-01T00:00:00Z'),
-             ('ce596bd7-be97-4416-8b6d-47f315bae466', '82a53f44-1b76-435b-89f0-42749371ee15', '2026-01-01T00:00:01Z');
+            INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('fcf4be32-159f-4790-87a1-697700a74462', 'c6648d5a-617e-4b69-87da-b7f1c4fb5e65', '2026-01-01T00:00:00Z', 0),
+             ('2ffa8060-aa00-4147-8ad4-f373ef66c407', '82a53f44-1b76-435b-89f0-42749371ee15', '2026-01-01T00:00:00Z', 1),
+             ('ce596bd7-be97-4416-8b6d-47f315bae466', '82a53f44-1b76-435b-89f0-42749371ee15', '2026-01-01T00:00:01Z', 2);
 
             INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, created_at) VALUES ('03c41035-ce18-4fa0-8e83-c446df26a551', 'fcf4be32-159f-4790-87a1-697700a74462', 'Track On The Only Release', 1, 1, 1000, NULL, '2026-01-01T00:00:00Z'),
              ('69e67928-545a-4dcf-8ae7-ef7778331231', 'ce596bd7-be97-4416-8b6d-47f315bae466', 'Track On The Non-Primary Release', 1, 1, 1000, NULL, '2026-01-01T00:00:00Z');
@@ -55,10 +55,9 @@ async fn cover_ref(db: &Database, release_id: &str) -> Option<crate::album_detai
     })
 }
 
-/// `albums.primary_release_id` is NULL, so reading it raw yields no cover at
-/// all and the queue row renders art-less.
+/// A track on its album's only release shows that release's cover.
 #[tokio::test]
-async fn queue_row_covers_a_track_whose_album_has_no_primary_release() {
+async fn queue_row_covers_a_track_on_its_album_s_one_release() {
     let (db, _tmp) = cover_db().await;
     assert_eq!(
         cover_of(&db, TRACK_LONELY).await,

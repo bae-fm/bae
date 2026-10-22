@@ -461,7 +461,6 @@ async fn done_lists_every_copy_of_a_folder() {
     let mut other_album = db.find_album_by_id(ALBUM_ID).await.unwrap().unwrap();
     other_album.id = bae_test_support::test_uuid("second-copy-album");
     other_album.title = "Second Album".to_string();
-    other_album.primary_release_id = None;
     db.insert_album(&other_album).await.unwrap();
     copy.album_id = other_album.id;
     db.insert_release(&copy).await.unwrap();

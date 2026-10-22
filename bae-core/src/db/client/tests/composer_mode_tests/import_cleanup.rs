@@ -39,7 +39,6 @@ fn test_album(
         title: title.to_string(),
         artist_id: artist_id.to_string(),
         year: Some(2026),
-        primary_release_id: None,
         is_compilation: false,
         created_at: now,
     }
@@ -97,8 +96,6 @@ struct Commit<'a> {
     files: Vec<crate::import::service::PreparedImportFile>,
     library_image: Option<(&'a DbLibraryImage, &'a [u8])>,
     artist_images: crate::db::NewArtistImages<'a>,
-    /// `(album_id, release_id)`
-    primary_release_id: Option<(&'a str, &'a str)>,
 }
 
 /// Finalize `release` past the guard, which these tests have already satisfied
@@ -117,7 +114,6 @@ async fn commit_import(
         commit.files,
         commit.library_image,
         commit.artist_images,
-        commit.primary_release_id,
 
     )
     .await
@@ -192,8 +188,6 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
             Vec::new(),
             None,
             crate::db::NewArtistImages::default(),
-            None,
-
         )
         .await
         .expect_err("the final transaction must re-check the queued metadata revision");
@@ -214,9 +208,9 @@ async fn seeded_db() -> (Database, tempfile::TempDir) {
             INSERT INTO artists (id, name, name_key, sort_name, discogs_artist_id, musicbrainz_artist_id, created_at) VALUES ('85f70840-aba5-4eb9-8e1a-0d319e53b798', 'Album Artist A', 'album artist a', NULL, NULL, NULL, '2026-01-01T00:00:00Z'),
              ('5412b7ad-bdc1-4561-8985-b6d6ef8a2880', 'Displayed Composer A', 'displayed composer a', 'Hidden Composer Sort A', NULL, 'mb-artist-composer-a', '2026-01-01T00:00:00Z');
 
-            INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, created_at) VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', '85f70840-aba5-4eb9-8e1a-0d319e53b798', 2026, '0252dedb-ee39-4547-8803-438dbeb57a64', 0, '2026-01-01T00:00:00Z');
+            INSERT INTO albums (id, title, artist_id, year, is_compilation, created_at) VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', '85f70840-aba5-4eb9-8e1a-0d319e53b798', 2026, 0, '2026-01-01T00:00:00Z');
 
-            INSERT INTO releases (id, album_id, release_name, year, labels, barcode, media, discogs_details, source_folder_name, content_hash, album_loudness_lufs, album_peak_linear, created_at) VALUES ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', NULL, 2026, '[]', NULL, '[{\"medium\":\"cd\",\"count\":1}]', '[]', NULL, NULL, NULL, NULL, '2026-01-01T00:00:00Z');
+            INSERT INTO releases (id, album_id, release_name, year, labels, barcode, media, discogs_details, source_folder_name, content_hash, album_loudness_lufs, album_peak_linear, created_at, album_order) VALUES ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', NULL, 2026, '[]', NULL, '[{\"medium\":\"cd\",\"count\":1}]', '[]', NULL, NULL, NULL, NULL, '2026-01-01T00:00:00Z', 0);
 
             INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, created_at) VALUES ('0482872e-d4bf-4080-8426-441a0a3e71fc', '0252dedb-ee39-4547-8803-438dbeb57a64', 'Track Title A', 1, 1, 1000, NULL, '2026-01-01T00:00:00Z');
 
@@ -329,7 +323,6 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
                 track_artist_roles: &track_roles,
                 ..Default::default()
             },
-            primary_release_id: Some((&album.id, &release.id)),
             ..Default::default()
         },
     )

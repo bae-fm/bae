@@ -241,7 +241,6 @@ mod tests {
             title: "Album Title".into(),
             artist_id: "artist-referenced".into(),
             year: None,
-            primary_release_id: None,
             is_compilation: false,
             created_at: now,
         };

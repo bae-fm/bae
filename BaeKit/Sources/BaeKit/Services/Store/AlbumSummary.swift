@@ -4,8 +4,8 @@ import Observation
 /// What the grid card needs. Always complete once present.
 /// `@Observable` class for identity-stable, per-field tracking.
 ///
-/// `releaseIds` carries every release for this album (ordered by
-/// created_at) so the detail view can enumerate releases without
+/// `releaseIds` carries every release for this album (in album order, the
+/// primary release first) so the detail view can enumerate releases without
 /// loading a fat payload.
 @Observable
 public final class AlbumSummary: Identifiable {

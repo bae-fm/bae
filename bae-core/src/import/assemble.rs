@@ -423,7 +423,6 @@ pub(crate) fn assemble_parsed_album(
         title: ir.album_title,
         artist_id: artists[0].id.clone(),
         year: ir.album_year,
-        primary_release_id: None,
         is_compilation: ir.is_compilation,
         created_at: now,
     };

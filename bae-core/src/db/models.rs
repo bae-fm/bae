@@ -172,30 +172,15 @@ pub struct DbAlbum {
     /// FK to the primary artist. Additional artists live in album_artists junction table.
     pub artist_id: String,
     pub year: Option<i32>,
-    /// User-chosen canonical release for this album. When set, this release
-    /// provides the album's cover art. When None, callers fall back to the
-    /// first release in `release_ids`.
-    pub primary_release_id: Option<String>,
     /// True for "Various Artists" compilation albums
     pub is_compilation: bool,
     pub created_at: DateTime<Utc>,
 }
 
-pub(crate) fn resolve_primary_release_id<'a>(
-    stored_primary_release_id: Option<&str>,
-    release_ids: impl IntoIterator<Item = &'a str>,
-) -> Option<String> {
-    let release_ids: Vec<&str> = release_ids.into_iter().collect();
-    stored_primary_release_id
-        .filter(|id| release_ids.iter().any(|release_id| release_id == id))
-        .or_else(|| release_ids.first().copied())
-        .map(str::to_string)
-}
-
-/// Raw album-summary aggregate: artist names and release IDs joined in SQL to
-/// avoid N+1 lookups. The resolver in `LibraryManager` produces the
-/// display-ready `crate::album_detail::AlbumSummary` (applying the
-/// `primary_release_id` fallback).
+/// Raw album-summary aggregate: artist names, release IDs and the primary
+/// release joined in SQL to avoid N+1 lookups. The resolver in
+/// `LibraryManager` produces the display-ready
+/// `crate::album_detail::AlbumSummary`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbAlbumSummary {
     pub id: String,
@@ -203,10 +188,10 @@ pub struct DbAlbumSummary {
     pub year: Option<i32>,
     pub is_compilation: bool,
     pub artist_names: String,
+    /// The album's releases in album order.
     pub release_ids: Vec<String>,
-    /// User-chosen primary release. `None` if unset — the resolver in
-    /// `LibraryManager` falls back to the first release.
-    pub primary_release_id: Option<String>,
+    /// The album's lowest-ordered release.
+    pub primary_release_id: String,
 }
 
 /// Probe whether a search-result candidate is already in the library: as the
@@ -643,7 +628,6 @@ impl DbAlbum {
             title: title.to_string(),
             artist_id: artist_id.to_string(),
             year: None,
-            primary_release_id: None,
             is_compilation: false,
             created_at: now,
         }

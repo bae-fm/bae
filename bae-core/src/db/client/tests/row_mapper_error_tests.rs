@@ -19,7 +19,7 @@ fn seeded_conn() -> Connection {
     )
     .unwrap();
     conn.execute(
-        "INSERT INTO releases (id, album_id, created_at) VALUES ('cccb6034-5922-40d2-8d0b-d94619230882', '9644b84d-94b2-4b3b-863a-d6583931920c', ?)",
+        "INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('cccb6034-5922-40d2-8d0b-d94619230882', '9644b84d-94b2-4b3b-863a-d6583931920c', ?, 0)",
         params![now],
     )
     .unwrap();

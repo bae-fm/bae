@@ -370,16 +370,14 @@ async fn run_import_with_cover_test() {
         .await
         .expect("Failed to get album_id");
     let album = library_manager
-        .get_album_by_id(&album_id)
+        .find_album_detail(&album_id)
         .await
         .expect("Failed to get album")
         .expect("Album should exist");
     assert_eq!(
-        album.primary_release_id.as_ref(),
-        Some(&release_id),
-        "Album primary_release_id should match the release",
+        album.primary_release_id, release_id,
+        "an album's first release is its primary",
     );
-    info!("Album primary_release_id is set correctly");
 
     info!("Import with cover selection test passed");
 }

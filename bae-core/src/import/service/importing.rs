@@ -804,7 +804,6 @@ impl ImportService {
         let library_image = cover_winner
             .as_ref()
             .map(|(image, bytes)| (image, bytes.as_slice()));
-        let cover_rel_id = Some((album_id, db_release.id.as_str()));
 
         // Past here the release is written in one transaction, which a cancel
         // no longer interrupts; one that came first stops the import here.
@@ -838,7 +837,6 @@ impl ImportService {
                 prepared_files,
                 library_image,
                 prepared_artist_images,
-                cover_rel_id,
                 destination,
             )
             .await?;

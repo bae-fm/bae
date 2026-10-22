@@ -204,18 +204,13 @@ impl LibraryManager {
             .search_library(query.as_str(), crate::library::SEARCH_RESULT_LIMIT)
             .await?;
         // Prefetch every release cover the resolver looks up, in one batch:
-        // each album's *resolved* primary release, each track's own release,
+        // each album's primary release, each track's own release,
         // and each work's representative release — all keyed by release id,
         // the same ids `SearchResults::from_raw` reads back.
         let mut release_ids: Vec<String> = raw
             .albums
             .iter()
-            .filter_map(|a| {
-                crate::db::resolve_primary_release_id(
-                    a.primary_release_id.as_deref(),
-                    a.release_ids.iter().map(String::as_str),
-                )
-            })
+            .map(|a| a.primary_release_id.clone())
             .collect();
         release_ids.extend(raw.tracks.iter().map(|t| t.release_id.clone()));
         release_ids.extend(
@@ -306,10 +301,8 @@ fn resolve_album_rows(
 
 impl LibraryManager {
     /// Resolve a raw `DbAlbumDetail` into the display-ready `AlbumDetail`: joins
-    /// artist names, formats labels, groups tracks by side, builds galleries, and
-    /// applies the `primary_release_id` fallback. Errors on an album with no
-    /// releases — the DB lookup filters those out, but a caller holding an
-    /// already-read raw detail can still reach one whose releases were removed since.
+    /// artist names, formats labels, groups tracks by side, and builds
+    /// galleries.
     pub(super) async fn resolve_album_detail(
         &self,
         raw: crate::db::DbAlbumDetail,
@@ -337,15 +330,7 @@ impl LibraryManager {
         originals: &crate::album_detail::OriginalsSeen,
     ) -> Result<AlbumDetail, LibraryError> {
         let artist_names = join_artist_names(&raw.artists);
-        let primary_release_id = crate::db::resolve_primary_release_id(
-            raw.album.primary_release_id.as_deref(),
-            raw.releases
-                .iter()
-                .map(|release| release.release.id.as_str()),
-        )
-        .ok_or_else(|| {
-            LibraryError::TrackMapping(format!("Album '{}' has no releases", raw.album.id))
-        })?;
+        let primary_release_id = raw.primary_release_id;
 
         let has_cloud_home = self.has_cloud_home();
         let cover = covers.get(&primary_release_id).cloned();

@@ -272,10 +272,9 @@ impl BridgeAlbumDetail {
             title,
             year,
             is_compilation,
-            // The album's own artist FK / created_at aren't surfaced, and the
+            // The album's own artist FK / created_at aren't surfaced; the
             // primary release comes from the detail-level field below.
             artist_id: _,
-            primary_release_id: _,
             created_at: _,
         } = album;
         // Reassemble the album's slim summary from the detail's DbAlbum plus the
@@ -429,7 +428,6 @@ impl BridgeReleaseRoleSummary {
             title: album_title,
             artist_id: _,
             year: _,
-            primary_release_id: _,
             is_compilation: _,
             created_at: _,
         } = album;
@@ -475,7 +473,6 @@ impl BridgeTrackRoleSummary {
             title: album_title,
             artist_id: _,
             year: _,
-            primary_release_id: _,
             is_compilation: _,
             created_at: _,
         } = album;
@@ -527,7 +524,6 @@ impl BridgeWorkTrackSummary {
             title: album_title,
             artist_id: _,
             year: _,
-            primary_release_id: _,
             is_compilation: _,
             created_at: _,
         } = album;

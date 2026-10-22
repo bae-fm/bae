@@ -110,10 +110,9 @@ pub(super) fn image_table(image_type: &LibraryImageType) -> &'static str {
     }
 }
 
-/// After `removed_release_id` has left `album_id` inside the current
-/// transaction: NULL a `primary_release_id` that pointed at the removed release
-/// (the user's cover-release choice is gone with it, and read paths fall back to
-/// the album's first release). Returns whether the album is now empty.
+/// After a release has left `album_id` inside the current transaction: whether
+/// the album is now empty. Its primary release is whichever of the releases
+/// left is ordered lowest, so nothing else follows the one that left.
 ///
 /// An emptied album is never deleted. Another device may have added a release
 /// to it while apart, and a delete wins over that release in the merge and
@@ -124,16 +123,7 @@ pub(super) fn image_table(image_type: &LibraryImageType) -> &'static str {
 ///
 /// Precondition: the release row must already be deleted or repointed away from
 /// `album_id`, since this counts what remains.
-pub(super) fn vacate_album_on(
-    conn: &SqlContext<'_, '_>,
-    album_id: &str,
-    removed_release_id: &str,
-) -> Result<bool, DbError> {
-    conn.execute(
-        "UPDATE albums SET primary_release_id = NULL \
-         WHERE id = ? AND primary_release_id = ?",
-        params![album_id, removed_release_id],
-    )?;
+pub(super) fn vacate_album_on(conn: &SqlContext<'_, '_>, album_id: &str) -> Result<bool, DbError> {
     let remaining: i64 = conn.query_row(
         "SELECT COUNT(*) FROM releases WHERE album_id = ?",
         params![album_id],
@@ -466,9 +456,9 @@ pub(super) fn work_release_rows(
                 FROM releases indexed_release
                 WHERE indexed_release.album_id = r.album_id
                   AND (
-                      indexed_release.created_at < r.created_at
+                      indexed_release.album_order < r.album_order
                       OR (
-                          indexed_release.created_at = r.created_at
+                          indexed_release.album_order = r.album_order
                           AND indexed_release.id <= r.id
                       )
                   )
@@ -478,7 +468,7 @@ pub(super) fn work_release_rows(
          JOIN releases r ON r.id = t.release_id
          JOIN albums a ON a.id = r.album_id
          WHERE tw.work_id = ?
-         ORDER BY a.title, r.created_at, r.id",
+         ORDER BY a.title, r.album_order, r.id",
         params![work_id],
         row_to_work_release_summary,
     )
@@ -784,22 +774,34 @@ pub(super) fn album_artist_names_sql() -> String {
     )
 }
 
+/// The album's releases in album order (see [`album_primary_release_sql`]).
 pub(super) fn album_release_ids_json_sql() -> &'static str {
     "COALESCE(( \
-        SELECT json_group_array(album_release.id ORDER BY album_release.created_at, album_release.id) \
+        SELECT json_group_array(album_release.id ORDER BY album_release.album_order, album_release.id) \
         FROM releases album_release \
         WHERE album_release.album_id = a.id \
     ), '[]')"
 }
 
+/// The album `a`'s primary release: its lowest-ordered release, ties broken
+/// by release id, so every device that holds the same rows names the same
+/// one. NULL only for an emptied album, which no listing shows.
+pub(super) fn album_primary_release_sql() -> &'static str {
+    "(SELECT album_release.id FROM releases album_release \
+      WHERE album_release.album_id = a.id \
+      ORDER BY album_release.album_order, album_release.id LIMIT 1)"
+}
+
 /// Shared column list for album-summary queries. Emits `artist_names`
-/// (primary artist + album_artists, comma-joined) and `release_ids_json`
-/// (releases in created_at order).
+/// (primary artist + album_artists, comma-joined), `release_ids_json`
+/// (releases in album order) and `primary_release_id`.
 pub(super) fn album_summary_columns() -> String {
     format!(
-        "a.id, a.title, a.year, a.is_compilation, a.primary_release_id, \
+        "a.id, a.title, a.year, a.is_compilation, \
+            {primary} AS primary_release_id, \
             {artist_names} AS artist_names, \
             {release_ids} AS release_ids_json",
+        primary = album_primary_release_sql(),
         artist_names = album_artist_names_sql(),
         release_ids = album_release_ids_json_sql()
     )
@@ -834,7 +836,7 @@ pub(super) struct AlbumSummaryRow {
     is_compilation: bool,
     artist_names: String,
     release_ids_json: String,
-    primary_release_id: Option<String>,
+    primary_release_id: String,
 }
 
 impl AlbumSummaryRow {
@@ -866,11 +868,9 @@ impl AlbumSummaryRow {
 }
 
 /// The cover version of each album's primary release — the cover an album
-/// shows — keyed by that release's id. The primary release is resolved here
-/// the way [`crate::db::resolve_primary_release_id`] resolves it: the stored one while it
-/// is among the album's releases, else the album's first release. Only those
-/// releases' covers are read, so another release's cover changing is not a
-/// change to the albums read.
+/// shows — keyed by that release's id. Only those releases' covers are read,
+/// so another release's cover changing is not a change to the albums read; an
+/// emptied album has none.
 pub(super) fn album_cover_versions_on(
     sql: &SqlReadContext<'_>,
     album_ids: &[String],
@@ -878,12 +878,8 @@ pub(super) fn album_cover_versions_on(
     let mut primaries = Vec::new();
     for chunk in album_ids.chunks(SQL_MAX_IN_VARS) {
         let query = format!(
-            "SELECT COALESCE( \
-                 (SELECT stored.id FROM releases stored \
-                  WHERE stored.id = a.primary_release_id AND stored.album_id = a.id), \
-                 (SELECT first.id FROM releases first WHERE first.album_id = a.id \
-                  ORDER BY first.created_at, first.id LIMIT 1)) \
-             FROM albums a WHERE a.id IN ({})",
+            "SELECT {} FROM albums a WHERE a.id IN ({})",
+            album_primary_release_sql(),
             in_clause_placeholders(chunk.len())
         );
         primaries.extend(

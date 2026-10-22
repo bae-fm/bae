@@ -456,7 +456,6 @@ fn find_work_detail_on(
                 t.created_at AS track_created_at,
                 a.id AS album_id, a.title AS album_title,
                 a.artist_id AS album_artist_id, a.year AS album_year,
-                a.primary_release_id AS album_primary_release_id,
                 a.is_compilation AS album_is_compilation,
                 a.created_at AS album_created_at
          FROM track_works tw
@@ -464,7 +463,7 @@ fn find_work_detail_on(
          JOIN releases r ON r.id = t.release_id
          JOIN albums a ON a.id = r.album_id
          WHERE tw.work_id = ?
-         ORDER BY a.title, r.created_at, t.position, tw.position",
+         ORDER BY a.title, r.album_order, r.id, t.position, tw.position",
         params![work.work.id],
         |row| {
             Ok(DbWorkTrackSummary {
@@ -596,14 +595,13 @@ fn find_composer_detail_on(
                 rar.source AS role_source, rar.source_credit, rar.created_at,
                 a.id AS album_id, a.title AS album_title,
                 a.artist_id AS album_artist_id, a.year AS album_year,
-                a.primary_release_id AS album_primary_release_id,
                 a.is_compilation AS album_is_compilation,
                 a.created_at AS album_created_at
          FROM release_artist_roles rar
          JOIN releases r ON r.id = rar.release_id
          JOIN albums a ON a.id = r.album_id
          WHERE {} = ? AND {}
-         ORDER BY a.title, r.created_at, rar.position",
+         ORDER BY a.title, r.album_order, r.id, rar.position",
         shown_artist_id("rar.artist_id"),
         unlinked_release_composer_role_predicate("rar")
     );
@@ -634,7 +632,6 @@ fn find_composer_detail_on(
                 t.created_at AS track_created_at,
                 a.id AS album_id, a.title AS album_title,
                 a.artist_id AS album_artist_id, a.year AS album_year,
-                a.primary_release_id AS album_primary_release_id,
                 a.is_compilation AS album_is_compilation,
                 a.created_at AS album_created_at,
                 art.id AS artist_id, art.name AS artist_name,
@@ -648,7 +645,7 @@ fn find_composer_detail_on(
          JOIN albums a ON a.id = r.album_id
          JOIN artists art ON art.id = {shown}
          WHERE {shown} = ? AND {}
-         ORDER BY a.title, r.created_at, t.position, tar.position",
+         ORDER BY a.title, r.album_order, r.id, t.position, tar.position",
         unlinked_track_composer_role_predicate("tar"),
         shown = shown_artist_id("tar.artist_id"),
     );

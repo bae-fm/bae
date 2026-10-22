@@ -123,7 +123,6 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
             title: "Album Title".into(),
             artist_id: incoming.id.clone(),
             year: None,
-            primary_release_id: None,
             is_compilation: false,
             created_at: now,
         };
@@ -226,7 +225,6 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
                 expected_new_artists: &expected_new,
                 images: &[],
             },
-            None,
         )
         .await
         .unwrap();

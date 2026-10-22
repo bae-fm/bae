@@ -143,7 +143,6 @@ impl LibraryManager {
             title: album.title.clone(),
             artist_id,
             year: None,
-            primary_release_id: Some(release_id.clone()),
             is_compilation: false,
             created_at: added,
         };

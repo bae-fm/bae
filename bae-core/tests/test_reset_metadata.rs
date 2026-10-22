@@ -41,7 +41,6 @@ fn make_album(artist_id: &str, title: &str) -> DbAlbum {
         title: title.to_string(),
         artist_id: artist_id.to_string(),
         year: None,
-        primary_release_id: None,
         is_compilation: false,
         created_at: Utc::now(),
     }

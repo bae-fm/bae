@@ -263,7 +263,6 @@ mod tests {
             title: "Album Title".to_string(),
             artist_id: bae_test_support::test_uuid("artist-1"),
             year: None,
-            primary_release_id: None,
             is_compilation: false,
             created_at: Utc::now(),
         };
@@ -396,7 +395,6 @@ mod tests {
             title: "Test Album".to_string(),
             artist_id: bae_test_support::test_uuid("artist-1"),
             year: None,
-            primary_release_id: None,
             is_compilation: false,
             created_at: Utc::now(),
         };

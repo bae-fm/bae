@@ -54,11 +54,10 @@ struct AlbumDetailView: View {
         Group {
             if let summary = libraryStore.albumSummaries[albumId] {
                 let selectedReleaseId = activeReleaseId(summary: summary)
-                let selectedDetail = selectedReleaseId.flatMap {
-                    libraryStore.releaseDetails[$0]
-                }
 
-                if let selectedReleaseId, let selectedDetail {
+                if let selectedDetail = libraryStore.releaseDetails[
+                    selectedReleaseId
+                ] {
                     AlbumExpansionContent(
                         summary: summary,
                         selectedRelease: selectedDetail,
@@ -204,19 +203,18 @@ struct AlbumDetailView: View {
         }
     }
 
-    /// The active release ID for this album. Priority: explicit per-album
-    /// selection → album's primary release → first release in
-    /// `summary.releaseIds`.
-    private func activeReleaseId(summary: AlbumSummary) -> String? {
+    /// The selected release when it belongs to the album, else the primary one.
+    private func activeReleaseId(summary: AlbumSummary) -> String {
         if let id = uiStore.selectedReleaseIdByAlbum[albumId],
             summary.releaseIds.contains(id)
         {
             return id
         }
-        if summary.releaseIds.contains(summary.primaryReleaseId) {
-            return summary.primaryReleaseId
-        }
-        return summary.releaseIds.first
+        precondition(
+            summary.releaseIds.contains(summary.primaryReleaseId),
+            "primaryReleaseId missing from releaseIds for album \(summary.id)"
+        )
+        return summary.primaryReleaseId
     }
 
     private func releaseCursorBinding(summary: AlbumSummary) -> Binding<
@@ -226,13 +224,13 @@ struct AlbumDetailView: View {
             get: {
                 let items = summary.releaseIds.map { ReleaseRef(id: $0) }
                 let preferringId = activeReleaseId(summary: summary)
-                // The body gates this view on `if let selectedReleaseId`, which
-                // is non-nil iff `summary.releaseIds` is non-empty.
+                // `activeReleaseId` names one of `summary.releaseIds`, so the
+                // list is not empty.
                 guard
                     let cursor = Cursor(items: items, preferring: preferringId)
                 else {
                     fatalError(
-                        "releaseIds empty despite parent's selectedReleaseId gate"
+                        "releaseIds empty though they hold the active release"
                     )
                 }
                 return cursor

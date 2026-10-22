@@ -16,13 +16,13 @@ async fn seeded_db() -> (Database, tempfile::TempDir) {
              ('b96d8066-777d-408d-8ae4-ed58c767e40c', 'Composer Name A', 'composer name a', NULL, NULL, 'mb-artist-work-only', '2026-01-01T00:00:00Z'),
              ('7d8362d9-b321-495a-89f7-4cd8998449a4', 'Artist Name C', 'artist name c', NULL, NULL, NULL, '2026-01-01T00:00:00Z');
 
-            INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, created_at) VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2001, NULL, 0, '2026-01-01T00:00:00Z'),
-             ('a0231b0b-549b-4e4d-806f-a4b66373e087', 'Album Title B', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 1999, NULL, 0, '2026-01-01T00:00:00Z'),
-             ('20022731-6ca1-4bf3-8d27-1e2b2e5e9816', 'Compilation Title A', 'f862abf2-3b15-4518-889b-1996d7100201', 2005, NULL, 1, '2026-01-01T00:00:00Z');
+            INSERT INTO albums (id, title, artist_id, year, is_compilation, created_at) VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2001, 0, '2026-01-01T00:00:00Z'),
+             ('a0231b0b-549b-4e4d-806f-a4b66373e087', 'Album Title B', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 1999, 0, '2026-01-01T00:00:00Z'),
+             ('20022731-6ca1-4bf3-8d27-1e2b2e5e9816', 'Compilation Title A', 'f862abf2-3b15-4518-889b-1996d7100201', 2005, 1, '2026-01-01T00:00:00Z');
 
-            INSERT INTO releases (id, album_id, created_at) VALUES ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '2026-01-01T00:00:00Z'),
-             ('64e79a1f-404a-4c34-809a-a3cb44bf1942', 'a0231b0b-549b-4e4d-806f-a4b66373e087', '2026-01-01T00:00:00Z'),
-             ('77f4af5a-9661-4fb7-845b-73901b0a3ebd', '20022731-6ca1-4bf3-8d27-1e2b2e5e9816', '2026-01-01T00:00:00Z');
+            INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '2026-01-01T00:00:00Z', 0),
+             ('64e79a1f-404a-4c34-809a-a3cb44bf1942', 'a0231b0b-549b-4e4d-806f-a4b66373e087', '2026-01-01T00:00:00Z', 1),
+             ('77f4af5a-9661-4fb7-845b-73901b0a3ebd', '20022731-6ca1-4bf3-8d27-1e2b2e5e9816', '2026-01-01T00:00:00Z', 2);
 
             -- artist-extra joins album-b; artist-primary's junction row on
             -- album-a duplicates its primary FK and must not double-count.
@@ -146,13 +146,13 @@ async fn artist_page_uses_id_tiebreaker() {
              ('d7d8141f-54ff-467d-8b60-4f34a4d2e528', 'Artist Name Shared', 'artist name shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z'),
              ('38fc314c-c130-4120-8ca9-38b870ccef3a', 'Artist Name Shared', 'artist name shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z');
 
-            INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, created_at) VALUES ('881dc5cf-0686-456a-87c9-98c50e775177', 'Album Title C', '1b4bafc9-0ece-4538-833e-4ff52feb6ef0', 2026, NULL, 0, '2026-01-01T00:00:00Z'),
-             ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2026, NULL, 0, '2026-01-01T00:00:00Z'),
-             ('a0231b0b-549b-4e4d-806f-a4b66373e087', 'Album Title B', '38fc314c-c130-4120-8ca9-38b870ccef3a', 2026, NULL, 0, '2026-01-01T00:00:00Z');
+            INSERT INTO albums (id, title, artist_id, year, is_compilation, created_at) VALUES ('881dc5cf-0686-456a-87c9-98c50e775177', 'Album Title C', '1b4bafc9-0ece-4538-833e-4ff52feb6ef0', 2026, 0, '2026-01-01T00:00:00Z'),
+             ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2026, 0, '2026-01-01T00:00:00Z'),
+             ('a0231b0b-549b-4e4d-806f-a4b66373e087', 'Album Title B', '38fc314c-c130-4120-8ca9-38b870ccef3a', 2026, 0, '2026-01-01T00:00:00Z');
 
-            INSERT INTO releases (id, album_id, created_at) VALUES ('599bc437-136f-4643-87a6-ac30c3fae614', '881dc5cf-0686-456a-87c9-98c50e775177', '2026-01-01T00:00:00Z'),
-             ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '2026-01-01T00:00:00Z'),
-             ('64e79a1f-404a-4c34-809a-a3cb44bf1942', 'a0231b0b-549b-4e4d-806f-a4b66373e087', '2026-01-01T00:00:00Z');
+            INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('599bc437-136f-4643-87a6-ac30c3fae614', '881dc5cf-0686-456a-87c9-98c50e775177', '2026-01-01T00:00:00Z', 0),
+             ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '2026-01-01T00:00:00Z', 1),
+             ('64e79a1f-404a-4c34-809a-a3cb44bf1942', 'a0231b0b-549b-4e4d-806f-a4b66373e087', '2026-01-01T00:00:00Z', 2);
             ",
         )
         .map(|_| ())
@@ -195,17 +195,17 @@ async fn artist_page_applies_secondary_criterion() {
              ('38fc314c-c130-4120-8ca9-38b870ccef3a', 'Artist Name B', 'artist name b', NULL, NULL, NULL, '2026-01-01T00:00:00Z'),
              ('49549823-0e72-4747-891e-ee50e1611e3a', 'Artist Name Solo', 'artist name solo', NULL, NULL, NULL, '2026-01-01T00:00:00Z');
 
-            INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, created_at) VALUES ('1ac5b125-782f-4dab-8669-417e804d02bb', 'Album Title A1', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2026, NULL, 0, '2026-01-01T00:00:00Z'),
-             ('f270285f-ef24-4daa-8058-0dd91571843e', 'Album Title A2', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2026, NULL, 0, '2026-01-01T00:00:00Z'),
-             ('2d705181-42c1-47bd-822c-245d8db41d60', 'Album Title B1', '38fc314c-c130-4120-8ca9-38b870ccef3a', 2026, NULL, 0, '2026-01-01T00:00:00Z'),
-             ('191beebd-146b-431f-8a87-ed4be0db20b7', 'Album Title B2', '38fc314c-c130-4120-8ca9-38b870ccef3a', 2026, NULL, 0, '2026-01-01T00:00:00Z'),
-             ('831374ed-abd3-4b6d-84b1-15a9974ecadc', 'Album Title Solo', '49549823-0e72-4747-891e-ee50e1611e3a', 2026, NULL, 0, '2026-01-01T00:00:00Z');
+            INSERT INTO albums (id, title, artist_id, year, is_compilation, created_at) VALUES ('1ac5b125-782f-4dab-8669-417e804d02bb', 'Album Title A1', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2026, 0, '2026-01-01T00:00:00Z'),
+             ('f270285f-ef24-4daa-8058-0dd91571843e', 'Album Title A2', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2026, 0, '2026-01-01T00:00:00Z'),
+             ('2d705181-42c1-47bd-822c-245d8db41d60', 'Album Title B1', '38fc314c-c130-4120-8ca9-38b870ccef3a', 2026, 0, '2026-01-01T00:00:00Z'),
+             ('191beebd-146b-431f-8a87-ed4be0db20b7', 'Album Title B2', '38fc314c-c130-4120-8ca9-38b870ccef3a', 2026, 0, '2026-01-01T00:00:00Z'),
+             ('831374ed-abd3-4b6d-84b1-15a9974ecadc', 'Album Title Solo', '49549823-0e72-4747-891e-ee50e1611e3a', 2026, 0, '2026-01-01T00:00:00Z');
 
-            INSERT INTO releases (id, album_id, created_at) VALUES ('5611ca91-e045-490a-8c14-89c3181a92ab', '1ac5b125-782f-4dab-8669-417e804d02bb', '2026-01-01T00:00:00Z'),
-             ('48c59983-901e-455e-8cb0-ac0011c08bb4', 'f270285f-ef24-4daa-8058-0dd91571843e', '2026-01-01T00:00:00Z'),
-             ('7680c516-307b-4a2a-8aea-850f976e006e', '2d705181-42c1-47bd-822c-245d8db41d60', '2026-01-01T00:00:00Z'),
-             ('51ca3994-c53d-45e4-8ad2-04ac3f4181c8', '191beebd-146b-431f-8a87-ed4be0db20b7', '2026-01-01T00:00:00Z'),
-             ('7ae8e6fc-98bd-46e2-82c0-4b913087deb1', '831374ed-abd3-4b6d-84b1-15a9974ecadc', '2026-01-01T00:00:00Z');
+            INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('5611ca91-e045-490a-8c14-89c3181a92ab', '1ac5b125-782f-4dab-8669-417e804d02bb', '2026-01-01T00:00:00Z', 0),
+             ('48c59983-901e-455e-8cb0-ac0011c08bb4', 'f270285f-ef24-4daa-8058-0dd91571843e', '2026-01-01T00:00:00Z', 1),
+             ('7680c516-307b-4a2a-8aea-850f976e006e', '2d705181-42c1-47bd-822c-245d8db41d60', '2026-01-01T00:00:00Z', 2),
+             ('51ca3994-c53d-45e4-8ad2-04ac3f4181c8', '191beebd-146b-431f-8a87-ed4be0db20b7', '2026-01-01T00:00:00Z', 3),
+             ('7ae8e6fc-98bd-46e2-82c0-4b913087deb1', '831374ed-abd3-4b6d-84b1-15a9974ecadc', '2026-01-01T00:00:00Z', 4);
             ",
         )
         .map(|_| ())
@@ -241,19 +241,19 @@ async fn artist_detail_orders_albums_year_then_title_with_unknown_years_last() {
             INSERT INTO artists (id, name, name_key, sort_name, discogs_artist_id, musicbrainz_artist_id, created_at) VALUES ('d7d8141f-54ff-467d-8b60-4f34a4d2e528', 'Artist Name A', 'artist name a', NULL, NULL, NULL, '2026-01-01T00:00:00Z'),
              ('4d0b27b7-c953-47f5-8614-70ed973923dc', 'Artist Name B', 'artist name b', NULL, NULL, NULL, '2026-01-01T00:00:00Z');
 
-            INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, created_at) VALUES ('c6648d5a-617e-4b69-87da-b7f1c4fb5e65', 'Album Title Null', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', NULL, NULL, 0, '2026-01-01T00:00:00Z'),
-             ('a663cff7-fad7-45b1-8469-5f77af82ddb8', 'Album Title B', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2001, NULL, 0, '2026-01-01T00:00:00Z'),
-             ('88183677-683b-485e-8224-f6a328c233c7', 'album title a', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2001, NULL, 0, '2026-01-01T00:00:00Z'),
-             ('88f57246-3e65-4eb9-8d36-ee8d40326cfc', 'Album Title 1999', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 1999, NULL, 0, '2026-01-01T00:00:00Z'),
-             ('7e6f42e7-8952-48e6-89bf-d1bcc611176d', 'Album Title Junction', '4d0b27b7-c953-47f5-8614-70ed973923dc', 2005, NULL, 0, '2026-01-01T00:00:00Z'),
-             ('ebef769a-f2a3-4443-8c01-50921de47fbb', 'Album Title Unrelated', '4d0b27b7-c953-47f5-8614-70ed973923dc', 1990, NULL, 0, '2026-01-01T00:00:00Z');
+            INSERT INTO albums (id, title, artist_id, year, is_compilation, created_at) VALUES ('c6648d5a-617e-4b69-87da-b7f1c4fb5e65', 'Album Title Null', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', NULL, 0, '2026-01-01T00:00:00Z'),
+             ('a663cff7-fad7-45b1-8469-5f77af82ddb8', 'Album Title B', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2001, 0, '2026-01-01T00:00:00Z'),
+             ('88183677-683b-485e-8224-f6a328c233c7', 'album title a', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2001, 0, '2026-01-01T00:00:00Z'),
+             ('88f57246-3e65-4eb9-8d36-ee8d40326cfc', 'Album Title 1999', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 1999, 0, '2026-01-01T00:00:00Z'),
+             ('7e6f42e7-8952-48e6-89bf-d1bcc611176d', 'Album Title Junction', '4d0b27b7-c953-47f5-8614-70ed973923dc', 2005, 0, '2026-01-01T00:00:00Z'),
+             ('ebef769a-f2a3-4443-8c01-50921de47fbb', 'Album Title Unrelated', '4d0b27b7-c953-47f5-8614-70ed973923dc', 1990, 0, '2026-01-01T00:00:00Z');
 
-            INSERT INTO releases (id, album_id, created_at) VALUES ('f09739aa-4dde-4cbc-8daf-d77eb2f980ff', 'c6648d5a-617e-4b69-87da-b7f1c4fb5e65', '2026-01-01T00:00:00Z'),
-             ('f582ee48-93a9-4152-8a12-7a9b62f86c2a', 'a663cff7-fad7-45b1-8469-5f77af82ddb8', '2026-01-01T00:00:00Z'),
-             ('7361d9e4-6e06-4a57-84fa-c6042cb2fb78', '88183677-683b-485e-8224-f6a328c233c7', '2026-01-01T00:00:00Z'),
-             ('0014a775-79c9-419f-849e-8de944a1ef04', '88f57246-3e65-4eb9-8d36-ee8d40326cfc', '2026-01-01T00:00:00Z'),
-             ('d981c4b7-e727-41f9-826e-31ec67066d8c', '7e6f42e7-8952-48e6-89bf-d1bcc611176d', '2026-01-01T00:00:00Z'),
-             ('4fad85ec-94ef-4de6-8cf8-79dc25389051', 'ebef769a-f2a3-4443-8c01-50921de47fbb', '2026-01-01T00:00:00Z');
+            INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('f09739aa-4dde-4cbc-8daf-d77eb2f980ff', 'c6648d5a-617e-4b69-87da-b7f1c4fb5e65', '2026-01-01T00:00:00Z', 0),
+             ('f582ee48-93a9-4152-8a12-7a9b62f86c2a', 'a663cff7-fad7-45b1-8469-5f77af82ddb8', '2026-01-01T00:00:00Z', 1),
+             ('7361d9e4-6e06-4a57-84fa-c6042cb2fb78', '88183677-683b-485e-8224-f6a328c233c7', '2026-01-01T00:00:00Z', 2),
+             ('0014a775-79c9-419f-849e-8de944a1ef04', '88f57246-3e65-4eb9-8d36-ee8d40326cfc', '2026-01-01T00:00:00Z', 3),
+             ('d981c4b7-e727-41f9-826e-31ec67066d8c', '7e6f42e7-8952-48e6-89bf-d1bcc611176d', '2026-01-01T00:00:00Z', 4),
+             ('4fad85ec-94ef-4de6-8cf8-79dc25389051', 'ebef769a-f2a3-4443-8c01-50921de47fbb', '2026-01-01T00:00:00Z', 5);
 
             INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('1725fb34-3b73-477f-8113-e995104feae3', '7e6f42e7-8952-48e6-89bf-d1bcc611176d', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 1, '2026-01-01T00:00:00Z');
             ",

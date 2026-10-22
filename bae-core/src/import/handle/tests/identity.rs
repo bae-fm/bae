@@ -354,7 +354,6 @@ fn make_album(title: &str) -> DbAlbum {
         title: title.to_string(),
         artist_id: "e36744a5-1a36-460f-891c-e7e558034edf".to_string(),
         year: Some(2024),
-        primary_release_id: None,
         is_compilation: false,
         created_at: now,
     }

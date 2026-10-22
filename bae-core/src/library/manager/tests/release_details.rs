@@ -214,26 +214,6 @@ async fn find_album_detail_returns_none_when_releases_vanish() {
 }
 
 #[tokio::test]
-async fn resolve_album_detail_errors_when_releases_vanish() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-
-    let err = manager
-        .resolve_album_detail(crate::db::DbAlbumDetail {
-            album,
-            artists: Vec::new(),
-            releases: Vec::new(),
-        })
-        .await
-        .expect_err("empty album detail must return an error");
-
-    assert!(
-        matches!(&err, LibraryError::TrackMapping(message) if message.contains("has no releases")),
-        "empty album detail error should name the missing releases: {err}"
-    );
-}
-
-#[tokio::test]
 async fn find_release_detail_returns_some_for_known_id() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
@@ -517,8 +497,7 @@ async fn cover_picker_excludes_unsupported_images_without_hiding_gallery_files()
 async fn resolve_to_track_ids_expands_album_to_primary_release() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
-    // release1 is imported first (older created_at, so it sorts first);
-    // release2 is the user's chosen primary.
+    // release1 is the album's first release; release2 is then made primary.
     let mut release1 = create_test_release(&album.id);
     release1.created_at = Utc::now() - chrono::Duration::days(1);
     let release2 = create_test_release(&album.id);

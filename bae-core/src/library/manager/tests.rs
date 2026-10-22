@@ -163,7 +163,6 @@ fn create_test_album() -> DbAlbum {
         title: "Test Album".to_string(),
         artist_id: bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
         year: Some(2024),
-        primary_release_id: None,
         is_compilation: false,
         created_at: Utc::now(),
     }
@@ -212,6 +211,7 @@ include!("tests/storage.rs");
 include!("tests/storage_sorting.rs");
 include!("tests/transfers.rs");
 mod detachment;
+mod primary_release;
 #[cfg(feature = "oauth-providers")]
 mod sign_in;
 include!("tests/transfer_order.rs");

@@ -70,7 +70,6 @@ async fn create_local_release(
         title: "Album Title".to_string(),
         artist_id: artist_id.to_string(),
         year: Some(2024),
-        primary_release_id: None,
         is_compilation: false,
         created_at: now,
     };

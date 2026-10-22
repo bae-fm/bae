@@ -17,11 +17,8 @@ pub struct DbAlbumSearchResult {
     pub id: String,
     pub title: String,
     pub year: Option<i32>,
-    /// User-chosen primary release. `None` if unset — the resolver applies
-    /// `resolve_primary_release_id` over `release_ids`.
-    pub primary_release_id: Option<String>,
-    /// The album's releases in `created_at` order — what the fallback picks from.
-    pub release_ids: Vec<String>,
+    /// The album's lowest-ordered release.
+    pub primary_release_id: String,
     pub artist_name: String,
 }
 
@@ -206,7 +203,10 @@ pub struct ArtistSortCriterion {
 pub struct DbAlbumDetail {
     pub album: DbAlbum,
     pub artists: Vec<DbArtist>,
+    /// The album's releases in album order.
     pub releases: Vec<DbReleaseDetail>,
+    /// The album's lowest-ordered release.
+    pub primary_release_id: String,
 }
 
 /// A release detail plus the album context needed to project it: the album's

@@ -455,7 +455,6 @@ async fn musicbrainz_id_surfaces_when_present() {
         title: "MB Album".to_string(),
         artist_id: artist.id.clone(),
         year: Some(2010),
-        primary_release_id: None,
         is_compilation: false,
         created_at: now,
     };

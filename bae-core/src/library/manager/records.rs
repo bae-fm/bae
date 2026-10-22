@@ -54,7 +54,7 @@ impl LibraryManager {
             .records_change(release_id, new_records, draft_from_tags)
             .await?;
         // The atomic call does all source-album bookkeeping inside its transaction
-        // (empty-check, primary_release_id repair, album_artists copy) — those
+        // (empty-check, the moved release's order, album_artists copy) — those
         // decisions live there so a separate read and write can't race.
         self.database.set_records_atomic(change).await?;
         Ok(())
@@ -236,10 +236,6 @@ impl LibraryManager {
             title: source.title,
             artist_id: source.artist_id,
             year: source.year,
-            // The new album holds only this release, so leave `primary_release_id`
-            // to the "first release in the album" fallback rather than hard-coding
-            // it here.
-            primary_release_id: None,
             is_compilation: source.is_compilation,
             created_at: now,
         })

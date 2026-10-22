@@ -486,7 +486,6 @@ impl LibraryManager {
         files: Vec<crate::import::service::PreparedImportFile>,
         library_image: Option<(&DbLibraryImage, &[u8])>,
         prepared_artist_images: &[crate::import::PreparedArtistImage],
-        primary_release_id: Option<(&str, &str)>,
         destination: crate::import::ImportDestination,
     ) -> Result<Option<u64>, LibraryError> {
         let expected = self
@@ -521,7 +520,6 @@ impl LibraryManager {
                     expected_new_artists: &expected_new_artists,
                     images: &artist_images,
                 },
-                primary_release_id,
             )
             .await?;
         if matches!(

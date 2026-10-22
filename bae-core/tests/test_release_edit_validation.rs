@@ -29,7 +29,6 @@ async fn seed(db: &Database) -> (String, String) {
         title: "Original Album".to_string(),
         artist_id: artist.id.clone(),
         year: None,
-        primary_release_id: None,
         is_compilation: false,
         created_at: Utc::now(),
     };
