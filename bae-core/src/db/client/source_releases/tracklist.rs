@@ -208,10 +208,27 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
             |row| {
                 Ok(SourceMedium {
                     medium: super::pressing_columns::keyed(row, "medium", Medium::from_key)?,
+                    disc_ids: Vec::new(),
                     entries: Vec::new(),
                 })
             },
         )?;
+    for (position, disc_id) in sql.query(
+        "SELECT position, disc_id FROM source_release_medium_disc \
+         WHERE catalog = ? AND release_id = ? ORDER BY position, disc",
+        params![catalog, key],
+        |row| Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?)),
+    )? {
+        let medium = usize::try_from(position)
+            .ok()
+            .and_then(|position| mediums.get_mut(position))
+            .ok_or_else(|| {
+                DbError::Message(format!(
+                    "{catalog} release {key} holds a disc ID for medium {position}, which it does not hold"
+                ))
+            })?;
+        medium.disc_ids.push(disc_id);
+    }
     let rows = sql.query(
         "SELECT entry, medium, parent, kind, position, number, title, duration_ms \
          FROM source_release_entry WHERE catalog = ? AND release_id = ? ORDER BY entry",

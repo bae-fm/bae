@@ -318,6 +318,12 @@ pub(crate) fn mediums(response: &MbReleaseResponse) -> Vec<SourceMedium> {
         .iter()
         .map(|medium| SourceMedium {
             medium: crate::pressing::musicbrainz::medium(&response.id, medium.format.as_deref()),
+            disc_ids: medium.discs.iter().fold(Vec::new(), |mut held, disc| {
+                if !held.contains(&disc.id) {
+                    held.push(disc.id.clone());
+                }
+                held
+            }),
             entries: medium
                 .tracks
                 .iter()

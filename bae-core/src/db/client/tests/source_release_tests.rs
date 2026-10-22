@@ -56,6 +56,7 @@ fn musicbrainz_documents() -> ReleasePayloads {
         "media": [
             {
                 "format": "12\" Vinyl",
+                "discs": [{ "id": "disc-id-one" }, { "id": "disc-id-two" }, { "id": "disc-id-one" }],
                 "tracks": [
                     {
                         "position": 1,
@@ -183,6 +184,11 @@ async fn a_stored_release_reads_back_as_it_was_extracted() {
     };
     assert_eq!(parent.events.len(), 1, "the parent names its other part");
     assert_eq!(musicbrainz.mediums[0].entries[0].credits.len(), 2);
+    assert_eq!(
+        musicbrainz.mediums[0].disc_ids,
+        ["disc-id-one", "disc-id-two"],
+        "every disc ID registered against the medium, each once"
+    );
     assert_eq!(
         musicbrainz.notes,
         vec![

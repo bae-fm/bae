@@ -376,6 +376,7 @@ mod tests {
         "source_release_archive_group",
         "source_release_role",
         "source_release_medium",
+        "source_release_medium_disc",
         "source_release_entry",
         "source_release_entry_credit",
         "source_release_entry_role",

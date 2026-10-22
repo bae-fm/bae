@@ -572,7 +572,7 @@ alike. Five statements count:
    share a word.
 
 **A release's mediums.** A MusicBrainz release lists its media, each with its
-format and its own tracks. Discogs lists one flat tracklist and states the
+format, its own tracks, and the disc IDs registered against it. Discogs lists one flat tracklist and states the
 media as format entries with quantities, so bae splits the tracklist by its
 positions:
 
@@ -2131,7 +2131,7 @@ under it.
 |---|---|
 | `source_release` | one fetched catalog release and every fact an import reads from it |
 | `source_release_album_artist`, `source_release_role`, `source_release_entry_credit`, `source_release_entry_role` | its credits |
-| `source_release_medium`, `source_release_entry`, `source_release_format` | its mediums, each with its carrier where stated, their tracklists, and its format entries |
+| `source_release_medium`, `source_release_medium_disc`, `source_release_entry`, `source_release_format` | its mediums, each with its carrier where stated and the disc IDs registered against it, their tracklists, and its format entries |
 | `source_release_work`, `source_release_work_composer` | its MusicBrainz works |
 | `source_release_link`, `source_release_album_link`, `source_release_record`, `release_group_album_link` | what it says it is on other catalogs |
 | `source_release_cover`, `source_release_cover_copy`, `source_release_archive_group` | the images it offers a picker |

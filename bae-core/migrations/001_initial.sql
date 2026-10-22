@@ -1932,6 +1932,21 @@ CREATE TABLE IF NOT EXISTS source_release_medium (
         REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
 ) STRICT;
 
+-- The disc IDs MusicBrainz has registered against a medium, in its order: a
+-- folder whose rip hashes to one of them is a rip of that medium. A Discogs
+-- medium holds none.
+CREATE TABLE IF NOT EXISTS source_release_medium_disc (
+    catalog    TEXT NOT NULL,
+    release_id TEXT NOT NULL,
+    position   INTEGER NOT NULL,
+    disc       INTEGER NOT NULL CHECK (disc >= 0),
+    disc_id    TEXT NOT NULL CHECK (disc_id <> ''),
+    PRIMARY KEY (catalog, release_id, position, disc),
+    UNIQUE (catalog, release_id, position, disc_id),
+    FOREIGN KEY (catalog, release_id, position)
+        REFERENCES source_release_medium (catalog, release_id, position) ON DELETE CASCADE
+) STRICT;
+
 -- One row of a medium's tracklist. `entry` numbers the release's rows in
 -- tracklist order, a Discogs index's sub-tracks right after it with the index
 -- as parent. A 'heading' titles the rows after it.

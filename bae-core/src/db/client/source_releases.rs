@@ -319,6 +319,13 @@ pub(super) fn replace_source_release_on(
              VALUES (?, ?, ?, ?)",
             params![catalog, key, position as i64, medium.medium.map(Medium::key)],
         )?;
+        for (disc, disc_id) in medium.disc_ids.iter().enumerate() {
+            sql.execute(
+                "INSERT INTO source_release_medium_disc \
+                 (catalog, release_id, position, disc, disc_id) VALUES (?, ?, ?, ?, ?)",
+                params![catalog, key, position as i64, disc as i64, disc_id],
+            )?;
+        }
         for entry in &medium.entries {
             insert_entry(sql, catalog, key, position as i64, None, entry, &mut numbering)?;
         }

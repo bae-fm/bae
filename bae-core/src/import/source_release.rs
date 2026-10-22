@@ -125,6 +125,9 @@ pub(crate) struct SourceMedium {
     /// Discogs release's position prefix or format entries give it (see
     /// [`crate::import::discogs_mediums`]).
     pub(crate) medium: Option<Medium>,
+    /// The disc IDs MusicBrainz has registered against this medium, each
+    /// once, in its order; a Discogs medium holds none.
+    pub(crate) disc_ids: Vec<String>,
     pub(crate) entries: Vec<TracklistEntry>,
 }
 

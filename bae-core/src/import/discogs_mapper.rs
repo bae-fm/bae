@@ -160,6 +160,7 @@ pub(crate) fn mediums(release: &DiscogsRelease, media: &StatedMedia) -> Vec<Sour
         .into_iter()
         .map(|medium| SourceMedium {
             medium: medium.medium,
+            disc_ids: Vec::new(),
             entries: tracklist_entries(&release.id, &medium.rows),
         })
         .collect()
