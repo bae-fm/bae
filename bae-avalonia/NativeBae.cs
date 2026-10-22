@@ -32,7 +32,7 @@ internal static class NativeBae
     /// log) rather than let telemetry setup block a launch.
     /// </summary>
     internal static BridgeDiagnostics ConfigureDiagnostics(BridgeDiagnosticsConfig config) =>
-        BaeBridgeMethods.ConfigureDiagnostics(config);
+        BaeBridgeMethods.ConfigureDiagnostics(config, new CoreBugReporter());
 
     /// <summary>
     /// Build the Datadog telemetry config the sink is constructed from. Telemetry

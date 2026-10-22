@@ -11,6 +11,24 @@ use crate::handle::AppHandle;
 use crate::types::BridgeError;
 use tracing_subscriber::filter::LevelFilter;
 
+/// The platform's crash reporter, which the app hands in when it builds the
+/// telemetry sink. Core calls it for each bug it finds — code that broke its
+/// own guarantee — from whatever thread found it; the platform records one
+/// non-fatal event with the operation and the error's full text.
+#[uniffi::export(callback_interface)]
+pub trait BridgeBugReporter: Send + Sync {
+    fn report(&self, operation: String, detail: String);
+}
+
+/// Core's view of the platform's [`BridgeBugReporter`].
+struct PlatformBugReporter(Box<dyn BridgeBugReporter>);
+
+impl bae_core::diagnostics::BugReporter for PlatformBugReporter {
+    fn report(&self, operation: &str, detail: &str) {
+        self.0.report(operation.to_string(), detail.to_string());
+    }
+}
+
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeDiagnosticsConfig {
     Disabled,
@@ -182,7 +200,9 @@ impl BridgeDiagnostics {
 
 /// Build the telemetry sink and install the tracing subscriber. Called once at
 /// process start, before `init_keyring` / `BridgeHost` (both require the returned
-/// handle), so the sink exists for every launch step that could fail. Local
+/// handle), so the sink exists for every launch step that could fail. The
+/// sink reports the bugs core finds to `bug_reporter`, the platform's crash
+/// reporter. Local
 /// logs go to the platform's native log (plus the terminal on the desktop).
 ///
 /// Infallible by contract: telemetry setup must never block a launch. Sink
@@ -192,7 +212,10 @@ impl BridgeDiagnostics {
 /// it here keeps the bailout in one place instead of a catch-and-retry in every
 /// host language.
 #[uniffi::export]
-pub fn configure_diagnostics(config: BridgeDiagnosticsConfig) -> Arc<BridgeDiagnostics> {
+pub fn configure_diagnostics(
+    config: BridgeDiagnosticsConfig,
+    bug_reporter: Box<dyn BridgeBugReporter>,
+) -> Arc<BridgeDiagnostics> {
     configure_logging();
     install_panic_logging();
     let clock = Arc::new(coven::SystemClock);
@@ -203,7 +226,8 @@ pub fn configure_diagnostics(config: BridgeDiagnosticsConfig) -> Arc<BridgeDiagn
             tracing::error!("telemetry init failed: {error}; continuing without telemetry");
             Diagnostics::noop()
         }
-    };
+    }
+    .reporting_bugs_to(Arc::new(PlatformBugReporter(bug_reporter)));
     Arc::new(BridgeDiagnostics { inner })
 }
 
@@ -807,7 +831,11 @@ mod tests {
                 .with_writer(std::io::stdout)
                 .finish();
             tracing::subscriber::with_default(subscriber, || {
-                configure_diagnostics(BridgeDiagnosticsConfig::Disabled);
+                struct NoCrashReporter;
+                impl BridgeBugReporter for NoCrashReporter {
+                    fn report(&self, _operation: String, _detail: String) {}
+                }
+                configure_diagnostics(BridgeDiagnosticsConfig::Disabled, Box::new(NoCrashReporter));
                 panic!("detached panic test");
             });
         }

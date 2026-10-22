@@ -354,3 +354,22 @@ async fn the_transport_sends_under_baes_http_policy() {
     );
     assert!(head.contains(&user_agent), "{head}");
 }
+
+/// A bug goes to the platform's crash reporter with its operation and full
+/// text; a sink without one logs it only.
+#[test]
+fn a_bug_reaches_the_crash_reporter_the_platform_handed_in() {
+    let reporter = Arc::new(RecordingBugReporter::default());
+    let diagnostics = Diagnostics::noop().reporting_bugs_to(reporter.clone());
+
+    diagnostics.report_bug("read the upload queue", &"the database is locked");
+
+    assert_eq!(
+        reporter.reports(),
+        [(
+            "read the upload queue".to_string(),
+            "the database is locked".to_string()
+        )]
+    );
+    Diagnostics::noop().report_bug("read the upload queue", &"logged only");
+}

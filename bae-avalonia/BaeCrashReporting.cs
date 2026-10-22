@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using Sentry;
+using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
@@ -187,3 +188,23 @@ internal static class NativeSentry
     [DllImport("sentry-native", EntryPoint = "sentry_set_tag", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     internal static extern void SetTag(string key, string value);
 }
+
+// The crash reporter core reports its bugs to — code that broke its own
+// guarantee: each one a non-fatal Sentry event carrying the operation and the
+// error's full text. Core has already logged it. Without the SDK initialized
+// (the baeium edition, a test) the event goes nowhere. Core calls it from
+// whatever thread found the bug; SentrySdk is thread-safe.
+internal sealed class CoreBugReporter : BridgeBugReporter
+{
+    public void Report(string operation, string detail)
+    {
+        SentrySdk.CaptureException(
+            new CoreBugException(operation, detail),
+            scope => scope.SetExtra("operation", operation));
+    }
+}
+
+// A bug core reported, as the exception Sentry records.
+internal sealed class CoreBugException(string operation, string detail)
+    : Exception($"{operation}: {detail}");
+

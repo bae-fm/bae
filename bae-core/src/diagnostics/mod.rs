@@ -12,7 +12,10 @@
 //! desktop) and the host platform logs keep the full, unredacted detail for
 //! debugging; they are no longer forwarded here.
 //! Crash reporting stays in the platform apps (native crash capture and symbol
-//! upload are platform-specific).
+//! upload are platform-specific). A bug core finds — code that broke its own
+//! guarantee — goes to the platform's crash reporter through the
+//! [`BugReporter`] the platform hands in, with its full text: it is a report
+//! for whoever fixes the bug, not telemetry.
 //!
 //! The transport posts to the client intake endpoint Datadog's browser, iOS, and
 //! Android SDKs use (`browser-intake-.../api/v2/logs`) with a client token —
@@ -163,9 +166,18 @@ pub enum DiagnosticLevel {
     Error,
 }
 
+/// The platform's crash reporter, as core reports a bug to it: one non-fatal
+/// event naming the operation that broke and the error's full text.
+pub trait BugReporter: Send + Sync {
+    fn report(&self, operation: &str, detail: &str);
+}
+
 #[derive(Clone)]
 pub struct Diagnostics {
     inner: Arc<DiagnosticsInner>,
+    /// Where bugs go beside the log. `None` for the sink a test or preview
+    /// builds, which logs them only.
+    bugs: Option<Arc<dyn BugReporter>>,
 }
 
 impl fmt::Debug for Diagnostics {
@@ -189,6 +201,7 @@ impl Diagnostics {
     pub fn noop() -> Self {
         Self {
             inner: Arc::new(DiagnosticsInner::Noop),
+            bugs: None,
         }
     }
 
@@ -236,7 +249,28 @@ impl Diagnostics {
                 clock,
                 session_id,
             }),
+            bugs: None,
         })
+    }
+
+    /// This sink, reporting the bugs core finds to `bugs` as well as the log.
+    pub fn reporting_bugs_to(self, bugs: Arc<dyn BugReporter>) -> Self {
+        Self {
+            bugs: Some(bugs),
+            ..self
+        }
+    }
+
+    /// Report a bug — code that broke its own guarantee — to the log at error
+    /// level and to the platform's crash reporter as a non-fatal event. The
+    /// operation names what broke; `error` is written out in full, causes and
+    /// all.
+    pub fn report_bug(&self, operation: &str, error: &dyn fmt::Display) {
+        let detail = error.to_string();
+        tracing::error!(operation, "bug: {detail}");
+        if let Some(bugs) = &self.bugs {
+            bugs.report(operation, &detail);
+        }
     }
 
     /// Enrich every subsequent event with the stable per-device id, set once
@@ -588,6 +622,35 @@ fn validate_datadog_site(site: &str) -> Result<(), DiagnosticsError> {
         Ok(())
     } else {
         Err(DiagnosticsError::InvalidSite(site.to_string()))
+    }
+}
+
+/// A bug reporter that keeps every report, for a test asserting that a broken
+/// guarantee reached the crash reporter.
+#[cfg(any(test, feature = "test-utils"))]
+#[derive(Default)]
+pub struct RecordingBugReporter {
+    reports: std::sync::Mutex<Vec<(String, String)>>,
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl RecordingBugReporter {
+    /// Every `(operation, detail)` reported so far, in order.
+    pub fn reports(&self) -> Vec<(String, String)> {
+        self.reports
+            .lock()
+            .expect("bug reports mutex poisoned")
+            .clone()
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl BugReporter for RecordingBugReporter {
+    fn report(&self, operation: &str, detail: &str) {
+        self.reports
+            .lock()
+            .expect("bug reports mutex poisoned")
+            .push((operation.to_string(), detail.to_string()));
     }
 }
 

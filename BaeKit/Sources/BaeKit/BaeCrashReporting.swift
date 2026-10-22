@@ -72,3 +72,28 @@ struct CrashReportingConfig {
     let edition: String
     let gitCommit: String
 }
+
+/// The crash reporter core reports its bugs to — code that broke its own
+/// guarantee: each one a non-fatal Sentry event carrying the operation and the
+/// error's full text. Core has already logged it. Without Sentry started (the
+/// baeium edition, a preview, a test) the event goes nowhere. Core calls it
+/// from whatever thread found the bug; Sentry's capture is thread-safe.
+public final class CoreBugReporter: BridgeBugReporter, Sendable {
+    public init() {}
+
+    public func report(operation: String, detail: String) {
+        SentrySDK.capture(error: CoreBug(operation: operation, detail: detail))
+        {
+            scope in
+            scope.setExtra(value: operation, key: "operation")
+        }
+    }
+}
+
+/// A bug core reported, as the error Sentry records.
+struct CoreBug: LocalizedError {
+    let operation: String
+    let detail: String
+
+    var errorDescription: String? { "\(operation): \(detail)" }
+}

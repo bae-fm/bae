@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
+import uniffi.bae_bridge.BridgeBugReporter
 
 private val logger = BaeLogger("bae.BugReports")
 
@@ -63,3 +64,25 @@ val LocalBugReports =
     staticCompositionLocalOf<BugReports> {
         error("LocalBugReports not provided")
     }
+
+/**
+ * The crash reporter core reports its bugs to — code that broke its own
+ * guarantee: each one a non-fatal Sentry event carrying the operation and the
+ * error's full text. Core has already logged it. Without Sentry initialized
+ * (the baeium edition, a test) the event goes nowhere. Core calls it from
+ * whatever thread found the bug; Sentry's capture is thread-safe.
+ */
+object CoreBugReporter : BridgeBugReporter {
+    override fun report(
+        operation: String,
+        detail: String,
+    ) {
+        Sentry.captureException(CoreBug(operation, detail)) { scope -> scope.setExtra("operation", operation) }
+    }
+}
+
+/** A bug core reported, as the exception Sentry records. */
+class CoreBug(
+    operation: String,
+    detail: String,
+) : Exception("$operation: $detail")

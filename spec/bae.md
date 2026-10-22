@@ -2097,6 +2097,10 @@ Nothing in bae-core depends on a server crate.
 - **Errors keep their cause.** A failure carries its typed reason to the
   person who can act on it; nothing defaults over an error. A logged error
   keeps its whole chain of causes and its stack.
+- **Bugs reach the crash reporter.** A bug core finds — code that broke its
+  own guarantee — is logged with its causes and handed to the platform's crash
+  reporter as a non-fatal event naming the operation, through the reporter
+  each app hands core at launch. Crash reporting itself stays in the apps.
 - **Reporting needs its settings.** A bae-edition build missing a telemetry
   or crash-reporting setting turns that reporting off and logs a warning
   naming what's missing.

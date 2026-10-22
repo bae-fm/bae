@@ -14,7 +14,7 @@ object BaeDiagnostics {
      * `initApp`. Infallible: the core falls back to the no-op sink (with a
      * local error log) rather than let telemetry setup block a launch.
      */
-    fun configure(): BridgeDiagnostics = configureDiagnostics(bridgeConfig())
+    fun configure(): BridgeDiagnostics = configureDiagnostics(bridgeConfig(), CoreBugReporter)
 
     /**
      * Builds the Datadog telemetry config the sink is constructed from. Local

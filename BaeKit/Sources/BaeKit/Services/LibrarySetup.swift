@@ -90,7 +90,8 @@ public final class LibrarySetup: Sendable, Observable {
                     LibraryBootstrap(
                         host: BaeHost.make(
                             diagnostics: configureDiagnostics(
-                                config: .disabled
+                                config: .disabled,
+                                bugReporter: CoreBugReporter()
                             ),
                             appDir: previewAppDir()
                         ),

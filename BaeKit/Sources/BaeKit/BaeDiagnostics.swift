@@ -14,7 +14,8 @@ public enum BaeDiagnostics {
         edition: AppEdition
     ) -> BridgeDiagnostics {
         configureDiagnostics(
-            config: bridgeConfig(source: source, edition: edition)
+            config: bridgeConfig(source: source, edition: edition),
+            bugReporter: CoreBugReporter()
         )
     }
 
