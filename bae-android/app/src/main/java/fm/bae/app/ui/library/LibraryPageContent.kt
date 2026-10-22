@@ -26,16 +26,12 @@ import fm.bae.app.data.WindowedBrowserPageStore
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.rememberScreenScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-// Hold the spinner briefly past the sync trigger so it doesn't snap away before
-// the refreshed rows land.
-private const val PULL_REFRESH_SETTLE_MS = 900L
 
 /**
  * A library browse tab's body: pull-to-refresh over load failure, spinner, empty
  * message or rows, each inside a scrollable so the pull reaches [PullToRefreshBox].
+ * The pull retries sync, and its spinner stays until the pass the retry ran ends.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,11 +44,13 @@ internal fun LibraryPageContent(
     var refreshing by remember { mutableStateOf(false) }
     val refreshScope = rememberScreenScope()
     val onRefresh: () -> Unit = {
-        session.appHandle.retryNow()
+        refreshing = true
         refreshScope.launch {
-            refreshing = true
-            delay(PULL_REFRESH_SETTLE_MS)
-            refreshing = false
+            try {
+                session.messages.retrySync(session.appHandle::retryNow)
+            } finally {
+                refreshing = false
+            }
         }
     }
     val pageError = page.error

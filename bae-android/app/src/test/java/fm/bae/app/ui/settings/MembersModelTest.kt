@@ -18,6 +18,7 @@ import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePlaybackErrorReason
+import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.NoHandle
 
 /** A failed read of the library's people ends the spinner with the failure, and Retry reads again. */
@@ -45,6 +46,8 @@ class MembersModelTest {
         override fun display(reason: BridgePlaybackErrorReason): DisplayError? = null
 
         override fun display(error: BridgeException) = DisplayError("couldn't reach storage")
+
+        override fun display(outcome: BridgeSyncRetryOutcome): DisplayError? = null
     }
 
     private fun offline() = BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")

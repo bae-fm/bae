@@ -32,7 +32,7 @@ class SyncActivityStore(
         mutableError.value = error
     }
 
-    /** The person's retry: every ordinary wait ends and sync runs now. */
+    /** The person's retry: every ordinary wait ends and sync runs now; what didn't sync shows as a snackbar. */
     fun retryNow() = retryNowAction()
 
     /** Forget an abandoned upload the person has seen; the next activity value no longer lists it. */

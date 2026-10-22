@@ -38,7 +38,7 @@ public struct SyncActivityList: View {
                 ErrorDetailDisclosure(error: error)
             }
             Button(localizedCoreString("core.activity.retry_now")) {
-                store.retryNow()
+                Task { await store.retryNow() }
             }
         }
     }

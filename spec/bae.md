@@ -1480,6 +1480,18 @@ rather than claim the library is synced.
   fails again waits longer. Provider cooldowns, failures that never retry,
   and waits for the person's own action hold. bae's own triggers, such as
   opening a library, only ask for a pass.
+- **How the retry went.** The pull's spinner stays until the first pass after
+  the retry ends, however long that takes; there is no timer. A pass already
+  running when the person pulls doesn't count: it read the store before they
+  asked, so the next one answers. If the retry didn't sync, the reason shows
+  once it's known: on Android a snackbar, whose *Retry* asks again; on iOS the
+  library's banner. The reason is the pass's failure, such as being offline;
+  the provider asking every request to wait, with the date and time it ends,
+  after which sync goes on by itself; or that sync isn't running. A pass held
+  by such a wait, or by a failure only the person can clear, answers at once.
+  *Retry Now* in the activity list waits for the same answer and shows a
+  retry that didn't sync the same way on Android, and in the list on macOS
+  and iOS.
 - **A newer schema.** Data written by a newer app needs an update;
   reconnecting can't fix it.
 - **Pausing** stops uploads and keeps their place, across restarts too.

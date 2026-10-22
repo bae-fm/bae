@@ -84,8 +84,8 @@ impl Database {
         self.inner.handle.network_changed();
     }
 
-    pub(crate) fn retry_now(&self) {
-        self.inner.handle.retry_now();
+    pub(crate) fn retry_now(&self) -> coven::RetryAnswer {
+        self.inner.handle.retry_now()
     }
 
     pub(crate) async fn retry_pending_operation(

@@ -81,7 +81,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         let syncStatusStore = SyncStatusStore()
         let membershipStore = MembershipStore(handle: appHandle)
         let syncActivityStore = SyncActivityStore(
-            retryNow: { appHandle.retryNow() },
+            retryNow: { try await appHandle.retryNow() },
             dismissAbandoned: { record in
                 try await appHandle.dismissAbandonedAttachment(record: record)
             }

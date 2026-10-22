@@ -8,7 +8,10 @@ struct SyncActivityStoreTests {
     @MainActor
     @Test("the indicator shows only while something moves or needs the person")
     func indicatorVisibility() {
-        let store = SyncActivityStore(retryNow: {}, dismissAbandoned: { _ in })
+        let store = SyncActivityStore(
+            retryNow: { .synced },
+            dismissAbandoned: { _ in }
+        )
         #expect(!store.visible)
         store.apply(.preview(needsAttention: false))
         #expect(store.visible)

@@ -90,3 +90,49 @@ impl BridgeDownloadsInFlight {
         }
     }
 }
+
+/// What the person's retry came to: the first sync pass after the request.
+/// Mirrors `bae_core::library::SyncRetryOutcome`.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeSyncRetryOutcome {
+    /// The pass reached its read end.
+    Synced,
+    /// The pass failed, or a failure only the person can clear holds every
+    /// pass. The error renders through its own line.
+    Failed { error: super::BridgeError },
+    /// The storage provider asked every request to wait until `until`; the
+    /// pass runs once it ends. The UI formats `until` for the locale into the
+    /// line's `until` argument.
+    CoolingDown { until: std::time::SystemTime },
+    /// Sync isn't running, so no pass followed the request.
+    NotSyncing,
+}
+
+impl BridgeSyncRetryOutcome {
+    pub(crate) fn from_core(outcome: bae_core::library::SyncRetryOutcome) -> Self {
+        match outcome {
+            bae_core::library::SyncRetryOutcome::Synced => Self::Synced,
+            bae_core::library::SyncRetryOutcome::Failed(error) => Self::Failed {
+                error: super::BridgeError::from_core(error),
+            },
+            bae_core::library::SyncRetryOutcome::CoolingDown { until } => {
+                Self::CoolingDown { until }
+            }
+            bae_core::library::SyncRetryOutcome::NotSyncing => Self::NotSyncing,
+        }
+    }
+}
+
+/// The line for a retry that didn't sync and has no error of its own: the
+/// provider's cooldown, or sync not running. `None` for a synced retry, which
+/// shows nothing, and a failed one, whose error has its line.
+#[uniffi::export]
+pub fn bridge_sync_retry_outcome_key(outcome: &BridgeSyncRetryOutcome) -> Option<String> {
+    match outcome {
+        BridgeSyncRetryOutcome::Synced | BridgeSyncRetryOutcome::Failed { .. } => None,
+        BridgeSyncRetryOutcome::CoolingDown { .. } => {
+            Some("core.sync.retry.cooling_down".to_string())
+        }
+        BridgeSyncRetryOutcome::NotSyncing => Some("core.sync.retry.not_syncing".to_string()),
+    }
+}

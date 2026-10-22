@@ -98,14 +98,6 @@ forward! { sync this => {
         this.services.network_changed();
     }
 
-    /// The person asked to retry everything now: pulling to refresh, or
-    /// Retry Now in the sync activity list. Ends every ordinary backoff,
-    /// answered or not, and runs a pass; provider cooldowns and failures that
-    /// need the person's action hold. Automatic triggers call `trigger_sync`.
-    fn retry_now() {
-        this.services.retry_now();
-    }
-
     fn is_sync_ready() -> bool {
         this.services.is_sync_ready()
     }
@@ -118,6 +110,18 @@ forward! { sync this => {
 } }
 
 forward! { async this => {
+    /// The person asked to retry everything now: pulling to refresh, or
+    /// Retry Now in the sync activity list. Ends every ordinary backoff,
+    /// answered or not, and runs a pass; provider cooldowns and failures that
+    /// need the person's action hold. Automatic triggers call `trigger_sync`.
+    /// Returns when the first pass after the request ends, with what came of
+    /// it; a pass held by a cooldown or such a failure answers at once.
+    fn retry_now() -> crate::types::BridgeSyncRetryOutcome {
+        Ok(crate::types::BridgeSyncRetryOutcome::from_core(
+            this.services.retry_now().await,
+        ))
+    }
+
     /// Forget an abandoned upload the person has seen in the activity list.
     fn dismiss_abandoned_attachment(record: std::sync::Arc<crate::types::BridgeAbandonedRecord>) -> () {
         Ok(this.services.dismiss_abandoned_attachment(record.0.clone()).await?)

@@ -3,9 +3,13 @@ import SwiftUI
 
 /// The library's main region below the header: search results when a query is
 /// active, otherwise the album grid or the composer/artist browse list for the
-/// current mode. Pull-to-refresh triggers a sync and settles briefly so the
-/// spinner doesn't snap away before the refreshed rows land.
+/// current mode. Pull-to-refresh retries sync, and its spinner stays until the
+/// pass the retry ran ends; a retry that didn't sync shows its reason in the
+/// library banner.
 struct LibraryContentView: View {
+    @Environment(ConfigStore.self)
+    private var configStore
+
     let isSearching: Bool
     let mode: LibraryBrowserMode
     let albumList: AlbumList?
@@ -34,8 +38,7 @@ struct LibraryContentView: View {
         else {
             browseContent
                 .refreshable {
-                    sync.nudges.retryNow()
-                    await settleAfterRefresh()
+                    await retry()
                 }
         }
     }
@@ -75,13 +78,14 @@ struct LibraryContentView: View {
         }
     }
 
-    private func settleAfterRefresh() async {
+    private func retry() async {
         do {
-            try await Task.sleep(for: .seconds(0.9))
+            if let failure = try await sync.nudges.retryNow().failure {
+                configStore.showError(failure)
+            }
         }
-        catch is CancellationError {}
         catch {
-            preconditionFailure("Unexpected refresh sleep error: \(error)")
+            configStore.showError(error)
         }
     }
 }

@@ -69,8 +69,14 @@ impl LibraryManager {
     /// failure count, and runs a pass. Provider cooldowns, failures that
     /// never retry, and waits for new credentials hold. Automatic triggers
     /// use [`Self::trigger_sync`], which leaves every backoff in place.
-    pub fn retry_now(&self) {
-        self.database.retry_now();
+    ///
+    /// The retry takes effect when called; the returned future resolves when
+    /// the first pass after it ends, with what came of it.
+    pub fn retry_now(
+        &self,
+    ) -> impl std::future::Future<Output = super::SyncRetryOutcome> + Send + 'static {
+        let answer = self.database.retry_now();
+        async move { answer.await.into() }
     }
 
     pub async fn save_s3_config(

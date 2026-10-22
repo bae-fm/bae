@@ -21,6 +21,7 @@ import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePlaybackErrorReason
+import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.LibraryNameCallback
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.NoHandle
@@ -95,6 +96,8 @@ class SettingsLibraryModelTest {
         override fun display(reason: BridgePlaybackErrorReason): DisplayError? = null
 
         override fun display(error: BridgeException) = DisplayError("couldn't reach storage")
+
+        override fun display(outcome: BridgeSyncRetryOutcome): DisplayError? = null
     }
 
     private class SettingsHandle(

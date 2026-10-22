@@ -79,6 +79,71 @@ impl SyncStatusState {
     }
 }
 
+/// The category a whole-pass sync failure shows under.
+fn sync_failure_category(error: &coven::SyncFailure) -> crate::ui::UiErrorCategory {
+    use crate::ui::UiErrorCategory as C;
+    match error {
+        coven::SyncFailure::UpdateRequired(_) => C::SyncUpdateRequired,
+        coven::SyncFailure::DeviceIdInUse(_) => C::DeviceResetRequired,
+        coven::SyncFailure::Removed => C::DeviceRemoved,
+        coven::SyncFailure::Storage(error) => super::error_category::cloud_home_category(error),
+        coven::SyncFailure::Operation(_) | coven::SyncFailure::Other(_) => C::Internal,
+    }
+}
+
+/// What the person's retry came to: the first sync pass after the request,
+/// as coven's `retry_now` answers it.
+#[derive(Debug, Clone)]
+pub enum SyncRetryOutcome {
+    /// The pass reached its read end.
+    Synced,
+    /// The pass failed, or a failure only the person can clear (new
+    /// credentials, an update, a reset) holds every pass.
+    Failed(UiError),
+    /// The storage provider asked every request to wait until then; the pass
+    /// runs once it ends.
+    CoolingDown { until: std::time::SystemTime },
+    /// Sync isn't running, so no pass followed the request.
+    NotSyncing,
+}
+
+impl From<coven::RetryOutcome> for SyncRetryOutcome {
+    fn from(outcome: coven::RetryOutcome) -> Self {
+        match outcome {
+            coven::RetryOutcome::Synced { .. } => Self::Synced,
+            coven::RetryOutcome::Failed(failure) => Self::Failed(pass_failure(&failure)),
+            coven::RetryOutcome::CoolingDown { until } => Self::CoolingDown { until },
+            coven::RetryOutcome::NotSyncing => Self::NotSyncing,
+        }
+    }
+}
+
+/// What a failed pass shows the person, under the category the status
+/// would show it. A slot blocked since before this process opened has no
+/// error of its own, so its reason is the detail.
+fn pass_failure(failure: &coven::PassFailure) -> UiError {
+    use crate::ui::UiErrorCategory as C;
+    match failure {
+        coven::PassFailure::Offline { error } => UiError::diagnostic(C::Network, error),
+        coven::PassFailure::Failed { error } => {
+            UiError::diagnostic(sync_failure_category(error), error)
+        }
+        coven::PassFailure::Blocked {
+            slot,
+            reason,
+            error,
+        } => {
+            let category = super::error_category::pending_reason_category(reason);
+            match error {
+                Some(error) => UiError::diagnostic(category, error),
+                None => {
+                    UiError::diagnostic(category, format!("slot {slot:?} cannot apply: {reason:?}"))
+                }
+            }
+        }
+    }
+}
+
 impl SyncStatusSnapshot {
     pub fn connected(&self) -> bool {
         !matches!(self.status, coven::SyncStatus::Disconnected)
@@ -139,16 +204,7 @@ impl SyncStatusSnapshot {
         match &self.status {
             coven::SyncStatus::Offline { error } => Some(UiError::diagnostic(C::Network, error)),
             coven::SyncStatus::Failed { error } => {
-                let category = match error {
-                    coven::SyncFailure::UpdateRequired(_) => C::SyncUpdateRequired,
-                    coven::SyncFailure::DeviceIdInUse(_) => C::DeviceResetRequired,
-                    coven::SyncFailure::Removed => C::DeviceRemoved,
-                    coven::SyncFailure::Storage(error) => {
-                        super::error_category::cloud_home_category(error)
-                    }
-                    coven::SyncFailure::Operation(_) | coven::SyncFailure::Other(_) => C::Internal,
-                };
-                Some(UiError::diagnostic(category, error))
+                Some(UiError::diagnostic(sync_failure_category(error), error))
             }
             // A device that opened already blocked has only the slot's
             // reason, which its pending record shows.
@@ -510,6 +566,74 @@ mod tests {
             answered: failure != coven::StorageFailure::Network,
             failure,
         }))
+    }
+
+    /// A retry that didn't sync answers with what the status shows for the
+    /// same failure: an offline pass is the network's, every layer of its
+    /// cause kept, and a removed device says so.
+    #[test]
+    fn a_failed_retry_answers_with_the_failure_the_status_shows() {
+        use crate::ui::UiErrorCategory as C;
+        let offline =
+            SyncRetryOutcome::from(coven::RetryOutcome::Failed(coven::PassFailure::Offline {
+                error: unreachable_s3(),
+            }));
+        assert!(
+            matches!(&offline, SyncRetryOutcome::Failed(UiError::Diagnostic {
+                category: C::Network,
+                detail,
+            }) if detail == UNREACHABLE_S3),
+            "{offline:?}"
+        );
+        let removed =
+            SyncRetryOutcome::from(coven::RetryOutcome::Failed(coven::PassFailure::Failed {
+                error: coven::SyncFailure::Removed,
+            }));
+        assert!(
+            matches!(
+                removed,
+                SyncRetryOutcome::Failed(UiError::Diagnostic {
+                    category: C::DeviceRemoved,
+                    ..
+                })
+            ),
+            "{removed:?}"
+        );
+    }
+
+    /// A slot blocked since before this process opened has no error of its
+    /// own; the retry's answer still says why, from the slot's reason.
+    #[test]
+    fn a_retry_held_by_a_slot_blocked_before_opening_names_its_reason() {
+        let blocked =
+            SyncRetryOutcome::from(coven::RetryOutcome::Failed(coven::PassFailure::Blocked {
+                slot: coven::Slot(7),
+                reason: coven::PendingReason::Removed,
+                error: None,
+            }));
+        assert!(
+            matches!(&blocked, SyncRetryOutcome::Failed(UiError::Diagnostic { detail, .. })
+                if detail.contains("Slot(7)") && detail.contains("Removed")),
+            "{blocked:?}"
+        );
+    }
+
+    /// The provider's cooldown keeps its end, and sync not running says so.
+    #[test]
+    fn a_retry_that_could_not_run_says_why() {
+        let until = std::time::UNIX_EPOCH + std::time::Duration::from_secs(600);
+        assert!(matches!(
+            SyncRetryOutcome::from(coven::RetryOutcome::CoolingDown { until }),
+            SyncRetryOutcome::CoolingDown { until: at } if at == until
+        ));
+        assert!(matches!(
+            SyncRetryOutcome::from(coven::RetryOutcome::NotSyncing),
+            SyncRetryOutcome::NotSyncing
+        ));
+        assert!(matches!(
+            SyncRetryOutcome::from(coven::RetryOutcome::Synced { finished_at: until }),
+            SyncRetryOutcome::Synced
+        ));
     }
 
     #[test]

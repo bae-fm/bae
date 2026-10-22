@@ -125,7 +125,7 @@ pub(crate) use track::queue_catalog_request;
 pub(crate) use discogs::DiscogsCheck;
 pub use pending_item::{PendingItem, PendingSubjectName, PendingWait};
 use sync_status::SyncStatusState;
-pub use sync_status::{pending_action, PendingAction};
+pub use sync_status::{pending_action, PendingAction, SyncRetryOutcome};
 
 /// Outcome of `resolve_records_target_album` — where a release should
 /// land after a `set_records` call. `new_album` carries the album row

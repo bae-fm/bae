@@ -414,6 +414,18 @@ fn produced_keys() -> Vec<String> {
     ] {
         keys.extend(bridge_sync_indicator_key(&indicator));
     }
+    for outcome in [
+        BridgeSyncRetryOutcome::Synced,
+        BridgeSyncRetryOutcome::Failed {
+            error: BridgeError::Cancelled,
+        },
+        BridgeSyncRetryOutcome::CoolingDown {
+            until: std::time::UNIX_EPOCH,
+        },
+        BridgeSyncRetryOutcome::NotSyncing,
+    ] {
+        keys.extend(bridge_sync_retry_outcome_key(&outcome));
+    }
 
     for instruction in [
         BridgeProviderSignOut::RemoveAppAccess {

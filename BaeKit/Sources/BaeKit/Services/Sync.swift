@@ -235,21 +235,25 @@ public final class Sync: Sendable, Observable {
     #endif
 }
 
-/// The requests that ask sync to run now. None waits for the pass it asks
-/// for; the sync status reports what it did.
+/// The requests that ask sync to run now. Only the person's retry waits for
+/// the pass it asks for; the sync status reports what the others did.
 public struct SyncNudges: Sendable {
     /// Ask for a pass, leaving every backoff in place: bae's own triggers.
     public let triggerSync: @Sendable () -> Void
     /// The person asked to retry everything now: ends every ordinary backoff
-    /// and syncs. Pulling to refresh and Retry Now call it.
-    public let retryNow: @Sendable () -> Void
+    /// and syncs. Pulling to refresh calls it, and returns once the first
+    /// pass after it ends, with what came of it.
+    public let retryNow: @Sendable () async throws -> BridgeSyncRetryOutcome
     /// Tell sync the device's network may be back; see
     /// `AppService.reportNetworkChange`.
     public let reportNetworkChange: @Sendable () -> Void
 
     public init(
         triggerSync: @escaping @Sendable () -> Void = {},
-        retryNow: @escaping @Sendable () -> Void = {},
+        retryNow:
+            @escaping @Sendable () async throws -> BridgeSyncRetryOutcome = {
+                .synced
+            },
         reportNetworkChange: @escaping @Sendable () -> Void = {}
     ) {
         self.triggerSync = triggerSync
@@ -260,7 +264,7 @@ public struct SyncNudges: Sendable {
     public init(handle: any AppHandleProtocol) {
         self.init(
             triggerSync: { handle.triggerSync() },
-            retryNow: { handle.retryNow() },
+            retryNow: { try await handle.retryNow() },
             reportNetworkChange: { handle.reportNetworkChange() }
         )
     }

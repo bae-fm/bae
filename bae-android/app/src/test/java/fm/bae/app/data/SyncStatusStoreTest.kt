@@ -9,6 +9,7 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePendingRecords
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeSyncIndicator
+import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 
 class SyncStatusStoreTest {
@@ -17,6 +18,8 @@ class SyncStatusStoreTest {
             override fun display(reason: BridgePlaybackErrorReason): DisplayError? = null
 
             override fun display(error: BridgeException) = DisplayError("line for $error", "detail of $error")
+
+            override fun display(outcome: BridgeSyncRetryOutcome): DisplayError? = null
         }
 
     private val failure = BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")

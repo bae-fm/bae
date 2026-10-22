@@ -5,8 +5,12 @@ import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePlaybackErrorReason
+import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.bridgeErrorLineKey
 import uniffi.bae_bridge.bridgePlaybackErrorReasonKey
+import uniffi.bae_bridge.bridgeSyncRetryOutcomeKey
+import java.text.DateFormat
+import java.util.Date
 
 // Renders bae's typed error events for the current locale. The locale never
 // crosses the bridge: core emits the typed reason plus a stable `core.*` catalog
@@ -85,6 +89,35 @@ fun Context.displayError(reason: BridgePlaybackErrorReason): DisplayError? =
     localizedLine(reason)?.let { line -> DisplayError(line, reason.diagnosticDetail) }
 
 /**
+ * What a retry that didn't sync shows, or null when it synced. A failed pass
+ * shows its error; the provider's cooldown and sync not running resolve the
+ * line core keys for them, the cooldown's end formatted for the locale.
+ */
+fun Context.displayError(outcome: BridgeSyncRetryOutcome): DisplayError? =
+    when (outcome) {
+        is BridgeSyncRetryOutcome.Synced -> {
+            null
+        }
+
+        is BridgeSyncRetryOutcome.Failed -> {
+            displayError(outcome.error)
+        }
+
+        // Core owns a key for exactly these two; non-null here.
+        is BridgeSyncRetryOutcome.CoolingDown -> {
+            val until =
+                DateFormat
+                    .getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, currentLocale())
+                    .format(Date.from(outcome.until))
+            DisplayError(coreString(bridgeSyncRetryOutcomeKey(outcome)!!, mapOf("until" to until)))
+        }
+
+        is BridgeSyncRetryOutcome.NotSyncing -> {
+            DisplayError(coreString(bridgeSyncRetryOutcomeKey(outcome)!!))
+        }
+    }
+
+/**
  * Resolves a typed error event to what a person is shown. Production binds a
  * [Context] ([LocaleErrorDisplays]); unit tests pass a fixed one so the reducer
  * stays plain-JVM-testable — the same reason playback goes through a
@@ -96,6 +129,9 @@ interface ErrorDisplays {
 
     /** Null when core says the failure has nothing to show. */
     fun display(error: BridgeException): DisplayError?
+
+    /** Null when the retry synced, or its failure has nothing to show. */
+    fun display(outcome: BridgeSyncRetryOutcome): DisplayError?
 }
 
 /** The production resolver: renders for the device locale via the Core catalog. */
@@ -105,6 +141,8 @@ class LocaleErrorDisplays(
     override fun display(reason: BridgePlaybackErrorReason) = context.displayError(reason)
 
     override fun display(error: BridgeException) = context.displayError(error)
+
+    override fun display(outcome: BridgeSyncRetryOutcome) = context.displayError(outcome)
 }
 
 /**

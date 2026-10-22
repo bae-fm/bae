@@ -614,7 +614,7 @@ object AppSessionHolder {
             syncStatus = SyncStatusStore(),
             syncActivity =
                 SyncActivityStore(
-                    retryNowAction = handle::retryNow,
+                    retryNowAction = { messages.startRetrySync(handle::retryNow) },
                     dismissAbandonedAction = { attachment ->
                         messages.perform("dismiss an abandoned upload") {
                             handle.dismissAbandonedAttachment(attachment.record)

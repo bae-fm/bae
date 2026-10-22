@@ -10,8 +10,11 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgeSyncRetryOutcome
 
 private val logger = BaeLogger("bae.SessionMessages")
+
+private const val RETRY_SYNC = "retry sync"
 
 /**
  * One snackbar's worth: what failed, and, for something the person did, the
@@ -71,6 +74,33 @@ class SessionMessages internal constructor(
                     channel.trySend(SessionMessage(shown, retry = { perform(operation, action) }))
                 }
             }, action)
+        }
+    }
+
+    /**
+     * The person's retry: every ordinary wait ends and sync runs now.
+     * Returns once the first pass after it ends, so a pull-to-refresh
+     * spinner stays until then. A retry that didn't sync shows as a snackbar
+     * whose Retry asks again.
+     */
+    suspend fun retrySync(retry: suspend () -> BridgeSyncRetryOutcome) {
+        performBridgeAction(logger, RETRY_SYNC, errors, { shown -> showRetry(shown, retry) }) {
+            showRetry(errors.display(retry()), retry)
+        }
+    }
+
+    /** [retrySync] in the session, for a control with no spinner of its own. */
+    fun startRetrySync(retry: suspend () -> BridgeSyncRetryOutcome) {
+        scope.launch(CoroutineName(RETRY_SYNC)) { retrySync(retry) }
+    }
+
+    /** Null is a retry that synced, or a cancellation: nothing shows. */
+    private fun showRetry(
+        shown: DisplayError?,
+        retry: suspend () -> BridgeSyncRetryOutcome,
+    ) {
+        if (shown != null) {
+            channel.trySend(SessionMessage(shown, retry = { startRetrySync(retry) }))
         }
     }
 }
