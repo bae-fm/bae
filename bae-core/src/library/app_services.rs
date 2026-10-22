@@ -550,8 +550,8 @@ impl AppServices {
                 audio.generated_pregap_frames(),
                 0,
             ),
-            sample_rate: audio.sample_rate,
-            channels: audio.channels,
+            sample_rate: audio.sample_rate.get(),
+            channels: audio.channels.get(),
         }
     }
 

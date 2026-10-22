@@ -15,6 +15,7 @@
 use crate::import::Catalog;
 use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
+use std::num::NonZeroU32;
 
 mod images;
 // Every type here describes the import queue's own state, which the mobile
@@ -375,10 +376,11 @@ pub struct DbAudioFormat {
     /// Exact generated-silence pregap length in source samples.
     pub generated_pregap_samples: Option<u64>,
     /// Sample rate in Hz (for time-to-sample conversion during seek).
-    pub sample_rate: i64,
-    /// Bits per sample (16, 24, etc.). None for lossy codecs where FFmpeg can't determine it.
-    pub bits_per_sample: Option<i64>,
-    pub channels: i64,
+    pub sample_rate: NonZeroU32,
+    /// Bits per sample, 1 to 32 (16, 24, …). `None` for lossy codecs, which
+    /// have no fixed sample depth.
+    pub bits_per_sample: Option<NonZeroU32>,
+    pub channels: NonZeroU32,
     /// Per-track integrated loudness (EBU R128) in LUFS, measured at import over
     /// this track's sample window. `None` = not measured (decode/measure failure
     /// or a near-silent track with no usable loudness). Playback derives a gain
@@ -702,9 +704,9 @@ impl DbAudioFormat {
     pub fn new(
         track_id: &str,
         content_type: ContentType,
-        sample_rate: i64,
-        bits_per_sample: Option<i64>,
-        channels: i64,
+        sample_rate: NonZeroU32,
+        bits_per_sample: Option<NonZeroU32>,
+        channels: NonZeroU32,
         id: String,
         now: DateTime<Utc>,
     ) -> Self {

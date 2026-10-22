@@ -258,7 +258,7 @@ INDEX 01 01:00:00
     assert_eq!(pregap.file_id, "file-id");
 
     // Sample windows: INDEX 00 (0:20) .. INDEX 01 (0:30), frames -> samples.
-    let sample_rate = u64::try_from(built.audio_formats[1].sample_rate).unwrap();
+    let sample_rate = u64::from(built.audio_formats[1].sample_rate.get());
     assert_eq!(pregap.start_sample, (20 * 75) * sample_rate / 75);
     assert_eq!(pregap.end_sample, Some((30 * 75) * sample_rate / 75));
 
@@ -423,6 +423,52 @@ INDEX 01 00:00:00
     assert!(matches!(
         &error,
         ImportError::UnusableFile { detail } if detail.contains("unusable audio format")
+    ));
+}
+
+/// A track's stored depth is 1 to 32 bits; audio stating a deeper one is
+/// refused by name at import rather than stored.
+#[test]
+fn cue_backed_audio_format_refuses_a_depth_over_32_bits() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let cue_path = temp.path().join("Album.cue");
+    let audio_path = temp.path().join("test.wav");
+    std::fs::write(
+        &cue_path,
+        r#"PERFORMER "Artist Name"
+TITLE "Album Title"
+FILE "test.wav" WAVE
+  TRACK 01 AUDIO
+TITLE "Track One"
+INDEX 01 00:00:00
+"#,
+    )
+    .expect("write cue");
+    let cue_sheet = crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue");
+    let cue_pair = CueFlacAnalysis {
+        cue_sheet,
+        audio_files: vec![CueAnalyzedAudioFile {
+            file_reference: "test.wav".to_string(),
+            path: audio_path,
+            probe: ProbeResult {
+                content_type: ContentType::Pcm,
+                bits_per_sample: Some(64),
+                ..probe_result(44_100, 2)
+            },
+        }],
+    };
+    let now = chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+
+    let error =
+        cue_backed_audio_format("track-id", &cue_pair, 0, "audio-format-id".to_string(), now)
+            .expect_err("a 64-bit depth is not stored");
+
+    assert!(matches!(
+        &error,
+        ImportError::UnusableFile { detail }
+            if detail.contains("test.wav") && detail.contains("64-bit")
     ));
 }
 

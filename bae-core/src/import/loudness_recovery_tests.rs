@@ -47,9 +47,9 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
     let mut formats = vec![crate::db::DbAudioFormat::new(
         "track-id",
         probe.content_type,
-        i64::from(probe.sample_rate),
-        probe.bits_per_sample.map(i64::from),
-        i64::from(probe.channels),
+        std::num::NonZeroU32::new(probe.sample_rate).unwrap(),
+        probe.bits_per_sample.map(|bits| std::num::NonZeroU32::new(bits).unwrap()),
+        std::num::NonZeroU32::new(probe.channels).unwrap(),
         "format-id".to_string(),
         now,
     )];

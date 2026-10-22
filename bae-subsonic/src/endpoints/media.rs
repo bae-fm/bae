@@ -286,7 +286,9 @@ fn estimated_length(audio: &ResolvedTrackAudio, format: StreamEncodeFormat) -> O
             u64::from(bitrate_kbps)
         }
         StreamEncodeFormat::PcmWav { bits_per_sample } => {
-            u64::from(audio.sample_rate) * u64::from(audio.channels) * u64::from(bits_per_sample)
+            u64::from(audio.sample_rate.get())
+                * u64::from(audio.channels.get())
+                * u64::from(bits_per_sample)
                 / 1000
         }
     };

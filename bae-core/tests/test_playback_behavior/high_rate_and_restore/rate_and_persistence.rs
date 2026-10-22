@@ -48,7 +48,8 @@ impl HighSampleRateTestFixture {
             .await?
             .expect("Audio format should be detected for 96kHz track");
         assert_eq!(
-            audio_format.sample_rate, 96000,
+            audio_format.sample_rate.get(),
+            96000,
             "Import should detect 96kHz sample rate, got {}",
             audio_format.sample_rate
         );

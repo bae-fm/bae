@@ -534,21 +534,66 @@ pub(super) fn row_to_track(row: &Row) -> rusqlite::Result<DbTrack> {
     row_to_track_with_prefix(row, "")
 }
 
+/// A track's stored audio value that must be above zero and fit a `u32`: its
+/// sample rate or channel count. A value that doesn't is an error naming the
+/// track, never a number wrapped into a different one.
+fn track_audio_count_column(
+    row: &Row,
+    column: &str,
+    track_id: &str,
+) -> rusqlite::Result<std::num::NonZeroU32> {
+    let raw: i64 = row.get(column)?;
+    u32::try_from(raw)
+        .ok()
+        .and_then(std::num::NonZeroU32::new)
+        .ok_or_else(|| {
+            column_conversion_error(
+                row,
+                column,
+                format!("track {track_id} has {column} {raw}, not a count above zero"),
+            )
+        })
+}
+
+/// A track's stored bit depth: absent for lossy audio, else 1 to 32.
+fn track_bit_depth_column(
+    row: &Row,
+    track_id: &str,
+) -> rusqlite::Result<Option<std::num::NonZeroU32>> {
+    const COLUMN: &str = "bits_per_sample";
+    let Some(raw) = row.get::<_, Option<i64>>(COLUMN)? else {
+        return Ok(None);
+    };
+    u32::try_from(raw)
+        .ok()
+        .filter(|bits| (1..=32).contains(bits))
+        .and_then(std::num::NonZeroU32::new)
+        .map(Some)
+        .ok_or_else(|| {
+            column_conversion_error(
+                row,
+                COLUMN,
+                format!("track {track_id} has {COLUMN} {raw}, not a depth of 1 to 32"),
+            )
+        })
+}
+
 pub(super) fn row_to_audio_format(row: &Row) -> rusqlite::Result<DbAudioFormat> {
+    let track_id: String = row.get("track_id")?;
     Ok(DbAudioFormat {
         id: row.get("id")?,
-        track_id: row.get("track_id")?,
         content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
         pregap_ms: row.get("pregap_ms")?,
         generated_pregap_ms: row.get("generated_pregap_ms")?,
         pregap_samples: optional_count_column(row, "pregap_samples")?,
         generated_pregap_samples: optional_count_column(row, "generated_pregap_samples")?,
-        sample_rate: row.get("sample_rate")?,
-        bits_per_sample: row.get("bits_per_sample")?,
-        channels: row.get("channels")?,
+        sample_rate: track_audio_count_column(row, "sample_rate", &track_id)?,
+        bits_per_sample: track_bit_depth_column(row, &track_id)?,
+        channels: track_audio_count_column(row, "channels", &track_id)?,
         track_loudness_lufs: row.get("track_loudness_lufs")?,
         track_peak_linear: row.get("track_peak_linear")?,
         created_at: rfc3339_column(row, "created_at")?,
+        track_id,
     })
 }
 

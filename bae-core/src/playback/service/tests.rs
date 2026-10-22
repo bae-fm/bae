@@ -334,11 +334,7 @@ fn test_prepared_track_with_file(
     }
 }
 
-fn test_resolved_track_audio(
-    track_id: &str,
-    sample_rate: u32,
-    channels: u32,
-) -> ResolvedTrackAudio {
+fn test_resolved_track_audio(track_id: &str) -> ResolvedTrackAudio {
     ResolvedTrackAudio {
         track_id: track_id.to_string(),
         release_id: "release-id".to_string(),
@@ -348,8 +344,8 @@ fn test_resolved_track_audio(
         generated_pregap_ms: None,
         pregap_samples: None,
         generated_pregap_samples: None,
-        sample_rate,
-        channels,
+        sample_rate: std::num::NonZeroU32::new(44_100).unwrap(),
+        channels: std::num::NonZeroU32::new(2).unwrap(),
         bits_per_sample: Some(16),
         content_type: crate::util::content_type::ContentType::Flac,
         track_loudness_lufs: None,

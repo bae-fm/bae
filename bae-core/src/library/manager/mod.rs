@@ -450,8 +450,8 @@ pub struct ResolvedTrackAudio {
     pub generated_pregap_ms: Option<i64>,
     pub pregap_samples: Option<u64>,
     pub generated_pregap_samples: Option<u64>,
-    pub sample_rate: u32,
-    pub channels: u32,
+    pub sample_rate: std::num::NonZeroU32,
+    pub channels: std::num::NonZeroU32,
     /// Bits per sample as stored at import (16, 24, …). `None` for lossy codecs,
     /// where the source has no fixed sample depth. Carried so callers that
     /// describe the audio to a client (the Subsonic server's `bitDepth`) don't
@@ -500,12 +500,12 @@ impl ResolvedTrackAudio {
             generated_pregap_ms: meta.audio_format.generated_pregap_ms,
             pregap_samples: meta.audio_format.pregap_samples,
             generated_pregap_samples: meta.audio_format.generated_pregap_samples,
-            sample_rate: meta.audio_format.sample_rate as u32,
-            channels: meta.audio_format.channels as u32,
+            sample_rate: meta.audio_format.sample_rate,
+            channels: meta.audio_format.channels,
             bits_per_sample: meta
                 .audio_format
                 .bits_per_sample
-                .and_then(|bits| u32::try_from(bits).ok()),
+                .map(std::num::NonZeroU32::get),
             content_type: meta.audio_format.content_type.clone(),
             track_loudness_lufs: meta.audio_format.track_loudness_lufs,
             track_peak_linear: meta.audio_format.track_peak_linear,
@@ -562,7 +562,7 @@ impl ResolvedTrackAudio {
             );
             return 0;
         }
-        ((ms as f64 / 1000.0) * self.sample_rate as f64) as u64
+        ((ms as f64 / 1000.0) * f64::from(self.sample_rate.get())) as u64
     }
 
     /// Linear playback gain for this track under `mode`. `1.0` = no change.

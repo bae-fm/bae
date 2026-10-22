@@ -121,9 +121,9 @@ async fn import_standalone_alac_m4a() {
         .expect("track has audio format");
 
     assert_eq!(af.content_type, ContentType::Alac);
-    assert_eq!(af.sample_rate, 44100);
-    assert_eq!(af.channels, 2);
-    assert_eq!(af.bits_per_sample, Some(16));
+    assert_eq!(af.sample_rate.get(), 44100);
+    assert_eq!(af.channels.get(), 2);
+    assert_eq!(af.bits_per_sample.map(|bits| bits.get()), Some(16));
 
     let resolved = library_manager
         .resolve_track_audio(&track.id)
@@ -165,8 +165,8 @@ async fn import_standalone_aac_m4a() {
         .expect("track has audio format");
 
     assert_eq!(af.content_type, ContentType::Aac);
-    assert_eq!(af.sample_rate, 44100);
-    assert_eq!(af.channels, 2);
+    assert_eq!(af.sample_rate.get(), 44100);
+    assert_eq!(af.channels.get(), 2);
 
     let resolved = library_manager
         .resolve_track_audio(&track.id)

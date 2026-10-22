@@ -49,9 +49,9 @@ async fn seed_track_window(
     let audio_format = DbAudioFormat::new(
         track_id,
         ContentType::Flac,
-        44_100,
-        Some(16),
-        2,
+        std::num::NonZeroU32::new(44_100).unwrap(),
+        Some(std::num::NonZeroU32::new(16).unwrap()),
+        std::num::NonZeroU32::new(2).unwrap(),
         audio_format_id.clone(),
         now,
     )

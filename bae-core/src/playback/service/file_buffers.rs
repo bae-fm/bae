@@ -130,7 +130,6 @@ pub(super) async fn prepare_track_for_playback(
         .resolve_track_audio(track_id)
         .await
         .map_err(PlaybackError::database)?;
-    ensure_resolved_audio_format(track_id, &resolved)?;
 
     let is_ape = resolved.content_type == crate::util::content_type::ContentType::Ape;
     let mut prepared_segments = Vec::with_capacity(resolved.segments.len());

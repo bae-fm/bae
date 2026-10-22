@@ -440,9 +440,11 @@ CREATE TABLE IF NOT EXISTS audio_formats (
     -- Sample counts: never negative, whichever device wrote the row.
     pregap_samples INTEGER CHECK (pregap_samples >= 0),
     generated_pregap_samples INTEGER CHECK (generated_pregap_samples >= 0),
-    sample_rate INTEGER NOT NULL,
-    bits_per_sample INTEGER,
-    channels INTEGER NOT NULL,
+    -- A rate and a channel count above zero; a bit depth only for lossless
+    -- audio, 1 to 32.
+    sample_rate INTEGER NOT NULL CHECK (sample_rate > 0),
+    bits_per_sample INTEGER CHECK (bits_per_sample IS NULL OR bits_per_sample BETWEEN 1 AND 32),
+    channels INTEGER NOT NULL CHECK (channels > 0),
     -- EBU R128 integrated loudness of the track, in LUFS, measured at import;
     -- NULL when measuring failed or the track is near-silent. Playback derives
     -- the gain from it.

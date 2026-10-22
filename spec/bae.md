@@ -181,6 +181,11 @@ Each track records:
 - its audio format: content type, sample rate, bits per sample, channels;
 - its loudness, measured at import (§3.7).
 
+A track's sample rate and channel count are above zero, and its bit depth is
+absent (lossy audio) or 1 to 32; the database refuses any other value. Import
+refuses audio that states a deeper one, naming the file. A stored value that
+breaks these rules fails reading the track with an error naming it.
+
 Each file records what the scan read of it: its content type, duration, sample
 rate, bit depth or bitrate, channels, and whether it held one track or a
 CUE-described disc. Lossless codecs state a bit depth; lossy ones a bitrate.

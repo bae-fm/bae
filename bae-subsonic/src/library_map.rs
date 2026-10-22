@@ -169,8 +169,8 @@ async fn resolve_audio_fields(
         // `bits_per_sample` is `None` for a lossy codec, which has no fixed
         // sample depth; OpenSubsonic's required `bitDepth` reports 0 there.
         bit_depth: audio.bits_per_sample.map(i64::from).unwrap_or(0),
-        sampling_rate: i64::from(audio.sample_rate),
-        channel_count: i64::from(audio.channels),
+        sampling_rate: i64::from(audio.sample_rate.get()),
+        channel_count: i64::from(audio.channels.get()),
         content_type,
         suffix,
         size,

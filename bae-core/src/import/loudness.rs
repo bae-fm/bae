@@ -474,7 +474,7 @@ pub(super) async fn measure_loudness(
         .zip(tracks_to_files)
         .zip(&track_segments)
         .map(|((audio_format, track_file), segments)| {
-            let sample_rate = audio_format.sample_rate as u64;
+            let sample_rate = u64::from(audio_format.sample_rate.get());
             segments
                 .iter()
                 .try_fold(0u64, |total, segment| {

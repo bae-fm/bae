@@ -345,7 +345,7 @@ fn track_start_position_cases() {
 /// a seek all agree on where INDEX 01 is.
 #[test]
 fn a_generated_pregap_starts_the_track_past_it() {
-    let mut resolved = test_resolved_track_audio("track", 44_100, 2);
+    let mut resolved = test_resolved_track_audio("track");
     resolved.generated_pregap_ms = Some(2000);
     resolved.generated_pregap_samples = Some(88_200);
 
@@ -368,7 +368,7 @@ fn a_generated_pregap_starts_the_track_past_it() {
 #[tokio::test]
 async fn a_track_with_no_stored_length_reports_its_position_without_an_end() {
     let (_home, mut service, mut progress) = test_playback_service().await;
-    let mut resolved = test_resolved_track_audio("track", 44_100, 2);
+    let mut resolved = test_resolved_track_audio("track");
     resolved.duration_ms = None;
     let prepared = finalize_playback_track(
         "track".to_string(),
@@ -418,30 +418,6 @@ async fn a_seek_by_ratio_leaves_a_track_with_no_length_where_it_is() {
     };
     assert!(matches!(cur.phase, TrackPhase::Playing));
     assert_eq!(cur.position, StreamPosition::from_millis(10_000));
-}
-
-#[test]
-fn resolved_audio_format_rejects_zero_channels() {
-    let resolved = test_resolved_track_audio("track-id", 44_100, 0);
-
-    let error = ensure_resolved_audio_format("track-id", &resolved)
-        .expect_err("zero channels should be rejected");
-
-    assert!(error
-        .to_string()
-        .contains("track track-id has unusable audio format"));
-}
-
-#[test]
-fn resolved_audio_format_rejects_zero_sample_rate() {
-    let resolved = test_resolved_track_audio("track-id", 0, 2);
-
-    let error = ensure_resolved_audio_format("track-id", &resolved)
-        .expect_err("zero sample rate should be rejected");
-
-    assert!(error
-        .to_string()
-        .contains("track track-id has unusable audio format"));
 }
 
 /// A track with both a generated pregap and an audio-pregap segment before its
@@ -510,7 +486,7 @@ fn natural_start_includes_audio_and_generated_pregap_segments() {
 
 #[test]
 fn generated_pregap_frames_clamps_negative_millisecond_value() {
-    let mut resolved = test_resolved_track_audio("track", 44_100, 2);
+    let mut resolved = test_resolved_track_audio("track");
     resolved.generated_pregap_samples = None;
     resolved.generated_pregap_ms = Some(-10);
 

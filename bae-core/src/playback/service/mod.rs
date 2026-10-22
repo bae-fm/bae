@@ -340,8 +340,8 @@ fn finalize_playback_track(
         track_id,
         release_id: resolved.release_id.clone(),
         segments,
-        sample_rate: resolved.sample_rate,
-        channels: resolved.channels,
+        sample_rate: resolved.sample_rate.get(),
+        channels: resolved.channels.get(),
         generated_pregap_frames: resolved.generated_pregap_frames(),
         // A track has a stored pregap or a generated one, never both.
         timeline: TrackTimeline::new(
@@ -351,19 +351,6 @@ fn finalize_playback_track(
         content_type: resolved.content_type.clone(),
         replay_gain_linear,
     }
-}
-
-fn ensure_resolved_audio_format(
-    track_id: &str,
-    resolved: &ResolvedTrackAudio,
-) -> Result<(), PlaybackError> {
-    if resolved.sample_rate == 0 || resolved.channels == 0 {
-        return Err(PlaybackError::internal(format!(
-            "track {track_id} has unusable audio format: sample_rate={}, channels={}",
-            resolved.sample_rate, resolved.channels
-        )));
-    }
-    Ok(())
 }
 
 struct OutputStream {

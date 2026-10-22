@@ -217,8 +217,8 @@ impl SaveService {
         let cancel = Arc::new(AtomicBool::new(false));
         let _cancel_guard = CancelOnDrop(Arc::clone(&cancel));
 
-        let sample_rate = stored_sample_rate(&plans[0])?;
-        let channels = stored_channels(&plans[0])?;
+        let sample_rate = plans[0].audio_meta.audio_format.sample_rate.get();
+        let channels = plans[0].audio_meta.audio_format.channels.get();
         let release_title = plans[0].resolved.tags.album.clone();
         let release_performer = plans[0].resolved.tags.artist.clone();
         let is_digital = plans[0].resolved.is_digital;
@@ -391,8 +391,8 @@ impl SaveService {
 
         let format = encode_format(&codec);
         let tag_type = codec_tag_type(&codec);
-        let sample_rate = stored_sample_rate(&plan)?;
-        let channels = stored_channels(&plan)?;
+        let sample_rate = plan.audio_meta.audio_format.sample_rate.get();
+        let channels = plan.audio_meta.audio_format.channels.get();
         let decode = plan.decode(&streams).map_err(|e| e.to_string())?;
         drop(streams);
 
@@ -493,34 +493,6 @@ fn encode_image_track(
             .checked_add(pregap_sample_frames)
             .ok_or_else(|| "CUE index sample count overflow".to_string())?,
     })
-}
-
-/// The stored sample rate for this plan's track, validated usable. The decode
-/// re-announces the probed rate, so a stored-vs-probed mismatch still fails
-/// loud at the encoder.
-fn stored_sample_rate(plan: &SaveTrackPlan) -> Result<u32, String> {
-    u32::try_from(plan.audio_meta.audio_format.sample_rate)
-        .ok()
-        .filter(|&rate| rate > 0)
-        .ok_or_else(|| {
-            format!(
-                "stored sample rate {} is unusable",
-                plan.audio_meta.audio_format.sample_rate
-            )
-        })
-}
-
-/// The stored channel count for this plan's track, validated non-zero.
-fn stored_channels(plan: &SaveTrackPlan) -> Result<u32, String> {
-    u32::try_from(plan.audio_meta.audio_format.channels)
-        .ok()
-        .filter(|&channels| channels > 0)
-        .ok_or_else(|| {
-            format!(
-                "stored channel count {} is unusable",
-                plan.audio_meta.audio_format.channels
-            )
-        })
 }
 
 /// The encoder format for a save codec.

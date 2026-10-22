@@ -5,6 +5,7 @@
 //! standalone files reuse their scan facts), and computes CUE track byte windows.
 
 use std::collections::HashMap;
+use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 
 use tracing::warn;
@@ -100,6 +101,35 @@ pub(super) fn resolve_file_content_type(
         // Audio hints were handled above; anything else is unknown binary.
         _ => ContentType::OctetStream,
     })
+}
+
+/// A track's sample rate or channel count as its audio format row stores it:
+/// above zero and within a `u32`. `source` names the file it was read from.
+fn track_audio_count(source: &Path, quantity: &str, raw: i64) -> Result<NonZeroU32, ImportError> {
+    u32::try_from(raw)
+        .ok()
+        .and_then(NonZeroU32::new)
+        .ok_or_else(|| ImportError::UnusableFile {
+            detail: format!("{} states {quantity} {raw}", source.display()),
+        })
+}
+
+/// A track's bit depth as its audio format row stores it: none for lossy
+/// audio, else 1 to 32.
+fn track_bit_depth(source: &Path, raw: Option<i64>) -> Result<Option<NonZeroU32>, ImportError> {
+    raw.map(|raw| {
+        u32::try_from(raw)
+            .ok()
+            .filter(|bits| (1..=32).contains(bits))
+            .and_then(NonZeroU32::new)
+            .ok_or_else(|| ImportError::UnusableFile {
+                detail: format!(
+                    "{} states a {raw}-bit depth; bae stores 1 to 32 bits",
+                    source.display()
+                ),
+            })
+    })
+    .transpose()
 }
 
 struct BuiltAudioFormat {
@@ -231,9 +261,9 @@ fn cue_backed_audio_format(
     Ok(DbAudioFormat::new(
         db_track_id,
         probe.content_type.clone(),
-        probe.sample_rate as i64,
-        probe.bits_per_sample.map(|b| b as i64),
-        probe.channels as i64,
+        track_audio_count(&audio.path, "sample rate", i64::from(probe.sample_rate))?,
+        track_bit_depth(&audio.path, probe.bits_per_sample.map(i64::from))?,
+        track_audio_count(&audio.path, "channel count", i64::from(probe.channels))?,
         id,
         now,
     )
@@ -248,6 +278,7 @@ fn cue_backed_audio_format(
 /// Build an audio format for a per-track file from the scan's authoritative facts.
 fn standalone_audio_format(
     db_track_id: &str,
+    file_path: &Path,
     source_audio: &crate::import::folder_scanner::ScannedAudio,
     id: String,
     now: chrono::DateTime<chrono::Utc>,
@@ -257,9 +288,9 @@ fn standalone_audio_format(
     Ok(DbAudioFormat::new(
         db_track_id,
         source_audio.content_type.clone(),
-        source_audio.format.sample_rate_hz,
-        source_audio.format.bits_per_sample,
-        source_audio.format.channels,
+        track_audio_count(file_path, "sample rate", source_audio.format.sample_rate_hz)?,
+        track_bit_depth(file_path, source_audio.format.bits_per_sample)?,
+        track_audio_count(file_path, "channel count", source_audio.format.channels)?,
         id,
         now,
     ))
@@ -487,7 +518,13 @@ impl ImportService {
                             detail: format!("No DbFile registered for track source {file_path:?}"),
                         })?;
                     let af =
-                        standalone_audio_format(&db_track.id, source_audio, ids.new_id().to_string(), now)?;
+                        standalone_audio_format(
+                        &db_track.id,
+                        file_path,
+                        source_audio,
+                        ids.new_id().to_string(),
+                        now,
+                    )?;
                     let segment = Self::audio_segment(
                         &af.id,
                         0,

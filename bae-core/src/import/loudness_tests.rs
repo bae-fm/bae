@@ -169,9 +169,9 @@ fn audio_format(track_id: &str, id: &str) -> crate::db::DbAudioFormat {
     crate::db::DbAudioFormat::new(
         track_id,
         crate::util::content_type::ContentType::Flac,
-        44_100,
-        Some(16),
-        2,
+        std::num::NonZeroU32::new(44_100).unwrap(),
+        Some(std::num::NonZeroU32::new(16).unwrap()),
+        std::num::NonZeroU32::new(2).unwrap(),
         id.to_string(),
         now(),
     )
