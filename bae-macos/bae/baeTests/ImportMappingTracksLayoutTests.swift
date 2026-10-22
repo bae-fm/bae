@@ -293,26 +293,28 @@ extension ImportMappingTracksLayoutTests {
     func trackSheetSourceIsPartitionedFromPlayableRows() {
         let table = BridgeMappingTable(
             images: [],
-            trackSections: [
-                BridgeMappingTrackSection(
+            trackSides: [
+                BridgeMappingTrackSide(
                     side: .flat,
                     headerKey: nil,
-                    content: .sheet(
-                        sheet: sheet(associated: true),
-                        entries: [
-                            sheetEntryMapping(
-                                number: 1,
-                                title: "Source Title"
-                            )
-                        ]
-                    )
+                    runs: [
+                        .sheet(
+                            sheet: sheet(associated: true),
+                            entries: [
+                                sheetEntryMapping(
+                                    number: 1,
+                                    title: "Source Title"
+                                )
+                            ]
+                        )
+                    ]
                 )
             ],
             files: []
         )
 
         guard
-            case .sheet(let sheet, let entries) = table.trackSections[0].content
+            case .sheet(let sheet, let entries) = table.trackSides[0].runs[0]
         else {
             Issue.record("expected a sheet group")
             return

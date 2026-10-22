@@ -85,13 +85,13 @@ extension MappingFixtures {
         )
     }
 
-    static func flatSection(
+    static func flatSide(
         _ mappings: [BridgeTrackMapping]
-    ) -> BridgeMappingTrackSection {
-        BridgeMappingTrackSection(
+    ) -> BridgeMappingTrackSide {
+        BridgeMappingTrackSide(
             side: .flat,
             headerKey: nil,
-            content: .tracks(mappings: mappings)
+            runs: [.tracks(mappings: mappings)]
         )
     }
 
@@ -102,8 +102,8 @@ extension MappingFixtures {
     static func thirteenFileTable(lastTitle: String) -> BridgeMappingTable {
         BridgeMappingTable(
             images: [],
-            trackSections: [
-                flatSection(
+            trackSides: [
+                flatSide(
                     (1...12).map(pairedRow)
                         + [
                             BridgeTrackMapping(
@@ -181,10 +181,9 @@ extension MappingFixtures {
     }
 
     /// Ignoring the sheet exposes the entire container as one track.
-    private static var looseContainerTrackSections: [BridgeMappingTrackSection]
-    {
+    private static var looseContainerTrackSides: [BridgeMappingTrackSide] {
         [
-            flatSection(
+            flatSide(
                 [
                     BridgeTrackMapping(
                         source: .file(file: containerFile),
@@ -205,7 +204,7 @@ extension MappingFixtures {
     /// The sheet describes nothing, so it carves nothing.
     static let unboundSheetTable = BridgeMappingTable(
         images: [],
-        trackSections: looseContainerTrackSections,
+        trackSides: looseContainerTrackSides,
         files: [
             .sheet(
                 sheet: sheetGroup(
@@ -220,7 +219,7 @@ extension MappingFixtures {
     /// audio again.
     static let ignoredSheetTable = BridgeMappingTable(
         images: [],
-        trackSections: looseContainerTrackSections,
+        trackSides: looseContainerTrackSides,
         files: [
             .sheet(
                 sheet: sheetGroup(container: container, assignment: .ignored)
@@ -272,17 +271,19 @@ extension MappingFixtures {
     ) -> BridgeMappingTable {
         BridgeMappingTable(
             images: [],
-            trackSections: [
-                BridgeMappingTrackSection(
+            trackSides: [
+                BridgeMappingTrackSide(
                     side: .flat,
                     headerKey: nil,
-                    content: .sheet(
-                        sheet: sheetGroup(
-                            container: container,
-                            assignment: assignment
-                        ),
-                        entries: (0..<12).map(entry)
-                    )
+                    runs: [
+                        .sheet(
+                            sheet: sheetGroup(
+                                container: container,
+                                assignment: assignment
+                            ),
+                            entries: (0..<12).map(entry)
+                        )
+                    ]
                 )
             ],
             files: []
@@ -293,8 +294,8 @@ extension MappingFixtures {
     /// them, so the table carries no tally.
     static let fileTagsTable = BridgeMappingTable(
         images: [],
-        trackSections: [
-            flatSection(
+        trackSides: [
+            flatSide(
                 (1...2)
                     .map { index in
                         BridgeTrackMapping(
@@ -438,7 +439,7 @@ extension MappingFixtures {
             mapping: mapping
                 ?? BridgeMappingTable(
                     images: [],
-                    trackSections: [],
+                    trackSides: [],
                     files: []
                 ),
             cover: nil,
@@ -520,7 +521,7 @@ extension MappingFixtures {
         store.selectedCandidates[candidateKey]?.mapping
             ?? BridgeMappingTable(
                 images: [],
-                trackSections: [],
+                trackSides: [],
                 files: []
             )
     }

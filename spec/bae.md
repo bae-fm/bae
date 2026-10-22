@@ -883,9 +883,12 @@ file decisions stay as they are.
 
 The mapping table pairs each unit with its draft track, showing the length the
 track's source listed beside the folder's own, and marking the two when they
-disagree by more than three seconds. For a CUE sheet, the person can bind each
-`FILE` line to an audio file and say which disc each sheet is, or ignore a
-sheet.
+disagree by more than three seconds. Where the draft has several discs or
+record sides, each is headed once, however many runs of rows it holds: the
+loose files on it, and under its name each CUE sheet's entries on it (a sheet
+the release splits across sides names itself again on the next side). For a
+CUE sheet, the person can bind each `FILE` line to an audio file and say which
+disc each sheet is, or ignore a sheet.
 
 Before importing, the person can play a file through a second player, which
 pauses the library's playback and resumes it when it ends.

@@ -91,9 +91,9 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
     assert_eq!(
         projected
             .mapping
-            .track_sections
+            .track_sides
             .iter()
-            .map(|section| section.side.clone())
+            .map(|side| side.side.clone())
             .collect::<Vec<_>>(),
         [
             crate::album_detail::TrackSide::Disc { disc: 1 },

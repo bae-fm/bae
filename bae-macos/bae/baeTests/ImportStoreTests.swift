@@ -239,7 +239,7 @@ private func detail(
         metadataRevision: 1,
         mapping: BridgeMappingTable(
             images: [],
-            trackSections: [],
+            trackSides: [],
             files: []
         ),
         cover: cover,

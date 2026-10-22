@@ -494,11 +494,11 @@ pub struct BridgeMappingImage {
     pub file: BridgeFileVersion,
 }
 
-/// What supplies the rows of one side or disc. Mirror of bae-core's
-/// `MappingTrackSectionContent`.
+/// Consecutive rows of one side that the table draws together. Mirror of
+/// bae-core's `MappingTrackRun`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeMappingTrackSectionContent {
+pub enum BridgeMappingTrackRun {
     /// Rows supplied independently rather than carved by a track sheet.
     Tracks { mappings: Vec<BridgeTrackMapping> },
     /// A track sheet and the entries it carves, which are its child rows.
@@ -508,16 +508,16 @@ pub enum BridgeMappingTrackSectionContent {
     },
 }
 
-/// One side or disc in the track table. Mirror of bae-core's
-/// `MappingTrackSection`.
+/// One side or disc of the track table and the runs of rows on it, headed
+/// once. Mirror of bae-core's `MappingTrackSide`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeMappingTrackSection {
+pub struct BridgeMappingTrackSide {
     pub side: BridgeTrackSide,
-    /// Localization key for the section header word, or `None` when the
-    /// section has no heading.
+    /// Localization key for the side's header word, or `None` when the side
+    /// has no heading.
     pub header_key: Option<String>,
-    pub content: BridgeMappingTrackSectionContent,
+    pub runs: Vec<BridgeMappingTrackRun>,
 }
 
 /// One row in the files section. Mirror of bae-core's `MappingFileRow`.
@@ -540,7 +540,8 @@ pub enum BridgeMappingFileRow {
 pub struct BridgeMappingTable {
     /// Every image the folder holds, in the scan's authoritative order.
     pub images: Vec<BridgeMappingImage>,
-    pub track_sections: Vec<BridgeMappingTrackSection>,
+    /// The rows that can become release tracks, laid out by side.
+    pub track_sides: Vec<BridgeMappingTrackSide>,
     pub files: Vec<BridgeMappingFileRow>,
 }
 

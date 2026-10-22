@@ -285,7 +285,7 @@ impl BridgeMappingImage {
 }
 
 mirror_enum! {
-    BridgeMappingTrackSectionContent = bae_core::import::MappingTrackSectionContent,
+    BridgeMappingTrackRun = bae_core::import::MappingTrackRun,
     from_core: fn,
     variants: {
         Tracks(mappings: (each BridgeTrackMapping)),
@@ -296,14 +296,19 @@ mirror_enum! {
     },
 }
 
-impl BridgeMappingTrackSection {
-    fn from_core(section: bae_core::import::MappingTrackSection) -> Self {
-        let bae_core::import::MappingTrackSection { side, content } = section;
+/// Not a `mirror_struct`: `header_key` is derived from the side rather than
+/// carried by core, so a side reads a field instead of asking.
+impl BridgeMappingTrackSide {
+    fn from_core(side: bae_core::import::MappingTrackSide) -> Self {
+        let bae_core::import::MappingTrackSide { side, runs } = side;
         let side = BridgeTrackSide::from_core(side);
         Self {
             header_key: side.header_key().map(str::to_string),
             side,
-            content: BridgeMappingTrackSectionContent::from_core(content),
+            runs: runs
+                .into_iter()
+                .map(BridgeMappingTrackRun::from_core)
+                .collect(),
         }
     }
 }
@@ -322,7 +327,7 @@ mirror_struct! {
     from_core: pub(crate) fn,
     fields: {
         images: (each BridgeMappingImage),
-        track_sections: (each BridgeMappingTrackSection),
+        track_sides: (each BridgeMappingTrackSide),
         files: (each BridgeMappingFileRow),
     },
 }

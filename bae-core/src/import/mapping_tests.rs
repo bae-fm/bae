@@ -76,9 +76,18 @@ fn assign_discs(files: &mut CategorizedFiles, assignments: &[(&str, u32)]) {
 
 fn mappings(table: &MappingTable) -> Vec<&TrackMapping> {
     table
-        .track_sections
+        .track_sides
         .iter()
-        .flat_map(MappingTrackSection::mappings)
+        .flat_map(MappingTrackSide::mappings)
+        .collect()
+}
+
+/// Every run of the table, side after side.
+fn runs(table: &MappingTable) -> Vec<&MappingTrackRun> {
+    table
+        .track_sides
+        .iter()
+        .flat_map(|side| &side.runs)
         .collect()
 }
 
@@ -125,10 +134,8 @@ fn record() -> Vec<crate::mediums::ReleaseMedium> {
     }]
 }
 
-fn positions(section: &MappingTrackSection) -> Vec<&str> {
-    section
-        .mappings()
-        .iter()
+fn positions(side: &MappingTrackSide) -> Vec<&str> {
+    side.mappings()
         .map(|mapping| mapping.position.as_str())
         .collect()
 }
@@ -244,7 +251,7 @@ fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
         .images
         .iter()
         .any(|image| image.file_id == "scans/scan1.jpg" && image.file.path.exists()));
-    assert_eq!(table.track_sections.len(), 1);
+    assert_eq!(table.track_sides.len(), 1);
     assert_eq!(track_file(mappings(&table)[0]).name, "01.flac");
 }
 
@@ -269,16 +276,10 @@ fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
     }
     let table = mapping_table(&files, &durations, &draft).unwrap();
 
-    assert_eq!(
-        table.track_sections.len(),
-        1,
-        "the sheet is the folder's only group"
-    );
-    let MappingTrackSectionContent::Sheet { sheet, entries } = &table.track_sections[0].content
-    else {
+    let [MappingTrackRun::Sheet { sheet, entries }] = runs(&table).as_slice() else {
         panic!(
-            "expected a sheet section, got {:?}",
-            table.track_sections[0]
+            "the sheet is the folder's only run, got {:?}",
+            table.track_sides
         );
     };
     assert_eq!(sheet.sheet_id, "CDImage.cue");
@@ -343,21 +344,21 @@ fn standalone_tracks_are_sectioned_by_release_side() {
     );
     let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
 
-    assert_eq!(table.track_sections.len(), 2);
+    assert_eq!(table.track_sides.len(), 2);
     assert_eq!(
-        table.track_sections[0].side,
+        table.track_sides[0].side,
         crate::album_detail::TrackSide::Sided {
             side_letter: "A".to_string(),
         }
     );
     assert_eq!(
-        table.track_sections[1].side,
+        table.track_sides[1].side,
         crate::album_detail::TrackSide::Sided {
             side_letter: "B".to_string(),
         }
     );
-    assert_eq!(positions(&table.track_sections[0]), ["A1", "A2"]);
-    assert_eq!(positions(&table.track_sections[1]), ["B1", "B2"]);
+    assert_eq!(positions(&table.track_sides[0]), ["A1", "A2"]);
+    assert_eq!(positions(&table.track_sides[1]), ["B1", "B2"]);
 }
 
 #[test]
@@ -384,19 +385,19 @@ fn each_cue_is_one_section_on_its_assigned_disc() {
     );
     let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
 
-    assert_eq!(table.track_sections.len(), 2);
-    for (section, (disc, sheet_id)) in table
-        .track_sections
+    assert_eq!(table.track_sides.len(), 2);
+    for (side, (disc, sheet_id)) in table
+        .track_sides
         .iter()
         .zip([(1, "beta.cue"), (2, "alpha.cue")])
     {
-        assert_eq!(section.side, crate::album_detail::TrackSide::Disc { disc });
-        let MappingTrackSectionContent::Sheet { sheet, entries } = &section.content else {
+        assert_eq!(side.side, crate::album_detail::TrackSide::Disc { disc });
+        let [MappingTrackRun::Sheet { sheet, entries }] = side.runs.as_slice() else {
             panic!("a CUE disc is represented by its sheet and entries");
         };
         assert_eq!(sheet.sheet_id, sheet_id);
         assert_eq!(entries.len(), 2);
-        assert_eq!(positions(section), ["1", "2"]);
+        assert_eq!(positions(side), ["1", "2"]);
     }
 }
 
@@ -416,20 +417,77 @@ fn a_sheet_the_release_splits_across_sides_heads_each_side() {
     );
     let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
 
-    assert_eq!(table.track_sections.len(), 2);
-    for (section, letter) in table.track_sections.iter().zip(["A", "B"]) {
+    assert_eq!(table.track_sides.len(), 2);
+    for (side, letter) in table.track_sides.iter().zip(["A", "B"]) {
         assert_eq!(
-            section.side,
+            side.side,
             crate::album_detail::TrackSide::Sided {
                 side_letter: letter.to_string(),
             }
         );
-        let MappingTrackSectionContent::Sheet { sheet, entries } = &section.content else {
+        let [MappingTrackRun::Sheet { sheet, entries }] = side.runs.as_slice() else {
             panic!("each side's entries sit under the sheet");
         };
         assert_eq!(sheet.sheet_id, "LP.cue");
         assert_eq!(entries.len(), 2);
     }
+}
+
+/// A side holding loose files and a sheet's entries is one side, headed once,
+/// with a run for the loose rows and a run for the sheet; the sheet's entries
+/// that the release places on the next side start that side under the sheet
+/// again.
+#[test]
+fn a_side_of_loose_rows_and_a_sheet_is_one_side_of_two_runs() {
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    for name in ["01.flac", "02.flac", "LP.flac"] {
+        write_flac(&tmp.path().join(name));
+    }
+    fs::write(tmp.path().join("LP.cue"), cue_sheet_text("LP.flac", 2)).expect("write cue");
+
+    let files = scan(tmp.path());
+    let draft = numbered_draft(
+        &files,
+        record(),
+        &[(1, 1, 1), (1, 1, 2), (1, 1, 3), (1, 2, 1)],
+    );
+    let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
+
+    let [side_a, side_b] = table.track_sides.as_slice() else {
+        panic!("one side per side letter, got {:?}", table.track_sides);
+    };
+    assert_eq!(
+        side_a.side,
+        crate::album_detail::TrackSide::Sided {
+            side_letter: "A".to_string(),
+        }
+    );
+    let [MappingTrackRun::Tracks(loose), MappingTrackRun::Sheet { sheet, entries }] =
+        side_a.runs.as_slice()
+    else {
+        panic!("side A holds the loose run, then the sheet: {:?}", side_a.runs);
+    };
+    assert_eq!(
+        loose
+            .iter()
+            .map(|row| track_file(row).name.as_str())
+            .collect::<Vec<_>>(),
+        ["01.flac", "02.flac"]
+    );
+    assert_eq!(sheet.sheet_id, "LP.cue");
+    assert_eq!(entries.len(), 1);
+    assert_eq!(positions(side_a), ["A1", "A2", "A3"]);
+    assert_eq!(
+        side_b.side,
+        crate::album_detail::TrackSide::Sided {
+            side_letter: "B".to_string(),
+        }
+    );
+    let [MappingTrackRun::Sheet { sheet, entries }] = side_b.runs.as_slice() else {
+        panic!("side B's entry sits under the sheet: {:?}", side_b.runs);
+    };
+    assert_eq!(sheet.sheet_id, "LP.cue");
+    assert_eq!(entries.len(), 1);
 }
 
 /// The tracks the commit writes are the table's own rows, in the order the
@@ -565,11 +623,8 @@ fn associated_sheets_group_tracks_and_unassociated_sheets_remain_files() {
     let table = blank_table(&scan(tmp.path()), &SourceDurations::default());
 
     assert!(matches!(
-        table.track_sections.as_slice(),
-        [MappingTrackSection {
-            content: MappingTrackSectionContent::Sheet { sheet, entries },
-            ..
-        }]
+        runs(&table).as_slice(),
+        [MappingTrackRun::Sheet { sheet, entries }]
             if sheet.sheet_id == "disc.cue" && entries.len() == 2
     ));
     assert!(matches!(
@@ -649,7 +704,7 @@ fn a_sheet_disc_menu_keeps_the_assigned_disc_available() {
     let mut files = scan(tmp.path());
     assign_discs(&mut files, &[("disc.cue", 2)]);
     let table = blank_table(&files, &SourceDurations::default());
-    let MappingTrackSectionContent::Sheet { sheet, .. } = &table.track_sections[0].content else {
+    let [MappingTrackRun::Sheet { sheet, .. }] = runs(&table).as_slice() else {
         panic!("the selected CUE groups its tracks");
     };
     assert!(sheet.disc_options.contains(&2));
@@ -736,11 +791,8 @@ fn the_first_of_competing_sheets_carves_and_the_rest_stay_listed() {
     }
     let table = blank_table(&scan(tmp.path()), &SourceDurations::default());
     assert!(matches!(
-        table.track_sections.as_slice(),
-        [MappingTrackSection {
-            content: MappingTrackSectionContent::Sheet { sheet, entries },
-            ..
-        }]
+        runs(&table).as_slice(),
+        [MappingTrackRun::Sheet { sheet, entries }]
             if sheet.sheet_id == "first.cue" && entries.len() == 2
     ));
     // The sheet that lost the container stays listed, ignored, still bound
@@ -773,8 +825,8 @@ fn source_disc_assignments_do_not_invent_sides() {
     draft.pressing.facts = made_of(Medium::Vinyl, 1);
     let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
     assert!(
-        table.track_sections.iter().all(|section| {
-            !matches!(section.side, crate::album_detail::TrackSide::Sided { .. })
+        table.track_sides.iter().all(|side| {
+            !matches!(side.side, crate::album_detail::TrackSide::Sided { .. })
         }),
         "available CUE audio does not establish vinyl sides"
     );
@@ -820,8 +872,7 @@ fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
         },
     ];
     let table = blank_table(&files, &durations);
-    let MappingTrackSectionContent::Sheet { sheet, entries } = &table.track_sections[0].content
-    else {
+    let [MappingTrackRun::Sheet { sheet, entries }] = runs(&table).as_slice() else {
         panic!("the CUE heads its entries");
     };
     assert_eq!(

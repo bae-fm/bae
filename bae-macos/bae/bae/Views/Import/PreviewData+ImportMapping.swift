@@ -101,13 +101,15 @@
         /// carried alongside them.
         static let mappingTable = BridgeMappingTable(
             images: mappingImages,
-            trackSections: [
-                BridgeMappingTrackSection(
+            trackSides: [
+                BridgeMappingTrackSide(
                     side: .flat,
                     headerKey: nil,
-                    content: .tracks(
-                        mappings: (1...9).map(mappingTrackRow)
-                    )
+                    runs: [
+                        .tracks(
+                            mappings: (1...9).map(mappingTrackRow)
+                        )
+                    ]
                 )
             ],
             files: [carriedRow(infoLog, role: .document)]
@@ -169,35 +171,39 @@
         /// Ignoring a CUE replaces its songs with the whole container.
         static let moreTracksMappingTable = BridgeMappingTable(
             images: [],
-            trackSections: [
-                BridgeMappingTrackSection(
+            trackSides: [
+                BridgeMappingTrackSide(
                     side: .flat,
                     headerKey: nil,
-                    content: .tracks(mappings: [
-                        BridgeTrackMapping(
-                            source: .file(
-                                file: BridgeMappingFile(
-                                    fileId: moreTracksAudio.file.name,
-                                    name: moreTracksAudio.file.fileName,
-                                    size: moreTracksAudio.file.size,
-                                    localPath: moreTracksAudio.file.localPath,
-                                    previewTarget: BridgePreviewTarget(
-                                        path: moreTracksAudio.file.localPath,
-                                        startSample: 0,
-                                        endSample: nil
-                                    ),
-                                    durationMs: 2_720_000,
-                                    audioFormat: moreTracksAudio.file
-                                        .audioFormat,
-                                    role: .audio
-                                )
-                            ),
-                            track: moreTracksEditValues.tracks[0],
-                            position: "1",
-                            durationMs: 2_720_000,
-                            lengthsDisagree: false
-                        )
-                    ])
+                    runs: [
+                        .tracks(mappings: [
+                            BridgeTrackMapping(
+                                source: .file(
+                                    file: BridgeMappingFile(
+                                        fileId: moreTracksAudio.file.name,
+                                        name: moreTracksAudio.file.fileName,
+                                        size: moreTracksAudio.file.size,
+                                        localPath: moreTracksAudio.file
+                                            .localPath,
+                                        previewTarget: BridgePreviewTarget(
+                                            path: moreTracksAudio.file
+                                                .localPath,
+                                            startSample: 0,
+                                            endSample: nil
+                                        ),
+                                        durationMs: 2_720_000,
+                                        audioFormat: moreTracksAudio.file
+                                            .audioFormat,
+                                        role: .audio
+                                    )
+                                ),
+                                track: moreTracksEditValues.tracks[0],
+                                position: "1",
+                                durationMs: 2_720_000,
+                                lengthsDisagree: false
+                            )
+                        ])
+                    ]
                 )
             ],
             files: []
@@ -255,14 +261,16 @@
         /// the folder's images and a collapsed logs directory alongside it.
         static let sheetMappingTable = BridgeMappingTable(
             images: mappingImages,
-            trackSections: [
-                BridgeMappingTrackSection(
+            trackSides: [
+                BridgeMappingTrackSide(
                     side: .flat,
                     headerKey: nil,
-                    content: .sheet(
-                        sheet: previewSheetGroup,
-                        entries: (0..<9).map(sheetEntryMapping)
-                    )
+                    runs: [
+                        .sheet(
+                            sheet: previewSheetGroup,
+                            entries: (0..<9).map(sheetEntryMapping)
+                        )
+                    ]
                 )
             ],
             files: previewLogDocuments.map {
@@ -279,14 +287,16 @@
         /// in the canvas without hunting for the fixture that has it.
         static let everyRowKindMappingTable = BridgeMappingTable(
             images: mappingImages,
-            trackSections: [
-                BridgeMappingTrackSection(
+            trackSides: [
+                BridgeMappingTrackSide(
                     side: .flat,
                     headerKey: nil,
-                    content: .sheet(
-                        sheet: previewSheetGroup,
-                        entries: (0..<9).map(sheetEntryMapping)
-                    )
+                    runs: [
+                        .sheet(
+                            sheet: previewSheetGroup,
+                            entries: (0..<9).map(sheetEntryMapping)
+                        )
+                    ]
                 )
             ],
             files: [
@@ -306,29 +316,34 @@
         /// tally them against.
         static let fileMetadataMappingTable = BridgeMappingTable(
             images: [],
-            trackSections: [
-                BridgeMappingTrackSection(
+            trackSides: [
+                BridgeMappingTrackSide(
                     side: .flat,
                     headerKey: nil,
-                    content: .tracks(
-                        mappings: (1...9)
-                            .map { index in
-                                BridgeTrackMapping(
-                                    source: .file(file: mappingAudio(index)),
-                                    track: BridgeRawTrackEdit(
-                                        id: "file-tags-track-\(index - 1)",
-                                        title: "Track Title \(index)",
-                                        artistAssignments: .albumArtists,
-                                        file: .standalone(
-                                            fileId: "Track \(index).flac"
-                                        )
-                                    ),
-                                    position: "\(index)",
-                                    durationMs: mappingAudio(index).durationMs,
-                                    lengthsDisagree: false
-                                )
-                            }
-                    )
+                    runs: [
+                        .tracks(
+                            mappings: (1...9)
+                                .map { index in
+                                    BridgeTrackMapping(
+                                        source: .file(
+                                            file: mappingAudio(index)
+                                        ),
+                                        track: BridgeRawTrackEdit(
+                                            id: "file-tags-track-\(index - 1)",
+                                            title: "Track Title \(index)",
+                                            artistAssignments: .albumArtists,
+                                            file: .standalone(
+                                                fileId: "Track \(index).flac"
+                                            )
+                                        ),
+                                        position: "\(index)",
+                                        durationMs: mappingAudio(index)
+                                            .durationMs,
+                                        lengthsDisagree: false
+                                    )
+                                }
+                        )
+                    ]
                 )
             ],
             files: []
@@ -700,25 +715,27 @@
         /// draft still has a whole folder under it.
         private static let blankDraftMappingTable = BridgeMappingTable(
             images: mappingImages,
-            trackSections: [
-                BridgeMappingTrackSection(
+            trackSides: [
+                BridgeMappingTrackSide(
                     side: .flat,
                     headerKey: nil,
-                    content: .tracks(
-                        mappings: blankDraftValues.tracks.enumerated()
-                            .map { index, track in
-                                BridgeTrackMapping(
-                                    source: .file(
-                                        file: mappingAudio(index + 1)
-                                    ),
-                                    track: track,
-                                    position: "\(index + 1)",
-                                    durationMs: mappingAudio(index + 1)
-                                        .durationMs,
-                                    lengthsDisagree: false
-                                )
-                            }
-                    )
+                    runs: [
+                        .tracks(
+                            mappings: blankDraftValues.tracks.enumerated()
+                                .map { index, track in
+                                    BridgeTrackMapping(
+                                        source: .file(
+                                            file: mappingAudio(index + 1)
+                                        ),
+                                        track: track,
+                                        position: "\(index + 1)",
+                                        durationMs: mappingAudio(index + 1)
+                                            .durationMs,
+                                        lengthsDisagree: false
+                                    )
+                                }
+                        )
+                    ]
                 )
             ],
             files: [

@@ -32,13 +32,20 @@ extension BridgeMappingSource {
 
 }
 
-extension BridgeMappingTrackSection {
-    /// The source-to-track mappings this section carries.
+extension BridgeMappingTrackRun {
+    /// The source-to-track mappings this run carries.
     var mappings: [BridgeTrackMapping] {
-        switch content {
+        switch self {
         case .tracks(let mappings): mappings
         case .sheet(_, let entries): entries
         }
+    }
+}
+
+extension BridgeMappingTrackSide {
+    /// The source-to-track mappings on this side, in table order.
+    var mappings: [BridgeTrackMapping] {
+        runs.flatMap(\.mappings)
     }
 
     var sideHeaderText: String {
@@ -49,7 +56,7 @@ extension BridgeMappingTrackSection {
 extension BridgeMappingTable {
     /// Every source-to-track mapping in table order.
     var trackMappings: [BridgeTrackMapping] {
-        trackSections.flatMap(\.mappings)
+        trackSides.flatMap(\.mappings)
     }
 
     /// Rows whose track's title is still blank.

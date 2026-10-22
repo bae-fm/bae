@@ -261,13 +261,12 @@ struct ImportMappingPaneTests {
             )
         )
         let after = MappingFixtures.mapping(of: store)
-        #expect(after.trackSections.count == 1)
         guard
-            case .sheet(let sheet, let entries) = after.trackSections[0].content
+            after.trackSides.count == 1,
+            after.trackSides[0].runs.count == 1,
+            case .sheet(let sheet, let entries) = after.trackSides[0].runs[0]
         else {
-            Issue.record(
-                "expected a sheet section, got \(after.trackSections[0])"
-            )
+            Issue.record("expected one sheet run, got \(after.trackSides)")
             return
         }
         guard case .describes(let container) = sheet.bound else {
@@ -501,7 +500,7 @@ extension ImportMappingPaneTests {
         )
         guard
             case .sheet(let sheet, _) = MappingFixtures.mapping(of: store)
-                .trackSections[0].content
+                .trackSides[0].runs[0]
         else {
             Issue.record("expected a sheet row")
             return

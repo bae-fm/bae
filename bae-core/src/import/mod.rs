@@ -248,7 +248,7 @@ desktop_only! {
     pub use mapping::{
         mapping_tracks, InvalidCandidateDetail, MappingContainer, MappingEntry, MappingFile,
         MappingFileRow, MappingImage, MappingRole, MappingSource, MappingTable,
-        MappingTrackSection, MappingTrackSectionContent, SheetBound, SheetGroup, TrackMapping,
+        MappingTrackRun, MappingTrackSide, SheetBound, SheetGroup, TrackMapping,
     };
     pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
     pub use preparations::CandidatePreparations;

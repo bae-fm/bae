@@ -22,26 +22,29 @@ use std::path::PathBuf;
 pub struct MappingTable {
     /// Every image the folder holds, in the scan's authoritative order.
     pub images: Vec<MappingImage>,
-    /// The rows that can become release tracks, with a bound sheet retaining
-    /// ownership of the slices it carves.
-    pub track_sections: Vec<MappingTrackSection>,
+    /// The rows that can become release tracks, laid out by side, with a
+    /// bound sheet retaining ownership of the slices it carves.
+    pub track_sides: Vec<MappingTrackSide>,
     /// Files carried with the release but not represented by track rows.
     pub files: Vec<MappingFileRow>,
 }
 
-/// One side or disc in the track table.
-///
-/// Its content makes the physical source shape explicit: a side is either
-/// independent track rows or the entries carved by one track sheet.
+/// One side of the track table — a disc of a multi-disc set, a side of a
+/// record, or the one flat side — and the runs of rows on it, in table order.
+/// The same shape the release editor's table draws
+/// ([`crate::album_detail::ReleaseEditTrackSide`]): one heading per side,
+/// however many runs it holds.
 #[derive(Debug, Clone, PartialEq)]
-pub struct MappingTrackSection {
+pub struct MappingTrackSide {
     pub side: crate::album_detail::TrackSide,
-    pub content: MappingTrackSectionContent,
+    pub runs: Vec<MappingTrackRun>,
 }
 
-/// What supplies the rows of one side or disc.
+/// Consecutive rows of one side that the table draws together. The run makes
+/// the physical source shape explicit: independent track rows, or the entries
+/// carved by one track sheet.
 #[derive(Debug, Clone, PartialEq)]
-pub enum MappingTrackSectionContent {
+pub enum MappingTrackRun {
     /// Rows supplied independently rather than carved by a track sheet.
     Tracks(Vec<TrackMapping>),
     /// A track sheet and the entries it carves, which are its child rows.
@@ -51,13 +54,20 @@ pub enum MappingTrackSectionContent {
     },
 }
 
-impl MappingTrackSection {
-    /// The source-to-track mappings this section carries.
+impl MappingTrackRun {
+    /// The source-to-track mappings this run carries.
     pub fn mappings(&self) -> &[TrackMapping] {
-        match &self.content {
-            MappingTrackSectionContent::Tracks(mappings) => mappings,
-            MappingTrackSectionContent::Sheet { entries, .. } => entries,
+        match self {
+            MappingTrackRun::Tracks(mappings) => mappings,
+            MappingTrackRun::Sheet { entries, .. } => entries,
         }
+    }
+}
+
+impl MappingTrackSide {
+    /// The source-to-track mappings on this side, in table order.
+    pub fn mappings(&self) -> impl Iterator<Item = &TrackMapping> {
+        self.runs.iter().flat_map(MappingTrackRun::mappings)
     }
 }
 
@@ -254,7 +264,7 @@ pub(crate) fn mapping_table(
         mediums: &draft.mediums,
         tracks: draft.tracks.iter(),
     };
-    let mut track_sections = Vec::new();
+    let mut track_sides = Vec::new();
     let mut file_rows = Vec::new();
     // The folder's images become one gallery beside the rows while retaining
     // the scan's order.
@@ -306,13 +316,13 @@ pub(crate) fn mapping_table(
                             disc_options: disc_options.clone(),
                         };
                         for (side, mapping) in rows.sheet_entries(sheet)? {
-                            push_sheet_entry(&mut track_sections, &group, side, mapping);
+                            push_sheet_entry(&mut track_sides, &group, side, mapping);
                         }
                     }
                 }
                 Some(UnitContribution::Whole) => {
                     let (side, mapping) = rows.audio_row(entry)?;
-                    push_track_mapping(&mut track_sections, side, mapping);
+                    push_track_mapping(&mut track_sides, side, mapping);
                 }
                 // A carving sheet speaks for this file, so the sheet's rows are
                 // what it contributes and it has none of its own.
@@ -342,7 +352,7 @@ pub(crate) fn mapping_table(
 
     Ok(MappingTable {
         images,
-        track_sections,
+        track_sides,
         files: file_rows,
     })
 }
@@ -351,9 +361,9 @@ pub(crate) fn mapping_table(
 /// release it writes.
 pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
     table
-        .track_sections
+        .track_sides
         .iter()
-        .flat_map(MappingTrackSection::mappings)
+        .flat_map(MappingTrackSide::mappings)
         .map(|mapping| mapping.track.clone())
         .collect()
 }
@@ -477,56 +487,60 @@ impl RowBuilder<'_> {
     }
 }
 
+/// The runs of the last side when it is `side`, else of a new side started
+/// after it: a side is headed once for each stretch of rows it holds.
+fn side_runs(
+    sides: &mut Vec<MappingTrackSide>,
+    side: crate::album_detail::TrackSide,
+) -> &mut Vec<MappingTrackRun> {
+    if sides.last().is_none_or(|last| last.side != side) {
+        sides.push(MappingTrackSide {
+            side,
+            runs: Vec::new(),
+        });
+    }
+    &mut sides
+        .last_mut()
+        .expect("the side was found or pushed above")
+        .runs
+}
+
 /// Append a loose row to the last run of loose rows on its side, or start one.
 fn push_track_mapping(
-    sections: &mut Vec<MappingTrackSection>,
+    sides: &mut Vec<MappingTrackSide>,
     side: crate::album_detail::TrackSide,
     mapping: TrackMapping,
 ) {
-    if let Some(MappingTrackSection {
-        side: existing,
-        content: MappingTrackSectionContent::Tracks(mappings),
-    }) = sections.last_mut()
-    {
-        if *existing == side {
-            mappings.push(mapping);
-            return;
-        }
+    let runs = side_runs(sides, side);
+    if let Some(MappingTrackRun::Tracks(mappings)) = runs.last_mut() {
+        mappings.push(mapping);
+        return;
     }
-    sections.push(MappingTrackSection {
-        side,
-        content: MappingTrackSectionContent::Tracks(vec![mapping]),
-    });
+    runs.push(MappingTrackRun::Tracks(vec![mapping]));
 }
 
-/// Append a sheet's entry under its sheet on its side, or start a group there:
-/// a sheet the release splits across sides heads one group per side.
+/// Append a sheet's entry under its sheet on its side, or start a run there:
+/// a sheet the release splits across sides heads one run per side.
 fn push_sheet_entry(
-    sections: &mut Vec<MappingTrackSection>,
+    sides: &mut Vec<MappingTrackSide>,
     sheet: &SheetGroup,
     side: crate::album_detail::TrackSide,
     mapping: TrackMapping,
 ) {
-    if let Some(MappingTrackSection {
-        side: existing,
-        content:
-            MappingTrackSectionContent::Sheet {
-                sheet: group,
-                entries,
-            },
-    }) = sections.last_mut()
+    let runs = side_runs(sides, side);
+    if let Some(MappingTrackRun::Sheet {
+        sheet: group,
+        entries,
+    }) = runs.last_mut()
     {
-        if group.sheet_id == sheet.sheet_id && *existing == side {
+        if group.sheet_id == sheet.sheet_id {
             entries.push(mapping);
             return;
         }
     }
-    sections.push(MappingTrackSection {
-        side,
-        content: MappingTrackSectionContent::Sheet {
-            sheet: sheet.clone(),
-            entries: vec![mapping],
-        },
+    runs.push(MappingTrackRun::Sheet {
+        sheet: sheet.clone(),
+        entries: vec![mapping],
     });
 }
 

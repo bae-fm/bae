@@ -285,20 +285,24 @@ private struct ReadOnlyCandidateMappingTable: View {
                 VStack(spacing: 0) {
                     header
                     ForEach(
-                        Array(table.trackSections.enumerated()),
+                        Array(table.trackSides.enumerated()),
                         id: \.offset
                     ) {
                         _,
-                        section in
-                        if !section.sideHeaderText.isEmpty {
-                            Eyebrow(verbatim: section.sideHeaderText)
+                        side in
+                        if !side.sideHeaderText.isEmpty {
+                            Eyebrow(verbatim: side.sideHeaderText)
                                 .frame(width: tableWidth, alignment: .leading)
                                 .padding(.top, ThemeSpace.group)
                         }
-                        if case .sheet(let sheet, _) = section.content {
-                            sourceCaption(sheet.name)
+                        ForEach(Array(side.runs.enumerated()), id: \.offset) {
+                            _,
+                            run in
+                            if case .sheet(let sheet, _) = run {
+                                sourceCaption(sheet.name)
+                            }
+                            rows(run)
                         }
-                        rows(section)
                     }
                 }
                 .frame(width: tableWidth, alignment: .leading)
@@ -332,8 +336,8 @@ private struct ReadOnlyCandidateMappingTable: View {
     }
 
     @ViewBuilder
-    private func rows(_ section: BridgeMappingTrackSection) -> some View {
-        switch section.content {
+    private func rows(_ run: BridgeMappingTrackRun) -> some View {
+        switch run {
         case .tracks(let mappings):
             ForEach(mappings, id: \.rowId, content: row)
         case .sheet(_, let entries):

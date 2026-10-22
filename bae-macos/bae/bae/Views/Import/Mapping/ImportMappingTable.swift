@@ -67,28 +67,32 @@ struct ImportMappingTable: View {
 
     // MARK: - Tracks
 
-    /// One section per side or disc: track mappings, or one sheet and its
-    /// entries.
+    /// One header per side or disc, then its runs: track mappings, or one
+    /// sheet and its entries.
     private var tracksSection: some View {
         ScrollView(.horizontal) {
             rowStack {
-                if table.trackSections.isEmpty {
+                if table.trackSides.isEmpty {
                     trackHeaderRow
                 }
                 ForEach(
-                    Array(table.trackSections.enumerated()),
+                    Array(table.trackSides.enumerated()),
                     id: \.offset
-                ) { index, section in
-                    if !section.sideHeaderText.isEmpty {
-                        sideHeader(section.sideHeaderText, index: index)
+                ) { index, side in
+                    if !side.sideHeaderText.isEmpty {
+                        sideHeader(side.sideHeaderText, index: index)
                     }
-                    if case .sheet(let sheet, _) = section.content {
-                        sheetCaption(sheet)
+                    ForEach(Array(side.runs.enumerated()), id: \.offset) {
+                        runIndex,
+                        run in
+                        if case .sheet(let sheet, _) = run {
+                            sheetCaption(sheet)
+                        }
+                        if index == 0 && runIndex == 0 {
+                            trackHeaderRow
+                        }
+                        trackRunRows(run)
                     }
-                    if index == 0 {
-                        trackHeaderRow
-                    }
-                    trackSectionRows(section)
                 }
             }
         }
@@ -101,10 +105,8 @@ struct ImportMappingTable: View {
     }
 
     @ViewBuilder
-    private func trackSectionRows(_ section: BridgeMappingTrackSection)
-        -> some View
-    {
-        switch section.content {
+    private func trackRunRows(_ run: BridgeMappingTrackRun) -> some View {
+        switch run {
         case .tracks(let mappings):
             ForEach(mappings, id: \.rowId, content: trackRow)
         case .sheet(_, let entries):

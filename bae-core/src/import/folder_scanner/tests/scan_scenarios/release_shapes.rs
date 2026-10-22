@@ -365,8 +365,8 @@ fn multi_file_cue_resolves_each_reference_by_unique_stem() {
         &crate::import::pane::blank_candidate_draft(files),
     )
     .expect("a blank draft is drawn over its own folder");
-    let crate::import::MappingTrackSectionContent::Sheet { sheet, entries } =
-        &table.track_sections[0].content
+    let Some(crate::import::MappingTrackRun::Sheet { sheet, entries }) =
+        table.track_sides[0].runs.first()
     else {
         panic!("the resolved CUE should group its track rows");
     };

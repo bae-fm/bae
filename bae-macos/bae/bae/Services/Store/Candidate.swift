@@ -421,7 +421,7 @@ struct Candidate: Equatable, Identifiable {
         detail?.mapping
             ?? BridgeMappingTable(
                 images: [],
-                trackSections: [],
+                trackSides: [],
                 files: []
             )
     }

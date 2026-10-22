@@ -195,9 +195,9 @@ async fn the_pane_shows_each_tracks_stated_length_after_a_file_decision() {
 
     let rows: Vec<_> = pane
         .mapping
-        .track_sections
+        .track_sides
         .iter()
-        .flat_map(crate::import::MappingTrackSection::mappings)
+        .flat_map(crate::import::MappingTrackSide::mappings)
         .collect();
     assert_eq!(rows.len(), 2);
     assert_eq!(rows[0].duration_ms, Some(111_000));

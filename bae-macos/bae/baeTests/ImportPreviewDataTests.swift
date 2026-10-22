@@ -87,8 +87,8 @@ struct ImportPreviewDataTests {
         let candidateFileIDs = Set(candidate.files.files.map(\.file.name))
         var representedFileIDs = Set(mapping.images.map(\.fileId))
 
-        for section in mapping.trackSections {
-            switch section.content {
+        for run in mapping.trackSides.flatMap(\.runs) {
+            switch run {
             case .tracks(let mappings):
                 for mapping in mappings {
                     if case .file(let file) = mapping.source {
