@@ -19,7 +19,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -36,6 +35,7 @@ import fm.bae.app.R
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
@@ -96,52 +96,10 @@ internal fun DropboxFolderChoice(
     }
 }
 
-/** Where browsing the signed-in OneDrive stands: the folders opened from its top, and what the last holds. */
-private class OneDriveBrowser(
-    private val session: OpenLibrary,
-    private val providers: OAuthProviders,
-    private val errors: LocaleErrorDisplays,
-    private val onError: (DisplayError?) -> Unit,
-) {
-    /** The folders opened from the top, the last being the one shown. */
-    val path = mutableStateListOf<BridgeStorageFolder>()
-    var children by mutableStateOf<List<BridgeStorageFolder>?>(null)
-        private set
-    var busy by mutableStateOf(false)
-
-    suspend fun openRoot() {
-        performBridgeAction(logger, "open the OneDrive root", errors, onError) {
-            open(providers.oneDriveRoot(session.appHandle))
-        }
-    }
-
-    suspend fun open(folder: BridgeStorageFolder) {
-        children = null
-        path.add(folder)
-        performBridgeAction(logger, "list OneDrive folders", errors, onError) {
-            children = providers.oneDriveFolders(session.appHandle, folder.location)
-        }
-    }
-
-    suspend fun up() {
-        path.removeAt(path.lastIndex)
-        open(path.removeAt(path.lastIndex))
-    }
-
-    suspend fun create(name: String) {
-        val parent = path.last()
-        busy = true
-        onError(null)
-        performBridgeAction(logger, "create a OneDrive folder", errors, onError) {
-            open(providers.createOneDriveFolder(session.appHandle, parent.location, name))
-        }
-        busy = false
-    }
-}
-
 /**
  * The signed-in OneDrive, browsed from its top: open a folder to go inside,
- * make a new one, and use the folder shown as the library's cloud home.
+ * make a new one, and use the folder shown as the library's cloud home. A
+ * listing that fails shows its failure and Retry here, where the person is.
  */
 @Composable
 internal fun OneDriveFolderChoice(
@@ -152,22 +110,27 @@ internal fun OneDriveFolderChoice(
 ) {
     val context = LocalContext.current
     val scope = rememberScreenScope()
-    val browser = remember(session) { OneDriveBrowser(session, providers, LocaleErrorDisplays(context), onError) }
+    val browser = remember(session) { OneDriveBrowser(session.appHandle, providers, LocaleErrorDisplays(context)) }
     var naming by remember { mutableStateOf(false) }
     LaunchedEffect(browser) { browser.openRoot() }
 
-    val current = browser.path.lastOrNull() ?: return
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        if (browser.path.size > 1) {
-            TextButton(onClick = { scope.launch { browser.up() } }, enabled = !browser.busy) {
-                Text(stringResource(R.string.back))
-            }
-        }
-        Text(text = current.name, style = ThemeText.heading.style, modifier = Modifier.weight(1f))
+    val shown = browser.shown
+    if (shown != null) {
+        OneDriveHeading(shown, enabled = !browser.busy) { scope.launch { browser.up(shown) } }
     }
-    browser.children?.forEach { folder ->
-        FolderRow(folder = folder, enabled = !browser.busy) { scope.launch { browser.open(folder) } }
-    } ?: CircularProgressIndicator()
+    browser.failure?.let { failure ->
+        failure.error?.let { ErrorDetailDisclosure(it) }
+        TextButton(onClick = { scope.launch { failure.retry() } }, enabled = !browser.busy) {
+            Text(stringResource(R.string.retry))
+        }
+    }
+    if (browser.busy) {
+        CircularProgressIndicator()
+    }
+    if (shown == null) return
+    shown.children.forEach { folder ->
+        FolderRow(folder = folder, enabled = !browser.busy) { scope.launch { browser.open(shown, folder) } }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
         OutlinedButton(onClick = { naming = true }, enabled = !browser.busy) {
             Text(stringResource(R.string.storage_onedrive_new_folder))
@@ -179,7 +142,7 @@ internal fun OneDriveFolderChoice(
                 onError(null)
                 scope.launch {
                     runSetup(context, "set up OneDrive storage", onError, onSetUp) { deviceName ->
-                        providers.setUpStorage(session.appHandle, current.location, deviceName)
+                        providers.setUpStorage(session.appHandle, shown.folder.location, deviceName)
                     }
                     browser.busy = false
                 }
@@ -192,10 +155,27 @@ internal fun OneDriveFolderChoice(
         NewFolderDialog(
             onCreate = { name ->
                 naming = false
-                scope.launch { browser.create(name) }
+                scope.launch { browser.create(shown, name) }
             },
             onDismiss = { naming = false },
         )
+    }
+}
+
+/** The folder shown, with Back to the one it was opened from below the top. */
+@Composable
+private fun OneDriveHeading(
+    shown: OneDriveListing,
+    enabled: Boolean,
+    onUp: () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (shown.path.size > 1) {
+            TextButton(onClick = onUp, enabled = enabled) {
+                Text(stringResource(R.string.back))
+            }
+        }
+        Text(text = shown.folder.name, style = ThemeText.heading.style, modifier = Modifier.weight(1f))
     }
 }
 

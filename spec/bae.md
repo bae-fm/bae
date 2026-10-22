@@ -1336,7 +1336,10 @@ then use. When coven refuses a setup, bae says why in plain words.
 picks the folder the library lives in. On Dropbox that is a shared folder, so
 the household can be invited to it; with none yet, bae says to share one in
 Dropbox and look again. On OneDrive it is any folder, browsed from the top,
-and the person can make a new one there. coven holds the sign-in; bae never
+and the person can make a new one there. The picker moves into a folder only
+once its folders have loaded; a listing that fails leaves it where it was,
+with the failure and Retry, and a top that fails to list shows only those.
+coven holds the sign-in; bae never
 sees its tokens. bae's Dropbox app has access to the whole Dropbox, not an app
 folder: an app folder can't be shared, so a household couldn't be invited to
 it.
