@@ -139,8 +139,16 @@ album    Album Title, Artist Name
 Every import is its own release, so the library can hold one pressing twice:
 two folders of the same CD are two releases under one album (§2.7).
 
-An album names one *primary* release: the one whose cover it shows and that
-opens by default. With none set, the first release serves.
+An album's *primary* release is the one whose cover it shows and that opens
+and plays by default. It is not a stored pointer: each release holds a place in
+its album's order (`releases.album_order`), and the primary is the release
+first in that order, ties broken by release id. So every album with a release
+has exactly one primary on every device, and two devices that each made a
+different release primary agree on one after they sync. A release joining an
+album goes after the album's others, so an album's first release stays its
+primary. "Set as Primary Release" moves a release before the album's others,
+and is refused for a release of another album. Moving or deleting a release
+writes nothing else: the next release in the order is then the primary.
 
 A release has tracks, a cover, and the files its tracks play from. Its pressing
 facts are typed values in bae's own vocabulary (Appendix H), read from what the
@@ -469,9 +477,12 @@ it.
 Identification reads clues from the files, then looks them up. A clue is one
 of:
 
-- **A disc ID**, computed from a CUE sheet or a rip log's table of contents.
+- **Disc IDs**, one per disc the folder's rips describe: each rip log whose
+  table of contents reads, and each CUE sheet with no such log beside it, in
+  the same folder. A sheet beside a log describes the disc the log already
+  hashed, so it isn't hashed again; a disc two files hash alike counts once.
   bae hashes the track offsets the way MusicBrainz does; it never reads a
-  drive.
+  drive. Carol's box, a CUE sheet per disc, yields two disc IDs.
 - **Barcodes**, decoded from the bars on the artwork, read from the digits
   printed under them, or taken from a CUE sheet's `CATALOG` line.
 - **Catalog numbers**, read from the folder's text: the CUE sheet, the
@@ -512,7 +523,7 @@ itself and at its own pace:
 
 | Clue | Asked of |
 |---|---|
-| disc ID | MusicBrainz |
+| each disc ID | MusicBrainz |
 | ISRCs | MusicBrainz |
 | barcodes | both |
 | catalog numbers | both |
@@ -555,11 +566,36 @@ alike. Five statements count:
 5. They print the same catalog number under the same label, and their titles
    share a word.
 
+**A release's mediums.** A MusicBrainz release lists its media, each with its
+format and its own tracks. Discogs lists one flat tracklist and states the
+media as format entries with quantities, so bae splits the tracklist by its
+positions:
+
+- `2-5` is the fifth track of disc 2.
+- `CD2-5`, `CD-5` and `BD-1` sit on a disc of the carrier the prefix names
+  (CD, DVD, BD for Blu-ray, SACD, VHS, LD for LaserDisc): disc 2 of the CDs,
+  or that carrier's only disc.
+- `A3` is on side A of a record or cassette. A record holds two sides, the
+  second the letter after the first, so a third side, or a letter that doesn't
+  follow, starts the next record: a box whose every record restarts at A
+  splits per record.
+- A heading, or an index row printing no position, goes with the next row
+  that names a medium (an index with its first sub-track's). A tracklist whose
+  positions name no medium is one medium.
+
+Each Discogs medium takes its carrier from the format entries, one unit of a
+format per medium. A prefix names its own carrier. Lettered records take the
+sided formats (vinyl, cassette, shellac) in format order, and the other discs
+the remaining units in order. Where a group's mediums and units don't count
+alike, the group takes the one carrier its units name, else none.
+
 **Ranking.** Each pressing is scored by what it states against what the folder
 states. For each fact, a pressing agrees, says nothing, or disagrees; one that
 says nothing never loses to one that disagrees. Which lookup found a pressing
-adds no weight. The pressings tied at the top are offered; the rest are set
-aside under "N more releases".
+adds no weight, with one exception: a disc ID's lookup returns only releases
+holding that disc, so a release returned for more of the folder's disc IDs
+holds more of its discs and ranks above one returned for fewer. The pressings
+tied at the top are offered; the rest are set aside under "N more releases".
 
 Two kinds of pressing never stand:
 
@@ -720,8 +756,9 @@ import. Turning import on imports nothing already identified.
   is stored with the candidate like any pane control (§3.6), and the
   candidate is ready again.
 - **Identifying a library release again.** A release already in the library
-  can be identified again from its own files; its disc ID comes from its stored
-  tracks. The person then names its pressing, whose records replace the old
+  can be identified again from its own files; its disc IDs come from the rip
+  logs and CUE sheets this device holds of it, and its track lengths from its
+  stored tracks. The person then names its pressing, whose records replace the old
   ones and whose facts seed its metadata, or says it is no catalog's pressing:
   then it keeps no records and moves to a fresh album.
 - **Resetting.** A release's metadata can be re-read from its source: the
@@ -1976,12 +2013,12 @@ All sync.
 | `artists` | artist: name, folded name, sort name, MusicBrainz and Discogs ids |
 | `artist_merges` | artist absorbed into another (§2.3); read through the view `merged_artist_survivors` |
 | `artist_images` | artist's picture, keyed by the artist; carries a file |
-| `albums` | album: title, first artist, year, primary release, compilation flag |
+| `albums` | album: title, first artist, year, compilation flag |
 | `album_artists` | album's artist after the first, in order |
 | `works` | MusicBrainz work |
 | `work_artists` | work's credited artist, in order |
 | `work_parts` | work inside a larger work, in order |
-| `releases` | pressing: name, year, labels, barcode, country or region, media, status, packaging, Discogs details, source folder name, content hash, album loudness and peak, where its metadata came from |
+| `releases` | pressing: its album and place in the album's order (§2.1), name, year, labels, barcode, country or region, media, status, packaging, Discogs details, source folder name, content hash, album loudness and peak, where its metadata came from |
 | `covers` | release's cover, keyed by the release; carries a file |
 | `release_files` | file of a release: name, size, type, and the audio facts the scan read; carries a file once attached, whose hash and location coven writes |
 | `release_artist_roles` | credit on a release, as the catalog stated it |
@@ -2070,7 +2107,7 @@ under it.
 |---|---|
 | `source_release` | one fetched catalog release and every fact an import reads from it |
 | `source_release_album_artist`, `source_release_role`, `source_release_entry_credit`, `source_release_entry_role` | its credits |
-| `source_release_medium`, `source_release_entry`, `source_release_format` | its media and tracklist |
+| `source_release_medium`, `source_release_entry`, `source_release_format` | its mediums, each with its carrier where stated, their tracklists, and its format entries |
 | `source_release_work`, `source_release_work_composer` | its MusicBrainz works |
 | `source_release_link`, `source_release_album_link`, `source_release_record`, `release_group_album_link` | what it says it is on other catalogs |
 | `source_release_cover`, `source_release_cover_copy`, `source_release_archive_group` | the images it offers a picker |
