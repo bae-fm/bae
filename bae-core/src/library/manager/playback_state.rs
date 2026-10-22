@@ -3,11 +3,14 @@
 use super::*;
 
 impl LibraryManager {
+    /// Start playback over the system's audio output. `audio_focus` is how
+    /// the platform shares the speaker between apps.
     pub fn start_playback_service(
         &self,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
         restore_playback: bool,
+        audio_focus: crate::playback::AudioFocus,
     ) -> crate::playback::PlaybackHandle {
         crate::playback::PlaybackService::start(
             self.clone(),
@@ -16,6 +19,7 @@ impl LibraryManager {
             position_update_interval_ms,
             restore_playback,
             self.playback_clock(),
+            audio_focus,
         )
     }
 

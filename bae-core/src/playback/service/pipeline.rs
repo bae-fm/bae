@@ -33,7 +33,8 @@ impl PlaybackService {
     /// - `start`: a direct start (pregap skipped), a natural transition (pregap
     ///   played), or a position in the track's stream.
     /// - `target`: where the load lands once audio is ready (Playing, or Paused
-    ///   with a reason). Computed absolutely by the caller.
+    ///   with a reason). Computed absolutely by the caller; a Playing target
+    ///   the system refuses the speaker lands paused.
     /// - `transition`: how this start came about, for the `TrackStarted` event.
     ///   Reported here at initiation for every caller that reaches `play_track`
     ///   with a `Playing` target; a `Paused` target loads without playing and
@@ -49,6 +50,8 @@ impl PlaybackService {
         // teardown/prepare work, so the measured wait covers the whole path to
         // Playing.
         let play_started_at = std::time::Instant::now();
+        // Ask the system first: a start it refuses loads the track paused.
+        let target = self.admit(target);
         info!(
             "Playing track: {} (start: {:?}, target: {:?})",
             track_id, start, target
@@ -225,6 +228,8 @@ impl PlaybackService {
         }
         self.sync_audio_state();
         self.emit_state();
+        // Nothing plays now: give the speaker back so another app can resume.
+        self.audio_focus.release();
         // With the slot Stopped this clears the durable row — on every stop path
         // (natural end, halt-on-error, the current track removed), not just the
         // explicit Stop command.

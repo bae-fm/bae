@@ -48,19 +48,16 @@ private val logger = BaeLogger(TAG)
 class BaeCorePlayer(
     applicationLooper: Looper,
     private val appHandle: AppHandle,
-    private val context: Context,
+    system: PlaybackSystem,
     private val scope: CoroutineScope,
     private val queueUpcomingSource: QueueUpcomingSource = QueueUpcomingSource(appHandle),
-    /** Whether the app has a started Activity; Android refuses to start a service
-     *  from the background, so [PlaybackSystemHooks] starts one only then. */
-    private val isAppForeground: () -> Boolean,
 ) : SimpleBasePlayer(applicationLooper),
     PlaybackEventSink {
     internal val systemHooks =
         PlaybackSystemHooks(
-            context = context,
+            system = system,
             appHandle = appHandle,
-            isAppForeground = isAppForeground,
+            scope = scope,
             isPlaying = { _isPlaying.value },
             hasCurrentTrack = { currentMeta != null },
         )
@@ -417,7 +414,6 @@ class BaeCorePlayer(
         refreshArtwork(null)
         sidePausePrompt = null
         positionModel.reset()
-        systemHooks.onPlaybackStopped()
         publish()
     }
 

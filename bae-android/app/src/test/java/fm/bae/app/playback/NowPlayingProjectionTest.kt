@@ -114,9 +114,8 @@ class NowPlayingProjectionTest {
         return BaeCorePlayer(
             applicationLooper = looper,
             appHandle = handle,
-            context = context,
+            system = PlaybackSystem(context, AudioFocus(context), { false }),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-            isAppForeground = { false },
         )
     }
 }

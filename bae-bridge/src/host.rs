@@ -13,6 +13,8 @@ pub struct BridgeHost {
     oauth_clients: Mutex<coven::OAuthClients>,
     #[cfg(any(target_os = "ios", target_os = "android"))]
     presenter: Mutex<Option<Arc<dyn coven::OAuthPresenter>>>,
+    /// How this platform shares the speaker, for every library's playback.
+    audio_focus: bae_core::playback::AudioFocus,
 }
 
 impl Drop for BridgeHost {
@@ -39,6 +41,12 @@ impl BridgeHost {
         )
     }
 
+    /// How this platform shares the speaker, which an opened library's
+    /// playback asks before every start.
+    pub(crate) fn audio_focus(&self) -> bae_core::playback::AudioFocus {
+        self.audio_focus.clone()
+    }
+
     fn builder(&self) -> coven::CovenBuilder {
         let builder = self
             .keychain
@@ -61,6 +69,7 @@ impl BridgeHost {
         diagnostics: Arc<BridgeDiagnostics>,
         app_dir: Arc<BridgeAppDir>,
         keychain: bae_core::library::Keychain,
+        audio_focus: bae_core::playback::AudioFocus,
     ) -> Result<Arc<Self>, BridgeError> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
@@ -81,14 +90,18 @@ impl BridgeHost {
             )),
             #[cfg(any(target_os = "ios", target_os = "android"))]
             presenter: Mutex::new(None),
+            audio_focus,
         }))
     }
 }
 
 /// A host whose keys and credentials stay in an in-memory keychain for this
-/// process: a debug app's UI tests start it so they never touch the login
-/// keychain.
-#[cfg(any(test, feature = "test-keyring"))]
+/// process: the macOS debug app's UI tests start it so they never touch the
+/// login keychain.
+#[cfg(all(
+    any(test, feature = "test-keyring"),
+    not(any(target_os = "ios", target_os = "android"))
+))]
 #[uniffi::export]
 impl BridgeHost {
     #[uniffi::constructor]
@@ -100,20 +113,53 @@ impl BridgeHost {
             diagnostics,
             app_dir,
             bae_core::library::Keychain::in_memory(),
+            bae_core::playback::AudioFocus::Unshared,
         )
     }
 }
 
-#[uniffi::export(async_runtime = "tokio", cancellable)]
+/// The desktop's host: any app plays without asking for the speaker.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[uniffi::export]
 impl BridgeHost {
     #[uniffi::constructor]
     pub fn new(
         diagnostics: Arc<BridgeDiagnostics>,
         app_dir: Arc<BridgeAppDir>,
     ) -> Result<Arc<Self>, BridgeError> {
-        Self::start(diagnostics, app_dir, bae_core::library::Keychain::System)
+        Self::start(
+            diagnostics,
+            app_dir,
+            bae_core::library::Keychain::System,
+            bae_core::playback::AudioFocus::Unshared,
+        )
     }
+}
 
+/// A phone's host, holding the system's audio focus (Android) or audio
+/// session (iOS), which every library's playback asks before it starts.
+#[cfg(any(target_os = "ios", target_os = "android"))]
+#[uniffi::export]
+impl BridgeHost {
+    #[uniffi::constructor]
+    pub fn new(
+        diagnostics: Arc<BridgeDiagnostics>,
+        app_dir: Arc<BridgeAppDir>,
+        audio_focus: Box<dyn crate::BridgeAudioFocus>,
+    ) -> Result<Arc<Self>, BridgeError> {
+        Self::start(
+            diagnostics,
+            app_dir,
+            bae_core::library::Keychain::System,
+            bae_core::playback::AudioFocus::Shared(Arc::new(crate::PlatformAudioFocus(
+                audio_focus,
+            ))),
+        )
+    }
+}
+
+#[uniffi::export(async_runtime = "tokio", cancellable)]
+impl BridgeHost {
     pub async fn flush_diagnostics(self: Arc<Self>) -> Result<(), BridgeError> {
         crate::operation_runtime::run(
             self.runtime

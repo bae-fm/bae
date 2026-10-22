@@ -65,6 +65,7 @@ use tracing::{debug, error, info, trace, warn};
 
 mod advance;
 mod api;
+mod audio_focus;
 mod completion;
 use completion::AudibleCompletion;
 mod file_buffers;
@@ -369,6 +370,9 @@ pub struct PlaybackService {
     /// The queue and the projection stream the UIs read, as one owner: every
     /// mutation goes through `apply`, which republishes.
     playback_queue: PublishedQueue,
+    /// Whether the system lets bae make sound; asked before every start and
+    /// released when playback stops.
+    audio_focus: crate::playback::AudioFocus,
     /// The device both players open their outputs from: `audio_output` at
     /// startup, the preview's on its first play. Held so a preview uses the
     /// device the service started with (in tests, one with no hardware).

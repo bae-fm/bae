@@ -1,6 +1,7 @@
 package fm.bae.app
 
 import android.app.Application
+import fm.bae.app.playback.AudioFocus
 import io.crates.keyring.Keyring
 import uniffi.bae_bridge.BridgeAppDir
 import uniffi.bae_bridge.BridgeDiagnostics
@@ -28,6 +29,14 @@ class BaeApp : Application() {
      * then nothing past the startup error screen runs.
      */
     lateinit var host: BridgeHost
+        private set
+
+    /**
+     * The process's audio focus, which the host hands every library's playback
+     * to ask before it starts. Built just before the host; the open session's
+     * player follows its changes.
+     */
+    lateinit var audioFocus: AudioFocus
         private set
 
     var oauthProviders: OAuthProviders? = null
@@ -70,7 +79,8 @@ class BaeApp : Application() {
         // onboarding runtime's worker threads. Any of these failing stops the
         // launch at the startup error, and the exception names which one it was.
         try {
-            host = BridgeHost(diagnostics, BridgeAppDir(filesDir.absolutePath))
+            audioFocus = AudioFocus(this)
+            host = BridgeHost(diagnostics, BridgeAppDir(filesDir.absolutePath), audioFocus)
             initKeyring(diagnostics)
         } catch (error: BridgeException) {
             startupError = error

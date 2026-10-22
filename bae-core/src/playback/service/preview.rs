@@ -27,19 +27,17 @@ impl PlaybackService {
         }
     }
 
-    /// Resume the main player the ended preview had paused.
+    /// Resume the main player the ended preview had paused, unless the system
+    /// refuses the speaker, which leaves it paused.
     fn resume_main_player(&mut self) {
-        let resumed = match &mut self.slot {
-            PlaybackSlot::Active(cur) => {
-                cur.phase = TrackPhase::Playing;
-                true
-            }
-            _ => false,
-        };
-        if resumed {
-            self.sync_audio_state();
-            self.emit_state();
+        if !matches!(self.slot, PlaybackSlot::Active(_)) || !self.audio_focus_granted() {
+            return;
         }
+        if let PlaybackSlot::Active(cur) = &mut self.slot {
+            cur.phase = TrackPhase::Playing;
+        }
+        self.sync_audio_state();
+        self.emit_state();
     }
 
     /// Stop preview because main playback is taking over. Main starts itself, so
@@ -53,6 +51,10 @@ impl PlaybackService {
     pub(super) async fn preview_play(&mut self, target: crate::playback::PreviewTarget) {
         if self.preview.current_target() == Some(&target) {
             self.preview_stop();
+            return;
+        }
+        // A preview plays sound of its own: ask the system first.
+        if !self.audio_focus_granted() {
             return;
         }
 

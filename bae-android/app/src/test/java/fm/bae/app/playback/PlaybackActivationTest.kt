@@ -35,9 +35,8 @@ class PlaybackActivationTest {
         return BaeCorePlayer(
             applicationLooper = Looper.getMainLooper(),
             appHandle = handle,
-            context = context,
+            system = PlaybackSystem(context, AudioFocus(context), { foreground }),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-            isAppForeground = { foreground },
         )
     }
 

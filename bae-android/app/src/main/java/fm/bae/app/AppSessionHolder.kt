@@ -15,6 +15,7 @@ import fm.bae.app.data.SessionMessages
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.playback.BaeCorePlayer
+import fm.bae.app.playback.PlaybackSystem
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -580,14 +581,14 @@ object AppSessionHolder {
                             BaeCorePlayer(
                                 applicationLooper = Looper.getMainLooper(),
                                 appHandle = handle,
-                                context = appContext,
+                                system =
+                                    PlaybackSystem(appContext, (appContext as BaeApp).audioFocus) {
+                                        ProcessLifecycleOwner
+                                            .get()
+                                            .lifecycle.currentState
+                                            .isAtLeast(Lifecycle.State.STARTED)
+                                    },
                                 scope = sessionScope,
-                                isAppForeground = {
-                                    ProcessLifecycleOwner
-                                        .get()
-                                        .lifecycle.currentState
-                                        .isAtLeast(Lifecycle.State.STARTED)
-                                },
                             ),
                         scope = sessionScope,
                         messages = messages,

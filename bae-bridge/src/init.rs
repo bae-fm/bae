@@ -93,6 +93,7 @@ impl BridgeDiagnostics {
             library_id,
             position_update_interval_ms,
             restore_playback,
+            host.audio_focus(),
             self.inner.clone(),
             builder,
             move |services, runtime| AppHandle::start_for_host(services, runtime, host),
@@ -118,6 +119,7 @@ impl BridgeDiagnostics {
             library_id,
             position_update_interval_ms,
             restore_playback,
+            host.audio_focus(),
             self.inner.clone(),
             builder,
             move |services, runtime| AppHandle::start_for_host(services, runtime, host),
@@ -137,6 +139,7 @@ impl BridgeDiagnostics {
             handle,
             position_update_interval_ms,
             restore_playback,
+            host.audio_focus(),
             self.inner.clone(),
             move |services, runtime| AppHandle::start_for_host(services, runtime, host),
         ))

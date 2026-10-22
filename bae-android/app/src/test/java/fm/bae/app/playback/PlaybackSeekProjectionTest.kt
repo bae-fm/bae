@@ -266,9 +266,8 @@ class PlaybackSeekProjectionTest {
             BaeCorePlayer(
                 applicationLooper = Looper.getMainLooper(),
                 appHandle = handle,
-                context = context,
+                system = PlaybackSystem(context, AudioFocus(context), { false }),
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-                isAppForeground = { false },
             )
         return player to handle
     }

@@ -4,36 +4,40 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.media.AudioAttributes
-import android.media.AudioFocusRequest
 import android.media.AudioManager
 import fm.bae.app.BaeLogger
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandle
 
 private val systemHooksLogger = BaeLogger("bae.PlaybackSystemHooks")
 
+/** What the device gives the open library's playback. */
+class PlaybackSystem(
+    val context: Context,
+    /** The process's audio focus, whose changes playback follows. */
+    val audioFocus: AudioFocus,
+    /** Whether the app has a started Activity; Android refuses to start a service
+     *  from the background, so [PlaybackSystemHooks] starts one only then. */
+    val isAppForeground: () -> Boolean,
+)
+
+/**
+ * What the system does to the open library's playback: the focus changes
+ * [AudioFocus] reports pause and resume it, headphones coming out pause it, and
+ * a start brings up the playback service. Core asks for focus before it starts
+ * playback and gives it back once it stops; these hooks only follow what the
+ * system does afterwards.
+ */
 internal class PlaybackSystemHooks(
-    private val context: Context,
+    private val system: PlaybackSystem,
     private val appHandle: AppHandle,
-    private val isAppForeground: () -> Boolean,
+    private val scope: CoroutineScope,
     private val isPlaying: () -> Boolean,
     private val hasCurrentTrack: () -> Boolean,
 ) {
-    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-
-    private val focusRequest: AudioFocusRequest =
-        AudioFocusRequest
-            .Builder(AudioManager.AUDIOFOCUS_GAIN)
-            .setAudioAttributes(
-                AudioAttributes
-                    .Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build(),
-            ).setOnAudioFocusChangeListener(::onAudioFocusChange)
-            .build()
-
-    private var hasFocus: Boolean = false
+    private val context = system.context
 
     /**
      * Whether a transient focus loss paused *active* playback, so the matching
@@ -43,6 +47,9 @@ internal class PlaybackSystemHooks(
      * stopped. Cleared on an explicit user pause.
      */
     private var resumeOnFocusGain: Boolean = false
+
+    /** Following [AudioFocus.changes] while attached. */
+    private var focusChanges: Job? = null
 
     private val becomingNoisyReceiver =
         object : BroadcastReceiver() {
@@ -63,31 +70,29 @@ internal class PlaybackSystemHooks(
             IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY),
         )
         noisyReceiverRegistered = true
+        focusChanges = scope.launch { system.audioFocus.changes.collect(::onAudioFocusChange) }
     }
 
     /**
-     * Unregister the becoming-noisy receiver and abandon audio focus. Idempotent.
-     * Called from [BaeCorePlayer.handleRelease] when Media3 releases the player,
-     * and directly from session teardown BEFORE the [AppHandle] is closed: the
-     * focus listener and noisy receiver call `appHandle.pause()/resume()`
-     * spontaneously (no user action), so they must stop touching the handle
-     * before it closes, or a stray system callback would hit a closed handle.
+     * Unregister the becoming-noisy receiver and stop following focus changes.
+     * Idempotent. Called from [BaeCorePlayer.handleRelease] when Media3 releases
+     * the player, and directly from session teardown BEFORE the [AppHandle] is
+     * closed: focus changes and the noisy receiver call
+     * `appHandle.pause()/resume()` spontaneously (no user action), so they must
+     * stop touching the handle before it closes, or a stray system callback
+     * would hit a closed handle.
      */
     fun detach() {
         if (noisyReceiverRegistered) {
             context.unregisterReceiver(becomingNoisyReceiver)
             noisyReceiverRegistered = false
         }
-        abandonFocus()
+        focusChanges?.cancel()
+        focusChanges = null
     }
 
     fun onPlaybackActivated() {
-        requestFocus()
         ensurePlaybackService()
-    }
-
-    fun onPlaybackStopped() {
-        abandonFocus()
     }
 
     fun disarmResumeOnFocusGain() {
@@ -153,7 +158,7 @@ internal class PlaybackSystemHooks(
      * already covered by the service started when this session began on screen.
      */
     private fun ensurePlaybackService() {
-        val foreground = isAppForeground()
+        val foreground = system.isAppForeground()
         val hasCurrentTrack = hasCurrentTrack()
         if (!hasCurrentTrack || !foreground) {
             systemHooksLogger.debug(
@@ -171,30 +176,5 @@ internal class PlaybackSystemHooks(
             // there's nothing to recover.
             systemHooksLogger.warning("Could not start playback service from foreground", e)
         }
-    }
-
-    /**
-     * Ask for audio focus as playback starts. The system refuses it while
-     * something that outranks music holds it, such as a phone call; playing
-     * over that would be wrong, so a refusal pauses the playback that just
-     * started, and the person sees it paused.
-     */
-    private fun requestFocus() {
-        if (hasFocus) return
-        val result = audioManager.requestAudioFocus(focusRequest)
-        hasFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-        if (!hasFocus) {
-            systemHooksLogger.warning(
-                "audio focus refused (request result $result, audio mode ${audioManager.mode}); pausing playback",
-            )
-            resumeOnFocusGain = false
-            appHandle.pause()
-        }
-    }
-
-    private fun abandonFocus() {
-        if (!hasFocus) return
-        audioManager.abandonAudioFocusRequest(focusRequest)
-        hasFocus = false
     }
 }

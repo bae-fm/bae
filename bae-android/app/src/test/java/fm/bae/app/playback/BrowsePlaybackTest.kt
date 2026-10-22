@@ -29,9 +29,8 @@ class BrowsePlaybackTest {
         BaeCorePlayer(
             applicationLooper = Looper.getMainLooper(),
             appHandle = handle,
-            context = RuntimeEnvironment.getApplication(),
+            system = PlaybackSystem(RuntimeEnvironment.getApplication(), AudioFocus(RuntimeEnvironment.getApplication()), { false }),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-            isAppForeground = { false },
         )
 
     private fun mediaItem(mediaId: String): MediaItem = MediaItem.Builder().setMediaId(mediaId).build()

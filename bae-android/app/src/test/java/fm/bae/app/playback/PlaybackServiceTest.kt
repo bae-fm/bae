@@ -165,9 +165,8 @@ class PlaybackServiceTest {
                         BaeCorePlayer(
                             applicationLooper = looper,
                             appHandle = handle,
-                            context = context,
+                            system = PlaybackSystem(context, AudioFocus(context), { false }),
                             scope = scope,
-                            isAppForeground = { false },
                         ),
                     scope = scope,
                     messages = SessionMessages(scope, NoErrorDisplays),

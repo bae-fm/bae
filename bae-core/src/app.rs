@@ -126,7 +126,8 @@ fn classify_open_error(error: crate::db::DbError) -> BootstrapError {
 /// under `app_dir`.
 ///
 /// `position_update_interval_ms` controls how often playback emits a position
-/// tick. Returns once the DB is open and playback (plus the desktop import
+/// tick, and `audio_focus` is how the platform shares the speaker, asked before
+/// every start of playback. Returns once the DB is open and playback (plus the desktop import
 /// pipeline) is running. For an unlocked cloud library, sync attachment starts
 /// on the returned runtime and reports readiness or failure through sync status.
 ///
@@ -140,6 +141,7 @@ pub fn bootstrap<T, F>(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
+    audio_focus: crate::playback::AudioFocus,
     diagnostics: Diagnostics,
 
     builder: coven::CovenBuilder,
@@ -155,6 +157,7 @@ where
         library_id,
         position_update_interval_ms,
         restore_playback,
+        audio_focus,
         diagnostics,
         builder.into(),
         compose,
@@ -168,6 +171,7 @@ pub fn bootstrap_prepared<T, F>(
     handle: coven::CovenHandle,
     position_update_interval_ms: u32,
     restore_playback: bool,
+    audio_focus: crate::playback::AudioFocus,
     diagnostics: Diagnostics,
     compose: F,
 ) -> Result<T, BootstrapError>
@@ -182,6 +186,7 @@ where
         id,
         position_update_interval_ms,
         restore_playback,
+        audio_focus,
         diagnostics,
         crate::library::manager::LibraryOpening::Open(handle),
         compose,
@@ -201,6 +206,7 @@ pub fn bootstrap_on_fixture<T, F>(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
+    audio_focus: crate::playback::AudioFocus,
     diagnostics: Diagnostics,
 
     builder: coven::CovenBuilder,
@@ -216,6 +222,7 @@ where
         library_id,
         position_update_interval_ms,
         restore_playback,
+        audio_focus,
         diagnostics,
         builder.into(),
         compose,
@@ -242,6 +249,7 @@ fn bootstrap_opening<T, F>(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
+    audio_focus: crate::playback::AudioFocus,
     diagnostics: Diagnostics,
 
     builder: crate::library::manager::LibraryOpening,
@@ -265,6 +273,7 @@ where
                 library_id,
                 position_update_interval_ms,
                 restore_playback,
+                audio_focus,
                 diagnostics,
                 builder,
                 compose,
@@ -292,6 +301,7 @@ fn bootstrap_inner<T, F>(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
+    audio_focus: crate::playback::AudioFocus,
     diagnostics: Diagnostics,
 
     builder: crate::library::manager::LibraryOpening,
@@ -436,6 +446,7 @@ where
             runtime.handle().clone(),
             position_update_interval_ms,
             restore_playback,
+            audio_focus,
         )
     });
 

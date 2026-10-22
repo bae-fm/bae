@@ -28,13 +28,13 @@ class AudioFocusResumeTest {
     private fun player(
         context: Context,
         handle: FakeAppHandle,
+        audioFocus: AudioFocus = AudioFocus(context),
     ): BaeCorePlayer =
         BaeCorePlayer(
             applicationLooper = Looper.getMainLooper(),
             appHandle = handle,
-            context = context,
+            system = PlaybackSystem(context, audioFocus, { false }),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-            isAppForeground = { false },
         )
 
     private fun BaeCorePlayer.startPlaying() =
@@ -54,31 +54,19 @@ class AudioFocusResumeTest {
             ),
         )
 
-    /** Playback that starts while the system refuses focus — a call, say — doesn't play over it. */
+    /** A change the system sends to the process's focus reaches the open library's playback. */
     @Test
-    fun playbackStartingWithFocusRefusedPauses() {
+    fun aFocusChangeTheSystemSendsPausesPlayback() {
         val context = RuntimeEnvironment.getApplication()
-        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        shadowOf(audioManager).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_FAILED)
         val handle = FakeAppHandle(emptyMap())
-        val player = player(context, handle)
+        val audioFocus = AudioFocus(context)
+        val player = player(context, handle, audioFocus)
 
         player.startPlaying()
+        audioFocus.onChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(1, handle.pauseCount)
-    }
-
-    @Test
-    fun playbackStartingWithFocusGrantedPlays() {
-        val context = RuntimeEnvironment.getApplication()
-        val handle = FakeAppHandle(emptyMap())
-        val player = player(context, handle)
-
-        player.startPlaying()
-        shadowOf(Looper.getMainLooper()).idle()
-
-        assertEquals(0, handle.pauseCount)
     }
 
     @Test

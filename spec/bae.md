@@ -1778,6 +1778,18 @@ AirPlay receivers but no UPnP ones.
 **This device.** On macOS, playback follows a change of the default output
 device. Volume and mute live in core, so unmuting restores the level last set.
 
+**Sharing the speaker.** Android and iOS let one app play at a time: Android
+through audio focus, iOS through its audio session. Every start of playback
+asks the system first — Play, playing a release or the library, skipping to an
+entry, Next from a side's pause, the next track, a side's countdown running
+out — from the app, the lock screen, a car, the assistant or the widget alike.
+While something that outranks music holds the speaker, such as a phone call,
+the system refuses: nothing plays, what would have played waits paused and
+shows paused, and the system's reason is logged. Playback gives the speaker
+back when it stops. Losing it to another app pauses; a short loss, such as a
+navigation prompt, that paused playing music resumes it when it ends. Desktops
+play without asking.
+
 ### 7.8 What a device remembers
 
 The queue and position are per device. A device saves what it was playing:

@@ -34,8 +34,9 @@ struct TransportActions {
 /// Bridges playback state to the platform's Now Playing surface (the macOS
 /// Control Center widget + media keys, the iOS lock screen + Control Center)
 /// and the remote command center. The shared core owns the metadata, position,
-/// artwork, and scrub math; the macOS preview session and the iOS audio session
-/// live in os-gated extensions.
+/// artwork, and scrub math; the macOS preview session and the iOS interruption
+/// handling live in os-gated extensions. Core activates and releases the iOS
+/// audio session itself, through `PlaybackAudioSession`.
 public final class MediaControlService: @unchecked Sendable {
     var currentDurationMs: UInt64?
     /// Mirrors `changePlaybackPositionCommand.isEnabled` so the scrubber is
@@ -54,7 +55,6 @@ public final class MediaControlService: @unchecked Sendable {
     #endif
 
     #if os(iOS)
-        var sessionActivated = false
         var observersRegistered = false
         /// Latched from the most recent Now Playing update so the interruption
         /// handler knows whether playback was active when a call/alarm began.
@@ -66,22 +66,9 @@ public final class MediaControlService: @unchecked Sendable {
         /// Transport handle the remote commands and interruption/route handlers
         /// forward to. Set in `setupRemoteCommands`.
         var playback: Playback?
-        /// Activates the shared `.playback` audio session as a stream starts.
-        /// The system can refuse it — another app's call holds the session —
-        /// and a test passes one that fails the same way.
-        let activateAudioSession: () throws -> Void
     #endif
 
-    #if os(iOS)
-        public init(
-            activateAudioSession: @escaping () throws -> Void =
-                MediaControlService.activateSharedPlaybackSession
-        ) {
-            self.activateAudioSession = activateAudioSession
-        }
-    #else
-        public init() {}
-    #endif
+    public init() {}
 
     // MARK: - Retained media-control values
 
@@ -134,13 +121,10 @@ public final class MediaControlService: @unchecked Sendable {
         appHandle: AppHandle
     ) {
         #if os(iOS)
-            applyAudioSessionTransition(for: state)
+            applyInterruptionLatch(for: state)
         #endif
         if case .stopped = state {
             clearNowPlaying()
-            #if os(iOS)
-                endPlaybackSession()
-            #endif
             return
         }
         if let metadata = Self.libraryMetadata(for: state) {

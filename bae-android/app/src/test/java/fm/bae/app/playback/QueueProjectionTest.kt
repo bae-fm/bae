@@ -196,9 +196,8 @@ class QueueProjectionTest {
         return BaeCorePlayer(
             applicationLooper = Looper.getMainLooper(),
             appHandle = FakeAppHandle(),
-            context = context,
+            system = PlaybackSystem(context, AudioFocus(context), { false }),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-            isAppForeground = { false },
         )
     }
 }

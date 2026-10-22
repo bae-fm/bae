@@ -223,6 +223,8 @@ fn playback_service_over(
         command_rx,
         progress_tx,
         playback_queue,
+        // The desktop's: a test of the gate sets a system that answers.
+        audio_focus: crate::playback::AudioFocus::Unshared,
         // These tests drive the handlers directly and never start a preview, so
         // no output is ever opened from this device.
         audio_device: Box::new(crate::playback::audio_output::FailingAudioDevice),
@@ -395,3 +397,4 @@ include!("tests/remote_serving.rs");
 include!("tests/side_pause_countdown.rs");
 
 include!("tests/history.rs");
+include!("tests/audio_focus.rs");

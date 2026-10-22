@@ -15,7 +15,7 @@ INLINE_RUST_TEST_LIMIT = 1_000
 # inherent implementation or widening private state. Their current lengths are
 # frozen: growth must first extract a real responsibility.
 SOURCE_LINE_LIMIT_EXCEPTIONS = {
-    "bae-core/src/playback/service/runtime.rs": 1_188,
+    "bae-core/src/playback/service/runtime.rs": 1_184,
 }
 SOURCE_SUFFIXES = {
     ".astro",

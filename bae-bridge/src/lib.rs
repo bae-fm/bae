@@ -8,6 +8,8 @@ extern crate bae_mirror;
 #[cfg(target_os = "android")]
 mod android_tls;
 mod app_dir;
+#[cfg(any(test, target_os = "ios", target_os = "android"))]
+mod audio_focus;
 mod bridge_utils;
 #[cfg(all(feature = "dev-reset", unix))]
 mod dev_reset;
@@ -25,6 +27,8 @@ mod types;
 mod utils;
 
 pub use app_dir::*;
+#[cfg(any(test, target_os = "ios", target_os = "android"))]
+pub use audio_focus::*;
 #[cfg(all(feature = "dev-reset", unix))]
 pub use dev_reset::*;
 pub use handle::*;

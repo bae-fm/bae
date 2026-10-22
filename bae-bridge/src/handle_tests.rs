@@ -187,7 +187,12 @@ pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, st
         .expect("start test app services");
     #[cfg(any(target_os = "ios", target_os = "android"))]
     let services = {
-        let playback = manager.start_playback_service(runtime.handle().clone(), 50, true);
+        let playback = manager.start_playback_service(
+            runtime.handle().clone(),
+            50,
+            true,
+            bae_core::playback::AudioFocus::Unshared,
+        );
         bae_core::library::AppServices::new(manager, playback)
     };
     let handle =

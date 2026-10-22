@@ -503,6 +503,12 @@ impl PlaybackService {
             self.handle_auto_advance(track_id).await;
             return;
         }
+        // Ask the system before anything plays. A refusal leaves the track
+        // where it is and tells every UI, which may have shown it playing.
+        if matches!(self.slot, PlaybackSlot::Active(_)) && !self.audio_focus_granted() {
+            self.emit_state();
+            return;
+        }
         // Capture the listener before allowing the renderer to consume more audio.
         if let PlaybackSlot::Active(cur) = &mut self.slot {
             cur.phase = TrackPhase::Playing;

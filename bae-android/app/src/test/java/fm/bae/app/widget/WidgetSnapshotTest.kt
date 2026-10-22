@@ -1,8 +1,10 @@
 package fm.bae.app.widget
 
+import fm.bae.app.playback.AudioFocus
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.NowPlaying
+import fm.bae.app.playback.PlaybackSystem
 import fm.bae.app.playback.applyPlaybackState
 import fm.bae.app.playback.pausedState
 import fm.bae.app.playback.playbackValues
@@ -195,9 +197,8 @@ class WidgetSnapshotTest {
         return BaeCorePlayer(
             applicationLooper = android.os.Looper.getMainLooper(),
             appHandle = FakeAppHandle(),
-            context = context,
+            system = PlaybackSystem(context, AudioFocus(context), { false }),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-            isAppForeground = { false },
         )
     }
 }

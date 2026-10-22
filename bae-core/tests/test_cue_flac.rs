@@ -276,8 +276,12 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     let track1 = &tracks[0];
     let expected_duration_ms: i64 = 8000; // Track 1 is 0:00 to 0:08
 
-    let playback_handle =
-        library_manager.start_playback_service(tokio::runtime::Handle::current(), 100, true);
+    let playback_handle = library_manager.start_playback_service(
+        tokio::runtime::Handle::current(),
+        100,
+        true,
+        bae_core::playback::AudioFocus::Unshared,
+    );
     playback_handle.set_volume(0.0);
     let mut progress_rx = playback_handle.subscribe_progress();
     playback_handle.play(track1.id.clone());

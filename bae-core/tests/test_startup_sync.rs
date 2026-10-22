@@ -110,6 +110,7 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
                 library_id,
                 200,
                 true,
+                bae_core::playback::AudioFocus::Unshared,
                 bae_core::diagnostics::Diagnostics::noop(),
                 builder,
                 TestApp::start,

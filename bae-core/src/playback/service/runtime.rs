@@ -599,7 +599,8 @@ impl PlaybackService {
     /// loads, stops, and queue edits write it immediately, and active playback
     /// writes it at most once a second.
     /// `clock` is the service's time source for side-pause countdowns;
-    /// production passes one over the library's wall clock.
+    /// production passes one over the library's wall clock. `audio_focus` is
+    /// how the platform shares the speaker, asked before every start.
     pub(crate) fn start(
         library_manager: LibraryManager,
         queue_ids: coven::IdSourceRef,
@@ -607,6 +608,7 @@ impl PlaybackService {
         position_update_interval_ms: u32,
         restore_playback: bool,
         clock: crate::playback::PlaybackClockRef,
+        audio_focus: crate::playback::AudioFocus,
     ) -> PlaybackHandle {
         Self::start_inner(
             library_manager,
@@ -616,6 +618,7 @@ impl PlaybackService {
             restore_playback,
             None,
             clock,
+            audio_focus,
         )
     }
 
@@ -640,6 +643,8 @@ impl PlaybackService {
             restore_playback,
             Some(audio_device),
             clock,
+            // These tests play on the desktop, where nothing shares the speaker.
+            crate::playback::AudioFocus::Unshared,
         )
     }
 
@@ -651,6 +656,7 @@ impl PlaybackService {
         restore_playback: bool,
         custom_device: Option<Box<dyn AudioOutputDevice>>,
         clock: crate::playback::PlaybackClockRef,
+        audio_focus: crate::playback::AudioFocus,
     ) -> PlaybackHandle {
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
         let progress_handle = PlaybackProgressHandle::new(progress_rx, runtime_handle.clone());
@@ -712,6 +718,7 @@ impl PlaybackService {
                             command_rx,
                             progress_tx,
                             playback_queue,
+                            audio_focus,
                             audio_device,
                             audio_output,
                             output: None,
@@ -744,20 +751,6 @@ impl PlaybackService {
                 })
             });
         PlaybackHandle::new(worker, progress_handle, queue_receiver)
-    }
-
-    pub(super) async fn apply_repeat_mode(&mut self, mode: RepeatMode) {
-        if self.playback_queue.repeat_mode() == mode {
-            return;
-        }
-
-        self.playback_queue
-            .apply(|queue| queue.set_repeat_mode(mode));
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::RepeatModeChanged { mode },
-        );
-        self.persist_playback_state().await;
     }
 
     pub(super) async fn run(
@@ -1152,6 +1145,9 @@ impl PlaybackService {
                     self.capture_listening_position();
                     self.finish_listening().await;
                     self.persist_playback_state().await;
+                    // Closing the library ends its playback: give the speaker
+                    // back so another app can resume.
+                    self.audio_focus.release();
                     if reply.send(()).is_err() {
                         debug!("shutdown asked for by a caller that stopped waiting");
                     }

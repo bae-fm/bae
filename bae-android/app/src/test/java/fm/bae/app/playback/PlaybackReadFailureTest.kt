@@ -49,8 +49,7 @@ class PlaybackReadFailureTest {
         BaeCorePlayer(
             applicationLooper = android.os.Looper.getMainLooper(),
             appHandle = FakeAppHandle(),
-            context = RuntimeEnvironment.getApplication(),
+            system = PlaybackSystem(RuntimeEnvironment.getApplication(), AudioFocus(RuntimeEnvironment.getApplication()), { false }),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-            isAppForeground = { false },
         )
 }

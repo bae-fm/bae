@@ -23,4 +23,18 @@ impl PlaybackService {
             PlaybackProgress::QueueItemsAdded { count },
         );
     }
+
+    pub(super) async fn apply_repeat_mode(&mut self, mode: RepeatMode) {
+        if self.playback_queue.repeat_mode() == mode {
+            return;
+        }
+
+        self.playback_queue
+            .apply(|queue| queue.set_repeat_mode(mode));
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::RepeatModeChanged { mode },
+        );
+        self.persist_playback_state().await;
+    }
 }

@@ -1,17 +1,16 @@
 #if os(iOS)
     import AVFAudio
     import MediaPlayer
-    import os.log
-
-    private let logger = Logger.bae("MediaControlService")
 
     extension MediaControlService {
         // MARK: - Remote commands + session
 
-        /// Owns the `AVAudioSession` the cpal CoreAudio sink needs (silent
-        /// without an active `.playback` session) and registers the lock-screen
-        /// / Control-Center remote commands. Transport intents flow into
-        /// `Playback`; the resulting events update Now Playing.
+        /// Follows what the system does to the audio session — a call or an
+        /// alarm interrupting it, headphones coming out — and registers the
+        /// lock-screen / Control-Center remote commands. Transport intents flow
+        /// into `Playback`; the resulting events update Now Playing. Core
+        /// activates the session before every start of playback and releases
+        /// it once playback stops (`PlaybackAudioSession`).
         public func setupRemoteCommands(
             playback: Playback,
             playbackStore: PlaybackStore
@@ -48,63 +47,6 @@
                     }
                 )
             )
-        }
-
-        /// Activate the shared `.playback` session as a stream starts. Called on
-        /// the first `playbackLoading`/`playbackPlaying`, not at library open, so
-        /// opening bae doesn't interrupt audio the user has playing in another
-        /// app before they hit play. Idempotent — the cpal AudioUnit produces no
-        /// sound until this succeeds, so a session the system refused pauses
-        /// the stream rather than letting it play silently.
-        func beginPlaybackSession() {
-            do {
-                try activateSession()
-            }
-            catch {
-                logger.warning(
-                    "Pausing playback: the system refused the audio session: \(error)"
-                )
-                playback?.pause()
-            }
-        }
-
-        /// The production audio session: the shared instance in `.playback`.
-        @usableFromInline
-        static func activateSharedPlaybackSession() throws {
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .default)
-            try session.setActive(true)
-        }
-
-        /// Deactivate the session on `playbackStopped` and notify other apps so
-        /// they can resume. Re-activated on the next `beginPlaybackSession()`.
-        func endPlaybackSession() {
-            guard sessionActivated else {
-                return
-            }
-            do {
-                try AVAudioSession.sharedInstance()
-                    .setActive(
-                        false,
-                        options: .notifyOthersOnDeactivation
-                    )
-                sessionActivated = false
-            }
-            catch {
-                logger.error(
-                    "Failed to deactivate audio session: \(error.localizedDescription)"
-                )
-            }
-        }
-
-        /// Activate the session unless it is already active; throws the
-        /// system's refusal.
-        private func activateSession() throws {
-            guard !sessionActivated else {
-                return
-            }
-            try activateAudioSession()
-            sessionActivated = true
         }
 
         private func registerSessionObservers() {
@@ -147,18 +89,10 @@
                     playback?.pause()
                 }
             case .ended:
-                // Re-activate the session, then auto-resume only when the system
-                // signals it (`.shouldResume`) and the interruption is what
-                // paused us; otherwise core stays paused until the user resumes.
-                sessionActivated = false
-                do {
-                    try activateSession()
-                }
-                catch {
-                    logger.error(
-                        "Failed to activate audio session: \(error.localizedDescription)"
-                    )
-                }
+                // Auto-resume only when the system signals it (`.shouldResume`)
+                // and the interruption is what paused us; otherwise core stays
+                // paused until the user resumes. Resuming asks core, which
+                // activates the session again before anything plays.
                 let shouldResume =
                     (info[AVAudioSessionInterruptionOptionKey] as? UInt)
                     .map(AVAudioSession.InterruptionOptions.init(rawValue:))?
@@ -191,21 +125,20 @@
             }
         }
 
-        // MARK: - Session/latch transition
+        // MARK: - Interruption latch
 
-        /// Transition the session and interruption latch for a library Now
-        /// Playing push, called from `updateNowPlaying(state:appHandle:)` before
-        /// the metadata write (preserving session-before-metadata ordering).
+        /// Transition the interruption latch for a library Now Playing push,
+        /// called from `updateNowPlaying(state:appHandle:)` before the metadata
+        /// write.
         /// `.loading` counts as playing here — it mirrors `NowPlaying.isPlaying`
         /// (`PlaybackStore.swift`) — so an interruption that arrives mid-track
         /// transition still pauses core and auto-resumes on `.ended`.
         /// `.stopped` is handled by the shared clear path instead: nothing to do
         /// here.
-        func applyAudioSessionTransition(for state: BridgePlaybackValueState) {
+        func applyInterruptionLatch(for state: BridgePlaybackValueState) {
             switch state {
             case .playing, .loading:
                 lastKnownIsPlaying = true
-                beginPlaybackSession()
 
             case .paused:
                 lastKnownIsPlaying = false

@@ -3,8 +3,9 @@ import BaeKit
 import MediaPlayer
 import Testing
 
-/// Exercises the parts of `MediaControlService` that only exist on iOS: the
-/// `AVAudioSession` lifecycle, the interruption handlers, and the
+/// Exercises the iOS audio session: `PlaybackAudioSession`, the gate core asks
+/// before every start, and the parts of `MediaControlService` that only exist
+/// on iOS — the interruption handlers, and the
 /// `.loading`-counts-as-playing latch that `updateNowPlaying(state:appHandle:)`
 /// drives before every metadata write. These read and write process-global
 /// singletons (interruption notifications, the Now Playing info center), so
@@ -51,20 +52,36 @@ struct PlaybackAudioSessionTests {
         )
     }
 
-    @Test(
-        "a stream that starts while the audio session is refused pauses instead of playing silently"
-    )
-    func refusedSessionPausesTheStream() {
-        let spy = PlaybackSpy()
-        let service = MediaControlService(activateAudioSession: { throw AudioSessionRefused() })
-        service.setupRemoteCommands(
-            playback: spy.playback,
-            playbackStore: PlaybackStore()
+    @Test("a start the system refuses the session keeps playback from starting")
+    func refusedSessionKeepsPlaybackFromStarting() {
+        var deactivations = 0
+        let session = PlaybackAudioSession(
+            activate: { throw AudioSessionRefused() },
+            deactivate: { deactivations += 1 }
         )
 
-        service.updateNowPlaying(state: playingState(), appHandle: fakeAppHandle)
+        guard case .refused = session.request() else {
+            Issue.record("a refused session must refuse the start")
+            return
+        }
+        session.release()
 
-        #expect(spy.pauseCount == 1)
+        #expect(deactivations == 0, "nothing was activated to release")
+    }
+
+    @Test("stopping releases the session a start activated, once")
+    func stoppingReleasesTheActivatedSession() {
+        var deactivations = 0
+        let session = PlaybackAudioSession(
+            activate: {},
+            deactivate: { deactivations += 1 }
+        )
+
+        #expect(session.request() == .granted)
+        session.release()
+        session.release()
+
+        #expect(deactivations == 1)
     }
 
     @Test("an interruption while playing pauses core and resumes on ended")

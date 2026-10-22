@@ -665,13 +665,16 @@ impl PlaybackService {
     /// - `is_natural_transition`: play from INDEX 00 (pregap included) rather
     ///   than skipping the pregap.
     /// - `target`: where it lands once audio is ready (Playing, or Paused with a
-    ///   reason). Computed absolutely by the caller.
+    ///   reason). Computed absolutely by the caller; a Playing target the system
+    ///   refuses the speaker lands paused.
     pub(super) async fn play_preloaded_track(
         &mut self,
         is_natural_transition: bool,
         target: PlayTarget,
         transition: TrackTransition,
     ) {
+        // Ask the system first: a start it refuses lands paused.
+        let target = self.admit(target);
         let preloaded = match self.preloaded_next.take() {
             Some(preloaded) => preloaded,
             None => {

@@ -11,7 +11,9 @@ import fm.bae.app.data.OutboxStore
 import fm.bae.app.data.SessionMessages
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
+import fm.bae.app.playback.AudioFocus
 import fm.bae.app.playback.BaeCorePlayer
+import fm.bae.app.playback.PlaybackSystem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -130,9 +132,8 @@ class OpenLibraryDisposeTest {
                             BaeCorePlayer(
                                 applicationLooper = Looper.getMainLooper(),
                                 appHandle = handle,
-                                context = context,
+                                system = PlaybackSystem(context, AudioFocus(context), { false }),
                                 scope = scope,
-                                isAppForeground = { false },
                             ),
                         scope = scope,
                         messages = SessionMessages(scope, NoErrorDisplays),
