@@ -1771,6 +1771,14 @@ it gets MP3.
 or offers only an encryption bae doesn't implement, is refused with that
 reason.
 
+How to connect is read from what the receiver advertises, never guessed. An
+AirPlay advertisement must state its features; a RAOP one without them states
+none, and a receiver without status flags sets none, as older receivers do. A
+receiver whose features or status flags can't be read, or whose AirPlay
+advertisement states no features, shows as one bae can't connect to because it
+advertises settings bae can't read, even when its other advertisement reads;
+the log names the setting and the text it carried.
+
 **Finding receivers.** Casting is off by default: it browses the local network
 and serves audio from this machine. While on, devices are searched for only
 while the picker is open. Desktops and Android browse the network themselves.
@@ -2390,7 +2398,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `Keyring`, `KeyringLocked` | fixes the keyring, or unlocks and is asked again |
 | `KeychainEntitlementMissing` | installs a build of bae signed with its keychain entitlement; retrying or unlocking doesn't help |
 | `Membership` | retries the membership step, with the advice it carries |
-| `AirPlayUnsupported` | uses another receiver |
+| `AirPlayUnsupported`, `AirPlayUnreadableSettings` | uses another receiver |
 | `ReplacementUnfinished` | finishes the reset or the restore of this device's copy that stopped partway: the one the category names, never the other (§6.4) |
 
 ### G.2 Why a found release isn't picked

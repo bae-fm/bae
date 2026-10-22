@@ -19,7 +19,7 @@ use std::thread::JoinHandle;
 use mdns_sd::{ResolvedService, ServiceDaemon, ServiceEvent};
 use tracing::{debug, warn};
 
-use super::capabilities::{AirPlayCapabilities, Dialect};
+use super::capabilities::{AirPlayCapabilities, Dialect, UnreadableSetting};
 use crate::renderer::discovery::RendererServiceType;
 use crate::renderer::protocol_discovery::{Browse, ProtocolDiscovery};
 use crate::renderer::published_devices::PublishedDevices;
@@ -41,7 +41,9 @@ pub struct AirPlayDevice {
     /// The receiver's RTSP control address.
     pub addr: IpAddr,
     pub port: u16,
-    pub capabilities: AirPlayCapabilities,
+    /// What it announced about itself, or the setting it announced that bae
+    /// can't read — then it can't be connected to.
+    pub capabilities: Result<AirPlayCapabilities, UnreadableSetting>,
 }
 
 impl AirPlayDevice {
@@ -185,8 +187,11 @@ fn snapshot(table: &DeviceTable) -> Vec<AirPlayDevice> {
 
 /// One entry per receiver id, preferring the AirPlay 2 advertisement when a
 /// receiver is seen on both service types — the same receiver reached the better
-/// way, not two picker rows. Shared with the reported-discovery path, which
-/// merges services the host's browser found the same way.
+/// way, not two picker rows. An advertisement bae can't read wins over a
+/// readable one: without it bae can't tell which dialect the receiver speaks
+/// best, so the receiver shows as one it can't connect to. Shared with the
+/// reported-discovery path, which merges services the host's browser found the
+/// same way.
 pub(crate) fn dedupe_by_id<'a>(
     devices: impl Iterator<Item = &'a AirPlayDevice>,
 ) -> Vec<AirPlayDevice> {
@@ -195,9 +200,14 @@ pub(crate) fn dedupe_by_id<'a>(
         by_id
             .entry(&device.id)
             .and_modify(|existing| {
-                if device.capabilities.dialect == Dialect::AirPlay2
-                    && existing.capabilities.dialect == Dialect::Raop
-                {
+                let replaces = match (&device.capabilities, &existing.capabilities) {
+                    (Err(_), Ok(_)) => true,
+                    (Ok(new), Ok(old)) => {
+                        new.dialect == Dialect::AirPlay2 && old.dialect == Dialect::Raop
+                    }
+                    (Ok(_), Err(_)) | (Err(_), Err(_)) => false,
+                };
+                if replaces {
                     *existing = device;
                 }
             })
@@ -263,12 +273,20 @@ pub(crate) fn map_device(
         chosen.get_or_insert(addr);
     }
 
+    let addr = chosen?;
+    let capabilities = AirPlayCapabilities::from_txt(service_type, txt);
+    if let Err(unreadable) = &capabilities {
+        warn!(
+            "airplay discovery: {name} ({id}) on {service_type:?} advertises a setting bae \
+             can't read, so it can't be connected to: {unreadable}"
+        );
+    }
     Some(AirPlayDevice {
         id,
         name,
-        addr: chosen?,
+        addr,
         port,
-        capabilities: AirPlayCapabilities::from_txt(service_type, txt),
+        capabilities,
     })
 }
 
@@ -334,7 +352,10 @@ mod tests {
         assert_eq!(device.name, "Kitchen");
         assert_eq!(device.addr, v4(10, 0, 0, 4));
         assert_eq!(device.port, 7000);
-        assert_eq!(device.capabilities.dialect, Dialect::AirPlay2);
+        assert_eq!(
+            device.capabilities.as_ref().unwrap().dialect,
+            Dialect::AirPlay2
+        );
     }
 
     /// A RAOP instance name `MAC@Name` yields the MAC as the id and the suffix as
@@ -351,7 +372,7 @@ mod tests {
         .expect("maps");
         assert_eq!(device.id, "001122334455");
         assert_eq!(device.name, "Studio Monitor");
-        assert_eq!(device.capabilities.dialect, Dialect::Raop);
+        assert_eq!(device.capabilities.as_ref().unwrap().dialect, Dialect::Raop);
     }
 
     /// A service with no resolvable address is dropped.
@@ -415,7 +436,45 @@ mod tests {
 
         let snap = snapshot(&table);
         assert_eq!(snap.len(), 1, "one entry per receiver");
-        assert_eq!(snap[0].capabilities.dialect, Dialect::AirPlay2);
+        assert_eq!(
+            snap[0].capabilities.as_ref().unwrap().dialect,
+            Dialect::AirPlay2
+        );
         assert_eq!(snap[0].port, 7000);
+    }
+
+    /// A receiver whose AirPlay advertisement bae can't read shows as one it
+    /// can't connect to, even when its RAOP advertisement reads: bae can't tell
+    /// which dialect it speaks best.
+    #[test]
+    fn an_unreadable_advertisement_wins_over_a_readable_one() {
+        let raop = map_device(
+            RendererServiceType::Raop,
+            "AABBCCDDEEFF@Den",
+            5000,
+            [v4(10, 0, 0, 7)].into_iter(),
+            &txt(&[("et", "1"), ("cn", "1")]),
+        )
+        .unwrap();
+        let airplay = map_device(
+            RendererServiceType::AirPlay,
+            "Den",
+            7000,
+            [v4(10, 0, 0, 7)].into_iter(),
+            &txt(&[("deviceid", "AABBCCDDEEFF"), ("features", "unreadable")]),
+        )
+        .unwrap();
+
+        for order in [[raop.clone(), airplay.clone()], [airplay, raop]] {
+            let snap = dedupe_by_id(order.iter());
+            assert_eq!(snap.len(), 1, "one entry per receiver");
+            assert_eq!(
+                snap[0].capabilities,
+                Err(UnreadableSetting {
+                    key: "features".to_string(),
+                    raw: Some("unreadable".to_string()),
+                })
+            );
+        }
     }
 }

@@ -109,6 +109,10 @@ forward! {
                         crate::types::BridgeErrorCategory::AirPlayUnsupported,
                         detail,
                     ),
+                    bae_cast::CastError::AirPlayUnreadableSettings(_) => BridgeError::diagnostic(
+                        crate::types::BridgeErrorCategory::AirPlayUnreadableSettings,
+                        detail,
+                    ),
                     _ => BridgeError::internal(detail),
                 }
             })

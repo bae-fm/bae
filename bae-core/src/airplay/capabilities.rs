@@ -113,21 +113,58 @@ pub struct AirPlayCapabilities {
     pub raop: Option<RaopParams>,
 }
 
+/// A TXT value bae reads to decide how to connect that the receiver left out
+/// where the spec requires it (`raw` is `None`), or sent as text bae can't
+/// parse. A receiver advertising one can't be connected to: guessing the value
+/// would pick the wrong dialect or skip a PIN it requires.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnreadableSetting {
+    /// The TXT key, as the receiver spelled it (`features`, `ft`, `flags`, `sf`).
+    pub key: String,
+    /// The text it carried, or `None` when it was left out.
+    pub raw: Option<String>,
+}
+
+impl std::fmt::Display for UnreadableSetting {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.raw {
+            Some(raw) => write!(f, "{} is {raw:?}, which bae can't read", self.key),
+            None => write!(f, "{} is missing", self.key),
+        }
+    }
+}
+
 impl AirPlayCapabilities {
     /// Parse a receiver's capabilities from the service type it was found on and
     /// its TXT records. `txt` maps TXT keys to their string values, lowercased
     /// keys as mDNS delivers them.
-    pub fn from_txt(service_type: RendererServiceType, txt: &HashMap<String, String>) -> Self {
-        let features = txt
-            .get("features")
-            .or_else(|| txt.get("ft"))
-            .map(|s| parse_features(s))
-            .unwrap_or(0);
-        let flags = txt
-            .get("flags")
-            .or_else(|| txt.get("sf"))
-            .and_then(|s| parse_hex(s))
-            .unwrap_or(0);
+    ///
+    /// Which fields may be left out follows the openairplay spec's service
+    /// discovery tables (and pyatv's reading of them, MIT): the AirPlay
+    /// service's `features` is required — its dialect is decided from it, and
+    /// the spec's records always carry it. A RAOP service's `ft` is newer than
+    /// the protocol (the spec's RAOP table has no such key), so without one the
+    /// receiver advertises no feature bits. `flags`/`sf` is absent on older
+    /// receivers on both services (the spec's Apple TV 2 record has none), which
+    /// sets no status bits. Any of them present but not hex is unreadable.
+    pub fn from_txt(
+        service_type: RendererServiceType,
+        txt: &HashMap<String, String>,
+    ) -> Result<Self, UnreadableSetting> {
+        let features = match txt_value(txt, "features", "ft") {
+            Some((key, raw)) => parse_features(raw).ok_or_else(|| unreadable(key, raw))?,
+            None if service_type == RendererServiceType::AirPlay => {
+                return Err(UnreadableSetting {
+                    key: "features".to_string(),
+                    raw: None,
+                });
+            }
+            None => 0,
+        };
+        let flags = match txt_value(txt, "flags", "sf") {
+            Some((key, raw)) => parse_hex(raw).ok_or_else(|| unreadable(key, raw))?,
+            None => 0,
+        };
 
         let is_airplay2 = service_type == RendererServiceType::AirPlay
             && features
@@ -142,7 +179,7 @@ impl AirPlayCapabilities {
         let requires_pin =
             password || flags & (status_flags::PIN_REQUIRED | status_flags::LEGACY_PAIRING) != 0;
 
-        if is_airplay2 {
+        Ok(if is_airplay2 {
             AirPlayCapabilities {
                 dialect: Dialect::AirPlay2,
                 features,
@@ -160,7 +197,26 @@ impl AirPlayCapabilities {
                 supports_transient_pairing: false,
                 raop: Some(RaopParams::from_txt(txt)),
             }
-        }
+        })
+    }
+}
+
+/// The value of the first of a field's two spellings that is present, with the
+/// key it was found under.
+fn txt_value<'a>(
+    txt: &'a HashMap<String, String>,
+    key: &'static str,
+    other_key: &'static str,
+) -> Option<(&'static str, &'a str)> {
+    txt.get(key)
+        .map(|raw| (key, raw.as_str()))
+        .or_else(|| txt.get(other_key).map(|raw| (other_key, raw.as_str())))
+}
+
+fn unreadable(key: &str, raw: &str) -> UnreadableSetting {
+    UnreadableSetting {
+        key: key.to_string(),
+        raw: Some(raw.to_string()),
     }
 }
 
@@ -218,15 +274,16 @@ fn parse_int_set<T: PartialEq>(s: &str, map: impl Fn(u32) -> Option<T>) -> Vec<T
 
 /// Parse a features string into a 64-bit bitmask. Two forms, per the spec:
 /// `0x12345678` (low 32 bits) or `0xLOW,0xHIGH` (the high word is the more
-/// significant half, so `0xAAAA,0xBBBB` is `0xBBBB_AAAA`).
-fn parse_features(s: &str) -> u64 {
+/// significant half, so `0xAAAA,0xBBBB` is `0xBBBB_AAAA`). `None` when either
+/// word isn't hex or overflows 32 bits.
+fn parse_features(s: &str) -> Option<u64> {
     match s.split_once(',') {
         Some((low, high)) => {
-            let low = parse_hex(low).unwrap_or(0) & 0xFFFF_FFFF;
-            let high = parse_hex(high).unwrap_or(0) & 0xFFFF_FFFF;
-            (high << 32) | low
+            let low = u32::try_from(parse_hex(low)?).ok()?;
+            let high = u32::try_from(parse_hex(high)?).ok()?;
+            Some((u64::from(high) << 32) | u64::from(low))
         }
-        None => parse_hex(s).unwrap_or(0),
+        None => parse_hex(s),
     }
 }
 
@@ -253,13 +310,16 @@ mod tests {
 
     #[test]
     fn features_low_word_only() {
-        assert_eq!(parse_features("0x12345678"), 0x1234_5678);
+        assert_eq!(parse_features("0x12345678"), Some(0x1234_5678));
     }
 
     #[test]
     fn features_two_words_high_is_more_significant() {
         // `0xLOW,0xHIGH` composes to `0xHIGH_LOW`.
-        assert_eq!(parse_features("0x445F8A00,0x1C340"), 0x0001_C340_445F_8A00);
+        assert_eq!(
+            parse_features("0x445F8A00,0x1C340"),
+            Some(0x0001_C340_445F_8A00)
+        );
     }
 
     /// The AirPlay 2 markers as a two-word features string: bit 48 (CoreUtils
@@ -282,7 +342,8 @@ mod tests {
                 ("features", &features_str(features)),
                 ("model", "AudioAccessory5,1"),
             ]),
-        );
+        )
+        .unwrap();
         assert_eq!(caps.dialect, Dialect::AirPlay2);
         assert!(caps.supports_transient_pairing);
         assert!(!caps.requires_pin);
@@ -297,7 +358,8 @@ mod tests {
         let caps = AirPlayCapabilities::from_txt(
             RendererServiceType::AirPlay,
             &txt(&[("ft", &features_str(UNIFIED_BIT))]),
-        );
+        )
+        .unwrap();
         assert_eq!(caps.dialect, Dialect::AirPlay2);
     }
 
@@ -316,7 +378,8 @@ mod tests {
                 ("tp", "UDP"),
                 ("vs", "105.1"),
             ]),
-        );
+        )
+        .unwrap();
         assert_eq!(caps.dialect, Dialect::Raop);
         assert!(!caps.supports_transient_pairing);
         let raop = caps.raop.expect("a RAOP receiver carries RAOP params");
@@ -340,7 +403,8 @@ mod tests {
                 ("features", &features_str(COREUTILS_BIT)),
                 ("model", "MyAmp,1"),
             ]),
-        );
+        )
+        .unwrap();
         assert_eq!(caps.dialect, Dialect::AirPlay2);
         assert!(caps.supports_transient_pairing);
     }
@@ -352,7 +416,8 @@ mod tests {
         let caps = AirPlayCapabilities::from_txt(
             RendererServiceType::Raop,
             &txt(&[("et", "1"), ("cn", "1")]),
-        );
+        )
+        .unwrap();
         assert_eq!(caps.dialect, Dialect::Raop);
     }
 
@@ -360,22 +425,92 @@ mod tests {
     /// refuse rather than attempt persistent pairing.
     #[test]
     fn pin_and_password_gate_the_receiver() {
-        let pw =
-            AirPlayCapabilities::from_txt(RendererServiceType::AirPlay, &txt(&[("pw", "true")]));
+        let pw = AirPlayCapabilities::from_txt(
+            RendererServiceType::AirPlay,
+            &txt(&[("pw", "true"), ("features", "0x39f7")]),
+        )
+        .unwrap();
         assert!(pw.requires_pin);
 
         let pin_flag = AirPlayCapabilities::from_txt(
             RendererServiceType::Raop,
             &txt(&[("sf", "0x208")]), // PIN_REQUIRED | LEGACY_PAIRING
-        );
+        )
+        .unwrap();
         assert!(pin_flag.requires_pin);
+    }
+
+    /// A features or flags value that is present but isn't hex is not zero:
+    /// the receiver can't be connected to, and the error names the key and the
+    /// text it sent.
+    #[test]
+    fn an_unparseable_features_or_flags_value_is_unreadable() {
+        for (service_type, key, raw) in [
+            (RendererServiceType::AirPlay, "features", "garbage"),
+            (RendererServiceType::AirPlay, "features", "0x1FFFFFFFF,0x0"),
+            (RendererServiceType::AirPlay, "features", "0x0,0xZZ"),
+            (RendererServiceType::Raop, "ft", "0x"),
+            (RendererServiceType::AirPlay, "flags", "on"),
+            (RendererServiceType::Raop, "sf", "0x4g"),
+        ] {
+            let mut pairs = vec![(key, raw)];
+            if key != "features" && service_type == RendererServiceType::AirPlay {
+                pairs.push(("features", "0x0,0x10000"));
+            }
+            let unreadable = AirPlayCapabilities::from_txt(service_type, &txt(&pairs))
+                .expect_err(&format!("{key}={raw} is unreadable"));
+            assert_eq!(
+                unreadable,
+                UnreadableSetting {
+                    key: key.to_string(),
+                    raw: Some(raw.to_string()),
+                }
+            );
+        }
+    }
+
+    /// The AirPlay service decides its dialect from its features value, and the
+    /// spec's AirPlay service always carries one; leaving it out is unreadable.
+    #[test]
+    fn an_airplay_service_without_features_is_unreadable() {
+        let unreadable =
+            AirPlayCapabilities::from_txt(RendererServiceType::AirPlay, &txt(&[("pw", "false")]))
+                .expect_err("features is required on _airplay._tcp");
+        assert_eq!(
+            unreadable,
+            UnreadableSetting {
+                key: "features".to_string(),
+                raw: None,
+            }
+        );
+    }
+
+    /// The fields the spec leaves out for older receivers take its meaning: a
+    /// RAOP service without `ft` advertises no feature bits (the legacy
+    /// dialect), and a receiver without `flags`/`sf` sets no status bits.
+    #[test]
+    fn optional_fields_take_the_meaning_of_their_absence() {
+        let raop =
+            AirPlayCapabilities::from_txt(RendererServiceType::Raop, &txt(&[("cn", "1")])).unwrap();
+        assert_eq!(raop.dialect, Dialect::Raop);
+        assert_eq!(raop.features, 0);
+        assert!(!raop.requires_pin);
+
+        let airplay1 = AirPlayCapabilities::from_txt(
+            RendererServiceType::AirPlay,
+            &txt(&[("features", "0x39f7"), ("model", "AppleTV2,1")]),
+        )
+        .unwrap();
+        assert_eq!(airplay1.features, 0x39f7);
+        assert!(!airplay1.requires_pin);
     }
 
     /// A receiver that names no `et` is treated as accepting an unencrypted
     /// stream.
     #[test]
     fn missing_encryption_defaults_to_none() {
-        let caps = AirPlayCapabilities::from_txt(RendererServiceType::Raop, &txt(&[("cn", "1")]));
+        let caps =
+            AirPlayCapabilities::from_txt(RendererServiceType::Raop, &txt(&[("cn", "1")])).unwrap();
         assert_eq!(caps.raop.unwrap().encryption, vec![RaopEncryption::None]);
     }
 }

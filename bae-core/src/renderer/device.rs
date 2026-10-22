@@ -65,6 +65,6 @@ pub enum RendererConnection {
     AirPlay {
         addr: IpAddr,
         port: u16,
-        capabilities: AirPlayCapabilities,
+        capabilities: Result<AirPlayCapabilities, crate::airplay::UnreadableSetting>,
     },
 }

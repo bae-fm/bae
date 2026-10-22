@@ -17,7 +17,7 @@ use std::sync::{Arc, Mutex};
 
 use bae_core::airplay::airplay2::TimingProtocol;
 use bae_core::airplay::capabilities::{Dialect, RaopEncryption};
-use bae_core::airplay::AirPlayCapabilities;
+use bae_core::airplay::{AirPlayCapabilities, UnreadableSetting};
 use bae_core::cast::RustCastChannel;
 use bae_core::config::SubsonicCredential;
 use bae_core::dlna::DlnaChannel;
@@ -42,14 +42,17 @@ use tracing::{debug, warn};
 const AIRPLAY_LATENCY_FRAMES: u32 = 88_200;
 
 /// Build the push-audio sink for an AirPlay receiver, or a kind-specific error
-/// when it can't be driven: a PIN-gated receiver, an AirPlay-2-only receiver
-/// (whose streaming isn't wired yet), or one offering only encryption the sender
-/// can't provide. RAOP receivers pick unencrypted when offered, else RSA-AES.
+/// when it can't be driven: one advertising a setting bae can't read, a
+/// PIN-gated receiver, or one offering only encryption the sender can't
+/// provide. RAOP receivers pick unencrypted when offered, else RSA-AES.
 fn build_airplay_sink(
     addr: std::net::IpAddr,
     port: u16,
-    capabilities: &AirPlayCapabilities,
+    capabilities: &Result<AirPlayCapabilities, UnreadableSetting>,
 ) -> Result<Box<dyn AirPlaySink>, CastError> {
+    let capabilities = capabilities
+        .as_ref()
+        .map_err(|unreadable| CastError::AirPlayUnreadableSettings(unreadable.clone()))?;
     if capabilities.requires_pin {
         return Err(CastError::AirPlayPinRequired);
     }
@@ -107,6 +110,10 @@ pub enum CastError {
     /// The RAOP receiver only offers audio encryption the sender can't provide.
     #[error("this AirPlay receiver requires an encryption the sender can't provide")]
     AirPlayEncryptionUnsupported,
+    /// The AirPlay receiver advertises a setting bae can't read, so how to
+    /// connect to it can't be decided.
+    #[error("this AirPlay receiver advertises settings bae can't read: {0}")]
+    AirPlayUnreadableSettings(UnreadableSetting),
 }
 
 /// The ephemeral Subsonic server the receiver fetches audio from: the
@@ -677,6 +684,25 @@ mod tests {
     /// A raw serve carries `format=raw`; an MP3 conversion carries
     /// `format=mp3&maxBitRate=320`, a WAV one `format=wav`. Each names the
     /// track as a `tr-` Subsonic id and carries the auth triplet.
+    /// A receiver advertising a setting bae can't read is refused before any
+    /// connection is attempted, with the setting named in the error.
+    #[test]
+    fn an_unreadable_airplay_advertisement_is_refused() {
+        let unreadable = UnreadableSetting {
+            key: "features".to_string(),
+            raw: Some("garbage".to_string()),
+        };
+        let Err(error) =
+            build_airplay_sink("10.0.0.7".parse().unwrap(), 7000, &Err(unreadable.clone()))
+        else {
+            panic!("an unreadable advertisement builds no sink");
+        };
+        assert!(
+            matches!(&error, CastError::AirPlayUnreadableSettings(setting) if *setting == unreadable)
+        );
+        assert!(error.to_string().contains("\"garbage\""));
+    }
+
     #[test]
     fn stream_url_encodes_format_and_track() {
         let provider = stream_url_provider("http://10.0.0.5:9000".to_string(), credential());

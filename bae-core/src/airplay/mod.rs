@@ -37,7 +37,9 @@ pub mod tlv8;
 use pairing::PairingError;
 use tlv8::{tlv_type, Tlv8};
 
-pub use capabilities::{AirPlayCapabilities, Dialect, RaopCodec, RaopEncryption, RaopParams};
+pub use capabilities::{
+    AirPlayCapabilities, Dialect, RaopCodec, RaopEncryption, RaopParams, UnreadableSetting,
+};
 pub use discovery::AirPlayDevice;
 pub(crate) use discovery::AirPlayDiscovery;
 

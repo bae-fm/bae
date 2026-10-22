@@ -186,6 +186,10 @@ pub enum BridgeErrorCategory {
     /// An AirPlay receiver can't be driven — it demands a PIN, or offers only
     /// audio encryption the sender doesn't implement.
     AirPlayUnsupported,
+    /// An AirPlay receiver advertises a setting bae can't read (a features or
+    /// status-flags value that isn't hex, or no features value at all), so
+    /// how to connect to it can't be decided.
+    AirPlayUnreadableSettings,
     /// The library didn't open because a reset or a restore of this device's
     /// copy stopped partway; only running the call `by` names again finishes
     /// it.
@@ -350,6 +354,9 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
             }
         },
         BridgeErrorCategory::AirPlayUnsupported => "core.error.category.airplay_unsupported",
+        BridgeErrorCategory::AirPlayUnreadableSettings => {
+            "core.error.category.airplay_unreadable_settings"
+        }
         BridgeErrorCategory::ReplacementUnfinished { by } => match by {
             BridgeReplacedBy::Reset => "core.error.replacement_unfinished.reset",
             BridgeReplacedBy::Restore => "core.error.replacement_unfinished.restore",
