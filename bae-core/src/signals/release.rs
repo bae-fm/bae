@@ -42,20 +42,15 @@ impl ReleaseIdentity {
 pub(crate) async fn resolve_release_identity(
     library_manager: &crate::library::LibraryManager,
     release_id: &str,
-) -> Result<ReleaseIdentity, String> {
+) -> Result<ReleaseIdentity, crate::library::LibraryError> {
     library_manager
         .get_release_by_id(release_id)
-        .await
-        .map_err(|e| format!("Failed to load release: {e}"))?
-        .ok_or_else(|| format!("Release '{release_id}' not found"))?;
-    let files = library_manager
-        .get_files_for_release(release_id)
-        .await
-        .map_err(|e| format!("Failed to load release files: {e}"))?;
-    let tracks = library_manager
-        .get_tracks_for_release(release_id)
-        .await
-        .map_err(|e| format!("Failed to load tracks: {e}"))?;
+        .await?
+        .ok_or_else(|| {
+            crate::library::LibraryError::Refused(format!("Release '{release_id}' not found"))
+        })?;
+    let files = library_manager.get_files_for_release(release_id).await?;
+    let tracks = library_manager.get_tracks_for_release(release_id).await?;
     // The lengths a pick of this release is laid out against, so a document
     // is read against the discs these tracks are.
     let track_lengths_ms = crate::library::stored_track_lengths(&tracks);
@@ -66,11 +61,7 @@ pub(crate) async fn resolve_release_identity(
     let mut cue_paths = Vec::new();
     let mut audio_files = Vec::new();
     for f in &files {
-        if let Some(path) = library_manager
-            .file_local_path(&f.id)
-            .await
-            .map_err(|e| format!("Failed to resolve local path: {e}"))?
-        {
+        if let Some(path) = library_manager.file_local_path(&f.id).await? {
             if !path.exists() {
                 continue;
             }
@@ -103,7 +94,9 @@ pub(crate) async fn resolve_release_identity(
         crate::import::discid::read_rip_artifacts_from_paths(&documents, &cue_paths, &audio_files)
     })
     .await
-    .map_err(|e| format!("rip artifact read task failed: {e}"))?;
+    .map_err(|e| {
+        crate::library::LibraryError::Internal(format!("rip artifact read task failed: {e}"))
+    })?;
 
     Ok(ReleaseIdentity { rip, audio })
 }
@@ -119,11 +112,8 @@ pub(crate) async fn resolve_release_identity(
 pub(crate) async fn resolve_release_artwork_paths(
     library_manager: &crate::library::LibraryManager,
     release_id: &str,
-) -> Result<(Vec<PathBuf>, Option<tempfile::TempDir>), String> {
-    let files = library_manager
-        .get_files_for_release(release_id)
-        .await
-        .map_err(|e| format!("Failed to load release files: {e}"))?;
+) -> Result<(Vec<PathBuf>, Option<tempfile::TempDir>), crate::library::LibraryError> {
+    let files = library_manager.get_files_for_release(release_id).await?;
     let mut paths: Vec<PathBuf> = Vec::new();
 
     // The cover is one of several OCR inputs (the image files below are the
@@ -177,11 +167,7 @@ pub(crate) async fn resolve_release_artwork_paths(
         if !file.content_type.is_image() {
             continue;
         }
-        if let Some(p) = library_manager
-            .file_local_path(&file.id)
-            .await
-            .map_err(|e| format!("Failed to resolve image path: {e}"))?
-        {
+        if let Some(p) = library_manager.file_local_path(&file.id).await? {
             match tokio::fs::try_exists(&p).await {
                 Ok(true) => paths.push(p),
                 Ok(false) => warn!(

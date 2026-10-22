@@ -291,13 +291,13 @@ async fn run_extraction(
                         identity.audio,
                         identity.rip.disc_id.into_signal(),
                     ),
-                    Err(detail) => (
+                    Err(error) => (
                         AudioOrigin::default(),
                         AudioFacts::default(),
                         DiscIdSignal::Failed {
                             failure: InternalFailure::logged(
                                 &format!("resolving release {release_id}"),
-                                detail,
+                                error,
                             ),
                         },
                     ),
@@ -332,7 +332,9 @@ async fn run_extraction(
                             &inner,
                             &extraction,
                             disc_id,
-                            InternalFailure { detail: e },
+                            InternalFailure {
+                                detail: e.to_string(),
+                            },
                         );
                         return;
                     }

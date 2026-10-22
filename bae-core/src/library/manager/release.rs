@@ -100,8 +100,7 @@ impl LibraryManager {
         release_id: &str,
     ) -> Result<crate::import::catalog_reading::ReadAudio, LibraryError> {
         crate::signals::release::resolve_release_identity(self, release_id)
-            .await
-            .map_err(LibraryError::Refused)?
+            .await?
             .read_audio()
             .map_err(LibraryError::from)
     }

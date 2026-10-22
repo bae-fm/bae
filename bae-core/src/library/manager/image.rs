@@ -90,7 +90,7 @@ impl LibraryManager {
         let bytes = tokio::task::spawn_blocking(move || crate::util::cover::resize_cover(&bytes))
             .await
             .map_err(|e| LibraryError::Internal(format!("cover resize task failed: {e}")))?
-            .map_err(|e| LibraryError::Refused(format!("Failed to resize cover: {e}")))?;
+            .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
         let library_image = DbLibraryImage::cover(
             release_id,
             &source,

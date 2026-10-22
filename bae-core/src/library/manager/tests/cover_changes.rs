@@ -46,6 +46,44 @@ async fn change_cover_stores_gif_and_webp_as_jpeg_without_replacing_source() {
     }
 }
 
+/// A picked image that doesn't decode is refused as artwork that couldn't be
+/// read, the class the import gives the same failure, and stores nothing.
+#[tokio::test]
+async fn an_undecodable_cover_pick_is_refused_as_unreadable_artwork() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    insert_release(&manager, &release).await;
+    let source_dir = TempDir::new().unwrap();
+    let source_path = source_dir.path().join("broken.png");
+    let bytes = b"not an image".as_slice();
+    std::fs::write(&source_path, bytes).unwrap();
+    let file = DbFile::new(
+        &release.id,
+        "broken.png",
+        bytes.len() as i64,
+        ContentType::Png,
+        Uuid::new_v4().to_string(),
+        Utc::now(),
+    );
+    manager
+        .add_external_file_for_test(&file, &source_path)
+        .await
+        .unwrap();
+
+    let error = manager
+        .change_cover(&release.id, CoverSelection::ReleaseImage { file_id: file.id })
+        .await
+        .expect_err("bytes that are no image make no cover");
+    assert_eq!(error.category(), crate::ui::UiErrorCategory::ImportData, "{error}");
+    assert!(manager
+        .get_library_image(&release.id, &LibraryImageType::Cover)
+        .await
+        .unwrap()
+        .is_none());
+}
+
 async fn assert_changed_cover(
     filename: &str,
     cover_bytes: &[u8],
