@@ -1290,7 +1290,7 @@ can do it: the name is the household's, not one person's.
 
 The name lives in the store. A restore code carries no name: it is kept for
 years, written down, and a name inside it would go stale with the first
-rename. An invite carries the current name, since it expires within a day.
+rename. An invite carries the current name, since it expires within a week.
 The iCloud Keychain entry coven keeps a restore code in also saves the name,
 as one of the person's devices last saw it, so a new device's list can say
 which library each code is for (§5.6). It is only a label there: a rename made
@@ -1387,7 +1387,8 @@ history setting.
   ([coven §13.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#133-losing-everything)).
 - **Ratings, history and playlists point at the person**, not the member.
 - **The joining person's own device writes their `people` row** as part of
-  joining, with the name they typed, so every member has a profile. Someone
+  joining, with the name the admin typed in the invite, so every member has a
+  profile. They can rename themselves later. Someone
   re-invited after losing every device keeps their row, since their
   `MemberId` is the same. If the write fails, the person has joined anyway,
   and Settings offers to create the profile again.
@@ -1437,19 +1438,45 @@ device: the button is **Add**, and the running restore says it is adding this
 device. A code saved in iCloud Keychain, and a restore over this device's copy
 (§6.4), say **Restore**.
 
-Dan joins. Ana invites him with his Dropbox email and a role; her laptop shares
-the store's folder with his account and shows the invite. On his phone he
-taps **Scan code**, scans the invite, types "Dan", and his phone asks to
-join. Ana's laptop shows the request and she approves it. His phone then
-writes his `people` row while it joins. Everyone's devices show Dan by name.
-On S3, Ana makes an access key for Dan instead of sharing with an account. An
-invite carries the library's current name and expires within a day.
+Dan joins. In People, Ana taps **Invite** and enters "Dan", his Dropbox email
+and a role, then picks **In person** or **Send**. Her laptop shares the store's
+folder with his account and shows the invite. On S3, Ana makes an access key
+for Dan instead of sharing with an account. Either way the invite carries the
+library's current name and Dan's, and Dan's phone starts joining as soon as it
+reads the code, with no form to fill in
+([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)):
+
+- **In person:** Dan taps **Scan code** and scans Ana's screen. Ana's laptop
+  lets him in as soon as it reads his request, and neither of them taps anything
+  else. The invite expires after an hour.
+- **Send:** Ana picks how long the invite lasts, an hour, a day or a week, and
+  sends the code. Dan taps **Enter code** and pastes it. His waiting screen
+  shows his confirmation number, a countdown to the next check, and **Check
+  now**. When his request arrives, Ana's laptop shows a dialog with Dan's name,
+  the same number, **Approve** and **Decline**. Ana asks Dan for his number and
+  approves if it matches.
+
+His phone then writes his `people` row with that name while it joins.
+Everyone's devices show Dan by name.
+
+**Open invites.** Until it ends, each invite Ana's laptop made is a row in
+People: the person's name, marked invited, with when it expires. Only the
+device that made it shows the row, since only that device can act on it. The
+row's refresh button runs Retry Now for the library (§6.4), so the request
+shows the moment Dan says he has entered the code, without waiting for the next
+check. Opening the row shows the invite again, with **Cancel invite**. Closing
+the request dialog keeps the request, and the row opens it again.
 
 On S3 the invite's screen also shows the id of the key it carries, and says to
 delete that key in the provider's console if nobody uses the invite: bae keeps
-no record of it once the invite ends. Leaving the screen keeps the invite open
-until it expires. Cancelling it asks first, and on S3 the question names the
-key, as removing a person does.
+no record of it once the invite ends. Cancelling an invite asks first, and on
+S3 the question names the key, as removing a person does.
+
+**Dan's waiting.** Dan can close bae while he waits. When bae next starts, it
+opens on his waiting screen and keeps checking. The waiting screen has no
+Cancel once his request is sent, since coven can't take a sent request back:
+the join ends when Ana approves or declines, or the invite expires. A declined
+or expired invite returns to the first screen, saying which.
 
 Removing a person deletes their circle and its rows: their private history and
 private playlists. Their household ratings, history and playlists stay,
@@ -2172,7 +2199,8 @@ library is registered there by id.
 | `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain for libraries not already on this device, each with its library's saved name; an entry coven can't restore from is listed with its library id and why, for deleting only |
 | `forget_saved_restore_code` | deletes a saved restore code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices; no library, storage or device's copy changes, and an absent code succeeds (§5.6) |
 | `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, which a failed restore leaves as it was; called again, finishes a restore that stopped after the restored copy took this one's place (§6.4) |
-| `join_with_invite` | joins a library from an invite and writes the person's profile (§5.6) |
+| `join_with_invite` | joins a library from an invite and writes the person's profile with the name the invite carries (§5.6) |
+| `unfinished_joins`, `resume_join` | list the joins this device has under way, and continue one after bae restarts, without the code (§5.6) |
 | `reset_device` | loads a library again under a fresh device id, after the warning; called again, finishes a reset that stopped after the new copy took the old one's place (§6.4) |
 | `Config::discover_libraries` | lists registered libraries, including any that can't be opened, with why: storage settings that can't be read, or a reset or restore of this device's copy that didn't finish, with the call that finishes it |
 | `app::bootstrap` | opens a library and starts its services: the store, sync, playback, and on desktops import and identification; a library whose reset or restore didn't finish fails with the call that finishes it |
@@ -2238,7 +2266,8 @@ its position, the queue — are live subscriptions.
 Through `AppServices`: move releases to the cloud and make them local again,
 pin and unpin, cancel a transition, export and save; set up a cloud home,
 reconnect, pause, read the pending list and act on its records; list people
-and their devices, invite a person, approve or decline their request to join,
+and their devices, invite a person in person or by sending the code, list this
+device's open invites, approve or decline a sent invite's request,
 change a role, remove a person or a device, rename the library; make a restore
 code; create and rename a profile, set its avatar and history setting, rate,
 and make and edit playlists.
