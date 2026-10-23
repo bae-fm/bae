@@ -24,6 +24,12 @@ struct OnboardingEntryScreen: View {
     var body: some View {
         ScrollView {
             OnboardingScreen {
+                // The wordmark below already names bae to VoiceOver.
+                Image("SheepIcon")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 120, height: 120)
+                    .accessibilityHidden(true)
                 Text("bae")
                     .themeText(.wordmark)
                 OnboardingSecondaryText(
