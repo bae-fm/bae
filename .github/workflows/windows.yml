@@ -131,6 +131,9 @@ jobs:
         # bindings and calls the bridge the way the skeleton window does.
         run: dotnet test bae-avalonia\bae-avalonia.Tests -c Debug
 
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@nextest
+
       - name: Run bae-core unit tests (Windows)
         # The only place bae's Rust actually EXECUTES on Windows. Windows-only
         # code paths (the atomic-write directory handling, path semantics) shipped
@@ -140,10 +143,14 @@ jobs:
         # which on the x64 runner is on C:, its OS disk, where file creation
         # and fsync are slower than on D:, which holds the runner's own
         # temporary directory. The ARM runner has only C:.
+        #
+        # nextest, as on Linux, runs each test in its own process: the tests
+        # that check which files their process holds open would otherwise see
+        # other tests' files, opened and deleted alongside them.
         env:
           TMP: ${{ runner.temp }}
           TEMP: ${{ runner.temp }}
-        run: cargo test -p bae-core --lib --target ${{ matrix.target }}
+        run: cargo nextest run -p bae-core --lib --target ${{ matrix.target }}
 
       - name: Clippy (baeium / default features)
         # The host clippy in ci.yml targets macOS, so lint the Windows target too.
