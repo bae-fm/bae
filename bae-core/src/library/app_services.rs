@@ -403,7 +403,7 @@ impl AppServices {
     delegate_async!(manager, get_members => get_members() -> Result<crate::sync::membership::Membership, crate::library::LibraryError>);
     delegate_async!(manager, remove_member => remove_member(member: &coven::MemberId) -> Result<(), crate::library::LibraryError>);
     delegate_sync!(manager, subscribe_members => subscribe_members() -> coven::LiveQuery<crate::sync::membership::Membership>);
-    delegate_async!(manager, remove_device => remove_device(device: coven::DeviceId) -> Result<coven::ProviderSignOut, crate::library::LibraryError>);
+    delegate_async!(manager, remove_device => remove_device(device: coven::DeviceId) -> Result<Option<coven::ProviderSignOut>, crate::library::LibraryError>);
     delegate_async!(manager, set_member_role => set_member_role(member: &coven::MemberId, role: coven::MemberRole) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, invite_person => invite_person(role: coven::MemberRole, access: coven::InviteAccess) -> Result<coven::Invite, crate::library::LibraryError>);
     delegate_sync!(manager, subscribe_join_requests => subscribe_join_requests() -> tokio::sync::watch::Receiver<Vec<coven::JoinRequest>>);

@@ -10,7 +10,7 @@ public final class Sync: Sendable, Observable {
         @Sendable () async throws -> BridgeRestoreCodeShare
     public let removeMember: @Sendable (String) async throws -> Void
     public let removeDevice:
-        @Sendable (UInt64) async throws -> BridgeProviderSignOut
+        @Sendable (UInt64) async throws -> BridgeProviderSignOut?
     public let setMemberRole:
         @Sendable (String, BridgeMemberRole) async throws -> Void
     public let invitePerson:
@@ -55,7 +55,7 @@ public final class Sync: Sendable, Observable {
             throw StubError.notImplemented
         },
         removeDevice:
-            @escaping @Sendable (UInt64) async throws -> BridgeProviderSignOut =
+            @escaping @Sendable (UInt64) async throws -> BridgeProviderSignOut? =
             { _ in throw StubError.notImplemented },
         setMemberRole:
             @escaping @Sendable (String, BridgeMemberRole) async throws -> Void =

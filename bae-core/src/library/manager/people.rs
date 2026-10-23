@@ -97,7 +97,7 @@ impl LibraryManager {
     pub async fn remove_device(
         &self,
         device: coven::DeviceId,
-    ) -> Result<coven::ProviderSignOut, LibraryError> {
+    ) -> Result<Option<coven::ProviderSignOut>, LibraryError> {
         Ok(self.database.remove_device(device).await?)
     }
 

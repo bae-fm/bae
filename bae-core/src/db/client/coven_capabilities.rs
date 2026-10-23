@@ -343,7 +343,7 @@ impl Database {
     pub(crate) async fn remove_device(
         &self,
         device: coven::DeviceId,
-    ) -> Result<coven::ProviderSignOut, coven::SyncError> {
+    ) -> Result<Option<coven::ProviderSignOut>, coven::SyncError> {
         self.inner.handle.remove_device(device).await
     }
 

@@ -451,7 +451,6 @@ fn produced_keys() -> Vec<String> {
             provider: BridgeCloudProvider::Dropbox,
         },
         BridgeProviderSignOut::RemoveFromAppleAccount,
-        BridgeProviderSignOut::ReplaceAccessKey,
     ] {
         keys.push(bridge_provider_sign_out_key(instruction));
     }

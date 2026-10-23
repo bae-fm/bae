@@ -169,7 +169,6 @@ impl BridgePerson {
 pub enum BridgeProviderSignOut {
     RemoveAppAccess { provider: BridgeCloudProvider },
     RemoveFromAppleAccount,
-    ReplaceAccessKey,
 }
 impl BridgeProviderSignOut {
     pub(crate) fn from_core(value: coven::ProviderSignOut) -> Self {
@@ -178,7 +177,6 @@ impl BridgeProviderSignOut {
                 provider: BridgeCloudProvider::from_core(&provider),
             },
             coven::ProviderSignOut::RemoveFromAppleAccount => Self::RemoveFromAppleAccount,
-            coven::ProviderSignOut::ReplaceAccessKey => Self::ReplaceAccessKey,
         }
     }
 }
@@ -234,7 +232,6 @@ pub fn bridge_provider_sign_out_key(instruction: BridgeProviderSignOut) -> Strin
     match instruction {
         BridgeProviderSignOut::RemoveAppAccess { .. } => "core.device.sign_out.remove_app_access",
         BridgeProviderSignOut::RemoveFromAppleAccount => "core.device.sign_out.apple",
-        BridgeProviderSignOut::ReplaceAccessKey => "core.device.sign_out.access_key",
     }
     .to_string()
 }

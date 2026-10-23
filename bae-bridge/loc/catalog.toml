@@ -14043,38 +14043,6 @@ da = "Fjern enheden fra din Apple-konto."
 nb = "Fjern enheten fra Apple-kontoen din."
 fi = "Poista laite Apple-tililtäsi."
 
-[messages."core.device.sign_out.access_key"]
-value = "Replace the S3 access key used by the removed device."
-
-[messages."core.device.sign_out.access_key".translations]
-es = "Sustituye la clave de acceso S3 que usaba el dispositivo eliminado."
-fr = "Remplacez la clé d’accès S3 utilisée par l’appareil retiré."
-de = "Ersetze den S3-Zugriffsschlüssel des entfernten Geräts."
-pt-BR = "Substitua a chave de acesso S3 usada pelo dispositivo removido."
-ja = "削除したデバイスが使用していたS3アクセスキーを置き換えてください。"
-ko = "제거된 기기가 사용하던 S3 접근 키를 교체하세요."
-zh-Hans = "请更换已移除设备使用的 S3 访问密钥。"
-ar = "استبدل مفتاح وصول S3 الذي استخدمه الجهاز الذي تمت إزالته."
-he = "החלף את מפתח הגישה S3 ששימש את המכשיר שהוסר."
-uk = "Замініть ключ доступу S3, який використовував видалений пристрій."
-bg = "Сменете ключа за достъп S3, използван от премахнатото устройство."
-pl = "Zastąp klucz dostępu S3 używany przez usunięte urządzenie."
-cs = "Nahraďte přístupový klíč S3 používaný odebraným zařízením."
-hr = "Zamijenite ključ za pristup S3 kojim se koristio uklonjeni uređaj."
-zh-Hant = "請更換已移除裝置使用的 S3 存取金鑰。"
-it = "Sostituisci la chiave di accesso S3 usata dal dispositivo rimosso."
-tr = "Kaldırılan aygıtın kullandığı S3 erişim anahtarını değiştirin."
-nl = "Vervang de S3-toegangssleutel van het verwijderde apparaat."
-sk = "Nahraďte prístupový kľúč S3 používaný odstráneným zariadením."
-hu = "Cseréld le az eltávolított eszköz által használt S3-hozzáférési kulcsot."
-ro = "Înlocuiește cheia de acces S3 folosită de dispozitivul eliminat."
-el = "Αντικαταστήστε το κλειδί πρόσβασης S3 που χρησιμοποιούσε η αφαιρεθείσα συσκευή."
-pt-PT = "Substitua a chave de acesso S3 utilizada pelo dispositivo removido."
-sv = "Byt ut S3-åtkomstnyckeln som den borttagna enheten använde."
-da = "Udskift S3-adgangsnøglen, som den fjernede enhed brugte."
-nb = "Bytt ut S3-tilgangsnøkkelen som den fjernede enheten brukte."
-fi = "Vaihda poistetun laitteen käyttämä S3-käyttöavain."
-
 [messages."core.error.storage.invitation_mismatch"]
 value = "This invitation belongs to another storage location."
 

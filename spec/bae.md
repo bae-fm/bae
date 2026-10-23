@@ -1526,6 +1526,8 @@ remove any person's device, and everyone else only their own. Removing a device
 shows what is left to do at the provider, such as signing that device out of
 the account
 ([coven §14.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#142-provider-access)).
+On S3 it shows nothing: a person's devices share one access key, so removing
+one device changes nothing at the provider.
 Removing this library from a device is the device leaving on its own; §6.4
 covers it.
 

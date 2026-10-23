@@ -72,7 +72,7 @@ forward! {async this => {
     fn get_members()->BridgeMembership {Ok(BridgeMembership::from_core(this.services.get_members().await?))}
     fn people()->Vec<BridgePerson> {Ok(this.services.people().await?.into_iter().map(BridgePerson::from_core).collect())}
     fn remove_member(member:String)->() {Ok(this.services.remove_member(&coven::MemberId(member.parse().map_err(BridgeError::config)?)).await?)}
-    fn remove_device(device:u64)->BridgeProviderSignOut {Ok(BridgeProviderSignOut::from_core(this.services.remove_device(coven::DeviceId(device)).await?))}
+    fn remove_device(device:u64)->Option<BridgeProviderSignOut> {Ok(this.services.remove_device(coven::DeviceId(device)).await?.map(BridgeProviderSignOut::from_core))}
     fn set_member_role(member:String,role:BridgeMemberRole)->() {Ok(this.services.set_member_role(&coven::MemberId(member.parse().map_err(BridgeError::config)?),role.into_core()).await?)}
     fn invite_person(role:BridgeMemberRole,access:BridgeInviteAccess)->BridgeInvite {Ok(BridgeInvite::from_core(this.services.invite_person(role.into_core(),access.into_core()).await?))}
     fn approve_join_request(request:Arc<BridgeJoinRequest>)->() {Ok(this.services.approve_join_request(&request.request).await?)}
