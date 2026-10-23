@@ -8,10 +8,11 @@ cd "$(dirname "$0")/.."
 export CARGO_TARGET_DIR="target-android"
 
 usage() {
-    echo "Usage: $0 [--release] [--abi <arm64-v8a|x86_64>]..."
+    echo "Usage: $0 [--release] [--abi <abi>]..."
     echo "  Builds bae-bridge for Android. Debug by default."
-    echo "  Without --abi, builds both ABIs. run.sh passes the connected device's"
-    echo "  ABI so a local install builds and ships only that one."
+    echo "  Without --abi, builds every ABI in bae.abis (bae-android/gradle.properties)."
+    echo "  run.sh passes the connected device's ABI so a local install builds and"
+    echo "  ships only that one."
     echo ""
     echo "  BAE_BRIDGE_FEATURES selects the cargo feature set (default:"
     echo "  'oauth-providers,cast'), which picks the Gradle edition the bindings"
@@ -32,7 +33,21 @@ while [[ $# -gt 0 ]]; do
         *) echo "Unknown argument: $1" >&2; usage >&2; exit 1;;
     esac
 done
-[[ ${#ABIS[@]} -eq 0 ]] && ABIS=(arm64-v8a x86_64)
+
+source bae-android/toolchain.sh
+android_rust_env
+OBJCOPY="$ANDROID_NDK_TOOLCHAIN/bin/llvm-objcopy"
+STRIP="$ANDROID_NDK_TOOLCHAIN/bin/llvm-strip"
+if [[ ${#ABIS[@]} -eq 0 ]]; then
+    IFS=, read -ra ABIS <<<"$ANDROID_ABIS"
+fi
+for ABI in "${ABIS[@]}"; do
+    if [[ ",$ANDROID_ABIS," != *",$ABI,"* ]]; then
+        echo "build-android.sh: $ABI is not in bae.abis ($ANDROID_ABIS)" >&2
+        exit 1
+    fi
+    rustup target add "$(android_rust_target "$ABI")"
+done
 
 # The bridge's cargo features, which pick the Gradle edition: oauth-providers
 # is 'full', without it 'baeium'. `cast` ships in every edition.
@@ -44,61 +59,22 @@ case ",$BAE_BRIDGE_FEATURES," in
     *) BINDINGS_DIR="bae-bridge/kotlin-bindings-baeium" ;;
 esac
 
-NDK_HOME="${ANDROID_NDK_HOME:-/Users/dima/Library/Android/sdk/ndk/29.0.14206865}"
-# NDK toolchains are named by host.
-case "$(uname -s)" in
-    Darwin) NDK_HOST_TAG="darwin-x86_64" ;;
-    Linux) NDK_HOST_TAG="linux-x86_64" ;;
-    *) echo "build-android.sh: unsupported host OS $(uname -s)" >&2; exit 1 ;;
-esac
-TOOLCHAIN="$NDK_HOME/toolchains/llvm/prebuilt/$NDK_HOST_TAG"
-OBJCOPY="$TOOLCHAIN/bin/llvm-objcopy"
-STRIP="$TOOLCHAIN/bin/llvm-strip"
-
-# Android ABI -> Rust target triple / FFmpeg arch dir; the FFmpeg build covers
-# only these two.
-rust_target() { case "$1" in
-    arm64-v8a) echo aarch64-linux-android;;
-    x86_64)    echo x86_64-linux-android;;
-    *) echo "Unsupported ABI: $1 (have arm64-v8a, x86_64)" >&2; exit 1;;
-esac }
-ffmpeg_arch() { case "$1" in
-    arm64-v8a) echo aarch64;;
-    x86_64)    echo x86_64;;
-esac }
-
-rustup target add aarch64-linux-android x86_64-linux-android 2>/dev/null || true
-
-export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$TOOLCHAIN/bin/aarch64-linux-android35-clang"
-export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$TOOLCHAIN/bin/x86_64-linux-android35-clang"
-
-export CC_aarch64_linux_android="$TOOLCHAIN/bin/aarch64-linux-android35-clang"
-export AR_aarch64_linux_android="$TOOLCHAIN/bin/llvm-ar"
-export CC_x86_64_linux_android="$TOOLCHAIN/bin/x86_64-linux-android35-clang"
-export AR_x86_64_linux_android="$TOOLCHAIN/bin/llvm-ar"
-
-# ffmpeg-sys-next finds FFmpeg through FFMPEG_DIR and then does not pass the
-# target to bindgen, so these per-triple clang args are what keep its struct
-# layouts from being the host's. Build the libs first: scripts/build-ffmpeg-android.sh
-FFMPEG_PREFIX="$(pwd)/bae-ffmpeg/android"
-export BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android="--target=aarch64-linux-android35 --sysroot=$TOOLCHAIN/sysroot -I$FFMPEG_PREFIX/aarch64/include"
-export BINDGEN_EXTRA_CLANG_ARGS_x86_64_linux_android="--target=x86_64-linux-android35 --sysroot=$TOOLCHAIN/sysroot -I$FFMPEG_PREFIX/x86_64/include"
-
 # Build each selected ABI.
 for ABI in "${ABIS[@]}"; do
-    TARGET=$(rust_target "$ABI")
-    FA=$(ffmpeg_arch "$ABI")
-    if [ ! -f "$FFMPEG_PREFIX/$FA/lib/libavcodec.so" ]; then
-        echo "FFmpeg for Android ($FA) not built. Run: ./scripts/build-ffmpeg-android.sh" >&2
+    TARGET=$(android_rust_target "$ABI")
+    # The FFmpeg download names each arch by its target triple's first part.
+    FA="${TARGET%%-*}"
+    if [ ! -f "$ANDROID_FFMPEG_DIR/$FA/lib/libavcodec.so" ]; then
+        echo "FFmpeg for Android ($FA) is not downloaded. Run: ./scripts/build-ffmpeg-android.sh" >&2
         exit 1
     fi
     echo "Building bae-bridge for $ABI ($TARGET, $CARGO_PROFILE, features: ${BAE_BRIDGE_FEATURES:-(none)})..."
-    FFMPEG_DIR="$FFMPEG_PREFIX/$FA" cargo build $CARGO_FLAGS --target "$TARGET" -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
+    FFMPEG_DIR="$ANDROID_FFMPEG_DIR/$FA" cargo build $CARGO_FLAGS --target "$TARGET" -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
 done
 
 # Bindings come from the built .a: the release .so is stripped of the uniffi
 # metadata the generator reads.
-FIRST_TARGET=$(rust_target "${ABIS[0]}")
+FIRST_TARGET=$(android_rust_target "${ABIS[0]}")
 echo "Generating Kotlin bindings into $BINDINGS_DIR ..."
 # Regenerated from scratch so another feature set's functions can't linger.
 rm -rf "$BINDINGS_DIR"
@@ -130,13 +106,15 @@ done
 echo "Generating the theme (Android)..."
 cargo run -q -p bae-theme --bin theme-gen -- emit --target android --out-dir bae-android/app/generated/theme
 
-# Both managed ABI dirs are wiped so only the selected ABIs ship.
+# Every shipped ABI's dir is wiped so only the selected ABIs ship.
 echo "Installing .so files (stripped; debug symbols split out)..."
 JNILIBS=bae-android/app/src/main/jniLibs
-rm -rf "$JNILIBS/arm64-v8a" "$JNILIBS/x86_64"
+for ABI in ${ANDROID_ABIS//,/ }; do
+    rm -rf "${JNILIBS:?}/$ABI"
+done
 for ABI in "${ABIS[@]}"; do
-    TARGET=$(rust_target "$ABI")
-    FA=$(ffmpeg_arch "$ABI")
+    TARGET=$(android_rust_target "$ABI")
+    FA="${TARGET%%-*}"
     DEST="$JNILIBS/$ABI"
     SYMDIR="bae-android/debug-symbols/$ABI"
     mkdir -p "$DEST" "$SYMDIR"
@@ -148,7 +126,7 @@ for ABI in "${ABIS[@]}"; do
     "$OBJCOPY" --add-gnu-debuglink="$SYMDIR/libbae_bridge.so.debug" "$DEST/libbae_bridge.so"
     # The FFmpeg libraries libbae_bridge.so links against ship beside it.
     for so in libavcodec libavformat libavutil libswresample; do
-        cp "$FFMPEG_PREFIX/$FA/lib/$so.so" "$DEST/"
+        cp "$ANDROID_FFMPEG_DIR/$FA/lib/$so.so" "$DEST/"
     done
 done
 

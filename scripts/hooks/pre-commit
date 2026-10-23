@@ -284,17 +284,16 @@ if [ "${#STAGED_KOTLIN_FILES[@]}" -gt 0 ] \
         exit 1
     }
     # The type-resolved rules read the platform jar of the app's compileSdk.
-    compile_sdk=$(sed -n 's/^ *compileSdk = \([0-9][0-9]*\).*/\1/p' bae-android/app/build.gradle.kts)
-    android_jar="${ANDROID_HOME:-$HOME/Library/Android/sdk}/platforms/android-${compile_sdk}/android.jar"
-    if [ ! -f "$android_jar" ]; then
-        echo "❌ detekt's type-resolved rules need $android_jar; install platforms;android-${compile_sdk}"
+    source bae-android/toolchain.sh
+    if [ ! -f "$ANDROID_PLATFORM_JAR" ]; then
+        echo "❌ detekt's type-resolved rules need $ANDROID_PLATFORM_JAR; install platforms;android-${ANDROID_COMPILE_SDK}"
         exit 1
     fi
     run_check "detekt (type-resolved rules)" detekt \
         --input bae-android/app/src/main/java \
         --config bae-android/detekt-type-resolved.yml \
-        --classpath "$android_jar" \
-        --jvm-target 17 || {
+        --classpath "$ANDROID_PLATFORM_JAR" \
+        --jvm-target "$ANDROID_JAVA_VERSION" || {
         exit 1
     }
 fi

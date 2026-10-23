@@ -25,47 +25,14 @@ if [[ -d "$ROOT/bae-ffmpeg/dist/lib" ]]; then
   export DYLD_LIBRARY_PATH="$ROOT/bae-ffmpeg/dist/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
 fi
 
-# Gradle needs a JDK; Homebrew's keg-only openjdk is found here when JAVA_HOME
-# is unset, preferring the LTS releases Gradle 8.10.2 supports.
-if [[ -z "${JAVA_HOME:-}" ]] && command -v brew &>/dev/null; then
-  for _jdk in openjdk@21 openjdk@17 openjdk; do
-    _jdk_home="$(brew --prefix "$_jdk" 2>/dev/null)/libexec/openjdk.jdk/Contents/Home"
-    if [[ -d "$_jdk_home" ]]; then
-      export JAVA_HOME="$_jdk_home"
-      export PATH="$JAVA_HOME/bin:$PATH"
-      break
-    fi
-  done
-fi
-
-export NDK_VERSION="${NDK_VERSION:-29.0.14206865}"
-
-if [[ -z "${ANDROID_HOME:-}" ]]; then
-  if [[ -n "${ANDROID_SDK_ROOT:-}" ]]; then
-    export ANDROID_HOME="$ANDROID_SDK_ROOT"
-  elif [[ -d "$HOME/Library/Android/sdk" ]]; then
-    export ANDROID_HOME="$HOME/Library/Android/sdk"
-  fi
-fi
-
-if [[ -z "${ANDROID_HOME:-}" || ! -d "$ANDROID_HOME" ]]; then
-  echo "ANDROID_HOME is unset and no Android SDK was found at ~/Library/Android/sdk" >&2
+# The Android SDK, JDK and NDK the Gradle and cargo steps use; a missing SDK
+# or NDK fails here, before any check runs.
+source bae-android/toolchain.sh
+if [[ ! -d "$ANDROID_HOME" ]]; then
+  echo "No Android SDK at $ANDROID_HOME; set ANDROID_HOME" >&2
   exit 1
 fi
-
-if [[ -z "${ANDROID_NDK_HOME:-}" ]]; then
-  if [[ -d "$ANDROID_HOME/ndk/$NDK_VERSION" ]]; then
-    export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
-  else
-    echo "ANDROID_NDK_HOME is unset and $ANDROID_HOME/ndk/$NDK_VERSION does not exist" >&2
-    exit 1
-  fi
-fi
-
-if [[ ! -d "$ANDROID_NDK_HOME" ]]; then
-  echo "ANDROID_NDK_HOME does not exist: $ANDROID_NDK_HOME" >&2
-  exit 1
-fi
+android_rust_env || exit 1
 
 if [[ ! -d "bae-ffmpeg/ios" ]]; then
   echo "bae-ffmpeg/ios is absent; run scripts/build-ffmpeg-ios.sh" >&2
@@ -124,19 +91,6 @@ _ios_clippy() {
   BINDGEN_EXTRA_CLANG_ARGS="--target=arm64-apple-ios16.0 -isysroot $device_sdk -I$ffmpeg_prefix/include" \
   CARGO_TARGET_DIR=target-ios \
   cargo clippy --target aarch64-apple-ios -p bae-bridge -- -D warnings
-}
-
-_android_clippy() {
-  local ndk_home="${ANDROID_NDK_HOME}"
-  local toolchain="$ndk_home/toolchains/llvm/prebuilt/darwin-x86_64"
-  local ffmpeg_prefix="$ROOT/bae-ffmpeg/android"
-  CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$toolchain/bin/aarch64-linux-android35-clang" \
-  CC_aarch64_linux_android="$toolchain/bin/aarch64-linux-android35-clang" \
-  AR_aarch64_linux_android="$toolchain/bin/llvm-ar" \
-  BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android="--target=aarch64-linux-android35 --sysroot=$toolchain/sysroot -I$ffmpeg_prefix/aarch64/include" \
-  FFMPEG_DIR="$ffmpeg_prefix/aarch64" \
-  CARGO_TARGET_DIR=target-android \
-  cargo clippy --target aarch64-linux-android -p bae-bridge -- -D warnings
 }
 
 # ── Rust ──────────────────────────────────────────────────────────────────────
@@ -316,9 +270,7 @@ check "periphery" bash -c '
 # ── Android ────────────────────────────────────────────────────────────────────
 section "Android"
 
-rustup target add aarch64-linux-android 2>/dev/null || true
-
-check "clippy (Android aarch64)" _android_clippy
+check "clippy (Android aarch64)" ./bae-bridge/clippy-android.sh
 
 check "bridge build (Android full)" env BAE_BRIDGE_FEATURES=oauth-providers,cast ./bae-bridge/build-android.sh
 check "Gradle unit tests (Android full)" bash -c \
@@ -326,15 +278,9 @@ check "Gradle unit tests (Android full)" bash -c \
 check "ktlint" ktlint "bae-android/app/src/**/*.kt"
 check "detekt" detekt --input bae-android/app/src/main/java \
   --config bae-android/detekt.yml --build-upon-default-config
-_detekt_type_resolved() {
-  local compile_sdk
-  compile_sdk=$(sed -n 's/^ *compileSdk = \([0-9][0-9]*\).*/\1/p' bae-android/app/build.gradle.kts)
-  detekt --input bae-android/app/src/main/java \
-    --config bae-android/detekt-type-resolved.yml \
-    --classpath "${ANDROID_HOME:-$HOME/Library/Android/sdk}/platforms/android-${compile_sdk}/android.jar" \
-    --jvm-target 17
-}
-check "detekt (type-resolved rules)" _detekt_type_resolved
+check "detekt (type-resolved rules)" detekt --input bae-android/app/src/main/java \
+  --config bae-android/detekt-type-resolved.yml \
+  --classpath "$ANDROID_PLATFORM_JAR" --jvm-target "$ANDROID_JAVA_VERSION"
 check "Android lint (full)" bash -c \
   'cd bae-android && ./gradlew lintFullDebug --no-daemon'
 check "assemble debug APK (full)" bash -c \

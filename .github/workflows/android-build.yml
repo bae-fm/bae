@@ -52,9 +52,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
-  # Pinned NDK: build-android.sh and build-ffmpeg-android.sh default to this exact
-  # version and honor ANDROID_NDK_HOME. Keep in sync with both scripts.
-  NDK_VERSION: 29.0.14206865
 
 jobs:
   build:
@@ -112,53 +109,24 @@ jobs:
           } >> "$GITHUB_ENV"
         fi
 
-    - name: Setup JDK 17
-      # bae-android targets JavaVersion.VERSION_17 (app/build.gradle.kts).
-      uses: actions/setup-java@v5
-      with:
-        distribution: temurin
-        java-version: '17'
+    - name: Setup Android toolchain
+      uses: ./.github/actions/setup-android
 
-    - name: Install pinned Android NDK + SDK platform
-      # build-tools provides apksigner, used to verify the signed release APK.
-      run: |
-        SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-        yes | "$SDKMANAGER" --licenses >/dev/null
-        "$SDKMANAGER" "ndk;${NDK_VERSION}" "platforms;android-35" "build-tools;35.0.0"
-        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
-
-    - name: Cache cross-built Android FFmpeg
+    - name: Cache Android FFmpeg
       id: ffmpeg-cache
       uses: actions/cache@v5
       with:
         path: bae-ffmpeg/android
-        # Keyed on the build script + NDK version: rebuild only when the recipe
-        # or the toolchain that produced the libs changes.
-        key: ffmpeg-android-${{ env.NDK_VERSION }}-${{ hashFiles('scripts/build-ffmpeg-android.sh') }}
+        # Keyed on the download script, which names the release.
+        key: ffmpeg-android-${{ hashFiles('scripts/build-ffmpeg-android.sh') }}
 
-    - name: Build Android FFmpeg (on cache miss)
+    - name: Download Android FFmpeg (on cache miss)
       if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
       run: ./scripts/build-ffmpeg-android.sh
 
     - name: Clippy (Android target)
-      # Run clippy against the Android target so cfg(target_os = "android")-gated
-      # dead-code warnings are caught. The host clippy in linux.yml targets the
-      # host, where not(any(target_os = "ios", target_os = "android")) is true and
-      # those warnings don't fire. One ABI is enough; dead-code warnings are
-      # target-specific, not ABI-specific.
-      run: |
-        NDK_HOME="${ANDROID_NDK_HOME}"
-        # ubuntu-latest is x86_64, so the NDK's prebuilt host toolchain is linux-x86_64.
-        TOOLCHAIN="$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
-        FFMPEG_PREFIX="$(pwd)/bae-ffmpeg/android"
-        rustup target add aarch64-linux-android 2>/dev/null || true
-        CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$TOOLCHAIN/bin/aarch64-linux-android35-clang" \
-        CC_aarch64_linux_android="$TOOLCHAIN/bin/aarch64-linux-android35-clang" \
-        AR_aarch64_linux_android="$TOOLCHAIN/bin/llvm-ar" \
-        BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android="--target=aarch64-linux-android35 --sysroot=$TOOLCHAIN/sysroot -I$FFMPEG_PREFIX/aarch64/include" \
-        FFMPEG_DIR="$FFMPEG_PREFIX/aarch64" \
-        CARGO_TARGET_DIR="target-android" \
-        cargo clippy --target aarch64-linux-android -p bae-bridge -- -D warnings
+      # The host clippy in linux.yml never compiles the Android-only code.
+      run: ./bae-bridge/clippy-android.sh
 
     - name: Set release version + stamps
       # Release stamps an explicit version/code and the source commits into the
@@ -208,7 +176,7 @@ jobs:
       # bae-android/detekt.yml relaxes the opinionated rules the codebase doesn't
       # adopt (and allows Compose's PascalCase @Composable function names).
       # Same scope as ktlint: hand-written sources only. Pinned version; runs on
-      # the JDK 17 set up above.
+      # the JDK set up above.
       run: |
         DETEKT_VERSION=1.23.8
         curl -sSL "https://github.com/detekt/detekt/releases/download/v${DETEKT_VERSION}/detekt-cli-${DETEKT_VERSION}.zip" -o detekt-cli.zip
@@ -217,10 +185,10 @@ jobs:
           --config bae-android/detekt.yml --build-upon-default-config
         # The rules that need type resolution, against the platform jar of the
         # app's compileSdk (installed above).
-        COMPILE_SDK=$(sed -n 's/^ *compileSdk = \([0-9][0-9]*\).*/\1/p' bae-android/app/build.gradle.kts)
+        source bae-android/toolchain.sh
         "detekt-cli-${DETEKT_VERSION}/bin/detekt-cli" --input bae-android/app/src/main/java \
           --config bae-android/detekt-type-resolved.yml \
-          --classpath "$ANDROID_HOME/platforms/android-${COMPILE_SDK}/android.jar" --jvm-target 17
+          --classpath "$ANDROID_PLATFORM_JAR" --jvm-target "$ANDROID_JAVA_VERSION"
 
     - name: Android Lint
       # lint { abortOnError = true } is set in app/build.gradle.kts; only errors
@@ -262,8 +230,8 @@ jobs:
           ls -la "bae-android/app/build/outputs/apk/${APK_FLAVOR}/release" || true
           exit 1
         fi
-        APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
-        "$APKSIGNER" verify --verbose "$APK"
+        source bae-android/toolchain.sh
+        "$ANDROID_HOME/build-tools/$ANDROID_BUILD_TOOLS_VERSION/apksigner" verify --verbose "$APK"
         cp "$APK" "$EDITION_APK"
         echo "Verified signed APK: $APK -> $EDITION_APK"
 

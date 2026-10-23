@@ -61,30 +61,18 @@ jobs:
   android:
     name: Capture Android
     runs-on: ubuntu-latest
-    env:
-      NDK_VERSION: 29.0.14206865
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-linux
       - uses: ./.github/actions/setup-rust
-      - name: Setup JDK 17
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-      - name: Install pinned Android NDK + SDK platform
-        run: |
-          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          yes | "$SDKMANAGER" --licenses >/dev/null
-          "$SDKMANAGER" "ndk;${NDK_VERSION}" "platforms;android-35" "build-tools;35.0.0"
-          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
-      - name: Cache cross-built Android FFmpeg
+      - uses: ./.github/actions/setup-android
+      - name: Cache Android FFmpeg
         id: ffmpeg-cache
         uses: actions/cache@v5
         with:
           path: bae-ffmpeg/android
-          key: ffmpeg-android-${{ env.NDK_VERSION }}-${{ hashFiles('scripts/build-ffmpeg-android.sh') }}
-      - name: Build Android FFmpeg (on cache miss)
+          key: ffmpeg-android-${{ hashFiles('scripts/build-ffmpeg-android.sh') }}
+      - name: Download Android FFmpeg (on cache miss)
         if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
         run: ./scripts/build-ffmpeg-android.sh
       - name: Capture

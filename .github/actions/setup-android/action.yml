@@ -1,0 +1,29 @@
+name: 'Setup Android Toolchain'
+description: 'Install the JDK and the Android SDK parts bae-android/gradle.properties pins'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Read the pinned toolchain
+      id: toolchain
+      shell: bash
+      run: |
+        source bae-android/toolchain.sh
+        echo "java=$ANDROID_JAVA_VERSION" >> "$GITHUB_OUTPUT"
+
+    - name: Setup JDK
+      uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: ${{ steps.toolchain.outputs.java }}
+
+    - name: Install the Android NDK, SDK platform and build-tools
+      shell: bash
+      run: |
+        source bae-android/toolchain.sh
+        SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+        yes | "$SDKMANAGER" --licenses >/dev/null
+        "$SDKMANAGER" \
+          "ndk;$ANDROID_NDK_VERSION" \
+          "platforms;android-$ANDROID_COMPILE_SDK" \
+          "build-tools;$ANDROID_BUILD_TOOLS_VERSION"

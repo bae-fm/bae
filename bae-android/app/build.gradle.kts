@@ -19,17 +19,23 @@ val releaseKeystore = System.getenv("ANDROID_KEYSTORE_FILE")
 fun buildConfigString(value: String?): String =
     value?.let { "\"${it.replace("\\", "\\\\").replace("\"", "\\\"")}\"" } ?: "null"
 
+// The toolchain versions, written once in gradle.properties.
+fun toolchain(name: String): String = providers.gradleProperty("bae.$name").get()
+val javaVersion = toolchain("javaVersion")
+
 android {
     namespace = "fm.bae.app"
-    compileSdk = 35
+    compileSdk = toolchain("compileSdk").toInt()
+    buildToolsVersion = toolchain("buildToolsVersion")
+    ndkVersion = toolchain("ndkVersion")
 
     // The screenshotTest source set, which scripts/shots/android.sh renders.
     experimentalProperties["android.experimental.enableScreenshotTest"] = true
 
     defaultConfig {
         applicationId = "fm.bae.app"
-        minSdk = 26
-        targetSdk = 35
+        minSdk = toolchain("minSdk").toInt()
+        targetSdk = toolchain("targetSdk").toInt()
         versionCode = baeVersionCode
         versionName = baeVersionName
 
@@ -47,10 +53,13 @@ android {
         // res/xml can't read the manifest placeholder.
         resValue("string", "shortcut_target_package", "fm.bae.app")
 
-        // run.sh passes -Pbae.abi to package only the connected device's ABI;
-        // otherwise every ABI is kept.
-        (project.findProperty("bae.abi") as String?)?.let { requestedAbi ->
-            ndk { abiFilters += requestedAbi }
+        // Only the ABIs the bridge is built for, so a device of another ABI
+        // can't install an APK that lacks it. run.sh passes -Pbae.abi to
+        // package only the connected device's.
+        ndk {
+            abiFilters +=
+                (project.findProperty("bae.abi") as String?)?.let { listOf(it) }
+                    ?: toolchain("abis").split(",")
         }
     }
 
@@ -109,12 +118,18 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.toVersion(javaVersion)
+        targetCompatibility = JavaVersion.toVersion(javaVersion)
     }
 
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = javaVersion
+    }
+
+    packaging {
+        // JNA ships libraries for ABIs the NDK dropped, which Gradle's strip
+        // step can't handle; abiFilters leaves them out of the APK anyway.
+        jniLibs.excludes += listOf("lib/armeabi/**", "lib/mips/**", "lib/mips64/**")
     }
 
     buildFeatures {

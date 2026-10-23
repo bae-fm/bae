@@ -23,8 +23,7 @@ cd "$(dirname "$0")/../.."
 REPO_ROOT=$(pwd)
 ./scripts/build-layout.sh
 
-export ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
-export JAVA_HOME="${JAVA_HOME:-/Applications/Android Studio.app/Contents/jbr/Contents/Home}"
+source bae-android/toolchain.sh
 
 # The screenshotTest source set compiles against the app's `full` edition, which
 # needs the generated uniffi Kotlin bindings and the loc string resources. Both
