@@ -428,7 +428,12 @@ fn produced_keys() -> Vec<String> {
     for indicator in [
         BridgeSyncIndicator::Unconnected,
         BridgeSyncIndicator::Loading,
+        BridgeSyncIndicator::Stopped,
+        BridgeSyncIndicator::Syncing,
         BridgeSyncIndicator::Synced,
+        BridgeSyncIndicator::Offline,
+        BridgeSyncIndicator::Failed,
+        BridgeSyncIndicator::Unreadable,
         BridgeSyncIndicator::Waiting { items: 2 },
     ] {
         keys.extend(bridge_sync_indicator_key(&indicator));
