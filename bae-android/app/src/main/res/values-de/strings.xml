@@ -121,11 +121,7 @@
     <string name="members_remove_confirm_title">Dieses Gerät entfernen?</string>
     <string name="members_remove_confirm_body">%1$s verliert den Zugriff auf diese Bibliothek.</string>
     <string name="join_request_approve">Genehmigen</string>
-    <string name="onboarding_tagline">Füge dieses Gerät einer Bibliothek hinzu, die du schon hast, oder einer, zu der du eingeladen wurdest.</string>
     <string name="onboarding_add_device">Gerät hinzufügen</string>
-    <string name="onboarding_add_device_explanation">Scanne den Code, den „Gerät hinzufügen“ auf einem deiner Geräte zeigt, oder gib ihn ein. Wenn du alle Geräte verloren hast, gib deinen Wiederherstellungscode ein.</string>
-    <string name="onboarding_join_library">Bibliothek beitreten</string>
-    <string name="onboarding_join_library_explanation">Scanne die Einladung, die dir ein Admin der Bibliothek geschickt hat, oder gib sie ein.</string>
     <string name="onboarding_icon_description">bae-Symbol</string>
     <string name="onboarding_camera_permission_required">Zum Scannen von QR-Codes ist eine Kameraberechtigung erforderlich</string>
     <string name="oauth_unconfigured">Diese Bibliothek erfordert eine Cloud-Anmeldung, die in diesem Build nicht konfiguriert ist.</string>

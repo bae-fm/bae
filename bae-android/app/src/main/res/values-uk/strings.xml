@@ -121,11 +121,7 @@
     <string name="members_remove_confirm_title">Видалити цей пристрій?</string>
     <string name="members_remove_confirm_body">%1$s втрачає доступ до цієї бібліотеки.</string>
     <string name="join_request_approve">Схвалити</string>
-    <string name="onboarding_tagline">Додайте цей пристрій до бібліотеки, яку ви вже маєте, або до тієї, до якої вас запросили.</string>
     <string name="onboarding_add_device">Додати пристрій</string>
-    <string name="onboarding_add_device_explanation">Відскануйте або введіть код, який показує «Додати пристрій» на одному з ваших пристроїв. Якщо ви втратили всі пристрої, введіть свій код відновлення.</string>
-    <string name="onboarding_join_library">Приєднатися до бібліотеки</string>
-    <string name="onboarding_join_library_explanation">Відскануйте або введіть запрошення, яке вам надіслав адміністратор бібліотеки.</string>
     <string name="onboarding_icon_description">значок bae</string>
     <string name="onboarding_camera_permission_required">Для сканування QR-кодів потрібен дозвіл на доступ до камери</string>
     <string name="oauth_unconfigured">Для цієї бібліотеки потрібен хмарний вхід, який не налаштовано в цій збірці.</string>

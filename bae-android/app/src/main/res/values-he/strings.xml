@@ -121,11 +121,7 @@
     <string name="members_remove_confirm_title">להסיר את המכשיר הזה?</string>
     <string name="members_remove_confirm_body">%1$s יאבד גישה לספרייה הזו.</string>
     <string name="join_request_approve">אשר</string>
-    <string name="onboarding_tagline">הוסיפו את המכשיר הזה לספרייה שכבר יש לכם, או לספרייה שהוזמנתם אליה.</string>
     <string name="onboarding_add_device">הוספת מכשיר</string>
-    <string name="onboarding_add_device_explanation">סרקו או הקלידו את הקוד ש“הוספת מכשיר” מציג באחד המכשירים שלכם. אם איבדתם את כל המכשירים, הקלידו את קוד השחזור שלכם.</string>
-    <string name="onboarding_join_library">הצטרפות לספרייה</string>
-    <string name="onboarding_join_library_explanation">סרקו או הקלידו את ההזמנה שמנהל של הספרייה שלח לכם.</string>
     <string name="onboarding_icon_description">סמל bae</string>
     <string name="onboarding_camera_permission_required">נדרשת הרשאת מצלמה כדי לסרוק קודי QR</string>
     <string name="oauth_unconfigured">ספרייה זו דורשת כניסה לענן, שאינה מוגדרת בגרסה זו.</string>

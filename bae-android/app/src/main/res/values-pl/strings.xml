@@ -121,11 +121,7 @@
     <string name="members_remove_confirm_title">Usunąć to urządzenie?</string>
     <string name="members_remove_confirm_body">%1$s traci dostęp do tej biblioteki.</string>
     <string name="join_request_approve">Zatwierdź</string>
-    <string name="onboarding_tagline">Dodaj to urządzenie do biblioteki, którą już masz, albo do takiej, do której cię zaproszono.</string>
     <string name="onboarding_add_device">Dodaj urządzenie</string>
-    <string name="onboarding_add_device_explanation">Zeskanuj lub wpisz kod, który pokazuje „Dodaj urządzenie” na jednym z twoich urządzeń. Jeśli nie masz już żadnego urządzenia, wpisz swój kod odzyskiwania.</string>
-    <string name="onboarding_join_library">Dołącz do biblioteki</string>
-    <string name="onboarding_join_library_explanation">Zeskanuj lub wpisz zaproszenie, które wysłał ci administrator biblioteki.</string>
     <string name="onboarding_icon_description">ikona bae</string>
     <string name="onboarding_camera_permission_required">Do skanowania kodów QR wymagane jest pozwolenie na dostęp do aparatu</string>
     <string name="oauth_unconfigured">Ta biblioteka wymaga logowania do chmury, które nie jest skonfigurowane w tej wersji.</string>

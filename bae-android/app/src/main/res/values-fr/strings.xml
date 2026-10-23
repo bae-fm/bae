@@ -121,11 +121,7 @@
     <string name="members_remove_confirm_title">Supprimer cet appareil ?</string>
     <string name="members_remove_confirm_body">%1$s perd l’accès à cette bibliothèque.</string>
     <string name="join_request_approve">Approuver</string>
-    <string name="onboarding_tagline">Ajoutez cet appareil à une bibliothèque que vous avez déjà, ou à une bibliothèque à laquelle vous avez été invité.</string>
     <string name="onboarding_add_device">Ajouter un appareil</string>
-    <string name="onboarding_add_device_explanation">Scannez ou saisissez le code qu’affiche « Ajouter un appareil » sur l’un de vos appareils. Si vous avez perdu tous vos appareils, saisissez votre code de récupération.</string>
-    <string name="onboarding_join_library">Rejoindre une bibliothèque</string>
-    <string name="onboarding_join_library_explanation">Scannez ou saisissez l’invitation qu’un administrateur de la bibliothèque vous a envoyée.</string>
     <string name="onboarding_icon_description">icône bae</string>
     <string name="onboarding_camera_permission_required">L\'autorisation de la caméra est requise pour scanner des codes QR</string>
     <string name="oauth_unconfigured">Cette bibliothèque nécessite une connexion au cloud, qui n\'est pas configurée sur cette version.</string>

@@ -125,11 +125,7 @@
     <string name="members_remove_confirm_title">Ta bort den här enheten?</string>
     <string name="members_remove_confirm_body">%1$s förlorar åtkomsten till det här biblioteket.</string>
     <string name="join_request_approve">Godkänn</string>
-    <string name="onboarding_tagline">Lägg till den här enheten i ett bibliotek du redan har, eller i ett du har bjudits in till.</string>
     <string name="onboarding_add_device">Lägg till enhet</string>
-    <string name="onboarding_add_device_explanation">Skanna eller skriv koden som ”Lägg till enhet” visar på en av dina enheter. Om du har förlorat alla dina enheter skriver du din återställningskod.</string>
-    <string name="onboarding_join_library">Gå med i ett bibliotek</string>
-    <string name="onboarding_join_library_explanation">Skanna eller skriv inbjudan som en administratör för biblioteket skickade till dig.</string>
     <string name="onboarding_icon_description">bae-symbol</string>
     <string name="onboarding_camera_permission_required">Kamerabehörighet krävs för att skanna QR-koder</string>
     <string name="oauth_unconfigured">Det här biblioteket kräver molninloggning, som inte är konfigurerad i den här versionen.</string>

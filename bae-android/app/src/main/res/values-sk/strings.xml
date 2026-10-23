@@ -127,11 +127,7 @@
     <string name="members_remove_confirm_title">Odstrániť toto zariadenie?</string>
     <string name="members_remove_confirm_body">%1$s stratí prístup k tejto knižnici.</string>
     <string name="join_request_approve">Schváliť</string>
-    <string name="onboarding_tagline">Pridaj toto zariadenie do knižnice, ktorú už máš, alebo do tej, do ktorej ťa niekto pozval.</string>
     <string name="onboarding_add_device">Pridať zariadenie</string>
-    <string name="onboarding_add_device_explanation">Naskenuj alebo zadaj kód, ktorý zobrazí „Pridať zariadenie“ na niektorom z tvojich zariadení. Ak už nemáš žiadne zariadenie, zadaj svoj kód na obnovenie.</string>
-    <string name="onboarding_join_library">Pripojiť sa ku knižnici</string>
-    <string name="onboarding_join_library_explanation">Naskenuj alebo zadaj pozvánku, ktorú ti poslal správca knižnice.</string>
     <string name="onboarding_icon_description">ikona bae</string>
     <string name="onboarding_camera_permission_required">Na skenovanie QR kódov je potrebné povolenie kamery</string>
     <string name="oauth_unconfigured">Táto knižnica vyžaduje cloudové prihlásenie, ktoré v tomto zostavení nie je nastavené.</string>

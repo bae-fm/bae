@@ -121,11 +121,7 @@
     <string name="members_remove_confirm_title">Ukloniti ovaj uređaj?</string>
     <string name="members_remove_confirm_body">%1$s gubi pristup ovoj fonoteci.</string>
     <string name="join_request_approve">Odobri</string>
-    <string name="onboarding_tagline">Dodajte ovaj uređaj u fonoteku koju već imate ili u onu u koju ste pozvani.</string>
     <string name="onboarding_add_device">Dodaj uređaj</string>
-    <string name="onboarding_add_device_explanation">Skenirajte ili upišite kod koji „Dodaj uređaj” prikazuje na jednom od vaših uređaja. Ako ste izgubili sve uređaje, upišite svoj kod za oporavak.</string>
-    <string name="onboarding_join_library">Pridruži se fonoteci</string>
-    <string name="onboarding_join_library_explanation">Skenirajte ili upišite pozivnicu koju vam je poslao administrator fonoteke.</string>
     <string name="onboarding_icon_description">ikona bae</string>
     <string name="onboarding_camera_permission_required">Za skeniranje QR kodova potrebna je dozvola za kameru</string>
     <string name="oauth_unconfigured">Ova fonoteka zahtijeva prijavu u oblak, koja nije konfigurirana u ovoj verziji.</string>

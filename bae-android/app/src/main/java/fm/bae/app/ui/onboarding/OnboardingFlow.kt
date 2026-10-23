@@ -30,30 +30,21 @@ private const val TAG = "bae.OnboardingFlow"
 private val logger = BaeLogger(TAG)
 
 /**
- * What the person enters a code for: one of a new device's two choices, or a
- * restore over this device's copy of a library ([RestoreOver]). Whichever it
- * is, the code itself decides between restoring and joining, except that a
- * restore over this device's copy takes no invite.
+ * What the person enters a code for: a new device, or a restore over this
+ * device's copy of a library ([RestoreOver]). On a new device the code decides:
+ * the person's own restore code adds this device to their library, and an
+ * invite joins someone's. A restore over this device's copy takes no invite.
  */
 internal sealed interface CodeEntry {
-    /** Join someone's library with the invite an admin sent. */
-    data object JoinLibrary : CodeEntry
-
-    /**
-     * Add this device to the person's own library with the code Add device
-     * shows on another of their devices, or their recovery code.
-     */
-    data object AddDevice : CodeEntry
+    /** A new device, on the welcome screen. */
+    data object NewDevice : CodeEntry
 }
 
 /**
- * Where onboarding stands: a new device's two choices, a code to scan or type,
- * a code read and waiting on the person, or a restore or join running.
+ * Where onboarding stands: a code to scan or type, a code read and waiting on
+ * the person, or a restore or join running.
  */
 internal sealed interface OnboardingStep {
-    /** A new device's first screen: join someone's library, or add this device to the person's own. */
-    data object Choose : OnboardingStep
-
     /** No code yet: the person scans or types one for [entry]. */
     data class EnterCode(
         val entry: CodeEntry,
@@ -97,9 +88,8 @@ internal sealed interface OnboardingStep {
 /**
  * What a code read for [entry] asks of the person: the person's own restore
  * code restores, with any S3 key that came beside it; an invite joins the
- * library it names. Which choice the person made doesn't matter, but a restore
- * over this device's copy takes no invite: the code goes to the restore, and
- * core says so.
+ * library it names. A restore over this device's copy takes no invite: the
+ * code goes to the restore, and core says so.
  */
 internal fun codeReadStep(
     code: String,
@@ -118,7 +108,7 @@ internal fun codeReadStep(
                     OnboardingStep.Restore(code, info.metadata, s3Credentials, entry)
                 }
 
-                CodeEntry.JoinLibrary, CodeEntry.AddDevice -> {
+                CodeEntry.NewDevice -> {
                     OnboardingStep.Invite(code, info.metadata, info.libraryName, entry)
                 }
             }
@@ -126,11 +116,9 @@ internal fun codeReadStep(
     }
 
 /**
- * Onboarding's one flow: a new device's person chooses to join a library or
- * add this device to their own; then a code, scanned or typed, is either the
- * person's own restore code or an invite, and this device restores or joins
- * with it. With [restoreOver], the flow starts at the code, for a restore over
- * this device's copy of that library. What either produced goes to
+ * Onboarding's one flow: a code, scanned or typed, is either the person's own
+ * restore code or an invite, and this device restores or joins with it. With
+ * [restoreOver], the code restores over this device's copy of that library. What either produced goes to
  * [onBootstrapped]; an invite declined or expired returns to the code screen
  * with that said.
  */
@@ -142,23 +130,11 @@ internal class OnboardingFlow(
     restoreOver: RestoreOver?,
     private val onBootstrapped: (BridgeBootstrapResult) -> Unit,
 ) {
-    var step by mutableStateOf<OnboardingStep>(restoreOver?.let(OnboardingStep::EnterCode) ?: OnboardingStep.Choose)
+    var step by mutableStateOf<OnboardingStep>(OnboardingStep.EnterCode(restoreOver ?: CodeEntry.NewDevice))
         private set
     var error by mutableStateOf<DisplayError?>(null)
 
     private var cancellation: BootstrapCancellation? = null
-
-    /** Move from the first screen to scanning or typing a code for [entry]. */
-    fun choose(entry: CodeEntry) {
-        error = null
-        step = OnboardingStep.EnterCode(entry)
-    }
-
-    /** Back to a new device's first screen from its code screen. */
-    fun backToChoices() {
-        error = null
-        step = OnboardingStep.Choose
-    }
 
     /**
      * Read [text], scanned or typed on [from], and move to what its code asks
@@ -215,7 +191,7 @@ internal class OnboardingFlow(
                 )
             }
 
-            CodeEntry.JoinLibrary, CodeEntry.AddDevice -> {
+            CodeEntry.NewDevice -> {
                 host.restoreFromCode(from.code, credentials, deviceName(context), callback, cancellation)
             }
         }

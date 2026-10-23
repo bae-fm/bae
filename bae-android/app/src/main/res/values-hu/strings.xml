@@ -125,11 +125,7 @@
     <string name="members_remove_confirm_title">Eltávolítod ezt az eszközt?</string>
     <string name="members_remove_confirm_body">%1$s elveszíti a hozzáférést ehhez a könyvtárhoz.</string>
     <string name="join_request_approve">Jóváhagyás</string>
-    <string name="onboarding_tagline">Add hozzá ezt az eszközt egy könyvtárhoz, amely már megvan, vagy amelybe meghívtak.</string>
     <string name="onboarding_add_device">Eszköz hozzáadása</string>
-    <string name="onboarding_add_device_explanation">Olvasd be vagy írd be a kódot, amelyet az „Eszköz hozzáadása” mutat az egyik eszközödön. Ha minden eszközödet elvesztetted, írd be a helyreállítási kódodat.</string>
-    <string name="onboarding_join_library">Csatlakozás könyvtárhoz</string>
-    <string name="onboarding_join_library_explanation">Olvasd be vagy írd be a meghívót, amelyet a könyvtár egyik adminisztrátora küldött neked.</string>
     <string name="onboarding_icon_description">bae ikon</string>
     <string name="onboarding_camera_permission_required">A QR-kódok beolvasásához kameraengedély szükséges</string>
     <string name="oauth_unconfigured">Ehhez a könyvtárhoz felhős bejelentkezés kell, ami ebben a buildben nincs beállítva.</string>

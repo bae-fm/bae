@@ -36,7 +36,6 @@ import fm.bae.app.BaeApp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -71,8 +70,7 @@ internal data class RestoreOver(
 ) : CodeEntry
 
 /**
- * First run on a device: the person chooses to join someone's library or add
- * this device to their own, then scans or types a code; a restore code from
+ * First run on a device: the person scans or types a code; a restore code from
  * one of the person's devices restores here, and an invite joins. With
  * [restoreOver], the person's current restore code restores that library over
  * this device's copy, after another of their devices replaced their keys, or
@@ -102,13 +100,6 @@ internal fun OnboardingSteps(flow: OnboardingFlow) {
     val requestScan = rememberScanRequest(onDenied = { flow.error = DisplayError(it) }, onOpen = { scanning = true })
 
     when (val step = flow.step) {
-        OnboardingStep.Choose -> {
-            OnboardingChoices(
-                onJoinLibrary = { flow.choose(CodeEntry.JoinLibrary) },
-                onAddDevice = { flow.choose(CodeEntry.AddDevice) },
-            )
-        }
-
         is OnboardingStep.EnterCode -> {
             if (scanning) {
                 QRScannerScreen(
@@ -119,8 +110,9 @@ internal fun OnboardingSteps(flow: OnboardingFlow) {
                     onDismiss = { scanning = false },
                 )
             } else {
-                val text = codeScreenText(step.entry, onChoices = flow::backToChoices)
-                BackHandler(onBack = text.onBack)
+                val text = codeScreenText(step.entry)
+                // The welcome screen leaves Back to the system.
+                text?.let { BackHandler(onBack = it.onBack) }
                 CodeScreen(flow = flow, step = step, text = text, onScan = requestScan)
             }
         }
@@ -152,32 +144,15 @@ internal fun OnboardingSteps(flow: OnboardingFlow) {
     }
 }
 
-/** A new device's first screen: bae's welcome and its two choices. */
-@Composable
-private fun OnboardingChoices(
-    onJoinLibrary: () -> Unit,
-    onAddDevice: () -> Unit,
-) {
-    OnboardingStartColumn(title = null, message = stringResource(R.string.onboarding_tagline)) {
-        PrimaryButton(onClick = onAddDevice, modifier = Modifier.width(actionWidth)) {
-            Text(stringResource(R.string.onboarding_add_device))
-        }
-        Spacer(modifier = Modifier.height(ThemeSpace.related))
-        OutlinedButton(onClick = onJoinLibrary, modifier = Modifier.width(actionWidth)) {
-            Text(stringResource(R.string.onboarding_join_library))
-        }
-    }
-}
-
 /**
- * The start screens' column: bae's icon and wordmark, an optional title, the
+ * The start screens' column: bae's icon and wordmark, an optional title and
  * message, then [actions]. Centered when it fits, and scrolled when it
  * doesn't, such as on a phone held sideways.
  */
 @Composable
 internal fun OnboardingStartColumn(
     title: String?,
-    message: String,
+    message: String?,
     actions: @Composable ColumnScope.() -> Unit,
 ) {
     // The scroll keeps the screen's height as the column's minimum, so a
@@ -202,13 +177,15 @@ internal fun OnboardingStartColumn(
             Spacer(modifier = Modifier.height(ThemeSpace.group))
             Text(text = it, style = ThemeText.title.style, textAlign = TextAlign.Center)
         }
-        Spacer(modifier = Modifier.height(ThemeSpace.group))
-        Text(
-            text = message,
-            style = ThemeText.body.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
+        message?.let {
+            Spacer(modifier = Modifier.height(ThemeSpace.group))
+            Text(
+                text = it,
+                style = ThemeText.body.style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
         Spacer(modifier = Modifier.height(ThemeSpace.page))
         actions()
     }
@@ -216,8 +193,8 @@ internal fun OnboardingStartColumn(
 
 /**
  * What a restore says on its form and while it runs: on a new device it adds
- * this device to the person's own library, whichever choice took the code;
- * over this device's copy it restores that library.
+ * this device to the person's own library; over this device's copy it
+ * restores that library.
  */
 private class RestoreText(
     @StringRes val title: Int,
@@ -227,7 +204,7 @@ private class RestoreText(
     companion object {
         fun of(entry: CodeEntry): RestoreText =
             when (entry) {
-                CodeEntry.AddDevice, CodeEntry.JoinLibrary -> {
+                CodeEntry.NewDevice -> {
                     RestoreText(
                         title = R.string.onboarding_add_device,
                         action = R.string.onboarding_add_action,
@@ -400,20 +377,6 @@ private fun OnboardingContainer(content: @Composable ColumnScope.() -> Unit) {
     )
 }
 
-/** The first-run welcome screen in the app chrome with inert callbacks, for the `welcome` screenshot scene. */
-@Composable
-internal fun WelcomeScene() {
-    BaeAppChrome {
-        OnboardingChoices(onJoinLibrary = {}, onAddDevice = {})
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun WelcomeScenePreview() {
-    WelcomeScene()
-}
-
 @Preview(showBackground = true)
 @Composable
 private fun OnboardingProgressWaitingPreview() {
@@ -437,7 +400,7 @@ private fun OnboardingProgressWaitingPreview() {
                                     oauthAccess = null,
                                 ),
                             libraryName = "Household",
-                            entry = CodeEntry.JoinLibrary,
+                            entry = CodeEntry.NewDevice,
                         ),
                     status = BridgeBootstrapStatus.WaitingForApproval,
                 ),

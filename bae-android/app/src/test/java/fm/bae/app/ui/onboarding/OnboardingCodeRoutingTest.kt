@@ -30,30 +30,16 @@ class OnboardingCodeRoutingTest {
     fun aRestoreCodeOpensTheRestoreFormWithTheKeyThatCameBesideIt() {
         val key = BridgeS3Credentials(accessKeyId = "key-id", secretAccessKey = "secret")
 
-        val step = codeReadStep("restore-code", BridgeCodeInfo.Restore(metadata), key, CodeEntry.AddDevice)
+        val step = codeReadStep("restore-code", BridgeCodeInfo.Restore(metadata), key, CodeEntry.NewDevice)
 
-        assertEquals(OnboardingStep.Restore("restore-code", metadata, key, CodeEntry.AddDevice), step)
+        assertEquals(OnboardingStep.Restore("restore-code", metadata, key, CodeEntry.NewDevice), step)
     }
 
     @Test
     fun anInviteOpensTheJoinFormForTheLibraryItNames() {
-        val step = codeReadStep("invite-code", BridgeCodeInfo.Invite(metadata, "Household"), null, CodeEntry.JoinLibrary)
+        val step = codeReadStep("invite-code", BridgeCodeInfo.Invite(metadata, "Household"), null, CodeEntry.NewDevice)
 
-        assertEquals(OnboardingStep.Invite("invite-code", metadata, "Household", CodeEntry.JoinLibrary), step)
-    }
-
-    @Test
-    fun anInviteEnteredAfterChoosingAddDeviceStillJoins() {
-        val step = codeReadStep("invite-code", BridgeCodeInfo.Invite(metadata, "Household"), null, CodeEntry.AddDevice)
-
-        assertEquals(OnboardingStep.Invite("invite-code", metadata, "Household", CodeEntry.AddDevice), step)
-    }
-
-    @Test
-    fun aRestoreCodeEnteredAfterChoosingJoinLibraryStillRestores() {
-        val step = codeReadStep("restore-code", BridgeCodeInfo.Restore(metadata), null, CodeEntry.JoinLibrary)
-
-        assertEquals(OnboardingStep.Restore("restore-code", metadata, null, CodeEntry.JoinLibrary), step)
+        assertEquals(OnboardingStep.Invite("invite-code", metadata, "Household", CodeEntry.NewDevice), step)
     }
 
     @Test

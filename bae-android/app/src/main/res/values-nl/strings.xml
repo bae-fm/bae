@@ -121,11 +121,7 @@
     <string name="members_remove_confirm_title">Dit apparaat verwijderen?</string>
     <string name="members_remove_confirm_body">%1$s verliest de toegang tot deze bibliotheek.</string>
     <string name="join_request_approve">Goedkeuren</string>
-    <string name="onboarding_tagline">Voeg dit apparaat toe aan een bibliotheek die je al hebt, of aan een bibliotheek waarvoor je bent uitgenodigd.</string>
     <string name="onboarding_add_device">Apparaat toevoegen</string>
-    <string name="onboarding_add_device_explanation">Scan of typ de code die ‘Apparaat toevoegen’ op een van je apparaten toont. Ben je al je apparaten kwijt, typ dan je herstelcode.</string>
-    <string name="onboarding_join_library">Deelnemen aan bibliotheek</string>
-    <string name="onboarding_join_library_explanation">Scan of typ de uitnodiging die een beheerder van de bibliotheek je heeft gestuurd.</string>
     <string name="onboarding_icon_description">bae-pictogram</string>
     <string name="onboarding_camera_permission_required">Cameratoestemming is vereist om QR-codes te scannen</string>
     <string name="oauth_unconfigured">Deze bibliotheek heeft cloudaanmelding nodig, die niet is geconfigureerd in deze build.</string>

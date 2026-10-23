@@ -41,20 +41,12 @@ class OnboardingRestoreTextTest {
     private fun restore(entry: CodeEntry) = OnboardingStep.Restore("restore-code", metadata, null, entry)
 
     @Test
-    fun aCodeReadAfterAddDeviceAddsThisDevice() {
-        compose.setContent { BaeTheme { RestoreForm(restore(CodeEntry.AddDevice), null, {}, {}) } }
+    fun aRestoreCodeOnANewDeviceAddsThisDevice() {
+        compose.setContent { BaeTheme { RestoreForm(restore(CodeEntry.NewDevice), null, {}, {}) } }
 
         compose.onNodeWithText("Add device").assertIsDisplayed()
         compose.onNodeWithText("Add").assertIsDisplayed()
         compose.onNodeWithText("Restore").assertDoesNotExist()
-    }
-
-    @Test
-    fun aRestoreCodeReadAfterJoinLibraryAlsoAddsThisDevice() {
-        compose.setContent { BaeTheme { RestoreForm(restore(CodeEntry.JoinLibrary), null, {}, {}) } }
-
-        compose.onNodeWithText("Add device").assertIsDisplayed()
-        compose.onNodeWithText("Add").assertIsDisplayed()
     }
 
     @Test
@@ -71,7 +63,7 @@ class OnboardingRestoreTextTest {
         // The spinner animates forever; a frozen clock lets the content settle.
         compose.mainClock.autoAdvance = false
         compose.setContent {
-            OnboardingProgress(OnboardingStep.Running(restore(CodeEntry.AddDevice), BridgeBootstrapStatus.Connecting), onCancel = {})
+            OnboardingProgress(OnboardingStep.Running(restore(CodeEntry.NewDevice), BridgeBootstrapStatus.Connecting), onCancel = {})
         }
 
         compose.onNodeWithText("Adding this device").assertIsDisplayed()

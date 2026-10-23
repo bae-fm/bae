@@ -1419,18 +1419,19 @@ editable by every member.
 | Remove a person | an admin | their circle goes, with its rows |
 | Rename the library | an admin | every device shows the new name (§5.1) |
 
-A new device's first screen offers the two ways in: **Join library**, with an
-invite, and **Add device**, with the person's own restore code. Either one
-then scans or takes a typed code, and the code decides: an invite joins and a
-restore code restores, whichever was chosen. A restore code's screens call
-that adding this device: the button is **Add**, and the running restore says
-it is adding this device. A code saved in iCloud Keychain, and a restore over
-this device's copy (§6.4), say **Restore**. A Mac also offers **Create new
-library**.
+A new phone's first screen is bae's sheep and name over **Scan code** and
+**Enter code**, with no other words: the code says what it is for. An invite
+joins someone's library, and the person's own restore code adds this device to
+theirs. A Mac's first screen offers **Join library** and **Add device**, which
+both lead to the same scan-or-type screen where the code decides the same way,
+and **Create new library**. A restore code's screens call that adding this
+device: the button is **Add**, and the running restore says it is adding this
+device. A code saved in iCloud Keychain, and a restore over this device's copy
+(§6.4), say **Restore**.
 
 Dan joins. Ana invites him with his Dropbox email and a role; her laptop shares
 the store's folder with his account and shows the invite. On his phone he
-chooses **Join library**, scans the invite, types "Dan", and his phone asks to
+taps **Scan code**, scans the invite, types "Dan", and his phone asks to
 join. Ana's laptop shows the request and she approves it. His phone then
 writes his `people` row while it joins. Everyone's devices show Dan by name.
 On S3, Ana makes an access key for Dan instead of sharing with an account. An
@@ -1463,15 +1464,14 @@ tablet is hers
 and an approval would strand a person whose other devices are all lost. The
 tablet gets the code one of three ways:
 
-- **scanning** the QR code another of her devices shows, after choosing **Add
-  device**;
+- **scanning** the QR code another of her devices shows;
 - **iCloud Keychain**, on Apple devices: the first screen lists the restore
   codes coven saved there for libraries not already on this device, and Carol
   picks one; a library the device already holds is opened, not restored. A
   code there is Carol's, not one device's: it stays while she is a member, so
   removing the library from one of her devices leaves it offered there (§6.4),
   and it goes when she leaves the library or deletes it from the list;
-- **typing** it in, after choosing **Add device**.
+- **typing** it in.
 
 The iCloud Keychain list shows each code under its library's name as Carol's
 devices last saw it (§5.1), over where the library is stored: the provider and

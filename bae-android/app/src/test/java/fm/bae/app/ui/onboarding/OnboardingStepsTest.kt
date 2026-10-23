@@ -26,8 +26,8 @@ class OnboardingStepsTest {
     val compose = createComposeRule()
 
     /**
-     * Onboarding over a host that is never reached: choosing and going back
-     * call no core. The test screen is shorter than a code screen, so what
+     * Onboarding over a host that is never reached: opening the code field and
+     * going back call no core. The test screen is shorter than a code screen, so what
      * sits below the fold is scrolled to, as a person would.
      */
     private fun showOnboarding(restoreOver: RestoreOver? = null) {
@@ -43,60 +43,21 @@ class OnboardingStepsTest {
     }
 
     @Test
-    fun aNewDeviceChoosesBetweenJoiningALibraryAndAddingThisDevice() {
+    fun aNewDeviceOpensOnScanningOrEnteringACode() {
         showOnboarding()
 
-        compose.onNodeWithText("Join library").assertIsDisplayed()
-        compose.onNodeWithText("Add device").assertIsDisplayed()
-        compose.onNodeWithText("Scan a code").assertDoesNotExist()
-        compose.onNodeWithText("Enter a code").assertDoesNotExist()
-    }
-
-    @Test
-    fun addDeviceAsksForTheCodeFromAnotherOfThePersonsDevices() {
-        showOnboarding()
-
-        compose.onNodeWithText("Add device").performClick()
-
-        compose.onNodeWithText("“Add device” shows on one of your devices", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("type your recovery code", substring = true).assertIsDisplayed()
         compose.onNodeWithText("Scan a code").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Enter a code").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Join library").assertDoesNotExist()
-    }
-
-    @Test
-    fun joinLibraryAsksForTheInvite() {
-        showOnboarding()
-
-        compose.onNodeWithText("Join library").performClick()
-
-        compose.onNodeWithText("Scan or type the invite an admin of the library sent you.").assertIsDisplayed()
-        compose.onNodeWithText("Scan a code").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Enter a code").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Add device").assertDoesNotExist()
+        compose.onNodeWithText("Back").assertDoesNotExist()
     }
 
     @Test
     fun enterACodeOpensTheFieldToTypeIt() {
         showOnboarding()
-        compose.onNodeWithText("Add device").performClick()
 
         compose.onNodeWithText("Enter a code").performScrollTo().performClick()
 
         compose.onNodeWithText("Recovery code or invite").assertIsDisplayed()
-    }
-
-    @Test
-    fun backFromTheCodeReturnsToTheChoices() {
-        showOnboarding()
-        compose.onNodeWithText("Join library").performClick()
-
-        compose.onNodeWithText("Back").performScrollTo().performClick()
-
-        compose.onNodeWithText("Join library").assertIsDisplayed()
-        compose.onNodeWithText("Add device").assertIsDisplayed()
-        compose.onNodeWithText("Scan a code").assertDoesNotExist()
     }
 
     @Test
@@ -113,7 +74,6 @@ class OnboardingStepsTest {
 
         compose.onNodeWithText("Restore this library").assertIsDisplayed()
         compose.onNodeWithText("Scan a code").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Join library").assertDoesNotExist()
         compose.onNodeWithText("Back").performScrollTo().performClick()
 
         assertTrue(left)
