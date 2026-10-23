@@ -93,8 +93,7 @@ struct SyncStatusLine: View {
             try await sync.retryPendingOperation(id)
         case .restoreFromCode:
             onRestoreFromCode()
-        case .wait, .restoreFile, .provideAdminAccess, .deleteAccessKey,
-            .review:
+        case .wait, .restoreFile, .review:
             preconditionFailure(
                 "a record without a button, or one its sheet handles"
             )
@@ -126,8 +125,6 @@ private struct PendingActionSheetView: View {
 
     var body: some View {
         switch sheet {
-        case .adminAccess(let request):
-            AdminAccessSheet(request: request, onDismiss: onDismiss)
         case .s3Key:
             S3KeySheet(location: location, onDismiss: onDismiss)
         case .restoreFile(let record):

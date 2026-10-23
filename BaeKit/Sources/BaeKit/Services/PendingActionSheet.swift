@@ -1,14 +1,5 @@
-/// What a storage admin's credentials are for, from a pending record.
-public enum AdminAccessRequest {
-    /// Retry an operation that needs storage admin rights.
-    case retry(operation: Int64)
-    /// Delete a removed member's storage access key.
-    case deleteAccessKey(operation: Int64, accessKeyId: String)
-}
-
 /// A pending record's action that asks the person for more before it runs.
 public enum PendingActionSheet: Identifiable {
-    case adminAccess(AdminAccessRequest)
     case s3Key
     case restoreFile(BridgePendingRecord)
     case review(BridgePendingRecord)
@@ -18,12 +9,6 @@ public enum PendingActionSheet: Identifiable {
         switch record.action {
         case .restoreFile:
             self = .restoreFile(record)
-        case .provideAdminAccess(let id):
-            self = .adminAccess(.retry(operation: id))
-        case .deleteAccessKey(let operation, let accessKeyId):
-            self = .adminAccess(
-                .deleteAccessKey(operation: operation, accessKeyId: accessKeyId)
-            )
         case .review:
             self = .review(record)
         case .wait, .updateApp, .signIn, .reconnect, .resumeUploads,
@@ -34,9 +19,6 @@ public enum PendingActionSheet: Identifiable {
 
     public var id: String {
         switch self {
-        case .adminAccess(.retry(let operation)): "admin-\(operation)"
-        case .adminAccess(.deleteAccessKey(let operation, _)):
-            "delete-key-\(operation)"
         case .s3Key: "s3-key"
         case .restoreFile(let record): "restore-file-\(record.hashValue)"
         case .review(let record): "review-\(record.hashValue)"

@@ -225,16 +225,6 @@
     <string name="onboarding_status_loading">Γίνεται φόρτωση της βιβλιοθήκης…</string>
     <string name="onboarding_invite_declined">Η πρόσκληση απορρίφθηκε ή έληξε.</string>
     <string name="pending_update_no_store">Κανένα κατάστημα εφαρμογών σε αυτή τη συσκευή δεν μπορεί να ενημερώσει το bae.</string>
-    <string name="admin_access_title">Πρόσβαση διαχειριστή</string>
-    <string name="admin_access_explanation">Χρειάζονται διαπιστευτήρια που μπορούν να διαχειριστούν τα κλειδιά πρόσβασης του χώρου αποθήκευσης. Το bae τα χρησιμοποιεί μόνο για αυτό το βήμα και δεν τα κρατά.</string>
-    <string name="admin_access_key">Κλειδί πρόσβασης</string>
-    <string name="admin_access_token">Διακριτικό API</string>
-    <string name="admin_access_session_token">Διακριτικό συνεδρίας (προαιρετικό)</string>
-    <string name="admin_access_iam_endpoint">Τελικό σημείο IAM (προαιρετικό)</string>
-    <string name="delete_key_title">Διαγραφή κλειδιού πρόσβασης</string>
-    <string name="delete_key_body">Το κλειδί πρόσβασης %1$s, που χρησιμοποιούσε μια συσκευή που αφαιρέθηκε, πρέπει ακόμη να διαγραφεί. Διαγράψτε το εδώ με πρόσβαση διαχειριστή ή επιβεβαιώστε ότι το διαγράψατε στην κονσόλα του παρόχου.</string>
-    <string name="delete_key_with_admin">Διαγραφή εδώ</string>
-    <string name="delete_key_done">Το διέγραψα</string>
     <string name="storage_setup_title">Ρύθμιση χώρου στο cloud</string>
     <string name="settings_set_up_cloud_home_explanation">Αυτή η βιβλιοθήκη είναι αποθηκευμένη μόνο σε αυτή τη συσκευή. Ένας χώρος στο cloud επιτρέπει στις άλλες συσκευές σας και στο νοικοκυριό σας να τη χρησιμοποιούν.</string>
     <string name="storage_setup_choose">Πού να αποθηκευτεί αυτή η βιβλιοθήκη;</string>

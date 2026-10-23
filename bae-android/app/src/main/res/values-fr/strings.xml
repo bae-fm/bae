@@ -227,16 +227,6 @@
     <string name="onboarding_status_loading">Chargement de la bibliothèque…</string>
     <string name="onboarding_invite_declined">L’invitation a été refusée ou a expiré.</string>
     <string name="pending_update_no_store">Aucune boutique d’applications sur cet appareil ne peut mettre à jour bae.</string>
-    <string name="admin_access_title">Accès administrateur</string>
-    <string name="admin_access_explanation">Il faut des identifiants capables de gérer les clés d’accès du stockage. bae les utilise pour cette étape uniquement et ne les conserve pas.</string>
-    <string name="admin_access_key">Clé d’accès</string>
-    <string name="admin_access_token">Jeton d’API</string>
-    <string name="admin_access_session_token">Jeton de session (facultatif)</string>
-    <string name="admin_access_iam_endpoint">Point de terminaison IAM (facultatif)</string>
-    <string name="delete_key_title">Supprimer la clé d’accès</string>
-    <string name="delete_key_body">La clé d’accès %1$s, utilisée par un appareil retiré, doit encore être supprimée. Supprimez-la ici avec un accès administrateur, ou confirmez que vous l’avez supprimée dans la console du fournisseur.</string>
-    <string name="delete_key_with_admin">La supprimer ici</string>
-    <string name="delete_key_done">Je l’ai supprimée</string>
     <string name="storage_setup_title">Configurer un emplacement cloud</string>
     <string name="settings_set_up_cloud_home_explanation">Cette bibliothèque n’est stockée que sur cet appareil. Un emplacement cloud permet à vos autres appareils et à votre foyer de l’utiliser.</string>
     <string name="storage_setup_choose">Où stocker cette bibliothèque ?</string>

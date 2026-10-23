@@ -38,7 +38,6 @@ struct OAuthLinkingParseTests {
 
         #expect(linking.clients.dropboxAppKey == "dropbox-key")
         #expect(linking.clients.onedriveClientId == "onedrive-id")
-        #expect(linking.clients.googleAdminClientId == nil)
         #expect(linking.redirects.dropbox == "bae-dropbox:/oauth")
         #expect(linking.redirects.onedrive == "bae-onedrive:/oauth")
     }

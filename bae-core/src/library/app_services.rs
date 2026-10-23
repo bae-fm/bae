@@ -659,7 +659,4 @@ mod removal;
 impl AppServices {
     delegate_async!(manager, detect_s3_settings => detect_s3_settings(storage:coven::StorageConfig, credentials:coven::S3Credentials) -> Result<coven::S3Detection, crate::library::LibraryError>);
     delegate_async!(manager, storage_location => storage_location() -> Result<Option<coven::StorageConfig>, crate::library::LibraryError>);
-    delegate_async!(manager, retry_with_admin_access => retry_with_admin_access(operation:coven::OperationId,source:coven::AdminAccessSource) -> Result<(), crate::library::LibraryError>);
-    delegate_async!(manager, delete_access_key => delete_access_key(operation:coven::OperationId,source:coven::AdminAccessSource) -> Result<(), crate::library::LibraryError>);
-    delegate_async!(manager, confirm_access_key_deleted => confirm_access_key_deleted(key:&str) -> Result<(), crate::library::LibraryError>);
 }

@@ -230,16 +230,6 @@
     <string name="onboarding_status_loading">Wczytywanie biblioteki…</string>
     <string name="onboarding_invite_declined">Zaproszenie zostało odrzucone lub wygasło.</string>
     <string name="pending_update_no_store">Żaden sklep z aplikacjami na tym urządzeniu nie może zaktualizować bae.</string>
-    <string name="admin_access_title">Dostęp administratora</string>
-    <string name="admin_access_explanation">Potrzebne są dane logowania, które mogą zarządzać kluczami dostępu do magazynu. bae używa ich tylko w tym kroku i ich nie przechowuje.</string>
-    <string name="admin_access_key">Klucz dostępu</string>
-    <string name="admin_access_token">Token API</string>
-    <string name="admin_access_session_token">Token sesji (opcjonalnie)</string>
-    <string name="admin_access_iam_endpoint">Punkt końcowy IAM (opcjonalnie)</string>
-    <string name="delete_key_title">Usuń klucz dostępu</string>
-    <string name="delete_key_body">Klucz dostępu %1$s, używany przez usunięte urządzenie, nadal trzeba usunąć. Usuń go tutaj z dostępem administratora albo potwierdź, że usunięto go w konsoli dostawcy.</string>
-    <string name="delete_key_with_admin">Usuń tutaj</string>
-    <string name="delete_key_done">Usunięto go</string>
     <string name="storage_setup_title">Skonfiguruj miejsce w chmurze</string>
     <string name="settings_set_up_cloud_home_explanation">Ta biblioteka jest przechowywana tylko na tym urządzeniu. Miejsce w chmurze pozwoli korzystać z niej twoim innym urządzeniom i domownikom.</string>
     <string name="storage_setup_choose">Gdzie przechowywać tę bibliotekę?</string>

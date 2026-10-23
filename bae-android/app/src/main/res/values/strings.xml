@@ -277,17 +277,6 @@
     <string name="onboarding_status_loading">Loading the library…</string>
     <string name="onboarding_invite_declined">The invite was declined or has expired.</string>
     <string name="pending_update_no_store">No app store on this device can update bae.</string>
-    <string name="admin_access_title">Administrator access</string>
-    <string name="admin_access_explanation">This needs credentials that can manage the storage’s access keys. bae uses them for this step only and doesn’t keep them.</string>
-    <string name="admin_access_key">Access key</string>
-    <string name="admin_access_token">API token</string>
-    <string name="admin_access_session_token">Session token (optional)</string>
-    <string name="admin_access_iam_endpoint">IAM endpoint (optional)</string>
-    <string name="delete_key_title">Delete access key</string>
-    <!-- %1$s = the access key's ID -->
-    <string name="delete_key_body">The access key %1$s, used by a removed device, still needs to be deleted. Delete it here with administrator access, or confirm you deleted it in the provider’s console.</string>
-    <string name="delete_key_with_admin">Delete it here</string>
-    <string name="delete_key_done">I deleted it</string>
     <string name="storage_setup_title">Set up a cloud home</string>
     <string name="settings_set_up_cloud_home_explanation">This library is stored on this device only. A cloud home lets your other devices and your household use it.</string>
     <string name="storage_setup_choose">Where should this library be stored?</string>

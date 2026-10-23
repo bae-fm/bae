@@ -56,7 +56,6 @@ import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.BridgeAdminAccess
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgePendingAction
@@ -66,17 +65,9 @@ import uniffi.bae_bridge.BridgePendingRecords
 
 private val logger = BaeLogger("bae.SyncPendingScreen")
 
-/** The access-key deletion a pending record asks for, while the person chooses how. */
-private data class KeyDeletion(
-    val operation: Long,
-    val accessKeyId: String,
-)
-
 /**
- * Runs the action a pending record offers. Most run at once; an
- * administrator's credentials and an access key's deletion first ask the
- * person through a dialog, which [PendingActionDialogs] shows. Restoring with
- * the person's code closes the library for the restore screen.
+ * Runs the action a pending record offers. Restoring with the person's code
+ * closes the library for the restore screen.
  */
 private class PendingActionRunner(
     private val session: OpenLibrary,
@@ -85,8 +76,6 @@ private class PendingActionRunner(
     private val scope: CoroutineScope,
 ) {
     var error by mutableStateOf<DisplayError?>(null)
-    var adminAccessFor by mutableStateOf<Long?>(null)
-    var keyDeletion by mutableStateOf<KeyDeletion?>(null)
 
     fun perform(
         operation: String,
@@ -128,14 +117,6 @@ private class PendingActionRunner(
             BridgePendingAction.RestoreFromCode -> {
                 actions.restoreFromCode()
             }
-
-            is BridgePendingAction.ProvideAdminAccess -> {
-                adminAccessFor = action.id
-            }
-
-            is BridgePendingAction.DeleteAccessKey -> {
-                keyDeletion = KeyDeletion(action.operation, action.accessKeyId)
-            }
         }
     }
 
@@ -147,40 +128,13 @@ private class PendingActionRunner(
             perform("sign in to $provider again") { providers.signInAgain(session.appHandle, deviceName(context)) }
         }
     }
-
-    fun retryWithAdminAccess(
-        operation: Long,
-        access: BridgeAdminAccess,
-    ) {
-        adminAccessFor = null
-        perform("retry operation $operation with administrator access") {
-            session.appHandle.retryWithAdminAccess(operation, access)
-        }
-    }
-
-    fun deleteKey(
-        deletion: KeyDeletion,
-        access: BridgeAdminAccess,
-    ) {
-        keyDeletion = null
-        perform("delete access key ${deletion.accessKeyId}") {
-            session.appHandle.deleteAccessKey(deletion.operation, access)
-        }
-    }
-
-    fun confirmKeyDeleted(deletion: KeyDeletion) {
-        keyDeletion = null
-        perform("confirm access key ${deletion.accessKeyId} deleted") {
-            session.appHandle.confirmAccessKeyDeleted(deletion.accessKeyId)
-        }
-    }
 }
 
 /**
  * Everything sync waits on, in plain words, each with its action where the
  * person can act: sign in, retry, resume uploads, restore with the person's
- * code, give administrator access. A wait the person can't help offers nothing; its
- * diagnostic details stay behind Details.
+ * code. A wait the person can't help offers nothing; its diagnostic details
+ * stay behind Details.
  */
 @Composable
 internal fun SyncPendingScreen(
@@ -232,27 +186,6 @@ internal fun SyncPendingScreen(
                 PendingList(records = current.records, onAction = runner::run)
             }
         }
-    }
-    PendingActionDialogs(runner)
-}
-
-/** The dialog an action waits on, while it waits. */
-@Composable
-private fun PendingActionDialogs(runner: PendingActionRunner) {
-    runner.adminAccessFor?.let { operation ->
-        AdminAccessDialog(
-            title = stringResource(R.string.admin_access_title),
-            onSubmit = { runner.retryWithAdminAccess(operation, it) },
-            onDismiss = { runner.adminAccessFor = null },
-        )
-    }
-    runner.keyDeletion?.let { deletion ->
-        DeleteAccessKeyDialog(
-            accessKeyId = deletion.accessKeyId,
-            onDeleteWith = { runner.deleteKey(deletion, it) },
-            onDeletedElsewhere = { runner.confirmKeyDeleted(deletion) },
-            onDismiss = { runner.keyDeletion = null },
-        )
     }
 }
 

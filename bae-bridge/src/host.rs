@@ -85,7 +85,6 @@ impl BridgeHost {
             oauth_clients: Mutex::new(coven::OAuthClients::new(
                 None,
                 None,
-                None,
                 Arc::new(coven::SystemClock),
             )),
             #[cfg(any(target_os = "ios", target_os = "android"))]
@@ -316,7 +315,6 @@ impl BridgeHost {
 impl BridgeHost {
     pub fn set_oauth_clients(&self, clients: crate::BridgeOAuthClients) {
         *self.oauth_clients.lock().expect(HOST_LOCK) = coven::OAuthClients::new(
-            clients.google_admin_client_id,
             clients
                 .dropbox_app_key
                 .map(|app_key| coven::DropboxClients::FullDropbox { app_key }),

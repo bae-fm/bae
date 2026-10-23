@@ -226,16 +226,6 @@
     <string name="onboarding_status_loading">Kitaplık yükleniyor…</string>
     <string name="onboarding_invite_declined">Davet reddedildi veya süresi doldu.</string>
     <string name="pending_update_no_store">Bu cihazdaki hiçbir uygulama mağazası bae’yi güncelleyemiyor.</string>
-    <string name="admin_access_title">Yönetici erişimi</string>
-    <string name="admin_access_explanation">Bunun için depolamanın erişim anahtarlarını yönetebilen kimlik bilgileri gerekir. bae bunları yalnızca bu adımda kullanır ve saklamaz.</string>
-    <string name="admin_access_key">Erişim anahtarı</string>
-    <string name="admin_access_token">API belirteci</string>
-    <string name="admin_access_session_token">Oturum belirteci (isteğe bağlı)</string>
-    <string name="admin_access_iam_endpoint">IAM uç noktası (isteğe bağlı)</string>
-    <string name="delete_key_title">Erişim anahtarını sil</string>
-    <string name="delete_key_body">Kaldırılan bir cihazın kullandığı %1$s erişim anahtarının hâlâ silinmesi gerekiyor. Yönetici erişimiyle burada silin ya da sağlayıcının konsolunda sildiğinizi onaylayın.</string>
-    <string name="delete_key_with_admin">Burada sil</string>
-    <string name="delete_key_done">Sildim</string>
     <string name="storage_setup_title">Bulut konumu ayarla</string>
     <string name="settings_set_up_cloud_home_explanation">Bu kitaplık yalnızca bu cihazda depolanıyor. Bir bulut konumu, diğer cihazlarınızın ve hane halkınızın da kullanmasını sağlar.</string>
     <string name="storage_setup_choose">Bu kitaplık nerede depolansın?</string>

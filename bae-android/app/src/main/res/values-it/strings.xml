@@ -227,16 +227,6 @@
     <string name="onboarding_status_loading">Caricamento della libreria…</string>
     <string name="onboarding_invite_declined">L’invito è stato rifiutato o è scaduto.</string>
     <string name="pending_update_no_store">Nessuno store di app su questo dispositivo può aggiornare bae.</string>
-    <string name="admin_access_title">Accesso amministratore</string>
-    <string name="admin_access_explanation">Servono credenziali in grado di gestire le chiavi di accesso dello spazio di archiviazione. bae le usa solo per questo passaggio e non le conserva.</string>
-    <string name="admin_access_key">Chiave di accesso</string>
-    <string name="admin_access_token">Token API</string>
-    <string name="admin_access_session_token">Token di sessione (facoltativo)</string>
-    <string name="admin_access_iam_endpoint">Endpoint IAM (facoltativo)</string>
-    <string name="delete_key_title">Elimina chiave di accesso</string>
-    <string name="delete_key_body">La chiave di accesso %1$s, usata da un dispositivo rimosso, deve ancora essere eliminata. Eliminala qui con l’accesso amministratore, oppure conferma di averla eliminata nella console del provider.</string>
-    <string name="delete_key_with_admin">Eliminala qui</string>
-    <string name="delete_key_done">L’ho eliminata</string>
     <string name="storage_setup_title">Configura uno spazio cloud</string>
     <string name="settings_set_up_cloud_home_explanation">Questa libreria è archiviata solo su questo dispositivo. Uno spazio cloud permette ai tuoi altri dispositivi e alla tua famiglia di usarla.</string>
     <string name="storage_setup_choose">Dove vuoi archiviare questa libreria?</string>

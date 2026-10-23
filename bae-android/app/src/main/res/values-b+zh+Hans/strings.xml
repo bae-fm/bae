@@ -224,16 +224,6 @@
     <string name="onboarding_status_loading">正在载入库…</string>
     <string name="onboarding_invite_declined">邀请已被拒绝或已过期。</string>
     <string name="pending_update_no_store">此设备上没有可以更新 bae 的应用商店。</string>
-    <string name="admin_access_title">管理员访问权限</string>
-    <string name="admin_access_explanation">这需要能够管理存储访问密钥的凭据。bae 只在这一步使用它们，不会保留。</string>
-    <string name="admin_access_key">访问密钥</string>
-    <string name="admin_access_token">API 令牌</string>
-    <string name="admin_access_session_token">会话令牌（可选）</string>
-    <string name="admin_access_iam_endpoint">IAM 端点（可选）</string>
-    <string name="delete_key_title">删除访问密钥</string>
-    <string name="delete_key_body">已移除设备使用的访问密钥 %1$s 仍需删除。可在此使用管理员访问权限删除，或确认你已在提供商的控制台中删除。</string>
-    <string name="delete_key_with_admin">在此删除</string>
-    <string name="delete_key_done">我已删除</string>
     <string name="storage_setup_title">设置云端存储</string>
     <string name="settings_set_up_cloud_home_explanation">此库只存储在这台设备上。设置云端存储后，你的其他设备和家人也能使用它。</string>
     <string name="storage_setup_choose">此库应存储在哪里？</string>

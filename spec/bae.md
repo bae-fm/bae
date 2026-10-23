@@ -1704,9 +1704,12 @@ the first: core signs in with the access the library's folder needs, then
 connects that location again under this device's name. For the second it
 offers to reattach the file: put it back where it was imported from, then
 retry the upload. Other records offer *Retry*, *Reconnect*, *Resume Uploads*,
-*Update App* or *Restore With Code*, or ask for an administrator's access to
-storage. A wait the person can't help, such as for another device to come
-online, offers nothing.
+*Update App* or *Restore With Code*. bae never asks for a storage
+administrator's credentials: the person makes and deletes S3 access keys in the
+provider's console, and no record asks them to delete one
+([coven §14.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#143-s3-access-keys)).
+A wait the person can't help, such as for another device to come online,
+offers nothing.
 
 - **A removed device.** When this device, or its person, was removed from the
   library, its record says so in its own error line, "This device was removed

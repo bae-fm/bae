@@ -225,16 +225,6 @@
     <string name="onboarding_status_loading">A könyvtár betöltése…</string>
     <string name="onboarding_invite_declined">A meghívót elutasították, vagy lejárt.</string>
     <string name="pending_update_no_store">Ezen az eszközön nincs olyan alkalmazásbolt, amely frissíteni tudná a bae-t.</string>
-    <string name="admin_access_title">Rendszergazdai hozzáférés</string>
-    <string name="admin_access_explanation">Ehhez olyan hitelesítő adatok kellenek, amelyek kezelhetik a tárhely hozzáférési kulcsait. A bae csak ehhez a lépéshez használja, és nem tárolja őket.</string>
-    <string name="admin_access_key">Hozzáférési kulcs</string>
-    <string name="admin_access_token">API-token</string>
-    <string name="admin_access_session_token">Munkamenet-token (nem kötelező)</string>
-    <string name="admin_access_iam_endpoint">IAM-végpont (nem kötelező)</string>
-    <string name="delete_key_title">Hozzáférési kulcs törlése</string>
-    <string name="delete_key_body">Az eltávolított eszköz által használt %1$s hozzáférési kulcsot még törölni kell. Töröld itt rendszergazdai hozzáféréssel, vagy erősítsd meg, hogy a szolgáltató konzoljában törölted.</string>
-    <string name="delete_key_with_admin">Törlés itt</string>
-    <string name="delete_key_done">Töröltem</string>
     <string name="storage_setup_title">Felhőbeli tárhely beállítása</string>
     <string name="settings_set_up_cloud_home_explanation">Ez a könyvtár csak ezen az eszközön van. Egy felhőbeli tárhellyel a többi eszközöd és a háztartásod is használhatja.</string>
     <string name="storage_setup_choose">Hol tárolódjon ez a könyvtár?</string>

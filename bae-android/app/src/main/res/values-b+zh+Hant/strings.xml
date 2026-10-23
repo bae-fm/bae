@@ -224,16 +224,6 @@
     <string name="onboarding_status_loading">正在載入資料庫…</string>
     <string name="onboarding_invite_declined">邀請已被拒絕或已過期。</string>
     <string name="pending_update_no_store">此裝置上沒有可以更新 bae 的 App 商店。</string>
-    <string name="admin_access_title">管理員存取權限</string>
-    <string name="admin_access_explanation">這需要能夠管理儲存空間存取金鑰的憑證。bae 只在這一步使用它們，不會保留。</string>
-    <string name="admin_access_key">存取金鑰</string>
-    <string name="admin_access_token">API 權杖</string>
-    <string name="admin_access_session_token">工作階段權杖（選填）</string>
-    <string name="admin_access_iam_endpoint">IAM 端點（選填）</string>
-    <string name="delete_key_title">刪除存取金鑰</string>
-    <string name="delete_key_body">已移除裝置使用的存取金鑰 %1$s 仍需刪除。可在此使用管理員存取權限刪除，或確認你已在提供者的主控台中刪除。</string>
-    <string name="delete_key_with_admin">在此刪除</string>
-    <string name="delete_key_done">我已刪除</string>
     <string name="storage_setup_title">設定雲端儲存位置</string>
     <string name="settings_set_up_cloud_home_explanation">此資料庫只儲存在這台裝置上。設定雲端儲存位置後，你的其他裝置和家人也能使用它。</string>
     <string name="storage_setup_choose">此資料庫要儲存在哪裡？</string>

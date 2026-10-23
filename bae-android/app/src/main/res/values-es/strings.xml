@@ -227,16 +227,6 @@
     <string name="onboarding_status_loading">Cargando la biblioteca…</string>
     <string name="onboarding_invite_declined">La invitación se rechazó o ha caducado.</string>
     <string name="pending_update_no_store">Ninguna tienda de apps de este dispositivo puede actualizar bae.</string>
-    <string name="admin_access_title">Acceso de administrador</string>
-    <string name="admin_access_explanation">Esto necesita credenciales que puedan administrar las claves de acceso del almacenamiento. bae las usa solo para este paso y no las guarda.</string>
-    <string name="admin_access_key">Clave de acceso</string>
-    <string name="admin_access_token">Token de API</string>
-    <string name="admin_access_session_token">Token de sesión (opcional)</string>
-    <string name="admin_access_iam_endpoint">Endpoint de IAM (opcional)</string>
-    <string name="delete_key_title">Eliminar clave de acceso</string>
-    <string name="delete_key_body">La clave de acceso %1$s, que usaba un dispositivo eliminado, aún debe borrarse. Bórrala aquí con acceso de administrador o confirma que la borraste en la consola del proveedor.</string>
-    <string name="delete_key_with_admin">Borrarla aquí</string>
-    <string name="delete_key_done">Ya la borré</string>
     <string name="storage_setup_title">Configurar un lugar en la nube</string>
     <string name="settings_set_up_cloud_home_explanation">Esta biblioteca solo está en este dispositivo. Un lugar en la nube permite que tus otros dispositivos y tu hogar la usen.</string>
     <string name="storage_setup_choose">¿Dónde se guardará esta biblioteca?</string>

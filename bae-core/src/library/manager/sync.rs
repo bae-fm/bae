@@ -139,29 +139,6 @@ impl LibraryManager {
         Ok(self.database.dropbox_shared_folders().await?)
     }
 
-    pub async fn retry_with_admin_access(
-        &self,
-        operation: coven::OperationId,
-        source: coven::AdminAccessSource,
-    ) -> Result<(), LibraryError> {
-        Ok(self
-            .database
-            .retry_with_admin_access(operation, source)
-            .await?)
-    }
-
-    pub async fn delete_access_key(
-        &self,
-        operation: coven::OperationId,
-        source: coven::AdminAccessSource,
-    ) -> Result<(), LibraryError> {
-        Ok(self.database.delete_access_key(operation, source).await?)
-    }
-
-    pub async fn confirm_access_key_deleted(&self, key: &str) -> Result<(), LibraryError> {
-        Ok(self.database.confirm_access_key_deleted(key).await?)
-    }
-
     pub async fn use_cloudkit(
         &self,
         device_name: &str,

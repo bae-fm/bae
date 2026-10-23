@@ -338,7 +338,6 @@ fn produced_keys() -> Vec<String> {
         BridgeStorageFailure::OwnBucketRequired {
             reason: BridgeOwnBucketReason::Prefix,
         },
-        BridgeStorageFailure::KeyBeyondStore,
         BridgeStorageFailure::StoreExists,
         BridgeStorageFailure::ClockSkew,
         BridgeStorageFailure::QuotaExceeded,
@@ -391,14 +390,12 @@ fn produced_keys() -> Vec<String> {
         PendingReasonKind::PendingOwner,
         PendingReasonKind::AccountInUse,
         PendingReasonKind::AccessRemains,
-        PendingReasonKind::DeleteAccessKey,
         PendingReasonKind::FileUnavailable,
         PendingReasonKind::FileLost,
         PendingReasonKind::Failed,
         PendingReasonKind::Rejected,
         PendingReasonKind::Cleanup,
         PendingReasonKind::Paused,
-        PendingReasonKind::AdminAccessRequired,
         PendingReasonKind::Removed,
         PendingReasonKind::MemberKeysReplaced,
     ] {
@@ -415,11 +412,6 @@ fn produced_keys() -> Vec<String> {
         BridgePendingAction::ResumeUploads,
         BridgePendingAction::RetryOperation { id: 1 },
         BridgePendingAction::RestoreFromCode,
-        BridgePendingAction::ProvideAdminAccess { id: 1 },
-        BridgePendingAction::DeleteAccessKey {
-            operation: 1,
-            access_key_id: "key".into(),
-        },
         BridgePendingAction::Review,
     ] {
         keys.extend(action.key().map(str::to_string));
@@ -608,8 +600,6 @@ fn pending_subject_messages() -> Vec<BridgeMessage> {
         O::DeleteCircle,
         O::Invite,
         O::RevokeAccess,
-        O::DeleteAccessKey,
-        O::ReplaceAccessKey,
         O::ReplaceMemberKeys,
     ];
     [

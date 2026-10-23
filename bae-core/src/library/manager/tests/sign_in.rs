@@ -41,7 +41,6 @@ async fn manager_signing_in_with(
     let handle =
         crate::library::configure_store(coven::TestCoven::new().builder(app_dir.store_layout()))
             .oauth_clients(coven::OAuthClients::new(
-                None,
                 Some(coven::DropboxClients::FullDropbox {
                     app_key: "dropbox-key".into(),
                 }),

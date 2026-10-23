@@ -228,16 +228,6 @@
     <string name="onboarding_status_loading">Učitavanje fonoteke…</string>
     <string name="onboarding_invite_declined">Pozivnica je odbijena ili je istekla.</string>
     <string name="pending_update_no_store">Nijedna trgovina aplikacija na ovom uređaju ne može ažurirati bae.</string>
-    <string name="admin_access_title">Administratorski pristup</string>
-    <string name="admin_access_explanation">Za to su potrebne vjerodajnice koje mogu upravljati pristupnim ključevima pohrane. bae ih koristi samo za ovaj korak i ne čuva ih.</string>
-    <string name="admin_access_key">Pristupni ključ</string>
-    <string name="admin_access_token">API token</string>
-    <string name="admin_access_session_token">Token sesije (neobavezno)</string>
-    <string name="admin_access_iam_endpoint">IAM krajnja točka (neobavezno)</string>
-    <string name="delete_key_title">Izbriši pristupni ključ</string>
-    <string name="delete_key_body">Pristupni ključ %1$s, koji je koristio uklonjeni uređaj, još treba izbrisati. Izbrišite ga ovdje administratorskim pristupom ili potvrdite da ste ga izbrisali u konzoli pružatelja.</string>
-    <string name="delete_key_with_admin">Izbriši ga ovdje</string>
-    <string name="delete_key_done">Ključ je izbrisan</string>
     <string name="storage_setup_title">Postavi pohranu u oblaku</string>
     <string name="settings_set_up_cloud_home_explanation">Ova je fonoteka pohranjena samo na ovom uređaju. Pohrana u oblaku omogućuje vašim drugim uređajima i kućanstvu da je koriste.</string>
     <string name="storage_setup_choose">Gdje pohraniti ovu fonoteku?</string>

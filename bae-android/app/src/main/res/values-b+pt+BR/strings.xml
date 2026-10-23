@@ -227,16 +227,6 @@
     <string name="onboarding_status_loading">Carregando a biblioteca…</string>
     <string name="onboarding_invite_declined">O convite foi recusado ou expirou.</string>
     <string name="pending_update_no_store">Nenhuma loja de apps neste dispositivo pode atualizar o bae.</string>
-    <string name="admin_access_title">Acesso de administrador</string>
-    <string name="admin_access_explanation">Isso exige credenciais que possam gerenciar as chaves de acesso do armazenamento. O bae as usa só nesta etapa e não as guarda.</string>
-    <string name="admin_access_key">Chave de acesso</string>
-    <string name="admin_access_token">Token de API</string>
-    <string name="admin_access_session_token">Token de sessão (opcional)</string>
-    <string name="admin_access_iam_endpoint">Endpoint do IAM (opcional)</string>
-    <string name="delete_key_title">Excluir chave de acesso</string>
-    <string name="delete_key_body">A chave de acesso %1$s, usada por um dispositivo removido, ainda precisa ser excluída. Exclua-a aqui com acesso de administrador ou confirme que você a excluiu no console do provedor.</string>
-    <string name="delete_key_with_admin">Excluir aqui</string>
-    <string name="delete_key_done">Já excluí</string>
     <string name="storage_setup_title">Configurar um local na nuvem</string>
     <string name="settings_set_up_cloud_home_explanation">Esta biblioteca está só neste dispositivo. Um local na nuvem permite que seus outros dispositivos e sua casa a usem.</string>
     <string name="storage_setup_choose">Onde esta biblioteca deve ficar?</string>

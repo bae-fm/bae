@@ -59,8 +59,6 @@ pub(super) fn pending_reason_category(reason: &coven::PendingReason) -> C {
         | R::ProviderPending { .. }
         | R::AccountInUse { .. }
         | R::AccessRemains { .. }
-        | R::DeleteAccessKey(_)
-        | R::AdminAccessRequired
         | R::Rejected(_) => C::Membership,
         R::Failed(failure) => local_failure_category(*failure),
         R::Missing { .. } | R::Waits(_) | R::FileUnavailable(_) | R::Paused => C::Internal,
@@ -92,13 +90,12 @@ pub(super) fn sync_category(error: &coven::SyncError) -> C {
         // Another copy uses this device's id: only a reset answers it.
         E::DeviceIdInUse(_) => C::DeviceResetRequired,
         // Administrative work: a member, an invitation, a key a member has not
-        // sealed for this device yet, a reload sharing waits on, an access key.
+        // sealed for this device yet, a reload sharing waits on.
         E::StoreOwner
         | E::InvitationChanged
         | E::MemberKeysReplaced { .. }
         | E::Rejected(_)
         | E::ReloadPending(_)
-        | E::AccessKeyNotDeleted(_)
         | E::Key(_)
         | E::KeyUnavailable(_) => C::Membership,
         E::Cleanup { operation, .. } => sync_category(operation),

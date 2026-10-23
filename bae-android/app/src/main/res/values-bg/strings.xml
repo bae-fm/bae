@@ -226,16 +226,6 @@
     <string name="onboarding_status_loading">Библиотеката се зарежда…</string>
     <string name="onboarding_invite_declined">Поканата е отхвърлена или е изтекла.</string>
     <string name="pending_update_no_store">Няма магазин за приложения на това устройство, който да актуализира bae.</string>
-    <string name="admin_access_title">Администраторски достъп</string>
-    <string name="admin_access_explanation">Нужни са данни за вход, които могат да управляват ключовете за достъп до хранилището. bae ги използва само за тази стъпка и не ги пази.</string>
-    <string name="admin_access_key">Ключ за достъп</string>
-    <string name="admin_access_token">API токен</string>
-    <string name="admin_access_session_token">Токен за сесия (по избор)</string>
-    <string name="admin_access_iam_endpoint">IAM крайна точка (по избор)</string>
-    <string name="delete_key_title">Изтриване на ключа за достъп</string>
-    <string name="delete_key_body">Ключът за достъп %1$s, използван от премахнато устройство, все още трябва да бъде изтрит. Изтрийте го тук с администраторски достъп или потвърдете, че сте го изтрили в конзолата на доставчика.</string>
-    <string name="delete_key_with_admin">Изтриване тук</string>
-    <string name="delete_key_done">Изтрих го</string>
     <string name="storage_setup_title">Настройване на облачно хранилище</string>
     <string name="settings_set_up_cloud_home_explanation">Тази библиотека се съхранява само на това устройство. Облачното хранилище позволява на другите ви устройства и на домакинството ви да я използват.</string>
     <string name="storage_setup_choose">Къде да се съхранява тази библиотека?</string>

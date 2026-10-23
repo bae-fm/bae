@@ -37,11 +37,6 @@ public final class Sync: Sendable, Observable {
     public let detectS3Settings:
         @Sendable (BridgeStorageLocation, BridgeS3Credentials) async throws ->
             BridgeS3Detection
-    public let retryWithAdminAccess:
-        @Sendable (Int64, BridgeAdminAccess) async throws -> Void
-    public let deleteAccessKey:
-        @Sendable (Int64, BridgeAdminAccess) async throws -> Void
-    public let confirmAccessKeyDeleted: @Sendable (String) async throws -> Void
     /// The requests that ask sync to run now, none of which waits for it.
     public let nudges: SyncNudges
 
@@ -125,16 +120,6 @@ public final class Sync: Sendable, Observable {
             async throws -> BridgeS3Detection = { _, _ in
                 throw StubError.notImplemented
             },
-        retryWithAdminAccess:
-            @escaping @Sendable (Int64, BridgeAdminAccess) async throws -> Void =
-            { _, _ in throw StubError.notImplemented },
-        deleteAccessKey:
-            @escaping @Sendable (Int64, BridgeAdminAccess) async throws -> Void =
-            { _, _ in throw StubError.notImplemented },
-        confirmAccessKeyDeleted:
-            @escaping @Sendable (String) async throws -> Void = { _ in
-                throw StubError.notImplemented
-            },
         nudges: SyncNudges = SyncNudges()
     ) {
         self.disconnectCloudProvider = disconnectCloudProvider
@@ -159,9 +144,6 @@ public final class Sync: Sendable, Observable {
         self.setMaxConcurrentUploads = setMaxConcurrentUploads
         self.storageLocation = storageLocation
         self.detectS3Settings = detectS3Settings
-        self.retryWithAdminAccess = retryWithAdminAccess
-        self.deleteAccessKey = deleteAccessKey
-        self.confirmAccessKeyDeleted = confirmAccessKeyDeleted
         self.nudges = nudges
     }
 
@@ -216,15 +198,6 @@ public final class Sync: Sendable, Observable {
             storageLocation: { try await handle.storageLocation() },
             detectS3Settings: {
                 try await handle.detectS3Settings(location: $0, credentials: $1)
-            },
-            retryWithAdminAccess: {
-                try await handle.retryWithAdminAccess(operation: $0, access: $1)
-            },
-            deleteAccessKey: {
-                try await handle.deleteAccessKey(operation: $0, access: $1)
-            },
-            confirmAccessKeyDeleted: {
-                try await handle.confirmAccessKeyDeleted(accessKeyId: $0)
             },
             nudges: SyncNudges(handle: handle)
         )

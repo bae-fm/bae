@@ -228,16 +228,6 @@
     <string name="onboarding_status_loading">טוענים את הספרייה…</string>
     <string name="onboarding_invite_declined">ההזמנה נדחתה או שתוקפה פג.</string>
     <string name="pending_update_no_store">אין במכשיר הזה חנות אפליקציות שיכולה לעדכן את bae.</string>
-    <string name="admin_access_title">גישת מנהל</string>
-    <string name="admin_access_explanation">נדרשים פרטי התחברות שיכולים לנהל את מפתחות הגישה של האחסון. bae משתמש בהם לשלב הזה בלבד ואינו שומר אותם.</string>
-    <string name="admin_access_key">מפתח גישה</string>
-    <string name="admin_access_token">אסימון API</string>
-    <string name="admin_access_session_token">אסימון הפעלה (אופציונלי)</string>
-    <string name="admin_access_iam_endpoint">נקודת קצה של IAM (אופציונלי)</string>
-    <string name="delete_key_title">מחיקת מפתח הגישה</string>
-    <string name="delete_key_body">עדיין צריך למחוק את מפתח הגישה %1$s, שבו השתמש מכשיר שהוסר. מחקו אותו כאן עם גישת מנהל, או אשרו שמחקתם אותו במסוף של הספק.</string>
-    <string name="delete_key_with_admin">מחיקה כאן</string>
-    <string name="delete_key_done">מחקתי אותו</string>
     <string name="storage_setup_title">הגדרת מיקום בענן</string>
     <string name="settings_set_up_cloud_home_explanation">הספרייה הזו מאוחסנת רק במכשיר הזה. מיקום בענן מאפשר למכשירים האחרים שלכם ולבני הבית להשתמש בה.</string>
     <string name="storage_setup_choose">היכן לאחסן את הספרייה הזו?</string>

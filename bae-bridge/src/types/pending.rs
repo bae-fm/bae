@@ -91,14 +91,12 @@ pub(crate) enum PendingReasonKind {
     PendingOwner,
     AccountInUse,
     AccessRemains,
-    DeleteAccessKey,
     FileUnavailable,
     FileLost,
     Failed,
     Rejected,
     Cleanup,
     Paused,
-    AdminAccessRequired,
     Removed,
     MemberKeysReplaced,
 }
@@ -123,14 +121,12 @@ impl BridgePendingReason {
             R::PendingOwner { .. } => K::PendingOwner,
             R::AccountInUse { .. } => K::AccountInUse,
             R::AccessRemains { .. } => K::AccessRemains,
-            R::DeleteAccessKey(_) => K::DeleteAccessKey,
             R::FileUnavailable(coven::FileMissingReason::Source(_)) => K::FileUnavailable,
             R::FileUnavailable(coven::FileMissingReason::Lost) => K::FileLost,
             R::Failed(_) => K::Failed,
             R::Rejected(_) => K::Rejected,
             R::Cleanup { .. } => K::Cleanup,
             R::Paused => K::Paused,
-            R::AdminAccessRequired => K::AdminAccessRequired,
             R::Removed => K::Removed,
             R::MemberKeysReplaced { .. } => K::MemberKeysReplaced,
         };
@@ -155,23 +151,12 @@ impl BridgePendingReason {
 pub enum BridgePendingAction {
     Wait,
     UpdateApp,
-    SignIn {
-        provider: BridgeCloudProvider,
-    },
+    SignIn { provider: BridgeCloudProvider },
     Reconnect,
     RestoreFile,
     ResumeUploads,
-    RetryOperation {
-        id: i64,
-    },
+    RetryOperation { id: i64 },
     RestoreFromCode,
-    ProvideAdminAccess {
-        id: i64,
-    },
-    DeleteAccessKey {
-        operation: i64,
-        access_key_id: String,
-    },
     Review,
 }
 impl BridgePendingAction {
@@ -188,14 +173,6 @@ impl BridgePendingAction {
             A::ResumeUploads => Self::ResumeUploads,
             A::RetryOperation(id) => Self::RetryOperation { id: id.0 },
             A::RestoreFromCode => Self::RestoreFromCode,
-            A::ProvideAdminAccess(id) => Self::ProvideAdminAccess { id: id.0 },
-            A::DeleteAccessKey {
-                operation,
-                access_key_id,
-            } => Self::DeleteAccessKey {
-                operation: operation.0,
-                access_key_id,
-            },
             A::Review => Self::Review,
         }
     }
@@ -218,14 +195,12 @@ impl PendingReasonKind {
             R::PendingOwner => "core.pending.reason.pending_owner",
             R::AccountInUse => "core.pending.reason.account_in_use",
             R::AccessRemains => "core.pending.reason.access_remains",
-            R::DeleteAccessKey => "core.pending.reason.delete_access_key",
             R::FileUnavailable => "core.pending.reason.file_unavailable",
             R::FileLost => "core.pending.reason.file_lost",
             R::Failed => "core.pending.reason.failed",
             R::Rejected => "core.pending.reason.rejected",
             R::Cleanup => "core.pending.reason.cleanup",
             R::Paused => "core.pending.reason.paused",
-            R::AdminAccessRequired => "core.pending.reason.admin_access_required",
             R::Removed => "core.pending.reason.removed",
             R::MemberKeysReplaced => "core.pending.reason.member_keys_replaced",
         }
@@ -245,8 +220,6 @@ impl BridgePendingAction {
             A::ResumeUploads => "core.pending.action.resume_uploads",
             A::RetryOperation { .. } => "core.pending.action.retry",
             A::RestoreFromCode => "core.pending.action.restore_from_code",
-            A::ProvideAdminAccess { .. } => "core.pending.action.provide_admin_access",
-            A::DeleteAccessKey { .. } => "core.pending.action.delete_access_key",
             A::Review => "core.pending.action.review",
         })
     }
@@ -313,8 +286,6 @@ pub(crate) fn subject_message(subject: bae_core::library::PendingSubjectName) ->
             O::DeleteCircle => "core.pending.operation.delete_circle",
             O::Invite => "core.pending.operation.invite",
             O::RevokeAccess => "core.pending.operation.revoke_access",
-            O::DeleteAccessKey => "core.pending.operation.delete_access_key",
-            O::ReplaceAccessKey => "core.pending.operation.replace_access_key",
             O::ReplaceMemberKeys => "core.pending.operation.replace_member_keys",
         },
     };

@@ -230,16 +230,6 @@
     <string name="onboarding_status_loading">Завантаження бібліотеки…</string>
     <string name="onboarding_invite_declined">Запрошення відхилено, або його термін минув.</string>
     <string name="pending_update_no_store">Жодна крамниця застосунків на цьому пристрої не може оновити bae.</string>
-    <string name="admin_access_title">Доступ адміністратора</string>
-    <string name="admin_access_explanation">Для цього потрібні облікові дані, які можуть керувати ключами доступу до сховища. bae використовує їх лише для цього кроку й не зберігає.</string>
-    <string name="admin_access_key">Ключ доступу</string>
-    <string name="admin_access_token">Токен API</string>
-    <string name="admin_access_session_token">Токен сеансу (необов’язково)</string>
-    <string name="admin_access_iam_endpoint">Кінцева точка IAM (необов’язково)</string>
-    <string name="delete_key_title">Видалити ключ доступу</string>
-    <string name="delete_key_body">Ключ доступу %1$s, який використовував вилучений пристрій, ще потрібно видалити. Видаліть його тут із доступом адміністратора або підтвердьте, що видалили його в консолі постачальника.</string>
-    <string name="delete_key_with_admin">Видалити тут</string>
-    <string name="delete_key_done">Ключ видалено</string>
     <string name="storage_setup_title">Налаштувати місце в хмарі</string>
     <string name="settings_set_up_cloud_home_explanation">Ця бібліотека зберігається лише на цьому пристрої. Місце в хмарі дасть змогу користуватися нею вашим іншим пристроям і домівці.</string>
     <string name="storage_setup_choose">Де зберігати цю бібліотеку?</string>

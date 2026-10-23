@@ -39,8 +39,7 @@ fun loadOAuthProviders(context: Context): OAuthProviders? = OAuthSignIn.load(con
  * `dropbox` and `onedrive`, each with the `redirect_uri` registered for this
  * app (a custom scheme, which the manifest routes to [OAuthRedirectActivity])
  * and, for a provider this build offers, its `client_id`. A provider without a
- * client id is not registered, and coven says so when it is asked for. Google
- * admin sign-in is a desktop admin source, so it has no entry.
+ * client id is not registered, and coven says so when it is asked for.
  */
 class OAuthSignIn private constructor(
     private val clients: BridgeOAuthClients,
@@ -151,7 +150,6 @@ class OAuthSignIn private constructor(
                     BridgeOAuthClients(
                         dropboxAppKey = dropbox.clientId,
                         onedriveClientId = oneDrive.clientId,
-                        googleAdminClientId = null,
                     ),
                 redirects =
                     BridgeOAuthRedirects(

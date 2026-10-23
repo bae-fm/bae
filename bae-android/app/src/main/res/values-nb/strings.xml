@@ -225,16 +225,6 @@
     <string name="onboarding_status_loading">Laster inn biblioteket …</string>
     <string name="onboarding_invite_declined">Invitasjonen ble avslått eller har utløpt.</string>
     <string name="pending_update_no_store">Ingen appbutikk på denne enheten kan oppdatere bae.</string>
-    <string name="admin_access_title">Administratortilgang</string>
-    <string name="admin_access_explanation">Dette krever påloggingsinformasjon som kan administrere lagringens tilgangsnøkler. bae bruker den bare til dette trinnet og tar ikke vare på den.</string>
-    <string name="admin_access_key">Tilgangsnøkkel</string>
-    <string name="admin_access_token">API-token</string>
-    <string name="admin_access_session_token">Økttoken (valgfritt)</string>
-    <string name="admin_access_iam_endpoint">IAM-endepunkt (valgfritt)</string>
-    <string name="delete_key_title">Slett tilgangsnøkkel</string>
-    <string name="delete_key_body">Tilgangsnøkkelen %1$s, som en fjernet enhet brukte, må fortsatt slettes. Slett den her med administratortilgang, eller bekreft at du har slettet den i leverandørens konsoll.</string>
-    <string name="delete_key_with_admin">Slett den her</string>
-    <string name="delete_key_done">Jeg har slettet den</string>
     <string name="storage_setup_title">Konfigurer en skyplassering</string>
     <string name="settings_set_up_cloud_home_explanation">Dette biblioteket ligger bare på denne enheten. En skyplassering lar de andre enhetene dine og husstanden din bruke det.</string>
     <string name="storage_setup_choose">Hvor skal dette biblioteket lagres?</string>

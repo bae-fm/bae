@@ -22,8 +22,7 @@
                     """
                     {
                       "dropbox": { "client_id": "dropbox-key" },
-                      "onedrive": { "client_id": "onedrive-id" },
-                      "google_admin": { "client_id": "google-id" }
+                      "onedrive": { "client_id": "onedrive-id" }
                     }
                     """
                 )
@@ -31,7 +30,6 @@
 
             #expect(linking.clients.dropboxAppKey == "dropbox-key")
             #expect(linking.clients.onedriveClientId == "onedrive-id")
-            #expect(linking.clients.googleAdminClientId == "google-id")
         }
 
         @Test("a provider with no entry isn't registered")
@@ -42,7 +40,6 @@
 
             #expect(linking.clients.dropboxAppKey == "dropbox-key")
             #expect(linking.clients.onedriveClientId == nil)
-            #expect(linking.clients.googleAdminClientId == nil)
         }
 
         @Test("an entry without its client id is named")

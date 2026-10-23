@@ -227,16 +227,6 @@
     <string name="onboarding_status_loading">Se încarcă biblioteca…</string>
     <string name="onboarding_invite_declined">Invitația a fost refuzată sau a expirat.</string>
     <string name="pending_update_no_store">Niciun magazin de aplicații de pe acest dispozitiv nu poate actualiza bae.</string>
-    <string name="admin_access_title">Acces de administrator</string>
-    <string name="admin_access_explanation">Este nevoie de date de autentificare care pot gestiona cheile de acces ale spațiului de stocare. bae le folosește doar pentru acest pas și nu le păstrează.</string>
-    <string name="admin_access_key">Cheie de acces</string>
-    <string name="admin_access_token">Token API</string>
-    <string name="admin_access_session_token">Token de sesiune (opțional)</string>
-    <string name="admin_access_iam_endpoint">Endpoint IAM (opțional)</string>
-    <string name="delete_key_title">Șterge cheia de acces</string>
-    <string name="delete_key_body">Cheia de acces %1$s, folosită de un dispozitiv eliminat, trebuie încă ștearsă. Șterge-o aici cu acces de administrator sau confirmă că ai șters-o în consola furnizorului.</string>
-    <string name="delete_key_with_admin">Șterge-o aici</string>
-    <string name="delete_key_done">Am șters-o</string>
     <string name="storage_setup_title">Configurează un spațiu în cloud</string>
     <string name="settings_set_up_cloud_home_explanation">Această bibliotecă este stocată doar pe acest dispozitiv. Un spațiu în cloud le permite celorlalte dispozitive ale tale și gospodăriei să o folosească.</string>
     <string name="storage_setup_choose">Unde să fie stocată această bibliotecă?</string>

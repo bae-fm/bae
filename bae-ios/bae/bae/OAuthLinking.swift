@@ -94,11 +94,9 @@ struct OAuthLinking {
         let dropbox = try app("dropbox")
         let oneDrive = try app("onedrive")
         return OAuthLinking(
-            // Google admin sign-in is a desktop admin source.
             clients: BridgeOAuthClients(
                 dropboxAppKey: dropbox.id,
-                onedriveClientId: oneDrive.id,
-                googleAdminClientId: nil
+                onedriveClientId: oneDrive.id
             ),
             redirects: BridgeOAuthRedirects(
                 dropbox: dropbox.redirect,

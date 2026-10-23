@@ -25,9 +25,9 @@
         }
     }
 
-    /// This build's OAuth applications for Dropbox, OneDrive and Google admin
-    /// sign-in, loaded from a gitignored `oauth-creds.json` in the app bundle —
-    /// bae and coven ship no credentials. Register each as a desktop
+    /// This build's OAuth applications for Dropbox and OneDrive, loaded from
+    /// a gitignored `oauth-creds.json` in the app bundle — bae and coven ship
+    /// no credentials. Register each as a desktop
     /// application whose redirect is coven's loopback callback,
     /// `http://localhost:19284/callback`: coven's desktop sign-in opens the
     /// browser and listens there. A provider with no entry isn't registered,
@@ -38,8 +38,7 @@
     /// ```json
     /// {
     ///   "dropbox": { "client_id": "<app-key>" },
-    ///   "onedrive": { "client_id": "<client-id>" },
-    ///   "google_admin": { "client_id": "<client-id>" }
+    ///   "onedrive": { "client_id": "<client-id>" }
     /// }
     /// ```
     struct OAuthLinking {
@@ -98,8 +97,7 @@
             return OAuthLinking(
                 clients: BridgeOAuthClients(
                     dropboxAppKey: try clientId("dropbox"),
-                    onedriveClientId: try clientId("onedrive"),
-                    googleAdminClientId: try clientId("google_admin")
+                    onedriveClientId: try clientId("onedrive")
                 )
             )
         }

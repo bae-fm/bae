@@ -226,16 +226,6 @@
     <string name="onboarding_status_loading">Bibliothek wird geladen …</string>
     <string name="onboarding_invite_declined">Die Einladung wurde abgelehnt oder ist abgelaufen.</string>
     <string name="pending_update_no_store">Kein App-Store auf diesem Gerät kann bae aktualisieren.</string>
-    <string name="admin_access_title">Administratorzugriff</string>
-    <string name="admin_access_explanation">Dafür sind Zugangsdaten nötig, die die Zugriffsschlüssel des Speichers verwalten können. bae nutzt sie nur für diesen Schritt und behält sie nicht.</string>
-    <string name="admin_access_key">Zugriffsschlüssel</string>
-    <string name="admin_access_token">API-Token</string>
-    <string name="admin_access_session_token">Sitzungstoken (optional)</string>
-    <string name="admin_access_iam_endpoint">IAM-Endpunkt (optional)</string>
-    <string name="delete_key_title">Zugriffsschlüssel löschen</string>
-    <string name="delete_key_body">Der Zugriffsschlüssel %1$s, den ein entferntes Gerät verwendet hat, muss noch gelöscht werden. Lösche ihn hier mit Administratorzugriff oder bestätige, dass du ihn in der Konsole des Anbieters gelöscht hast.</string>
-    <string name="delete_key_with_admin">Hier löschen</string>
-    <string name="delete_key_done">Ich habe ihn gelöscht</string>
     <string name="storage_setup_title">Cloud-Speicherort einrichten</string>
     <string name="settings_set_up_cloud_home_explanation">Diese Bibliothek liegt nur auf diesem Gerät. Mit einem Cloud-Speicherort können deine anderen Geräte und dein Haushalt sie nutzen.</string>
     <string name="storage_setup_choose">Wo soll diese Bibliothek gespeichert werden?</string>

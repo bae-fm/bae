@@ -226,16 +226,6 @@
     <string name="onboarding_status_loading">Bibliotheek laden…</string>
     <string name="onboarding_invite_declined">De uitnodiging is afgewezen of verlopen.</string>
     <string name="pending_update_no_store">Geen enkele appwinkel op dit apparaat kan bae bijwerken.</string>
-    <string name="admin_access_title">Beheerderstoegang</string>
-    <string name="admin_access_explanation">Hiervoor zijn inloggegevens nodig die de toegangssleutels van de opslag kunnen beheren. bae gebruikt ze alleen voor deze stap en bewaart ze niet.</string>
-    <string name="admin_access_key">Toegangssleutel</string>
-    <string name="admin_access_token">API-token</string>
-    <string name="admin_access_session_token">Sessietoken (optioneel)</string>
-    <string name="admin_access_iam_endpoint">IAM-eindpunt (optioneel)</string>
-    <string name="delete_key_title">Toegangssleutel verwijderen</string>
-    <string name="delete_key_body">De toegangssleutel %1$s, gebruikt door een verwijderd apparaat, moet nog worden verwijderd. Verwijder hem hier met beheerderstoegang, of bevestig dat je hem in de console van de provider hebt verwijderd.</string>
-    <string name="delete_key_with_admin">Hier verwijderen</string>
-    <string name="delete_key_done">Ik heb hem verwijderd</string>
     <string name="storage_setup_title">Een cloudlocatie instellen</string>
     <string name="settings_set_up_cloud_home_explanation">Deze bibliotheek staat alleen op dit apparaat. Met een cloudlocatie kunnen je andere apparaten en je huishouden hem gebruiken.</string>
     <string name="storage_setup_choose">Waar moet deze bibliotheek worden opgeslagen?</string>

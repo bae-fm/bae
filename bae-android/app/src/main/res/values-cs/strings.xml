@@ -230,16 +230,6 @@
     <string name="onboarding_status_loading">Načítání knihovny…</string>
     <string name="onboarding_invite_declined">Pozvánka byla odmítnuta nebo vypršela.</string>
     <string name="pending_update_no_store">Na tomto zařízení není žádný obchod s aplikacemi, který by mohl bae aktualizovat.</string>
-    <string name="admin_access_title">Přístup správce</string>
-    <string name="admin_access_explanation">Je potřeba přihlašovací údaje, které mohou spravovat přístupové klíče úložiště. bae je použije jen pro tento krok a neuchovává je.</string>
-    <string name="admin_access_key">Přístupový klíč</string>
-    <string name="admin_access_token">Token API</string>
-    <string name="admin_access_session_token">Token relace (volitelné)</string>
-    <string name="admin_access_iam_endpoint">Koncový bod IAM (volitelné)</string>
-    <string name="delete_key_title">Smazat přístupový klíč</string>
-    <string name="delete_key_body">Přístupový klíč %1$s, který používalo odebrané zařízení, je ještě potřeba smazat. Smažte ho zde s přístupem správce, nebo potvrďte, že jste ho smazali v konzoli poskytovatele.</string>
-    <string name="delete_key_with_admin">Smazat zde</string>
-    <string name="delete_key_done">Klíč je smazaný</string>
     <string name="storage_setup_title">Nastavit cloudové úložiště</string>
     <string name="settings_set_up_cloud_home_explanation">Tato knihovna je uložena jen v tomto zařízení. Cloudové úložiště umožní používat ji i vašim dalším zařízením a domácnosti.</string>
     <string name="storage_setup_choose">Kde má být tato knihovna uložena?</string>

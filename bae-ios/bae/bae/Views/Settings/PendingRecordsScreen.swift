@@ -97,8 +97,7 @@ struct PendingRecordsScreen: View {
             try await sync.retryPendingOperation(id)
         case .restoreFromCode:
             holder.presentDeviceRestore()
-        case .wait, .restoreFile, .provideAdminAccess, .deleteAccessKey,
-            .review:
+        case .wait, .restoreFile, .review:
             preconditionFailure(
                 "a record without a button, or one its sheet handles"
             )
@@ -131,8 +130,6 @@ private struct PendingActionSheetView: View {
     var body: some View {
         NavigationStack {
             switch sheet {
-            case .adminAccess(let request):
-                AdminAccessView(request: request, onDismiss: onDismiss)
             case .s3Key:
                 S3KeyView(location: location, onDismiss: onDismiss)
             case .restoreFile(let record):

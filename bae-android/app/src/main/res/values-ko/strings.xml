@@ -224,16 +224,6 @@
     <string name="onboarding_status_loading">라이브러리를 불러오는 중…</string>
     <string name="onboarding_invite_declined">초대가 거절되었거나 만료되었습니다.</string>
     <string name="pending_update_no_store">이 기기에는 bae를 업데이트할 수 있는 앱 스토어가 없습니다.</string>
-    <string name="admin_access_title">관리자 접근 권한</string>
-    <string name="admin_access_explanation">저장소의 액세스 키를 관리할 수 있는 자격 증명이 필요합니다. bae는 이 단계에만 사용하고 보관하지 않습니다.</string>
-    <string name="admin_access_key">액세스 키</string>
-    <string name="admin_access_token">API 토큰</string>
-    <string name="admin_access_session_token">세션 토큰(선택 사항)</string>
-    <string name="admin_access_iam_endpoint">IAM 엔드포인트(선택 사항)</string>
-    <string name="delete_key_title">액세스 키 삭제</string>
-    <string name="delete_key_body">제거된 기기가 사용하던 액세스 키 %1$s를 아직 삭제해야 합니다. 여기에서 관리자 권한으로 삭제하거나 제공업체 콘솔에서 삭제했음을 확인하세요.</string>
-    <string name="delete_key_with_admin">여기에서 삭제</string>
-    <string name="delete_key_done">삭제했습니다</string>
     <string name="storage_setup_title">클라우드 저장 위치 설정</string>
     <string name="settings_set_up_cloud_home_explanation">이 라이브러리는 이 기기에만 저장되어 있습니다. 클라우드 저장 위치를 설정하면 다른 기기와 가족도 사용할 수 있습니다.</string>
     <string name="storage_setup_choose">이 라이브러리를 어디에 저장할까요?</string>

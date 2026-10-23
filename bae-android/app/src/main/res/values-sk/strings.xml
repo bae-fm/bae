@@ -229,16 +229,6 @@
     <string name="onboarding_status_loading">Načítava sa knižnica…</string>
     <string name="onboarding_invite_declined">Pozvánka bola odmietnutá alebo jej platnosť vypršala.</string>
     <string name="pending_update_no_store">Žiadny obchod s aplikáciami v tomto zariadení nemôže aktualizovať bae.</string>
-    <string name="admin_access_title">Prístup správcu</string>
-    <string name="admin_access_explanation">Sú potrebné prihlasovacie údaje, ktoré môžu spravovať prístupové kľúče úložiska. bae ich použije len na tento krok a neuchováva ich.</string>
-    <string name="admin_access_key">Prístupový kľúč</string>
-    <string name="admin_access_token">Token API</string>
-    <string name="admin_access_session_token">Token relácie (voliteľné)</string>
-    <string name="admin_access_iam_endpoint">Koncový bod IAM (voliteľné)</string>
-    <string name="delete_key_title">Odstrániť prístupový kľúč</string>
-    <string name="delete_key_body">Prístupový kľúč %1$s, ktorý používalo odstránené zariadenie, je ešte potrebné odstrániť. Odstráň ho tu s prístupom správcu alebo potvrď, že bol odstránený v konzole poskytovateľa.</string>
-    <string name="delete_key_with_admin">Odstrániť tu</string>
-    <string name="delete_key_done">Kľúč je odstránený</string>
     <string name="storage_setup_title">Nastaviť cloudové úložisko</string>
     <string name="settings_set_up_cloud_home_explanation">Táto knižnica je uložená len v tomto zariadení. Cloudové úložisko umožní používať ju aj tvojim ďalším zariadeniam a domácnosti.</string>
     <string name="storage_setup_choose">Kde má byť táto knižnica uložená?</string>

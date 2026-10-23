@@ -224,16 +224,6 @@
     <string name="onboarding_status_loading">ライブラリを読み込んでいます…</string>
     <string name="onboarding_invite_declined">招待は拒否されたか、有効期限が切れています。</string>
     <string name="pending_update_no_store">このデバイスには bae を更新できるアプリストアがありません。</string>
-    <string name="admin_access_title">管理者アクセス</string>
-    <string name="admin_access_explanation">ストレージのアクセスキーを管理できる認証情報が必要です。bae はこの手順にのみ使用し、保存しません。</string>
-    <string name="admin_access_key">アクセスキー</string>
-    <string name="admin_access_token">API トークン</string>
-    <string name="admin_access_session_token">セッショントークン（任意）</string>
-    <string name="admin_access_iam_endpoint">IAM エンドポイント（任意）</string>
-    <string name="delete_key_title">アクセスキーを削除</string>
-    <string name="delete_key_body">削除したデバイスが使っていたアクセスキー %1$s をまだ削除する必要があります。ここで管理者アクセスを使って削除するか、プロバイダのコンソールで削除したことを確認してください。</string>
-    <string name="delete_key_with_admin">ここで削除</string>
-    <string name="delete_key_done">削除しました</string>
     <string name="storage_setup_title">クラウドの保存先を設定</string>
     <string name="settings_set_up_cloud_home_explanation">このライブラリはこのデバイスにのみ保存されています。クラウドの保存先を設定すると、ほかのデバイスや家族も使えるようになります。</string>
     <string name="storage_setup_choose">このライブラリをどこに保存しますか？</string>
