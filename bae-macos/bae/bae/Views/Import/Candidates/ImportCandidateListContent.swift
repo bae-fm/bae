@@ -492,21 +492,11 @@ struct ImportCandidateListContent: View {
 
     /// The empty tab, or a narrowed list with no matches.
     private var emptyState: some View {
-        ContentUnavailableView(
-            summary.narrowed == nil ? "Nothing here yet" : "No matches",
-            systemImage: summary.narrowed == nil
-                ? emptyTabSymbol : "magnifyingglass"
-        )
+        ContentUnavailableView {
+            Text(summary.narrowed == nil ? "Nothing here yet" : "No matches")
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.surface)
-    }
-
-    private var emptyTabSymbol: String {
-        switch uiStore.importCandidateTab {
-        case .pending: "questionmark.circle"
-        case .done: "tray.full"
-        case .skipped: "minus.circle"
-        }
     }
 
     @ViewBuilder

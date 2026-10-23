@@ -149,10 +149,9 @@ struct CoverGalleryView: View {
                                 )
                         }
                         else {
-                            ContentUnavailableView(
-                                "No cover art available",
-                                systemImage: "photo"
-                            )
+                            ContentUnavailableView {
+                                Text("No cover art available")
+                            }
                         }
                         Button("Browse all images", action: showGrid)
                         Button("Done", action: onDone)
@@ -398,10 +397,9 @@ extension CoverGalleryView {
             }
         }
         else {
-            ContentUnavailableView(
-                "No cover art available",
-                systemImage: "photo"
-            )
+            ContentUnavailableView {
+                Text("No cover art available")
+            }
         }
     }
 }

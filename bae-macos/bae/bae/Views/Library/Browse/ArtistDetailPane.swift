@@ -36,10 +36,9 @@ struct ArtistDetailPane: View {
                     }
                 }
                 else if session.selectedArtistId == nil {
-                    ContentUnavailableView(
-                        "Artists",
-                        systemImage: "music.mic"
-                    )
+                    ContentUnavailableView {
+                        Text("Artists")
+                    }
                 }
                 else {
                     ProgressView()

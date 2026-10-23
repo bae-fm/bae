@@ -10,11 +10,11 @@ struct StorageManagerWindowRoot: View {
             appService.installEnvironment(StorageManagerView())
         }
         else {
-            ContentUnavailableView(
-                "No library loaded",
-                systemImage: "internaldrive",
-                description: Text("Open a library first")
-            )
+            ContentUnavailableView {
+                Text("No library loaded")
+            } description: {
+                Text("Open a library first")
+            }
             .frame(
                 width: NoLibraryPlaceholder.width,
                 height: NoLibraryPlaceholder.height

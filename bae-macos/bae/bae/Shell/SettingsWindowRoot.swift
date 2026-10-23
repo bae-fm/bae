@@ -31,13 +31,11 @@ struct SettingsWindowRoot: View {
             )
         }
         else {
-            ContentUnavailableView(
-                "No library loaded",
-                systemImage: "books.vertical",
-                description: Text(
-                    "Open a library first to access settings"
-                )
-            )
+            ContentUnavailableView {
+                Text("No library loaded")
+            } description: {
+                Text("Open a library first to access settings")
+            }
             .frame(
                 width: NoLibraryPlaceholder.width,
                 height: NoLibraryPlaceholder.height

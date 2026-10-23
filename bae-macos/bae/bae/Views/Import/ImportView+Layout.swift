@@ -68,13 +68,11 @@ extension ImportView {
                     )
             }
             else {
-                ContentUnavailableView(
-                    "Select a folder",
-                    systemImage: "folder",
-                    description: Text(
-                        "Choose a scanned folder to search for metadata"
-                    ),
-                )
+                ContentUnavailableView {
+                    Text("Select a folder")
+                } description: {
+                    Text("Choose a scanned folder to search for metadata")
+                }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }

@@ -142,15 +142,10 @@ private struct LoadErrorLine: View {
     /// Stand-in shell content for the chrome to frame.
     private struct ChromeSampleContent: View {
         var body: some View {
-            VStack(spacing: ThemeSpace.group) {
-                Image(systemName: "music.note.list")
-                    .themeIcon(.hero)
-                    .foregroundStyle(.secondary)
-                Text(verbatim: "Shell content")
-                    .themeText(.title)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Text(verbatim: "Shell content")
+                .themeText(.title)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 

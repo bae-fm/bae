@@ -184,12 +184,13 @@ struct ImagePlaceholderView: View {
                 }
         case .unavailable:
             Rectangle().fill(Theme.placeholder)
-                .overlay { icon("photo", .tertiary) }
         case .failed:
             Button(action: retry) {
                 Theme.accentSoft
                     .overlay {
-                        icon("arrow.clockwise.circle.fill", Theme.accent)
+                        Image(systemName: "arrow.clockwise.circle.fill")
+                            .font(retryIconFont)
+                            .foregroundStyle(Theme.accent)
                     }
                     .contentShape(Rectangle())
             }
@@ -213,17 +214,8 @@ struct ImagePlaceholderView: View {
         usesCompactChrome ? 0.75 : 0.85
     }
 
-    private var iconFont: Font {
+    private var retryIconFont: Font {
         (usesCompactChrome ? ThemeIcon.medium : ThemeIcon.large).font
-    }
-
-    private func icon<S: ShapeStyle>(
-        _ systemName: String,
-        _ foregroundStyle: S
-    ) -> some View {
-        Image(systemName: systemName)
-            .font(iconFont)
-            .foregroundStyle(foregroundStyle)
     }
 }
 

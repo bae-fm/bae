@@ -9,9 +9,6 @@ struct KeychainLockedView: View {
     var body: some View {
         VStack(spacing: ThemeSpace.edge) {
             Spacer()
-            Image(systemName: "lock.fill")
-                .themeIcon(.hero)
-                .foregroundStyle(.secondary)
             Text("Library Locked")
                 .themeText(.title)
             // Core's sentence for this failure, as every surface shows it.

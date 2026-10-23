@@ -56,11 +56,11 @@ struct QueueView: View {
             }
 
             if isEmpty {
-                ContentUnavailableView(
-                    "Queue is empty",
-                    systemImage: "list.bullet",
-                    description: Text("Drag tracks here or play an album"),
-                )
+                ContentUnavailableView {
+                    Text("Queue is empty")
+                } description: {
+                    Text("Drag tracks here or play an album")
+                }
                 .frame(maxHeight: .infinity)
                 .dropDestination(for: String.self) { droppedIds, _ in
                     // A multi-selection drag carries several ids per payload.

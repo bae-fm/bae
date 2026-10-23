@@ -20,7 +20,7 @@ struct SearchView: View {
         Group {
             if let results {
                 if showsEmptyState {
-                    ContentUnavailableView.search(text: results.query)
+                    ContentUnavailableView { Text("No matches") }
                         .frame(height: 240)
                 }
                 else {
@@ -58,7 +58,7 @@ struct SearchView: View {
         VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
             resultsSection("Albums", results.albums, id: \.id) { album in
                 SearchResultRow(
-                    leading: .picture(album.cover),
+                    picture: album.cover,
                     title: album.title,
                     subtitle: albumSubtitle(album),
                     action: { onSelectAlbum(album.id) }
@@ -66,17 +66,16 @@ struct SearchView: View {
             }
             resultsSection("Artists", results.artists, id: \.id) { artist in
                 SearchResultRow(
-                    leading: .picture(artist.image),
+                    picture: artist.image,
                     title: artist.name,
                     subtitle:
                         "\(artist.albumCount) \(String(localized: "Albums"))",
                     action: { onSelectArtist(artist.artistId) }
                 )
             }
-            // Tracks lead with a waveform, since the albums above show the art.
             resultsSection("Tracks", results.tracks, id: \.id) { track in
                 SearchResultRow(
-                    leading: .waveform,
+                    picture: track.cover,
                     title: track.title,
                     subtitle: trackSubtitle(track),
                     trailing: track.durationLabel,
@@ -86,7 +85,7 @@ struct SearchView: View {
             resultsSection("Composers", results.composers, id: \.id) {
                 composer in
                 SearchResultRow(
-                    leading: .picture(composer.image),
+                    picture: composer.image,
                     title: composer.name,
                     subtitle:
                         "\(composer.workCount) \(String(localized: "Works"))",
@@ -95,7 +94,7 @@ struct SearchView: View {
             }
             resultsSection("Works", results.works, id: \.id) { work in
                 SearchResultRow(
-                    leading: .picture(work.representativeCover),
+                    picture: work.representativeCover,
                     title: work.title,
                     subtitle: work.composerNames,
                     action: { onSelectWork(work.id) }
@@ -145,16 +144,10 @@ struct SearchView: View {
     }
 }
 
-/// One search hit: a picture or waveform, a title over an optional subtitle,
-/// and an optional trailing label.
+/// One search hit: a picture, a title over an optional subtitle, and an
+/// optional trailing label.
 private struct SearchResultRow: View {
-    /// A picture, or the waveform glyph that marks a track.
-    enum Leading {
-        case picture(BridgeImageRef?)
-        case waveform
-    }
-
-    let leading: Leading
+    let picture: BridgeImageRef?
     let title: String
     let subtitle: String?
     var trailing: String?
@@ -166,22 +159,14 @@ private struct SearchResultRow: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: ThemeSpace.group) {
-                switch leading {
-                case .picture(let cover):
-                    ImageView(imageRef: cover, pointSize: ThemeSize.rowArtwork)
-                        .frame(
-                            width: ThemeSize.rowArtwork,
-                            height: ThemeSize.rowArtwork
-                        )
-                        .clipShape(
-                            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                        )
-                case .waveform:
-                    Image(systemName: "waveform")
-                        .themeIcon(.medium)
-                        .foregroundStyle(.secondary)
-                        .frame(width: ThemeIcon.medium.size)
-                }
+                ImageView(imageRef: picture, pointSize: ThemeSize.rowArtwork)
+                    .frame(
+                        width: ThemeSize.rowArtwork,
+                        height: ThemeSize.rowArtwork
+                    )
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                    )
 
                 VStack(alignment: .leading, spacing: ThemeSpace.line) {
                     Text(title)

@@ -24,24 +24,19 @@ struct QRScannerView: View {
         Group {
             switch state {
             case .requesting:
-                placeholder(
-                    systemImage: "camera",
-                    message: String(localized: "Starting camera...")
-                )
+                placeholder(String(localized: "Starting camera..."))
             case .ready(let capture):
                 CameraPreview(capture: capture, onScan: onScan)
             case .denied:
                 placeholder(
-                    systemImage: "camera.metering.none",
-                    message: String(
+                    String(
                         localized:
                             "Camera access is off. Enable it in System Settings, or paste the code below."
                     )
                 )
             case .unavailable:
                 placeholder(
-                    systemImage: "camera.metering.none",
-                    message: String(
+                    String(
                         localized:
                             "No camera available. Paste the code below instead."
                     )
@@ -52,21 +47,13 @@ struct QRScannerView: View {
         .onDisappear { stop() }
     }
 
-    private func placeholder(
-        systemImage: String,
-        message: String
-    ) -> some View {
-        VStack(spacing: ThemeSpace.related) {
-            Image(systemName: systemImage)
-                .themeIcon(.hero)
-                .foregroundStyle(.secondary)
-            Text(message)
-                .themeText(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.secondary.opacity(ThemeOpacity.tint))
+    private func placeholder(_ message: String) -> some View {
+        Text(message)
+            .themeText(.body)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.secondary.opacity(ThemeOpacity.tint))
     }
 
     private func start() async {

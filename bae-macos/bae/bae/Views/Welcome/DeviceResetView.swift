@@ -25,9 +25,6 @@ struct DeviceResetView: View {
     var body: some View {
         VStack(spacing: ThemeSpace.edge) {
             Spacer()
-            Image(systemName: "arrow.counterclockwise.circle")
-                .themeIcon(.hero)
-                .foregroundStyle(.secondary)
             Text(title)
                 .themeText(.title)
             Text(message)

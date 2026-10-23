@@ -15,10 +15,9 @@ struct StorageInspector: View {
                 StorageContentsInspector(releaseId: releaseId)
             }
             else {
-                ContentUnavailableView(
-                    "Select a release",
-                    systemImage: "sidebar.trailing"
-                )
+                ContentUnavailableView {
+                    Text("Select a release")
+                }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }

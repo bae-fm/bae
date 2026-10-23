@@ -131,10 +131,9 @@ struct ComposerDetailPane: View {
                     )
                 }
                 if session.detailSelection == .none {
-                    ContentUnavailableView(
-                        "Composers",
-                        systemImage: "person.wave.2"
-                    )
+                    ContentUnavailableView {
+                        Text("Composers")
+                    }
                 }
             }
             .padding(ThemeSpace.section)

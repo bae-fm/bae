@@ -42,7 +42,7 @@ struct StorageContentsInspector: View {
                     outbox: outboxStore.snapshot
                 )
                 if rows.isEmpty {
-                    ContentUnavailableView("No files", systemImage: "doc")
+                    ContentUnavailableView { Text("No files") }
                 }
                 else {
                     List(rows, id: \.identity) { row in
