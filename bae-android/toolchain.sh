@@ -56,7 +56,9 @@ android_rust_target() {
     esac
 }
 
-# android_rust_env: points cargo at the pinned NDK for each ABI's target.
+# android_rust_env: points cargo at the pinned NDK for each ABI's target,
+# against bae.minSdk's libc, so the libraries call nothing a phone at the
+# app's oldest Android lacks and load on every phone the app installs on.
 # ffmpeg-sys-next finds FFmpeg through FFMPEG_DIR and then does not pass the
 # target to bindgen, so the per-target clang args are what keep its struct
 # layouts from being the host's. Sets ANDROID_NDK_TOOLCHAIN.
@@ -78,10 +80,10 @@ android_rust_env() {
     for abi in ${ANDROID_ABIS//,/ }; do
         triple=$(android_rust_target "$abi") || return 1
         var="${triple//-/_}"
-        clang="$ANDROID_NDK_TOOLCHAIN/bin/$triple$ANDROID_COMPILE_SDK-clang"
+        clang="$ANDROID_NDK_TOOLCHAIN/bin/$triple$ANDROID_MIN_SDK-clang"
         export "CARGO_TARGET_$(tr '[:lower:]' '[:upper:]' <<<"$var")_LINKER=$clang"
         export "CC_$var=$clang"
         export "AR_$var=$ANDROID_NDK_TOOLCHAIN/bin/llvm-ar"
-        export "BINDGEN_EXTRA_CLANG_ARGS_$var=--target=$triple$ANDROID_COMPILE_SDK --sysroot=$ANDROID_NDK_TOOLCHAIN/sysroot -I$ANDROID_FFMPEG_DIR/${triple%%-*}/include"
+        export "BINDGEN_EXTRA_CLANG_ARGS_$var=--target=$triple$ANDROID_MIN_SDK --sysroot=$ANDROID_NDK_TOOLCHAIN/sysroot -I$ANDROID_FFMPEG_DIR/${triple%%-*}/include"
     done
 }
