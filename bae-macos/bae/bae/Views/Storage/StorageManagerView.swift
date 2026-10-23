@@ -55,8 +55,12 @@ struct StorageManagerView: View {
                 .frame(minWidth: 440, maxHeight: .infinity)
 
             if inspectorPresented {
+                // Only the part of the selection the list holds, so the
+                // inspector never shows a release the list doesn't.
                 StorageInspector(
-                    releaseId: StorageInspector.releaseId(in: selection)
+                    releaseId: StorageInspector.releaseId(
+                        in: storageManagerStore.shown(selection)
+                    )
                 )
             }
         }
@@ -99,7 +103,13 @@ struct StorageManagerView: View {
             }
         }
         .errorAlert(uiStore)
-        .task { updateQuery() }
+        .task {
+            storageManagerStore.select(selection)
+            updateQuery()
+        }
+        .onChange(of: selection) { _, selection in
+            storageManagerStore.select(selection)
+        }
         .onChange(of: filter) { _, _ in
             // Selection is scoped to the visible tab.
             selection = []

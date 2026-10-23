@@ -65,7 +65,8 @@ private let bySize = BridgeStorageSort(
 
 private func snapshot(
     sort: BridgeStorageSort,
-    rows: [BridgeStorageRow]
+    rows: [BridgeStorageRow],
+    selectedInList: [String] = []
 ) -> BridgeStorageBrowseSnapshot {
     BridgeStorageBrowseSnapshot(
         sort: sort,
@@ -77,7 +78,8 @@ private func snapshot(
             )
         ],
         totalCount: UInt64(rows.count),
-        totalSize: 7
+        totalSize: 7,
+        selectedInList: selectedInList
     )
 }
 
@@ -95,7 +97,8 @@ struct StorageBrowsePageSourceTests {
             query: feed.query(),
             sort: byTitle,
             filter: .all,
-            onTotalSize: { totalSize.value = $0 }
+            selected: [],
+            onListValue: { totalSize.value = $0.totalSize }
         )
         let delivered = DeliveredRows()
 
@@ -132,6 +135,54 @@ struct StorageBrowsePageSourceTests {
         #expect(totalSize.value == 7)
         _ = second
     }
+
+    @MainActor
+    @Test(
+        "a new selection moves the one query, leaving its windows, and its answer is delivered"
+    )
+    func selectionMovesOneQuery() async throws {
+        let feed = StorageFeed()
+        let rows = PreviewData.storageRows
+        let answers = SelectedInListBox()
+        let source = StorageBrowsePageSource(
+            query: feed.query(),
+            sort: byTitle,
+            filter: .all,
+            selected: [],
+            onListValue: { answers.values.append($0.selectedInList) }
+        )
+        let page = source.subscribe(
+            offset: 0,
+            limit: 50,
+            onValue: { _, _ in },
+            onError: { _ in }
+        )
+
+        source.setSelection([rows[0].id, "rel-gone"])
+        #expect(feed.opened == 1)
+        #expect(feed.requested.last?.selected == [rows[0].id, "rel-gone"])
+        #expect(
+            feed.requested.last?.windows
+                == [BridgeLibraryPageWindow(offset: 0, limit: 50)],
+            "a selection leaves the pages as they are"
+        )
+
+        feed.deliver(
+            snapshot(
+                sort: byTitle,
+                rows: [rows[1]],
+                selectedInList: [rows[0].id]
+            )
+        )
+        try await Wait.until { !answers.values.isEmpty }
+        #expect(answers.values == [[rows[0].id]])
+        _ = page
+    }
+}
+
+@MainActor
+private final class SelectedInListBox {
+    var values: [Set<String>] = []
 }
 
 @MainActor

@@ -64,6 +64,7 @@ impl AppServices {
                     filter: view.filter,
                     uploading: uploading.to_vec(),
                     windows: view.windows.clone(),
+                    selected: view.selected.clone(),
                 }
             };
             let mut request = request_for(&view, &uploading);

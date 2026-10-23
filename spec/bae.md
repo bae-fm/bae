@@ -2175,7 +2175,12 @@ Reads come two ways:
   read change. The album grid, the artist and composer lists, a search, the
   import list, sync status, uploads, downloads and the queue are all live. A
   subscription that shows a window of a long list is pointed at a new window
-  in place as the person scrolls.
+  in place as the person scrolls. The Storage Manager's list is also told
+  which releases are selected in it, and each of its values says which of
+  them the list holds, on screen or not. Its inspector shows a release only
+  while the list holds it: a release that finishes uploading out of the sync
+  queue, no longer matches the filter, or is deleted leaves the inspector as
+  it leaves the list.
 
 What a read returns is already resolved: labels, paths, flags, totals, sides
 and positions are worked out in core, and a surface only renders them. A

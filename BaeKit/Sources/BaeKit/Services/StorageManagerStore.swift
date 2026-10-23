@@ -6,6 +6,9 @@ import Observation
 public final class StorageManagerStore {
     public private(set) var list: StorageList?
     public private(set) var totalSize: UInt64?
+    /// Which selected releases the list holds, by core's answer, wherever in
+    /// the list they sit — loaded or not.
+    private var selectedInList: Set<String> = []
 
     @ObservationIgnored
     private let library: Library
@@ -21,6 +24,9 @@ public final class StorageManagerStore {
     /// across sort and filter changes until `cancel`.
     @ObservationIgnored
     private var pageSource: StorageBrowsePageSource?
+    /// The releases selected in the list, which the query is asked about.
+    @ObservationIgnored
+    private var selection: Set<String> = []
 
     public init(
         library: Library,
@@ -41,6 +47,8 @@ public final class StorageManagerStore {
         generation += 1
         let currentGeneration = generation
         totalSize = nil
+        // The answer belongs to the view it was read under.
+        selectedInList = []
         let pageSource: StorageBrowsePageSource
         if let existing = self.pageSource {
             existing.setView(sort: sort, filter: filter)
@@ -51,8 +59,10 @@ public final class StorageManagerStore {
                 library: library,
                 sort: sort,
                 filter: filter,
-                onTotalSize: { [weak self] value in
-                    self?.totalSize = value
+                selected: selection,
+                onListValue: { [weak self] value in
+                    self?.totalSize = value.totalSize
+                    self?.selectedInList = value.selectedInList
                 }
             )
             self.pageSource = pageSource
@@ -76,8 +86,27 @@ public final class StorageManagerStore {
         }
     }
 
+    /// Ask the list which of `selection` it holds.
+    public func select(_ selection: Set<String>) {
+        self.selection = selection
+        pageSource?.setSelection(selection)
+    }
+
+    /// The part of `selection` the list holds: a row it has loaded, or a
+    /// release core says it holds. A selected release the list no longer
+    /// holds — uploaded out of the sync queue, filtered out, deleted — is
+    /// never in it, so nothing showing this set shows a release the list
+    /// doesn't.
+    public func shown(_ selection: Set<String>) -> Set<String> {
+        selection.filter { id in
+            selectedInList.contains(id) || list?.position(of: id) != nil
+        }
+    }
+
     public func cancel() {
         generation += 1
+        selection = []
+        selectedInList = []
         rebuildTask?.cancel()
         rebuildTask = nil
         list?.cancel()

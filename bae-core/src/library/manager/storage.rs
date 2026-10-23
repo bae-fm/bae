@@ -294,6 +294,7 @@ impl LibraryManager {
             windows,
             total_count: projection.total_count,
             total_size: projection.total_size,
+            selected_in_list: projection.selected_in_list,
         }
     }
 

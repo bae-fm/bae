@@ -163,9 +163,10 @@ impl Database {
     }
 
     /// Follow the Storage Manager list: every window the request names under
-    /// its sort and filter, with the filtered set's count and total size read
-    /// once per run. A new sort, filter, window set, or upload queue points the
-    /// same query at it through its request handle.
+    /// its sort and filter, with the filtered set's count and total size and
+    /// which of the selected releases it holds read once per run. A new sort,
+    /// filter, window set, selection, or upload queue points the same query at
+    /// it through its request handle.
     pub(crate) fn subscribe_storage_browse(
         &self,
         initial: StorageBrowseRequest,
@@ -203,6 +204,9 @@ impl Database {
                     storage_count_on(&sql, &where_clause, uploading).map_err(CovenError::from)?;
                 let total_size = storage_total_size_on(&sql, &where_clause, uploading)
                     .map_err(CovenError::from)?;
+                let selected_in_list =
+                    storage_members_on(&sql, &where_clause, uploading, &request.selected)
+                        .map_err(CovenError::from)?;
                 // A row shows its own release's cover and its album's; only
                 // those covers are read.
                 let album_ids = windows
@@ -224,11 +228,12 @@ impl Database {
                     windows,
                     total_count,
                     total_size,
+                    selected_in_list,
                     cover_versions,
                 ))
             })
             .process(
-                |(request, windows, total_count, total_size, cover_versions)| {
+                |(request, windows, total_count, total_size, selected_in_list, cover_versions)| {
                     let windows = windows
                         .into_iter()
                         .map(|(window, rows)| {
@@ -244,6 +249,7 @@ impl Database {
                         windows,
                         total_count,
                         total_size,
+                        selected_in_list,
                         cover_versions,
                     })
                 },

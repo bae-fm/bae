@@ -471,6 +471,7 @@ async fn transition_completions_deliver_storage_values() {
             }]
             .into_iter()
             .collect(),
+            selected: Default::default(),
         },
     );
     expect_storage_state(&values, &release_id, ReleaseStorageState::Local).await;
@@ -488,4 +489,69 @@ async fn transition_completions_deliver_storage_values() {
     .await
     .unwrap();
     expect_storage_state(&values, &release_id, ReleaseStorageState::Local).await;
+}
+
+/// The Storage Manager's inspector shows a release only while the list holds
+/// it: the list answers which selected releases it holds wherever they sit,
+/// in a window or not, and a selected release whose upload finishes leaves
+/// the Uploading list and the answer together.
+#[tokio::test]
+async fn selected_releases_leave_the_uploading_list_with_their_upload() {
+    tracing_init();
+    let tmp = TempDir::new().unwrap();
+    let mgr = setup_with_cloud(&tmp).await;
+    let (_a, first, _) =
+        create_local_release(&mgr, &tmp.path().join("first"), &[("a.flac", b"first")]).await;
+    let (_b, second, _) =
+        create_local_release(&mgr, &tmp.path().join("second"), &[("b.flac", b"second")]).await;
+    mgr.upload_release(&first, false).await.unwrap();
+    mgr.upload_release(&second, false).await.unwrap();
+
+    let services = AppServices::for_test(mgr.clone()).await.unwrap();
+    let selected: std::collections::BTreeSet<String> =
+        [first.clone(), second.clone()].into_iter().collect();
+    let values = services.subscribe_storage_browse(
+        &tokio::runtime::Handle::current(),
+        StorageBrowseView {
+            sort: StorageSortCriterion {
+                field: StorageSortField::AlbumTitle,
+                direction: SortDirection::Ascending,
+            },
+            filter: StorageFilter::Uploading,
+            // One row on screen, so one selected release sits outside it.
+            windows: [bae_core::library::LibraryPageWindow {
+                offset: 0,
+                limit: 1,
+            }]
+            .into_iter()
+            .collect(),
+            selected: selected.clone(),
+        },
+    );
+    let next = || async {
+        tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
+            .await
+            .expect("storage subscription delivers a value")
+            .expect("storage projection resolves")
+    };
+
+    let queued = next().await;
+    assert_eq!(queued.total_count, 2);
+    assert_eq!(queued.windows[0].rows.len(), 1);
+    assert_eq!(
+        queued.selected_in_list, selected,
+        "a selected release outside every window is still in the list"
+    );
+
+    mgr.drain_uploads_expecting_work().await.unwrap();
+    loop {
+        let value = next().await;
+        if value.total_count == 0 {
+            assert!(
+                value.selected_in_list.is_empty(),
+                "an uploaded release is no longer in the Uploading list"
+            );
+            break;
+        }
+    }
 }

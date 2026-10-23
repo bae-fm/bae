@@ -10,7 +10,8 @@ pub struct BridgeStorageBrowseWindow {
 
 /// Every requested window of the Storage Manager list under the sort and
 /// filter it was read for — a UI that has since moved to another drops it —
-/// with the filtered set's row count and total size.
+/// with the filtered set's row count and total size, and which of the
+/// selected releases the filtered set holds, in a window or not.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeStorageBrowseSnapshot {
     pub sort: BridgeStorageSort,
@@ -18,6 +19,7 @@ pub struct BridgeStorageBrowseSnapshot {
     pub windows: Vec<BridgeStorageBrowseWindow>,
     pub total_count: u64,
     pub total_size: u64,
+    pub selected_in_list: Vec<String>,
 }
 
 /// The Storage Manager list read live: one query for as long as the manager
@@ -31,7 +33,7 @@ pub struct StorageBrowseSubscription {
 #[uniffi::export]
 impl AppHandle {
     /// A subscription to the list under `sort` and `filter`, reading no
-    /// windows until `set_view` names some.
+    /// windows and holding no selection until `set_view` names them.
     pub fn subscribe_storage_browse(
         &self,
         sort: BridgeStorageSort,
@@ -44,6 +46,7 @@ impl AppHandle {
                     sort: sort.into_core(),
                     filter: filter.into_core(),
                     windows: Default::default(),
+                    selected: Default::default(),
                 },
             ),
             runtime: self.runtime.clone(),
@@ -53,12 +56,14 @@ impl AppHandle {
 
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl StorageBrowseSubscription {
-    /// Read `windows` of the list under `sort` and `filter` from now on.
+    /// Read `windows` of the list under `sort` and `filter`, and which of the
+    /// `selected` releases it holds, from now on.
     pub fn set_view(
         &self,
         sort: BridgeStorageSort,
         filter: BridgeStorageFilter,
         windows: Vec<crate::types::BridgeLibraryPageWindow>,
+        selected: Vec<String>,
     ) -> Result<(), BridgeError> {
         self.inner
             .set(bae_core::library::StorageBrowseView {
@@ -68,6 +73,7 @@ impl StorageBrowseSubscription {
                     .into_iter()
                     .map(crate::types::BridgeLibraryPageWindow::into_core)
                     .collect(),
+                selected: selected.into_iter().collect(),
             })
             .map_err(live_read_error)
     }
@@ -97,6 +103,7 @@ impl StorageBrowseSubscription {
                         .collect(),
                     total_count: snapshot.total_count,
                     total_size: snapshot.total_size,
+                    selected_in_list: snapshot.selected_in_list.into_iter().collect(),
                 })
                 .map_err(live_read_error)
         })

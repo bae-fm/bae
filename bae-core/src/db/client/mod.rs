@@ -138,7 +138,8 @@ mod write;
 use query::*;
 use read::*;
 use release_projection::{
-    find_release_detail_context_on, storage_count_on, storage_page_on, storage_total_size_on,
+    find_release_detail_context_on, storage_count_on, storage_members_on, storage_page_on,
+    storage_total_size_on,
 };
 pub use release_projection::{
     ReleaseDetailProjection, StorageBrowseProjection, StorageBrowseRequest,

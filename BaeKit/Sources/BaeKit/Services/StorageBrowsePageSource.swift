@@ -1,21 +1,32 @@
 import Foundation
 
 /// What the Storage Manager asks its query to read: the list under one sort
-/// and filter, and the windows of it on screen.
+/// and filter, the windows of it on screen, and the releases selected in it.
 public struct StorageBrowseView: Equatable, Sendable {
     public let sort: BridgeStorageSort
     public let filter: BridgeStorageFilter
     public let windows: [BridgeLibraryPageWindow]
+    public let selected: Set<String>
 
     public init(
         sort: BridgeStorageSort,
         filter: BridgeStorageFilter,
-        windows: [BridgeLibraryPageWindow]
+        windows: [BridgeLibraryPageWindow],
+        selected: Set<String>
     ) {
         self.sort = sort
         self.filter = filter
         self.windows = windows
+        self.selected = selected
     }
+}
+
+/// What one value of the Storage Manager list says of the whole filtered
+/// list rather than of a window: its total size, and which of the selected
+/// releases it holds.
+public struct StorageListValue: Sendable {
+    public let totalSize: UInt64
+    public let selectedInList: Set<String>
 }
 
 /// The Storage Manager list read live through one query: its sort, filter,
@@ -43,7 +54,8 @@ public struct StorageBrowseQuery: Sendable {
                 try subscription.setView(
                     sort: $0.sort,
                     filter: $0.filter,
-                    windows: $0.windows
+                    windows: $0.windows,
+                    selected: Array($0.selected)
                 )
             },
             next: { try await subscription.next() },
@@ -76,7 +88,11 @@ extension StorageBrowseQuery {
                     totalCount: UInt64(rows.count),
                     totalSize: UInt64(
                         rows.reduce(Int64(0)) { $0 + $1.release.totalSize }
-                    )
+                    ),
+                    selectedInList: rows.map(\.id)
+                        .filter(
+                            view.selected.contains
+                        )
                 )
             },
             cancel: { requests.close() }
@@ -91,6 +107,8 @@ extension StorageBrowseQuery {
 /// pages the previous view's list registered, and the next list registers its
 /// own. The whole set of registered windows under the current view is what
 /// the query reads, and a value read under another view is not delivered.
+/// The selection rides on the same query, which answers which selected
+/// releases the list holds, wherever they sit in it.
 public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
     private struct WindowKey: Hashable {
         let offset: UInt64
@@ -103,10 +121,11 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
     }
 
     private let query: StorageBrowseQuery
-    private let onTotalSize: @MainActor @Sendable (UInt64) -> Void
+    private let onListValue: @MainActor @Sendable (StorageListValue) -> Void
     private let lock = NSLock()
     private var sort: BridgeStorageSort
     private var filter: BridgeStorageFilter
+    private var selected: Set<String>
     /// Moves with each view, so a page of a previous view's list that
     /// cancels late cannot take a window the current list registered.
     private var generation = 0
@@ -120,12 +139,15 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
         query: StorageBrowseQuery,
         sort: BridgeStorageSort,
         filter: BridgeStorageFilter,
-        onTotalSize: @escaping @MainActor @Sendable (UInt64) -> Void
+        selected: Set<String>,
+        onListValue:
+            @escaping @MainActor @Sendable (StorageListValue) -> Void
     ) {
         self.query = query
         self.sort = sort
         self.filter = filter
-        self.onTotalSize = onTotalSize
+        self.selected = selected
+        self.onListValue = onListValue
         deliveries = Task { [weak self] in
             await self?.deliver()
         }
@@ -135,13 +157,16 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
         library: Library,
         sort: BridgeStorageSort,
         filter: BridgeStorageFilter,
-        onTotalSize: @escaping @MainActor @Sendable (UInt64) -> Void
+        selected: Set<String>,
+        onListValue:
+            @escaping @MainActor @Sendable (StorageListValue) -> Void
     ) {
         self.init(
             query: library.storageBrowse(sort, filter),
             sort: sort,
             filter: filter,
-            onTotalSize: onTotalSize
+            selected: selected,
+            onListValue: onListValue
         )
     }
 
@@ -167,6 +192,19 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
             sinks = [:]
         }
         push(failing: nil)
+    }
+
+    /// Ask which of `selected` the list holds, from the next value on. The
+    /// list's pages stay as they are.
+    public func setSelection(_ selected: Set<String>) {
+        let changed = lock.withLock {
+            guard selected != self.selected else { return false }
+            self.selected = selected
+            return true
+        }
+        if changed {
+            push(failing: nil)
+        }
     }
 
     public func subscribe(
@@ -217,7 +255,8 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
                             offset: $0.offset,
                             limit: $0.limit
                         )
-                    }
+                    },
+                selected: selected
             )
         }
         do {
@@ -245,9 +284,16 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
                     return self.sinks
                 }
                 guard let sinks else { continue }
-                let onTotalSize = onTotalSize
+                let onListValue = onListValue
                 await MainActor.run {
-                    onTotalSize(snapshot.totalSize)
+                    // In the same main-actor turn as the rows, so the
+                    // selection's answer never lags or leads the rows shown.
+                    onListValue(
+                        StorageListValue(
+                            totalSize: snapshot.totalSize,
+                            selectedInList: Set(snapshot.selectedInList)
+                        )
+                    )
                     for window in snapshot.windows {
                         let key = WindowKey(
                             offset: window.window.offset,

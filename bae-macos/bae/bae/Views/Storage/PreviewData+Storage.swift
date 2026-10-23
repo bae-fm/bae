@@ -608,7 +608,8 @@
                     direction: .ascending
                 ),
                 filter: .all,
-                onTotalSize: { _ in }
+                selected: [],
+                onListValue: { _ in }
             )
         }
     }

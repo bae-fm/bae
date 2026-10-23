@@ -477,6 +477,7 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
             }]
             .into_iter()
             .collect(),
+            selected: Default::default(),
         },
     );
     let pinned = |value: &crate::library::StorageBrowseSnapshot| {
@@ -625,6 +626,7 @@ async fn the_storage_view_moves_one_subscription() {
             },
             filter,
             windows: windows.iter().cloned().collect(),
+            selected: Default::default(),
         }
     };
     let titles = |value: &crate::library::StorageBrowseSnapshot| {

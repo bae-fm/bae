@@ -496,6 +496,7 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
             }]
             .into_iter()
             .collect(),
+            selected: Default::default(),
         },
     );
     let before = next_storage_release(&values, &release_id).await;
