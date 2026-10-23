@@ -250,7 +250,7 @@ check "xcodebuild (iphonesimulator)" \
 # The test run keeps ad-hoc signing: without it the iCloud entitlement is
 # stripped and the app traps at launch.
 check "xcodebuild test (iOS baeTests)" bash -c '
-  DEST=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=[d for rt in json.load(sys.stdin)[\"devices\"].values() for d in rt if d.get(\"isAvailable\") and d[\"name\"].startswith(\"iPhone\")][-1]; print(d[\"udid\"] + \"\t\" + d[\"name\"])")
+  DEST=$(./scripts/ios-simulator.sh) || exit 1
   DEST_ID=${DEST%%$'\''\t'\''*}
   DEST_NAME=${DEST#*$'\''\t'\''}
   echo "Testing on simulator: $DEST_NAME ($DEST_ID)"

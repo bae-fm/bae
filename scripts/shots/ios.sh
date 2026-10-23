@@ -11,7 +11,7 @@
 # is missing.
 #
 # Override the simulator with BAE_SHOTS_IOS_DEVICE (a name or UDID); otherwise
-# the first available iPhone is used.
+# scripts/ios-simulator.sh picks it, as for every other iOS build.
 
 set -euo pipefail
 
@@ -30,17 +30,11 @@ OUT_DIR="$(cd "$OUT_DIR" && pwd)"
 
 BUNDLE_ID="fm.bae.bae"
 
-# Pick the simulator: an explicit override, else the first available iPhone.
+# Pick the simulator: an explicit override, else the one every iOS build uses.
 DEVICE="${BAE_SHOTS_IOS_DEVICE:-}"
 if [[ -z "$DEVICE" ]]; then
-    DEVICE="$(xcrun simctl list devices available \
-        | grep -oE 'iPhone [^(]+\([0-9A-F-]{36}\)' \
-        | grep -oE '[0-9A-F-]{36}' \
-        | head -1)"
-fi
-if [[ -z "$DEVICE" ]]; then
-    echo "No available iPhone simulator found." >&2
-    exit 1
+    SIMULATOR="$(./scripts/ios-simulator.sh)"
+    DEVICE="${SIMULATOR%%$'\t'*}"
 fi
 echo "Using simulator: $DEVICE"
 xcrun simctl boot "$DEVICE" 2>/dev/null || true

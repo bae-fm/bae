@@ -58,6 +58,10 @@ fi
 
 cd bae-ios/bae && xcodegen && cd ../..
 
+SIMULATOR="$(./scripts/ios-simulator.sh)"
+SIMULATOR_ID="${SIMULATOR%%$'\t'*}"
+echo "Running on simulator: ${SIMULATOR#*$'\t'} ($SIMULATOR_ID)"
+
 # Build into the same derived-data cache scripts/check.sh and iOS CI use, so
 # they share module caches and SourcePackages checkouts. Caveat: check.sh
 # builds with CODE_SIGNING_ALLOWED=NO while this script ad-hoc signs for the
@@ -67,13 +71,13 @@ xcodebuild -project bae-ios/bae/bae.xcodeproj \
     -scheme bae \
     -configuration Debug \
     -sdk iphonesimulator \
-    -destination 'platform=iOS Simulator,name=iPhone 16' \
+    -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
     -derivedDataPath bae-ios/bae/.build/derivedData \
     PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
     PRODUCT_NAME="$PRODUCT_NAME" \
     build
 
-xcrun simctl boot "iPhone 16" 2>/dev/null || true
+xcrun simctl boot "$SIMULATOR_ID" 2>/dev/null || true
 open -a Simulator
-xcrun simctl install booted "bae-ios/bae/.build/derivedData/Build/Products/Debug-iphonesimulator/$PRODUCT_NAME.app"
-xcrun simctl launch booted "$BUNDLE_ID"
+xcrun simctl install "$SIMULATOR_ID" "bae-ios/bae/.build/derivedData/Build/Products/Debug-iphonesimulator/$PRODUCT_NAME.app"
+xcrun simctl launch "$SIMULATOR_ID" "$BUNDLE_ID"

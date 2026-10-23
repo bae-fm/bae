@@ -130,7 +130,7 @@ jobs:
       # the tests can bootstrap.
       if: ${{ inputs.edition == 'full' && !cancelled() && steps.build_ios.conclusion == 'success' }}
       run: |
-        DEST=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=[d for rt in json.load(sys.stdin)['devices'].values() for d in rt if d.get('isAvailable') and d['name'].startswith('iPhone')][-1]; print(d['udid'] + '\t' + d['name'])")
+        DEST=$(./scripts/ios-simulator.sh)
         DEST_ID=${DEST%%$'\t'*}
         DEST_NAME=${DEST#*$'\t'}
         echo "Testing on simulator: $DEST_NAME ($DEST_ID)"
