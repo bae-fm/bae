@@ -29,6 +29,10 @@ const DIRECT_KEYS: &[&str] = &[
     // provider's console: its id, and the line before removing or cancelling.
     "core.access_key.id",
     "core.access_key.forget",
+    // An S3 invite's screen, and the question before cancelling an invite.
+    "core.access_key.unused_invite",
+    "core.invite.cancel_confirm.title",
+    "core.invite.cancel_confirm.keep",
     // The sync activity list.
     "core.activity.title",
     "core.activity.attention",

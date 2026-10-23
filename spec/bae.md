@@ -1436,6 +1436,12 @@ writes his `people` row while it joins. Everyone's devices show Dan by name.
 On S3, Ana makes an access key for Dan instead of sharing with an account. An
 invite carries the library's current name and expires within a day.
 
+On S3 the invite's screen also shows the id of the key it carries, and says to
+delete that key in the provider's console if nobody uses the invite: bae keeps
+no record of it once the invite ends. Leaving the screen keeps the invite open
+until it expires. Cancelling it asks first, and on S3 the question names the
+key, as removing a person does.
+
 Removing a person deletes their circle and its rows: their private history and
 private playlists. Their household ratings, history and playlists stay,
 credited to them.

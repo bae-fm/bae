@@ -30,6 +30,8 @@ struct InvitePersonView: View {
     private var task: Task<Void, Never>?
     @State
     private var error: DisplayError?
+    @State
+    private var confirmingCancel = false
 
     /// An S3 invitee reaches the bucket with an access key the admin made for
     /// them; every other provider shares with their account.
@@ -58,6 +60,19 @@ struct InvitePersonView: View {
             }
             .navigationTitle("Invite a Person")
             .navigationBarTitleDisplayMode(.inline)
+            .confirmationDialog(
+                localizedCoreString("core.invite.cancel_confirm.title"),
+                isPresented: $confirmingCancel,
+                titleVisibility: .visible,
+                presenting: invite
+            ) { shown in
+                Button("Cancel Invitation", role: .destructive) { cancel(shown) }
+                Button(localizedCoreString("core.invite.cancel_confirm.keep"), role: .cancel) {}
+            } message: { shown in
+                if let forgetLine = shown.access.forgetLine {
+                    Text(verbatim: forgetLine)
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done", action: onDismiss)
@@ -130,11 +145,23 @@ struct InvitePersonView: View {
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                if let keyLine = invite.access.keyLine,
+                    let unusedLine = invite.access.unusedInviteLine
+                {
+                    Text(verbatim: keyLine)
+                        .themeText(.detail)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                    Text(verbatim: unusedLine)
+                        .themeText(.detail)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
                 if let error {
                     ErrorDetailDisclosure(error: error)
                 }
                 Button("Cancel Invitation", role: .destructive) {
-                    cancel(invite)
+                    confirmingCancel = true
                 }
                 .disabled(task != nil)
             }

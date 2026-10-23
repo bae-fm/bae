@@ -210,6 +210,8 @@ impl BridgeInviteAccess {
 pub struct BridgeInvite {
     pub id: String,
     pub member: String,
+    /// The access the invite grants; on S3 the id of the key it carries.
+    pub access: BridgeMemberAccess,
     pub code: String,
     pub expires_at: std::time::SystemTime,
 }
@@ -218,6 +220,7 @@ impl BridgeInvite {
         Self {
             id: value.id.0.to_string(),
             member: value.member.0.to_string(),
+            access: BridgeMemberAccess::from_core(value.access),
             code: value.code,
             expires_at: value.expires_at,
         }
@@ -234,4 +237,30 @@ pub fn bridge_provider_sign_out_key(instruction: BridgeProviderSignOut) -> Strin
         BridgeProviderSignOut::ReplaceAccessKey => "core.device.sign_out.access_key",
     }
     .to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// An S3 invite names its key, so the QR screen can tell the person which
+    /// key to delete if nobody uses the invite.
+    #[test]
+    fn an_invite_carries_its_key_id() {
+        let invite = BridgeInvite::from_core(coven::Invite {
+            id: coven::InviteId("00000000-0000-4000-8000-000000000001".parse().unwrap()),
+            member: coven::MemberId("00000000-0000-4000-8000-000000000002".parse().unwrap()),
+            access: coven::MemberAccess::S3AccessKey {
+                access_key_id: "dan-key".into(),
+            },
+            code: "code".into(),
+            expires_at: std::time::UNIX_EPOCH,
+        });
+        assert_eq!(
+            invite.access,
+            BridgeMemberAccess::S3AccessKey {
+                access_key_id: "dan-key".into()
+            }
+        );
+    }
 }

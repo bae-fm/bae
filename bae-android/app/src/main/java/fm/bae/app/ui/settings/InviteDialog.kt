@@ -35,6 +35,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.coreString
 import fm.bae.app.currentLocale
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -48,6 +49,7 @@ import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteAccess
+import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeStorageLocation
 import java.text.DateFormat
@@ -74,6 +76,7 @@ internal fun InviteDialog(
     var invite by remember { mutableStateOf<BridgeInvite?>(null) }
     var error by remember { mutableStateOf<DisplayError?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var confirmingCancel by remember { mutableStateOf(false) }
     val errors = LocaleErrorDisplays(context)
 
     val created = invite
@@ -96,23 +99,61 @@ internal fun InviteDialog(
         )
         return
     }
+    if (confirmingCancel) {
+        CancelInviteConfirmDialog(
+            invite = created,
+            onConfirm = {
+                confirmingCancel = false
+                busy = true
+                scope.launch {
+                    var cancelled = false
+                    performBridgeAction(logger, "cancel an invite", errors, { error = it }) {
+                        session.appHandle.cancelInvite(created.id)
+                        cancelled = true
+                    }
+                    busy = false
+                    if (cancelled) onDismiss()
+                }
+            },
+            onDismiss = { confirmingCancel = false },
+        )
+        return
+    }
     InviteCreatedDialog(
         invite = created,
         error = error,
         busy = busy,
-        onCancelInvite = {
-            busy = true
-            scope.launch {
-                var cancelled = false
-                performBridgeAction(logger, "cancel an invite", errors, { error = it }) {
-                    session.appHandle.cancelInvite(created.id)
-                    cancelled = true
-                }
-                busy = false
-                if (cancelled) onDismiss()
-            }
-        },
+        onCancelInvite = { confirmingCancel = true },
         onDismiss = onDismiss,
+    )
+}
+
+/**
+ * Asks before cancelling a shown invite. On S3 it names the invite's key: bae
+ * keeps no record of it afterwards, so the person deletes it in the
+ * provider's console.
+ */
+@Composable
+private fun CancelInviteConfirmDialog(
+    invite: BridgeInvite,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val forgetLine =
+        (invite.access as? BridgeMemberAccess.S3AccessKey)?.let { key ->
+            context.coreString("core.access_key.forget", mapOf("key" to key.accessKeyId))
+        }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(context.coreString("core.invite.cancel_confirm.title")) },
+        text = forgetLine?.let { line -> { Text(line) } },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text(stringResource(R.string.invite_cancel)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(context.coreString("core.invite.cancel_confirm.keep")) }
+        },
     )
 }
 
@@ -267,6 +308,12 @@ private fun InviteCreatedDialog(
                 )
                 SelectionContainer { Text(text = invite.code, style = ThemeText.mono.style) }
                 InviteNote(stringResource(R.string.invite_expires, expires))
+                (invite.access as? BridgeMemberAccess.S3AccessKey)?.let { key ->
+                    SelectionContainer {
+                        InviteNote(context.coreString("core.access_key.id", mapOf("key" to key.accessKeyId)))
+                    }
+                    InviteNote(context.coreString("core.access_key.unused_invite", mapOf("key" to key.accessKeyId)))
+                }
                 TextButton(onClick = { clipboard.setText(AnnotatedString(invite.code)) }) {
                     Text(stringResource(R.string.copy_code))
                 }
