@@ -3,8 +3,8 @@
 
 Quits the running debug app, confirms, then launches it with
 `--dev-reset <profile>`. The app does the reset itself, before any library
-opens: it removes every library the way Remove Library does (store keys
-leave the keychain), deletes those libraries' saved restore codes, empties the
+opens: it removes every library from this Mac without opening it or reading
+its store (its directory goes and its store keys leave the keychain), deletes those libraries' saved restore codes, empties the
 profile's S3 key prefix (every object under it is deleted and every unfinished
 upload aborted, whatever wrote them), deletes ~/.bae, then creates the
 profile's library and sets its Discogs token, metadata preferences, and S3

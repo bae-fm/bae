@@ -23,9 +23,10 @@
     }
 
     /// Wipes this Mac's bae state and recreates one library from a dev
-    /// profile, before any library opens. Every library is removed the way
-    /// Remove Library does, so its store keys leave the keychain, and its saved
-    /// restore code is deleted the way the welcome screen deletes one. Then the
+    /// profile, before any library opens. Every library is removed from this
+    /// Mac without opening it or reading its store: its directory and its
+    /// store keys in the keychain go, and its saved restore code is deleted the
+    /// way the welcome screen deletes one. Then the
     /// profile's storage prefix is emptied, so the new library starts on an
     /// empty remote, `~/.bae` goes, and the new library is created and set up
     /// the way Settings and storage setup do. Each step logs; the first
@@ -35,6 +36,8 @@
         /// Removals an earlier run left unfinished.
         let finishRemovals: @Sendable () async throws -> Void
         let listLibraries: @Sendable () async throws -> [BridgeLibrary]
+        /// Remove the library from this Mac only. The store isn't told this
+        /// device left: the reset empties the storage prefix next.
         let removeLibrary:
             @Sendable (BridgeLibrary) async throws -> BridgeLibraryRemoval
         let savedRestoreCodes:
@@ -126,18 +129,8 @@
                 readProfile: { try readDevResetProfile(path: $0) },
                 finishRemovals: { try await host.finishRemovals() },
                 listLibraries: { try await host.listLibraries() },
-                removeLibrary: { library in
-                    if library.isOpenable {
-                        try await LibraryRemovals.removeClosedLibrary(
-                            library.id,
-                            host: host
-                        )
-                    }
-                    else {
-                        try await host.removeUnopenableLibrary(
-                            libraryId: library.id
-                        )
-                    }
+                removeLibrary: {
+                    try await host.removeUnopenableLibrary(libraryId: $0.id)
                 },
                 savedRestoreCodes: { try await host.savedRestoreCodes() },
                 forgetSavedRestoreCode: {

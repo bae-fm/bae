@@ -91,7 +91,7 @@ public final class LibraryRemovals {
 
     /// Leaving the store runs on an open handle, so the library opens first.
     /// A removal that failed closes the handle it opened.
-    nonisolated public static func removeClosedLibrary(
+    nonisolated private static func removeClosedLibrary(
         _ libraryId: String,
         host: BridgeHost
     ) async throws -> BridgeLibraryRemoval {
