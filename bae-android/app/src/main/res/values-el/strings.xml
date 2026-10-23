@@ -130,6 +130,7 @@
     <string name="onboarding_add_device_explanation">Σαρώστε ή πληκτρολογήστε τον κωδικό που εμφανίζει το «Προσθήκη συσκευής» σε μία από τις συσκευές σας. Αν χάσατε όλες τις συσκευές σας, πληκτρολογήστε τον κωδικό ανάκτησής σας.</string>
     <string name="onboarding_join_library">Συμμετοχή σε βιβλιοθήκη</string>
     <string name="onboarding_join_library_explanation">Σαρώστε ή πληκτρολογήστε την πρόσκληση που σας έστειλε ένας διαχειριστής της βιβλιοθήκης.</string>
+    <string name="onboarding_icon_description">εικονίδιο bae</string>
     <string name="onboarding_camera_permission_required">Απαιτείται άδεια κάμερας για τη σάρωση κωδικών QR</string>
     <string name="oauth_unconfigured">Αυτή η βιβλιοθήκη χρειάζεται σύνδεση cloud, η οποία δεν έχει διαμορφωθεί σε αυτή την έκδοση.</string>
     <string name="signing_in">Σύνδεση…</string>

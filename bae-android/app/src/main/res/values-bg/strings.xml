@@ -126,6 +126,7 @@
     <string name="onboarding_add_device_explanation">Сканирайте или въведете кода, който „Добавяне на устройство“ показва на някое от устройствата ви. Ако сте загубили всичките си устройства, въведете кода си за възстановяване.</string>
     <string name="onboarding_join_library">Присъединяване към библиотека</string>
     <string name="onboarding_join_library_explanation">Сканирайте или въведете поканата, която ви е изпратил администратор на библиотеката.</string>
+    <string name="onboarding_icon_description">икона на bae</string>
     <string name="onboarding_camera_permission_required">Необходимо е разрешение за камерата, за да сканирате QR кодове</string>
     <string name="oauth_unconfigured">Тази библиотека изисква влизане в облака, което не е конфигурирано в тази версия.</string>
     <string name="signing_in">Влизане…</string>

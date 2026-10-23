@@ -126,6 +126,7 @@
     <string name="onboarding_add_device_explanation">Scansiona o digita il codice che “Aggiungi dispositivo” mostra su uno dei tuoi dispositivi. Se hai perso tutti i dispositivi, digita il tuo codice di recupero.</string>
     <string name="onboarding_join_library">Unisciti a una libreria</string>
     <string name="onboarding_join_library_explanation">Scansiona o digita l’invito che ti ha mandato un amministratore della libreria.</string>
+    <string name="onboarding_icon_description">icona bae</string>
     <string name="onboarding_camera_permission_required">È necessario il permesso della fotocamera per scansionare codici QR</string>
     <string name="oauth_unconfigured">Questa libreria richiede l\'accesso cloud, che non è configurato in questa build.</string>
     <string name="signing_in">Accesso…</string>

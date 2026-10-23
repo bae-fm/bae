@@ -126,6 +126,7 @@
     <string name="onboarding_add_device_explanation">Skenirajte ili upišite kod koji „Dodaj uređaj” prikazuje na jednom od vaših uređaja. Ako ste izgubili sve uređaje, upišite svoj kod za oporavak.</string>
     <string name="onboarding_join_library">Pridruži se fonoteci</string>
     <string name="onboarding_join_library_explanation">Skenirajte ili upišite pozivnicu koju vam je poslao administrator fonoteke.</string>
+    <string name="onboarding_icon_description">ikona bae</string>
     <string name="onboarding_camera_permission_required">Za skeniranje QR kodova potrebna je dozvola za kameru</string>
     <string name="oauth_unconfigured">Ova fonoteka zahtijeva prijavu u oblak, koja nije konfigurirana u ovoj verziji.</string>
     <string name="signing_in">Prijava…</string>

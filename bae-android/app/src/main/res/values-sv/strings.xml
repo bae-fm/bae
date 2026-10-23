@@ -130,6 +130,7 @@
     <string name="onboarding_add_device_explanation">Skanna eller skriv koden som ”Lägg till enhet” visar på en av dina enheter. Om du har förlorat alla dina enheter skriver du din återställningskod.</string>
     <string name="onboarding_join_library">Gå med i ett bibliotek</string>
     <string name="onboarding_join_library_explanation">Skanna eller skriv inbjudan som en administratör för biblioteket skickade till dig.</string>
+    <string name="onboarding_icon_description">bae-symbol</string>
     <string name="onboarding_camera_permission_required">Kamerabehörighet krävs för att skanna QR-koder</string>
     <string name="oauth_unconfigured">Det här biblioteket kräver molninloggning, som inte är konfigurerad i den här versionen.</string>
     <string name="signing_in">Loggar in…</string>

@@ -132,6 +132,7 @@
     <string name="onboarding_add_device_explanation">Naskenuj alebo zadaj kód, ktorý zobrazí „Pridať zariadenie“ na niektorom z tvojich zariadení. Ak už nemáš žiadne zariadenie, zadaj svoj kód na obnovenie.</string>
     <string name="onboarding_join_library">Pripojiť sa ku knižnici</string>
     <string name="onboarding_join_library_explanation">Naskenuj alebo zadaj pozvánku, ktorú ti poslal správca knižnice.</string>
+    <string name="onboarding_icon_description">ikona bae</string>
     <string name="onboarding_camera_permission_required">Na skenovanie QR kódov je potrebné povolenie kamery</string>
     <string name="oauth_unconfigured">Táto knižnica vyžaduje cloudové prihlásenie, ktoré v tomto zostavení nie je nastavené.</string>
     <string name="signing_in">Prihlasuje sa…</string>

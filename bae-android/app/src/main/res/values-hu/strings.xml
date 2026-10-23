@@ -130,6 +130,7 @@
     <string name="onboarding_add_device_explanation">Olvasd be vagy írd be a kódot, amelyet az „Eszköz hozzáadása” mutat az egyik eszközödön. Ha minden eszközödet elvesztetted, írd be a helyreállítási kódodat.</string>
     <string name="onboarding_join_library">Csatlakozás könyvtárhoz</string>
     <string name="onboarding_join_library_explanation">Olvasd be vagy írd be a meghívót, amelyet a könyvtár egyik adminisztrátora küldött neked.</string>
+    <string name="onboarding_icon_description">bae ikon</string>
     <string name="onboarding_camera_permission_required">A QR-kódok beolvasásához kameraengedély szükséges</string>
     <string name="oauth_unconfigured">Ehhez a könyvtárhoz felhős bejelentkezés kell, ami ebben a buildben nincs beállítva.</string>
     <string name="signing_in">Bejelentkezés…</string>
