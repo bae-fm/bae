@@ -22,7 +22,9 @@ runs:
       run: |
         source bae-android/toolchain.sh
         SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-        yes | "$SDKMANAGER" --licenses >/dev/null
+        # Not `yes |`: under the action's pipefail, `yes` dying of the closed
+        # pipe once the licenses are accepted fails the step.
+        "$SDKMANAGER" --licenses < <(yes) >/dev/null
         "$SDKMANAGER" \
           "ndk;$ANDROID_NDK_VERSION" \
           "platforms;android-$ANDROID_COMPILE_SDK" \
