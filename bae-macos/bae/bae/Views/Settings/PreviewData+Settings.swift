@@ -70,6 +70,7 @@
                         sealing: Data()
                     ),
                     role: .admin,
+                    access: .s3AccessKey(accessKeyId: "AKIAPREVIEWKEY"),
                     isSelf: true,
                     canRemove: false,
                     activeDevices: [
@@ -105,6 +106,7 @@
                         sealing: Data()
                     ),
                     role: .member,
+                    access: .s3AccessKey(accessKeyId: "AKIAPREVIEWKEY"),
                     isSelf: false,
                     canRemove: true,
                     activeDevices: [

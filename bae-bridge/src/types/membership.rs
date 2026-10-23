@@ -70,11 +70,29 @@ impl BridgeFormerDevice {
         }
     }
 }
+/// How a member, or an invite's person, reaches storage. On S3 only the key's
+/// public id crosses, never its secret.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeMemberAccess {
+    ProviderAccount { email: String },
+    S3AccessKey { access_key_id: String },
+}
+impl BridgeMemberAccess {
+    pub(crate) fn from_core(value: coven::MemberAccess) -> Self {
+        match value {
+            coven::MemberAccess::ProviderAccount(email) => Self::ProviderAccount { email },
+            coven::MemberAccess::S3AccessKey { access_key_id } => {
+                Self::S3AccessKey { access_key_id }
+            }
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeMember {
     pub id: String,
     pub keys: BridgeMemberPublicKeys,
     pub role: BridgeMemberRole,
+    pub access: BridgeMemberAccess,
     pub is_self: bool,
     pub can_remove: bool,
     pub active_devices: Vec<BridgeActiveDevice>,
@@ -86,6 +104,7 @@ impl BridgeMember {
             id,
             keys,
             role,
+            access,
             is_self,
             can_remove,
             active_devices,
@@ -95,6 +114,7 @@ impl BridgeMember {
             id: id.0.to_string(),
             keys: BridgeMemberPublicKeys::from_core(keys),
             role: BridgeMemberRole::from_core(role),
+            access: BridgeMemberAccess::from_core(access),
             is_self,
             can_remove,
             active_devices: active_devices

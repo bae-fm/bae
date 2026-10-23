@@ -69,6 +69,7 @@ import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeJoinRequest
 import uniffi.bae_bridge.BridgeMember
+import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgePerson
@@ -408,6 +409,7 @@ private fun MemberRow(
     callbacks: MemberCallbacks,
 ) {
     val shownName = name ?: stringResource(R.string.members_unnamed)
+    val context = LocalContext.current
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -418,6 +420,13 @@ private fun MemberRow(
             if (member.isSelf) {
                 StatusChip(stringResource(R.string.members_you))
             }
+        }
+        (member.access as? BridgeMemberAccess.S3AccessKey)?.let { key ->
+            Text(
+                text = context.coreString("core.access_key.id", mapOf("key" to key.accessKeyId)),
+                style = ThemeText.detail.style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         member.activeDevices.forEach { device ->
             DeviceRow(device = device, onRemove = { callbacks.onRemoveDevice(device) })

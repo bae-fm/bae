@@ -1440,6 +1440,12 @@ Removing a person deletes their circle and its rows: their private history and
 private playlists. Their household ratings, history and playlists stay,
 credited to them.
 
+On S3 each person's row in People shows the id of their access key. Removing
+a person asks first; on S3 the question also says that bae will forget their
+key and that Ana deletes it in her provider's console. bae keeps no record or
+reminder of the key afterwards
+([coven §14.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#143-s3-access-keys)).
+
 People lists each person's active devices. Their removed and replaced
 devices, whose records coven keeps, sit under them in a **Removed devices**
 list that starts closed, each marked removed or replaced, with no actions.

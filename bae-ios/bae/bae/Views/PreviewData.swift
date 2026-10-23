@@ -443,6 +443,7 @@ extension PreviewData {
                 id: "4a1f2c3d-0000-4000-8000-000000000001",
                 keys: BridgeMemberPublicKeys(signing: Data(), sealing: Data()),
                 role: .admin,
+                access: .s3AccessKey(accessKeyId: "AKIAPREVIEWKEY"),
                 isSelf: true,
                 canRemove: false,
                 activeDevices: [
@@ -475,6 +476,7 @@ extension PreviewData {
                 id: "4a1f2c3d-0000-4000-8000-000000000002",
                 keys: BridgeMemberPublicKeys(signing: Data(), sealing: Data()),
                 role: .member,
+                access: .s3AccessKey(accessKeyId: "AKIAPREVIEWKEY"),
                 isSelf: false,
                 canRemove: true,
                 activeDevices: [

@@ -19,6 +19,7 @@ import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.LabeledValueRow
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeMember
+import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeProviderSignOut
 import uniffi.bae_bridge.bridgeProviderSignOutKey
 
@@ -85,6 +86,7 @@ private fun RemovalConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
     val (title, body) =
         when (removal) {
             is PendingRemoval.Person -> {
@@ -97,10 +99,19 @@ private fun RemovalConfirmDialog(
                     stringResource(R.string.members_remove_confirm_body, removal.device.name)
             }
         }
+    // Removing a person ends their S3 key's use; bae keeps no record of it.
+    val forgottenKey = ((removal as? PendingRemoval.Person)?.member?.access as? BridgeMemberAccess.S3AccessKey)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
-        text = { Text(body) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+                Text(body)
+                forgottenKey?.let { key ->
+                    Text(context.coreString("core.access_key.forget", mapOf("key" to key.accessKeyId)))
+                }
+            }
+        },
         confirmButton = {
             TextButton(onClick = onConfirm) { Text(stringResource(R.string.members_remove)) }
         },

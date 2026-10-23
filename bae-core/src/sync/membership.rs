@@ -33,6 +33,9 @@ pub struct MembershipMember {
     pub id: coven::MemberId,
     pub keys: coven::MemberPublicKeys,
     pub role: coven::MemberRole,
+    /// How they reach storage: on S3 the id of their key, which the person
+    /// deletes in the provider's console when they remove the member.
+    pub access: coven::MemberAccess,
     pub is_self: bool,
     pub can_remove: bool,
     pub active_devices: Vec<ActiveDevice>,
@@ -66,6 +69,7 @@ impl MembershipMember {
             id,
             keys,
             role,
+            access,
             devices,
             is_self,
         } = member;
@@ -98,6 +102,7 @@ impl MembershipMember {
             id,
             keys,
             role,
+            access,
             is_self,
             can_remove: self_is_admin && !is_self,
             active_devices,
@@ -129,9 +134,32 @@ mod tests {
             id: coven::MemberId(uuid::Uuid::from_u128(id)),
             keys: coven::MemberKeys::generate().unwrap().public_keys(),
             role,
+            access: coven::MemberAccess::S3AccessKey {
+                access_key_id: format!("key-{id}"),
+            },
             devices,
             is_self,
         }
+    }
+
+    /// The app names a member's S3 key when the person removes them, so
+    /// each member carries the access coven records for them.
+    #[test]
+    fn each_member_carries_their_access() {
+        let membership = Membership::from_members(vec![
+            member(1, coven::MemberRole::Admin, true, Vec::new()),
+            member(2, coven::MemberRole::Member, false, Vec::new()),
+        ]);
+        assert_eq!(
+            membership
+                .members
+                .iter()
+                .map(|member| member.access.clone())
+                .collect::<Vec<_>>(),
+            [1, 2].map(|id| coven::MemberAccess::S3AccessKey {
+                access_key_id: format!("key-{id}"),
+            })
+        );
     }
 
     #[test]

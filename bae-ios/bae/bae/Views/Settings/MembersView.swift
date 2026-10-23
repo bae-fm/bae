@@ -122,10 +122,17 @@ struct MembersView: View {
             Button("Cancel", role: .cancel) {}
         } message: { selected in
             switch selected {
-            case .person:
-                Text(
-                    "They lose access to the library. Their private history and private playlists are deleted; what they shared stays."
-                )
+            case .person(let member, _):
+                if let forgetLine = member.access.forgetLine {
+                    Text(
+                        "They lose access to the library. Their private history and private playlists are deleted; what they shared stays."
+                    ) + Text(verbatim: "\n\n\(forgetLine)")
+                }
+                else {
+                    Text(
+                        "They lose access to the library. Their private history and private playlists are deleted; what they shared stays."
+                    )
+                }
             case .device:
                 Text("The device loses access to the library.")
             }
@@ -223,6 +230,14 @@ private struct PersonSection: View {
                     Button("Remove", role: .destructive, action: onRemove)
                         .disabled(busy)
                 }
+            }
+            // Every member of a library reaches it the same way, so every
+            // section has this line, or none does.
+            if let keyLine = member.access.keyLine {
+                Text(verbatim: keyLine)
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
             }
             ForEach(member.activeDevices, id: \.id) { device in
                 DeviceRow(device: device)

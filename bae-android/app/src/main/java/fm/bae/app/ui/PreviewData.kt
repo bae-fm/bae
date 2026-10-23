@@ -30,6 +30,7 @@ import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeMediaCount
 import uniffi.bae_bridge.BridgeMedium
 import uniffi.bae_bridge.BridgeMember
+import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMemberPublicKeys
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMessage
@@ -400,6 +401,7 @@ object PreviewData {
             id = id,
             keys = BridgeMemberPublicKeys(signing = ByteArray(PUBLIC_KEY_BYTES), sealing = ByteArray(PUBLIC_KEY_BYTES)),
             role = role,
+            access = BridgeMemberAccess.S3AccessKey(accessKeyId = "AKIAPREVIEWKEY"),
             isSelf = isSelf,
             canRemove = !isSelf,
             activeDevices =

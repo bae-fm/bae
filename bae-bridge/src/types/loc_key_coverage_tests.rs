@@ -25,6 +25,10 @@ const DIRECT_KEYS: &[&str] = &[
     // Transfer labels resolved by the UI.
     "core.outbox.throughput",
     "core.outbox.eta",
+    // A member's or invite's S3 key, which the person deletes in the
+    // provider's console: its id, and the line before removing or cancelling.
+    "core.access_key.id",
+    "core.access_key.forget",
     // The sync activity list.
     "core.activity.title",
     "core.activity.attention",
