@@ -14,7 +14,6 @@ public final class SyncStatusStore {
     public var error: DisplayError? {
         snapshot?.error.flatMap { DisplayError($0) }
     }
-    public var canReconnect: Bool { snapshot?.connected == false }
     /// Whether sync stopped because another copy of this device is syncing,
     /// which only resetting this device answers.
     public var offersDeviceReset: Bool {

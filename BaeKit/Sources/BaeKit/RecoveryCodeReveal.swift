@@ -4,11 +4,11 @@ import os.log
 
 private let logger = Logger.bae("RecoveryCodeReveal")
 
-/// Whether the person's recovery code shows in Settings, shared by the macOS
-/// and iOS settings screens. The code stays hidden until the person asks for
-/// it, is generated on that request, and is hidden again on request or when
-/// the screen goes away. Hiding cancels a generation still running, so a late
-/// result never shows a code the person already put away.
+/// Whether the person's recovery code shows in Settings. The code stays hidden
+/// until the person asks for it, is generated on that request, and is hidden
+/// again on request or when the screen goes away. Hiding cancels a generation
+/// still running, so a late result never shows a code the person already put
+/// away.
 @MainActor
 @Observable
 public final class RecoveryCodeReveal {

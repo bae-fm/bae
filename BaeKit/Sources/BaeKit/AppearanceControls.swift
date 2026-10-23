@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The same appearance controls in macOS settings and the iOS settings list.
+/// The appearance controls in settings.
 public struct AppearanceControls: View {
     private var preferences = AppearancePreferences()
 

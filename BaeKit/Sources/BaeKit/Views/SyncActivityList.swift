@@ -7,26 +7,19 @@ public struct SyncActivityList: View {
     /// Opens the sync settings, where each record that needs the person
     /// offers its action.
     private let onOpenSettings: () -> Void
-    /// Opens the offline downloads, where a platform lists them apart.
-    private let onOpenDownloads: (() -> Void)?
 
     @Environment(SyncActivityStore.self)
     private var store
 
-    public init(
-        onOpenSettings: @escaping () -> Void,
-        onOpenDownloads: (() -> Void)? = nil
-    ) {
+    public init(onOpenSettings: @escaping () -> Void) {
         self.onOpenSettings = onOpenSettings
-        self.onOpenDownloads = onOpenDownloads
     }
 
     public var body: some View {
         if let activity = store.activity {
             SyncActivitySections(
                 activity: activity,
-                onOpenSettings: onOpenSettings,
-                onOpenDownloads: onOpenDownloads
+                onOpenSettings: onOpenSettings
             )
         }
         else if store.error == nil {
@@ -47,7 +40,6 @@ public struct SyncActivityList: View {
 private struct SyncActivitySections: View {
     let activity: BridgeSyncActivity
     let onOpenSettings: () -> Void
-    let onOpenDownloads: (() -> Void)?
 
     var body: some View {
         if activity.needsAttention {
@@ -64,7 +56,7 @@ private struct SyncActivitySections: View {
             }
         }
         Section {
-            TransferRows(activity: activity, onOpenDownloads: onOpenDownloads)
+            TransferRows(activity: activity)
         }
         if !activity.moving, !activity.needsAttention, !activity.syncing {
             Section {
@@ -79,7 +71,6 @@ private struct SyncActivitySections: View {
 /// one row each while it moves.
 private struct TransferRows: View {
     let activity: BridgeSyncActivity
-    let onOpenDownloads: (() -> Void)?
 
     var body: some View {
         if activity.syncing {
@@ -100,16 +91,10 @@ private struct TransferRows: View {
             }
         }
         if let downloads = activity.downloads {
-            let row = Label(
+            Label(
                 QueueSummary.line(downloads.summaryParts),
                 systemImage: "arrow.down.circle"
             )
-            if let onOpenDownloads {
-                Button(action: onOpenDownloads) { row }
-            }
-            else {
-                row
-            }
         }
     }
 }

@@ -10,33 +10,21 @@
     /// the system refuses, while a call holds it, keeps playback from starting.
     /// Core releases it once playback stops, so other apps can resume. Core
     /// calls both methods on its playback thread, one at a time.
-    public final class PlaybackAudioSession: BridgeAudioFocus,
+    final class PlaybackAudioSession: BridgeAudioFocus,
         @unchecked Sendable
     {
-        private let activate: () throws -> Void
-        private let deactivate: () throws -> Void
         /// Whether a start activated the session since the last release. Only
         /// core's playback thread touches it.
         private var activated = false
 
-        /// The shared session by default; a test passes a system that refuses
-        /// or records.
-        public init(
-            activate: @escaping () throws -> Void =
-                PlaybackAudioSession.activateSharedSession,
-            deactivate: @escaping () throws -> Void =
-                PlaybackAudioSession.deactivateSharedSession
-        ) {
-            self.activate = activate
-            self.deactivate = deactivate
-        }
-
         /// Activate the session before playback starts. Activating it again
         /// while active succeeds, and one the system took back for a call is
         /// refused until the call ends.
-        public func request() -> BridgeAudioFocusAnswer {
+        func request() -> BridgeAudioFocusAnswer {
             do {
-                try activate()
+                let session = AVAudioSession.sharedInstance()
+                try session.setCategory(.playback, mode: .default)
+                try session.setActive(true)
                 activated = true
                 return .granted
             }
@@ -47,32 +35,20 @@
 
         /// Deactivate the session once playback stops, telling other apps they
         /// can resume.
-        public func release() {
+        func release() {
             guard activated else {
                 return
             }
             activated = false
             do {
-                try deactivate()
+                try AVAudioSession.sharedInstance()
+                    .setActive(false, options: .notifyOthersOnDeactivation)
             }
             catch {
                 logger.error(
                     "Failed to deactivate the audio session: \(error.localizedDescription)"
                 )
             }
-        }
-
-        @usableFromInline
-        static func activateSharedSession() throws {
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .default)
-            try session.setActive(true)
-        }
-
-        @usableFromInline
-        static func deactivateSharedSession() throws {
-            try AVAudioSession.sharedInstance()
-                .setActive(false, options: .notifyOthersOnDeactivation)
         }
     }
 #endif

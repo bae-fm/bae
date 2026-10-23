@@ -109,8 +109,7 @@ public class PlaybackStore {
 
     /// Enter loading for `trackId`, keeping the displayed track until
     /// `setLoadingTarget` brings the target's metadata; otherwise the
-    /// now-playing bar, and on iOS the full-screen player, would close on every
-    /// track change.
+    /// now-playing bar would close on every track change.
     public func beginLoading(trackId: String) {
         let previousTrackId = nowPlaying.track?.track.trackId
         setNowPlaying(

@@ -1,7 +1,7 @@
 import Foundation
 
 /// Controls for the in-memory download (pin) queue: enqueue releases to pin,
-/// pause/resume the queue, cancel a release's download, and retry failed ones.
+/// pause/resume the queue, and cancel downloads.
 /// Mirrors the outbox controls on `Sync`, wrapping the corresponding
 /// `handle.*` methods. The queue itself lives in bae-core; the Downloads pane
 /// reads its state from `DownloadStore` (the download projection is the sole
@@ -24,8 +24,6 @@ public final class Downloads: Sendable, Observable {
     public let cancelDownload: @Sendable (_ releaseId: String) -> Void
     /// Cancel every download — queued, failed, and the one in flight.
     public let cancelAllDownloads: @Sendable () -> Void
-    /// Retry every failed download now (flips them back to queued).
-    public let retryDownloads: @Sendable () -> Void
     /// How many downloads a pin fetches at once (1...8). A persisted device-local
     /// config write, unlike the runtime pause/cancel controls: it throws on an
     /// out-of-range value or a failed write, so the picker can snap back. Takes
@@ -42,7 +40,6 @@ public final class Downloads: Sendable, Observable {
         setDownloadsPaused: @escaping @Sendable (Bool) -> Void = { _ in },
         cancelDownload: @escaping @Sendable (String) -> Void = { _ in },
         cancelAllDownloads: @escaping @Sendable () -> Void = {},
-        retryDownloads: @escaping @Sendable () -> Void = {},
         setMaxConcurrentDownloads:
             @escaping @Sendable (UInt32) async throws -> Void =
             {
@@ -54,7 +51,6 @@ public final class Downloads: Sendable, Observable {
         self.setDownloadsPaused = setDownloadsPaused
         self.cancelDownload = cancelDownload
         self.cancelAllDownloads = cancelAllDownloads
-        self.retryDownloads = retryDownloads
         self.setMaxConcurrentDownloads = setMaxConcurrentDownloads
     }
 
@@ -65,7 +61,6 @@ public final class Downloads: Sendable, Observable {
             setDownloadsPaused: { handle.setDownloadsPaused(paused: $0) },
             cancelDownload: { handle.cancelDownload(releaseId: $0) },
             cancelAllDownloads: { handle.cancelAllDownloads() },
-            retryDownloads: { handle.retryDownloads() },
             setMaxConcurrentDownloads: {
                 try await handle.setMaxConcurrentDownloads(n: $0)
             }

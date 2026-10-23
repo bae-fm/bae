@@ -11,8 +11,7 @@ private let logger = Logger.bae("UiEventDispatcher")
 public enum UiEventDispatcher {
     /// Whether a shared arm consumed the event. The platform sink decides what
     /// to do with `.unhandled` events: macOS handles its desktop-only events
-    /// and drops the rest; iOS ignores the known desktop-only events and traps
-    /// on anything else.
+    /// and drops the rest.
     public enum Outcome {
         case handled
         case unhandled

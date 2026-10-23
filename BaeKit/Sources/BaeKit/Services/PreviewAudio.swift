@@ -5,8 +5,8 @@ import Foundation
     /// Import-flow preview audio — the in-place playback of candidate
     /// audio files in the import inspector. Distinct from `Playback`,
     /// which drives the library's now-playing track. The backing bridge
-    /// methods are desktop-only (there is no import flow on iOS), so the
-    /// whole type is gated to macOS.
+    /// methods are desktop-only and absent from the iOS bindings, so the whole
+    /// type is gated to macOS.
     public final class PreviewAudio: Sendable, Observable {
         public let previewPlay:
             @Sendable (_ target: BridgePreviewTarget) -> Void

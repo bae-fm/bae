@@ -28,8 +28,6 @@ public struct QueueUpcomingQuery: Sendable {
 public final class Queue: Sendable, Observable {
     public let addToQueue: @Sendable (_ trackIds: [String]) -> Void
     public let addNext: @Sendable (_ trackIds: [String]) -> Void
-    public let addReleaseToQueue: @Sendable (_ releaseId: String) -> Void
-    public let addReleaseNext: @Sendable (_ releaseId: String) -> Void
     public let insertInQueue:
         @Sendable (_ trackIds: [String], _ index: UInt32) -> Void
     public let removeEntry: @Sendable (_ entryId: String) -> Void
@@ -50,8 +48,6 @@ public final class Queue: Sendable, Observable {
     public init(
         addToQueue: @escaping @Sendable ([String]) -> Void = { _ in },
         addNext: @escaping @Sendable ([String]) -> Void = { _ in },
-        addReleaseToQueue: @escaping @Sendable (String) -> Void = { _ in },
-        addReleaseNext: @escaping @Sendable (String) -> Void = { _ in },
         insertInQueue: @escaping @Sendable ([String], UInt32) -> Void = {
             _,
             _ in
@@ -69,8 +65,6 @@ public final class Queue: Sendable, Observable {
     ) {
         self.addToQueue = addToQueue
         self.addNext = addNext
-        self.addReleaseToQueue = addReleaseToQueue
-        self.addReleaseNext = addReleaseNext
         self.insertInQueue = insertInQueue
         self.removeEntry = removeEntry
         self.clearUpNext = clearUpNext
@@ -85,8 +79,6 @@ public final class Queue: Sendable, Observable {
         self.init(
             addToQueue: { handle.addToQueue(trackIds: $0) },
             addNext: { handle.addNext(trackIds: $0) },
-            addReleaseToQueue: { handle.addReleaseToQueue(releaseId: $0) },
-            addReleaseNext: { handle.addReleaseNext(releaseId: $0) },
             insertInQueue: { handle.insertInQueue(trackIds: $0, index: $1) },
             removeEntry: { handle.removeEntry(entryId: $0) },
             clearUpNext: { handle.clearUpNext() },

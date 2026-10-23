@@ -19,9 +19,9 @@ struct NowPlayingMetadata {
     let playbackRate: Double
 }
 
-/// Transport intents the remote command center forwards to. macOS routes each
-/// through its preview-or-library dispatch; iOS calls straight into `Playback`.
-/// Each returns the status the command handler reports back to the system.
+/// Transport intents the remote command center forwards to, each routed
+/// through the preview-or-library dispatch. Each returns the status the command
+/// handler reports back to the system.
 struct TransportActions {
     let play: () -> MPRemoteCommandHandlerStatus
     let pause: () -> MPRemoteCommandHandlerStatus
@@ -31,12 +31,10 @@ struct TransportActions {
     let seek: (TimeInterval) -> MPRemoteCommandHandlerStatus
 }
 
-/// Bridges playback state to the platform's Now Playing surface (the macOS
-/// Control Center widget + media keys, the iOS lock screen + Control Center)
-/// and the remote command center. The shared core owns the metadata, position,
-/// artwork, and scrub math; the macOS preview session and the iOS interruption
-/// handling live in os-gated extensions. Core activates and releases the iOS
-/// audio session itself, through `PlaybackAudioSession`.
+/// Bridges playback state to the macOS Now Playing surface (the Control Center
+/// widget + media keys) and the remote command center. The shared core owns the
+/// metadata, position, artwork, and scrub math; the preview session lives in
+/// an os-gated extension.
 public final class MediaControlService: @unchecked Sendable {
     var currentDurationMs: UInt64?
     /// Mirrors `changePlaybackPositionCommand.isEnabled` so the scrubber is
@@ -46,26 +44,12 @@ public final class MediaControlService: @unchecked Sendable {
     private var cachedArtworkImage: BridgeImageRef?
     private var cachedArtwork: MPMediaItemArtwork?
     private var artworkTask: Task<Void, Never>?
-    /// Whether a preview clip currently owns Now Playing. Only macOS writes it
-    /// (iOS has no import preview), so shared bodies read it without a gate.
+    /// Whether a preview clip currently owns Now Playing. Only the macOS
+    /// preview session writes it, so shared bodies read it without a gate.
     var isShowingPreview = false
 
     #if os(macOS)
         var activeSession: ActiveMediaSession?
-    #endif
-
-    #if os(iOS)
-        var observersRegistered = false
-        /// Latched from the most recent Now Playing update so the interruption
-        /// handler knows whether playback was active when a call/alarm began.
-        var lastKnownIsPlaying = false
-        /// Set when an interruption paused active playback, so `.ended` only
-        /// auto-resumes playback we paused — not playback the user had already
-        /// paused before the interruption.
-        var pausedForInterruption = false
-        /// Transport handle the remote commands and interruption/route handlers
-        /// forward to. Set in `setupRemoteCommands`.
-        var playback: Playback?
     #endif
 
     public init() {}
@@ -120,9 +104,6 @@ public final class MediaControlService: @unchecked Sendable {
         state: BridgePlaybackValueState,
         appHandle: AppHandle
     ) {
-        #if os(iOS)
-            applyInterruptionLatch(for: state)
-        #endif
         if case .stopped = state {
             clearNowPlaying()
             return
@@ -246,10 +227,6 @@ public final class MediaControlService: @unchecked Sendable {
         // enabled invites taps core ignores — and drop the scrubber (one owner).
         updateCommandAvailability(hasNext: false, hasPrevious: false)
         setScrubbingEnabled(false)
-        #if os(iOS)
-            lastKnownIsPlaying = false
-            pausedForInterruption = false
-        #endif
     }
 }
 

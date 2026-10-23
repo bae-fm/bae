@@ -126,11 +126,6 @@ open class AppService: @unchecked Sendable, Observable {
     private let membershipStore: MembershipStore
     private let commonSubscriptions: CommonSubscriptions
     private let libraryProjectionStore: LibraryProjectionStore
-    private lazy var libraryListsStore = LibraryListsStore(
-        library: library,
-        libraryStore: libraryStore,
-        onError: { [weak self] error in self?.showError(error) }
-    )
 
     // MARK: - Domain services
     //
@@ -221,10 +216,6 @@ open class AppService: @unchecked Sendable, Observable {
         playbackStore.playbackPositionPublisher
     }
 
-    public func savePlaybackState() async throws {
-        try await appHandle.savePlaybackState()
-    }
-
     /// Close the library so nothing of this process holds its store: stops
     /// sync, ends every background task, and shuts the core's runtime down.
     /// Blocks until it finishes, so it runs off the main actor. Removing a
@@ -276,14 +267,7 @@ open class AppService: @unchecked Sendable, Observable {
         return try await appHandle.removeLibrary()
     }
 
-    #if os(iOS)
-        public func setupRemoteCommands() {
-            mediaControlService.setupRemoteCommands(
-                playback: playback,
-                playbackStore: playbackStore
-            )
-        }
-    #else
+    #if os(macOS)
         public func activateMediaControls(previewAudio: PreviewAudio) {
             mediaControlService.activate(
                 playback: playback,
@@ -291,9 +275,7 @@ open class AppService: @unchecked Sendable, Observable {
                 playbackStore: playbackStore
             )
         }
-    #endif
 
-    #if os(macOS)
         public func deactivateMediaControls() {
             mediaControlService.deactivate(playbackStore: playbackStore)
         }
@@ -342,17 +324,12 @@ open class AppService: @unchecked Sendable, Observable {
         showError(displayed)
     }
 
-    /// Route a display error to the platform's error surface. iOS uses the
-    /// shared `ConfigStore` banner; macOS overrides this to route through its
-    /// global alert (`UiStore`).
+    /// Route a display error to the platform's error surface. The macOS
+    /// subclass overrides this to route through its global alert (`UiStore`).
     open func showError(_ error: DisplayError) {
-        #if os(iOS)
-            configStore.showError(error)
-        #else
-            preconditionFailure(
-                "macOS AppService must override showError to route through UiStore"
-            )
-        #endif
+        preconditionFailure(
+            "macOS AppService must override showError to route through UiStore"
+        )
     }
 
     public func startCommonSubscriptions() {
@@ -411,7 +388,6 @@ extension AppService {
             .environment(syncActivityStore)
             .environment(libraryStore)
             .environment(libraryProjectionStore)
-            .environment(libraryListsStore)
             .environment(downloadStore)
             .environment(outboxStore)
             .environment(downloads)

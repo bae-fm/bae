@@ -98,8 +98,8 @@ struct SyncStatusStoreTests {
     }
 
     @MainActor
-    @Test("a required app update is visible without offering reconnection")
-    func requiredUpdateHasNoReconnect() throws {
+    @Test("a required app update renders its line")
+    func requiredUpdateRendersItsLine() throws {
         let sync = SyncStatusStore()
         sync.apply(
             BridgeSyncStatusSnapshot(
@@ -116,7 +116,6 @@ struct SyncStatusStoreTests {
             try #require(sync.error).line
                 == BridgeErrorCategory.syncUpdateRequired.localizedLine
         )
-        #expect(!sync.canReconnect)
     }
 
     private func status(syncReady: Bool) -> BridgeSyncStatusSnapshot {

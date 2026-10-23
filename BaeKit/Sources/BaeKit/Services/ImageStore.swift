@@ -89,24 +89,12 @@ public struct ImageStoreBudgets: Equatable, Sendable {
 
     private static let megabyte = 1024 * 1024
 
-    // Local files and the artwork embedded in them are import candidates and
-    // iOS has no import flow, so that bucket takes one number on both
-    // platforms — nothing ever enters it there.
-    #if os(iOS)
-        public static let `default` = ImageStoreBudgets(
-            libraryImage: 48 * megabyte,
-            releaseImage: 16 * megabyte,
-            remote: 8 * megabyte,
-            localFile: 16 * megabyte
-        )
-    #else
-        public static let `default` = ImageStoreBudgets(
-            libraryImage: 192 * megabyte,
-            releaseImage: 48 * megabyte,
-            remote: 16 * megabyte,
-            localFile: 16 * megabyte
-        )
-    #endif
+    public static let `default` = ImageStoreBudgets(
+        libraryImage: 192 * megabyte,
+        releaseImage: 48 * megabyte,
+        remote: 16 * megabyte,
+        localFile: 16 * megabyte
+    )
 }
 
 /// The app's image pipeline: bytes → decode at the slot's pixel size → bounded
@@ -134,7 +122,6 @@ public final class ImageStore: Sendable, Observable {
     /// the original), or nil when the source serves no image there — cover
     /// addresses are derived from a release's ids, so an offered one can hold
     /// nothing. Core picks the copy.
-    /// Desktop-only; iOS has no import flow and leaves it unwired.
     private let fetchRemoteImage:
         @Sendable (_ image: BridgeRemoteImageSet, _ pixels: UInt32?)
             async throws -> Data?
@@ -161,7 +148,8 @@ public final class ImageStore: Sendable, Observable {
         buckets = Buckets(budgets: budgets)
     }
 
-    #if !os(iOS)
+    // The provider-art fetch is absent from the iOS bindings.
+    #if os(macOS)
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
                 fetchLibraryImageBytes: {
@@ -183,23 +171,6 @@ public final class ImageStore: Sendable, Observable {
                         return nil
                     }
                     return Data(bytes)
-                }
-            )
-        }
-    #else
-        // The provider-art fetch backs the desktop import flow and is absent
-        // from the iOS bindings. This wires the library and release reads iOS
-        // makes; the remote fetch keeps its throwing default.
-        public convenience init(handle: any AppHandleProtocol) {
-            self.init(
-                fetchLibraryImageBytes: {
-                    try await handle.fetchLibraryImageBytes(image: $0)
-                },
-                fetchReleaseImageBytes: {
-                    try await handle.fetchReleaseImageBytes(
-                        releaseId: $0,
-                        source: $1
-                    )
                 }
             )
         }
@@ -448,9 +419,8 @@ extension ImageStore {
     }
 }
 
-/// A capability this `ImageStore` isn't wired for — the preview stub, or the
-/// desktop-only provider-art fetch on iOS. Throwing surfaces the misuse instead
-/// of masking it with empty bytes.
+/// A capability this `ImageStore` isn't wired for — the preview stub. Throwing
+/// surfaces the misuse instead of masking it with empty bytes.
 public struct ImageStoreUnavailable: Error {
     public init() {}
 }

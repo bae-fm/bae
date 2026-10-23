@@ -10,52 +10,18 @@ public struct SidePausePromptAlert: ViewModifier {
     let showError: @MainActor (any Error) -> Void
 
     public func body(content: Content) -> some View {
-        #if os(macOS)
-            content
-                .disabled(playbackStore.presentedSidePausePrompt != nil)
-                .overlay {
-                    if let prompt = playbackStore.presentedSidePausePrompt {
-                        SidePausePromptCard(
-                            prompt: prompt,
-                            showError: showError
-                        )
-                        .id(prompt.id)
-                    }
-                }
-        #else
-            content
-                .fullScreenCover(
-                    item: Binding<BridgeSidePausePrompt?>(
-                        get: { playbackStore.presentedSidePausePrompt },
-                        set: { nextPrompt in
-                            if nextPrompt == nil,
-                                let prompt = playbackStore
-                                    .presentedSidePausePrompt
-                            {
-                                playbackStore.dismissSidePausePrompt(prompt)
-                            }
-                        }
+        content
+            .disabled(playbackStore.presentedSidePausePrompt != nil)
+            .overlay {
+                if let prompt = playbackStore.presentedSidePausePrompt {
+                    SidePausePromptCard(
+                        prompt: prompt,
+                        showError: showError
                     )
-                ) { prompt in
-                    SidePausePromptCard(prompt: prompt, showError: showError)
-                        .presentationBackground(.clear)
+                    .id(prompt.id)
                 }
-                // Appear and leave in place like an alert, instead of the
-                // cover's slide from the bottom edge.
-                .transaction(
-                    value: playbackStore.presentedSidePausePrompt?.id,
-                    Self.disableAnimations
-                )
-        #endif
+            }
     }
-
-    #if os(iOS)
-        private static func disableAnimations(
-            _ transaction: inout Transaction
-        ) {
-            transaction.disablesAnimations = true
-        }
-    #endif
 }
 
 private struct SidePausePromptCard: View {
@@ -74,10 +40,8 @@ private struct SidePausePromptCard: View {
     @State
     private var keepPausing = true
 
-    #if os(macOS)
-        @FocusState
-        private var focused: Bool
-    #endif
+    @FocusState
+    private var focused: Bool
 
     var body: some View {
         ZStack {
@@ -132,11 +96,7 @@ private struct SidePausePromptCard: View {
             .padding(.top, ThemeSpace.related)
         }
         .padding(ThemeSpace.section)
-        #if os(macOS)
-            .frame(width: Self.width, alignment: .leading)
-        #else
-            .frame(maxWidth: Self.width, alignment: .leading)
-        #endif
+        .frame(width: Self.width, alignment: .leading)
         .background(Theme.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.panel))
         .overlay {
@@ -144,18 +104,14 @@ private struct SidePausePromptCard: View {
                 .stroke(Theme.hairline, lineWidth: 1)
         }
         .shadow(radius: 20)
-        #if os(macOS)
-            .focusable()
-            .focusEffectDisabled()
-            .focused($focused)
-            .onKeyPress(.escape) {
-                answer(play: false)
-                return .handled
-            }
-            .onAppear { focused = true }
-        #else
-            .padding(.horizontal, ThemeSpace.edge)
-        #endif
+        .focusable()
+        .focusEffectDisabled()
+        .focused($focused)
+        .onKeyPress(.escape) {
+            answer(play: false)
+            return .handled
+        }
+        .onAppear { focused = true }
     }
 
     private func answer(play: Bool) {
@@ -197,10 +153,6 @@ private struct SidePauseCountdownLine: View {
         countdown.resumesAt.addingTimeInterval(-3600)
     }
 }
-
-#if os(iOS)
-    extension BridgeSidePausePrompt: Identifiable {}
-#endif
 
 extension View {
     public func sidePausePromptAlert(

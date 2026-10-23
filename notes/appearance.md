@@ -19,7 +19,7 @@ missing artwork; well and tile distinguish recessed controls from raised
 controls. Accent text, glyphs, and slider fills use the mode-specific accent.
 Primary buttons use the separate fill color with white text to preserve
 contrast in both modes. The macOS mode selector uses that fill for its selected
-segment; iOS retains its native neutral segmented control.
+segment.
 Semantic colours do not change with the tone or accent: danger for errors,
 warning for what needs attention, success, info, and activity for work in
 progress such as a transfer. Hover, pressed, hairline, scrim, shadow and the
@@ -49,7 +49,7 @@ The shared components are defined once per platform: `StatusTone` (neutral,
 accent, info, success, warning, danger, activity), a `StatusChip` for short
 labels on a tone's fill, a notice (`.notice(_:)` on Apple, `Notice` on Android)
 for a message in a tone, `.card(elevated:)` on Apple, and `ErrorText` for a
-failure line. A failing sync cycle is one `SyncFailureNotice` on macOS and iOS.
+failure line. A failing sync cycle is one `SyncFailureNotice` on Android.
 
 Apple views use `Theme`, `ThemeOpacity`, `PrimaryButtonStyle`, and
 `.appAppearance()` at every scene root; Apple's hierarchical label styles stay

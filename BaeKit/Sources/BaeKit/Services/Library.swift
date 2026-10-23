@@ -137,9 +137,9 @@ public final class Library: Sendable, Observable {
 
     // The desktop import surfaces reach the import service through `Importer`,
     // not here; this `handle`-wiring convenience initializer covers the reads
-    // the desktop library page makes. The iOS `AppService` builds `Library`
-    // via the designated initializer with just the iOS-available closures.
-    #if !os(iOS)
+    // the desktop library page makes, some of them absent from the iOS
+    // bindings.
+    #if os(macOS)
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
                 albumBrowse: {
@@ -196,58 +196,6 @@ public final class Library: Sendable, Observable {
                 },
                 setLibraryFullWidth: {
                     try await handle.setLibraryFullWidth(enabled: $0)
-                }
-            )
-        }
-    #else
-        // `getAlbumIndex` and `storageBrowse` back desktop-only
-        // surfaces (album-index scrolling and the Storage Manager) and go
-        // unused here.
-        // This wires only the reads iOS actually makes; the rest keep their
-        // throwing stub defaults.
-        public convenience init(handle: any AppHandleProtocol) {
-            self.init(
-                albumBrowse: {
-                    LibraryBrowseQuery(
-                        handle.subscribeAlbumBrowse(
-                            sortCriteria: $0,
-                            groupByArtist: $1
-                        )
-                    )
-                },
-                composerBrowse: {
-                    LibraryBrowseQuery(
-                        handle.subscribeComposerBrowse(sortCriteria: $0)
-                    )
-                },
-                artistBrowse: {
-                    LibraryBrowseQuery(
-                        handle.subscribeArtistBrowse(sortCriteria: $0)
-                    )
-                },
-                librarySearch: {
-                    LibrarySearch(handle.subscribeLibrarySearch())
-                },
-                albumDetail: {
-                    DetailQuery(handle.subscribeAlbumDetail())
-                },
-                releaseDetail: {
-                    DetailQuery(handle.subscribeReleaseDetail())
-                },
-                artistDetail: {
-                    DetailQuery(handle.subscribeArtistDetail())
-                },
-                composerDetail: {
-                    DetailQuery(handle.subscribeComposerDetail())
-                },
-                workDetail: {
-                    DetailQuery(handle.subscribeWorkDetail())
-                },
-                searchArtists: {
-                    try await handle.searchArtists(query: $0)
-                },
-                resolveToTrackIds: {
-                    try await handle.resolveToTrackIds(ids: $0)
                 }
             )
         }
