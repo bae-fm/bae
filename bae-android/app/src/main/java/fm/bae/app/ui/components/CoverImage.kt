@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrokenImage
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -26,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -63,9 +61,9 @@ private sealed interface SlotState {
 }
 
 /**
- * Album cover clipped to a rounded square, a music-note placeholder when there is
- * none, or a broken-image tile to tap to retry when it couldn't be loaded;
- * [modifier] sets the size.
+ * Album cover clipped to a rounded square, a plain tile when there is none, or a
+ * broken-image tile to tap to retry when it couldn't be loaded; [modifier] sets
+ * the size.
  */
 @Composable
 fun CoverImage(
@@ -170,23 +168,21 @@ private fun SlotContent(
             )
         }
 
-        // Bytes not in yet: a plain tile, so no glyph flashes before the art.
-        SlotState.Loading -> {
-            CoverTile(icon = null, iconPadding = iconPadding)
-        }
-
-        SlotState.Absent -> {
-            CoverTile(icon = Icons.Filled.MusicNote, iconPadding = iconPadding)
+        // Bytes not in yet, or no image to show: the tile alone.
+        SlotState.Loading, SlotState.Absent -> {
+            CoverTile()
         }
 
         SlotState.Failed -> {
             val retry = stringResource(R.string.retry)
-            CoverTile(
-                icon = Icons.Filled.BrokenImage,
-                iconPadding = iconPadding,
-                iconDescription = stringResource(R.string.image_load_failed),
-                modifier = Modifier.clickable(onClickLabel = retry, onClick = onRetry),
-            )
+            CoverTile(modifier = Modifier.clickable(onClickLabel = retry, onClick = onRetry)) {
+                Icon(
+                    imageVector = Icons.Filled.BrokenImage,
+                    contentDescription = stringResource(R.string.image_load_failed),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(iconPadding),
+                )
+            }
         }
     }
 }
@@ -198,27 +194,17 @@ private fun boundedPixelSize(constraints: Constraints): Int {
     return maxOf(width, height)
 }
 
-/** The placeholder surface, with [icon] saying why there is no art, or bare while it loads. */
+/** The placeholder surface standing in for art, holding [content]: nothing, or the failed load's mark. */
 @Composable
 private fun CoverTile(
-    icon: ImageVector?,
-    iconPadding: Dp,
-    iconDescription: String? = null,
     modifier: Modifier = Modifier,
+    content: @Composable () -> Unit = {},
 ) {
     Surface(
         color = BaeTheme.surfaces.placeholder,
         modifier = modifier.fillMaxSize(),
-    ) {
-        if (icon != null) {
-            Icon(
-                imageVector = icon,
-                contentDescription = iconDescription,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(iconPadding),
-            )
-        }
-    }
+        content = content,
+    )
 }
 
 @Preview(showBackground = true)

@@ -131,7 +131,6 @@
     <string name="onboarding_add_device_explanation">Scanează sau tastează codul afișat de „Adaugă dispozitiv” pe unul dintre dispozitivele tale. Dacă ai pierdut toate dispozitivele, tastează codul tău de recuperare.</string>
     <string name="onboarding_join_library">Alătură-te unei biblioteci</string>
     <string name="onboarding_join_library_explanation">Scanează sau tastează invitația pe care ți-a trimis-o un administrator al bibliotecii.</string>
-    <string name="onboarding_icon_description">pictograma bae</string>
     <string name="onboarding_camera_permission_required">Este necesară permisiunea camerei pentru a scana coduri QR</string>
     <string name="oauth_unconfigured">Această bibliotecă necesită conectare la cloud, care nu este configurată în această versiune.</string>
     <string name="signing_in">Se conectează…</string>

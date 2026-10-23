@@ -140,21 +140,13 @@ private fun Cover(
     val context = LocalContext.current
     val coverSize = ThemeSize.barArtwork
     if (coverImage == null) {
-        Box(
+        Spacer(
             modifier =
                 GlanceModifier
                     .size(coverSize)
                     .cornerRadius(ThemeRadius.artwork)
                     .background(placeholder),
-            contentAlignment = Alignment.Center,
-        ) {
-            Image(
-                provider = ImageProvider(R.drawable.ic_widget_music_note),
-                contentDescription = null,
-                modifier = GlanceModifier.size(ThemeIcon.large),
-                colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant),
-            )
-        }
+        )
     } else {
         // Glance has no Uri ImageProvider, so an Icon carries the artwork URI for ArtworkContentProvider.
         val coverIcon = Icon.createWithContentUri(ArtworkContentProvider.uriFor(context, coverImage))

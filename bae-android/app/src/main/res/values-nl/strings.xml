@@ -126,7 +126,6 @@
     <string name="onboarding_add_device_explanation">Scan of typ de code die ‘Apparaat toevoegen’ op een van je apparaten toont. Ben je al je apparaten kwijt, typ dan je herstelcode.</string>
     <string name="onboarding_join_library">Deelnemen aan bibliotheek</string>
     <string name="onboarding_join_library_explanation">Scan of typ de uitnodiging die een beheerder van de bibliotheek je heeft gestuurd.</string>
-    <string name="onboarding_icon_description">bae-pictogram</string>
     <string name="onboarding_camera_permission_required">Cameratoestemming is vereist om QR-codes te scannen</string>
     <string name="oauth_unconfigured">Deze bibliotheek heeft cloudaanmelding nodig, die niet is geconfigureerd in deze build.</string>
     <string name="signing_in">Aanmelden…</string>

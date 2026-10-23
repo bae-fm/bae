@@ -126,7 +126,6 @@
     <string name="onboarding_add_device_explanation">סרקו או הקלידו את הקוד ש“הוספת מכשיר” מציג באחד המכשירים שלכם. אם איבדתם את כל המכשירים, הקלידו את קוד השחזור שלכם.</string>
     <string name="onboarding_join_library">הצטרפות לספרייה</string>
     <string name="onboarding_join_library_explanation">סרקו או הקלידו את ההזמנה שמנהל של הספרייה שלח לכם.</string>
-    <string name="onboarding_icon_description">סמל bae</string>
     <string name="onboarding_camera_permission_required">נדרשת הרשאת מצלמה כדי לסרוק קודי QR</string>
     <string name="oauth_unconfigured">ספרייה זו דורשת כניסה לענן, שאינה מוגדרת בגרסה זו.</string>
     <string name="signing_in">מתחבר…</string>

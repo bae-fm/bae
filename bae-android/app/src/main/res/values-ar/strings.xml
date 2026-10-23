@@ -126,7 +126,6 @@
     <string name="onboarding_add_device_explanation">امسح أو اكتب الرمز الذي يعرضه «إضافة جهاز» على أحد أجهزتك. إذا فقدت كل أجهزتك، فاكتب رمز الاسترداد الخاص بك.</string>
     <string name="onboarding_join_library">الانضمام إلى مكتبة</string>
     <string name="onboarding_join_library_explanation">امسح الدعوة التي أرسلها إليك أحد مسؤولي المكتبة أو اكتبها.</string>
-    <string name="onboarding_icon_description">أيقونة bae</string>
     <string name="onboarding_camera_permission_required">إذن الكاميرا مطلوب لمسح رموز QR</string>
     <string name="oauth_unconfigured">تحتاج هذه المكتبة إلى تسجيل دخول سحابي، وهو غير مُعدّ في هذه النسخة.</string>
     <string name="signing_in">جارٍ تسجيل الدخول…</string>

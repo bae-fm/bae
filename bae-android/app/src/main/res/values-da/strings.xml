@@ -130,7 +130,6 @@
     <string name="onboarding_add_device_explanation">Scan eller skriv koden, som »Tilføj enhed« viser på en af dine enheder. Hvis du har mistet alle dine enheder, så skriv din gendannelseskode.</string>
     <string name="onboarding_join_library">Deltag i et bibliotek</string>
     <string name="onboarding_join_library_explanation">Scan eller skriv den invitation, som en administrator af biblioteket har sendt dig.</string>
-    <string name="onboarding_icon_description">bae-symbol</string>
     <string name="onboarding_camera_permission_required">Der kræves kameratilladelse for at scanne QR-koder</string>
     <string name="oauth_unconfigured">Dette bibliotek kræver skylogin, som ikke er konfigureret i denne version.</string>
     <string name="signing_in">Logger ind…</string>

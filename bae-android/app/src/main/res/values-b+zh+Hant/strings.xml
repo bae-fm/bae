@@ -126,7 +126,6 @@
     <string name="onboarding_add_device_explanation">掃描或輸入你的某部裝置上「新增裝置」顯示的代碼。如果你遺失了所有裝置，請輸入你的復原碼。</string>
     <string name="onboarding_join_library">加入資料庫</string>
     <string name="onboarding_join_library_explanation">掃描或輸入資料庫的管理員傳給你的邀請。</string>
-    <string name="onboarding_icon_description">bae 圖示</string>
     <string name="onboarding_camera_permission_required">需要相機權限才能掃描 QR 碼</string>
     <string name="oauth_unconfigured">此資料庫需要雲端登入，但此建置尚未設定。</string>
     <string name="signing_in">正在登入…</string>

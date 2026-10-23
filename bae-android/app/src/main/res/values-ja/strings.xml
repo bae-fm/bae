@@ -126,7 +126,6 @@
     <string name="onboarding_add_device_explanation">いずれかのデバイスの「デバイスを追加」に表示されるコードをスキャンするか入力してください。すべてのデバイスを失った場合は、復旧コードを入力してください。</string>
     <string name="onboarding_join_library">ライブラリに参加</string>
     <string name="onboarding_join_library_explanation">ライブラリの管理者から送られた招待をスキャンするか入力してください。</string>
-    <string name="onboarding_icon_description">bae アイコン</string>
     <string name="onboarding_camera_permission_required">QRコードをスキャンするにはカメラの許可が必要です</string>
     <string name="oauth_unconfigured">このライブラリにはクラウドサインインが必要ですが、このビルドでは設定されていません。</string>
     <string name="signing_in">サインイン中…</string>

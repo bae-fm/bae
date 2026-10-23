@@ -130,7 +130,6 @@
     <string name="onboarding_add_device_explanation">Skannaa tai kirjoita koodi, jonka ”Lisää laite” näyttää jossakin laitteessasi. Jos olet menettänyt kaikki laitteesi, kirjoita palautuskoodisi.</string>
     <string name="onboarding_join_library">Liity kirjastoon</string>
     <string name="onboarding_join_library_explanation">Skannaa tai kirjoita kutsu, jonka kirjaston ylläpitäjä lähetti sinulle.</string>
-    <string name="onboarding_icon_description">baen kuvake</string>
     <string name="onboarding_camera_permission_required">QR-koodien skannaaminen edellyttää kameran käyttöoikeutta</string>
     <string name="oauth_unconfigured">Tämä kirjasto vaatii pilvikirjautumisen, jota ei ole määritetty tässä versiossa.</string>
     <string name="signing_in">Kirjaudutaan sisään…</string>

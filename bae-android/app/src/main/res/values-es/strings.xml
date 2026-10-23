@@ -126,7 +126,6 @@
     <string name="onboarding_add_device_explanation">Escanea o escribe el código que muestra “Añadir dispositivo” en uno de tus dispositivos. Si has perdido todos tus dispositivos, escribe tu código de recuperación.</string>
     <string name="onboarding_join_library">Unirse a una biblioteca</string>
     <string name="onboarding_join_library_explanation">Escanea o escribe la invitación que te envió un administrador de la biblioteca.</string>
-    <string name="onboarding_icon_description">icono de bae</string>
     <string name="onboarding_camera_permission_required">Se necesita permiso de cámara para escanear códigos QR</string>
     <string name="oauth_unconfigured">Esta biblioteca necesita iniciar sesión en la nube, que no está configurado en esta versión.</string>
     <string name="signing_in">Iniciando sesión…</string>

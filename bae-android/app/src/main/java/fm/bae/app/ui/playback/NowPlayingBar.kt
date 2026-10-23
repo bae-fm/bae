@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.SkipNext
@@ -373,7 +373,7 @@ private fun NowPlayingTransportButtons(
     }
     CastButton(session)
     IconButton(onClick = onOpenQueue) {
-        Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = stringResource(R.string.queue))
+        Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.queue))
     }
     // `setRepeatMode` does not throw; the new mode arrives through the playback
     // subscription.

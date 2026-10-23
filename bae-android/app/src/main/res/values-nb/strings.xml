@@ -130,7 +130,6 @@
     <string name="onboarding_add_device_explanation">Skann eller skriv inn koden som «Legg til enhet» viser på en av enhetene dine. Har du mistet alle enhetene dine, skriver du inn gjenopprettingskoden din.</string>
     <string name="onboarding_join_library">Bli med i et bibliotek</string>
     <string name="onboarding_join_library_explanation">Skann eller skriv inn invitasjonen en administrator for biblioteket sendte deg.</string>
-    <string name="onboarding_icon_description">bae-symbol</string>
     <string name="onboarding_camera_permission_required">Kameratillatelse kreves for å skanne QR-koder</string>
     <string name="oauth_unconfigured">Dette biblioteket krever skypålogging, som ikke er satt opp i denne versjonen.</string>
     <string name="signing_in">Logger på…</string>

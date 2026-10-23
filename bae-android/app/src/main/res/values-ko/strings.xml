@@ -126,7 +126,6 @@
     <string name="onboarding_add_device_explanation">내 기기 중 하나의 ‘기기 추가’에 표시되는 코드를 스캔하거나 입력하세요. 모든 기기를 잃어버렸다면 복구 코드를 입력하세요.</string>
     <string name="onboarding_join_library">라이브러리 참여</string>
     <string name="onboarding_join_library_explanation">라이브러리 관리자가 보낸 초대를 스캔하거나 입력하세요.</string>
-    <string name="onboarding_icon_description">bae 아이콘</string>
     <string name="onboarding_camera_permission_required">QR 코드를 스캔하려면 카메라 권한이 필요합니다</string>
     <string name="oauth_unconfigured">이 라이브러리는 클라우드 로그인이 필요하지만 이 빌드에는 설정되어 있지 않습니다.</string>
     <string name="signing_in">로그인 중…</string>

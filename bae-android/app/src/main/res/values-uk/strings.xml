@@ -126,7 +126,6 @@
     <string name="onboarding_add_device_explanation">Відскануйте або введіть код, який показує «Додати пристрій» на одному з ваших пристроїв. Якщо ви втратили всі пристрої, введіть свій код відновлення.</string>
     <string name="onboarding_join_library">Приєднатися до бібліотеки</string>
     <string name="onboarding_join_library_explanation">Відскануйте або введіть запрошення, яке вам надіслав адміністратор бібліотеки.</string>
-    <string name="onboarding_icon_description">значок bae</string>
     <string name="onboarding_camera_permission_required">Для сканування QR-кодів потрібен дозвіл на доступ до камери</string>
     <string name="oauth_unconfigured">Для цієї бібліотеки потрібен хмарний вхід, який не налаштовано в цій збірці.</string>
     <string name="signing_in">Вхід…</string>

@@ -167,7 +167,6 @@
     <string name="onboarding_add_device_explanation">Scan or type the code that “Add device” shows on one of your devices. If you’ve lost every device, type your recovery code.</string>
     <string name="onboarding_join_library">Join library</string>
     <string name="onboarding_join_library_explanation">Scan or type the invite an admin of the library sent you.</string>
-    <string name="onboarding_icon_description">bae icon</string>
     <string name="onboarding_camera_permission_required">Camera permission is required to scan QR codes</string>
     <string name="oauth_unconfigured">This library needs cloud sign-in, which isn\'t configured on this build.</string>
 

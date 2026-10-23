@@ -126,7 +126,6 @@
     <string name="onboarding_add_device_explanation">Scanne den Code, den „Gerät hinzufügen“ auf einem deiner Geräte zeigt, oder gib ihn ein. Wenn du alle Geräte verloren hast, gib deinen Wiederherstellungscode ein.</string>
     <string name="onboarding_join_library">Bibliothek beitreten</string>
     <string name="onboarding_join_library_explanation">Scanne die Einladung, die dir ein Admin der Bibliothek geschickt hat, oder gib sie ein.</string>
-    <string name="onboarding_icon_description">bae-Symbol</string>
     <string name="onboarding_camera_permission_required">Zum Scannen von QR-Codes ist eine Kameraberechtigung erforderlich</string>
     <string name="oauth_unconfigured">Diese Bibliothek erfordert eine Cloud-Anmeldung, die in diesem Build nicht konfiguriert ist.</string>
     <string name="signing_in">Anmeldung läuft…</string>

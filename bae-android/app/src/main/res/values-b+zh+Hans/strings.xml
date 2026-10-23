@@ -126,7 +126,6 @@
     <string name="onboarding_add_device_explanation">扫描或输入你的某台设备上“添加设备”显示的代码。如果你丢失了所有设备，请输入你的恢复码。</string>
     <string name="onboarding_join_library">加入库</string>
     <string name="onboarding_join_library_explanation">扫描或输入库的管理员发给你的邀请。</string>
-    <string name="onboarding_icon_description">bae 图标</string>
     <string name="onboarding_camera_permission_required">扫描二维码需要相机权限</string>
     <string name="oauth_unconfigured">此库需要云登录，但此版本未配置。</string>
     <string name="signing_in">正在登录…</string>

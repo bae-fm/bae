@@ -1693,10 +1693,10 @@ shows the album at once, and each file's row names its file when that file's
 upload completes on the Mac. Until then the phone holds the row without a
 file. It can't tell an upload still running on the Mac from a release the Mac
 keeps local: either way the release reads as not uploaded, and a picture
-without its file shows its placeholder. The phone sees the release's files
-once they are uploaded, and nothing before that: no album or track is marked
-as on its way. No device waits for another's upload, so no pending record is
-about one.
+without its file shows a plain tile in its place. The phone sees the
+release's files once they are uploaded, and nothing before that: no album or
+track is marked as on its way. No device waits for another's upload, so no
+pending record is about one.
 
 Ben's laptop shows "Waiting: 2 items": Dropbox wants him to sign in again, and
 a file of his vinyl rip moved before it uploaded. The list offers *Sign In* for
