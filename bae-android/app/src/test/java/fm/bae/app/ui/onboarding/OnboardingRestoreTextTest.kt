@@ -63,7 +63,11 @@ class OnboardingRestoreTextTest {
         // The spinner animates forever; a frozen clock lets the content settle.
         compose.mainClock.autoAdvance = false
         compose.setContent {
-            OnboardingProgress(OnboardingStep.Running(restore(CodeEntry.NewDevice), BridgeBootstrapStatus.Connecting), onCancel = {})
+            OnboardingProgress(
+                OnboardingStep.Running(restore(CodeEntry.NewDevice), BridgeBootstrapStatus.Connecting),
+                onCancel = {},
+                onCheckNow = {},
+            )
         }
 
         compose.onNodeWithText("Adding this device").assertIsDisplayed()
@@ -73,7 +77,11 @@ class OnboardingRestoreTextTest {
     fun restoringOverThisDevicesCopySaysRestoringWhileItRuns() {
         compose.mainClock.autoAdvance = false
         compose.setContent {
-            OnboardingProgress(OnboardingStep.Running(restore(restoreOver), BridgeBootstrapStatus.Connecting), onCancel = {})
+            OnboardingProgress(
+                OnboardingStep.Running(restore(restoreOver), BridgeBootstrapStatus.Connecting),
+                onCancel = {},
+                onCheckNow = {},
+            )
         }
 
         compose.onNodeWithText("Restoring your library").assertIsDisplayed()

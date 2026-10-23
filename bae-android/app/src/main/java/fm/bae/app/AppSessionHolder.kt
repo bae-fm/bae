@@ -370,6 +370,7 @@ object AppSessionHolder {
                 is BridgeBootstrapResult.ProfileRequired -> result.library to result.error
 
                 BridgeBootstrapResult.Declined,
+                BridgeBootstrapResult.JoinRequestSent,
                 BridgeBootstrapResult.SavedCodeRemoved,
                 -> error("a bootstrap that opened no library has nothing to open: $result")
             }

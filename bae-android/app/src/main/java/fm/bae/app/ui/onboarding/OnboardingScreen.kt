@@ -1,5 +1,6 @@
 package fm.bae.app.ui.onboarding
 
+import android.text.format.DateUtils
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
@@ -20,6 +21,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,21 +44,31 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.LabeledValueRow
-import fm.bae.app.ui.components.PersonNameField
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.QRScannerScreen
 import fm.bae.app.ui.components.S3KeyFields
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.storageLocationLabel
+import kotlinx.coroutines.delay
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeMetadata
 import uniffi.bae_bridge.BridgeDropboxLocation
+import uniffi.bae_bridge.BridgeInviteDeliveryKind
+import uniffi.bae_bridge.BridgeInviteInfo
+import uniffi.bae_bridge.BridgeNextCheck
 import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeStorageLocation
+import java.time.Duration
+import java.time.Instant
 
 internal val actionWidth = 220.dp
+
+/** How often a waiting join's countdown redraws. */
+private const val COUNTDOWN_TICK_MS = 1_000L
+
+private const val PREVIEW_WAIT_SECONDS = 42L
 
 /**
  * Restoring a library over this device's copy: what its code screen says
@@ -127,19 +139,16 @@ internal fun OnboardingSteps(flow: OnboardingFlow) {
             )
         }
 
-        is OnboardingStep.Invite -> {
-            BackHandler { flow.back(step) }
-            InviteForm(
-                step = step,
-                error = flow.error,
-                onJoin = { flow.join(step, it) },
-                onBack = { flow.back(step) },
-            )
-        }
-
         is OnboardingStep.Running -> {
-            BackHandler { flow.cancel() }
-            OnboardingProgress(step = step, onCancel = flow::cancel)
+            // Once a join's request may have been sent there is no cancel:
+            // Back leaves the screen, and the join goes on at the next launch.
+            val cancellable = step.cancellable()
+            BackHandler(enabled = cancellable) { flow.cancel() }
+            OnboardingProgress(
+                step = step,
+                onCancel = flow::cancel.takeIf { cancellable },
+                onCheckNow = flow::checkNow,
+            )
         }
     }
 }
@@ -274,32 +283,6 @@ internal fun RestoreForm(
     }
 }
 
-/** An invite, read: the library it names, and the name the person joins under. */
-@Composable
-private fun InviteForm(
-    step: OnboardingStep.Invite,
-    error: DisplayError?,
-    onJoin: (String) -> Unit,
-    onBack: () -> Unit,
-) {
-    var personName by remember { mutableStateOf("") }
-    OnboardingForm(
-        title = stringResource(R.string.onboarding_join_title_named, step.libraryName),
-        error = error,
-        onBack = onBack,
-    ) {
-        LabeledValueRow(stringResource(R.string.settings_stored_in), storageLocationLabel(step.metadata.location))
-        PersonNameField(personName) { personName = it }
-        PrimaryButton(
-            onClick = { onJoin(personName.trim()) },
-            enabled = personName.isNotBlank(),
-            modifier = Modifier.width(actionWidth),
-        ) {
-            Text(stringResource(R.string.onboarding_join_action))
-        }
-    }
-}
-
 @Composable
 private fun OnboardingForm(
     title: String,
@@ -319,52 +302,132 @@ private fun OnboardingForm(
     }
 }
 
-/** A restore or join running: what it waits on now, and Cancel. */
+/**
+ * A restore can be cancelled until it ends; a join only until its request
+ * may have been sent, which coven reports as waiting for approval.
+ */
+internal fun OnboardingStep.Running.cancellable(): Boolean =
+    when (from) {
+        is OnboardingStep.Restore -> true
+        is OnboardingStep.Invite -> status == null || status is BridgeBootstrapStatus.Connecting
+    }
+
+/**
+ * A restore or join running: what it waits on now, and Cancel while it can
+ * be. A join waiting for approval shows a sent invite's confirmation number,
+ * when it checks next, and Check now.
+ */
 @Composable
 internal fun OnboardingProgress(
     step: OnboardingStep.Running,
-    onCancel: () -> Unit,
+    onCancel: (() -> Unit)?,
+    onCheckNow: () -> Unit,
 ) {
     val context = LocalContext.current
     val title =
         when (val from = step.from) {
-            is OnboardingStep.Invite -> stringResource(R.string.onboarding_joining_library, from.libraryName)
+            is OnboardingStep.Invite -> stringResource(R.string.onboarding_joining_library, from.invite.libraryName)
             is OnboardingStep.Restore -> stringResource(RestoreText.of(from.entry).running)
         }
     OnboardingContainer {
-        CircularProgressIndicator()
-        Spacer(modifier = Modifier.height(ThemeSpace.section))
+        val status = step.status
+        if (status !is BridgeBootstrapStatus.WaitingForApproval) {
+            CircularProgressIndicator()
+            Spacer(modifier = Modifier.height(ThemeSpace.section))
+        }
         Text(text = title, style = ThemeText.heading.style, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(ThemeSpace.related))
-        val lines =
-            when (val status = step.status) {
-                null, BridgeBootstrapStatus.Connecting -> {
-                    listOf(stringResource(R.string.onboarding_status_connecting))
-                }
+        when (status) {
+            is BridgeBootstrapStatus.WaitingForApproval -> {
+                WaitingForApproval(status = status, onCheckNow = onCheckNow)
+            }
 
-                BridgeBootstrapStatus.WaitingForApproval -> {
-                    listOf(stringResource(R.string.onboarding_status_waiting_for_approval))
-                }
+            else -> {
+                val lines =
+                    when (status) {
+                        null, BridgeBootstrapStatus.Connecting -> {
+                            listOf(stringResource(R.string.onboarding_status_connecting))
+                        }
 
-                BridgeBootstrapStatus.Loading -> {
-                    listOf(stringResource(R.string.onboarding_status_loading))
-                }
+                        BridgeBootstrapStatus.Loading -> {
+                            listOf(stringResource(R.string.onboarding_status_loading))
+                        }
 
-                is BridgeBootstrapStatus.Pending -> {
-                    status.records.map { context.coreString(it.reason.key) }
+                        is BridgeBootstrapStatus.Pending -> {
+                            status.records.map { context.coreString(it.reason.key) }
+                        }
+
+                        is BridgeBootstrapStatus.WaitingForApproval -> {
+                            emptyList()
+                        }
+                    }
+                lines.forEach { line ->
+                    Text(
+                        text = line,
+                        style = ThemeText.body.style,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
                 }
             }
-        lines.forEach { line ->
-            Text(
-                text = line,
-                style = ThemeText.body.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
         }
-        Spacer(modifier = Modifier.height(ThemeSpace.section))
-        OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
+        onCancel?.let {
+            Spacer(modifier = Modifier.height(ThemeSpace.section))
+            OutlinedButton(onClick = it) { Text(stringResource(R.string.cancel)) }
+        }
     }
+}
+
+/**
+ * A join waiting for approval: a sent invite's confirmation number, a
+ * countdown to the next check, and Check now, which a provider's cooldown
+ * holds.
+ */
+@Composable
+private fun WaitingForApproval(
+    status: BridgeBootstrapStatus.WaitingForApproval,
+    onCheckNow: () -> Unit,
+) {
+    status.confirmation?.let { number ->
+        Text(
+            text = stringResource(R.string.join_request_confirmation),
+            style = ThemeText.detail.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(text = number, style = ThemeText.hero.style)
+        Spacer(modifier = Modifier.height(ThemeSpace.related))
+    }
+    val due =
+        when (val next = status.nextCheck) {
+            BridgeNextCheck.Checking -> null
+            is BridgeNextCheck.At -> next.time
+            is BridgeNextCheck.CoolingDown -> next.until
+        }
+    val countdown =
+        if (due == null) {
+            stringResource(R.string.onboarding_checking)
+        } else {
+            val remaining = rememberSecondsUntil(due)
+            stringResource(R.string.onboarding_next_check, DateUtils.formatElapsedTime(remaining))
+        }
+    Text(text = countdown, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Spacer(modifier = Modifier.height(ThemeSpace.section))
+    OutlinedButton(onClick = onCheckNow, enabled = status.nextCheck is BridgeNextCheck.At) {
+        Text(stringResource(R.string.onboarding_check_now))
+    }
+}
+
+/** The whole seconds left until [due], counting down each second. */
+@Composable
+private fun rememberSecondsUntil(due: Instant): Long {
+    var now by remember { mutableStateOf(Instant.now()) }
+    LaunchedEffect(due) {
+        while (true) {
+            now = Instant.now()
+            delay(COUNTDOWN_TICK_MS)
+        }
+    }
+    return Duration.between(now, due).seconds.coerceAtLeast(0)
 }
 
 @Composable
@@ -386,25 +449,36 @@ private fun OnboardingProgressWaitingPreview() {
                 OnboardingStep.Running(
                     from =
                         OnboardingStep.Invite(
-                            code = "invite-code",
-                            metadata =
-                                BridgeCodeMetadata(
-                                    libraryId = "library-1",
-                                    memberId = "member-1",
-                                    provider = BridgeCloudProvider.DROPBOX,
-                                    location =
-                                        BridgeStorageLocation.Dropbox(
-                                            location = BridgeDropboxLocation.SharedFolder(namespaceId = "namespace-1"),
-                                            accountLabel = "person@example.com",
+                            start = JoinStart.Code("invite-code"),
+                            invite =
+                                BridgeInviteInfo(
+                                    metadata =
+                                        BridgeCodeMetadata(
+                                            libraryId = "library-1",
+                                            memberId = "member-1",
+                                            provider = BridgeCloudProvider.DROPBOX,
+                                            location =
+                                                BridgeStorageLocation.Dropbox(
+                                                    location =
+                                                        BridgeDropboxLocation.SharedFolder(namespaceId = "namespace-1"),
+                                                    accountLabel = "person@example.com",
+                                                ),
+                                            oauthAccess = null,
                                         ),
-                                    oauthAccess = null,
+                                    libraryName = "Household",
+                                    invitee = "Dan",
+                                    delivery = BridgeInviteDeliveryKind.SENT,
                                 ),
-                            libraryName = "Household",
                             entry = CodeEntry.NewDevice,
                         ),
-                    status = BridgeBootstrapStatus.WaitingForApproval,
+                    status =
+                        BridgeBootstrapStatus.WaitingForApproval(
+                            confirmation = "041 778",
+                            nextCheck = BridgeNextCheck.At(Instant.now().plusSeconds(PREVIEW_WAIT_SECONDS)),
+                        ),
                 ),
-            onCancel = {},
+            onCancel = null,
+            onCheckNow = {},
         )
     }
 }

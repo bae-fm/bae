@@ -1475,7 +1475,8 @@ no record of it once the invite ends. Cancelling an invite asks first, and on
 S3 the question names the key, as removing a person does.
 
 **Dan's waiting.** Dan can close bae while he waits. When bae next starts, it
-opens on his waiting screen and keeps checking. The waiting screen has no
+opens on his waiting screen and keeps checking; on Dropbox or OneDrive he signs
+in again first, since his sign-in is kept only once he has joined. The waiting screen has no
 Cancel once his request is sent, since coven can't take a sent request back:
 the join ends when Ana approves, declines or cancels, or the invite expires.
 Before then, while Dan signs in to his provider, Cancel works, and the invite

@@ -3,14 +3,11 @@ package fm.bae.app.ui.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -22,138 +19,64 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.coreString
-import fm.bae.app.currentLocale
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.ErrorDetailDisclosure
-import fm.bae.app.ui.components.ErrorText
-import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.components.S3KeyFields
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteAccess
-import uniffi.bae_bridge.BridgeMemberAccess
+import uniffi.bae_bridge.BridgeInviteDelivery
+import uniffi.bae_bridge.BridgeInviteLifetime
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeStorageLocation
-import java.text.DateFormat
-import java.util.Date
 
 private val logger = BaeLogger("bae.InviteDialog")
 
-private val qrSize = 220.dp
-
 /**
- * Invite a person: their role, and the access they reach the storage with —
- * an S3 access key, or the provider account they sign in with. The invite
- * carries the library's name and expires within a day; it can be cancelled
- * while shown.
+ * Invite a person: their name, role and the access they reach the storage
+ * with — an S3 access key, or the provider account they sign in with — and
+ * whether the invite is shown in person or sent. [onCreated] receives the new
+ * invite's id, for the people screen to show it.
  */
 @Composable
 internal fun InviteDialog(
     session: OpenLibrary,
     storage: BridgeStorageLocation?,
+    onCreated: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberScreenScope()
-    var invite by remember { mutableStateOf<BridgeInvite?>(null) }
     var error by remember { mutableStateOf<DisplayError?>(null) }
     var busy by remember { mutableStateOf(false) }
-    var confirmingCancel by remember { mutableStateOf(false) }
     val errors = LocaleErrorDisplays(context)
-
-    val created = invite
-    if (created == null) {
-        InviteFormDialog(
-            storage = storage,
-            error = error,
-            busy = busy,
-            onCreate = { role, access ->
-                busy = true
-                error = null
-                scope.launch {
-                    performBridgeAction(logger, "invite a person", errors, { error = it }) {
-                        invite = session.appHandle.invitePerson(role, access)
-                    }
-                    busy = false
-                }
-            },
-            onDismiss = onDismiss,
-        )
-        return
-    }
-    if (confirmingCancel) {
-        CancelInviteConfirmDialog(
-            invite = created,
-            onConfirm = {
-                confirmingCancel = false
-                busy = true
-                scope.launch {
-                    var cancelled = false
-                    performBridgeAction(logger, "cancel an invite", errors, { error = it }) {
-                        session.appHandle.cancelInvite(created.id)
-                        cancelled = true
-                    }
-                    busy = false
-                    if (cancelled) onDismiss()
-                }
-            },
-            onDismiss = { confirmingCancel = false },
-        )
-        return
-    }
-    InviteCreatedDialog(
-        invite = created,
+    InviteFormDialog(
+        storage = storage,
         error = error,
         busy = busy,
-        onCancelInvite = { confirmingCancel = true },
+        onCreate = { form ->
+            busy = true
+            error = null
+            scope.launch {
+                performBridgeAction(logger, "invite a person", errors, { error = it }) {
+                    val invite = session.appHandle.invitePerson(form.role, form.name, form.access, form.delivery)
+                    onCreated(invite.id)
+                }
+                busy = false
+            }
+        },
         onDismiss = onDismiss,
-    )
-}
-
-/**
- * Asks before cancelling a shown invite. On S3 it names the invite's key: bae
- * keeps no record of it afterwards, so the person deletes it in the
- * provider's console.
- */
-@Composable
-private fun CancelInviteConfirmDialog(
-    invite: BridgeInvite,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val context = LocalContext.current
-    val forgetLine =
-        (invite.access as? BridgeMemberAccess.S3AccessKey)?.let { key ->
-            context.coreString("core.access_key.forget", mapOf("key" to key.accessKeyId))
-        }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(context.coreString("core.invite.cancel_confirm.title")) },
-        text = forgetLine?.let { line -> { Text(line) } },
-        confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.invite_cancel)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(context.coreString("core.invite.cancel_confirm.keep")) }
-        },
     )
 }
 
@@ -176,37 +99,115 @@ private class InviteAccessInput {
         }
 }
 
-/** The invite's role and the access it carries, asked for as the library's storage needs it. */
+/** A complete invite form: who, with what role and access, and how it reaches them. */
+private class InviteForm(
+    val name: String,
+    val role: BridgeMemberRole,
+    val access: BridgeInviteAccess,
+    val delivery: BridgeInviteDelivery,
+)
+
+/** How the invite reaches the person, as the form chooses it. */
+private enum class DeliveryChoice { IN_PERSON, SEND }
+
+/** The person, role and delivery the form asks for. */
+private class InviteFields {
+    var name by mutableStateOf("")
+    var role by mutableStateOf(BridgeMemberRole.MEMBER)
+    var delivery by mutableStateOf(DeliveryChoice.IN_PERSON)
+    var lifetime by mutableStateOf(BridgeInviteLifetime.DAY)
+
+    fun delivery(): BridgeInviteDelivery =
+        when (delivery) {
+            DeliveryChoice.IN_PERSON -> BridgeInviteDelivery.InPerson
+            DeliveryChoice.SEND -> BridgeInviteDelivery.Sent(lifetime)
+        }
+}
+
+/** The form's fields: name, role, the storage's access, and in person or sent. */
+@Composable
+private fun InviteFormFields(
+    storage: BridgeStorageLocation?,
+    fields: InviteFields,
+    input: InviteAccessInput,
+    error: DisplayError?,
+) {
+    Column(
+        modifier = Modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+    ) {
+        OutlinedTextField(
+            value = fields.name,
+            onValueChange = { fields.name = it },
+            label = { Text(stringResource(R.string.invite_name)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+        )
+        RoleChoice(fields.role) { fields.role = it }
+        if (storage == null) {
+            CircularProgressIndicator()
+        } else {
+            InviteAccessFields(storage, input)
+        }
+        Choice(
+            choices = DeliveryChoice.entries,
+            chosen = fields.delivery,
+            label = { choice ->
+                when (choice) {
+                    DeliveryChoice.IN_PERSON -> R.string.invite_in_person
+                    DeliveryChoice.SEND -> R.string.invite_send
+                }
+            },
+            onChoose = { fields.delivery = it },
+        )
+        if (fields.delivery == DeliveryChoice.SEND) {
+            Choice(
+                choices = BridgeInviteLifetime.entries,
+                chosen = fields.lifetime,
+                label = { choice ->
+                    when (choice) {
+                        BridgeInviteLifetime.HOUR -> R.string.invite_lifetime_hour
+                        BridgeInviteLifetime.DAY -> R.string.invite_lifetime_day
+                        BridgeInviteLifetime.WEEK -> R.string.invite_lifetime_week
+                    }
+                },
+                onChoose = { fields.lifetime = it },
+            )
+        }
+        error?.let { ErrorDetailDisclosure(it) }
+    }
+}
+
+/** The invite's person, role, access and delivery, asked for as the library's storage needs it. */
 @Composable
 private fun InviteFormDialog(
     storage: BridgeStorageLocation?,
     error: DisplayError?,
     busy: Boolean,
-    onCreate: (BridgeMemberRole, BridgeInviteAccess) -> Unit,
+    onCreate: (InviteForm) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var role by remember { mutableStateOf(BridgeMemberRole.MEMBER) }
+    val fields = remember { InviteFields() }
     val input = remember { InviteAccessInput() }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.members_invite)) },
         text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-            ) {
-                RoleChoice(role) { role = it }
-                if (storage == null) {
-                    CircularProgressIndicator()
-                } else {
-                    InviteAccessFields(storage, input)
-                }
-                error?.let { ErrorDetailDisclosure(it) }
-            }
+            InviteFormFields(
+                storage = storage,
+                fields = fields,
+                input = input,
+                error = error,
+            )
         },
         confirmButton = {
             val access = storage?.let(input::access)
-            TextButton(enabled = access != null && !busy, onClick = { access?.let { onCreate(role, it) } }) {
+            val name = fields.name.trim()
+            TextButton(
+                enabled = access != null && name.isNotEmpty() && !busy,
+                onClick = { access?.let { onCreate(InviteForm(name, fields.role, it, fields.delivery())) } },
+            ) {
                 Text(stringResource(R.string.invite_create))
             }
         },
@@ -223,7 +224,6 @@ private fun InviteAccessFields(
     input: InviteAccessInput,
 ) {
     if (storage is BridgeStorageLocation.S3) {
-        InviteNote(stringResource(R.string.invite_s3_explanation))
         S3KeyFields(
             accessKeyId = input.accessKeyId,
             secretAccessKey = input.secretAccessKey,
@@ -231,7 +231,6 @@ private fun InviteAccessFields(
             onSecretAccessKeyChange = { input.secretAccessKey = it.trim() },
         )
     } else {
-        InviteNote(stringResource(R.string.invite_email_explanation, cloudProviderLabel(storageProvider(storage))))
         OutlinedTextField(
             value = input.email,
             onValueChange = { input.email = it.trim() },
@@ -244,87 +243,40 @@ private fun InviteAccessFields(
 }
 
 @Composable
-private fun InviteNote(text: String) {
-    Text(text = text, style = ThemeText.detail.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
-}
-
-@Composable
 private fun RoleChoice(
     role: BridgeMemberRole,
     onChoose: (BridgeMemberRole) -> Unit,
 ) {
-    val roles = listOf(BridgeMemberRole.MEMBER, BridgeMemberRole.ADMIN)
+    Choice(
+        choices = listOf(BridgeMemberRole.MEMBER, BridgeMemberRole.ADMIN),
+        chosen = role,
+        label = { choice ->
+            when (choice) {
+                BridgeMemberRole.MEMBER -> R.string.members_role_member
+                BridgeMemberRole.ADMIN -> R.string.members_role_admin
+            }
+        },
+        onChoose = onChoose,
+    )
+}
+
+/** One of a few [choices] as a row of segmented buttons, each named by its [label] string. */
+@Composable
+private fun <T> Choice(
+    choices: List<T>,
+    chosen: T,
+    label: (T) -> Int,
+    onChoose: (T) -> Unit,
+) {
     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        roles.forEachIndexed { index, choice ->
+        choices.forEachIndexed { index, choice ->
             SegmentedButton(
-                selected = role == choice,
+                selected = chosen == choice,
                 onClick = { onChoose(choice) },
-                shape = SegmentedButtonDefaults.itemShape(index, roles.size),
+                shape = SegmentedButtonDefaults.itemShape(index, choices.size),
             ) {
-                Text(
-                    stringResource(
-                        when (choice) {
-                            BridgeMemberRole.MEMBER -> R.string.members_role_member
-                            BridgeMemberRole.ADMIN -> R.string.members_role_admin
-                        },
-                    ),
-                )
+                Text(stringResource(label(choice)))
             }
         }
     }
-}
-
-/** The invite to show the person joining: a QR to scan in bae, the code to type, and when it expires. */
-@Composable
-private fun InviteCreatedDialog(
-    invite: BridgeInvite,
-    error: DisplayError?,
-    busy: Boolean,
-    onCancelInvite: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
-    val expires =
-        remember(invite) {
-            DateFormat
-                .getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, context.currentLocale())
-                .format(Date.from(invite.expiresAt))
-        }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.invite_title)) },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-            ) {
-                InviteNote(stringResource(R.string.invite_instructions))
-                QRCodeImage(
-                    text = invite.code,
-                    contentDescription = stringResource(R.string.invite_title),
-                    modifier = Modifier.size(qrSize),
-                )
-                SelectionContainer { Text(text = invite.code, style = ThemeText.mono.style) }
-                InviteNote(stringResource(R.string.invite_expires, expires))
-                (invite.access as? BridgeMemberAccess.S3AccessKey)?.let { key ->
-                    SelectionContainer {
-                        InviteNote(context.coreString("core.access_key.id", mapOf("key" to key.accessKeyId)))
-                    }
-                    InviteNote(context.coreString("core.access_key.unused_invite", mapOf("key" to key.accessKeyId)))
-                }
-                TextButton(onClick = { clipboard.setText(AnnotatedString(invite.code)) }) {
-                    Text(stringResource(R.string.copy_code))
-                }
-                error?.let { ErrorDetailDisclosure(it) }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.done)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onCancelInvite, enabled = !busy) { Text(stringResource(R.string.invite_cancel)) }
-        },
-    )
 }

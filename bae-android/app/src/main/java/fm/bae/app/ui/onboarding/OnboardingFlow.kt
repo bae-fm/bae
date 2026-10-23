@@ -22,7 +22,10 @@ import uniffi.bae_bridge.BridgeCodeInfo
 import uniffi.bae_bridge.BridgeCodeMetadata
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHost
+import uniffi.bae_bridge.BridgeInviteInfo
+import uniffi.bae_bridge.BridgeJoinControl
 import uniffi.bae_bridge.BridgeS3Credentials
+import uniffi.bae_bridge.BridgeUnfinishedJoin
 import uniffi.bae_bridge.decodeCodeInfo
 import uniffi.bae_bridge.readScannedCode
 
@@ -50,8 +53,8 @@ internal sealed interface OnboardingStep {
         val entry: CodeEntry,
     ) : OnboardingStep
 
-    /** A code read for [entry] and waiting on the person. */
-    sealed interface CodeRead : OnboardingStep {
+    /** A code read for [entry]: a restore, which waits on its form, or an invite, which joins at once. */
+    sealed interface CodeRead {
         val entry: CodeEntry
     }
 
@@ -65,13 +68,16 @@ internal sealed interface OnboardingStep {
         val metadata: BridgeCodeMetadata,
         val s3Credentials: BridgeS3Credentials?,
         override val entry: CodeEntry,
-    ) : CodeRead
+    ) : CodeRead,
+        OnboardingStep
 
-    /** An invite to [libraryName], read; joining asks for the person's name. */
+    /**
+     * An invite, read or saved from a join under way: joining starts at once,
+     * with no form, from [start].
+     */
     data class Invite(
-        val code: String,
-        val metadata: BridgeCodeMetadata,
-        val libraryName: String,
+        val start: JoinStart,
+        val invite: BridgeInviteInfo,
         override val entry: CodeEntry,
     ) : CodeRead
 
@@ -83,6 +89,17 @@ internal sealed interface OnboardingStep {
         val from: CodeRead,
         val status: BridgeBootstrapStatus?,
     ) : OnboardingStep
+}
+
+/** Where a join starts: an invite's code, or a join this device has under way. */
+internal sealed interface JoinStart {
+    data class Code(
+        val code: String,
+    ) : JoinStart
+
+    data class Unfinished(
+        val join: BridgeUnfinishedJoin,
+    ) : JoinStart
 }
 
 /**
@@ -105,11 +122,11 @@ internal fun codeReadStep(
         is BridgeCodeInfo.Invite -> {
             when (entry) {
                 is RestoreOver -> {
-                    OnboardingStep.Restore(code, info.metadata, s3Credentials, entry)
+                    OnboardingStep.Restore(code, info.invite.metadata, s3Credentials, entry)
                 }
 
                 CodeEntry.NewDevice -> {
-                    OnboardingStep.Invite(code, info.metadata, info.libraryName, entry)
+                    OnboardingStep.Invite(JoinStart.Code(code), info.invite, entry)
                 }
             }
         }
@@ -134,7 +151,34 @@ internal class OnboardingFlow(
         private set
     var error by mutableStateOf<DisplayError?>(null)
 
-    private var cancellation: BootstrapCancellation? = null
+    private var cancellation: (() -> Unit)? = null
+
+    /** The running join's control, for Check now; null when no join runs. */
+    private var joining: BridgeJoinControl? = null
+
+    init {
+        // A join this device had under way when bae stopped opens on its
+        // waiting screen and goes on checking.
+        if (restoreOver == null) resumeUnfinished()
+    }
+
+    /** Resume the join this device has under way, if any. */
+    private fun resumeUnfinished() {
+        scope.launch {
+            val joins =
+                try {
+                    host.unfinishedJoins()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: BridgeException) {
+                    logger.error("listing the joins under way failed", e)
+                    error = context.displayError(e) ?: DisplayError(e.toString())
+                    return@launch
+                }
+            val join = joins.firstOrNull() ?: return@launch
+            join(OnboardingStep.Invite(JoinStart.Unfinished(join), join.info(), CodeEntry.NewDevice))
+        }
+    }
 
     /**
      * Read [text], scanned or typed on [from], and move to what its code asks
@@ -157,7 +201,7 @@ internal class OnboardingFlow(
         val metadata =
             when (info) {
                 is BridgeCodeInfo.Restore -> info.metadata
-                is BridgeCodeInfo.Invite -> info.metadata
+                is BridgeCodeInfo.Invite -> info.invite.metadata
             }
         // A provider that needs a sign-in can't be reached when the app's
         // registrations failed to load; say why rather than starting.
@@ -166,7 +210,12 @@ internal class OnboardingFlow(
             return
         }
         error = null
-        step = codeReadStep(scanned.code, info, scanned.s3Credentials, from.entry)
+        when (val read = codeReadStep(scanned.code, info, scanned.s3Credentials, from.entry)) {
+            // An invite joins at once: it carries the person's name.
+            is OnboardingStep.Invite -> join(read)
+
+            is OnboardingStep.Restore -> step = read
+        }
     }
 
     /** Back to the code screen from a code waiting on the person. */
@@ -178,49 +227,65 @@ internal class OnboardingFlow(
     fun restore(
         from: OnboardingStep.Restore,
         credentials: BridgeS3Credentials?,
-    ) = run(from) { callback, cancellation ->
-        when (val entry = from.entry) {
-            is RestoreOver -> {
-                host.restoreReplacingDevice(
-                    entry.libraryId,
-                    from.code,
-                    credentials,
-                    deviceName(context),
-                    callback,
-                    cancellation,
-                )
-            }
+    ) {
+        val running = BootstrapCancellation()
+        run(from, running::cancel) { callback ->
+            when (val entry = from.entry) {
+                is RestoreOver -> {
+                    host.restoreReplacingDevice(
+                        entry.libraryId,
+                        from.code,
+                        credentials,
+                        deviceName(context),
+                        callback,
+                        running,
+                    )
+                }
 
-            CodeEntry.NewDevice -> {
-                host.restoreFromCode(from.code, credentials, deviceName(context), callback, cancellation)
+                CodeEntry.NewDevice -> {
+                    host.restoreFromCode(from.code, credentials, deviceName(context), callback, running)
+                }
             }
         }
     }
 
-    fun join(
-        from: OnboardingStep.Invite,
-        personName: String,
-    ) = run(from) { callback, cancellation ->
-        host.joinWithInvite(from.code, deviceName(context), personName, callback, cancellation)
+    /**
+     * Join from an invite's code, or resume a join under way. Leaving the
+     * screen drops the call and keeps the join, which the next launch resumes.
+     */
+    private fun join(from: OnboardingStep.Invite) {
+        val control = BridgeJoinControl()
+        joining = control
+        run(from, control::cancel) { callback ->
+            when (val start = from.start) {
+                is JoinStart.Code -> host.joinWithInvite(start.code, deviceName(context), callback, control)
+                is JoinStart.Unfinished -> host.resumeJoin(start.join, callback, control)
+            }
+        }
+    }
+
+    /** End the running join's wait so it checks for approval now. */
+    fun checkNow() {
+        joining?.checkNow()
     }
 
     /**
-     * Stop the running restore or join. coven removes an installation it had
-     * not yet published, and the call ends as cancelled, which returns to the
-     * code it started from.
+     * Stop the running restore, or a join whose request isn't sent yet. coven
+     * removes an installation it had not yet published, and the call ends as
+     * cancelled, which returns to the code it started from.
      */
     fun cancel() {
-        cancellation?.cancel()
+        cancellation?.invoke()
     }
 
     private fun run(
         from: OnboardingStep.CodeRead,
-        start: suspend (BootstrapCallback, BootstrapCancellation) -> BridgeBootstrapResult,
+        cancel: () -> Unit,
+        start: suspend (BootstrapCallback) -> BridgeBootstrapResult,
     ) {
         error = null
         step = OnboardingStep.Running(from, status = null)
-        val running = BootstrapCancellation()
-        cancellation = running
+        cancellation = cancel
         scope.launch {
             val statuses =
                 ConflatedProgressDelivery<BridgeBootstrapStatus>(scope) { status ->
@@ -235,13 +300,17 @@ internal class OnboardingFlow(
                                 statuses.offer(status)
                             }
                         },
-                        running,
                     )
                 statuses.closeAndJoin()
                 when (result) {
                     BridgeBootstrapResult.Declined -> {
                         step = OnboardingStep.EnterCode(from.entry)
                         error = DisplayError(context.getString(R.string.onboarding_invite_declined))
+                    }
+
+                    // The cancel came as the request was sent: the join goes on.
+                    BridgeBootstrapResult.JoinRequestSent -> {
+                        resumeUnfinished()
                     }
 
                     else -> {
@@ -251,18 +320,28 @@ internal class OnboardingFlow(
             } catch (e: BridgeException.Cancelled) {
                 logger.debug("onboarding cancelled by the person", e)
                 statuses.closeAndJoin()
-                step = from
+                step = from.formStep()
             } catch (e: CancellationException) {
                 statuses.close()
                 throw e
             } catch (e: BridgeException) {
                 logger.error("restoring or joining failed", e)
                 statuses.closeAndJoin()
-                step = from
+                step = from.formStep()
                 error = context.displayError(e) ?: DisplayError(e.toString())
             } finally {
-                if (cancellation === running) cancellation = null
+                if (cancellation === cancel) {
+                    cancellation = null
+                    joining = null
+                }
             }
         }
     }
 }
+
+/** Where an ended restore or join returns: a restore's form, or the code screen for an invite, which has none. */
+private fun OnboardingStep.CodeRead.formStep(): OnboardingStep =
+    when (this) {
+        is OnboardingStep.Restore -> this
+        is OnboardingStep.Invite -> OnboardingStep.EnterCode(entry)
+    }

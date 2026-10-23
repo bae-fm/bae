@@ -1,5 +1,6 @@
 package fm.bae.app.ui.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -54,8 +56,6 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
-import fm.bae.app.ui.components.Eyebrow
-import fm.bae.app.ui.components.LabeledValueRow
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.StatusChip
 import fm.bae.app.ui.rememberScreenScope
@@ -67,7 +67,7 @@ import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeJoinRequest
+import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMemberRole
@@ -76,7 +76,7 @@ import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePersonProfile
 import uniffi.bae_bridge.BridgeProviderSignOut
 import uniffi.bae_bridge.BridgeStorageLocation
-import uniffi.bae_bridge.JoinRequestsCallback
+import uniffi.bae_bridge.InvitesCallback
 import uniffi.bae_bridge.MembershipCallback
 import uniffi.bae_bridge.ProfilesCallback
 import uniffi.bae_bridge.bridgeProviderSignOutKey
@@ -112,7 +112,9 @@ internal class MembersModel(
         private set
     var selfIsAdmin by mutableStateOf(false)
         private set
-    var joinRequests by mutableStateOf<List<BridgeJoinRequest>>(emptyList())
+
+    /** This device's open invites, each with a sent invite's request once it arrives. */
+    var invites by mutableStateOf<List<BridgeInvite>>(emptyList())
         private set
     var storage by mutableStateOf<BridgeStorageLocation?>(null)
         private set
@@ -182,18 +184,18 @@ internal class MembersModel(
                     }
                 },
             )
-        val requests =
-            appHandle.subscribeJoinRequests(
-                object : JoinRequestsCallback {
-                    override fun onValue(value: List<BridgeJoinRequest>) {
-                        scope.launch(Dispatchers.Main.immediate) { joinRequests = value }
+        val open =
+            appHandle.subscribeInvites(
+                object : InvitesCallback {
+                    override fun onValue(value: List<BridgeInvite>) {
+                        scope.launch(Dispatchers.Main.immediate) { invites = value }
                     }
                 },
             )
         return {
             members.cancel()
             profiles.cancel()
-            requests.cancel()
+            open.cancel()
         }
     }
 
@@ -210,9 +212,9 @@ internal class MembersModel(
 }
 
 /**
- * Everyone in the library and their devices. Admins invite people, approve
- * their join requests, change roles and remove people; each person adds and
- * removes their own devices, and an admin removes anyone's.
+ * Everyone in the library and their devices, and the invites this device has
+ * open. Admins invite people, change roles and remove people; each person
+ * adds and removes their own devices, and an admin removes anyone's.
  */
 @Composable
 fun MembersScreen(
@@ -256,9 +258,9 @@ fun MembersScreen(
                 MembersList(
                     people = read.people,
                     selfIsAdmin = model.selfIsAdmin,
-                    joinRequests = model.joinRequests,
+                    invites = model.invites,
                     callbacks = memberCallbacks(session, model, dialogs),
-                    requestCallbacks = joinRequestCallbacks(session, model),
+                    inviteCallbacks = inviteCallbacks(session, dialogs),
                 )
             }
         }
@@ -281,16 +283,15 @@ private fun memberCallbacks(
     )
 }
 
-private fun joinRequestCallbacks(
+private fun inviteCallbacks(
     session: OpenLibrary,
-    model: MembersModel,
-): JoinRequestCallbacks {
-    val handle = session.appHandle
-    return JoinRequestCallbacks(
-        onApprove = { model.perform("approve a join request") { handle.approveJoinRequest(it) } },
-        onDecline = { model.perform("decline a join request") { handle.declineJoinRequest(it) } },
+    dialogs: MembersDialogs,
+): InviteCallbacks =
+    InviteCallbacks(
+        onOpen = dialogs::open,
+        // Retry Now reads a request that has arrived at once, instead of at the next check.
+        onRefresh = { session.messages.startRetrySync(session.appHandle::retryNow) },
     )
-}
 
 /** What this device's person can do to the library's members and their devices. */
 private class MemberCallbacks(
@@ -301,10 +302,10 @@ private class MemberCallbacks(
     val onAddDevice: () -> Unit,
 )
 
-/** An admin's answers to a device asking to join. */
-private class JoinRequestCallbacks(
-    val onApprove: (BridgeJoinRequest) -> Unit,
-    val onDecline: (BridgeJoinRequest) -> Unit,
+/** What this device's person can do with an invite it has open. */
+private class InviteCallbacks(
+    val onOpen: (BridgeInvite) -> Unit,
+    val onRefresh: () -> Unit,
 )
 
 @Composable
@@ -329,9 +330,9 @@ private fun MembersTopBar(onBack: () -> Unit) {
 private fun MembersList(
     people: List<BridgePerson>,
     selfIsAdmin: Boolean,
-    joinRequests: List<BridgeJoinRequest>,
+    invites: List<BridgeInvite>,
     callbacks: MemberCallbacks,
-    requestCallbacks: JoinRequestCallbacks,
+    inviteCallbacks: InviteCallbacks,
 ) {
     // A removed person's profile stays, read-only, without a membership; only members are listed.
     val members = people.mapNotNull { person -> person.membership?.let { person to it } }
@@ -340,19 +341,6 @@ private fun MembersList(
         contentPadding = PaddingValues(ThemeSpace.edge),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        item {
-            Text(
-                text = stringResource(R.string.members_explanation),
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (joinRequests.isNotEmpty()) {
-            item { Eyebrow(text = stringResource(R.string.join_requests_title)) }
-            items(joinRequests) { request ->
-                JoinRequestRow(request = request, callbacks = requestCallbacks)
-            }
-        }
         items(members, key = { (person, _) -> person.id }) { (person, member) ->
             HorizontalDivider()
             MemberRow(
@@ -361,6 +349,10 @@ private fun MembersList(
                 selfIsAdmin = selfIsAdmin,
                 callbacks = callbacks,
             )
+        }
+        items(invites, key = { invite -> invite.id }) { invite ->
+            HorizontalDivider()
+            InviteRow(invite = invite, callbacks = inviteCallbacks)
         }
         if (selfIsAdmin) {
             item {
@@ -372,26 +364,38 @@ private fun MembersList(
     }
 }
 
-/** A device asking to join with an invite: its name and account, to approve or decline. */
+/** One of this device's open invites: the person's name, marked invited, and when it expires. */
 @Composable
-private fun JoinRequestRow(
-    request: BridgeJoinRequest,
-    callbacks: JoinRequestCallbacks,
+private fun InviteRow(
+    invite: BridgeInvite,
+    callbacks: InviteCallbacks,
 ) {
-    val info = remember(request) { request.info() }
-    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
-        Text(text = info.deviceName, style = ThemeText.strong.style)
-        info.providerAccountEmail?.let { LabeledValueRow(stringResource(R.string.settings_account), it) }
-        Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-            TextButton(onClick = { callbacks.onApprove(request) }) {
-                Text(stringResource(R.string.join_request_approve))
-            }
-            TextButton(
-                onClick = { callbacks.onDecline(request) },
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+    val context = LocalContext.current
+    val expires = remember(invite.expiresAt) { context.inviteExpiry(invite.expiresAt) }
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) { callbacks.onOpen(invite) },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
             ) {
-                Text(stringResource(R.string.join_request_decline))
+                Text(
+                    text = invite.invitee ?: stringResource(R.string.members_unnamed),
+                    style = ThemeText.strong.style,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                StatusChip(stringResource(R.string.members_invited))
             }
+            Text(
+                text = stringResource(R.string.invite_expires, expires),
+                style = ThemeText.detail.style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        IconButton(onClick = callbacks.onRefresh) {
+            Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.members_check_invites))
         }
     }
 }
@@ -506,9 +510,9 @@ private fun MembersListPreview() {
         MembersList(
             people = listOf(PreviewData.person()),
             selfIsAdmin = true,
-            joinRequests = emptyList(),
+            invites = emptyList(),
             callbacks = MemberCallbacks({}, { _, _ -> }, { _, _ -> }, {}, {}),
-            requestCallbacks = JoinRequestCallbacks({}, {}),
+            inviteCallbacks = InviteCallbacks({}, {}),
         )
     }
 }

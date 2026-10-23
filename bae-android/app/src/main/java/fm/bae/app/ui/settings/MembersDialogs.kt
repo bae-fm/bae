@@ -3,11 +3,14 @@ package fm.bae.app.ui.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -15,9 +18,11 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.LabeledValueRow
 import uniffi.bae_bridge.BridgeActiveDevice
+import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeProviderSignOut
@@ -41,6 +46,21 @@ internal class MembersDialogs {
     var addingDevice by mutableStateOf(false)
     var pendingRemoval by mutableStateOf<PendingRemoval?>(null)
     var signOut by mutableStateOf<BridgeProviderSignOut?>(null)
+
+    /** The open invite shown again, by id; it closes when the invite ends. */
+    var shownInvite by mutableStateOf<String?>(null)
+
+    /** Sent invites whose request dialog the person closed; the invite's row opens it again. */
+    var closedRequests by mutableStateOf<Set<String>>(emptySet())
+
+    /** Open an invite from its row: its request to decide, or its code. */
+    fun open(invite: BridgeInvite) {
+        if (invite.requestToDecide != null) {
+            closedRequests = closedRequests - invite.id
+        } else {
+            shownInvite = invite.id
+        }
+    }
 }
 
 @Composable
@@ -50,8 +70,29 @@ internal fun MembersDialogsShown(
     dialogs: MembersDialogs,
 ) {
     if (dialogs.inviting) {
-        InviteDialog(session = session, storage = model.storage, onDismiss = { dialogs.inviting = false })
+        InviteDialog(
+            session = session,
+            storage = model.storage,
+            onCreated = { id ->
+                dialogs.inviting = false
+                dialogs.shownInvite = id
+            },
+            onDismiss = { dialogs.inviting = false },
+        )
     }
+    model.invites.firstOrNull { it.id == dialogs.shownInvite }?.let { invite ->
+        InviteShownDialog(session = session, invite = invite, onDismiss = { dialogs.shownInvite = null })
+    }
+    model.invites
+        .firstOrNull { it.requestToDecide != null && it.id !in dialogs.closedRequests }
+        ?.let { invite ->
+            JoinRequestDialog(
+                invite = invite,
+                model = model,
+                session = session,
+                onClose = { dialogs.closedRequests = dialogs.closedRequests + invite.id },
+            )
+        }
     if (dialogs.addingDevice) {
         AddDeviceDialog(session = session, onDismiss = { dialogs.addingDevice = false })
     }
@@ -144,6 +185,47 @@ private fun SignOutDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
+        },
+    )
+}
+
+/**
+ * A sent invite's request: the person's name and the number their device
+ * shows, to compare before approving. Closing it keeps the request; the
+ * invite's row opens it again.
+ */
+@Composable
+private fun JoinRequestDialog(
+    invite: BridgeInvite,
+    model: MembersModel,
+    session: OpenLibrary,
+    onClose: () -> Unit,
+) {
+    val request = invite.requestToDecide ?: return
+    val info = remember(request) { request.info() }
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text(invite.invitee ?: info.deviceName) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+                Text(stringResource(R.string.join_request_confirmation), style = ThemeText.detail.style)
+                Text(info.confirmation, style = ThemeText.title.style)
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { model.perform("approve a join request") { session.appHandle.approveJoinRequest(request) } },
+            ) {
+                Text(stringResource(R.string.join_request_approve))
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = { model.perform("decline a join request") { session.appHandle.declineJoinRequest(request) } },
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) {
+                Text(stringResource(R.string.join_request_decline))
+            }
         },
     )
 }

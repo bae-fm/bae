@@ -5,6 +5,8 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeInfo
 import uniffi.bae_bridge.BridgeCodeMetadata
+import uniffi.bae_bridge.BridgeInviteDeliveryKind
+import uniffi.bae_bridge.BridgeInviteInfo
 import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeStorageLocation
 
@@ -35,16 +37,24 @@ class OnboardingCodeRoutingTest {
         assertEquals(OnboardingStep.Restore("restore-code", metadata, key, CodeEntry.NewDevice), step)
     }
 
-    @Test
-    fun anInviteOpensTheJoinFormForTheLibraryItNames() {
-        val step = codeReadStep("invite-code", BridgeCodeInfo.Invite(metadata, "Household"), null, CodeEntry.NewDevice)
+    private val invite =
+        BridgeInviteInfo(
+            metadata = metadata,
+            libraryName = "Household",
+            invitee = "Dan",
+            delivery = BridgeInviteDeliveryKind.IN_PERSON,
+        )
 
-        assertEquals(OnboardingStep.Invite("invite-code", metadata, "Household", CodeEntry.NewDevice), step)
+    @Test
+    fun anInviteJoinsTheLibraryItNamesFromItsCode() {
+        val step = codeReadStep("invite-code", BridgeCodeInfo.Invite(invite), null, CodeEntry.NewDevice)
+
+        assertEquals(OnboardingStep.Invite(JoinStart.Code("invite-code"), invite, CodeEntry.NewDevice), step)
     }
 
     @Test
     fun anInviteEnteredToRestoreOverThisDevicesCopyGoesToTheRestore() {
-        val step = codeReadStep("invite-code", BridgeCodeInfo.Invite(metadata, "Household"), null, restoreOver)
+        val step = codeReadStep("invite-code", BridgeCodeInfo.Invite(invite), null, restoreOver)
 
         assertEquals(OnboardingStep.Restore("invite-code", metadata, null, restoreOver), step)
     }
