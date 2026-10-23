@@ -1465,7 +1465,9 @@ device that made it shows the row, since only that device can act on it. The
 row's refresh button runs Retry Now for the library (§6.4), so the request
 shows the moment Dan says he has entered the code, without waiting for the next
 check. Opening the row shows the invite again, with **Cancel invite**. Closing
-the request dialog keeps the request, and the row opens it again.
+the request dialog keeps the request, and the row opens it again. Once Ana's
+laptop has begun letting Dan in, cancelling fails and says Dan is already
+joining, rather than leaving him half joined.
 
 On S3 the invite's screen also shows the id of the key it carries, and says to
 delete that key in the provider's console if nobody uses the invite: bae keeps
@@ -1475,8 +1477,11 @@ S3 the question names the key, as removing a person does.
 **Dan's waiting.** Dan can close bae while he waits. When bae next starts, it
 opens on his waiting screen and keeps checking. The waiting screen has no
 Cancel once his request is sent, since coven can't take a sent request back:
-the join ends when Ana approves or declines, or the invite expires. A declined
-or expired invite returns to the first screen, saying which.
+the join ends when Ana approves, declines or cancels, or the invite expires.
+Before then, while Dan signs in to his provider, Cancel works, and the invite
+stays open for him to scan again. When the invite ends without letting him in,
+Dan's phone returns to the first screen and says it was declined, cancelled or
+expired: all three delete his request, so his phone can't tell which.
 
 Removing a person deletes their circle and its rows: their private history and
 private playlists. Their household ratings, history and playlists stay,
