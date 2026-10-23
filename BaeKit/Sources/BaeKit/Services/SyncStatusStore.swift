@@ -24,8 +24,8 @@ public final class SyncStatusStore {
         }
         return false
     }
-    /// The one line sync shows: "Synced", "Waiting: 3 items", or that the
-    /// library isn't connected.
+    /// The one line sync shows: what sync is doing, "Waiting: 3 items", or
+    /// that the library isn't connected.
     public var statusText: String {
         guard let key = bridgeSyncIndicatorKey(indicator: indicator) else {
             return String(localized: "Not connected")

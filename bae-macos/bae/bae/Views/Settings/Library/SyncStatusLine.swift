@@ -4,7 +4,7 @@ import os.log
 
 private let logger = Logger.bae("SyncStatusLine")
 
-/// The one line Settings shows for sync — "Synced", or "Waiting: 3 items" —
+/// The one line Settings shows for sync — what it is doing, or "Waiting: 3 items" —
 /// and, opened, each thing coven is waiting on with its action where the
 /// person can act.
 struct SyncStatusLine: View {

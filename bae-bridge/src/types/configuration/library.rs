@@ -328,7 +328,12 @@ pub struct BridgeSyncStatusSnapshot {
 pub enum BridgeSyncIndicator {
     Unconnected,
     Loading,
+    Stopped,
+    Syncing,
     Synced,
+    Offline,
+    Failed,
+    Unreadable,
     Waiting { items: u64 },
 }
 impl BridgeSyncIndicator {
@@ -336,7 +341,12 @@ impl BridgeSyncIndicator {
         match value {
             bae_core::library::SyncIndicator::Unconnected => Self::Unconnected,
             bae_core::library::SyncIndicator::Loading => Self::Loading,
+            bae_core::library::SyncIndicator::Stopped => Self::Stopped,
+            bae_core::library::SyncIndicator::Syncing => Self::Syncing,
             bae_core::library::SyncIndicator::Synced => Self::Synced,
+            bae_core::library::SyncIndicator::Offline => Self::Offline,
+            bae_core::library::SyncIndicator::Failed => Self::Failed,
+            bae_core::library::SyncIndicator::Unreadable => Self::Unreadable,
             bae_core::library::SyncIndicator::Waiting { items } => Self::Waiting {
                 items: items as u64,
             },
@@ -351,7 +361,12 @@ pub fn bridge_sync_indicator_key(indicator: &BridgeSyncIndicator) -> Option<Stri
         match indicator {
             BridgeSyncIndicator::Unconnected => return None,
             BridgeSyncIndicator::Loading => "core.sync.loading",
+            BridgeSyncIndicator::Stopped => "core.sync.stopped",
+            BridgeSyncIndicator::Syncing => "core.sync.syncing",
             BridgeSyncIndicator::Synced => "core.sync.synced",
+            BridgeSyncIndicator::Offline => "core.sync.offline",
+            BridgeSyncIndicator::Failed => "core.sync.failed",
+            BridgeSyncIndicator::Unreadable => "core.sync.unreadable",
             BridgeSyncIndicator::Waiting { .. } => "core.sync.waiting",
         }
         .to_string(),

@@ -41,8 +41,8 @@ import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.bridgeSyncIndicatorKey
 
 /**
- * The one line sync shows: "Synced", or "Waiting: N items", which opens the
- * list of what it waits on.
+ * The one line sync shows: what it is doing, or "Waiting: N items". Waiting,
+ * and a list that couldn't be read, open the list of what it waits on.
  */
 @Composable
 internal fun SyncStatusLine(
@@ -51,7 +51,7 @@ internal fun SyncStatusLine(
 ) {
     val context = LocalContext.current
     val text = syncIndicatorText(context, indicator)
-    val waiting = indicator is BridgeSyncIndicator.Waiting
+    val waiting = indicator is BridgeSyncIndicator.Waiting || indicator is BridgeSyncIndicator.Unreadable
     Row(
         modifier = Modifier.fillMaxWidth().clickable(enabled = waiting, onClick = onOpenPending),
         verticalAlignment = Alignment.CenterVertically,

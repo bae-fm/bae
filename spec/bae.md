@@ -1690,8 +1690,12 @@ an upload, delete a release or album, merge an artist, or replace a cover,
 picture or avatar still uploading; bae dismisses those records as its write
 lands, since the person asked for it.
 
-**The status line.** Settings shows one line for sync: "Synced", or "Waiting: 3
-items". Opening it lists each thing coven is waiting on, one of its pending
+**The status line.** Settings shows one line for sync. With records pending it
+says "Waiting: 3 items". With none it names what sync is doing: Syncing,
+Synced, Offline, Sync failed, or Sync stopped when the library has a cloud home
+but isn't syncing. A failure's error sits under the line. "Checking sync…"
+shows only until the pending list is first read, and if it can't be read the
+line says "Couldn't read sync status", opening onto the error. Opening it lists each thing coven is waiting on, one of its pending
 records
 ([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)),
 in plain words, with an action wherever the person can act. The error behind

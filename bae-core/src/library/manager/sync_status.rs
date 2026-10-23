@@ -242,22 +242,28 @@ impl SyncStatusSnapshot {
         self.failure()
     }
 
+    /// Pending records come first, since the list shows what each waits on.
+    /// With none, the line names the status itself; its error, when it has
+    /// one, is `failure()`.
     pub fn indicator(&self) -> SyncIndicator {
-        if !self.connected() {
-            return SyncIndicator::Unconnected;
-        }
         match &self.pending {
-            None | Some(Err(_)) => SyncIndicator::Loading,
+            _ if !self.connected() => SyncIndicator::Unconnected,
+            None => SyncIndicator::Loading,
+            Some(Err(_)) => SyncIndicator::Unreadable,
             Some(Ok(pending)) if !pending.is_empty() => SyncIndicator::Waiting {
                 items: pending.len(),
             },
-            Some(Ok(_))
-                if matches!(self.status, coven::SyncStatus::Synced { .. })
-                    && self.error.is_none() =>
-            {
-                SyncIndicator::Synced
-            }
-            Some(Ok(_)) => SyncIndicator::Loading,
+            Some(Ok(_)) if self.error.is_some() => SyncIndicator::Failed,
+            Some(Ok(_)) => match self.status {
+                coven::SyncStatus::Disconnected => SyncIndicator::Unconnected,
+                coven::SyncStatus::Stopped => SyncIndicator::Stopped,
+                coven::SyncStatus::Syncing => SyncIndicator::Syncing,
+                coven::SyncStatus::Synced { .. } => SyncIndicator::Synced,
+                coven::SyncStatus::Offline { .. } => SyncIndicator::Offline,
+                coven::SyncStatus::Failed { .. } | coven::SyncStatus::Blocked { .. } => {
+                    SyncIndicator::Failed
+                }
+            },
         }
     }
 }
@@ -403,7 +409,7 @@ mod tests {
             abandoned: None,
             error: None,
         };
-        assert_eq!(snapshot.indicator(), SyncIndicator::Loading);
+        assert_eq!(snapshot.indicator(), SyncIndicator::Failed);
         assert!(matches!(
             snapshot.failure(),
             Some(UiError::Diagnostic {
@@ -456,6 +462,72 @@ mod tests {
             error: None,
         };
         assert_eq!(snapshot.indicator(), SyncIndicator::Loading);
+    }
+
+    /// With nothing pending, the line names the status; it says it is still
+    /// checking only before the pending list's first read.
+    #[test]
+    fn with_nothing_pending_the_line_names_the_status() {
+        let indicator = |status, error| {
+            SyncStatusSnapshot {
+                status,
+                pending: Some(Ok(Vec::new())),
+                abandoned: None,
+                error,
+            }
+            .indicator()
+        };
+        let offline = || coven::SyncStatus::Offline {
+            error: Arc::new(coven::StorageFailure::PermissionDenied.into()),
+        };
+        assert_eq!(
+            indicator(coven::SyncStatus::Syncing, None),
+            SyncIndicator::Syncing
+        );
+        assert_eq!(indicator(offline(), None), SyncIndicator::Offline);
+        assert_eq!(
+            indicator(
+                coven::SyncStatus::Blocked {
+                    slot: coven::Slot(3),
+                    reason: coven::PendingReason::NoStorage,
+                    error: None,
+                },
+                None
+            ),
+            SyncIndicator::Failed
+        );
+        assert_eq!(
+            indicator(coven::SyncStatus::Stopped, None),
+            SyncIndicator::Stopped
+        );
+        assert_eq!(
+            indicator(
+                coven::SyncStatus::Synced {
+                    finished_at: std::time::UNIX_EPOCH,
+                },
+                Some(UiError::diagnostic(
+                    crate::ui::UiErrorCategory::Internal,
+                    "start failed"
+                ))
+            ),
+            SyncIndicator::Failed
+        );
+    }
+
+    #[test]
+    fn a_pending_list_that_cannot_be_read_says_so() {
+        let snapshot = SyncStatusSnapshot {
+            status: coven::SyncStatus::Synced {
+                finished_at: std::time::UNIX_EPOCH,
+            },
+            pending: Some(Err(UiError::diagnostic(
+                crate::ui::UiErrorCategory::Internal,
+                "database locked",
+            ))),
+            abandoned: None,
+            error: None,
+        };
+        assert_eq!(snapshot.indicator(), SyncIndicator::Unreadable);
     }
 
     fn record(reason: coven::PendingReason) -> coven::PendingRecord {

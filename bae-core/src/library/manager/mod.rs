@@ -377,9 +377,20 @@ pub struct SyncStatusSnapshot {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyncIndicator {
     Unconnected,
+    /// Before the pending list's first read.
     Loading,
+    /// Storage is set up, but the sync loop isn't running.
+    Stopped,
+    Syncing,
     Synced,
-    Waiting { items: usize },
+    Offline,
+    /// The failure is the snapshot's `failure()`.
+    Failed,
+    /// The pending list couldn't be read; its error is the list's.
+    Unreadable,
+    Waiting {
+        items: usize,
+    },
 }
 
 /// All DB data needed to play or serve a track: the internal aggregate behind
