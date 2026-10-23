@@ -175,7 +175,9 @@ pub(crate) fn deletion_category(error: &coven::StoreDeletionError) -> C {
 pub(crate) fn bootstrap_category(error: &coven::BootstrapError) -> C {
     use coven::BootstrapError as E;
     match error {
-        E::Code(_) => C::Config,
+        // A stale resume, or a cancel that came after the request may have
+        // been sent: the person's state, not a bug.
+        E::Code(_) | E::NoUnfinishedJoin(_) | E::JoinRequestSent => C::Config,
         E::Store(coven::CovenError::Key(error)) | E::SecureStorage(error) => key_category(error),
         E::Store(_) => C::Database,
         E::Sync(error) => sync_category(error),

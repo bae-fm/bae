@@ -109,17 +109,25 @@ impl LibraryManager {
         Ok(self.database.set_member_role(member, role).await?)
     }
 
-    /// Re-inviting creates a fresh identity; the removed person's rows retain their owner.
+    /// Re-inviting creates a fresh identity; the removed person's rows retain
+    /// their owner. `name` is the profile name the person's device writes
+    /// when it joins (§5.4).
     pub async fn invite_person(
         &self,
         role: coven::MemberRole,
+        name: String,
         access: coven::InviteAccess,
+        delivery: coven::InviteDelivery,
     ) -> Result<coven::Invite, LibraryError> {
-        Ok(self.database.invite_person(role, access).await?)
+        Ok(self
+            .database
+            .invite_person(role, name, access, delivery)
+            .await?)
     }
 
-    pub fn subscribe_join_requests(&self) -> tokio::sync::watch::Receiver<Vec<coven::JoinRequest>> {
-        self.database.subscribe_join_requests()
+    /// This device's open invites, each with its request once one has arrived.
+    pub fn subscribe_invites(&self) -> tokio::sync::watch::Receiver<Vec<coven::Invite>> {
+        self.database.subscribe_invites()
     }
 
     pub async fn approve_join_request(
@@ -136,7 +144,14 @@ impl LibraryManager {
         Ok(self.database.decline_join_request(request).await?)
     }
 
+    /// Cancel an invite and take back its access. Once approval of its
+    /// person has begun, the invite can't be cancelled (§5.6).
     pub async fn cancel_invite(&self, invite: &coven::InviteId) -> Result<(), LibraryError> {
-        Ok(self.database.cancel_invite(invite).await?)
+        match self.database.cancel_invite(invite).await {
+            Err(error @ coven::SyncError::InvitationChanged) => {
+                Err(LibraryError::InviteJoining(error))
+            }
+            result => Ok(result?),
+        }
     }
 }

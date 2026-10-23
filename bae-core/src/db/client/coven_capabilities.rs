@@ -358,18 +358,22 @@ impl Database {
     pub(crate) async fn invite_person(
         &self,
         role: coven::MemberRole,
+        name: String,
         access: coven::InviteAccess,
+        delivery: coven::InviteDelivery,
     ) -> Result<coven::Invite, coven::SyncError> {
         self.inner
             .handle
-            .create_invite(coven::InviteTarget::NewMember { role }, access)
+            .create_invite(
+                coven::InviteTarget::NewMember { role, name },
+                access,
+                delivery,
+            )
             .await
     }
 
-    pub(crate) fn subscribe_join_requests(
-        &self,
-    ) -> tokio::sync::watch::Receiver<Vec<coven::JoinRequest>> {
-        self.inner.handle.subscribe_join_requests()
+    pub(crate) fn subscribe_invites(&self) -> tokio::sync::watch::Receiver<Vec<coven::Invite>> {
+        self.inner.handle.subscribe_invites()
     }
 
     pub(crate) async fn approve_join_request(

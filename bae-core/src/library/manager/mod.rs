@@ -216,6 +216,10 @@ pub enum LibraryError {
     /// A sync-manager connection or membership operation failed.
     #[error("Sync error: {0}")]
     Sync(#[from] coven::SyncError),
+    /// An invite could no longer be cancelled: approval of its person has
+    /// begun, and stopping would leave them half joined, or it has ended.
+    #[error("the invite can no longer be cancelled: {0}")]
+    InviteJoining(#[source] coven::SyncError),
     /// Handing one blocked sync operation back to the sync loop failed — most
     /// often because it is no longer blocked, so there is nothing to retry.
     #[error("Retry blocked operation error: {0}")]
@@ -318,6 +322,7 @@ impl LibraryError {
             LibraryError::CloudSetup(error) => cloud_setup_category(error),
             LibraryError::CloudUnlock(error) => cloud_unlock_category(error),
             LibraryError::Sync(e) => sync_category(e),
+            LibraryError::InviteJoining(_) => C::InviteJoining,
             LibraryError::RetryBlockedOperation(_) => C::Membership,
             LibraryError::Import(error) => error.category(),
             LibraryError::Refused(_) | LibraryError::Edit(_) => C::Import,

@@ -41,6 +41,17 @@ pub struct PersonProfile {
     pub avatar_id: Option<String>,
 }
 
+/// The request of one of this device's open invites that waits for the
+/// admin: a sent invite's, approved only after comparing the confirmation
+/// number. An in-person invite's request is approved without the admin
+/// (§5.6).
+pub fn request_to_decide(invite: &coven::Invite) -> Option<&coven::JoinRequest> {
+    match invite.delivery {
+        coven::InviteDeliveryKind::Sent => invite.request.as_ref(),
+        coven::InviteDeliveryKind::InPerson => None,
+    }
+}
+
 /// Removed people retain their profiles; a new member may still be setting theirs up.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Person {

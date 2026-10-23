@@ -183,6 +183,8 @@ pub enum BridgeErrorCategory {
     /// A library-sharing membership operation failed (the membership chain, an
     /// invite, or cross-device key rotation).
     Membership,
+    /// Cancelling an invite came too late: its person is already joining.
+    InviteJoining,
     /// The device playback was sent to refused a command while the link to it
     /// stayed up.
     Renderer,
@@ -364,6 +366,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::KeyringLocked => "core.error.keyring.locked",
         BridgeErrorCategory::KeychainEntitlementMissing => "core.error.keyring.entitlement_missing",
         BridgeErrorCategory::Membership => "core.error.category.membership",
+        BridgeErrorCategory::InviteJoining => "core.error.category.invite_joining",
         BridgeErrorCategory::Renderer => "core.error.category.renderer",
         BridgeErrorCategory::GroupingBlocked { reason } => match reason {
             BridgeGroupingBlock::SourceChanged => "core.import.grouping.source_changed",
@@ -555,6 +558,7 @@ mirror_enum! {
         KeyringLocked,
         KeychainEntitlementMissing,
         Membership,
+        InviteJoining,
         Renderer,
     },
 }

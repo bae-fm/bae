@@ -81,6 +81,9 @@ pub enum UiErrorCategory {
     /// A library-sharing membership operation failed: the membership chain, an
     /// invite, or key rotation across devices.
     Membership,
+    /// Cancelling an invite came too late: the inviting device has begun
+    /// letting its person in, or the invite has ended (§5.6).
+    InviteJoining,
     /// The device playback was sent to (Cast, DLNA) refused a command — a load,
     /// a play, a seek — while the link to it stayed up.
     Renderer,

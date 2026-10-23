@@ -7,6 +7,11 @@ use std::sync::Arc;
 pub struct BridgeJoinRequest {
     request: coven::JoinRequest,
 }
+impl BridgeJoinRequest {
+    pub(crate) fn new(request: coven::JoinRequest) -> Self {
+        Self { request }
+    }
+}
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeJoinRequestInfo {
     pub invite: String,
@@ -14,6 +19,9 @@ pub struct BridgeJoinRequestInfo {
     pub keys: BridgeMemberPublicKeys,
     pub device_name: String,
     pub provider_account_email: Option<String>,
+    /// The six digits the requester's device shows, as coven writes them
+    /// (`041 778`).
+    pub confirmation: String,
 }
 #[uniffi::export]
 impl BridgeJoinRequest {
@@ -24,6 +32,7 @@ impl BridgeJoinRequest {
             keys: BridgeMemberPublicKeys::from_core(self.request.keys),
             device_name: self.request.device_name.clone(),
             provider_account_email: self.request.provider_account_email.clone(),
+            confirmation: self.request.confirmation.to_string(),
         }
     }
 }
@@ -33,8 +42,8 @@ pub trait MembershipCallback: Send + Sync {
     fn on_error(&self, error: BridgeError);
 }
 #[uniffi::export(callback_interface)]
-pub trait JoinRequestsCallback: Send + Sync {
-    fn on_value(&self, value: Vec<Arc<BridgeJoinRequest>>);
+pub trait InvitesCallback: Send + Sync {
+    fn on_value(&self, value: Vec<BridgeInvite>);
 }
 #[uniffi::export]
 impl AppHandle {
@@ -50,18 +59,20 @@ impl AppHandle {
             },
         )
     }
-    pub fn subscribe_join_requests(
+    /// This device's open invites, each with its request once one has
+    /// arrived; other devices' invites are never listed.
+    pub fn subscribe_invites(
         &self,
-        callback: Box<dyn JoinRequestsCallback>,
+        callback: Box<dyn InvitesCallback>,
     ) -> Arc<crate::LiveSubscription> {
         self.subscribe_watch(
-            |services| services.subscribe_join_requests(),
-            move |requests| {
+            |services| services.subscribe_invites(),
+            move |invites| {
                 callback.on_value(
-                    requests
+                    invites
                         .iter()
                         .cloned()
-                        .map(|request| Arc::new(BridgeJoinRequest { request }))
+                        .map(BridgeInvite::from_core)
                         .collect(),
                 )
             },
@@ -74,7 +85,7 @@ forward! {async this => {
     fn remove_member(member:String)->() {Ok(this.services.remove_member(&coven::MemberId(member.parse().map_err(BridgeError::config)?)).await?)}
     fn remove_device(device:u64)->Option<BridgeProviderSignOut> {Ok(this.services.remove_device(coven::DeviceId(device)).await?.map(BridgeProviderSignOut::from_core))}
     fn set_member_role(member:String,role:BridgeMemberRole)->() {Ok(this.services.set_member_role(&coven::MemberId(member.parse().map_err(BridgeError::config)?),role.into_core()).await?)}
-    fn invite_person(role:BridgeMemberRole,access:BridgeInviteAccess)->BridgeInvite {Ok(BridgeInvite::from_core(this.services.invite_person(role.into_core(),access.into_core()).await?))}
+    fn invite_person(role:BridgeMemberRole,name:String,access:BridgeInviteAccess,delivery:BridgeInviteDelivery)->BridgeInvite {Ok(BridgeInvite::from_core(this.services.invite_person(role.into_core(),name,access.into_core(),delivery.into_core()).await?))}
     fn approve_join_request(request:Arc<BridgeJoinRequest>)->() {Ok(this.services.approve_join_request(&request.request).await?)}
     fn decline_join_request(request:Arc<BridgeJoinRequest>)->() {Ok(this.services.decline_join_request(&request.request).await?)}
     fn cancel_invite(invite:String)->() {Ok(this.services.cancel_invite(&coven::InviteId(invite.parse().map_err(BridgeError::config)?)).await?)}

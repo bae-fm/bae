@@ -298,6 +298,7 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::KeyringLocked,
         BridgeErrorCategory::KeychainEntitlementMissing,
         BridgeErrorCategory::Membership,
+        BridgeErrorCategory::InviteJoining,
         BridgeErrorCategory::Renderer,
         BridgeErrorCategory::GroupingBlocked {
             reason: BridgeGroupingBlock::SourceChanged,

@@ -21,6 +21,29 @@ impl BootstrapCancellation {
         self.cancel.send_replace(true);
     }
 }
+/// The app's hold on a running join: cancel it before its request is sent,
+/// or check for approval now.
+#[derive(uniffi::Object)]
+pub struct BridgeJoinControl {
+    control: bae_core::library::JoinControl,
+}
+#[uniffi::export]
+impl BridgeJoinControl {
+    #[uniffi::constructor]
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
+            control: bae_core::library::JoinControl::new(),
+        })
+    }
+    pub fn cancel(&self) {
+        self.control.cancel();
+    }
+    /// End the join's wait so it checks for approval now; a provider's
+    /// cooldown still holds.
+    pub fn check_now(&self) {
+        self.control.check_now();
+    }
+}
 struct CancelOnDrop(Arc<BootstrapCancellation>);
 impl Drop for CancelOnDrop {
     fn drop(&mut self) {
@@ -205,44 +228,93 @@ impl BridgeHost {
         )
         .await
     }
+    /// Join a library from an invite. The profile takes the invite's name.
+    /// Dropping the call, as leaving the screen does, keeps the join for
+    /// `resume_join`; only `control.cancel()` cancels, and only before the
+    /// request may have been sent.
     pub async fn join_with_invite(
         self: Arc<Self>,
         code: String,
         device_name: String,
-        person_name: String,
         callback: Box<dyn BootstrapCallback>,
-        cancellation: Arc<BootstrapCancellation>,
+        control: Arc<BridgeJoinControl>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
-        let cancel = cancellation.cancel.subscribe();
-        let _cancel_on_drop = CancelOnDrop(cancellation);
-        crate::operation_runtime::run_to_completion(
+        crate::operation_runtime::run(
             self.runtime
                 .as_ref()
                 .expect("host runtime exists until drop")
                 .handle()
                 .clone(),
-            self.clone(),
-            "join library",
             move || async move {
-                match bae_core::library::join_with_invite(
+                let joined = bae_core::library::join_with_invite(
                     self.builder(),
                     &code,
                     &device_name,
-                    &person_name,
                     Arc::new(coven::SystemClock),
                     |status| callback.on_status(BridgeBootstrapStatus::from_core(status)),
-                    &cancel,
+                    &control.control,
                 )
-                .await
-                {
-                    Ok(Some((handle, Ok(_)))) => Ok(BridgeBootstrapResult::opened(handle, self)),
-                    Ok(Some((handle, Err(error)))) => Ok(BridgeBootstrapResult::ProfileRequired {
-                        library: Arc::new(crate::OpenedLibrary::new(handle, self)),
-                        error: error.into(),
-                    }),
-                    Ok(None) => Ok(BridgeBootstrapResult::Declined),
-                    Err(error) => BridgeBootstrapResult::failure(error, self),
-                }
+                .await;
+                BridgeBootstrapResult::joined(joined, self)
+            },
+        )
+        .await
+    }
+
+    /// The joins this device has under way, to resume after bae restarts.
+    pub async fn unfinished_joins(
+        self: Arc<Self>,
+    ) -> Result<Vec<Arc<BridgeUnfinishedJoin>>, BridgeError> {
+        crate::operation_runtime::run(
+            self.runtime
+                .as_ref()
+                .expect("host runtime exists until drop")
+                .handle()
+                .clone(),
+            move || async move {
+                bae_core::library::unfinished_joins(&self.builder())
+                    .await
+                    .map(|joins| {
+                        joins
+                            .into_iter()
+                            .map(|join| Arc::new(BridgeUnfinishedJoin { join }))
+                            .collect()
+                    })
+                    .map_err(|error| {
+                        BridgeError::diagnostic(
+                            BridgeErrorCategory::from_core(error.category()),
+                            error,
+                        )
+                    })
+            },
+        )
+        .await
+    }
+
+    /// Continue a join from `unfinished_joins`, signing in to its provider
+    /// again first. Dropping the call keeps the join, as for `join_with_invite`.
+    pub async fn resume_join(
+        self: Arc<Self>,
+        join: Arc<BridgeUnfinishedJoin>,
+        callback: Box<dyn BootstrapCallback>,
+        control: Arc<BridgeJoinControl>,
+    ) -> Result<BridgeBootstrapResult, BridgeError> {
+        crate::operation_runtime::run(
+            self.runtime
+                .as_ref()
+                .expect("host runtime exists until drop")
+                .handle()
+                .clone(),
+            move || async move {
+                let joined = bae_core::library::resume_join(
+                    self.builder(),
+                    &join.join,
+                    Arc::new(coven::SystemClock),
+                    |status| callback.on_status(BridgeBootstrapStatus::from_core(status)),
+                    &control.control,
+                )
+                .await;
+                BridgeBootstrapResult::joined(joined, self)
             },
         )
         .await

@@ -87,13 +87,28 @@ impl BridgeCodeMetadata {
 
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCodeInfo {
-    Restore {
-        metadata: BridgeCodeMetadata,
-    },
-    Invite {
-        metadata: BridgeCodeMetadata,
-        library_name: String,
-    },
+    Restore { metadata: BridgeCodeMetadata },
+    Invite { invite: BridgeInviteInfo },
+}
+/// What an invite tells before connecting: the library's name as the invite
+/// carried it, the person's name, and in person or sent.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeInviteInfo {
+    pub metadata: BridgeCodeMetadata,
+    pub library_name: String,
+    /// `None` for a replacement: the person already has a profile.
+    pub invitee: Option<String>,
+    pub delivery: crate::types::BridgeInviteDeliveryKind,
+}
+impl BridgeInviteInfo {
+    pub(crate) fn from_core(value: coven::InviteInfo) -> Self {
+        Self {
+            metadata: BridgeCodeMetadata::from_core(value.metadata),
+            library_name: value.store_name,
+            invitee: value.invitee,
+            delivery: crate::types::BridgeInviteDeliveryKind::from_core(value.delivery),
+        }
+    }
 }
 #[uniffi::export]
 pub fn decode_code_info(code: String) -> Result<BridgeCodeInfo, BridgeError> {
@@ -102,12 +117,8 @@ pub fn decode_code_info(code: String) -> Result<BridgeCodeInfo, BridgeError> {
             coven::CodeInfo::Restore(metadata) => BridgeCodeInfo::Restore {
                 metadata: BridgeCodeMetadata::from_core(metadata),
             },
-            coven::CodeInfo::Invite {
-                metadata,
-                store_name,
-            } => BridgeCodeInfo::Invite {
-                metadata: BridgeCodeMetadata::from_core(metadata),
-                library_name: store_name,
+            coven::CodeInfo::Invite(invite) => BridgeCodeInfo::Invite {
+                invite: BridgeInviteInfo::from_core(invite),
             },
         },
     )

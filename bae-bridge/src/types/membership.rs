@@ -1,4 +1,5 @@
 use super::*;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeMemberRole {
@@ -204,23 +205,74 @@ impl BridgeInviteAccess {
         }
     }
 }
+/// How an invite reaches the person, which fixes how it is approved: in
+/// person, the inviting device lets them in itself; sent, the admin approves
+/// after comparing the confirmation number (§5.6).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeInviteDelivery {
+    InPerson,
+    Sent { lifetime: BridgeInviteLifetime },
+}
+impl BridgeInviteDelivery {
+    pub(crate) fn into_core(self) -> coven::InviteDelivery {
+        match self {
+            Self::InPerson => coven::InviteDelivery::InPerson,
+            Self::Sent { lifetime } => coven::InviteDelivery::Sent {
+                lifetime: lifetime.into_core(),
+            },
+        }
+    }
+}
+/// How long a sent invite stays open.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeInviteLifetime {
+    Hour,
+    Day,
+    Week,
+}
+mirror_enum! { BridgeInviteLifetime = coven::InviteLifetime,
+    into_core: pub(crate) fn, variants: { Hour, Day, Week },
+}
+/// In person or sent, as an invite carries it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeInviteDeliveryKind {
+    InPerson,
+    Sent,
+}
+mirror_enum! { BridgeInviteDeliveryKind = coven::InviteDeliveryKind,
+    from_core: pub(crate) fn, variants: { InPerson, Sent },
+}
+/// One of this device's open invites.
 #[derive(Clone, uniffi::Record)]
 pub struct BridgeInvite {
     pub id: String,
     pub member: String,
+    /// The person's name; `None` for a replacement.
+    pub invitee: Option<String>,
+    pub delivery: BridgeInviteDeliveryKind,
     /// The access the invite grants; on S3 the id of the key it carries.
     pub access: BridgeMemberAccess,
+    /// The code as first shown, to show again.
     pub code: String,
     pub expires_at: std::time::SystemTime,
+    /// A sent invite's checked request, waiting for the admin to approve or
+    /// decline; an in-person invite's needs nobody.
+    pub request_to_decide: Option<Arc<crate::BridgeJoinRequest>>,
 }
 impl BridgeInvite {
     pub(crate) fn from_core(value: coven::Invite) -> Self {
+        let request_to_decide = bae_core::people::request_to_decide(&value)
+            .cloned()
+            .map(|request| Arc::new(crate::BridgeJoinRequest::new(request)));
         Self {
             id: value.id.0.to_string(),
             member: value.member.0.to_string(),
+            invitee: value.invitee,
+            delivery: BridgeInviteDeliveryKind::from_core(value.delivery),
             access: BridgeMemberAccess::from_core(value.access),
             code: value.code,
             expires_at: value.expires_at,
+            request_to_decide,
         }
     }
 }
@@ -243,15 +295,18 @@ mod tests {
     /// An S3 invite names its key, so the QR screen can tell the person which
     /// key to delete if nobody uses the invite.
     #[test]
-    fn an_invite_carries_its_key_id() {
+    fn an_invite_carries_its_key_id_and_person() {
         let invite = BridgeInvite::from_core(coven::Invite {
             id: coven::InviteId("00000000-0000-4000-8000-000000000001".parse().unwrap()),
             member: coven::MemberId("00000000-0000-4000-8000-000000000002".parse().unwrap()),
+            invitee: Some("Dan".into()),
+            delivery: coven::InviteDeliveryKind::Sent,
             access: coven::MemberAccess::S3AccessKey {
                 access_key_id: "dan-key".into(),
             },
             code: "code".into(),
             expires_at: std::time::UNIX_EPOCH,
+            request: None,
         });
         assert_eq!(
             invite.access,
@@ -259,5 +314,8 @@ mod tests {
                 access_key_id: "dan-key".into()
             }
         );
+        assert_eq!(invite.invitee.as_deref(), Some("Dan"));
+        assert_eq!(invite.delivery, BridgeInviteDeliveryKind::Sent);
+        assert!(invite.request_to_decide.is_none());
     }
 }

@@ -63,15 +63,47 @@ pub fn read_scanned_code(text: String) -> Result<BridgeScannedCode, BridgeError>
 #[derive(Clone, uniffi::Enum)]
 pub enum BridgeBootstrapStatus {
     Connecting,
-    WaitingForApproval,
+    /// The request is sent. `confirmation` is set for a sent invite, as coven
+    /// writes it (`041 778`).
+    WaitingForApproval {
+        confirmation: Option<String>,
+        next_check: BridgeNextCheck,
+    },
     Loading,
-    Pending { records: Vec<BridgePendingRecord> },
+    Pending {
+        records: Vec<BridgePendingRecord>,
+    },
+}
+/// When a waiting join checks for approval next.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeNextCheck {
+    /// A check is running now.
+    Checking,
+    /// On the join's backoff; checking now ends the wait.
+    At { time: std::time::SystemTime },
+    /// The provider asked to slow down until then; checking now waits too.
+    CoolingDown { until: std::time::SystemTime },
+}
+impl BridgeNextCheck {
+    fn from_core(value: coven::NextCheck) -> Self {
+        match value {
+            coven::NextCheck::Checking => Self::Checking,
+            coven::NextCheck::At(time) => Self::At { time },
+            coven::NextCheck::CoolingDown(until) => Self::CoolingDown { until },
+        }
+    }
 }
 impl BridgeBootstrapStatus {
     pub(crate) fn from_core(value: coven::BootstrapStatus) -> Self {
         match value {
             coven::BootstrapStatus::Connecting => Self::Connecting,
-            coven::BootstrapStatus::WaitingForApproval => Self::WaitingForApproval,
+            coven::BootstrapStatus::WaitingForApproval {
+                confirmation,
+                next_check,
+            } => Self::WaitingForApproval {
+                confirmation: confirmation.map(|number| number.to_string()),
+                next_check: BridgeNextCheck::from_core(next_check),
+            },
             coven::BootstrapStatus::Loading => Self::Loading,
             coven::BootstrapStatus::Pending(records) => Self::Pending {
                 records: records
@@ -100,12 +132,37 @@ pub enum BridgeBootstrapResult {
         error: BridgeError,
     },
     SavedCodeRemoved,
+    /// The invite ended without letting this device in: declined, cancelled
+    /// or expired, which the joining device can't tell apart.
     Declined,
+    /// A cancel came after the join's request may have been sent. The join
+    /// stays under way; `unfinished_joins` lists it to resume.
+    JoinRequestSent,
 }
 impl BridgeBootstrapResult {
     pub(crate) fn opened(handle: coven::CovenHandle, host: Arc<crate::BridgeHost>) -> Self {
         Self::Opened {
             library: Arc::new(crate::OpenedLibrary::new(handle, host)),
+        }
+    }
+    /// A join's outcome: the library with its profile written, or kept for a
+    /// replacement; the library without a profile to retry; or the invite
+    /// ended without letting this device in.
+    pub(crate) fn joined(
+        result: Result<
+            Option<bae_core::library::JoinedLibrary>,
+            bae_core::library::RestoreFromCodeError,
+        >,
+        host: Arc<crate::BridgeHost>,
+    ) -> Result<Self, BridgeError> {
+        match result {
+            Ok(Some((handle, None | Some(Ok(_))))) => Ok(Self::opened(handle, host)),
+            Ok(Some((handle, Some(Err(error))))) => Ok(Self::ProfileRequired {
+                library: Arc::new(crate::OpenedLibrary::new(handle, host)),
+                error: error.into(),
+            }),
+            Ok(None) => Ok(Self::Declined),
+            Err(error) => Self::failure(error, host),
         }
     }
     pub(crate) fn failure(
@@ -116,6 +173,7 @@ impl BridgeBootstrapResult {
         match error {
             bae_core::library::RestoreFromCodeError::Cancelled => Err(BridgeError::Cancelled),
             bae_core::library::RestoreFromCodeError::Restore(error) => match *error {
+                coven::BootstrapError::JoinRequestSent => Ok(Self::JoinRequestSent),
                 coven::BootstrapError::Published { handle, source } => Ok(Self::Published {
                     library: Arc::new(crate::OpenedLibrary::new(handle, host)),
                     error: BridgeError::diagnostic(category, source),
@@ -198,5 +256,18 @@ impl BridgeSavedRestoreCode {
             location: BridgeStorageLocation::from_core(self.saved.location.clone()),
             has_s3_credentials: self.saved.has_s3_credentials,
         }
+    }
+}
+
+/// A join this device has under way, from its saved invite: shown on its
+/// waiting screen, and continued with `resume_join`.
+#[derive(uniffi::Object)]
+pub struct BridgeUnfinishedJoin {
+    pub(crate) join: coven::InviteInfo,
+}
+#[uniffi::export]
+impl BridgeUnfinishedJoin {
+    pub fn info(&self) -> crate::BridgeInviteInfo {
+        crate::BridgeInviteInfo::from_core(self.join.clone())
     }
 }

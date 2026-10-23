@@ -95,6 +95,7 @@ impl From<LibraryError> for AutomationError {
             LibraryError::CloudSetup(e) => Self::Unavailable(e.to_string()),
             LibraryError::CloudUnlock(e) => Self::Unavailable(e.to_string()),
             LibraryError::Sync(e) => Self::Unavailable(e.to_string()),
+            error @ LibraryError::InviteJoining(_) => Self::Unavailable(error.to_string()),
             LibraryError::RetryBlockedOperation(e) => Self::Unavailable(e.to_string()),
             LibraryError::Validation(e) => Self::Validation(e),
         }
@@ -134,6 +135,7 @@ impl From<bae_core::ui::UiError> for AutomationError {
             | UiErrorCategory::KeyringLocked
             | UiErrorCategory::KeychainEntitlementMissing
             | UiErrorCategory::Membership
+            | UiErrorCategory::InviteJoining
             | UiErrorCategory::Renderer => Self::Unavailable(detail),
         }
     }

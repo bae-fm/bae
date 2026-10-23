@@ -269,40 +269,146 @@ pub async fn restore_from_keychain(
 
 /// The membership is established even if writing its profile failed. Retain
 /// this handle and retry profile creation; do not join as another identity.
+/// The profile is `None` for an invite that replaced an existing member's
+/// keys: that person keeps the row they already have (§5.4).
 pub type JoinedLibrary = (
     coven::CovenHandle,
-    Result<crate::people::PersonProfile, crate::people::ProfileError>,
+    Option<Result<crate::people::PersonProfile, crate::people::ProfileError>>,
 );
 
+/// The app's hold on a running join: cancel it before its request is sent, or
+/// check for approval at once. One control covers the provider sign-in bae
+/// runs first and coven's join after it.
+pub struct JoinControl {
+    sign_in: watch::Sender<bool>,
+    join: coven::JoinControl,
+}
+
+impl JoinControl {
+    pub fn new() -> Self {
+        Self {
+            sign_in: watch::channel(false).0,
+            join: coven::JoinControl::new(),
+        }
+    }
+
+    /// Cancel the join. Once its request may have been sent, coven keeps the
+    /// join and the call ends with `BootstrapError::JoinRequestSent`.
+    pub fn cancel(&self) {
+        self.sign_in.send_replace(true);
+        self.join.cancel();
+    }
+
+    /// End the join's wait so the next check for approval runs now.
+    pub fn check_now(&self) {
+        self.join.check_now();
+    }
+}
+
+impl Default for JoinControl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Join a library from an invite. The person's profile takes the name the
+/// admin typed in the invite (§5.4). Dropping the call keeps the join for
+/// `resume_join`.
 pub async fn join_with_invite(
     mut builder: coven::CovenBuilder,
     code: &str,
     device_name: &str,
-    person_name: &str,
     clock: coven::ClockRef,
     on_status: impl Fn(coven::BootstrapStatus),
-    cancel: &watch::Receiver<bool>,
+    control: &JoinControl,
 ) -> Result<Option<JoinedLibrary>, RestoreFromCodeError> {
-    if person_name.trim().is_empty() {
-        return Err(crate::people::ProfileError::EmptyName.into());
-    }
-    bootstrap_auth::authenticate(&mut builder, bootstrap_auth::code_access(code)?, cancel).await?;
-    let Some(handle) = Box::pin(coven::join_with_invite(
+    let invite = invite_info(code)?;
+    bootstrap_auth::authenticate(
+        &mut builder,
+        invite.metadata.oauth_access,
+        &control.sign_in.subscribe(),
+    )
+    .await?;
+    let joined = Box::pin(coven::join_with_invite(
         configure_store(builder),
         code,
         device_name,
         on_status,
-        cancel,
+        &control.join,
     ))
     .await
-    .map_err(restore_error)?
-    else {
-        return Ok(None);
+    .map_err(restore_error)?;
+    Ok(match joined {
+        Some(handle) => Some(with_profile(handle, invite.invitee.as_deref(), clock).await),
+        None => None,
+    })
+}
+
+/// The joins this device has under way, each as its saved invite reads.
+pub async fn unfinished_joins(
+    builder: &coven::CovenBuilder,
+) -> Result<Vec<coven::InviteInfo>, RestoreFromCodeError> {
+    builder.unfinished_joins().await.map_err(restore_error)
+}
+
+/// Continue a join from `unfinished_joins` after bae restarted, signing in
+/// again first: the provider sign-in isn't kept while the join waits.
+pub async fn resume_join(
+    mut builder: coven::CovenBuilder,
+    join: &coven::InviteInfo,
+    clock: coven::ClockRef,
+    on_status: impl Fn(coven::BootstrapStatus),
+    control: &JoinControl,
+) -> Result<Option<JoinedLibrary>, RestoreFromCodeError> {
+    bootstrap_auth::authenticate(
+        &mut builder,
+        join.metadata.oauth_access,
+        &control.sign_in.subscribe(),
+    )
+    .await?;
+    let joined = Box::pin(configure_store(builder).resume_join(
+        join.metadata.store_id,
+        on_status,
+        &control.join,
+    ))
+    .await
+    .map_err(restore_error)?;
+    Ok(match joined {
+        Some(handle) => Some(with_profile(handle, join.invitee.as_deref(), clock).await),
+        None => None,
+    })
+}
+
+/// The invite a code holds; a restore code is refused before any sign-in.
+fn invite_info(code: &str) -> Result<coven::InviteInfo, RestoreFromCodeError> {
+    match coven::decode_code_info(code) {
+        Ok(coven::CodeInfo::Invite(invite)) => Ok(invite),
+        Ok(coven::CodeInfo::Restore(_)) => Err(restore_error(coven::BootstrapError::Code(
+            coven::CodeError::WrongKind {
+                expected: coven::CodeKind::Invite,
+                actual: coven::CodeKind::Restore,
+            },
+        ))),
+        Err(error) => Err(restore_error(coven::BootstrapError::Code(error))),
+    }
+}
+
+/// Write the joined person's profile with the invite's name; an invite that
+/// replaced an existing member's keys names nobody, and writes nothing.
+async fn with_profile(
+    handle: coven::CovenHandle,
+    invitee: Option<&str>,
+    clock: coven::ClockRef,
+) -> JoinedLibrary {
+    let profile = match invitee {
+        Some(name) => Some(
+            crate::db::Database::from_handle(handle.clone(), clock)
+                .create_profile(name)
+                .await,
+        ),
+        None => None,
     };
-    let profile = crate::db::Database::from_handle(handle.clone(), clock)
-        .create_profile(person_name)
-        .await;
-    Ok(Some((handle, profile)))
+    (handle, profile)
 }
 
 /// Replace this device after the caller has warned that unsent edits are discarded.

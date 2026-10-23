@@ -2762,6 +2762,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `Keyring`, `KeyringLocked` | fixes the keyring, or unlocks and is asked again |
 | `KeychainEntitlementMissing` | installs a build of bae signed with its keychain entitlement; retrying or unlocking doesn't help |
 | `Membership` | retries the membership step, with the advice it carries |
+| `InviteJoining` | leaves the invite: cancelling it came after the inviting device began letting its person in (§5.6) |
 | `AirPlayUnsupported`, `AirPlayUnreadableSettings` | uses another receiver |
 | `ReplacementUnfinished` | finishes the reset or the restore of this device's copy that stopped partway: the one the category names, never the other (§6.4) |
 

@@ -163,6 +163,7 @@ fn category_column(category: UiErrorCategory) -> String {
         C::KeyringLocked => "keyring_locked".to_string(),
         C::KeychainEntitlementMissing => "keychain_entitlement_missing".to_string(),
         C::Membership => "membership".to_string(),
+        C::InviteJoining => "invite_joining".to_string(),
         C::Renderer => "renderer".to_string(),
     }
 }
@@ -289,6 +290,7 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
             "keyring_locked" => C::KeyringLocked,
             "keychain_entitlement_missing" => C::KeychainEntitlementMissing,
             "membership" => C::Membership,
+            "invite_joining" => C::InviteJoining,
             "renderer" => C::Renderer,
             _ => return Err(unreadable()),
         },
