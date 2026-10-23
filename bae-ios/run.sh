@@ -73,8 +73,8 @@ xcodebuild -project bae-ios/bae/bae.xcodeproj \
     -sdk iphonesimulator \
     -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
     -derivedDataPath bae-ios/bae/.build/derivedData \
-    PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
-    PRODUCT_NAME="$PRODUCT_NAME" \
+    BAE_APP_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+    BAE_APP_PRODUCT_NAME="$PRODUCT_NAME" \
     build
 
 xcrun simctl boot "$SIMULATOR_ID" 2>/dev/null || true

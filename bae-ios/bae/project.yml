@@ -62,8 +62,16 @@ targets:
       - package: BaeKit
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: fm.bae.bae
-        PRODUCT_NAME: bae
+        # The app's identity, overridden per edition by run.sh and the release
+        # workflow through these private names. Only this target maps them to
+        # the standard settings: passing PRODUCT_NAME or
+        # PRODUCT_BUNDLE_IDENTIFIER on xcodebuild's command line would also
+        # override the Swift package targets, building BaeKit's resource bundle
+        # as bae.bundle while the app copies BaeKit_BaeKit.bundle.
+        BAE_APP_BUNDLE_IDENTIFIER: fm.bae.bae
+        BAE_APP_PRODUCT_NAME: bae
+        PRODUCT_BUNDLE_IDENTIFIER: $(BAE_APP_BUNDLE_IDENTIFIER)
+        PRODUCT_NAME: $(BAE_APP_PRODUCT_NAME)
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: 1
         INFOPLIST_FILE: bae/Info.plist
