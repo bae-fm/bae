@@ -90,12 +90,14 @@ pub(super) fn sync_category(error: &coven::SyncError) -> C {
         // Another copy uses this device's id: only a reset answers it.
         E::DeviceIdInUse(_) => C::DeviceResetRequired,
         // Administrative work: a member, an invitation, a key a member has not
-        // sealed for this device yet, a reload sharing waits on.
+        // sealed for this device yet, a reload sharing waits on, a snapshot of
+        // this device's that deleting removed members' files waits on.
         E::StoreOwner
         | E::InvitationChanged
         | E::MemberKeysReplaced { .. }
         | E::Rejected(_)
         | E::ReloadPending(_)
+        | E::SnapshotPending(_)
         | E::Key(_)
         | E::KeyUnavailable(_) => C::Membership,
         E::Cleanup { operation, .. } => sync_category(operation),
