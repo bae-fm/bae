@@ -4,11 +4,11 @@ import os.log
 
 private let logger = Logger.bae("InvitePersonSheet")
 
-/// An admin invites a person: their role and how they reach storage, then the
-/// invitation's code for their device. The invitation carries the library's
-/// current name and expires within a day; their device's join request comes
-/// back here for approval.
+/// An admin invites a person: their name, role and how they reach storage,
+/// and whether the invite is shown in person or sent, and for how long.
+/// `onCreated` receives the new invite's id, for People to show its code.
 struct InvitePersonSheet: View {
+    let onCreated: (String) -> Void
     let onDismiss: () -> Void
 
     @Environment(Sync.self)
@@ -16,6 +16,14 @@ struct InvitePersonSheet: View {
     @Environment(ConfigStore.self)
     private var configStore
 
+    /// How the invite reaches the person, as the form chooses it.
+    private enum Delivery: Hashable {
+        case inPerson
+        case send
+    }
+
+    @State
+    private var name = ""
     @State
     private var role: BridgeMemberRole = .member
     @State
@@ -25,13 +33,13 @@ struct InvitePersonSheet: View {
     @State
     private var secretAccessKey = ""
     @State
-    private var invite: BridgeInvite?
+    private var delivery: Delivery = .inPerson
+    @State
+    private var lifetime: BridgeInviteLifetime = .day
     @State
     private var task: Task<Void, Never>?
     @State
     private var error: DisplayError?
-    @State
-    private var confirmingCancel = false
 
     /// An S3 invitee reaches the bucket with an access key the admin made for
     /// them; every other provider shares with their account.
@@ -40,8 +48,12 @@ struct InvitePersonSheet: View {
         return false
     }
 
+    private var trimmedName: String {
+        name.trimmingCharacters(in: .whitespaces)
+    }
+
     private var ready: Bool {
-        guard task == nil else { return false }
+        guard task == nil, !trimmedName.isEmpty else { return false }
         if usesAccessKey {
             return !accessKeyId.isEmpty && !secretAccessKey.isEmpty
         }
@@ -59,30 +71,9 @@ struct InvitePersonSheet: View {
             }
             .padding()
             Divider()
-            if let invite {
-                created(invite)
-            }
-            else {
-                form
-            }
+            form
         }
         .frame(width: 440, height: 520)
-        .confirmationDialog(
-            localizedCoreString("core.invite.cancel_confirm.title"),
-            isPresented: $confirmingCancel,
-            titleVisibility: .visible,
-            presenting: invite
-        ) { shown in
-            Button("Cancel Invitation", role: .destructive) { cancel(shown) }
-            Button(
-                localizedCoreString("core.invite.cancel_confirm.keep"),
-                role: .cancel
-            ) {}
-        } message: { shown in
-            if let forgetLine = shown.access.forgetLine {
-                Text(verbatim: forgetLine)
-            }
-        }
         .onDisappear { task?.cancel() }
     }
 
@@ -90,6 +81,7 @@ struct InvitePersonSheet: View {
         VStack(spacing: 0) {
             Form {
                 Section {
+                    TextField("Name", text: $name)
                     Picker("Role", selection: $role) {
                         Text("Member").tag(BridgeMemberRole.member)
                         Text("Admin").tag(BridgeMemberRole.admin)
@@ -104,12 +96,27 @@ struct InvitePersonSheet: View {
                         TextField("Their account email", text: $email)
                             .textContentType(.emailAddress)
                     }
-                } footer: {
-                    Text(
-                        usesAccessKey
-                            ? "Create an access key for them in your storage provider's console. The invitation carries it to their device."
-                            : "The library's storage is shared with this account."
-                    )
+                }
+                Section {
+                    Picker(selection: $delivery) {
+                        Text("In Person").tag(Delivery.inPerson)
+                        Text("Send").tag(Delivery.send)
+                    } label: {
+                        EmptyView()
+                    }
+                    .pickerStyle(.segmented)
+                    // Present in either choice so the form keeps its size.
+                    Picker(selection: $lifetime) {
+                        Text("1 hour").tag(BridgeInviteLifetime.hour)
+                        Text("1 day").tag(BridgeInviteLifetime.day)
+                        Text("1 week").tag(BridgeInviteLifetime.week)
+                    } label: {
+                        EmptyView()
+                    }
+                    .pickerStyle(.segmented)
+                    .opacity(delivery == .send ? 1 : 0)
+                    .allowsHitTesting(delivery == .send)
+                    .accessibilityHidden(delivery != .send)
                 }
             }
             .formStyle(.grouped)
@@ -128,45 +135,6 @@ struct InvitePersonSheet: View {
         }
     }
 
-    private func created(_ invite: BridgeInvite) -> some View {
-        VStack(spacing: ThemeSpace.edge) {
-            Spacer()
-            CodeDisplay(code: invite.code, qrText: invite.code, qrSize: 200)
-            Text(
-                "Expires \(invite.expiresAt, format: .relative(presentation: .named))"
-            )
-            .themeText(.detail)
-            .foregroundStyle(.secondary)
-            Text(
-                "Their device scans or pastes this code, then asks to join. Approve it under Waiting to join."
-            )
-            .themeText(.detail)
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
-            if let keyLine = invite.access.keyLine,
-                let unusedLine = invite.access.unusedInviteLine
-            {
-                Text(verbatim: keyLine)
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-                Text(verbatim: unusedLine)
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            if let error {
-                ErrorDetailDisclosure(error: error)
-            }
-            Button("Cancel Invitation", role: .destructive) {
-                confirmingCancel = true
-            }
-            .disabled(task != nil)
-            Spacer()
-        }
-        .padding()
-    }
-
     private func create() {
         let access: BridgeInviteAccess =
             usesAccessKey
@@ -177,28 +145,31 @@ struct InvitePersonSheet: View {
             : .providerAccount(
                 email: email.trimmingCharacters(in: .whitespaces)
             )
+        let chosen: BridgeInviteDelivery =
+            switch delivery {
+            case .inPerson: .inPerson
+            case .send: .sent(lifetime: lifetime)
+            }
         let role = role
-        run { invite = try await sync.invitePerson(role, access) }
-    }
-
-    private func cancel(_ invite: BridgeInvite) {
-        run {
-            try await sync.cancelInvite(invite.id)
-            onDismiss()
-        }
-    }
-
-    private func run(_ operation: @escaping () async throws -> Void) {
+        let name = trimmedName
         error = nil
         task = Task {
             defer { task = nil }
-            do { try await operation() }
+            do {
+                let invite = try await sync.invitePerson(
+                    role,
+                    name,
+                    access,
+                    chosen
+                )
+                onCreated(invite.id)
+            }
             catch is CancellationError {
-                logger.debug("invitation change cancelled")
+                logger.debug("invite creation cancelled")
             }
             catch {
                 logger.error(
-                    "invitation change failed: \(error.localizedDescription)"
+                    "invite creation failed: \(error.localizedDescription)"
                 )
                 self.error = DisplayError(error)
             }

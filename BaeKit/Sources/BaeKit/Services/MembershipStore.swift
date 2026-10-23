@@ -4,15 +4,9 @@ import os.log
 
 private let logger = Logger.bae("MembershipStore")
 
-/// One join request awaiting an admin, with the details read off it once.
-public struct PendingJoinRequest {
-    public let request: BridgeJoinRequest
-    public let info: BridgeJoinRequestInfo
-}
-
-/// The store's members joined with their profiles, and the join requests an
-/// admin can approve. Membership and profiles are subscribed; each change of
-/// either rereads core's joined list of people.
+/// The store's members joined with their profiles, and the invites this
+/// device has open. Membership, profiles and invites are subscribed; each
+/// change of membership or profiles rereads core's joined list of people.
 @MainActor
 @Observable
 public final class MembershipStore {
@@ -21,11 +15,13 @@ public final class MembershipStore {
     public private(set) var selfIsAdmin = false
     /// This device's person's profile, nil until they have one.
     public private(set) var selfProfile: BridgePersonProfile?
-    public private(set) var requests: [PendingJoinRequest] = []
+    /// This device's open invites, each with a sent invite's request once
+    /// it arrives.
+    public private(set) var invites: [BridgeInvite] = []
     /// The last failed read; cleared by the next successful one.
     public private(set) var error: DisplayError?
 
-    /// Starts the membership, profile and join-request subscriptions.
+    /// Starts the membership, profile and invite subscriptions.
     private let subscribe: @MainActor (MembershipStore) -> [LiveSubscription]
     private let readPeopleOperation: @Sendable () async throws -> [BridgePerson]
     @ObservationIgnored
@@ -52,11 +48,9 @@ public final class MembershipStore {
                             fail: { [weak store] error in store?.fail(error) }
                         )
                     ),
-                    handle.subscribeJoinRequests(
-                        callback: JoinRequestsSink { [weak store] requests in
-                            store?.requests = requests.map {
-                                PendingJoinRequest(request: $0, info: $0.info())
-                            }
+                    handle.subscribeInvites(
+                        callback: InvitesSink { [weak store] invites in
+                            store?.invites = invites
                         }
                     ),
                 ]
@@ -74,16 +68,19 @@ public final class MembershipStore {
     }
 
     #if DEBUG
-        /// A store showing `people` from the start, with no subscriptions.
+        /// A store showing `people` and `invites` from the start, with no
+        /// subscriptions.
         public static func stub(
             people: [BridgePerson],
-            selfIsAdmin: Bool
+            selfIsAdmin: Bool,
+            invites: [BridgeInvite] = []
         ) -> MembershipStore {
             let store = MembershipStore(
                 subscribe: { _ in [] },
                 readPeople: { people }
             )
             store.selfIsAdmin = selfIsAdmin
+            store.invites = invites
             store.readPeople()
             return store
         }
@@ -151,14 +148,14 @@ private final class ProfilesSink: ProfilesCallback, Sendable {
     func onError(error: BridgeError) { Task { @MainActor in fail(error) } }
 }
 
-private final class JoinRequestsSink: JoinRequestsCallback, Sendable {
-    private let apply: @MainActor @Sendable ([BridgeJoinRequest]) -> Void
+private final class InvitesSink: InvitesCallback, Sendable {
+    private let apply: @MainActor @Sendable ([BridgeInvite]) -> Void
 
-    init(apply: @escaping @MainActor @Sendable ([BridgeJoinRequest]) -> Void) {
+    init(apply: @escaping @MainActor @Sendable ([BridgeInvite]) -> Void) {
         self.apply = apply
     }
 
-    func onValue(value: [BridgeJoinRequest]) {
+    func onValue(value: [BridgeInvite]) {
         Task { @MainActor in apply(value) }
     }
 }

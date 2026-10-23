@@ -17,7 +17,7 @@ extension BridgeHost {
         case .published(let library, let warning),
             .profileRequired(let library, let warning):
             return (library, warning)
-        case .savedCodeRemoved, .declined:
+        case .savedCodeRemoved, .declined, .joinRequestSent:
             preconditionFailure(
                 "a device reset neither reads a saved code nor asks to join"
             )

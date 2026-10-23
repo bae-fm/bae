@@ -3,8 +3,10 @@ import SwiftUI
 
 /// Restores a library from a restore code, or joins one by an invitation. The
 /// code is typed, pasted or scanned, or is one coven saved in iCloud Keychain;
-/// what it decodes to decides which. coven runs any provider sign-in in the
-/// browser.
+/// what it decodes to decides which, and an invite joins as soon as it reads.
+/// coven runs any provider sign-in in the browser. A join waiting for approval
+/// shows its own screen, which has no cancel once its request may have been
+/// sent.
 struct BootstrapCodeView: View {
     let onBack: () -> Void
 
@@ -22,9 +24,24 @@ struct BootstrapCodeView: View {
     }
 
     var body: some View {
+        Group {
+            if form.isRunning, let invite = form.attempt?.invite {
+                JoinWaitingView(form: form, invite: invite)
+            }
+            else {
+                codeForm
+            }
+        }
+        .onAppear { form.begin() }
+        // Leaving stops a restore; a join's call is dropped and the join
+        // resumes at bae's next start.
+        .onDisappear { form.leave() }
+    }
+
+    private var codeForm: some View {
         @Bindable
         var form = form
-        VStack(spacing: 0) {
+        return VStack(spacing: 0) {
             Text(title)
                 .themeText(.title)
                 .padding(.top, ThemeSpace.section)
@@ -39,7 +56,6 @@ struct BootstrapCodeView: View {
                 if let attempt = form.attempt {
                     AttemptDetailsSection(
                         attempt: attempt,
-                        personName: $form.personName,
                         accessKey: $form.accessKey,
                         secretKey: $form.secretKey
                     )
@@ -76,7 +92,6 @@ struct BootstrapCodeView: View {
         }
         .padding(.horizontal)
         .onChange(of: form.codeInput) { form.decodeCode() }
-        .onDisappear { form.cancel() }
         .sheet(isPresented: $showScanner) {
             CodeScannerSheet(
                 onScan: { code in
@@ -92,7 +107,7 @@ struct BootstrapCodeView: View {
         switch form.entry {
         case .restore(.some): "Restore from iCloud Keychain"
         case .restore(nil): "Add device"
-        case .join: "Join library"
+        case .join, .resume: "Join library"
         case .restoreOver: "Restore this library"
         case .finishRestore: "Finish restoring this library"
         }
@@ -106,7 +121,7 @@ struct BootstrapCodeView: View {
             Text(
                 "Scan or paste the code shown by Add Device… on one of your devices. If you've lost every device, use your recovery code."
             )
-        case .join:
+        case .join, .resume:
             Text(
                 "Scan or paste the invitation an admin of the library sent you."
             )
@@ -125,7 +140,7 @@ struct BootstrapCodeView: View {
     /// Keychain, or one restoring over this device's copy, restores.
     private var primaryTitle: LocalizedStringKey {
         switch (form.attempt, form.entry) {
-        case (.some(.join), _): "Join"
+        case (.some(.join), _), (.some(.resume), _), (_, .resume): "Join"
         case (_, .restore(nil)), (_, .join): "Add"
         case (_, .restore(.some)), (_, .restoreOver): "Restore"
         case (_, .finishRestore): "Finish Restoring"
@@ -158,12 +173,10 @@ struct BootstrapCodeView: View {
     }
 }
 
-/// What the code says, the person's name for a join, and the S3 key a
-/// restore needs when none came with the code.
+/// What the code says, and the S3 key a restore needs when none came with
+/// the code.
 private struct AttemptDetailsSection: View {
     let attempt: BootstrapAttempt
-    @Binding
-    var personName: String
     @Binding
     var accessKey: String
     @Binding
@@ -185,14 +198,13 @@ private struct AttemptDetailsSection: View {
                         .themeText(.detail)
                         .foregroundStyle(.secondary)
                 }
-            case .join(_, let metadata, let libraryName):
-                LabeledContent("Library", value: libraryName)
+            case .join(_, let invite), .resume(_, let invite):
+                LabeledContent("Library", value: invite.libraryName)
                 LabeledContent(
                     "Stored in",
-                    value: metadata.location.accountLine
+                    value: invite.metadata.location.accountLine
                 )
-                signInNote(metadata)
-                TextField("Your name", text: $personName)
+                signInNote(invite.metadata)
             }
             if attempt.needsS3Key {
                 TextField("Access Key", text: $accessKey)
@@ -210,6 +222,50 @@ private struct AttemptDetailsSection: View {
             .themeText(.detail)
             .foregroundStyle(.secondary)
         }
+    }
+}
+
+/// A join running: the library's name, what it waits on, and, while it waits
+/// for approval, a sent invite's confirmation number with when it checks next
+/// and Check Now. Cancel shows only until the request may have been sent.
+private struct JoinWaitingView: View {
+    let form: BootstrapCodeForm
+    let invite: BridgeInviteInfo
+
+    var body: some View {
+        VStack(spacing: ThemeSpace.group) {
+            Spacer()
+            Text(verbatim: invite.libraryName)
+                .themeText(.title)
+            if let status = form.status {
+                BootstrapStatusView(status: status)
+            }
+            if let error = form.error {
+                ErrorDetailDisclosure(error: error)
+            }
+            HStack(spacing: ThemeSpace.group) {
+                if form.cancellable {
+                    Button("Cancel") { form.cancel() }
+                        .buttonStyle(.bordered)
+                }
+                if case .waitingForApproval(_, let nextCheck) = form.status {
+                    Button("Check Now") { form.checkNow() }
+                        .buttonStyle(PrimaryButtonStyle())
+                        .disabled(!nextCheck.endsOnCheckNow)
+                }
+            }
+            Spacer()
+        }
+        .padding(.horizontal)
+    }
+}
+
+extension BridgeNextCheck {
+    /// Whether Check Now ends this wait: the join's own backoff, but neither a
+    /// check already running nor a provider's cooldown.
+    fileprivate var endsOnCheckNow: Bool {
+        if case .at = self { return true }
+        return false
     }
 }
 

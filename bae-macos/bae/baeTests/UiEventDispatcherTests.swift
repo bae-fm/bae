@@ -326,8 +326,8 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         NoopLiveSubscription()
     }
 
-    override func subscribeJoinRequests(
-        callback _: any JoinRequestsCallback
+    override func subscribeInvites(
+        callback _: any InvitesCallback
     ) -> LiveSubscription {
         NoopLiveSubscription()
     }

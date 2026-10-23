@@ -1,5 +1,8 @@
 import BaeKit
 import SwiftUI
+import os.log
+
+private let logger = Logger.bae("WelcomeView")
 
 /// First-run and add-a-library entry point. A thin switcher over the flows —
 /// choose, and restore or join by code — each its own view with its own
@@ -30,6 +33,9 @@ struct WelcomeView: View {
         /// iCloud Keychain.
         case restore(BridgeSavedRestoreCode?)
         case join
+        /// A join this device had under way when bae stopped, continued on
+        /// its waiting screen.
+        case resume(BridgeUnfinishedJoin)
     }
 
     @Environment(LibrarySetup.self)
@@ -37,6 +43,9 @@ struct WelcomeView: View {
 
     @State
     private var mode: Mode
+    /// Listing the joins under way failed; shown above the chooser.
+    @State
+    private var resumeError: DisplayError?
 
     init(
         onLibraryReady:
@@ -60,17 +69,24 @@ struct WelcomeView: View {
     var body: some View {
         switch mode {
         case .choose:
-            WelcomeChooseView(
-                loadError: loadError,
-                launchProblems: launchProblems,
-                canDeleteActiveLibrary: canDeleteActiveLibrary,
-                onLibraryReady: onLibraryReady,
-                onOpenLibrary: onOpenLibrary,
-                onFinishReplacement: onFinishReplacement,
-                onRestoreSaved: { mode = .restore($0) },
-                onJoin: { mode = .join },
-                onAddDevice: { mode = .restore(nil) }
-            )
+            VStack(spacing: 0) {
+                if let resumeError {
+                    ErrorDetailDisclosure(error: resumeError)
+                        .padding()
+                }
+                WelcomeChooseView(
+                    loadError: loadError,
+                    launchProblems: launchProblems,
+                    canDeleteActiveLibrary: canDeleteActiveLibrary,
+                    onLibraryReady: onLibraryReady,
+                    onOpenLibrary: onOpenLibrary,
+                    onFinishReplacement: onFinishReplacement,
+                    onRestoreSaved: { mode = .restore($0) },
+                    onJoin: { mode = .join },
+                    onAddDevice: { mode = .restore(nil) }
+                )
+            }
+            .task { await resumeUnfinishedJoin() }
         case .restore(let saved):
             BootstrapCodeView(
                 form: codeForm(.restore(saved)),
@@ -81,6 +97,28 @@ struct WelcomeView: View {
                 form: codeForm(.join),
                 onBack: { mode = .choose }
             )
+        case .resume(let join):
+            BootstrapCodeView(
+                form: codeForm(.resume(join)),
+                onBack: { mode = .choose }
+            )
+        }
+    }
+
+    /// Open the waiting screen of a join this device has under way, so bae
+    /// goes on checking for its approval.
+    private func resumeUnfinishedJoin() async {
+        do {
+            if let join = try await setup.unfinishedJoins().first {
+                mode = .resume(join)
+            }
+        }
+        catch is CancellationError {}
+        catch {
+            logger.error(
+                "listing the joins under way failed: \(error.localizedDescription)"
+            )
+            resumeError = DisplayError(error)
         }
     }
 

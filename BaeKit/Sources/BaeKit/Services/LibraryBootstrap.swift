@@ -1,14 +1,16 @@
 import Foundation
 import Observation
 
-/// One restore or invitation attempt, including the bridge's cancellation token.
+/// One restore or join attempt, with its cancel: a restore's cancellation
+/// token, or a join's control, which can also check for approval now.
 @MainActor
 @Observable
 public final class LibraryBootstrap {
     public private(set) var status: BridgeBootstrapStatus?
     private let host: BridgeHost
     private let deviceName: String
-    private var cancellation: BootstrapCancellation?
+    private var cancelAttempt: (() -> Void)?
+    private var joinControl: BridgeJoinControl?
     private var attempt: UUID?
 
     public init(host: BridgeHost, deviceName: String) {
@@ -19,7 +21,7 @@ public final class LibraryBootstrap {
     public func restore(code: String, credentials: BridgeS3Credentials?)
         async throws -> BridgeBootstrapResult
     {
-        try await run { callback, cancellation in
+        try await runRestore { callback, cancellation in
             try await self.host.restoreFromCode(
                 code: code,
                 credentials: credentials,
@@ -34,7 +36,7 @@ public final class LibraryBootstrap {
         saved: BridgeSavedRestoreCode,
         credentials: BridgeS3Credentials?
     ) async throws -> BridgeBootstrapResult {
-        try await run { callback, cancellation in
+        try await runRestore { callback, cancellation in
             try await self.host.restoreFromKeychain(
                 saved: saved,
                 credentials: credentials,
@@ -55,7 +57,7 @@ public final class LibraryBootstrap {
         code: String,
         credentials: BridgeS3Credentials?
     ) async throws -> BridgeBootstrapResult {
-        try await run { callback, cancellation in
+        try await runRestore { callback, cancellation in
             try await self.host.restoreReplacingDevice(
                 libraryId: libraryId,
                 code: code,
@@ -67,30 +69,74 @@ public final class LibraryBootstrap {
         }
     }
 
-    public func join(code: String, personName: String) async throws
-        -> BridgeBootstrapResult
-    {
-        try await run { callback, cancellation in
+    /// Join from an invite's code. Cancelling the task drops the call and
+    /// keeps the join, which `resume` continues; only `cancel()` cancels it,
+    /// and only before its request may have been sent.
+    public func join(code: String) async throws -> BridgeBootstrapResult {
+        try await runJoin { callback, control in
             try await self.host.joinWithInvite(
                 code: code,
                 deviceName: self.deviceName,
-                personName: personName,
                 callback: callback,
-                cancellation: cancellation
+                control: control
             )
         }
     }
 
-    public func cancel() { cancellation?.cancel() }
+    /// Continue a join this device has under way, as `join` does.
+    public func resume(_ join: BridgeUnfinishedJoin) async throws
+        -> BridgeBootstrapResult
+    {
+        try await runJoin { callback, control in
+            try await self.host.resumeJoin(
+                join: join,
+                callback: callback,
+                control: control
+            )
+        }
+    }
 
-    private func run(
+    public func cancel() { cancelAttempt?() }
+
+    /// End the running join's wait so it checks for approval now.
+    public func checkNow() { joinControl?.checkNow() }
+
+    private func runRestore(
         _ work: (BootstrapStatusSink, BootstrapCancellation) async throws ->
             BridgeBootstrapResult
     ) async throws -> BridgeBootstrapResult {
-        precondition(cancellation == nil, "one bootstrap attempt at a time")
         let token = BootstrapCancellation()
+        return try await run(cancel: token.cancel) { sink in
+            // A published result owns a live store even if cancellation raced
+            // it. Always deliver that result so its owner can finish opening
+            // or close it.
+            try await withTaskCancellationHandler {
+                try await work(sink, token)
+            } onCancel: {
+                token.cancel()
+            }
+        }
+    }
+
+    private func runJoin(
+        _ work: (BootstrapStatusSink, BridgeJoinControl) async throws ->
+            BridgeBootstrapResult
+    ) async throws -> BridgeBootstrapResult {
+        let control = BridgeJoinControl()
+        joinControl = control
+        defer { joinControl = nil }
+        return try await run(cancel: control.cancel) { sink in
+            try await work(sink, control)
+        }
+    }
+
+    private func run(
+        cancel: @escaping () -> Void,
+        _ work: (BootstrapStatusSink) async throws -> BridgeBootstrapResult
+    ) async throws -> BridgeBootstrapResult {
+        precondition(attempt == nil, "one bootstrap attempt at a time")
         let identity = UUID()
-        cancellation = token
+        cancelAttempt = cancel
         attempt = identity
         status = .connecting
         let sink = BootstrapStatusSink { [weak self] status in
@@ -99,16 +145,10 @@ public final class LibraryBootstrap {
         }
         defer {
             attempt = nil
-            cancellation = nil
+            cancelAttempt = nil
             status = nil
         }
-        // A published result owns a live store even if cancellation raced it.
-        // Always deliver that result so its owner can finish opening or close it.
-        return try await withTaskCancellationHandler {
-            try await work(sink, token)
-        } onCancel: {
-            token.cancel()
-        }
+        return try await work(sink)
     }
 }
 

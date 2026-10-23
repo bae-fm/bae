@@ -13,9 +13,12 @@ public final class Sync: Sendable, Observable {
         @Sendable (UInt64) async throws -> BridgeProviderSignOut?
     public let setMemberRole:
         @Sendable (String, BridgeMemberRole) async throws -> Void
+    /// Invite a person by name, with a role, the access they reach storage
+    /// with, and whether the invite is shown in person or sent.
     public let invitePerson:
-        @Sendable (BridgeMemberRole, BridgeInviteAccess) async throws ->
-            BridgeInvite
+        @Sendable (
+            BridgeMemberRole, String, BridgeInviteAccess, BridgeInviteDelivery
+        ) async throws -> BridgeInvite
     public let approveJoinRequest:
         @Sendable (BridgeJoinRequest) async throws -> Void
     public let declineJoinRequest:
@@ -61,8 +64,10 @@ public final class Sync: Sendable, Observable {
             @escaping @Sendable (String, BridgeMemberRole) async throws -> Void =
             { _, _ in throw StubError.notImplemented },
         invitePerson:
-            @escaping @Sendable (BridgeMemberRole, BridgeInviteAccess)
-            async throws -> BridgeInvite = { _, _ in
+            @escaping @Sendable (
+                BridgeMemberRole, String, BridgeInviteAccess,
+                BridgeInviteDelivery
+            ) async throws -> BridgeInvite = { _, _, _, _ in
                 throw StubError.notImplemented
             },
         approveJoinRequest:
@@ -168,7 +173,12 @@ public final class Sync: Sendable, Observable {
                 try await handle.setMemberRole(member: $0, role: $1)
             },
             invitePerson: {
-                try await handle.invitePerson(role: $0, access: $1)
+                try await handle.invitePerson(
+                    role: $0,
+                    name: $1,
+                    access: $2,
+                    delivery: $3
+                )
             },
             approveJoinRequest: {
                 try await handle.approveJoinRequest(request: $0)

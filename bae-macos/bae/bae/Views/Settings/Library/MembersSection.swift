@@ -4,17 +4,37 @@ import os.log
 
 private let logger = Logger.bae("MembersSection")
 
-/// The library's people and their devices. Admins invite people, approve or
-/// decline their join requests, change roles and remove people; each person
-/// adds and removes their own devices, and an admin can remove anyone's.
+/// The library's people and their devices, and the invites this device has
+/// open. Admins invite people, change roles and remove people; each person
+/// adds and removes their own devices, and an admin can remove anyone's. A
+/// sent invite's request opens a sheet to approve or decline it.
 struct MembersSection: View {
     @Environment(MembershipStore.self)
     private var store
     @Environment(Sync.self)
     private var sync
+    @Environment(SyncActivityStore.self)
+    private var syncActivity
+
+    /// The invite sheet showing: the form, or an open invite's code.
+    private enum InviteSheet: Identifiable {
+        case form
+        case code(inviteId: String)
+
+        var id: String {
+            switch self {
+            case .form: ""
+            case .code(let inviteId): inviteId
+            }
+        }
+    }
 
     @State
-    private var showInvite = false
+    private var inviteSheet: InviteSheet?
+    /// Sent invites whose request sheet the person closed; the invite's row
+    /// opens it again.
+    @State
+    private var closedRequests: Set<String> = []
     @State
     private var showAddDevice = false
     /// The QR code and recovery code the Add Device sheet shows; nil while
@@ -74,12 +94,51 @@ struct MembersSection: View {
             if let actionError {
                 ErrorDetailDisclosure(error: actionError)
             }
+            ForEach(store.invites, id: \.id) { invite in
+                InviteRow(
+                    invite: invite,
+                    onOpen: { open(invite) },
+                    onRefresh: { Task { await syncActivity.retryNow() } }
+                )
+            }
             if store.selfIsAdmin {
-                Button("Invite a Person...") { showInvite = true }
+                Button("Invite a Person...") { inviteSheet = .form }
             }
         }
-        .sheet(isPresented: $showInvite) {
-            InvitePersonSheet(onDismiss: { showInvite = false })
+        .sheet(item: $inviteSheet) { sheet in
+            switch sheet {
+            case .form:
+                InvitePersonSheet(
+                    onCreated: { inviteSheet = .code(inviteId: $0) },
+                    onDismiss: { inviteSheet = nil }
+                )
+            case .code(let inviteId):
+                InviteCodeSheet(
+                    inviteId: inviteId,
+                    onDismiss: { inviteSheet = nil }
+                )
+            }
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { requestShown != nil },
+                set: { shown in
+                    if !shown, let invite = requestShown {
+                        closedRequests.insert(invite.id)
+                    }
+                }
+            )
+        ) {
+            if let invite = requestShown {
+                JoinRequestSheet(
+                    invite: invite,
+                    busy: task != nil,
+                    error: actionError,
+                    onApprove: { approve(invite) },
+                    onDecline: { decline(invite) },
+                    onClose: { closedRequests.insert(invite.id) }
+                )
+            }
         }
         .sheet(isPresented: $showAddDevice) {
             AddDeviceSheet(
@@ -128,30 +187,34 @@ struct MembersSection: View {
         } message: { instruction in
             Text(instruction.text)
         }
-        if store.selfIsAdmin, !store.requests.isEmpty {
-            Section("Waiting to join") {
-                ForEach(store.requests, id: \.info.invite) { pending in
-                    JoinRequestRow(
-                        info: pending.info,
-                        busy: task != nil,
-                        onApprove: {
-                            run {
-                                try await sync.approveJoinRequest(
-                                    pending.request
-                                )
-                            }
-                        },
-                        onDecline: {
-                            run {
-                                try await sync.declineJoinRequest(
-                                    pending.request
-                                )
-                            }
-                        }
-                    )
-                }
-            }
+    }
+
+    /// The first sent invite whose request waits for a decision, unless the
+    /// person closed its sheet.
+    private var requestShown: BridgeInvite? {
+        store.invites.first {
+            $0.requestToDecide != nil && !closedRequests.contains($0.id)
         }
+    }
+
+    /// Open an invite from its row: its request to decide, or its code.
+    private func open(_ invite: BridgeInvite) {
+        if invite.requestToDecide != nil {
+            closedRequests.remove(invite.id)
+        }
+        else {
+            inviteSheet = .code(inviteId: invite.id)
+        }
+    }
+
+    private func approve(_ invite: BridgeInvite) {
+        guard let request = invite.requestToDecide else { return }
+        run { try await sync.approveJoinRequest(request) }
+    }
+
+    private func decline(_ invite: BridgeInvite) {
+        guard let request = invite.requestToDecide else { return }
+        run { try await sync.declineJoinRequest(request) }
     }
 
     private var removalTitle: String {
@@ -353,30 +416,80 @@ private struct FormerDevicesDisclosure: View {
     }
 }
 
-/// A join request an admin approves or declines: the requesting device and
-/// the provider account it signed in with.
-private struct JoinRequestRow: View {
-    let info: BridgeJoinRequestInfo
-    let busy: Bool
-    let onApprove: () -> Void
-    let onDecline: () -> Void
+/// One of this device's open invites: the person's name, marked invited,
+/// when it expires, and a refresh that checks for its request now.
+private struct InviteRow: View {
+    let invite: BridgeInvite
+    let onOpen: () -> Void
+    let onRefresh: () -> Void
 
     var body: some View {
         HStack(spacing: ThemeSpace.related) {
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text(info.deviceName)
-                    .themeText(.rowTitle)
-                Text(info.providerAccountEmail ?? "")
+            Button(action: onOpen) {
+                HStack(spacing: ThemeSpace.related) {
+                    Text(verbatim: invite.invitee ?? "")
+                        .themeText(.rowTitle)
+                    StatusChip("Invited")
+                    Text(
+                        "Expires \(invite.expiresAt, format: .relative(presentation: .named))"
+                    )
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .contentShape(Rectangle())
             }
-            Spacer()
-            Button("Decline", role: .destructive, action: onDecline)
-                .disabled(busy)
-            Button("Approve", action: onApprove)
-                .buttonStyle(PrimaryButtonStyle())
-                .disabled(busy)
+            .buttonStyle(.plain)
+            Button(action: onRefresh) {
+                Image(systemName: "arrow.clockwise")
+                    .themeIcon(.small)
+            }
+            .buttonStyle(.borderless)
+            .help("Check for Requests")
         }
+        .padding(.vertical, ThemeSpace.line)
+    }
+}
+
+/// A sent invite's request: the person's name and the number their device
+/// shows, to compare before approving. Closing it keeps the request; the
+/// invite's row opens it again.
+private struct JoinRequestSheet: View {
+    let invite: BridgeInvite
+    let busy: Bool
+    let error: DisplayError?
+    let onApprove: () -> Void
+    let onDecline: () -> Void
+    let onClose: () -> Void
+
+    var body: some View {
+        VStack(spacing: ThemeSpace.group) {
+            Text(verbatim: invite.invitee ?? "")
+                .themeText(.heading)
+            if let info = invite.requestToDecide?.info() {
+                Text("Confirmation number")
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+                Text(verbatim: info.confirmation)
+                    .themeText(.title)
+                    .textSelection(.enabled)
+            }
+            if let error {
+                ErrorDetailDisclosure(error: error)
+            }
+            HStack(spacing: ThemeSpace.group) {
+                Button("Close", action: onClose)
+                    .keyboardShortcut(.cancelAction)
+                Spacer()
+                Button("Decline", role: .destructive, action: onDecline)
+                    .disabled(busy)
+                Button("Approve", action: onApprove)
+                    .buttonStyle(PrimaryButtonStyle())
+                    .disabled(busy)
+            }
+        }
+        .padding()
+        .frame(width: 320)
     }
 }
 

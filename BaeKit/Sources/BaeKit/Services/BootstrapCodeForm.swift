@@ -15,7 +15,11 @@ public enum BootstrapAttempt {
         metadata: BridgeCodeMetadata,
         s3Key: BridgeS3Credentials?
     )
-    case join(code: String, metadata: BridgeCodeMetadata, libraryName: String)
+    /// A join from an invite's code, which starts as soon as the code reads:
+    /// the invite carries the person's name.
+    case join(code: String, invite: BridgeInviteInfo)
+    /// A join this device has under way, continued after bae restarted.
+    case resume(BridgeUnfinishedJoin, invite: BridgeInviteInfo)
 
     /// Whether this restore needs the person's S3 key typed in: an S3 library
     /// whose key isn't saved beside the code and didn't come with the scan.
@@ -28,16 +32,24 @@ public enum BootstrapAttempt {
             return false
         case .restore(_, let metadata, let s3Key):
             return metadata.provider == .s3 && s3Key == nil
-        case .join:
+        case .join, .resume:
             return false
+        }
+    }
+
+    /// The invite a join runs from; nil for a restore.
+    public var invite: BridgeInviteInfo? {
+        switch self {
+        case .join(_, let invite), .resume(_, let invite): invite
+        case .restoreSaved, .restore: nil
         }
     }
 }
 
 /// One restore or join screen's state: the code typed, pasted or scanned (or
-/// the saved one it opened with), what that code decodes to, what the person
-/// adds to it (their name for a join, the S3 key a restore needs), and the
-/// running attempt. The apps' code screens render it and call its actions.
+/// the saved one it opened with), what that code decodes to, the S3 key a
+/// restore needs, and the running attempt. An invite joins as soon as its code
+/// reads. The apps' code screens render it and call its actions.
 @MainActor
 @Observable
 public final class BootstrapCodeForm {
@@ -45,6 +57,9 @@ public final class BootstrapCodeForm {
         /// A restore, from a saved code or one the person enters.
         case restore(BridgeSavedRestoreCode?)
         case join
+        /// A join this device has under way when bae starts, continued at
+        /// once.
+        case resume(BridgeUnfinishedJoin)
         /// A restore over this device's copy of a library, with the person's
         /// current restore code, after another of their devices replaced
         /// their keys. Core refuses any other code.
@@ -64,7 +79,6 @@ public final class BootstrapCodeForm {
     /// The S3 key the last scan carried beside its code. It belongs to that
     /// code alone: editing the code away from it leaves the key unused.
     private var scannedKey: (code: String, key: BridgeS3Credentials)?
-    public var personName = ""
     public var accessKey = ""
     public var secretKey = ""
     /// The running attempt, which reports its progress.
@@ -77,6 +91,9 @@ public final class BootstrapCodeForm {
     @ObservationIgnored
     private let makeBootstrap: @MainActor () -> LibraryBootstrap
     @ObservationIgnored
+    private let unfinishedJoins:
+        @Sendable () async throws -> [BridgeUnfinishedJoin]
+    @ObservationIgnored
     private let onLibraryReady: @MainActor (OpenedLibrary, BridgeError?) -> Void
 
     /// `onLibraryReady` receives the restored or joined library's open store,
@@ -84,11 +101,14 @@ public final class BootstrapCodeForm {
     public init(
         entry: Entry,
         makeBootstrap: @escaping @MainActor () -> LibraryBootstrap,
+        unfinishedJoins:
+            @escaping @Sendable () async throws -> [BridgeUnfinishedJoin],
         onLibraryReady:
             @escaping @MainActor (OpenedLibrary, BridgeError?) -> Void
     ) {
         self.entry = entry
         self.makeBootstrap = makeBootstrap
+        self.unfinishedJoins = unfinishedJoins
         self.onLibraryReady = onLibraryReady
         if case .restore(let code?) = entry {
             saved = SavedRestoreCode(code: code)
@@ -103,6 +123,9 @@ public final class BootstrapCodeForm {
 
     public var attempt: BootstrapAttempt? {
         if let saved { return .restoreSaved(saved) }
+        if case .resume(let join) = entry {
+            return .resume(join, invite: join.info())
+        }
         guard case .success(let info) = decoded else { return nil }
         let code = codeInput.trimmingCharacters(in: .whitespacesAndNewlines)
         let s3Key = scannedKey.flatMap { $0.code == code ? $0.key : nil }
@@ -110,11 +133,23 @@ public final class BootstrapCodeForm {
         case (.restore(let metadata), _):
             .restore(code: code, metadata: metadata, s3Key: s3Key)
         // Restoring over this device's copy takes no invite; core says so.
-        case (.invite(let metadata, _), .restoreOver),
-            (.invite(let metadata, _), .finishRestore):
-            .restore(code: code, metadata: metadata, s3Key: s3Key)
-        case (.invite(let metadata, let libraryName), _):
-            .join(code: code, metadata: metadata, libraryName: libraryName)
+        case (.invite(let invite), .restoreOver),
+            (.invite(let invite), .finishRestore):
+            .restore(code: code, metadata: invite.metadata, s3Key: s3Key)
+        case (.invite(let invite), _):
+            .join(code: code, invite: invite)
+        }
+    }
+
+    /// Whether Cancel can stop the running attempt: a restore until it
+    /// ends, a join only until its request may have been sent, which coven
+    /// reports as waiting for approval.
+    public var cancellable: Bool {
+        guard isRunning else { return false }
+        if attempt?.invite == nil { return true }
+        switch status {
+        case nil, .connecting: return true
+        case .waitingForApproval, .loading, .pending: return false
         }
     }
 
@@ -128,9 +163,6 @@ public final class BootstrapCodeForm {
         guard let attempt, !isRunning else { return false }
         if attempt.needsS3Key && (accessKey.isEmpty || secretKey.isEmpty) {
             return false
-        }
-        if case .join = attempt {
-            return !personName.trimmingCharacters(in: .whitespaces).isEmpty
         }
         return true
     }
@@ -163,6 +195,14 @@ public final class BootstrapCodeForm {
             return
         }
         decoded = Result { try decodeCodeInfo(code: code) }
+        // An invite carries everything joining needs, so it joins at once.
+        if attempt?.invite != nil, !isRunning { start() }
+    }
+
+    /// Start a join this screen opened to resume; the screen calls it as it
+    /// appears.
+    public func begin() {
+        if case .resume = entry, !isRunning { start() }
     }
 
     public func start() {
@@ -179,7 +219,6 @@ public final class BootstrapCodeForm {
                         secretAccessKey: secretKey
                     ) : nil
             }
-        let personName = personName.trimmingCharacters(in: .whitespaces)
         let bootstrap = makeBootstrap()
         self.bootstrap = bootstrap
         error = nil
@@ -193,8 +232,7 @@ public final class BootstrapCodeForm {
                 let result = try await run(
                     attempt,
                     on: bootstrap,
-                    credentials: credentials,
-                    personName: personName
+                    credentials: credentials
                 )
                 // A result that holds an open store is delivered even after a
                 // cancel raced it, so the store is opened rather than leaked.
@@ -215,8 +253,7 @@ public final class BootstrapCodeForm {
     private func run(
         _ attempt: BootstrapAttempt,
         on bootstrap: LibraryBootstrap,
-        credentials: BridgeS3Credentials?,
-        personName: String
+        credentials: BridgeS3Credentials?
     ) async throws -> BridgeBootstrapResult {
         switch (attempt, entry) {
         case (.restoreSaved(let saved), _):
@@ -233,14 +270,61 @@ public final class BootstrapCodeForm {
             )
         case (.restore(let code, _, _), _):
             try await bootstrap.restore(code: code, credentials: credentials)
-        case (.join(let code, _, _), _):
-            try await bootstrap.join(code: code, personName: personName)
+        case (.join(let code, _), _):
+            try await bootstrap.join(code: code)
+        case (.resume(let join, _), _):
+            try await bootstrap.resume(join)
         }
     }
 
-    /// Stop the running attempt; its screen stays as it was.
+    /// Stop the running attempt while `cancellable`; its screen stays as it
+    /// was.
     public func cancel() {
+        if attempt?.invite != nil {
+            bootstrap?.cancel()
+        }
+        else {
+            task?.cancel()
+        }
+    }
+
+    /// The screen went away: a restore stops, and a join's call is dropped,
+    /// which keeps the join for bae's next start.
+    public func leave() {
         task?.cancel()
+    }
+
+    /// End the running join's wait so it checks for approval now.
+    public func checkNow() {
+        bootstrap?.checkNow()
+    }
+
+    /// Continue the join this device has under way, after a cancel came as
+    /// its request was sent.
+    private func resumeUnfinished() {
+        let list = unfinishedJoins
+        isRunning = true
+        task = Task {
+            defer {
+                task = nil
+                isRunning = false
+            }
+            do {
+                guard let join = try await list().first else { return }
+                let bootstrap = makeBootstrap()
+                self.bootstrap = bootstrap
+                deliver(try await bootstrap.resume(join))
+            }
+            catch is CancellationError {
+                logger.debug("resumed join cancelled")
+            }
+            catch {
+                logger.error(
+                    "resuming the join failed: \(error.localizedDescription)"
+                )
+                self.error = DisplayError(error)
+            }
+        }
     }
 
     private func deliver(_ result: BridgeBootstrapResult) {
@@ -254,9 +338,12 @@ public final class BootstrapCodeForm {
             error = DisplayError(
                 line: String(
                     localized:
-                        "An admin declined this device's request to join."
+                        "The invite was declined, cancelled or has expired."
                 )
             )
+        case .joinRequestSent:
+            // After the running attempt's task has ended.
+            Task { resumeUnfinished() }
         case .savedCodeRemoved:
             error = DisplayError(
                 line: String(

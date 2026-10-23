@@ -20,6 +20,9 @@ public final class LibrarySetup: Sendable, Observable {
     /// storage stay.
     public let forgetSavedRestoreCode:
         @Sendable (_ libraryId: String) async throws -> Void
+    /// The joins this device has under way, to resume.
+    public let unfinishedJoins:
+        @Sendable () async throws -> [BridgeUnfinishedJoin]
     /// One restore or join attempt.
     private let makeBootstrap: @MainActor @Sendable () -> LibraryBootstrap
 
@@ -30,12 +33,15 @@ public final class LibrarySetup: Sendable, Observable {
             @escaping @Sendable () async throws -> [BridgeSavedRestoreEntry],
         forgetSavedRestoreCode:
             @escaping @Sendable (_ libraryId: String) async throws -> Void,
+        unfinishedJoins:
+            @escaping @Sendable () async throws -> [BridgeUnfinishedJoin],
         makeBootstrap: @escaping @MainActor @Sendable () -> LibraryBootstrap
     ) {
         self.listLibraries = listLibraries
         self.createLibrary = createLibrary
         self.savedRestoreCodes = savedRestoreCodes
         self.forgetSavedRestoreCode = forgetSavedRestoreCode
+        self.unfinishedJoins = unfinishedJoins
         self.makeBootstrap = makeBootstrap
     }
 
@@ -51,6 +57,7 @@ public final class LibrarySetup: Sendable, Observable {
             forgetSavedRestoreCode: {
                 try await host.forgetSavedRestoreCode(libraryId: $0)
             },
+            unfinishedJoins: { try await host.unfinishedJoins() },
             makeBootstrap: {
                 LibraryBootstrap(host: host, deviceName: deviceName)
             }
@@ -67,6 +74,7 @@ public final class LibrarySetup: Sendable, Observable {
         BootstrapCodeForm(
             entry: entry,
             makeBootstrap: makeBootstrap,
+            unfinishedJoins: unfinishedJoins,
             onLibraryReady: onLibraryReady
         )
     }
@@ -86,6 +94,7 @@ public final class LibrarySetup: Sendable, Observable {
                 forgetSavedRestoreCode: { _ in
                     throw StubError.notImplemented
                 },
+                unfinishedJoins: { [] },
                 makeBootstrap: {
                     LibraryBootstrap(
                         host: BaeHost.make(

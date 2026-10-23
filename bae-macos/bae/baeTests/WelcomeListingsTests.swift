@@ -39,6 +39,7 @@ struct WelcomeListingsTests {
             createLibrary: { throw WelcomeTestError.notUsed },
             savedRestoreCodes: { await bridge.savedRestoreCodes() },
             forgetSavedRestoreCode: { _ in throw WelcomeTestError.notUsed },
+            unfinishedJoins: { [] },
             makeBootstrap: {
                 preconditionFailure("the welcome's lists start no restore")
             }
