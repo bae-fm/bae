@@ -85,6 +85,7 @@ struct StorageManagerView: View {
                     outputs: outputs,
                     configStore: configStore,
                     uiStore: uiStore,
+                    storageManagerStore: storageManagerStore,
                 )
             }
         }

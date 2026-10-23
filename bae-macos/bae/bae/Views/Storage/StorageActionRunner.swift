@@ -17,6 +17,10 @@ import SwiftUI
 /// `MoveToCloudConfirmSheet`. Making
 /// a release local opens an `NSOpenPanel` for the destination folder. The other
 /// transitions run straight away.
+///
+/// Every action acts only on the targets the list still holds when it starts —
+/// after its sheet or panel, which the list can change under — so a release
+/// that left the list is never acted on.
 @MainActor
 @Observable
 final class StorageActionRunner {
@@ -26,6 +30,7 @@ final class StorageActionRunner {
     private let outputs: Outputs
     private let configStore: ConfigStore
     private let uiStore: UiStore
+    private let storageManagerStore: StorageManagerStore
 
     /// Releases awaiting the "Move to Cloud" confirm sheet. Non-nil while
     /// the sheet is up; the view binds its presentation to this.
@@ -37,7 +42,8 @@ final class StorageActionRunner {
         downloads: Downloads,
         outputs: Outputs,
         configStore: ConfigStore,
-        uiStore: UiStore
+        uiStore: UiStore,
+        storageManagerStore: StorageManagerStore
     ) {
         self.releaseEditor = releaseEditor
         self.sync = sync
@@ -45,6 +51,13 @@ final class StorageActionRunner {
         self.outputs = outputs
         self.configStore = configStore
         self.uiStore = uiStore
+        self.storageManagerStore = storageManagerStore
+    }
+
+    /// The releases of `releaseIds` the list holds now, in their order.
+    private func listed(_ releaseIds: [String]) -> [String] {
+        let shown = storageManagerStore.shown(Set(releaseIds))
+        return releaseIds.filter(shown.contains)
     }
 
     /// Export each release verbatim to a folder chosen once for the whole batch.
@@ -55,6 +68,7 @@ final class StorageActionRunner {
         guard let targetDir = OutputTarget.resolveExportDir() else {
             return
         }
+        let releaseIds = listed(releaseIds)
         Task {
             for releaseId in releaseIds {
                 do {
@@ -79,6 +93,7 @@ final class StorageActionRunner {
         else {
             return
         }
+        let releaseIds = listed(releaseIds)
         Task {
             for releaseId in releaseIds {
                 do {
@@ -110,12 +125,14 @@ final class StorageActionRunner {
             // Pinning routes through the in-memory download queue, which
             // serializes the batch and reports progress via the Downloads pane
             // and per-release transfer events — not an awaited per-release loop.
+            let releaseIds = listed(releaseIds)
+            guard !releaseIds.isEmpty else { return }
             Task {
                 do { try await downloads.queuePins(releaseIds) }
                 catch { uiStore.showError(error) }
             }
         case .unpin:
-            runEach(releaseIds, downloads.unpinRelease)
+            runEach(listed(releaseIds), downloads.unpinRelease)
         }
     }
 
@@ -126,9 +143,11 @@ final class StorageActionRunner {
             preconditionFailure("move-to-cloud confirmation has no releases")
         }
         pendingMoveToCloud = nil
+        let listedIds = listed(releaseIds)
+        guard !listedIds.isEmpty else { return }
         Task {
             do {
-                try await releaseEditor.moveReleasesToCloud(releaseIds)
+                try await releaseEditor.moveReleasesToCloud(listedIds)
             }
             catch {
                 uiStore.showError(error)
@@ -143,6 +162,7 @@ final class StorageActionRunner {
     /// Cancel each release's in-progress transition (pin / upload / make local),
     /// leaving it in its prior state — core dispatches to whichever is running.
     func cancelTransitions(releaseIds: [String]) {
+        let releaseIds = listed(releaseIds)
         Task {
             for id in releaseIds {
                 do {
@@ -174,7 +194,7 @@ final class StorageActionRunner {
         guard let newPath = Self.promptDetachAudioDestination() else {
             return
         }
-        runEach(releaseIds) {
+        runEach(listed(releaseIds)) {
             releaseId in
             try await self.releaseEditor.makeReleaseLocal(releaseId, newPath)
         }

@@ -32,6 +32,8 @@ struct StorageTableView: NSViewRepresentable {
     private var imageStore
     @Environment(OutboxStore.self)
     private var outboxStore
+    @Environment(StorageManagerStore.self)
+    private var storageManagerStore
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
@@ -41,6 +43,7 @@ struct StorageTableView: NSViewRepresentable {
             inspectorPresented: $inspectorPresented,
             sortingEnabled: sortingEnabled,
             libraryStore: libraryStore,
+            storageManagerStore: storageManagerStore,
             runner: runner,
             imageStore: imageStore,
             outboxStore: outboxStore,
@@ -146,6 +149,10 @@ extension StorageTableView {
         private let inspectorPresented: Binding<Bool>
         private var sortingEnabled: Bool
         private let libraryStore: LibraryStore
+        /// Narrows the selection to the releases the list holds: nothing
+        /// here acts on or counts a selected release the list no longer
+        /// shows.
+        private let storageManagerStore: StorageManagerStore
         private let runner: StorageActionRunner
         private var imageStore: ImageStore
         private var outboxStore: OutboxStore
@@ -168,6 +175,7 @@ extension StorageTableView {
             inspectorPresented: Binding<Bool>,
             sortingEnabled: Bool,
             libraryStore: LibraryStore,
+            storageManagerStore: StorageManagerStore,
             runner: StorageActionRunner,
             imageStore: ImageStore,
             outboxStore: OutboxStore,
@@ -178,6 +186,7 @@ extension StorageTableView {
             self.inspectorPresented = inspectorPresented
             self.sortingEnabled = sortingEnabled
             self.libraryStore = libraryStore
+            self.storageManagerStore = storageManagerStore
             self.runner = runner
             self.imageStore = imageStore
             self.outboxStore = outboxStore
@@ -397,7 +406,7 @@ extension StorageTableView.Coordinator {
         }
         let isOpenForRelease =
             inspectorPresented.wrappedValue
-            && selection.wrappedValue == [releaseId]
+            && storageManagerStore.shown(selection.wrappedValue) == [releaseId]
         setInspectorPresented(!isOpenForRelease, releaseId: releaseId)
     }
 
@@ -632,11 +641,12 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
         menu.addItem(item)
     }
 
-    /// If the clicked release is already selected, act on the whole selection;
-    /// otherwise act on and select that release.
+    /// If the clicked release is already selected, act on the selected
+    /// releases the list holds; otherwise act on and select that release.
     private func menuTargets(forClickedRelease clickedId: String) -> [String] {
-        if selection.wrappedValue.contains(clickedId) {
-            return Array(selection.wrappedValue)
+        let shown = storageManagerStore.shown(selection.wrappedValue)
+        if shown.contains(clickedId) {
+            return Array(shown)
         }
         selection.wrappedValue = [clickedId]
         applySelection([clickedId], to: tableView)

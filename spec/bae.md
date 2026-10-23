@@ -2177,10 +2177,11 @@ Reads come two ways:
   subscription that shows a window of a long list is pointed at a new window
   in place as the person scrolls. The Storage Manager's list is also told
   which releases are selected in it, and each of its values says which of
-  them the list holds, on screen or not. Its inspector shows a release only
-  while the list holds it: a release that finishes uploading out of the sync
-  queue, no longer matches the filter, or is deleted leaves the inspector as
-  it leaves the list.
+  them the list holds, on screen or not. Its inspector shows, and its storage
+  actions act on, a selected release only while the list holds it: a release
+  that finishes uploading out of the sync queue, no longer matches the filter,
+  or is deleted leaves the inspector and the actions' targets as it leaves the
+  list, including while an action's confirmation or folder prompt is open.
 
 What a read returns is already resolved: labels, paths, flags, totals, sides
 and positions are worked out in core, and a surface only renders them. A
