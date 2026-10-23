@@ -18,10 +18,9 @@ struct DownloadsView: View {
                 if snapshot.downloads.isEmpty {
                     // The queue can drain while the sheet is open, so show an
                     // empty state instead of dismissing.
-                    ContentUnavailableView(
-                        "No downloads",
-                        systemImage: "arrow.down.circle"
-                    )
+                    ContentUnavailableView {
+                        Text("No downloads")
+                    }
                 }
                 else {
                     List {

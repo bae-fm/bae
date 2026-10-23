@@ -24,9 +24,6 @@ struct OnboardingEntryScreen: View {
     var body: some View {
         ScrollView {
             OnboardingScreen {
-                Image(systemName: "music.note.house.fill")
-                    .themeIcon(.hero)
-                    .foregroundStyle(Theme.accent)
                 Text("bae")
                     .themeText(.wordmark)
                 OnboardingSecondaryText(

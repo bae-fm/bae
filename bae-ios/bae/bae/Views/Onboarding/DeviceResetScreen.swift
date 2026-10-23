@@ -24,9 +24,6 @@ struct DeviceResetScreen: View {
 
     var body: some View {
         OnboardingScreen {
-            Image(systemName: "arrow.counterclockwise.circle")
-                .themeIcon(.hero)
-                .foregroundStyle(.secondary)
             Text(title)
                 .themeText(.title)
             Text(message)

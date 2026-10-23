@@ -127,9 +127,6 @@ struct AppSessionView: View {
             // The open retries on scene activation; the button covers any
             // other change that unlocked the keychain.
             VStack(spacing: ThemeSpace.edge) {
-                Image(systemName: "lock.fill")
-                    .themeIcon(.hero)
-                    .foregroundStyle(.secondary)
                 Text("Library Locked")
                     .themeText(.title)
                 Text(BridgeErrorCategory.keyringLocked.localizedLine)
