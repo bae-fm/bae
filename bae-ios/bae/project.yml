@@ -2,7 +2,7 @@ name: bae
 options:
   bundleIdPrefix: fm.bae
   deploymentTarget:
-    # Observation (`@Observable`) needs iOS 17.
+    # BaeKit, which the app links, uses Observation (`@Observable`): iOS 17.
     iOS: "17.0"
   xcodeVersion: "26.0"
 packages:
@@ -52,11 +52,10 @@ targets:
           if [ ! -f "$BINDINGS" ] || [ "$BINDINGS_SOURCE" -nt "$BINDINGS" ]; then
             ./bae-bridge/install-swift-bindings.sh ios
           fi
-          # The generators run from build-ios.sh's own target dir: `cargo run`
+          # The generator runs from build-ios.sh's own target dir: `cargo run`
           # executes the binary at a shared dir's top level, which another
           # checkout's build can overwrite with an older generator.
           export CARGO_TARGET_DIR=target-ios
-          cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir bae-ios/bae/bae
           cargo run -q -p bae-theme --bin theme-gen -- emit --target apple --out-dir BaeKit/Sources/BaeKit/Generated
     dependencies:
       - package: BaeKit
@@ -76,9 +75,6 @@ targets:
         CURRENT_PROJECT_VERSION: 1
         INFOPLIST_FILE: bae/Info.plist
         SWIFT_VERSION: "6.2"
-        # The compiler writes each file's localizable strings to .stringsdata, which
-        # scripts/check_localizable_strings.py --platform ios checks the catalog against.
-        SWIFT_EMIT_LOC_STRINGS: YES
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
         BAE_DATADOG_SITE: $(BAE_DATADOG_SITE)
         BAE_DATADOG_CLIENT_TOKEN: $(BAE_DATADOG_CLIENT_TOKEN)
@@ -98,42 +94,6 @@ targets:
           - -framework AudioToolbox
           - -framework AVFoundation
           - -framework AVFAudio
-  baeTests:
-    type: bundle.unit-test
-    platform: iOS
-    sources:
-      - baeTests
-    dependencies:
-      - target: bae
-    # The app's config layer, so the tests' #if conditions match the bridge.
-    configFiles:
-      Debug: Config.xcconfig
-      Release: Config.xcconfig
-    settings:
-      base:
-        SWIFT_VERSION: "6.2"
-        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
-        GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: fm.bae.baeTests
-  # Screenshot capture, hosted in the app to reach PreviewScenes; only its own
-  # `baeShots` scheme runs it, driven by scripts/shots/ios.sh.
-  baeShots:
-    type: bundle.unit-test
-    platform: iOS
-    sources:
-      - baeShots
-    dependencies:
-      - target: bae
-    configFiles:
-      Debug: Config.xcconfig
-      Release: Config.xcconfig
-    settings:
-      base:
-        SWIFT_VERSION: "6.2"
-        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
-        GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: fm.bae.baeShots
-# An explicit scheme so `xcodebuild -scheme bae test` runs the unit tests.
 schemes:
   bae:
     build:
@@ -141,23 +101,9 @@ schemes:
         bae: all
     run:
       config: Debug
-    test:
-      config: Debug
-      targets:
-        - baeTests
     profile:
       config: Release
     analyze:
       config: Debug
     archive:
       config: Release
-  # Screenshot capture only, run by scripts/shots/ios.sh.
-  baeShots:
-    build:
-      targets:
-        bae: all
-        baeShots: [test]
-    test:
-      config: Debug
-      targets:
-        - baeShots

@@ -79,14 +79,14 @@ bae solves this in four steps:
 Not every device does every job. A desktop finds, identifies and imports
 releases. A phone browses, downloads and plays them.
 
-| | Desktop (macOS; Windows and Linux) | Phone (iOS, Android) |
+| | Desktop (macOS; Windows and Linux) | Phone (Android; iOS) |
 |---|---|---|
 | Watch folders and import | yes | no |
 | Identify on MusicBrainz and Discogs | yes | no |
 | Edit a release's metadata | yes | no |
 | Browse, search, play | yes | yes |
 | Pin a release for offline play | yes | yes |
-| Cast to AirPlay, Chromecast, UPnP | yes | yes (iOS finds no UPnP devices, §7.7) |
+| Cast to AirPlay, Chromecast, UPnP | yes | yes |
 | Subsonic and MCP servers | yes | no |
 | Export and save files | yes | no |
 
@@ -98,6 +98,14 @@ holds the desktop app's start-up, update and packaging machinery and one
 window; the desktop views are ported from the macOS app later. Opening it
 while it runs hands the launch to the running copy; a launch that can't hand
 over, logged, takes over when that copy is gone.
+
+The Android app is the full phone app. On iOS, bae-ios holds the phone app's
+start-up and release machinery and one screen; the phone views are rebuilt
+from the Android app later. Its launch starts telemetry, crash reporting,
+bae's directory, the host and the keychain, in that order. The screen shows
+the sheep, the bae wordmark, and either the step that stopped the launch with
+its error, or the libraries on this device by name, or why they couldn't be
+read. It opens no library, so nothing in the phone column runs there yet.
 
 ### 1.2 Two editions
 
@@ -1650,7 +1658,7 @@ Sync runs in the background. A library opens and plays from its own copy
 whether or not the cloud is reachable.
 
 **The activity indicator.** Sync takes one small control in the window's
-title bar on macOS and in the library's top bar on iOS and Android, never a
+title bar on macOS and in the library's top bar on Android, never a
 bar across the content. While bytes move it is a spinner: files this device
 is sending, or offline copies downloading. While something needs the person, a sync failure or a pending record,
 it shows a small warning symbol, beside the spinner when both hold. With
@@ -1776,14 +1784,13 @@ rather than claim the library is synced.
   the retry ends, however long that takes; there is no timer. A pass already
   running when the person pulls doesn't count: it read the store before they
   asked, so the next one answers. If the retry didn't sync, the reason shows
-  once it's known: on Android a snackbar, whose *Retry* asks again; on iOS the
-  library's banner. The reason is the pass's failure, such as being offline;
-  the provider asking every request to wait, with the date and time it ends,
-  after which sync goes on by itself; or that sync isn't running. A pass held
-  by such a wait, or by a failure only the person can clear, answers at once.
-  *Retry Now* in the activity list waits for the same answer and shows a
-  retry that didn't sync the same way on Android, and in the list on macOS
-  and iOS.
+  once it's known: on Android a snackbar, whose *Retry* asks again. The reason
+  is the pass's failure, such as being offline; the provider asking every
+  request to wait, with the date and time it ends, after which sync goes on by
+  itself; or that sync isn't running. A pass held by such a wait, or by a
+  failure only the person can clear, answers at once. *Retry Now* in the
+  activity list waits for the same answer and shows a retry that didn't sync
+  the same way on Android, and in the list on macOS.
 - **A newer schema.** Data written by a newer app needs an update;
   reconnecting can't fix it.
 - **Pausing** stops uploads and keeps their place, across restarts too.
@@ -2055,9 +2062,6 @@ the log names the setting and the text it carried.
 **Finding receivers.** Casting is off by default: it browses the local network
 and serves audio from this machine. While on, devices are searched for only
 while the picker is open. Desktops and Android browse the network themselves.
-iOS lets its own service browser find them, since sending multicast from the
-app needs an entitlement Apple grants by application; it finds Chromecast and
-AirPlay receivers but no UPnP ones.
 
 A UPnP renderer is known by its UDN, so it stays the same entry when its
 address changes. One that states no UDN is left out of the picker, and the
@@ -2073,17 +2077,16 @@ AirPlay speaker didn't accept the connection. These are the device's or the
 speaker's doing. Any other failure is bae's own: it shows as an error, is
 reported as a bug, and the log keeps the whole error with its causes.
 
-**Sharing the speaker.** Android and iOS let one app play at a time: Android
-through audio focus, iOS through its audio session. Every start of playback
-asks the system first — Play, playing a release or the library, skipping to an
-entry, Next from a side's pause, the next track, a side's countdown running
-out — from the app, the lock screen, a car, the assistant or the widget alike.
-While something that outranks music holds the speaker, such as a phone call,
-the system refuses: nothing plays, what would have played waits paused and
-shows paused, and the system's reason is logged. Playback gives the speaker
-back when it stops. Losing it to another app pauses; a short loss, such as a
-navigation prompt, that paused playing music resumes it when it ends. Desktops
-play without asking.
+**Sharing the speaker.** Android lets one app play at a time, through audio
+focus. Every start of playback asks the system first — Play, playing a release
+or the library, skipping to an entry, Next from a side's pause, the next track,
+a side's countdown running out — from the app, the lock screen, a car, the
+assistant or the widget alike. While something that outranks music holds the
+speaker, such as a phone call, the system refuses: nothing plays, what would
+have played waits paused and shows paused, and the system's reason is logged.
+Playback gives the speaker back when it stops. Losing it to another app pauses;
+a short loss, such as a navigation prompt, that paused playing music resumes it
+when it ends. Desktops play without asking.
 
 ### 7.8 What a device remembers
 
@@ -2328,8 +2331,8 @@ bindings export none of their symbols.
 
 | App | Shape |
 |---|---|
-| bae-macos | AppKit app whose application delegate owns start-up, the main menu and the windows; each window hosts SwiftUI views. The main menu holds the standard macOS menus with their standard actions, sent up the responder chain, plus bae's own commands. Shares its service layer and the generated bindings with iOS through the BaeKit package |
-| bae-ios | SwiftUI app on BaeKit: onboarding, library, album detail, downloads, playback, settings |
+| bae-macos | AppKit app whose application delegate owns start-up, the main menu and the windows; each window hosts SwiftUI views. The main menu holds the standard macOS menus with their standard actions, sent up the responder chain, plus bae's own commands. Its service layer and the generated bindings live in the BaeKit package, whose start-up pieces the iOS app also uses |
+| bae-ios | iOS start-up on BaeKit (telemetry, crash reporting, the host and the keychain), release packaging, and one screen that lists this device's libraries through the bridge |
 | bae-android | Kotlin app: onboarding, library, album detail, downloads, playback with a system media session, settings, a widget |
 | bae-avalonia | Windows and Linux start-up, single instance, crash capture, telemetry, updater and packaging, and one window that calls the bridge |
 
@@ -2402,8 +2405,8 @@ A pre-commit hook formats and lints the changed crates. CI runs, on macOS,
 iOS, Android, Linux and Windows: formatting, the file-size limit, visibility
 and ownership boundaries, clippy for each feature set, dead-code and
 unused-dependency checks, cargo deny, docs, every crate's tests, the string
-catalogs, the Avalonia smoke test, the macOS and iOS builds and tests for both
-editions, and Swift lint and format.
+catalogs, the Avalonia smoke test, the macOS builds and tests and the iOS
+builds for both editions, and Swift lint and format.
 
 ---
 ## Appendix A. Schema

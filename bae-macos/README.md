@@ -20,11 +20,10 @@ Install the Rust target if you haven't:
 ## Shared package
 
 The data/service/domain layer and the generated bridge bindings live in the
-`BaeKit` Swift package at the repo root, shared with the iOS app. The app
-depends on it as a local package (`packages.BaeKit: ../../BaeKit` in
-`bae/project.yml`), so a
-single `import BaeKit` brings both the shared layer and the re-exported bridge
-types. `build-macos.sh` produces the package's inputs: it installs the macOS
+`BaeKit` Swift package at the repo root; the iOS skeleton uses its launch
+pieces. The app depends on it as a local package (`packages.BaeKit:
+../../BaeKit` in `bae/project.yml`), so a single `import BaeKit` brings both
+the shared layer and the re-exported bridge types. `build-macos.sh` produces the package's inputs: it installs the macOS
 uniffi bindings into `BaeKit/Sources/BaeBridge` and writes the
 `BaeKit/Frameworks/BaeBridgeFFI.xcframework` binary target.
 

@@ -1,9 +1,11 @@
 name: iOS build
 
 # Reusable debug CI gate, called per-commit by build.yml: cross-compiles
-# bae-bridge for iOS, builds the Xcode app (simulator), and runs format and
-# clippy checks. Mirrors the Android gate. Release-specific steps (versioning,
-# archive, IPA packaging, GitHub Release) live in release-ios.yml.
+# bae-bridge for iOS, builds the Xcode app (simulator), and runs format, lint,
+# dead-code and clippy checks. The iOS app is a skeleton (launch, telemetry,
+# crash reporting, one screen over one bridge call), so it has no unit tests
+# or string catalog to check. Release-specific steps (versioning, archive, IPA
+# packaging, GitHub Release) live in release-ios.yml.
 
 on:
   workflow_call:
@@ -113,32 +115,6 @@ jobs:
           -arch arm64 \
           -derivedDataPath bae-ios/bae/.build/derivedData \
           build
-
-    - name: Check localizable strings against the catalog
-      # Full edition only: the gate holds the catalog against the strings the
-      # compiler extracted, and a baeium build compiles fewer of them — every
-      # OAuth and CloudKit key would read as an orphan. One truth, taken from
-      # the fullest edition; surplus keys in a smaller edition are inert data.
-      if: ${{ inputs.edition == 'full' && !cancelled() && steps.build_ios.conclusion == 'success' }}
-      run: python3 scripts/check_localizable_strings.py --platform ios
-
-    - name: Run iOS unit tests (baeTests)
-      # Full edition only: the OAuth tests compile under oauth-providers, and
-      # one run is enough for the shared logic. Simulator ad-hoc signing must
-      # stay ON here (no CODE_SIGNING_ALLOWED=NO): disabling it strips the
-      # iCloud entitlement and the app traps in CKContainer at launch, before
-      # the tests can bootstrap.
-      if: ${{ inputs.edition == 'full' && !cancelled() && steps.build_ios.conclusion == 'success' }}
-      run: |
-        DEST=$(./scripts/ios-simulator.sh)
-        DEST_ID=${DEST%%$'\t'*}
-        DEST_NAME=${DEST#*$'\t'}
-        echo "Testing on simulator: $DEST_NAME ($DEST_ID)"
-        xcodebuild -project bae-ios/bae/bae.xcodeproj -scheme bae \
-          -configuration Debug \
-          -destination "platform=iOS Simulator,id=$DEST_ID" \
-          -derivedDataPath bae-ios/bae/.build/derivedData \
-          test
 
     - name: Check Swift formatting
       if: ${{ inputs.edition == 'full' && !cancelled() }}

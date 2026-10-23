@@ -36,12 +36,6 @@ RENDER_LEAVES = (
         r"\bstruct\s+AlbumCardView\s*:\s*View\b",
     ),
     RenderLeaf(
-        "bae-ios/bae/bae/Views/Library/DownloadsView.swift",
-        "DownloadQueueRow",
-        "swift",
-        r"\b(?:private\s+)?struct\s+DownloadQueueRow\s*:\s*View\b",
-    ),
-    RenderLeaf(
         "bae-macos/bae/bae/Views/Import/Search/ImportSearchResultRow.swift",
         "ImportSearchResultRow",
         "swift",
@@ -58,48 +52,6 @@ RENDER_LEAVES = (
         "BrowseSummaryRow",
         "swift",
         r"\bstruct\s+BrowseSummaryRow\s*<[^>{}]+>\s*:\s*View\b",
-    ),
-    RenderLeaf(
-        "bae-ios/bae/bae/Views/Playback/Queue/QueueRow.swift",
-        "QueueRow",
-        "swift",
-        r"\bstruct\s+QueueRow\s*:\s*View\b",
-    ),
-    RenderLeaf(
-        "bae-ios/bae/bae/Views/Library/AlbumGrid.swift",
-        "AlbumCard",
-        "swift",
-        r"\bstruct\s+AlbumCard\s*:\s*View\b",
-    ),
-    RenderLeaf(
-        "bae-ios/bae/bae/Views/Library/Browse/ArtistListView.swift",
-        "ArtistSummaryRow",
-        "swift",
-        r"\bstruct\s+ArtistSummaryRow\s*:\s*View\b",
-    ),
-    RenderLeaf(
-        "bae-ios/bae/bae/Views/Library/Browse/ComposerListView.swift",
-        "ComposerSummaryRow",
-        "swift",
-        r"\bstruct\s+ComposerSummaryRow\s*:\s*View\b",
-    ),
-    RenderLeaf(
-        "bae-ios/bae/bae/Views/Library/SearchResultsView.swift",
-        "AlbumResultRow",
-        "swift",
-        r"\bstruct\s+AlbumResultRow\s*:\s*View\b",
-    ),
-    RenderLeaf(
-        "bae-ios/bae/bae/Views/Library/SearchResultsView.swift",
-        "TrackResultRow",
-        "swift",
-        r"\bstruct\s+TrackResultRow\s*:\s*View\b",
-    ),
-    RenderLeaf(
-        "bae-ios/bae/bae/Views/Library/SearchResultsView.swift",
-        "WorkResultRow",
-        "swift",
-        r"\bstruct\s+WorkResultRow\s*:\s*View\b",
     ),
     RenderLeaf(
         "bae-android/app/src/main/java/fm/bae/app/ui/albumdetail/AlbumTrackRow.kt",
@@ -216,32 +168,6 @@ SWIFT_SOURCE_ROOTS = (
     "bae-ios/bae/bae",
 )
 KOTLIN_SOURCE_ROOT = "bae-android/app/src/main/java"
-
-# These direct repeated children own paging or playback state rather than
-# rendering one complete database projection. Keeping the exceptions named
-# makes a new state-connected repeated child a conscious boundary decision.
-DISCOVERED_OWNER_EXEMPTIONS = {
-    (
-        "swift",
-        "bae-ios/bae/bae/Views/Library/AlbumGrid.swift",
-        "AlbumCell",
-    ): ({"LibraryStore"}, "paging slot"),
-    (
-        "swift",
-        "bae-ios/bae/bae/Views/Library/Browse/ArtistListView.swift",
-        "ArtistRowSlot",
-    ): ({"LibraryStore"}, "paging slot"),
-    (
-        "swift",
-        "bae-ios/bae/bae/Views/Library/Browse/ComposerListView.swift",
-        "ComposerRowSlot",
-    ): ({"LibraryStore"}, "paging slot"),
-    (
-        "swift",
-        "bae-ios/bae/bae/Views/AlbumDetail/TrackList.swift",
-        "TrackRow",
-    ): ({"Playback", "PlaybackStore"}, "playback-connected control"),
-}
 
 FORBIDDEN_SECONDARY_PROJECTIONS = (
     "Candidate",
@@ -438,13 +364,11 @@ def leaf_violations(source: str, leaf: RenderLeaf) -> list[tuple[int, str]]:
 def fragment_owner_violations(
     fragment: SourceFragment,
     leaf: RenderLeaf,
-    allowed_owners: set[str],
 ) -> list[str]:
     masked = mask_comments_and_literals(fragment.source)
     owners = set(ENTITY_DATA_OWNERS[leaf.language])
     owners.update(OWNER_TYPE.findall(masked))
     owners.difference_update(NON_ENTITY_UI_OWNERS)
-    owners.difference_update(allowed_owners)
     violations: list[str] = []
     for owner in sorted(owners):
         match = re.search(rf"\b{re.escape(owner)}\b", masked)
@@ -461,7 +385,6 @@ def fragment_owner_violations(
 def fragment_environment_violations(
     fragment: SourceFragment,
     leaf: RenderLeaf,
-    allowed_owners: set[str],
 ) -> list[str]:
     if leaf.language != "swift":
         return []
@@ -469,7 +392,7 @@ def fragment_environment_violations(
     violations: list[str] = []
     for match in SWIFT_ENVIRONMENT_OBJECT.finditer(masked):
         injected = match.group(1) or match.group(2)
-        if injected in NON_ENTITY_UI_OWNERS or injected in allowed_owners:
+        if injected in NON_ENTITY_UI_OWNERS:
             continue
         root_offset = fragment.offset + match.start()
         source_line = fragment.full_source.count("\n", 0, root_offset) + 1
@@ -694,8 +617,6 @@ def check(root: Path) -> list[str]:
     except ValueError as error:
         return [str(error)]
     for leaf in leaves:
-        key = (leaf.language, leaf.path, leaf.symbol)
-        allowed_owners = DISCOVERED_OWNER_EXEMPTIONS.get(key, (set(), ""))[0]
         path = root / leaf.path
         if not path.is_file():
             violations.append(f"{leaf.path}: missing inventoried render leaf")
@@ -707,10 +628,10 @@ def check(root: Path) -> list[str]:
             continue
         for fragment in fragments:
             violations.extend(
-                fragment_owner_violations(fragment, leaf, allowed_owners)
+                fragment_owner_violations(fragment, leaf)
             )
             violations.extend(
-                fragment_environment_violations(fragment, leaf, allowed_owners)
+                fragment_environment_violations(fragment, leaf)
             )
             violations.extend(fragment_projection_violations(fragment, leaf))
     return violations

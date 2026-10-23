@@ -5,9 +5,9 @@ swapped in (sometimes with an English suffix glued onto a non-English stem,
 e.g. "Sincronizzazioneing", "Eşzamanlamaed", "Importerened").
 
 Covers every locale bae ships — the set comes from `loc-gen locales`, i.e.
-bae-loc's TARGET_LOCALES, so this script keeps no list of its own. Reads both
-xcstrings catalogs and the Android values-<locale>/strings.xml catalogs; all
-three gate CI. A locale with no chrome file of a given kind simply has nothing
+bae-loc's TARGET_LOCALES, so this script keeps no list of its own. Reads the
+macOS xcstrings catalog and the Android values-<locale>/strings.xml catalogs;
+both gate CI. A locale with no chrome file of a given kind simply has nothing
 to scan there.
 
 Detectors:
@@ -39,7 +39,7 @@ translation defect regardless of what the other detectors say, so it is not
 allowlist-suppressible.
 
 Gates CI: exits non-zero if any strict-detector or placeholder-multiset hit in
-the two xcstrings catalogs or the Android catalogs is not allowlisted
+the macOS xcstrings catalog or the Android catalogs is not allowlisted
 (placeholder mismatches are never allowlist-suppressible).
 """
 import json
@@ -82,7 +82,6 @@ def android_values_dir(locale):
 TARGET_LOCALES = shipping_locales()
 
 MAC_XCSTRINGS = "bae-macos/bae/bae/Localizable.xcstrings"
-IOS_XCSTRINGS = "bae-ios/bae/bae/Localizable.xcstrings"
 ANDROID_STRINGS = {
     loc: f"bae-android/app/src/main/res/{android_values_dir(loc)}/strings.xml"
     for loc in TARGET_LOCALES
@@ -445,8 +444,8 @@ def main():
 
     total_gating_failures = 0
 
-    # ── Strict: the two xcstrings catalogs and the Android catalog ──────────
-    for label, path in (("macOS xcstrings", MAC_XCSTRINGS), ("iOS xcstrings", IOS_XCSTRINGS)):
+    # ── Strict: the macOS xcstrings catalog and the Android catalog ─────────
+    for label, path in (("macOS xcstrings", MAC_XCSTRINGS),):
         leaves = list(xcstrings_leaves(path))
         detector_hits, band_hits = scan_leaves(leaves)
         unallowed = print_hits(f"{label} (strict)", detector_hits, allowed)

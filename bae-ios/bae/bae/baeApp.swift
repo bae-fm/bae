@@ -1,6 +1,5 @@
 import BaeKit
 import SwiftUI
-import UIKit
 import os.log
 
 private let appEdition: AppEdition = {
@@ -11,47 +10,34 @@ private let appEdition: AppEdition = {
     #endif
 }()
 
+private let logger = Logger.bae("BaeApp")
+
 @main
 struct BaeApp: App {
-    /// The process-lifetime telemetry sink, built first at launch and held for
-    /// the whole app run. `initKeyring` and the host require it.
-    private let diagnostics: BridgeDiagnostics
-    /// The process-lifetime host registrations every library open, restore,
-    /// join, and provider sign-in requires, or why launch stopped first.
+    /// The process-lifetime host, or the launch step that stopped first.
     private let launch: AppLaunch
-    /// The name this device registers under when it joins or sets up a
-    /// library, which other devices show for it.
-    private let deviceName: String
 
     init() {
         // Telemetry first, from compiled-in values only, so the sink exists for
-        // every later launch step and any failure it reports.
+        // every later launch step. The host and the keychain hold it from here.
         let diagnostics = BaeDiagnostics.configure(
             source: "ios",
             edition: appEdition
         )
-        self.diagnostics = diagnostics
-        deviceName = UIDevice.current.name
         launch = Self.launch(diagnostics: diagnostics)
     }
 
     var body: some Scene {
         WindowGroup {
-            ContentView(
-                launch: launch,
-                diagnostics: diagnostics,
-                deviceName: deviceName
-            )
-            .appAppearance()
+            LaunchView(launch: launch)
         }
     }
 
     /// Bring up crash reporting, bae's directory, the host, and the keychain,
-    /// stopping at the first that fails, named by its step. Unreadable
-    /// sign-in settings don't stop it: they're a launch problem for the run.
+    /// stopping at the first that fails, named by its step.
     private static func launch(diagnostics: BridgeDiagnostics) -> AppLaunch {
         BaeCrashReporting.configure(edition: appEdition)
-        Logger.bae("BaeApp").info("application launched")
+        logger.info("application launched")
         let host: BridgeHost
         do {
             // bae's directory lives under the Application Support container:
@@ -70,44 +56,17 @@ struct BaeApp: App {
         catch {
             return failed(.secureStorage, error)
         }
-        let signInSettings = registerSignIn(host: host)
-        return .ready(
-            host,
-            LaunchProblems(signInSettings: signInSettings, secureStorage: nil)
-        )
+        return .ready(host)
     }
 
-    /// Register the build's Dropbox and OneDrive applications and the system
-    /// sign-in sheet, before anything can restore, join or sign in. Without a
-    /// bundled config, provider sign-in stays unavailable; an unreadable one
-    /// is returned as a launch problem, since libraries on other storage
-    /// still open.
-    private static func registerSignIn(host: BridgeHost) -> DisplayError? {
-        #if BAE_OAUTH_PROVIDERS
-        do {
-            try OAuthLinking.load()?.register(host: host)
-        }
-        catch {
-            Logger.bae("BaeApp")
-                .error(
-                    "OAuth registration failed: \(error.localizedDescription)"
-                )
-            return DisplayError(error)
-        }
-        #endif
-        return nil
-    }
-
-    /// The launch stopped at `step`. Only a cancellation has no line, and
-    /// nothing at launch can be cancelled.
     private static func failed(
-        _ step: ScreenFailure.Step,
+        _ step: AppLaunch.Step,
         _ error: any Error
     ) -> AppLaunch {
-        guard let failure = ScreenFailure(step, error) else {
-            preconditionFailure("A launch step reported a cancellation: \(error)")
-        }
-        return .failed(failure)
+        logger.error(
+            "Launch stopped at \(step.name): \(String(describing: error))"
+        )
+        return .failed(step, String(describing: error))
     }
 
     /// The app's Application Support directory, which bae's directory is

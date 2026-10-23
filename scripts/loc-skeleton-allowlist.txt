@@ -7,8 +7,8 @@
 # string whose token overlap with English is incidental. Placeholder-multiset
 # mismatches are never allowlisted here; those are always real defects.
 #
-# Applies across both xcstrings catalogs: a (locale, key) pair suppresses the
-# hit wherever that key exists (macOS, iOS, or both).
+# Applies to the macOS xcstrings catalog: a (locale, key) pair suppresses the
+# hit for that key.
 
 # Established loanwords / technical terms kept identical to en (confirmed
 # against the locale's other good entries using the same term).

@@ -351,32 +351,6 @@ struct FixtureDuplicateList: View {
                     )
                 )
 
-    def test_classified_playback_child_only_allows_playback_owner(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            self.copied_inventory(root)
-            relative = Path("bae-ios/bae/bae/Views/AlbumDetail/TrackList.swift")
-            path = root / relative
-            path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / relative, path)
-            source = path.read_text()
-            track_start = source.index("private struct TrackRow: View")
-            body_start = source.index("var body: some View {", track_start)
-            source = (
-                source[:body_start]
-                + "var body: some View {\n        _ = ImportStore.shared"
-                + source[body_start + len("var body: some View {") :]
-            )
-            path.write_text(source)
-            injected_line = source.count("\n", 0, source.index("ImportStore.shared")) + 1
-            self.assertEqual(
-                BOUNDARY.check(root),
-                [
-                    f"{relative}:{injected_line}: TrackRow reaches entity-data owner "
-                    "ImportStore"
-                ],
-            )
-
 
 if __name__ == "__main__":
     unittest.main()

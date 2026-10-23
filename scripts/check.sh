@@ -247,19 +247,6 @@ check "xcodebuild (iphonesimulator)" \
     -sdk iphonesimulator -arch arm64 \
     -derivedDataPath bae-ios/bae/.build/derivedData build
 
-# The test run keeps ad-hoc signing: without it the iCloud entitlement is
-# stripped and the app traps at launch.
-check "xcodebuild test (iOS baeTests)" bash -c '
-  DEST=$(./scripts/ios-simulator.sh) || exit 1
-  DEST_ID=${DEST%%$'\''\t'\''*}
-  DEST_NAME=${DEST#*$'\''\t'\''}
-  echo "Testing on simulator: $DEST_NAME ($DEST_ID)"
-  BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,cast \
-  xcodebuild -project bae-ios/bae/bae.xcodeproj -scheme bae -configuration Debug \
-    -destination "platform=iOS Simulator,id=$DEST_ID" \
-    -derivedDataPath bae-ios/bae/.build/derivedData test
-'
-
 check "swift-format lint" _swift_format_lint bae-ios/bae/bae
 check "swiftlint" swiftlint lint --strict --config .swiftlint.yml bae-ios/bae/bae
 check "periphery" bash -c '

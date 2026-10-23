@@ -1,8 +1,8 @@
 name: Screenshots
 
-# Captures the shared UI scenes on macOS, iOS, and Android (scripts/shots/*)
+# Captures the shared UI scenes on macOS and Android (scripts/shots/*)
 # and publishes the scene x platform gallery to GitHub Pages. Setup steps mirror
-# each platform's build workflow (ci.yml / ios.yml / android-build.yml) — the
+# each platform's build workflow (ci.yml / android-build.yml) — the
 # scripts do the building; the jobs provision toolchains.
 
 on:
@@ -29,32 +29,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: shots-macos
-          path: shots-out/*.png
-          if-no-files-found: error
-
-  ios:
-    name: Capture iOS
-    runs-on: macos-26
-    steps:
-      - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-macos
-      - uses: ./.github/actions/setup-rust
-      - name: Cache cross-built iOS FFmpeg
-        id: ffmpeg-cache
-        uses: actions/cache@v5
-        with:
-          path: bae-ffmpeg/ios
-          key: ffmpeg-ios-${{ hashFiles('scripts/build-ffmpeg-ios.sh') }}
-      - name: Build iOS FFmpeg (on cache miss)
-        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
-        run: ./scripts/build-ffmpeg-ios.sh
-      - name: Install xcodegen
-        run: brew install xcodegen
-      - name: Capture
-        run: ./scripts/shots/ios.sh shots-out
-      - uses: actions/upload-artifact@v4
-        with:
-          name: shots-ios
           path: shots-out/*.png
           if-no-files-found: error
 
@@ -85,7 +59,7 @@ jobs:
 
   gallery:
     name: Publish gallery
-    needs: [macos, ios, android]
+    needs: [macos, android]
     runs-on: ubuntu-latest
     permissions:
       pages: write

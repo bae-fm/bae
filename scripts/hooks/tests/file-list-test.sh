@@ -36,9 +36,9 @@ if [ "$changed_crates" != $'bae-bridge\nbae-core' ]; then
     exit 1
 fi
 
-CHANGED_FILES=$'bae-ios/bae/bae/AppService.swift\nBaeKit/Package.swift\nbae-core/src/lib.rs'
+CHANGED_FILES=$'bae-ios/bae/bae/baeApp.swift\nBaeKit/Package.swift\nbae-core/src/lib.rs'
 swift_files=$(staged_files_with_extension swift)
-if [ "$swift_files" != $'bae-ios/bae/bae/AppService.swift\nBaeKit/Package.swift' ]; then
+if [ "$swift_files" != $'bae-ios/bae/bae/baeApp.swift\nBaeKit/Package.swift' ]; then
     echo "staged Swift files were routed incorrectly:"
     echo "$swift_files"
     exit 1

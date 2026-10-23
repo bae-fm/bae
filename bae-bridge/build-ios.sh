@@ -32,15 +32,12 @@ fi
 BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES-oauth-providers,cloudkit,cast}"
 export BAE_BRIDGE_FEATURES
 
-# Each Rust feature's Swift compilation condition.
+# The Swift compilation condition the app reads: the edition, which the
+# oauth-providers feature marks.
 SWIFT_CONDITIONS=""
 case ",$BAE_BRIDGE_FEATURES," in
-    *,oauth-providers,*) SWIFT_CONDITIONS="$SWIFT_CONDITIONS BAE_OAUTH_PROVIDERS" ;;
+    *,oauth-providers,*) SWIFT_CONDITIONS="BAE_OAUTH_PROVIDERS" ;;
 esac
-case ",$BAE_BRIDGE_FEATURES," in
-    *,cloudkit,*) SWIFT_CONDITIONS="$SWIFT_CONDITIONS BAE_CLOUDKIT" ;;
-esac
-SWIFT_CONDITIONS="$(echo "$SWIFT_CONDITIONS" | xargs)"
 
 # Without cloudkit the app signs with the baeium entitlements, which drop the
 # iCloud keys so a free provisioning profile can sign it.
@@ -127,7 +124,6 @@ BINDGEN="$CARGO_TARGET_DIR/debug/uniffi-bindgen"
     --out-dir "$SWIFT_BINDINGS_DIR/"
 
 echo "Generating localization String Catalog (Apple)..."
-run_host_cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir bae-ios/bae/bae
 run_host_cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir BaeKit/Sources/BaeKit/Resources
 
 echo "Generating the theme (Apple)..."

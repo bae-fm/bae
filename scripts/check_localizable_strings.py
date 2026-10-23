@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""The Apple chrome-string gate: compiled code ⇄ Localizable.xcstrings.
+"""The macOS chrome-string gate: compiled code ⇄ Localizable.xcstrings.
 
 The Swift compiler writes each file's localizable strings to a .stringsdata
 file during compilation (SWIFT_EMIT_LOC_STRINGS, set in project.yml). This
 script unions that ground truth for the app target and holds it against the
-platform's Localizable.xcstrings (`--platform macos` or `--platform ios`):
+macOS app's Localizable.xcstrings:
 
   1. every extracted key has a catalog entry;
   2. every catalog entry is extracted from compiled code (no orphans), unless
@@ -17,10 +17,10 @@ Exits non-zero listing every offender. Xcode's parser-based catalog sync is
 not trustworthy for this codebase — it misses strings in some closure shapes
 and then prunes their keys — so only the compile-emitted data is used.
 
-Each platform has one catalog and one truth for what belongs in it: the build
-this rides is the fullest edition, so a key behind a feature flag is extracted
-and must be present. An edition that compiles less carries surplus keys, which
-are inert data — there is no per-edition key set.
+The catalog has one truth for what belongs in it: the build this rides is the
+fullest edition, so a key behind a feature flag is extracted and must be
+present. An edition that compiles less carries surplus keys, which are inert
+data — there is no per-edition key set.
 """
 
 import argparse
@@ -36,16 +36,8 @@ REPO = Path(__file__).resolve().parent.parent
 # their own tables and stay out of the union.
 STRINGSDATA_TARGETS = ("bae", "BaeKit")
 
-PLATFORMS = {
-    "macos": {
-        "catalog": REPO / "bae-macos/bae/bae/Localizable.xcstrings",
-        "derived_data": REPO / "bae-macos/bae/.build/derivedData",
-    },
-    "ios": {
-        "catalog": REPO / "bae-ios/bae/bae/Localizable.xcstrings",
-        "derived_data": REPO / "bae-ios/bae/.build/derivedData",
-    },
-}
+CATALOG = REPO / "bae-macos/bae/bae/Localizable.xcstrings"
+DERIVED_DATA = REPO / "bae-macos/bae/.build/derivedData"
 
 
 def extracted_keys(derived_data: Path) -> set[str]:
@@ -128,12 +120,6 @@ def untranslated(entry: dict, locales: set[str]) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--platform",
-        choices=sorted(PLATFORMS),
-        default="macos",
-        help="which app's catalog and build to check (default: macos)",
-    )
-    parser.add_argument(
         "--derived-data",
         type=Path,
         default=None,
@@ -148,10 +134,9 @@ def main() -> int:
         ),
     )
     args = parser.parse_args()
-    platform = PLATFORMS[args.platform]
 
-    extracted = extracted_keys(args.derived_data or platform["derived_data"])
-    catalog = json.loads(platform["catalog"].read_text())["strings"]
+    extracted = extracted_keys(args.derived_data or DERIVED_DATA)
+    catalog = json.loads(CATALOG.read_text())["strings"]
     locales = target_locales()
 
     missing = sorted(extracted - catalog.keys())

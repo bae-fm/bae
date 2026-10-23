@@ -5,8 +5,7 @@ targets:
   - bae
 index_exclude:
   # The shared BaeKit package (data/service/domain layer + generated bindings).
-  # The macOS periphery run owns shared-code liveness; the iOS target uses a
-  # subset of BaeKit's members, so re-checking it here only surfaces
-  # macOS-only code as false iOS dead code.
+  # The iOS app uses only its launch infrastructure, so checking BaeKit here
+  # would report everything the macOS app uses as dead.
   - "**/BaeKit/**"
 disable_update_check: true
