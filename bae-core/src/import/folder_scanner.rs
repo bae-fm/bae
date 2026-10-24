@@ -1,10 +1,10 @@
 //! Folder scanner for import release candidates.
 //!
-//! Each directory with direct audio approximates one release. When a directory
-//! also contains audio-bearing descendants, the scanner reports an unresolved
-//! boundary instead of guessing whether the parent or descendants are releases.
-//! The walk lists one directory at a time and reports candidates as they become
-//! available.
+//! Each directory with direct audio approximates one release. A directory
+//! whose children hold the audio is read as one release or as separate ones:
+//! by the reading stored for it, or, with none, by the scan's own reading of
+//! its children (see [`heuristic_folder_release_decision`]). The walk lists one
+//! directory at a time and reports candidates as they become available.
 use super::file_validation;
 use crate::cue_flac::{parse_cue_sheet, CueSheet};
 use crate::util::content_type_hint::ContentTypeHint;

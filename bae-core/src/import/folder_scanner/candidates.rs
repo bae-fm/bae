@@ -352,30 +352,55 @@ pub enum FolderReleaseDecisionAuthor {
     Heuristic,
 }
 
+/// How much audio a child folder holds, counted as far as a reading needs:
+/// the audio of one folder, or of several.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PartAudio {
+    /// One folder holds audio: the child itself, or one folder below it
+    /// reached through folders with none. A disc holds this much.
+    OneFolder,
+    /// Two folders or more hold audio, so the child is several releases of
+    /// its own, not one disc of a set.
+    SeveralFolders,
+}
+
+/// A child folder that holds audio: one of the releases its parent is read
+/// as, or one disc of the one release its parent is.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FolderPart {
+    pub name: String,
+    pub audio: PartAudio,
+}
+
 /// How the scan reads a folder whose children hold the audio, with nothing
 /// stored for it.
 ///
 /// A multi-disc release names its parts: `Disc 1`, `CD2`, `Vol. 3`. So when
-/// every part's name carries a number and those numbers are exactly `1..=N`
-/// for `N` parts, the parts are one release. Anything else — a part with no
-/// number, a gap, a run that doesn't start at one, audio sitting directly in
-/// the folder beside its parts — is a folder that happens to hold several
-/// releases.
+/// every part's name carries a number, those numbers are exactly `1..=N` for
+/// `N` parts, and each part holds one folder's audio, the parts are one
+/// release. Anything else — a part with no number, a gap, a run that doesn't
+/// start at one, a part that holds several folders of audio, audio sitting
+/// directly in the folder beside its parts — is a folder that happens to hold
+/// several releases. `01 Originals` and `02 Remasters`, holding three albums
+/// and one, number themselves 1 and 2 and are still four releases.
 ///
 /// The parts are the child folders that hold audio, and only those. A `covers`
 /// or `Scans` folder alongside `CD1` and `CD2` is a sidecar the release
-/// carries, not a third part that failed to number itself, and the caller
-/// leaves it out (`part_folder_names`).
+/// carries, and a numbered `CD3` with no audio in it is no disc; the caller
+/// leaves both out.
 pub fn heuristic_folder_release_decision(
     holds_audio_directly: bool,
-    part_folder_names: &[String],
+    parts: &[FolderPart],
 ) -> FolderReleaseDecision {
-    if holds_audio_directly || part_folder_names.len() < 2 {
+    if holds_audio_directly || parts.len() < 2 {
         return FolderReleaseDecision::KeepAsSeparateReleases;
     }
-    let mut numbers: Vec<u32> = Vec::with_capacity(part_folder_names.len());
-    for name in part_folder_names {
-        match folder_part_number(name) {
+    let mut numbers: Vec<u32> = Vec::with_capacity(parts.len());
+    for part in parts {
+        if part.audio == PartAudio::SeveralFolders {
+            return FolderReleaseDecision::KeepAsSeparateReleases;
+        }
+        match folder_part_number(&part.name) {
             Some(number) => numbers.push(number),
             None => return FolderReleaseDecision::KeepAsSeparateReleases,
         }
@@ -387,6 +412,22 @@ pub fn heuristic_folder_release_decision(
     } else {
         FolderReleaseDecision::KeepAsSeparateReleases
     }
+}
+
+/// Whether children named `names` could be one release's discs, before
+/// looking inside any of them: the folder holds no tracks of its own, and
+/// children numbered 1 and 2 are among them. Discs number themselves from
+/// one, so when this is false no child's contents can make
+/// [`heuristic_folder_release_decision`] combine them.
+pub fn names_could_number_one_release(holds_audio_directly: bool, names: &[String]) -> bool {
+    if holds_audio_directly {
+        return false;
+    }
+    let numbers: std::collections::HashSet<u32> = names
+        .iter()
+        .filter_map(|name| folder_part_number(name))
+        .collect();
+    numbers.contains(&1) && numbers.contains(&2)
 }
 
 /// The part number in a folder's name. An explicit `CD n`, `Disc n`, `Disk n`,
@@ -576,14 +617,54 @@ impl FolderCandidate {
 mod heuristic_tests {
     use super::*;
 
+    /// Parts named `names`, each holding one folder's audio.
+    fn discs(names: &[&str]) -> Vec<FolderPart> {
+        names
+            .iter()
+            .map(|name| FolderPart {
+                name: name.to_string(),
+                audio: PartAudio::OneFolder,
+            })
+            .collect()
+    }
+
     fn decide(names: &[&str]) -> FolderReleaseDecision {
-        heuristic_folder_release_decision(
-            false,
-            &names
-                .iter()
-                .map(|name| name.to_string())
-                .collect::<Vec<_>>(),
-        )
+        heuristic_folder_release_decision(false, &discs(names))
+    }
+
+    /// Twelve discs numbered `disc 01` to `disc 12`, each one folder of
+    /// tracks, are one release.
+    #[test]
+    fn a_zero_padded_run_of_twelve_discs_is_one_release() {
+        let names: Vec<String> = (1..=12).map(|disc| format!("disc {disc:02}")).collect();
+        let names: Vec<&str> = names.iter().map(String::as_str).collect();
+        assert_eq!(decide(&names), FolderReleaseDecision::CombineAsOneRelease);
+    }
+
+    /// Two numbered folders that each wrap whole albums — three in the
+    /// first, one in the second — are four releases however they number
+    /// themselves.
+    #[test]
+    fn a_numbered_part_holding_several_albums_is_no_disc() {
+        let parts = [
+            FolderPart {
+                name: "01_Artist_Originals".to_string(),
+                audio: PartAudio::SeveralFolders,
+            },
+            FolderPart {
+                name: "02_Artist_Remasters".to_string(),
+                audio: PartAudio::OneFolder,
+            },
+        ];
+        assert_eq!(
+            decide(&["01_Artist_Originals", "02_Artist_Remasters"]),
+            FolderReleaseDecision::CombineAsOneRelease,
+            "the names alone do number 1 and 2"
+        );
+        assert_eq!(
+            heuristic_folder_release_decision(false, &parts),
+            FolderReleaseDecision::KeepAsSeparateReleases
+        );
     }
 
     /// The children number themselves 1..=N, so they are the parts of one
@@ -669,9 +750,22 @@ mod heuristic_tests {
     #[test]
     fn a_folder_with_its_own_tracks_holds_several_releases() {
         assert_eq!(
-            heuristic_folder_release_decision(true, &["Disc 1".to_string(), "Disc 2".to_string()]),
+            heuristic_folder_release_decision(true, &discs(&["Disc 1", "Disc 2"])),
             FolderReleaseDecision::KeepAsSeparateReleases
         );
+    }
+
+    /// Names with no part 1 or no part 2, or a folder with tracks of its own,
+    /// can't be one release's discs whatever the folders hold.
+    #[test]
+    fn names_without_parts_one_and_two_cannot_number_a_set() {
+        let names = |names: &[&str]| names.iter().map(|name| name.to_string()).collect::<Vec<_>>();
+        assert!(names_could_number_one_release(false, &names(&["CD1", "CD2", "Bonus"])));
+        assert!(names_could_number_one_release(false, &names(&["Part 01", "Part 02", "Part 99"])));
+        assert!(!names_could_number_one_release(false, &names(&["1990 - First", "1992 - Second"])));
+        assert!(!names_could_number_one_release(false, &names(&["Release 01", "Release 99"])));
+        assert!(!names_could_number_one_release(false, &names(&["Live in Tokyo", "Live in Osaka"])));
+        assert!(!names_could_number_one_release(true, &names(&["Disc 1", "Disc 2"])));
     }
 
     /// One child is not a set.

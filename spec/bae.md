@@ -452,12 +452,21 @@ imported:
   log is one candidate.
 - **A folder whose children hold the audio** is read one of two ways: as one
   release, or as separate releases. Carol's `Box Set Title/` holds `CD1/` and
-  `CD2/`. Every part's name carries a number, and the numbers are exactly 1 and
-  2, so the scan reads the folder as one release with two discs.
+  `CD2/`. Every part's name carries a number, the numbers are exactly 1 and 2,
+  and each part holds one folder of audio — its own tracks, or one folder of
+  tracks below it such as `CD1/FLAC/` — so the scan reads the folder as one
+  release with two discs.
 - **Anything else** stays separate: a part with no number, a gap in the
-  numbers, numbers that don't start at one, or audio sitting in the folder
-  beside its parts. A `Scans/` folder beside `CD1/` and `CD2/` holds no audio,
-  so it is not a part; it travels with the release.
+  numbers, numbers that don't start at one, a part holding several folders of
+  audio, or audio sitting in the folder beside its parts. Dave's
+  `Artist Collection/` holds `01 Originals/`, with three albums in it, and
+  `02 Remasters/`, with one: they number themselves 1 and 2, but the first is
+  three releases, not a disc, so the collection is four releases.
+- **A part holds audio.** A folder with none is not a part, whatever its name.
+  A `Scans/` folder beside `CD1/` and `CD2/` travels with the release. A
+  numbered `CD3/` with nothing in it is no third disc; with only `CD1/` holding
+  audio the folder yields one release and has nothing to read one way or the
+  other.
 
 The scan's reading is a guess, stored as the folder's *grouping*, marked as the
 scan's. The person can flip it: read a folder as one release, or keep its parts

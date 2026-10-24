@@ -132,11 +132,15 @@ fn file_free_group_emits_an_actionable_release_before_later_child_finishes() {
     let root = temp_dir.path().join("Queue");
     let group = root.join("Collection");
     let first = group.join("Release 01");
+    // How the folder reads waits on looking into two of its children: until
+    // the second is known to hold audio, the folder could be one release. So
+    // the child the walk is held in is the third.
+    let second = group.join("Release 03");
     let later = group.join("Release 99");
-    std::fs::create_dir_all(&first).unwrap();
-    std::fs::create_dir_all(&later).unwrap();
-    std::fs::write(first.join("track.flac"), fake_flac()).unwrap();
-    std::fs::write(later.join("track.flac"), fake_flac()).unwrap();
+    for release in [&first, &second, &later] {
+        std::fs::create_dir_all(release).unwrap();
+        std::fs::write(release.join("track.flac"), fake_flac()).unwrap();
+    }
 
     let scan = SuspendedScan::spawn(root.clone(), "Collection/Release 99");
 
@@ -176,7 +180,7 @@ fn a_wrapper_the_scan_reads_makes_its_children_actionable_at_once() {
     let group = root.join("Group");
     std::fs::create_dir_all(&group).unwrap();
     std::fs::write(group.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-    for release in ["Release 01", "Release 02", "Release 99"] {
+    for release in ["Release 01", "Release 03", "Release 99"] {
         let release = group.join(release);
         std::fs::create_dir_all(&release).unwrap();
         std::fs::write(release.join("track.flac"), fake_flac()).unwrap();
@@ -188,9 +192,9 @@ fn a_wrapper_the_scan_reads_makes_its_children_actionable_at_once() {
         .recv_timeout(std::time::Duration::from_secs(2))
         .expect("final sibling is suspended");
     let available: Vec<_> = scan.items.try_iter().collect();
-    // `Release 01`, `Release 02`, `Release 99` are not the parts of one
-    // release, so the scan says so before it walks them and the ones it has
-    // reached are ready to identify.
+    // `Release 01`, `Release 03`, `Release 99` have no part 2, so they are
+    // not the discs of one release: once two of them are known to hold audio
+    // the scan says so, and the ones it has reached are ready to identify.
     assert!(available.iter().any(|item| matches!(
         item,
         ScanItem::Decided {

@@ -191,6 +191,7 @@ fn scan_for_candidates_with_decisions_collect(
 }
 
 include!("tests/boundaries.rs");
+include!("tests/folder_parts.rs");
 include!("tests/cue_and_file_validation.rs");
 include!("tests/scenario_fixtures.rs");
 include!("tests/scan_scenarios.rs");

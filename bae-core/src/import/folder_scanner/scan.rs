@@ -1,6 +1,9 @@
 use super::*;
 use std::collections::HashSet;
 
+mod scanned_decision;
+use scanned_decision::scanned_decision;
+
 // ── Progressive directory walker ───────────────────────────────────────────
 
 #[derive(Debug)]
@@ -207,74 +210,43 @@ pub(super) struct Walk<'a, R: ?Sized> {
     reader: &'a R,
     decisions: &'a FolderReleaseDecisions,
     new_grouping_key: &'a dyn Fn() -> String,
+    /// Listings a folder's reading looked at before the walk reached them,
+    /// by root-relative path, each held until the walk takes it, so no folder
+    /// is listed twice in one walk.
+    read_ahead: std::cell::RefCell<HashMap<PathBuf, DirectoryListing>>,
 }
 
-/// The child folders that are this folder's parts, in listing order — what the
-/// scan reads its decision from when nothing is stored for it.
-///
-/// A folder whose name carries a part number is taken at its word. An
-/// unnumbered one is a part only if it holds audio: `Disc 1`, `Disc 2` and
-/// `covers` are two parts and a sidecar the release carries, not three parts
-/// one of which forgot to number itself, while a `Bonus` folder with tracks in
-/// it is a third release however it is named.
-///
-/// The name is read first because looking is what costs: answering "does this
-/// hold audio" means reading the subtree, and doing that for every child
-/// before deciding would hold every release below this folder back until the
-/// slowest of them had been walked. A sidecar folder is small and holds no
-/// audio, which is exactly the walk that ends quickly.
-fn part_folder_names<R>(
-    reader: &R,
-    root: &Path,
-    directories: &[PathBuf],
-    cancellation: &ScanCancellation,
-) -> Result<Vec<String>, FolderScanError>
-where
-    R: DirectoryReader + ?Sized,
-{
-    let mut names = Vec::with_capacity(directories.len());
-    for directory in directories {
-        let name = directory.file_name().map_or_else(
-            || directory.to_string_lossy().into_owned(),
-            |name| name.to_string_lossy().into_owned(),
-        );
-        if folder_part_number(&name).is_none()
-            && !holds_audio_below(reader, root, directory, cancellation)?
-        {
-            continue;
+impl<'a, R: DirectoryReader + ?Sized> Walk<'a, R> {
+    fn new(
+        scan: ScanRoot<'a>,
+        reader: &'a R,
+        decisions: &'a FolderReleaseDecisions,
+        new_grouping_key: &'a dyn Fn() -> String,
+    ) -> Self {
+        Self {
+            scan,
+            reader,
+            decisions,
+            new_grouping_key,
+            read_ahead: Default::default(),
         }
-        names.push(name);
     }
-    Ok(names)
-}
 
-/// Whether this folder or anything below it holds audio — whether it yields a
-/// candidate at all.
-///
-/// Stops at the first audio file, so only an audio-free tree is walked whole.
-fn holds_audio_below<R>(
-    reader: &R,
-    root: &Path,
-    relative: &Path,
-    cancellation: &ScanCancellation,
-) -> Result<bool, FolderScanError>
-where
-    R: DirectoryReader + ?Sized,
-{
-    let listing = reader.read(root, relative, cancellation)?;
-    if listing
-        .files
-        .iter()
-        .any(|file| file.size > 0 && is_audio_file(&file.path))
-    {
-        return Ok(true);
-    }
-    for child in listing.directories {
-        if holds_audio_below(reader, root, &child, cancellation)? {
-            return Ok(true);
+    /// `relative`'s listing: the one a reading already looked at, or a read
+    /// of the folder now.
+    fn listing(&self, relative: &Path) -> Result<DirectoryListing, FolderScanError> {
+        match self.read_ahead.borrow_mut().remove(relative) {
+            Some(listing) => Ok(listing),
+            None => self
+                .reader
+                .read(self.scan.root, relative, self.scan.cancellation),
         }
     }
-    Ok(false)
+
+    /// Hold `listing` for the walk, which reaches `relative` later.
+    fn hold(&self, relative: PathBuf, listing: DirectoryListing) {
+        self.read_ahead.borrow_mut().insert(relative, listing);
+    }
 }
 
 pub(crate) fn relative_path_string(path: &Path) -> String {
@@ -418,16 +390,16 @@ where
 {
     let Walk {
         scan,
-        reader,
         decisions,
         new_grouping_key,
+        ..
     } = walk;
     let root = scan.root;
     let watched_folder_path = scan.watched_folder_path;
     let cancellation = scan.cancellation;
     cancellation.check()?;
     on_directory(root.join(relative));
-    let listing = reader.read(root, relative, cancellation)?;
+    let listing = walk.listing(relative)?;
     let direct_audio = listing
         .files
         .iter()
@@ -448,22 +420,19 @@ where
     let relative_string = relative_path_string(relative);
     // How this folder is read. A stored reading — the user's, or the one an
     // earlier scan settled on — stands. With nothing stored, the scan decides
-    // for itself from the parts' names and says so, so the queue gets
-    // candidates to work on rather than a card to answer.
+    // for itself from its parts and says so, so the queue gets candidates to
+    // work on rather than a card to answer.
     //
     // A reading exists only where it changes something: this folder has to
     // yield two releases or more for combining them to mean anything. Its own
     // tracks are one, and each of its parts is another — which is why the
-    // parts are read ahead of the reading and the sidecar folders that yield
-    // nothing are left out of both counts. The watched root is never a release
-    // itself, so it never decides.
+    // parts are read ahead of the reading and the folders that hold no audio,
+    // numbered or not, are left out of both counts. The watched root is never
+    // a release itself, so it never decides.
     let reading = match decisions.get(&relative_string) {
         Some(stored) => Some((stored.decision, stored.grouping.clone())),
         None if !listing_dirs.is_empty() => {
-            let parts = part_folder_names(*reader, root, &listing_dirs, cancellation)?;
-            let yields_several = parts.len() > 1 || (direct_audio && !parts.is_empty());
-            if yields_several {
-                let decision = heuristic_folder_release_decision(direct_audio, &parts);
+            if let Some(decision) = scanned_decision(walk, direct_audio, &listing_dirs)? {
                 let grouping = new_grouping_key();
                 on_item(ScanItem::Decided {
                     key: FolderReleaseDecisionKey {
@@ -734,8 +703,8 @@ where
     }
     let watched_folder_path = root.to_string_lossy().into_owned();
     let probed = ProbedAudio::default();
-    let walk = Walk {
-        scan: ScanRoot {
+    let walk = Walk::new(
+        ScanRoot {
             root: &root,
             watched_folder_path: &watched_folder_path,
             stored: readings.stored,
@@ -743,11 +712,11 @@ where
             probed: &probed,
         },
         reader,
-        decisions: readings.decisions,
-        new_grouping_key: readings.new_grouping_key,
-    };
+        readings.decisions,
+        readings.new_grouping_key,
+    );
     on_directory(root.clone());
-    let root_listing = reader.read(&root, Path::new(""), cancellation)?;
+    let root_listing = walk.listing(Path::new(""))?;
     let direct_audio = root_listing
         .files
         .iter()
@@ -844,8 +813,8 @@ where
     }
     let watched_folder_path = root.to_string_lossy().into_owned();
     let probed = ProbedAudio::default();
-    let walk = Walk {
-        scan: ScanRoot {
+    let walk = Walk::new(
+        ScanRoot {
             root,
             watched_folder_path: &watched_folder_path,
             stored: readings.stored,
@@ -853,9 +822,9 @@ where
             probed: &probed,
         },
         reader,
-        decisions: readings.decisions,
-        new_grouping_key: readings.new_grouping_key,
-    };
+        readings.decisions,
+        readings.new_grouping_key,
+    );
     scan_top_level_folder(&walk, folder, &mut on_directory, &mut on_item)?;
     Ok(())
 }
