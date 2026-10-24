@@ -17,6 +17,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeHost
+import uniffi.bae_bridge.BridgeUnfinishedJoin
 import uniffi.bae_bridge.NoHandle
 
 @RunWith(RobolectricTestRunner::class)
@@ -25,10 +26,15 @@ class OnboardingStepsTest {
     @get:Rule
     val compose = createComposeRule()
 
+    /** A device with no join under way; opening the code field and going back call no other core. */
+    private class NoJoinsHost : BridgeHost(NoHandle) {
+        override suspend fun unfinishedJoins(): List<BridgeUnfinishedJoin> = emptyList()
+    }
+
     /**
-     * Onboarding over a host that is never reached: opening the code field and
-     * going back call no core. The test screen is shorter than a code screen, so what
-     * sits below the fold is scrolled to, as a person would.
+     * Onboarding on a device with no join under way. The test screen is
+     * shorter than a code screen, so what sits below the fold is scrolled to,
+     * as a person would.
      */
     private fun showOnboarding(restoreOver: RestoreOver? = null) {
         compose.setContent {
@@ -36,7 +42,7 @@ class OnboardingStepsTest {
             val scope = rememberCoroutineScope()
             val flow =
                 remember {
-                    OnboardingFlow(scope, context, BridgeHost(NoHandle), null, restoreOver) {}
+                    OnboardingFlow(scope, context, NoJoinsHost(), null, restoreOver) {}
                 }
             BaeTheme { OnboardingSteps(flow) }
         }
