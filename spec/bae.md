@@ -455,7 +455,9 @@ imported:
   `CD2/`. Every part's name carries a number, the numbers are exactly 1 and 2,
   and each part holds one folder of audio — its own tracks, or one folder of
   tracks below it such as `CD1/FLAC/` — so the scan reads the folder as one
-  release with two discs.
+  release with two discs. The discs play in the order their numbers give, not
+  the order their names sort in: `CD2/` before `CD10/`, and
+  `1936 - CD 1/` before `1935 - CD 2/`.
 - **Anything else** stays separate: a part with no number, a gap in the
   numbers, numbers that don't start at one, a part holding several folders of
   audio, or audio sitting in the folder beside its parts. Dave's

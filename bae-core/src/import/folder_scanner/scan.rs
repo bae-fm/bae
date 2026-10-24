@@ -286,6 +286,31 @@ pub(super) fn categorize_selected_files(
     )
 }
 
+/// `audio_folders`, the folders with audio below `relative` in the order the
+/// walk reached them, in the order the discs of a grouping rooted there play:
+/// by the part number of the folder directly under `relative` each sits in,
+/// when every one of them carries one, so `CD 2` plays before `CD 10` and
+/// `1936 - CD 1` before `1935 - CD 2`. Folders that don't all number
+/// themselves — parts the person combined — keep the walk's order.
+fn in_disc_order(relative: &Path, audio_folders: &[PathBuf]) -> Vec<PathBuf> {
+    let numbered: Option<Vec<(u32, &PathBuf)>> = audio_folders
+        .iter()
+        .map(|folder| {
+            let part = folder.strip_prefix(relative).ok()?.components().next()?;
+            let number = folder_part_number(&part.as_os_str().to_string_lossy())?;
+            Some((number, folder))
+        })
+        .collect();
+    match numbered {
+        Some(mut numbered) => {
+            // Stable, so folders within one part keep the walk's order.
+            numbered.sort_by_key(|(number, _)| *number);
+            numbered.into_iter().map(|(_, folder)| folder.clone()).collect()
+        }
+        None => audio_folders.to_vec(),
+    }
+}
+
 /// The parts a grouping rooted at `relative` reads: each folder with audio of
 /// its own below it, with the prefix its files take in the release.
 fn parts_under(root: &Path, relative: &Path, part_folders: &[PathBuf]) -> Vec<ReleasePart> {
@@ -542,7 +567,7 @@ where
             relative,
             ReleaseFileScope::Recursive,
             Some(grouping),
-            &audio_folders,
+            &in_disc_order(relative, &audio_folders),
         )?;
         let nodes = node.into_iter().collect();
         return Ok(ScannedDirectory {

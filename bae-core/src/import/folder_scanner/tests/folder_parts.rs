@@ -210,3 +210,73 @@ fn reading_a_folder_lists_nothing_twice() {
     reads.sort();
     assert_eq!(reads, every_folder);
 }
+
+/// A set's discs play in the order their numbers give, not the order their
+/// names sort in: `CD2` before `CD10`, `disc 1` before `disc 02`, and a disc
+/// whose name starts with a later year still after the one numbered before
+/// it. Each disc's tracks play together, in track order.
+#[test]
+fn a_set_s_discs_play_in_the_order_they_number_themselves() {
+    for discs in [
+        &["Box Set/1936 Archive - CD 1", "Box Set/1935 Archive - CD 2"][..],
+        &[
+            "Box Set/CD1", "Box Set/CD2", "Box Set/CD3", "Box Set/CD4", "Box Set/CD5",
+            "Box Set/CD6", "Box Set/CD7", "Box Set/CD8", "Box Set/CD9", "Box Set/CD10",
+        ][..],
+        &["Box Set/disc 1", "Box Set/disc 02"][..],
+    ] {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root = temp_dir.path().join("Queue");
+        for disc in discs {
+            let disc = root.join(disc);
+            std::fs::create_dir_all(&disc).unwrap();
+            for track in ["01.flac", "02.flac"] {
+                std::fs::write(disc.join(track), fake_flac()).unwrap();
+            }
+        }
+
+        let items =
+            scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
+
+        let release = items
+            .iter()
+            .find_map(|item| match item {
+                ScanItem::Valid(candidate) => Some(candidate),
+                _ => None,
+            })
+            .expect("the set is one release");
+        let expected_parts: Vec<String> = discs
+            .iter()
+            .map(|disc| format!("{}/", disc.trim_start_matches("Box Set/")))
+            .collect();
+        assert_eq!(
+            release
+                .files
+                .parts
+                .iter()
+                .map(|part| part.prefix.clone())
+                .collect::<Vec<_>>(),
+            expected_parts
+        );
+        let expected_audio: Vec<String> = expected_parts
+            .iter()
+            .flat_map(|part| [format!("{part}01.flac"), format!("{part}02.flac")])
+            .collect();
+        assert_eq!(
+            release
+                .files
+                .audio()
+                .map(|file| file.relative_path.clone())
+                .collect::<Vec<_>>(),
+            expected_audio
+        );
+        let discs_in_play_order: Vec<_> = crate::import::audio_layout::folder_tracks(&release.files)
+            .iter()
+            .map(|track| (track.disc, track.number.get()))
+            .collect();
+        let expected_numbers: Vec<_> = (1..=u32::try_from(discs.len()).unwrap())
+            .flat_map(|disc| [(Some(disc), 1), (Some(disc), 2)])
+            .collect();
+        assert_eq!(discs_in_play_order, expected_numbers);
+    }
+}

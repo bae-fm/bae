@@ -826,16 +826,12 @@ fn lay_audio_in_play_order(
         .map(|(index, _)| index)
         .collect();
     // A release read from several folders keeps each folder's audio together,
-    // the folders in the order their names put them in.
-    let mut folder_rank: HashMap<Option<usize>, usize> = HashMap::new();
-    let mut audio: Vec<(usize, TrackNumbers, (ScannedFile, ProposedRole))> = slots
+    // the folders in the order of its parts.
+    let mut audio: Vec<(Option<usize>, TrackNumbers, (ScannedFile, ProposedRole))> = slots
         .iter()
         .map(|&slot| {
             let entry = proposed[slot].clone();
-            let next_rank = folder_rank.len();
-            let rank = *folder_rank
-                .entry(part_of(parts, &entry.0.relative_path))
-                .or_insert(next_rank);
+            let rank = part_of(parts, &entry.0.relative_path);
             let numbers = tagged
                 .get(&entry.0.relative_path)
                 .expect("every audio file's tags were read with its audio facts")
