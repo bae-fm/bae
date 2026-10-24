@@ -106,7 +106,7 @@ fn on_app_runtime(body: impl std::future::Future<Output = ()> + Send + 'static) 
     runtime.block_on(runtime.spawn(body)).unwrap();
 }
 
-/// An owner's library on shared S3 storage, with Robin's profile.
+/// An owner's library on shared S3 or Dropbox storage, with Robin's profile.
 struct Household {
     _dir: tempfile::TempDir,
     owner: coven::CovenHandle,
@@ -115,38 +115,66 @@ struct Household {
     robin: bae_core::people::PersonProfile,
 }
 
+/// The Dropbox account a household on Dropbox invites.
+const GUEST_ACCOUNT: &str = "guest@example.com";
+
 impl Household {
     async fn new() -> Self {
+        Self::on(coven::CloudProvider::S3, None).await
+    }
+
+    /// The household on Dropbox, its owner signed in through `sign_in`.
+    async fn on_dropbox(sign_in: &DropboxSignIn) -> Self {
+        Self::on(coven::CloudProvider::Dropbox, Some(sign_in)).await
+    }
+
+    async fn on(provider: coven::CloudProvider, sign_in: Option<&DropboxSignIn>) -> Self {
         use coven::Storage;
         let dir = tempfile::tempdir().unwrap();
         let installation = coven::TestCoven::new();
         let clock: coven::ClockRef = std::sync::Arc::new(coven::SystemClock);
         let storage = std::sync::Arc::new(
             coven::MemoryStorage::builder()
+                .provider(provider)
                 .clock(clock.clone())
                 .build()
                 .unwrap(),
         );
+        let builder = installation
+            .builder(
+                bae_core::config::AppDir::at(dir.path())
+                    .unwrap()
+                    .store_layout(),
+            )
+            .storage_connector(storage.clone());
+        let builder = match sign_in {
+            Some(sign_in) => sign_in.configure(builder),
+            None => builder,
+        };
         let owner = bae_core::library::create_library(
-            installation
-                .builder(
-                    bae_core::config::AppDir::at(dir.path())
-                        .unwrap()
-                        .store_layout(),
-                )
-                .storage_connector(storage.clone()),
+            builder,
             bae_core::library_name::LibraryName::parse("Household").unwrap(),
         )
         .await
         .unwrap();
-        Box::pin(owner.setup_s3_storage(
-            storage.config(),
-            "Owner Device",
-            "owner-key".into(),
-            coven::SecretText::new("owner-secret".into()),
-        ))
-        .await
-        .unwrap();
+        match storage.config().oauth_access() {
+            Some(access) => {
+                owner.authenticate(access).await.unwrap();
+                Box::pin(owner.setup_oauth_storage(storage.config(), "Owner Device"))
+                    .await
+                    .unwrap();
+            }
+            None => {
+                Box::pin(owner.setup_s3_storage(
+                    storage.config(),
+                    "Owner Device",
+                    "owner-key".into(),
+                    coven::SecretText::new("owner-secret".into()),
+                ))
+                .await
+                .unwrap();
+            }
+        }
         let robin = bae_core::db::Database::from_handle(owner.clone(), clock.clone())
             .create_profile("Robin")
             .await
@@ -160,13 +188,21 @@ impl Household {
         }
     }
 
+    /// An invite giving S3 storage's `key`, or the Dropbox guest's account.
     async fn invite(&self, target: coven::InviteTarget, key: &str) -> coven::Invite {
-        Box::pin(self.owner.create_invite(
-            target,
-            coven::InviteAccess::S3AccessKey {
+        use coven::Storage;
+        let access = match self.storage.config().provider() {
+            coven::CloudProvider::S3 => coven::InviteAccess::S3AccessKey {
                 access_key_id: key.into(),
                 secret_access_key: coven::SecretText::new("guest-secret".into()),
             },
+            _ => coven::InviteAccess::ProviderAccount {
+                email: GUEST_ACCOUNT.into(),
+            },
+        };
+        Box::pin(self.owner.create_invite(
+            target,
+            access,
             coven::InviteDelivery::Sent {
                 lifetime: coven::InviteLifetime::Day,
             },
@@ -176,19 +212,24 @@ impl Household {
     }
 
     /// A device of its own, with its own keychain, reaching the household's
-    /// storage.
+    /// storage: with S3's key, or as the Dropbox guest's account.
     fn device(
         &self,
         installation: &coven::TestCoven,
         dir: &tempfile::TempDir,
     ) -> coven::CovenBuilder {
+        use coven::Storage;
+        let storage = match self.storage.config().provider() {
+            coven::CloudProvider::S3 => self.storage.for_device(),
+            _ => coven::MemoryStorage::for_recipient(&self.storage, GUEST_ACCOUNT).unwrap(),
+        };
         installation
             .builder(
                 bae_core::config::AppDir::at(dir.path())
                     .unwrap()
                     .store_layout(),
             )
-            .storage_connector(std::sync::Arc::new(self.storage.for_device()))
+            .storage_connector(std::sync::Arc::new(storage))
     }
 
     /// Approve the first request among the owner's open invites.
@@ -380,7 +421,7 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
             ("Household", Some("Rowan"))
         );
         let resuming = bae_core::library::resume_join(
-            builder,
+            || household.device(&guest, &guest_dir),
             join,
             household.clock.clone(),
             |_| {},
@@ -392,6 +433,218 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
         .await
         .unwrap();
         let (guest, profile) = joined.unwrap().unwrap();
+        assert_eq!(profile.unwrap().unwrap().name, "Rowan");
+        guest.close().await.unwrap();
+        household.owner.close().await.unwrap();
+    });
+}
+
+/// Signs bae in to a fake Dropbox. The presenter answers every authorization
+/// with a code, and the token endpoint grants `access-N` for the Nth code. It
+/// refuses every refresh, so a token Dropbox rejects needs a new sign-in.
+struct DropboxSignIn {
+    endpoint: String,
+    presented: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    server: tokio::task::JoinHandle<()>,
+}
+
+impl DropboxSignIn {
+    async fn start() -> Self {
+        use axum::{http::StatusCode, Form, Json};
+        let granted = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let router = axum::Router::new().fallback(
+            move |Form(form): Form<std::collections::HashMap<String, String>>| {
+                let granted = granted.clone();
+                async move {
+                    if form.get("grant_type").map(String::as_str) == Some("refresh_token") {
+                        return (
+                            StatusCode::BAD_REQUEST,
+                            Json(serde_json::json!({ "error": "invalid_grant" })),
+                        );
+                    }
+                    let n = granted.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    (
+                        StatusCode::OK,
+                        Json(serde_json::json!({
+                            "access_token": format!("access-{n}"),
+                            "refresh_token": format!("refresh-{n}"),
+                            "token_type": "Bearer",
+                            "expires_in": 3600,
+                        })),
+                    )
+                }
+            },
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let endpoint = format!("http://{}", listener.local_addr().unwrap());
+        let server = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+        Self {
+            endpoint,
+            presented: std::sync::Arc::default(),
+            server,
+        }
+    }
+
+    fn configure(&self, builder: coven::CovenBuilder) -> coven::CovenBuilder {
+        builder
+            .oauth_clients(
+                coven::OAuthClients::new(
+                    Some(coven::DropboxClients::FullDropbox {
+                        app_key: "dropbox-key".into(),
+                    }),
+                    None,
+                    std::sync::Arc::new(coven::SystemClock),
+                )
+                .with_token_endpoint(self.endpoint.clone()),
+            )
+            .oauth_presenter(std::sync::Arc::new(CodePresenter {
+                presented: self.presented.clone(),
+            }))
+    }
+
+    /// How many sign-ins bae has presented.
+    fn presented(&self) -> usize {
+        self.presented.load(std::sync::atomic::Ordering::SeqCst)
+    }
+}
+
+impl Drop for DropboxSignIn {
+    fn drop(&mut self) {
+        self.server.abort();
+    }
+}
+
+/// Answers each authorization with a code for its own state, as the person
+/// approving it in Dropbox's sheet would.
+struct CodePresenter {
+    presented: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+}
+
+#[async_trait::async_trait]
+impl coven::OAuthPresenter for CodePresenter {
+    fn redirect_uri(&self, _: coven::CloudProvider) -> &str {
+        "bae-test:/oauth"
+    }
+
+    async fn present(
+        &self,
+        authorization_url: &str,
+    ) -> Result<coven::SecretText, coven::OAuthError> {
+        self.presented
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let url = url::Url::parse(authorization_url).unwrap();
+        let (_, state) = url.query_pairs().find(|(name, _)| name == "state").unwrap();
+        Ok(coven::SecretText::new(format!(
+            "bae-test:/oauth?code=approved&state={state}"
+        )))
+    }
+}
+
+/// Start Rowan's join on the Dropbox household and stop it while it waits,
+/// as closing bae does. Joining signs Rowan in.
+async fn stopped_dropbox_join(
+    household: &Household,
+    sign_in: &DropboxSignIn,
+    guest: &coven::TestCoven,
+    guest_dir: &tempfile::TempDir,
+    control: &bae_core::library::JoinControl,
+) -> coven::InviteInfo {
+    use std::time::Duration;
+    let invite = household.invite(new_member("Rowan"), "").await;
+    let (waiting, mut waits) = tokio::sync::watch::channel(false);
+    let joining = bae_core::library::join_with_invite(
+        sign_in.configure(household.device(guest, guest_dir)),
+        &invite.code,
+        "Guest Device",
+        household.clock.clone(),
+        |status| {
+            if matches!(status, coven::BootstrapStatus::WaitingForApproval { .. }) {
+                waiting.send_replace(true);
+            }
+        },
+        control,
+    );
+    tokio::time::timeout(Duration::from_secs(30), async {
+        tokio::select! {
+            result = joining => panic!("the join ended while waiting: {:?}", result.err()),
+            changed = waits.wait_for(|waiting| *waiting) => drop(changed.unwrap()),
+        }
+    })
+    .await
+    .unwrap();
+    let [join] = &bae_core::library::unfinished_joins(&household.device(guest, guest_dir))
+        .await
+        .unwrap()[..]
+    else {
+        panic!("one join under way");
+    };
+    join.clone()
+}
+
+/// Rowan closes bae while his Dropbox join waits. coven kept his sign-in
+/// beside the join, so the next start resumes it without signing him in
+/// again (§5.6).
+#[test]
+fn a_stopped_dropbox_join_resumes_with_the_sign_in_it_kept() {
+    on_app_runtime(async {
+        use std::time::Duration;
+        let sign_in = DropboxSignIn::start().await;
+        let household = Household::on_dropbox(&sign_in).await;
+        let guest_dir = tempfile::tempdir().unwrap();
+        let guest = coven::TestCoven::new();
+        let control = bae_core::library::JoinControl::new();
+        let join = stopped_dropbox_join(&household, &sign_in, &guest, &guest_dir, &control).await;
+        let presented = sign_in.presented();
+        let resuming = bae_core::library::resume_join(
+            || sign_in.configure(household.device(&guest, &guest_dir)),
+            &join,
+            household.clock.clone(),
+            |_| {},
+            &control,
+        );
+        let (joined, ()) = tokio::time::timeout(Duration::from_secs(30), async {
+            tokio::join!(resuming, household.approve())
+        })
+        .await
+        .unwrap();
+        let (guest, profile) = joined.unwrap().unwrap();
+        assert_eq!(sign_in.presented(), presented);
+        assert_eq!(profile.unwrap().unwrap().name, "Rowan");
+        guest.close().await.unwrap();
+        household.owner.close().await.unwrap();
+    });
+}
+
+/// Dropbox refuses the sign-in Rowan's waiting join kept, and it can't be
+/// refreshed: resuming signs him in once more, then goes on to approval
+/// (§5.6).
+#[test]
+fn a_stopped_join_whose_sign_in_dropbox_refuses_signs_in_again_and_resumes() {
+    on_app_runtime(async {
+        use std::time::Duration;
+        let sign_in = DropboxSignIn::start().await;
+        let household = Household::on_dropbox(&sign_in).await;
+        let guest_dir = tempfile::tempdir().unwrap();
+        let guest = coven::TestCoven::new();
+        let control = bae_core::library::JoinControl::new();
+        let join = stopped_dropbox_join(&household, &sign_in, &guest, &guest_dir, &control).await;
+        // The owner's sign-in was the first; Rowan's join kept the second.
+        household.storage.reject_access_token("access-1").await;
+        let presented = sign_in.presented();
+        let resuming = bae_core::library::resume_join(
+            || sign_in.configure(household.device(&guest, &guest_dir)),
+            &join,
+            household.clock.clone(),
+            |_| {},
+            &control,
+        );
+        let (joined, ()) = tokio::time::timeout(Duration::from_secs(30), async {
+            tokio::join!(resuming, household.approve())
+        })
+        .await
+        .unwrap();
+        let (guest, profile) = joined.unwrap().unwrap();
+        assert_eq!(sign_in.presented(), presented + 1);
         assert_eq!(profile.unwrap().unwrap().name, "Rowan");
         guest.close().await.unwrap();
         household.owner.close().await.unwrap();

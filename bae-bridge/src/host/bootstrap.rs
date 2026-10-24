@@ -291,8 +291,9 @@ impl BridgeHost {
         .await
     }
 
-    /// Continue a join from `unfinished_joins`, signing in to its provider
-    /// again first. Dropping the call keeps the join, as for `join_with_invite`.
+    /// Continue a join from `unfinished_joins` with the provider sign-in coven
+    /// kept for it, signing in again only when coven asks for one. Dropping
+    /// the call keeps the join, as for `join_with_invite`.
     pub async fn resume_join(
         self: Arc<Self>,
         join: Arc<BridgeUnfinishedJoin>,
@@ -307,7 +308,7 @@ impl BridgeHost {
                 .clone(),
             move || async move {
                 let joined = bae_core::library::resume_join(
-                    self.builder(),
+                    || self.builder(),
                     &join.join,
                     Arc::new(coven::SystemClock),
                     |status| callback.on_status(BridgeBootstrapStatus::from_core(status)),

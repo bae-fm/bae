@@ -1475,12 +1475,16 @@ no record of it once the invite ends. Cancelling an invite asks first, and on
 S3 the question names the key, as removing a person does.
 
 **Dan's waiting.** Dan can close bae while he waits. When bae next starts, it
-opens on his waiting screen and keeps checking; on Dropbox or OneDrive he signs
-in again first, since his sign-in is kept only once he has joined. The waiting screen has no
-Cancel once his request is sent, since coven can't take a sent request back:
-the join ends when Ana approves, declines or cancels, or the invite expires.
-Before then, while Dan signs in to his provider, Cancel works, and the invite
-stays open for him to scan again. When the invite ends without letting him in,
+opens on his waiting screen and keeps checking, with no sign-in: coven keeps
+his Dropbox or OneDrive sign-in on his phone beside the join
+([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)).
+Only when coven has no sign-in it can use, because Dropbox refused the kept one
+or it is gone, does bae show the sign-in it showed when he first joined, then
+go on checking. Cancelling that sign-in leaves the join under way for the next
+start. The waiting screen has no Cancel once his request is sent, since coven
+can't take a sent request back: the join ends when Ana approves, declines or
+cancels, or the invite expires. Before then, while Dan signs in to his
+provider, Cancel works, and the invite stays open for him to scan again. When the invite ends without letting him in,
 Dan's phone returns to the first screen and says it was declined, cancelled or
 expired: all three delete his request, so his phone can't tell which.
 
@@ -2206,7 +2210,7 @@ library is registered there by id.
 | `forget_saved_restore_code` | deletes a saved restore code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices; no library, storage or device's copy changes, and an absent code succeeds (§5.6) |
 | `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, which a failed restore leaves as it was; called again, finishes a restore that stopped after the restored copy took this one's place (§6.4) |
 | `join_with_invite` | joins a library from an invite and writes the person's profile with the name the invite carries (§5.6) |
-| `unfinished_joins`, `resume_join` | list the joins this device has under way, and continue one after bae restarts, without the code (§5.6) |
+| `unfinished_joins`, `resume_join` | list the joins this device has under way, and continue one after bae restarts, without the code, signing in only when coven has no sign-in it can use (§5.6) |
 | `reset_device` | loads a library again under a fresh device id, after the warning; called again, finishes a reset that stopped after the new copy took the old one's place (§6.4) |
 | `Config::discover_libraries` | lists registered libraries, including any that can't be opened, with why: storage settings that can't be read, or a reset or restore of this device's copy that didn't finish, with the call that finishes it |
 | `app::bootstrap` | opens a library and starts its services: the store, sync, playback, and on desktops import and identification; a library whose reset or restore didn't finish fails with the call that finishes it |

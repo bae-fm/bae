@@ -277,8 +277,8 @@ pub type JoinedLibrary = (
 );
 
 /// The app's hold on a running join: cancel it before its request is sent, or
-/// check for approval at once. One control covers the provider sign-in bae
-/// runs first and coven's join after it.
+/// check for approval at once. One control covers coven's join and any
+/// provider sign-in bae runs for it.
 pub struct JoinControl {
     sign_in: watch::Sender<bool>,
     join: coven::JoinControl,
@@ -351,27 +351,36 @@ pub async fn unfinished_joins(
     builder.unfinished_joins().await.map_err(restore_error)
 }
 
-/// Continue a join from `unfinished_joins` after bae restarted, signing in
-/// again first: the provider sign-in isn't kept while the join waits.
+/// Continue a join from `unfinished_joins` after bae restarted. coven keeps
+/// the join's provider sign-in on the device beside it, so this signs in only
+/// when coven asks for one: when the kept sign-in is gone, or the provider
+/// refuses it. It then signs in with the access the listed join names and
+/// resumes once more. Each call consumes its builder, so `builder` makes one
+/// for each (§5.6).
 pub async fn resume_join(
-    mut builder: coven::CovenBuilder,
+    builder: impl Fn() -> coven::CovenBuilder,
     join: &coven::InviteInfo,
     clock: coven::ClockRef,
     on_status: impl Fn(coven::BootstrapStatus),
     control: &JoinControl,
 ) -> Result<Option<JoinedLibrary>, RestoreFromCodeError> {
-    bootstrap_auth::authenticate(
-        &mut builder,
-        join.metadata.oauth_access,
-        &control.sign_in.subscribe(),
-    )
-    .await?;
-    let joined = Box::pin(configure_store(builder).resume_join(
-        join.metadata.store_id,
-        on_status,
-        &control.join,
-    ))
-    .await
+    let (store, on_status, coven_control) = (join.metadata.store_id, &on_status, &control.join);
+    let resume = move |builder: coven::CovenBuilder| {
+        Box::pin(configure_store(builder).resume_join(store, on_status, coven_control))
+    };
+    let joined = match resume(builder()).await {
+        Err(coven::BootstrapError::OAuth(coven::OAuthError::Reauthorize(_))) => {
+            let mut signed_in = builder();
+            bootstrap_auth::authenticate(
+                &mut signed_in,
+                join.metadata.oauth_access,
+                &control.sign_in.subscribe(),
+            )
+            .await?;
+            resume(signed_in).await
+        }
+        resumed => resumed,
+    }
     .map_err(restore_error)?;
     Ok(match joined {
         Some(handle) => Some(with_profile(handle, join.invitee.as_deref(), clock).await),
