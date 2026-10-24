@@ -857,16 +857,24 @@ dropped.
 
 **What the files' tags say.** The tags are read whole: a tag stating a value
 more than once (two `ARTIST` comments, an ID3v2.4 frame of two values) states
-each, so a file naming two artists gives its track two credits. The album's
-fields are what every file that states one agrees on; files that state
-different values leave the field empty for the person to fill, never the first
-file's or the most common. A folder whose units are CUE sheets reads its album
-from the sheets' `TITLE`, `PERFORMER` and `REM DATE` the same way, and with no
-title stated anywhere the folder's name is the title.
+each, so a file naming two artists gives its track two credits. An album
+field is the value every file stating it gives; files that state it
+differently give it the first file's, in play order (disc, then track). A
+folder whose units are CUE sheets reads its album from the sheets' `TITLE`,
+`PERFORMER` and `REM DATE` the same way, the first sheet's winning, and with
+no title stated anywhere the folder's name is the title.
 
-- The album artist is the `ALBUMARTIST` the files agree on; where no file
-  names one, the `ARTIST` they agree on; else none, and the draft asks for
-  one before it imports.
+- The album title is the one every file states. Where they differ, it is the
+  first file's without the disc marker it ends with and the separator before
+  it: `Album Title (cd 1)`, `Album Title [disc 1]`, `Album Title CD1` and
+  `Album Title - Disc 1` give `Album Title`. A marker is `disc`, `disk`, `cd`
+  or `d` and a number, in brackets or not; `Album Title Volume 1` names no
+  disc and stays as it is.
+- The album artist is the `ALBUMARTIST` the files agree on, else the first
+  file's; where no file names one, the `ARTIST` they agree on, else the first
+  file's, so a compilation whose files neither flag it nor name an album
+  artist is credited to its first track's artist. With no artist named
+  anywhere the draft asks for one before it imports.
 - A track whose `ARTIST` names the album's artists is credited to the album;
   one naming others is credited to them.
 - A folder every file of which says it is a compilation, by its compilation
@@ -878,7 +886,8 @@ title stated anywhere the folder's name is the title.
   more years make the earliest the album's year and the latest the pressing's;
   one year is the album's, the pressing's left unknown. With the year the
   album first came out known (a record states it), that year is the album's
-  and the latest later one the pressing's.
+  and the latest later one the pressing's. The album's year and the
+  pressing's are each the one the files agree on, else the first file's.
 
 Applying a source — a catalog's release, the folder's tags, or nothing —
 writes everything it says into the draft once. The draft points back at

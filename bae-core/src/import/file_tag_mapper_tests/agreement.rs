@@ -63,17 +63,17 @@ fn a_file_s_dates_name_the_album_year_and_the_pressing_year() {
 }
 
 /// Files whose dates name the same years agree on them; files that state
-/// different years leave both unfilled, never the first file's or the
-/// earliest.
+/// different years give the album the first file's, in play order. A file
+/// stating none counts for none.
 #[test]
-fn files_agree_on_years_or_leave_them_unfilled() {
+fn files_give_the_years_they_agree_on_else_the_first_file_s() {
     let both: &[(&str, &str)] = &[("DATE", "2005"), ("ORIGINALDATE", "1971")];
-    let values = read_commented(&[both, both, &[("TITLE", "Undated")]]);
+    let values = read_commented(&[&[("TITLE", "Undated")], both, both]);
     assert_eq!(values.album_year, Some(1971));
     assert_eq!(values.pressing.year, Some(2005));
 
-    let values = read_commented(&[&[("DATE", "1971")], &[("DATE", "2005")]]);
-    assert_eq!(values.album_year, None);
+    let values = read_commented(&[&[("DATE", "1963")], &[("DATE", "1987")], &[("DATE", "1987")]]);
+    assert_eq!(values.album_year, Some(1963));
     assert_eq!(values.pressing.year, None);
 }
 
@@ -105,39 +105,123 @@ fn a_track_artist_naming_the_album_artist_takes_the_album_s_credit() {
     assert_eq!(track_artist_names(&values, 1), Some(vec!["Artist Beta"]));
 }
 
-/// Files that disagree on the album's title leave it unfilled, not the
-/// folder's name; a file stating none does not disagree.
+/// Files that agree on the album's title give it as they state it; files
+/// titling it differently give it the first file's title, without the disc
+/// marker it ends with. A file stating none counts for none, and with none
+/// stated anywhere the folder's name is the title.
 #[test]
-fn files_disagreeing_on_the_album_title_leave_it_unfilled() {
-    let values = read_commented(&[&[("ALBUM", "Album Alpha")], &[("ALBUM", "Album Beta")]]);
-    assert_eq!(values.album_title, "");
+fn files_give_the_title_they_agree_on_else_the_first_file_s() {
+    let values = read_commented(&[
+        &[("ALBUM", "Album Title CD1")],
+        &[("ALBUM", "Album Title CD1")],
+    ]);
+    assert_eq!(values.album_title, "Album Title CD1");
 
-    let values = read_commented(&[&[("ALBUM", "Album Alpha")], &[("TITLE", "Untitled album")]]);
+    let values = read_commented(&[
+        &[("ALBUM", "Album Title (Disc 1)")],
+        &[("ALBUM", "Album Title (Disc 2)")],
+    ]);
+    assert_eq!(values.album_title, "Album Title");
+
+    let values = read_commented(&[
+        &[("ALBUM", "Album Title")],
+        &[("ALBUM", "Album Title / Other Album")],
+        &[("ALBUM", "Other Album")],
+    ]);
+    assert_eq!(values.album_title, "Album Title");
+
+    let values = read_commented(&[&[("TITLE", "Untitled album")], &[("ALBUM", "Album Alpha")]]);
     assert_eq!(values.album_title, "Album Alpha");
 
     let values = read_commented(&[&[("TITLE", "Track Alpha")]]);
     assert_eq!(values.album_title, "Folder Name");
 }
 
-/// The album artist is the ALBUMARTIST the files agree on, else the ARTIST
-/// they agree on; files naming different artists in both leave it unfilled
-/// rather than taking the first file's, and each track keeps its own.
+/// The disc marker a set's first disc ends its title with, and the
+/// separator before it, are not the album's: brackets or none, any case, a
+/// space before the number or none. A volume is no disc, and a title that is
+/// only a marker stays.
 #[test]
-fn files_disagreeing_on_the_artist_leave_the_album_artist_unfilled() {
+fn the_first_disc_s_title_drops_its_disc_marker() {
+    for (title, album) in [
+        ("Album Title (cd 1)", "Album Title"),
+        ("Album Title: Subtitle (cd 1)", "Album Title: Subtitle"),
+        ("Album Title (Disc 1)", "Album Title"),
+        ("Album Title [disc 1]", "Album Title"),
+        ("Album Title [disc  09]", "Album Title"),
+        ("Album Title CD1", "Album Title"),
+        ("Album Title CD 1", "Album Title"),
+        ("Album Title - Disc 1", "Album Title"),
+        ("Album Title Disc 1", "Album Title"),
+        ("Album Title_Anthology (1974-84) D2", "Album Title_Anthology (1974-84)"),
+        ("Album Title, Vol.1 CD1", "Album Title, Vol.1"),
+        ("Album Title ", "Album Title"),
+        ("Album Title Volume 1", "Album Title Volume 1"),
+        ("Album Title (1974-84)", "Album Title (1974-84)"),
+        ("Album Band 2", "Album Band 2"),
+        ("Disc 1", "Disc 1"),
+    ] {
+        assert_eq!(without_disc_marker(title), album, "{title:?}");
+    }
+}
+
+/// A set's discs, each titled after its own disc, title the album after the
+/// first; volumes keep the first disc's volume.
+#[test]
+fn a_set_titled_disc_by_disc_takes_the_first_disc_s_title() {
+    let values = read_commented(&[
+        &[("ALBUM", "Album Title [disc 1]")],
+        &[("ALBUM", "Album Title [disc 02]")],
+        &[("ALBUM", "Album Title [disc  09]")],
+    ]);
+    assert_eq!(values.album_title, "Album Title");
+
+    let values = read_commented(&[
+        &[("ALBUM", "Album Title Volume 1")],
+        &[("ALBUM", "Album Title Volume 2")],
+    ]);
+    assert_eq!(values.album_title, "Album Title Volume 1");
+}
+
+/// The album artist is the ALBUMARTIST the files agree on, else the first
+/// file's; where no file names one, the ARTIST they agree on, else the first
+/// file's. Each track naming another keeps its own.
+#[test]
+fn files_naming_different_artists_give_the_album_the_first_file_s() {
     let values = read_commented(&[&[("ARTIST", "Artist Alpha")], &[("ARTIST", "Artist Alpha")]]);
     assert_eq!(album_artist_names(&values), ["Artist Alpha"]);
     assert_eq!(track_artist_names(&values, 0), None);
 
-    let values = read_commented(&[&[("ARTIST", "Artist Alpha")], &[("ARTIST", "Artist Beta")]]);
-    assert!(values.album_credits.is_empty());
-    assert_eq!(track_artist_names(&values, 0), Some(vec!["Artist Alpha"]));
-    assert_eq!(track_artist_names(&values, 1), Some(vec!["Artist Beta"]));
+    let values = read_commented(&[
+        &[("ARTIST", "Artist Beta")],
+        &[("ARTIST", "Artist Alpha")],
+        &[("ARTIST", "Artist Alpha")],
+    ]);
+    assert_eq!(album_artist_names(&values), ["Artist Beta"]);
+    assert_eq!(track_artist_names(&values, 0), None);
+    assert_eq!(track_artist_names(&values, 1), Some(vec!["Artist Alpha"]));
 
     let values = read_commented(&[
         &[("ALBUMARTIST", "Artist Alpha"), ("ARTIST", "Artist Gamma")],
         &[("ALBUMARTIST", "Artist Beta"), ("ARTIST", "Artist Gamma")],
     ]);
-    assert!(values.album_credits.is_empty());
+    assert_eq!(album_artist_names(&values), ["Artist Alpha"]);
+}
+
+/// A compilation whose files name neither an album artist nor say they are
+/// a compilation is credited to its first track's artist, and every other
+/// track keeps its own.
+#[test]
+fn an_unflagged_compilation_is_credited_to_its_first_track_s_artist() {
+    let values = read_commented(&[
+        &[("ARTIST", "Artist Alpha")],
+        &[("ARTIST", "Artist Beta")],
+        &[("ARTIST", "Artist Gamma")],
+    ]);
+    assert_eq!(album_artist_names(&values), ["Artist Alpha"]);
+    assert_eq!(track_artist_names(&values, 0), None);
+    assert_eq!(track_artist_names(&values, 1), Some(vec!["Artist Beta"]));
+    assert_eq!(track_artist_names(&values, 2), Some(vec!["Artist Gamma"]));
 }
 
 /// Every file flagged a compilation, or naming the various-artists credit as
@@ -162,17 +246,17 @@ fn a_folder_every_file_of_which_says_compilation_is_one() {
     assert_eq!(track_artist_names(&values, 0), None);
 }
 
-/// CUE sheets agree like files: a TITLE they disagree on is left unfilled,
-/// a PERFORMER they agree on is the album artist, and a sheet's `REM DATE`
-/// years are read by the year rule.
+/// CUE sheets give the album like files: the TITLE they agree on, else the
+/// first sheet's without its disc marker; the PERFORMER they agree on, else
+/// the first sheet's; their `REM DATE` years by the year rule.
 #[test]
-fn cue_sheets_agree_on_the_album_like_files() {
-    let mut disc1 = cue_sheet("Album Alpha", vec![cue_track(1, "One")]);
+fn cue_sheets_give_the_album_like_files() {
+    let mut disc1 = cue_sheet("Album Title (cd 1)", vec![cue_track(1, "One")]);
     disc1.date = Some("1971 / 2005".to_string());
-    let mut disc2 = cue_sheet("Album Beta", vec![cue_track(1, "Two")]);
+    let mut disc2 = cue_sheet("Album Title (cd 2)", vec![cue_track(1, "Two")]);
     disc2.date = Some("1971 / 2005".to_string());
     let values = map_cue_folder(vec![disc1, disc2], Some("Folder Name"));
-    assert_eq!(values.album_title, "");
+    assert_eq!(values.album_title, "Album Title");
     assert_eq!(album_artist_names(&values), ["Artist Name"]);
     assert_eq!(values.album_year, Some(1971));
     assert_eq!(values.pressing.year, Some(2005));
@@ -182,5 +266,5 @@ fn cue_sheets_agree_on_the_album_like_files() {
     disc2.performer = Some("Artist Other".to_string());
     let values = map_cue_folder(vec![disc1, disc2], None);
     assert_eq!(values.album_title, "Album Alpha");
-    assert!(values.album_credits.is_empty());
+    assert_eq!(album_artist_names(&values), ["Artist Name"]);
 }

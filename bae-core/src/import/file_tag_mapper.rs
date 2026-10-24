@@ -9,9 +9,10 @@
 //! records. The release provenance is `FileMetadata`. Lookup signals such as OCR,
 //! DiscID, and barcode are not part of this path.
 //!
-//! Album facts are what every file (or every CUE sheet) that states one
-//! agrees on: files that disagree leave the field for the person to fill.
-//! Each file's dates name the album's year and the pressing's by the one year
+//! Album facts are what the files (or the CUE sheets) that state one say
+//! together (`TaggedAlbum::of`): the value they all give, else the first
+//! one's in play order, its title without a trailing disc marker. Each file's
+//! dates name the album's year and the pressing's by the one year
 //! rule (`StatedYears::of`). Source codecs are physical audio facts, not
 //! release media, so the pressing's media stay unstated.
 
@@ -44,9 +45,9 @@ use std::path::PathBuf;
 ///
 /// Seeds whatever the files carry and leaves the rest for the user. Missing
 /// album-level fields become editable blanks, never errors: the album title
-/// falls back to `folder_name` where no file states one and is empty where
-/// files disagree, the album artist is none where the files name none they
-/// agree on, and a missing track TITLE falls back to the file stem. The form's save-gate (`RawReleaseEdit::shape` →
+/// falls back to `folder_name` where no file states one, the album artist is
+/// none where no file names one, and a missing track TITLE falls back to the
+/// file stem. The form's save-gate (`RawReleaseEdit::shape` →
 /// `EmptyAlbumTitle` / `NoAlbumArtist`) makes the user fill any blank before
 /// committing, so no fabricated default is ever written.
 ///
@@ -98,7 +99,7 @@ fn file_tag_facts_values(
             detail: "file-tag seeding requires at least one audio file".to_string(),
         });
     }
-    let album = TaggedAlbum::agreed(
+    let album = TaggedAlbum::of(
         extracted.iter().map(|fact| UnitAlbum::of_file(&fact.tags)),
         folder_name,
     );
@@ -154,13 +155,14 @@ fn names_various_artists(artists: &[String]) -> bool {
     matches!(artists, [only] if crate::text_match::is_various_artists(only))
 }
 
-/// What the folder's units, together, say of the album: each value every
-/// unit that states one agrees on. Units that state different values leave
-/// the value unstated; neither the first nor the most common wins.
+/// What the folder's units, together, say of the album. Units that state a
+/// value differently still give the album one, the first unit's: the discs
+/// of one set tag `Album Title (Disc 1)` and `Album Title (Disc 2)`, and a
+/// reissue's discs can carry different years.
 struct TaggedAlbum {
     title: String,
-    /// The album's artists, by name, in order; empty where the units name
-    /// none they agree on.
+    /// The album's artists, by name, in order; empty where no unit names
+    /// one.
     artists: Vec<String>,
     /// Every unit says the album is a compilation: it is credited to the
     /// various-artists artist, and each track keeps its own artists.
@@ -169,34 +171,35 @@ struct TaggedAlbum {
 }
 
 impl TaggedAlbum {
-    /// The album the units agree on. Its title falls back to `folder_name`
-    /// where no unit states one (not where they disagree). Its artists are the
-    /// album artists the units agree on where any names one, else the track
-    /// artists they agree on.
-    fn agreed(units: impl Iterator<Item = UnitAlbum>, folder_name: Option<&str>) -> Self {
+    /// The album `units` describe, given in the order they play (disc, then
+    /// track). Each value is the one every unit stating it gives, else the
+    /// first such unit's; a title taken from the first unit drops a trailing
+    /// disc marker ([`without_disc_marker`]). The title falls back to
+    /// `folder_name` where no unit states one. The artists are the album
+    /// artists where any unit names one, else the track artists.
+    fn of(units: impl Iterator<Item = UnitAlbum>, folder_name: Option<&str>) -> Self {
         let units: Vec<UnitAlbum> = units.collect();
-        let title = match agreement(units.iter().map(|unit| unit.title.as_ref()), |a, b| a == b) {
-            Agreement::Agreed(title) => title.clone(),
-            Agreement::Unstated => folder_name.map(str::to_string).unwrap_or_default(),
-            Agreement::Disagreed => String::new(),
+        let title = match given(units.iter().map(|unit| unit.title.as_deref()), |a, b| a == b) {
+            Given::Agreed(title) => title.to_string(),
+            Given::Disagreed { first } => without_disc_marker(first).to_string(),
+            Given::Unstated => folder_name.map(str::to_string).unwrap_or_default(),
         };
         let stated = |artists: &[String]| (!artists.is_empty()).then(|| artists.to_vec());
-        let artists = match agreement(
+        let artists = given(
             units.iter().map(|unit| stated(&unit.album_artists)),
             |a, b| same_names(a, b),
-        ) {
-            Agreement::Agreed(artists) => artists,
-            Agreement::Disagreed => Vec::new(),
-            Agreement::Unstated => match agreement(
+        )
+        .value()
+        .or_else(|| {
+            given(
                 units.iter().map(|unit| stated(&unit.track_artists)),
                 |a, b| same_names(a, b),
-            ) {
-                Agreement::Agreed(artists) => artists,
-                Agreement::Unstated | Agreement::Disagreed => Vec::new(),
-            },
-        };
+            )
+            .value()
+        })
+        .unwrap_or_default();
         let year = |year: fn(&StatedYears) -> Option<i32>| {
-            agreement(units.iter().map(|unit| year(&unit.years)), |a, b| a == b).agreed()
+            given(units.iter().map(|unit| year(&unit.years)), |a, b| a == b).value()
         };
         Self {
             title,
@@ -210,37 +213,89 @@ impl TaggedAlbum {
     }
 }
 
-/// What the units stating a value say of it.
-enum Agreement<T> {
+/// What the units stating a value give of it.
+enum Given<T> {
     /// Every unit stating it states this.
     Agreed(T),
+    /// Units state it differently; `first` is the first one's.
+    Disagreed { first: T },
     /// No unit states it.
     Unstated,
-    /// Two units state different values.
-    Disagreed,
 }
 
-impl<T> Agreement<T> {
-    fn agreed(self) -> Option<T> {
+impl<T> Given<T> {
+    /// The value the album takes: the one agreed on, else the first unit's.
+    fn value(self) -> Option<T> {
         match self {
-            Self::Agreed(value) => Some(value),
-            Self::Unstated | Self::Disagreed => None,
+            Self::Agreed(value) | Self::Disagreed { first: value } => Some(value),
+            Self::Unstated => None,
         }
     }
 }
 
-/// Whether the units stating a value agree on it, by `same`; a unit stating
+/// What the units stating a value give of it, by `same`; a unit stating
 /// nothing (`None`) never disagrees.
-fn agreement<T>(values: impl Iterator<Item = Option<T>>, same: impl Fn(&T, &T) -> bool) -> Agreement<T> {
-    let mut agreed: Option<T> = None;
+fn given<T>(values: impl Iterator<Item = Option<T>>, same: impl Fn(&T, &T) -> bool) -> Given<T> {
+    let mut first: Option<T> = None;
+    let mut agreed = true;
     for value in values.flatten() {
-        match &agreed {
-            None => agreed = Some(value),
-            Some(known) if same(known, &value) => {}
-            Some(_) => return Agreement::Disagreed,
+        match &first {
+            None => first = Some(value),
+            Some(known) => agreed &= same(known, &value),
         }
     }
-    agreed.map_or(Agreement::Unstated, Agreement::Agreed)
+    match first {
+        Some(value) if agreed => Given::Agreed(value),
+        Some(first) => Given::Disagreed { first },
+        None => Given::Unstated,
+    }
+}
+
+/// `title` without the disc marker it ends with, and the separator before
+/// it: `Album Title (cd 1)`, `Album Title [disc  09]`, `Album Title CD1`,
+/// `Album Title - Disc 1` and `Album Title_D2` are all `Album Title`. A
+/// marker is `disc`, `disk`, `cd` or `d` standing as its own word, then a
+/// number, the two in brackets or not. `Album Title Volume 1` names no disc
+/// and keeps its number, and a title that is nothing but a marker is kept
+/// whole. Trailing spaces go either way.
+fn without_disc_marker(title: &str) -> &str {
+    const MARKERS: &[&str] = &["disc", "disk", "cd", "d"];
+    const SEPARATORS: &[char] = &['-', '–', '—', ':', ',', '_', '/', '|'];
+    let title = title.trim_end();
+    let (inside, open) = match title.chars().last() {
+        Some(')') => (&title[..title.len() - 1], Some('(')),
+        Some(']') => (&title[..title.len() - 1], Some('[')),
+        Some('}') => (&title[..title.len() - 1], Some('{')),
+        _ => (title, None),
+    };
+    let inside = inside.trim_end();
+    let number_start = inside.trim_end_matches(|c: char| c.is_ascii_digit()).len();
+    if number_start == inside.len() {
+        return title;
+    }
+    let before_number = inside[..number_start].trim_end();
+    let lowered = before_number.to_ascii_lowercase();
+    let Some(marker) = MARKERS.iter().find(|marker| lowered.ends_with(*marker)) else {
+        return title;
+    };
+    let before_marker = &before_number[..before_number.len() - marker.len()];
+    if before_marker.chars().next_back().is_some_and(char::is_alphanumeric) {
+        return title;
+    }
+    let before_marker = match open {
+        Some(open) => match before_marker.strip_suffix(open) {
+            Some(rest) => rest,
+            None => return title,
+        },
+        None if before_marker.ends_with(['(', '[', '{']) => return title,
+        None => before_marker,
+    };
+    let kept = before_marker.trim_end_matches(|c: char| c.is_whitespace() || SEPARATORS.contains(&c));
+    if kept.is_empty() {
+        title
+    } else {
+        kept
+    }
 }
 
 /// Whether two lists of artist names name the same artists in the same
@@ -403,7 +458,7 @@ pub(crate) fn file_metadata_values(
     if sheets.is_empty() {
         return file_tag_facts_values(&loose_facts, folder_name);
     }
-    let album = TaggedAlbum::agreed(sheets.iter().map(|sheet| UnitAlbum::of_sheet(sheet)), folder_name);
+    let album = TaggedAlbum::of(sheets.iter().map(|sheet| UnitAlbum::of_sheet(sheet)), folder_name);
     let mut loose_tracks = tag_tracks(&loose_facts).into_iter();
     let mut tracks = Vec::new();
     for (_, contribution) in layout {
