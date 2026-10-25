@@ -1,4 +1,6 @@
-//! Cover art resizing for storage and export.
+//! The image file bae stores for a cover or an artist picture: whatever
+//! format it arrived in, decoded and downscaled to a JPEG at most 600 pixels
+//! on its longer side.
 
 use std::io::Cursor;
 
@@ -7,23 +9,23 @@ use tracing::debug;
 
 use super::content_type::ContentType;
 
-/// Maximum dimension for a stored/embedded cover thumbnail.
-const COVER_MAX_SIZE: u32 = 600;
+/// The longest side, in pixels, of an image bae stores.
+const STORED_MAX_EDGE: u32 = 600;
 const MAX_DECODE_DIMENSION: u32 = 8_192;
 const MAX_DECODE_ALLOC_BYTES: u64 = 128 * 1024 * 1024;
 
-/// Decode the first image using the cover format and resource limits shared by
-/// remote validation and stored-cover normalization.
-pub(crate) fn decode_cover(data: &[u8]) -> Result<(image::DynamicImage, ContentType), String> {
+/// Decode the first image using the formats and resource limits shared by
+/// remote validation and [`stored_jpeg`].
+pub(crate) fn decode_image(data: &[u8]) -> Result<(image::DynamicImage, ContentType), String> {
     let mut reader = ImageReader::new(Cursor::new(data))
         .with_guessed_format()
-        .map_err(|e| format!("Failed to read cover image: {}", e))?;
+        .map_err(|e| format!("Failed to read image: {}", e))?;
     let format = reader
         .format()
-        .ok_or_else(|| "Unrecognized cover image format".to_string())?;
+        .ok_or_else(|| "Unrecognized image format".to_string())?;
     let content_type = ContentType::from_mime(format.to_mime_type());
     if !content_type.is_supported_cover() {
-        return Err(format!("Cover image format {format:?} is not supported"));
+        return Err(format!("Image format {format:?} is not supported"));
     }
 
     let mut limits = image::Limits::default();
@@ -34,23 +36,24 @@ pub(crate) fn decode_cover(data: &[u8]) -> Result<(image::DynamicImage, ContentT
 
     let img = reader
         .decode()
-        .map_err(|e| format!("Failed to decode cover image: {}", e))?;
+        .map_err(|e| format!("Failed to decode image: {}", e))?;
     Ok((img, content_type))
 }
 
-/// Resize cover art to fit within COVER_MAX_SIZE (downscale only), as JPEG.
-pub fn resize_cover(data: &[u8]) -> Result<Vec<u8>, String> {
-    let (img, _) = decode_cover(data)?;
+/// The JPEG bae stores for `data`: the image downscaled to fit within 600
+/// pixels on each side, never upscaled.
+pub fn stored_jpeg(data: &[u8]) -> Result<Vec<u8>, String> {
+    let (img, _) = decode_image(data)?;
     let (w, h) = (img.width(), img.height());
 
-    let img = if w > COVER_MAX_SIZE || h > COVER_MAX_SIZE {
+    let img = if w > STORED_MAX_EDGE || h > STORED_MAX_EDGE {
         debug!(
-            "Resizing cover art from {}x{} to fit {}x{}",
-            w, h, COVER_MAX_SIZE, COVER_MAX_SIZE
+            "Resizing image from {}x{} to fit {}x{}",
+            w, h, STORED_MAX_EDGE, STORED_MAX_EDGE
         );
         img.resize(
-            COVER_MAX_SIZE,
-            COVER_MAX_SIZE,
+            STORED_MAX_EDGE,
+            STORED_MAX_EDGE,
             image::imageops::FilterType::Lanczos3,
         )
     } else {
@@ -59,7 +62,7 @@ pub fn resize_cover(data: &[u8]) -> Result<Vec<u8>, String> {
 
     let mut buf = std::io::Cursor::new(Vec::new());
     img.write_to(&mut buf, image::ImageFormat::Jpeg)
-        .map_err(|e| format!("Failed to encode cover as JPEG: {}", e))?;
+        .map_err(|e| format!("Failed to encode image as JPEG: {}", e))?;
     Ok(buf.into_inner())
 }
 
@@ -88,34 +91,34 @@ mod tests {
 
     #[test]
     fn square_large_downscales_to_600() {
-        let out = resize_cover(&png_source(1200, 1200)).unwrap();
+        let out = stored_jpeg(&png_source(1200, 1200)).unwrap();
         assert_eq!(decoded_dims(&out), (600, 600));
     }
 
     #[test]
     fn wide_source_keeps_aspect_no_pad() {
-        let out = resize_cover(&png_source(1200, 600)).unwrap();
+        let out = stored_jpeg(&png_source(1200, 600)).unwrap();
         assert_eq!(decoded_dims(&out), (600, 300));
     }
 
     #[test]
     fn small_source_is_not_upscaled() {
-        let out = resize_cover(&png_source(300, 300)).unwrap();
+        let out = stored_jpeg(&png_source(300, 300)).unwrap();
         assert_eq!(decoded_dims(&out), (300, 300));
     }
 
     #[test]
     fn garbage_bytes_error() {
-        assert!(resize_cover(&[0u8; 16]).is_err());
+        assert!(stored_jpeg(&[0u8; 16]).is_err());
     }
 
     #[test]
     fn oversized_source_dimensions_error_before_decode() {
-        assert!(resize_cover(&png_source(MAX_DECODE_DIMENSION + 1, 1)).is_err());
+        assert!(stored_jpeg(&png_source(MAX_DECODE_DIMENSION + 1, 1)).is_err());
     }
 
     #[test]
-    fn gif_and_webp_covers_normalize_the_first_image_to_jpeg() {
+    fn gif_and_webp_images_normalize_the_first_image_to_jpeg() {
         for (name, bytes, dimensions) in [
             (
                 "GIF",
@@ -138,7 +141,7 @@ mod tests {
                 (600, 300),
             ),
         ] {
-            let output = resize_cover(bytes).unwrap_or_else(|error| panic!("{name}: {error}"));
+            let output = stored_jpeg(bytes).unwrap_or_else(|error| panic!("{name}: {error}"));
             assert_eq!(decoded_dims(&output), dimensions, "{name}");
             let pixel = image::load_from_memory(&output)
                 .unwrap()
@@ -152,7 +155,7 @@ mod tests {
     }
 
     #[test]
-    fn transparent_covers_encode_as_jpeg() {
+    fn transparent_images_encode_as_jpeg() {
         let mut png = Cursor::new(Vec::new());
         image::DynamicImage::ImageRgba8(image::RgbaImage::from_pixel(
             16,
@@ -174,7 +177,7 @@ mod tests {
                 [0, 0, 0],
             ),
         ] {
-            let output = resize_cover(bytes).unwrap();
+            let output = stored_jpeg(bytes).unwrap();
             assert_eq!(decoded_dims(&output), (16, 8));
             let pixel = image::load_from_memory(&output)
                 .unwrap()
@@ -200,7 +203,7 @@ mod tests {
         let mut bytes = include_bytes!("../../test-fixtures/cover-art/solid.gif").to_vec();
         bytes[6..8].copy_from_slice(&6000u16.to_le_bytes());
         bytes[8..10].copy_from_slice(&6000u16.to_le_bytes());
-        let error = resize_cover(&bytes).unwrap_err();
+        let error = stored_jpeg(&bytes).unwrap_err();
         assert!(error.contains("Memory limit"), "{error}");
     }
 }

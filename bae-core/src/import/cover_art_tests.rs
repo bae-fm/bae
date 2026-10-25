@@ -577,7 +577,7 @@ async fn truncated_gif_and_webp_fail_remote_validation_and_normalization() {
         include_bytes!("../../test-fixtures/cover-art/solid.webp").as_slice(),
     ] {
         let truncated = &bytes[..20];
-        assert!(crate::util::cover::resize_cover(truncated).is_err());
+        assert!(crate::util::stored_image::stored_jpeg(truncated).is_err());
         let url = start_mock(vec![(200, truncated.to_vec())]).await;
         let error = RemoteImageCache::for_test(direct_http())
             .fetch_required(&url)

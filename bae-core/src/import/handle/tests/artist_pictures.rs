@@ -80,6 +80,33 @@ impl DiscogsPick {
     }
 }
 
+/// A picture larger than bae stores, as a PNG: 1200 by 800 pixels.
+fn large_picture() -> Vec<u8> {
+    let image = image::RgbImage::from_pixel(1200, 800, image::Rgb([90, 30, 160]));
+    let mut bytes = std::io::Cursor::new(Vec::new());
+    image::DynamicImage::ImageRgb8(image)
+        .write_to(&mut bytes, image::ImageFormat::Png)
+        .expect("the picture encodes");
+    bytes.into_inner()
+}
+
+/// That `stored` is [`large_picture`] as bae stores it: a JPEG downscaled to
+/// 600 pixels on its longer side.
+fn assert_stored_large_picture(stored: Option<Vec<u8>>) {
+    let stored = stored.expect("the imported artist has a picture");
+    assert_eq!(
+        image::guess_format(&stored).expect("the stored picture has a format"),
+        image::ImageFormat::Jpeg,
+        "the stored picture is a JPEG"
+    );
+    let decoded = image::load_from_memory(&stored).expect("the stored picture decodes");
+    assert_eq!(
+        (decoded.width(), decoded.height()),
+        (600, 400),
+        "the stored picture is downscaled to 600 pixels on its longer side"
+    );
+}
+
 async fn picked_discogs_release() -> DiscogsPick {
     let images = bae_test_support::RemoteImageHost::start().await;
     let (handle, tmp, key, _hash) = pane_fixture_with(
@@ -152,11 +179,13 @@ async fn picked_discogs_release() -> DiscogsPick {
     }
 }
 
+/// The pick asks for no picture; the import fetches the new track artist's
+/// once and stores it as bae stores every image, a JPEG at most 600 pixels
+/// on its longer side, whatever Discogs served.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_pick_fetches_no_artist_picture_and_the_import_fetches_each_once() {
+async fn a_pick_fetches_no_artist_picture_and_the_import_stores_each_as_a_600_pixel_jpeg() {
     let pick = picked_discogs_release().await;
-    let picture = bae_test_support::cover_png();
-    let picture_url = pick.images.serve_image(&pick.picture_path, picture.clone());
+    let picture_url = pick.images.serve_image(&pick.picture_path, large_picture());
     assert_eq!(
         pick.images.requests(&pick.picture_path),
         0,
@@ -175,7 +204,7 @@ async fn a_pick_fetches_no_artist_picture_and_the_import_fetches_each_once() {
         "the import downloads the track artist's picture once"
     );
     let artist = pick.track_artist(&release_id).await;
-    assert_eq!(pick.picture_of(&artist.id).await, Some(picture));
+    assert_stored_large_picture(pick.picture_of(&artist.id).await);
     shut_down(pick.handle).await;
 }
 
@@ -226,8 +255,7 @@ async fn a_picture_that_fails_to_download_fails_the_import_before_any_row_and_a_
         );
     }
 
-    let picture = bae_test_support::cover_png();
-    pick.images.serve_image(&pick.picture_path, picture.clone());
+    pick.images.serve_image(&pick.picture_path, large_picture());
     let (release_id, _album_id) = pick
         .import()
         .await
@@ -239,7 +267,7 @@ async fn a_picture_that_fails_to_download_fails_the_import_before_any_row_and_a_
         "the retry fetches the picture again"
     );
     let artist = pick.track_artist(&release_id).await;
-    assert_eq!(pick.picture_of(&artist.id).await, Some(picture));
+    assert_stored_large_picture(pick.picture_of(&artist.id).await);
     shut_down(pick.handle).await;
 }
 
@@ -272,8 +300,7 @@ fn step_of(event: ImportEvent, import_id: &str) -> Option<crate::import::ImportS
 async fn the_import_says_it_is_fetching_artist_pictures_while_it_fetches_them() {
     use crate::import::{ImportStep, PrepareStep};
     let pick = picked_discogs_release().await;
-    let picture = bae_test_support::cover_png();
-    let picture_url = pick.images.serve_image(&pick.picture_path, picture.clone());
+    let picture_url = pick.images.serve_image(&pick.picture_path, large_picture());
     let hold = pick.images.hold_image(&pick.picture_path);
     pick.seed_artists(picture_url);
 
@@ -309,6 +336,6 @@ async fn the_import_says_it_is_fetching_artist_pictures_while_it_fetches_them() 
         .await
         .unwrap_or_else(|error| panic!("import failed: {error}"));
     let artist = pick.track_artist(&release_id).await;
-    assert_eq!(pick.picture_of(&artist.id).await, Some(picture));
+    assert_stored_large_picture(pick.picture_of(&artist.id).await);
     shut_down(pick.handle).await;
 }

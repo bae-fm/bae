@@ -334,8 +334,9 @@ impl LibraryManager {
     }
 
     /// Discogs' answer for the picture of each artist `ids` names, asked now,
-    /// one artist at a time. A provider or download failure fails the
-    /// caller with it.
+    /// one artist at a time, each picture downscaled to the JPEG bae stores.
+    /// A provider or download failure, or a picture that does not decode,
+    /// fails the caller with it.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn fetch_discogs_artist_images(
         &self,
@@ -355,10 +356,19 @@ impl LibraryManager {
                 answers.push(crate::import::DiscogsArtistImage::Nothing { discogs_artist_id });
                 continue;
             };
+            // Decoding and re-encoding the image is CPU work.
+            let jpeg = tokio::task::spawn_blocking(move || {
+                crate::util::stored_image::stored_jpeg(&image.bytes)
+            })
+            .await
+            .map_err(|error| crate::import::ImportError::Internal {
+                detail: format!("artist picture resize task failed: {error}"),
+            })?
+            .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
             answers.push(crate::import::DiscogsArtistImage::Image {
                 discogs_artist_id,
                 source_url,
-                image,
+                jpeg,
             });
         }
         Ok(answers)
@@ -396,24 +406,21 @@ impl LibraryManager {
                 return Err(crate::db::ArtistWriteError::LibraryChanged.into());
             };
             let crate::import::DiscogsArtistImage::Image {
-                source_url, image, ..
+                source_url, jpeg, ..
             } = answer
             else {
                 continue;
             };
-            let row = DbLibraryImage {
-                id: artist.id.clone(),
-                image_type: LibraryImageType::Artist,
-                content_type: image.content_type.clone(),
-                file_size: image.bytes.len() as i64,
-                width: None,
-                height: None,
-                source: crate::import::Catalog::Discogs.as_str().to_string(),
-                source_url: Some(source_url.clone()),
-                created_at: self.now(),
-                revision: self.new_id(),
-            };
-            images.push((row, image.bytes.clone()));
+            let row = DbLibraryImage::stored_jpeg(
+                LibraryImageType::Artist,
+                &artist.id,
+                crate::import::Catalog::Discogs.as_str(),
+                Some(source_url.clone()),
+                jpeg,
+                self.now(),
+                self.new_id(),
+            );
+            images.push((row, jpeg.clone()));
         }
         Ok(images)
     }

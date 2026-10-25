@@ -752,7 +752,7 @@ impl ImportService {
                 // Decoding and re-encoding the image is CPU work.
                 let source = candidate.bytes;
                 let bytes =
-                    tokio::task::spawn_blocking(move || crate::util::cover::resize_cover(&source))
+                    tokio::task::spawn_blocking(move || crate::util::stored_image::stored_jpeg(&source))
                         .await
                         .map_err(|e| crate::import::ImportError::Internal {
                             detail: format!("cover resize task failed: {e}"),

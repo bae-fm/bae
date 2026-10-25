@@ -242,7 +242,7 @@ impl LibraryManager {
         let source = path.to_path_buf();
         let bytes = tokio::task::spawn_blocking(move || {
             let bytes = std::fs::read(&source).map_err(|error| error.to_string())?;
-            crate::util::cover::resize_cover(&bytes)
+            crate::util::stored_image::stored_jpeg(&bytes)
         })
         .await
         .map_err(|error| failed(error.to_string()))?

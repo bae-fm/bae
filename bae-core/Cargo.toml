@@ -72,10 +72,11 @@ axum = "0.7"
 regex = "1.11"
 libc = "0.2"
 rtrb = "0.3.2"
-# Cover-art resizing at store time (src/util/cover.rs) runs on every platform —
-# imports and change-cover normalize to a ≤600 JPEG thumbnail everywhere, so the
-# stored cover file is uniform regardless of which device imported it. Decode
-# JPEG, PNG, GIF and WebP without default features (no rayon), including mobile.
+# Image downscaling at store time (src/util/stored_image.rs) runs on every
+# platform — imports, change-cover and artist pictures store a ≤600 JPEG
+# everywhere, so a stored image file is uniform regardless of which device
+# imported it. Decode JPEG, PNG, GIF and WebP without default features (no
+# rayon), including mobile.
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
 tokio-util = { version = "0.7", features = ["io", "rt"] }
 rand = "0.9"

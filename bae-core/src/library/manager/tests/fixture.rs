@@ -154,7 +154,7 @@ async fn a_fixture_albums_cover_is_its_releases_cover() {
         .expect("the release has a cover");
     assert_eq!(
         stored,
-        crate::util::cover::resize_cover(&std::fs::read(&cover).unwrap()).unwrap()
+        crate::util::stored_image::stored_jpeg(&std::fs::read(&cover).unwrap()).unwrap()
     );
 }
 

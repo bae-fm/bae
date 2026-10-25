@@ -861,7 +861,7 @@ async fn read_image_response(
         .await
         .map_err(|error| artwork_body_error(error, "Failed to read image response"))?;
     let (_, content_type) =
-        crate::util::cover::decode_cover(&bytes).map_err(|error| ImportError::CoverArt {
+        crate::util::stored_image::decode_image(&bytes).map_err(|error| ImportError::CoverArt {
             detail: format!("Downloaded file is not a valid image: {error}"),
         })?;
 

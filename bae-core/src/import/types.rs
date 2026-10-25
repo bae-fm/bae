@@ -343,7 +343,10 @@ pub enum DiscogsArtistImage {
     Image {
         discogs_artist_id: String,
         source_url: String,
-        image: crate::import::cover_art::RemoteImage,
+        /// The picture as bae stores it: the JPEG
+        /// [`crate::util::stored_image::stored_jpeg`] made of what Discogs
+        /// served.
+        jpeg: Vec<u8>,
     },
     Nothing {
         discogs_artist_id: String,
