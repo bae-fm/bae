@@ -11,8 +11,8 @@ use super::combine::LookupAnswers;
 use super::combine::{combine_results, Findings, LibraryStatuses};
 use super::row_facts::FolderFacts;
 use super::state::{
-    BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, IsrcProgress, LookupResults,
-    LookupState, SearchProgress, SignalsContext, ValueLookup,
+    BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress, IdentifyState, IsrcProgress,
+    LookupResults, LookupState, SearchProgress, SignalsContext, ValueLookup,
 };
 use super::NotAskedReason;
 use crate::db::LibraryStatus;

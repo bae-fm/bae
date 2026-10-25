@@ -148,7 +148,9 @@ fn striking_a_number_out_drops_its_agreement_and_re_ranks() {
 /// offers is a candidate, once however it is spelled.
 #[test]
 fn the_row_lists_the_numbers_in_effect_then_the_struck_ones() {
-    use crate::identify::state::{CatalogProgress, LookupState, ProviderLookup, ValueLookup};
+    use crate::identify::state::{
+        CatalogLookup, CatalogProgress, CatalogSearch, LookupState, ProviderLookup,
+    };
     let mut context = crate::identify::state::SignalsContext {
         providers: vec![MB],
         text: folder(&["Album LBL-1 AB 12345-2 ZZ-9 QQ-5"], &["ZZ-9"]),
@@ -160,13 +162,16 @@ fn the_row_lists_the_numbers_in_effect_then_the_struck_ones() {
     context.catalog.chosen = vec!["LBL-1".to_string(), "ZZ-9".to_string()];
     context.catalog.confirmed = vec!["AB 12345-2".to_string()];
     context.catalog.struck_out = vec!["ZZ-9".to_string()];
-    let searched = |value: &str| ValueLookup {
+    let searched = |value: &str| CatalogLookup {
         value: value.to_string(),
-        providers: vec![ProviderLookup {
-            source: MB,
-            state: LookupState::Done {
-                results: Vec::new(),
-            },
+        searches: vec![CatalogSearch {
+            artist: None,
+            providers: vec![ProviderLookup {
+                source: MB,
+                state: LookupState::Done {
+                    results: Vec::new(),
+                },
+            }],
         }],
     };
     let step = catalog_step(

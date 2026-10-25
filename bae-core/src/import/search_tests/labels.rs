@@ -1,5 +1,5 @@
 //! A release's labels as each search reads them, and the catalog-number
-//! lookup that compares against every one of their numbers.
+//! lookups that compare against every one of their numbers.
 
 use super::*;
 
@@ -62,6 +62,74 @@ fn a_catalog_number_lookup_keeps_a_release_by_its_second_labels_number() {
             .map(|result| result.release_id.as_str())
             .collect::<Vec<_>>(),
         vec!["two-labels"]
+    );
+}
+
+/// A run's catalog-number search names the artist and the label on both
+/// catalogs: MusicBrainz as query terms beside the number, Discogs with the
+/// artist matched as words anywhere on a release and the label as its label
+/// filter. One that names neither asks for the number alone.
+#[test]
+fn a_narrowed_catalog_number_search_names_the_artist_and_label_on_both_catalogs() {
+    let narrowed = CatalogNumberSearch {
+        number: "AB 100".to_string(),
+        artist: Some("Artist Name".to_string()),
+        label: Some("Label A".to_string()),
+    };
+    let musicbrainz = narrowed.musicbrainz_params();
+    assert_eq!(musicbrainz.catalog_number.as_deref(), Some("AB 100"));
+    assert_eq!(musicbrainz.artist.as_deref(), Some("Artist Name"));
+    assert_eq!(musicbrainz.label.as_deref(), Some("Label A"));
+    let discogs = narrowed.discogs_params();
+    assert_eq!(discogs.catno.as_deref(), Some("AB 100"));
+    assert_eq!(discogs.text.as_deref(), Some("Artist Name"));
+    assert_eq!(discogs.label.as_deref(), Some("Label A"));
+
+    let alone = CatalogNumberSearch {
+        number: "AB 100".to_string(),
+        artist: None,
+        label: None,
+    };
+    let musicbrainz = alone.musicbrainz_params();
+    assert_eq!(
+        (musicbrainz.artist, musicbrainz.label),
+        (None, None),
+        "the number alone names no artist or label on MusicBrainz"
+    );
+    let discogs = alone.discogs_params();
+    assert_eq!(
+        (discogs.text, discogs.label),
+        (None, None),
+        "nor on Discogs"
+    );
+}
+
+/// A narrowed search keeps only the releases printing its number, as the
+/// typed one does: the catalogs match the number inside longer ones.
+#[test]
+fn a_narrowed_catalog_number_search_keeps_only_its_number() {
+    let mut results = vec![
+        MetadataResult {
+            labels: vec![ReleaseLabel::of(Some("Label A"), Some("ab-100"))],
+            ..MetadataResult::for_test(Catalog::Discogs, "exact", None)
+        },
+        MetadataResult {
+            labels: vec![ReleaseLabel::of(Some("Label A"), Some("AB 1100"))],
+            ..MetadataResult::for_test(Catalog::Discogs, "longer", None)
+        },
+    ];
+    CatalogNumberSearch {
+        number: "AB 100".to_string(),
+        artist: Some("Artist Name".to_string()),
+        label: None,
+    }
+    .keep_answers(&mut results);
+    assert_eq!(
+        results
+            .iter()
+            .map(|result| result.release_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["exact"]
     );
 }
 

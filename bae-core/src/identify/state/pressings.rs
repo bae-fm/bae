@@ -3,10 +3,11 @@
 //!
 //! A row is asked for by the release its page names on that catalog, where
 //! it names one; failing that, by its barcode; failing that, by its catalog
-//! number under its label. Both ways round: a Discogs row is looked up on
-//! MusicBrainz as a MusicBrainz row is on Discogs, though only a MusicBrainz
-//! page names another catalog's release. What comes back is pooled with every
-//! other key's answers and paired into rows the way they are (see
+//! number under its label, and on Discogs the artist its record credits.
+//! Both ways round: a Discogs row is looked up on MusicBrainz as a
+//! MusicBrainz row is on Discogs, though only a MusicBrainz page names
+//! another catalog's release. What comes back is pooled with every other
+//! key's answers and paired into rows the way they are (see
 //! `release_group::group_results`), so a release that is the row's pressing
 //! joins it, and one that is not stands as a row of its own.
 
@@ -24,8 +25,15 @@ pub enum PressingKey {
     /// A barcode the row prints.
     Barcode { barcode: String },
     /// A catalog number the row prints under `label`; only a release printing
-    /// it under the same label answers.
-    CatalogNumber { number: String, label: String },
+    /// it under the same label answers. On Discogs the search names
+    /// `artist`, the one the record printing it credits; `None` on
+    /// MusicBrainz, and where that record credits no one, or various
+    /// artists.
+    CatalogNumber {
+        number: String,
+        label: String,
+        artist: Option<String>,
+    },
 }
 
 /// One catalog's lookup of one offered row's pressing.
@@ -47,7 +55,7 @@ impl PressingLookup {
         }
         self.state = match outcome {
             Ok(mut results) => {
-                if let PressingKey::CatalogNumber { number, label } = &self.key {
+                if let PressingKey::CatalogNumber { number, label, .. } = &self.key {
                     results.retain(|(result, _)| prints_under(result, number, label));
                 }
                 LookupState::Done { results }
@@ -119,14 +127,17 @@ pub(super) fn keys_of(
                     })
             };
             let number = || {
-                row.iter()
-                    .flat_map(|record| &record.labels)
-                    .find_map(|label| {
+                row.iter().find_map(|record| {
+                    record.labels.iter().find_map(|label| {
                         Some(PressingKey::CatalogNumber {
                             number: label.catalog_number()?.to_string(),
                             label: label.name()?.to_string(),
+                            artist: super::progress::names_artist(catalog)
+                                .then(|| super::progress::credited_artist(record))
+                                .flatten(),
                         })
                     })
+                })
             };
             link.or_else(barcode)
                 .or_else(number)

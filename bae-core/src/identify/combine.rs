@@ -34,7 +34,7 @@ pub struct LookupProvenance {
     pub by_search: bool,
     /// An offered row's pressing, looked up on a catalog the row had no
     /// record of: by the release its page names there, its barcode, or its
-    /// catalog number under its label.
+    /// catalog number under its label and the artist its record credits.
     pub by_pressing: bool,
 }
 

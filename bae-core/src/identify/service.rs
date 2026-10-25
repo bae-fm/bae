@@ -7,7 +7,7 @@ use super::discid::lookup_and_resolve;
 use super::state::{
     step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, PressingKey, TitleSearch,
 };
-use crate::import::search::{search_source, SearchQuery, SourceLookup};
+use crate::import::search::{search_source, CatalogNumberSearch, SearchQuery, SourceLookup};
 use crate::import::{
     CandidateRuntime, CandidateWork, Catalog, ImportEvent, ImportEventBus, LookupChoices,
 };
@@ -525,9 +525,15 @@ fn dispatch_effect(
                         };
                         search_source(&library_manager, source, &query, priority).await
                     }
-                    PressingKey::CatalogNumber { number, .. } => {
-                        let query = SearchQuery::CatalogNumber {
-                            catalog_number: number.clone(),
+                    PressingKey::CatalogNumber {
+                        number,
+                        label,
+                        artist,
+                    } => {
+                        let query = CatalogNumberSearch {
+                            number: number.clone(),
+                            artist: artist.clone(),
+                            label: Some(label.clone()),
                         };
                         search_source(&library_manager, source, &query, priority).await
                     }
@@ -555,11 +561,20 @@ fn dispatch_effect(
             runtime.spawn(keep);
         }
 
-        Effect::LookupCatalog { source, catalog } => {
+        // A number in effect is searched under the artist it is narrowed to,
+        // and never under a label: the catalog searched may spell the label
+        // otherwise than the release that carries the number.
+        Effect::LookupCatalog {
+            source,
+            catalog,
+            artist,
+        } => {
             let library_manager = inner.library_manager.clone();
             spawn_until_cancelled(&runtime, &token, async move {
-                let query = SearchQuery::CatalogNumber {
-                    catalog_number: catalog.clone(),
+                let query = CatalogNumberSearch {
+                    number: catalog.clone(),
+                    artist: artist.clone(),
+                    label: None,
                 };
                 let lookup = search_source(&library_manager, source, &query, priority).await;
                 let answer = annotate_lookup(lookup, &library_manager).await;
@@ -567,6 +582,7 @@ fn dispatch_effect(
                     IdentifyEvent::CatalogLookupAnswered {
                         source,
                         for_catalog: catalog,
+                        artist,
                         outcome,
                     }
                 });

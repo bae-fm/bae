@@ -240,8 +240,8 @@ impl CatalogEvidence {
             .iter()
             .map(|lookup| SearchedCatalog {
                 value: lookup.value.clone(),
-                results: progress.results_for(&lookup.value),
-                failures: progress.failures_for(&lookup.value),
+                results: lookup.results(),
+                failures: lookup.failures(),
             })
             .collect();
     }

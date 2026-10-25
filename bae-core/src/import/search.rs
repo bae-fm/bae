@@ -627,6 +627,15 @@ pub struct SourceFailure {
     pub failure: LookupFailure,
 }
 
+/// What one provider is asked: the request in each catalog's own terms, and
+/// which of the releases it answers with answer the question.
+pub trait ProviderQuery: std::fmt::Debug {
+    fn musicbrainz_params(&self) -> ReleaseSearchParams;
+    fn discogs_params(&self) -> DiscogsSearchParams;
+    /// Drop from `results` what the catalog returned that does not answer.
+    fn keep_answers(&self, results: &mut Vec<MetadataResult>);
+}
+
 /// A typed manual search, one of three modes. Every configured provider is
 /// asked; [`search_source`] runs one of them.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -646,29 +655,19 @@ impl SearchQuery {
             SearchQuery::General { .. } | SearchQuery::CatalogNumber { .. } => None,
         }
     }
+}
 
-    /// Keep only what answers the query. Both catalogs match a catalog number
-    /// loosely — asking for `CL 719` returns `CL 1719` and `WPCL-719` — so a
-    /// release answers only when one of its labels' numbers is the asked one,
-    /// compared as [`catalog_key`] compares them.
+impl ProviderQuery for SearchQuery {
     fn keep_answers(&self, results: &mut Vec<MetadataResult>) {
-        let SearchQuery::CatalogNumber { catalog_number } = self else {
-            return;
-        };
-        let Some(asked) = catalog_key(catalog_number) else {
-            return;
-        };
-        results.retain(|result| {
-            result
-                .labels
-                .iter()
-                .filter_map(ReleaseLabel::catalog_number)
-                .filter_map(catalog_key)
-                .any(|stated| stated == asked)
-        });
+        match self {
+            SearchQuery::CatalogNumber { catalog_number } => {
+                keep_numbered(catalog_number, results)
+            }
+            SearchQuery::General { .. } | SearchQuery::Barcode { .. } => {}
+        }
     }
 
-    pub fn musicbrainz_params(&self) -> ReleaseSearchParams {
+    fn musicbrainz_params(&self) -> ReleaseSearchParams {
         match self {
             SearchQuery::General { artist, album } => ReleaseSearchParams {
                 artist: Some(artist.clone()),
@@ -686,7 +685,7 @@ impl SearchQuery {
         }
     }
 
-    pub fn discogs_params(&self) -> DiscogsSearchParams {
+    fn discogs_params(&self) -> DiscogsSearchParams {
         match self {
             SearchQuery::General { artist, album } => DiscogsSearchParams {
                 text: (!artist.trim().is_empty()).then(|| artist.clone()),
@@ -703,6 +702,63 @@ impl SearchQuery {
             },
         }
     }
+}
+
+/// A run's search by catalog number, narrowed to what it knows of the release
+/// it looks for. A short number is printed by hundreds of unrelated releases,
+/// and a catalog serves them a page at a time; naming the artist and the
+/// label leaves the ones that share them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CatalogNumberSearch {
+    pub number: String,
+    /// The artist the release is credited to. Discogs matches it as words
+    /// anywhere on a release, as a title search's artist is (see
+    /// [`DiscogsSearchParams::text`]).
+    pub artist: Option<String>,
+    /// The label the release prints the number under.
+    pub label: Option<String>,
+}
+
+impl ProviderQuery for CatalogNumberSearch {
+    fn keep_answers(&self, results: &mut Vec<MetadataResult>) {
+        keep_numbered(&self.number, results);
+    }
+
+    fn musicbrainz_params(&self) -> ReleaseSearchParams {
+        ReleaseSearchParams {
+            artist: self.artist.clone(),
+            label: self.label.clone(),
+            catalog_number: Some(self.number.clone()),
+            ..Default::default()
+        }
+    }
+
+    fn discogs_params(&self) -> DiscogsSearchParams {
+        DiscogsSearchParams {
+            text: self.artist.clone(),
+            label: self.label.clone(),
+            catno: Some(self.number.clone()),
+            ..Default::default()
+        }
+    }
+}
+
+/// Keep only the releases printing `number`. Both catalogs match a catalog
+/// number loosely — asking for `CL 719` returns `CL 1719` and `WPCL-719` — so
+/// a release answers only when one of its labels' numbers is the asked one,
+/// compared as [`catalog_key`] compares them.
+fn keep_numbered(number: &str, results: &mut Vec<MetadataResult>) {
+    let Some(asked) = catalog_key(number) else {
+        return;
+    };
+    results.retain(|result| {
+        result
+            .labels
+            .iter()
+            .filter_map(ReleaseLabel::catalog_number)
+            .filter_map(catalog_key)
+            .any(|stated| stated == asked)
+    });
 }
 
 /// The barcode a `Barcode` query asks for. A code is asked for in the one
@@ -724,7 +780,7 @@ fn barcode_query(barcode: &str) -> String {
 pub async fn search_provider(
     library_manager: &crate::library::LibraryManager,
     source: Catalog,
-    query: &SearchQuery,
+    query: &impl ProviderQuery,
     priority: CallPriority,
 ) -> Result<Vec<MetadataResult>, ImportError> {
     let mut results = match source {
@@ -749,7 +805,7 @@ pub async fn search_provider(
 pub async fn search_source(
     library_manager: &crate::library::LibraryManager,
     source: Catalog,
-    query: &SearchQuery,
+    query: &impl ProviderQuery,
     priority: CallPriority,
 ) -> SourceLookup {
     search_provider(library_manager, source, query, priority)

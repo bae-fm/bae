@@ -130,6 +130,7 @@ fn a_chosen_catalog_number_is_looked_up_from_the_start() {
         vec![Effect::LookupCatalog {
             source: MB,
             catalog: "LBL 001".to_string(),
+            artist: None,
         }]
     );
     let catalog_badge = badge(&state, SignalKind::Catalog);
@@ -144,6 +145,7 @@ fn a_chosen_catalog_number_is_looked_up_from_the_start() {
         IdentifyEvent::CatalogLookupAnswered {
             source: MB,
             for_catalog: "LBL 001".to_string(),
+            artist: None,
             outcome: Ok(vec![pair("rel-b", Some("g-x"))]),
         },
     );
@@ -196,6 +198,7 @@ fn a_chosen_number_the_snapshot_does_not_offer_leaves_the_run() {
         vec![Effect::LookupCatalog {
             source: MB,
             catalog: "GONE 001".to_string(),
+            artist: None,
         }]
     );
     let (state, _) = update(
@@ -468,10 +471,12 @@ fn a_catalog_lookup_keeps_one_provider_s_answer_beside_the_other_s_failure() {
             Effect::LookupCatalog {
                 source: MB,
                 catalog: "LBL 001".to_string(),
+                artist: None,
             },
             Effect::LookupCatalog {
                 source: DG,
                 catalog: "LBL 001".to_string(),
+                artist: None,
             },
         ]
     );
@@ -481,6 +486,7 @@ fn a_catalog_lookup_keeps_one_provider_s_answer_beside_the_other_s_failure() {
         IdentifyEvent::CatalogLookupAnswered {
             source: DG,
             for_catalog: "LBL 001".to_string(),
+            artist: None,
             outcome: Err(LookupFailure::Timeout),
         },
     );
@@ -498,6 +504,7 @@ fn a_catalog_lookup_keeps_one_provider_s_answer_beside_the_other_s_failure() {
         IdentifyEvent::CatalogLookupAnswered {
             source: MB,
             for_catalog: "LBL 001".to_string(),
+            artist: None,
             outcome: Ok(vec![pair("rel-b", Some("g-x"))]),
         },
     );

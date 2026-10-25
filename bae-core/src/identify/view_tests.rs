@@ -1,8 +1,8 @@
 use super::*;
 use crate::db::LibraryStatus;
 use crate::identify::state::{
-    step, BarcodeEvidence, DiscIdEvidence, IdentifyEvent, LookupState, ProviderLookup,
-    SearchProgress, ValueLookup,
+    step, BarcodeEvidence, CatalogSearch, DiscIdEvidence, IdentifyEvent, LookupState,
+    ProviderLookup, SearchProgress, ValueLookup,
 };
 use crate::identify::{Findings, IdentifyFailure, LookupProvenance, NarrowedOut, TerminalVerdict};
 use crate::import::release_group::unranked;
@@ -377,20 +377,23 @@ fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
         discid: DiscidProgress::Skipped,
         barcode: BarcodeProgress::NoCodes,
         catalog: CatalogProgress::Lookups {
-            values: vec![ValueLookup {
+            values: vec![CatalogLookup {
                 value: "LBL-2".to_string(),
-                providers: vec![
-                    ProviderLookup {
-                        source: MB,
-                        state: LookupState::Done {
-                            results: vec![result(MB, "mb-1")],
+                searches: vec![CatalogSearch {
+                    artist: None,
+                    providers: vec![
+                        ProviderLookup {
+                            source: MB,
+                            state: LookupState::Done {
+                                results: vec![result(MB, "mb-1")],
+                            },
                         },
-                    },
-                    ProviderLookup {
-                        source: DG,
-                        state: LookupState::LookingUp,
-                    },
-                ],
+                        ProviderLookup {
+                            source: DG,
+                            state: LookupState::LookingUp,
+                        },
+                    ],
+                }],
             }],
         },
         isrc: crate::identify::IsrcProgress::Skipped,

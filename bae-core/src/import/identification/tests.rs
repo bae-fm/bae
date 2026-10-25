@@ -878,6 +878,7 @@ impl Drop for Fixture {
 include!("tests/identification.rs");
 include!("tests/lookup_choices.rs");
 include!("tests/settling.rs");
+include!("tests/catalog_searches.rs");
 include!("tests/applying_the_pick.rs");
 include!("tests/fitting_the_folder.rs");
 include!("tests/metadata_modes.rs");

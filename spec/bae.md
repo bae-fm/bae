@@ -666,7 +666,7 @@ itself and at its own pace:
 | each Disc ID | MusicBrainz |
 | ISRCs | MusicBrainz |
 | barcodes | both |
-| catalog numbers | both |
+| catalog numbers | both: a number the person picked as it stands; one a found release carries as it stands on MusicBrainz, under the offered releases' artists on Discogs |
 | album and artist title | both, only when every clue above came back empty |
 
 Discogs needs an API key; without one it is not asked. Either catalog can be
@@ -692,9 +692,25 @@ number is now worth asking Discogs about. A run therefore goes in rounds:
    of its release groups links the master's, since the release's page names
    its master; a page MusicBrainz knows nothing of is linked from none.
 3. Ask what came into effect: a catalog number a found release carries that the
-   folder states; an offered release's pressing on the catalog that has no
-   record of it, by the release its page names there, its barcode, or its
-   catalog number under its label.
+   folder states, searched on MusicBrainz as it stands and on Discogs under
+   the artist of each release the run offers, whichever release carries the
+   number; an offered release's pressing on the catalog that has no record
+   of it, by the release its page names there, its barcode, or its catalog
+   number under its label, and on Discogs the artist it credits. A short
+   number is printed by hundreds of unrelated releases, which Discogs serves
+   a page at a time, and the artist leaves the ones that share it;
+   MusicBrainz answers a number in one page, so naming the artist there
+   saves nothing. The artist is the album's, not each carrier's: a number's
+   search turns up other artists' releases that reuse it, and searching
+   under each of theirs would ask Discogs again for every one. An offered
+   release credited to no one, or to various artists, names no artist, and
+   the number is searched alone. While no release is offered, nothing names
+   the album's artist: a number Discogs has not been asked about is searched
+   alone, and one it has is not asked again. A confirmed number is never
+   searched under its label: the other catalog may spell the label
+   differently. A pressing whose number a search in effect already asked
+   that catalog, as it stands or under the same artist, is not looked up by
+   it again.
 4. Stop when a round asks nothing new and every offered release is read.
 
 **Pressings and albums.** The two catalogs describe the same object in their

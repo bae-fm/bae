@@ -10,10 +10,10 @@ pub(super) fn identifiers_found_something(
 ) -> bool {
     let disc = discid.answers().iter().any(|results| !results.is_empty());
     let code = !barcode.results().is_empty();
-    let number = matches!(catalog, CatalogProgress::Lookups { values }
-    if values.iter().flat_map(|lookup| &lookup.providers).any(|provider| {
-        matches!(&provider.state, LookupState::Done { results } if !results.is_empty())
-    }));
+    let number = catalog
+        .lookups()
+        .iter()
+        .any(|lookup| !lookup.results().is_empty());
     disc || code || number
 }
 
@@ -50,13 +50,7 @@ pub(super) fn search_step(
             .iter()
             .map(|provider| ProviderCell {
                 source: provider.source,
-                lookup: match &provider.state {
-                    LookupState::LookingUp => LookupView::LookingUp,
-                    LookupState::Done { results } => found_or_no_match(results),
-                    LookupState::Failed { failure } => LookupView::Failed {
-                        failure: failure.clone(),
-                    },
-                },
+                lookup: lookup_view(&provider.state),
             })
             .collect(),
     }
@@ -86,18 +80,7 @@ pub(super) fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) 
         // The disc IDs as their lookups were started.
         DiscidProgress::Lookups { discs } => discs
             .iter()
-            .map(|disc| {
-                row(
-                    &disc.disc_id,
-                    match &disc.state {
-                        LookupState::LookingUp => LookupView::LookingUp,
-                        LookupState::Done { results } => found_or_no_match(results),
-                        LookupState::Failed { failure } => LookupView::Failed {
-                            failure: failure.clone(),
-                        },
-                    },
-                )
-            })
+            .map(|disc| row(&disc.disc_id, lookup_view(&disc.state)))
             .collect(),
         // The track count reaches a surface through the terminal state.
         DiscidProgress::Computing => discs
@@ -265,23 +248,81 @@ fn lookup_cells(lookup: &ValueLookup) -> Vec<ProviderCell> {
         .iter()
         .map(|provider| ProviderCell {
             source: provider.source,
-            lookup: match &provider.state {
-                LookupState::LookingUp => LookupView::LookingUp,
-                LookupState::Done { results } => found_or_no_match(results),
-                LookupState::Failed { failure } => LookupView::Failed {
-                    failure: failure.clone(),
-                },
-            },
+            lookup: lookup_view(&provider.state),
         })
         .collect()
 }
 
-fn catalog_row(lookup: &ValueLookup) -> SignalValueRow {
+/// One lookup's cell.
+fn lookup_view(state: &LookupState) -> LookupView {
+    match state {
+        LookupState::LookingUp => LookupView::LookingUp,
+        LookupState::Done { results } => found_or_no_match(results),
+        LookupState::Failed { failure } => LookupView::Failed {
+            failure: failure.clone(),
+        },
+    }
+}
+
+/// A number's row: one cell per provider it was searched on, standing for
+/// every search of it there — one per artist it was searched under.
+fn catalog_row(lookup: &CatalogLookup) -> SignalValueRow {
+    let mut sources: Vec<Catalog> = Vec::new();
+    for provider in lookup.searches.iter().flat_map(|search| &search.providers) {
+        if !sources.contains(&provider.source) {
+            sources.push(provider.source);
+        }
+    }
+    let cells = sources
+        .into_iter()
+        .map(|source| {
+            let states: Vec<&LookupState> = lookup
+                .searches
+                .iter()
+                .flat_map(|search| &search.providers)
+                .filter(|provider| provider.source == source)
+                .map(|provider| &provider.state)
+                .collect();
+            ProviderCell {
+                source,
+                lookup: searches_view(&states),
+            }
+        })
+        .collect();
     SignalValueRow {
         value: lookup.value.clone(),
         // A number in effect is searched; a struck-out one is not.
         excluded: false,
-        cells: lookup_cells(lookup),
+        cells,
+    }
+}
+
+/// What one provider's searches of a number show together: looking up while
+/// any is, every release they found, else the first failure, else no match.
+fn searches_view(states: &[&LookupState]) -> LookupView {
+    if states
+        .iter()
+        .any(|state| matches!(state, LookupState::LookingUp))
+    {
+        return LookupView::LookingUp;
+    }
+    let found =
+        crate::identify::combine::union_all(states.iter().filter_map(|state| match state {
+            LookupState::Done { results } => Some(results),
+            LookupState::LookingUp | LookupState::Failed { .. } => None,
+        }));
+    if !found.is_empty() {
+        return found_or_no_match(&found);
+    }
+    let failure = states.iter().find_map(|state| match state {
+        LookupState::Failed { failure } => Some(failure),
+        LookupState::LookingUp | LookupState::Done { .. } => None,
+    });
+    match failure {
+        Some(failure) => LookupView::Failed {
+            failure: failure.clone(),
+        },
+        None => LookupView::NoMatch,
     }
 }
 

@@ -268,10 +268,12 @@ pub enum IdentifyEvent {
         outcome: LookupOutcome,
     },
 
-    /// One provider answered about one catalog number in effect.
+    /// One provider answered the search of one catalog number in effect
+    /// under `artist`.
     CatalogLookupAnswered {
         source: Catalog,
         for_catalog: String,
+        artist: Option<String>,
         outcome: LookupOutcome,
     },
 
@@ -315,9 +317,11 @@ pub enum Effect {
         source: Catalog,
         barcode: String,
     },
+    /// Search `source` for `catalog`, naming `artist` where it is `Some`.
     LookupCatalog {
         source: Catalog,
         catalog: String,
+        artist: Option<String>,
     },
     /// Ask MusicBrainz for the recordings these ISRCs are registered to.
     LookupIsrcs {
@@ -471,11 +475,12 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             IdentifyEvent::CatalogLookupAnswered {
                 source,
                 for_catalog,
+                artist,
                 outcome,
             },
         ) => {
             if let Some(lookup) = values.iter_mut().find(|lookup| lookup.value == for_catalog) {
-                lookup.answer(source, outcome);
+                lookup.answer(source, &artist, outcome);
             }
             settle_if_ready(IdentifyState::Triangulating {
                 discid,
@@ -870,8 +875,8 @@ use progress::{
     start_search_progress,
 };
 pub use progress::{
-    BarcodeProgress, CatalogProgress, DiscLookup, DiscidProgress, IsrcProgress, LookupResults,
-    LookupState, ProviderLookup, SearchProgress, ValueLookup,
+    BarcodeProgress, CatalogLookup, CatalogProgress, CatalogSearch, DiscLookup, DiscidProgress,
+    IsrcProgress, LookupResults, LookupState, ProviderLookup, SearchProgress, ValueLookup,
 };
 
 // ── Tests ───────────────────────────────────────────────────────────────────

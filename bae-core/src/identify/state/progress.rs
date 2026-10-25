@@ -251,34 +251,12 @@ impl SearchProgress {
 
     /// What every provider that answered found, in provider order.
     pub fn results(&self) -> LookupResults {
-        match self {
-            SearchProgress::Lookups { providers } => providers
-                .iter()
-                .filter_map(|l| match &l.state {
-                    LookupState::Done { results } => Some(results.clone()),
-                    _ => None,
-                })
-                .flatten()
-                .collect(),
-            SearchProgress::Pending | SearchProgress::Skipped => Vec::new(),
-        }
+        providers_results(self.lookups())
     }
 
     /// The providers that failed.
     pub fn failures(&self) -> Vec<SourceFailure> {
-        match self {
-            SearchProgress::Lookups { providers } => providers
-                .iter()
-                .filter_map(|l| match &l.state {
-                    LookupState::Failed { failure } => Some(SourceFailure {
-                        source: l.source,
-                        failure: failure.clone(),
-                    }),
-                    _ => None,
-                })
-                .collect(),
-            SearchProgress::Pending | SearchProgress::Skipped => Vec::new(),
-        }
+        providers_failures(self.lookups())
     }
 
     /// The lookups, in provider order.
@@ -307,59 +285,244 @@ impl ValueLookup {
     ) -> Self {
         Self {
             value: value.to_string(),
-            providers: providers
-                .iter()
-                .map(|&source| {
-                    effects.push(ask(source, value.to_string()));
-                    ProviderLookup {
-                        source,
-                        state: LookupState::LookingUp,
-                    }
-                })
-                .collect(),
+            providers: ask_every(providers, |source| ask(source, value.to_string()), effects),
         }
     }
 
     /// Land `source`'s answer, where it is still being waited for.
     pub(super) fn answer(&mut self, source: Catalog, outcome: LookupOutcome) {
-        if let Some(lookup) = self
-            .providers
-            .iter_mut()
-            .find(|l| l.source == source && l.state == LookupState::LookingUp)
-        {
-            lookup.state = match outcome {
-                Ok(results) => LookupState::Done { results },
-                Err(failure) => LookupState::Failed { failure },
-            };
+        answer_provider(&mut self.providers, source, outcome);
+    }
+
+    fn is_settled(&self) -> bool {
+        providers_settled(&self.providers)
+    }
+
+    fn results(&self) -> LookupResults {
+        providers_results(&self.providers)
+    }
+
+    fn failures(&self) -> Vec<SourceFailure> {
+        providers_failures(&self.providers)
+    }
+}
+
+/// Ask every one of `providers`, each through the effect `ask` makes.
+fn ask_every(
+    providers: &[Catalog],
+    ask: impl Fn(Catalog) -> Effect,
+    effects: &mut Vec<Effect>,
+) -> Vec<ProviderLookup> {
+    providers
+        .iter()
+        .map(|&source| {
+            effects.push(ask(source));
+            ProviderLookup {
+                source,
+                state: LookupState::LookingUp,
+            }
+        })
+        .collect()
+}
+
+/// Land `source`'s answer among `providers`, where it is still being waited
+/// for.
+fn answer_provider(providers: &mut [ProviderLookup], source: Catalog, outcome: LookupOutcome) {
+    if let Some(lookup) = providers
+        .iter_mut()
+        .find(|l| l.source == source && l.state == LookupState::LookingUp)
+    {
+        lookup.state = match outcome {
+            Ok(results) => LookupState::Done { results },
+            Err(failure) => LookupState::Failed { failure },
+        };
+    }
+}
+
+fn providers_settled(providers: &[ProviderLookup]) -> bool {
+    providers.iter().all(|l| l.state.is_settled())
+}
+
+/// What every provider that answered found, in provider order.
+fn providers_results(providers: &[ProviderLookup]) -> LookupResults {
+    providers
+        .iter()
+        .filter_map(|l| match &l.state {
+            LookupState::Done { results } => Some(results.clone()),
+            _ => None,
+        })
+        .flatten()
+        .collect()
+}
+
+fn providers_failures(providers: &[ProviderLookup]) -> Vec<SourceFailure> {
+    providers
+        .iter()
+        .filter_map(|l| match &l.state {
+            LookupState::Failed { failure } => Some(SourceFailure {
+                source: l.source,
+                failure: failure.clone(),
+            }),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Every search of one catalog number in effect. A number the person picked
+/// is searched as it stands, once on every provider. A number a found
+/// release carries is searched as it stands on MusicBrainz, and on Discogs
+/// under the artist of each row the run offers: a short number is printed by
+/// hundreds of unrelated releases, which Discogs serves a page at a time, and
+/// the ones the run looks for share the album's artist.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CatalogLookup {
+    pub value: String,
+    /// In the order asked.
+    pub searches: Vec<CatalogSearch>,
+}
+
+/// The search of a catalog number under one artist, on the providers asked
+/// it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CatalogSearch {
+    /// The artist the search names; `None` searches the number alone.
+    pub artist: Option<String>,
+    pub providers: Vec<ProviderLookup>,
+}
+
+impl CatalogSearch {
+    /// Whether what this search returns holds every release a search under
+    /// `artist` would.
+    pub(super) fn covers(&self, artist: Option<&str>) -> bool {
+        search_covers(self.artist.as_deref(), artist)
+    }
+}
+
+/// Whether a search naming `searched` returns every release one naming
+/// `wanted` would: it names no artist, or the same one.
+fn search_covers(searched: Option<&str>, wanted: Option<&str>) -> bool {
+    match (searched, wanted) {
+        (None, _) => true,
+        (Some(searched), Some(wanted)) => crate::text_match::same_artist_name(searched, wanted),
+        (Some(_), None) => false,
+    }
+}
+
+/// Whether a search of `catalog` by catalog number names an artist: on
+/// Discogs alone. Discogs serves a catalog-number search a page of releases
+/// at a time and every page is read, so naming the artist leaves fewer
+/// pages; MusicBrainz answers it in one, so naming it there saves no request
+/// and adds one per artist.
+pub(super) fn names_artist(catalog: Catalog) -> bool {
+    catalog == Catalog::Discogs
+}
+
+/// The artist `result` credits, as a search names it: its artist line as the
+/// record states it. `None` where the record names nobody, or credits a
+/// compilation to various artists, which names no artist a catalog matches
+/// its other releases by.
+pub(super) fn credited_artist(result: &MetadataResult) -> Option<String> {
+    let artist = result.artist.as_deref()?.trim();
+    if crate::text_match::artist_name_key(artist).is_empty()
+        || crate::text_match::is_various_artists(artist)
+    {
+        return None;
+    }
+    Some(artist.to_string())
+}
+
+impl CatalogLookup {
+    /// Search `value` under `artist`, on `providers`.
+    fn started(
+        value: &str,
+        artist: Option<String>,
+        providers: &[Catalog],
+        effects: &mut Vec<Effect>,
+    ) -> Self {
+        let mut lookup = Self {
+            value: value.to_string(),
+            searches: Vec::new(),
+        };
+        lookup.search(artist, providers, effects);
+        lookup
+    }
+
+    /// Search the number under `artist` as well, on `providers`.
+    fn search(&mut self, artist: Option<String>, providers: &[Catalog], effects: &mut Vec<Effect>) {
+        let providers = ask_every(
+            providers,
+            |source| Effect::LookupCatalog {
+                source,
+                catalog: self.value.clone(),
+                artist: artist.clone(),
+            },
+            effects,
+        );
+        self.searches.push(CatalogSearch { artist, providers });
+    }
+
+    /// Land `source`'s answer to the search under `artist`, where it is still
+    /// being waited for.
+    pub(super) fn answer(
+        &mut self,
+        source: Catalog,
+        artist: &Option<String>,
+        outcome: LookupOutcome,
+    ) {
+        if let Some(search) = self.searches.iter_mut().find(|search| {
+            &search.artist == artist
+                && search.providers.iter().any(|provider| {
+                    provider.source == source && provider.state == LookupState::LookingUp
+                })
+        }) {
+            answer_provider(&mut search.providers, source, outcome);
         }
     }
 
     fn is_settled(&self) -> bool {
-        self.providers.iter().all(|l| l.state.is_settled())
+        self.searches
+            .iter()
+            .all(|search| providers_settled(&search.providers))
     }
 
-    fn results(&self) -> LookupResults {
-        self.providers
+    /// Every release a search of the number returned, each once.
+    pub fn results(&self) -> LookupResults {
+        crate::identify::combine::union_all(
+            &self
+                .searches
+                .iter()
+                .map(|search| providers_results(&search.providers))
+                .collect::<Vec<_>>(),
+        )
+    }
+
+    pub(super) fn failures(&self) -> Vec<SourceFailure> {
+        self.searches
             .iter()
-            .filter_map(|l| match &l.state {
-                LookupState::Done { results } => Some(results.clone()),
-                _ => None,
-            })
-            .flatten()
+            .flat_map(|search| providers_failures(&search.providers))
             .collect()
     }
 
-    fn failures(&self) -> Vec<SourceFailure> {
-        self.providers
-            .iter()
-            .filter_map(|l| match &l.state {
-                LookupState::Failed { failure } => Some(SourceFailure {
-                    source: l.source,
-                    failure: failure.clone(),
-                }),
-                _ => None,
-            })
-            .collect()
+    /// Whether any search of the number asked `source`.
+    pub(super) fn asks(&self, source: Catalog) -> bool {
+        self.searches.iter().any(|search| {
+            search
+                .providers
+                .iter()
+                .any(|provider| provider.source == source)
+        })
+    }
+
+    /// Whether a search of the number already holds every release one
+    /// asking `source` under `artist` would return.
+    pub(super) fn covers(&self, source: Catalog, artist: Option<&str>) -> bool {
+        self.searches.iter().any(|search| {
+            search.covers(artist)
+                && search
+                    .providers
+                    .iter()
+                    .any(|provider| provider.source == source)
+        })
     }
 }
 
@@ -369,81 +532,64 @@ pub enum CatalogProgress {
     /// No catalog number in effect, so nothing to search.
     Skipped,
     /// One lookup per number in effect, in the order each came into effect.
-    Lookups { values: Vec<ValueLookup> },
+    Lookups { values: Vec<CatalogLookup> },
 }
 
 impl CatalogProgress {
     pub fn is_settled(&self) -> bool {
         match self {
             CatalogProgress::Skipped => true,
-            CatalogProgress::Lookups { values } => values.iter().all(ValueLookup::is_settled),
+            CatalogProgress::Lookups { values } => values.iter().all(CatalogLookup::is_settled),
         }
     }
 
     /// Every chosen number's results, in chosen order.
     pub fn results(&self) -> LookupResults {
-        match self {
-            CatalogProgress::Lookups { values } => {
-                values.iter().flat_map(ValueLookup::results).collect()
-            }
-            CatalogProgress::Skipped => Vec::new(),
-        }
+        self.lookups()
+            .iter()
+            .flat_map(CatalogLookup::results)
+            .collect()
     }
 
     /// Every provider that failed any chosen number's lookup.
     pub fn failures(&self) -> Vec<SourceFailure> {
-        match self {
-            CatalogProgress::Lookups { values } => {
-                values.iter().flat_map(ValueLookup::failures).collect()
-            }
-            CatalogProgress::Skipped => Vec::new(),
-        }
-    }
-
-    fn lookup_of(&self, value: &str) -> Option<&ValueLookup> {
-        match self {
-            CatalogProgress::Lookups { values } => values.iter().find(|l| l.value == value),
-            CatalogProgress::Skipped => None,
-        }
-    }
-
-    /// One chosen number's results.
-    pub fn results_for(&self, value: &str) -> LookupResults {
-        self.lookup_of(value)
-            .map(ValueLookup::results)
-            .unwrap_or_default()
-    }
-
-    /// The providers that failed one chosen number's lookup.
-    pub fn failures_for(&self, value: &str) -> Vec<SourceFailure> {
-        self.lookup_of(value)
-            .map(ValueLookup::failures)
-            .unwrap_or_default()
+        self.lookups()
+            .iter()
+            .flat_map(CatalogLookup::failures)
+            .collect()
     }
 
     /// The chosen numbers' lookups, in chosen order.
-    pub fn lookups(&self) -> &[ValueLookup] {
+    pub fn lookups(&self) -> &[CatalogLookup] {
         match self {
             CatalogProgress::Lookups { values } => values,
             CatalogProgress::Skipped => &[],
         }
     }
 
-    /// This progress with `lookup` searched as well.
-    pub(super) fn with(self, lookup: ValueLookup) -> Self {
-        match self {
-            CatalogProgress::Lookups { mut values } => {
-                values.push(lookup);
-                CatalogProgress::Lookups { values }
-            }
-            CatalogProgress::Skipped => CatalogProgress::Lookups {
-                values: vec![lookup],
-            },
+    /// This progress with `value` searched under `artist` on `providers` as
+    /// well: one more search of a number already searched, or the number's
+    /// first.
+    pub(super) fn searching(
+        self,
+        value: &str,
+        artist: Option<String>,
+        providers: &[Catalog],
+        effects: &mut Vec<Effect>,
+    ) -> Self {
+        let mut values = match self {
+            CatalogProgress::Lookups { values } => values,
+            CatalogProgress::Skipped => Vec::new(),
+        };
+        match values.iter_mut().find(|lookup| lookup.value == value) {
+            Some(lookup) => lookup.search(artist, providers, effects),
+            None => values.push(CatalogLookup::started(value, artist, providers, effects)),
         }
+        CatalogProgress::Lookups { values }
     }
 
     /// This progress with only the lookups `keep` admits.
-    pub(super) fn keeping(self, keep: impl Fn(&ValueLookup) -> bool) -> Self {
+    pub(super) fn keeping(self, keep: impl Fn(&CatalogLookup) -> bool) -> Self {
         match self {
             CatalogProgress::Lookups { mut values } => {
                 values.retain(|lookup| keep(lookup));
@@ -708,21 +854,8 @@ pub(super) fn start_barcode_progress(
     }
 }
 
-/// Ask every provider about one catalog number in effect.
-pub(super) fn start_catalog_lookup(
-    catalog: &str,
-    providers: &[Catalog],
-    effects: &mut Vec<Effect>,
-) -> ValueLookup {
-    ValueLookup::started(
-        catalog,
-        providers,
-        |source, catalog| Effect::LookupCatalog { source, catalog },
-        effects,
-    )
-}
-
-/// Ask every provider about every catalog number in effect.
+/// Ask every provider about every number the person picked, each as it
+/// stands: no release the run found carries it yet to say whose it is.
 pub(super) fn start_catalog_progress(
     chosen: &[String],
     providers: &[Catalog],
@@ -734,7 +867,7 @@ pub(super) fn start_catalog_progress(
     CatalogProgress::Lookups {
         values: chosen
             .iter()
-            .map(|value| start_catalog_lookup(value, providers, effects))
+            .map(|value| CatalogLookup::started(value, None, providers, effects))
             .collect(),
     }
 }
