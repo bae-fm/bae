@@ -3,7 +3,7 @@ use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkScan, TextOrigin};
 use crate::util::rate_limiter::CallPriority;
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
 use std::time::Duration;
@@ -13,6 +13,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 mod aborts;
 mod cancellation;
+mod images_at_once;
 mod tags;
 
 /// Canned text lines keyed by file name; the optional gate holds each image

@@ -23,6 +23,7 @@ impl ArtworkAnalysis {
     }
 }
 
+/// Called on blocking threads, several images at once.
 pub trait ArtworkAnalyzer: Send + Sync {
     /// Read the image at `path`; empty on failure.
     fn analyze(&self, path: &Path) -> ArtworkAnalysis;

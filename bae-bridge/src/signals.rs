@@ -7,7 +7,7 @@ use std::path::Path;
 use crate::types::ArtworkAnalyzerCallback;
 
 /// A platform analyzer callback as the core trait. Sync on both sides; core
-/// calls it on a blocking task.
+/// calls it on blocking tasks, several images at once.
 pub(crate) struct ArtworkAnalyzerAdapter {
     callback: Box<dyn ArtworkAnalyzerCallback>,
 }

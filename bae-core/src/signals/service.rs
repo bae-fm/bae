@@ -3,8 +3,9 @@
 //! [`ExtractionWatch`]) and to the import event bus.
 //!
 //! Everything that needs no OCR is read first, so the disc-ID lookup need not
-//! wait on the artwork; then the images are read one at a time, a snapshot per
-//! image, and the barcode and text signals settle at the end.
+//! wait on the artwork; then the images are read several at a time and taken
+//! in their order, a snapshot per image, and the barcode and text signals
+//! settle at the end.
 //!
 //! An extraction that cannot gather its inputs sends one snapshot that fails
 //! every signal, so its run ends as bae's own error instead of waiting. A
@@ -25,10 +26,11 @@ use crate::signals::{
 };
 use crate::util::rate_limiter::CallPriority;
 use crate::util::session_cache::SessionCache;
-use std::path::PathBuf;
+use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Handle;
-use tokio::sync::watch;
+use tokio::sync::{watch, OwnedSemaphorePermit, Semaphore, TryAcquireError};
+use tokio::task::{JoinError, JoinHandle};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error};
 
@@ -77,6 +79,9 @@ struct ExtractionServiceInner {
     /// The record the bus keeps each candidate in, which holds the
     /// candidate's extraction in flight.
     candidates: CandidateRuntime,
+    /// `IMAGES_IN_FLIGHT` permits, one held by each image being read, so
+    /// passes running at once share the limit.
+    image_reads: Arc<Semaphore>,
 }
 
 /// One extraction in flight.
@@ -106,6 +111,14 @@ impl Drop for ExtractionRelease {
 /// How many folders' settled snapshots a session keeps.
 const SETTLED_CAPACITY: usize = 1024;
 
+/// How many images the analyzer reads at once, across every pass. The
+/// platform analyzer is not serial: on a Mac with the app's Vision settings,
+/// 40 album images took 6.5 s read one at a time (0.16 s each) and 3.1 s read
+/// four at a time. Only that was measured, and each read holds a decoded scan,
+/// so candidates identified at once share the limit rather than each having
+/// its own.
+pub(crate) const IMAGES_IN_FLIGHT: usize = 4;
+
 pub struct ExtractionService;
 
 impl ExtractionService {
@@ -123,27 +136,9 @@ impl ExtractionService {
             library_manager,
             settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),
             candidates,
+            image_reads: Arc::new(Semaphore::new(IMAGES_IN_FLIGHT)),
         });
         ExtractionServiceHandle { inner }
-    }
-}
-
-impl ExtractionServiceInner {
-    fn has_artwork_analyzer(&self) -> bool {
-        self.analyzer.lock().unwrap().is_some()
-    }
-
-    async fn analyze_artwork(&self, path: PathBuf) -> Result<ArtworkAnalysis, InternalFailure> {
-        let analyzer = self.analyzer.lock().unwrap().clone().ok_or_else(|| {
-            InternalFailure::logged("reading the artwork", "no artwork analyzer is registered")
-        })?;
-        let log_path = path.clone();
-        let failure_context = format!("OCR worker failed for {log_path:?}");
-        run_blocking(&self.runtime_handle, &failure_context, move || {
-            analyzer.analyze(&path)
-        })
-        .await
-        .map_err(|detail| InternalFailure { detail })
     }
 }
 
@@ -255,10 +250,10 @@ async fn run_extraction(
             for catalog in fast.bracket_catalogs {
                 pool.push_bracket(catalog);
             }
-            let artwork = if inner.has_artwork_analyzer() {
-                Artwork::read(fast.artwork)
-            } else {
-                Artwork::Absent
+            let analyzer = inner.analyzer.lock().unwrap().clone();
+            let artwork = match analyzer {
+                Some(analyzer) => Artwork::read(analyzer, fast.artwork),
+                None => Artwork::Absent,
             };
             stream_extraction(
                 inner.clone(),
@@ -309,13 +304,13 @@ async fn run_extraction(
             // it. `_cover_staging` holds the staged cover's temp dir until
             // `stream_extraction` returns; a resolve error means the release's
             // files cannot be read at all, so the extraction aborts.
-            let (artwork, _cover_staging) = if !inner.has_artwork_analyzer() {
-                (Artwork::Absent, None)
-            } else {
+            let analyzer = inner.analyzer.lock().unwrap().clone();
+            let (artwork, _cover_staging) = if let Some(analyzer) = analyzer {
                 match resolve_release_artwork_paths(&inner.library_manager, &release_id).await {
                     // A library release's images have no file id.
                     Ok((paths, staging)) => (
                         Artwork::read(
+                            analyzer,
                             paths
                                 .into_iter()
                                 .map(|path| ArtworkImage {
@@ -339,6 +334,8 @@ async fn run_extraction(
                         return;
                     }
                 }
+            } else {
+                (Artwork::Absent, None)
             };
             stream_extraction(
                 inner,
@@ -387,7 +384,12 @@ where
     T: Send + 'static,
     F: FnOnce() -> T + Send + 'static,
 {
-    match runtime_handle.spawn_blocking(task).await {
+    joined(failure_context, runtime_handle.spawn_blocking(task).await)
+}
+
+/// A joined blocking task's value, or why it panicked or was cancelled.
+fn joined<T>(failure_context: &str, result: Result<T, JoinError>) -> Result<T, String> {
+    match result {
         Ok(value) => Ok(value),
         Err(e) => {
             error!("signals: {failure_context}: {e}; aborting extraction");
@@ -423,19 +425,67 @@ enum Artwork {
 }
 
 impl Artwork {
-    /// The pass over `images`, once there is an analyzer to read them with.
-    fn read(images: Vec<ArtworkImage>) -> Self {
+    /// The pass over `images` with `analyzer`.
+    fn read(analyzer: Arc<dyn ArtworkAnalyzer>, images: Vec<ArtworkImage>) -> Self {
         if images.is_empty() {
             return Artwork::Absent;
         }
-        Artwork::Read(ArtworkPass { images })
+        Artwork::Read(ArtworkPass { analyzer, images })
     }
 }
 
-/// The images to read, built only when there is an analyzer to read them.
+/// The images to read and the analyzer that reads them.
 struct ArtworkPass {
+    analyzer: Arc<dyn ArtworkAnalyzer>,
     /// Never empty.
     images: Vec<ArtworkImage>,
+}
+
+/// One image being read on the blocking pool, holding one of the service's
+/// image-read permits until the analyzer returns.
+struct ImageRead<'a> {
+    image: &'a ArtworkImage,
+    task: JoinHandle<ArtworkAnalysis>,
+}
+
+impl<'a> ImageRead<'a> {
+    fn start(
+        runtime_handle: &Handle,
+        analyzer: &Arc<dyn ArtworkAnalyzer>,
+        image: &'a ArtworkImage,
+        permit: OwnedSemaphorePermit,
+    ) -> Self {
+        let analyzer = analyzer.clone();
+        let path = image.path.clone();
+        ImageRead {
+            image,
+            task: runtime_handle.spawn_blocking(move || {
+                let analysis = analyzer.analyze(&path);
+                drop(permit);
+                analysis
+            }),
+        }
+    }
+
+    /// What the analyzer read off the image, or why its worker died.
+    async fn finish(self) -> Result<ArtworkAnalysis, InternalFailure> {
+        let failure_context = format!("OCR worker failed for {:?}", self.image.path);
+        joined(&failure_context, self.task.await).map_err(|detail| InternalFailure { detail })
+    }
+}
+
+/// Wait out the reads a pass that is stopping no longer wants, so none
+/// outlives it: the files a pass reads (a library release's staged cover)
+/// last only until it returns.
+async fn abandon(reads: VecDeque<ImageRead<'_>>) {
+    for read in reads {
+        if let Err(e) = read.task.await {
+            error!(
+                "signals: OCR worker failed for {:?} after its pass stopped: {e}",
+                read.image.path
+            );
+        }
+    }
 }
 
 /// Stream snapshots over the artwork pass — one before the first image and
@@ -493,14 +543,52 @@ async fn stream_extraction(
         );
     }
 
-    // One OCR request at a time (Vision on the ANE is effectively serial).
-    if let Some(ArtworkPass { images }) = artwork {
-        for (index, ArtworkImage { path, file_id }) in images.iter().enumerate() {
+    // The pass reads as many images at once as the service's permits allow,
+    // and takes their readings in the images' order, so each snapshot holds
+    // exactly the images before it whatever order the reads finish in.
+    if let Some(ArtworkPass { analyzer, images }) = artwork {
+        let mut unstarted = images.iter().peekable();
+        let mut in_flight: VecDeque<ImageRead<'_>> = VecDeque::new();
+        let mut index = 0;
+        loop {
+            // Start every image a permit is free for. A pass waits for a
+            // permit only while none of its reads are under way, so a reading
+            // that has come back never waits behind other passes' reads.
+            while let Some(&image) = unstarted.peek() {
+                let permit = if in_flight.is_empty() {
+                    tokio::select! {
+                        permit = inner.image_reads.clone().acquire_owned() => {
+                            permit.expect("the image-read permits are never closed")
+                        }
+                        () = token.cancelled() => return,
+                    }
+                } else {
+                    match inner.image_reads.clone().try_acquire_owned() {
+                        Ok(permit) => permit,
+                        Err(TryAcquireError::NoPermits) => break,
+                        Err(TryAcquireError::Closed) => {
+                            unreachable!("the image-read permits are never closed")
+                        }
+                    }
+                };
+                unstarted.next();
+                in_flight.push_back(ImageRead::start(
+                    &inner.runtime_handle,
+                    &analyzer,
+                    image,
+                    permit,
+                ));
+            }
+            let Some(read) = in_flight.pop_front() else {
+                break;
+            };
+            let ArtworkImage { path, file_id } = read.image;
+            let analysis = read.finish().await;
             if token.is_cancelled() {
+                abandon(in_flight).await;
                 return;
             }
-
-            let analysis = match inner.analyze_artwork(path.clone()).await {
+            let analysis = match analysis {
                 Ok(analysis) => analysis,
                 Err(failure) => {
                     emit_failed_ocr_signals(
@@ -514,13 +602,10 @@ async fn stream_extraction(
                         },
                         failure,
                     );
+                    abandon(in_flight).await;
                     return;
                 }
             };
-
-            if token.is_cancelled() {
-                return;
-            }
 
             // One sighting per image a code was read off.
             for code in super::barcode::codes_in(&analysis) {
@@ -541,31 +626,26 @@ async fn stream_extraction(
                     text,
                 ));
             }
+            index += 1;
 
-            // The last image's snapshot is the settled one below.
-            if index + 1 == images.len() {
-                break;
+            // The last image's snapshot is the settled one below. Every other
+            // image read is a snapshot, whether or not it added anything.
+            if index < images.len() {
+                let classification = gathered.pool.classify();
+                emit_signals(
+                    &inner,
+                    &extraction,
+                    SignalsSnapshot {
+                        signals: scanning_signals(
+                            &gathered,
+                            classification.catalogs,
+                            classification.free_text,
+                        ),
+                        audio: gathered.audio.clone(),
+                        artwork: position_of(&images, index),
+                    },
+                );
             }
-
-            if token.is_cancelled() {
-                return;
-            }
-
-            // Every image read is a snapshot, whether or not it added anything.
-            let classification = gathered.pool.classify();
-            emit_signals(
-                &inner,
-                &extraction,
-                SignalsSnapshot {
-                    signals: scanning_signals(
-                        &gathered,
-                        classification.catalogs,
-                        classification.free_text,
-                    ),
-                    audio: gathered.audio.clone(),
-                    artwork: position_of(&images, index + 1),
-                },
-            );
         }
     }
 

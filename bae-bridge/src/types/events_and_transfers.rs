@@ -17,7 +17,7 @@ pub struct BridgeArtworkAnalysis {
 }
 
 /// The platform's artwork analyzer: one synchronous pass per image reads both
-/// barcodes and text. Core calls it on a blocking task.
+/// barcodes and text. Core calls it on blocking tasks, several images at once.
 #[uniffi::export(callback_interface)]
 pub trait ArtworkAnalyzerCallback: Send + Sync {
     /// Empty on failure, as when there is nothing to read.

@@ -69,18 +69,23 @@ async fn cancelled_ocr_run_does_not_settle() {
 }
 
 /// A `CandidateRemoved` sent mid-OCR cancels the run by the time the send
-/// returns: it never settles, and it stops short of analyzing every image,
-/// since the token is checked between images.
+/// returns: it never settles, and it reads none of the images that were not
+/// already being read when it was cancelled.
 #[tokio::test]
 async fn candidate_removed_event_cancels_in_flight_extraction() {
     let tmp = TempDir::new().unwrap();
-    let folder = build_release(&tmp, "Some Folder", &["p1.jpg", "p2.jpg", "p3.jpg"], &[]);
+    let images: Vec<String> = (1..=IMAGES_IN_FLIGHT + 2)
+        .map(|n| format!("p{n}.jpg"))
+        .collect();
+    let image_names: Vec<&str> = images.iter().map(String::as_str).collect();
+    let folder = build_release(&tmp, "Some Folder", &image_names, &[]);
     let (gate, held, entries) = crate::test_gate::closed();
     let analyzer = Arc::new(
-        StubAnalyzer::new()
-            .with("p1.jpg", vec!["Line A".to_string()])
-            .with("p2.jpg", vec!["Line B".to_string()])
-            .with("p3.jpg", vec!["Line C".to_string()])
+        image_names
+            .iter()
+            .fold(StubAnalyzer::new(), |analyzer, name| {
+                analyzer.with(name, vec![format!("Line {name}")])
+            })
             .gated(held),
     );
     let (handle, tx, mut rx, _lib_tmp) = make_service().await;
@@ -104,7 +109,11 @@ async fn candidate_removed_event_cancels_in_flight_extraction() {
         !delivered_signals(&mut rx).iter().any(settled),
         "extraction for a removed candidate must not settle"
     );
-    assert!(analyzer.calls() < 3, "cancel must stop the OCR pass early");
+    assert!(
+        analyzer.calls() <= IMAGES_IN_FLIGHT,
+        "cancel must stop the OCR pass before the images not yet started, read {}",
+        analyzer.calls()
+    );
 }
 
 /// A second `start` for a key cancels the first, and the run it started

@@ -9,7 +9,9 @@ private let logger = Logger.bae("VisionArtworkAnalyzer")
 /// Implements the core `ArtworkAnalyzerCallback` with Apple Vision: one
 /// `analyze` pass decodes and prepares the image once, then runs barcode
 /// detection and text recognition against it in a single synchronous
-/// `perform`. Rust calls it from `spawn_blocking`, one call per image.
+/// `perform`. Rust calls it from `spawn_blocking`, one call per image and
+/// several images at once: each call builds its own requests and handler, and
+/// the one `CIContext` they share is safe to use from several threads.
 final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
     /// An image whose long side is under this many pixels is enlarged to it
     /// before Vision reads it. A sweep of one Vision pass per setting over a

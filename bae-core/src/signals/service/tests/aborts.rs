@@ -39,6 +39,7 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
         library_manager,
         settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),
         candidates,
+        image_reads: Arc::new(tokio::sync::Semaphore::new(IMAGES_IN_FLIGHT)),
     };
     let generation = inner.candidates.start_work(
         CandidateWork::Extraction,
