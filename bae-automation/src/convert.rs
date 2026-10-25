@@ -541,7 +541,7 @@ mirror_struct! {
 mirror_enum! {
     AutomationPrepareStep = PrepareStep,
     from_core: pub(crate) fn,
-    variants: { Queued, ValidatingSourceFiles },
+    variants: { Queued, ValidatingSourceFiles, FetchingArtistPictures },
 }
 
 mirror_enum! {

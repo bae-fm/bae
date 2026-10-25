@@ -38,8 +38,6 @@ pub enum ImportProgress {
     Preparing {
         import_id: String,
         step: PrepareStep,
-        album_title: String,
-        artist_name: String,
     },
     Progress {
         id: String,
@@ -105,12 +103,17 @@ pub enum ImportPhase {
 }
 
 /// Preparation steps, emitted by the import worker before the running phases
-/// ([`ImportPhase`]) begin.
+/// ([`ImportPhase`]) begin, in this order.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PrepareStep {
+    /// Claimed, waiting for the worker.
     Queued,
+    /// Checking every file is the one the scan saw.
     ValidatingSourceFiles,
+    /// Asking Discogs for the pictures of the artists the import creates.
+    /// Reported only by an import that creates one.
+    FetchingArtistPictures,
 }
 
 /// Which step of an import is in progress, for the candidate progress UI. The

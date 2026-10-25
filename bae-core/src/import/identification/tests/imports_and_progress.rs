@@ -13,8 +13,6 @@ async fn start_import_for(fixture: &Fixture, candidate: &Path) {
             progress: crate::import::ImportProgress::Preparing {
                 import_id: "import-running".to_string(),
                 step: crate::import::PrepareStep::ValidatingSourceFiles,
-                album_title: String::new(),
-                artist_name: String::new(),
             },
         });
 }

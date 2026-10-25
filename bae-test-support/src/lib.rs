@@ -51,7 +51,7 @@ pub use discogs::{
 };
 pub use files::{
     copy_and_tag, cover_png, read_cover_image_bytes, read_fixture, write_cover_png,
-    write_tagged_flac, RemoteImageHost, TEST_IMAGE_HOST,
+    write_tagged_flac, ImageHold, RemoteImageHost, TEST_IMAGE_HOST,
 };
 pub use import::{
     configure_test_discogs, discogs_release, folder_import, import_folder_and_wait,

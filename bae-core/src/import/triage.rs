@@ -170,7 +170,9 @@ impl TriageRuntimeFacts {
             use crate::import::{ImportPhase, ImportStep, PrepareStep};
             match import.step {
                 ImportStep::Preparing(PrepareStep::Queued) => ImportStanding::Queued,
-                ImportStep::Preparing(PrepareStep::ValidatingSourceFiles)
+                ImportStep::Preparing(
+                    PrepareStep::ValidatingSourceFiles | PrepareStep::FetchingArtistPictures,
+                )
                 | ImportStep::Running(ImportPhase::ReadingFiles | ImportPhase::MeasuringLoudness) => {
                     ImportStanding::Running
                 }

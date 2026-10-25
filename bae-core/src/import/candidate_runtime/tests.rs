@@ -297,8 +297,6 @@ fn a_preparing_step_has_no_progress_fraction() {
         progress: ImportProgress::Preparing {
             import_id: "imp-1".to_string(),
             step: PrepareStep::ValidatingSourceFiles,
-            album_title: String::new(),
-            artist_name: String::new(),
         },
     });
 

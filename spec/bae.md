@@ -947,7 +947,9 @@ Ana clicks Import. bae:
    artist the release credits that the library doesn't hold yet. An artist
    the library holds keeps its own picture, so none is fetched for it. A
    picture that can't be fetched fails the import with why, and importing
-   again fetches it again.
+   again fetches it again. While it fetches, the import's progress says
+   "Fetching artist pictures…"; an import that creates no Discogs artist
+   fetches nothing and its progress never says so.
 3. **Reads each file** where it sits, for a cloud import: coven hashes it, and
    checks every later download against that hash. A local import records each
    file's path, size and modification time; its bytes are read when the release

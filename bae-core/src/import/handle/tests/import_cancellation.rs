@@ -250,9 +250,10 @@ fn import_position(import: &crate::import::candidates::ImportInFlight) -> (u8, u
     let step = match import.step {
         ImportStep::Preparing(PrepareStep::Queued) => 0,
         ImportStep::Preparing(PrepareStep::ValidatingSourceFiles) => 1,
-        ImportStep::Running(ImportPhase::ReadingFiles) => 2,
-        ImportStep::Running(ImportPhase::MeasuringLoudness) => 3,
-        ImportStep::Running(ImportPhase::Finalizing) => 4,
+        ImportStep::Preparing(PrepareStep::FetchingArtistPictures) => 2,
+        ImportStep::Running(ImportPhase::ReadingFiles) => 3,
+        ImportStep::Running(ImportPhase::MeasuringLoudness) => 4,
+        ImportStep::Running(ImportPhase::Finalizing) => 5,
     };
     (step, import.progress_percent.unwrap_or(0))
 }

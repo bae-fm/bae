@@ -593,6 +593,7 @@ pub struct AutomationImportStarted {
 pub enum AutomationPrepareStep {
     Queued,
     ValidatingSourceFiles,
+    FetchingArtistPictures,
 }
 
 /// Mirrors bae-core's `import::ImportPhase`.

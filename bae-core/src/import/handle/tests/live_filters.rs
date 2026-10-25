@@ -108,8 +108,6 @@ async fn importing_shows_a_queued_and_a_running_import_until_it_ends() {
         crate::import::ImportProgress::Preparing {
             import_id: "import-1".to_string(),
             step: crate::import::PrepareStep::ValidatingSourceFiles,
-            album_title: String::new(),
-            artist_name: String::new(),
         },
     ));
     list.shows(&[&key]).await;

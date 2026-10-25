@@ -191,6 +191,7 @@ pub struct BridgeCandidateFiles {
 pub enum BridgePrepareStep {
     Queued,
     ValidatingSourceFiles,
+    FetchingArtistPictures,
 }
 
 impl BridgePrepareStep {
@@ -198,6 +199,7 @@ impl BridgePrepareStep {
         match self {
             Self::Queued => "core.import.prepare.queued",
             Self::ValidatingSourceFiles => "core.import.prepare.validating_source_files",
+            Self::FetchingArtistPictures => "core.import.prepare.fetching_artist_pictures",
         }
     }
 }
@@ -232,7 +234,7 @@ mirror_enum! {
     #[cfg(feature = "desktop")]
     BridgePrepareStep = bae_core::import::PrepareStep,
     from_core: fn,
-    variants: { Queued, ValidatingSourceFiles },
+    variants: { Queued, ValidatingSourceFiles, FetchingArtistPictures },
 }
 
 mirror_enum! {

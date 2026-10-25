@@ -242,3 +242,73 @@ async fn a_picture_that_fails_to_download_fails_the_import_before_any_row_and_a_
     assert_eq!(pick.picture_of(&artist.id).await, Some(picture));
     shut_down(pick.handle).await;
 }
+
+/// The step `event` reports for `import_id`, if it reports one.
+fn step_of(event: ImportEvent, import_id: &str) -> Option<crate::import::ImportStep> {
+    let ImportEvent::ImportProgress { progress, .. } = event else {
+        return None;
+    };
+    if progress.import_id() != import_id {
+        return None;
+    }
+    match progress {
+        crate::import::ImportProgress::Preparing { step, .. } => {
+            Some(crate::import::ImportStep::Preparing(step))
+        }
+        crate::import::ImportProgress::Progress { phase, .. } => {
+            Some(crate::import::ImportStep::Running(phase))
+        }
+        crate::import::ImportProgress::Complete { .. }
+        | crate::import::ImportProgress::RemoteUploadQueued { .. }
+        | crate::import::ImportProgress::Failed { .. }
+        | crate::import::ImportProgress::Cancelled { .. } => None,
+    }
+}
+
+/// While the import waits on a new artist's picture, the candidate says it
+/// is fetching artist pictures: the step is reported before the picture is
+/// asked for, and no file is read until it answers.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_import_says_it_is_fetching_artist_pictures_while_it_fetches_them() {
+    use crate::import::{ImportStep, PrepareStep};
+    let pick = picked_discogs_release().await;
+    let picture = bae_test_support::cover_png();
+    let picture_url = pick.images.serve_image(&pick.picture_path, picture.clone());
+    let hold = pick.images.hold_image(&pick.picture_path);
+    pick.seed_artists(picture_url);
+
+    let mut events = pick.handle.every_event();
+    let import_id = pick.handle.start_import(&pick.key).await.unwrap();
+    tokio::time::timeout(HANG_GUARD, hold.arrived())
+        .await
+        .expect("the import asks for the track artist's picture");
+
+    let fetching = ImportStep::Preparing(PrepareStep::FetchingArtistPictures);
+    let steps: Vec<_> = std::iter::from_fn(|| events.try_recv().ok())
+        .filter_map(|event| step_of(event, &import_id))
+        .collect();
+    assert_eq!(
+        steps,
+        vec![
+            ImportStep::Preparing(PrepareStep::ValidatingSourceFiles),
+            fetching,
+        ],
+        "the fetch is reported before the picture is asked for, and nothing is read yet"
+    );
+    assert_eq!(
+        pick.handle
+            .candidate_runtime(&pick.key)
+            .and_then(|runtime| runtime.import)
+            .map(|import| import.step),
+        Some(fetching),
+        "the candidate shows the fetch while it waits on the picture"
+    );
+
+    hold.release();
+    let (release_id, _album_id) = await_import_outcome(&mut events, &import_id)
+        .await
+        .unwrap_or_else(|error| panic!("import failed: {error}"));
+    let artist = pick.track_artist(&release_id).await;
+    assert_eq!(pick.picture_of(&artist.id).await, Some(picture));
+    shut_down(pick.handle).await;
+}

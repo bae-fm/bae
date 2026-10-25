@@ -208,8 +208,6 @@ impl ImportService {
                 progress: ImportProgress::Preparing {
                     import_id: import_id.clone(),
                     step: PrepareStep::ValidatingSourceFiles,
-                    album_title: String::new(),
-                    artist_name: String::new(),
                 },
             });
 
@@ -331,12 +329,25 @@ impl ImportService {
         // now, before any file is read or row written, the one thing an
         // import asks a provider for. A fetch that fails fails the import;
         // importing again fetches again.
-        let artist_images = library_manager
-            .fetch_new_artist_images(
+        let new_artists = library_manager
+            .new_discogs_artists(
                 &prepared.artist_credits,
                 &prepared.picked_artists,
                 prepared.db_release.content_hash.as_deref(),
             )
+            .await?;
+        if !new_artists.is_empty() {
+            self.event_tx
+                .send(crate::import::handle::ImportEvent::ImportProgress {
+                    candidate_key: candidate_key.clone(),
+                    progress: ImportProgress::Preparing {
+                        import_id: import_id.clone(),
+                        step: PrepareStep::FetchingArtistPictures,
+                    },
+                });
+        }
+        let artist_images = library_manager
+            .fetch_discogs_artist_images(new_artists)
             .await?;
 
         prepared.selected_cover = selected_cover.clone();

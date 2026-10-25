@@ -205,8 +205,6 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
         progress: crate::import::ImportProgress::Preparing {
             import_id: "marker".to_string(),
             step: crate::import::PrepareStep::ValidatingSourceFiles,
-            album_title: String::new(),
-            artist_name: String::new(),
         },
     };
     let recorded = |change: Option<crate::import::CandidateRuntimeChange>| {

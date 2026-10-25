@@ -463,27 +463,26 @@ impl LibraryManager {
             .await?)
     }
 
-    /// The Discogs pictures of the artists an import of `credits` would
-    /// create, fetched before the import writes anything. An artist the
-    /// credits resolve to in the library keeps its own picture, so none is
-    /// fetched for it; a picture fetch that fails fails the import with it.
-    pub(crate) async fn fetch_new_artist_images(
+    /// The Discogs identities of the artists an import of `credits` would
+    /// create, whose pictures it fetches before it writes anything. An artist
+    /// the credits resolve to in the library keeps its own picture, so it is
+    /// not among them.
+    pub(crate) async fn new_discogs_artists(
         &self,
         credits: &[DbArtist],
         picked: &[String],
         content_hash: Option<&str>,
-    ) -> Result<Vec<crate::import::DiscogsArtistImage>, crate::import::ImportError> {
+    ) -> Result<std::collections::BTreeSet<String>, crate::import::ImportError> {
         let resolved = self
             .database
             .resolve_artists(credits, picked, content_hash)
             .await
             .map_err(LibraryError::from)?;
-        let new_discogs_artists = resolved
+        Ok(resolved
             .inserts
             .iter()
             .filter_map(|artist| artist.discogs_artist_id.clone())
-            .collect();
-        self.fetch_discogs_artist_images(new_discogs_artists).await
+            .collect())
     }
 
     /// Insert all of an import's data in one transaction, so the release exists
@@ -492,7 +491,7 @@ impl LibraryManager {
     /// shows its uploads queued.
     ///
     /// The pictures of the artists the import creates are staged from
-    /// `artist_images`, the ones [`Self::fetch_new_artist_images`] fetched,
+    /// `artist_images`, the ones fetched for [`Self::new_discogs_artists`],
     /// against a read just before the write; the write fails if its own
     /// artist resolution creates different artists, so no picture lands
     /// without its artist.

@@ -70,8 +70,6 @@ fn preparing(import_id: &str) -> crate::import::ImportProgress {
     crate::import::ImportProgress::Preparing {
         import_id: import_id.to_string(),
         step: crate::import::PrepareStep::ValidatingSourceFiles,
-        album_title: String::new(),
-        artist_name: String::new(),
     }
 }
 

@@ -128,6 +128,7 @@ pub const TEST_IMAGE_HOST: &str = "images.bae.test";
 pub struct RemoteImageHost {
     routes: ImageRoutes,
     requests: ImageRequests,
+    holds: ImageHolds,
     origin: String,
 }
 
@@ -138,13 +139,58 @@ type ImageRoutes =
 /// How many requests each path has had, registered or not.
 type ImageRequests = std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, usize>>>;
 
+/// The paths whose answers wait for a test to let them go: each request says
+/// it arrived, then waits until its hold is released.
+type ImageHolds = std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, HeldPath>>>;
+
+#[derive(Clone)]
+struct HeldPath {
+    arrived: std::sync::Arc<tokio::sync::Notify>,
+    released: tokio::sync::watch::Receiver<bool>,
+}
+
+/// The state every request to the host reads.
+#[derive(Clone)]
+struct HostState {
+    routes: ImageRoutes,
+    requests: ImageRequests,
+    holds: ImageHolds,
+}
+
+/// A path on a [`RemoteImageHost`] whose answers wait, from
+/// [`RemoteImageHost::hold_image`]. Dropping it lets them go.
+pub struct ImageHold {
+    arrived: std::sync::Arc<tokio::sync::Notify>,
+    release: tokio::sync::watch::Sender<bool>,
+}
+
+impl ImageHold {
+    /// Wait until a request for the held path has reached the host.
+    pub async fn arrived(&self) {
+        self.arrived.notified().await;
+    }
+
+    /// Answer every request for the held path, waiting or still to come.
+    pub fn release(self) {}
+}
+
+impl Drop for ImageHold {
+    fn drop(&mut self) {
+        self.release.send_replace(true);
+    }
+}
+
 impl RemoteImageHost {
     pub async fn start() -> Self {
         use axum::extract::{Request, State};
         use axum::http::StatusCode;
 
         async fn handler(
-            State((routes, requests)): State<(ImageRoutes, ImageRequests)>,
+            State(HostState {
+                routes,
+                requests,
+                holds,
+            }): State<HostState>,
             request: Request,
         ) -> (
             StatusCode,
@@ -156,6 +202,22 @@ impl RemoteImageHost {
                 .expect("image host requests mutex poisoned")
                 .entry(request.uri().path().to_string())
                 .or_default() += 1;
+            let held = holds
+                .lock()
+                .expect("image host holds mutex poisoned")
+                .get(request.uri().path())
+                .cloned();
+            if let Some(HeldPath {
+                arrived,
+                mut released,
+            }) = held
+            {
+                arrived.notify_one();
+                released
+                    .wait_for(|released| *released)
+                    .await
+                    .expect("a hold says it is released before it goes");
+            }
             let answer = routes
                 .lock()
                 .expect("image host routes mutex poisoned")
@@ -171,6 +233,7 @@ impl RemoteImageHost {
 
         let routes: ImageRoutes = std::sync::Arc::default();
         let requests: ImageRequests = std::sync::Arc::default();
+        let holds: ImageHolds = std::sync::Arc::default();
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
             .await
             .expect("the test image host binds");
@@ -180,9 +243,11 @@ impl RemoteImageHost {
                 .local_addr()
                 .expect("the test image host has an address")
         );
-        let app = axum::Router::new()
-            .fallback(handler)
-            .with_state((routes.clone(), requests.clone()));
+        let app = axum::Router::new().fallback(handler).with_state(HostState {
+            routes: routes.clone(),
+            requests: requests.clone(),
+            holds: holds.clone(),
+        });
         tokio::spawn(async move {
             axum::serve(listener, app)
                 .await
@@ -191,6 +256,7 @@ impl RemoteImageHost {
         Self {
             routes,
             requests,
+            holds,
             origin,
         }
     }
@@ -241,6 +307,25 @@ impl RemoteImageHost {
             .expect("image host routes mutex poisoned")
             .insert(path.to_string(), (status, Vec::new()));
         format!("https://{TEST_IMAGE_HOST}{path}")
+    }
+
+    /// Hold every answer at `path` until the returned hold is released, for
+    /// a test that looks at what a caller does while it waits on the image.
+    pub fn hold_image(&self, path: &str) -> ImageHold {
+        assert!(path.starts_with('/'), "test image path must be absolute");
+        let arrived = std::sync::Arc::new(tokio::sync::Notify::new());
+        let (release, released) = tokio::sync::watch::channel(false);
+        self.holds
+            .lock()
+            .expect("image host holds mutex poisoned")
+            .insert(
+                path.to_string(),
+                HeldPath {
+                    arrived: arrived.clone(),
+                    released,
+                },
+            );
+        ImageHold { arrived, release }
     }
 
     /// How many requests `path` has had on this host.

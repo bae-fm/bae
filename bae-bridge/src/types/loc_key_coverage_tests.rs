@@ -211,6 +211,7 @@ fn produced_keys() -> Vec<String> {
     for step in [
         BridgePrepareStep::Queued,
         BridgePrepareStep::ValidatingSourceFiles,
+        BridgePrepareStep::FetchingArtistPictures,
     ] {
         keys.push(bridge_prepare_step_key(step));
     }
