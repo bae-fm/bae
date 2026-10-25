@@ -2,8 +2,7 @@
 //! library's name, the S3 storage it connects to, the Discogs token, and the
 //! two metadata preferences. The file holds credentials, so it is read only
 //! when no one but its owner can read or write it, and no error repeats its
-//! contents. Emptying that storage's prefix, so the recreated library starts
-//! on an empty remote, is here too.
+//! contents.
 
 use crate::library_name::{EmptyLibraryName, LibraryName};
 use crate::sync::S3ConfigData;
@@ -170,30 +169,6 @@ impl DevResetProfile {
             import_when_identified: file.import_when_identified,
         })
     }
-}
-
-/// Why the profile's storage prefix wasn't emptied.
-#[derive(Debug, thiserror::Error)]
-pub enum EmptyStoragePrefixError {
-    #[error("dev profile s3.endpoint is not a URL: {0}")]
-    Endpoint(#[source] url::ParseError),
-    /// coven refused the location or a storage request failed; whatever it
-    /// removed before then stays removed, and emptying again finishes.
-    #[error(transparent)]
-    Coven(#[from] coven::EmptyS3PrefixError),
-}
-
-/// Delete every object and abort every unfinished upload under the storage's
-/// key prefix, whatever wrote them, so the library a reset creates there
-/// starts on an empty remote. Storage at the bucket's root is refused: that
-/// would empty the whole bucket.
-pub async fn empty_storage_prefix(
-    s3: S3ConfigData,
-) -> Result<coven::EmptiedS3Prefix, EmptyStoragePrefixError> {
-    let (location, credentials) = s3
-        .into_location()
-        .map_err(EmptyStoragePrefixError::Endpoint)?;
-    Ok(coven::empty_s3_prefix(location, credentials).await?)
 }
 
 fn unix_mode(permissions: &std::fs::Permissions) -> u32 {

@@ -26,28 +26,24 @@
     /// profile, before any library opens. Every library is removed from this
     /// Mac without opening it or reading its store: its directory and its
     /// store keys in the keychain go, and its saved restore code is deleted the
-    /// way the welcome screen deletes one. Then the
-    /// profile's storage prefix is emptied, so the new library starts on an
-    /// empty remote, `~/.bae` goes, and the new library is created and set up
-    /// the way Settings and storage setup do. Each step logs; the first
-    /// failure stops the reset and is thrown.
+    /// way the welcome screen deletes one. Then `~/.bae` goes, and the new
+    /// library is created and set up the way Settings and storage setup do.
+    /// `scripts/reset-bae.py` empties the profile's storage prefix before it
+    /// launches the app, so the new library starts on an empty remote. Each
+    /// step logs; the first failure stops the reset and is thrown.
     struct DevReset: Sendable {
         let readProfile: @Sendable (String) throws -> BridgeDevResetProfile
         /// Removals an earlier run left unfinished.
         let finishRemovals: @Sendable () async throws -> Void
         let listLibraries: @Sendable () async throws -> [BridgeLibrary]
         /// Remove the library from this Mac only. The store isn't told this
-        /// device left: the reset empties the storage prefix next.
+        /// device left: the reset script emptied the storage prefix before
+        /// the app launched.
         let removeLibrary:
             @Sendable (BridgeLibrary) async throws -> BridgeLibraryRemoval
         let savedRestoreCodes:
             @Sendable () async throws -> [BridgeSavedRestoreEntry]
         let forgetSavedRestoreCode: @Sendable (String) async throws -> Void
-        /// Delete every object and abort every unfinished upload under the
-        /// storage's key prefix.
-        let emptyStoragePrefix:
-            @Sendable (BridgeSaveSyncConfig) async throws ->
-                BridgeEmptiedS3Prefix
         /// Delete bae's directory and create it empty again: the host's app
         /// directory must exist while it runs.
         let replaceAppDirectory: @Sendable () throws -> Void
@@ -91,14 +87,6 @@
                 try await forgetSavedRestoreCode(libraryId)
             }
 
-            logger.info(
-                "emptying bucket \(profile.syncConfig.bucket), prefix \(profile.syncConfig.keyPrefix)"
-            )
-            let emptied = try await emptyStoragePrefix(profile.syncConfig)
-            logger.info(
-                "deleted \(emptied.objects) objects and aborted \(emptied.uploads) unfinished uploads"
-            )
-
             logger.info("replacing ~/.bae")
             try replaceAppDirectory()
 
@@ -135,9 +123,6 @@
                 savedRestoreCodes: { try await host.savedRestoreCodes() },
                 forgetSavedRestoreCode: {
                     try await host.forgetSavedRestoreCode(libraryId: $0)
-                },
-                emptyStoragePrefix: {
-                    try await host.emptyDevResetPrefix(syncConfig: $0)
                 },
                 replaceAppDirectory: {
                     let directory = URL(fileURLWithPath: home)

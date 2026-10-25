@@ -237,10 +237,9 @@ default = []
 # by default → S3-only, matching the baeium build; the bae build turns it
 # on. bae-core's own oauth call sites (provider sign-in and setup) gate on this.
 oauth-providers = []
-# A debug app's dev reset: the profile it recreates its library from, and
-# emptying that profile's storage prefix through coven's dev-tools. Debug
+# A debug app's dev reset: the profile it recreates its library from. Debug
 # macOS bridge builds turn it on; release builds leave it out.
-dev-reset = ["coven/dev-tools"]
+dev-reset = []
 # Forwards coven's test-utils so bae-core's own integration tests get the
 # re-exported clock/id fakes (FixedClock, …).
 test-utils = ["coven/test-utils"]

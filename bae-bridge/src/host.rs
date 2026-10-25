@@ -382,8 +382,6 @@ pub fn init_app_on_fixture(
 
 mod bootstrap;
 pub use bootstrap::*;
-#[cfg(all(feature = "dev-reset", unix))]
-mod dev_reset;
 
 #[cfg(test)]
 mod tests {

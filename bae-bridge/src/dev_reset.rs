@@ -1,17 +1,7 @@
-//! The profile a debug app's dev reset recreates its library from, and what
-//! emptying its storage prefix removed. Only debug macOS builds carry it.
+//! The profile a debug app's dev reset recreates its library from. Only debug
+//! macOS builds carry it.
 
 use crate::{BridgeError, BridgeS3Profile, BridgeSaveSyncConfig};
-
-/// What emptying the dev profile's storage prefix removed. Mirrors
-/// `coven::EmptiedS3Prefix`.
-#[derive(uniffi::Record)]
-pub struct BridgeEmptiedS3Prefix {
-    /// Objects deleted.
-    pub objects: u64,
-    /// Unfinished multipart uploads aborted.
-    pub uploads: u64,
-}
 
 /// A dev library's profile. Mirrors `bae_core::dev_reset::DevResetProfile`.
 #[derive(uniffi::Record)]
