@@ -144,10 +144,8 @@ final class ImportCandidateViewportTests: XCTestCase {
             let scrollView = try XCTUnwrap(table.enclosingScrollView)
             let anchorIndex = 30
             let unscrolled = geometry.value
-            // Each list position is two table rows, its air and then its
-            // entry.
             scrollView.contentView.scroll(
-                to: table.rect(ofRow: anchorIndex * 2 + 1).origin
+                to: table.rect(ofRow: anchorIndex).origin
             )
             scrollView.reflectScrolledClipView(scrollView.contentView)
             try await settleViewportLayout(
