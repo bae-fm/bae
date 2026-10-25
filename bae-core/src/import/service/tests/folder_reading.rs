@@ -21,6 +21,16 @@ impl crate::import::folder_scanner::DirectoryReader for RecordingListing {
         self.read.lock().unwrap().push(root.join(directory));
         crate::import::folder_scanner::OsDirectoryReader.read(root, directory, cancellation)
     }
+
+    fn folder_times(
+        &self,
+        root: &Path,
+        folders: &[PathBuf],
+        cancellation: &crate::import::folder_scanner::ScanCancellation,
+    ) -> Result<Vec<crate::import::folder_scanner::FolderTimes>, crate::import::folder_scanner::FolderScanError>
+    {
+        crate::import::folder_scanner::OsDirectoryReader.folder_times(root, folders, cancellation)
+    }
 }
 
 /// `count` playable FLAC files in `folder`, named `01.flac` onwards.

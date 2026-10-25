@@ -450,7 +450,15 @@ or folders read as one.
 Ana watches `~/Music`. bae reads several of the folders directly in it at
 once, each a directory at a time, and reports candidates as it finds them: a
 folder's releases arrive as that folder is read, not in the order the folders'
-names sort in. A *candidate* is a release the scan found, not yet imported:
+names sort in. It takes those folders newest first, every scan alike, so a
+folder Ana just added, or one whose own contents just changed (an album added
+inside an artist's folder), shows up before the rest of `~/Music` is read: by
+the latest of the dates the system keeps for the folder — when it was added to
+`~/Music` (macOS only, and not on a network share), created, or modified.
+Folders with no date go last, and folders with the same date go in name order.
+Copies keep their old dates on some systems, so the order is a guess; it
+changes which candidates show first, never what the scan finds. A *candidate*
+is a release the scan found, not yet imported:
 
 - **A folder with audio directly in it** is one release. Ana's
   `Artist Name - Album Title (1979)/` with its eleven FLAC files, CUE sheet and

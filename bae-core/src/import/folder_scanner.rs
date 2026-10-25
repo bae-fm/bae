@@ -4,8 +4,9 @@
 //! whose children hold the audio is read as one release or as separate ones:
 //! by the reading stored for it, or, with none, by the scan's own reading of
 //! its children (see [`heuristic_folder_release_decision`]). A pass reads several
-//! of the folders directly under the watched root at once, each a directory at
-//! a time, and reports candidates as they become available.
+//! of the folders directly under the watched root at once, newest first by the
+//! latest date each has, each a directory at a time, and reports candidates as
+//! they become available.
 use super::file_validation;
 use crate::cue_flac::{parse_cue_sheet, CueSheet};
 use crate::util::content_type_hint::ContentTypeHint;
@@ -22,6 +23,7 @@ mod categorize;
 mod file_reads;
 mod files;
 mod folder_date;
+mod folder_times;
 mod scan;
 pub use candidates::*;
 pub use categorize::is_audio_file;
@@ -31,6 +33,7 @@ use file_reads::Playability;
 pub(crate) use file_reads::FileReads;
 pub use files::*;
 pub use folder_date::FolderDate;
+pub(crate) use folder_times::FolderTimes;
 pub(crate) use scan::file_modified_at_ns;
 pub use scan::*;
 

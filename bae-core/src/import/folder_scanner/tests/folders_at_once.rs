@@ -4,6 +4,12 @@ struct SaidByPass {
     items: Vec<ScanItem>,
 }
 
+/// No date for any of `folders`: a reader that gives these has the pass walk
+/// its folders in name order.
+fn undated(folders: &[PathBuf]) -> Vec<FolderTimes> {
+    vec![FolderTimes::default(); folders.len()]
+}
+
 /// One grouping key for every grouping a pass proposes, so two passes over
 /// the same folders say the same items.
 fn same_grouping_key() -> String {
@@ -126,6 +132,17 @@ impl DirectoryReader for ListsOneFolderAfterAnother {
             changed.notify_all();
         }
         Ok(listing)
+    }
+
+    /// No folder has a date, so the pass walks them in name order and
+    /// `awaited` comes after the first folders in flight.
+    fn folder_times(
+        &self,
+        _root: &Path,
+        folders: &[PathBuf],
+        _cancellation: &ScanCancellation,
+    ) -> Result<Vec<FolderTimes>, FolderScanError> {
+        Ok(undated(folders))
     }
 }
 
@@ -252,6 +269,16 @@ impl DirectoryReader for FailsInOneFolder {
             std::thread::yield_now();
         }
     }
+
+    /// No folder has a date, so the pass walks them in name order.
+    fn folder_times(
+        &self,
+        _root: &Path,
+        folders: &[PathBuf],
+        _cancellation: &ScanCancellation,
+    ) -> Result<Vec<FolderTimes>, FolderScanError> {
+        Ok(undated(folders))
+    }
 }
 
 #[test]
@@ -322,6 +349,16 @@ impl DirectoryReader for CancelsInOneFolder {
             std::thread::yield_now();
         }
     }
+
+    /// No folder has a date, so the pass walks them in name order.
+    fn folder_times(
+        &self,
+        _root: &Path,
+        folders: &[PathBuf],
+        _cancellation: &ScanCancellation,
+    ) -> Result<Vec<FolderTimes>, FolderScanError> {
+        Ok(undated(folders))
+    }
 }
 
 #[test]
@@ -371,4 +408,187 @@ fn cancelling_a_pass_stops_every_folder_it_is_reading() {
         asked.iter().all(|directory| first_in_flight.contains(directory)),
         "{asked:?}"
     );
+}
+
+/// Reads directories as the OS does and gives each folder under the root the
+/// dates in `times`, none for a folder not in it. The first
+/// [`FOLDERS_AT_ONCE`] folders a pass begins wait in their listing until all
+/// of them have begun, so no walk takes another folder before then: those
+/// are exactly the first the pass took, recorded in `first_begun`.
+struct DatedFolders {
+    times: HashMap<PathBuf, FolderTimes>,
+    first_begun: (std::sync::Mutex<Vec<PathBuf>>, std::sync::Condvar),
+}
+
+impl DatedFolders {
+    fn new(times: HashMap<PathBuf, FolderTimes>) -> Self {
+        Self {
+            times,
+            first_begun: Default::default(),
+        }
+    }
+}
+
+impl DirectoryReader for DatedFolders {
+    fn read(
+        &self,
+        root: &Path,
+        directory: &Path,
+        cancellation: &ScanCancellation,
+    ) -> Result<DirectoryListing, FolderScanError> {
+        if directory.components().count() == 1 {
+            let (begun, all_begun) = &self.first_begun;
+            let mut begun = begun.lock().unwrap();
+            if begun.len() < FOLDERS_AT_ONCE {
+                begun.push(directory.to_path_buf());
+                all_begun.notify_all();
+                let (begun, timeout) = all_begun
+                    .wait_timeout_while(begun, std::time::Duration::from_secs(10), |begun| {
+                        begun.len() < FOLDERS_AT_ONCE
+                    })
+                    .unwrap();
+                if timeout.timed_out() && begun.len() < FOLDERS_AT_ONCE {
+                    return Err(FolderScanError::Other(format!(
+                        "only {begun:?} were begun at once"
+                    )));
+                }
+            }
+        }
+        OsDirectoryReader.read(root, directory, cancellation)
+    }
+
+    fn folder_times(
+        &self,
+        _root: &Path,
+        folders: &[PathBuf],
+        _cancellation: &ScanCancellation,
+    ) -> Result<Vec<FolderTimes>, FolderScanError> {
+        Ok(folders
+            .iter()
+            .map(|folder| self.times.get(folder).copied().unwrap_or_default())
+            .collect())
+    }
+}
+
+#[test]
+fn a_pass_begins_the_newest_folders_first_and_says_what_a_pass_in_name_order_says() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Library");
+    let write = |relative: &str, bytes: &[u8]| {
+        let path = root.join(relative);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, bytes).unwrap();
+    };
+    write("loose.flac", &fake_flac());
+    for folder in 1..=12 {
+        match folder {
+            // No audio: their files are the root's own release's.
+            2 | 4 | 7 => write(&format!("Folder {folder:02}/notes.txt"), b"notes"),
+            _ => write(&format!("Folder {folder:02}/01 Track.flac"), &fake_flac()),
+        }
+    }
+    let at = |seconds| Some(std::time::UNIX_EPOCH + std::time::Duration::from_secs(seconds));
+    let added = |seconds| FolderTimes {
+        added: at(seconds),
+        ..Default::default()
+    };
+    let created = |seconds| FolderTimes {
+        created: at(seconds),
+        ..Default::default()
+    };
+    let modified = |seconds| FolderTimes {
+        modified: at(seconds),
+        ..Default::default()
+    };
+    // Folders 02 and 07 have no date.
+    let times: HashMap<PathBuf, FolderTimes> = [
+        (1, added(100)),
+        (3, created(500)),
+        (4, modified(300)),
+        (5, added(300)),
+        // Added long ago, and something in it changed since.
+        (
+            6,
+            FolderTimes {
+                added: at(50),
+                created: at(50),
+                modified: at(650),
+            },
+        ),
+        (8, added(900)),
+        (9, created(700)),
+        (10, modified(200)),
+        (11, added(800)),
+        (12, modified(600)),
+    ]
+    .into_iter()
+    .map(|(folder, times)| (PathBuf::from(format!("Folder {folder:02}")), times))
+    .collect();
+
+    let reader = DatedFolders::new(times);
+    let (result, dated) = pass_over_root(&reader, &root, &ScanCancellation::new());
+    result.unwrap();
+
+    // Newest first by each folder's latest date, Folder 04 before Folder 05
+    // on their shared date, the undated last.
+    let mut first_begun = reader.first_begun.0.lock().unwrap().clone();
+    first_begun.sort();
+    let mut newest: Vec<PathBuf> = [8, 11, 9, 6, 12, 3, 4, 5]
+        .into_iter()
+        .map(|folder| PathBuf::from(format!("Folder {folder:02}")))
+        .collect();
+    newest.sort();
+    assert_eq!(first_begun, newest);
+
+    // What the pass says of each folder, and the root's own release with the
+    // files the folders without audio lend it in name order, is what a pass
+    // in name order says.
+    let (result, by_name) = pass_over_root(&OsDirectoryReader, &root, &ScanCancellation::new());
+    result.unwrap();
+    for folder in std::iter::once(String::new())
+        .chain((1..=12).map(|folder| format!("Folder {folder:02}")))
+    {
+        let items = |said: &SaidByPass| -> Vec<ScanItem> {
+            said.items
+                .iter()
+                .filter(|item| top_level_folder_of_item(&root, item) == folder)
+                .cloned()
+                .collect()
+        };
+        assert_eq!(items(&dated), items(&by_name), "the items of {folder:?}");
+    }
+    let Some(ScanItem::Valid(root_release)) = dated.items.last() else {
+        panic!("the root's own release is said last: {:?}", dated.items.last());
+    };
+    assert_eq!(
+        root_release
+            .files
+            .release_files()
+            .map(|file| file.relative_path.as_str())
+            .collect::<Vec<_>>(),
+        [
+            "Folder 02/notes.txt",
+            "Folder 04/notes.txt",
+            "Folder 07/notes.txt",
+            "loose.flac"
+        ]
+    );
+}
+
+#[test]
+fn a_pass_over_folders_with_no_dates_begins_them_in_name_order() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Library");
+    for folder in 1..=12 {
+        std::fs::create_dir_all(root.join(format!("Folder {folder:02}"))).unwrap();
+    }
+    let reader = DatedFolders::new(HashMap::new());
+    let (result, _) = pass_over_root(&reader, &root, &ScanCancellation::new());
+    result.unwrap();
+    let mut first_begun = reader.first_begun.0.lock().unwrap().clone();
+    first_begun.sort();
+    let by_name: Vec<PathBuf> = (1..=FOLDERS_AT_ONCE)
+        .map(|folder| PathBuf::from(format!("Folder {folder:02}")))
+        .collect();
+    assert_eq!(first_begun, by_name);
 }

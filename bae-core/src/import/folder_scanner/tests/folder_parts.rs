@@ -173,6 +173,15 @@ fn reading_a_folder_lists_nothing_twice() {
             self.reads.lock().unwrap().push(directory.to_path_buf());
             OsDirectoryReader.read(root, directory, cancellation)
         }
+
+        fn folder_times(
+            &self,
+            root: &Path,
+            folders: &[PathBuf],
+            cancellation: &ScanCancellation,
+        ) -> Result<Vec<FolderTimes>, FolderScanError> {
+            OsDirectoryReader.folder_times(root, folders, cancellation)
+        }
     }
 
     let temp_dir = tempfile::tempdir().unwrap();

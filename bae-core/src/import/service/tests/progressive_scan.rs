@@ -73,6 +73,16 @@ impl crate::import::folder_scanner::DirectoryReader for HeldListing {
         }
         crate::import::folder_scanner::OsDirectoryReader.read(root, directory, cancellation)
     }
+
+    fn folder_times(
+        &self,
+        root: &Path,
+        folders: &[PathBuf],
+        cancellation: &crate::import::folder_scanner::ScanCancellation,
+    ) -> Result<Vec<crate::import::folder_scanner::FolderTimes>, crate::import::folder_scanner::FolderScanError>
+    {
+        crate::import::folder_scanner::OsDirectoryReader.folder_times(root, folders, cancellation)
+    }
 }
 
 /// A scan announces each candidate as the walk finds it, not as one batch

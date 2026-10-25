@@ -38,6 +38,15 @@ impl DirectoryReader for BlockingReader {
         }
         OsDirectoryReader.read(root, directory, cancellation)
     }
+
+    fn folder_times(
+        &self,
+        root: &Path,
+        folders: &[PathBuf],
+        cancellation: &ScanCancellation,
+    ) -> Result<Vec<FolderTimes>, FolderScanError> {
+        OsDirectoryReader.folder_times(root, folders, cancellation)
+    }
 }
 
 /// A scan of `root` running on its own thread, suspended inside `blocked`
@@ -329,6 +338,15 @@ fn cancellation_reaches_an_in_progress_directory_read() {
                 cancellation.check()?;
                 std::thread::yield_now();
             }
+        }
+
+        fn folder_times(
+            &self,
+            _root: &Path,
+            folders: &[PathBuf],
+            _cancellation: &ScanCancellation,
+        ) -> Result<Vec<FolderTimes>, FolderScanError> {
+            Ok(undated(folders))
         }
     }
 

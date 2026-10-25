@@ -3,8 +3,12 @@
 //! The folders directly under the root are the units it is read in: what one
 //! yields depends on nothing beside it (see [`scan_top_level_folder`]), so a
 //! pass reads several at once, each by a walk of its own, and says what each
-//! yields on the calling thread as it is read.
+//! yields on the calling thread as it is read. It begins them newest first by
+//! the latest date each has (see [`FolderTimes`]), so a folder just added, or
+//! one whose own contents just changed, shows its releases before the rest of
+//! the root is read.
 
+use super::super::folder_times::newest_first;
 use super::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -63,9 +67,15 @@ where
         .iter()
         .any(|file| file.size > 0 && is_audio_file(&file.path));
     let mut direct_scope_files = root_listing.files;
+    let walk_order = newest_first(&reader.folder_times(
+        &root,
+        &root_listing.directories,
+        cancellation,
+    )?);
     for lent in read_folders_at_once(
         &walk,
         &root_listing.directories,
+        &walk_order,
         &mut on_directory,
         &mut on_item,
     )? {
@@ -90,16 +100,19 @@ where
 
 /// Read each of `folders`, directly under `walk`'s root, up to
 /// [`FOLDERS_AT_ONCE`] at a time, each by a walk of its own over the same
-/// readings. What they reach and yield goes to `on_directory` and `on_item`
-/// on the calling thread as it arrives: one folder's in the order its walk
-/// says it, the folders' interleaved as they are read. Returns the files each
-/// folder holding no audio lends the root's own release, in `folders`' order.
+/// readings, beginning them in `walk_order`, which holds each index into
+/// `folders` once. What they reach and yield goes to `on_directory` and
+/// `on_item` on the calling thread as it arrives: one folder's in the order
+/// its walk says it, the folders' interleaved as they are read. Returns the
+/// files each folder holding no audio lends the root's own release, in
+/// `folders`' order.
 ///
 /// The first folder that fails stops the others and fails the pass with its
 /// error; cancelling the pass stops every folder's walk.
 fn read_folders_at_once<R, F, D>(
     walk: &Walk<'_, R>,
     folders: &[PathBuf],
+    walk_order: &[usize],
     on_directory: &mut D,
     on_item: &mut F,
 ) -> Result<Vec<Vec<FileEntry>>, FolderScanError>
@@ -145,10 +158,11 @@ where
                     }
                 };
                 while !stop.is_cancelled() {
-                    let index = next.fetch_add(1, Ordering::Relaxed);
-                    let Some(folder) = folders.get(index) else {
+                    let Some(&index) = walk_order.get(next.fetch_add(1, Ordering::Relaxed))
+                    else {
                         break;
                     };
+                    let folder = &folders[index];
                     let lent = scan_top_level_folder(
                         &walk,
                         folder,

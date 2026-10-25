@@ -32,6 +32,16 @@ pub(crate) trait DirectoryReader: Send + Sync {
         directory: &Path,
         cancellation: &ScanCancellation,
     ) -> Result<DirectoryListing, FolderScanError>;
+
+    /// The dates of each of `folders`, directly under `root` and relative to
+    /// it, in their order: what a pass walks them newest first by. A folder
+    /// whose dates can't be read has none; only a cancelled pass fails this.
+    fn folder_times(
+        &self,
+        root: &Path,
+        folders: &[PathBuf],
+        cancellation: &ScanCancellation,
+    ) -> Result<Vec<FolderTimes>, FolderScanError>;
 }
 
 pub(crate) struct OsDirectoryReader;
@@ -101,6 +111,15 @@ impl DirectoryReader for OsDirectoryReader {
         files.sort_by(|left, right| compare(&left.path, &right.path));
         directories.sort_by(compare);
         Ok(DirectoryListing { files, directories })
+    }
+
+    fn folder_times(
+        &self,
+        root: &Path,
+        folders: &[PathBuf],
+        cancellation: &ScanCancellation,
+    ) -> Result<Vec<FolderTimes>, FolderScanError> {
+        super::folder_times::times_of_folders(root, folders, cancellation)
     }
 }
 
