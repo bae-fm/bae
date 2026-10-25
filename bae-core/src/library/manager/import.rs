@@ -317,15 +317,14 @@ impl LibraryManager {
             .await?)
     }
 
-    /// Store one scan item under `generation`, seeded with the `file_metadata`
-    /// the caller took from [`Self::scan_item_seed`] before the folder-state
-    /// commit lock.
+    /// Store one scan item under `generation`, with the `seed` the caller
+    /// took from [`Self::scan_item_seed`] before the folder-state commit lock.
     pub(crate) async fn save_folder_scan_item_with_seed(
         &self,
         watched_folder_path: &str,
         generation: u64,
         item: &crate::import::folder_scanner::ScanItem,
-        file_metadata: Option<crate::import::file_metadata_seed::FileMetadataSeed>,
+        seed: crate::db::ScanItemSeed,
         folder_date: Option<crate::import::folder_scanner::FolderDate>,
     ) -> Result<Option<crate::db::ScanItemWrite>, LibraryError> {
         Ok(self
@@ -334,7 +333,7 @@ impl LibraryManager {
                 watched_folder_path,
                 generation,
                 item,
-                file_metadata,
+                seed,
                 folder_date,
             )
             .await?)
@@ -349,16 +348,30 @@ impl LibraryManager {
     /// rather than kept out of the queue. Reading audio files can be slow on a
     /// network share, so it runs on a blocking thread and outside the
     /// folder-state commit lock every pane control waits on.
+    ///
+    /// A tentative folder whose files a settled entry already reads takes no
+    /// seed and opens no file: the store keeps that entry and writes nothing
+    /// for the folder.
     pub(crate) async fn scan_item_seed(
         &self,
         item: &crate::import::folder_scanner::ScanItem,
         generation: u64,
         reads: std::sync::Arc<crate::import::folder_scanner::FileReads>,
-    ) -> Result<Option<crate::import::file_metadata_seed::FileMetadataSeed>, LibraryError> {
+    ) -> Result<crate::db::ScanItemSeed, LibraryError> {
+        use crate::db::ScanItemSeed;
         use crate::import::folder_scanner::ScanItem;
         let (ScanItem::Discovered(candidate) | ScanItem::Valid(candidate)) = item else {
-            return Ok(None);
+            return Ok(ScanItemSeed::Tags(None));
         };
+        if let (ScanItem::Discovered(_), Some(coverage)) = (item, item.coverage()) {
+            if self
+                .database
+                .settled_entry_reads(&candidate.watched_folder_path, &coverage)
+                .await?
+            {
+                return Ok(ScanItemSeed::AlreadySettled);
+            }
+        }
         let folder = candidate.path.display().to_string();
         let stored = self
             .database
@@ -380,13 +393,13 @@ impl LibraryManager {
         .await
         .map_err(|error| LibraryError::Internal(format!("file tag read task failed: {error}")))?;
         match read {
-            Ok(seed) => Ok(Some(seed)),
+            Ok(seed) => Ok(ScanItemSeed::Tags(Some(seed))),
             Err(error) => {
                 tracing::warn!(
                     "{folder} keeps no reading of its file tags, and starts on a blank draft \
                      if it has none: they could not be read: {error}"
                 );
-                Ok(None)
+                Ok(ScanItemSeed::Tags(None))
             }
         }
     }
@@ -398,7 +411,7 @@ impl LibraryManager {
         generation: u64,
         item: &crate::import::folder_scanner::ScanItem,
     ) -> Result<Option<crate::db::ScanItemWrite>, LibraryError> {
-        let file_metadata = self
+        let seed = self
             .scan_item_seed(
                 item,
                 generation,
@@ -407,14 +420,8 @@ impl LibraryManager {
                 )),
             )
             .await?;
-        self.save_folder_scan_item_with_seed(
-            watched_folder_path,
-            generation,
-            item,
-            file_metadata,
-            None,
-        )
-        .await
+        self.save_folder_scan_item_with_seed(watched_folder_path, generation, item, seed, None)
+            .await
     }
 
     pub async fn finish_folder_scan(

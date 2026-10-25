@@ -148,7 +148,7 @@ async fn commit_reading_under(
             .into_iter()
             .map(|item| crate::db::ScanItemToWrite {
                 item,
-                file_metadata: None,
+                seed: crate::db::ScanItemSeed::Tags(None),
                 folder_date: None,
             })
             .collect(),

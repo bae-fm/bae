@@ -380,6 +380,49 @@ pub(crate) fn settled_entry_is_stored(
     Ok(matches!(kind.as_deref(), Some("valid" | "invalid")))
 }
 
+/// The keys of the settled entries — valid or invalid — the scans stored
+/// under the root that read any of the files `coverage` reads, by
+/// [`Coverage::overlaps`] as a superseding write deletes by. Only an entry
+/// whose folder is that folder, one above it, or one below it can, so only
+/// those rows are read.
+pub(crate) fn settled_entries_reading(
+    sql: &(impl QueryOne + QueryRows),
+    watched_folder_path: &str,
+    coverage: &Coverage,
+) -> Result<Vec<String>, DbError> {
+    let folder = coverage.folder.to_string_lossy().into_owned();
+    sql.query(
+        "SELECT path, file_root, scope FROM scan_candidate \
+         WHERE watched_folder_path = ?1 AND source_kind = 'folder' \
+           AND kind IN ('valid', 'invalid') \
+           AND (substr(?2, 1, length(file_root)) = file_root \
+                OR substr(file_root, 1, length(?2)) = ?2) \
+         ORDER BY path",
+        params![watched_folder_path, folder],
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        },
+    )?
+    .into_iter()
+    .filter_map(|(key, file_root, scope)| {
+        scope_of(&scope)
+            .map(|scope| {
+                Coverage {
+                    folder: PathBuf::from(file_root),
+                    whole_subtree: scope == ReleaseFileScope::Recursive,
+                }
+                .overlaps(coverage)
+                .then_some(key)
+            })
+            .transpose()
+    })
+    .collect()
+}
+
 /// Every entry the scans stored under one root, as the key it is addressed
 /// by and the part of the root it reads — what a superseding write deletes by.
 pub(crate) fn stored_entries(

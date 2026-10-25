@@ -33,7 +33,7 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
             &root,
             generation,
             &ScanItem::Valid(candidate(&root, name)),
-            None,
+            crate::db::ScanItemSeed::Tags(None),
             date,
         )
         .await
@@ -131,7 +131,7 @@ async fn a_rescan_captures_dates_even_when_the_candidate_files_are_unchanged() {
         &root,
         generation,
         &ScanItem::Valid(item),
-        None,
+        crate::db::ScanItemSeed::Tags(None),
         Some(FolderDate::Created(123)),
     )
     .await

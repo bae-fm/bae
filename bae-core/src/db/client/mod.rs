@@ -69,7 +69,8 @@ desktop_only! {
     mod folder_scans;
     pub use folder_scans::{FinishedScan, ScanItemWrite};
     pub(crate) use folder_scans::{
-        FolderReadingCommit, FolderReadingStamp, FolderReadingWrite, ScanItemToWrite,
+        FolderReadingCommit, FolderReadingStamp, FolderReadingWrite, ScanItemSeed,
+        ScanItemToWrite,
     };
     mod release_groupings;
     pub use release_groupings::GroupingChanges;

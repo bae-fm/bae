@@ -293,13 +293,12 @@ impl Database {
 
     /// Store one scan result, deleting the entries it supersedes in the same
     /// transaction. `None` when `generation` is no longer the root's.
-    /// `file_metadata` is [`ScanItemToWrite::file_metadata`].
     pub(crate) async fn save_folder_scan_item_with_seed(
         &self,
         watched_folder_path: &str,
         generation: u64,
         item: &ScanItem,
-        file_metadata: Option<crate::import::file_metadata_seed::FileMetadataSeed>,
+        seed: ScanItemSeed,
         folder_date: Option<crate::import::folder_scanner::FolderDate>,
     ) -> Result<Option<ScanItemWrite>, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
@@ -317,7 +316,7 @@ impl Database {
                 generation,
                 &ScanItemToWrite {
                     item,
-                    file_metadata,
+                    seed,
                     folder_date,
                 },
                 observed_at,
@@ -335,8 +334,14 @@ impl Database {
         generation: u64,
         item: &ScanItem,
     ) -> Result<Option<ScanItemWrite>, DbError> {
-        self.save_folder_scan_item_with_seed(watched_folder_path, generation, item, None, None)
-            .await
+        self.save_folder_scan_item_with_seed(
+            watched_folder_path,
+            generation,
+            item,
+            ScanItemSeed::Tags(None),
+            None,
+        )
+        .await
     }
 
     /// Replace the directories recorded for `watched_folder_path` with those a
@@ -510,11 +515,21 @@ fn superseded_keys(stored: &[StoredEntry], item: &ScanItem) -> Vec<String> {
 /// One scan item as a pass hands it to the store.
 pub(crate) struct ScanItemToWrite {
     pub(crate) item: ScanItem,
+    pub(crate) seed: ScanItemSeed,
+    pub(crate) folder_date: Option<crate::import::folder_scanner::FolderDate>,
+}
+
+/// What one scan item is stored with, taken before the write.
+pub(crate) enum ScanItemSeed {
     /// The reading of the folder's own tags, which its scan row keeps, and
     /// the draft and cover they project, which seed only a candidate with no
-    /// draft yet.
-    pub(crate) file_metadata: Option<crate::import::file_metadata_seed::FileMetadataSeed>,
-    pub(crate) folder_date: Option<crate::import::folder_scanner::FolderDate>,
+    /// draft yet: `None` for an item with no tracks, or whose tags could not
+    /// be read.
+    Tags(Option<crate::import::file_metadata_seed::FileMetadataSeed>),
+    /// Nothing: a tentative candidate whose files a settled entry read when
+    /// the seed was taken, which stores only when its folder was seen (see
+    /// [`write_entry`]).
+    AlreadySettled,
 }
 
 /// Write one scan item under `generation`, inside the caller's transaction,
@@ -612,7 +627,7 @@ pub(super) fn write_entry(
 ) -> Result<EntryWrite, DbError> {
     let ScanItemToWrite {
         item,
-        file_metadata,
+        seed,
         folder_date,
     } = to_write;
     let Some(entry_key) = item.persisted_key() else {
@@ -651,15 +666,37 @@ pub(super) fn write_entry(
         None => Ok(()),
     };
     let listed_before = read::settled_entry_is_stored(sql, watched_folder_path, &entry_key)?;
-    // A rescan reports every candidate tentative before it reports it settled.
-    // A settled row keeps standing through that, taking only this
-    // generation's stamp, so it does not swing out of the list; the settled
-    // write that follows replaces it.
-    if matches!(item, ScanItem::Discovered(_)) && listed_before {
-        write::touch_candidate(sql, watched_folder_path, &entry_key, generation)?;
-        record_discovery()?;
-        return Ok(EntryWrite::Unchanged);
+    // A rescan reports every candidate tentative before it reports it
+    // settled, and a tentative candidate is for a folder seen for the first
+    // time. One whose files a settled entry already reads — its own folder's
+    // release, or the album its disc folders are read into — stores nothing
+    // but when its folder was seen. Those entries keep standing, taking only
+    // this generation's stamp, so they do not swing out of the list; the
+    // settled reading that follows replaces them or keeps them.
+    //
+    // One seeded while a settled entry read its files stands down too when a
+    // write before it in the same folder reading replaced that entry: every
+    // tentative candidate a walk reports is followed by the settled reading
+    // of its files, and nothing seeded it to be stored.
+    if let (ScanItem::Discovered(_), Some(coverage)) = (item, item.coverage()) {
+        let settled = read::settled_entries_reading(sql, watched_folder_path, &coverage)?;
+        if !settled.is_empty() || matches!(seed, ScanItemSeed::AlreadySettled) {
+            for key in &settled {
+                write::touch_candidate(sql, watched_folder_path, key, generation)?;
+            }
+            record_discovery()?;
+            return Ok(EntryWrite::Unchanged);
+        }
     }
+    let file_metadata = match seed {
+        ScanItemSeed::Tags(file_metadata) => file_metadata,
+        ScanItemSeed::AlreadySettled => {
+            return Err(DbError::Message(format!(
+                "{entry_key} is seeded as a tentative candidate a settled entry stands for, \
+                 and it is not tentative"
+            )))
+        }
+    };
     // An unchanged row only takes the stamp, so an untouched folder
     // announces nothing.
     let stored_item = read::load_item_by_key(sql, &entry_key, sources)?.map(|(_, stored)| stored.item);

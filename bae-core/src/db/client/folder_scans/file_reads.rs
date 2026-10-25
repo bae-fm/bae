@@ -5,7 +5,7 @@
 use super::read::{load_items, RowSources, StoredFileTags, FILE_TAG_COLUMNS};
 use super::*;
 use crate::import::file_tag_snapshot::{FileTagReader, FileTagSnapshot, FileTags};
-use crate::import::folder_scanner::{FileReads, FileVersion};
+use crate::import::folder_scanner::{Coverage, FileReads, FileVersion};
 use std::sync::Arc;
 
 impl Database {
@@ -78,6 +78,21 @@ impl Database {
                 return Ok(None);
             }
             read::load_file_tag_snapshot(&sql, &watched_folder_path, &candidate_path)
+        })
+        .await
+    }
+
+    /// Whether a settled entry the scans stored under `watched_folder_path`
+    /// reads any of the files `coverage` reads.
+    pub(crate) async fn settled_entry_reads(
+        &self,
+        watched_folder_path: &str,
+        coverage: &Coverage,
+    ) -> Result<bool, DbError> {
+        let watched_folder_path = watched_folder_path.to_string();
+        let coverage = coverage.clone();
+        self.read(move |sql| {
+            Ok(!read::settled_entries_reading(&sql, &watched_folder_path, &coverage)?.is_empty())
         })
         .await
     }

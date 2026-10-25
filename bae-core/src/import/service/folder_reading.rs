@@ -227,7 +227,7 @@ impl ImportService {
                 ScanItem::Sidecar(_) => {
                     items.push(crate::db::ScanItemToWrite {
                         item,
-                        file_metadata: None,
+                        seed: crate::db::ScanItemSeed::Tags(None),
                         folder_date: None,
                     });
                     continue;
@@ -240,12 +240,12 @@ impl ImportService {
             .map_err(|error| crate::import::ImportError::Internal {
                 detail: format!("folder date task failed: {error}"),
             })??;
-            let file_metadata = library_manager
+            let seed = library_manager
                 .scan_item_seed(&item, stamp.generation, reads.clone())
                 .await?;
             items.push(crate::db::ScanItemToWrite {
                 item,
-                file_metadata,
+                seed,
                 folder_date,
             });
         }

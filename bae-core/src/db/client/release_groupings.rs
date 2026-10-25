@@ -335,7 +335,7 @@ fn rebuild_grouping(sql: &SqlContext<'_, '_>, key: &str) -> Result<GroupingChang
         generation,
         &folder_scans::ScanItemToWrite {
             item: item.clone(),
-            file_metadata: None,
+            seed: folder_scans::ScanItemSeed::Tags(None),
             folder_date: None,
         },
         EntrySource::Grouping,

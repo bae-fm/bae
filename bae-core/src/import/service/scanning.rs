@@ -86,7 +86,7 @@ impl ImportService {
             // reading a folder's tags off a network share takes as long as the
             // share does, and every pane control waits on this lock.
             let (item, edits_read) = Self::with_stored_file_edits(item, library_manager).await?;
-            let file_metadata = library_manager
+            let seed = library_manager
                 .scan_item_seed(&item, generation, reads.clone())
                 .await?;
             let commit = services.folder_state_commit.lock("store a scan item").await;
@@ -106,7 +106,7 @@ impl ImportService {
                     &root.to_string_lossy(),
                     generation,
                     &item,
-                    file_metadata,
+                    seed,
                     folder_date,
                 )
                 .await?;

@@ -74,7 +74,7 @@ async fn rescan_unread_into(manager: &LibraryManager, candidate: FolderCandidate
             &root,
             generation,
             &crate::import::folder_scanner::ScanItem::Valid(candidate),
-            None,
+            crate::db::ScanItemSeed::Tags(None),
             None,
         )
         .await

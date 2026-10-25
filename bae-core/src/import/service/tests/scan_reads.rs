@@ -216,6 +216,78 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
     assert!(reread.same_reading(&reading), "{reread:?} != {reading:?}");
 }
 
+/// An album whose disc folders the scan reads as one release is, on a rescan
+/// that finds nothing changed, what the last scan stored: no track's stream or
+/// tags are read again, and the disc folders, reported on their own before
+/// the album is read as one, leave nothing stored beside the album.
+#[tokio::test]
+async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
+    use crate::test_reads::{count, FileRead};
+    let test = setup_import_service().await;
+    let watched = test.temp.path().join("watched");
+    for disc in ["Disc 1", "Disc 2"] {
+        let folder = watched.join("Album").join(disc);
+        std::fs::create_dir_all(&folder).unwrap();
+        for n in 1..=2 {
+            std::fs::write(folder.join(format!("0{n}.flac")), flac()).unwrap();
+        }
+    }
+    let root = PathBuf::from(
+        crate::import::watched_folder::canonical_absolute_root(&watched.to_string_lossy()).unwrap(),
+    );
+    let root_key = root.to_string_lossy().into_owned();
+    test.service
+        .library_manager
+        .add_watched_import_folder(&root_key)
+        .await
+        .unwrap();
+    let tracks: Vec<PathBuf> = ["Disc 1/01", "Disc 1/02", "Disc 2/01", "Disc 2/02"]
+        .iter()
+        .map(|track| root.join("Album").join(format!("{track}.flac")))
+        .collect();
+    let tags = Arc::new(CountingTagReader::default());
+    let (scan, _) = test.scan_with(
+        tags.clone(),
+        Arc::new(crate::import::folder_scanner::OsDirectoryReader),
+    );
+    let reads = || {
+        tracks
+            .iter()
+            .map(|track| (count(FileRead::Probe, track), tags.reads_of(track)))
+            .collect::<Vec<_>>()
+    };
+    scan.rescan(&root).await.unwrap();
+    let stored = test
+        .service
+        .library_manager
+        .load_folder_scan_items(&root_key)
+        .await
+        .unwrap();
+    let releases: Vec<usize> = stored
+        .iter()
+        .filter_map(|item| match item {
+            ScanItem::Valid(candidate) => Some(candidate.files.audio().count()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(releases, vec![4], "the discs read as one release");
+    assert_eq!(stored.len(), 1, "nothing else is stored: {stored:?}");
+    assert_eq!(reads(), vec![(1, 1); 4], "the first scan reads each track once");
+
+    scan.rescan(&root).await.unwrap();
+
+    assert_eq!(reads(), vec![(1, 1); 4], "the rescan reads no track again");
+    assert_eq!(
+        test.service
+            .library_manager
+            .load_folder_scan_items(&root_key)
+            .await
+            .unwrap(),
+        stored,
+        "the rescan stores what the scan before it stored"
+    );
+}
+
 /// A track whose modification time moved is read again; the files beside it
 /// are not.
 #[tokio::test]
