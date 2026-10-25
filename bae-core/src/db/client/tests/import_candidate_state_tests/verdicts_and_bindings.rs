@@ -433,14 +433,14 @@ async fn a_file_decision_preserves_applied_metadata_from_either_author() {
         .store_verdict(&settled)
         .await
         .unwrap();
-    let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
+    let (metadata_revision, draft) = current_draft(&db, &hash).await;
     crate::import::CandidatePreparations::new(db.clone())
         .store_file_decisions(
             &as_read(&hash, metadata_revision),
             &host_root("/music/Album"),
             &edits,
             &[(host_root("/music/Album"), candidate.clone())],
-            &mapping_preparation,
+            draft,
         )
         .await
         .unwrap();
@@ -462,7 +462,7 @@ async fn a_file_decision_preserves_applied_metadata_from_either_author() {
         )
         .await
         .unwrap();
-    let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
+    let (metadata_revision, draft) = current_draft(&db, &hash).await;
     crate::import::CandidatePreparations::new(db.clone())
         .store_file_decisions(
             &crate::import::CandidateAsRead {
@@ -473,7 +473,7 @@ async fn a_file_decision_preserves_applied_metadata_from_either_author() {
             &host_root("/music/Album"),
             &edits,
             &[(host_root("/music/Album"), candidate.clone())],
-            &mapping_preparation,
+            draft,
         )
         .await
         .unwrap();

@@ -943,17 +943,22 @@ Ana clicks Import. bae:
 1. **Checks the files** are the ones the scan saw: same paths, sizes and
    modification times. A folder that changed since is refused, to be read
    again.
-2. **Reads each file** where it sits, for a cloud import: coven hashes it, and
+2. **Fetches the new artists' pictures**: Discogs' picture of each Discogs
+   artist the release credits that the library doesn't hold yet. An artist
+   the library holds keeps its own picture, so none is fetched for it. A
+   picture that can't be fetched fails the import with why, and importing
+   again fetches it again.
+3. **Reads each file** where it sits, for a cloud import: coven hashes it, and
    checks every later download against that hash. A local import records each
    file's path, size and modification time; its bytes are read when the release
    is uploaded (§4.2).
-3. **Measures loudness** by decoding every track: its EBU R128 integrated
+4. **Measures loudness** by decoding every track: its EBU R128 integrated
    loudness and true peak, and the album's over all its tracks. A near-silent
    track stores no loudness and plays unchanged.
-4. **Checks the audio decodes**, in the same pass. A track that fails, or
+5. **Checks the audio decodes**, in the same pass. A track that fails, or
    decodes short, fails the import rather than failing later at play time.
    This check is a setting, on by default.
-5. **Finds the album.** The album the person picked on the pane, if any,
+6. **Finds the album.** The album the person picked on the pane, if any,
    else the album the release's records name: the record the draft was read
    from decides, then the other catalog's record — the first naming a
    library album by a copy of its pressing (the import is another copy, §2.7)
@@ -967,10 +972,10 @@ Ana clicks Import. bae:
    pick with it. Re-identifying a library release files it the same way.
    The "already in your library" banner names every album holding the
    release, or another release of its album.
-6. **Writes everything in one transaction**, from the draft as it stands, read
+7. **Writes everything in one transaction**, from the draft as it stands, read
    from no source again: the album; the release, with a fresh random id and the
-   folder's hash; its tracks, files, segments, credits, roles, works, records
-   and cover. Each track row is made once its audio is bound, with the
+   folder's hash; its tracks, files, segments, credits, roles, works, records,
+   cover, and the new artists' pictures. Each track row is made once its audio is bound, with the
    length that audio measures, so no track is ever stored without one. A track
    left untitled takes its file's name. Each credit, role
    and composer is its own artist credit until that transaction decides which
@@ -986,10 +991,12 @@ MusicBrainz, or Discogs). Applying a catalog's release stores, with the
 draft, the covers it offers the picker: every claimed release's own images,
 then their albums'. The first is the draft's cover until the person picks
 another. A draft read from the tags, typed in, or linked to an album offers no
-catalog's covers. A catalog's cover, and the Discogs pictures of the
-release's new artists, are fetched before the import runs, so the import
-itself needs no network. Every stored image is downscaled to at most 600
-pixels on a side and stored as JPEG.
+catalog's covers. A catalog's cover is fetched with the draft, before the
+import runs, so the import never asks a catalog for it. The artists' pictures
+are not part of the draft: nothing before the import shows them, and many
+drafts are never imported, so a pick or an edit fetches none and the import
+fetches them (step 2). Every stored image is downscaled to at most 600 pixels
+on a side and stored as JPEG.
 
 **Where it goes.** Each import lands on this device or goes to the cloud, as
 the person last chose (§4.2). A cloud import attaches its files in the same
@@ -2573,7 +2580,7 @@ Keyed by the candidate's content hash.
 | `import_candidate_cover`, `import_candidate_cover_copy`, `import_candidate_remote_cover_asset` | the chosen cover and its fetched bytes |
 | `import_candidate_cover_option`, `import_candidate_cover_option_copy` | the covers the applied release offers the picker, in order |
 | `import_candidate_album_pick` | the library album the person picked for it to join |
-| `import_candidate_artist_asset`, `import_candidate_asset_preparation` | the fetched pictures of every Discogs artist the draft credits, and that all are ready |
+| `import_candidate_asset_preparation` | that a remote cover the candidate chose has its bytes |
 | `import_candidate_draft_provenance` | where the draft was read from |
 | `import_candidate_release_link`, `import_candidate_release_link_partner`, `import_candidate_release_link_album` | the pressing or album the candidate is linked to |
 | `import_candidate_session` | where the pane was, and its last failure |

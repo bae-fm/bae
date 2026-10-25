@@ -199,6 +199,7 @@ impl<Binding: TrackBinding> ReleaseDraft<Binding> {
     /// Every artist credit the draft's album and track artists name, the
     /// album's first, then each track's own; picked library artists are not
     /// credits.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn credits(&self) -> impl Iterator<Item = &ArtistCredit> {
         self.album_artist_assignments
             .iter()
@@ -208,24 +209,6 @@ impl<Binding: TrackBinding> ReleaseDraft<Binding> {
                     .flat_map(|track| track.edit.artist_assignments.explicit()),
             )
             .filter_map(|credited| credited.artist.credit())
-    }
-
-    /// The Discogs identity of every artist the import may create, and so may
-    /// need a picture for: each credit of the album and track artists, of the
-    /// roles, and of the works' composers. A picked library artist is never
-    /// created.
-    pub fn discogs_artist_ids(&self) -> std::collections::BTreeSet<String> {
-        let roles = self
-            .release_roles
-            .iter()
-            .chain(self.tracks.iter().flat_map(|track| &track.roles))
-            .map(|role| &role.artist);
-        let composers = self.works.works.iter().flat_map(|work| &work.composers);
-        self.credits()
-            .chain(roles)
-            .chain(composers)
-            .filter_map(|credit| credit.discogs_artist_id.clone())
-            .collect()
     }
 
     /// This draft with `tracks` in place of its own, and only the works those

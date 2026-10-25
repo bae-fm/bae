@@ -41,8 +41,8 @@ pub enum ArtistWriteError {
     Unresolvable(String),
     /// The library's artists changed between preparing the write and
     /// committing it in a way that makes what was prepared for them wrong:
-    /// the import staged pictures for artists that are no longer new, or not
-    /// for ones that now are. Nothing was written; importing again prepares
+    /// the import fetched pictures for artists that are no longer new, or not
+    /// for ones that now are. Nothing was written; importing again fetches
     /// against the library as it now stands.
     #[error("the library's artists changed while this import was being written; import it again")]
     LibraryChanged,

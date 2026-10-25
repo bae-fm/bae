@@ -156,13 +156,13 @@ async fn settle_verdict(
     save(context, token, run, candidate, &verdict, signals, pick).await
 }
 
-/// The draft the picked release reads into, with the artist images and cover
-/// it needs, or what becomes of the answer when there is none to write.
+/// The draft the picked release reads into, with the cover it is read with,
+/// or what becomes of the answer when there is none to write.
 ///
-/// A catalog that fails to give an asset fails `verdict` as a lookup, naming
-/// the asset, and there is no draft: the verdict is stored with the failure
+/// A catalog that fails to give the cover fails `verdict` as a lookup, naming
+/// the catalog, and there is no draft: the verdict is stored with the failure
 /// and without the pick, so the row stands as a lookup error to retry rather
-/// than an applied release with an asset missing.
+/// than an applied release with its cover missing.
 async fn lead_metadata(
     context: &Context,
     candidate: &FolderCandidate,
@@ -213,54 +213,44 @@ async fn lead_metadata(
                 error: error.to_string(),
             }
         })?;
-    let assets = match context
+    let cover = match context
         .import
-        .fetch_release_assets(&source_draft, release, &partners)
+        .fetch_release_cover(release, &partners)
         .await
     {
-        Ok(assets) => assets,
+        Ok(cover) => cover,
         Err(failure) => {
             let Some(lookup) = crate::import::search::provider_failure(&failure.error) else {
                 return Err(Settled::Unwritable {
                     error: format!(
-                        "could not fetch the {:?} of {}: {}",
-                        failure.asset,
+                        "could not fetch the {} cover of {}: {}",
+                        failure.source.as_str(),
                         release.release().key,
                         failure.error
                     ),
                 });
             };
             warn!(
-                "identification: could not fetch the {:?} of {} ({}); storing the failure",
-                failure.asset,
+                "identification: could not fetch the {} cover of {} ({}); storing the failure",
+                failure.source.as_str(),
                 release.release().key,
                 failure.error
             );
-            verdict.fail(asset_failure(failure.asset, lookup));
+            verdict.fail(crate::identify::IdentifyFailure::Cover(
+                crate::import::search::SourceFailure {
+                    source: failure.source,
+                    failure: lookup,
+                },
+            ));
             return Ok(None);
         }
     };
-    Ok(Some(crate::import::external_metadata_with_assets(
+    Ok(Some(crate::import::external_metadata_with_cover(
         source_draft,
         release,
         &partners,
-        assets,
+        cover,
     )))
-}
-
-/// The lookup failure a catalog's `failure` to give `asset` is.
-fn asset_failure(
-    asset: crate::import::ReleaseAsset,
-    failure: crate::signals::LookupFailure,
-) -> crate::identify::IdentifyFailure {
-    match asset {
-        crate::import::ReleaseAsset::ArtistImages => {
-            crate::identify::IdentifyFailure::ArtistImages(failure)
-        }
-        crate::import::ReleaseAsset::Cover { source } => crate::identify::IdentifyFailure::Cover(
-            crate::import::search::SourceFailure { source, failure },
-        ),
-    }
 }
 
 /// Write one row, unless the answer was given up right before the write.

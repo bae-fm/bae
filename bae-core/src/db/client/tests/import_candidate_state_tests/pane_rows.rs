@@ -719,123 +719,13 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
     assert_eq!(assets.remote_cover, Some(current_image));
 }
 
-#[tokio::test]
-async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
-    let (db, _tmp) = empty_db().await;
-    fetched(&db, "release-1").await;
-    fetched(&db, "release-2").await;
-    let (_, hash) = stored_pane_candidate(&db).await;
-    let mut draft = candidate_draft("Release Title", "Artist Name");
-    let first = crate::import::PreparedArtistImage::Nothing {
-        discogs_artist_id: "101".to_string(),
-    };
-    draft.album_artist_assignments[0] = crate::import::Credited::plain(crate::import::ArtistAssignment::Credit { credit: crate::import::ArtistCredit {
-            credited_as: None,
-            name: "Artist Name".to_string(),
-            sort_name: None,
-            musicbrainz_artist_id: None,
-            discogs_artist_id: Some("101".to_string()),
-        },
-    });
-    let revision = crate::import::CandidatePreparations::new(db.clone())
-        .apply_source(
-            &host_root("/music"),
-            &as_read(&hash, 0),
-            &pane_candidate_path(),
-            &crate::import::CandidateMetadataDraft {
-                draft: draft.clone(),
-                provenance: Some(release_pick("release-1")),
-                cover: None,
-                cover_options: Vec::new(),
-                assets: crate::import::CandidatePreparedAssets {
-                    remote_cover: None,
-                    artist_images: vec![first],
-                },
-            },
-        )
-        .await
-        .unwrap();
-
-    draft.album_artist_assignments[0] = crate::import::Credited::plain(crate::import::ArtistAssignment::Credit { credit: crate::import::ArtistCredit {
-            credited_as: None,
-            name: "Replacement Artist".to_string(),
-            sort_name: None,
-            musicbrainz_artist_id: None,
-            discogs_artist_id: Some("202".to_string()),
-        },
-    });
-    let second = crate::import::PreparedArtistImage::Nothing {
-        discogs_artist_id: "202".to_string(),
-    };
-    let revision = crate::import::CandidatePreparations::new(db.clone())
-        .apply_source(
-            &host_root("/music"),
-            &as_read(&hash, revision),
-            &pane_candidate_path(),
-            &crate::import::CandidateMetadataDraft {
-                draft,
-                provenance: Some(release_pick("release-2")),
-                cover: None,
-                cover_options: Vec::new(),
-                assets: crate::import::CandidatePreparedAssets {
-                    remote_cover: None,
-                    artist_images: vec![second.clone()],
-                },
-            },
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(
-        db.load_import_candidate_prepared_assets(&hash)
-            .await
-            .unwrap()
-            .artist_images,
-        vec![second]
-    );
-
-    let third_assignment = crate::import::ArtistAssignment::Credit { credit: crate::import::ArtistCredit {
-            credited_as: None,
-            name: "Edited Artist".to_string(),
-            sort_name: None,
-            musicbrainz_artist_id: None,
-            discogs_artist_id: Some("303".to_string()),
-        },
-    };
-    let third = crate::import::PreparedArtistImage::Nothing {
-        discogs_artist_id: "303".to_string(),
-    };
-    crate::import::CandidatePreparations::new(db.clone())
-        .set_album_artists_prepared(
-            &host_root("/music"),
-            &pane_candidate_path(),
-            &as_read(&hash, revision),
-            &[crate::import::Credited::plain(third_assignment)],
-            std::slice::from_ref(&third),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(
-        db.load_import_candidate_prepared_assets(&hash)
-            .await
-            .unwrap()
-            .artist_images,
-        vec![third]
-    );
-}
-
 /// A draft's roles and works are values it stores: they read back as they
-/// were written, and the Discogs artist a role credits needs its answer like
-/// any credit.
+/// were written.
 #[tokio::test]
-async fn preparation_round_trips_a_drafts_roles_works_and_their_answers() {
+async fn preparation_round_trips_a_drafts_roles_and_works() {
     let (db, _tmp) = empty_db().await;
     fetched(&db, "release-with-role").await;
     let (_, hash) = stored_pane_candidate(&db).await;
-    let answer = crate::import::PreparedArtistImage::Nothing {
-        discogs_artist_id: "role-artist".to_string(),
-    };
     let credit = |name: &str, discogs: Option<&str>| crate::import::ArtistCredit {
         credited_as: None,
         name: name.to_string(),
@@ -889,10 +779,7 @@ async fn preparation_round_trips_a_drafts_roles_works_and_their_answers() {
                 provenance: Some(release_pick("release-with-role")),
                 cover: None,
                 cover_options: Vec::new(),
-                assets: crate::import::CandidatePreparedAssets {
-                    remote_cover: None,
-                    artist_images: vec![answer.clone()],
-                },
+                assets: crate::import::CandidatePreparedAssets::default(),
             },
         )
         .await
@@ -904,7 +791,6 @@ async fn preparation_round_trips_a_drafts_roles_works_and_their_answers() {
         .unwrap()
         .expect("the candidate is prepared");
     assert_eq!(preparation.draft, draft);
-    assert_eq!(preparation.assets.artist_images, vec![answer]);
 }
 
 /// The covers an applied release offers are stored with the draft, in their

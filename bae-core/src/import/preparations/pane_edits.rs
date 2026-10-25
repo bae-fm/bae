@@ -131,7 +131,6 @@ impl CandidatePreparations {
         let assignments = assignments.to_vec();
         self.edit_candidate(None, content_hash, None, None, move |prep| {
             prep.metadata.draft.album_artist_assignments = assignments;
-            prep.assets_prepared = false;
             Ok(())
         })
         .await
@@ -143,23 +142,17 @@ impl CandidatePreparations {
         candidate_path: &str,
         read: &CandidateAsRead,
         assignments: &[crate::import::Credited],
-        assets: &[crate::import::PreparedArtistImage],
     ) -> Result<u64, LibraryError> {
         if assignments.is_empty() {
             return Err(LibraryError::Refused(
                 "a candidate album artist override cannot be empty".into(),
             ));
         }
-        self.edit_prepared_candidate(
-            watched_folder_path,
-            candidate_path,
-            read,
-            assets,
-            |prep| {
-                prep.metadata.draft.album_artist_assignments = assignments.to_vec();
-                Ok(())
-            },
-        )
+        let assignments = assignments.to_vec();
+        self.edit_read_candidate(watched_folder_path, candidate_path, read, move |prep| {
+            prep.metadata.draft.album_artist_assignments = assignments;
+            Ok(())
+        })
         .await
     }
 
@@ -172,30 +165,22 @@ impl CandidatePreparations {
     ) -> Result<u64, LibraryError> {
         let row = row.clone();
         self.edit_candidate(None, content_hash, None, None, move |prep| {
-            apply_track_edit(&mut prep.metadata.draft, &row)?;
-            prep.assets_prepared = false;
-            Ok(())
+            apply_track_edit(&mut prep.metadata.draft, &row)
         })
         .await
     }
 
-    /// Record one mapping-table row the user changed, with the artist answers
-    /// its credits need, as one write.
+    /// Record one mapping-table row the user changed.
     pub async fn set_track_edit_prepared(
         &self,
         watched_folder_path: &str,
         candidate_path: &str,
         read: &CandidateAsRead,
         row: &crate::import::RawTrackEdit,
-        assets: &[crate::import::PreparedArtistImage],
     ) -> Result<u64, LibraryError> {
-        self.edit_prepared_candidate(
-            watched_folder_path,
-            candidate_path,
-            read,
-            assets,
-            |prep| apply_track_edit(&mut prep.metadata.draft, row),
-        )
+        self.edit_read_candidate(watched_folder_path, candidate_path, read, |prep| {
+            apply_track_edit(&mut prep.metadata.draft, row)
+        })
         .await
     }
 
@@ -206,46 +191,34 @@ impl CandidatePreparations {
         read: &CandidateAsRead,
         track_ids: &[String],
         assignments: &TrackArtistAssignments,
-        assets: &[crate::import::PreparedArtistImage],
     ) -> Result<u64, LibraryError> {
         if track_ids.is_empty() {
             return Err(LibraryError::Refused(
                 "a track artist fill must name at least one track".into(),
             ));
         }
-        self.edit_prepared_candidate(
-            watched_folder_path,
-            candidate_path,
-            read,
-            assets,
-            |prep| fill_track_artists(&mut prep.metadata.draft, track_ids, assignments),
-        )
+        self.edit_read_candidate(watched_folder_path, candidate_path, read, |prep| {
+            fill_track_artists(&mut prep.metadata.draft, track_ids, assignments)
+        })
         .await
     }
 
-    /// A pane edit that keeps a candidate's prepared artist answers in step
-    /// with the draft it changes: the candidate must already be prepared, and
-    /// the caller's recomputed artist set lands with `change` as one write.
-    async fn edit_prepared_candidate(
+    /// A pane edit composed against the candidate as `read`: refused when
+    /// the scan no longer lists it at that file revision, or either revision
+    /// moved.
+    async fn edit_read_candidate(
         &self,
         watched_folder_path: &str,
         candidate_path: &str,
         read: &CandidateAsRead,
-        assets: &[crate::import::PreparedArtistImage],
         change: impl FnOnce(&mut CandidatePreparation) -> Result<(), LibraryError>,
     ) -> Result<u64, LibraryError> {
-        let assets = assets.to_vec();
         self.edit_candidate(
             Some(scanned_key(watched_folder_path, candidate_path)),
             &read.content_hash,
             Some(read.file_edit_revision),
             Some(read.metadata_revision),
-            move |prep| {
-                require_prepared(prep)?;
-                change(prep)?;
-                prep.metadata.assets.artist_images = assets;
-                Ok(())
-            },
+            change,
         )
         .await
     }
@@ -318,19 +291,6 @@ fn scanned_key(watched_folder_path: &str, candidate_path: &str) -> ScannedCandid
     ScannedCandidateKey {
         watched_folder_path: watched_folder_path.to_string(),
         candidate_path: candidate_path.to_string(),
-    }
-}
-
-/// A pane edit on a candidate whose answers were never prepared has nothing
-/// to keep in step with; the source has to be applied again first.
-fn require_prepared(prep: &CandidatePreparation) -> Result<(), LibraryError> {
-    if prep.assets_prepared {
-        Ok(())
-    } else {
-        Err(LibraryError::Refused(format!(
-            "candidate {} has no complete prepared asset set",
-            prep.content_hash
-        )))
     }
 }
 

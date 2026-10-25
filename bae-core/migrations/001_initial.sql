@@ -1332,25 +1332,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_remote_cover_asset (
     FOREIGN KEY (content_hash) REFERENCES import_candidate_cover (content_hash) ON DELETE CASCADE
 ) STRICT;
 
--- The picture fetched for one credited artist, or the settled answer that
--- there is none.
-CREATE TABLE IF NOT EXISTS import_candidate_artist_asset (
-    content_hash      TEXT NOT NULL,
-    discogs_artist_id TEXT NOT NULL,
-    answer            TEXT NOT NULL CHECK (answer IN ('image', 'nothing')),
-    source_url        TEXT,
-    content_type      TEXT,
-    bytes             BLOB,
-    PRIMARY KEY (content_hash, discogs_artist_id),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
-    CHECK (
-        (answer = 'image' AND source_url IS NOT NULL AND content_type IS NOT NULL AND bytes IS NOT NULL)
-        OR
-        (answer = 'nothing' AND source_url IS NULL AND content_type IS NULL AND bytes IS NULL)
-    )
-) STRICT;
-
--- The candidates whose remote assets are all fetched and ready to import.
+-- The candidates whose remote cover, where they chose one, has its bytes
+-- fetched and is ready to import.
 CREATE TABLE IF NOT EXISTS import_candidate_asset_preparation (
     content_hash TEXT PRIMARY KEY,
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE

@@ -93,6 +93,10 @@ impl DiscogsSession {
         artist_id: &str,
     ) -> Result<Option<String>, crate::import::ImportError> {
         let Some(client) = self.client.as_ref() else {
+            warn!(
+                discogs_artist_id = %artist_id,
+                "Discogs has no usable key to ask for this artist's picture, so the artist gets none"
+            );
             return Ok(None);
         };
         Ok(client
@@ -329,14 +333,14 @@ impl LibraryManager {
             .await
     }
 
-    /// Resolve every Discogs artist image answer referenced by a candidate
-    /// draft before that draft is committed. Provider and download failures
-    /// fail the caller, leaving the prior candidate revision intact.
+    /// Discogs' answer for the picture of each artist `ids` names, asked now,
+    /// one artist at a time. A provider or download failure fails the
+    /// caller with it.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) async fn prepare_discogs_artist_images(
+    pub(crate) async fn fetch_discogs_artist_images(
         &self,
         ids: std::collections::BTreeSet<String>,
-    ) -> Result<Vec<crate::import::PreparedArtistImage>, crate::import::ImportError> {
+    ) -> Result<Vec<crate::import::DiscogsArtistImage>, crate::import::ImportError> {
         if ids.is_empty() {
             return Ok(Vec::new());
         }
@@ -344,14 +348,14 @@ impl LibraryManager {
         let mut answers = Vec::with_capacity(ids.len());
         for discogs_artist_id in ids {
             let Some(source_url) = session.artist_image_url(&discogs_artist_id).await? else {
-                answers.push(crate::import::PreparedArtistImage::Nothing { discogs_artist_id });
+                answers.push(crate::import::DiscogsArtistImage::Nothing { discogs_artist_id });
                 continue;
             };
             let Some(image) = self.fetch_remote_image(&source_url).await? else {
-                answers.push(crate::import::PreparedArtistImage::Nothing { discogs_artist_id });
+                answers.push(crate::import::DiscogsArtistImage::Nothing { discogs_artist_id });
                 continue;
             };
-            answers.push(crate::import::PreparedArtistImage::Image {
+            answers.push(crate::import::DiscogsArtistImage::Image {
                 discogs_artist_id,
                 source_url,
                 image,
@@ -360,22 +364,27 @@ impl LibraryManager {
         Ok(answers)
     }
 
-    /// Turn candidate-owned image bytes into library image rows for the new
-    /// artists an import creates. An artist the import links to keeps its own
+    /// The library image rows of the pictures `fetched` for the new artists
+    /// an import creates. An artist the import links to keeps its own
     /// picture; this constructs rows only.
+    ///
+    /// A new Discogs artist with no answer among `fetched` was a library
+    /// artist when the import fetched its pictures and is not one now: the
+    /// library's artists changed under the import, which fails so it can be
+    /// run again.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn materialize_prepared_artist_images(
+    pub(crate) fn artist_image_rows(
         &self,
         inserted_artists: &[DbArtist],
-        prepared: &[crate::import::PreparedArtistImage],
+        fetched: &[crate::import::DiscogsArtistImage],
     ) -> Result<Vec<(DbLibraryImage, Vec<u8>)>, LibraryError> {
-        let by_discogs_id: HashMap<_, _> = prepared
+        let by_discogs_id: HashMap<_, _> = fetched
             .iter()
             .map(|answer| (answer.discogs_artist_id(), answer))
             .collect();
-        if by_discogs_id.len() != prepared.len() {
+        if by_discogs_id.len() != fetched.len() {
             return Err(LibraryError::Internal(
-                "prepared artist images contain a duplicate Discogs artist ID".into(),
+                "fetched artist images contain a duplicate Discogs artist ID".into(),
             ));
         }
         let mut images = Vec::new();
@@ -383,12 +392,10 @@ impl LibraryManager {
             let Some(discogs_artist_id) = artist.discogs_artist_id.as_deref() else {
                 continue;
             };
-            let answer = by_discogs_id.get(discogs_artist_id).ok_or_else(|| {
-                LibraryError::Internal(format!(
-                    "new Discogs artist {discogs_artist_id} has no prepared image answer"
-                ))
-            })?;
-            let crate::import::PreparedArtistImage::Image {
+            let Some(answer) = by_discogs_id.get(discogs_artist_id) else {
+                return Err(crate::db::ArtistWriteError::LibraryChanged.into());
+            };
+            let crate::import::DiscogsArtistImage::Image {
                 source_url, image, ..
             } = answer
             else {

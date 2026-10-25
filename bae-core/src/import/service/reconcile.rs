@@ -56,7 +56,6 @@ impl ImportService {
         records: Vec<crate::import::ReleaseRecord>,
         picked_album: Option<String>,
         picked_artists: std::collections::HashSet<String>,
-        prepared_artist_images: Vec<crate::import::PreparedArtistImage>,
     ) -> Result<PreparedMetadata, crate::import::ImportError> {
         let library_manager = &self.library_manager;
 
@@ -189,7 +188,6 @@ impl ImportService {
             track_artist_roles,
             artist_credits: artists,
             picked_artists,
-            prepared_artist_images,
             records,
             album_title,
         })

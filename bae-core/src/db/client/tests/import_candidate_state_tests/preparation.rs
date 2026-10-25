@@ -9,10 +9,6 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
         .await
         .unwrap()
         .expect("the scanned candidate is prepared");
-    let mapping_preparation = crate::import::CandidateMappingPreparation {
-        draft: stale.draft.clone(),
-        artist_images: stale.assets.artist_images.clone(),
-    };
     crate::import::CandidatePreparations::new(db.clone())
         .store_file_decisions(
             &crate::import::CandidateAsRead {
@@ -23,7 +19,7 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
             &pane_candidate_path(),
             &CandidateFileEdits::default(),
             &[(pane_candidate_path(), files)],
-            &mapping_preparation,
+            stale.draft.clone(),
         )
         .await
         .unwrap();
@@ -166,10 +162,7 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
             &pane_candidate_path(),
             &edits,
             &[(pane_candidate_path(), settled)],
-            &crate::import::CandidateMappingPreparation {
-                draft: stale.draft.clone(),
-                artist_images: stale.assets.artist_images,
-            },
+            stale.draft.clone(),
         )
         .await
         .expect_err("file mappings prepared for the prior metadata are stale");
@@ -188,41 +181,6 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
     let pane = db.load_import_candidate_pane_rows(&hash).await.unwrap();
     assert_eq!(pane.draft.pressing.year, "1991");
     assert_eq!(pane.draft.tracks, stale.draft.tracks);
-}
-
-#[tokio::test]
-async fn an_existing_library_artist_needs_no_candidate_image_answer() {
-    let (db, _tmp) = empty_db().await;
-    let (_, hash) = stored_pane_candidate(&db).await;
-    let artist = existing_artist();
-    db.insert_artist(&artist).await.unwrap();
-    let mut draft = candidate_draft("Release Title", "Artist Name");
-    draft.album_artist_assignments = vec![crate::import::Credited::plain(ArtistAssignment::Picked {
-        credit_name: None,
-        artist: ExistingArtist {
-            artist_id: artist.id,
-            name: artist.name,
-            sort_name: artist.sort_name,
-            musicbrainz_artist_id: artist.musicbrainz_artist_id,
-            discogs_artist_id: artist.discogs_artist_id,
-        },
-    })];
-
-    crate::import::CandidatePreparations::new(db.clone())
-        .apply_source(
-            &host_root("/music"),
-            &as_read(&hash, 0),
-            &pane_candidate_path(),
-            &crate::import::CandidateMetadataDraft {
-                draft,
-                provenance: None,
-                cover: None,
-                cover_options: Vec::new(),
-                assets: crate::import::CandidatePreparedAssets::default(),
-            },
-        )
-        .await
-        .expect("an existing artist is not waiting to be inserted");
 }
 
 #[tokio::test]
@@ -525,7 +483,6 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
                 "Track Title",
                 Some(preparation.draft.tracks[0].edit.file.clone()),
             ),
-            &preparation.assets.artist_images,
         )
         .await
         .unwrap();
@@ -535,14 +492,14 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
         .set("CDImage.cue".to_string(), SheetDisc::Ignored);
     let mut settled = files;
     settled.apply_candidate_file_edits(&edits).unwrap();
-    let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
+    let (metadata_revision, draft) = current_draft(&db, &hash).await;
     crate::import::CandidatePreparations::new(db.clone())
         .store_file_decisions(
             &as_read(&hash, metadata_revision),
             &pane_candidate_path(),
             &edits,
             &[(pane_candidate_path(), settled)],
-            &mapping_preparation,
+            draft.clone(),
         )
         .await
         .unwrap();
@@ -556,7 +513,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
 
     let pane = db.load_import_candidate_pane_rows(&hash).await.unwrap();
     assert_eq!(
-        pane.draft, mapping_preparation.draft,
+        pane.draft, draft,
         "the prepared replacement draft lands atomically"
     );
     assert_eq!(pane.draft.pressing.year, "1991", "the draft survives");
@@ -591,14 +548,14 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         .set("CDImage.cue".to_string(), SheetDisc::Ignored);
     let mut settled = files;
     settled.apply_candidate_file_edits(&file_edits).unwrap();
-    let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
+    let (metadata_revision, draft) = current_draft(&db, &hash).await;
     crate::import::CandidatePreparations::new(db.clone())
         .store_file_decisions(
             &as_read(&hash, metadata_revision),
             &pane_candidate_path(),
             &file_edits,
             &[(pane_candidate_path(), settled)],
-            &mapping_preparation,
+            draft,
         )
         .await
         .unwrap();

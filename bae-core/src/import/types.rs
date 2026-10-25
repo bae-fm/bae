@@ -325,34 +325,21 @@ pub struct CandidateMetadataDraft {
     pub assets: CandidatePreparedAssets,
 }
 
-/// The portion of a prepared candidate that changes when file roles or sheet
-/// bindings reshape its audio units.
-///
-/// Replacing audio replaces its draft rows; unaffected tracks retain their
-/// identities and metadata.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) struct CandidateMappingPreparation {
-    /// Retained tracks and newly initialized tracks in audio order.
-    pub draft: CandidateDraft,
-    pub artist_images: Vec<PreparedArtistImage>,
-}
-
-/// Provider image answers owned by the candidate metadata revision that
-/// fetched them. Import reads these bytes; it never asks a provider again.
+/// Provider image bytes owned by the candidate metadata revision that fetched
+/// them: the remote cover's. Import reads these bytes; it never asks a
+/// provider for the cover again.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct CandidatePreparedAssets {
     pub remote_cover: Option<crate::import::cover_art::RemoteImage>,
-    pub artist_images: Vec<PreparedArtistImage>,
 }
 
-/// Discogs' complete image answer for one artist currently referenced by the
-/// candidate draft. `Nothing` is a real answer and prevents a later import
-/// from treating absence as unfinished preparation.
+/// Discogs' answer for the picture of one artist an import is about to
+/// create, fetched by that import before it writes anything. `Nothing` is a
+/// real answer: Discogs has no picture of that artist.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq)]
-pub enum PreparedArtistImage {
+pub enum DiscogsArtistImage {
     Image {
         discogs_artist_id: String,
         source_url: String,
@@ -364,7 +351,7 @@ pub enum PreparedArtistImage {
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl PreparedArtistImage {
+impl DiscogsArtistImage {
     pub fn discogs_artist_id(&self) -> &str {
         match self {
             Self::Image {
@@ -709,8 +696,8 @@ pub struct CueAnalyzedAudioFile {
 /// Import command sent to the service worker.
 ///
 /// Carries only identifiers, never provider payloads. The worker consumes the
-/// candidate's stored draft and prepared image assets. It performs no
-/// metadata-provider work.
+/// candidate's stored draft and its prepared cover bytes; the one provider
+/// work it does is fetching the Discogs pictures of the artists it creates.
 ///
 #[derive(Debug)]
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

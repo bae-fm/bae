@@ -81,9 +81,6 @@ impl ImportServiceHandle {
             &offered,
             crate::identify::row_facts::folder_pressing_year(&text, &records),
         );
-        let artist_images = self
-            .prepared_artist_images_for(&draft, current.assets.artist_images)
-            .await?;
         let _commit = self
             .commit_lock_for_revision(
                 "link the album",
@@ -104,7 +101,6 @@ impl ImportServiceHandle {
                 &candidate_key,
                 &shared.link,
                 draft,
-                artist_images,
             )
             .await?)
     }

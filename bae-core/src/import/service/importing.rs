@@ -270,7 +270,7 @@ impl ImportService {
         }
         let release_link = preparation.release_link;
         let selected_cover = preparation.cover;
-        let mut prepared_assets = preparation.assets;
+        let prepared_assets = preparation.assets;
 
         let file_tag_snapshot = expectation.file_tag_snapshot.as_ref();
         if let Some(snapshot) = file_tag_snapshot {
@@ -321,12 +321,23 @@ impl ImportService {
                 records,
                 picked_album,
                 assembled.picked,
-                std::mem::take(&mut prepared_assets.artist_images),
             )
             .await?;
 
         prepared.db_release.source_folder_name = Some(source_name);
         prepared.db_release.content_hash = Some(categorized.content_hash());
+
+        // The pictures of the Discogs artists this import creates are fetched
+        // now, before any file is read or row written, the one thing an
+        // import asks a provider for. A fetch that fails fails the import;
+        // importing again fetches again.
+        let artist_images = library_manager
+            .fetch_new_artist_images(
+                &prepared.artist_credits,
+                &prepared.picked_artists,
+                prepared.db_release.content_hash.as_deref(),
+            )
+            .await?;
 
         prepared.selected_cover = selected_cover.clone();
 
@@ -425,6 +436,7 @@ impl ImportService {
                 discovered: &categorized.files,
                 tracks: &tracks_to_files,
             },
+            &artist_images,
         )
         .await?;
 
@@ -445,7 +457,8 @@ impl ImportService {
     }
 
     /// Run an import: reference the files in place, measure loudness, and write
-    /// the release in one transaction, recording a `Remote` destination's
+    /// the release in one transaction with the pictures `artist_images`
+    /// fetched for its new artists, recording a `Remote` destination's
     /// uploads in that same write.
     #[allow(clippy::too_many_arguments)]
     pub(super) async fn run_import(
@@ -455,6 +468,7 @@ impl ImportService {
         destination: ImportDestination,
         prepared: &mut PreparedMetadata,
         files: ImportFiles<'_>,
+        artist_images: &[crate::import::DiscogsArtistImage],
     ) -> Result<(), ImportStop> {
         let library_manager = &self.library_manager;
         let ImportFiles {
@@ -478,7 +492,6 @@ impl ImportService {
             track_artist_roles,
             artist_credits,
             picked_artists,
-            prepared_artist_images,
             records,
             selected_cover,
             remote_cover_image,
@@ -782,7 +795,7 @@ impl ImportService {
                 },
                 prepared_files,
                 library_image,
-                prepared_artist_images,
+                artist_images,
                 destination,
             )
             .await?;

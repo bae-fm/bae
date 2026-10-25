@@ -127,6 +127,7 @@ pub const TEST_IMAGE_HOST: &str = "images.bae.test";
 /// answers 404 — the archive holding nothing there.
 pub struct RemoteImageHost {
     routes: ImageRoutes,
+    requests: ImageRequests,
     origin: String,
 }
 
@@ -134,19 +135,27 @@ pub struct RemoteImageHost {
 type ImageRoutes =
     std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, (u16, Vec<u8>)>>>;
 
+/// How many requests each path has had, registered or not.
+type ImageRequests = std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, usize>>>;
+
 impl RemoteImageHost {
     pub async fn start() -> Self {
         use axum::extract::{Request, State};
         use axum::http::StatusCode;
 
         async fn handler(
-            State(routes): State<ImageRoutes>,
+            State((routes, requests)): State<(ImageRoutes, ImageRequests)>,
             request: Request,
         ) -> (
             StatusCode,
             [(axum::http::HeaderName, &'static str); 1],
             Vec<u8>,
         ) {
+            *requests
+                .lock()
+                .expect("image host requests mutex poisoned")
+                .entry(request.uri().path().to_string())
+                .or_default() += 1;
             let answer = routes
                 .lock()
                 .expect("image host routes mutex poisoned")
@@ -161,6 +170,7 @@ impl RemoteImageHost {
         }
 
         let routes: ImageRoutes = std::sync::Arc::default();
+        let requests: ImageRequests = std::sync::Arc::default();
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
             .await
             .expect("the test image host binds");
@@ -172,13 +182,17 @@ impl RemoteImageHost {
         );
         let app = axum::Router::new()
             .fallback(handler)
-            .with_state(routes.clone());
+            .with_state((routes.clone(), requests.clone()));
         tokio::spawn(async move {
             axum::serve(listener, app)
                 .await
                 .expect("the test image host serves until the test ends");
         });
-        Self { routes, origin }
+        Self {
+            routes,
+            requests,
+            origin,
+        }
     }
 
     /// Where this host listens. bae-core's own unit tests route their
@@ -216,6 +230,27 @@ impl RemoteImageHost {
             .expect("image host routes mutex poisoned")
             .insert(path.to_string(), (200, bytes));
         format!("https://{TEST_IMAGE_HOST}{path}")
+    }
+
+    /// Answer `status` with no body at `path` on this test's image host, for
+    /// a test driving a download's failure path, and return the address.
+    pub fn fail_image(&self, path: &str, status: u16) -> String {
+        assert!(path.starts_with('/'), "test image path must be absolute");
+        self.routes
+            .lock()
+            .expect("image host routes mutex poisoned")
+            .insert(path.to_string(), (status, Vec::new()));
+        format!("https://{TEST_IMAGE_HOST}{path}")
+    }
+
+    /// How many requests `path` has had on this host.
+    pub fn requests(&self, path: &str) -> usize {
+        self.requests
+            .lock()
+            .expect("image host requests mutex poisoned")
+            .get(path)
+            .copied()
+            .unwrap_or(0)
     }
 
     fn answer_front(&self, release_id: &str, status: u16, bytes: Vec<u8>) {

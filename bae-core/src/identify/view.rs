@@ -216,7 +216,6 @@ impl IdentifyRunView {
             ),
             IdentifyFailure::Pressing(_)
             | IdentifyFailure::ReleaseDetails(_)
-            | IdentifyFailure::ArtistImages(_)
             | IdentifyFailure::Cover(_) => false,
         }
     }

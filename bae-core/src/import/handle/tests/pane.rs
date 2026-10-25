@@ -1,6 +1,7 @@
 mod candidate_mutation_race;
 mod commit_lock_waits;
 mod album_detail_during_import;
+mod artist_pictures;
 mod import_cancellation;
 mod import_ownership;
 mod kept_draft;

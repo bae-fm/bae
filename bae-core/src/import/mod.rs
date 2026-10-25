@@ -233,7 +233,7 @@ desktop_only! {
         DiscogsSaveOutcome, GroupedSearchResults, ImportEvent,
         ImportEventBus, ImportServiceHandle, ScanEvent,
     };
-    pub(crate) use handle::{external_metadata_with_assets, ReleaseAsset};
+    pub(crate) use handle::external_metadata_with_cover;
     pub use list::{
         ActiveFolderScan, CandidateImportStatus, CandidatePanePlacement,
         FolderScanActivity,
@@ -270,7 +270,6 @@ desktop_only! {
         BadgeTone, ImportStanding, LiveStanding, NeedsYouReason, PendingBadge, PendingStanding,
         PendingState, StoredLookup,
     };
-    pub(crate) use types::CandidateMappingPreparation;
     pub use types::ImportCommand;
 }
 pub use types::{
@@ -286,8 +285,8 @@ pub use types::{
 };
 desktop_only! {
     pub use types::{
-        CandidateMetadataDraft, CandidatePreparedAssets, CoverSelection, ImportPhase,
-        ImportDestination, ImportProgress, ImportStep, PayloadSource, PrepareStep, PreparedArtistImage,
+        CandidateMetadataDraft, CandidatePreparedAssets, CoverSelection, DiscogsArtistImage,
+        ImportPhase, ImportDestination, ImportProgress, ImportStep, PayloadSource, PrepareStep,
         CueAnalyzedAudioFile, CueFlacAnalysis, SourcePayload, TrackAudio,
         TrackFile,
     };

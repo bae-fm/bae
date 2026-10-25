@@ -592,15 +592,14 @@ async fn a_disc_assignment_survives_a_relaunch() {
         .apply_candidate_file_edits(&candidate_edits)
         .unwrap();
     let hash = scanned.content_hash();
-    let (metadata_revision, mut mapping_preparation) =
-        current_mapping_preparation(&db, &hash).await;
-    mapping_preparation.draft.tracks = crate::import::pane::blank_candidate_draft(&settled).tracks;
+    let (metadata_revision, mut draft) = current_draft(&db, &hash).await;
+    draft.tracks = crate::import::pane::blank_candidate_draft(&settled).tracks;
     crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
         &as_read(&hash, metadata_revision),
         &folder.path().to_string_lossy(),
         &candidate_edits,
         &[(folder.path().to_string_lossy().into_owned(), settled)],
-        &mapping_preparation,
+        draft,
     )
     .await
     .unwrap();

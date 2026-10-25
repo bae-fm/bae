@@ -463,14 +463,39 @@ impl LibraryManager {
             .await?)
     }
 
+    /// The Discogs pictures of the artists an import of `credits` would
+    /// create, fetched before the import writes anything. An artist the
+    /// credits resolve to in the library keeps its own picture, so none is
+    /// fetched for it; a picture fetch that fails fails the import with it.
+    pub(crate) async fn fetch_new_artist_images(
+        &self,
+        credits: &[DbArtist],
+        picked: &[String],
+        content_hash: Option<&str>,
+    ) -> Result<Vec<crate::import::DiscogsArtistImage>, crate::import::ImportError> {
+        let resolved = self
+            .database
+            .resolve_artists(credits, picked, content_hash)
+            .await
+            .map_err(LibraryError::from)?;
+        let new_discogs_artists = resolved
+            .inserts
+            .iter()
+            .filter_map(|artist| artist.discogs_artist_id.clone())
+            .collect();
+        self.fetch_discogs_artist_images(new_discogs_artists).await
+    }
+
     /// Insert all of an import's data in one transaction, so the release exists
     /// complete or not at all. A Remote import (`destination`) records its
     /// upload in the same write and gets back the outbox revision that
     /// shows its uploads queued.
     ///
-    /// The pictures of the artists the import creates are staged from a read
-    /// just before the write; the write fails if its own artist resolution
-    /// creates different artists, so no picture lands without its artist.
+    /// The pictures of the artists the import creates are staged from
+    /// `artist_images`, the ones [`Self::fetch_new_artist_images`] fetched,
+    /// against a read just before the write; the write fails if its own
+    /// artist resolution creates different artists, so no picture lands
+    /// without its artist.
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn finalize_import_atomic(
         &self,
@@ -481,7 +506,7 @@ impl LibraryManager {
         rows: crate::db::ImportRows<'_>,
         files: Vec<crate::import::service::PreparedImportFile>,
         library_image: Option<(&DbLibraryImage, &[u8])>,
-        prepared_artist_images: &[crate::import::PreparedArtistImage],
+        artist_images: &[crate::import::DiscogsArtistImage],
         destination: crate::import::ImportDestination,
     ) -> Result<Option<u64>, LibraryError> {
         let expected = self
@@ -497,8 +522,7 @@ impl LibraryManager {
             .iter()
             .map(|artist| artist.id.clone())
             .collect();
-        let artist_images =
-            self.materialize_prepared_artist_images(&expected.inserts, prepared_artist_images)?;
+        let artist_images = self.artist_image_rows(&expected.inserts, artist_images)?;
         let artist_images: Vec<_> = artist_images
             .iter()
             .map(|(image, bytes)| (image, bytes.as_slice()))

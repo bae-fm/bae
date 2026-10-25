@@ -41,14 +41,14 @@ use crate::import::search::{MetadataResult, SourceFailure};
 use crate::signals::{AudioFacts, InternalFailure, LookupFailure};
 
 /// Which lookup failed, and — where several providers answer it — which
-/// provider. The disc-ID endpoint is MusicBrainz's alone, release details are
-/// fetched from the source that named the release, and artist images are
-/// Discogs's alone, so those name no provider; the barcode and catalog lookups
-/// ask every configured provider independently, so one failing is a fact
-/// about that provider. A cover may come from any catalog the picked pressing
-/// claims, so its failure names the one that offered it.
+/// provider. The disc-ID endpoint is MusicBrainz's alone, and release details
+/// are fetched from the source that named the release, so those name no
+/// provider; the barcode and catalog lookups ask every configured provider
+/// independently, so one failing is a fact about that provider. A cover may
+/// come from any catalog the picked pressing claims, so its failure names the
+/// one that offered it.
 ///
-/// The last three are the fetches that apply the release a run picked
+/// The last two are the fetches that apply the release a run picked
 /// unattended: one failing leaves the pick unapplied, and the verdict stores
 /// the failure in its place.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -64,9 +64,6 @@ pub enum IdentifyFailure {
     /// on it, so that row may be missing its record there.
     Pressing(SourceFailure),
     ReleaseDetails(LookupFailure),
-    /// Discogs could not give the images of the artists the picked release
-    /// credits.
-    ArtistImages(LookupFailure),
     /// The catalog offering the picked release's cover could not give it.
     Cover(SourceFailure),
 }
@@ -148,8 +145,8 @@ impl TerminalVerdict {
     }
 
     /// The verdict this one becomes when a lookup after the run's fails —
-    /// fetching the details of the release it settled on, or the artist
-    /// images and cover applying it needs. The lookups ran and showed what
+    /// fetching the details of the release it settled on, or the cover
+    /// applying it needs. The lookups ran and showed what
     /// they showed, so what they found and the ledger they recorded stay; the
     /// failure joins any the run already had.
     pub(crate) fn fail(&mut self, failure: IdentifyFailure) {

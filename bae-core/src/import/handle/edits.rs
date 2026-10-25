@@ -7,11 +7,12 @@
 
 use super::*;
 
-struct PreparedArtistEdit {
+/// The candidate a pane edit of its draft is composed against: where the scan
+/// lists it, and the revisions it stood at when read.
+struct DraftEditBase {
     watched_folder_path: String,
     candidate_path: String,
     candidate: crate::import::CandidateAsRead,
-    assets: Vec<crate::import::PreparedArtistImage>,
 }
 
 impl ImportServiceHandle {
@@ -159,27 +160,21 @@ impl ImportServiceHandle {
         assignments: Vec<crate::import::Credited>,
     ) -> Result<(), crate::import::ImportError> {
         let assignments = crate::import::Credited::normalized_list(assignments);
-        let replacement = assignments.clone();
-        let prepared = self
-            .prepared_artist_edit(candidate_key, move |draft| {
-                draft.album_artist_assignments = replacement;
-            })
-            .await?;
+        let base = self.draft_edit_base(candidate_key).await?;
         let _commit = self
             .commit_lock_for_revision(
 "set album artists",
                 candidate_key,
-                &prepared.candidate.content_hash,
-                prepared.candidate.file_edit_revision,
+                &base.candidate.content_hash,
+                base.candidate.file_edit_revision,
             )
             .await?;
         self.preparations
             .set_album_artists_prepared(
-                &prepared.watched_folder_path,
-                &prepared.candidate_path,
-                &prepared.candidate,
+                &base.watched_folder_path,
+                &base.candidate_path,
+                &base.candidate,
                 &assignments,
-                &prepared.assets,
             )
             .await?;
         Ok(())
@@ -206,34 +201,21 @@ impl ImportServiceHandle {
         mut track: crate::import::RawTrackEdit,
     ) -> Result<(), crate::import::ImportError> {
         track.artist_assignments.normalize();
-        let replacement = track.clone();
-        let prepared = self
-            .prepared_artist_edit(candidate_key, move |draft| {
-                if let Some(current) = draft
-                    .tracks
-                    .iter_mut()
-                    .find(|row| row.edit.id == replacement.id)
-                {
-                    current.edit.title = replacement.title;
-                    current.edit.artist_assignments = replacement.artist_assignments;
-                }
-            })
-            .await?;
+        let base = self.draft_edit_base(candidate_key).await?;
         let _commit = self
             .commit_lock_for_revision(
 "edit a track",
                 candidate_key,
-                &prepared.candidate.content_hash,
-                prepared.candidate.file_edit_revision,
+                &base.candidate.content_hash,
+                base.candidate.file_edit_revision,
             )
             .await?;
         self.preparations
             .set_track_edit_prepared(
-                &prepared.watched_folder_path,
-                &prepared.candidate_path,
-                &prepared.candidate,
+                &base.watched_folder_path,
+                &base.candidate_path,
+                &base.candidate,
                 &track,
-                &prepared.assets,
             )
             .await?;
         Ok(())
@@ -262,33 +244,22 @@ impl ImportServiceHandle {
         track_ids: Vec<String>,
         assignments: crate::import::TrackArtistAssignments,
     ) -> Result<(), crate::import::ImportError> {
-        let edited_ids = track_ids.clone();
-        let replacement = assignments.clone();
-        let prepared = self
-            .prepared_artist_edit(candidate_key, move |draft| {
-                for track in &mut draft.tracks {
-                    if edited_ids.contains(&track.edit.id) {
-                        track.edit.artist_assignments = replacement.clone();
-                    }
-                }
-            })
-            .await?;
+        let base = self.draft_edit_base(candidate_key).await?;
         let _commit = self
             .commit_lock_for_revision(
 "set track artists",
                 candidate_key,
-                &prepared.candidate.content_hash,
-                prepared.candidate.file_edit_revision,
+                &base.candidate.content_hash,
+                base.candidate.file_edit_revision,
             )
             .await?;
         self.preparations
             .set_track_artists_prepared(
-                &prepared.watched_folder_path,
-                &prepared.candidate_path,
-                &prepared.candidate,
+                &base.watched_folder_path,
+                &base.candidate_path,
+                &base.candidate,
                 &track_ids,
                 &assignments,
-                &prepared.assets,
             )
             .await?;
         Ok(())
@@ -308,11 +279,13 @@ impl ImportServiceHandle {
             })
     }
 
-    async fn prepared_artist_edit(
+    /// The candidate at `candidate_key` as an edit of its draft reads it, or
+    /// the refusal for one whose stored preparation is not of the files the
+    /// scan lists.
+    async fn draft_edit_base(
         &self,
         candidate_key: &str,
-        decide: impl FnOnce(&mut crate::import::CandidateDraft),
-    ) -> Result<PreparedArtistEdit, crate::import::ImportError> {
+    ) -> Result<DraftEditBase, crate::import::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
         let hash = candidate.files.content_hash();
         let preparation = self
@@ -327,12 +300,7 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} changed before its edit was prepared"),
             });
         }
-        let mut active = preparation.draft.clone();
-        decide(&mut active);
-        let assets = self
-            .prepared_artist_images_for(&active, preparation.assets.artist_images)
-            .await?;
-        Ok(PreparedArtistEdit {
+        Ok(DraftEditBase {
             candidate_path: candidate.key(),
             watched_folder_path: candidate.watched_folder_path,
             candidate: crate::import::CandidateAsRead {
@@ -340,27 +308,6 @@ impl ImportServiceHandle {
                 file_edit_revision: preparation.file_edit_revision,
                 metadata_revision: preparation.metadata_revision,
             },
-            assets,
         })
-    }
-
-    /// The image answers `draft` needs: `current` when they answer exactly
-    /// the Discogs artists it credits, else every one fetched again.
-    pub(super) async fn prepared_artist_images_for(
-        &self,
-        draft: &crate::import::CandidateDraft,
-        current: Vec<crate::import::PreparedArtistImage>,
-    ) -> Result<Vec<crate::import::PreparedArtistImage>, crate::import::ImportError> {
-        let required = draft.discogs_artist_ids();
-        let prepared: std::collections::BTreeSet<String> = current
-            .iter()
-            .map(|asset| asset.discogs_artist_id().to_string())
-            .collect();
-        if required == prepared {
-            return Ok(current);
-        }
-        self.library_manager
-            .prepare_discogs_artist_images(required)
-            .await
     }
 }

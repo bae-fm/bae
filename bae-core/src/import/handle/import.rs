@@ -504,7 +504,7 @@ impl ImportServiceHandle {
                 .library_manager
                 .load_import_candidate_pane_rows(&content_hash)
                 .await?;
-            let mut assets = self
+            let assets = self
                 .library_manager
                 .load_import_candidate_prepared_assets(&content_hash)
                 .await?;
@@ -512,10 +512,6 @@ impl ImportServiceHandle {
                 crate::import::RawReleaseEdit::from_user_edit(edit, "test-import-track"),
                 &rows.draft,
             )?;
-            assets.artist_images = self
-                .library_manager
-                .prepare_discogs_artist_images(draft.discogs_artist_ids())
-                .await?;
             self.preparations
                 .apply_source(
                     &candidate.watched_folder_path,

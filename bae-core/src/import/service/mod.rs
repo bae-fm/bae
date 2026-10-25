@@ -95,8 +95,6 @@ struct PreparedMetadata {
     artist_credits: Vec<crate::db::DbArtist>,
     /// The credits that are library artists a person picked.
     picked_artists: Vec<String>,
-    /// Discogs pictures for whichever credits the commit finds are new artists.
-    prepared_artist_images: Vec<crate::import::PreparedArtistImage>,
     /// One per catalog that describes this release; empty for file metadata and
     /// direct entry.
     records: Vec<crate::import::ReleaseRecord>,

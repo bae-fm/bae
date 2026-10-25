@@ -13,7 +13,6 @@ use crate::import::folder_scanner::CandidateFileEdits;
 use crate::import::{CandidateMetadataDraft, CoverSelection, MetadataProvenance};
 use crate::library::LibraryError;
 use crate::signals::Signals;
-use std::collections::BTreeSet;
 
 /// One candidate as a caller last read it: which candidate it is, and the two
 /// revisions it stood at.
@@ -156,16 +155,16 @@ pub struct CandidatePreparation {
     /// overwrite a newer edit.
     pub metadata_revision: u64,
     pub author: MetadataAuthor,
-    /// The draft, its provenance, its cover, and the provider answers
-    /// prepared for it.
+    /// The draft, its provenance, its cover, and the cover bytes prepared
+    /// for it.
     pub metadata: CandidateMetadataDraft,
     /// What the candidate is linked to in the catalogs. Independent of
     /// `metadata`: no draft write changes it.
     pub link: Option<crate::import::ReleaseLink>,
-    /// Whether `metadata.assets` is a complete answer set for this draft: an
-    /// image answer for every artist it needs, and bytes for a remote cover.
-    /// A candidate stored before assets were prepared has none, and must have
-    /// its source applied again before it can import.
+    /// Whether `metadata.assets` holds what this draft's cover needs: the
+    /// bytes of a remote cover. A remote cover chosen without them leaves the
+    /// candidate unprepared, and its source must be applied again before it
+    /// can import.
     pub assets_prepared: bool,
     /// What identification concluded, or `None` when nothing has — including
     /// after a file decision cleared a verdict about a shape that is gone.
@@ -176,12 +175,6 @@ pub struct CandidatePreparation {
 }
 
 impl CandidatePreparation {
-    /// The Discogs artists whose image answers this draft needs: every one it
-    /// credits (see [`crate::import::CandidateDraft::discogs_artist_ids`]).
-    pub fn required_discogs_artist_ids(&self) -> BTreeSet<String> {
-        self.metadata.draft.discogs_artist_ids()
-    }
-
     /// The contradictions no stored candidate may hold, named so a save can
     /// refuse them before any row moves.
     pub fn validate(&self) -> Result<(), String> {
@@ -198,23 +191,6 @@ impl CandidatePreparation {
                 (&self.metadata.cover, &self.metadata.assets.remote_cover)
             {
                 return Err("a remote candidate cover has no prepared bytes".into());
-            }
-            let expected = self.required_discogs_artist_ids();
-            let actual: BTreeSet<_> = self
-                .metadata
-                .assets
-                .artist_images
-                .iter()
-                .map(|asset| asset.discogs_artist_id().to_string())
-                .collect();
-            if actual.len() != self.metadata.assets.artist_images.len() {
-                return Err("candidate artist assets contain a duplicate Discogs artist ID".into());
-            }
-            if actual != expected {
-                return Err(format!(
-                    "candidate artist assets do not match the draft's Discogs artist IDs: \
-                     expected {expected:?}, got {actual:?}"
-                ));
             }
         }
         Ok(())

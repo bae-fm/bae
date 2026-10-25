@@ -1,8 +1,9 @@
 // ── Applying the release a run picked ──────────────────────────────────────
 //
 // A verdict that picks a release unattended applies it in the same write: the
-// draft read from it, with the artist images and cover it needs. A catalog
-// that cannot give one of those is a lookup that failed, stored as the run's.
+// draft read from it, with the cover it is read with. A catalog that cannot
+// give the cover is a lookup that failed, stored as the run's. The pictures of
+// the artists the release credits are the import's to fetch, not the pick's.
 
 /// A small PNG, which is what an image host serves.
 fn cover_png() -> Vec<u8> {

@@ -18,11 +18,10 @@ use crate::import::folder_scanner::CandidateFileEdits;
 use crate::import::preparation::{CandidateAsRead, CandidatePreparation, CandidateWrite};
 use crate::import::MetadataAuthor;
 use crate::library::LibraryError;
-use std::collections::HashMap;
 
 /// The writer. Held by `LibraryManager` beside the database it writes
 /// through; the import handle resolves keys, holds the commit lock, and
-/// prepares provider answers, then hands the change here.
+/// fetches the cover bytes a change needs, then hands the change here.
 #[derive(Clone)]
 pub struct CandidatePreparations {
     database: Database,
@@ -107,9 +106,10 @@ impl CandidatePreparations {
     /// to a question that changed.
     ///
     /// Applied metadata, its provenance, its author and the release link
-    /// remain. The caller replaces only tracks whose audio changed, from the
-    /// folder's file tags: which tracks exist is the decision, not what the
-    /// release is called. A draft identification wrote stays identification's, so with
+    /// remain. The caller's `draft` replaces only tracks whose audio changed,
+    /// from the folder's file tags: which tracks exist is the decision, not
+    /// what the release is called; unaffected tracks keep their identities
+    /// and metadata. A draft identification wrote stays identification's, so with
     /// its verdict cleared it waits for the next run's checks rather than
     /// passing as the person's answer.
     ///
@@ -123,7 +123,7 @@ impl CandidatePreparations {
         folder_path: &str,
         edits: &CandidateFileEdits,
         settled_candidates: &[(String, crate::import::folder_scanner::CategorizedFiles)],
-        mapping_preparation: &crate::import::CandidateMappingPreparation,
+        draft: crate::import::CandidateDraft,
     ) -> Result<(u64, Vec<crate::import::folder_scanner::FolderCandidate>), LibraryError> {
         let next_revision = read.file_edit_revision.checked_add(1).ok_or_else(|| {
             crate::library::LibraryError::Refused(
@@ -138,12 +138,6 @@ impl CandidatePreparations {
                 CandidateAsRead::files_moved(read.file_edit_revision, CandidateWrite::FileDecisions)
             })?;
         read.verify(&prep, CandidateWrite::FileDecisions)?;
-        if !prep.assets_prepared {
-            return Err(crate::library::LibraryError::Refused(format!(
-                "candidate {} has no complete prepared asset set",
-                read.content_hash
-            )));
-        }
         let expected = CandidateSaveExpectation {
             edit_revision: read.file_edit_revision,
             metadata_revision: read.metadata_revision,
@@ -156,27 +150,7 @@ impl CandidatePreparations {
         // applied metadata and its source are independent of that verdict.
         prep.identification = None;
         prep.signals = None;
-        prep.metadata.draft = mapping_preparation.draft.clone();
-        // The prepared answers were made for the draft before it was redrawn;
-        // every artist the redrawn draft needs must be among them, and the
-        // ones it no longer needs go.
-        let required = prep.required_discogs_artist_ids();
-        let by_id: HashMap<_, _> = mapping_preparation
-            .artist_images
-            .iter()
-            .map(|asset| (asset.discogs_artist_id(), asset))
-            .collect();
-        if let Some(missing) = required.iter().find(|id| !by_id.contains_key(id.as_str())) {
-            return Err(crate::library::LibraryError::Refused(format!(
-                "candidate file edit has no prepared image answer for Discogs artist {missing}"
-            )));
-        }
-        prep.metadata.assets.artist_images = mapping_preparation
-            .artist_images
-            .iter()
-            .filter(|asset| required.contains(asset.discogs_artist_id()))
-            .cloned()
-            .collect();
+        prep.metadata.draft = draft;
         let extras = CandidateSaveExtras {
             file_tag_snapshot: None,
             reshaped_files: Some(settled_candidates.to_vec()),
@@ -332,10 +306,9 @@ impl CandidatePreparations {
     /// The person could not tell which of the pressings the stored verdict
     /// offered their copy is: the candidate is linked to the album those
     /// pressings are of, and `draft` — the draft with what they agree on in
-    /// it — replaces the draft, with the artist answers it needs, in one
-    /// write. What the draft was read from stays as it is: the fields the
-    /// pressings disagree on are still read from there.
-    #[allow(clippy::too_many_arguments)]
+    /// it — replaces the draft, in one write. What the draft was read from
+    /// stays as it is: the fields the pressings disagree on are still read
+    /// from there.
     pub(crate) async fn apply_shared_album(
         &self,
         watched_folder_path: &str,
@@ -343,7 +316,6 @@ impl CandidatePreparations {
         folder_path: &str,
         link: &crate::import::AlbumLink,
         draft: crate::import::CandidateDraft,
-        artist_images: Vec<crate::import::PreparedArtistImage>,
     ) -> Result<u64, LibraryError> {
         let mut prep = self.loaded_at(read).await?;
         // Linking the album answers the folder, so the person keeping their
@@ -369,7 +341,6 @@ impl CandidatePreparations {
         prep.metadata.draft = draft;
         // An album is no pressing: no release's covers are offered for it.
         prep.metadata.cover_options = Vec::new();
-        prep.metadata.assets.artist_images = artist_images;
         prep.assets_prepared = assets_are_prepared(&prep.metadata);
         prep.metadata_revision += 1;
         let revision = prep.metadata_revision;

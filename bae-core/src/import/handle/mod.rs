@@ -23,7 +23,7 @@ mod session;
 mod shared_album;
 mod watch;
 
-pub(crate) use scan::{external_metadata_with_assets, ReleaseAsset};
+pub(crate) use scan::external_metadata_with_cover;
 
 use super::candidate_runtime::CandidateRuntime;
 use super::candidates::{

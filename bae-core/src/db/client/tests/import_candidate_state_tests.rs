@@ -12,22 +12,15 @@ fn as_read(content_hash: &str, metadata_revision: u64) -> crate::import::Candida
     }
 }
 
-async fn current_mapping_preparation(
-    db: &Database,
-    content_hash: &str,
-) -> (u64, crate::import::CandidateMappingPreparation) {
+/// The stored draft and the metadata revision it stands at: what a file
+/// decision that reshapes no track lays over the folder.
+async fn current_draft(db: &Database, content_hash: &str) -> (u64, crate::import::CandidateDraft) {
     let preparation = db
         .load_import_candidate_preparation(content_hash)
         .await
         .unwrap()
         .expect("the candidate has a stored preparation");
-    (
-        preparation.metadata_revision,
-        crate::import::CandidateMappingPreparation {
-            draft: preparation.draft,
-            artist_images: preparation.assets.artist_images,
-        },
-    )
+    (preparation.metadata_revision, preparation.draft)
 }
 
 /// Store the person's answer for how one folder reads, alone: the row a

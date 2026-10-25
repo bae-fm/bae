@@ -385,12 +385,17 @@ async fn an_automatic_import_that_cannot_start_is_recorded_as_its_failed_import(
     let dir = fixture.disc_id_candidate("Album");
     let key = dir.to_string_lossy().into_owned();
     fixture.identify_ready(&dir, "mb-refused", "rg-refused").await;
-    // A draft whose assets are not prepared is one no import starts from.
+    // A draft whose remote cover has no bytes is one no import starts from.
     fixture
         .preparations
-        .set_album_artists(
+        .set_cover(
             &fixture.content_hash(&dir),
-            &[crate::import::Credited::plain(crate::import::ArtistAssignment::named("Changed Artist"))],
+            &crate::import::CoverSelection::Remote(
+                crate::import::cover_art::RemoteImageSet::original(
+                    "https://example.invalid/cover".to_string(),
+                ),
+                crate::import::Catalog::MusicBrainz,
+            ),
         )
         .await
         .unwrap();
