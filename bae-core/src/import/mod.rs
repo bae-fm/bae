@@ -212,7 +212,7 @@ desktop_only! {
     pub use candidates::{
         Admission, CandidateRuntimeSnapshot, CandidateStanding, FolderScanStatus,
         IdentificationInFlight, ImportCandidateSnapshot, ImportInFlight, ImportedRelease,
-        SaveFailure, WatchedFolderScanStatus,
+        SaveFailure, SavingAnswer, WatchedFolderScanStatus,
     };
     pub use cover_art::{CoverChoice, CoverImageSource};
     pub use import_failure::{ImportFailure, ImportFailureReason};
@@ -231,9 +231,9 @@ desktop_only! {
     };
     pub use handle::{
         DiscogsSaveOutcome, GroupedSearchResults, ImportEvent,
-        ImportEventBus, ImportServiceHandle, ScanEvent,
+        ImportEventBus, ImportServiceHandle, ImportStart, ScanEvent,
     };
-    pub(crate) use handle::external_metadata_with_cover;
+    pub(crate) use handle::{external_metadata_with_cover, VerdictWrite};
     pub use list::{
         ActiveFolderScan, CandidateImportStatus, CandidatePanePlacement,
         FolderScanActivity,

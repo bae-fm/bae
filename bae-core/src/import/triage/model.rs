@@ -56,8 +56,13 @@ pub enum IdentificationStatus {
     Queued,
     /// Signals are being gathered or a provider lookup is in flight.
     Running,
-    /// The run has a result and is committing it.
+    /// The run has a result that picks no release unattended, and is
+    /// committing it.
     Finalizing,
+    /// The run picked its release unattended, and the release is being read
+    /// in full before the answer is committed. `import_asked`: a person asked
+    /// for the candidate to be imported once the answer is.
+    ReadingPick { import_asked: bool },
     /// The result could not be committed; `failure` says why.
     FinalizationFailed { failure: crate::import::SaveFailure },
 }

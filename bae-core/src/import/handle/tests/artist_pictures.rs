@@ -30,7 +30,7 @@ impl DiscogsPick {
 
     async fn import(&self) -> Result<(String, String), String> {
         let mut events = self.handle.every_event();
-        let import_id = self.handle.start_import(&self.key).await.unwrap();
+        let import_id = self.handle.start_import(&self.key).await.unwrap().expect_queued();
         await_import_outcome(&mut events, &import_id).await
     }
 
@@ -305,7 +305,7 @@ async fn the_import_says_it_is_fetching_artist_pictures_while_it_fetches_them() 
     pick.seed_artists(picture_url);
 
     let mut events = pick.handle.every_event();
-    let import_id = pick.handle.start_import(&pick.key).await.unwrap();
+    let import_id = pick.handle.start_import(&pick.key).await.unwrap().expect_queued();
     tokio::time::timeout(HANG_GUARD, hold.arrived())
         .await
         .expect("the import asks for the track artist's picture");

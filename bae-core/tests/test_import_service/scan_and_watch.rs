@@ -777,7 +777,7 @@ async fn a_done_row_follows_the_library_release_it_became() {
         .select_candidate_file_tags(album_key.clone())
         .await
         .unwrap();
-    let import_id = f.handle.start_import(&album_key).await.unwrap();
+    let import_id = f.handle.start_import(&album_key).await.unwrap().expect_queued();
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
 
@@ -903,7 +903,7 @@ async fn only_a_folder_another_release_carries_the_hash_of_is_probably_in_the_li
     let mut release_ids = Vec::new();
     for key in &keys {
         f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
-        let import_id = f.handle.start_import(key).await.unwrap();
+        let import_id = f.handle.start_import(key).await.unwrap().expect_queued();
         let mut progress_rx = f.handle.subscribe_import(import_id);
         release_ids.push(support::wait_for_import_complete(&mut progress_rx).await.0);
     }

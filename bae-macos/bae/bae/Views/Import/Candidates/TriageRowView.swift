@@ -172,6 +172,12 @@ extension TriageRowView {
             ProgressView()
                 .controlSize(.small)
                 .help(String(localized: "Identifying\u{2026}"))
+        // The run has picked its release, so the row stands as identified
+        // while the release is read in full.
+        case .readingPick:
+            ProgressView()
+                .controlSize(.small)
+                .help(String(localized: "Reading the release\u{2026}"))
         case .finalizationFailed(let error):
             if let shown = DisplayError(error) {
                 trailingIcon(

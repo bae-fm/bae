@@ -560,7 +560,10 @@ time alone; the failed read is reported as a bug.
 Each Pending row is in exactly one state. The first that applies wins:
 
 1. **Importing**: an import is queued or running.
-2. **Identifying**: a lookup is queued, running, or writing its answer.
+2. **Identifying**: a lookup is queued, running, or writing an answer that
+   picks nothing unattended. A lookup that picked its pressing unattended
+   (§3.5) puts the row in **Identified** while bae reads that pressing in
+   full; the row offers Import then too (§3.7).
 3. **Error**: bae could not store a lookup's answer.
 4. **Import error**: the last import failed, or the release can't be worked on
    as it stands.
@@ -692,6 +695,8 @@ number is now worth asking Discogs about. A run therefore goes in rounds:
    its pages link as one the read stopped short of, and its own page too
    where the read took it from a Disc ID answer; a pick, an unattended pick
    included, reads the rest, that page included, before it applies anything.
+   Runs go four at a time. An unattended pick's read goes beside them, not in
+   a run's place, so the next folder's run starts as soon as one picks.
    That complete read of a Discogs release asks MusicBrainz in one request
    which of its releases links the release's page and which of its release
    groups links the master's, since the release's page names its master; a
@@ -840,9 +845,10 @@ A run *picks unattended* only when all of these hold:
 - its tracklist lists as many tracks as the folder holds.
 
 Ana's run finds one pressing, on both catalogs, read in full, eleven tracks.
-bae picks it and writes its metadata into her draft. A Disc ID often returns
-several pressings of one album: an exact clue is not a unique answer, and
-choosing between them is the person's.
+bae picks it, and her row reads Identified at once. bae reads the pressing in
+full beside the runs still going, then writes its metadata into her draft. A
+Disc ID often returns several pressings of one album: an exact clue is not a
+unique answer, and choosing between them is the person's.
 
 When the run doesn't pick, the pane says why: nothing found, several
 pressings, a record that couldn't be read, a tracklist that couldn't be
@@ -858,8 +864,9 @@ checked, or a medium the folder rules out. The person then:
   fields every offered pressing agrees on fill the draft;
 - **keeps their own draft**, from the folder's tags or typed by hand.
 
-A pick applies its release to the draft at once (§3.6). Nothing previews the
-release's tracklist first: the draft the pick writes is what the pane shows.
+A pick applies its release to the draft at once (§3.6), an unattended one as
+soon as its read in full ends. Nothing previews the release's tracklist first:
+the draft the pick writes is what the pane shows.
 
 The person also decides which clues a run asks about. Ben unchecks a barcode
 that belongs to a box set rather than his disc; Carol picks the one catalog
@@ -1060,6 +1067,13 @@ pressing the person picks themselves, from a run's list or their own search,
 waits for their Import. Both are settings (Appendix C), and each works without
 the other: with automatic identification off, the runs a person starts still
 import. Turning import on imports nothing already identified.
+
+Import asked for while bae reads a run's unattended pick, from the row, the
+pane or a selection, leaves the read going and doesn't import the draft as it
+stands: it waits for the pick to be stored and then imports, as automatic
+import does, with the setting on or off. The row then no longer offers Import.
+A read that stores no pick, because it failed or was cancelled, imports
+nothing.
 
 **Edge cases.**
 
@@ -2782,7 +2796,7 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | `import_candidate_album_set` | pick the library album it joins, or leave it to its records |
 | `import_candidate_pressing_fact_set` | choose its area, media, status, packaging or Discogs details |
 | `import_candidate_cover_set` | choose its cover |
-| `import_start` | import a candidate as stored |
+| `import_start` | import a candidate as stored, or once the pick its run is reading is stored |
 | `release_detail_get` | read a library release |
 | `release_export` | queue an export of a release's files |
 | `release_storage_action` | move to the cloud, pin, unpin, make local, or cancel |

@@ -11,7 +11,9 @@
 //! rest. Where more than one could apply, the first of these wins:
 //!
 //! 1. **Importing** — an import is queued or running.
-//! 2. **Identifying** — a run is queued, running, or writing its answer.
+//! 2. **Identifying** — a run is queued, running, or writing an answer that
+//!    picks no release; one whose run picked its release unattended is
+//!    **Identified** while that release is read in full.
 //! 3. **Error** — bae could not store a run's answer.
 //! 4. **Import error** — the last import failed, or the release cannot be
 //!    worked on as it stands.
@@ -55,6 +57,9 @@ pub enum PendingState {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LiveStanding {
     Identifying,
+    /// The run picked its release unattended, which is being read in full
+    /// before the answer is written.
+    ReadingPick,
     /// bae could not store a run's answer.
     Error { failure: InternalFailure },
     Importing,
@@ -72,6 +77,7 @@ impl LiveStanding {
                 | IdentificationStatus::Running
                 | IdentificationStatus::Finalizing,
             ) => Some(Self::Identifying),
+            Some(IdentificationStatus::ReadingPick { .. }) => Some(Self::ReadingPick),
             Some(IdentificationStatus::FinalizationFailed { failure }) => Some(Self::Error {
                 failure: InternalFailure {
                     detail: failure.error().to_string(),
@@ -95,6 +101,7 @@ impl LiveStanding {
     pub fn state(&self) -> PendingState {
         match self {
             Self::Identifying => PendingState::Identifying,
+            Self::ReadingPick => PendingState::Identified,
             Self::Error { .. } => PendingState::Error,
             Self::Importing => PendingState::Importing,
         }
@@ -105,6 +112,7 @@ impl From<LiveStanding> for PendingStanding {
     fn from(live: LiveStanding) -> Self {
         match live {
             LiveStanding::Identifying => Self::Identifying,
+            LiveStanding::ReadingPick => Self::Identified,
             LiveStanding::Error { failure } => Self::Error { failure },
             LiveStanding::Importing => Self::Importing,
         }

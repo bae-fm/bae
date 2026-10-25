@@ -110,8 +110,14 @@ impl crate::types::BridgeCandidateRuntimeSnapshot {
             search,
         } = runtime;
         crate::types::BridgeCandidateRuntimeSnapshot {
-            identification: bae_core::import::IdentificationInFlight::of(queued, running, saving)
-                .map(crate::types::BridgeIdentificationInFlight::from_core),
+            // Whether an Import was asked of the answer reaches the UI through
+            // the row's live state too.
+            identification: bae_core::import::IdentificationInFlight::of(
+                queued,
+                running,
+                saving.map(|answer| answer.state),
+            )
+            .map(crate::types::BridgeIdentificationInFlight::from_core),
             import: import.map(crate::types::BridgeImportInFlight::from_core),
             search: search.map(crate::types::BridgeCandidateSearch::from_core),
         }
@@ -450,6 +456,9 @@ impl crate::types::BridgeIdentificationStatus {
             S::Queued => Self::Queued,
             S::Running => Self::Running,
             S::Finalizing => Self::Finalizing,
+            // Whether an Import was asked reaches the UI as the actions the
+            // row offers.
+            S::ReadingPick { import_asked: _ } => Self::ReadingPick,
             S::FinalizationFailed { failure } => Self::FinalizationFailed {
                 error: crate::types::BridgeError::from_core(bae_core::ui::UiError::import(
                     failure.error().to_string(),

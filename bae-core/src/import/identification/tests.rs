@@ -73,9 +73,9 @@ struct FakeProvider {
 struct FakeState {
     routes: Vec<(String, u16, Vec<u8>)>,
     requests: Vec<String>,
-    /// While set, a request containing the needle waits here after recording
-    /// itself.
-    gate: Option<(String, Arc<tokio::sync::Semaphore>)>,
+    /// While set, a request containing any of the needles waits here after
+    /// recording itself.
+    gate: Option<(Vec<String>, Arc<tokio::sync::Semaphore>)>,
 }
 
 impl FakeProvider {
@@ -128,8 +128,15 @@ impl FakeProvider {
     /// Leave every request matching `needle` unanswered until
     /// [`Self::release`], so a test can act on a lookup in flight.
     fn hold(&self, needle: &str) {
-        self.state.lock().unwrap().gate =
-            Some((needle.to_string(), Arc::new(tokio::sync::Semaphore::new(0))));
+        self.hold_each(&[needle]);
+    }
+
+    /// [`Self::hold`] every request matching any of `needles`.
+    fn hold_each(&self, needles: &[&str]) {
+        self.state.lock().unwrap().gate = Some((
+            needles.iter().map(|needle| needle.to_string()).collect(),
+            Arc::new(tokio::sync::Semaphore::new(0)),
+        ));
     }
 
     /// Answer everything held, and let later requests through.
@@ -825,7 +832,10 @@ impl Fixture {
             )
             .await
             .unwrap();
-        assert!(wrote, "the seeded verdict lands");
+        assert!(
+            matches!(wrote, crate::import::VerdictWrite::Stored { .. }),
+            "the seeded verdict lands"
+        );
     }
 
     /// Whether a stored row's verdict is auto-importable, and the check
@@ -895,3 +905,4 @@ include!("tests/admissions.rs");
 include!("tests/automatic.rs");
 include!("tests/row_live_state.rs");
 include!("tests/auto_import.rs");
+include!("tests/reading_the_pick.rs");

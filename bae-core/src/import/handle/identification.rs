@@ -134,14 +134,18 @@ impl ImportServiceHandle {
         self.runtime.fail_identification(candidate_key, run, failure);
     }
 
-    /// `run`'s answer is disposed of: its row landed, was refused as stale, or
-    /// no write was ever asked for it.
+    /// `run`'s answer is disposed of with no write ever asked for it. An
+    /// Import asked for while its pick was read goes with it: no pick is
+    /// stored, so nothing imports.
     pub(crate) fn end_identification_answer(
         &self,
         candidate_key: &str,
         run: crate::identify::IdentifyRunId,
     ) {
-        self.runtime.end_identification_answer(candidate_key, run);
+        let import_asked = self.runtime.end_identification_answer(candidate_key, run);
+        if import_asked {
+            info!("identification: {candidate_key}'s answer was given up; the Import asked of it is dropped");
+        }
     }
 
     /// The settled snapshot `run` was judged against — what a settle of that

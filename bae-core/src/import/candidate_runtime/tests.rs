@@ -249,7 +249,7 @@ fn a_finished_import_keeps_a_key_whose_verdict_is_still_being_saved() {
     let recorded = runtime.get(key).expect("the pending save keeps the key");
     assert!(recorded.import.is_none());
     assert!(matches!(
-        recorded.saving,
+        recorded.saving.map(|answer| answer.state),
         Some(crate::identify::IdentifyState::ManualOnly { .. })
     ));
     assert!(matches!(
@@ -488,7 +488,7 @@ fn a_terminal_state_moves_the_run_from_running_to_saving() {
     let answered = runtime.get(key).expect("the answer is being saved");
     assert!(answered.running.is_none());
     assert!(matches!(
-        answered.saving,
+        answered.saving.map(|answer| answer.state),
         Some(crate::identify::IdentifyState::ManualOnly { .. })
     ));
 }
@@ -984,4 +984,5 @@ include!("tests/claims.rs");
 include!("tests/counting.rs");
 include!("tests/departures.rs");
 include!("tests/in_flight.rs");
+include!("tests/reading_the_pick.rs");
 include!("tests/watches.rs");

@@ -178,7 +178,7 @@ async fn an_import_linked_to_an_album_stores_the_album() {
         .unwrap();
 
     let mut events = handle.every_event();
-    let import_id = handle.start_import(&key).await.unwrap();
+    let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();
     let records = handle
         .library_manager

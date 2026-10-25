@@ -132,8 +132,8 @@ pub struct CandidateRuntimeSnapshot {
     /// terminal state is its answer, and answering ends it.
     pub running: Option<IdentifyState>,
     /// The answer a run reached, held until whoever asked for it says what
-    /// became of it. Always terminal.
-    pub saving: Option<IdentifyState>,
+    /// became of it.
+    pub saving: Option<SavingAnswer>,
     /// Why the last write of a terminal state did not land. Cleared by the
     /// next run of this key.
     pub save_failed: Option<SaveFailure>,
@@ -155,8 +155,24 @@ impl CandidateRuntimeSnapshot {
     /// What identification is doing for the key, as its pane shows it (see
     /// [`IdentificationInFlight::of`]).
     pub fn identification(&self) -> Option<IdentificationInFlight> {
-        IdentificationInFlight::of(self.queued, self.running.clone(), self.saving.clone())
+        IdentificationInFlight::of(
+            self.queued,
+            self.running.clone(),
+            self.saving.as_ref().map(|answer| answer.state.clone()),
+        )
     }
+}
+
+/// A run's answer while it is being written, and what was asked of it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SavingAnswer {
+    /// Always terminal.
+    pub state: IdentifyState,
+    /// A person asked, while the release this answer picks unattended was
+    /// being read, for the candidate to be imported once the answer stores
+    /// it. Only an answer that picks unattended carries the ask, and it goes
+    /// with the answer.
+    pub import_asked: bool,
 }
 
 /// What identification is doing for a key right now.

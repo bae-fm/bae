@@ -38,7 +38,7 @@ async fn concurrent_imports_keep_one_owner_and_later_imports_make_new_copies() {
     let mut started = Vec::new();
     for press in presses.collect::<Vec<_>>() {
         match press.await.unwrap() {
-            Ok(import_id) => started.push(import_id),
+            Ok(start) => started.push(start.expect_queued()),
             Err(crate::import::ImportError::CandidateImportInProgress) => {}
             Err(error) => panic!("a repeated press is refused as in progress: {error}"),
         }
@@ -53,7 +53,9 @@ async fn concurrent_imports_keep_one_owner_and_later_imports_make_new_copies() {
             handle.import_selected(&key).await
         } else {
             handle.start_import(&key).await
-        }.expect("a later import creates its own copy");
+        }
+        .expect("a later import creates its own copy")
+        .expect_queued();
         await_import_outcome(&mut events, &id).await.unwrap();
     }
     assert_eq!(release_count(&handle).await, 3);

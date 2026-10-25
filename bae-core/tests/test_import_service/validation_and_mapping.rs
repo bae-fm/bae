@@ -169,7 +169,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
         )
         .await
         .unwrap();
-    let import_id = f.handle.start_import(&candidate_key).await.unwrap();
+    let import_id = f.handle.start_import(&candidate_key).await.unwrap().expect_queued();
     let mut rx = f.handle.subscribe_import(import_id);
     let (_release_id, album_id) = support::wait_for_import_complete(&mut rx).await;
 
@@ -482,7 +482,7 @@ async fn the_commit_binds_each_track_to_the_audio_in_its_place() {
         .set_candidate_track_edit(&candidate_key, tracks[0].clone())
         .await
         .is_err());
-    let import_id = f.handle.start_import(&candidate_key).await.unwrap();
+    let import_id = f.handle.start_import(&candidate_key).await.unwrap().expect_queued();
     let mut rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut rx).await;
 

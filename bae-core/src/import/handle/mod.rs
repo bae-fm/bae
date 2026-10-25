@@ -23,6 +23,7 @@ mod session;
 mod shared_album;
 mod watch;
 
+pub use import::ImportStart;
 pub(crate) use scan::external_metadata_with_cover;
 
 use super::candidate_runtime::CandidateRuntime;
@@ -302,6 +303,18 @@ pub enum DiscogsSaveOutcome {
     Valid,
     Unvalidated(crate::discogs::client::DiscogsError),
     Rejected,
+}
+
+/// What one verdict write did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum VerdictWrite {
+    /// The candidate can no longer be answered, or its files are not the ones
+    /// the run read.
+    Refused,
+    /// The row landed. `import_asked`: a person asked, while the release the
+    /// answer picks unattended was read, for the candidate to be imported once
+    /// it was stored.
+    Stored { import_asked: bool },
 }
 
 /// Handle for sending import requests and subscribing to progress updates.
@@ -798,21 +811,38 @@ impl ImportServiceHandle {
     /// answered or its files are not the ones the verdict answers. The check
     /// and the write share the commit lock, and the write ends `run`'s pending
     /// save itself, so a caller torn down mid-write leaves nothing pending.
+    ///
+    /// The pending save ends under the commit lock too, the lock an Import
+    /// asked for while the answer's pick is read takes to mark the answer. So
+    /// that ask lands on the answer before its write, which then carries it
+    /// out, or after the save has ended, as an import of the stored pick:
+    /// never in between, where it would be lost.
     pub(crate) async fn save_candidate_verdict_if_current(
         &self,
         candidate_key: &str,
         run: crate::identify::IdentifyRunId,
         row: &crate::db::NewImportCandidateVerdict,
-    ) -> Result<bool, crate::library::LibraryError> {
+    ) -> Result<VerdictWrite, crate::library::LibraryError> {
         let this = self.clone();
         let candidate_key = candidate_key.to_string();
         let row = row.clone();
         self.committed(async move {
-            let wrote = this
-                .save_candidate_verdict_if_current_write(&candidate_key, &row)
+            let _commit = this
+                .folder_state_commit
+                .lock("store an identification verdict")
                 .await;
-            match &wrote {
-                Ok(_) => this.runtime.end_identification_answer(&candidate_key, run),
+            match this
+                .save_candidate_verdict_if_current_write(&candidate_key, &row)
+                .await
+            {
+                Ok(wrote) => {
+                    let import_asked = this.runtime.end_identification_answer(&candidate_key, run);
+                    Ok(if wrote {
+                        VerdictWrite::Stored { import_asked }
+                    } else {
+                        VerdictWrite::Refused
+                    })
+                }
                 Err(error) => {
                     this.runtime.fail_identification(
                         &candidate_key,
@@ -820,23 +850,20 @@ impl ImportServiceHandle {
                         crate::import::SaveFailure::NotWritten {
                             error: error.to_string(),
                         },
-                    )
+                    );
+                    Err(error)
                 }
             }
-            wrote
         })
         .await
     }
 
+    /// The write itself, under the commit lock its caller holds.
     async fn save_candidate_verdict_if_current_write(
         &self,
         candidate_key: &str,
         row: &crate::db::NewImportCandidateVerdict,
     ) -> Result<bool, crate::library::LibraryError> {
-        let _commit = self
-            .folder_state_commit
-            .lock("store an identification verdict")
-            .await;
         let Some(candidate) = self.answerable_candidate(candidate_key).await? else {
             return Ok(false);
         };

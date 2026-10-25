@@ -582,9 +582,15 @@ pub enum AutomationCoverSelection {
     },
 }
 
+/// Mirrors bae-core's `import::ImportStart`.
 #[derive(Debug, Clone, Serialize)]
-pub struct AutomationImportStarted {
-    pub import_id: String,
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationImportStarted {
+    /// The import is queued under this id.
+    Queued { import_id: String },
+    /// The release the candidate's run picked is still being read; the
+    /// candidate imports once that read stores it.
+    WhenPickStored,
 }
 
 /// Mirrors bae-core's `import::PrepareStep`.

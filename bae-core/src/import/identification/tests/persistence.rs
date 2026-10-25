@@ -150,22 +150,26 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
     };
 
     assert!(
-        fixture
-            .import
-            .save_candidate_verdict_if_current(&key, IdentifyRunId::for_test(1), &row())
-            .await
-            .unwrap(),
+        matches!(
+            fixture
+                .import
+                .save_candidate_verdict_if_current(&key, IdentifyRunId::for_test(1), &row())
+                .await
+                .unwrap(),
+            crate::import::VerdictWrite::Stored { .. }
+        ),
         "an unclaimed candidate still takes its verdict"
     );
 
     fixture.import.claim_candidate_for_import(&key, "import-1").await;
 
-    assert!(
-        !fixture
+    assert_eq!(
+        fixture
             .import
             .save_candidate_verdict_if_current(&key, IdentifyRunId::for_test(1), &row())
             .await
             .unwrap(),
+        crate::import::VerdictWrite::Refused,
         "a claimed candidate refuses a verdict"
     );
 }
@@ -230,7 +234,10 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
     let Some(IdentifyState::Found {
         findings: crate::identify::Findings { matches, .. },
         ..
-    }) = &runtime.as_ref().and_then(|runtime| runtime.saving.clone())
+    }) = &runtime
+        .as_ref()
+        .and_then(|runtime| runtime.saving.clone())
+        .map(|answer| answer.state)
     else {
         panic!("the answer stays where its write will find it, got {runtime:?}");
     };
@@ -279,7 +286,10 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
     };
     let runtime = runtime.expect("the answer is still waiting on its write");
     assert!(runtime.running.is_none());
-    assert!(matches!(runtime.saving, Some(IdentifyState::Found { .. })));
+    assert!(matches!(
+        runtime.saving.map(|answer| answer.state),
+        Some(IdentifyState::Found { .. })
+    ));
 
     // Only the write of the run that answered ends that wait, and then
     // nothing is happening for the key at all.

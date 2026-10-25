@@ -349,7 +349,8 @@ async fn starting_an_import_ends_the_candidates_run() {
         .import
         .start_import(&key)
         .await
-        .expect("the prepared candidate enters its import");
+        .expect("the prepared candidate enters its import")
+        .expect_queued();
 
     assert!(
         !fixture.import.is_identifying(&key),

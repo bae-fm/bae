@@ -11,6 +11,9 @@ pub(super) enum Settled {
         /// Whether the verdict picked its release unattended, which
         /// automatic import takes.
         picked_unattended: bool,
+        /// Whether a person asked for the candidate to be imported while the
+        /// release was read.
+        import_asked: bool,
     },
     /// The write ran and refused the answer: the candidate can no longer be
     /// answered, or its files are not the ones the run read.
@@ -278,26 +281,26 @@ pub(super) async fn save(
         signals,
         pick,
     };
-    let wrote = match context
+    match context
         .import
         .save_candidate_verdict_if_current(&candidate_key, run, &row)
         .await
     {
-        Ok(wrote) => wrote,
-        Err(e) => {
-            return Settled::WriteFailed {
-                error: e.to_string(),
-            };
+        Ok(crate::import::VerdictWrite::Stored { import_asked }) => Settled::Stored {
+            picked_unattended,
+            import_asked,
+        },
+        Ok(crate::import::VerdictWrite::Refused) => {
+            info!(
+                "identification: refused the verdict for {candidate_key}: it can no longer be \
+                 answered, or its files are not the ones the run read"
+            );
+            Settled::Refused
         }
-    };
-    if !wrote {
-        info!(
-            "identification: refused the verdict for {candidate_key}: it can no longer be \
-             answered, or its files are not the ones the run read"
-        );
-        return Settled::Refused;
+        Err(e) => Settled::WriteFailed {
+            error: e.to_string(),
+        },
     }
-    Settled::Stored { picked_unattended }
 }
 
 /// Settle a candidate's lead: the stored releases of the pressing the verdict

@@ -98,7 +98,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
 
 /// Start `key`'s import and return its first `Complete` or `RemoteUploadQueued`.
 async fn import_outcome(f: &ImportFixture, key: &str) -> bae_core::import::ImportProgress {
-    let import_id = f.handle.start_import(key).await.unwrap();
+    let import_id = f.handle.start_import(key).await.unwrap().expect_queued();
     let mut progress_rx = f.handle.subscribe_import(import_id);
     match support::wait_for_import_end(&mut progress_rx).await {
         bae_core::import::ImportProgress::Failed { error, .. } => {

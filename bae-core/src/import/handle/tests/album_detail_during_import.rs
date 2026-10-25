@@ -79,7 +79,7 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
     importable(&handle, &shown_key).await;
     importable(&handle, &importing_key).await;
     let mut events = handle.every_event();
-    let shown_import = handle.start_import(&shown_key).await.unwrap();
+    let shown_import = handle.start_import(&shown_key).await.unwrap().expect_queued();
     let (_, shown_album) = await_import_outcome(&mut events, &shown_import)
         .await
         .expect("the shown album imports");
@@ -89,7 +89,7 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
         crate::import::ImportPhase::MeasuringLoudness,
     );
     let volume = manager.hold_disk();
-    let importing = handle.start_import(&importing_key).await.unwrap();
+    let importing = handle.start_import(&importing_key).await.unwrap().expect_queued();
     tokio::time::timeout(HANG_GUARD, handle.event_tx.send_held())
         .await
         .expect("the import reaches its measurement");

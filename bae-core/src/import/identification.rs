@@ -17,11 +17,13 @@
 //! One loop runs the queue for the library's lifetime: it fills the slots,
 //! follows the import bus's events in the order they were sent, found
 //! releases among them, and hands each answer to a settle task, which
-//! fetches the matched pressing's documents and writes the verdict. The queue
-//! is the only writer of verdicts. A result writes the draft only when it
-//! found one release, and a run that stores an auto-importable verdict, however
-//! it was admitted, starts the candidate's import when "Import automatically
-//! when identified" is on.
+//! fetches the matched pressing's documents and writes the verdict. A settle
+//! holds no slot: the next run starts as soon as one answers. The queue is the
+//! only writer of verdicts. A result writes the draft only when it found one
+//! release, and a run that stores an auto-importable verdict, however it was
+//! admitted, starts the candidate's import when "Import automatically when
+//! identified" is on, or when a person asked for the import while the settle
+//! read the release.
 
 use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};
 use super::folder_scanner::FolderCandidate;
@@ -48,8 +50,8 @@ pub use handle::IdentificationHandle;
 use queue::{admit, Queue};
 use settle::*;
 
-/// How many candidates are identified at once: a cap on local work such as
-/// OCR, since the provider rate limiter already paces the network.
+/// How many runs go at once: a cap on local work such as OCR, since the
+/// provider rate limiter already paces the network. Settles run beside them.
 const MAX_IN_FLIGHT: usize = 4;
 
 /// A candidate's content hash and file-decision revision. Candidates sharing it

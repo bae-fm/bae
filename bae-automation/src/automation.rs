@@ -317,13 +317,22 @@ impl Automation {
     }
 
     /// Start an import of a candidate from what it stores, to where the stored
-    /// storage choice says.
+    /// storage choice says; while the release its run picked is read in full,
+    /// it imports once that read stores the pick.
     pub async fn start_import(
         &self,
         candidate_key: String,
     ) -> Result<AutomationImportStarted, AutomationError> {
-        let import_id = self.services.import_start_import(&candidate_key).await?;
-        Ok(AutomationImportStarted { import_id })
+        Ok(
+            match self.services.import_start_import(&candidate_key).await? {
+                bae_core::import::ImportStart::Queued { import_id } => {
+                    AutomationImportStarted::Queued { import_id }
+                }
+                bae_core::import::ImportStart::WhenPickStored => {
+                    AutomationImportStarted::WhenPickStored
+                }
+            },
+        )
     }
 
     pub async fn release_detail(

@@ -830,7 +830,8 @@ async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
     let import_id = handle
         .start_import(&key)
         .await
-        .expect("the prepared candidate enters source validation");
+        .expect("the prepared candidate enters source validation")
+        .expect_queued();
     let error = await_import_outcome(&mut events, &import_id)
         .await
         .expect_err("the changed audio cannot import");

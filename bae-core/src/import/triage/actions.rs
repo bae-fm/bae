@@ -122,7 +122,8 @@ impl CandidateActionBasis {
     /// An import owning the candidate leaves only cancelling it, not even a
     /// skip: the attempt is what decides it now. A run in flight leaves only cancelling
     /// it and the skip — the run is about to write the answer every other
-    /// command would overwrite.
+    /// command would overwrite — and, while the release it picked unattended
+    /// is read, importing once that answer is written, until that is asked.
     ///
     /// How its folders are read is decided before any of that: a release
     /// imported, or with work running for it, is past regrouping; any other
@@ -167,7 +168,22 @@ impl CandidateActionBasis {
         let placement = &self.placement;
         let mut actions = match placement {
             P::Done | P::Skipped => Vec::new(),
-            _ if identifying => vec![A::CancelIdentification],
+            _ if identifying => {
+                let import_once_stored = matches!(
+                    live.identification,
+                    Some(IdentificationStatus::ReadingPick {
+                        import_asked: false
+                    })
+                );
+                let mut actions = Vec::new();
+                // The pick's draft is what imports, not the one stored now,
+                // so whether that one would import does not matter.
+                if import_once_stored {
+                    actions.push(A::Import);
+                }
+                actions.push(A::CancelIdentification);
+                actions
+            }
             P::Pending | P::Failed => {
                 let mut actions = Vec::new();
                 if self.draft_valid {
@@ -178,7 +194,8 @@ impl CandidateActionBasis {
                     Some(
                         IdentificationStatus::Queued
                         | IdentificationStatus::Running
-                        | IdentificationStatus::Finalizing,
+                        | IdentificationStatus::Finalizing
+                        | IdentificationStatus::ReadingPick { .. },
                     )
                     | None => None,
                 };
@@ -344,6 +361,46 @@ mod tests {
                     CandidateAction::Skip,
                     CandidateAction::RevealFolder
                 ]
+            );
+        }
+    }
+
+    /// While the release a run picked unattended is read, the row offers
+    /// importing once it is stored — whether or not the draft stored now would
+    /// import, since it is not what imports — until that is asked.
+    #[test]
+    fn a_pick_being_read_offers_import_until_it_is_asked() {
+        for draft_valid in [true, false] {
+            let basis = CandidateActionBasis::of(
+                true,
+                &TriagePlacement::Pending,
+                draft_valid,
+                None,
+                false,
+                None,
+            );
+            assert_eq!(
+                basis.actions(&identifying(IdentificationStatus::ReadingPick {
+                    import_asked: false
+                })),
+                vec![
+                    CandidateAction::Import,
+                    CandidateAction::CancelIdentification,
+                    CandidateAction::Skip,
+                    CandidateAction::RevealFolder
+                ],
+                "draft valid: {draft_valid}"
+            );
+            assert_eq!(
+                basis.actions(&identifying(IdentificationStatus::ReadingPick {
+                    import_asked: true
+                })),
+                vec![
+                    CandidateAction::CancelIdentification,
+                    CandidateAction::Skip,
+                    CandidateAction::RevealFolder
+                ],
+                "draft valid: {draft_valid}"
             );
         }
     }

@@ -364,7 +364,8 @@ async fn editing_a_candidate_preserves_its_imported_copy() {
     let import_id = handle
         .start_import(&key)
         .await
-        .expect("the prepared candidate enters the import queue");
+        .expect("the prepared candidate enters the import queue")
+        .expect_queued();
     let (release_id, _) = await_import_outcome(&mut events, &import_id)
         .await
         .unwrap_or_else(|error| panic!("import failed: {error}"));
@@ -442,7 +443,8 @@ async fn import_worker_refuses_a_prepared_but_invalid_metadata_draft() {
     let import_id = handle
         .start_import(&key)
         .await
-        .expect("the complete candidate enters source validation");
+        .expect("the complete candidate enters source validation")
+        .expect_queued();
     let error = await_import_outcome(&mut events, &import_id)
         .await
         .expect_err("the invalid draft cannot import");

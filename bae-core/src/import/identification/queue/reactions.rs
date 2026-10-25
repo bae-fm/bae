@@ -191,6 +191,13 @@ pub(super) async fn finish(
             "identification: {} settled for a job the queue has moved off",
             done.representative_key
         );
+        // The Import was asked of this run, which another has replaced.
+        if matches!(done.settled, Settled::Stored { import_asked: true, .. }) {
+            info!(
+                "identification: {}'s run was replaced; the Import asked of it is dropped",
+                done.representative_key
+            );
+        }
         return;
     };
     let job = queue.jobs.remove(index).expect("the located job exists");
@@ -199,13 +206,24 @@ pub(super) async fn finish(
         context.import.withdraw_identification(key);
     }
     match done.settled {
-        Settled::Stored { picked_unattended } => {
+        Settled::Stored {
+            picked_unattended,
+            import_asked,
+        } => {
             info!(
                 "identification: stored the verdict for {}",
                 done.representative_key
             );
+            // A stored row with no pick, its read having failed, imports
+            // nothing, whoever asked.
             if picked_unattended {
-                import_when_identified(context, config, &done.representative_key).await;
+                import_when_identified(context, config, &done.representative_key, import_asked)
+                    .await;
+            } else if import_asked {
+                info!(
+                    "identification: {} stored no pick; the Import asked of it is dropped",
+                    done.representative_key
+                );
             }
         }
         // Nothing was stored, and nothing runs again on its own.
@@ -241,20 +259,27 @@ pub(super) async fn finish(
 }
 
 /// Import `key`, whose run just stored an auto-importable verdict, when
-/// "Import automatically when identified" is on. Whether the run started on its
-/// own or a person asked for it does not matter.
+/// "Import automatically when identified" is on or a person asked for the
+/// import while the release was read. Whether the run started on its own or a
+/// person asked for it does not matter.
 async fn import_when_identified(
     context: &Context,
     config: &watch::Receiver<crate::config::Config>,
     key: &str,
+    import_asked: bool,
 ) {
-    if !config.borrow().prefs.identification.import_when_identified {
+    if !import_asked && !config.borrow().prefs.identification.import_when_identified {
         return;
     }
     match context.import.import_identified(key).await {
-        Ok(import_id) => info!("identification: importing {key} automatically as {import_id}"),
+        Ok(crate::import::ImportStart::Queued { import_id }) => {
+            info!("identification: importing {key} as {import_id} now that it is identified")
+        }
+        Ok(crate::import::ImportStart::WhenPickStored) => {
+            info!("identification: {key} has another pick being read, which it imports once stored")
+        }
         Err(error) => {
-            warn!("identification: the automatic import of {key} could not start: {error}")
+            warn!("identification: the import of {key} once identified could not start: {error}")
         }
     }
 }

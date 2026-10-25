@@ -130,6 +130,31 @@ impl IdentifyState {
         }
     }
 
+    /// Whether this is a found answer that picks its one pressing without a
+    /// person, by the one rule ([`super::fit::unattended_pick`]) the settle
+    /// reads that pressing in full by.
+    pub fn picks_unattended(&self) -> bool {
+        match self {
+            IdentifyState::Found {
+                findings,
+                track_count,
+                ..
+            } => super::fit::unattended_pick(
+                &findings.matches,
+                &findings.pressings,
+                findings.medium_conflict,
+                *track_count,
+            )
+            .is_ok(),
+            IdentifyState::Idle
+            | IdentifyState::Triangulating { .. }
+            | IdentifyState::NotFoundAnywhere { .. }
+            | IdentifyState::ManualOnly { .. }
+            | IdentifyState::Failed { .. }
+            | IdentifyState::Error { .. } => false,
+        }
+    }
+
     /// The disc-ID, barcode, catalog and ISRC badges; none for `Idle`.
     pub fn toolbar(&self) -> Vec<ToolbarSignal> {
         let Some(context) = self.context() else {

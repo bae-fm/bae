@@ -520,8 +520,11 @@ pub enum BridgeIdentificationStatus {
     Queued,
     /// Signals or provider lookups are in flight.
     Running,
-    /// A terminal result is being committed.
+    /// A terminal result that picks no release is being committed.
     Finalizing,
+    /// The run picked its release unattended, which is being read in full
+    /// before the result is committed. The row reads as identified.
+    ReadingPick,
     /// The terminal result could not be committed.
     FinalizationFailed { error: BridgeError },
 }

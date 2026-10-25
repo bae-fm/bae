@@ -209,6 +209,31 @@ fn running_work_decides_over_the_tables() {
     assert_eq!(stored.clone().with_live(&TriageRuntimeFacts::default()), stored);
 }
 
+/// A run whose release is being read for the pick it made unattended is
+/// Identified over whatever the tables say, and its filter counts it there;
+/// an import still decides over it.
+#[test]
+fn a_pick_being_read_is_identified() {
+    let reading = |import_asked| TriageRuntimeFacts {
+        identification: Some(IdentificationStatus::ReadingPick { import_asked }),
+        import: None,
+    };
+    for import_asked in [false, true] {
+        let live = LiveStanding::of(&reading(import_asked));
+        assert_eq!(live, Some(LiveStanding::ReadingPick));
+        assert_eq!(live.map(|live| live.state()), Some(PendingState::Identified));
+        assert_eq!(
+            PendingStanding::NotLookedUp.with_live(&reading(import_asked)),
+            PendingStanding::Identified
+        );
+    }
+    let importing = TriageRuntimeFacts {
+        identification: Some(IdentificationStatus::ReadingPick { import_asked: true }),
+        import: Some(ImportStanding::Queued),
+    };
+    assert_eq!(LiveStanding::of(&importing), Some(LiveStanding::Importing));
+}
+
 /// An answer bae could not store is bae's own error, with why, whether or not
 /// another run could store it.
 #[test]

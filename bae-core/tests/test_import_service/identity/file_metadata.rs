@@ -521,7 +521,7 @@ async fn file_metadata_import_with_no_tags_seeds_title_from_folder_name() {
         )
         .await
         .unwrap();
-    let import_id = f.handle.start_import(&candidate_key).await.unwrap();
+    let import_id = f.handle.start_import(&candidate_key).await.unwrap().expect_queued();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, album_id) = support::wait_for_import_complete(&mut progress_rx).await;

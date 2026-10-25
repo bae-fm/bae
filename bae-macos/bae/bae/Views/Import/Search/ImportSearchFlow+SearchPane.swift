@@ -276,7 +276,8 @@ extension ImportSearchFlow {
                 forKey: input.key
             ),
             isImporting: isImporting(candidate),
-            isFinalizing: candidate.live?.identification == .finalizing,
+            isFinalizing: candidate.live?.identification == .finalizing
+                || candidate.live?.identification == .readingPick,
             libraryStatuses: libraryStatuses,
             // The run in flight knows more than the last stored answer does,
             // and for a re-identify key — which has no row at all — it is the

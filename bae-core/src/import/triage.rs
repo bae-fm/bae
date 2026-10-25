@@ -152,15 +152,22 @@ pub enum ImportStanding {
 
 impl TriageRuntimeFacts {
     /// One order over the fields, most recent fact first: what the last write
-    /// failed with, then the answer being written, then the run in flight,
-    /// then the queue it is waiting in.
+    /// failed with, then the answer being written — its picked release being
+    /// read, or nothing to read — then the run in flight, then the queue it is
+    /// waiting in.
     pub fn of(runtime: &CandidateRuntimeSnapshot) -> Self {
         let identification = if let Some(failure) = &runtime.save_failed {
             Some(IdentificationStatus::FinalizationFailed {
                 failure: failure.clone(),
             })
-        } else if runtime.saving.is_some() {
-            Some(IdentificationStatus::Finalizing)
+        } else if let Some(answer) = &runtime.saving {
+            Some(if answer.state.picks_unattended() {
+                IdentificationStatus::ReadingPick {
+                    import_asked: answer.import_asked,
+                }
+            } else {
+                IdentificationStatus::Finalizing
+            })
         } else if runtime.running.is_some() {
             Some(IdentificationStatus::Running)
         } else {
@@ -191,8 +198,8 @@ impl TriageRuntimeFacts {
     }
 
     /// A run for the candidate is queued, running, or having its answer
-    /// written — something is still to come from it. A write that failed is
-    /// over.
+    /// written, its picked release read first — something is still to come
+    /// from it. A write that failed is over.
     pub fn identifying(&self) -> bool {
         matches!(
             self.identification,
@@ -200,6 +207,7 @@ impl TriageRuntimeFacts {
                 IdentificationStatus::Queued
                     | IdentificationStatus::Running
                     | IdentificationStatus::Finalizing
+                    | IdentificationStatus::ReadingPick { .. }
             )
         )
     }

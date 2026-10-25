@@ -3,10 +3,11 @@
 //! that failed, the import running, the search a person typed.
 //!
 //! Each field has one writer and is never inferred from another. The queue
-//! owns `queued`; the identify driver's reports own the run; the write of
-//! its answer owns `save_failed`; the import worker owns `import`; the search
-//! owns `search`. Where waiting hands over to running, the run's first
-//! report clears `queued`, so a key never reads as idle in between.
+//! owns `queued`; the identify driver's reports own the run and its answer,
+//! which only an Import asked for while the answer's pick is read marks; the
+//! write of its answer owns `save_failed`; the import worker owns `import`;
+//! the search owns `search`. Where waiting hands over to running, the run's
+//! first report clears `queued`, so a key never reads as idle in between.
 //!
 //! Every identification of an import candidate is counted here, in one batch
 //! (see [`batch::IdentificationBatch`]): a key joins when it is admitted and
@@ -18,7 +19,9 @@
 //! run they belong to, and are dropped with the rest of the key's entry.
 
 use super::candidate_search::CandidateSearch;
-use super::candidates::{Admission, CandidateRuntimeSnapshot, ImportInFlight, SaveFailure};
+use super::candidates::{
+    Admission, CandidateRuntimeSnapshot, ImportInFlight, SaveFailure, SavingAnswer,
+};
 use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
 use super::search::{MetadataResult, SearchQuery};
@@ -107,6 +110,17 @@ struct RunState {
     state: IdentifyState,
 }
 
+/// A run's terminal answer, held until it is disposed of, and whether a
+/// person asked for the candidate to be imported once it stores the release
+/// it picks unattended. The ask is this answer's, so whatever disposes of the
+/// answer disposes of it too.
+#[derive(Clone, PartialEq)]
+struct HeldAnswer {
+    run: IdentifyRunId,
+    state: IdentifyState,
+    import_asked: bool,
+}
+
 /// The import that owns a key and how far it has got. The import id tells its
 /// reports from those of an import that already ended.
 #[derive(Clone, PartialEq)]
@@ -132,7 +146,7 @@ struct CandidateRuntimeState {
     running: Option<RunState>,
     /// The terminal answer a run reached, held until whoever asked for it
     /// disposes of it: the verdict write, or a re-identify sheet closing.
-    answered: Option<RunState>,
+    answered: Option<HeldAnswer>,
     /// Set when an answer's write fails; cleared by the key's next run.
     save_failed: Option<FailedSave>,
     /// Set when an import is queued, advanced by its reports, cleared when it
@@ -179,7 +193,10 @@ impl CandidateRuntimeState {
         CandidateRuntimeSnapshot {
             queued: self.queued,
             running: self.running.as_ref().map(|run| run.state.clone()),
-            saving: self.answered.as_ref().map(|run| run.state.clone()),
+            saving: self.answered.as_ref().map(|answer| SavingAnswer {
+                state: answer.state.clone(),
+                import_asked: answer.import_asked,
+            }),
             save_failed: self.save_failed.as_ref().map(|failed| failed.failure.clone()),
             import: self.import.as_ref().map(|claimed| claimed.in_flight.clone()),
             search: self.search.as_ref().map(|running| running.search.clone()),
@@ -603,13 +620,32 @@ impl CandidateRuntime {
     }
 
     /// `run`'s answer is disposed of, whatever became of it. Only that run's
-    /// answer goes, not a newer run's.
-    pub(super) fn end_identification_answer(&self, candidate_key: &str, run: IdentifyRunId) {
+    /// answer goes, not a newer run's. Returns whether a person had asked for
+    /// the candidate to be imported once that answer stored its pick.
+    pub(super) fn end_identification_answer(&self, candidate_key: &str, run: IdentifyRunId) -> bool {
         self.set(candidate_key, |_, runtime| {
-            if answered_on(runtime, run) {
-                runtime.answered = None;
+            if !answered_on(runtime, run) {
+                return false;
             }
-        });
+            runtime
+                .answered
+                .take()
+                .is_some_and(|answer| answer.import_asked)
+        })
+    }
+
+    /// Ask for the candidate to be imported once the answer being written
+    /// stores the release it picks unattended, which is still being read.
+    /// `false`, asking nothing, when no answer that picks unattended is
+    /// held for the key.
+    pub(super) fn ask_import_once_stored(&self, candidate_key: &str) -> bool {
+        self.set(candidate_key, |_, runtime| match runtime.answered.as_mut() {
+            Some(answer) if answer.state.picks_unattended() => {
+                answer.import_asked = true;
+                true
+            }
+            Some(_) | None => false,
+        })
     }
 
     /// `run`'s answer could not be written; the entry says why. bae's own
@@ -667,9 +703,10 @@ impl CandidateRuntime {
             }
             if state.is_terminal() {
                 runtime.running = None;
-                runtime.answered = Some(RunState {
+                runtime.answered = Some(HeldAnswer {
                     run,
                     state: state.clone(),
+                    import_asked: false,
                 });
             } else {
                 runtime.running = Some(RunState {

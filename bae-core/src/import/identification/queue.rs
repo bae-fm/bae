@@ -74,8 +74,14 @@ impl Job {
             .collect()
     }
 
-    fn in_flight(&self) -> bool {
-        !matches!(self.state, JobState::Waiting)
+    /// Whether a run of this job holds one of the queue's slots. A settling
+    /// job holds none: its run has answered, and reading the release the
+    /// answer picks runs beside the queue rather than ahead of the next run.
+    fn holds_a_slot(&self) -> bool {
+        match self.state {
+            JobState::Running { .. } => true,
+            JobState::Waiting | JobState::Settling { .. } => false,
+        }
     }
 
     /// The member whose run is answering this job, while one is running.
@@ -152,9 +158,9 @@ impl Queue {
         }
     }
 
-    /// How many jobs hold a slot; a settling job holds one too.
-    fn in_flight_count(&self) -> usize {
-        self.jobs.iter().filter(|job| job.in_flight()).count()
+    /// How many jobs hold a slot: the ones whose runs are going.
+    fn running_count(&self) -> usize {
+        self.jobs.iter().filter(|job| job.holds_a_slot()).count()
     }
 
     /// Put every candidate on the queue under `admission` and mark them all in
@@ -316,7 +322,7 @@ impl Queue {
 
     /// The waiting job nearest the front, while a slot is free.
     fn next_waiting(&self) -> Option<usize> {
-        if self.in_flight_count() >= MAX_IN_FLIGHT {
+        if self.running_count() >= MAX_IN_FLIGHT {
             return None;
         }
         self.jobs

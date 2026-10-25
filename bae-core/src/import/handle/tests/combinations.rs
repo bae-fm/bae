@@ -102,7 +102,7 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
         "each folder is a disc"
     );
     let mut events = handle.every_event();
-    let import_id = handle.start_import(&key).await.unwrap();
+    let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _) = await_import_outcome(&mut events, &import_id)
         .await
         .unwrap_or_else(|error| panic!("combined import failed: {error}"));

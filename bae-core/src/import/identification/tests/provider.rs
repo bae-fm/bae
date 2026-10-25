@@ -31,7 +31,7 @@ async fn serve_one(mut stream: tokio::net::TcpStream, state: Arc<Mutex<FakeState
         let gate = state
             .gate
             .as_ref()
-            .filter(|(needle, _)| target.contains(needle.as_str()))
+            .filter(|(needles, _)| needles.iter().any(|needle| target.contains(needle.as_str())))
             .map(|(_, gate)| gate.clone());
         (status, body, gate)
     };

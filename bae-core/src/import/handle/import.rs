@@ -52,6 +52,29 @@ enum ImportRequest {
     Selection,
 }
 
+/// What asking to import a candidate did.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ImportStart {
+    /// The import is queued under this id.
+    Queued { import_id: String },
+    /// The release the candidate's run picked unattended is still being read
+    /// in full. Nothing is queued yet: the candidate imports once that read
+    /// stores the pick, and not at all if it stores none.
+    WhenPickStored,
+}
+
+impl ImportStart {
+    /// The queued import's id, for a test that asked while nothing was being
+    /// read.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn expect_queued(self) -> String {
+        match self {
+            Self::Queued { import_id } => import_id,
+            Self::WhenPickStored => panic!("the import waits for a pick being read"),
+        }
+    }
+}
+
 impl ImportServiceHandle {
     /// The stored reading while the candidate and its audio files are unchanged,
     /// a new reading otherwise. Stores nothing; the caller decides whether the
@@ -112,11 +135,13 @@ impl ImportServiceHandle {
         })
     }
 
-    /// Queue an import of the candidate as stored, ending its identification.
+    /// Queue an import of the candidate as stored, ending its identification
+    /// — unless that identification is reading the release it picked
+    /// unattended, which the import then waits for.
     pub async fn start_import(
         &self,
         candidate_key: &str,
-    ) -> Result<String, crate::import::ImportError> {
+    ) -> Result<ImportStart, crate::import::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.to_string();
         self.committed(async move {
@@ -127,11 +152,12 @@ impl ImportServiceHandle {
     }
 
     /// [`Self::start_import`] for one row of a bulk import, refused while that
-    /// row is being identified.
+    /// row is being identified, other than reading the release its run
+    /// picked unattended.
     pub async fn import_selected(
         &self,
         candidate_key: &str,
-    ) -> Result<String, crate::import::ImportError> {
+    ) -> Result<ImportStart, crate::import::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.to_string();
         self.committed(async move {
@@ -147,7 +173,7 @@ impl ImportServiceHandle {
     pub(crate) async fn import_identified(
         &self,
         candidate_key: &str,
-    ) -> Result<String, crate::import::ImportError> {
+    ) -> Result<ImportStart, crate::import::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.to_string();
         self.committed(async move {
@@ -201,8 +227,27 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &str,
         request: ImportRequest,
-    ) -> Result<String, crate::import::ImportError> {
+    ) -> Result<ImportStart, crate::import::ImportError> {
         let commit = self.folder_state_commit.lock("start an import").await;
+        let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} is not a scanned folder candidate"),
+            });
+        };
+        // Refused for every request kind: an import owns it or its files are
+        // already a release.
+        self.candidate_standing(candidate_key, &candidate)
+            .await?
+            .editable()?;
+        // Asked under the lock the verdict write ends its answer under, so the
+        // ask is on the answer that write carries out, or the write has ended
+        // it and what follows imports the stored pick. Every request kind
+        // waits: the read is not cancelled, and the draft it replaces is not
+        // imported.
+        if self.runtime.ask_import_once_stored(candidate_key) {
+            info!("{candidate_key} imports once the release its run picked is read and stored");
+            return Ok(ImportStart::WhenPickStored);
+        }
         match request {
             ImportRequest::Candidate => {}
             ImportRequest::Selection => {
@@ -217,16 +262,6 @@ impl ImportServiceHandle {
                 }
             }
         }
-        let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
-            return Err(crate::import::ImportError::Internal {
-                detail: format!("{candidate_key} is not a scanned folder candidate"),
-            });
-        };
-        // Refused for every request kind: an import owns it or its files are
-        // already a release.
-        self.candidate_standing(candidate_key, &candidate)
-            .await?
-            .editable()?;
         let content_hash = candidate.files.content_hash();
         let preparation = self
             .library_manager
@@ -321,7 +356,7 @@ impl ImportServiceHandle {
         self.cancel_identification(candidate_key);
         drop(commit);
         self.send_claimed_command(command, expectation).await?;
-        Ok(import_id)
+        Ok(ImportStart::Queued { import_id })
     }
 
     /// Store the person's artist answer while this candidate is editable.

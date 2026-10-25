@@ -258,7 +258,7 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
     assert_eq!(stored_draft(&handle, &hash).await, applied);
 
     let mut events = handle.every_event();
-    let import_id = handle.start_import(&key).await.unwrap();
+    let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _album_id) = await_import_outcome(&mut events, &import_id)
         .await
         .expect("the import completes");
@@ -327,7 +327,7 @@ async fn a_tags_draft_and_a_blank_draft_import_exactly_the_draft() {
         let draft = pane(&handle, &key).await.metadata_draft;
 
         let mut events = handle.every_event();
-        let import_id = handle.start_import(&key).await.unwrap();
+        let import_id = handle.start_import(&key).await.unwrap().expect_queued();
         let (release_id, album_id) = await_import_outcome(&mut events, &import_id)
             .await
             .expect("the import completes");

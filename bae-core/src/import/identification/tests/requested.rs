@@ -411,7 +411,10 @@ async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
         )
         .await
         .unwrap();
-    assert!(wrote, "the seeded verdict lands");
+    assert!(
+        matches!(wrote, crate::import::VerdictWrite::Stored { .. }),
+        "the seeded verdict lands"
+    );
 
     fixture.start_explicit_lookup(&dir);
 
