@@ -278,6 +278,8 @@ impl ArtworkAnalyzer for GatedAnalyzer {
 
 struct Fixture {
     manager: LibraryManager,
+    /// The store under `manager`, for a test that breaks a row directly.
+    database: Database,
     /// The writer the handle uses, for tests that write a candidate directly.
     preparations: crate::import::CandidatePreparations,
     import: ImportServiceHandle,
@@ -330,7 +332,7 @@ impl Fixture {
         // No Discogs key, so lookups ask MusicBrainz alone unless a test calls
         // `use_discogs`.
         let manager = LibraryManager::new(
-            database,
+            database.clone(),
             crate::config::AppDir::under_home(temp.path()).unwrap(),
             Arc::new(ConfigHandle::new(config)),
             clock,
@@ -357,6 +359,7 @@ impl Fixture {
         };
         Fixture {
             manager,
+            database,
             preparations,
             import,
             provider,

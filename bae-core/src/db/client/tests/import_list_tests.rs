@@ -653,6 +653,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         .set_cover(
             &hash,
             &crate::import::CoverSelection::Local("cover.jpg".to_string()),
+            None,
         )
         .await
         .unwrap();
@@ -698,6 +699,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         .set_cover(
             &content_hash,
             &crate::import::CoverSelection::Local("folder.jpg".to_string()),
+            None,
         )
         .await
         .unwrap();

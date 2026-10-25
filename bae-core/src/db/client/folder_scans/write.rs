@@ -367,12 +367,6 @@ pub(crate) fn ensure_candidate_state(
             super::super::candidate_state_rows::save_cover(sql, &content_hash, &cover)?;
         }
     }
-    if created {
-        sql.execute(
-            "INSERT INTO import_candidate_asset_preparation (content_hash) VALUES (?)",
-            [&content_hash],
-        )?;
-    }
     Ok(())
 }
 

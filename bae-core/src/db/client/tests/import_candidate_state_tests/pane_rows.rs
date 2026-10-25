@@ -540,6 +540,15 @@ fn remote_with_copies(url: &str) -> CoverSelection {
     )
 }
 
+/// The bytes a remote cover is stored with, fetched with it; none for a cover
+/// the folder holds.
+fn fetched_bytes(cover: &CoverSelection) -> Option<crate::import::cover_art::RemoteImage> {
+    matches!(cover, CoverSelection::Remote(_, _)).then(|| crate::import::cover_art::RemoteImage {
+        bytes: vec![1, 2, 3],
+        content_type: crate::util::content_type::ContentType::Jpeg,
+    })
+}
+
 /// Every kind of cover choice comes back as it went in, a remote one with its
 /// downscaled copies.
 #[tokio::test]
@@ -558,7 +567,7 @@ async fn a_cover_choice_round_trips_in_every_shape() {
         let (_, hash) = stored_pane_candidate(&db).await;
 
         crate::import::CandidatePreparations::new(db.clone())
-            .set_cover(&hash, &cover)
+            .set_cover(&hash, &cover, fetched_bytes(&cover).as_ref())
             .await
             .unwrap();
 
@@ -585,7 +594,10 @@ async fn a_new_cover_choice_leaves_none_of_the_old_copies() {
         CoverSelection::Local("cover.jpg".to_string()),
         remote_with_copies("https://example.invalid/second"),
     ] {
-        preparations.set_cover(&hash, &cover).await.unwrap();
+        preparations
+            .set_cover(&hash, &cover, fetched_bytes(&cover).as_ref())
+            .await
+            .unwrap();
         assert_eq!(
             db.load_import_candidate_pane_rows(&hash)
                 .await

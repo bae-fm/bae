@@ -314,35 +314,6 @@ async fn changing_audio_preserves_the_metadata_of_surviving_tracks() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn import_admission_refuses_an_incomplete_candidate_revision() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
-    // A remote cover chosen without its bytes leaves the revision waiting
-    // for them.
-    handle
-        .preparations
-        .set_cover(
-            &hash,
-            &crate::import::CoverSelection::Remote(
-                crate::import::cover_art::RemoteImageSet::original(
-                    "https://example.invalid/cover".to_string(),
-                ),
-                crate::import::Catalog::MusicBrainz,
-            ),
-        )
-        .await
-        .unwrap();
-
-    let error = handle
-        .start_import(&key)
-        .await
-        .expect_err("the incomplete revision must not enter the import queue");
-
-    assert!(error.to_string().contains("complete prepared asset set"));
-    assert!(handle.candidate_runtime(&key).is_none());
-    shut_down(handle).await;
-}
-
-#[tokio::test(flavor = "multi_thread")]
 async fn a_claimed_candidate_refuses_every_preparation_mutation() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     let before = handle

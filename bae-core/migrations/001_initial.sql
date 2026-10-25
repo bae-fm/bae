@@ -1332,13 +1332,6 @@ CREATE TABLE IF NOT EXISTS import_candidate_remote_cover_asset (
     FOREIGN KEY (content_hash) REFERENCES import_candidate_cover (content_hash) ON DELETE CASCADE
 ) STRICT;
 
--- The candidates whose remote cover, where they chose one, has its bytes
--- fetched and is ready to import.
-CREATE TABLE IF NOT EXISTS import_candidate_asset_preparation (
-    content_hash TEXT PRIMARY KEY,
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
-) STRICT;
-
 -- Where the draft was read from; who wrote it is `import_candidate_edit.author`.
 CREATE TABLE IF NOT EXISTS import_candidate_draft_provenance (
     content_hash TEXT PRIMARY KEY,

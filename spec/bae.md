@@ -2577,10 +2577,9 @@ Keyed by the candidate's content hash.
 | `import_candidate_medium` | the draft's mediums |
 | `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_composer`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values |
 | `import_candidate_sheet_disc`, `import_candidate_sheet_reference` | the person's CUE decisions |
-| `import_candidate_cover`, `import_candidate_cover_copy`, `import_candidate_remote_cover_asset` | the chosen cover and its fetched bytes |
+| `import_candidate_cover`, `import_candidate_cover_copy`, `import_candidate_remote_cover_asset` | the chosen cover and its fetched bytes; a catalog's cover is never stored without them |
 | `import_candidate_cover_option`, `import_candidate_cover_option_copy` | the covers the applied release offers the picker, in order |
 | `import_candidate_album_pick` | the library album the person picked for it to join |
-| `import_candidate_asset_preparation` | that a remote cover the candidate chose has its bytes |
 | `import_candidate_draft_provenance` | where the draft was read from |
 | `import_candidate_release_link`, `import_candidate_release_link_partner`, `import_candidate_release_link_album` | the pressing or album the candidate is linked to |
 | `import_candidate_session` | where the pane was, and its last failure |

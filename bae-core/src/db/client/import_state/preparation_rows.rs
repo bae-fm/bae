@@ -101,7 +101,7 @@ pub(super) fn load_preparation_on(
         return Ok(None);
     };
     let rows = load_pane_rows_on(sql, content_hash)?;
-    let (assets, assets_prepared) = prepared_asset_rows::load_asset_rows_on(sql, content_hash)?;
+    let assets = prepared_asset_rows::load_asset_rows_on(sql, content_hash)?;
     Ok(Some(CandidatePreparation {
         content_hash: state.content_hash,
         folder_path: state.folder_path,
@@ -116,7 +116,6 @@ pub(super) fn load_preparation_on(
             assets,
         },
         link: state.release_link,
-        assets_prepared,
         identification: state.identify,
         signals: state.signals,
     }))
@@ -209,12 +208,7 @@ pub(super) fn save_preparation_on(
         super::candidate_state_rows::save_cover(sql, content_hash, cover)?;
     }
     pane_rows::replace_cover_options(sql, content_hash, &prep.metadata.cover_options)?;
-    prepared_asset_rows::replace_asset_rows(
-        sql,
-        content_hash,
-        &prep.metadata.assets,
-        prep.assets_prepared,
-    )?;
+    prepared_asset_rows::replace_asset_rows(sql, content_hash, &prep.metadata.assets)?;
     delete_file_edits(sql, content_hash)?;
     insert_file_edits(sql, content_hash, &prep.file_edits)?;
     match extras.pane {

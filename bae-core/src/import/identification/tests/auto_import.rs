@@ -385,17 +385,31 @@ async fn an_automatic_import_that_cannot_start_is_recorded_as_its_failed_import(
     let dir = fixture.disc_id_candidate("Album");
     let key = dir.to_string_lossy().into_owned();
     fixture.identify_ready(&dir, "mb-refused", "rg-refused").await;
-    // A draft whose remote cover has no bytes is one no import starts from.
+    // A remote cover whose stored bytes are gone is a broken candidate no
+    // import starts from.
+    let hash = fixture.content_hash(&dir);
     fixture
         .preparations
         .set_cover(
-            &fixture.content_hash(&dir),
+            &hash,
             &crate::import::CoverSelection::Remote(
                 crate::import::cover_art::RemoteImageSet::original(
                     "https://example.invalid/cover".to_string(),
                 ),
                 crate::import::Catalog::MusicBrainz,
             ),
+            Some(&crate::import::cover_art::RemoteImage {
+                bytes: vec![1, 2, 3],
+                content_type: crate::util::content_type::ContentType::Jpeg,
+            }),
+        )
+        .await
+        .unwrap();
+    fixture
+        .database
+        .execute_for_test(
+            "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?",
+            vec![hash],
         )
         .await
         .unwrap();
@@ -404,7 +418,7 @@ async fn an_automatic_import_that_cannot_start_is_recorded_as_its_failed_import(
         .import
         .import_identified(&key)
         .await
-        .expect_err("an unprepared draft does not start an import");
+        .expect_err("a remote cover without its bytes does not start an import");
 
     let failure = fixture
         .import_failure(&dir)

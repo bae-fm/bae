@@ -183,14 +183,35 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
     assert_eq!(pane.draft.tracks, stale.draft.tracks);
 }
 
+/// A remote cover is stored with the bytes fetched for it, so one whose bytes
+/// are missing is a broken row, refused when an import reads it rather than
+/// imported without its cover.
 #[tokio::test]
-async fn preparation_without_its_completeness_marker_is_refused() {
+async fn a_remote_cover_stored_without_its_bytes_is_refused_on_read() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
+    crate::import::CandidatePreparations::new(db.clone())
+        .set_prepared_cover(
+            &host_root("/music"),
+            &pane_candidate_path(),
+            &as_read(&hash, 0),
+            &CoverSelection::Remote(
+                crate::import::cover_art::RemoteImageSet::original(
+                    "https://example.invalid/cover".to_string(),
+                ),
+                Catalog::Discogs,
+            ),
+            Some(&crate::import::cover_art::RemoteImage {
+                bytes: vec![1, 2, 3],
+                content_type: crate::util::content_type::ContentType::Jpeg,
+            }),
+        )
+        .await
+        .unwrap();
     let deleted_hash = hash.clone();
     db.call(move |sql| {
         sql.execute(
-            "DELETE FROM import_candidate_asset_preparation WHERE content_hash = ?",
+            "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?",
             [&deleted_hash],
         )?;
         Ok(())
@@ -201,8 +222,8 @@ async fn preparation_without_its_completeness_marker_is_refused() {
     let error = db
         .load_import_candidate_preparation(&hash)
         .await
-        .expect_err("a migrated or partial candidate is not prepared");
-    assert!(error.to_string().contains("no complete prepared asset set"));
+        .expect_err("a remote cover without its bytes is not ready to import");
+    assert!(error.to_string().contains("a remote candidate cover has no prepared bytes"));
 }
 
 /// A pane edit with no candidate row under it is a defect, not a state to
@@ -214,7 +235,7 @@ async fn a_pane_edit_without_a_candidate_row_is_refused() {
 
     for error in [
         crate::import::CandidatePreparations::new(db.clone())
-            .set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
+            .set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()), None)
             .await
             .expect_err("a cover with nothing picked"),
         crate::import::CandidatePreparations::new(db.clone())
@@ -461,7 +482,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
         .await
         .unwrap();
     crate::import::CandidatePreparations::new(db.clone())
-        .set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
+        .set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()), None)
         .await
         .unwrap();
     let preparation = db
@@ -560,7 +581,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         .await
         .unwrap();
     crate::import::CandidatePreparations::new(db.clone())
-        .set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
+        .set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()), None)
         .await
         .unwrap();
     let mapping = edited_row(
@@ -616,6 +637,10 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         file_edits.sheet_discs
     );
 
+    let chosen_bytes = crate::import::cover_art::RemoteImage {
+        bytes: vec![1, 2, 3],
+        content_type: crate::util::content_type::ContentType::Jpeg,
+    };
     crate::import::CandidatePreparations::new(db.clone())
         .set_cover(
             &hash,
@@ -623,6 +648,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
                 crate::import::cover_art::RemoteImageSet::original("https://example.invalid/cover".to_string()),
                 Catalog::MusicBrainz,
             ),
+            Some(&chosen_bytes),
         )
         .await
         .unwrap();
@@ -643,7 +669,15 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
             Catalog::MusicBrainz,
         )),
         "a draft that brings no image of its own says nothing about the cover, \
-         so the one the person chose stands — still waiting for its bytes"
+         so the one the person chose stands"
+    );
+    assert_eq!(
+        db.load_import_candidate_prepared_assets(&hash)
+            .await
+            .unwrap()
+            .remote_cover,
+        Some(chosen_bytes),
+        "the chosen cover keeps the bytes fetched with it"
     );
 }
 
@@ -674,7 +708,7 @@ async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
     );
     assert_eq!(
         crate::import::CandidatePreparations::new(db.clone())
-            .set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
+            .set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()), None)
             .await
             .unwrap(),
         3

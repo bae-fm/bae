@@ -161,11 +161,6 @@ pub struct CandidatePreparation {
     /// What the candidate is linked to in the catalogs. Independent of
     /// `metadata`: no draft write changes it.
     pub link: Option<crate::import::ReleaseLink>,
-    /// Whether `metadata.assets` holds what this draft's cover needs: the
-    /// bytes of a remote cover. A remote cover chosen without them leaves the
-    /// candidate unprepared, and its source must be applied again before it
-    /// can import.
-    pub assets_prepared: bool,
     /// What identification concluded, or `None` when nothing has — including
     /// after a file decision cleared a verdict about a shape that is gone.
     pub identification: Option<DbCandidateIdentifyResult>,
@@ -181,18 +176,29 @@ impl CandidatePreparation {
         self.author
             .check_provenance(self.metadata.provenance.as_ref())
             .map_err(|error| format!("candidate {}: {error}", self.content_hash))?;
-        if let (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, Some(_)) =
-            (&self.metadata.cover, &self.metadata.assets.remote_cover)
-        {
-            return Err("candidate remote-cover bytes have no remote cover selection".into());
+        check_cover_bytes(
+            self.metadata.cover.as_ref(),
+            self.metadata.assets.remote_cover.as_ref(),
+        )
+    }
+}
+
+/// `Ok` when `image` is exactly what `cover` needs to import: a remote
+/// cover's bytes, fetched with the selection, and none for a cover the
+/// folder holds. A remote cover is never stored without its bytes, so a
+/// stored candidate's cover is always ready to import.
+pub(crate) fn check_cover_bytes(
+    cover: Option<&CoverSelection>,
+    image: Option<&crate::import::cover_art::RemoteImage>,
+) -> Result<(), String> {
+    match (cover, image) {
+        (Some(CoverSelection::Remote(_, _)), Some(_))
+        | (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, None) => Ok(()),
+        (Some(CoverSelection::Remote(_, _)), None) => {
+            Err("a remote candidate cover has no prepared bytes".into())
         }
-        if self.assets_prepared {
-            if let (Some(CoverSelection::Remote(_, _)), None) =
-                (&self.metadata.cover, &self.metadata.assets.remote_cover)
-            {
-                return Err("a remote candidate cover has no prepared bytes".into());
-            }
+        (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, Some(_)) => {
+            Err("candidate remote-cover bytes have no remote cover selection".into())
         }
-        Ok(())
     }
 }

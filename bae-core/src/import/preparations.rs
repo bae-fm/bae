@@ -71,7 +71,6 @@ impl CandidatePreparations {
             prep.link = Some(crate::import::ReleaseLink::Pressing(pick.link.clone()));
             let mut metadata = pick.metadata.clone();
             settle_cover(&mut metadata, &mut prep.metadata);
-            prep.assets_prepared = assets_are_prepared(&metadata);
             prep.metadata = metadata;
             prep.metadata_revision += 1;
         }
@@ -341,7 +340,6 @@ impl CandidatePreparations {
         prep.metadata.draft = draft;
         // An album is no pressing: no release's covers are offered for it.
         prep.metadata.cover_options = Vec::new();
-        prep.assets_prepared = assets_are_prepared(&prep.metadata);
         prep.metadata_revision += 1;
         let revision = prep.metadata_revision;
         match self
@@ -463,8 +461,8 @@ impl CandidatePreparations {
 
     /// A source's projection becomes the candidate's metadata: the person
     /// applied it — a pick, their files' tags, or a cleared draft — so they
-    /// are its author, and its answers are complete. The release link is the
-    /// caller's to set; the draft never changes it.
+    /// are its author. The release link is the caller's to set; the draft
+    /// never changes it.
     async fn apply_metadata(
         &self,
         mut prep: CandidatePreparation,
@@ -481,7 +479,6 @@ impl CandidatePreparations {
         };
         prep.folder_path = folder_path.to_string();
         prep.author = MetadataAuthor::Person;
-        prep.assets_prepared = assets_are_prepared(&metadata);
         prep.metadata = metadata;
         prep.metadata_revision += 1;
         let revision = prep.metadata_revision;
@@ -523,18 +520,6 @@ fn settled_cover(supplied: PreparedCover, stored: PreparedCover) -> PreparedCove
         Some(_) => supplied,
         None => stored,
     }
-}
-
-/// Whether this application holds the bytes every asset it names needs. A
-/// remote cover with no prepared image is the one pair that is short, and it
-/// is the state a cover chosen from the picker's gallery leaves behind until
-/// a source is applied again — so an application that carries that selection
-/// forward carries the waiting with it rather than dropping the choice.
-fn assets_are_prepared(metadata: &crate::import::CandidateMetadataDraft) -> bool {
-    !matches!(
-        (&metadata.cover, &metadata.assets.remote_cover),
-        (Some(crate::import::CoverSelection::Remote(_, _)), None)
-    )
 }
 
 /// Move the settled cover onto `metadata`, taking it from `stored` where the

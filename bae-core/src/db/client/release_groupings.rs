@@ -712,10 +712,6 @@ impl Database {
                          VALUES (?, ?)",
                         params![content_hash, key],
                     )?;
-                    sql.execute(
-                        "INSERT INTO import_candidate_asset_preparation (content_hash) VALUES (?)",
-                        [&content_hash],
-                    )?;
                     super::import_state::store_file_edits(sql, &content_hash, &inherited)?;
                 }
             }

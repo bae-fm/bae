@@ -11,22 +11,20 @@ use crate::import::{CandidateDraft, TrackArtistAssignments};
 use crate::library::LibraryError;
 
 impl CandidatePreparations {
-    /// Record the cover the user chose for this candidate.
+    /// Record the cover the user chose for this candidate, with the bytes
+    /// fetched for a remote one.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn set_cover(
         &self,
         content_hash: &str,
         cover: &crate::import::CoverSelection,
+        remote_image: Option<&crate::import::cover_art::RemoteImage>,
     ) -> Result<u64, LibraryError> {
         let cover = cover.clone();
+        let remote_image = remote_image.cloned();
         self.edit_candidate(None, content_hash, None, None, move |prep| {
-            // Chosen without its bytes, a remote cover leaves the candidate
-            // unprepared until a source is applied again.
-            if matches!(cover, crate::import::CoverSelection::Remote(_, _)) {
-                prep.assets_prepared = false;
-            }
             prep.metadata.cover = Some(cover);
-            prep.metadata.assets.remote_cover = None;
+            prep.metadata.assets.remote_cover = remote_image;
             Ok(())
         })
         .await

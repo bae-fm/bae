@@ -352,7 +352,6 @@ mod tests {
         "import_candidate_cover_option",
         "import_candidate_cover_option_copy",
         "import_candidate_remote_cover_asset",
-        "import_candidate_asset_preparation",
         "import_candidate_draft_provenance",
         "import_candidate_release_link",
         "import_candidate_release_link_partner",
