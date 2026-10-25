@@ -71,6 +71,39 @@ nb = "Denne utgivelsen blir fortsatt identifisert. Importer den når identifiser
 fi = "Tätä julkaisua tunnistetaan vielä. Tuo se, kun tunnistus on valmis."
 
 
+[messages."core.import.error.files_already_imported"]
+comment = "An import refused because this device already imported a release from the same files: a folder's files are imported once on each device."
+value = "This device already imported these files, so they are not imported again."
+
+[messages."core.import.error.files_already_imported".translations]
+es = "Este dispositivo ya importó estos archivos, así que no se vuelven a importar."
+fr = "Cet appareil a déjà importé ces fichiers ; ils ne sont pas importés à nouveau."
+de = "Dieses Gerät hat diese Dateien bereits importiert, daher werden sie nicht erneut importiert."
+pt-BR = "Este dispositivo já importou estes arquivos, então eles não são importados de novo."
+ja = "このデバイスはこれらのファイルをすでにインポートしているため、再度インポートされません。"
+ko = "이 기기에서 이미 이 파일들을 가져왔으므로 다시 가져오지 않습니다."
+zh-Hans = "此设备已导入过这些文件，因此不会再次导入。"
+ar = "استورد هذا الجهاز هذه الملفات بالفعل، لذا لن تُستورد مرة أخرى."
+he = "המכשיר הזה כבר ייבא את הקבצים האלה, ולכן הם לא ייובאו שוב."
+uk = "Цей пристрій уже імпортував ці файли, тому їх не буде імпортовано знову."
+bg = "Това устройство вече е импортирало тези файлове, затова те няма да бъдат импортирани отново."
+pl = "To urządzenie już zaimportowało te pliki, więc nie zostaną zaimportowane ponownie."
+cs = "Toto zařízení už tyto soubory importovalo, takže se znovu neimportují."
+hr = "Ovaj je uređaj već uvezao ove datoteke pa se neće ponovno uvesti."
+zh-Hant = "此裝置已匯入過這些檔案，因此不會再次匯入。"
+it = "Questo dispositivo ha già importato questi file, quindi non vengono importati di nuovo."
+tr = "Bu cihaz bu dosyaları zaten içe aktardı, bu yüzden yeniden içe aktarılmazlar."
+nl = "Dit apparaat heeft deze bestanden al geïmporteerd, dus ze worden niet opnieuw geïmporteerd."
+sk = "Toto zariadenie už tieto súbory importovalo, takže sa znova neimportujú."
+hu = "Ez az eszköz már importálta ezeket a fájlokat, ezért nem importálja őket újra."
+ro = "Acest dispozitiv a importat deja aceste fișiere, așa că nu sunt importate din nou."
+el = "Αυτή η συσκευή έχει ήδη εισαγάγει αυτά τα αρχεία, οπότε δεν εισάγονται ξανά."
+pt-PT = "Este dispositivo já importou estes ficheiros, por isso não são importados novamente."
+sv = "Den här enheten har redan importerat filerna, så de importeras inte igen."
+da = "Denne enhed har allerede importeret filerne, så de importeres ikke igen."
+nb = "Denne enheten har allerede importert filene, så de importeres ikke på nytt."
+fi = "Tämä laite on jo tuonut nämä tiedostot, joten niitä ei tuoda uudelleen."
+
 [messages."core.import.grouping.source_changed"]
 comment = "A release read from several folders can't be worked on: one of its folders changed after the folders were combined."
 value = "A folder this release is read from has changed. Separate the release and combine its folders again."

@@ -187,6 +187,14 @@ pub enum ImportError {
     #[error("This release is still being identified; import it once identification finishes")]
     CandidateBeingIdentified,
 
+    /// This device already imported a release from these files: one folder
+    /// hash is one release on a device (`local_release_origin`). Refused when
+    /// the import is asked for, and by the commit when another import of the
+    /// same files landed first. Not desktop-only: the commit's write error
+    /// carries it on every platform.
+    #[error("this device already imported these files, as release {release_id}")]
+    FilesAlreadyImported { release_id: String },
+
     /// A cancel reached an import that is already writing its release, which
     /// is one transaction and completes.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -320,6 +328,7 @@ impl ImportError {
             Self::CandidateImportInProgress => C::CandidateImportInProgress,
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             Self::CandidateBeingIdentified => C::CandidateBeingIdentified,
+            Self::FilesAlreadyImported { .. } => C::FilesAlreadyImported,
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             Self::MetadataTrackCount {
                 folder_tracks,

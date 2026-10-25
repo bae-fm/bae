@@ -119,6 +119,7 @@ fn category_column(category: UiErrorCategory) -> String {
         C::ImportData => "import_data".to_string(),
         C::CandidateImportInProgress => "candidate_import_in_progress".to_string(),
         C::CandidateBeingIdentified => "candidate_being_identified".to_string(),
+        C::FilesAlreadyImported => "files_already_imported".to_string(),
         C::MetadataTrackCount {
             folder_tracks,
             release_tracks,
@@ -279,6 +280,7 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
             "import_data" => C::ImportData,
             "candidate_import_in_progress" => C::CandidateImportInProgress,
             "candidate_being_identified" => C::CandidateBeingIdentified,
+            "files_already_imported" => C::FilesAlreadyImported,
             "release_changed_since_opened" => C::ReleaseChangedSinceOpened,
             "export" => C::Export,
             "save" => C::Save,
@@ -520,6 +522,7 @@ mod tests {
             C::ImportData,
             C::CandidateImportInProgress,
             C::CandidateBeingIdentified,
+            C::FilesAlreadyImported,
             C::MetadataTrackCount {
                 folder_tracks: 12,
                 release_tracks: 10,

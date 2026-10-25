@@ -112,6 +112,7 @@ impl From<bae_core::ui::UiError> for AutomationError {
             | UiErrorCategory::ImportData
             | UiErrorCategory::CandidateImportInProgress
             | UiErrorCategory::CandidateBeingIdentified
+            | UiErrorCategory::FilesAlreadyImported
             | UiErrorCategory::MetadataTrackCount { .. }
             | UiErrorCategory::TiedMediums { .. }
             | UiErrorCategory::ReleaseChangedSinceOpened

@@ -560,7 +560,7 @@ impl Database {
                 }
 
                 insert_release_row(tx, &release)?;
-                record_import_origin_on(tx, &guard, &release.id)?;
+                record_import_origin_on(tx, &guard, &release.id).map_err(artist_write_failure)?;
 
                 // One row per catalog that describes the release, empty when
                 // none does. The records are uniquely keyed on

@@ -416,9 +416,13 @@ imports read (`local_release_origin`); the record never syncs, and the release
 carries no hash. It does one job: a folder whose hash it holds is Done in this
 device's import list (§3.2), wherever the folder sits now.
 
-One hash is one release on a device. Importing files this device already
-imported fails, and the release imported first stands. Deleting the release
-deletes the record with it, and the folder is back in Found.
+One hash is one release on a device. An import of files this device already
+imported is refused when it is asked for, and nothing runs; the person is told
+this device already imported those files. Two imports of the same files asked
+for before either lands both run, and the one that writes second finds the hash
+taken: it fails with the same words and writes nothing. The release imported
+first stands. Deleting the release deletes the record with it, and the folder
+is back in Found.
 
 The hash reads no bytes, so it tells files apart by name, size and time alone.
 A copy to another disk usually changes the modification times, so the same rip

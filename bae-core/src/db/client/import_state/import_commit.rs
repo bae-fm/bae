@@ -48,20 +48,44 @@ pub(crate) fn end_import_attempt_of_commit(
 
 /// Record, inside the commit, the folder hash of the files this device
 /// imported the release from: what places the folder in Done, wherever it is
-/// moved. One hash is one release on this device, so a second import of the
-/// same files fails here, and the whole commit with it.
+/// moved. One hash is one release on this device. The import was refused when
+/// asked for if this device already held the hash; an import of the same files
+/// that landed in between leaves the hash taken, and the unique hash refuses
+/// this commit whole as [`ArtistWriteError::FilesAlreadyImported`].
 pub(crate) fn record_import_origin_on(
     sql: &SqlContext<'_, '_>,
     guard: &ImportCommitGuard,
     release_id: &str,
-) -> Result<(), DbError> {
+) -> Result<(), ArtistWriteError> {
     match guard {
         ImportCommitGuard::Candidate { expectation, .. } => {
-            sql.execute(
+            let content_hash = &expectation.candidate.content_hash;
+            match sql.execute(
                 "INSERT INTO local_release_origin (release_id, content_hash) VALUES (?1, ?2)",
-                params![release_id, expectation.candidate.content_hash],
-            )?;
-            Ok(())
+                params![release_id, content_hash],
+            ) {
+                Ok(_) => Ok(()),
+                // The unique hash is the one unique constraint the insert can
+                // break: the release id is the one this commit just made.
+                Err(rusqlite::Error::SqliteFailure(failure, message))
+                    if failure.extended_code == rusqlite::ffi::SQLITE_CONSTRAINT_UNIQUE =>
+                {
+                    let imported: Option<String> = sql
+                        .query_row(
+                            "SELECT release_id FROM local_release_origin WHERE content_hash = ?",
+                            [content_hash],
+                            |row| row.get(0),
+                        )
+                        .optional()?;
+                    match imported {
+                        Some(release_id) => {
+                            Err(ArtistWriteError::FilesAlreadyImported { release_id })
+                        }
+                        None => Err(rusqlite::Error::SqliteFailure(failure, message).into()),
+                    }
+                }
+                Err(error) => Err(error.into()),
+            }
         }
         #[cfg(test)]
         ImportCommitGuard::UncheckedTestSetup { .. } => Ok(()),

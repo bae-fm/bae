@@ -135,36 +135,77 @@ async fn repeated_imports_keep_independent_copies() {
     }
 }
 
-/// One folder hash is one release on this device: importing files this
-/// device already imported fails, and the release imported first stands.
+/// One folder hash is one release on this device. Two copies of a folder
+/// whose files hash alike, both queued past the check an import starts with —
+/// as two imports asked for before either lands are — make one release: the
+/// commit of the later one finds the hash taken and fails with the typed
+/// error, not the database's.
 #[tokio::test]
-async fn a_second_import_of_the_same_files_fails() {
+async fn two_imports_of_the_same_files_make_one_release() {
     support::tracing_init();
     let f = ImportFixture::new().await;
-    let album_dir = f.temp_path().join("imported-twice");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_album_files(&album_dir, &["01 Track.flac"]);
+    let original = f.temp_path().join("original");
+    fs::create_dir_all(&original).unwrap();
+    generate_album_files(&original, &["01 Track.flac"]);
+    let copy = f.temp_path().join("copy");
+    fs::create_dir_all(&copy).unwrap();
+    let source = original.join("01 Track.flac");
+    let target = copy.join("01 Track.flac");
+    fs::copy(&source, &target).unwrap();
+    fs::File::options()
+        .write(true)
+        .open(&target)
+        .unwrap()
+        .set_times(
+            fs::FileTimes::new().set_modified(fs::metadata(&source).unwrap().modified().unwrap()),
+        )
+        .unwrap();
     let pressing = seed_discogs_test_release(
         f.library_manager.providers(),
         discogs_release("Album Title", &["Track"]),
     );
-    let (first, _) = import_folder(
-        &f, &album_dir, None, ImportDestination::Local,
-        support::discogs_release(pressing.clone()),
-    ).await.expect("the first import lands");
 
-    let second = import_folder(
-        &f, &album_dir, None, ImportDestination::Local,
-        support::discogs_release(pressing),
-    ).await;
-    assert!(second.is_err(), "a second release of the same files: {second:?}");
-    assert!(f.db.find_release_by_id(&first).await.unwrap().is_some());
+    let mut progress = Vec::new();
+    for folder in [&original, &copy] {
+        let import_id = f.ids.new_id().to_string();
+        f.handle
+            .send_command(ImportCommand {
+                destination: ImportDestination::Local,
+                ..support::folder_import(
+                    &import_id,
+                    folder.to_path_buf(),
+                    support::discogs_release(pressing.clone()),
+                )
+            })
+            .await
+            .expect("both imports are queued before either commits");
+        progress.push(f.handle.subscribe_import(import_id));
+    }
+    let mut outcomes = Vec::new();
+    for progress_rx in &mut progress {
+        outcomes.push(support::try_wait_for_import_complete(progress_rx).await);
+    }
+
+    let landed: Vec<String> = outcomes
+        .iter()
+        .filter_map(|outcome| outcome.as_ref().ok().map(|(id, _)| id.clone()))
+        .collect();
+    assert_eq!(landed.len(), 1, "one release of the files: {outcomes:?}");
+    let failed: Vec<&String> = outcomes.iter().filter_map(|outcome| outcome.as_ref().err()).collect();
+    assert_eq!(
+        failed,
+        vec![&bae_core::import::ImportError::FilesAlreadyImported {
+            release_id: landed[0].clone(),
+        }
+        .to_string()],
+        "the other import says the files are imported here"
+    );
     let albums = f.library_manager.get_albums(&[]).await.unwrap();
     assert_eq!(albums.len(), 1);
     let releases = f.db.get_releases_for_album(&albums[0].id).await.unwrap();
     assert_eq!(
         releases.into_iter().map(|release| release.id).collect::<Vec<_>>(),
-        vec![first]
+        landed
     );
 }
 

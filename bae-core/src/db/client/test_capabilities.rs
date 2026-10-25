@@ -343,7 +343,7 @@ impl Database {
         self.read(|sql| {
             sql.query(
                 "EXPLAIN QUERY PLAN \
-                 SELECT 1 FROM local_release_origin WHERE content_hash = ?",
+                 SELECT release_id FROM local_release_origin WHERE content_hash = ?",
                 ["hash"],
                 |row| row.get::<_, String>(3),
             )

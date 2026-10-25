@@ -128,6 +128,8 @@ pub enum BridgeErrorCategory {
     CandidateImportInProgress,
     /// A bulk import reached a row identification is still answering.
     CandidateBeingIdentified,
+    /// This device already imported a release from the candidate's files.
+    FilesAlreadyImported,
     /// The release read for the candidate lists another number of tracks than
     /// its folder holds; the line takes both counts.
     MetadataTrackCount {
@@ -332,6 +334,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::CandidateBeingIdentified => {
             "core.import.error.candidate_being_identified"
         }
+        BridgeErrorCategory::FilesAlreadyImported => "core.import.error.files_already_imported",
         BridgeErrorCategory::MetadataTrackCount { .. } => "core.import.error.metadata_track_count",
         BridgeErrorCategory::TiedMediums { .. } => "core.import.error.tied_mediums",
         BridgeErrorCategory::ReleaseChangedSinceOpened => {
@@ -539,6 +542,7 @@ mirror_enum! {
         ImportData,
         CandidateImportInProgress,
         CandidateBeingIdentified,
+        FilesAlreadyImported,
         MetadataTrackCount { folder_tracks, release_tracks },
         TiedMediums { mediums },
         ReleaseChangedSinceOpened,

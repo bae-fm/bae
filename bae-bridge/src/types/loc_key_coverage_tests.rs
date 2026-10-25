@@ -263,6 +263,7 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::ReleaseChangedSinceOpened,
         BridgeErrorCategory::CandidateImportInProgress,
         BridgeErrorCategory::CandidateBeingIdentified,
+        BridgeErrorCategory::FilesAlreadyImported,
         BridgeErrorCategory::Export,
         BridgeErrorCategory::Save,
         BridgeErrorCategory::DeviceResetRequired,

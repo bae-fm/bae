@@ -60,7 +60,14 @@ impl LibraryManager {
     /// rename: it matches by file structure, not by path.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn is_content_hash_imported(&self, hash: &str) -> Result<bool, LibraryError> {
-        Ok(self.database.is_content_hash_imported(hash).await?)
+        Ok(self.release_imported_from(hash).await?.is_some())
+    }
+
+    /// The release this device imported from files whose folder hash is
+    /// `hash`, if it imported one.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn release_imported_from(&self, hash: &str) -> Result<Option<String>, LibraryError> {
+        Ok(self.database.release_imported_from(hash).await?)
     }
 
     pub async fn get_tracks_for_release(

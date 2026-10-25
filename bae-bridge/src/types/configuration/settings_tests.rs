@@ -155,6 +155,12 @@ fn expected_local_and_draft_failures_keep_their_presentation() {
             BridgeErrorCategory::CandidateBeingIdentified,
         ),
         (
+            ImportError::FilesAlreadyImported {
+                release_id: "release-1".into(),
+            },
+            BridgeErrorCategory::FilesAlreadyImported,
+        ),
+        (
             ImportError::Config {
                 detail: "failed to open key store".into(),
             },

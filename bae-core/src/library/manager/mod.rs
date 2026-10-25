@@ -264,6 +264,11 @@ impl From<crate::db::ArtistWriteError> for LibraryError {
                 Self::ArtistIdentityConflict(conflict)
             }
             crate::db::ArtistWriteError::Db(error) => Self::Database(error),
+            crate::db::ArtistWriteError::FilesAlreadyImported { release_id } => {
+                Self::Import(Box::new(crate::import::ImportError::FilesAlreadyImported {
+                    release_id,
+                }))
+            }
             other @ (crate::db::ArtistWriteError::Unresolvable(_)
             | crate::db::ArtistWriteError::LibraryChanged) => Self::Refused(other.to_string()),
         }

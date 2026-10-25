@@ -20,6 +20,8 @@ pub enum UiErrorCategory {
     CandidateImportInProgress,
     /// Identification is still answering for the candidate.
     CandidateBeingIdentified,
+    /// This device already imported a release from the candidate's files.
+    FilesAlreadyImported,
     /// The release read for the candidate lists another number of tracks than
     /// its folder holds; the line names both counts.
     MetadataTrackCount {

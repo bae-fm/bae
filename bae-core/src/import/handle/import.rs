@@ -234,11 +234,18 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),
             });
         };
-        // Refused for every request kind: an import owns it or its files are
-        // already a release.
+        // Refused for every request kind: an import owns it, or this device
+        // already imported its files, and one folder hash is one release here.
         self.candidate_standing(candidate_key, &candidate)
             .await?
             .editable()?;
+        if let Some(release_id) = self
+            .library_manager
+            .release_imported_from(&candidate.files.content_hash())
+            .await?
+        {
+            return Err(crate::import::ImportError::FilesAlreadyImported { release_id });
+        }
         // Asked under the lock the verdict write ends its answer under, so the
         // ask is on the answer that write carries out, or the write has ended
         // it and what follows imports the stored pick. Every request kind

@@ -1,8 +1,8 @@
 //! One import owns a candidate. However many times Import is pressed while
 //! the first press is still being answered — and a press lands late when the
 //! folder-state lock is busy — the candidate becomes one release, and an
-//! import of the same files after it fails: one folder hash is one release on
-//! this device.
+//! import of the same files asked for after it is refused: one folder hash is
+//! one release on this device.
 
 use super::*;
 
@@ -21,7 +21,7 @@ async fn release_count(handle: &ImportServiceHandle) -> usize {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn concurrent_imports_keep_one_owner_and_later_imports_of_its_files_fail() {
+async fn concurrent_imports_keep_one_owner_and_later_imports_of_its_files_are_refused() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     handle
         .set_candidate_album_artists(
@@ -46,22 +46,23 @@ async fn concurrent_imports_keep_one_owner_and_later_imports_of_its_files_fail()
         }
     }
     assert_eq!(started.len(), 1, "exactly one press starts an import");
-    await_import_outcome(&mut events, &started[0])
+    let (release_id, _) = await_import_outcome(&mut events, &started[0])
         .await
         .unwrap_or_else(|error| panic!("import failed: {error}"));
 
     for selected in [false, true] {
-        let id = if selected {
+        let refused = if selected {
             handle.import_selected(&key).await
         } else {
             handle.start_import(&key).await
-        }
-        .expect("a later import is queued")
-        .expect_queued();
-        let failed = await_import_outcome(&mut events, &id).await;
+        };
         assert!(
-            failed.is_err(),
-            "a later import of the same files writes no second release: {failed:?}"
+            matches!(
+                &refused,
+                Err(crate::import::ImportError::FilesAlreadyImported { release_id: imported })
+                    if *imported == release_id
+            ),
+            "a later import of the same files is refused before it runs: {refused:?}"
         );
     }
     assert_eq!(release_count(&handle).await, 1);
