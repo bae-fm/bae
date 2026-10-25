@@ -3,7 +3,8 @@ import SwiftUI
 
 /// One triage row: cover, title, metadata, and status, with what is running
 /// for the candidate read from the row itself — the list delivers the row
-/// again when that changes. Its height must not change on selection, which
+/// again when that changes. Every tab draws its rows with it: a Done row is
+/// the row it was in Found. Its height must not change on selection, which
 /// would shift every row below.
 struct TriageRowView: View {
     /// The cover's edge in points; the sidebar preloads Pending's covers at
@@ -20,19 +21,24 @@ struct TriageRowView: View {
     /// than anyone opens a menu.
     let menuOffers: () -> CandidateActionMenu
     let onPerform: (ImportCandidateActionOffer) -> Void
+    /// Open the release this device imported from the row's files: what a
+    /// Done row's Show in Library and double-click do. `nil` off Done.
+    let onShowInLibrary: (() -> Void)?
 
     init(
         row: BridgeTriageRow,
         coverContent: ImageContent?,
         isGroupMember: Bool,
         menuOffers: @escaping () -> CandidateActionMenu = { .empty },
-        onPerform: @escaping (ImportCandidateActionOffer) -> Void = { _ in }
+        onPerform: @escaping (ImportCandidateActionOffer) -> Void = { _ in },
+        onShowInLibrary: (() -> Void)? = nil
     ) {
         self.row = row
         self.coverContent = coverContent
         self.isGroupMember = isGroupMember
         self.menuOffers = menuOffers
         self.onPerform = onPerform
+        self.onShowInLibrary = onShowInLibrary
     }
 
     /// What is running for the candidate, and the state the row is in with it.
@@ -42,7 +48,16 @@ struct TriageRowView: View {
         rowContent
             .groupMemberRail(isGroupMember)
             .contentShape(Rectangle())
+            // Simultaneous, so the list's own click still selects the row.
+            .simultaneousGesture(
+                TapGesture(count: 2).onEnded { onShowInLibrary?() },
+                including: onShowInLibrary == nil ? .subviews : .all
+            )
             .contextMenu {
+                if let onShowInLibrary {
+                    Button("Show in Library", action: onShowInLibrary)
+                    Divider()
+                }
                 CandidateActionMenuItems(
                     menu: menuOffers,
                     onPerform: onPerform
@@ -113,6 +128,18 @@ struct TriageRowView: View {
         }
     }
 
+}
+
+extension BridgeTriageRow {
+    /// The release this device imported from a Done row's files.
+    var importedRelease: BridgeImportedRelease? {
+        if case .complete(let release) = importStatus {
+            release
+        }
+        else {
+            nil
+        }
+    }
 }
 
 /// The row's status line and trailing column.
@@ -301,6 +328,30 @@ extension TriageRowView {
                 ),
                 isGroupMember: false
             )
+        }
+        .padding()
+        .frame(width: 340)
+        .environment(PreviewData.artImageStore())
+        .candidateReaderPreviewEnvironment()
+        .windowBackground()
+    }
+
+    // A Done row is the row it was in Found.
+    #Preview("Done rows") {
+        let importStore = ImportStore()
+        let rows = [
+            PreviewData.triageRowDoneImported,
+            PreviewData.triageRowDoneFromTags,
+        ]
+        return VStack(alignment: .leading, spacing: 0) {
+            ForEach(rows, id: \.candidateKey) { row in
+                TriageRowView(
+                    row: row,
+                    coverContent: importStore.sidebarCover(for: row),
+                    isGroupMember: false,
+                    onShowInLibrary: {}
+                )
+            }
         }
         .padding()
         .frame(width: 340)

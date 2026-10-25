@@ -224,8 +224,6 @@ class ImportStore {
                 switch item {
                 case .candidate(_, let row, _):
                     row.selected ? row.candidateKey : nil
-                case .imported(_, let row):
-                    row.selected ? row.candidateKey : nil
                 case .invalid(_, let invalid, let selected, _):
                     selected ? invalid.candidateKey : nil
                 case .groupHeader:

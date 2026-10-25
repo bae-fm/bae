@@ -483,7 +483,7 @@ extension ImportCandidateViewportTests {
             onRefreshFolder: { _ in },
             onCombineFolder: { _ in },
             onSeparate: { _ in },
-            onReveal: { _ in },
+            onShowInLibrary: { _ in },
             onPerform: { _ in },
             onCancelAllIdentification: {},
             onCancelAllImports: {}

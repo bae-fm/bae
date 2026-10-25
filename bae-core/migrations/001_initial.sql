@@ -212,10 +212,6 @@ CREATE TABLE IF NOT EXISTS releases (
     discogs_details    TEXT NOT NULL DEFAULT '[]'
         CHECK (json_valid(discogs_details) AND json_type(discogs_details) = 'array'),
     source_folder_name TEXT,
-    -- SHA-256 over sorted relative paths, sizes and modification times. A hint
-    -- that a folder may already be in the library, never a release identity:
-    -- every import has its own release, even when its folder hash matches.
-    content_hash TEXT,
     -- EBU R128 integrated loudness over all tracks, in LUFS, measured at import;
     -- NULL when measuring failed. Playback derives the gain from it.
     album_loudness_lufs REAL,
@@ -228,10 +224,6 @@ CREATE TABLE IF NOT EXISTS releases (
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_releases_album_id ON releases (album_id, album_order, id);
-
-CREATE INDEX IF NOT EXISTS idx_releases_content_hash
-    ON releases (content_hash)
-    WHERE content_hash IS NOT NULL;
 
 -- One stored cover per release; `id` is the release's id.
 CREATE TABLE IF NOT EXISTS covers (
@@ -324,13 +316,14 @@ CREATE TABLE IF NOT EXISTS local_release_files (
     modified_at TEXT NOT NULL
 ) STRICT;
 
--- The candidate (its folder path, or its grouping's key) this device imported
--- each release from. Another device's folders mean nothing here, so it never
--- syncs. The import list reads it to tell a folder's own import from another
--- release that only carries the folder's hash.
+-- The folder hash (SHA-256 over sorted relative paths, sizes and modification
+-- times) of the files this device imported each release from. Another device's
+-- folders mean nothing here, so it never syncs. A folder whose hash is here is
+-- Done in the import list wherever it sits now, and one hash is one release on
+-- this device.
 CREATE TABLE IF NOT EXISTS local_release_origin (
-    release_id    TEXT NOT NULL PRIMARY KEY REFERENCES releases(id) ON DELETE CASCADE,
-    candidate_key TEXT NOT NULL
+    release_id   TEXT NOT NULL PRIMARY KEY REFERENCES releases(id) ON DELETE CASCADE,
+    content_hash TEXT NOT NULL UNIQUE
 ) STRICT;
 
 

@@ -264,7 +264,7 @@ desktop_only! {
     pub use identification::IdentificationHandle;
     pub use triage::{
         CandidateAction, CandidateActionBasis, CandidateLiveState, IdentificationStatus,
-        ImportedReleaseSummary, ImportedReleaseText, ImportedRow, MatchEvidence, MatchedPressing, MatchedRelease,
+        MatchEvidence, MatchedPressing, MatchedRelease,
         MatchedSignal, TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement,
         TriageRow, TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
         BadgeTone, ImportStanding, LiveStanding, NeedsYouReason, PendingBadge, PendingStanding,

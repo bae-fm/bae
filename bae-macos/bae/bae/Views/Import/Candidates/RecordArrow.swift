@@ -33,11 +33,6 @@ extension BridgeTriageReading {
     }
 }
 
-extension BridgeImportedReleaseSummary {
-    /// Whether a catalog describes the library release.
-    var readFromRecord: Bool { !records.isEmpty }
-}
-
 #if DEBUG
 
     // MARK: - Previews

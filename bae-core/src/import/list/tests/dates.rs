@@ -170,11 +170,6 @@ fn done_honors_selected_order_within_upload_standings() {
     imported(&mut rows, "A", "rel-a", 10);
     imported(&mut rows, "B", "rel-b", 20);
     imported(&mut rows, "C", "rel-c", 30);
-    rows.imported.get_mut("hash-A").unwrap().push(ImportedRelease {
-        release_id: "rel-a-copy".to_string(),
-        album_id: "album-rel-a".to_string(),
-        imported_from: None,
-    });
     for (order, expected) in [
         (
             ImportListOrder::NewestFirst,
@@ -202,7 +197,7 @@ fn done_honors_selected_order_within_upload_standings() {
                     ..ImportListView::default()
                 },
                 upload_status: crate::import::list::UploadStatus::Read(BTreeMap::from([(
-                    "rel-a-copy".into(),
+                    "rel-a".into(),
                     UploadStanding::Working,
                 )])),
                 ..ImportListRequest::default()

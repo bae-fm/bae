@@ -734,10 +734,12 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
     wait_for_skipped(&f, &album, false).await;
 }
 
-/// A Done row shows the library release its import became, and an edit to
-/// that release reaches the row through the open list subscription.
+/// A Done row is the row the folder was in Found, its import status naming
+/// the release this device imported from it. Done is keyed by the folder's
+/// hash: renamed on disk, the folder is Done under its new name, and deleting
+/// the release puts it back in Found.
 #[tokio::test]
-async fn a_done_row_follows_the_library_release_it_became() {
+async fn a_done_row_follows_its_folder_and_its_release() {
     support::tracing_init();
     let f = ImportFixture::new().await;
 
@@ -756,16 +758,12 @@ async fn a_done_row_follows_the_library_release_it_became() {
         }],
     );
     let album_key = album.to_string_lossy().into_owned();
+    let collection_key = collection.to_string_lossy().into_owned();
 
-    let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
-        .add_watched_folder(collection.to_string_lossy().into_owned())
+        .add_watched_folder(collection_key.clone())
         .await
         .unwrap();
-    scan_batch_until(&mut scan_rx, "the album candidate", |e| {
-        matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if c.path.to_str() == Some(album_key.as_str()))
-    })
-    .await;
     wait_for_candidates(&f, "the scanned candidate", |projection| {
         candidate_rows(projection)
             .iter()
@@ -777,78 +775,77 @@ async fn a_done_row_follows_the_library_release_it_became() {
         .select_candidate_file_tags(album_key.clone())
         .await
         .unwrap();
-    let import_id = f.handle.start_import(&album_key).await.unwrap().expect_queued();
-    let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
-
-    let done = f.handle.subscribe_whole_list(bae_core::import::ImportListView {
-        tab: bae_core::import::TriageTab::Done,
-        ..bae_core::import::ImportListView::default()
-    });
-    let imported = next_imported_row(&done, &album_key, |_| true).await;
-    assert_eq!(imported.releases[0].release_id, release_id);
-    assert_eq!(imported.releases[0].title, "Album");
-    assert_eq!(imported.releases[0].artist.as_deref(), Some("Artist"));
-
-    let mut form = f
-        .library_manager
-        .open_release_edit(&release_id)
-        .await
-        .unwrap()
-        .opened()
-        .clone()
-        .edit;
-    form.album_title = "Album (Edited)".to_string();
-    f.library_manager
-        .apply_release_metadata_user_edit(&release_id, &form.shape().unwrap())
-        .await
-        .unwrap();
-
-    let edited = next_imported_row(&done, &album_key, |row| {
-        row.releases[0].title != "Album"
+    let found = wait_for_candidates(&f, "the row reading its tags", |projection| {
+        candidate_rows(projection)
+            .iter()
+            .any(|row| row.candidate_key == album_key && row.metadata_summary.is_some())
     })
     .await;
-    assert_eq!(edited.releases[0].title, "Album (Edited)");
-    assert_eq!(edited.releases[0].artist.as_deref(), Some("Artist"));
-}
+    let found = candidate_rows(&found)
+        .into_iter()
+        .find(|row| row.candidate_key == album_key)
+        .cloned()
+        .unwrap();
+    let import_id = f.handle.start_import(&album_key).await.unwrap().expect_queued();
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    let (release_id, album_id) = support::wait_for_import_complete(&mut progress_rx).await;
+    let release = bae_core::import::ImportedRelease {
+        release_id: release_id.clone(),
+        album_id,
+    };
 
-/// The next Done row for `key` that `accept` admits, read off one open list
-/// subscription.
-async fn next_imported_row(
-    subscription: &bae_core::import::ImportListSubscription,
-    key: &str,
-    mut accept: impl FnMut(&bae_core::import::ImportedRow) -> bool,
-) -> bae_core::import::ImportedRow {
-    tokio::time::timeout(HANG_GUARD, async {
-        loop {
-            let snapshot = subscription
-                .next()
-                .await
-                .expect("the import list query stays open");
-            let row = snapshot
-                .windows
-                .iter()
-                .flat_map(|window| &window.items)
-                .find_map(|item| match item {
-                    bae_core::import::ImportListItem::Imported { row, .. } if row.candidate_key == key => {
-                        Some(row.clone())
-                    }
-                    _ => None,
-                });
-            if let Some(row) = row.filter(|row| accept(row)) {
-                return row;
-            }
-        }
+    let done = done_row(&f, "the imported folder", &album_key).await;
+    assert_eq!(
+        done.import_status,
+        Some(bae_core::import::TriageImportStatus::Complete {
+            release: release.clone()
+        })
+    );
+    assert_eq!(done.metadata_summary, found.metadata_summary);
+    assert_eq!(done.reading, found.reading);
+    assert_eq!(done.cover, found.cover);
+    assert_eq!(done.folder_name, found.folder_name);
+
+    let renamed = collection.join("Renamed Album");
+    fs::rename(&album, &renamed).unwrap();
+    let renamed_key = renamed.to_string_lossy().into_owned();
+    f.handle
+        .refresh_watched_folder(collection_key.clone())
+        .await
+        .unwrap();
+    let moved = done_row(&f, "the renamed folder", &renamed_key).await;
+    assert_eq!(
+        moved.import_status,
+        Some(bae_core::import::TriageImportStatus::Complete { release })
+    );
+
+    f.library_manager.delete_release(&release_id).await.unwrap();
+    wait_for_candidates(&f, "the folder back in Found", |projection| {
+        candidate_rows(projection)
+            .iter()
+            .any(|row| row.candidate_key == renamed_key && row.import_status.is_none())
     })
-    .await
-    .unwrap_or_else(|_| panic!("timed out waiting for the Done row for {key}"))
+    .await;
 }
 
-/// Each Done row says "you probably already have this" only for a folder no
-/// listed release was imported from: never on a folder's own import, and on a
-/// copy of an imported folder whose files hash alike.
+/// The Done row for `key`, once one read of the Done tab holds it.
+async fn done_row(f: &ImportFixture, what: &str, key: &str) -> bae_core::import::TriageRow {
+    let done = wait_for_tab(f, what, bae_core::import::TriageTab::Done, |list| {
+        candidate_rows(list).iter().any(|row| row.candidate_key == key)
+    })
+    .await;
+    candidate_rows(&done)
+        .into_iter()
+        .find(|row| row.candidate_key == key)
+        .cloned()
+        .unwrap()
+}
+
+/// A folder is Done when this device imported its files: each imported
+/// folder's row names its own release, and a copy whose files hash alike —
+/// the same files, to the hash — names the release imported from them.
 #[tokio::test]
-async fn only_a_folder_another_release_carries_the_hash_of_is_probably_in_the_library() {
+async fn a_folder_whose_files_this_device_imported_is_done() {
     support::tracing_init();
     let f = ImportFixture::new().await;
 
@@ -910,57 +907,36 @@ async fn only_a_folder_another_release_carries_the_hash_of_is_probably_in_the_li
 
     // One read of the Done tab holding all four folders.
     let done = wait_for_tab(&f, "every folder Done", bae_core::import::TriageTab::Done, |list| {
-        imported_rows(list).len() == 4
+        candidate_rows(list).len() == 4
     })
     .await;
-    let done_row = |key: &str| {
-        imported_rows(&done)
+    let imported_release = |key: &str| {
+        let row = candidate_rows(&done)
             .into_iter()
             .find(|row| row.candidate_key == key)
-            .unwrap_or_else(|| panic!("{key} is Done"))
+            .unwrap_or_else(|| panic!("{key} is Done"));
+        match &row.import_status {
+            Some(bae_core::import::TriageImportStatus::Complete { release }) => {
+                release.release_id.clone()
+            }
+            other => panic!("{key} is Done with {other:?}"),
+        }
     };
     for (key, release_id) in keys.iter().zip(&release_ids) {
-        let row = done_row(key);
-        assert_eq!(row.releases.len(), 1);
-        assert_eq!(&row.releases[0].release_id, release_id);
-        assert!(!row.probably_in_library, "{key} is its own import");
+        assert_eq!(&imported_release(key), release_id, "{key} is its own import");
         let pane = f.handle.candidate_pane(key).await.unwrap().unwrap();
         assert!(
             matches!(
-                pane.import_status,
-                Some(bae_core::import::CandidateImportStatus::Complete {
-                    probably_in_library: false,
-                    ..
-                })
+                &pane.import_status,
+                Some(bae_core::import::CandidateImportStatus::Complete { release })
+                    if &release.release_id == release_id
             ),
             "{key}'s pane is its own import"
         );
     }
-    let row = done_row(&copy_key);
-    assert_eq!(row.releases.len(), 1);
-    assert_eq!(row.releases[0].release_id, release_ids[0]);
-    assert!(row.probably_in_library, "the copy was never imported");
-    let pane = f.handle.candidate_pane(&copy_key).await.unwrap().unwrap();
-    assert!(matches!(
-        pane.import_status,
-        Some(bae_core::import::CandidateImportStatus::Complete {
-            probably_in_library: true,
-            ..
-        })
-    ));
-}
-
-/// The Done rows one read of the list holds.
-fn imported_rows(
-    projection: &bae_core::import::ImportListSnapshot,
-) -> Vec<bae_core::import::ImportedRow> {
-    projection
-        .windows
-        .iter()
-        .flat_map(|window| &window.items)
-        .filter_map(|item| match item {
-            bae_core::import::ImportListItem::Imported { row, .. } => Some(row.clone()),
-            _ => None,
-        })
-        .collect()
+    assert_eq!(
+        imported_release(&copy_key),
+        release_ids[0],
+        "the copy's files are the ones imported from the original"
+    );
 }

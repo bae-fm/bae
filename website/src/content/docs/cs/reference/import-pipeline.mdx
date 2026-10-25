@@ -46,4 +46,4 @@ Vydání se uloží s odkazy na uživatelovy soubory na místě. Při importu do
 
 ## Rozpoznávání ripů
 
-Každý import vytvoří vydání s novým náhodným ID a vlastními řádky skladeb a souborů. `releases.content_hash` ukládá neunikátní SHA-256 seřazených relativních cest, velikostí a časů změny. Shoda pouze upozorní na možnou kopii; import nikdy neodmítne ani nenahradí vydání. Karta dokončených importů uvádí všechna odpovídající vydání složky a nenabízí opakovaný import.
+Každý import vytvoří vydání s novým náhodným ID a vlastními řádky skladeb a souborů. Každé zařízení si do `local_release_origin` zapíše SHA-256 seřazených relativních cest, velikostí a časů změny souborů, které přečetl každý jeho import; tento záznam se nikdy nesynchronizuje. Složka, jejíž hash toto zařízení zapsalo, je na kartě dokončených importů, ať byla přesunuta kamkoli, a její řádek uvádí jediné vydání z ní importované. Opakovaný import stejných souborů na tomto zařízení selže a karta dokončených importů nenabízí opakovaný import.

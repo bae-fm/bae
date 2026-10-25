@@ -323,7 +323,6 @@ impl ImportService {
             .await?;
 
         prepared.db_release.source_folder_name = Some(source_name);
-        prepared.db_release.content_hash = Some(categorized.content_hash());
 
         // The pictures of the Discogs artists this import creates are fetched
         // now, before any file is read or row written, the one thing an
@@ -333,7 +332,7 @@ impl ImportService {
             .new_discogs_artists(
                 &prepared.artist_credits,
                 &prepared.picked_artists,
-                prepared.db_release.content_hash.as_deref(),
+                Some(&categorized.content_hash()),
             )
             .await?;
         if !new_artists.is_empty() {

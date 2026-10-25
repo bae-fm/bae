@@ -54,10 +54,10 @@ impl LibraryManager {
         Ok(self.database.find_release_by_id(release_id).await?)
     }
 
-    /// Whether a release whose stored content hash equals `hash` is in the
-    /// library. The import watcher stamps each scanned candidate with this so an
-    /// already-imported folder surfaces under the "Added" tab even after a
-    /// restart (it matches by file structure, not by name).
+    /// Whether this device imported a release from files whose folder hash is
+    /// `hash`. The import watcher stamps each scanned candidate with this, so
+    /// a folder imported here is Done after a restart, and after a move or a
+    /// rename: it matches by file structure, not by path.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn is_content_hash_imported(&self, hash: &str) -> Result<bool, LibraryError> {
         Ok(self.database.is_content_hash_imported(hash).await?)

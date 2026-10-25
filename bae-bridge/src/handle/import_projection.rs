@@ -168,11 +168,8 @@ impl crate::types::BridgeCandidateRuntimeChange {
 impl crate::types::BridgeTriageImportStatus {
     pub(super) fn from_core(status: bae_core::import::triage::TriageImportStatus) -> Self {
         match status {
-            bae_core::import::triage::TriageImportStatus::Complete { releases } => Self::Complete {
-                releases: releases
-                    .into_iter()
-                    .map(crate::types::BridgeImportedRelease::from_core)
-                    .collect(),
+            bae_core::import::triage::TriageImportStatus::Complete { release } => Self::Complete {
+                release: crate::types::BridgeImportedRelease::from_core(release),
             },
             bae_core::import::triage::TriageImportStatus::Error { failure } => Self::Error {
                 error: crate::types::BridgeError::from_core(failure.ui_error()),
@@ -190,15 +187,8 @@ impl crate::types::BridgeCandidateImportStatus {
             bae_core::import::CandidateImportStatus::Importing { standing } => Self::Importing {
                 standing: crate::types::BridgeImportStanding::from_core(standing),
             },
-            bae_core::import::CandidateImportStatus::Complete {
-                releases,
-                probably_in_library,
-            } => Self::Complete {
-                releases: releases
-                    .into_iter()
-                    .map(crate::types::BridgeImportedRelease::from_core)
-                    .collect(),
-                probably_in_library,
+            bae_core::import::CandidateImportStatus::Complete { release } => Self::Complete {
+                release: crate::types::BridgeImportedRelease::from_core(release),
             },
             bae_core::import::CandidateImportStatus::Error { failure } => Self::Error {
                 error: crate::types::BridgeError::from_core(failure.ui_error()),
@@ -259,64 +249,10 @@ impl crate::types::BridgeTriageRow {
     }
 }
 
-impl crate::types::BridgeImportedRelease {
-    fn from_core(release: bae_core::import::ImportedRelease) -> Self {
-        let bae_core::import::ImportedRelease {
-            release_id,
-            album_id,
-            // Which folder a release came from is core's to compare; a
-            // surface reads the verdict, `probably_in_library`.
-            imported_from: _,
-        } = release;
-        Self {
-            release_id,
-            album_id,
-        }
-    }
-}
-
 mirror_struct! {
-    crate::types::BridgeImportedReleaseSummary = bae_core::import::ImportedReleaseSummary,
+    crate::types::BridgeImportedRelease = bae_core::import::ImportedRelease,
     from_core: fn,
-    fields: {
-        release_id,
-        album_id,
-        title,
-        artist,
-        year,
-        cover: (opt crate::types::BridgeImageRef),
-        records: (each crate::types::BridgeReleaseRecord),
-    },
-}
-
-impl crate::types::BridgeImportedRow {
-    /// Not a copy: the row crosses with `live`, what the list joined to it.
-    fn from_core(
-        row: bae_core::import::ImportedRow,
-        live: bae_core::import::CandidateLiveState,
-    ) -> Self {
-        let bae_core::import::ImportedRow {
-            candidate_key,
-            display_path,
-            // What the row's commands are decided from, which `live` already
-            // decided.
-            action_basis: _,
-            releases,
-            probably_in_library,
-            selected,
-        } = row;
-        Self {
-            candidate_key,
-            display_path,
-            live: crate::types::BridgeCandidateLiveState::from_core(live),
-            releases: releases
-                .into_iter()
-                .map(crate::types::BridgeImportedReleaseSummary::from_core)
-                .collect(),
-            probably_in_library,
-            selected,
-        }
-    }
+    fields: { release_id, album_id },
 }
 
 mirror_enum! {
@@ -612,10 +548,6 @@ impl crate::types::BridgeImportListItem {
                 stable_key,
                 row: crate::types::BridgeTriageRow::from_core(row, live),
                 is_group_member,
-            },
-            bae_core::import::ImportListItem::Imported { row, live } => Self::Imported {
-                stable_key,
-                row: crate::types::BridgeImportedRow::from_core(row, live),
             },
             bae_core::import::ImportListItem::Invalid {
                 candidate,

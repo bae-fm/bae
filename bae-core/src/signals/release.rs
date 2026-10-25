@@ -277,7 +277,6 @@ mod tests {
             pressing: crate::pressing::Pressing::blank(),
 
             source_folder_name: None,
-            content_hash: None,
             album_loudness_lufs: None,
             album_peak_linear: None,
             created_at: Utc::now(),
@@ -411,7 +410,6 @@ mod tests {
             pressing: crate::pressing::Pressing::blank(),
 
             source_folder_name: None,
-            content_hash: None,
             album_loudness_lufs: None,
             album_peak_linear: None,
             created_at: Utc::now(),

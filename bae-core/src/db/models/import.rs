@@ -157,8 +157,23 @@ pub(crate) enum ImportCommitGuard {
         source: crate::import::release_candidate::CandidateSource,
         expectation: crate::import::service::ImportExpectation,
     },
+    /// A test's import of a release no scanned candidate stands behind,
+    /// optionally answering for the candidate state at `content_hash`.
     #[cfg(test)]
-    UncheckedTestSetup,
+    UncheckedTestSetup { content_hash: Option<String> },
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl ImportCommitGuard {
+    /// The folder hash of the candidate the import commits: what its artist
+    /// decisions are stored under, and what this device records it imported.
+    pub(crate) fn content_hash(&self) -> Option<&str> {
+        match self {
+            Self::Candidate { expectation, .. } => Some(&expectation.candidate.content_hash),
+            #[cfg(test)]
+            Self::UncheckedTestSetup { content_hash } => content_hash.as_deref(),
+        }
+    }
 }
 
 /// Every watched root with its status and every stored entry under it.

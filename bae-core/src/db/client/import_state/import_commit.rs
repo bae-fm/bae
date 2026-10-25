@@ -25,7 +25,7 @@ pub(crate) fn require_import_commit_guard(
                 .map_err(DbError::Message)
         }
         #[cfg(test)]
-        ImportCommitGuard::UncheckedTestSetup => Ok(()),
+        ImportCommitGuard::UncheckedTestSetup { .. } => Ok(()),
     }
 }
 
@@ -42,28 +42,29 @@ pub(crate) fn end_import_attempt_of_commit(
             super::delete_failure_on(sql, &expectation.candidate.content_hash)
         }
         #[cfg(test)]
-        ImportCommitGuard::UncheckedTestSetup => Ok(()),
+        ImportCommitGuard::UncheckedTestSetup { .. } => Ok(()),
     }
 }
 
-/// Record, inside the commit, which candidate this device imported the
-/// release from, so the import list tells the folder's own import from a
-/// release that only carries its hash.
+/// Record, inside the commit, the folder hash of the files this device
+/// imported the release from: what places the folder in Done, wherever it is
+/// moved. One hash is one release on this device, so a second import of the
+/// same files fails here, and the whole commit with it.
 pub(crate) fn record_import_origin_on(
     sql: &SqlContext<'_, '_>,
     guard: &ImportCommitGuard,
     release_id: &str,
 ) -> Result<(), DbError> {
     match guard {
-        ImportCommitGuard::Candidate { candidate_key, .. } => {
+        ImportCommitGuard::Candidate { expectation, .. } => {
             sql.execute(
-                "INSERT INTO local_release_origin (release_id, candidate_key) VALUES (?1, ?2)",
-                params![release_id, candidate_key],
+                "INSERT INTO local_release_origin (release_id, content_hash) VALUES (?1, ?2)",
+                params![release_id, expectation.candidate.content_hash],
             )?;
             Ok(())
         }
         #[cfg(test)]
-        ImportCommitGuard::UncheckedTestSetup => Ok(()),
+        ImportCommitGuard::UncheckedTestSetup { .. } => Ok(()),
     }
 }
 

@@ -1,6 +1,8 @@
 //! One import owns a candidate. However many times Import is pressed while
 //! the first press is still being answered — and a press lands late when the
-//! folder-state lock is busy — the candidate becomes one release.
+//! folder-state lock is busy — the candidate becomes one release, and an
+//! import of the same files after it fails: one folder hash is one release on
+//! this device.
 
 use super::*;
 
@@ -19,7 +21,7 @@ async fn release_count(handle: &ImportServiceHandle) -> usize {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn concurrent_imports_keep_one_owner_and_later_imports_make_new_copies() {
+async fn concurrent_imports_keep_one_owner_and_later_imports_of_its_files_fail() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     handle
         .set_candidate_album_artists(
@@ -54,10 +56,14 @@ async fn concurrent_imports_keep_one_owner_and_later_imports_make_new_copies() {
         } else {
             handle.start_import(&key).await
         }
-        .expect("a later import creates its own copy")
+        .expect("a later import is queued")
         .expect_queued();
-        await_import_outcome(&mut events, &id).await.unwrap();
+        let failed = await_import_outcome(&mut events, &id).await;
+        assert!(
+            failed.is_err(),
+            "a later import of the same files writes no second release: {failed:?}"
+        );
     }
-    assert_eq!(release_count(&handle).await, 3);
+    assert_eq!(release_count(&handle).await, 1);
     shut_down(handle).await;
 }

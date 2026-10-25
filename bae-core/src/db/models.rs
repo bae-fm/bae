@@ -278,11 +278,6 @@ pub struct DbRelease {
     /// Name of the source folder this release was imported from (just the final
     /// path component, not the full path).
     pub source_folder_name: Option<String>,
-    /// SHA-256 over sorted relative paths, sizes and modification times.
-    /// Non-unique: every copy keeps its own release id. A matching hash supplies
-    /// the import view's duplicate hint and Done placement. Metadata edits and
-    /// re-identification preserve it; releases without a folder import have none.
-    pub content_hash: Option<String>,
     /// Album-level integrated loudness (EBU R128) in LUFS, measured at import
     /// over all tracks combined. `None` = not measured. Playback derives a gain
     /// from this against a constant target; the raw measurement is stored, never
@@ -753,7 +748,6 @@ impl DbRelease {
             release_name: None,
             pressing: crate::pressing::Pressing::blank(),
             source_folder_name: None,
-            content_hash: None,
             album_loudness_lufs: None,
             album_peak_linear: None,
             created_at: now,

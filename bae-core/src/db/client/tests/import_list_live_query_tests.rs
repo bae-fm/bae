@@ -1,11 +1,9 @@
-//! The import list's live query: what reruns it, what it withholds, and what
-//! a Done row reads from the library.
+//! The import list's live query: what reruns it, what it withholds, and how
+//! Done follows what this device imported.
 
 use super::super::*;
 use super::exec;
-use super::live_query_tests::{
-    live_db, next_run_is_only_the_request, ALBUM_ID, IDENTITY_ID, RELEASE_ID,
-};
+use super::live_query_tests::{live_db, next_run_is_only_the_request, ALBUM_ID, RELEASE_ID};
 use std::time::Duration;
 /// The import list's request carries the view and the windows, so every test
 /// below states both.
@@ -45,16 +43,18 @@ pub(super) fn candidate_names(projection: &crate::import::ImportListProjection) 
         .collect()
 }
 
-#[tokio::test]
-async fn import_list_moves_a_row_to_done_when_its_content_hash_is_imported() {
-    let (db, _temp) = live_db().await;
-    let root = &crate::import::watched_folder::host_root("/music");
-    let item = scan_candidate(root, "release");
+/// Store `name`'s candidate under `root` as one finished scan of it, and
+/// return it.
+async fn scanned(
+    db: &Database,
+    root: &str,
+    name: &str,
+) -> crate::import::folder_scanner::FolderCandidate {
+    let item = scan_candidate(root, name);
     let crate::import::folder_scanner::ScanItem::Valid(candidate) = &item else {
         unreachable!("the fixture builds a valid candidate");
     };
-    let content_hash = candidate.files.content_hash();
-    db.add_watched_import_folder(root).await.unwrap();
+    let candidate = candidate.clone();
     let generation = db
         .begin_folder_scan(root, crate::import::VolumeKind::Local)
         .await
@@ -63,6 +63,39 @@ async fn import_list_moves_a_row_to_done_when_its_content_hash_is_imported() {
         .await
         .unwrap();
     db.finish_folder_scan(root, generation, None).await.unwrap();
+    candidate
+}
+
+/// What an import here records beside the release it writes: the folder hash
+/// of the files it read.
+async fn record_import(db: &Database, content_hash: &str) {
+    exec(
+        db,
+        "INSERT INTO local_release_origin (release_id, content_hash) VALUES (?1, ?2)",
+        &[RELEASE_ID, content_hash],
+    )
+    .await;
+}
+
+/// The candidate rows one read of the list holds.
+fn rows(projection: &crate::import::ImportListProjection) -> Vec<crate::import::TriageRow> {
+    projection
+        .windows
+        .iter()
+        .flat_map(|window| &window.items)
+        .filter_map(|item| match item {
+            crate::import::ImportListItem::Candidate { row, .. } => Some(row.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+#[tokio::test]
+async fn import_list_moves_a_row_to_done_when_this_device_imports_its_files() {
+    let (db, _temp) = live_db().await;
+    let root = &crate::import::watched_folder::host_root("/music");
+    db.add_watched_import_folder(root).await.unwrap();
+    let candidate = scanned(&db, root, "release").await;
 
     let mut live =
         db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]));
@@ -71,121 +104,122 @@ async fn import_list_moves_a_row_to_done_when_its_content_hash_is_imported() {
     assert_eq!(initial.summary.counts.pending, 1);
     assert_eq!(initial.summary.counts.done, 0);
 
-    exec(
-        &db,
-        "UPDATE releases SET content_hash = ?1 WHERE id = ?2",
-        &[content_hash.as_str(), RELEASE_ID],
-    )
-    .await;
+    record_import(&db, &candidate.files.content_hash()).await;
 
     let imported = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
-        .expect("the imported release wakes the list")
+        .expect("the recorded import wakes the list")
         .result
         .unwrap();
     assert_eq!(imported.total_count, 0, "Pending no longer holds the row");
     assert_eq!(imported.summary.counts.done, 1);
 }
 
-/// The Done rows one read of the list holds.
-fn imported_rows(
-    projection: &crate::import::ImportListProjection,
-) -> Vec<crate::import::ImportedRow> {
-    projection
-        .windows
-        .iter()
-        .flat_map(|window| &window.items)
-        .filter_map(|item| match item {
-            crate::import::ImportListItem::Imported { row, .. } => Some(row.clone()),
-            _ => None,
-        })
-        .collect()
-}
-
-/// A Done row is the library release its import became, and every part of it
-/// is read from the library inside the list's own query: a new cover, a
-/// catalog record and the release's deletion each rerun the list and reach the
-/// row.
+/// A Done row is the row the folder was in Found — the same reading, cover
+/// and text — placed Done, its import status naming the one release this
+/// device imported from its files.
 #[tokio::test]
-async fn import_list_done_row_reads_the_library_release() {
+async fn a_done_row_is_the_row_it_was_in_found() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
-    let item = scan_candidate(root, "release");
-    let crate::import::folder_scanner::ScanItem::Valid(candidate) = &item else {
-        unreachable!("the fixture builds a valid candidate");
-    };
-    let content_hash = candidate.files.content_hash();
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+    let candidate = scanned(&db, root, "release").await;
+    let found = rows(
+        &db.load_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]))
+            .await
+            .unwrap(),
+    );
+    assert_eq!(found.len(), 1);
+
+    record_import(&db, &candidate.files.content_hash()).await;
+    let done = rows(
+        &db.load_import_list(list_request(crate::import::TriageTab::Done, [(0, 50)]))
+            .await
+            .unwrap(),
+    );
+    assert_eq!(done.len(), 1);
+    let done = &done[0];
+    assert_eq!(done.placement, crate::import::TriagePlacement::Done);
+    assert_eq!(
+        done.import_status,
+        Some(crate::import::TriageImportStatus::Complete {
+            release: crate::import::ImportedRelease {
+                release_id: RELEASE_ID.to_string(),
+                album_id: ALBUM_ID.to_string(),
+            },
+        })
+    );
+    assert_eq!(
+        crate::import::TriageRow {
+            placement: found[0].placement,
+            action_basis: found[0].action_basis.clone(),
+            import_status: None,
+            ..done.clone()
+        },
+        found[0],
+        "everything the row shows is what it showed in Found"
+    );
+}
+
+/// A release in the library that this device did not import — one another
+/// device imported from the same files and synced here — leaves the folder in
+/// Found like any other.
+#[tokio::test]
+async fn a_release_this_device_did_not_import_leaves_the_folder_in_found() {
+    let (db, _temp) = live_db().await;
+    let root = &crate::import::watched_folder::host_root("/music");
+    db.add_watched_import_folder(root).await.unwrap();
+    let candidate = scanned(&db, root, "release").await;
+    assert!(db.find_release_by_id(RELEASE_ID).await.unwrap().is_some());
+
+    let projection = db
+        .load_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]))
         .await
         .unwrap();
-    db.save_folder_scan_item(root, generation, &item)
+    assert_eq!(projection.summary.counts.pending, 1);
+    assert_eq!(projection.summary.counts.done, 0);
+    let detail = db
+        .load_import_candidate(&candidate.key())
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(!detail.is_added);
+    assert_eq!(detail.imported, None);
+}
+
+/// Done is keyed by the folder's hash, not its path: a folder imported here
+/// and then moved or renamed is Done where it is now.
+#[tokio::test]
+async fn a_moved_folder_stays_done() {
+    let (db, _temp) = live_db().await;
+    let root = &crate::import::watched_folder::host_root("/music");
+    db.add_watched_import_folder(root).await.unwrap();
+    let imported = scanned(&db, root, "release").await;
+    record_import(&db, &imported.files.content_hash()).await;
+
+    let moved = scanned(&db, root, "renamed").await;
+    assert_eq!(moved.files.content_hash(), imported.files.content_hash());
+    let projection = db
+        .load_import_list(list_request(crate::import::TriageTab::Done, [(0, 50)]))
         .await
         .unwrap();
-    db.finish_folder_scan(root, generation, None).await.unwrap();
-    exec(
-        &db,
-        "UPDATE releases SET content_hash = ?1 WHERE id = ?2",
-        &[content_hash.as_str(), RELEASE_ID],
-    )
-    .await;
+    assert_eq!(candidate_names(&projection), vec!["renamed".to_string()]);
+    assert_eq!(projection.summary.counts.pending, 0);
+}
+
+/// Deleting the release takes this device's record of the import with it, so
+/// its folder is back in Found.
+#[tokio::test]
+async fn deleting_the_release_puts_its_folder_back_in_found() {
+    let (db, _temp) = live_db().await;
+    let root = &crate::import::watched_folder::host_root("/music");
+    db.add_watched_import_folder(root).await.unwrap();
+    let candidate = scanned(&db, root, "release").await;
+    record_import(&db, &candidate.files.content_hash()).await;
 
     let mut live =
         db.subscribe_import_list(list_request(crate::import::TriageTab::Done, [(0, 50)]));
-    let initial = imported_rows(&live.next().await.result.unwrap());
-    assert_eq!(initial.len(), 1);
-    assert!(
-        initial[0].probably_in_library,
-        "the release carries the folder's hash, but no import from the folder wrote it"
-    );
-    let release = &initial[0].releases[0];
-    assert_eq!(release.release_id, RELEASE_ID);
-    assert_eq!(release.album_id, ALBUM_ID);
-    assert_eq!(release.title, "Album Title");
-    assert_eq!(release.artist.as_deref(), Some("Artist Name"));
-    assert!(release.cover.is_none());
-    assert!(release.records.is_empty());
-
-    let cover_version = super::write_cover(&db, RELEASE_ID, "cover bytes").await;
-    let covered = imported_rows(
-        &tokio::time::timeout(Duration::from_secs(2), live.next())
-            .await
-            .expect("a new cover wakes the list")
-            .result
-            .unwrap(),
-    );
-    assert_eq!(
-        covered[0].releases[0].cover,
-        Some(crate::album_detail::ImageRef {
-            id: RELEASE_ID.to_string(),
-            version: cover_version,
-            image_type: crate::db::LibraryImageType::Cover,
-        })
-    );
-
-    exec(
-        &db,
-        "INSERT INTO release_records
-         (id, release_id, catalog, kind, key, album_key, url, created_at) VALUES (?1, ?2, 'musicbrainz', 'pressing', 'source-release-1', 'source-group-1', 'https://musicbrainz.org/release/source-release-1', '2026-01-01T00:00:00Z')",
-        &[IDENTITY_ID, RELEASE_ID],
-    )
-    .await;
-    let recorded = imported_rows(
-        &tokio::time::timeout(Duration::from_secs(2), live.next())
-            .await
-            .expect("a catalog record wakes the list")
-            .result
-            .unwrap(),
-    );
-    assert_eq!(
-        recorded[0].releases[0]
-            .records
-            .iter()
-            .map(|record| record.catalog())
-            .collect::<Vec<_>>(),
-        vec![Catalog::MusicBrainz]
-    );
+    assert_eq!(live.next().await.result.unwrap().total_count, 1);
 
     exec(&db, "DELETE FROM releases WHERE id = ?1", &[RELEASE_ID]).await;
     let deleted = tokio::time::timeout(Duration::from_secs(2), live.next())
@@ -197,112 +231,72 @@ async fn import_list_done_row_reads_the_library_release() {
     assert_eq!(deleted.summary.counts.pending, 1);
 }
 
-/// The filter finds a Done row by the library title it shows, read in the
-/// list's own query: renaming the album reruns a filtered list that holds no
-/// window at all, and the row is then found by its new title and not its old.
+/// One hash is one release on this device: a second release recorded against
+/// files this device already imported is refused.
 #[tokio::test]
-async fn import_list_filter_finds_a_done_row_by_its_library_title() {
+async fn one_folder_hash_records_one_release() {
     let (db, _temp) = live_db().await;
-    let root = &crate::import::watched_folder::host_root("/music");
-    let item = scan_candidate(root, "release");
-    let crate::import::folder_scanner::ScanItem::Valid(candidate) = &item else {
-        unreachable!("the fixture builds a valid candidate");
-    };
-    let content_hash = candidate.files.content_hash();
-    db.add_watched_import_folder(root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
-    db.save_folder_scan_item(root, generation, &item)
-        .await
-        .unwrap();
-    db.finish_folder_scan(root, generation, None).await.unwrap();
-    exec(
-        &db,
-        "UPDATE releases SET content_hash = ?1 WHERE id = ?2",
-        &[content_hash.as_str(), RELEASE_ID],
-    )
-    .await;
-
-    let filtered = |filter: &str| {
-        let mut request = list_request(crate::import::TriageTab::Done, []);
-        request.view.filter_text = filter.to_string();
-        request
-    };
-    let live = db.subscribe_import_list(filtered("album title"));
-    let requests = live.requests();
-    let mut live = live;
-    assert_eq!(live.next().await.result.unwrap().total_count, 1);
-
-    exec(
-        &db,
-        "UPDATE albums SET title = 'Album' WHERE id = ?1",
-        &[ALBUM_ID],
-    )
-    .await;
-    let renamed = tokio::time::timeout(Duration::from_secs(2), live.next())
-        .await
-        .expect("renaming the album wakes a filtered list")
-        .result
-        .unwrap();
-    assert_eq!(renamed.total_count, 0, "the old title is no longer shown");
-
-    requests.set(filtered("ALBUM")).unwrap();
-    let found = tokio::time::timeout(Duration::from_secs(2), live.next())
-        .await
-        .expect("the filter change reruns the query")
-        .result
-        .unwrap();
-    assert_eq!(found.total_count, 1, "the new title finds the row");
+    record_import(&db, "folder-hash").await;
+    let mut copy = db.find_release_by_id(RELEASE_ID).await.unwrap().unwrap();
+    copy.id = bae_test_support::test_uuid("second-imported-copy");
+    db.insert_release(&copy).await.unwrap();
+    let second = copy.id.clone();
+    let refused = db
+        .call(move |conn| {
+            conn.execute(
+                "INSERT INTO local_release_origin (release_id, content_hash) VALUES (?1, ?2)",
+                rusqlite::params![second, "folder-hash"],
+            )
+            .map(|_| ())
+            .map_err(crate::db::DbError::from)
+        })
+        .await;
+    assert!(
+        refused.is_err(),
+        "a second release of the same files is refused"
+    );
 }
 
 /// The pane of a candidate its import put in the library is placed Done, which
 /// carries nothing of the candidate's draft: its folder check and its draft's
-/// catalogs belong to a candidate still in the queue.
+/// catalogs belong to a candidate still in the queue. Its import status names
+/// the release imported from it.
 #[tokio::test]
 async fn the_pane_of_an_imported_candidate_is_placed_done() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
-    let item = scan_candidate(root, "release");
-    let crate::import::folder_scanner::ScanItem::Valid(candidate) = &item else {
-        unreachable!("the fixture builds a valid candidate");
-    };
-    let key = candidate.path.to_string_lossy().into_owned();
-    let content_hash = candidate.files.content_hash();
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
-    db.save_folder_scan_item(root, generation, &item)
-        .await
-        .unwrap();
-    db.finish_folder_scan(root, generation, None).await.unwrap();
-    let placement = |db: Database, key: String| async move {
+    let candidate = scanned(&db, root, "release").await;
+    let key = candidate.key();
+    let detail = |db: Database, key: String| async move {
         db.load_import_candidate(&key)
             .await
             .unwrap()
             .expect("the scanned candidate has a pane")
             .resolve(&crate::import::TriageRuntimeFacts::default())
-            .placement
     };
 
     assert!(matches!(
-        placement(db.clone(), key.clone()).await,
+        detail(db.clone(), key.clone()).await.placement,
         crate::import::CandidatePanePlacement::Pending { .. }
     ));
 
-    exec(
-        &db,
-        "UPDATE releases SET content_hash = ?1 WHERE id = ?2",
-        &[content_hash.as_str(), RELEASE_ID],
-    )
-    .await;
+    record_import(&db, &candidate.files.content_hash()).await;
+    let done = detail(db.clone(), key).await;
+    assert_eq!(done.placement, crate::import::CandidatePanePlacement::Done);
     assert_eq!(
-        placement(db.clone(), key).await,
-        crate::import::CandidatePanePlacement::Done
+        done.import_status,
+        Some(crate::import::CandidateImportStatus::Complete {
+            release: crate::import::ImportedRelease {
+                release_id: RELEASE_ID.to_string(),
+                album_id: ALBUM_ID.to_string(),
+            },
+        })
     );
+    assert!(!done
+        .live
+        .actions
+        .contains(&crate::import::CandidateAction::Import));
 }
 
 /// Moving the window is a request change, not a commit: the query reruns and
@@ -430,94 +424,4 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
 
     requests.set(None).unwrap();
     assert!(live.next().await.result.unwrap().is_none());
-}
-
-#[tokio::test]
-async fn done_lists_every_copy_of_a_folder() {
-    let (db, _temp) = live_db().await;
-    let root = &crate::import::watched_folder::host_root("/music");
-    let item = scan_candidate(root, "release");
-    let crate::import::folder_scanner::ScanItem::Valid(candidate) = &item else {
-        unreachable!("the fixture builds a valid candidate");
-    };
-    db.add_watched_import_folder(root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
-    db.save_folder_scan_item(root, generation, &item)
-        .await
-        .unwrap();
-    db.finish_folder_scan(root, generation, None).await.unwrap();
-    let mut copy = db.find_release_by_id(RELEASE_ID).await.unwrap().unwrap();
-    copy.content_hash = Some(candidate.files.content_hash());
-    exec(
-        &db,
-        "UPDATE releases SET content_hash = ?1 WHERE id = ?2",
-        &[copy.content_hash.as_deref().unwrap(), RELEASE_ID],
-    )
-    .await;
-    copy.id = bae_test_support::test_uuid("second-imported-copy");
-    let mut other_album = db.find_album_by_id(ALBUM_ID).await.unwrap().unwrap();
-    other_album.id = bae_test_support::test_uuid("second-copy-album");
-    other_album.title = "Second Album".to_string();
-    db.insert_album(&other_album).await.unwrap();
-    copy.album_id = other_album.id;
-    db.insert_release(&copy).await.unwrap();
-
-    let projection = db
-        .load_import_list(list_request(crate::import::TriageTab::Done, [(0, 50)]))
-        .await
-        .expect("every release with the folder hash is listed");
-    assert_eq!(projection.summary.counts.done, 1, "Done counts folders");
-    let rows = imported_rows(&projection);
-    assert_eq!(rows.len(), 1);
-    let mut ids: Vec<_> = rows[0]
-        .releases
-        .iter()
-        .map(|release| release.release_id.clone())
-        .collect();
-    ids.sort();
-    let mut expected = vec![RELEASE_ID.to_string(), copy.id.clone()];
-    expected.sort();
-    assert_eq!(ids, expected);
-
-    let detail = db
-        .load_import_candidate(&candidate.key())
-        .await
-        .unwrap()
-        .unwrap();
-    assert!(
-        detail.is_added,
-        "the matching hash supplies the duplicate hint"
-    );
-    assert_eq!(detail.imported_releases.len(), 2);
-
-    let detail = detail.resolve(&crate::import::TriageRuntimeFacts::default());
-    assert_eq!(
-        detail.placement,
-        crate::import::CandidatePanePlacement::Done
-    );
-    assert!(!detail
-        .live
-        .actions
-        .contains(&crate::import::CandidateAction::Import));
-
-    for title in ["Album Title", "Second Album"] {
-        let mut request = list_request(crate::import::TriageTab::Done, [(0, 50)]);
-        request.view.filter_text = title.to_string();
-        let filtered = db.load_import_list(request).await.unwrap();
-        assert_eq!(filtered.total_count, 1, "search finds either copy");
-        assert_eq!(imported_rows(&filtered)[0].releases.len(), 2);
-    }
-
-    exec(&db, "DELETE FROM releases WHERE id = ?1", &[RELEASE_ID]).await;
-    let surviving = db
-        .load_import_list(list_request(crate::import::TriageTab::Done, [(0, 50)]))
-        .await
-        .unwrap();
-    assert_eq!(surviving.summary.counts.done, 1);
-    let surviving = imported_rows(&surviving);
-    assert_eq!(surviving[0].releases.len(), 1);
-    assert_eq!(surviving[0].releases[0].release_id, copy.id);
 }

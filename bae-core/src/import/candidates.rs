@@ -2,11 +2,11 @@
 //! stored entries a new one replaces.
 //!
 //! Everything a row shows that outlives the process — the scanned folder and
-//! its files, whether it was skipped, whether its content is already in the
-//! library, which boundary decisions exposed it, the scan status of its root,
-//! the identify state its stored verdict stands back up as, the signals
-//! extraction settled on, the release an import wrote and the error one failed
-//! with — is a fact in a table, read by [`crate::import::list`]. What is left
+//! its files, whether it was skipped, whether this device imported its files,
+//! which boundary decisions exposed it, the scan status of its root, the
+//! identify state its stored verdict stands back up as, the signals extraction
+//! settled on, the release an import wrote and the error one failed with — is
+//! a fact in a table, read by [`crate::import::list`]. What is left
 //! is what is happening *right now*: a run in flight and an import in
 //! progress. That is [`CandidateRuntimeSnapshot`], held by
 //! [`super::candidate_runtime::CandidateRuntime`] and delivered per key.
@@ -19,15 +19,15 @@ use super::types::ImportStep;
 use crate::identify::IdentifyState;
 
 /// Where a stored candidate stands in the queue, read once from the three
-/// places that each hold one fact about it: the skip table, the library's
-/// releases, and the runtime's import claims. Every gate that decides what
+/// places that each hold one fact about it: the skip table, the releases this
+/// device imported, and the runtime's import claims. Every gate that decides what
 /// may be done to a candidate reads this rather than composing the three
 /// on its own.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CandidateStanding {
     /// The person set it aside.
     pub skipped: bool,
-    /// Its files are already a release in the library.
+    /// This device imported a release from its files.
     pub imported: bool,
     /// An import has claimed it and is running.
     pub claimed: bool,
@@ -35,7 +35,7 @@ pub struct CandidateStanding {
 
 impl CandidateStanding {
     /// Whether identification may still answer for it: not set aside, not
-    /// already in the library, not being imported.
+    /// imported here, not being imported.
     pub fn answerable(&self) -> bool {
         !self.skipped && !self.imported && !self.claimed
     }
@@ -219,25 +219,12 @@ pub struct ImportInFlight {
     pub step: ImportStep,
 }
 
-/// A library release carrying one candidate's folder hash.
+/// The release this device imported from one candidate's files, found by the
+/// folder hash it recorded (`local_release_origin`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportedRelease {
     pub release_id: String,
     pub album_id: String,
-    /// The candidate key this device imported the release from; `None` for a
-    /// release another device imported.
-    pub imported_from: Option<String>,
-}
-
-impl ImportedRelease {
-    /// Whether the folder at `candidate_key` is probably one the library
-    /// already has: some release carries its hash, but none of `releases` was
-    /// imported from it.
-    pub(crate) fn probably_in_library(releases: &[Self], candidate_key: &str) -> bool {
-        !releases
-            .iter()
-            .any(|release| release.imported_from.as_deref() == Some(candidate_key))
-    }
 }
 
 /// Whether reading the folder at `key` as `decision` is something the stored

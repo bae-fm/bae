@@ -645,7 +645,6 @@ extension ImportListPageSourceTests {
             else { return nil }
             switch item {
             case .candidate(_, let row, _): return row.candidateKey
-            case .imported(_, let row): return row.candidateKey
             case .groupHeader, .invalid: return nil
             }
         }

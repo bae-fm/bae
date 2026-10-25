@@ -46,4 +46,4 @@ Bản phát hành được tạo với tham chiếu tới tệp của người d
 
 ## Nhận ra bản rip
 
-Mỗi lần nhập tạo một bản phát hành có ID ngẫu nhiên mới và các hàng bản nhạc, tệp riêng. `releases.content_hash` lưu SHA-256 không duy nhất của các đường dẫn tương đối đã sắp xếp, kích thước và thời điểm sửa đổi. Giá trị trùng chỉ gợi ý rằng có thể đã có bản sao; không bao giờ chặn nhập hoặc thay thế bản phát hành. Thẻ đã hoàn tất liệt kê mọi bản phát hành khớp với thư mục và không có thao tác nhập lại.
+Mỗi lần nhập tạo một bản phát hành có ID ngẫu nhiên mới và các hàng bản nhạc, tệp riêng. Mỗi thiết bị ghi vào `local_release_origin` một SHA-256 của các đường dẫn tương đối đã sắp xếp, kích thước và thời điểm sửa đổi của các tệp mà mỗi lần nhập của nó đã đọc; bản ghi này không bao giờ được đồng bộ. Một thư mục có hash do thiết bị này ghi lại nằm trong thẻ đã hoàn tất dù được chuyển đi đâu, và hàng của nó nêu bản phát hành duy nhất đã nhập từ đó. Nhập lại cùng các tệp đó trên thiết bị này sẽ thất bại, và thẻ đã hoàn tất không có thao tác nhập lại.

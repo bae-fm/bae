@@ -56,4 +56,4 @@ The release lands referencing the user's files in place. For a cloud import, cov
 
 ## Recognizing rips
 
-Every import creates a release with a fresh random ID and its own track and file rows. `releases.content_hash` stores a nonunique SHA-256 of the sorted relative paths, sizes, and modification times. A matching hash only supplies a duplicate hint; it never refuses or replaces an import. Done lists every matching release for the folder and offers no re-import action.
+Every import creates a release with a fresh random ID and its own track and file rows. Each device records in `local_release_origin` a SHA-256 of the sorted relative paths, sizes, and modification times of the files each of its imports read; the record never syncs. A folder whose hash this device recorded is in Done wherever it has moved, and its row names the one release imported from it. Importing the same files again on that device fails, and Done offers no re-import action.

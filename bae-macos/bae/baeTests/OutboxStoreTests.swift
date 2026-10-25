@@ -97,23 +97,6 @@ struct CloudImportQueuePresentationTests {
         )
     }
 
-    @Test("a restored import rejoins its release's durable upload")
-    func restoredImportRejoinsDurableUpload() {
-        var snapshot = OutboxStore.emptySnapshot
-        snapshot.perRelease["release-a"] = BridgeReleaseUploadProgress(
-            progress: snapshot.total,
-            throughputBps: 0
-        )
-        let store = OutboxStore(snapshot: snapshot)
-
-        guard
-            case .active = store.persistedUploadObservations["release-a"]
-        else {
-            Issue.record("the restored import reads the durable release upload")
-            return
-        }
-    }
-
     /// A release's own line names its phase; how many of its files are in
     /// that phase belongs to the list of those files.
     @Test("an active upload line is its phase and encrypted bytes, no count")
@@ -129,9 +112,8 @@ struct CloudImportQueuePresentationTests {
         let total = Int64(1016).formatted(.byteCount(style: .file))
 
         #expect(observation.phaseText == "Uploading")
-        #expect(observation.statusText.hasPrefix("Uploading \u{00B7} "))
-        #expect(observation.statusText.contains(done))
-        #expect(observation.statusText.contains(total))
+        #expect(observation.progressDetailText?.contains(done) == true)
+        #expect(observation.progressDetailText?.contains(total) == true)
     }
 
     @Test("a waiting upload is presented as queued")
@@ -155,21 +137,9 @@ struct CloudImportQueuePresentationTests {
 
     @Test("waiting for the first retained queue value is still queued")
     func awaitingQueueIsQueued() {
-        #expect(UploadObservation.awaiting.statusText == "Queued")
+        #expect(UploadObservation.awaiting.phaseText == "Queued")
         #expect(
             StorageUploadObservation.awaiting.transitionStatusText == "Queued"
-        )
-    }
-
-    @Test("the import row keeps a progress bar through the cloud transition")
-    func cloudTransitionProgressBar() {
-        var progress = OutboxStore.emptySnapshot.total
-        progress.bar = BridgeUploadBar(bytesDone: 500, bytesTotal: 2_000)
-
-        #expect(UploadObservation.awaiting.progressBar == .indeterminate)
-        #expect(
-            UploadObservation.active(progress).progressBar
-                == .determinate(0.25)
         )
     }
 
@@ -181,8 +151,7 @@ struct CloudImportQueuePresentationTests {
         progress.queued = 2
         progress.activity = .queued
 
-        #expect(UploadObservation.active(progress).progressBar == nil)
-        #expect(UploadObservation.active(progress).statusText == "Queued")
+        #expect(UploadObservation.active(progress).phaseText == "Queued")
         #expect(
             StorageUploadObservation.active(
                 progress: progress,

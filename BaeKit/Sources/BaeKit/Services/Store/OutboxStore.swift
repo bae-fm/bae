@@ -176,13 +176,6 @@ public class OutboxStore {
         }
     }
 
-    /// Imported releases' cloud transitions. The outbox holds each release
-    /// while there is work and drops it when there is none, so absence means
-    /// the imported row is resting.
-    public var persistedUploadObservations: [String: UploadObservation] {
-        snapshot.perRelease.mapValues { UploadObservation.active($0.progress) }
-    }
-
     /// The idle queue used before the required initial snapshot arrives and by
     /// previews/tests. A failed initial read fails library opening instead of
     /// presenting this value as authoritative queue state.
@@ -213,14 +206,6 @@ public enum UploadObservation: Equatable {
     case awaiting
     case active(BridgeUploadProgress)
 
-    /// What the transition is doing: the dominant phase, and, while a phase
-    /// is counting bytes, that phase's own numerator and denominator.
-    public var statusText: String {
-        [phaseText, progressDetailText]
-            .compactMap { $0 }
-            .joined(separator: " \u{00B7} ")
-    }
-
     /// The dominant phase alone, for a line that puts the bar between the
     /// phase and its count. It names the release's phase, not how many of
     /// its files are in it.
@@ -240,19 +225,6 @@ public enum UploadObservation: Equatable {
             return nil
         case .active(let progress):
             return progress.bar?.text
-        }
-    }
-
-    /// The bar the transition draws: exact progress through the phase
-    /// counting bytes, or an indeterminate one while the queue's first value
-    /// is awaited. Files that are only waiting draw none: nothing is moving
-    /// them, and with no storage connected nothing will until one is.
-    public var progressBar: CloudTransitionProgress? {
-        switch self {
-        case .awaiting:
-            return .indeterminate
-        case .active(let progress):
-            return progress.bar.map { .determinate($0.fraction) }
         }
     }
 }
@@ -309,7 +281,8 @@ public enum StorageUploadObservation: Equatable {
 
     /// The bar the transition draws: indeterminate while the command hands
     /// off, exact progress through the phase counting bytes, and none for
-    /// files that are only waiting (see `UploadObservation.progressBar`).
+    /// files that are only waiting: nothing is moving them, and with no
+    /// storage connected nothing will until one is.
     public var progressBar: CloudTransitionProgress? {
         switch self {
         case .queueing, .awaiting:

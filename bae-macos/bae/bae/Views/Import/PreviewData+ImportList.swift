@@ -40,12 +40,6 @@
             )
         }
 
-        static func importedItem(
-            _ row: BridgeImportedRow
-        ) -> BridgeImportListItem {
-            .imported(stableKey: "candidate:\(row.candidateKey)", row: row)
-        }
-
         static func invalidItem(
             _ candidate: BridgeInvalidCandidate
         ) -> BridgeImportListItem {

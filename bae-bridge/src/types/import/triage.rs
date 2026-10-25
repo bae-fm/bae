@@ -14,7 +14,7 @@ pub struct BridgeFolderCandidate {
     pub track_count: u32,
     /// Whether the person skipped this candidate.
     pub skipped: bool,
-    /// Whether these files were already imported, matched by content hash.
+    /// Whether this device imported these files, matched by content hash.
     pub is_added: bool,
 }
 
@@ -193,32 +193,21 @@ pub struct BridgeImportInFlight {
     pub step: BridgeImportStep,
 }
 
-/// A running import, the folder's library copies, or its stored failure.
+/// A running import, the release this device imported from the folder's
+/// files, or its stored failure.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCandidateImportStatus {
-    Importing {
-        standing: BridgeImportStanding,
-    },
-    Complete {
-        releases: Vec<BridgeImportedRelease>,
-        /// No listed release was imported from this folder on this device:
-        /// only its hash matches.
-        probably_in_library: bool,
-    },
-    Error {
-        error: BridgeError,
-    },
+    Importing { standing: BridgeImportStanding },
+    Complete { release: BridgeImportedRelease },
+    Error { error: BridgeError },
 }
 
-/// The library copies matching a folder, or its stored import failure.
+/// The release this device imported from the folder's files, or its stored
+/// import failure.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeTriageImportStatus {
-    Complete {
-        releases: Vec<BridgeImportedRelease>,
-    },
-    Error {
-        error: BridgeError,
-    },
+    Complete { release: BridgeImportedRelease },
+    Error { error: BridgeError },
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -787,45 +776,11 @@ pub struct BridgeTriageRow {
     pub selected: bool,
 }
 
-/// A Done row: the library release the candidate became, as the library has it
-/// now.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeImportedRow {
-    /// The candidate's folder path — the key every other import call takes.
-    pub candidate_key: String,
-    pub display_path: String,
-    /// What is running for the candidate right now: an import that just
-    /// wrote the release can still own it for a moment.
-    pub live: BridgeCandidateLiveState,
-    pub releases: Vec<BridgeImportedReleaseSummary>,
-    /// No listed release was imported from this folder on this device: only
-    /// its hash matches, so the folder is probably one the library already
-    /// has.
-    pub probably_in_library: bool,
-    /// Whether the person has selected the row.
-    pub selected: bool,
-}
-
-/// A library copy matching a candidate's folder hash.
+/// The release this device imported from a candidate's files.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeImportedRelease {
     pub release_id: String,
     pub album_id: String,
-}
-
-/// One of the library releases a Done folder matches.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeImportedReleaseSummary {
-    pub release_id: String,
-    pub album_id: String,
-    /// Empty when the tags named no title.
-    pub title: String,
-    /// The album's credited artists, joined.
-    pub artist: Option<String>,
-    pub year: Option<i32>,
-    pub cover: Option<crate::types::BridgeImageRef>,
-    /// Every catalog's description of the release, in catalog order.
-    pub records: Vec<crate::types::BridgeReleaseRecord>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

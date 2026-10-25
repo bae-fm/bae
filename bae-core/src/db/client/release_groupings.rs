@@ -691,7 +691,7 @@ impl Database {
                 let content_hash = composed.files.content_hash();
                 let in_use: bool = sql.query_row(
                     "SELECT EXISTS(SELECT 1 FROM scan_candidate WHERE content_hash = ?1) \
-                     OR EXISTS(SELECT 1 FROM releases WHERE content_hash = ?1)",
+                     OR EXISTS(SELECT 1 FROM local_release_origin WHERE content_hash = ?1)",
                     [&content_hash],
                     |row| row.get(0),
                 )?;
@@ -728,7 +728,7 @@ impl Database {
                 }
                 let unavailable = sql.query_row(
                     "SELECT EXISTS(SELECT 1 FROM release_grouping_member WHERE member_key = ?1) \
-                     OR EXISTS(SELECT 1 FROM releases WHERE content_hash = ?2)",
+                     OR EXISTS(SELECT 1 FROM local_release_origin WHERE content_hash = ?2)",
                     params![member_key, member.files.content_hash()],
                     |row| row.get::<_, bool>(0),
                 )?;

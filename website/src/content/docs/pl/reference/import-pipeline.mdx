@@ -46,4 +46,4 @@ Wydanie trafia do biblioteki, wskazując pliki użytkownika na miejscu. Przy imp
 
 ## Rozpoznawanie ripów
 
-Każdy import tworzy wydanie z nowym losowym identyfikatorem i własnymi wierszami utworów oraz plików. `releases.content_hash` przechowuje nieunikatowy SHA-256 posortowanych ścieżek względnych, rozmiarów i czasów modyfikacji. Zgodność tylko sugeruje możliwą kopię; nigdy nie blokuje importu ani nie zastępuje wydania. Karta ukończonych importów pokazuje wszystkie wydania pasujące do folderu i nie oferuje ponownego importu.
+Każdy import tworzy wydanie z nowym losowym identyfikatorem i własnymi wierszami utworów oraz plików. Każde urządzenie zapisuje w `local_release_origin` SHA-256 posortowanych ścieżek względnych, rozmiarów i czasów modyfikacji plików odczytanych przez każdy jego import; ten zapis nigdy nie jest synchronizowany. Folder, którego hash to urządzenie zapisało, jest na karcie ukończonych importów, dokądkolwiek go przeniesiono, a jego wiersz wskazuje jedyne wydanie z niego zaimportowane. Ponowny import tych samych plików na tym urządzeniu kończy się niepowodzeniem, a karta ukończonych importów nie oferuje ponownego importu.

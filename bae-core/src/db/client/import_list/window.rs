@@ -39,15 +39,8 @@ pub(super) fn materialise(
             } => {
                 let placed = &flat.rows[*index];
                 let scanned = &rows.candidates[placed.index];
-                // A Done row is the library release it became, read from the
-                // library: nothing the candidate says — its draft, its pick,
-                // its cover — is read for it.
-                if placed.row.placement == crate::import::TriagePlacement::Done {
-                    return Ok(WindowItemRows::Ready(ImportListItem::Imported {
-                        row: imported_row(sql, &placed.row)?,
-                        live: (),
-                    }));
-                }
+                // A Done row is read as the row it was in Found: its draft,
+                // its pick and its cover, whichever tab places it.
                 let row = placed.row.clone();
                 let content_hash = scanned.content_hash.as_deref().ok_or_else(|| {
                     DbError::Message(format!("candidate {} has no content hash", scanned.path))
@@ -136,63 +129,6 @@ pub(super) fn materialise(
             }
         })
         .collect()
-}
-
-/// A Done row, read from the library release its import wrote: the album's
-/// title, credited artists and year, the release's cover and its catalog
-/// records. Read here, inside the list's snapshot, so a re-identify, an edit, a
-/// new cover or a deleted release reruns the list and reaches the row. Its
-/// words are the ones the filter tests: both read them with
-/// [`load_imported_release_text_on`].
-fn imported_row(
-    sql: &SqlReadContext<'_>,
-    placed: &crate::import::triage::TriageRow,
-) -> Result<crate::import::ImportedRow, DbError> {
-    let Some(crate::import::TriageImportStatus::Complete { releases }) = &placed.import_status
-    else {
-        return Err(DbError::Message(format!(
-            "candidate {} is placed Done with no imported release",
-            placed.candidate_key
-        )));
-    };
-    Ok(crate::import::ImportedRow {
-        candidate_key: placed.candidate_key.clone(),
-        display_path: placed.display_path.clone(),
-        action_basis: placed.action_basis.clone(),
-        selected: placed.selected,
-        probably_in_library: ImportedRelease::probably_in_library(
-            releases,
-            &placed.candidate_key,
-        ),
-        releases: releases.iter().map(|release| imported_release_summary(sql, release)).collect::<Result<_, _>>()?,
-    })
-}
-
-fn imported_release_summary(
-    sql: &SqlReadContext<'_>,
-    release: &ImportedRelease,
-) -> Result<crate::import::ImportedReleaseSummary, DbError> {
-    let text = load_imported_release_text_on(sql, Some(&release.release_id))?
-        .remove(&release.release_id)
-        .ok_or_else(|| DbError::Message(format!("imported release {} has no album", release.release_id)))?;
-    let cover_version = super::super::files::image_version_on(
-        sql,
-        &crate::db::LibraryImageType::Cover,
-        &release.release_id,
-    )?;
-    Ok(crate::import::ImportedReleaseSummary {
-        cover: cover_version.map(|version| crate::album_detail::ImageRef {
-            id: release.release_id.clone(),
-            version,
-            image_type: crate::db::LibraryImageType::Cover,
-        }),
-        release_id: release.release_id.clone(),
-        album_id: release.album_id.clone(),
-        title: text.title,
-        artist: text.artist,
-        year: text.year,
-        records: super::super::read::get_release_records_on(sql, &release.release_id)?,
-    })
 }
 
 #[derive(Clone, PartialEq)]
@@ -456,7 +392,7 @@ pub(super) struct CandidateDetailRows {
     source_error: Option<crate::import::GroupingBlock>,
     actionable: bool,
     skipped: bool,
-    imported_releases: Vec<ImportedRelease>,
+    imported: Option<ImportedRelease>,
     current: Option<DbImportCandidateState>,
     pane_rows: DbCandidatePaneRows,
     artist_resolutions: Vec<crate::import::ResolvedCredit>,
@@ -487,20 +423,20 @@ pub(super) fn load_candidate_detail_on(
 
     let skipped = skipped_on(sql, &candidate)?;
 
-    let imported_releases = sql
-        .query(
-            "SELECT r.id, r.album_id, o.candidate_key \
-             FROM releases r LEFT JOIN local_release_origin o ON o.release_id = r.id \
-             WHERE r.content_hash = ? ORDER BY r.created_at, r.id",
+    let imported = sql
+        .query_row(
+            "SELECT r.id, r.album_id \
+             FROM local_release_origin o JOIN releases r ON r.id = o.release_id \
+             WHERE o.content_hash = ?",
             params![content_hash],
             |row| {
                 Ok(ImportedRelease {
                     release_id: row.get(0)?,
                     album_id: row.get(1)?,
-                    imported_from: row.get(2)?,
                 })
             },
-        )?;
+        )
+        .optional()?;
 
     let state = load_states_on(sql, Some(&content_hash))?.remove(&content_hash);
     let current = state.filter(|state| state.file_edits.revision == candidate.file_edit_revision);
@@ -562,7 +498,7 @@ pub(super) fn load_candidate_detail_on(
         _ => None,
     };
     Ok(Some(CandidateDetailRows { candidate, source_error, actionable, skipped,
-        imported_releases, current, pane_rows, artist_resolutions, metadata_revision,
+        imported, current, pane_rows, artist_resolutions, metadata_revision,
         statuses, records, picked_library_status, album, embedded_cover }))
 }
 
@@ -600,7 +536,7 @@ fn candidate_album_on(
 
 impl CandidateDetailRows {
     pub(super) fn process(self) -> Result<ImportCandidateDetailProjection, DbError> {
-        let Self { candidate, source_error, actionable, skipped, imported_releases, current,
+        let Self { candidate, source_error, actionable, skipped, imported, current,
             pane_rows, artist_resolutions, metadata_revision, statuses,
             records, picked_library_status, album, embedded_cover } = self;
         let metadata_provenance = current.as_ref().and_then(|state| state.metadata_provenance.clone());
@@ -665,7 +601,7 @@ impl CandidateDetailRows {
             embedded_cover,
         );
         Ok(ImportCandidateDetailProjection {
-            is_added: !imported_releases.is_empty(),
+            is_added: imported.is_some(),
             candidate,
             source_error,
             actionable,
@@ -676,7 +612,7 @@ impl CandidateDetailRows {
             release_link,
             metadata_author,
             metadata_revision,
-            imported_releases,
+            imported,
             records,
             picked_library_status,
             album,

@@ -125,10 +125,8 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
             is_compilation: false,
             created_at: now,
         };
-        let release = DbRelease {
-            content_hash: Some(hash.clone()),
-            ..DbRelease::new_test(&album.id, &bae_test_support::test_uuid("choice-release"))
-        };
+        let release =
+            DbRelease::new_test(&album.id, &bae_test_support::test_uuid("choice-release"));
         let track = DbTrack::new_test(
             &release.id,
             &bae_test_support::test_uuid("choice-track"),
@@ -166,7 +164,9 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
             .map(|artist| artist.id.clone())
             .collect();
         db.finalize_import_atomic(
-            ImportCommitGuard::UncheckedTestSetup,
+            ImportCommitGuard::UncheckedTestSetup {
+                content_hash: Some(hash.clone()),
+            },
             Some(&album),
             &release,
             &tracks,

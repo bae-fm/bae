@@ -494,68 +494,52 @@
             live: triageLive([.restore])
         )
 
+        /// A Done row: the row it was in Found, read from a catalog, its
+        /// import status naming the release imported from it.
         static let triageRowDoneImported = triageRow(
             for: importTabDoneCandidate,
             placement: .done,
-            matched: triageMatch(
-                releaseId: "preview-release",
-                title: importTabDoneCandidate.displayName,
-                trackCount: 5
+            matched: nil,
+            metadataSummary: BridgeTriageMetadataSummary(
+                albumTitle: "Album Title Sixteen",
+                albumArtists: "Artist Name"
             ),
-            metadataSummary: nil,
-            importStatus: .complete(releases: [
-                BridgeImportedRelease(
+            cover: .local(file: previewArtFile("Front.png")),
+            importStatus: .complete(
+                release: BridgeImportedRelease(
                     releaseId: "preview-release",
                     albumId: "preview-album"
                 )
-            ])
+            ),
+            metadataProvenance: .externalRelease(
+                record: BridgeMetadataRef(
+                    catalog: .musicBrainz,
+                    key: "rel-paired"
+                )
+            ),
+            reading: .identified(records: identifiedFromBothCatalogs),
+            live: triageLive([.revealFolder])
         )
 
-        /// A Done row whose release was read from a catalog.
-        static let importedRowIdentified = importedRow(
-            for: importTabDoneCandidate,
-            title: importTabDoneCandidate.displayName,
-            year: 1997,
-            records: identifiedFromBothCatalogs,
-            probablyInLibrary: false
-        )
-
-        /// A Done row whose release was read off its files' tags.
-        static let importedRowFromTags = importedRow(
+        /// A Done row read off its files' tags.
+        static let triageRowDoneFromTags = triageRow(
             for: folderCandidates[0],
-            title: "Album Title",
-            year: nil,
-            records: [],
-            probablyInLibrary: false
+            placement: .done,
+            matched: nil,
+            metadataSummary: BridgeTriageMetadataSummary(
+                albumTitle: "Album Title",
+                albumArtists: "Artist Name"
+            ),
+            importStatus: .complete(
+                release: BridgeImportedRelease(
+                    releaseId: "preview-release-tags",
+                    albumId: "preview-album-tags"
+                )
+            ),
+            metadataProvenance: .fileMetadata,
+            reading: .prefilled,
+            live: triageLive([.revealFolder])
         )
-
-        static func importedRow(
-            for candidate: Candidate,
-            title: String,
-            artist: String? = "Artist Name",
-            year: Int32?,
-            records: [BridgeReleaseRecord],
-            probablyInLibrary: Bool
-        ) -> BridgeImportedRow {
-            BridgeImportedRow(
-                candidateKey: candidate.key,
-                displayPath: candidate.displayName,
-                live: triageLive([.revealFolder]),
-                releases: [
-                    BridgeImportedReleaseSummary(
-                        releaseId: "preview-release",
-                        albumId: "preview-album",
-                        title: title,
-                        artist: artist,
-                        year: year,
-                        cover: nil,
-                        records: records
-                    )
-                ],
-                probablyInLibrary: probablyInLibrary,
-                selected: false
-            )
-        }
 
         static let triageRowFailed = triageRow(
             for: importTabFailedCandidate,
@@ -646,8 +630,7 @@
             triageRowFailed,
         ]
 
-        /// The row a selected Done candidate carries; the list shows it as
-        /// `importedRowIdentified`.
+        /// The rows the Done tab shows: the ones they were in Found.
         private static let importTabDoneRows = [
             triageRowDoneImported
         ]
@@ -670,7 +653,7 @@
                         candidateItem($0, isGroupMember: true)
                     }
             case .done:
-                return [importedItem(importedRowIdentified)]
+                return importTabDoneRows.map(candidateItem)
             case .skipped:
                 return [candidateItem(triageRowSkipped)]
                     + invalidCandidates.map(invalidItem)

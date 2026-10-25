@@ -95,9 +95,9 @@ pub struct ImportQueueRows {
     /// Every skipped candidate as the list addresses it: the watched folder
     /// covering it, and its path below that.
     pub skipped: HashSet<(String, String)>,
-    /// Every library release carrying each imported folder hash, oldest first.
-    pub imported: HashMap<String, Vec<ImportedRelease>>,
-    /// When each folder hash's latest release was written, in Unix epoch
+    /// The release this device imported from each folder hash it recorded.
+    pub imported: HashMap<String, ImportedRelease>,
+    /// When each of those releases was written, by folder hash, in Unix epoch
     /// milliseconds; orders rows within a Done section.
     pub imported_at: HashMap<String, i64>,
     /// Why the last import attempt failed, by content hash, so a failed
@@ -107,64 +107,9 @@ pub struct ImportQueueRows {
     /// Each grouping's anchor folder as (watched folder, path below it):
     /// `true` when its releases are read as one, `false` when kept apart.
     pub folder_readings: HashMap<(String, String), bool>,
-    /// Each Done row's library text by release id, which the filter tests;
-    /// `None` when the view does not filter, so an unfiltered list neither
-    /// reads nor reruns on it.
-    pub imported_text: Option<HashMap<String, crate::import::ImportedReleaseText>>,
 }
 
-/// Whether a queue read loads the Done rows' text: only when the view filters.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum DoneRowText {
-    Read,
-    Skip,
-}
-
-impl DoneRowText {
-    pub(super) fn of(view: &crate::import::list::ImportListView) -> Self {
-        if view.filters() {
-            Self::Read
-        } else {
-            Self::Skip
-        }
-    }
-}
-
-/// Each imported release's title, credited artists after merges, and year, by
-/// release id; only `only`'s when given.
-pub(super) fn load_imported_release_text_on(
-    sql: &SqlReadContext<'_>,
-    only: Option<&str>,
-) -> Result<HashMap<String, crate::import::ImportedReleaseText>, DbError> {
-    Ok(sql
-        .query(
-            &format!(
-                "SELECT r.id, a.title, {artist_names} AS artist_credits, a.year \
-                 FROM releases r JOIN albums a ON a.id = r.album_id \
-                 WHERE r.content_hash IS NOT NULL AND (?1 IS NULL OR r.id = ?1)",
-                artist_names = super::query::album_credits_json_sql(),
-            ),
-            params![only],
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    crate::import::ImportedReleaseText {
-                        title: row.get(1)?,
-                        artist: Some(super::read::credit_line_column(row, "artist_credits")?)
-                            .filter(|line| !line.is_empty()),
-                        year: row.get(3)?,
-                    },
-                ))
-            },
-        )?
-        .into_iter()
-        .collect())
-}
-
-pub(super) fn load_import_queue_on(
-    sql: &SqlReadContext<'_>,
-    done_row_text: DoneRowText,
-) -> Result<ImportQueueRows, DbError> {
+pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQueueRows, DbError> {
     let watched_folders: Vec<WatchedFolder> = sql
         .query(
             "SELECT path FROM watched_import_folders ORDER BY position",
@@ -191,12 +136,13 @@ pub(super) fn load_import_queue_on(
         .map(|path| listed_below(&roots, path))
         .collect::<Result<_, _>>()?;
 
-    let mut imported: HashMap<String, Vec<ImportedRelease>> = HashMap::new();
+    // Only what this device imported places a folder in Done: a release
+    // another device imported from the same files is no import of this one.
+    let mut imported: HashMap<String, ImportedRelease> = HashMap::new();
     let mut imported_at: HashMap<String, i64> = HashMap::new();
     for (content_hash, release, created_at) in sql.query(
-        "SELECT r.content_hash, r.id, r.album_id, r.created_at, o.candidate_key \
-         FROM releases r LEFT JOIN local_release_origin o ON o.release_id = r.id \
-         WHERE r.content_hash IS NOT NULL ORDER BY r.created_at, r.id",
+        "SELECT o.content_hash, r.id, r.album_id, r.created_at \
+         FROM local_release_origin o JOIN releases r ON r.id = o.release_id",
         [],
         |row| {
             Ok((
@@ -204,14 +150,13 @@ pub(super) fn load_import_queue_on(
                 ImportedRelease {
                     release_id: row.get(1)?,
                     album_id: row.get(2)?,
-                    imported_from: row.get(4)?,
                 },
                 super::read::rfc3339_column(row, "created_at")?,
             ))
         },
     )? {
-        imported.entry(content_hash.clone()).or_default().push(release);
-        imported_at.insert(content_hash, created_at.timestamp_millis());
+        imported_at.insert(content_hash.clone(), created_at.timestamp_millis());
+        imported.insert(content_hash, release);
     }
 
     let folder_readings: HashMap<(String, String), bool> = sql
@@ -241,10 +186,6 @@ pub(super) fn load_import_queue_on(
     };
 
     let states = state_rows(sql)?;
-    let imported_text = match done_row_text {
-        DoneRowText::Read => Some(load_imported_release_text_on(sql, None)?),
-        DoneRowText::Skip => None,
-    };
     Ok(ImportQueueRows {
         watched_folders,
         candidates,
@@ -254,7 +195,6 @@ pub(super) fn load_import_queue_on(
         failures,
         states,
         folder_readings,
-        imported_text,
     })
 }
 
@@ -530,7 +470,7 @@ fn load_import_list_on(
     sql: &SqlReadContext<'_>,
     request: &ImportListRequest,
 ) -> Result<ImportListRows, DbError> {
-    let rows = load_import_queue_on(sql, DoneRowText::of(&request.view))?;
+    let rows = load_import_queue_on(sql)?;
     let flat = flatten(&rows, request).map_err(|error| DbError::Message(error.to_string()))?;
     let windows = request
         .windows
@@ -608,8 +548,7 @@ impl Database {
         candidate_key: &str,
     ) -> Result<Option<crate::import::ImportCandidateListLocation>, DbError> {
         let candidate_key = candidate_key.to_string();
-        // Locating clears the filter, so nothing tests a Done row's text.
-        self.read(move |sql| load_import_queue_on(&sql, DoneRowText::Skip))
+        self.read(move |sql| load_import_queue_on(&sql))
             .process(move |rows| {
                 crate::import::list::locate_candidate(&rows, &request, &candidate_key)
                     .map_err(|error| DbError::Message(error.to_string()))
@@ -624,9 +563,7 @@ impl Database {
         request: ImportListRequest,
         keys: HashSet<String>,
     ) -> Result<Option<String>, DbError> {
-        // The queue's own order ignores the filter, so nothing tests a Done
-        // row's text.
-        self.read(move |sql| load_import_queue_on(&sql, DoneRowText::Skip))
+        self.read(move |sql| load_import_queue_on(&sql))
             .process(move |rows| {
                 crate::import::list::first_candidate_among(&rows, &request, &keys)
                     .map_err(|error| DbError::Message(error.to_string()))

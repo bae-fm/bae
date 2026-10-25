@@ -84,7 +84,6 @@ async fn create_local_release(
         release_name: None,
         pressing: bae_core::pressing::Pressing::blank(),
         source_folder_name: None,
-        content_hash: None,
         album_loudness_lufs: None,
         album_peak_linear: None,
         created_at: now,

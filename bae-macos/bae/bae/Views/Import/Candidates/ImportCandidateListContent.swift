@@ -253,8 +253,8 @@ struct ImportCandidateListContent: View {
     let onCombineFolder: (_ key: BridgeFolderReleaseDecisionKey) -> Void
     /// Read the release at `key` as the folders it is made of.
     let onSeparate: (_ key: String) -> Void
-    /// Show an imported row's folders.
-    let onReveal: (_ key: String) -> Void
+    /// Open the release this device imported from a Done row's files.
+    let onShowInLibrary: (_ release: BridgeImportedRelease) -> Void
     /// Run one action a row's menu offers, for the row or the selection.
     let onPerform: (ImportCandidateActionOffer) -> Void
     /// Take every candidate off the identification queue.
@@ -268,8 +268,6 @@ struct ImportCandidateListContent: View {
     private var importSelection
     @Environment(ImageStore.self)
     private var imageStore
-    @Environment(OutboxStore.self)
-    private var outboxStore
     @Environment(\.displayScale)
     private var displayScale
     @State
@@ -629,8 +627,6 @@ extension ImportCandidateListContent {
                 releaseGroupHeader(group, expanded: expanded)
             case .candidate(_, let row, let isGroupMember):
                 candidateRow(row, isGroupMember: isGroupMember)
-            case .imported(_, let row):
-                importedRow(row)
             case .invalid(_, let invalid, _, let isGroupMember):
                 invalidRow(invalid, isGroupMember: isGroupMember)
             }
@@ -654,7 +650,7 @@ extension ImportCandidateListContent {
             switch item {
             case .groupHeader:
                 true
-            case .candidate, .imported, .invalid:
+            case .candidate, .invalid:
                 isGroupMember(at: index, in: list) == false
                     && isGroupMember(at: index - 1, in: list) == true
             }
@@ -675,8 +671,6 @@ extension ImportCandidateListContent {
             return false
         case .candidate(_, _, let isMember):
             return isMember
-        case .imported:
-            return false
         case .invalid(_, _, _, let isMember):
             return isMember
         }
@@ -747,6 +741,8 @@ extension ImportCandidateListContent {
         revealOperation = nil
     }
 
+    /// Every tab's row, drawn the same: a Done row is the row it was in
+    /// Found, and offers the release imported from it.
     private func candidateRow(
         _ row: BridgeTriageRow,
         isGroupMember: Bool
@@ -756,16 +752,10 @@ extension ImportCandidateListContent {
             coverContent: importStore.sidebarCover(for: row),
             isGroupMember: isGroupMember,
             menuOffers: { menuOffers(for: row) },
-            onPerform: onPerform
-        )
-        .tag(row.candidateKey)
-    }
-
-    private func importedRow(_ row: BridgeImportedRow) -> some View {
-        ImportedRowView(
-            row: row,
-            uploadObservations: outboxStore.persistedUploadObservations,
-            onReveal: { onReveal(row.candidateKey) }
+            onPerform: onPerform,
+            onShowInLibrary: row.importedRelease.map { release in
+                { onShowInLibrary(release) }
+            }
         )
         .tag(row.candidateKey)
     }
@@ -843,12 +833,11 @@ extension ImportCandidateListContent {
             onRefreshFolder: { _ in },
             onCombineFolder: { _ in },
             onSeparate: { _ in },
-            onReveal: { _ in },
+            onShowInLibrary: { _ in },
             onPerform: { _ in },
             onCancelAllIdentification: {},
             onCancelAllImports: {}
         )
-        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(ImportSelection())
         .environment(uiStore)
         .environment(PreviewData.artImageStore())
@@ -873,12 +862,11 @@ extension ImportCandidateListContent {
             onRefreshFolder: { _ in },
             onCombineFolder: { _ in },
             onSeparate: { _ in },
-            onReveal: { _ in },
+            onShowInLibrary: { _ in },
             onPerform: { _ in },
             onCancelAllIdentification: {},
             onCancelAllImports: {}
         )
-        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(ImportSelection())
         .environment(uiStore)
         .environment(PreviewData.artImageStore())

@@ -68,17 +68,14 @@ pub enum BridgeImportListItem {
         /// How many entries the group holds in this tab, after the filter.
         entry_count: u32,
     },
-    /// A Pending or Skipped row, presented as what the candidate reads as.
+    /// A candidate's row, presented as what the candidate reads as on
+    /// whichever tab places it. A Done row is the row it was in Found, its
+    /// import status naming the one release this device imported from its
+    /// files; it is never a group member, since only Pending rows join a group.
     Candidate {
         stable_key: String,
         row: BridgeTriageRow,
         is_group_member: bool,
-    },
-    /// A Done row, presented as the library release it became. Never a group
-    /// member: only Pending rows join a group.
-    Imported {
-        stable_key: String,
-        row: BridgeImportedRow,
     },
     /// A folder that failed validation, presented as what the scan read of
     /// it.

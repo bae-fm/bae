@@ -39,8 +39,9 @@ pub use standing::{
 
 /// Which tab a candidate belongs to, checked in one order:
 ///
-/// 1. **Done first**, which is an import that completed, or a folder a
-///    previous session already imported, whether or not it was ever skipped.
+/// 1. **Done first**, which is a folder whose files this device imported, in
+///    this session or an earlier one, wherever the folder sits now and whether
+///    or not it was ever skipped.
 /// 2. **Then Skipped**, which is a decision the person already made.
 /// 3. **Then a failed attempt**, which is Pending work with its failure
 ///    stated.
@@ -95,9 +96,9 @@ pub fn stated_folder_check(
 /// What the last import of a candidate left in the tables.
 ///
 /// The release wins: the failure row is written when an attempt fails and
-/// cleared by the commit of the next one that lands, so a release for this
-/// hash means an attempt already succeeded and any leftover error is behind
-/// it.
+/// cleared by the commit of the next one that lands, so a release this device
+/// imported from this hash means an attempt already succeeded and any leftover
+/// error is behind it.
 ///
 /// The stored failure is here rather than only in the pane because a row has
 /// to say it too. Without it, quitting after a failed import brings the
@@ -105,13 +106,13 @@ pub fn stated_folder_check(
 /// failed is to open it. It stays in Pending either way — see
 /// [`TriagePlacement::Failed`] — but as a row that says what went wrong.
 pub fn import_status_of(
-    imported: &[ImportedRelease],
+    imported: Option<&ImportedRelease>,
     blocked: Option<&crate::import::GroupingBlock>,
     failure: Option<&crate::import::ImportFailureReason>,
 ) -> Option<TriageImportStatus> {
-    if !imported.is_empty() {
+    if let Some(release) = imported {
         return Some(TriageImportStatus::Complete {
-            releases: imported.to_vec(),
+            release: release.clone(),
         });
     }
     if let Some(reason) = blocked {

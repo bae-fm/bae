@@ -527,7 +527,7 @@ impl LibraryManager {
             .resolve_artists(
                 rows.artists.credits,
                 rows.artists.picked,
-                release.content_hash.as_deref(),
+                guard.content_hash(),
             )
             .await?;
         let expected_new_artists: Vec<String> = expected

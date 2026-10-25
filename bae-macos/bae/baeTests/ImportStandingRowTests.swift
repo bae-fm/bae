@@ -39,7 +39,7 @@ struct ImportStandingRowTests {
 
     @Test("a queued import's Done row draws no bar")
     func queuedDoneRow() async throws {
-        let row = PreviewData.importedRowFromTags
+        let row = PreviewData.triageRowDoneFromTags
         let idle = try await drawn(done: row, standing: nil)
         let queued = try await drawn(done: row, standing: .queued)
         let running = try await drawn(done: row, standing: .running)
@@ -99,7 +99,7 @@ struct ImportStandingRowTests {
     }
 
     private func drawn(
-        done row: BridgeImportedRow,
+        done row: BridgeTriageRow,
         standing: BridgeImportStanding?
     ) async throws -> Drawn {
         var row = row
@@ -111,10 +111,10 @@ struct ImportStandingRowTests {
             badge: nil
         )
         return try await drawn(
-            ImportedRowView(
+            TriageRowView(
                 row: row,
-                uploadObservations: [:],
-                onReveal: {}
+                coverContent: nil,
+                isGroupMember: false
             )
         )
     }

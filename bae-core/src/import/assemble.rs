@@ -102,7 +102,6 @@ pub(crate) fn assemble_rows<Binding: TrackBinding>(
         // The folder's name and hash are the candidate's, and the loudness is
         // measured from the audio; `run_import` stamps them on.
         source_folder_name: None,
-        content_hash: None,
         album_loudness_lufs: None,
         album_peak_linear: None,
         created_at: now,

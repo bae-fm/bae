@@ -29,7 +29,7 @@ use super::folder_scanner::{FolderReleaseDecisionKey, InvalidCandidate};
 use super::mapping::MappingTable;
 use super::triage::{
     import_status_of, place, stated_folder_check, CandidateActionBasis, CandidateLiveState,
-    ImportedRow, LiveStanding, PendingStanding, PendingState, StoredLookup, TriageGroup,
+    LiveStanding, PendingStanding, PendingState, StoredLookup, TriageGroup,
     TriageImportStatus, TriageMetadataSummary, TriagePlacement, TriageRow,
     TriageRuntimeFacts, TriageTabCounts,
 };
@@ -77,8 +77,7 @@ pub struct ImportListView {
 }
 
 impl ImportListView {
-    /// Whether the filter hides anything — and so whether the queue read
-    /// reads the text a Done row shows, which only the filter tests.
+    /// Whether the text filter hides anything.
     pub(crate) fn filters(&self) -> bool {
         !self.filter_text.is_empty()
     }
@@ -271,16 +270,15 @@ pub enum ImportListItem<Live = ()> {
         /// How many entries the group holds in this tab, after the filter.
         entry_count: u32,
     },
-    /// A candidate the list places in Pending or Skipped, presented as what
-    /// the candidate reads as.
+    /// A candidate, presented as what the candidate reads as on whichever tab
+    /// places it. A Done row is the row it was in Found, its import status
+    /// naming the one release this device imported from its files; it is
+    /// never a group member, since only Pending rows join a group.
     Candidate {
         row: TriageRow,
         live: Live,
         is_group_member: bool,
     },
-    /// A candidate the list places in Done, presented as the library release
-    /// it became. Never a group member: only Pending rows join a group.
-    Imported { row: ImportedRow, live: Live },
     /// A folder that failed validation, presented as what the scan read of
     /// it. It offers nothing to do, so nothing running for it is joined.
     Invalid {
@@ -309,7 +307,6 @@ impl<Live> ImportListItem<Live> {
                 group.key.relative_folder_path
             ),
             Self::Candidate { row, .. } => candidate_stable_key(&row.candidate_key),
-            Self::Imported { row, .. } => candidate_stable_key(&row.candidate_key),
             Self::Invalid { candidate, .. } => {
                 format!("invalid:{}", candidate.path.display())
             }
@@ -321,7 +318,6 @@ impl<Live> ImportListItem<Live> {
     pub(crate) fn candidate_key(&self) -> Option<&str> {
         match self {
             Self::Candidate { row, .. } => Some(&row.candidate_key),
-            Self::Imported { row, .. } => Some(&row.candidate_key),
             Self::GroupHeader { .. } | Self::Invalid { .. } => None,
         }
     }
@@ -359,10 +355,6 @@ impl ImportListItem {
                 row,
                 is_group_member,
             },
-            Self::Imported { row, live: () } => ImportListItem::Imported {
-                live: live(&row.action_basis, &row.candidate_key),
-                row,
-            },
             Self::Invalid {
                 candidate,
                 selected,
@@ -398,9 +390,8 @@ pub(crate) struct GroupHeaderRow {
 /// One placed candidate row, and which scanned row it came from.
 pub(crate) struct PlacedRow {
     /// The row with `matched` read off the verdict's lead and a reading
-    /// naming no records. The window fills both in from what it reads for the rows it materialises — or, for a
-    /// row placed Done, reads the library release it became and presents
-    /// that instead.
+    /// naming no records. The window fills both in from what it reads for the
+    /// rows it materialises, whichever tab places them.
     pub(crate) row: TriageRow,
     /// Index into [`crate::db::ImportQueueRows::candidates`].
     pub(crate) index: usize,
@@ -606,8 +597,8 @@ pub struct ImportCandidateDetailProjection {
     /// Who wrote the draft, which decides whether a valid one is the answer.
     pub metadata_author: crate::import::MetadataAuthor,
     pub metadata_revision: u64,
-    /// Every library copy carrying this candidate's folder hash.
-    pub imported_releases: Vec<ImportedRelease>,
+    /// The release this device imported from this candidate's files.
+    pub imported: Option<ImportedRelease>,
     /// Every catalog the linked releases describe the release in, in the
     /// order surfaces list catalogs. Empty with no link.
     pub records: Vec<crate::import::ReleaseRecord>,
@@ -667,7 +658,7 @@ impl ImportCandidateDetailProjection {
             release_link,
             metadata_author,
             metadata_revision,
-            imported_releases,
+            imported,
             records,
             picked_library_status,
             album,
@@ -686,7 +677,7 @@ impl ImportCandidateDetailProjection {
             .map(crate::import::file_evidence)
             .unwrap_or_default();
         let import_status = import_status_of(
-            &imported_releases,
+            imported.as_ref(),
             source_error.as_ref(),
             failure.as_ref().map(|failure| &failure.reason),
         );
@@ -740,8 +731,7 @@ impl ImportCandidateDetailProjection {
         let metadata_draft_is_blank = metadata_draft.is_blank();
         let import_status = match facts.import {
             Some(standing) => Some(CandidateImportStatus::Importing { standing }),
-            None => import_status
-                .map(|status| CandidateImportStatus::of(status, &candidate.key())),
+            None => import_status.map(CandidateImportStatus::of),
         };
         ImportCandidateDetail {
             candidate,
@@ -807,11 +797,9 @@ pub enum CandidateImportStatus {
     Importing {
         standing: super::ImportStanding,
     },
+    /// The release this device imported from the candidate's files.
     Complete {
-        releases: Vec<super::ImportedRelease>,
-        /// No listed release was imported from this folder on this device:
-        /// only its hash matches.
-        probably_in_library: bool,
+        release: super::ImportedRelease,
     },
     Error {
         failure: super::ImportFailureReason,
@@ -824,15 +812,9 @@ pub enum CandidateImportStatus {
 }
 
 impl CandidateImportStatus {
-    fn of(stored: TriageImportStatus, candidate_key: &str) -> Self {
+    fn of(stored: TriageImportStatus) -> Self {
         match stored {
-            TriageImportStatus::Complete { releases } => Self::Complete {
-                probably_in_library: super::ImportedRelease::probably_in_library(
-                    &releases,
-                    candidate_key,
-                ),
-                releases,
-            },
+            TriageImportStatus::Complete { release } => Self::Complete { release },
             TriageImportStatus::Error { failure } => Self::Error { failure },
             TriageImportStatus::Blocked { reason } => Self::Blocked { reason },
         }

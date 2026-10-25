@@ -13,10 +13,11 @@ pub enum TriageTab {
 /// the tables alone; what is running for it is its [`CandidateLiveState`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TriagePlacement {
-    /// Not imported and not skipped.
+    /// Not imported here and not skipped.
     Pending,
     /// The last import attempt failed; why is the row's [`TriageImportStatus`].
     Failed,
+    /// This device imported a release from the folder's files.
     Done,
     Skipped,
 }
@@ -314,60 +315,6 @@ impl TriageRow {
     }
 }
 
-/// A Done folder and every release carrying its hash, read from the library.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ImportedRow {
-    /// The candidate's folder path — the key every other import call takes.
-    pub candidate_key: String,
-    pub display_path: String,
-    /// What the row's commands are decided from; an import that just wrote the
-    /// release can still own the candidate for a moment.
-    pub action_basis: CandidateActionBasis,
-    pub releases: Vec<ImportedReleaseSummary>,
-    /// No listed release was imported from this folder on this device: only
-    /// its hash matches, so the folder is probably one the library already
-    /// has.
-    pub probably_in_library: bool,
-    /// Whether the person has selected the row.
-    pub selected: bool,
-}
-
-/// One library copy matching a Done folder.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ImportedReleaseSummary {
-    pub release_id: String,
-    pub album_id: String,
-    pub title: String,
-    pub artist: Option<String>,
-    pub year: Option<i32>,
-    pub cover: Option<crate::album_detail::ImageRef>,
-    /// Every catalog's description of the release, in catalog order.
-    pub records: Vec<crate::import::ReleaseRecord>,
-}
-
-/// The words a Done row shows for its library release.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ImportedReleaseText {
-    /// Empty when the tags named no title.
-    pub title: String,
-    /// The album's credited artists, joined.
-    pub artist: Option<String>,
-    pub year: Option<i32>,
-}
-
-impl ImportedReleaseText {
-    /// The text the row shows, which the list's filter matches against.
-    pub(crate) fn shown_text(&self) -> Vec<std::borrow::Cow<'_, str>> {
-        std::iter::once(std::borrow::Cow::Borrowed(self.title.as_str()))
-            .chain(self.artist.as_deref().map(std::borrow::Cow::Borrowed))
-            .chain(
-                self.year
-                    .map(|year| std::borrow::Cow::Owned(year.to_string())),
-            )
-            .collect()
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct TriageGroup {
     pub key: FolderReleaseDecisionKey,
@@ -404,10 +351,11 @@ impl TriageTabCounts {
     }
 }
 
-/// The library copies matching a folder, or its stored import failure.
+/// The release this device imported from the folder's files, or its stored
+/// import failure.
 #[derive(Debug, Clone, PartialEq)]
 pub enum TriageImportStatus {
-    Complete { releases: Vec<ImportedRelease> },
+    Complete { release: ImportedRelease },
     /// The last import failed, and why.
     Error {
         failure: crate::import::ImportFailureReason,

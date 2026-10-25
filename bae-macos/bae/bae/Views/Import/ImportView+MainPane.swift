@@ -16,7 +16,12 @@ extension ImportView {
             onRefreshFolder: { folder in refreshWatchedFolder(folder) },
             onCombineFolder: { key in combineFolder(key) },
             onSeparate: { key in separateCandidate(key) },
-            onReveal: revealCandidateSources,
+            onShowInLibrary: { release in
+                uiStore.navigateToAlbum(
+                    release.albumId,
+                    releaseId: release.releaseId
+                )
+            },
             onPerform: requestCandidateAction,
             onCancelAllIdentification: {
                 Task {
@@ -55,13 +60,10 @@ extension ImportView {
         runtime: BridgeCandidateRuntimeSnapshot?
     ) -> some View {
         switch candidate.importStatus {
-        case .complete(let releases, let probablyInLibrary):
+        case .complete(let release):
             let releaseEditor = releaseEditor
             let mappingActions = mappingActions(for: candidate)
-            ImportedFolderPane(
-                releases: releases,
-                probablyInLibrary: probablyInLibrary
-            ) { release in
+            ScrollView {
                 ImportedReleasePane(
                     candidate: candidate,
                     releaseId: release.releaseId,
@@ -80,6 +82,7 @@ extension ImportView {
                         )
                     }
                 )
+                .id(release.releaseId)
             }
         case .importing(let standing):
             let mappingActions = mappingActions(for: candidate)

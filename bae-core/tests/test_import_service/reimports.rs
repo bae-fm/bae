@@ -1,5 +1,5 @@
 /// A second import over a library that already holds a release: the sequential
-/// case, and repeated copies of the same pressing.
+/// case, repeated copies of the same pressing, and the same files again.
 /// 5. Two sequential imports both succeed and produce separate albums.
 #[tokio::test]
 async fn two_sequential_imports() {
@@ -66,27 +66,39 @@ async fn two_sequential_imports() {
     assert_eq!(album2.title, "Second Album");
 }
 
-/// Repeated imports own distinct release, track and file rows, even when the
-/// folder and its pressing are unchanged.
+/// Every import is its own release: copies of one pressing, in folders whose
+/// files hash apart, own distinct release, track and file rows.
 #[tokio::test]
 async fn repeated_imports_keep_independent_copies() {
     support::tracing_init();
     let f = ImportFixture::new().await;
     f.connect_cloud().await;
-    let album_dir = f.temp_path().join("repeated-import");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_album_files(&album_dir, &["01 Track.flac"]);
     let pressing = seed_discogs_test_release(
         f.library_manager.providers(),
         discogs_release("Album Title", &["Track"]),
     );
     let mut copies = Vec::new();
-    for destination in [
+    for (index, destination) in [
         ImportDestination::Local,
         ImportDestination::Local,
         ImportDestination::Remote { pin: false },
         ImportDestination::Remote { pin: false },
-    ] {
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        // A copy whose modification times changed hashes apart from the others.
+        let album_dir = f.temp_path().join(format!("copy-{index}"));
+        fs::create_dir_all(&album_dir).unwrap();
+        generate_album_files(&album_dir, &["01 Track.flac"]);
+        fs::File::options()
+            .write(true)
+            .open(album_dir.join("01 Track.flac"))
+            .unwrap()
+            .set_times(fs::FileTimes::new().set_modified(
+                std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_000_000_000 + index as u64),
+            ))
+            .unwrap();
         let (id, _) = import_folder(
             &f, &album_dir, None, destination,
             support::discogs_release(pressing.clone()),
@@ -102,7 +114,6 @@ async fn repeated_imports_keep_independent_copies() {
             let prior_files: &Vec<bae_core::db::DbFile> = prior_files;
             assert_ne!(release.id, prior.id);
             assert_eq!(release.album_id, prior.album_id);
-            assert_eq!(release.content_hash, prior.content_hash);
             assert_ne!(tracks[0].id, prior_tracks[0].id);
             assert_ne!(files[0].id, prior_files[0].id);
             assert_eq!(f.db.get_tracks_for_release(&prior.id).await.unwrap(), *prior_tracks);
@@ -118,13 +129,43 @@ async fn repeated_imports_keep_independent_copies() {
         let files = f.db.get_files_for_release(&id).await.unwrap();
         copies.push((release, tracks, files));
     }
-    let hash = copies[0].0.content_hash.as_ref().unwrap();
-    assert_eq!(f.db.release_ids_for_content_hash(hash).await.unwrap().len(), 4);
-    assert!(f.db.is_content_hash_imported(hash).await.unwrap());
     for (release, _, files) in &copies {
         let bytes = f.library_manager.materialize_release_file_for_test(&files[0].id).await;
         assert!(bytes.is_ok(), "copy {} remains readable: {bytes:?}", release.id);
     }
+}
+
+/// One folder hash is one release on this device: importing files this
+/// device already imported fails, and the release imported first stands.
+#[tokio::test]
+async fn a_second_import_of_the_same_files_fails() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    let album_dir = f.temp_path().join("imported-twice");
+    fs::create_dir_all(&album_dir).unwrap();
+    generate_album_files(&album_dir, &["01 Track.flac"]);
+    let pressing = seed_discogs_test_release(
+        f.library_manager.providers(),
+        discogs_release("Album Title", &["Track"]),
+    );
+    let (first, _) = import_folder(
+        &f, &album_dir, None, ImportDestination::Local,
+        support::discogs_release(pressing.clone()),
+    ).await.expect("the first import lands");
+
+    let second = import_folder(
+        &f, &album_dir, None, ImportDestination::Local,
+        support::discogs_release(pressing),
+    ).await;
+    assert!(second.is_err(), "a second release of the same files: {second:?}");
+    assert!(f.db.find_release_by_id(&first).await.unwrap().is_some());
+    let albums = f.library_manager.get_albums(&[]).await.unwrap();
+    assert_eq!(albums.len(), 1);
+    let releases = f.db.get_releases_for_album(&albums[0].id).await.unwrap();
+    assert_eq!(
+        releases.into_iter().map(|release| release.id).collect::<Vec<_>>(),
+        vec![first]
+    );
 }
 
 /// A Remote import records its upload in the write that creates the

@@ -52,7 +52,6 @@ fn test_release(id: &str, album_id: &str, now: chrono::DateTime<chrono::Utc>) ->
         },
 
         source_folder_name: None,
-        content_hash: None,
         album_loudness_lufs: None,
         album_peak_linear: None,
         created_at: now,
@@ -101,7 +100,7 @@ async fn commit_import(
 ) {
     let mediums = [crate::db::DbReleaseMedium::new_test(&release.id)];
     db.finalize_import_atomic(
-        crate::db::ImportCommitGuard::UncheckedTestSetup,
+        crate::db::ImportCommitGuard::UncheckedTestSetup { content_hash: None },
         commit.album,
         release,
         commit.track_files,
@@ -209,7 +208,7 @@ async fn seeded_db() -> (Database, tempfile::TempDir) {
             INSERT INTO albums (id, title, year, is_compilation, created_at) VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', 2026, 0, '2026-01-01T00:00:00Z');
             INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('0f3dddda-6465-4f39-acfc-de0bed691179', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '85f70840-aba5-4eb9-8e1a-0d319e53b798', 0, '2026-01-01T00:00:00Z');
 
-            INSERT INTO releases (id, album_id, release_name, year, labels, media, discogs_details, source_folder_name, content_hash, album_loudness_lufs, album_peak_linear, created_at, album_order) VALUES ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', NULL, 2026, '[]', '[{\"medium\":\"cd\",\"count\":1}]', '[]', NULL, NULL, NULL, NULL, '2026-01-01T00:00:00Z', 0);
+            INSERT INTO releases (id, album_id, release_name, year, labels, media, discogs_details, source_folder_name, album_loudness_lufs, album_peak_linear, created_at, album_order) VALUES ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', NULL, 2026, '[]', '[{\"medium\":\"cd\",\"count\":1}]', '[]', NULL, NULL, NULL, '2026-01-01T00:00:00Z', 0);
 
             INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) VALUES ('c9f6f13c-15b2-5039-aad4-8cdd8b6c67f8', '0252dedb-ee39-4547-8803-438dbeb57a64', 1, 'cd', 1, '2026-01-01T00:00:00Z');
 

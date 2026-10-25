@@ -148,7 +148,6 @@ struct ImportPreviewDataTests {
                 .compactMap { item -> String? in
                     switch item {
                     case .candidate(_, let row, _): row.candidateKey
-                    case .imported(_, let row): row.candidateKey
                     case .groupHeader, .invalid: nil
                     }
                 }
@@ -173,12 +172,7 @@ struct ImportPreviewDataTests {
         #expect(rows.contains { $0.placement == .pending })
         #expect(live.contains { $0.import != nil })
         #expect(rows.contains { $0.placement == .failed })
-        #expect(
-            entries.contains { item in
-                if case .imported = item { return true }
-                return false
-            }
-        )
+        #expect(rows.contains { $0.importedRelease != nil })
         #expect(rows.contains { $0.placement == .skipped })
         #expect(
             scene.store.selectedCandidates.values.contains { candidate in

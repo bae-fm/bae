@@ -1,29 +1,14 @@
 use super::*;
 
 impl Database {
-    /// Every independent release carrying this folder hash.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn release_ids_for_content_hash(&self, hash: &str) -> Result<Vec<String>, DbError> {
-        let hash = hash.to_string();
-        self.read(move |sql| {
-            sql.query(
-                "SELECT id FROM releases WHERE content_hash = ?",
-                params![hash],
-                |row| row.get::<_, String>(0),
-            )
-            .map_err(DbError::from)
-        })
-        .await
-    }
-
-    /// Whether some release in the library was imported from this exact file
-    /// structure (its `content_hash` matches `hash`). The import view uses this
-    /// to mark a scanned folder as already added.
+    /// Whether this device imported a release from files with this folder
+    /// hash (`local_release_origin`): what places a scanned folder in Done.
+    /// A release another device imported from the same files is not one.
     pub async fn is_content_hash_imported(&self, hash: &str) -> Result<bool, DbError> {
         let hash = hash.to_string();
         self.read(move |sql| {
             sql.query_row(
-                "SELECT 1 FROM releases WHERE content_hash = ? LIMIT 1",
+                "SELECT 1 FROM local_release_origin WHERE content_hash = ?",
                 params![hash],
                 |_| Ok(()),
             )

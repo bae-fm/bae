@@ -563,7 +563,6 @@ pub(super) fn row_to_release(row: &Row) -> rusqlite::Result<DbRelease> {
             facts: super::pressing_columns::read_facts(row, "")?,
         },
         source_folder_name: row.get("source_folder_name")?,
-        content_hash: row.get("content_hash")?,
         album_loudness_lufs: row.get("album_loudness_lufs")?,
         album_peak_linear: row.get("album_peak_linear")?,
         created_at: rfc3339_column(row, "created_at")?,

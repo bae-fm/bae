@@ -140,10 +140,10 @@ pub(super) fn insert_release_row(
             id, album_id, release_name, year,
             labels, barcodes,
             country, region, media, status, packaging, discogs_details,
-            source_folder_name, content_hash,
+            source_folder_name,
             album_loudness_lufs, album_peak_linear,
             created_at, album_order
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
             (SELECT COALESCE(MAX(album_order) + 1, 0) FROM releases WHERE album_id = ?))
         "#,
         params![
@@ -160,7 +160,6 @@ pub(super) fn insert_release_row(
             facts.packaging,
             facts.discogs_details,
             release.source_folder_name,
-            release.content_hash,
             release.album_loudness_lufs,
             release.album_peak_linear,
             release.created_at.to_rfc3339(),

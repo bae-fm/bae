@@ -96,14 +96,16 @@ async fn folder_scan_item_rejects_a_mismatched_embedded_root_without_changing_th
     );
 }
 
+/// Whether this device imported a folder's files is a lookup by its hash,
+/// which the hash's uniqueness indexes.
 #[tokio::test]
-async fn imported_content_hash_lookup_uses_its_partial_index() {
+async fn imported_content_hash_lookup_uses_its_unique_index() {
     let (db, _tmp) = empty_db().await;
     let plan = db.content_hash_query_plan_for_test().await.unwrap();
 
     assert!(
-        plan.iter()
-            .any(|detail| detail.contains("idx_releases_content_hash")),
+        plan.iter().any(|detail| detail.contains("INDEX")
+            && detail.contains("local_release_origin")),
         "query plan did not use the content-hash index: {plan:?}"
     );
 }

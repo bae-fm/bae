@@ -203,17 +203,16 @@ fn release_link_to(release_id: &str) -> crate::import::ReleaseLink {
     })
 }
 
-/// Mark `display_path`'s candidate imported as `release_id` at `imported_at`
-/// epoch milliseconds — what puts its row on Done.
+/// Mark `display_path`'s candidate imported here as `release_id` at
+/// `imported_at` epoch milliseconds — what puts its row on Done.
 fn imported(rows: &mut ImportQueueRows, display_path: &str, release_id: &str, imported_at: i64) {
     let hash = format!("hash-{display_path}");
     rows.imported.insert(
         hash.clone(),
-        vec![ImportedRelease {
+        ImportedRelease {
             release_id: release_id.to_string(),
             album_id: format!("album-{release_id}"),
-            imported_from: None,
-        }],
+        },
     );
     rows.imported_at.insert(hash, imported_at);
 }

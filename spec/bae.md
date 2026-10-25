@@ -404,20 +404,27 @@ copy everywhere, local or uploaded. Ben's MP3s, different contents of the same
 album, are a third release under it. Ratings, history and playlist entries
 point at one copy's tracks and stay on that copy.
 
-Nothing is refused as already in the library. A release keyed by its contents
-would make a second import replace the first, and with it the tracks that
-ratings, history and playlists point at.
+A release is never keyed by its contents: one keyed so would make a second
+import replace the first, and with it the tracks that ratings, history and
+playlists point at. What another device imported refuses nothing here.
 
-**The folder's hash.** Each release records a hash of its folder's contents
-(`releases.content_hash`). The hash covers every file of the release: each
-one's path relative to the release folder, its size and its modification time,
-sorted, so moving the folder doesn't change its hash. It is never a key and
-never refuses anything. It does one job: it tells the import list that the
-household probably already has a folder (§3.2).
+**The folder's hash.** A hash of a folder's contents covers every file of the
+release: each one's path relative to the release folder, its size and its
+modification time, sorted, so moving or renaming the folder doesn't change its
+hash. Each device records, for itself alone, the hash of the files each of its
+imports read (`local_release_origin`); the record never syncs, and the release
+carries no hash. It does one job: a folder whose hash it holds is Done in this
+device's import list (§3.2), wherever the folder sits now.
 
-"Probably", because the hash reads no bytes: two folders can hash alike and
-still differ. A copy to another disk usually changes the modification times,
-so the same rip copied elsewhere usually hashes differently.
+One hash is one release on a device. Importing files this device already
+imported fails, and the release imported first stands. Deleting the release
+deletes the record with it, and the folder is back in Found.
+
+The hash reads no bytes, so it tells files apart by name, size and time alone.
+A copy to another disk usually changes the modification times, so the same rip
+copied elsewhere usually hashes differently and is a folder of its own to
+import, as Ana's backup is. A copy that keeps them hashes alike and is Done
+beside the folder it was copied from.
 
 A scan tells a file it has read by the same facts, with its path on disk in
 place of the relative one: a file whose path, size and modification time are
@@ -556,12 +563,12 @@ The import list shows every candidate in one of three tabs:
 
 | Tab | Holds |
 |---|---|
-| Pending | no release carries the folder's hash, and not skipped; including a failed import |
-| Done | some library release carries the folder's hash; ordered by upload, what is moving first |
+| Pending | this device imported no release from the folder's files, and not skipped; including a failed import |
+| Done | this device imported a release from the folder's files (§2.7); ordered by upload, what is moving first |
 | Skipped | dismissed by the person, or broken |
 
-Done is ordered by where each release's upload stands, then newest import
-first. Until the upload queue first answers, Done shows no rows and says it is
+Done is ordered by where each row's release's upload stands, then newest
+import first. Until the upload queue first answers, Done shows no rows and says it is
 waiting. If the queue can't be read, Done says so and orders its rows by import
 time alone; the failed read is reported as a bug.
 
@@ -589,16 +596,19 @@ Each Pending row is in exactly one state. The first that applies wins:
 A filter narrows Pending to one group of these states: needs you, in progress,
 identified, unmatched, or not looked up.
 
-**Done.** A folder is Done when some release in the library, from any device,
-carries its content hash (§2.7). Its row lists every release that does. Ben
-copies Ana's rip folder to his laptop, keeping the modification times. His scan
-finds it, and Ana's release carries its hash, so the folder lands in Done
-beside her release: Ben probably already has it.
+**Done.** A folder is Done when this device imported a release from its files.
+This device's record of the import is keyed by the folder's hash (§2.7), not
+its path, so a folder moved or renamed after its import stays Done. A Done row
+looks exactly like the row the folder had in Found — the same cover, title and
+artists, drawn the same way — and says nothing more: the tab says it is done.
+It names the one release imported from those files, which Show in Library and
+a double-click on the row open.
 
-The row says so only for a folder none of its releases was imported from. Each
-device records, for itself alone, which folder each of its imports read
-(`local_release_origin`), so Ana's own folder lists her release without the
-hint, uploaded or not.
+A folder this device didn't import is in Found like any other, whatever another
+device imported and whichever library releases came from the same files. Ben
+copies Ana's rip folder to his laptop, keeping the modification times. Ana's
+release syncs to him, but his scan finds the folder in Found, his to import or
+skip.
 
 Done offers no re-import. A second copy comes from importing another folder,
 such as a copy whose modification times changed.
@@ -1036,8 +1046,8 @@ Ana clicks Import. bae:
    The "already in your library" banner names every album holding the
    release, or another release of its album.
 7. **Writes everything in one transaction**, from the draft as it stands, read
-   from no source again: the album; the release, with a fresh random id and the
-   folder's hash; its tracks, files, segments, credits, roles, works, records,
+   from no source again: the album; the release, with a fresh random id, and
+   this device's record of the folder's hash it read (§2.7); its tracks, files, segments, credits, roles, works, records,
    cover, and the new artists' pictures. Each track row is made once its audio is bound, with the
    length that audio measures, so no track is ever stored without one. A track
    left untitled takes its file's name. Each credit, role
@@ -2580,7 +2590,7 @@ All sync.
 | `works` | MusicBrainz work |
 | `work_artists` | work's credited artist, in order |
 | `work_parts` | work inside a larger work, in order |
-| `releases` | pressing: its album and place in the album's order (§2.1), name, year, labels, barcodes, country or region, media, status, packaging, Discogs details, source folder name, content hash, album loudness and peak |
+| `releases` | pressing: its album and place in the album's order (§2.1), name, year, labels, barcodes, country or region, media, status, packaging, Discogs details, source folder name, album loudness and peak |
 | `covers` | release's cover, keyed by the release; carries a file |
 | `release_files` | file of a release: name, size, type, and the audio facts the scan read; carries a file once attached, whose hash and location coven writes |
 | `release_artist_roles` | credit on a release, as the catalog stated it |
@@ -2593,11 +2603,12 @@ All sync.
 | `audio_formats` | track's format, pregap, loudness and peak |
 | `audio_format_segments` | span of a file a track reads: pregap or main, samples and bytes |
 
-Beside them, one device-local table:
+Beside them, two device-local tables:
 
 | Table | One row per |
 |---|---|
 | `local_release_files` | the original this device holds of a release file: its path and modification time (§4.2). Importing writes it; making the release local again rewrites it to the copy; attaching leaves it |
+| `local_release_origin` | release this device imported, keyed by the release: the hash of the folder's files it read (§2.7), unique, so one hash is one release here. Importing writes it in the release's own transaction; deleting the release deletes it |
 
 Whether a release is local or uploaded is not a column: it is whether its files
 are attached.
@@ -2687,8 +2698,9 @@ From `bae_core::sync::synced_tables`. *Shared key* rows take an id computed
 from their fact (§2.6); *independent* rows a fresh id. Every synced table's
 rows reach every device that can read their audience: a local release's rows
 too (§4.2). *Audience* is the store unless the table names one (§5.3); *owner*
-tables are changed only by their author's devices (§5.5). `local_release_files`
-and `local_history` are not declared, so they never sync.
+tables are changed only by their author's devices (§5.5). `local_release_files`,
+`local_release_origin` and `local_history` are not declared, so they never
+sync.
 
 | Table | Identity | Audience | Owner | File |
 |---|---|---|---|---|

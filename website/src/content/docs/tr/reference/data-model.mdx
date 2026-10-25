@@ -42,4 +42,4 @@ Her dosya rastgele bir ad altında şifreli yüklenir; yolu satırına eklendiğ
 
 ## Bir rip'in kimliği
 
-Her içe aktarma, yeni rastgele kimliği ve kendi parça ve dosya satırları olan bir sürüm oluşturur. `releases.content_hash`, sıralanmış göreli yolların, boyutların ve değişiklik zamanlarının benzersiz olmayan SHA-256 değerini saklar. Eşleşme yalnızca olası bir kopyayı belirtir; içe aktarmayı engellemez ve sürümün yerine geçmez. Tamamlanan içe aktarmalar sekmesi, klasörle eşleşen tüm sürümleri gösterir ve yeniden içe aktarma işlemi sunmaz.
+Her içe aktarma, yeni rastgele kimliği ve kendi parça ve dosya satırları olan bir sürüm oluşturur. Her cihaz, içe aktarmalarının her birinin okuduğu dosyaların sıralanmış göreli yollarının, boyutlarının ve değişiklik zamanlarının SHA-256 değerini `local_release_origin` içinde kaydeder; bu kayıt hiçbir zaman eşitlenmez. Bu cihazın karmasını kaydettiği bir klasör, nereye taşınırsa taşınsın tamamlanan içe aktarmalar sekmesindedir ve satırı ondan içe aktarılan tek sürümü gösterir. Aynı dosyaları o cihazda yeniden içe aktarmak başarısız olur ve tamamlanan içe aktarmalar sekmesi yeniden içe aktarma işlemi sunmaz.

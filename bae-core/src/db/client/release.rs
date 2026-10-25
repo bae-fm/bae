@@ -521,7 +521,7 @@ impl Database {
                     picked: &picked_artists,
                 };
                 let resolved = credits
-                    .resolve_for_import_on(tx, release.content_hash.as_deref())
+                    .resolve_for_import_on(tx, guard.content_hash())
                     .map_err(artist_write_failure)?;
                 let inserted: BTreeSet<String> = resolved
                     .inserts

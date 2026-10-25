@@ -620,18 +620,16 @@ pub enum AutomationImportStatus {
         progress_percent: Option<u32>,
         step: Option<AutomationImportStep>,
     },
+    /// The release this device imported from the candidate's files.
     Complete {
-        releases: Vec<AutomationImportedRelease>,
-        /// No listed release was imported from this folder on this device:
-        /// only its hash matches.
-        probably_in_library: bool,
+        release: AutomationImportedRelease,
     },
     Error {
         error: String,
     },
 }
 
-/// One independent library copy matching a folder hash.
+/// The release this device imported from a candidate's files.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationImportedRelease {
     pub release_id: String,

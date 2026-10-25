@@ -731,8 +731,10 @@ impl CategorizedFiles {
     /// Stable scan fingerprint of this release: a SHA-256 over the relative
     /// path, size, and modification time of every file in
     /// [`Self::release_files`], sorted so the result is independent of discovery
-    /// order. Absolute location is deliberately absent. Matches every library
-    /// copy for the duplicate hint and Done list; never identifies a release.
+    /// order. Absolute location is deliberately absent, so a folder moved or
+    /// renamed keeps it: what this device records of each import
+    /// (`local_release_origin`), which places the folder in Done. Never
+    /// identifies a release.
     ///
     /// It fingerprints exactly what the release carries: same iterator as the
     /// payload, so the fingerprint cannot describe a different set of files

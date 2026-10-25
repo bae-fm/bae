@@ -61,11 +61,10 @@ fn an_imported_content_hash_puts_its_row_in_done() {
     rows.candidates = vec![candidate("Release")];
     rows.imported.insert(
         "hash-Release".to_string(),
-        vec![ImportedRelease {
+        ImportedRelease {
             release_id: "rel-1".to_string(),
             album_id: "alb-1".to_string(),
-            imported_from: None,
-        }],
+        },
     );
 
     let flat = flattened(&rows, &view(TriageTab::Done));
@@ -178,11 +177,10 @@ fn retrying_a_failed_import_moves_it_back_to_pending_then_to_done() {
 
     rows.imported.insert(
         "hash-Release".to_string(),
-        vec![ImportedRelease {
+        ImportedRelease {
             release_id: "rel-1".to_string(),
             album_id: "alb-1".to_string(),
-            imported_from: None,
-        }],
+        },
     );
 
     let flat = flattened(&rows, &view(TriageTab::Done));
@@ -190,8 +188,8 @@ fn retrying_a_failed_import_moves_it_back_to_pending_then_to_done() {
     assert_eq!(flat.summary.counts.done, 1);
     assert_eq!(flat.summary.counts.pending, 0);
 }
-/// A release for this content hash means an attempt already succeeded, so a
-/// leftover failure row is behind it.
+/// A release this device imported from this content hash means an attempt
+/// already succeeded, so a leftover failure row is behind it.
 #[test]
 fn an_imported_release_outranks_a_leftover_failure() {
     let mut rows = queue();
@@ -203,11 +201,10 @@ fn an_imported_release_outranks_a_leftover_failure() {
         );
     rows.imported.insert(
         "hash-Release".to_string(),
-        vec![ImportedRelease {
+        ImportedRelease {
             release_id: "rel-1".to_string(),
             album_id: "alb-1".to_string(),
-            imported_from: None,
-        }],
+        },
     );
 
     let flat = flattened(&rows, &view(TriageTab::Done));
@@ -311,11 +308,10 @@ fn a_pick_does_not_outrank_skipped_or_done() {
         .insert("hash-Release".to_string(), picked);
     rows.imported.insert(
         "hash-Release".to_string(),
-        vec![ImportedRelease {
+        ImportedRelease {
             release_id: "rel-1".to_string(),
             album_id: "alb-1".to_string(),
-            imported_from: None,
-        }],
+        },
     );
     assert_eq!(
         row_for(&flattened(&rows, &view(TriageTab::Done)), "Release").placement,

@@ -42,4 +42,4 @@ Cada archivo se sube cifrado bajo un nombre aleatorio, en una ruta fijada cuando
 
 ## Identidad de una copia
 
-Cada importación crea un lanzamiento con un ID aleatorio nuevo y sus propias filas de pistas y archivos. `releases.content_hash` guarda un SHA-256 no único de las rutas relativas ordenadas, tamaños y fechas de modificación. Una coincidencia solo avisa de una posible copia; nunca impide importar ni reemplaza un lanzamiento. La pestaña de completados muestra todos los lanzamientos coincidentes de la carpeta y no ofrece volver a importar.
+Cada importación crea un lanzamiento con un ID aleatorio nuevo y sus propias filas de pistas y archivos. Cada dispositivo guarda en `local_release_origin` un SHA-256 de las rutas relativas ordenadas, tamaños y fechas de modificación de los archivos que leyó cada una de sus importaciones; ese registro nunca se sincroniza. Una carpeta cuyo hash guardó este dispositivo está en la pestaña de completados, se haya movido adonde se haya movido, y su fila nombra el único lanzamiento importado de ella. Importar de nuevo los mismos archivos en ese dispositivo falla, y la pestaña de completados no ofrece volver a importar.

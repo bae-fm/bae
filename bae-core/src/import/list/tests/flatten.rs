@@ -220,10 +220,11 @@ fn the_filter_finds_a_drafted_row_by_the_draft_it_shows() {
     }
 }
 
-/// A Done row shows the library release it became — its title, artist and
-/// year — so those are what find it, and the candidate's own draft does not.
+/// A Done row shows the row it was in Found — its draft, or its folder while
+/// it has none — so that is what finds it, and nothing the library release
+/// says does.
 #[test]
-fn the_filter_finds_a_done_row_by_its_library_release() {
+fn the_filter_finds_a_done_row_by_its_found_row() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Folder"), candidate("Other")];
     rows.states
@@ -232,32 +233,14 @@ fn the_filter_finds_a_done_row_by_its_library_release() {
         "hash-Other".to_string(),
         CandidateStateListRow {
             metadata_summary: Some(crate::import::TriageMetadataSummary {
-                album_title: "Draft".to_string(),
-                album_artists: String::new(),
+                album_title: "Draft Title".to_string(),
+                album_artists: "Draft Artist".to_string(),
             }),
             ..auto_importable_state("mb-2")
         },
     );
     imported(&mut rows, "Folder", "rel-1", 100);
     imported(&mut rows, "Other", "rel-2", 200);
-    rows.imported_text = Some(std::collections::HashMap::from([
-        (
-            "rel-1".to_string(),
-            crate::import::ImportedReleaseText {
-                title: "Album".to_string(),
-                artist: Some("Artist".to_string()),
-                year: Some(1999),
-            },
-        ),
-        (
-            "rel-2".to_string(),
-            crate::import::ImportedReleaseText {
-                title: "Other Album".to_string(),
-                artist: None,
-                year: None,
-            },
-        ),
-    ]));
 
     let found = |needle: &str| {
         let flat = flattened(
@@ -269,16 +252,15 @@ fn the_filter_finds_a_done_row_by_its_library_release() {
         );
         sequence(&rows, &flat)
     };
-    for needle in ["artist", "1999"] {
+    assert_eq!(found("folder"), vec!["candidate Folder".to_string()]);
+    for needle in ["draft title", "draft artist"] {
         assert_eq!(
             found(needle),
-            vec!["candidate Folder".to_string()],
+            vec!["candidate Other".to_string()],
             "{needle} is on the row"
         );
     }
-    assert_eq!(found("album").len(), 2);
-    assert!(found("draft").is_empty(), "the candidate's draft is not shown");
-    assert!(found("folder").is_empty(), "the folder is not shown");
+    assert!(found("rel-").is_empty(), "the library release is not shown");
 }
 
 #[test]
