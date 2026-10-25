@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use crate::discogs::client::{Discogs, DiscogsClient, DiscogsValidationObserver};
 use crate::import::cover_art::RemoteCover;
-use crate::import::payloads::ReleasePayloads;
+use crate::import::payloads::{ReadDepth, ReleasePayloads};
 use crate::import::search::MetadataResult;
 use crate::import::{ImportError, MetadataRef};
 use crate::musicbrainz::{MusicBrainz, ReleaseSearchParams};
@@ -73,11 +73,13 @@ impl Providers {
         }
     }
 
-    /// The selected release and the documents it links to.
+    /// The selected release and the documents it links to, as far as `depth`
+    /// follows them.
     pub(crate) async fn fetch_payloads(
         &self,
         discogs: Option<&DiscogsClient>,
         release: &MetadataRef,
+        depth: ReadDepth,
         priority: CallPriority,
     ) -> Result<ReleasePayloads, ImportError> {
         crate::import::payloads::fetch_documents(
@@ -85,6 +87,7 @@ impl Providers {
             &self.wikidata,
             discogs,
             release,
+            depth,
             priority,
         )
         .await

@@ -148,24 +148,84 @@ fn page_document(page: &CatalogPage, album_context: bool) -> Option<DocumentKey>
 /// Own the graph walk independently of how each document is retrieved.
 struct DocumentTraversal {
     payloads: ReleasePayloads,
+    depth: ReadDepth,
+    /// The release's own album page: its MusicBrainz release group or its
+    /// Discogs master, as its own document names it.
+    album: Option<DocumentKey>,
     queue: VecDeque<DocumentKey>,
     seen: HashSet<DocumentKey>,
+    /// Documents named by one this walk read that its depth does not follow.
+    stopped: Vec<DocumentKey>,
 }
 
 impl DocumentTraversal {
-    fn new(release: &MetadataRef, anchor: String) -> Result<Self, ImportError> {
+    fn new(release: &MetadataRef, anchor: String, depth: ReadDepth) -> Result<Self, ImportError> {
         let source = PayloadSource::release_of(release.catalog);
-        let queue = related_documents(source, &release.key, &anchor)?.into();
-        Ok(Self {
-            payloads: ReleasePayloads {
-                release: release.clone(),
-                anchor,
-                supporting: Vec::new(),
-                unfetched: Vec::new(),
-            },
-            queue,
+        let edges = related_documents(source, &release.key, &anchor)?;
+        let payloads = ReleasePayloads {
+            release: release.clone(),
+            anchor,
+            supporting: Vec::new(),
+            unfetched: Vec::new(),
+        };
+        let album = payloads.anchor_parent()?.map(|album| match album.catalog {
+            Catalog::MusicBrainz => (PayloadSource::MusicBrainzReleaseGroup, album.key),
+            Catalog::Discogs => (PayloadSource::DiscogsMaster, album.key),
+            other => not_fetched(other),
+        });
+        let mut traversal = Self {
+            payloads,
+            depth,
+            album,
+            queue: VecDeque::new(),
             seen: HashSet::from([(source, release.key.clone())]),
-        })
+            stopped: Vec::new(),
+        };
+        traversal.admit(None, edges);
+        Ok(traversal)
+    }
+
+    /// Whether this walk follows the link `from` names to `to`; `from` is
+    /// `None` for the release's own page. The one rule a read's depth
+    /// decides.
+    ///
+    /// An identification read follows what [`ReleaseDocument`] and the
+    /// release's album statements read: the release's own album page, and
+    /// for a MusicBrainz release the Wikidata items and Discogs releases its
+    /// own page and its release group's page link. A Discogs release's album
+    /// statements are none, so nothing it links on MusicBrainz is followed.
+    ///
+    /// [`ReleaseDocument`]: crate::identify::documents::ReleaseDocument
+    fn follows(&self, from: Option<&DocumentKey>, to: &DocumentKey) -> bool {
+        match self.depth {
+            ReadDepth::Complete => true,
+            ReadDepth::Identification => {
+                let musicbrainz = self.payloads.release.catalog == Catalog::MusicBrainz;
+                match from {
+                    None => {
+                        self.album.as_ref() == Some(to)
+                            || (musicbrainz
+                                && matches!(to.0, PayloadSource::Wikidata | PayloadSource::Discogs))
+                    }
+                    Some(from) => {
+                        musicbrainz
+                            && self.album.as_ref() == Some(from)
+                            && to.0 == PayloadSource::Wikidata
+                    }
+                }
+            }
+        }
+    }
+
+    /// Queue what `from` links that this walk follows, and set the rest aside.
+    fn admit(&mut self, from: Option<&DocumentKey>, edges: Vec<DocumentKey>) {
+        for edge in edges {
+            if self.follows(from, &edge) {
+                self.queue.push_back(edge);
+            } else {
+                self.stopped.push(edge);
+            }
+        }
     }
 
     fn next(&mut self) -> Option<DocumentKey> {
@@ -183,7 +243,8 @@ impl DocumentTraversal {
             &document.source_release_id,
             &document.json,
         ) {
-            self.queue.extend(edges);
+            let from = (document.source, document.source_release_id.clone());
+            self.admit(Some(&from), edges);
             self.payloads.supporting.push(document);
         }
     }
@@ -194,6 +255,17 @@ impl DocumentTraversal {
             key,
             reason,
         });
+    }
+
+    /// The documents the walk read, naming each one it set aside and never
+    /// reached through another link as one it stopped short of.
+    fn finish(mut self) -> ReleasePayloads {
+        for (source, key) in std::mem::take(&mut self.stopped) {
+            if self.seen.insert((source, key.clone())) {
+                self.missing(source, key, UnfetchedReason::StoppedShort);
+            }
+        }
+        self.payloads
     }
 }
 
@@ -339,13 +411,14 @@ impl FetchDocuments<'_> {
     }
 }
 
-/// The documents `release` links to, asked of MusicBrainz, Wikidata and —
-/// when a client is given — Discogs.
+/// The documents `release` links to, as far as `depth` follows them, asked of
+/// MusicBrainz, Wikidata and — when a client is given — Discogs.
 pub(crate) async fn fetch_documents(
     musicbrainz: &crate::musicbrainz::MusicBrainz,
     wikidata: &crate::wikidata::Wikidata,
     discogs: Option<&DiscogsClient>,
     release: &MetadataRef,
+    depth: ReadDepth,
     priority: CallPriority,
 ) -> Result<ReleasePayloads, ImportError> {
     let mut fetcher = FetchDocuments {
@@ -366,7 +439,7 @@ pub(crate) async fn fetch_documents(
             unreachable!("a release's own document is asked for first and by its own id")
         }
     };
-    let mut traversal = DocumentTraversal::new(release, anchor)?;
+    let mut traversal = DocumentTraversal::new(release, anchor, depth)?;
     while let Some((source, key)) = traversal.next() {
         match fetcher.document(source, &key).await {
             Ok(Fetched::Document(json)) => traversal.accept(SourcePayload::new(source, key, json)),
@@ -387,7 +460,7 @@ pub(crate) async fn fetch_documents(
             }
         }
     }
-    Ok(traversal.payloads)
+    Ok(traversal.finish())
 }
 
 #[cfg(test)]

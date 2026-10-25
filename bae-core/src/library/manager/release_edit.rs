@@ -187,6 +187,7 @@ impl LibraryManager {
         let release = crate::import::service::prepare_release(
             self,
             &link.record,
+            crate::import::payloads::ReadDepth::Complete,
             crate::util::rate_limiter::CallPriority::Interactive,
         )
         .await?;

@@ -76,6 +76,9 @@ pub enum UnfetchedReason {
     Failed,
     /// It is a Discogs document and this library held no Discogs key.
     DiscogsNotConfigured,
+    /// The read stopped short of it on purpose: an identification read
+    /// follows only the documents ranking the release reads.
+    StoppedShort,
 }
 
 /// The images a release's documents offer, in the order a picker shows them.
@@ -270,14 +273,23 @@ impl SourceRelease {
         &self.release
     }
 
-    /// Whether fetching this release again could add what its fetch missed: a
-    /// document whose source failed, or a Discogs document now that a key is
-    /// held. Anything else missing is what the catalogs answered, and asking
-    /// again answers the same.
-    pub(crate) fn fetch_could_add(&self, discogs_configured: bool) -> bool {
+    /// Whether reading this release again at `depth` could add what its fetch
+    /// missed: a document whose source failed, a Discogs document now that a
+    /// key is held, or — for a complete read — a document an identification
+    /// read stopped short of. Anything else missing is what the catalogs
+    /// answered, and asking again answers the same.
+    pub(crate) fn fetch_could_add(
+        &self,
+        depth: crate::import::payloads::ReadDepth,
+        discogs_configured: bool,
+    ) -> bool {
         self.unfetched.iter().any(|document| match document.reason {
             UnfetchedReason::Failed => true,
             UnfetchedReason::DiscogsNotConfigured => discogs_configured,
+            UnfetchedReason::StoppedShort => match depth {
+                crate::import::payloads::ReadDepth::Identification => false,
+                crate::import::payloads::ReadDepth::Complete => true,
+            },
         })
     }
 

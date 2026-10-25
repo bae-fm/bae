@@ -215,6 +215,97 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
     shut_down(handle).await;
 }
 
+/// A Discogs release under a master, which MusicBrainz's lookup by its
+/// address links to a MusicBrainz release, seeded into the caches a read asks.
+fn seed_linked_discogs_release(providers: &crate::providers::Providers) -> crate::import::MetadataRef {
+    seed_discogs_release_in(providers, "70000007", Some("70000008"));
+    providers
+        .musicbrainz()
+        .seed_discogs_url_lookup("70000007", Some("linked-mb-rel-1".to_string()));
+    seed_mb_release(providers, "linked-mb-rel-1", "linked-mb-group-1");
+    crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000007")
+}
+
+/// An identify run reads a release only as far as ranking it needs. Picking
+/// that release reads the rest before the pick applies it, so the release the
+/// pick stores is the one a complete read from scratch stores.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
+    let archive = crate::util::http::serve_not_found().await;
+    let (handle, _tmp, key, _) = pane_fixture_with(
+        crate::util::http::Http::for_test().serve("coverartarchive.org", &archive),
+    )
+    .await;
+    handle
+        .library_manager
+        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .await
+        .unwrap();
+    let release = seed_linked_discogs_release(handle.library_manager.providers());
+
+    let read_by_the_run = crate::import::service::prepare_release(
+        &handle.library_manager,
+        &release,
+        crate::import::payloads::ReadDepth::Identification,
+        crate::util::rate_limiter::CallPriority::Interactive,
+    )
+    .await
+    .unwrap();
+    assert!(
+        !read_by_the_run
+            .records()
+            .iter()
+            .any(|record| record.catalog() == crate::import::Catalog::MusicBrainz),
+        "the run's read asks MusicBrainz nothing: {:?}",
+        read_by_the_run.records()
+    );
+
+    handle
+        .select_candidate_release(
+            key.clone(),
+            crate::import::PressingLink {
+                record: release.clone(),
+                partners: vec![],
+            },
+        )
+        .await
+        .unwrap();
+    let picked = handle
+        .library_manager
+        .load_source_release(&release)
+        .await
+        .unwrap()
+        .expect("the pick stores its release");
+    shut_down(handle).await;
+
+    let (scratch, _scratch_tmp, _, _) = pane_fixture().await;
+    scratch
+        .library_manager
+        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .await
+        .unwrap();
+    seed_linked_discogs_release(scratch.library_manager.providers());
+    let complete = crate::import::service::prepare_release(
+        &scratch.library_manager,
+        &release,
+        crate::import::payloads::ReadDepth::Complete,
+        crate::util::rate_limiter::CallPriority::Interactive,
+    )
+    .await
+    .unwrap();
+    shut_down(scratch).await;
+
+    assert!(picked
+        .records()
+        .iter()
+        .any(|record| record.release_ref()
+            == Some(&crate::import::MetadataRef::new(
+                crate::import::Catalog::MusicBrainz,
+                "linked-mb-rel-1"
+            ))));
+    assert_eq!(picked, complete);
+}
+
 /// A two-track Discogs release with no master, seeded into the release cache.
 fn seed_discogs_release(providers: &crate::providers::Providers, release_id: &str) {
     seed_discogs_release_in(providers, release_id, None);

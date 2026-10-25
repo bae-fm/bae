@@ -79,6 +79,7 @@ async fn a_master_backlink_is_followed_and_the_stored_release_reads_back() {
         .fetch_payloads(
             Some(&client),
             &MetadataRef::new(Catalog::Discogs, "7811"),
+            ReadDepth::Complete,
             CallPriority::Interactive,
         )
         .await

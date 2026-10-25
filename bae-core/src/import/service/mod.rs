@@ -599,24 +599,27 @@ fn spawn_root_scan(
     RootScanTask { cancellation, task }
 }
 
-/// The release `release_ref` names, from storage or fetched and stored now. A
-/// stored release is fetched again only when that could add what its fetch
-/// missed. Takes the bare `LibraryManager` because the sweep and library
-/// re-identification do not hold an `ImportServiceHandle`.
+/// The release `release_ref` names, read to `depth`, from storage or fetched
+/// and stored now. A stored release is fetched again only when that could add
+/// what its fetch missed at this depth: a complete read of a release an
+/// identify run read reads the rest before anything applies it. Takes the
+/// bare `LibraryManager` because the sweep and library re-identification do
+/// not hold an `ImportServiceHandle`.
 pub(crate) async fn prepare_release(
     library_manager: &LibraryManager,
     release_ref: &MetadataRef,
+    depth: crate::import::payloads::ReadDepth,
     priority: CallPriority,
 ) -> Result<crate::import::source_release::SourceRelease, crate::import::ImportError> {
     if let Some(stored) = library_manager.load_source_release(release_ref).await? {
         let discogs_configured =
             library_manager.can_fetch_releases_from(crate::import::Catalog::Discogs)?;
-        if !stored.fetch_could_add(discogs_configured) {
+        if !stored.fetch_could_add(depth, discogs_configured) {
             return Ok(stored);
         }
     }
     let payloads = library_manager
-        .fetch_release_payloads(release_ref, priority)
+        .fetch_release_payloads(release_ref, depth, priority)
         .await?;
     library_manager
         .save_source_release(&payloads.extract()?)
@@ -655,7 +658,15 @@ pub(crate) async fn prepare_partners(
             });
         }
         claimed.push(partner.catalog);
-        prepared.push(prepare_release(library_manager, partner, priority).await?);
+        prepared.push(
+            prepare_release(
+                library_manager,
+                partner,
+                crate::import::payloads::ReadDepth::Complete,
+                priority,
+            )
+            .await?,
+        );
     }
     Ok(prepared)
 }

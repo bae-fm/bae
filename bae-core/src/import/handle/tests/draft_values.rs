@@ -245,6 +245,7 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
         .library_manager
         .fetch_release_payloads(
             &crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "edited-release"),
+            crate::import::payloads::ReadDepth::Complete,
             crate::util::rate_limiter::CallPriority::Interactive,
         )
         .await

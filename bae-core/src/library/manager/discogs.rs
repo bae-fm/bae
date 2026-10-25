@@ -45,10 +45,11 @@ impl DiscogsSession {
     async fn fetch_payloads(
         &self,
         release: &crate::import::MetadataRef,
+        depth: crate::import::payloads::ReadDepth,
         priority: CallPriority,
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
         self.providers
-            .fetch_payloads(self.client.as_deref(), release, priority)
+            .fetch_payloads(self.client.as_deref(), release, depth, priority)
             .await
     }
 
@@ -274,16 +275,19 @@ impl LibraryManager {
     pub(crate) async fn fetch_release_payloads(
         &self,
         release: &crate::import::MetadataRef,
+        depth: crate::import::payloads::ReadDepth,
         priority: CallPriority,
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
         match self.discogs_session() {
-            Ok(session) => session.fetch_payloads(release, priority).await,
+            Ok(session) => session.fetch_payloads(release, depth, priority).await,
             Err(error) if release.catalog == crate::import::Catalog::MusicBrainz => {
                 warn!(
                     release_id = %release.key,
                     "Discogs cross-reference unavailable while fetching MusicBrainz release: {error}"
                 );
-                self.providers.fetch_payloads(None, release, priority).await
+                self.providers
+                    .fetch_payloads(None, release, depth, priority)
+                    .await
             }
             Err(error) => Err(error.into()),
         }

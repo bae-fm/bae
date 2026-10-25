@@ -479,8 +479,8 @@ fn dispatch_effect(
             });
         }
 
-        // Each record is fetched through the one place a pick reads it from,
-        // so picking an offered row later asks for nothing again.
+        // Each record is read through the one place a pick reads it from, as
+        // far as ranking it needs; picking an offered row reads the rest.
         Effect::ReadReleases { releases, audio } => {
             let library_manager = inner.library_manager.clone();
             spawn_until_cancelled(&runtime, &token, async move {
@@ -575,20 +575,26 @@ fn dispatch_effect(
     }
 }
 
-/// `release` from storage or fetched and stored now, or why its catalog could
-/// not give it. `None` when bae broke reading it: the run has then been told,
-/// and ends.
+/// `release` from storage or fetched and stored now, read as far as ranking it
+/// needs, or why its catalog could not give it. `None` when bae broke reading
+/// it: the run has then been told, and ends.
 async fn read_release(
     library_manager: &LibraryManager,
     release: &crate::import::MetadataRef,
     priority: CallPriority,
     event_tx: &mpsc::UnboundedSender<IdentifyEvent>,
 ) -> Option<Result<crate::import::source_release::SourceRelease, crate::signals::LookupFailure>> {
-    let error =
-        match crate::import::service::prepare_release(library_manager, release, priority).await {
-            Ok(stored) => return Some(Ok(stored)),
-            Err(error) => error,
-        };
+    let error = match crate::import::service::prepare_release(
+        library_manager,
+        release,
+        crate::import::payloads::ReadDepth::Identification,
+        priority,
+    )
+    .await
+    {
+        Ok(stored) => return Some(Ok(stored)),
+        Err(error) => error,
+    };
     match crate::import::search::failure_of(
         &error,
         &format!(

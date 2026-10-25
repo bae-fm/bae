@@ -336,6 +336,7 @@ impl ImportServiceHandle {
         crate::import::service::prepare_release(
             &self.library_manager,
             release,
+            crate::import::payloads::ReadDepth::Complete,
             CallPriority::Interactive,
         )
         .await

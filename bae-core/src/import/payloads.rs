@@ -26,6 +26,21 @@ mod projection;
 mod relationships;
 mod traversal;
 
+/// How far a read of one release follows the documents its pages link.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ReadDepth {
+    /// What an identify run ranks the release by: its own page, its album's
+    /// page (a MusicBrainz release group, a Discogs master) and, for a
+    /// MusicBrainz release, the Wikidata items and Discogs releases those two
+    /// pages link, which its album statements read. Every other document they
+    /// name is recorded as one the read stopped short of.
+    Identification,
+    /// Every document its links reach: what anything that applies the
+    /// release reads — a pick, an unattended pick, a pick's partners, a
+    /// re-identify, a shared-album offer.
+    Complete,
+}
+
 /// Every document one catalog release's lookups produced, anchored on the
 /// release itself.
 ///

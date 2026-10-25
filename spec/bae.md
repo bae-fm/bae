@@ -656,9 +656,16 @@ pressings; one of them carries LBL-1001, which the folder also states, so that
 number is now worth asking Discogs about. A run therefore goes in rounds:
 
 1. Pool every answer so far and rank it (below).
-2. Read each offered release's full document. A search result states less
-   than its document: Discogs names only the first label, and no lookup lists
-   the tracklist.
+2. Read each offered release's document. A search result states less than
+   its document: Discogs names only the first label, and no lookup lists the
+   tracklist. A run reads only what ranking the release and joining its album
+   read: the release's own page and its album's (the release group or
+   master), and for a MusicBrainz release the Wikidata items and Discogs
+   releases those two pages link, which its album statements (below) read. A
+   Discogs release's run read asks MusicBrainz nothing. The release is stored
+   naming every other document its pages link as one the read stopped short
+   of, and a pick, an unattended pick included, reads the rest before it
+   applies anything.
 3. Ask what came into effect: a catalog number a found release carries that the
    folder states; an offered release's pressing on the catalog that has no
    record of it, by the release its page names there, its barcode, or its
@@ -2594,7 +2601,7 @@ under it.
 | `source_release_work`, `source_release_work_composer` | its MusicBrainz works |
 | `source_release_link`, `source_release_album_link`, `source_release_record`, `release_group_album_link` | what it says it is on other catalogs |
 | `source_release_cover`, `source_release_cover_copy`, `source_release_archive_group` | the images it offers a picker |
-| `source_release_unfetched` | linked documents the fetch didn't get, and why |
+| `source_release_unfetched` | linked documents the fetch didn't get, and why: the source failed, Discogs had no key, or a run's read stopped short of it |
 
 ---
 

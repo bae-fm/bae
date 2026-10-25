@@ -725,6 +725,7 @@ async fn a_fetch_follows_the_item_musicbrainz_names() {
         .fetch_payloads(
             None,
             &MetadataRef::new(Catalog::MusicBrainz, release_id),
+            ReadDepth::Complete,
             CallPriority::Interactive,
         )
     .await
@@ -772,6 +773,7 @@ async fn an_item_that_will_not_fetch_leaves_the_other_records_standing() {
         .fetch_payloads(
             None,
             &MetadataRef::new(Catalog::MusicBrainz, release_id),
+            ReadDepth::Complete,
             CallPriority::Interactive,
         )
     .await

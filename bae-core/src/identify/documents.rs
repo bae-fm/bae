@@ -3,9 +3,12 @@
 //! A search result states less than its release's document: a Discogs result
 //! names only its first label, no lookup's answer lists the tracklist read
 //! against the folder's audio, and a result may leave out the barcode its
-//! document states. Every record of every offered row is fetched in full and
-//! stored where a pick reads it (see `crate::import::service::prepare_release`),
-//! and what the document states replaces what the result stated before the
+//! document states. Every record of every offered row is fetched and stored
+//! where a pick reads it (see `crate::import::service::prepare_release`), as
+//! far as what is read here needs: the release's own page, its album's page,
+//! and for a MusicBrainz release the Wikidata items and Discogs releases its
+//! album statements read. A pick reads the rest before it applies anything.
+//! What the document states replaces what the result stated before the
 //! rows are ranked again. A row whose tracklist then holds other tracks than
 //! the folder is no longer a match (see `identify::fit::rules_out`), and the
 //! rows ranked below it move up; a row the documents raise to the top is read

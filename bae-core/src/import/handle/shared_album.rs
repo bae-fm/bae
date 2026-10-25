@@ -65,6 +65,7 @@ impl ImportServiceHandle {
             let release = crate::import::service::prepare_release(
                 &self.library_manager,
                 lead,
+                crate::import::payloads::ReadDepth::Complete,
                 CallPriority::Interactive,
             )
             .await?;

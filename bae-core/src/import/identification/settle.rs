@@ -345,8 +345,13 @@ async fn settle_lead(
 
     let settle = async {
         let release =
-            crate::import::service::prepare_release(&context.library_manager, &primary, priority)
-                .await?;
+            crate::import::service::prepare_release(
+                &context.library_manager,
+                &primary,
+                crate::import::payloads::ReadDepth::Complete,
+                priority,
+            )
+            .await?;
         let prepared_partners = crate::import::service::prepare_partners(
             &context.library_manager,
             &primary,
