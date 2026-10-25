@@ -538,13 +538,13 @@ extension ImportCandidateListContent {
         List(selection: candidateSelectionBinding) {
             ForEach(0..<list.totalCount, id: \.self) { index in
                 let stableKey = list.idAt(index)
-                let air = airAbove(index, in: list)
-                if air > 0 {
-                    Color.clear
-                        .frame(height: air)
-                        .listRowInsets(EdgeInsets())
-                        .listRowSeparator(.hidden)
-                }
+                // Every index is two rows, the air and the entry, whatever the
+                // air is: the list crashes when it scrolls to a row while an
+                // index's count of rows changes, as the air does when rows land.
+                Color.clear
+                    .frame(height: airAbove(index, in: list))
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
                 entry(at: index, in: list)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
@@ -562,11 +562,9 @@ extension ImportCandidateListContent {
             }
         }
         .listStyle(.plain)
-        // The default minimum row height would inflate the boundary spacers.
-        .environment(
-            \.defaultMinListRowHeight,
-            ImportListHierarchyLayout.groupBoundaryAir
-        )
+        // The default minimum row height would inflate the air rows, which
+        // are zero tall where there is no air.
+        .environment(\.defaultMinListRowHeight, 0)
         .background {
             GeometryReader { geometry in
                 Color.clear.preference(
