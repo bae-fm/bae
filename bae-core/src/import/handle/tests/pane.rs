@@ -57,6 +57,14 @@ async fn unread_candidate(
     (candidate, key, hash)
 }
 
+fn set_modified(path: &Path, modified: std::time::SystemTime) {
+    std::fs::File::options()
+        .write(true)
+        .open(path)
+        .and_then(|file| file.set_modified(modified))
+        .expect("set the file's modification time");
+}
+
 /// [`rescan_into`] as a scan that could not read the folder's tags.
 async fn rescan_unread_into(manager: &LibraryManager, candidate: FolderCandidate) {
     let root = candidate.watched_folder_path.clone();
@@ -78,6 +86,13 @@ async fn rescan_unread_into(manager: &LibraryManager, candidate: FolderCandidate
 }
 
 /// The folder [`picked_candidate`] stores, under a watched root, not stored yet.
+///
+/// Every folder built here is its own files: its files are given a
+/// modification time no other folder's has. The files' names and sizes are the
+/// same in each, and copying keeps the fixture's time on Windows, where two
+/// covers written in one clock tick share theirs too — so two folders would
+/// otherwise be one release's files, and a decision about one would answer
+/// both.
 async fn unscanned_candidate(
     manager: &LibraryManager,
     tmp: &TempDir,
@@ -87,6 +102,11 @@ async fn unscanned_candidate(
         CandidateFile, CategorizedFiles, FileRole, ReleaseFileScope, ScannedFile,
     };
 
+    static FOLDERS_BUILT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let modified = std::time::UNIX_EPOCH
+        + std::time::Duration::from_secs(
+            1_700_000_000 + FOLDERS_BUILT.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+        );
     let root = tmp.path().join("watched");
     let folder = root.join(folder_name);
     std::fs::create_dir_all(&folder).unwrap();
@@ -99,6 +119,7 @@ async fn unscanned_candidate(
         let relative_path = format!("{:02} Track.flac", index + 1);
         let path = folder.join(&relative_path);
         std::fs::copy(fixtures.join(name), &path).unwrap();
+        set_modified(&path, modified);
         let metadata = std::fs::metadata(&path).unwrap();
         let size = metadata.len();
         let modified_at_ns =
@@ -111,6 +132,7 @@ async fn unscanned_candidate(
     }
     let cover_path = folder.join("cover.jpg");
     std::fs::write(&cover_path, cover_jpeg()).unwrap();
+    set_modified(&cover_path, modified);
     let cover_metadata = std::fs::metadata(&cover_path).unwrap();
     let cover_modified_at_ns =
         crate::import::folder_scanner::file_modified_at_ns(&cover_path, &cover_metadata).unwrap();
