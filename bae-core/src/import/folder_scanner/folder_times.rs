@@ -1,24 +1,25 @@
-//! The dates of the folders directly under a watched root, for the order a
-//! pass walks them in: newest first by the latest date each has, so a folder
-//! the person just added, or one whose own contents just changed — an album
-//! added inside an artist's folder — shows its releases before the rest of
-//! the library is read.
+//! The dates the file system gives for a folder — when it was added to the
+//! folder it is in, created, and last modified — read once here, and the two
+//! choices made from them:
 //!
-//! The import list orders the releases it shows by [`FolderDate`], which
-//! takes no modification time, since that does not say when a folder
-//! arrived. The walk takes it beside the others: a wrong guess only changes
-//! which releases show first, never what the pass finds.
-//!
-//! [`FolderDate`]: super::FolderDate
+//! - the import list orders the releases it shows by [`FolderDate`], when the
+//!   folder arrived: date added, else created, never modified, since a
+//!   modification does not say when a folder arrived;
+//! - a pass walks the folders directly under a watched root newest first by
+//!   [`FolderTimes::latest`], so a folder the person just added, or one whose
+//!   own contents just changed — an album added inside an artist's folder —
+//!   shows its releases before the rest of the library is read. A wrong guess
+//!   only changes which releases show first, never what the pass finds.
 
 use super::scan::{ScanCancellation, FOLDERS_AT_ONCE};
 use super::FolderScanError;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::SystemTime;
 
 #[cfg(target_os = "macos")]
-mod bulk;
+mod attributes;
 
 /// The dates the file system gives for one folder. Each is `None` where the
 /// system keeps no such date for it or it could not be read.
@@ -35,6 +36,31 @@ pub(crate) struct FolderTimes {
 }
 
 impl FolderTimes {
+    /// The dates of the folder at `path`: its date added where the system
+    /// keeps one, and what its metadata gives. A file system that keeps no
+    /// date added or no creation time gives none; any other failure to read
+    /// them fails.
+    fn read(path: &Path) -> io::Result<Self> {
+        #[cfg(target_os = "macos")]
+        let added = attributes::added(path)?;
+        #[cfg(not(target_os = "macos"))]
+        let added = None;
+        Ok(Self {
+            added,
+            ..Self::of_metadata(path)?
+        })
+    }
+
+    /// What `path`'s metadata gives, which carries no date added.
+    fn of_metadata(path: &Path) -> io::Result<Self> {
+        let metadata = std::fs::metadata(path)?;
+        Ok(Self {
+            added: None,
+            created: creation_time(path, metadata.created())?,
+            modified: metadata.modified().ok(),
+        })
+    }
+
     /// The latest of the dates the system gives: when the folder was added,
     /// created, or last had an entry directly in it change, whichever came
     /// last; `None` when it gives none.
@@ -45,19 +71,52 @@ impl FolderTimes {
             .max()
     }
 
-    /// What `path`'s metadata gives, which carries no date added; nothing
-    /// when it can't be read.
-    fn of_metadata(path: &Path) -> Self {
-        match std::fs::metadata(path) {
-            Ok(metadata) => Self {
-                added: None,
-                created: metadata.created().ok(),
-                modified: metadata.modified().ok(),
-            },
-            Err(error) => {
-                tracing::debug!(path = %path.display(), %error, "folder dates are unreadable");
-                Self::default()
-            }
+    /// When the folder arrived, as far as the system says: its date added,
+    /// else its creation time. Never its modification time.
+    fn arrival(&self) -> Option<FolderDate> {
+        let millis = |at: SystemTime| chrono::DateTime::<chrono::Utc>::from(at).timestamp_millis();
+        match (self.added, self.created) {
+            (Some(added), _) => Some(FolderDate::AddedToDirectory(millis(added))),
+            (None, Some(created)) => Some(FolderDate::Created(millis(created))),
+            (None, None) => None,
+        }
+    }
+}
+
+/// `created` as a creation time: `None` where the platform or file system
+/// keeps none.
+fn creation_time(path: &Path, created: io::Result<SystemTime>) -> io::Result<Option<SystemTime>> {
+    match created {
+        Ok(at) => Ok(Some(at)),
+        Err(error) if error.kind() == io::ErrorKind::Unsupported => {
+            tracing::debug!(path = %path.display(), "folder creation time is unavailable");
+            Ok(None)
+        }
+        Err(error) => Err(error),
+    }
+}
+
+/// When a folder arrived, in Unix epoch milliseconds, with the file system
+/// fact they are: what the import list orders releases by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FolderDate {
+    AddedToDirectory(i64),
+    Created(i64),
+}
+
+impl FolderDate {
+    /// When the folder at `path` arrived: its date added where the system
+    /// keeps one, else its creation time where it keeps that.
+    pub fn read(path: &Path) -> Result<Option<Self>, FolderScanError> {
+        FolderTimes::read(path)
+            .map(|times| times.arrival())
+            .map_err(|error| FolderScanError::io(path, error))
+    }
+
+    pub(crate) fn columns(self) -> (i64, &'static str) {
+        match self {
+            Self::AddedToDirectory(at) => (at, "added_to_directory"),
+            Self::Created(at) => (at, "created"),
         }
     }
 }
@@ -75,7 +134,7 @@ pub(crate) fn times_of_folders(
     cancellation.check()?;
     let mut times: Vec<Option<FolderTimes>> = vec![None; folders.len()];
     #[cfg(target_os = "macos")]
-    match bulk::read(root) {
+    match attributes::read_directory(root) {
         Ok(mut entries) => {
             for (folder, times) in folders.iter().zip(&mut times) {
                 *times = folder.file_name().and_then(|name| entries.remove(name));
@@ -122,7 +181,11 @@ fn read_each_at_once(
                     let Some(index) = indices.get(place) else {
                         break;
                     };
-                    let times = FolderTimes::of_metadata(&root.join(&folders[*index]));
+                    let path = root.join(&folders[*index]);
+                    let times = FolderTimes::of_metadata(&path).unwrap_or_else(|error| {
+                        tracing::debug!(path = %path.display(), %error, "folder dates are unreadable");
+                        FolderTimes::default()
+                    });
                     *read[place].lock().expect("folder dates mutex poisoned") = times;
                 }
             });
@@ -184,6 +247,64 @@ mod tests {
         };
         assert_eq!(only_modified.latest(), at(10));
         assert_eq!(FolderTimes::default().latest(), None);
+    }
+
+    #[test]
+    fn a_folder_arrived_when_it_was_added_else_created_never_modified() {
+        let all = FolderTimes {
+            added: at(30),
+            created: at(20),
+            modified: at(60),
+        };
+        assert_eq!(all.arrival(), Some(FolderDate::AddedToDirectory(30_000)));
+        let no_added = FolderTimes { added: None, ..all };
+        assert_eq!(no_added.arrival(), Some(FolderDate::Created(20_000)));
+        let only_modified = FolderTimes {
+            modified: at(60),
+            ..Default::default()
+        };
+        assert_eq!(only_modified.arrival(), None);
+    }
+
+    #[test]
+    fn unavailable_creation_time_is_absent_but_io_errors_propagate() {
+        let path = Path::new("folder");
+        assert_eq!(
+            creation_time(path, Err(io::ErrorKind::Unsupported.into())).unwrap(),
+            None
+        );
+        assert_eq!(
+            creation_time(path, Err(io::ErrorKind::PermissionDenied.into()))
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::PermissionDenied
+        );
+        assert_eq!(
+            creation_time(path, Ok(UNIX_EPOCH)).unwrap(),
+            Some(UNIX_EPOCH)
+        );
+    }
+
+    #[test]
+    fn reads_an_existing_folder_and_reports_a_missing_one() {
+        let directory = tempfile::tempdir().unwrap();
+        let date = FolderDate::read(directory.path()).unwrap();
+        #[cfg(target_os = "macos")]
+        assert!(matches!(date, Some(FolderDate::AddedToDirectory(_))), "{date:?}");
+        #[cfg(not(target_os = "macos"))]
+        let _ = date;
+        assert!(FolderDate::read(&directory.path().join("missing")).is_err());
+    }
+
+    /// A folder's own read and the root's batch say the same of it.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_folder_read_alone_has_the_dates_its_batch_gives() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::create_dir(root.path().join("One")).unwrap();
+        let alone = FolderTimes::read(&root.path().join("One")).unwrap();
+        let batch = attributes::read_directory(root.path()).unwrap();
+        assert_eq!(batch[std::ffi::OsStr::new("One")], alone);
     }
 
     #[test]
