@@ -232,39 +232,15 @@ pub fn probe_audio_from_path(path: &str) -> Option<ProbeResult> {
     open_and_probe(path)
 }
 
-/// How many times each path has been opened by [`open_and_probe`], so a test
-/// can assert that re-asking about a folder reads nothing off disk.
-#[cfg(test)]
-fn probe_open_counts() -> &'static std::sync::Mutex<std::collections::HashMap<String, u64>> {
-    static COUNTS: std::sync::OnceLock<std::sync::Mutex<std::collections::HashMap<String, u64>>> =
-        std::sync::OnceLock::new();
-    COUNTS.get_or_init(Default::default)
-}
-
-/// How many times FFmpeg has been opened for `path` this test binary.
-#[cfg(test)]
-pub(crate) fn probe_opens_for(path: &std::path::Path) -> u64 {
-    let path = path.to_str().expect("test paths are UTF-8");
-    probe_open_counts()
-        .lock()
-        .expect("probe open counts mutex poisoned")
-        .get(path)
-        .copied()
-        .unwrap_or(0)
-}
-
 /// Open the file with FFmpeg and read its best audio stream. `None` (already
 /// logged) when it cannot be opened, has no audio stream, or states no usable
 /// duration.
 fn open_and_probe(path: &str) -> Option<ProbeResult> {
     #[cfg(test)]
-    {
-        *probe_open_counts()
-            .lock()
-            .expect("probe open counts mutex poisoned")
-            .entry(path.to_string())
-            .or_default() += 1;
-    }
+    crate::test_reads::record(
+        crate::test_reads::FileRead::Probe,
+        std::path::Path::new(path),
+    );
     unsafe {
         use ffmpeg_sys_next::*;
 

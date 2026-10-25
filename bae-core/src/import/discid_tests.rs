@@ -431,7 +431,7 @@ fn test_compute_discid_routes_cue_ape() {
     )
     .unwrap();
     let audio_path = folder.join("Test Album.ape");
-    let opens_before = crate::audio_codec::probe_opens_for(&audio_path);
+    let opens_before = crate::test_reads::count(crate::test_reads::FileRead::Probe, &audio_path);
     let computed = read_rip_artifacts(&categorized)
         .disc_id
         .computed()
@@ -439,7 +439,7 @@ fn test_compute_discid_routes_cue_ape() {
         .map(|[disc]: [crate::signals::ComputedDiscId; 1]| disc)
         .expect("CUE+APE pair must compute one disc ID");
     assert_eq!(
-        crate::audio_codec::probe_opens_for(&audio_path),
+        crate::test_reads::count(crate::test_reads::FileRead::Probe, &audio_path),
         opens_before,
         "DiscID must reuse the duration retained by the folder scan"
     );

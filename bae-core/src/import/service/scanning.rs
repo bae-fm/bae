@@ -398,6 +398,9 @@ impl ImportService {
         let decisions = library_manager
             .load_folder_release_decisions(root_key)
             .await?;
+        // What the last pass over this root read of each file, so this one
+        // opens only the files that are new or changed since.
+        let reads = library_manager.load_file_reads(root_key).await?;
         // Which candidates under this root the person skipped, read once for
         // the pass: the stamp each written candidate carries out to the list.
         let skipped = library_manager
@@ -438,6 +441,7 @@ impl ImportService {
                     decisions: &decisions,
                     new_grouping_key: &new_key,
                 },
+                &reads,
                 &walk_cancellation,
                 |directory| {
                     match (directory_mtimes.as_mut(), directory_modified_at(&directory)) {

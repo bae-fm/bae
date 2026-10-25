@@ -365,16 +365,41 @@ impl LibraryManager {
             return Ok(None);
         }
         let folder = candidate.path.display().to_string();
-        let candidate = candidate.clone();
-        let read = tokio::task::spawn_blocking(move || {
-            crate::import::file_metadata_seed::FileMetadataSeed::read(
-                &candidate,
-                generation,
-                reader.as_ref(),
+        // Tags the scans stored for these very tracks are what reading them
+        // again would give.
+        let stored = self
+            .database
+            .load_file_tag_snapshot_read_from(
+                &candidate.watched_folder_path,
+                &candidate.key(),
+                candidate.files.audio().cloned().collect(),
             )
-        })
-        .await
-        .map_err(|error| LibraryError::Internal(format!("file tag read task failed: {error}")))?;
+            .await?;
+        let read = match stored {
+            Some(stored) => crate::import::file_metadata_seed::FileMetadataSeed::project(
+                candidate,
+                crate::import::file_tag_snapshot::FileTagSnapshot {
+                    scan_generation: generation,
+                    file_edit_revision: candidate.file_edit_revision,
+                    ..stored
+                },
+                None,
+            ),
+            None => {
+                let candidate = candidate.clone();
+                tokio::task::spawn_blocking(move || {
+                    crate::import::file_metadata_seed::FileMetadataSeed::read(
+                        &candidate,
+                        generation,
+                        reader.as_ref(),
+                    )
+                })
+                .await
+                .map_err(|error| {
+                    LibraryError::Internal(format!("file tag read task failed: {error}"))
+                })?
+            }
+        };
         match read {
             Ok(seed) => Ok(Some(seed)),
             Err(error) => {
@@ -643,6 +668,15 @@ impl LibraryManager {
             .database
             .save_import_candidate_failure(content_hash, edit_revision, failure)
             .await?)
+    }
+
+    /// What the scans of `watched_folder_path` stored about each file they
+    /// read, for the next pass over it to start from.
+    pub(crate) async fn load_file_reads(
+        &self,
+        watched_folder_path: &str,
+    ) -> Result<crate::import::folder_scanner::FileReads, LibraryError> {
+        Ok(self.database.load_file_reads(watched_folder_path).await?)
     }
 
     /// Every candidate's user-set file decisions, keyed by content hash, so a

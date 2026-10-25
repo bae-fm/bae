@@ -41,10 +41,269 @@ async fn regrouping_disc_folders_probes_each_audio_file_once() {
     assert_eq!(releases, vec![4], "the discs read as one release");
     for track in &tracks {
         assert_eq!(
-            crate::audio_codec::probe_opens_for(track),
+            crate::test_reads::count(crate::test_reads::FileRead::Probe, track),
             1,
             "{} is probed once",
             track.display()
         );
     }
+}
+
+/// The files of a watched root a rescan could read, by what reads them.
+struct ReadableFiles {
+    root: PathBuf,
+    /// The release's folder, its key.
+    album: PathBuf,
+    tracks: Vec<PathBuf>,
+    images: Vec<PathBuf>,
+    sheet: PathBuf,
+}
+
+impl ReadableFiles {
+    /// How many times each of them has been read, by each read.
+    fn reads(&self, tags: &CountingTagReader) -> Vec<(PathBuf, &'static str, u64)> {
+        use crate::test_reads::{count, FileRead};
+        let mut reads = Vec::new();
+        for track in &self.tracks {
+            reads.push((track.clone(), "probe", count(FileRead::Probe, track)));
+            reads.push((track.clone(), "numbers", count(FileRead::TagNumbers, track)));
+            reads.push((track.clone(), "tags", tags.reads_of(track)));
+        }
+        for image in &self.images {
+            reads.push((image.clone(), "image", count(FileRead::ImageCheck, image)));
+        }
+        reads.push((
+            self.sheet.clone(),
+            "sheet",
+            count(FileRead::CueParse, &self.sheet),
+        ));
+        reads
+    }
+}
+
+/// A watched root holding a release — two tracks, a cover, a sheet, and an
+/// image that does not decode — a folder that can't be imported — a playable
+/// track, an empty one, and one FFmpeg finds nothing in — and two releases
+/// beside a booklet neither owns.
+async fn readable_root(test: &TestService) -> ReadableFiles {
+    let root = test.temp.path().join("watched");
+    let album = root.join("Album");
+    let broken = root.join("Broken");
+    let set = root.join("Set");
+    for folder in [
+        &album,
+        &broken,
+        &set.join("Live One"),
+        &set.join("Live Two"),
+    ] {
+        std::fs::create_dir_all(folder).unwrap();
+    }
+    let mut tracks = Vec::new();
+    for track in [
+        album.join("01.flac"),
+        album.join("02.flac"),
+        broken.join("01.flac"),
+        set.join("Live One").join("01.flac"),
+        set.join("Live Two").join("01.flac"),
+    ] {
+        std::fs::write(&track, flac()).unwrap();
+        tracks.push(track);
+    }
+    std::fs::write(broken.join("02.flac"), b"").unwrap();
+    std::fs::write(broken.join("03.flac"), vec![7u8; 4096]).unwrap();
+    tracks.push(broken.join("03.flac"));
+    write_test_jpeg(&album.join("cover.jpg"));
+    std::fs::write(album.join("back.png"), vec![0u8; 64]).unwrap();
+    write_test_jpeg(&set.join("booklet.jpg"));
+    let sheet = album.join("album.cue");
+    std::fs::write(
+        &sheet,
+        "FILE \"01.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n",
+    )
+    .unwrap();
+    let root = PathBuf::from(
+        crate::import::watched_folder::canonical_absolute_root(&root.to_string_lossy()).unwrap(),
+    );
+    test.service
+        .library_manager
+        .add_watched_import_folder(&root.to_string_lossy())
+        .await
+        .unwrap();
+    ReadableFiles {
+        album: root.join("Album"),
+        tracks: tracks
+            .iter()
+            .map(|track| {
+                root.join(
+                    track
+                        .strip_prefix(test.temp.path().join("watched"))
+                        .unwrap(),
+                )
+            })
+            .collect(),
+        images: ["Album/cover.jpg", "Album/back.png", "Set/booklet.jpg"]
+            .iter()
+            .map(|image| root.join(image))
+            .collect(),
+        sheet: root.join("Album/album.cue"),
+        root,
+    }
+}
+
+/// A rescan of a folder nothing in has changed opens none of its files: every
+/// track's stream and numbers, every image's check, every sheet's parse and
+/// every release's tags are what the last scan stored. What it stores is what
+/// was there.
+#[tokio::test]
+async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
+    let test = setup_import_service().await;
+    let files = readable_root(&test).await;
+    let tags = Arc::new(CountingTagReader::default());
+    let (scan, _) = test.scan_with(
+        tags.clone(),
+        Arc::new(crate::import::folder_scanner::OsDirectoryReader),
+    );
+    let root_key = files.root.to_string_lossy().into_owned();
+    scan.rescan(&files.root).await.unwrap();
+    let first = files.reads(&tags);
+    assert!(
+        first
+            .iter()
+            .any(|(path, read, count)| *read == "probe" && *count > 0 && path.ends_with("03.flac")),
+        "the first scan reads the folder: {first:?}"
+    );
+    let stored = test
+        .service
+        .library_manager
+        .load_folder_scan_items(&root_key)
+        .await
+        .unwrap();
+    assert!(
+        stored
+            .iter()
+            .any(|item| matches!(item, ScanItem::Invalid(_))),
+        "the broken folder is stored as one that can't be imported: {stored:?}"
+    );
+    let reading = test
+        .service
+        .library_manager
+        .load_candidate_file_tag_snapshot(&root_key, &files.album.to_string_lossy())
+        .await
+        .unwrap()
+        .unwrap()
+        .snapshot
+        .unwrap();
+
+    scan.rescan(&files.root).await.unwrap();
+
+    assert_eq!(files.reads(&tags), first, "the rescan reads no file again");
+    assert_eq!(
+        test.service
+            .library_manager
+            .load_folder_scan_items(&root_key)
+            .await
+            .unwrap(),
+        stored,
+        "the rescan stores what the scan before it stored"
+    );
+    let reread = test
+        .service
+        .library_manager
+        .load_candidate_file_tag_snapshot(&root_key, &files.album.to_string_lossy())
+        .await
+        .unwrap()
+        .unwrap()
+        .snapshot
+        .unwrap();
+    assert!(reread.same_reading(&reading), "{reread:?} != {reading:?}");
+}
+
+/// A track whose modification time moved is read again; the files beside it
+/// are not.
+#[tokio::test]
+async fn a_rescan_reads_again_only_the_file_that_changed() {
+    let test = setup_import_service().await;
+    let files = readable_root(&test).await;
+    let tags = Arc::new(CountingTagReader::default());
+    let (scan, _) = test.scan_with(
+        tags.clone(),
+        Arc::new(crate::import::folder_scanner::OsDirectoryReader),
+    );
+    scan.rescan(&files.root).await.unwrap();
+    let changed = files.album.join("02.flac");
+    std::fs::File::options()
+        .write(true)
+        .open(&changed)
+        .unwrap()
+        .set_times(
+            std::fs::FileTimes::new()
+                .set_modified(std::time::SystemTime::now() + std::time::Duration::from_secs(5)),
+        )
+        .unwrap();
+    let before = files.reads(&tags);
+
+    scan.rescan(&files.root).await.unwrap();
+
+    for ((path, read, before), (_, _, after)) in before.iter().zip(files.reads(&tags)) {
+        let expected = match *read {
+            "probe" | "numbers" if *path == changed => before + 1,
+            // The release's draft reads its tracks' tags again.
+            "tags" if path.starts_with(&files.album) => after,
+            _ => *before,
+        };
+        assert_eq!(after, expected, "{read} of {}", path.display());
+    }
+}
+
+/// A release whose tracks are the ones its stored tags were read from takes
+/// those tags for its draft, though another file beside them is new.
+#[tokio::test]
+async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
+    let test = setup_import_service().await;
+    let files = readable_root(&test).await;
+    let tags = Arc::new(CountingTagReader::default());
+    let (scan, _) = test.scan_with(
+        tags.clone(),
+        Arc::new(crate::import::folder_scanner::OsDirectoryReader),
+    );
+    let root_key = files.root.to_string_lossy().into_owned();
+    let album_key = files.album.to_string_lossy().into_owned();
+    scan.rescan(&files.root).await.unwrap();
+    let reading = test
+        .service
+        .library_manager
+        .load_candidate_file_tag_snapshot(&root_key, &album_key)
+        .await
+        .unwrap()
+        .unwrap();
+    std::fs::write(files.album.join("notes.txt"), "Rip notes").unwrap();
+    let before = files.reads(&tags);
+
+    scan.rescan(&files.root).await.unwrap();
+
+    assert_eq!(files.reads(&tags), before, "no file is read again");
+    let stored = test
+        .service
+        .library_manager
+        .load_candidate_file_tag_snapshot(&root_key, &album_key)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_ne!(
+        stored.candidate.files.content_hash(),
+        reading.candidate.files.content_hash(),
+        "the release holds a new file"
+    );
+    let preparation = test
+        .service
+        .library_manager
+        .load_import_candidate_preparation(&stored.candidate.files.content_hash())
+        .await
+        .unwrap()
+        .expect("the release with the new file is stored");
+    assert_eq!(preparation.draft.tracks.len(), 2);
+    assert!(stored
+        .snapshot
+        .unwrap()
+        .same_reading(&reading.snapshot.unwrap()));
 }

@@ -182,9 +182,9 @@ pub(super) struct ScanRoot<'a> {
     watched_folder_path: &'a str,
     stored: &'a StoredCandidateEdits,
     cancellation: &'a ScanCancellation,
-    /// Every audio file's facts this pass has read, so regrouping folders
-    /// reads none twice.
-    probed: &'a ProbedAudio,
+    /// What is known of each file, so the pass reads none it holds a reading
+    /// of.
+    reads: &'a FileReads,
 }
 
 /// What a pass reads a root's folders against: the file corrections the user
@@ -282,7 +282,7 @@ pub(super) fn categorize_selected_files(
         scan.stored,
         parts,
         scan.cancellation,
-        scan.probed,
+        scan.reads,
     )
 }
 
@@ -685,7 +685,7 @@ fn sidecar_of(scan: &ScanRoot<'_>, loose: LooseFolder) -> Result<FolderSidecar, 
         SidecarFiles::Downloading
     } else {
         let tree = CandidateFileIndex::new(files);
-        categorize_sidecar(&tree, &folder, scan.root, scan.cancellation)?
+        categorize_sidecar(&tree, &folder, scan.root, scan.cancellation, scan.reads)?
     };
     Ok(FolderSidecar {
         watched_folder_path: scan.watched_folder_path.to_string(),
@@ -710,6 +710,7 @@ pub(crate) fn scan_for_candidates_with_reader_cancellable_and_directories<R, F, 
     reader: &R,
     root: PathBuf,
     readings: &ScanReadings<'_>,
+    reads: &FileReads,
     cancellation: &ScanCancellation,
     mut on_directory: D,
     mut on_item: F,
@@ -727,14 +728,13 @@ where
         }
     }
     let watched_folder_path = root.to_string_lossy().into_owned();
-    let probed = ProbedAudio::default();
     let walk = Walk::new(
         ScanRoot {
             root: &root,
             watched_folder_path: &watched_folder_path,
             stored: readings.stored,
             cancellation,
-            probed: &probed,
+            reads,
         },
         reader,
         readings.decisions,
@@ -816,6 +816,7 @@ pub(crate) fn scan_top_level_folder_with_reader<R, F, D>(
     root: &Path,
     folder: &Path,
     readings: &ScanReadings<'_>,
+    reads: &FileReads,
     cancellation: &ScanCancellation,
     mut on_directory: D,
     mut on_item: F,
@@ -837,14 +838,13 @@ where
         )));
     }
     let watched_folder_path = root.to_string_lossy().into_owned();
-    let probed = ProbedAudio::default();
     let walk = Walk::new(
         ScanRoot {
             root,
             watched_folder_path: &watched_folder_path,
             stored: readings.stored,
             cancellation,
-            probed: &probed,
+            reads,
         },
         reader,
         readings.decisions,
@@ -874,6 +874,7 @@ where
             decisions,
             new_grouping_key: &fresh_grouping_key,
         },
+        &FileReads::new(),
         &ScanCancellation::new(),
         |_| {},
         on_item,
@@ -948,7 +949,7 @@ pub fn collect_release_candidate_files_with_scope(
         stored,
         &[],
         &ScanCancellation::new(),
-        &ProbedAudio::default(),
+        &FileReads::new(),
     )? {
         CategorizeOutcome::Valid(files) => Ok(files),
         CategorizeOutcome::Invalid { files, .. } => Err(InvalidReason::of(&files).into()),

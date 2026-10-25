@@ -4,11 +4,13 @@
 //! is written, and successful completion prunes rows of other generations in
 //! the transaction that marks the root complete.
 //!
-//! [`write`] stores candidate rows, [`read`] loads them back, and [`sidecar`]
-//! stores a folder's sidecar files.
+//! [`write`] stores candidate rows, [`read`] loads them back, [`sidecar`]
+//! stores a folder's sidecar files, and [`file_reads`] reads what they say was
+//! read of each file.
 
 pub(super) mod columns;
 mod dates;
+mod file_reads;
 mod progress;
 pub(super) mod read;
 mod reading;

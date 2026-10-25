@@ -431,7 +431,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         .expect("the candidate is stored")
         .snapshot;
     let audio_path = folder.join("01.flac");
-    let opens_before = crate::audio_codec::probe_opens_for(&audio_path);
+    let opens_before = crate::test_reads::count(crate::test_reads::FileRead::Probe, &audio_path);
 
     service
         .import_cancels
@@ -462,7 +462,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         "got: {err:?}"
     );
     assert_eq!(
-        crate::audio_codec::probe_opens_for(&audio_path),
+        crate::test_reads::count(crate::test_reads::FileRead::Probe, &audio_path),
         opens_before,
         "import must reuse the stored scan facts without reopening the audio probe",
     );
@@ -711,14 +711,21 @@ async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
 /// same write that stores the candidate: the album, its artist and its tracks
 /// are there the first time anyone looks, and the reading they came from is
 /// stored beside them.
-/// Counts what the pre-fill opens, and answers with what the files really say.
+/// Counts what reading tags opens, file by file, and answers with what the
+/// files really say.
+#[derive(Default)]
 struct CountingTagReader {
-    reads: std::sync::atomic::AtomicUsize,
+    reads: Mutex<std::collections::HashMap<PathBuf, u64>>,
 }
 
 impl CountingTagReader {
-    fn reads(&self) -> usize {
-        self.reads.load(std::sync::atomic::Ordering::Relaxed)
+    /// Every read, of every file.
+    fn reads(&self) -> u64 {
+        self.reads.lock().unwrap().values().sum()
+    }
+
+    fn reads_of(&self, path: &Path) -> u64 {
+        self.reads.lock().unwrap().get(path).copied().unwrap_or(0)
     }
 }
 
@@ -727,8 +734,12 @@ impl crate::import::file_tag_snapshot::FileTagReader for CountingTagReader {
         &self,
         path: &Path,
     ) -> Result<crate::import::file_tag_snapshot::FileTagRead, crate::import::ImportError> {
-        self.reads
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        *self
+            .reads
+            .lock()
+            .unwrap()
+            .entry(path.to_path_buf())
+            .or_default() += 1;
         crate::import::file_tag_snapshot::LoftyFileTagReader.read(path)
     }
 }
@@ -755,9 +766,7 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
         .await
         .unwrap();
 
-    let reader = std::sync::Arc::new(CountingTagReader {
-        reads: std::sync::atomic::AtomicUsize::new(0),
-    });
+    let reader = std::sync::Arc::new(CountingTagReader::default());
     let (scan, mut events) = test.scan_with(
         reader.clone(),
         Arc::new(crate::import::folder_scanner::OsDirectoryReader),
@@ -769,7 +778,7 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
     // Two writes store one candidate — it arrives tentative, then valid — and
     // the second finds the draft the first seeded, so the folder's two tracks
     // are opened once between them.
-    assert_eq!(reader.reads(), TAGGED_FLAC_FIXTURES.len());
+    assert_eq!(reader.reads(), TAGGED_FLAC_FIXTURES.len() as u64);
 
     let key = album.to_string_lossy().into_owned();
     let detail = test
@@ -810,7 +819,7 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
     // A scan of a folder nobody touched re-reads no tags: the candidate holds
     // its draft, and the reading it was projected from is carried forward.
     scan.rescan(&root).await.expect("the folder is read again");
-    assert_eq!(reader.reads(), TAGGED_FLAC_FIXTURES.len());
+    assert_eq!(reader.reads(), TAGGED_FLAC_FIXTURES.len() as u64);
     assert!(test
         .service
         .library_manager

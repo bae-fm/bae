@@ -13,6 +13,7 @@ fn scan_with_reader<R: DirectoryReader, F: FnMut(ScanItem)>(
             decisions: &FolderReleaseDecisions::default(),
             new_grouping_key: &fresh_grouping_key,
         },
+        &FileReads::new(),
         &ScanCancellation::new(),
         |_| {},
         on_item,
@@ -337,6 +338,7 @@ fn cancelled_scan_stops_before_the_next_directory_read() {
             decisions: &FolderReleaseDecisions::default(),
             new_grouping_key: &fresh_grouping_key,
         },
+        &FileReads::new(),
         &cancellation,
         |_| {},
         |item| {
@@ -388,6 +390,7 @@ fn cancellation_reaches_an_in_progress_directory_read() {
                 decisions: &FolderReleaseDecisions::default(),
                 new_grouping_key: &fresh_grouping_key,
             },
+            &FileReads::new(),
             &thread_cancellation,
             |_| {},
             |_| {},

@@ -21,6 +21,7 @@ use tracing::{debug, info};
 
 mod candidates;
 mod categorize;
+mod file_reads;
 mod files;
 mod folder_date;
 mod scan;
@@ -28,6 +29,8 @@ pub use candidates::*;
 pub use categorize::is_audio_file;
 pub(crate) use categorize::{scanned_audio, DiscLayout};
 use categorize::*;
+use file_reads::Playability;
+pub(crate) use file_reads::FileReads;
 pub use files::*;
 pub use folder_date::FolderDate;
 pub(crate) use scan::file_modified_at_ns;

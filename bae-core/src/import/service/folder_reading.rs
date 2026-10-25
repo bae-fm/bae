@@ -163,6 +163,7 @@ impl ImportService {
         let skipped = library_manager
             .load_skipped_import_candidates(&root_key)
             .await?;
+        let reads = library_manager.load_file_reads(&root_key).await?;
 
         let directories = services.directories.clone();
         let watcher = scan.folder_watcher.clone();
@@ -183,6 +184,7 @@ impl ImportService {
                     decisions: &decisions,
                     new_grouping_key: &new_key,
                 },
+                &reads,
                 &walk_cancellation,
                 wants_folder,
             )
@@ -341,6 +343,7 @@ fn read_top_level_folder(
     root: &Path,
     folder: &Path,
     readings: &crate::import::folder_scanner::ScanReadings<'_>,
+    reads: &crate::import::folder_scanner::FileReads,
     cancellation: &crate::import::folder_scanner::ScanCancellation,
     wants_folder: bool,
 ) -> Result<TopLevelReading, crate::import::ImportError> {
@@ -371,6 +374,7 @@ fn read_top_level_folder(
             root,
             folder,
             readings,
+            reads,
             cancellation,
             |directory| {
                 match (directory_mtimes.as_mut(), directory_modified_at(&directory)) {

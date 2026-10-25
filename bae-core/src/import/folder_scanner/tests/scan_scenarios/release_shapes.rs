@@ -78,7 +78,7 @@ fn io_error_validating_audio_surfaces_not_swallowed() {
         &StoredCandidateEdits::none(),
         &[],
         &ScanCancellation::new(),
-        &ProbedAudio::default(),
+        &FileReads::new(),
     );
     assert!(
         result.is_err(),

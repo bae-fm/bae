@@ -97,9 +97,10 @@ pub(crate) struct FileTagSnapshot {
 
 impl FileTagSnapshot {
     /// Whether this reading was taken from exactly `audio_files`: the same
-    /// files in the same order, each the size it was read at. A reading is a
-    /// reading of the files it names and of nothing else, so a candidate
-    /// holding any other audio — or none at all — holds no reading.
+    /// files in the same order, each the size and modification time it was
+    /// read at. A reading is a reading of the files it names and of nothing
+    /// else, so a candidate holding any other audio — or none at all — holds
+    /// no reading.
     pub(crate) fn was_read_from<'a>(
         &self,
         audio_files: impl Iterator<Item = &'a ScannedFile>,
@@ -111,6 +112,7 @@ impl FileTagSnapshot {
             };
             if fact.observation.relative_path != file.relative_path
                 || fact.observation.size != file.size
+                || fact.observation.modified_at_ns != file.modified_at_ns
             {
                 return false;
             }
@@ -164,6 +166,8 @@ fn primary_tag(tagged: &lofty::file::TaggedFile) -> Option<&lofty::tag::Tag> {
 /// The disc and track numbers `path`'s tags state, read from the same tag
 /// [`LoftyFileTagReader`] reads, without its audio properties or artwork.
 pub(crate) fn read_tag_numbers(path: &Path) -> Result<TrackNumbers, ImportError> {
+    #[cfg(test)]
+    crate::test_reads::record(crate::test_reads::FileRead::TagNumbers, path);
     let tagged = Probe::open(path)
         .map_err(|error| ImportError::file_tags("open", path, error))?
         .options(

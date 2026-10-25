@@ -254,43 +254,30 @@ fn load_file_tag_facts(
     candidate_path: &str,
 ) -> Result<Vec<FileTagFact>, DbError> {
     let rows = sql.query(
-        "SELECT tags.relative_path, tags.file_size, tags.modified_at_ns, \
-                tags.title, tags.track_artists, tags.album_title, tags.album_artists, \
-                tags.compilation, tags.years, tags.track_number, tags.disc_number, \
-                tags.isrcs, tags.labels, tags.copyrights, tags.store \
+        &format!(
+            "SELECT {FILE_TAG_COLUMNS} \
          FROM scan_candidate_file_tag AS tags \
          INNER JOIN scan_candidate_file AS files \
              ON files.watched_folder_path = tags.watched_folder_path \
             AND files.candidate_path = tags.candidate_path \
             AND files.relative_path = tags.relative_path \
          WHERE tags.watched_folder_path = ? AND tags.candidate_path = ? \
-         ORDER BY files.position",
+         ORDER BY files.position"
+        ),
         params![watched_folder_path, candidate_path],
-        |row| {
-            Ok(StoredFileTags {
-                relative_path: row.get(0)?,
-                size: row.get(1)?,
-                modified_at_ns: row.get(2)?,
-                title: row.get(3)?,
-                track_artists: row.get(4)?,
-                album_title: row.get(5)?,
-                album_artists: row.get(6)?,
-                compilation: row.get(7)?,
-                years: row.get(8)?,
-                track_number: row.get(9)?,
-                disc_number: row.get(10)?,
-                isrcs: row.get(11)?,
-                labels: row.get(12)?,
-                copyrights: row.get(13)?,
-                store: row.get(14)?,
-            })
-        },
+        |row| StoredFileTags::of_row(row, 0),
     )?;
     rows.into_iter().map(StoredFileTags::fact).collect()
 }
 
+/// The `scan_candidate_file_tag` columns a query selects, in this order.
+pub(super) const FILE_TAG_COLUMNS: &str = "tags.relative_path, tags.file_size, tags.modified_at_ns, \
+     tags.title, tags.track_artists, tags.album_title, tags.album_artists, tags.compilation, \
+     tags.years, tags.track_number, tags.disc_number, tags.isrcs, tags.labels, tags.copyrights, \
+     tags.store";
+
 /// One `scan_candidate_file_tag` row as SQLite returns it.
-struct StoredFileTags {
+pub(super) struct StoredFileTags {
     relative_path: String,
     size: i64,
     modified_at_ns: i64,
@@ -309,7 +296,28 @@ struct StoredFileTags {
 }
 
 impl StoredFileTags {
-    fn fact(self) -> Result<FileTagFact, DbError> {
+    /// The row's [`FILE_TAG_COLUMNS`], selected from column `first` on.
+    pub(super) fn of_row(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
+        Ok(Self {
+            relative_path: row.get(first)?,
+            size: row.get(first + 1)?,
+            modified_at_ns: row.get(first + 2)?,
+            title: row.get(first + 3)?,
+            track_artists: row.get(first + 4)?,
+            album_title: row.get(first + 5)?,
+            album_artists: row.get(first + 6)?,
+            compilation: row.get(first + 7)?,
+            years: row.get(first + 8)?,
+            track_number: row.get(first + 9)?,
+            disc_number: row.get(first + 10)?,
+            isrcs: row.get(first + 11)?,
+            labels: row.get(first + 12)?,
+            copyrights: row.get(first + 13)?,
+            store: row.get(first + 14)?,
+        })
+    }
+
+    pub(super) fn fact(self) -> Result<FileTagFact, DbError> {
         Ok(FileTagFact {
             observation: FileObservation {
                 relative_path: self.relative_path,

@@ -481,6 +481,7 @@ fn propose_file(
     entry: &FileEntry,
     release_root: &Path,
     fs_root: &Path,
+    reads: &FileReads,
 ) -> Result<(ScannedFile, ProposedRole), FolderScanError> {
     let relative_from_release = if release_root.as_os_str().is_empty() {
         entry.path.clone()
@@ -517,13 +518,14 @@ fn propose_file(
     } else if is_cue_file(&entry.path) {
         ProposedRole::Cue
     } else if is_image_file(&entry.path) {
-        // As with audio: Ok(false) is corruption, Err is a real I/O fault.
-        let valid = file_validation::is_valid_image(&absolute_path).map_err(|e| {
-            FolderScanError::Other(format!(
-                "Failed to validate image file {absolute_path:?}: {e}"
-            ))
-        })?;
-        if entry.size == 0 || !valid {
+        // As with audio: a damaged image is Ok, Err is a real I/O fault.
+        let damaged = entry.size == 0
+            || !reads.image_decodes(FileVersion {
+                path: absolute_path.clone(),
+                size: entry.size,
+                modified_at_ns: entry.modified_at_ns,
+            })?;
+        if damaged {
             info!("{relative_path} is a damaged image; it is carried, and never offered as artwork");
             ProposedRole::DamagedImage
         } else {
@@ -564,7 +566,7 @@ fn skipped_files(proposed: &[(ScannedFile, ProposedRole)]) -> Vec<SkippedFile> {
 /// title the first of them in name order to state one gives, and that file's
 /// album artists' line, else its track artists'. A file whose tags can't be read is
 /// passed over, said in the log.
-fn skipped_tags(proposed: &[(ScannedFile, ProposedRole)]) -> Option<SkippedTags> {
+fn skipped_tags(proposed: &[(ScannedFile, ProposedRole)], reads: &FileReads) -> Option<SkippedTags> {
     use crate::import::file_tag_snapshot::FileTagReader;
 
     let mut playable: Vec<&ScannedFile> = proposed
@@ -572,34 +574,39 @@ fn skipped_tags(proposed: &[(ScannedFile, ProposedRole)]) -> Option<SkippedTags>
         .filter(|(_, role)| *role == ProposedRole::Audio)
         .map(|(file, _)| file)
         .collect();
-    playable.sort_by(|a, b| natord::compare_ignore_case(&a.relative_path, &b.relative_path));
-    for file in playable {
-        let read = match crate::import::file_tag_snapshot::LoftyFileTagReader.read(&file.path) {
-            Ok(read) => read,
-            Err(error) => {
-                tracing::warn!(
-                    "{}: its tags could not be read, so they name nothing: {error}",
-                    file.relative_path
-                );
-                continue;
-            }
-        };
-        let tags = read.tags;
-        if let Some(album_title) = tags.album_title {
-            let artists = if tags.album_artists.is_empty() {
-                tags.track_artists
-            } else {
-                tags.album_artists
-            };
-            return Some(SkippedTags {
-                album_title,
-                artist: (!artists.is_empty()).then(|| {
-                    crate::credits::credit_line(artists.iter().map(|name| (name.as_str(), None)))
-                }),
-            });
-        }
+    if playable.is_empty() {
+        return None;
     }
-    None
+    playable.sort_by(|a, b| natord::compare_ignore_case(&a.relative_path, &b.relative_path));
+    reads.skipped_tags(&playable, || {
+        for file in &playable {
+            let read = match crate::import::file_tag_snapshot::LoftyFileTagReader.read(&file.path) {
+                Ok(read) => read,
+                Err(error) => {
+                    tracing::warn!(
+                        "{}: its tags could not be read, so they name nothing: {error}",
+                        file.relative_path
+                    );
+                    continue;
+                }
+            };
+            let tags = read.tags;
+            if let Some(album_title) = tags.album_title {
+                let artists = if tags.album_artists.is_empty() {
+                    tags.track_artists
+                } else {
+                    tags.album_artists
+                };
+                return Some(SkippedTags {
+                    album_title,
+                    artist: (!artists.is_empty()).then(|| {
+                        crate::credits::credit_line(artists.iter().map(|name| (name.as_str(), None)))
+                    }),
+                });
+            }
+        }
+        None
+    })
 }
 
 /// The files under `folder` that no release read there owns, each given its
@@ -611,13 +618,14 @@ pub(super) fn categorize_sidecar(
     folder: &Path,
     fs_root: &Path,
     cancellation: &ScanCancellation,
+    reads: &FileReads,
 ) -> Result<SidecarFiles, FolderScanError> {
     let mut proposed = Vec::new();
     // `None` once a damaged track is among them.
     let mut files = Some(Vec::new());
     for entry in tree.all_files_under(folder) {
         cancellation.check()?;
-        let (file, role) = propose_file(entry, folder, fs_root)?;
+        let (file, role) = propose_file(entry, folder, fs_root, reads)?;
         let role = match role {
             ProposedRole::Audio => {
                 return Err(FolderScanError::Other(format!(
@@ -677,45 +685,59 @@ pub(super) fn categorize_files_from_tree(
     stored: &StoredCandidateEdits,
     parts: &[ReleasePart],
     cancellation: &ScanCancellation,
-    probed: &ProbedAudio,
+    reads: &FileReads,
 ) -> Result<CategorizeOutcome, FolderScanError> {
+    let unreadable = |file: &ScannedFile| {
+        info!("{} holds no audio bae can play", file.relative_path);
+        ProposedRole::DamagedAudio {
+            damage: AudioDamage::Unreadable,
+        }
+    };
     let mut proposed: Vec<(ScannedFile, ProposedRole)> = Vec::new();
-    let mut tagged: HashMap<String, TrackNumbers> = HashMap::new();
-
     for entry in tree.all_files_under(release_root) {
         cancellation.check()?;
-        let (mut file, mut role) = propose_file(entry, release_root, fs_root)?;
-        if role == ProposedRole::Audio {
-            match source_audio_of(&file, probed)? {
-                Some(read) => {
-                    file.source_audio = Some(read.audio);
-                    tagged.insert(file.relative_path.clone(), read.tagged);
-                }
-                None => {
-                    info!("{} holds no audio bae can play", file.relative_path);
-                    role = ProposedRole::DamagedAudio {
-                        damage: AudioDamage::Unreadable,
-                    };
-                }
-            }
+        let (file, mut role) = propose_file(entry, release_root, fs_root, reads)?;
+        if role == ProposedRole::Audio && reads.stream(&file)? == Playability::Unplayable {
+            role = unreadable(&file);
         }
         proposed.push((file, role));
+    }
+    let releasable = |proposed: &[(ScannedFile, ProposedRole)]| {
+        !proposed
+            .iter()
+            .any(|(_, role)| matches!(role, ProposedRole::DamagedAudio { .. }))
+            && proposed
+                .iter()
+                .any(|(_, role)| *role == ProposedRole::Audio)
+    };
+    // A folder that would be a release needs each track's measurements. A
+    // track known only to play, from a skipped folder's row, is measured now.
+    if releasable(&proposed) {
+        for (file, role) in &mut proposed {
+            if *role != ProposedRole::Audio {
+                continue;
+            }
+            match reads.measured(file)? {
+                Some(audio) => file.source_audio = Some(audio),
+                None => *role = unreadable(file),
+            }
+        }
     }
 
     // Every file is read before the folder is judged, so a folder that fails
     // is listed with each of its damaged files, not only the first.
-    let damaged = proposed
-        .iter()
-        .any(|(_, role)| matches!(role, ProposedRole::DamagedAudio { .. }));
-    let playable = proposed
-        .iter()
-        .any(|(_, role)| *role == ProposedRole::Audio);
-    if damaged || !playable {
+    if !releasable(&proposed) {
         info!("Invalid candidate: its audio is damaged, or it has none");
         return Ok(CategorizeOutcome::Invalid {
-            tags: skipped_tags(&proposed),
+            tags: skipped_tags(&proposed, reads),
             files: skipped_files(&proposed),
         });
+    }
+    let mut tagged: HashMap<String, TrackNumbers> = HashMap::new();
+    for (file, role) in &proposed {
+        if *role == ProposedRole::Audio {
+            tagged.insert(file.relative_path.clone(), reads.numbers(file)?);
+        }
     }
 
     // One order for everything downstream: the release's own file order.
@@ -738,15 +760,12 @@ pub(super) fn categorize_files_from_tree(
         if *role != ProposedRole::Cue {
             continue;
         }
-        match parse_cue_sheet(&file.path) {
-            Ok(sheet) => {
+        match reads.sheet(file) {
+            Some(sheet) => {
                 sheets.insert(index, sheet);
             }
-            Err(error) => {
-                info!(
-                    "CUE {:?} did not parse ({error}); it stays a document",
-                    file.path
-                );
+            None => {
+                info!("CUE {:?} stays a document", file.path);
                 *role = ProposedRole::Document;
             }
         }
@@ -848,103 +867,6 @@ fn lay_audio_in_play_order(
     for (slot, (_, _, entry)) in slots.into_iter().zip(audio) {
         proposed[slot] = entry;
     }
-}
-
-/// What a pass read of one audio file: its stream, and the disc and track
-/// numbers its tags state.
-#[derive(Debug, Clone)]
-struct ProbedFile {
-    audio: ScannedAudio,
-    tagged: TrackNumbers,
-}
-
-/// The audio facts a pass has read, by the file identity they were read
-/// under (path, size, modification time). A pass categorizes a file again when
-/// it regroups folders — child folders' tracks read as one release, or a
-/// wrapper collapsed onto the release below it — and the facts it read the
-/// first time still describe the same bytes.
-#[derive(Default)]
-pub(super) struct ProbedAudio {
-    facts: std::sync::Mutex<HashMap<(PathBuf, u64, i64), Option<ProbedFile>>>,
-}
-
-impl ProbedAudio {
-    fn get(&self, file: &ScannedFile) -> Option<Option<ProbedFile>> {
-        self.facts
-            .lock()
-            .expect("probed audio mutex poisoned")
-            .get(&(file.path.clone(), file.size, file.modified_at_ns))
-            .cloned()
-    }
-
-    fn insert(&self, file: &ScannedFile, facts: Option<ProbedFile>) {
-        self.facts
-            .lock()
-            .expect("probed audio mutex poisoned")
-            .insert((file.path.clone(), file.size, file.modified_at_ns), facts);
-    }
-}
-
-/// `file`'s audio facts and tagged numbers: the ones `probed` holds for its
-/// identity, or read from the file and kept there. `None` when the file is
-/// not audio bae can play.
-fn source_audio_of(
-    file: &ScannedFile,
-    probed: &ProbedAudio,
-) -> Result<Option<ProbedFile>, FolderScanError> {
-    let metadata =
-        std::fs::metadata(&file.path).map_err(|source| FolderScanError::io(&file.path, source))?;
-    let modified_at_ns = super::scan::file_modified_at_ns(&file.path, &metadata)?;
-    if metadata.len() != file.size || modified_at_ns != file.modified_at_ns {
-        return Err(FolderScanError::Other(format!(
-            "{} changed before its audio facts could be read",
-            file.path.display()
-        )));
-    }
-    if let Some(facts) = probed.get(file) {
-        return Ok(facts);
-    }
-    let facts = probe_source_audio(file)?;
-    probed.insert(file, facts.clone());
-    Ok(facts)
-}
-
-fn probe_source_audio(file: &ScannedFile) -> Result<Option<ProbedFile>, FolderScanError> {
-    let path = file.path.to_str().ok_or_else(|| {
-        FolderScanError::Other(format!("audio path is not UTF-8: {}", file.path.display()))
-    })?;
-    let Some(probe) = crate::audio_codec::probe_audio_from_path(path) else {
-        return Ok(None);
-    };
-    let Some(audio) = scanned_audio(&probe) else {
-        info!(
-            "Invalid candidate: {} is no audio stream bae plays",
-            file.relative_path
-        );
-        return Ok(None);
-    };
-    // Playable audio whose tags cannot be read is still the folder's audio;
-    // its tags just place it nowhere, and its name decides.
-    let tagged = match crate::import::file_tag_snapshot::read_tag_numbers(&file.path) {
-        Ok(numbers) => numbers,
-        Err(error) => {
-            tracing::warn!(
-                "{}: its tags could not be read, so its name places it: {error}",
-                file.relative_path
-            );
-            TrackNumbers::unstated()
-        }
-    };
-    let metadata =
-        std::fs::metadata(&file.path).map_err(|source| FolderScanError::io(&file.path, source))?;
-    let modified_at_ns = super::scan::file_modified_at_ns(&file.path, &metadata)?;
-    if metadata.len() != file.size || modified_at_ns != file.modified_at_ns {
-        return Err(FolderScanError::Other(format!(
-            "{} changed while its audio facts were being read",
-            file.path.display()
-        )));
-    }
-    Ok(Some(ProbedFile { audio, tagged }))
 }
 
 /// What a file's audio is, as `probe` read it: `None` for audio bae does

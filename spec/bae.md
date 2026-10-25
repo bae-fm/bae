@@ -419,6 +419,10 @@ household probably already has a folder (§3.2).
 still differ. A copy to another disk usually changes the modification times,
 so the same rip copied elsewhere usually hashes differently.
 
+A scan tells a file it has read by the same facts, with its path on disk in
+place of the relative one: a file whose path, size and modification time are
+the ones the last scan stored is the file that scan read (§3.1).
+
 Tags edited after an import are not read again: the library holds the values
 the import wrote, and the release editor changes them (§3.8).
 
@@ -496,6 +500,17 @@ damaged image, document, other), the parsed CUE sheets, the tags each audio file
 when each folder was first seen. A scan writes as it finds; completing removes
 what it didn't see, in the same transaction that marks it complete. A failed or
 interrupted scan keeps both old and new entries.
+
+**What a rescan reads.** A rescan, such as the one every desktop launch makes
+of each watched folder, takes what the last scan of the folder stored for each
+file whose path, size and modification time are unchanged (§2.7): a track's
+stream and the disc and track numbers its tags state, whether an image decodes,
+what a CUE sheet parses to, and what a broken folder's tags call it. It opens
+only the files that are new or changed, so a rescan of a folder nothing in has
+changed opens none. A release whose tracks are exactly the ones its stored tags
+were read from — the same files, in the same order, unchanged — takes those
+tags for its draft rather than reading them again. A store that says two
+different things about one file fails the scan.
 
 **Edge cases.**
 
