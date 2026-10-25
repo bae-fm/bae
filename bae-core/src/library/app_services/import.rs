@@ -11,7 +11,7 @@ impl AppServices {
     delegate_async!(import, import_candidate_source_folders => candidate_source_folders(key: &str) -> Result<Vec<String>, crate::import::ImportError>);
     delegate_async!(import, import_combine_candidates => combine_candidates(keys: Vec<String>) -> Result<String, crate::import::ImportError>);
     delegate_async!(import, import_combine_folder => combine_folder(folder: crate::import::FolderReleaseDecisionKey) -> Result<String, crate::import::ImportError>);
-    delegate_async!(import, import_separate_candidate => separate_candidate(key: &str) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_separate_candidate => separate_candidate(key: &str) -> Result<Vec<String>, crate::import::ImportError>);
     delegate_async!(import, import_add_watched_folder => add_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
     delegate_sync!(import, import_cancel => cancel_import(candidate_key: &str) -> Result<(), crate::import::ImportError>);
     delegate_sync!(import, import_cancel_all => cancel_all_imports() -> ());

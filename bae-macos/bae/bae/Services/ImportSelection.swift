@@ -21,6 +21,7 @@ struct ImportSelectionOperations: Sendable {
     let selectAll: @Sendable () async throws -> Void
     let sourceFolders: @Sendable () async throws -> [String]
     let combine: @Sendable () async throws -> String
+    let separate: @Sendable () async throws -> [String]
     let run:
         @Sendable (
             BridgeCandidateAction,
@@ -37,6 +38,7 @@ struct ImportSelectionOperations: Sendable {
                 try await list.current().selectionSourceFolders()
             },
             combine: { try await list.current().combineSelection() },
+            separate: { try await list.current().separateSelection() },
             run: { action, progress in
                 try await list.current()
                     .runSelectionAction(
@@ -54,6 +56,7 @@ struct ImportSelectionOperations: Sendable {
         selectAll: {},
         sourceFolders: { [] },
         combine: { throw StubError.notImplemented },
+        separate: { throw StubError.notImplemented },
         run: { _, _ in [] }
     )
 }
@@ -154,6 +157,13 @@ final class ImportSelection {
     /// Read every selected folder as one release, which core selects.
     func combine() async throws -> String {
         try await operations.combine()
+    }
+
+    /// Read the one selected release as the releases it is made of, which
+    /// core selects.
+    @discardableResult
+    func separate() async throws -> [String] {
+        try await operations.separate()
     }
 
     /// Run `action` over every selected row that offers it, in the order

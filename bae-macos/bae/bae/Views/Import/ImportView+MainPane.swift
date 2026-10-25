@@ -40,7 +40,7 @@ extension ImportView {
                         parts: candidate.parts,
                         canSeparate: candidate.live?.actions
                             .contains(.separate) == true,
-                        onSeparate: { separateCandidate(candidate.key) }
+                        onSeparate: { separateSelectedCandidate() }
                     )
                 }
                 mappingPane(for: candidate, runtime: runtime)

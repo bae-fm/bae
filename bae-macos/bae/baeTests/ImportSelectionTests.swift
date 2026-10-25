@@ -30,6 +30,9 @@ extension ImportSelectionOperations {
         combine: @escaping @Sendable () async throws -> String = {
             throw StubError.notImplemented
         },
+        separate: @escaping @Sendable () async throws -> [String] = {
+            throw StubError.notImplemented
+        },
         run:
             @escaping @Sendable (
                 BridgeCandidateAction,
@@ -41,6 +44,7 @@ extension ImportSelectionOperations {
             selectAll: selectAll,
             sourceFolders: inert.sourceFolders,
             combine: combine,
+            separate: separate,
             run: run
         )
     }

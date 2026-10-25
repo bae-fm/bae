@@ -270,7 +270,7 @@ impl FakeScanStarter {
     /// [`CoordinatorHarness::commands_handled`].
     fn complete(&self, index: usize) {
         if let Some(reading) = self.scans.lock().unwrap()[index].reading.take() {
-            reading.answer(Ok(()));
+            reading.answer(Ok(Vec::new()));
         }
         let (finish, completions, completion) = self.scans.lock().unwrap()[index]
             .completion

@@ -50,7 +50,10 @@ mod subscription;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use flatten::{first_candidate_among, flatten, locate_candidate, Flattened, ItemRef};
+pub(crate) use flatten::{
+    first_candidate_among, flatten, locate_candidate, release_keys_in_path_order, Flattened,
+    ItemRef,
+};
 pub use pending_filter::{FoundStates, PendingFilter, PendingFilterEntry};
 pub use subscription::{ImportListSubscription, ImportListSubscriptionError};
 

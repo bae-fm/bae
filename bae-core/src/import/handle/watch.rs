@@ -181,12 +181,13 @@ impl ImportServiceHandle {
     }
 
     /// Read the folder `key` names as `decision`, returning once the decision
-    /// and the candidates it gives are stored.
+    /// and the candidates it gives are stored, with the keys of the releases
+    /// the folder now reads as, in path order.
     pub(crate) async fn set_folder_release_decision(
         &self,
         key: FolderReleaseDecisionKey,
         decision: FolderReleaseDecision,
-    ) -> Result<(), crate::import::ImportError> {
+    ) -> Result<Vec<String>, crate::import::ImportError> {
         if !self.is_watched(&key.watched_folder_path).await? {
             return Err(crate::import::ImportError::Watch {
                 detail: format!("{} is not a watched folder", key.watched_folder_path),

@@ -147,6 +147,9 @@ struct ImportListPageSourceFailureTests {
         func combineSelection() async throws -> String {
             throw StubError.notImplemented
         }
+        func separateSelection() async throws -> [String] {
+            throw StubError.notImplemented
+        }
         func runSelectionAction(
             action _: BridgeCandidateAction,
             progress _: SelectionActionProgressCallback

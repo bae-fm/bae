@@ -154,15 +154,16 @@ impl ImportServiceHandle {
             })
     }
 
-    /// Read the release at `key` as the releases it is made of.
-    pub async fn separate_candidate(&self, key: &str) -> Result<(), ImportError> {
+    /// Read the release at `key` as the releases it is made of, and answer
+    /// with their keys in path order.
+    pub async fn separate_candidate(&self, key: &str) -> Result<Vec<String>, ImportError> {
         let this = self.clone();
         let key = key.to_string();
         self.committed(async move { this.separate_candidate_write(&key).await })
             .await
     }
 
-    async fn separate_candidate_write(&self, key: &str) -> Result<(), ImportError> {
+    async fn separate_candidate_write(&self, key: &str) -> Result<Vec<String>, ImportError> {
         {
             let _commit = self.folder_state_commit.lock("check a release to separate").await;
             self.ensure_combination_idle(key)?;
@@ -179,6 +180,7 @@ impl ImportServiceHandle {
                 let _commit = self.folder_state_commit.lock("separate a picked release").await;
                 let (returned, regrouped) =
                     self.library_manager.separate_picked_grouping(key).await?;
+                let keys = crate::import::list::release_keys_in_path_order(&returned);
                 self.cancel_identification(key);
                 self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
                     candidate_key: key.into(),
@@ -216,7 +218,7 @@ impl ImportServiceHandle {
                     self.event_tx.send(ImportEvent::Scan(event));
                 }
                 self.announce_regrouped(&regrouped).await?;
-                Ok(())
+                Ok(keys)
             }
             None => Err(ImportError::Internal {
                 detail: format!("{key} is not a release read from several folders"),

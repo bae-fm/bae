@@ -23,13 +23,14 @@ use crate::import::folder_scanner::{
 
 impl ImportService {
     /// Store `target` together with the candidates its folder reads as under
-    /// it.
+    /// it, and answer with the keys of the releases the decided folder now
+    /// reads as, in path order.
     pub(super) async fn change_folder_reading(
         root: &Path,
         target: &(FolderReleaseDecisionKey, FolderReleaseDecision),
         scan: &ScanServices,
         cancellation: &crate::import::folder_scanner::ScanCancellation,
-    ) -> Result<(), crate::import::ImportError> {
+    ) -> Result<Vec<String>, crate::import::ImportError> {
         let root_key = root.to_string_lossy().into_owned();
         let (key, _) = target;
         if key.watched_folder_path != root_key {
@@ -64,7 +65,18 @@ impl ImportService {
                 ),
             });
         }
-        Self::read_folder_again(root, &folder, Some(target), scan, cancellation).await
+        let stored =
+            Self::read_folder_again(root, &folder, Some(target), scan, cancellation).await?;
+        let decided = root.join(&key.relative_folder_path);
+        Ok(crate::import::list::release_keys_in_path_order(
+            stored.iter().filter(|item| match item {
+                ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
+                    candidate.path.starts_with(&decided)
+                }
+                ScanItem::Invalid(candidate) => candidate.path.starts_with(&decided),
+                ScanItem::Decided { .. } | ScanItem::Sidecar(_) => false,
+            }),
+        ))
     }
 
     /// Read again each folder directly under `root` whose contents changed
@@ -124,7 +136,8 @@ impl ImportService {
     }
 
     /// Read `folder` — directly under `root` — again as `decision`, when there
-    /// is one, reads it, and store what it yields in one write.
+    /// is one, reads it, store what it yields in one write, and answer with
+    /// every release it stored, as stored, in the order it first stored them.
     ///
     /// A folder that is no longer there yields nothing, which removes every
     /// entry that was under it. The root itself must be there: a root that
@@ -135,7 +148,7 @@ impl ImportService {
         decision: Option<&(FolderReleaseDecisionKey, FolderReleaseDecision)>,
         scan: &ScanServices,
         cancellation: &crate::import::folder_scanner::ScanCancellation,
-    ) -> Result<(), crate::import::ImportError> {
+    ) -> Result<Vec<ScanItem>, crate::import::ImportError> {
         let started = std::time::Instant::now();
         let services = &scan.services;
         let library_manager = &services.library_manager;
@@ -294,6 +307,25 @@ impl ImportService {
             })
             .await?;
         let committed_at = started.elapsed();
+        // The walk can write one release twice — found before its folder's
+        // reading was known, then settled — so each key is stored as its last
+        // write left it.
+        let mut stored: Vec<ScanItem> = Vec::new();
+        let mut stored_at: HashMap<String, usize> = HashMap::new();
+        for (item, _) in &writes {
+            let Some(key) = item.persisted_key() else {
+                continue;
+            };
+            match stored_at.entry(key) {
+                std::collections::hash_map::Entry::Occupied(at) => {
+                    stored[*at.get()] = item.clone();
+                }
+                std::collections::hash_map::Entry::Vacant(at) => {
+                    at.insert(stored.len());
+                    stored.push(item.clone());
+                }
+            }
+        }
         let changed = writes.iter().filter(|(_, write)| write.changed()).count();
         let unchanged = writes.len() - changed;
         for (item, write) in writes {
@@ -323,7 +355,7 @@ impl ImportService {
                 .unwrap_or_default(),
             started.elapsed(),
         );
-        Ok(())
+        Ok(stored)
     }
 }
 

@@ -49,7 +49,7 @@ fn request_refresh(
 fn request_group_decision(
     harness: &CoordinatorHarness,
     root: &Path,
-) -> tokio::sync::oneshot::Receiver<Result<(), String>> {
+) -> tokio::sync::oneshot::Receiver<Result<Vec<String>, String>> {
     let (completion, result) = tokio::sync::oneshot::channel();
     harness
         .commands
@@ -90,7 +90,7 @@ async fn assert_next_pass_reads_only_a_later_change(harness: &CoordinatorHarness
 }
 
 /// Whether `result` has been answered yet.
-fn is_answered(result: &mut tokio::sync::oneshot::Receiver<Result<(), String>>) -> bool {
+fn is_answered<T>(result: &mut tokio::sync::oneshot::Receiver<Result<T, String>>) -> bool {
     !matches!(
         result.try_recv(),
         Err(tokio::sync::oneshot::error::TryRecvError::Empty)
@@ -635,7 +635,7 @@ async fn coordinator_decision_replaces_a_running_root_pass_and_owes_it_again() {
         "the decision was answered before its reading was stored"
     );
     harness.scans.complete(1);
-    assert_eq!(decision_result.await.unwrap(), Ok(()));
+    assert_eq!(decision_result.await.unwrap(), Ok(Vec::new()));
 
     harness.scans.wait_for_count(3).await;
     assert!(harness.scans.reading(2).is_none(), "the root is read whole again");
@@ -658,11 +658,11 @@ async fn coordinator_decisions_on_an_idle_root_run_one_after_another() {
     assert_eq!(harness.scans.scans.lock().unwrap().len(), 1);
 
     harness.scans.complete(0);
-    assert_eq!(first.await.unwrap(), Ok(()));
+    assert_eq!(first.await.unwrap(), Ok(Vec::new()));
     harness.scans.wait_for_count(2).await;
     assert!(harness.scans.reading(1).is_some());
     harness.scans.complete(1);
-    assert_eq!(second.await.unwrap(), Ok(()));
+    assert_eq!(second.await.unwrap(), Ok(Vec::new()));
     assert_next_pass_reads_only_a_later_change(&harness, 2).await;
     harness.shutdown().await;
 }

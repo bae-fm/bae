@@ -179,6 +179,28 @@ impl ImportListSubscription {
         .await
     }
 
+    /// Read the one selected release as the releases it is made of, select
+    /// them, and answer with their keys.
+    pub async fn separate_selection(
+        self: std::sync::Arc<Self>,
+    ) -> Result<Vec<String>, BridgeError> {
+        let runtime = self.runtime.clone();
+        crate::operation_runtime::run(runtime, move || async move {
+            let keys = self
+                .services
+                .separate_import_selection(&self.inner.selected())
+                .await
+                .map_err(BridgeError::from)?;
+            self.inner
+                .change_selection(bae_core::import::selection::SelectionChange::Replace {
+                    keys: keys.clone(),
+                })
+                .map_err(list_error)?;
+            Ok(keys)
+        })
+        .await
+    }
+
     /// Run `action` on every selected candidate that offers it, in the order
     /// the list shows them, reporting how far it has got, and answer with the
     /// candidates it failed on.
@@ -250,3 +272,7 @@ fn list_error(error: bae_core::import::ImportListSubscriptionError) -> BridgeErr
         }
     }
 }
+
+#[cfg(test)]
+#[path = "import_list_tests.rs"]
+mod tests;

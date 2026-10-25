@@ -17,8 +17,8 @@ extension ImportView {
         }
     }
 
-    /// Read the release at `key` as the folders it is made of: a row's or the
-    /// pane's "Keep as Separate Releases".
+    /// Read the release at `key` as the folders it is made of: a broken
+    /// combined row's "Keep as Separate Releases".
     func separateCandidate(_ key: String) {
         candidateMutationTasks[key]?.cancel()
         candidateMutationTasks[key] = Task {
@@ -26,6 +26,24 @@ extension ImportView {
             await commitAndEndEditing()
             do {
                 try await importer.separateCandidate(key)
+            }
+            catch is CancellationError {}
+            catch {
+                uiStore.showError(error)
+            }
+        }
+    }
+
+    /// Read the selected release as the folders it is made of: the pane's
+    /// "Keep as Separate Releases". Core selects the releases it returns.
+    func separateSelectedCandidate() {
+        let taskKey = "separate-selection"
+        candidateMutationTasks[taskKey]?.cancel()
+        candidateMutationTasks[taskKey] = Task {
+            defer { candidateMutationTasks[taskKey] = nil }
+            await commitAndEndEditing()
+            do {
+                try await importSelection.separate()
             }
             catch is CancellationError {}
             catch {

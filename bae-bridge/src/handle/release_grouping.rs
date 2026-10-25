@@ -17,11 +17,13 @@ forward! { async this => {
             .map_err(BridgeError::import)
     }
 
-    /// Read the release at `key` as the folders it is made of.
+    /// Read the release at `key` as the folders it is made of — a broken
+    /// combined row's "Keep as Separate Releases", which selects nothing.
     fn separate_candidate(key: String) -> () {
         this.services
             .import_separate_candidate(&key)
             .await
+            .map(|_| ())
             .map_err(BridgeError::import)
     }
 } }

@@ -12,6 +12,10 @@ mod root_tasks;
 /// A caller waiting to hear that what it asked for is over.
 pub(super) type RefreshCompletion = tokio::sync::oneshot::Sender<Result<(), String>>;
 
+/// A caller waiting to hear which releases a folder reads as once a person's
+/// answer for it is stored.
+pub(super) type DecisionCompletion = tokio::sync::oneshot::Sender<Result<Vec<String>, String>>;
+
 /// Every watched root the coordinator has work in flight for, and the only way
 /// to start any of it.
 ///
@@ -49,14 +53,14 @@ pub(super) enum RootPass {
     Folders(BTreeSet<String>),
 }
 
-/// A person's answer for how one folder reads, and who hears whether it was
-/// stored.
+/// A person's answer for how one folder reads, and who hears the releases it
+/// stored, or why it was not stored.
 pub(super) struct FolderReadingRequest {
     target: (
         crate::import::folder_scanner::FolderReleaseDecisionKey,
         crate::import::folder_scanner::FolderReleaseDecision,
     ),
-    completion: RefreshCompletion,
+    completion: DecisionCompletion,
 }
 
 impl FolderReadingRequest {
@@ -65,7 +69,7 @@ impl FolderReadingRequest {
             crate::import::folder_scanner::FolderReleaseDecisionKey,
             crate::import::folder_scanner::FolderReleaseDecision,
         ),
-        completion: RefreshCompletion,
+        completion: DecisionCompletion,
     ) -> Self {
         Self { target, completion }
     }
@@ -80,8 +84,9 @@ impl FolderReadingRequest {
         &self.target
     }
 
-    /// Tell whoever asked what became of it.
-    pub(super) fn answer(self, result: Result<(), String>) {
+    /// Tell whoever asked what became of it: the keys of the releases the
+    /// folder now reads as, or why it was not stored.
+    pub(super) fn answer(self, result: Result<Vec<String>, String>) {
         if self.completion.send(result).is_err() {
             debug!(
                 "folder decision caller for {} dropped before it was answered",

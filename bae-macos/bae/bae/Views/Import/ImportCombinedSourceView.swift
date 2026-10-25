@@ -7,8 +7,6 @@ struct ImportCombinedSourceView: View {
     let parts: [BridgeReleasePart]
     let canSeparate: Bool
     let onSeparate: () -> Void
-    @State
-    private var confirming = false
 
     var body: some View {
         HStack(alignment: .top, spacing: ThemeSpace.edge) {
@@ -23,22 +21,10 @@ struct ImportCombinedSourceView: View {
                 }
             }
             .fixedSize()
-            Button("Keep as Separate Releases") { confirming = true }
+            Button("Keep as Separate Releases", action: onSeparate)
                 .disabled(!canSeparate)
         }
         .padding(ThemeSpace.edge)
         .background(Theme.surfaceElevated)
-        .alert("Keep as Separate Releases", isPresented: $confirming) {
-            Button(
-                "Keep as Separate Releases",
-                role: .destructive,
-                action: onSeparate
-            )
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(
-                "The combined draft will be discarded. The original folders and their metadata drafts will return; source files are unchanged."
-            )
-        }
     }
 }

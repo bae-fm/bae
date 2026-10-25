@@ -257,7 +257,7 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
         })
         .collect();
 
-    let key = handle.combine_candidates(keys).await.unwrap();
+    let key = handle.combine_candidates(keys.clone()).await.unwrap();
     assert_eq!(
         handle.library_manager.load_grouping(&key).await.unwrap(),
         Some(crate::db::GroupingFacts::Anchored {
@@ -272,7 +272,7 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
     let release = handle.get_release_candidate(&key).await.unwrap().unwrap();
     assert_eq!(release.files.parts.len(), 2);
 
-    handle.separate_candidate(&key).await.unwrap();
+    assert_eq!(handle.separate_candidate(&key).await.unwrap(), keys);
     assert_eq!(
         pending(&handle).await,
         vec!["Artist/Live A".to_string(), "Artist/Live B".to_string()]
@@ -284,5 +284,53 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
             ..
         })
     ));
+    shut_down(handle).await;
+}
+
+/// Separating releases picked together from one folder answers with their
+/// keys in the order the list runs them in by path: by their names, numbers
+/// read as numbers.
+#[tokio::test(flavor = "multi_thread")]
+async fn separating_picked_releases_answers_with_their_keys_in_path_order() {
+    let (manager, _library) = setup_test_manager().await;
+    let tmp = TempDir::new().unwrap();
+    let root = tmp.path().join("music");
+    let fixture =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac");
+    for live in ["Live 2", "Live 3", "Live 10"] {
+        let folder = root.join("Artist").join(live);
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::copy(&fixture, folder.join("01.flac")).unwrap();
+    }
+    let root = crate::import::watched_folder::canonical_absolute_root(&root.to_string_lossy())
+        .unwrap();
+    manager.add_watched_import_folder(&root).await.unwrap();
+    let handle = manager
+        .start_import_service(tokio::runtime::Handle::current())
+        .await
+        .unwrap();
+    handle.refresh_watched_folder(root.clone()).await.unwrap();
+    let key_of = |live: &str| {
+        PathBuf::from(&root)
+            .join("Artist")
+            .join(live)
+            .to_string_lossy()
+            .into_owned()
+    };
+
+    // Live 3 stays out, so the pick is not every release under `Artist/`.
+    let key = handle
+        .combine_candidates(vec![key_of("Live 10"), key_of("Live 2")])
+        .await
+        .unwrap();
+    assert!(matches!(
+        handle.library_manager.load_grouping(&key).await.unwrap(),
+        Some(crate::db::GroupingFacts::Picked { .. })
+    ));
+
+    assert_eq!(
+        handle.separate_candidate(&key).await.unwrap(),
+        vec![key_of("Live 2"), key_of("Live 10")]
+    );
     shut_down(handle).await;
 }

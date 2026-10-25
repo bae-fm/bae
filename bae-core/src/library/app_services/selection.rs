@@ -48,6 +48,24 @@ impl AppServices {
         .await
     }
 
+    /// Read the one selected candidate as the releases it is made of, and
+    /// answer with their keys in path order. The pane that offers it opens for
+    /// one selected release, so a selection of anything else is refused.
+    pub async fn separate_import_selection(
+        &self,
+        selected: &SelectedRows,
+    ) -> Result<Vec<String>, ImportError> {
+        match (selected.candidates.as_slice(), selected.invalid.as_slice()) {
+            ([only], []) => self.import_separate_candidate(&only.candidate_key).await,
+            _ => Err(ImportError::Internal {
+                detail: format!(
+                    "separating takes one selected release, not {} rows",
+                    selected.candidates.len() + selected.invalid.len()
+                ),
+            }),
+        }
+    }
+
     /// Run `action` on every selected candidate that offers it now, one at a
     /// time in the order the list shows them, telling `progress` how many are
     /// done of how many. The identification and import queues take what they
@@ -115,7 +133,9 @@ impl AppServices {
                 .import_clear_candidate_metadata(key.to_string())
                 .await
                 .map(|_| ()),
-            CandidateAction::Separate => self.import_separate_candidate(key).await,
+            // A bulk action reports only what it failed on; the releases a
+            // separation returns join the list unselected.
+            CandidateAction::Separate => self.import_separate_candidate(key).await.map(|_| ()),
             CandidateAction::Skip => {
                 self.import_set_candidate_skipped(key.to_string(), true)
                     .await

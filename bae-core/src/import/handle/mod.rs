@@ -407,9 +407,12 @@ pub(crate) enum WatcherCommand {
         path: std::path::PathBuf,
         completion: tokio::sync::oneshot::Sender<Result<(), String>>,
     },
+    /// Read one folder as a person decided. `completion` hears the keys of
+    /// the releases the folder now reads as once they are stored, or why they
+    /// were not.
     SetFolderReleaseDecision {
         target: (FolderReleaseDecisionKey, FolderReleaseDecision),
-        completion: tokio::sync::oneshot::Sender<Result<(), String>>,
+        completion: tokio::sync::oneshot::Sender<Result<Vec<String>, String>>,
     },
     /// Stop watching `roots` and, given `parent` (the folder holding exactly
     /// them), watch it in their place. `completion` hears once the change is
