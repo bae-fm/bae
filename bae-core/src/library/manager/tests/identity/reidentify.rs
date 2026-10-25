@@ -334,7 +334,7 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
     .to_string();
     manager.providers().discogs().seed_release_cache(discogs_release_id, discogs_raw);
     manager.providers().discogs().seed_artist_image_response("1", None);
-    manager.providers().musicbrainz().seed_discogs_url_lookup(discogs_release_id, None);
+    manager.providers().musicbrainz().seed_discogs_page_lookup(&[(crate::musicbrainz::DiscogsPage::Release(discogs_release_id.to_string()), None)]);
     reidentify(
         &manager,
         &release.id,
@@ -714,7 +714,10 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
     crate::discogs::client::parse_discogs_release_json(&discogs_raw)
         .expect("the rendered Discogs release parses");
     manager.providers().discogs().seed_release_cache(discogs_release_id, discogs_raw);
-    manager.providers().musicbrainz().seed_discogs_url_lookup(discogs_release_id, None);
+    manager.providers().musicbrainz().seed_discogs_page_lookup(&[
+        (crate::musicbrainz::DiscogsPage::Release(discogs_release_id.to_string()), None),
+        (crate::musicbrainz::DiscogsPage::Master(discogs_master_id.to_string()), None),
+    ]);
 
     reidentify(
         &manager,

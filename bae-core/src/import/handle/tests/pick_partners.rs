@@ -2,6 +2,7 @@
 //! from, and every other source's record of the same pressing beside it.
 
 use super::*;
+use crate::musicbrainz::DiscogsPage;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn linked_cover_gallery_can_be_empty() {
@@ -218,10 +219,7 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
 /// A Discogs release under a master, which MusicBrainz's lookup by its
 /// address links to a MusicBrainz release, seeded into the caches a read asks.
 fn seed_linked_discogs_release(providers: &crate::providers::Providers) -> crate::import::MetadataRef {
-    seed_discogs_release_in(providers, "70000007", Some("70000008"));
-    providers
-        .musicbrainz()
-        .seed_discogs_url_lookup("70000007", Some("linked-mb-rel-1".to_string()));
+    seed_discogs_release_in(providers, "70000007", Some("70000008"), Some("linked-mb-rel-1"));
     seed_mb_release(providers, "linked-mb-rel-1", "linked-mb-group-1");
     crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000007")
 }
@@ -308,16 +306,19 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
 
 /// A two-track Discogs release with no master, seeded into the release cache.
 fn seed_discogs_release(providers: &crate::providers::Providers, release_id: &str) {
-    seed_discogs_release_in(providers, release_id, None);
+    seed_discogs_release_in(providers, release_id, None, None);
 }
 
 /// A two-track Discogs release filed under `master`, when it names one,
-/// seeded into the release cache; the master's own document and
-/// MusicBrainz's answer that no release group links it are seeded beside it.
+/// seeded into the release cache; the master's own document is seeded beside
+/// it, and MusicBrainz's answer about both addresses: the release's linked
+/// from `linked`, when it names a MusicBrainz release, and the master's from
+/// no release group.
 fn seed_discogs_release_in(
     providers: &crate::providers::Providers,
     release_id: &str,
     master: Option<&str>,
+    linked: Option<&str>,
 ) {
     if let Some(master) = master {
         providers.discogs().seed_master_cache(
@@ -325,9 +326,6 @@ fn seed_discogs_release_in(
             serde_json::json!({ "id": master.parse::<u64>().unwrap(), "title": "Album Title" })
                 .to_string(),
         );
-        providers
-            .musicbrainz()
-            .seed_discogs_master_url_lookup(master, None);
     }
     let raw_release = serde_json::json!({
         "id": release_id.parse::<u64>().expect("a numeric test Discogs release id"),
@@ -351,7 +349,10 @@ fn seed_discogs_release_in(
         .expect("the rendered Discogs release parses");
     providers.discogs().seed_release_cache(release_id, raw_release);
     providers.discogs().seed_artist_image_response("1", None);
-    providers.musicbrainz().seed_discogs_url_lookup(release_id, None);
+    let lookups: Vec<_> = std::iter::once((DiscogsPage::Release(release_id.to_string()), linked))
+        .chain(master.map(|master| (DiscogsPage::Master(master.to_string()), None)))
+        .collect();
+    providers.musicbrainz().seed_discogs_page_lookup(&lookups);
 }
 
 /// A two-track MusicBrainz release, seeded into the caches the fetch path
@@ -592,7 +593,7 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
         .unwrap();
     let providers = handle.library_manager.providers();
     let group = "chain-mb-group";
-    seed_discogs_release_in(providers, "70000012", Some("909"));
+    seed_discogs_release_in(providers, "70000012", Some("909"), None);
     handle
         .library_manager
         .keep_album_links(vec![(

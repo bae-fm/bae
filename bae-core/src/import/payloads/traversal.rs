@@ -1,5 +1,6 @@
 use super::*;
 use crate::import::source_release::UnfetchedReason;
+use crate::musicbrainz::DiscogsPage;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 pub(super) type DocumentKey = (PayloadSource, String);
@@ -55,8 +56,11 @@ pub(super) fn related_documents(
         }
         PayloadSource::Discogs => {
             let release = crate::discogs::client::parse_discogs_release_json(json)?;
+            // The release's page states its master, so the walk holds the
+            // lookups by both addresses at once and asks them together.
             if let Some(master) = release.master_id {
-                next.push((PayloadSource::DiscogsMaster, master));
+                next.push((PayloadSource::DiscogsMaster, master.clone()));
+                next.push((PayloadSource::MusicBrainzDiscogsMasterXref, master));
             }
             next.push((PayloadSource::MusicBrainzDiscogsXref, key.to_owned()));
             (Vec::new(), false)
@@ -228,13 +232,52 @@ impl DocumentTraversal {
         }
     }
 
-    fn next(&mut self) -> Option<DocumentKey> {
+    /// What to ask for next. A lookup by Discogs address takes every other
+    /// one the walk holds with it, so MusicBrainz is asked about them all in
+    /// one request.
+    fn next(&mut self) -> Option<Step> {
         while let Some(key) = self.queue.pop_front() {
-            if self.seen.insert(key.clone()) {
-                return Some(key);
+            if !self.seen.insert(key.clone()) {
+                continue;
             }
+            let Some(page) = discogs_page(&key) else {
+                return Some(Step::Document(key));
+            };
+            let (links, rest): (VecDeque<_>, VecDeque<_>) = std::mem::take(&mut self.queue)
+                .into_iter()
+                .partition(|queued| discogs_page(queued).is_some());
+            self.queue = rest;
+            let mut pages = vec![page];
+            for link in links {
+                if self.seen.insert(link.clone()) {
+                    pages.extend(discogs_page(&link));
+                }
+            }
+            return Some(Step::DiscogsPages(pages));
         }
         None
+    }
+
+    /// Take what asking for one document came to.
+    fn record(&mut self, source: PayloadSource, key: String, fetched: Result<Fetched, ImportError>) {
+        match fetched {
+            Ok(Fetched::Document(json)) => self.accept(SourcePayload::new(source, key, json)),
+            Ok(Fetched::Absent) => {
+                tracing::debug!(?source, entity = key, "Supporting metadata document does not exist");
+            }
+            Ok(Fetched::DiscogsNotConfigured) => {
+                tracing::debug!(?source, entity = key, "Supporting Discogs document needs a Discogs key");
+                self.missing(source, key, UnfetchedReason::DiscogsNotConfigured);
+            }
+            Ok(Fetched::FailedEarlier) => {
+                tracing::debug!(?source, entity = key, "Supporting metadata document failed under another key");
+                self.missing(source, key, UnfetchedReason::Failed);
+            }
+            Err(error) => {
+                warn!(?source, entity = key, %error, "Supporting metadata could not be fetched");
+                self.missing(source, key, UnfetchedReason::Failed);
+            }
+        }
     }
 
     fn accept(&mut self, document: SourcePayload) {
@@ -266,6 +309,33 @@ impl DocumentTraversal {
             }
         }
         self.payloads
+    }
+}
+
+/// What the walk asks for in one go.
+enum Step {
+    Document(DocumentKey),
+    /// The Discogs pages whose MusicBrainz counterparts the walk looks up by
+    /// address, asked of MusicBrainz in one request.
+    DiscogsPages(Vec<DiscogsPage>),
+}
+
+/// The Discogs page a lookup by Discogs address asks MusicBrainz about;
+/// `None` for every other document.
+fn discogs_page((source, key): &DocumentKey) -> Option<DiscogsPage> {
+    match source {
+        PayloadSource::MusicBrainzDiscogsXref => Some(DiscogsPage::Release(key.clone())),
+        PayloadSource::MusicBrainzDiscogsMasterXref => Some(DiscogsPage::Master(key.clone())),
+        _ => None,
+    }
+}
+
+/// The document a lookup about `page` stands for: the MusicBrainz release or
+/// release group its address is linked from.
+fn page_key(page: DiscogsPage) -> DocumentKey {
+    match page {
+        DiscogsPage::Release(key) => (PayloadSource::MusicBrainzDiscogsXref, key),
+        DiscogsPage::Master(key) => (PayloadSource::MusicBrainzDiscogsMasterXref, key),
     }
 }
 
@@ -346,56 +416,7 @@ impl FetchDocuments<'_> {
                 client.get_master(id, self.priority).await?.1
             }
             PayloadSource::MusicBrainzDiscogsXref | PayloadSource::MusicBrainzDiscogsMasterXref => {
-                let found = match source {
-                    PayloadSource::MusicBrainzDiscogsXref => {
-                        self.musicbrainz
-                            .lookup_releases_by_discogs_release(id, self.priority)
-                            .await?
-                    }
-                    PayloadSource::MusicBrainzDiscogsMasterXref => {
-                        self.musicbrainz
-                            .lookup_groups_by_discogs_master(id, self.priority)
-                            .await?
-                    }
-                    _ => unreachable!(),
-                };
-                let Some((pages, _raw)) = found else {
-                    return Ok(Fetched::Absent);
-                };
-                let mut unique = Vec::new();
-                for page in pages {
-                    if !unique.contains(&page) {
-                        unique.push(page);
-                    }
-                }
-                let [page] = unique.as_slice() else {
-                    if !unique.is_empty() {
-                        warn!(
-                            discogs_id = id,
-                            ?source,
-                            count = unique.len(),
-                            "MusicBrainz URL has ambiguous counterparts; no identity claimed"
-                        );
-                    }
-                    return Ok(Fetched::Absent);
-                };
-                let canonical = match page {
-                    CatalogPage::Release {
-                        catalog: Catalog::MusicBrainz,
-                        key,
-                    } => (PayloadSource::MusicBrainz, key),
-                    CatalogPage::Group {
-                        catalog: Catalog::MusicBrainz,
-                        key,
-                    } => (PayloadSource::MusicBrainzReleaseGroup, key),
-                    _ => unreachable!(
-                        "URL lookup returns only MusicBrainz targets of the requested kind"
-                    ),
-                };
-                match self.musicbrainz_document(canonical.0, canonical.1).await? {
-                    Fetched::Document(json) => json,
-                    other => return Ok(other),
-                }
+                unreachable!("a lookup by Discogs address is asked with the walk's others")
             }
             PayloadSource::Wikidata => self
                 .wikidata
@@ -408,6 +429,44 @@ impl FetchDocuments<'_> {
         };
         self.documents.insert((source, id.to_owned()), json.clone());
         Ok(Fetched::Document(json))
+    }
+
+    /// The MusicBrainz document each of `pages` is linked from, the lookups
+    /// asked of MusicBrainz in one request. Its failure fails every page it
+    /// carried; a page MusicBrainz has no document for, or whose address
+    /// several of its entities link, has none.
+    async fn discogs_pages(
+        &mut self,
+        pages: &[DiscogsPage],
+    ) -> Result<Vec<(DiscogsPage, Result<Fetched, ImportError>)>, ImportError> {
+        let mut linked = self
+            .musicbrainz
+            .lookup_discogs_pages(pages, self.priority)
+            .await?;
+        let mut answers = Vec::with_capacity(pages.len());
+        for page in pages {
+            let fetched = match linked.remove(page).as_deref() {
+                None => Ok(Fetched::Absent),
+                Some([id]) => {
+                    let source = match page {
+                        DiscogsPage::Release(_) => PayloadSource::MusicBrainz,
+                        DiscogsPage::Master(_) => PayloadSource::MusicBrainzReleaseGroup,
+                    };
+                    self.musicbrainz_document(source, id).await
+                }
+                Some([]) => Ok(Fetched::Absent),
+                Some(ids) => {
+                    warn!(
+                        ?page,
+                        count = ids.len(),
+                        "MusicBrainz URL has ambiguous counterparts; no identity claimed"
+                    );
+                    Ok(Fetched::Absent)
+                }
+            };
+            answers.push((page.clone(), fetched));
+        }
+        Ok(answers)
     }
 }
 
@@ -440,24 +499,27 @@ pub(crate) async fn fetch_documents(
         }
     };
     let mut traversal = DocumentTraversal::new(release, anchor, depth)?;
-    while let Some((source, key)) = traversal.next() {
-        match fetcher.document(source, &key).await {
-            Ok(Fetched::Document(json)) => traversal.accept(SourcePayload::new(source, key, json)),
-            Ok(Fetched::Absent) => {
-                tracing::debug!(?source, entity = key, "Supporting metadata document does not exist");
+    while let Some(step) = traversal.next() {
+        match step {
+            Step::Document((source, key)) => {
+                let fetched = fetcher.document(source, &key).await;
+                traversal.record(source, key, fetched);
             }
-            Ok(Fetched::DiscogsNotConfigured) => {
-                tracing::debug!(?source, entity = key, "Supporting Discogs document needs a Discogs key");
-                traversal.missing(source, key, UnfetchedReason::DiscogsNotConfigured);
-            }
-            Ok(Fetched::FailedEarlier) => {
-                tracing::debug!(?source, entity = key, "Supporting metadata document failed under another key");
-                traversal.missing(source, key, UnfetchedReason::Failed);
-            }
-            Err(error) => {
-                warn!(?source, entity = key, %error, "Supporting metadata could not be fetched");
-                traversal.missing(source, key, UnfetchedReason::Failed);
-            }
+            Step::DiscogsPages(pages) => match fetcher.discogs_pages(&pages).await {
+                Ok(answers) => {
+                    for (page, fetched) in answers {
+                        let (source, key) = page_key(page);
+                        traversal.record(source, key, fetched);
+                    }
+                }
+                Err(error) => {
+                    warn!(?pages, %error, "MusicBrainz lookup by Discogs addresses failed");
+                    for page in pages {
+                        let (source, key) = page_key(page);
+                        traversal.missing(source, key, UnfetchedReason::Failed);
+                    }
+                }
+            },
         }
     }
     Ok(traversal.finish())

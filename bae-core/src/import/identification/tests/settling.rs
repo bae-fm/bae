@@ -339,7 +339,7 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
         .manager
         .providers()
         .musicbrainz()
-        .seed_discogs_url_lookup("70000101", None);
+        .seed_discogs_page_lookup(&[(crate::musicbrainz::DiscogsPage::Release("70000101".to_string()), None)]);
     fixture.scan(1).await;
 
     fixture.drain_automatic().await;
@@ -440,7 +440,7 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
         .manager
         .providers()
         .musicbrainz()
-        .seed_discogs_url_lookup("70000102", None);
+        .seed_discogs_page_lookup(&[(crate::musicbrainz::DiscogsPage::Release("70000102".to_string()), None)]);
     fixture.scan(1).await;
 
     fixture.drain_automatic().await;
@@ -545,7 +545,7 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
         .manager
         .providers()
         .musicbrainz()
-        .seed_discogs_url_lookup("70000103", None);
+        .seed_discogs_page_lookup(&[(crate::musicbrainz::DiscogsPage::Release("70000103".to_string()), None)]);
     fixture.scan(1).await;
 
     fixture.drain_automatic().await;

@@ -12,8 +12,11 @@ struct ProviderServer {
 }
 
 impl ProviderServer {
-    /// Answers are keyed by request path, and a MusicBrainz URL lookup by
-    /// `url:` and the resource it asks about. Anything else is answered 599.
+    /// Answers are keyed by request path, and a MusicBrainz URL lookup's by
+    /// `url:` and the resource it asks about. A lookup asking about several
+    /// resources is answered as MusicBrainz answers it, from each one's own
+    /// answer: the documents of those answered 200, and every one answered
+    /// 404 left out. Anything else is answered 599.
     async fn start(answers: HashMap<String, (u16, String)>) -> Self {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let origin = format!("http://{}", listener.local_addr().unwrap());
@@ -27,21 +30,23 @@ impl ProviderServer {
                 let request = std::str::from_utf8(&buffer[..length]).unwrap();
                 let path = request.split_whitespace().nth(1).unwrap();
                 let url = reqwest::Url::parse(&format!("http://fixture.example{path}")).unwrap();
+                let resources: Vec<String> = url
+                    .query_pairs()
+                    .filter(|(key, _)| key == "resource")
+                    .map(|(_, resource)| format!("url:{resource}"))
+                    .collect();
                 let key = if url.path() == "/ws/2/url" {
-                    let resource = url
-                        .query_pairs()
-                        .find(|(key, _)| key == "resource")
-                        .unwrap()
-                        .1
-                        .into_owned();
-                    format!("url:{resource}")
+                    let mut named = resources.clone();
+                    named.sort();
+                    named.join(" ")
                 } else {
                     url.path().to_owned()
                 };
                 *recorded.lock().unwrap().entry(key.clone()).or_insert(0) += 1;
-                let (status, body) = match answers.get(&key) {
-                    Some(answer) => answer.clone(),
-                    None => (599, format!("Unexpected provider request: {key}")),
+                let unexpected = || (599, format!("Unexpected provider request: {key}"));
+                let (status, body) = match resources.as_slice() {
+                    [_, _, ..] => several_resources(&answers, &resources).unwrap_or_else(unexpected),
+                    _ => answers.get(&key).cloned().unwrap_or_else(unexpected),
                 };
                 let response = format!("HTTP/1.1 {status} Response\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
                 stream.write_all(response.as_bytes()).await.unwrap();
@@ -61,6 +66,31 @@ impl ProviderServer {
     fn requests(&self) -> HashMap<String, usize> {
         self.requests.lock().unwrap().clone()
     }
+}
+
+/// MusicBrainz's answer about several `resources`, from each one's own
+/// answer, or `None` when one has none. One answered with neither a document
+/// nor a 404 answers the whole request so.
+fn several_resources(
+    answers: &HashMap<String, (u16, String)>,
+    resources: &[String],
+) -> Option<(u16, String)> {
+    let mut urls = Vec::new();
+    for resource in resources {
+        match answers.get(resource)? {
+            (200, body) => {
+                let mut document: serde_json::Value = serde_json::from_str(body).unwrap();
+                document["resource"] = resource.trim_start_matches("url:").into();
+                urls.push(document);
+            }
+            (404, _) => {}
+            failed => return Some(failed.clone()),
+        }
+    }
+    Some((
+        200,
+        serde_json::json!({"url-count": urls.len(), "url-offset": 0, "urls": urls}).to_string(),
+    ))
 }
 
 impl Drop for ProviderServer {
@@ -103,11 +133,11 @@ async fn failed_canonical_group_is_not_requested_again_through_another_alias() {
             &id.to_string(),
             serde_json::json!({"id":id}).to_string(),
         );
-        server.providers.musicbrainz().seed_discogs_master_url_lookup(
-            &id.to_string(),
-            Some("shared-group".into()),
-        );
     }
+    server.providers.musicbrainz().seed_discogs_page_lookup(&[
+        (DiscogsPage::Master("910001".into()), Some("shared-group")),
+        (DiscogsPage::Master("910002".into()), Some("shared-group")),
+    ]);
     let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
     let payloads = server.providers.fetch_payloads(Some(&discogs), &MetadataRef::new(Catalog::MusicBrainz, "selected"), ReadDepth::Complete, CallPriority::Interactive)
     .await
@@ -164,11 +194,14 @@ fn linked_pair_answers() -> HashMap<String, (u16, String)> {
     ])
 }
 
+/// The one MusicBrainz request asking about both Discogs addresses of
+/// [`linked_pair_answers`], as [`ProviderServer`] records it.
+const BOTH_ADDRESSES: &str =
+    "url:https://www.discogs.com/master/920002 url:https://www.discogs.com/release/920001";
+
 #[tokio::test]
 async fn cyclic_release_and_album_links_fetch_each_document_once() {
-    let answers = linked_pair_answers();
-    let expected: HashMap<_, _> = answers.keys().cloned().map(|key| (key, 1)).collect();
-    let server = ProviderServer::start(answers).await;
+    let server = ProviderServer::start(linked_pair_answers()).await;
     let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
     let selected = MetadataRef::new(Catalog::MusicBrainz, "cycle-release");
     let payloads = tokio::time::timeout(
@@ -179,7 +212,17 @@ async fn cyclic_release_and_album_links_fetch_each_document_once() {
     .unwrap()
     .unwrap();
 
-    assert_eq!(server.requests(), expected);
+    assert_eq!(
+        server.requests(),
+        HashMap::from([
+            ("/ws/2/release/cycle-release".into(), 1),
+            ("/ws/2/release-group/cycle-group".into(), 1),
+            ("/releases/920001".into(), 1),
+            ("/masters/920002".into(), 1),
+            (BOTH_ADDRESSES.into(), 1),
+        ]),
+        "the lookups by the Discogs release's address and its master's go out together"
+    );
     let mut fetched = HashMap::from([(
         (PayloadSource::MusicBrainz, selected.key.clone()),
         payloads.anchor.clone(),
@@ -222,6 +265,169 @@ async fn a_linked_release_is_read_from_what_fetching_its_namer_fetched() {
         .unwrap();
     assert_eq!(server.requests(), asked, "reading the twin asks nothing");
     assert!(twin.unfetched.is_empty(), "and it reads every document it names");
+}
+
+/// The supporting documents a read stored, by source and key.
+fn stored_keys(payloads: &ReleasePayloads) -> Vec<DocumentKey> {
+    let mut keys: Vec<DocumentKey> = payloads
+        .supporting
+        .iter()
+        .map(|document| (document.source, document.source_release_id.clone()))
+        .collect();
+    keys.sort_by(|left, right| (left.0.as_str(), &left.1).cmp(&(right.0.as_str(), &right.1)));
+    keys
+}
+
+/// A complete read of a Discogs release asks MusicBrainz about its address and
+/// its master's in one request, and follows each to the MusicBrainz release
+/// and release group linking it, as a lookup by each address alone did.
+#[tokio::test]
+async fn a_complete_read_of_a_discogs_release_asks_about_both_addresses_at_once() {
+    let server = ProviderServer::start(linked_pair_answers()).await;
+    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
+    let payloads = server
+        .providers
+        .fetch_payloads(
+            Some(&discogs),
+            &MetadataRef::new(Catalog::Discogs, "920001"),
+            ReadDepth::Complete,
+            CallPriority::Interactive,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(
+        server.requests(),
+        HashMap::from([
+            ("/releases/920001".into(), 1),
+            ("/masters/920002".into(), 1),
+            (BOTH_ADDRESSES.into(), 1),
+            ("/ws/2/release/cycle-release".into(), 1),
+            ("/ws/2/release-group/cycle-group".into(), 1),
+        ])
+    );
+    assert_eq!(
+        stored_keys(&payloads),
+        vec![
+            (PayloadSource::DiscogsMaster, "920002".into()),
+            (PayloadSource::MusicBrainz, "cycle-release".into()),
+            (PayloadSource::MusicBrainzDiscogsMasterXref, "920002".into()),
+            (PayloadSource::MusicBrainzDiscogsXref, "920001".into()),
+            (PayloadSource::MusicBrainzReleaseGroup, "cycle-group".into()),
+        ]
+    );
+    let answers = linked_pair_answers();
+    let document = |source, key: &str| {
+        payloads
+            .supporting
+            .iter()
+            .find(|document| document.source == source && document.source_release_id == key)
+            .map(|document| document.json.clone())
+            .unwrap()
+    };
+    assert_eq!(
+        document(PayloadSource::MusicBrainzDiscogsXref, "920001"),
+        answers["/ws/2/release/cycle-release"].1,
+        "the release's address stands for the MusicBrainz release linking it"
+    );
+    assert_eq!(
+        document(PayloadSource::MusicBrainzDiscogsMasterXref, "920002"),
+        answers["/ws/2/release-group/cycle-group"].1,
+        "the master's address stands for the release group linking it"
+    );
+    assert!(payloads.unfetched.is_empty(), "{:?}", payloads.unfetched);
+}
+
+/// One request answering for a known address and an unknown one: the known
+/// one is followed to the MusicBrainz release linking it, and the unknown one
+/// has no document and is not missing anything.
+#[tokio::test]
+async fn an_address_musicbrainz_does_not_know_is_absent_beside_one_it_does() {
+    let mut answers = linked_pair_answers();
+    answers.insert("url:https://www.discogs.com/master/920002".into(), (404, String::new()));
+    answers.remove("/ws/2/release-group/cycle-group");
+    let server = ProviderServer::start(answers).await;
+    let release = release_json("cycle-release", None, &["https://www.discogs.com/release/920001"]);
+    server.providers.musicbrainz().seed_release_cache("cycle-release", release);
+    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
+    let payloads = server
+        .providers
+        .fetch_payloads(
+            Some(&discogs),
+            &MetadataRef::new(Catalog::Discogs, "920001"),
+            ReadDepth::Complete,
+            CallPriority::Interactive,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(
+        server.requests(),
+        HashMap::from([
+            ("/releases/920001".into(), 1),
+            ("/masters/920002".into(), 1),
+            (BOTH_ADDRESSES.into(), 1),
+        ])
+    );
+    assert_eq!(
+        stored_keys(&payloads),
+        vec![
+            (PayloadSource::DiscogsMaster, "920002".into()),
+            (PayloadSource::MusicBrainz, "cycle-release".into()),
+            (PayloadSource::MusicBrainzDiscogsXref, "920001".into()),
+        ]
+    );
+    assert!(payloads.unfetched.is_empty(), "{:?}", payloads.unfetched);
+}
+
+/// The one request asking about both addresses failing fails both lookups it
+/// carried: each is named as a document the read did not get.
+#[tokio::test]
+async fn a_failed_lookup_by_both_addresses_fails_both() {
+    let mut answers = linked_pair_answers();
+    answers.insert(
+        "url:https://www.discogs.com/master/920002".into(),
+        (400, "Rejected URL request".into()),
+    );
+    let server = ProviderServer::start(answers).await;
+    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
+    let payloads = server
+        .providers
+        .fetch_payloads(
+            Some(&discogs),
+            &MetadataRef::new(Catalog::Discogs, "920001"),
+            ReadDepth::Complete,
+            CallPriority::Interactive,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(
+        server.requests(),
+        HashMap::from([
+            ("/releases/920001".into(), 1),
+            ("/masters/920002".into(), 1),
+            (BOTH_ADDRESSES.into(), 1),
+        ])
+    );
+    assert_eq!(stored_keys(&payloads), vec![(PayloadSource::DiscogsMaster, "920002".into())]);
+    let mut unfetched = payloads.unfetched.clone();
+    unfetched.sort_by_key(|document| document.document.as_str());
+    assert_eq!(
+        unfetched,
+        vec![
+            UnfetchedDocument {
+                document: PayloadSource::MusicBrainzDiscogsMasterXref,
+                key: "920002".into(),
+                reason: UnfetchedReason::Failed,
+            },
+            UnfetchedDocument {
+                document: PayloadSource::MusicBrainzDiscogsXref,
+                key: "920001".into(),
+                reason: UnfetchedReason::Failed,
+            },
+        ]
+    );
 }
 
 /// An identification read of a Discogs release reads its own page and its
@@ -352,6 +558,11 @@ async fn an_identification_read_of_a_musicbrainz_release_reads_what_its_statemen
                 key: "920002".into(),
                 reason: UnfetchedReason::StoppedShort,
             },
+            UnfetchedDocument {
+                document: PayloadSource::MusicBrainzDiscogsMasterXref,
+                key: "920002".into(),
+                reason: UnfetchedReason::StoppedShort,
+            },
         ]
     );
 
@@ -382,17 +593,20 @@ async fn an_identification_read_of_a_musicbrainz_release_reads_what_its_statemen
 
 #[tokio::test]
 async fn ambiguous_master_backlinks_do_not_fetch_or_claim_either_album() {
-    let server = ProviderServer::start(HashMap::from([(
-        "url:https://www.discogs.com/master/930002".into(),
+    let server = ProviderServer::start(HashMap::from([
         (
-            200,
-            serde_json::json!({"relations":[
-                {"type":"discogs","target-type":"release_group","release_group":{"id":"group-a"}},
-                {"type":"discogs","target-type":"release_group","release_group":{"id":"group-b"}}
-            ]})
-            .to_string(),
+            "url:https://www.discogs.com/master/930002".into(),
+            (
+                200,
+                serde_json::json!({"relations":[
+                    {"type":"discogs","target-type":"release_group","release_group":{"id":"group-a"}},
+                    {"type":"discogs","target-type":"release_group","release_group":{"id":"group-b"}}
+                ]})
+                .to_string(),
+            ),
         ),
-    )]))
+        ("url:https://www.discogs.com/release/930001".into(), (404, String::new())),
+    ]))
     .await;
     server.providers.discogs().seed_release_cache(
         "930001",
@@ -402,7 +616,6 @@ async fn ambiguous_master_backlinks_do_not_fetch_or_claim_either_album() {
         "930002",
         serde_json::json!({"id":930002}).to_string(),
     );
-    server.providers.musicbrainz().seed_discogs_url_lookup("930001", None);
     let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
     let selected = MetadataRef::new(Catalog::Discogs, "930001");
     let payloads = server.providers.fetch_payloads(Some(&discogs), &selected, ReadDepth::Complete, CallPriority::Interactive)
@@ -411,7 +624,11 @@ async fn ambiguous_master_backlinks_do_not_fetch_or_claim_either_album() {
 
     assert_eq!(
         server.requests(),
-        HashMap::from([("url:https://www.discogs.com/master/930002".into(), 1)])
+        HashMap::from([(
+            "url:https://www.discogs.com/master/930002 url:https://www.discogs.com/release/930001"
+                .into(),
+            1
+        )])
     );
     assert_eq!(payloads.supporting.len(), 1);
     assert_eq!(payloads.supporting[0].source, PayloadSource::DiscogsMaster);
@@ -473,7 +690,7 @@ async fn a_malformed_reverse_alias_is_skipped() {
     server
         .providers
         .musicbrainz()
-        .seed_discogs_url_lookup("940001", Some("mb-alias".into()));
+        .seed_discogs_page_lookup(&[(DiscogsPage::Release("940001".into()), Some("mb-alias"))]);
     server
         .providers
         .musicbrainz()

@@ -687,7 +687,10 @@ number is now worth asking Discogs about. A run therefore goes in rounds:
    Discogs release's run read asks MusicBrainz nothing. The release is stored
    naming every other document its pages link as one the read stopped short
    of, and a pick, an unattended pick included, reads the rest before it
-   applies anything.
+   applies anything. That complete read of a Discogs release asks MusicBrainz
+   in one request which of its releases links the release's page and which
+   of its release groups links the master's, since the release's page names
+   its master; a page MusicBrainz knows nothing of is linked from none.
 3. Ask what came into effect: a catalog number a found release carries that the
    folder states; an offered release's pressing on the catalog that has no
    record of it, by the release its page names there, its barcode, or its

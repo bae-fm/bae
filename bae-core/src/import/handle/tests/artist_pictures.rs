@@ -152,7 +152,7 @@ async fn picked_discogs_release() -> DiscogsPick {
         .library_manager
         .providers()
         .musicbrainz()
-        .seed_discogs_url_lookup(&source_release_id, None);
+        .seed_discogs_page_lookup(&[(crate::musicbrainz::DiscogsPage::Release(source_release_id.clone()), None)]);
 
     handle
         .select_candidate_release(

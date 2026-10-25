@@ -183,9 +183,6 @@ pub fn seed_discogs_test_release(
         providers
             .discogs()
             .seed_master_cache(&master_id.to_string(), master_json.to_string());
-        providers
-            .musicbrainz()
-            .seed_discogs_master_url_lookup(&master_id.to_string(), None);
     }
 
     let raw_json = serde_json::json!({
@@ -236,6 +233,14 @@ pub fn seed_discogs_test_release(
         .expect("the rendered test release parses as the endpoint's own JSON");
     let id = parsed.id.clone();
     providers.discogs().seed_release_cache(&id, raw_json);
-    providers.musicbrainz().seed_discogs_url_lookup(&id, None);
+    // A complete read asks MusicBrainz about the release's address and its
+    // master's in one request; neither is linked from anything there.
+    let lookups: Vec<_> = std::iter::once(bae_core::musicbrainz::DiscogsPage::Release(id.clone()))
+        .chain(
+            master_id.map(|master| bae_core::musicbrainz::DiscogsPage::Master(master.to_string())),
+        )
+        .map(|page| (page, None))
+        .collect();
+    providers.musicbrainz().seed_discogs_page_lookup(&lookups);
     id
 }

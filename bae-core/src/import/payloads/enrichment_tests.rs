@@ -71,8 +71,10 @@ async fn a_master_backlink_is_followed_and_the_stored_release_reads_back() {
     let providers = crate::providers::Providers::offline();
     providers.discogs().seed_release_cache("7811", discogs());
     providers.discogs().seed_master_cache("7822", master());
-    providers.musicbrainz().seed_discogs_url_lookup("7811", None);
-    providers.musicbrainz().seed_discogs_master_url_lookup("7822", Some("album-group".into()));
+    providers.musicbrainz().seed_discogs_page_lookup(&[
+        (crate::musicbrainz::DiscogsPage::Release("7811".into()), None),
+        (crate::musicbrainz::DiscogsPage::Master("7822".into()), Some("album-group")),
+    ]);
     providers.musicbrainz().seed_release_group_json_cache("album-group", group());
     let client = DiscogsClient::new(providers.discogs().clone(), "test-token".into());
     let fetched = providers

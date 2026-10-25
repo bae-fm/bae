@@ -10,9 +10,9 @@
 //! The response shapes these requests deserialize into live in `types`,
 //! re-exported here so callers keep using `crate::musicbrainz::Mb…` paths.
 
+use std::collections::HashMap;
 use std::time::Duration;
 
-use crate::import::CatalogPage;
 use crate::retry::{Repeat, RetryPolicy};
 use crate::util::error_text::CauseChain;
 use crate::util::http::{is_cacheable, CachedResponse, Http};
@@ -83,28 +83,34 @@ fn discid_url(discid: &str) -> String {
     ))
 }
 
-/// MusicBrainz's URL document for a catalog page, with only the requested
-/// relationship kind included. Query encoding preserves the complete resource.
-fn discogs_url_lookup_url(discogs_release_id: &str) -> String {
-    url_lookup_url(
-        &format!("https://www.discogs.com/release/{discogs_release_id}"),
-        "release-rels",
-    )
+/// The Discogs pages one URL lookup asks about, in the order the request
+/// names them: each once, in one order whatever order they were handed in, so
+/// asking about the same pages is the same request and finds its kept answer.
+fn asked_pages(pages: &[DiscogsPage]) -> Vec<DiscogsPage> {
+    let mut asked = pages.to_vec();
+    asked.sort();
+    asked.dedup();
+    asked
 }
 
-fn discogs_master_lookup_url(discogs_master_id: &str) -> String {
-    url_lookup_url(
-        &format!("https://www.discogs.com/master/{discogs_master_id}"),
-        "release-group-rels",
-    )
-}
-
-fn url_lookup_url(resource: &str, include: &str) -> String {
+/// MusicBrainz's URL documents for `pages`, as [`asked_pages`] orders them,
+/// including the relationships each needs. Query encoding preserves each
+/// complete address.
+fn discogs_lookup_url(pages: &[DiscogsPage]) -> String {
+    let mut include: Vec<&str> = pages.iter().map(DiscogsPage::include).collect();
+    include.sort();
+    include.dedup();
     let mut url = reqwest::Url::parse(&ws2("url")).expect("MusicBrainz base URL is valid");
-    url.query_pairs_mut()
-        .append_pair("resource", resource)
-        .append_pair("inc", include)
-        .append_pair("fmt", "json");
+    {
+        let mut query = url.query_pairs_mut();
+        for page in pages {
+            query.append_pair("resource", &page.resource());
+        }
+        // A space is encoded as the `+` MusicBrainz separates includes with.
+        query
+            .append_pair("inc", &include.join(" "))
+            .append_pair("fmt", "json");
+    }
     url.to_string()
 }
 
@@ -578,55 +584,32 @@ impl MusicBrainz {
         .await
     }
 
-    /// Every MusicBrainz release explicitly related to this Discogs release URL.
-    /// A missing URL resource is `None`; a found document retains its raw answer,
-    /// including an empty or ambiguous set of matching targets.
-    pub async fn lookup_releases_by_discogs_release(
+    /// The MusicBrainz ids each of `pages` is linked from — the releases that
+    /// link a Discogs release's page as themselves, the release groups that
+    /// link a master's as their album — asked in one request. A page whose
+    /// address MusicBrainz has no document for is left out of the answer, as
+    /// MusicBrainz leaves it out of its own; a known page linked from nothing
+    /// answers no ids.
+    pub async fn lookup_discogs_pages(
         &self,
-        discogs_release_id: &str,
+        pages: &[DiscogsPage],
         priority: CallPriority,
-    ) -> Result<Option<(Vec<CatalogPage>, String)>, MusicBrainzError> {
-        self.lookup_discogs_url(
-            discogs_url_lookup_url(discogs_release_id),
-            parse_discogs_release_lookup,
-            priority,
-        )
-        .await
-    }
-
-    /// Every MusicBrainz release group explicitly related to this Discogs master URL.
-    pub async fn lookup_groups_by_discogs_master(
-        &self,
-        discogs_master_id: &str,
-        priority: CallPriority,
-    ) -> Result<Option<(Vec<CatalogPage>, String)>, MusicBrainzError> {
-        self.lookup_discogs_url(
-            discogs_master_lookup_url(discogs_master_id),
-            parse_discogs_master_lookup,
-            priority,
-        )
-        .await
-    }
-
-    async fn lookup_discogs_url(
-        &self,
-        url: String,
-        parse: fn(&str) -> Result<Vec<CatalogPage>, serde_json::Error>,
-        priority: CallPriority,
-    ) -> Result<Option<(Vec<CatalogPage>, String)>, MusicBrainzError> {
+    ) -> Result<HashMap<DiscogsPage, Vec<String>>, MusicBrainzError> {
+        let pages = asked_pages(pages);
+        let url = discogs_lookup_url(&pages);
         mb_retry("MusicBrainz URL lookup", || async {
             let body = match self.get(&url, priority).await {
                 Ok(body) => body,
-                // The URL endpoint documents 404 as an unknown resource URL.
+                // The URL endpoint answers one address it has no document
+                // for with a 404.
                 Err(MusicBrainzError::Provider {
                     status: Some(404), ..
-                }) => return Ok(None),
+                }) => return Ok(HashMap::new()),
                 Err(error) => return Err(error),
             };
-            let targets = parse(&body).map_err(|error| {
+            parse_discogs_lookup(&pages, &body).map_err(|error| {
                 MusicBrainzError::Other(format!("Failed to parse URL lookup JSON: {error}"))
-            })?;
-            Ok(Some((targets, body)))
+            })
         })
         .await
     }
@@ -759,40 +742,46 @@ impl MusicBrainz {
         );
     }
 
-    /// Pre-populate the answer to the Discogs-URL lookup, so a test can drive the
-    /// cross-reference path without the network. `None` means "no MB release
-    /// linked" — the natural answer for a synthetic test release, and the 404 the
-    /// endpoint gives for a URL it has never seen.
+    /// Put MusicBrainz's answer to asking about these Discogs pages together
+    /// where that request will look for it, so a test can drive the lookup by
+    /// Discogs address without the network. Each page comes with the
+    /// MusicBrainz id linking it, or `None` for an address MusicBrainz has no
+    /// document for — the natural answer for a synthetic test release.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn seed_discogs_url_lookup(&self, discogs_release_id: &str, mb_release_id: Option<String>) {
-        let url = discogs_url_lookup_url(discogs_release_id);
-        match mb_release_id {
-            Some(id) => self.seed_response(
-                &url,
-                200,
-                serde_json::json!({
-                    "relations": [{ "type": "discogs", "target-type": "release", "release": { "id": id } }],
-                })
-                .to_string(),
-            ),
-            None => self.seed_response(&url, 404, String::new()),
-        }
-    }
-
-    /// Seed the MusicBrainz URL answer for a Discogs master. `None` is an unknown URL.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn seed_discogs_master_url_lookup(&self, master_id: &str, mb_group_id: Option<String>) {
-        let url = discogs_master_lookup_url(master_id);
-        match mb_group_id {
-            Some(id) => self.seed_response(
-                &url,
-                200,
-                serde_json::json!({"relations": [
-                    {"type": "discogs", "target-type": "release_group", "release_group": {"id": id}}
-                ]})
-                .to_string(),
-            ),
-            None => self.seed_response(&url, 404, String::new()),
+    pub fn seed_discogs_page_lookup(&self, answers: &[(DiscogsPage, Option<&str>)]) {
+        let pages: Vec<DiscogsPage> = answers.iter().map(|(page, _)| page.clone()).collect();
+        let pages = asked_pages(&pages);
+        assert_eq!(pages.len(), answers.len(), "each page is answered once");
+        let linked = |page: &DiscogsPage| {
+            answers
+                .iter()
+                .find(|(answered, _)| answered == page)
+                .and_then(|(_, id)| *id)
+        };
+        let document = |page: &DiscogsPage| {
+            let id = linked(page)?;
+            Some(serde_json::json!({
+                "resource": page.resource(),
+                "relations": [page.relation_json(id)],
+            }))
+        };
+        let url = discogs_lookup_url(&pages);
+        match pages.as_slice() {
+            [page] => match document(page) {
+                Some(document) => self.seed_response(&url, 200, document.to_string()),
+                None => self.seed_response(&url, 404, String::new()),
+            },
+            _ => {
+                let urls: Vec<_> = pages.iter().filter_map(document).collect();
+                self.seed_response(
+                    &url,
+                    200,
+                    serde_json::json!({
+                        "url-count": urls.len(), "url-offset": 0, "urls": urls,
+                    })
+                    .to_string(),
+                );
+            }
         }
     }
 

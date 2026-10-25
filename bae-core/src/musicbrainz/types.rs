@@ -4,6 +4,8 @@
 //! the relation-to-URL extraction helper. The request and caching logic that
 //! produces these lives in the parent module.
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 /// A relation from MusicBrainz. Release/release-group URL relations fill `url`;
@@ -355,9 +357,82 @@ pub fn parse_release_group(json: &str) -> Result<ReleaseGroupResponse, serde_jso
     serde_json::from_str(json)
 }
 
-/// Response from the MB URL lookup endpoint (used for Discogs -> MB cross-reference)
+/// A Discogs page MusicBrainz is asked about by its address.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum DiscogsPage {
+    /// A release's page, which MusicBrainz releases link as themselves.
+    Release(String),
+    /// A master's page, which MusicBrainz release groups link as their album.
+    Master(String),
+}
+
+impl DiscogsPage {
+    /// The address MusicBrainz files the page's links under.
+    pub(super) fn resource(&self) -> String {
+        match self {
+            Self::Release(id) => crate::import::Catalog::Discogs.release_url(id),
+            Self::Master(id) => crate::import::Catalog::Discogs.album_url(id),
+        }
+    }
+
+    /// The relationships a lookup includes to answer for this page.
+    pub(super) fn include(&self) -> &'static str {
+        match self {
+            Self::Release(_) => "release-rels",
+            Self::Master(_) => "release-group-rels",
+        }
+    }
+
+    /// The MusicBrainz ids `relations` link this page from as their Discogs
+    /// page — releases for a release's page, release groups for a master's —
+    /// each once, in id order.
+    fn linked_ids(&self, relations: Vec<UrlLookupRelation>) -> Vec<String> {
+        let mut ids: Vec<_> = relations
+            .into_iter()
+            .filter(|relation| relation.relation_type.as_deref() == Some("discogs"))
+            .filter_map(|relation| match (self, relation.target) {
+                (Self::Release(_), UrlLookupTarget::Release { release }) => Some(release.id),
+                (Self::Master(_), UrlLookupTarget::Group { release_group }) => {
+                    Some(release_group.id)
+                }
+                _ => None,
+            })
+            .collect();
+        ids.sort();
+        ids.dedup();
+        ids
+    }
+
+    /// The relation MusicBrainz states from the entity `id` to this page.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub(super) fn relation_json(&self, id: &str) -> serde_json::Value {
+        match self {
+            Self::Release(_) => serde_json::json!({
+                "type": "discogs", "target-type": "release", "release": { "id": id }
+            }),
+            Self::Master(_) => serde_json::json!({
+                "type": "discogs", "target-type": "release_group", "release_group": { "id": id }
+            }),
+        }
+    }
+}
+
+/// The URL endpoint's answer about one address.
 #[derive(Debug, Deserialize)]
-struct UrlLookupResponse {
+struct UrlDocument {
+    relations: Vec<UrlLookupRelation>,
+}
+
+/// The URL endpoint's answer about several addresses: a document for each one
+/// MusicBrainz knows, naming its address. One it does not know is left out.
+#[derive(Debug, Deserialize)]
+struct UrlDocuments {
+    urls: Vec<UrlDocumentEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+struct UrlDocumentEntry {
+    resource: String,
     relations: Vec<UrlLookupRelation>,
 }
 
@@ -388,55 +463,35 @@ struct UrlLookupEntity {
     id: String,
 }
 
-/// Release correspondences stated by a Discogs release URL's MusicBrainz document.
-pub fn parse_discogs_release_lookup(
+/// The MusicBrainz ids each of `pages` is linked from, read from the URL
+/// endpoint's answer to asking about exactly those pages. One page is answered
+/// with its own document; several, with the documents of the ones MusicBrainz
+/// knows, and a page left out of that answer is left out of this one.
+pub(super) fn parse_discogs_lookup(
+    pages: &[DiscogsPage],
     json: &str,
-) -> Result<Vec<crate::import::CatalogPage>, serde_json::Error> {
-    parse_discogs_lookup(
-        json,
-        |target| match target {
-            UrlLookupTarget::Release { release } => Some(release.id),
-            _ => None,
-        },
-        |key| crate::import::CatalogPage::Release {
-            catalog: crate::import::Catalog::MusicBrainz,
-            key,
-        },
-    )
-}
-
-/// Album correspondences stated by a Discogs master URL's MusicBrainz document.
-pub fn parse_discogs_master_lookup(
-    json: &str,
-) -> Result<Vec<crate::import::CatalogPage>, serde_json::Error> {
-    parse_discogs_lookup(
-        json,
-        |target| match target {
-            UrlLookupTarget::Group { release_group } => Some(release_group.id),
-            _ => None,
-        },
-        |key| crate::import::CatalogPage::Group {
-            catalog: crate::import::Catalog::MusicBrainz,
-            key,
-        },
-    )
-}
-
-fn parse_discogs_lookup(
-    json: &str,
-    target_key: impl Fn(UrlLookupTarget) -> Option<String>,
-    page: impl Fn(String) -> crate::import::CatalogPage,
-) -> Result<Vec<crate::import::CatalogPage>, serde_json::Error> {
-    let response: UrlLookupResponse = serde_json::from_str(json)?;
-    let mut keys: Vec<_> = response
-        .relations
-        .into_iter()
-        .filter(|relation| relation.relation_type.as_deref() == Some("discogs"))
-        .filter_map(|relation| target_key(relation.target))
-        .collect();
-    keys.sort();
-    keys.dedup();
-    Ok(keys.into_iter().map(page).collect())
+) -> Result<HashMap<DiscogsPage, Vec<String>>, String> {
+    if let [page] = pages {
+        let document: UrlDocument = serde_json::from_str(json).map_err(|e| e.to_string())?;
+        return Ok(HashMap::from([(
+            page.clone(),
+            page.linked_ids(document.relations),
+        )]));
+    }
+    let documents: UrlDocuments = serde_json::from_str(json).map_err(|e| e.to_string())?;
+    let asked: HashMap<String, &DiscogsPage> =
+        pages.iter().map(|page| (page.resource(), page)).collect();
+    let mut linked = HashMap::new();
+    for entry in documents.urls {
+        let Some(page) = asked.get(&entry.resource) else {
+            return Err(format!(
+                "the answer names {}, which was not asked about",
+                entry.resource
+            ));
+        };
+        linked.insert((*page).clone(), page.linked_ids(entry.relations));
+    }
+    Ok(linked)
 }
 
 /// Every address a set of relations states, in relation order. A relation that

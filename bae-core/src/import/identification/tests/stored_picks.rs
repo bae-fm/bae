@@ -561,7 +561,7 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
         .manager
         .providers()
         .musicbrainz()
-        .seed_discogs_url_lookup("70000301", None);
+        .seed_discogs_page_lookup(&[(crate::musicbrainz::DiscogsPage::Release("70000301".to_string()), None)]);
 
     fixture
         .import

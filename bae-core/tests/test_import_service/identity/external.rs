@@ -270,6 +270,12 @@ fn seed_discogs_for_xref(
     bae_core::discogs::client::parse_discogs_release_json(&raw_json)
         .expect("the rendered Discogs release parses");
     f.library_manager.providers().discogs().seed_release_cache(release_id, raw_json);
+    // MusicBrainz is asked about the release's address and its master's in
+    // one request; neither is linked from anything there.
+    f.library_manager.providers().musicbrainz().seed_discogs_page_lookup(&[
+        (bae_core::musicbrainz::DiscogsPage::Release(release_id.to_string()), None),
+        (bae_core::musicbrainz::DiscogsPage::Master(rendered_master), None),
+    ]);
     release_id.to_string()
 }
 
@@ -309,11 +315,6 @@ async fn a_cross_link_writes_both_catalogs_records() {
     let f = ImportFixture::new().await;
 
     let discogs_id = seed_discogs_for_xref(&f, "90000001", "xref-d-master-exact", "Album Title");
-    // MB needs to know about the Discogs URL → release id mapping for
-    // the `fetch_mb_xref` path; this test goes the other direction
-    // (MB → Discogs via url-rels); the reverse cache must not contain a stale
-    // answer from another test.
-    f.library_manager.providers().musicbrainz().seed_discogs_url_lookup(&discogs_id, None);
     let mb_id = seed_mb_with_discogs_xref(&f,
         "xref-mb-rel-exact",
         "xref-mb-group-exact",
@@ -381,7 +382,6 @@ async fn a_pick_with_a_partner_writes_both_records() {
     let f = ImportFixture::new().await;
 
     let discogs_id = seed_discogs_for_xref(&f, "90000101", "partner-d-master", "Album Title");
-    f.library_manager.providers().musicbrainz().seed_discogs_url_lookup(&discogs_id, None);
     let mb_id = seed_mb_without_xref(&f, "partner-mb-rel", "partner-mb-group", "Album Title");
 
     let album_dir = f.temp_path().join("album");
@@ -442,8 +442,6 @@ async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
 
     let inferred_id = seed_discogs_for_xref(&f, "90000201", "inferred-d-master", "Album Title");
     let picked_id = seed_discogs_for_xref(&f, "90000202", "picked-d-master", "Album Title");
-    f.library_manager.providers().musicbrainz().seed_discogs_url_lookup(&inferred_id, None);
-    f.library_manager.providers().musicbrainz().seed_discogs_url_lookup(&picked_id, None);
     let mb_id = seed_mb_with_discogs_xref(&f,
         "partner-override-mb-rel",
         "partner-override-mb-group",

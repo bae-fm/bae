@@ -43,7 +43,7 @@ fn seed_discogs_release(
         .expect("the rendered Discogs release parses");
     providers.discogs().seed_release_cache(release_id, raw_release);
     providers.discogs().seed_artist_image_response("1", None);
-    providers.musicbrainz().seed_discogs_url_lookup(release_id, None);
+    providers.musicbrainz().seed_discogs_page_lookup(&[(crate::musicbrainz::DiscogsPage::Release(release_id.to_string()), None)]);
 }
 
 #[tokio::test(flavor = "multi_thread")]

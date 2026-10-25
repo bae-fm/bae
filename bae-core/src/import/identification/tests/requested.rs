@@ -124,7 +124,7 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
         .manager
         .providers()
         .musicbrainz()
-        .seed_discogs_url_lookup("70000201", None);
+        .seed_discogs_page_lookup(&[(crate::musicbrainz::DiscogsPage::Release("70000201".to_string()), None)]);
     // Hold MusicBrainz's answer, so the run is genuinely still asking when the
     // source is switched off rather than racing a run that already settled.
     fixture.provider.hold("/release?");
