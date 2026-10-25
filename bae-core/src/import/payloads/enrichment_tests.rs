@@ -159,6 +159,37 @@ fn the_pressing_is_the_selected_record_s_alone() {
     assert_eq!(detail.year, parsed.pressing.year);
 }
 
+/// The year an album first came out is resolved as its year is: its own
+/// album page's first, and the linked release's only where that states none.
+#[test]
+fn the_album_page_states_the_first_year_before_the_linked_release() {
+    let with_master = ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::Discogs, "7811"),
+        discogs(),
+        vec![
+            SourcePayload::new(PayloadSource::MusicBrainzDiscogsXref, "7811", musicbrainz()),
+            SourcePayload::new(PayloadSource::DiscogsMaster, "7822", master()),
+        ],
+    )
+    .extract()
+    .unwrap();
+    assert_eq!(with_master.metadata.album.year, Some(1980));
+    assert_eq!(with_master.metadata.album.first_year, Some(1980));
+
+    let without_master = ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::Discogs, "7811"),
+        discogs(),
+        vec![SourcePayload::new(
+            PayloadSource::MusicBrainzDiscogsXref,
+            "7811",
+            musicbrainz(),
+        )],
+    )
+    .extract()
+    .unwrap();
+    assert_eq!(without_master.metadata.album.first_year, Some(1979));
+}
+
 #[test]
 fn linked_album_fills_missing_title_and_artists_without_setting_pressing_year() {
     let mut anchor: serde_json::Value = serde_json::from_str(&discogs()).unwrap();

@@ -680,7 +680,10 @@ draft's pressing facts and year are that record's, or the year the folder
 names where it states none, and the other catalog's record is linked as a
 record of the release and fills nothing of the pressing. The album a pressing
 belongs to is the two records', so either's album documents speak for its
-title, artists and year. An album card names the label every pressing
+title, artists and year. Within one record, its album's year and the year the
+album first came out are its own album page's (its release group or master);
+the other catalog's release it links as itself gives them only where that page
+states none. An album card names the label every pressing
 naming one agrees on, and none where they name different labels.
 
 Pressings group under albums. A MusicBrainz release group and a Discogs master

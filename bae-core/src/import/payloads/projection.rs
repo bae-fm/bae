@@ -88,12 +88,14 @@ impl ReleasePayloads {
             other => not_fetched(other),
         };
         let linked_album_year = counterpart.as_ref().and_then(|value| value.album.year);
+        let linked_first_year = counterpart.as_ref().and_then(|value| value.album.first_year);
         if let Some(mut counterpart) = counterpart {
             // The linked record is the same pressing on the other catalog: it
             // speaks for the album they share, never for the pressing, whose
             // facts are the applied record's alone. Album dates are resolved
             // with parent precedence below.
             counterpart.album.year = None;
+            counterpart.album.first_year = None;
             metadata.album.fill_missing(counterpart.album);
         }
         metadata.album.year = selected_album_year;
@@ -129,6 +131,7 @@ impl ReleasePayloads {
             .or(linked_album_year)
             .or(selected_pressing_year)
             .or(metadata.pressing.year);
+        metadata.album.first_year = metadata.album.first_year.or(linked_first_year);
         Ok(metadata)
     }
 
