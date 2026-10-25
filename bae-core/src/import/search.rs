@@ -334,9 +334,10 @@ pub(crate) fn discogs_release_notes(release: &crate::discogs::DiscogsRelease) ->
 }
 
 /// What a MusicBrainz release's own document writes about which pressing it
-/// is: its disambiguation, then each line of its annotation. A disc ID
-/// lookup's releases state no annotation, so theirs is the disambiguation
-/// alone until their documents are read.
+/// is: its disambiguation, then each line of its annotation. A Disc ID
+/// lookup's releases state no annotation, and an identify run reads them from
+/// that answer, so theirs is the disambiguation alone until a pick reads
+/// their own documents.
 pub(crate) fn musicbrainz_release_notes(release: &MbReleaseResponse) -> Vec<String> {
     release
         .disambiguation
@@ -446,13 +447,18 @@ pub(crate) fn release_links_of(relations: &[crate::musicbrainz::MbRelation]) -> 
         .collect()
 }
 
+/// The releases a disc-ID lookup answered that hold the disc, each with its
+/// document as the answer states it.
 fn mb_discid_releases_to_metadata(
     discid: &str,
-    releases: Vec<MbReleaseResponse>,
-) -> Vec<MetadataResult> {
+    releases: Vec<(MbReleaseResponse, String)>,
+) -> Vec<(MetadataResult, crate::import::payloads::DiscIdRelease)> {
     releases
         .into_iter()
-        .filter_map(|release| mb_discid_release_to_metadata(discid, release))
+        .filter_map(|(release, json)| {
+            let answered = crate::import::payloads::DiscIdRelease::new(release.id.clone(), json);
+            Some((mb_discid_release_to_metadata(discid, release)?, answered))
+        })
         .collect()
 }
 
@@ -818,14 +824,15 @@ pub async fn search_source(
         })
 }
 
-/// The releases MusicBrainz has for a disc ID, each with its cover art. Empty
-/// when the disc is unknown to MB — a settled lookup with no matches, which is
-/// what `NotFound` means on this endpoint too.
+/// The releases MusicBrainz has for a disc ID, each with its cover art and its
+/// document as the answer states it, which an identify run reads the release
+/// from. Empty when the disc is unknown to MB — a settled lookup with no
+/// matches, which is what `NotFound` means on this endpoint too.
 pub(crate) async fn lookup_by_discid(
     musicbrainz: &musicbrainz::MusicBrainz,
     discid: &str,
     priority: CallPriority,
-) -> Result<Vec<MetadataResult>, Failure> {
+) -> Result<Vec<(MetadataResult, crate::import::payloads::DiscIdRelease)>, Failure> {
     let releases = match musicbrainz.lookup_by_discid(discid, priority).await {
         Ok(releases) => releases,
         Err(musicbrainz::MusicBrainzError::NotFound(_)) => return Ok(Vec::new()),

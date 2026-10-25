@@ -13,6 +13,26 @@ use crate::signals::{DiscIdSignal, LookupFailure};
 /// What one lookup produced: each match paired with its library status.
 pub type LookupResults = Vec<(MetadataResult, LibraryStatus)>;
 
+/// What MusicBrainz answered about one Disc ID: the releases holding the
+/// disc, and each one's document as the answer states it, which the run reads
+/// the release from.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DiscIdAnswer {
+    pub results: LookupResults,
+    pub documents: Vec<crate::import::payloads::DiscIdRelease>,
+}
+
+#[cfg(test)]
+impl DiscIdAnswer {
+    /// An answer of `results` whose documents a test does not read.
+    pub(crate) fn for_test(results: LookupResults) -> Self {
+        Self {
+            results,
+            documents: Vec::new(),
+        }
+    }
+}
+
 /// The disc-ID lookups' progress. Only MusicBrainz answers disc IDs, so each
 /// of the candidate's disc IDs has one lookup.
 #[derive(Clone, Debug, PartialEq)]
@@ -80,20 +100,26 @@ impl DiscidProgress {
         }
     }
 
-    /// Land the answer about `disc_id`, where it is still being waited for.
-    pub(super) fn answer(&mut self, disc_id: &str, outcome: LookupOutcome) {
+    /// Land the answer about `disc_id`, where it is still being waited for,
+    /// returning the documents it answered with; `None` where nothing was
+    /// waiting for it.
+    pub(super) fn answer(
+        &mut self,
+        disc_id: &str,
+        outcome: Result<DiscIdAnswer, LookupFailure>,
+    ) -> Option<Vec<crate::import::payloads::DiscIdRelease>> {
         let DiscidProgress::Lookups { discs } = self else {
-            return;
+            return None;
         };
-        if let Some(disc) = discs
+        let disc = discs
             .iter_mut()
-            .find(|disc| disc.disc_id == disc_id && disc.state == LookupState::LookingUp)
-        {
-            disc.state = match outcome {
-                Ok(results) => LookupState::Done { results },
-                Err(failure) => LookupState::Failed { failure },
-            };
-        }
+            .find(|disc| disc.disc_id == disc_id && disc.state == LookupState::LookingUp)?;
+        let (state, documents) = match outcome {
+            Ok(DiscIdAnswer { results, documents }) => (LookupState::Done { results }, documents),
+            Err(failure) => (LookupState::Failed { failure }, Vec::new()),
+        };
+        disc.state = state;
+        Some(documents)
     }
 }
 

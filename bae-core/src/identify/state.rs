@@ -258,7 +258,7 @@ pub enum IdentifyEvent {
     /// MusicBrainz answered about one disc ID.
     DiscidLookupAnswered {
         disc_id: String,
-        outcome: LookupOutcome,
+        outcome: Result<DiscIdAnswer, LookupFailure>,
     },
 
     /// One provider answered about one barcode.
@@ -340,10 +340,10 @@ pub enum Effect {
         source: Catalog,
         key: PressingKey,
     },
-    /// Fetch and store these records' full documents, reading each one
-    /// against `audio`.
+    /// Read and store these records' documents, each from where it says,
+    /// reading each one against `audio`.
     ReadReleases {
-        releases: Vec<crate::import::MetadataRef>,
+        releases: Vec<super::documents::ReleaseToRead>,
         audio: crate::import::catalog_reading::ReadAudio,
     },
     /// Keep what these release groups were read to be beyond the run. Nothing
@@ -419,11 +419,13 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 catalog,
                 isrc,
                 search,
-                context,
+                mut context,
             },
             IdentifyEvent::DiscidLookupAnswered { disc_id, outcome },
         ) => {
-            discid.answer(&disc_id, outcome);
+            if let Some(documents) = discid.answer(&disc_id, outcome) {
+                context.disc.hold(documents);
+            }
             settle_if_ready(IdentifyState::Triangulating {
                 discid,
                 barcode,
@@ -875,8 +877,9 @@ use progress::{
     start_search_progress,
 };
 pub use progress::{
-    BarcodeProgress, CatalogLookup, CatalogProgress, CatalogSearch, DiscLookup, DiscidProgress,
-    IsrcProgress, LookupResults, LookupState, ProviderLookup, SearchProgress, ValueLookup,
+    BarcodeProgress, CatalogLookup, CatalogProgress, CatalogSearch, DiscIdAnswer, DiscLookup,
+    DiscidProgress, IsrcProgress, LookupResults, LookupState, ProviderLookup, SearchProgress,
+    ValueLookup,
 };
 
 // ── Tests ───────────────────────────────────────────────────────────────────

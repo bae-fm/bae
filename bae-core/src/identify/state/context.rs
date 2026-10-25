@@ -13,6 +13,7 @@ use crate::identify::combine::LookupAnswers;
 use crate::identify::documents::DocumentReading;
 use crate::identify::{IdentifyFailure, NotAskedReason};
 use crate::import::album_links::{self, AlbumLink, GroupLinks};
+use crate::import::payloads::DiscIdRelease;
 use crate::import::MetadataRef;
 use crate::import::{Catalog, LookupChoices};
 use crate::signals::{
@@ -33,6 +34,9 @@ pub struct DiscIdEvidence {
     pub failures: Vec<LookupFailure>,
     /// Why nobody was asked about the disc IDs, where nobody was.
     pub not_asked: Option<NotAskedReason>,
+    /// The document of each release a lookup answered with, once, as the
+    /// answer states it: what the run reads that release from.
+    pub documents: Vec<DiscIdRelease>,
 }
 
 impl Default for DiscIdEvidence {
@@ -43,6 +47,7 @@ impl Default for DiscIdEvidence {
             answers: Vec::new(),
             failures: Vec::new(),
             not_asked: None,
+            documents: Vec::new(),
         }
     }
 }
@@ -61,6 +66,27 @@ impl DiscIdEvidence {
             DiscidProgress::NotAsked { reason, .. } => Some(*reason),
             _ => None,
         };
+    }
+
+    /// Keep the documents a lookup answered with, each release's once: a
+    /// release holding two of the folder's discs is answered for both.
+    pub(super) fn hold(&mut self, documents: Vec<DiscIdRelease>) {
+        for document in documents {
+            if !self
+                .documents
+                .iter()
+                .any(|held| held.release() == document.release())
+            {
+                self.documents.push(document);
+            }
+        }
+    }
+
+    /// The document a lookup answered `release` with, where one did.
+    pub(super) fn document_of(&self, release: &MetadataRef) -> Option<&DiscIdRelease> {
+        self.documents
+            .iter()
+            .find(|document| document.release() == release)
     }
 
     /// Every release any disc ID's lookup returned, each once.

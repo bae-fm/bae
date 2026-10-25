@@ -5,11 +5,11 @@
 
 /// One release lookup per settled lead, whichever signal found it.
 ///
-/// The disc-ID response lists the disc's tracks, but not the tracklist read
-/// against the folder's audio nor the rest of what opening the candidate
-/// needs — the release-level relations the commit maps, the release group,
-/// the cover options. A lead is settled by fetching the release itself, once,
-/// and both candidates in this pass cost exactly that.
+/// The Disc ID answer is what the run reads a release it found from, but it
+/// lacks what applying the release needs — the annotation, and the recording,
+/// work and artist relations the commit maps. A lead is settled by fetching
+/// the release itself, once, and both candidates in this pass cost exactly
+/// that: the search lead's read by the run, the Disc ID lead's by its pick.
 #[tokio::test(flavor = "multi_thread")]
 async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
     let fixture = Fixture::new("settle-lead").await;
@@ -70,14 +70,16 @@ async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
 #[tokio::test(flavor = "multi_thread")]
 async fn an_unreadable_lead_is_stored_unsettled_without_partial_documents() {
     let fixture = Fixture::new("settle-ordering").await;
-    let dir = fixture.disc_id_candidate("Album");
-    let probed = fixture.probed_total_ms(&dir);
-    // The disc-ID lookup answers; the release document does not.
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-order-1", "rg-order-1", &[probed, 0]),
-    );
+    fixture
+        .import
+        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+            barcode: "0123456789012".to_string(),
+        }));
+    let dir = fixture.barcode_candidate("Album");
+    // The barcode search answers; the release document does not.
+    fixture
+        .provider
+        .route("/release?", 200, search_json("mb-order-1", "rg-order-1"));
     fixture.provider.route("/release/mb-order-1?", 400, "{}");
     fixture.scan(1).await;
 

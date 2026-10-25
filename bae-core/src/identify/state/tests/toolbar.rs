@@ -12,7 +12,9 @@ fn state_with_catalog_offered(providers: Vec<Catalog>) -> IdentifyState {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "disc-hash".into(),
-            outcome: Ok(vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-x"))]),
+            outcome: Ok(DiscIdAnswer::for_test(vec![
+                pair("rel-a", Some("g-x")), pair("rel-b", Some("g-x")),
+            ])),
         },
     );
     state
@@ -34,7 +36,9 @@ fn run_with_catalog_chosen(providers: Vec<Catalog>) -> (IdentifyState, Vec<Effec
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "disc-hash".into(),
-            outcome: Ok(vec![pair("rel-a", Some("g-x")), (numbered, status)]),
+            outcome: Ok(DiscIdAnswer::for_test(vec![
+                pair("rel-a", Some("g-x")), (numbered, status),
+            ])),
         },
     );
     (state, chosen_effects)
@@ -395,10 +399,10 @@ fn found_carries_in_library_status_through() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(vec![pair_in_library(
+            outcome: Ok(DiscIdAnswer::for_test(vec![pair_in_library(
                 "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
                 Some("g-x"),
-            )]),
+            )])),
         },
     );
     match state {
@@ -443,7 +447,9 @@ fn barcode_failure_before_disc_settles_is_retained_through_combine() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))]),
+            outcome: Ok(DiscIdAnswer::for_test(vec![
+                pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x")),
+            ])),
         },
     );
 

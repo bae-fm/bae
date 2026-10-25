@@ -56,12 +56,14 @@ pub struct SourceRelease {
     /// [`crate::import::search::musicbrainz_release_notes`] and
     /// [`crate::import::search::discogs_release_notes`].
     pub(crate) notes: Vec<String>,
-    /// The supporting documents the fetch named and could not get, whose
-    /// facts are missing from the ones above.
+    /// The documents the fetch named and did not get, whose facts are
+    /// missing from the ones above: supporting documents, and the release's
+    /// own where an identify run read it from a Disc ID lookup's answer.
     pub(crate) unfetched: Vec<UnfetchedDocument>,
 }
 
-/// One document a fetch followed a link to and did not get.
+/// One document a fetch followed a link to, or started from an answer in
+/// place of, and did not get.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnfetchedDocument {
     pub(crate) document: crate::import::PayloadSource,
@@ -77,7 +79,9 @@ pub enum UnfetchedReason {
     /// It is a Discogs document and this library held no Discogs key.
     DiscogsNotConfigured,
     /// The read stopped short of it on purpose: an identification read
-    /// follows only the documents ranking the release reads.
+    /// follows only the documents ranking the release reads, and takes a
+    /// release a Disc ID lookup returned from that answer rather than its own
+    /// document.
     StoppedShort,
 }
 

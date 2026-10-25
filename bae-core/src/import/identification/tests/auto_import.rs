@@ -207,14 +207,7 @@ async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
         serde_json::from_str(&discid_json("mb-vinyl", "rg-vinyl", &[probed, 0]))
             .expect("the disc ID fixture parses");
     answer["releases"][0]["media"][0]["format"] = serde_json::json!("12\" Vinyl");
-    let mut document: serde_json::Value =
-        serde_json::from_str(&release_json("mb-vinyl", "rg-vinyl", &[probed, 0]))
-            .expect("the release fixture parses");
-    document["media"][0]["format"] = serde_json::json!("12\" Vinyl");
     fixture.provider.route("/discid/", 200, answer.to_string());
-    fixture
-        .provider
-        .route("/release/mb-vinyl?", 200, document.to_string());
     fixture.scan(1).await;
     let mut events = fixture.import.every_event();
 
@@ -237,8 +230,8 @@ async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
     );
     assert_eq!(
         fixture.count_release_lookups("mb-vinyl"),
-        1,
-        "the offered row was read in full once, like any other"
+        0,
+        "the offered row was read from its Disc ID answer, and nothing picked it"
     );
     assert_no_import(&fixture, &mut events, &key, "the folder ruled the release out").await;
 }

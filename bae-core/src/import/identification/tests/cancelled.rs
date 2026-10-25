@@ -174,15 +174,12 @@ async fn a_cancelled_answer_is_not_written() {
     fixture
         .provider
         .route("/discid/", 200, discid_json("mb-1", "rg-1", &[probed, 0]));
-    fixture.provider.route(
-        "/release/mb-1?",
-        200,
-        release_json("mb-1", "rg-1", &[probed, 0]),
-    );
-    fixture.provider.hold("/release/mb-1?");
+    // The release is read from the Disc ID answer; its group's page is the
+    // document the read asks for.
+    fixture.provider.hold("/release-group/rg-1?");
     fixture.scan(1).await;
     let sweep = fixture.drain_automatic_task();
-    wait_for_request(&fixture.provider, "/release/mb-1?", 1).await;
+    wait_for_request(&fixture.provider, "/release-group/rg-1?", 1).await;
     assert_eq!(
         fixture.identification_status(&key),
         Some(crate::import::IdentificationStatus::Running),

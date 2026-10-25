@@ -198,7 +198,7 @@ fn a_failed_search_stores_what_the_other_provider_found() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(Vec::new()),
+            outcome: Ok(DiscIdAnswer::for_test(Vec::new())),
         },
     );
     assert_eq!(

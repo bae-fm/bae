@@ -36,6 +36,7 @@ fn reading_documents(
     let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {
         panic!("the run reads its offered records' documents, got {effects:?}");
     };
+    let releases = &records_read(releases);
     (state, releases.clone())
 }
 
@@ -262,6 +263,7 @@ fn every_pressing_of_the_named_album_is_read_before_its_tracks_rank_it() {
     let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {
         panic!("the run reads its offered records' documents, got {effects:?}");
     };
+    let releases = &records_read(releases);
     let mut asked: Vec<&str> = releases.iter().map(|release| release.key.as_str()).collect();
     asked.sort();
     assert_eq!(asked, vec!["dg-cassette", "dg-cd-1", "dg-cd-2", "dg-lp"]);
@@ -304,6 +306,7 @@ fn rows_the_documents_raise_are_read_before_the_run_settles() {
     let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {
         panic!("the run reads its offered records' documents, got {effects:?}");
     };
+    let releases = &records_read(releases);
     assert_eq!(
         releases.iter().map(|release| release.key.as_str()).collect::<Vec<_>>(),
         vec!["dg-us"]
@@ -312,6 +315,7 @@ fn rows_the_documents_raise_are_read_before_the_run_settles() {
     let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {
         panic!("the rows the country held back are read next, got {effects:?}");
     };
+    let releases = &records_read(releases);
     let mut asked: Vec<&str> = releases.iter().map(|release| release.key.as_str()).collect();
     asked.sort();
     assert_eq!(asked, vec!["dg-elsewhere-1", "dg-elsewhere-2"]);
@@ -451,6 +455,7 @@ fn a_row_that_lists_other_tracks_lets_the_next_best_row_be_read() {
     let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {
         panic!("the run reads its offered records' documents, got {effects:?}");
     };
+    let releases = &records_read(releases);
     assert_eq!(
         releases.iter().map(|release| release.key.as_str()).collect::<Vec<_>>(),
         vec!["dg-named"]
@@ -459,6 +464,7 @@ fn a_row_that_lists_other_tracks_lets_the_next_best_row_be_read() {
     let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {
         panic!("the row below is read next, got {effects:?}");
     };
+    let releases = &records_read(releases);
     assert_eq!(
         releases.iter().map(|release| release.key.as_str()).collect::<Vec<_>>(),
         vec!["dg-other"]

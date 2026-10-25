@@ -4,6 +4,7 @@
 
 use super::annotate_with_library_status;
 use super::discid::lookup_and_resolve;
+use super::documents::ReleaseToRead;
 use super::state::{
     step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, PressingKey, TitleSearch,
 };
@@ -413,9 +414,9 @@ fn dispatch_effect(
             let library_manager = inner.library_manager.clone();
             spawn_until_cancelled(&runtime, &token, async move {
                 let event = match lookup_and_resolve(&disc_id, &library_manager, priority).await {
-                    Ok(results) => IdentifyEvent::DiscidLookupAnswered {
+                    Ok(answer) => IdentifyEvent::DiscidLookupAnswered {
                         disc_id,
-                        outcome: Ok(results),
+                        outcome: Ok(answer),
                     },
                     Err(Failure::Lookup(failure)) => IdentifyEvent::DiscidLookupAnswered {
                         disc_id,
@@ -494,7 +495,10 @@ fn dispatch_effect(
                     let document = stored.map(|stored| {
                         crate::identify::documents::ReleaseDocument::of(&stored, &audio)
                     });
-                    read.push(crate::identify::documents::ReleaseReading { release, document });
+                    read.push(crate::identify::documents::ReleaseReading {
+                        release: release.release().clone(),
+                        document,
+                    });
                 }
                 emit_step(&event_tx, IdentifyEvent::ReleasesRead { read });
             });
@@ -508,8 +512,9 @@ fn dispatch_effect(
             spawn_until_cancelled(&runtime, &token, async move {
                 let lookup = match &key {
                     PressingKey::Link { release } => {
+                        let read = ReleaseToRead::ReleaseLookup(release.clone());
                         let Some(stored) =
-                            read_release(&library_manager, release, priority, &event_tx).await
+                            read_release(&library_manager, &read, priority, &event_tx).await
                         else {
                             return;
                         };
@@ -591,26 +596,35 @@ fn dispatch_effect(
     }
 }
 
-/// `release` from storage or fetched and stored now, read as far as ranking it
-/// needs, or why its catalog could not give it. `None` when bae broke reading
-/// it: the run has then been told, and ends.
+/// `read`'s release from storage or read where `read` says and stored now, as
+/// far as ranking it needs, or why its catalog could not give it. `None` when
+/// bae broke reading it: the run has then been told, and ends.
 async fn read_release(
     library_manager: &LibraryManager,
-    release: &crate::import::MetadataRef,
+    read: &ReleaseToRead,
     priority: CallPriority,
     event_tx: &mpsc::UnboundedSender<IdentifyEvent>,
 ) -> Option<Result<crate::import::source_release::SourceRelease, crate::signals::LookupFailure>> {
-    let error = match crate::import::service::prepare_release(
-        library_manager,
-        release,
-        crate::import::payloads::ReadDepth::Identification,
-        priority,
-    )
-    .await
-    {
+    let prepared = match read {
+        ReleaseToRead::ReleaseLookup(release) => {
+            crate::import::service::prepare_release(
+                library_manager,
+                release,
+                crate::import::payloads::ReadDepth::Identification,
+                priority,
+            )
+            .await
+        }
+        ReleaseToRead::DiscIdAnswer(answered) => {
+            crate::import::service::prepare_disc_id_release(library_manager, answered, priority)
+                .await
+        }
+    };
+    let error = match prepared {
         Ok(stored) => return Some(Ok(stored)),
         Err(error) => error,
     };
+    let release = read.release();
     match crate::import::search::failure_of(
         &error,
         &format!(

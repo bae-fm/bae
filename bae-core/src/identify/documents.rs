@@ -3,19 +3,23 @@
 //! A search result states less than its release's document: a Discogs result
 //! names only its first label, no lookup's answer lists the tracklist read
 //! against the folder's audio, and a result may leave out the barcode its
-//! document states. Every record of every offered row is fetched and stored
+//! document states. Every record of every offered row is read and stored
 //! where a pick reads it (see `crate::import::service::prepare_release`), as
 //! far as what is read here needs: the release's own page, its album's page,
 //! and for a MusicBrainz release the Wikidata items and Discogs releases its
-//! album statements read. A pick reads the rest before it applies anything.
-//! What the document states replaces what the result stated before the
-//! rows are ranked again. A row whose tracklist then holds other tracks than
-//! the folder is no longer a match (see `identify::fit::rules_out`), and the
-//! rows ranked below it move up; a row the documents raise to the top is read
-//! in turn. The run settles once every offered row's records are read, however
-//! many rows that is, or once no row is left. A document that cannot be read
-//! leaves its record as the result stated it, with why it could not be read;
-//! the run settles on what it did read.
+//! album statements read. A release a Disc ID lookup returned is read from
+//! that answer, which lists everything here but the annotation: its notes are
+//! its disambiguation alone, and its own page counts among what the read
+//! stopped short of. A pick reads the rest, its own page included, before it
+//! applies anything. What the document states replaces what the result stated
+//! before the rows are ranked again. A row whose tracklist then holds other
+//! tracks than the folder is no longer a match (see
+//! `identify::fit::rules_out`), and the rows ranked below it move up; a row
+//! the documents raise to the top is read in turn. The run settles once every
+//! offered row's records are read, however many rows that is, or once no row
+//! is left. A document that cannot be read leaves its record as the result
+//! stated it, with why it could not be read; the run settles on what it did
+//! read.
 //!
 //! A MusicBrainz document also names the other catalogs' releases that are
 //! the same release, and states what its album is on Discogs (see
@@ -41,6 +45,26 @@ pub enum DocumentReading {
     /// Fetched: every record of every row offered as they rank with them.
     /// Empty when nothing was offered.
     Read(Vec<ReleaseReading>),
+}
+
+/// Where a run reads one offered record's document from.
+#[derive(Clone, Debug, PartialEq)]
+pub enum ReleaseToRead {
+    /// Its catalog's release lookup, unless storage holds it.
+    ReleaseLookup(MetadataRef),
+    /// The Disc ID lookup's answer that returned it, unless storage holds
+    /// it: a MusicBrainz release's own document is not asked for again.
+    DiscIdAnswer(crate::import::payloads::DiscIdRelease),
+}
+
+impl ReleaseToRead {
+    /// The record read.
+    pub fn release(&self) -> &MetadataRef {
+        match self {
+            Self::ReleaseLookup(release) => release,
+            Self::DiscIdAnswer(answered) => answered.release(),
+        }
+    }
 }
 
 /// One record's document, or why it could not be fetched.

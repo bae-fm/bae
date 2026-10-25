@@ -77,6 +77,13 @@ fn release_group_url(release_group_id: &str) -> String {
 /// a page.
 const RECORDING_SEARCH_PAGE: usize = 100;
 
+/// Where a Disc ID's releases are looked up. The endpoint takes these
+/// includes and refuses `annotation`, `discids`, `media` and the recording,
+/// work and artist relations; every release in its answer lists all its
+/// media, each with its tracks and the Disc IDs registered against it,
+/// whatever is asked. Its releases lack the annotation and the relations only
+/// the release lookup states. Neither endpoint states a release group's own
+/// links, `release-group-rels` included: those are on the group's page.
 fn discid_url(discid: &str) -> String {
     ws2(&format!(
         "discid/{discid}?inc=recordings+artist-credits+release-groups+url-rels+labels"
@@ -491,12 +498,15 @@ impl MusicBrainz {
         }
     }
 
-    /// Lookup releases by MusicBrainz DiscID.
+    /// The releases MusicBrainz registers a Disc ID against, each parsed and
+    /// as its own document in the answer: the release lookup's document less
+    /// what the Disc ID endpoint cannot include — the annotation, and the
+    /// recording, work and artist relations.
     pub async fn lookup_by_discid(
         &self,
         discid: &str,
         priority: CallPriority,
-    ) -> Result<Vec<MbReleaseResponse>, MusicBrainzError> {
+    ) -> Result<Vec<(MbReleaseResponse, String)>, MusicBrainzError> {
         mb_retry("MusicBrainz DiscID lookup", || {
             self.lookup_by_discid_once(discid, priority)
         })
@@ -507,7 +517,7 @@ impl MusicBrainz {
         &self,
         discid: &str,
         priority: CallPriority,
-    ) -> Result<Vec<MbReleaseResponse>, MusicBrainzError> {
+    ) -> Result<Vec<(MbReleaseResponse, String)>, MusicBrainzError> {
         debug!("MusicBrainz: Looking up DiscID '{}'", discid);
         let url = discid_url(discid);
         debug!("MusicBrainz API request: {}", url);
@@ -529,7 +539,16 @@ impl MusicBrainz {
             return Err(MusicBrainzError::NotFound(discid.to_string()));
         }
 
-        let releases = disc_response.releases;
+        let releases = disc_response
+            .releases
+            .into_iter()
+            .map(|raw| {
+                let release: MbReleaseResponse = serde_json::from_str(raw.get()).map_err(|e| {
+                    MusicBrainzError::Other(format!("Failed to parse a Disc ID release: {e}"))
+                })?;
+                Ok((release, raw.get().to_owned()))
+            })
+            .collect::<Result<Vec<_>, MusicBrainzError>>()?;
 
         debug!(
             "MusicBrainz found {} release(s) for DiscID {}",

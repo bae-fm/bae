@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use crate::discogs::client::{Discogs, DiscogsClient, DiscogsValidationObserver};
 use crate::import::cover_art::RemoteCover;
-use crate::import::payloads::{ReadDepth, ReleasePayloads};
+use crate::import::payloads::{DiscIdRelease, ReadDepth, ReleasePayloads};
 use crate::import::search::MetadataResult;
 use crate::import::{ImportError, MetadataRef};
 use crate::musicbrainz::{MusicBrainz, ReleaseSearchParams};
@@ -93,6 +93,25 @@ impl Providers {
         .await
     }
 
+    /// A release a Disc ID lookup returned, read for an identify run from
+    /// that answer, and the documents it links to as far as such a read
+    /// follows them.
+    pub(crate) async fn read_disc_id_release(
+        &self,
+        discogs: Option<&DiscogsClient>,
+        answered: &DiscIdRelease,
+        priority: CallPriority,
+    ) -> Result<ReleasePayloads, ImportError> {
+        crate::import::payloads::read_disc_id_release(
+            &self.musicbrainz,
+            &self.wikidata,
+            discogs,
+            answered,
+            priority,
+        )
+        .await
+    }
+
     pub(crate) async fn search_musicbrainz(
         &self,
         params: ReleaseSearchParams,
@@ -105,7 +124,7 @@ impl Providers {
         &self,
         discid: &str,
         priority: CallPriority,
-    ) -> Result<Vec<MetadataResult>, Failure> {
+    ) -> Result<Vec<(MetadataResult, DiscIdRelease)>, Failure> {
         crate::import::search::lookup_by_discid(&self.musicbrainz, discid, priority).await
     }
 

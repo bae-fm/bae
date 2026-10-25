@@ -17,7 +17,7 @@ fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<Effec
                 read: releases
                     .into_iter()
                     .map(|release| crate::identify::documents::ReleaseReading {
-                        release,
+                        release: release.release().clone(),
                         document: Err(LookupFailure::Network),
                     })
                     .collect(),
@@ -34,6 +34,16 @@ fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<Effec
         effects.extend(more);
     }
     (state, effects)
+}
+
+/// The records a read of documents asks for.
+fn records_read(
+    releases: &[crate::identify::documents::ReleaseToRead],
+) -> Vec<crate::import::MetadataRef> {
+    releases
+        .iter()
+        .map(|release| release.release().clone())
+        .collect()
 }
 
 include!("tests/signals_and_conflicts.rs");

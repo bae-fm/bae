@@ -484,14 +484,26 @@ fn discid_metadata_skips_only_releases_without_one_matching_medium() {
     }]);
     valid.id = "mb-release-2".to_string();
 
-    let metadata =
-        mb_discid_releases_to_metadata("disc-1", vec![no_match, multiple_matches, valid]);
+    let answered = |release: crate::musicbrainz::MbReleaseResponse| {
+        let json = serde_json::to_string(&release).unwrap();
+        (release, json)
+    };
+    let metadata = mb_discid_releases_to_metadata(
+        "disc-1",
+        vec![answered(no_match), answered(multiple_matches), answered(valid)],
+    );
 
     assert_eq!(metadata.len(), 1);
-    assert_eq!(metadata[0].release_id, "mb-release-2");
+    let (result, document) = &metadata[0];
+    assert_eq!(result.release_id, "mb-release-2");
     assert_eq!(
-        metadata[0].media,
+        result.media,
         StatedMedia::PerMedium(vec![Some(Medium::Cd)])
+    );
+    assert_eq!(
+        document.release(),
+        &MetadataRef::new(Catalog::MusicBrainz, "mb-release-2"),
+        "the release kept is paired with its own document"
     );
 }
 

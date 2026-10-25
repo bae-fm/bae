@@ -470,6 +470,24 @@ impl FetchDocuments<'_> {
     }
 }
 
+impl<'a> FetchDocuments<'a> {
+    fn new(
+        musicbrainz: &'a crate::musicbrainz::MusicBrainz,
+        wikidata: &'a crate::wikidata::Wikidata,
+        discogs: Option<&'a DiscogsClient>,
+        priority: CallPriority,
+    ) -> Self {
+        Self {
+            musicbrainz,
+            wikidata,
+            discogs,
+            priority,
+            documents: HashMap::new(),
+            attempted_musicbrainz: HashSet::new(),
+        }
+    }
+}
+
 /// The documents `release` links to, as far as `depth` follows them, asked of
 /// MusicBrainz, Wikidata and — when a client is given — Discogs.
 pub(crate) async fn fetch_documents(
@@ -480,14 +498,7 @@ pub(crate) async fn fetch_documents(
     depth: ReadDepth,
     priority: CallPriority,
 ) -> Result<ReleasePayloads, ImportError> {
-    let mut fetcher = FetchDocuments {
-        musicbrainz,
-        wikidata,
-        discogs,
-        priority,
-        documents: HashMap::new(),
-        attempted_musicbrainz: HashSet::new(),
-    };
+    let mut fetcher = FetchDocuments::new(musicbrainz, wikidata, discogs, priority);
     let anchor = match fetcher
         .document(PayloadSource::release_of(release.catalog), &release.key)
         .await?
@@ -498,7 +509,46 @@ pub(crate) async fn fetch_documents(
             unreachable!("a release's own document is asked for first and by its own id")
         }
     };
-    let mut traversal = DocumentTraversal::new(release, anchor, depth)?;
+    let traversal = DocumentTraversal::new(release, anchor, depth)?;
+    Ok(walk(fetcher, traversal).await)
+}
+
+/// An identification read of a release a Disc ID lookup returned, starting
+/// from the release's document in that answer: nothing asks for the release
+/// again, and the documents its pages link are followed as any
+/// identification read follows them. The answer is short of the release
+/// lookup's document, so the release's own page is recorded among what the
+/// read stopped short of, and a complete read asks for it.
+pub(crate) async fn read_disc_id_release(
+    musicbrainz: &crate::musicbrainz::MusicBrainz,
+    wikidata: &crate::wikidata::Wikidata,
+    discogs: Option<&DiscogsClient>,
+    answered: &DiscIdRelease,
+    priority: CallPriority,
+) -> Result<ReleasePayloads, ImportError> {
+    let release = answered.release();
+    let mut traversal = DocumentTraversal::new(
+        release,
+        answered.json().to_owned(),
+        ReadDepth::Identification,
+    )?;
+    traversal.missing(
+        PayloadSource::release_of(release.catalog),
+        release.key.clone(),
+        UnfetchedReason::StoppedShort,
+    );
+    Ok(walk(
+        FetchDocuments::new(musicbrainz, wikidata, discogs, priority),
+        traversal,
+    )
+    .await)
+}
+
+/// Ask for every document `traversal` follows, and finish it.
+async fn walk(
+    mut fetcher: FetchDocuments<'_>,
+    mut traversal: DocumentTraversal,
+) -> ReleasePayloads {
     while let Some(step) = traversal.next() {
         match step {
             Step::Document((source, key)) => {
@@ -522,7 +572,7 @@ pub(crate) async fn fetch_documents(
             },
         }
     }
-    Ok(traversal.finish())
+    traversal.finish()
 }
 
 #[cfg(test)]

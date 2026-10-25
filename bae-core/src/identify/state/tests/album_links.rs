@@ -80,13 +80,13 @@ fn answer_rounds(
     }) {
         let answer = match effects.remove(at) {
             Effect::ReadReleases { releases, .. } => {
-                asked.reads.push(releases.clone());
+                asked.reads.push(records_read(&releases));
                 IdentifyEvent::ReleasesRead {
                     read: releases
                         .iter()
                         .map(|release| ReleaseReading {
-                            release: release.clone(),
-                            document: Ok(document(release)),
+                            release: release.release().clone(),
+                            document: Ok(document(release.release())),
                         })
                         .collect(),
                 }
@@ -163,7 +163,7 @@ fn disc_run_reading(
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(results),
+            outcome: Ok(DiscIdAnswer::for_test(results)),
         },
     )
 }

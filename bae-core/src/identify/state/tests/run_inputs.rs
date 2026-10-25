@@ -78,7 +78,9 @@ fn a_run_that_leaves_the_barcode_out_never_asks_about_it() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))]),
+            outcome: Ok(DiscIdAnswer::for_test(vec![
+                pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x")),
+            ])),
         },
     );
     match state {
@@ -250,7 +252,9 @@ fn every_disc_id_is_asked_and_a_release_holding_every_disc_ranks_first() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "disc-one".into(),
-            outcome: Ok(vec![pair("both-discs", Some("g")), pair("first-disc-only", Some("g"))]),
+            outcome: Ok(DiscIdAnswer::for_test(vec![
+                pair("both-discs", Some("g")), pair("first-disc-only", Some("g")),
+            ])),
         },
     );
     assert!(
@@ -261,7 +265,7 @@ fn every_disc_id_is_asked_and_a_release_holding_every_disc_ranks_first() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "disc-two".into(),
-            outcome: Ok(vec![pair("both-discs", Some("g"))]),
+            outcome: Ok(DiscIdAnswer::for_test(vec![pair("both-discs", Some("g"))])),
         },
     );
     let IdentifyState::Found { findings, .. } = state else {

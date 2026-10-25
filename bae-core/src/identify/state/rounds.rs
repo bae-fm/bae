@@ -4,11 +4,12 @@
 //! asks what came of it: each catalog number a found release carries — on
 //! any row, offered or not — that the folder states is searched on every
 //! catalog, on Discogs under the artist of each row the run offers; each
-//! offered record not read yet has its full document read; and each offered row
-//! whose records are read is looked up on the lookup catalogs it has no
-//! record of (see [`super::pressings`]). A round asks each of these once,
-//! and adds releases without taking any away: the ranking is what narrows.
-//! A round that asks nothing is the last.
+//! offered record not read yet has its document read — from the Disc ID
+//! answer that returned it, where one did; and each offered row whose records
+//! are read is looked up on the lookup catalogs it has no record of (see
+//! [`super::pressings`]). A round asks each of these once, and adds releases
+//! without taking any away: the ranking is what narrows. A round that asks
+//! nothing is the last.
 
 use super::pressings::{keys_of, PressingKey, PressingLookup};
 use super::progress::{credited_artist, names_artist};
@@ -16,6 +17,7 @@ use super::{
     combined, BarcodeProgress, CatalogProgress, DocumentReading, Effect, LookupState,
     SignalsContext,
 };
+use crate::identify::documents::ReleaseToRead;
 use crate::identify::row_facts::FolderFacts;
 use crate::import::search::MetadataResult;
 use crate::import::{Catalog, MetadataRef};
@@ -43,11 +45,17 @@ pub(super) fn next_round(
             reading.release.catalog == record.source && reading.release.key == record.release_id
         })
     };
-    let unread: Vec<MetadataRef> = rows
+    let unread: Vec<ReleaseToRead> = rows
         .iter()
         .flatten()
         .filter(|record| !read(record))
-        .map(|record| MetadataRef::new(record.source, record.release_id.clone()))
+        .map(|record| {
+            let release = MetadataRef::new(record.source, record.release_id.clone());
+            match context.disc.document_of(&release) {
+                Some(answered) => ReleaseToRead::DiscIdAnswer(answered.clone()),
+                None => ReleaseToRead::ReleaseLookup(release),
+            }
+        })
         .collect();
 
     let mut pressings: Vec<PressingLookup> = Vec::new();

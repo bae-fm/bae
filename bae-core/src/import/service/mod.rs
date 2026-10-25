@@ -609,6 +609,43 @@ pub(crate) async fn prepare_release(
     depth: crate::import::payloads::ReadDepth,
     priority: CallPriority,
 ) -> Result<crate::import::source_release::SourceRelease, crate::import::ImportError> {
+    prepare(
+        library_manager,
+        release_ref,
+        depth,
+        library_manager.fetch_release_payloads(release_ref, depth, priority),
+    )
+    .await
+}
+
+/// The release a Disc ID lookup returned, read as far as an identify run
+/// ranks it: from storage, or read from `answered` and stored now, where
+/// [`prepare_release`] would fetch it. Only the documents its pages link are
+/// asked for; a complete read of it fetches its own document as well.
+pub(crate) async fn prepare_disc_id_release(
+    library_manager: &LibraryManager,
+    answered: &crate::import::payloads::DiscIdRelease,
+    priority: CallPriority,
+) -> Result<crate::import::source_release::SourceRelease, crate::import::ImportError> {
+    prepare(
+        library_manager,
+        answered.release(),
+        crate::import::payloads::ReadDepth::Identification,
+        library_manager.read_disc_id_release_payloads(answered, priority),
+    )
+    .await
+}
+
+/// `release_ref` from storage, unless reading it again at `depth` could add
+/// what its stored read missed; otherwise `read`, stored and read back.
+async fn prepare(
+    library_manager: &LibraryManager,
+    release_ref: &MetadataRef,
+    depth: crate::import::payloads::ReadDepth,
+    read: impl std::future::Future<
+        Output = Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError>,
+    >,
+) -> Result<crate::import::source_release::SourceRelease, crate::import::ImportError> {
     if let Some(stored) = library_manager.load_source_release(release_ref).await? {
         let discogs_configured =
             library_manager.can_fetch_releases_from(crate::import::Catalog::Discogs)?;
@@ -616,9 +653,7 @@ pub(crate) async fn prepare_release(
             return Ok(stored);
         }
     }
-    let payloads = library_manager
-        .fetch_release_payloads(release_ref, depth, priority)
-        .await?;
+    let payloads = read.await?;
     library_manager
         .save_source_release(&payloads.extract()?)
         .await?;

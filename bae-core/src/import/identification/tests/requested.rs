@@ -244,29 +244,21 @@ async fn a_release_its_draft_cannot_be_read_from_is_no_match() {
     let fixture = Fixture::new("interactive-projection-failure").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-projection-1", "rg-projection-1", &[probed, 0]),
-    );
-    let mut incomplete: serde_json::Value = serde_json::from_str(&release_json(
+    let mut answer: serde_json::Value = serde_json::from_str(&discid_json(
         "mb-projection-1",
         "rg-projection-1",
         &[probed, 0],
     ))
     .unwrap();
     // No artist credits: the tracklist lists the folder's tracks, and the
-    // reader refuses a release with nobody credited. The release group goes too — not because
-    // its absence fails anything, but because a document that names one sends
+    // reader refuses a release with nobody credited. The run reads the
+    // release from this answer. The release group goes too — not because its
+    // absence fails anything, but because a document that names one sends
     // the fetch after it, and this run has no group route to answer with.
-    let incomplete = incomplete.as_object_mut().unwrap();
+    let incomplete = answer["releases"][0].as_object_mut().unwrap();
     incomplete.remove("artist-credit");
     incomplete.remove("release-group");
-    fixture.provider.route(
-        "/release/mb-projection-1?",
-        200,
-        serde_json::Value::Object(incomplete.clone()).to_string(),
-    );
+    fixture.provider.route("/discid/", 200, answer.to_string());
     // Identified only when asked: nothing found here is identified on its own.
     fixture
         .manager

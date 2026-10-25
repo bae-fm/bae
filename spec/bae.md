@@ -679,18 +679,23 @@ number is now worth asking Discogs about. A run therefore goes in rounds:
 
 1. Pool every answer so far and rank it (below).
 2. Read each offered release's document. A search result states less than
-   its document: Discogs names only the first label, and no lookup lists the
+   its document: Discogs names only the first label, and no search lists the
    tracklist. A run reads only what ranking the release and joining its album
    read: the release's own page and its album's (the release group or
    master), and for a MusicBrainz release the Wikidata items and Discogs
    releases those two pages link, which its album statements (below) read. A
-   Discogs release's run read asks MusicBrainz nothing. The release is stored
-   naming every other document its pages link as one the read stopped short
-   of, and a pick, an unattended pick included, reads the rest before it
-   applies anything. That complete read of a Discogs release asks MusicBrainz
-   in one request which of its releases links the release's page and which
-   of its release groups links the master's, since the release's page names
-   its master; a page MusicBrainz knows nothing of is linked from none.
+   Discogs release's run read asks MusicBrainz nothing. A release a Disc ID
+   lookup returned is read from that answer, which lists its tracks, its
+   mediums and their Disc IDs, its labels, barcode, links and release group,
+   but not its annotation: until a pick reads it, its notes are its
+   disambiguation alone. The release is stored naming every other document
+   its pages link as one the read stopped short of, and its own page too
+   where the read took it from a Disc ID answer; a pick, an unattended pick
+   included, reads the rest, that page included, before it applies anything.
+   That complete read of a Discogs release asks MusicBrainz in one request
+   which of its releases links the release's page and which of its release
+   groups links the master's, since the release's page names its master; a
+   page MusicBrainz knows nothing of is linked from none.
 3. Ask what came into effect: a catalog number a found release carries that the
    folder states, searched on MusicBrainz as it stands and on Discogs under
    the artist of each release the run offers, whichever release carries the
@@ -2650,7 +2655,7 @@ under it.
 | `source_release_work`, `source_release_work_composer` | its MusicBrainz works |
 | `source_release_link`, `source_release_album_link`, `source_release_record`, `release_group_album_link` | what it says it is on other catalogs |
 | `source_release_cover`, `source_release_cover_copy`, `source_release_archive_group` | the images it offers a picker |
-| `source_release_unfetched` | linked documents the fetch didn't get, and why: the source failed, Discogs had no key, or a run's read stopped short of it |
+| `source_release_unfetched` | linked documents the fetch didn't get, and why: the source failed, Discogs had no key, or a run's read stopped short of it (the release's own page, where the run read it from a Disc ID answer) |
 
 ---
 

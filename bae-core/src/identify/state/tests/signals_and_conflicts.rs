@@ -396,7 +396,7 @@ fn an_artwork_reading_that_breaks_ends_the_run_mid_lookup() {
         state.clone(),
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "disc-1".into(),
-            outcome: Ok(vec![]),
+            outcome: Ok(DiscIdAnswer::for_test(vec![])),
         },
     );
     assert_eq!(after, state, "a lookup landing after the error changes nothing");
@@ -513,7 +513,9 @@ fn disc_only_resolves_to_found_with_provenance() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))]),
+            outcome: Ok(DiscIdAnswer::for_test(vec![
+                pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x")),
+            ])),
         },
     );
     match state {
@@ -540,10 +542,10 @@ fn both_signals_intersect_to_found_combined() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(vec![
+            outcome: Ok(DiscIdAnswer::for_test(vec![
                 pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x")),
                 pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-x")),
-            ]),
+            ])),
             },
     );
     let (state, _) = step(
@@ -584,7 +586,9 @@ fn a_barcode_that_named_something_else_waits_under_the_disc_id_s_answer() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))]),
+            outcome: Ok(DiscIdAnswer::for_test(vec![
+                pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x")),
+            ])),
         },
     );
     let (state, _) = step(
@@ -809,10 +813,10 @@ fn an_unchosen_catalog_number_narrows_nothing() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(vec![
+            outcome: Ok(DiscIdAnswer::for_test(vec![
                 (r_a, LibraryStatus::absent("rel-a")),
                 (r_b, LibraryStatus::absent("rel-b")),
-            ]),
+            ])),
             },
     );
     match state {
@@ -839,7 +843,7 @@ fn both_lookups_empty_is_not_found_anywhere() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(vec![]),
+            outcome: Ok(DiscIdAnswer::for_test(vec![])),
         },
     );
     let (state, _) = step(state, barcode_missed(MB, "BAR"));

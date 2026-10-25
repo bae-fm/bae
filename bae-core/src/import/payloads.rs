@@ -33,12 +33,57 @@ pub(crate) enum ReadDepth {
     /// page (a MusicBrainz release group, a Discogs master) and, for a
     /// MusicBrainz release, the Wikidata items and Discogs releases those two
     /// pages link, which its album statements read. Every other document they
-    /// name is recorded as one the read stopped short of.
+    /// name is recorded as one the read stopped short of. A release a Disc ID
+    /// lookup returned takes its own page from that answer (see
+    /// [`DiscIdRelease`]), and records the page as stopped short of too.
     Identification,
     /// Every document its links reach: what anything that applies the
     /// release reads — a pick, an unattended pick, a pick's partners, a
     /// re-identify, a shared-album offer.
     Complete,
+}
+
+/// One release as MusicBrainz's Disc ID lookup answered it: the release's own
+/// document, stating its labels, barcode, links, release group, and its
+/// media with their tracks and registered Disc IDs — everything an
+/// identification read takes from the release lookup's document, less the
+/// annotation. The recording, work and artist relations an import maps are
+/// absent too. Shared, since an identify run's state carries it from the
+/// lookup to the read.
+#[derive(Clone, PartialEq, Eq)]
+pub struct DiscIdRelease {
+    release: MetadataRef,
+    json: std::sync::Arc<str>,
+}
+
+impl DiscIdRelease {
+    /// MusicBrainz release `release_id`, as `json` states it.
+    pub(crate) fn new(release_id: String, json: String) -> Self {
+        Self {
+            release: MetadataRef::new(Catalog::MusicBrainz, release_id),
+            json: json.into(),
+        }
+    }
+
+    /// The release the answer states.
+    pub fn release(&self) -> &MetadataRef {
+        &self.release
+    }
+
+    pub(crate) fn json(&self) -> &str {
+        &self.json
+    }
+}
+
+impl std::fmt::Debug for DiscIdRelease {
+    /// The release and the document's size: the document itself is many
+    /// lines of JSON every state a run reports would print.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DiscIdRelease")
+            .field("release", &self.release)
+            .field("json_bytes", &self.json.len())
+            .finish()
+    }
 }
 
 /// Every document one catalog release's lookups produced, anchored on the
@@ -275,7 +320,7 @@ impl ReleasePayloads {
     }
 }
 
-pub(crate) use traversal::fetch_documents;
+pub(crate) use traversal::{fetch_documents, read_disc_id_release};
 
 #[cfg(test)]
 #[path = "payloads_tests.rs"]

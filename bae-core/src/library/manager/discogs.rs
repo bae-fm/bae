@@ -54,6 +54,17 @@ impl DiscogsSession {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    async fn read_disc_id_release(
+        &self,
+        answered: &crate::import::payloads::DiscIdRelease,
+        priority: CallPriority,
+    ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
+        self.providers
+            .read_disc_id_release(self.client.as_deref(), answered, priority)
+            .await
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     async fn release_covers(
         &self,
         release_id: &str,
@@ -282,16 +293,43 @@ impl LibraryManager {
         depth: crate::import::payloads::ReadDepth,
         priority: CallPriority,
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
+        self.release_read_session(release)?
+            .fetch_payloads(release, depth, priority)
+            .await
+    }
+
+    /// A release a Disc ID lookup returned, read for an identify run from
+    /// that answer (see [`crate::import::payloads::read_disc_id_release`]).
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn read_disc_id_release_payloads(
+        &self,
+        answered: &crate::import::payloads::DiscIdRelease,
+        priority: CallPriority,
+    ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
+        self.release_read_session(answered.release())?
+            .read_disc_id_release(answered, priority)
+            .await
+    }
+
+    /// The Discogs session a read of `release` asks with. A MusicBrainz
+    /// release whose session cannot be had is read without its Discogs
+    /// cross-reference, as it is without a key.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    fn release_read_session(
+        &self,
+        release: &crate::import::MetadataRef,
+    ) -> Result<DiscogsSession, crate::import::ImportError> {
         match self.discogs_session() {
-            Ok(session) => session.fetch_payloads(release, depth, priority).await,
+            Ok(session) => Ok(session),
             Err(error) if release.catalog == crate::import::Catalog::MusicBrainz => {
                 warn!(
                     release_id = %release.key,
                     "Discogs cross-reference unavailable while fetching MusicBrainz release: {error}"
                 );
-                self.providers
-                    .fetch_payloads(None, release, depth, priority)
-                    .await
+                Ok(DiscogsSession {
+                    client: None,
+                    providers: self.providers.clone(),
+                })
             }
             Err(error) => Err(error.into()),
         }

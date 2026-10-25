@@ -591,6 +591,85 @@ async fn an_identification_read_of_a_musicbrainz_release_reads_what_its_statemen
     assert_eq!(identified.metadata, completed.metadata);
 }
 
+/// A release a Disc ID lookup returned is read from that answer: the read
+/// asks for what an identification read follows from the release's page — its
+/// release group, the Wikidata item the group links, the Discogs release it
+/// links as itself — and never for the release, whose own page it records as
+/// stopped short of, which only a complete read asks for. What it read states
+/// the album as a complete read does.
+#[tokio::test]
+async fn a_read_from_a_disc_id_answer_asks_for_no_release() {
+    let answers = statement_answers();
+    let answered = DiscIdRelease::new(
+        "cycle-release".into(),
+        answers["/ws/2/release/cycle-release"].1.clone(),
+    );
+    let server = ProviderServer::start(answers).await;
+    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
+    let read = server
+        .providers
+        .read_disc_id_release(Some(&discogs), &answered, CallPriority::Interactive)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        server.requests(),
+        HashMap::from([
+            ("/ws/2/release-group/cycle-group".into(), 1),
+            ("/wiki/Special:EntityData/Q920003.json".into(), 1),
+            ("/releases/920001".into(), 1),
+        ])
+    );
+    let mut unfetched = read.unfetched.clone();
+    unfetched.sort_by_key(|document| (document.key.clone(), document.document.as_str()));
+    assert_eq!(
+        unfetched,
+        vec![
+            UnfetchedDocument {
+                document: PayloadSource::MusicBrainzDiscogsXref,
+                key: "920001".into(),
+                reason: UnfetchedReason::StoppedShort,
+            },
+            UnfetchedDocument {
+                document: PayloadSource::DiscogsMaster,
+                key: "920002".into(),
+                reason: UnfetchedReason::StoppedShort,
+            },
+            UnfetchedDocument {
+                document: PayloadSource::MusicBrainzDiscogsMasterXref,
+                key: "920002".into(),
+                reason: UnfetchedReason::StoppedShort,
+            },
+            UnfetchedDocument {
+                document: PayloadSource::MusicBrainz,
+                key: "cycle-release".into(),
+                reason: UnfetchedReason::StoppedShort,
+            },
+        ]
+    );
+    let stored = read.extract().unwrap();
+    assert!(!stored.fetch_could_add(ReadDepth::Identification, true));
+    assert!(stored.fetch_could_add(ReadDepth::Complete, true));
+
+    let complete_server = ProviderServer::start(statement_answers()).await;
+    let complete_discogs =
+        DiscogsClient::new(complete_server.providers.discogs().clone(), "fixture-token".into());
+    let complete = complete_server
+        .providers
+        .fetch_payloads(
+            Some(&complete_discogs),
+            answered.release(),
+            ReadDepth::Complete,
+            CallPriority::Interactive,
+        )
+        .await
+        .unwrap()
+        .extract()
+        .unwrap();
+    assert_eq!(stored.album_links(), complete.album_links());
+    assert_eq!(stored.links(), complete.links());
+}
+
 #[tokio::test]
 async fn ambiguous_master_backlinks_do_not_fetch_or_claim_either_album() {
     let server = ProviderServer::start(HashMap::from([

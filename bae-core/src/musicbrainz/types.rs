@@ -233,11 +233,12 @@ impl MbReleaseResponse {
     }
 }
 
-/// Response from the disc ID lookup endpoint
-#[derive(Debug, Clone, Deserialize)]
+/// Response from the disc ID lookup endpoint: each release's whole document,
+/// as MusicBrainz sent it.
+#[derive(Debug, Deserialize)]
 pub(super) struct DiscIdResponse {
     #[serde(default)]
-    pub(super) releases: Vec<MbReleaseResponse>,
+    pub(super) releases: Vec<Box<serde_json::value::RawValue>>,
 }
 
 /// Response from the release search endpoint

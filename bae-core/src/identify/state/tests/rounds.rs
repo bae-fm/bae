@@ -82,13 +82,13 @@ fn a_number_the_text_prints_that_a_found_release_carries_is_searched_on_both_cat
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(vec![
+            outcome: Ok(DiscIdAnswer::for_test(vec![
                 (
                     labelled(MB, "mb-1", "Label", "AB 12345-2"),
                     LibraryStatus::absent("mb-1"),
                 ),
                 pair("mb-2", Some("g")),
-            ]),
+            ])),
             },
     );
     assert!(
@@ -176,7 +176,7 @@ fn a_number_only_the_artwork_prints_is_not_confirmed_over_the_folder_names() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(vec![
+            outcome: Ok(DiscIdAnswer::for_test(vec![
                 (
                     labelled(MB, "mb-1", "Label", "AB-100"),
                     LibraryStatus::absent("mb-1"),
@@ -185,7 +185,7 @@ fn a_number_only_the_artwork_prints_is_not_confirmed_over_the_folder_names() {
                     labelled(MB, "mb-2", "Other", "XY-250"),
                     LibraryStatus::absent("mb-2"),
                 ),
-            ]),
+            ])),
             },
     );
     let IdentifyState::Triangulating { context, .. } = &state else {
@@ -242,7 +242,7 @@ fn a_row_with_no_link_and_no_barcode_is_looked_up_by_its_number_under_its_label(
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(vec![(record, LibraryStatus::absent("mb-1"))]),
+            outcome: Ok(DiscIdAnswer::for_test(vec![(record, LibraryStatus::absent("mb-1"))])),
         },
     );
     let (state, effects, asked) = answer_rounds(
@@ -298,7 +298,7 @@ fn a_failed_pressing_lookup_fails_the_run() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(vec![(record, LibraryStatus::absent("mb-1"))]),
+            outcome: Ok(DiscIdAnswer::for_test(vec![(record, LibraryStatus::absent("mb-1"))])),
         },
     );
     while let Some(effect) = effects.pop() {
@@ -307,7 +307,7 @@ fn a_failed_pressing_lookup_fails_the_run() {
                 read: releases
                     .into_iter()
                     .map(|release| ReleaseReading {
-                        release,
+                        release: release.release().clone(),
                         document: Err(LookupFailure::Network),
                     })
                     .collect(),
@@ -365,7 +365,7 @@ fn a_number_is_searched_on_discogs_under_each_offered_rows_artist() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(vec![
+            outcome: Ok(DiscIdAnswer::for_test(vec![
                 (
                     labelled(MB, "mb-1", "Label", "AB-100"),
                     LibraryStatus::absent("mb-1"),
@@ -384,7 +384,7 @@ fn a_number_is_searched_on_discogs_under_each_offered_rows_artist() {
                     ),
                     LibraryStatus::absent("mb-3"),
                 ),
-            ]),
+            ])),
         },
     );
     let IdentifyState::Triangulating {
@@ -425,10 +425,10 @@ fn a_release_of_another_artist_carrying_the_number_adds_no_search() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(vec![(
+            outcome: Ok(DiscIdAnswer::for_test(vec![(
                 labelled(MB, "mb-1", "Label", "AB-100"),
                 LibraryStatus::absent("mb-1"),
-            )]),
+            )])),
         },
     );
     assert!(effects.contains(&catalog_lookup(DG, "AB-100")), "{effects:?}");
@@ -514,10 +514,10 @@ fn a_picked_number_is_searched_as_it_stands_and_not_again_under_an_artist() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(vec![(
+            outcome: Ok(DiscIdAnswer::for_test(vec![(
                 labelled(MB, "mb-1", "Label", "AB-100"),
                 LibraryStatus::absent("mb-1"),
-            )]),
+            )])),
         },
     );
     asked.extend(more);
@@ -558,10 +558,10 @@ fn a_rows_number_searched_under_its_artist_is_not_looked_up_again() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(vec![(
+            outcome: Ok(DiscIdAnswer::for_test(vec![(
                 labelled(MB, "mb-1", "Label", "AB-100"),
                 LibraryStatus::absent("mb-1"),
-            )]),
+            )])),
         },
     );
     let (mut state, effects, mut asked) = answer_rounds(
@@ -629,10 +629,10 @@ fn a_compilations_number_is_searched_alone_on_discogs_too() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(vec![(
+            outcome: Ok(DiscIdAnswer::for_test(vec![(
                 credited(MB, "mb-1", "Various Artists", "Label", "AB-100"),
                 LibraryStatus::absent("mb-1"),
-            )]),
+            )])),
         },
     );
     assert_eq!(
@@ -657,10 +657,10 @@ fn a_number_is_not_searched_again_once_no_row_is_offered() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(vec![(
+            outcome: Ok(DiscIdAnswer::for_test(vec![(
                 labelled(MB, "mb-1", "Label", "AB-100"),
                 LibraryStatus::absent("mb-1"),
-            )]),
+            )])),
         },
     );
     let other_tracks = |_: &MetadataRef| ReleaseDocument {
@@ -722,5 +722,48 @@ fn an_answer_lands_on_the_search_waiting_on_its_catalog() {
         LookupState::Done {
             results: Vec::new()
         }
+    );
+}
+
+/// An offered release the Disc ID lookup answered with its document is read
+/// from that document; one the answer carries no document for is read with
+/// its release lookup.
+#[test]
+fn a_release_the_disc_id_answered_is_read_from_its_answer() {
+    let state = disc_run_of_folder("Some Album", &[]);
+    let answered = crate::import::payloads::DiscIdRelease::new(
+        "mb-answered".to_string(),
+        r#"{"id":"mb-answered"}"#.to_string(),
+    );
+    // Two pressings, told apart by where each was released.
+    let released_in = |release_id: &str, country: &str| {
+        let (mut result, status) = pair(release_id, Some("g"));
+        result.area = Some(crate::pressing::area(country));
+        (result, status)
+    };
+    let (_, effects) = super::step(
+        state,
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(DiscIdAnswer {
+                results: vec![released_in("mb-answered", "DE"), released_in("mb-other", "GB")],
+                documents: vec![answered.clone()],
+            }),
+        },
+    );
+    let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {
+        panic!("the run reads its offered records' documents, got {effects:?}");
+    };
+    let mut releases = releases.clone();
+    releases.sort_by_key(|release| release.release().key.clone());
+    assert_eq!(
+        releases,
+        vec![
+            crate::identify::documents::ReleaseToRead::DiscIdAnswer(answered),
+            crate::identify::documents::ReleaseToRead::ReleaseLookup(MetadataRef::new(
+                MB,
+                "mb-other"
+            )),
+        ]
     );
 }

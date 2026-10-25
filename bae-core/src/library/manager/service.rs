@@ -313,7 +313,13 @@ impl LibraryManager {
         &self,
         discid: &str,
         priority: crate::util::rate_limiter::CallPriority,
-    ) -> Result<Vec<crate::import::search::MetadataResult>, crate::signals::Failure> {
+    ) -> Result<
+        Vec<(
+            crate::import::search::MetadataResult,
+            crate::import::payloads::DiscIdRelease,
+        )>,
+        crate::signals::Failure,
+    > {
         self.providers
             .lookup_musicbrainz_discid(discid, priority)
             .await

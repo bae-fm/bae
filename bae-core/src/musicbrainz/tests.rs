@@ -857,7 +857,7 @@ async fn transient_failures_are_not_kept() {
         .lookup_by_discid("disc-transient", CallPriority::Interactive)
         .await
         .expect("the provider recovered");
-    assert_eq!(releases[0].id, "mb-after-transient");
+    assert_eq!(releases[0].0.id, "mb-after-transient");
     assert_eq!(
         requests.load(Ordering::SeqCst),
         attempts + 1,

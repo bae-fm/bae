@@ -31,6 +31,7 @@ fn reading_titled_documents(
     let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {
         panic!("the run reads its offered records' documents, got {effects:?}");
     };
+    let releases = &records_read(releases);
     (state, releases.clone())
 }
 
