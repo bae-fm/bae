@@ -53,6 +53,7 @@ impl ImportService {
         root: &Path,
         generation: u64,
         item: &ScanItem,
+        reads: &Arc<crate::import::folder_scanner::FileReads>,
         services: &crate::import::ImportServices,
     ) -> Result<Option<PersistedScanItem>, crate::import::ImportError> {
         let library_manager = &services.library_manager;
@@ -86,7 +87,7 @@ impl ImportService {
             // share does, and every pane control waits on this lock.
             let (item, edits_read) = Self::with_stored_file_edits(item, library_manager).await?;
             let file_metadata = library_manager
-                .scan_item_seed(&item, generation, services.file_tags.clone())
+                .scan_item_seed(&item, generation, reads.clone())
                 .await?;
             let commit = services.folder_state_commit.lock("store a scan item").await;
             // A file decision stored while the tags were being read describes
@@ -399,8 +400,15 @@ impl ImportService {
             .load_folder_release_decisions(root_key)
             .await?;
         // What the last pass over this root read of each file, so this one
-        // opens only the files that are new or changed since.
-        let reads = library_manager.load_file_reads(root_key).await?;
+        // opens only the files that are new or changed since, and what this
+        // one reads, which the drafts of the releases it finds are seeded
+        // from.
+        let reads = Arc::new(
+            library_manager
+                .load_file_reads(root_key, services.file_tags.clone())
+                .await?,
+        );
+        let walk_reads = reads.clone();
         // Which candidates under this root the person skipped, read once for
         // the pass: the stamp each written candidate carries out to the list.
         let skipped = library_manager
@@ -441,7 +449,7 @@ impl ImportService {
                     decisions: &decisions,
                     new_grouping_key: &new_key,
                 },
-                &reads,
+                &walk_reads,
                 &walk_cancellation,
                 |directory| {
                     match (directory_mtimes.as_mut(), directory_modified_at(&directory)) {
@@ -519,7 +527,7 @@ impl ImportService {
                 item => item,
             };
             let Some(persisted) =
-                Self::persist_scan_item(root, generation, &item, services).await?
+                Self::persist_scan_item(root, generation, &item, &reads, services).await?
             else {
                 Self::cancel_and_join_folder_walk(root, cancellation, &mut item_rx, walk).await?;
                 return Ok(());

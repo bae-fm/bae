@@ -78,7 +78,7 @@ fn io_error_validating_audio_surfaces_not_swallowed() {
         &StoredCandidateEdits::none(),
         &[],
         &ScanCancellation::new(),
-        &FileReads::new(),
+        &FileReads::new(Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader)),
     );
     assert!(
         result.is_err(),

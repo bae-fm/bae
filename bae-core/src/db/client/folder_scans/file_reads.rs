@@ -4,17 +4,20 @@
 
 use super::read::{load_items, RowSources, StoredFileTags, FILE_TAG_COLUMNS};
 use super::*;
-use crate::import::file_tag_snapshot::{FileTagSnapshot, FileTags};
-use crate::import::folder_scanner::{FileReads, FileVersion, ScannedFile};
+use crate::import::file_tag_snapshot::{FileTagReader, FileTagSnapshot, FileTags};
+use crate::import::folder_scanner::{FileReads, FileVersion};
+use std::sync::Arc;
 
 impl Database {
     /// What the scans of `watched_folder_path` stored about each file they
-    /// read: its entries, its folders' sidecars, and the tags read from its
-    /// releases' tracks. A store that says two things about one file fails
-    /// the read.
+    /// read — its entries, its folders' sidecars, and the tags read from its
+    /// releases' tracks — for a pass that reads any other track's tags
+    /// through `tags`. A store that says two things about one file fails the
+    /// read.
     pub(crate) async fn load_file_reads(
         &self,
         watched_folder_path: &str,
+        tags: Arc<dyn FileTagReader>,
     ) -> Result<FileReads, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
         self.read(move |sql| {
@@ -34,52 +37,47 @@ impl Database {
                     })
                 })
                 .collect::<Result<Vec<_>, DbError>>()?;
-            let tags = load_root_file_tags(&sql, &watched_folder_path)?;
-            Ok((items, sidecars, tags))
+            let stored_tags = load_root_file_tags(&sql, &watched_folder_path)?;
+            Ok((items, sidecars, stored_tags))
         })
-        .process(|(items, sidecars, tags)| {
+        .process(move |(items, sidecars, stored_tags)| {
             let entries: Vec<ScanItem> = items()?
                 .into_iter()
                 .map(|stored| stored.item)
                 .chain(sidecars.into_iter().map(ScanItem::Sidecar))
                 .collect();
-            FileReads::stored(&entries, &tags).map_err(|error| DbError::Message(error.to_string()))
+            FileReads::stored(&entries, &stored_tags, tags)
+                .map_err(|error| DbError::Message(error.to_string()))
         })
         .await
     }
-}
 
-impl Database {
     /// The tag reading stored for the release at `candidate_path` under
-    /// `watched_folder_path`, when it was read from exactly `audio_files`: the
-    /// same tracks at the same paths, in the same order, each at the version
-    /// it has now.
-    pub(crate) async fn load_file_tag_snapshot_read_from(
+    /// `watched_folder_path`, when the release stored there reads its files
+    /// from `file_root`: each of its facts is then of the file at the same
+    /// path below that folder.
+    pub(crate) async fn load_stored_file_tag_reading(
         &self,
         watched_folder_path: &str,
         candidate_path: &str,
-        audio_files: Vec<ScannedFile>,
+        file_root: &Path,
     ) -> Result<Option<FileTagSnapshot>, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
         let candidate_path = candidate_path.to_string();
+        let file_root = file_root.to_string_lossy().into_owned();
         self.read(move |sql| {
-            let Some(snapshot) =
-                read::load_file_tag_snapshot(&sql, &watched_folder_path, &candidate_path)?
-            else {
+            let stored_root: Option<String> = sql
+                .query_row(
+                    "SELECT file_root FROM scan_candidate \
+                     WHERE watched_folder_path = ? AND path = ?",
+                    params![watched_folder_path, candidate_path],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            if stored_root.as_deref() != Some(file_root.as_str()) {
                 return Ok(None);
-            };
-            let stored: Vec<(String, String)> = sql.query(
-                "SELECT relative_path, absolute_path FROM scan_candidate_file \
-                 WHERE watched_folder_path = ? AND candidate_path = ? AND role = 'audio' \
-                 ORDER BY position",
-                params![watched_folder_path, candidate_path],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            )?;
-            let same_tracks = stored.len() == audio_files.len()
-                && stored.iter().zip(&audio_files).all(|((relative_path, path), file)| {
-                    *relative_path == file.relative_path && Path::new(path) == file.path
-                });
-            Ok((same_tracks && snapshot.was_read_from(audio_files.iter())).then_some(snapshot))
+            }
+            read::load_file_tag_snapshot(&sql, &watched_folder_path, &candidate_path)
         })
         .await
     }

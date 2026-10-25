@@ -66,7 +66,6 @@ impl ReadableFiles {
         let mut reads = Vec::new();
         for track in &self.tracks {
             reads.push((track.clone(), "probe", count(FileRead::Probe, track)));
-            reads.push((track.clone(), "numbers", count(FileRead::TagNumbers, track)));
             reads.push((track.clone(), "tags", tags.reads_of(track)));
         }
         for image in &self.images {
@@ -150,10 +149,10 @@ async fn readable_root(test: &TestService) -> ReadableFiles {
     }
 }
 
-/// A rescan of a folder nothing in has changed opens none of its files: every
-/// track's stream and numbers, every image's check, every sheet's parse and
-/// every release's tags are what the last scan stored. What it stores is what
-/// was there.
+/// A first scan reads each file once — each track's stream and tags, each
+/// image's header, each sheet — and a rescan of a folder nothing in has
+/// changed opens none of them: every one of those, and every release's tags,
+/// is what the last scan stored. What it stores is what was there.
 #[tokio::test]
 async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
     let test = setup_import_service().await;
@@ -166,12 +165,11 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
     let root_key = files.root.to_string_lossy().into_owned();
     scan.rescan(&files.root).await.unwrap();
     let first = files.reads(&tags);
-    assert!(
-        first
-            .iter()
-            .any(|(path, read, count)| *read == "probe" && *count > 0 && path.ends_with("03.flac")),
-        "the first scan reads the folder: {first:?}"
-    );
+    for (path, read, count) in &first {
+        // A track FFmpeg finds nothing in has no tags to read.
+        let expected = u64::from(!(*read == "tags" && path.ends_with("Broken/03.flac")));
+        assert_eq!(*count, expected, "{read} of {}", path.display());
+    }
     let stored = test
         .service
         .library_manager
@@ -246,9 +244,7 @@ async fn a_rescan_reads_again_only_the_file_that_changed() {
 
     for ((path, read, before), (_, _, after)) in before.iter().zip(files.reads(&tags)) {
         let expected = match *read {
-            "probe" | "numbers" if *path == changed => before + 1,
-            // The release's draft reads its tracks' tags again.
-            "tags" if path.starts_with(&files.album) => after,
+            "probe" | "tags" if *path == changed => before + 1,
             _ => *before,
         };
         assert_eq!(after, expected, "{read} of {}", path.display());
@@ -306,4 +302,98 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
         .snapshot
         .unwrap()
         .same_reading(&reading.snapshot.unwrap()));
+}
+
+/// Reads tags as [`CountingTagReader`] does, and says each track embeds
+/// `picture`.
+struct EmbeddingTagReader {
+    counted: CountingTagReader,
+    picture: Vec<u8>,
+}
+
+impl crate::import::file_tag_snapshot::FileTagReader for EmbeddingTagReader {
+    fn read(
+        &self,
+        path: &Path,
+    ) -> Result<crate::import::file_tag_snapshot::FileTagRead, crate::import::ImportError> {
+        let mut read = self.counted.read(path)?;
+        read.embedded_cover = Some((
+            self.picture.clone(),
+            crate::util::content_type::ContentType::Jpeg,
+        ));
+        Ok(read)
+    }
+}
+
+/// A first scan reads each track's tags once, though it reads each disc
+/// folder as a release of its own before reading the set as one: the walk's
+/// reading places the tracks, and every one of those releases' drafts takes
+/// its tags and its first track's picture from it.
+#[tokio::test]
+async fn a_first_scan_reads_each_tracks_tags_once() {
+    let test = setup_import_service().await;
+    let watched = test.temp.path().join("watched");
+    let mut tracks = Vec::new();
+    for disc in ["CD1", "CD2"] {
+        let folder = watched.join("Album").join(disc);
+        std::fs::create_dir_all(&folder).unwrap();
+        for n in 1..=2 {
+            std::fs::write(folder.join(format!("0{n}.flac")), flac()).unwrap();
+            tracks.push(format!("Album/{disc}/0{n}.flac"));
+        }
+    }
+    let picture_path = test.temp.path().join("picture.jpg");
+    write_test_jpeg(&picture_path);
+    let root = PathBuf::from(
+        crate::import::watched_folder::canonical_absolute_root(&watched.to_string_lossy()).unwrap(),
+    );
+    let root_key = root.to_string_lossy().into_owned();
+    test.service
+        .library_manager
+        .add_watched_import_folder(&root_key)
+        .await
+        .unwrap();
+    let tags = Arc::new(EmbeddingTagReader {
+        counted: CountingTagReader::default(),
+        picture: std::fs::read(&picture_path).unwrap(),
+    });
+    let (scan, _) = test.scan_with(
+        tags.clone(),
+        Arc::new(crate::import::folder_scanner::OsDirectoryReader),
+    );
+
+    scan.rescan(&root).await.unwrap();
+
+    for track in &tracks {
+        assert_eq!(tags.counted.reads_of(&root.join(track)), 1, "{track}");
+    }
+    let release = test
+        .service
+        .library_manager
+        .load_folder_scan_items(&root_key)
+        .await
+        .unwrap()
+        .into_iter()
+        .find_map(|item| match item {
+            ScanItem::Valid(candidate) => Some(candidate),
+            _ => None,
+        })
+        .expect("the discs read as one release");
+    assert_eq!(release.files.audio().count(), 4);
+    let reading = test
+        .service
+        .library_manager
+        .load_candidate_file_tag_snapshot(&root_key, &release.key())
+        .await
+        .unwrap()
+        .unwrap()
+        .snapshot
+        .expect("the release's draft was seeded from its tags");
+    assert_eq!(reading.files.len(), 4);
+    assert_eq!(
+        reading
+            .embedded_cover
+            .map(|cover| cover.source_relative_path),
+        Some("CD1/01.flac".to_string())
+    );
 }

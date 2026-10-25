@@ -163,36 +163,17 @@ fn primary_tag(tagged: &lofty::file::TaggedFile) -> Option<&lofty::tag::Tag> {
     tagged.primary_tag().or_else(|| tagged.first_tag())
 }
 
-/// The disc and track numbers `path`'s tags state, read from the same tag
-/// [`LoftyFileTagReader`] reads, without its audio properties or artwork.
-pub(crate) fn read_tag_numbers(path: &Path) -> Result<TrackNumbers, ImportError> {
-    #[cfg(test)]
-    crate::test_reads::record(crate::test_reads::FileRead::TagNumbers, path);
-    let tagged = Probe::open(path)
-        .map_err(|error| ImportError::file_tags("open", path, error))?
-        .options(
-            ParseOptions::new()
-                .read_properties(false)
-                .read_cover_art(false),
-        )
-        .read()
-        .map_err(|error| ImportError::file_tags("read tags from", path, error))?;
-    Ok(match primary_tag(&tagged) {
-        Some(tag) => TrackNumbers::of_tag(tag),
-        None => TrackNumbers::unstated(),
-    })
-}
-
 impl FileTagReader for LoftyFileTagReader {
+    /// Opens and parses `path` once: the concrete format's own reading, for
+    /// the ID3v2 frames and MP4 atoms only it keeps, is the one the generic
+    /// tag is taken from.
     fn read(&self, path: &Path) -> Result<FileTagRead, ImportError> {
-        let probe =
-            Probe::open(path).map_err(|error| ImportError::file_tags("open", path, error))?;
-        let file_type = probe.file_type();
-        let tagged = probe
-            .read()
-            .map_err(|error| ImportError::file_tags("read tags from", path, error))?;
-        let tag = primary_tag(&tagged);
-        let store = store_marker(path, file_type, tag)?;
+        let file_type = FileType::from_path(path);
+        let file = File::open(path).map_err(|error| ImportError::file_tags("open", path, error))?;
+        let mut reader = BufReader::new(file);
+        let parsed = parse(&mut reader, path, file_type)?;
+        let tag = primary_tag(&parsed.tagged);
+        let store = store_marker(parsed.itunes_purchase, tag);
         let Some(tag) = tag else {
             return Ok(FileTagRead {
                 tags: FileTags {
@@ -203,8 +184,26 @@ impl FileTagReader for LoftyFileTagReader {
             });
         };
         let legacy = match tag.tag_type() {
-            TagType::Id3v2 => legacy_id3v2_text(path, file_type)?,
-            TagType::Id3v1 => legacy_id3v1_text(path)?,
+            TagType::Id3v2 => match parsed.id3v2 {
+                Id3v2Frames::Kept(Some(legacy)) => legacy,
+                Id3v2Frames::Kept(None) => {
+                    return Err(ImportError::FileTags {
+                        detail: format!(
+                            "{} was reported as ID3v2-tagged but its concrete tag was absent",
+                            path.display()
+                        ),
+                    })
+                }
+                Id3v2Frames::Unkept => {
+                    return Err(ImportError::FileTags {
+                        detail: format!(
+                            "{} exposed an ID3v2 tag through an audio format that cannot preserve its frame encoding",
+                            path.display()
+                        ),
+                    })
+                }
+            },
+            TagType::Id3v1 => legacy_id3v1_text(&mut reader, path)?,
             _ => LegacyTagText::default(),
         };
         let values = |legacy: Option<Vec<String>>, key: ItemKey| {
@@ -231,6 +230,86 @@ impl FileTagReader for LoftyFileTagReader {
             embedded_cover: embedded_cover_from_tag(tag),
         })
     }
+}
+
+/// One file as lofty parses it: its tags, and what only its concrete format's
+/// reading says.
+struct ParsedFile {
+    tagged: lofty::file::TaggedFile,
+    id3v2: Id3v2Frames,
+    /// Whether an MP4 file carries an atom iTunes writes only into a purchase.
+    itunes_purchase: bool,
+}
+
+/// The ID3v2 frames a format keeps as they were written, which a tag that
+/// names its own encoding wrongly is decoded from.
+enum Id3v2Frames {
+    /// The format keeps them: the legacy text of its ID3v2 tag, when it has
+    /// one.
+    Kept(Option<LegacyTagText>),
+    /// The format keeps none of its own.
+    Unkept,
+}
+
+/// Parse the file `reader` reads, of `file_type` as its extension says, once.
+fn parse(
+    reader: &mut BufReader<File>,
+    path: &Path,
+    file_type: Option<FileType>,
+) -> Result<ParsedFile, ImportError> {
+    use lofty::mp4::{AtomIdent, Mp4File};
+    let options = ParseOptions::new().read_properties(false);
+    let parsed = match file_type {
+        Some(FileType::Aac) => parse_keeping_id3v2::<lofty::aac::AacFile>(reader, options),
+        Some(FileType::Aiff) => parse_keeping_id3v2::<lofty::iff::aiff::AiffFile>(reader, options),
+        Some(FileType::Ape) => parse_keeping_id3v2::<lofty::ape::ApeFile>(reader, options),
+        Some(FileType::Flac) => parse_keeping_id3v2::<lofty::flac::FlacFile>(reader, options),
+        Some(FileType::Mpeg) => parse_keeping_id3v2::<lofty::mpeg::MpegFile>(reader, options),
+        Some(FileType::Mpc) => parse_keeping_id3v2::<lofty::musepack::MpcFile>(reader, options),
+        Some(FileType::Wav) => parse_keeping_id3v2::<lofty::iff::wav::WavFile>(reader, options),
+        Some(FileType::Mp4) => Mp4File::read_from(reader, options).map(|parsed| {
+            let itunes_purchase = parsed.ilst().is_some_and(|ilst| {
+                [*b"purd", *b"apID", *b"ownr"]
+                    .iter()
+                    .any(|atom| ilst.get(&AtomIdent::Fourcc(*atom)).is_some())
+            });
+            ParsedFile {
+                tagged: parsed.into(),
+                id3v2: Id3v2Frames::Unkept,
+                itunes_purchase,
+            }
+        }),
+        other => match other {
+            Some(file_type) => Probe::with_file_type(reader, file_type),
+            None => Probe::new(reader),
+        }
+        .options(options)
+        .read()
+        .map(|tagged| ParsedFile {
+            tagged,
+            id3v2: Id3v2Frames::Unkept,
+            itunes_purchase: false,
+        }),
+    };
+    parsed.map_err(|error| ImportError::file_tags("read tags from", path, error))
+}
+
+/// The file parsed as the format `F`, which keeps its ID3v2 frames, with the
+/// legacy text of its ID3v2 tag.
+fn parse_keeping_id3v2<F>(
+    reader: &mut BufReader<File>,
+    options: ParseOptions,
+) -> Result<ParsedFile, lofty::error::FileParseError>
+where
+    F: AudioFile + HasId3v2Tag + Into<lofty::file::TaggedFile>,
+{
+    let parsed = F::read_from(reader, options)?;
+    let legacy = parsed.id3v2_tag().map(legacy_id3v2_text);
+    Ok(ParsedFile {
+        tagged: parsed.into(),
+        id3v2: Id3v2Frames::Kept(legacy),
+        itunes_purchase: false,
+    })
 }
 
 /// `values` as a tag states them: each trimmed, blank ones dropped, and a
@@ -261,34 +340,16 @@ struct LegacyTagText {
 }
 
 /// The store a file's tags say sold it, if any — see [`StoreMarker`].
-fn store_marker(
-    path: &Path,
-    file_type: Option<FileType>,
-    tag: Option<&lofty::tag::Tag>,
-) -> Result<Option<StoreMarker>, ImportError> {
-    if file_type == Some(FileType::Mp4) && itunes_purchase(path)? {
-        return Ok(Some(StoreMarker::ITunesPurchase));
+fn store_marker(itunes_purchase: bool, tag: Option<&lofty::tag::Tag>) -> Option<StoreMarker> {
+    if itunes_purchase {
+        return Some(StoreMarker::ITunesPurchase);
     }
     let bandcamp = tag
         .and_then(|tag| tag.get_string(ItemKey::Comment))
         .is_some_and(|comment| {
             comment.trim_start().starts_with("Visit ") && comment.contains(".bandcamp.com")
         });
-    Ok(bandcamp.then_some(StoreMarker::Bandcamp))
-}
-
-/// Whether an MP4 file carries an atom iTunes writes only into a purchase.
-fn itunes_purchase(path: &Path) -> Result<bool, ImportError> {
-    use lofty::mp4::{AtomIdent, Mp4File};
-    let file = File::open(path).map_err(|error| ImportError::file_tags("open", path, error))?;
-    let mut reader = BufReader::new(file);
-    let parsed = Mp4File::read_from(&mut reader, ParseOptions::new().read_properties(false))
-        .map_err(|error| ImportError::file_tags("read MP4 atoms from", path, error))?;
-    Ok(parsed.ilst().is_some_and(|ilst| {
-        [*b"purd", *b"apID", *b"ownr"]
-            .iter()
-            .any(|atom| ilst.get(&AtomIdent::Fourcc(*atom)).is_some())
-    }))
+    bandcamp.then_some(StoreMarker::Bandcamp)
 }
 
 trait HasId3v2Tag {
@@ -317,57 +378,24 @@ impl_has_id3v2_tag!(
     lofty::musepack::MpcFile,
 );
 
-fn legacy_id3v2_text(
-    path: &Path,
-    file_type: Option<FileType>,
-) -> Result<LegacyTagText, ImportError> {
-    match file_type {
-        Some(FileType::Aac) => read_legacy_id3v2_text::<lofty::aac::AacFile>(path),
-        Some(FileType::Aiff) => read_legacy_id3v2_text::<lofty::iff::aiff::AiffFile>(path),
-        Some(FileType::Ape) => read_legacy_id3v2_text::<lofty::ape::ApeFile>(path),
-        Some(FileType::Flac) => read_legacy_id3v2_text::<lofty::flac::FlacFile>(path),
-        Some(FileType::Mpeg) => read_legacy_id3v2_text::<lofty::mpeg::MpegFile>(path),
-        Some(FileType::Mpc) => read_legacy_id3v2_text::<lofty::musepack::MpcFile>(path),
-        Some(FileType::Wav) => read_legacy_id3v2_text::<lofty::iff::wav::WavFile>(path),
-        Some(_) | None => Err(ImportError::FileTags {
-            detail: format!(
-                "{} exposed an ID3v2 tag through an audio format that cannot preserve its frame encoding",
-                path.display()
-            ),
-        }),
-    }
-}
-
-fn read_legacy_id3v2_text<F>(path: &Path) -> Result<LegacyTagText, ImportError>
-where
-    F: AudioFile + HasId3v2Tag,
-{
-    let file = File::open(path).map_err(|error| ImportError::file_tags("open", path, error))?;
-    let mut reader = BufReader::new(file);
-    let parsed = F::read_from(&mut reader, ParseOptions::new().read_properties(false))
-        .map_err(|error| ImportError::file_tags("read ID3v2 frames from", path, error))?;
-    let Some(tag) = parsed.id3v2_tag() else {
-        return Err(ImportError::FileTags {
-            detail: format!(
-                "{} was reported as ID3v2-tagged but its concrete tag was absent",
-                path.display()
-            ),
-        });
-    };
+/// The legacy text of an ID3v2 tag's frames.
+fn legacy_id3v2_text(tag: &Id3v2Tag) -> LegacyTagText {
     let joined = |values: Option<Vec<String>>| values.map(|values| values.join("/"));
-    Ok(LegacyTagText {
+    LegacyTagText {
         title: joined(decoded_latin1_frame(tag, "TIT2")),
         track_artists: decoded_latin1_frame(tag, "TPE1"),
         album_title: joined(decoded_latin1_frame(tag, "TALB")),
         album_artists: decoded_latin1_frame(tag, "TPE2"),
         labels: decoded_latin1_frame(tag, "TPUB"),
         copyrights: decoded_latin1_frame(tag, "TCOP"),
-    })
+    }
 }
 
-fn legacy_id3v1_text(path: &Path) -> Result<LegacyTagText, ImportError> {
-    let file = File::open(path).map_err(|error| ImportError::file_tags("open", path, error))?;
-    let mut reader = BufReader::new(file);
+/// The legacy text of the ID3v1 tag at the end of the file `reader` reads.
+fn legacy_id3v1_text(
+    reader: &mut BufReader<File>,
+    path: &Path,
+) -> Result<LegacyTagText, ImportError> {
     reader
         .seek(SeekFrom::End(-128))
         .map_err(|error| ImportError::file_tags("seek to the ID3v1 tag in", path, error))?;
@@ -436,21 +464,31 @@ pub(crate) fn observe_audio_files(
     audio_files.iter().map(observe_file).collect()
 }
 
+/// `file`'s tags as `reader` reads them, with the file as it was while they
+/// were read: the scanned size, at the modification time it has now.
+pub(crate) fn read_observed(
+    file: &ScannedFile,
+    reader: &dyn FileTagReader,
+) -> Result<(FileObservation, FileTagRead), ImportError> {
+    let before = observe_file(file)?;
+    let read = reader.read(&file.path)?;
+    let after = observe_file(file)?;
+    if before != after {
+        return Err(changed_file_error(file));
+    }
+    Ok((before, read))
+}
+
 pub(crate) fn extract_file_tag_snapshot(
     audio_files: &[ScannedFile],
     scan_generation: u64,
     file_edit_revision: u64,
     reader: &dyn FileTagReader,
 ) -> Result<FileTagSnapshot, ImportError> {
-    let observations = observe_audio_files(audio_files)?;
     let mut facts = Vec::with_capacity(audio_files.len());
     let mut embedded_cover = None;
-    for (file, before) in audio_files.iter().zip(observations) {
-        let read = reader.read(&file.path)?;
-        let after = observe_file(file)?;
-        if before != after {
-            return Err(changed_file_error(file));
-        }
+    for file in audio_files {
+        let (before, read) = read_observed(file, reader)?;
         if embedded_cover.is_none() {
             embedded_cover = read
                 .embedded_cover

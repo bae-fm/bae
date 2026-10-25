@@ -14,8 +14,6 @@ pub(crate) enum FileRead {
     ImageCheck,
     /// It was parsed as a CUE sheet.
     CueParse,
-    /// Its tags were read for the disc and track numbers they state.
-    TagNumbers,
 }
 
 fn counts() -> &'static Mutex<HashMap<(FileRead, PathBuf), u64>> {

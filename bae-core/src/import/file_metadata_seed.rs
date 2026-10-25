@@ -21,19 +21,22 @@ pub(crate) struct FileMetadataSeed {
 }
 
 impl FileMetadataSeed {
-    /// Read `candidate`'s audio files and project what they say into the draft
-    /// a candidate starts from.
+    /// Project what `candidate`'s audio files' tags say into the draft a
+    /// candidate starts from: what `reads` holds of them and `stored` — the
+    /// reading stored for the candidate, taken under the same folder — says,
+    /// and a read of whatever neither knows.
     pub(crate) fn read(
         candidate: &crate::import::folder_scanner::FolderCandidate,
         scan_generation: u64,
-        reader: &dyn crate::import::file_tag_snapshot::FileTagReader,
+        reads: &crate::import::folder_scanner::FileReads,
+        stored: Option<&FileTagSnapshot>,
     ) -> Result<Self, ImportError> {
         let audio_files = candidate.files.audio().cloned().collect::<Vec<_>>();
-        let snapshot = crate::import::file_tag_snapshot::extract_file_tag_snapshot(
+        let snapshot = reads.tag_snapshot(
             &audio_files,
             scan_generation,
             candidate.file_edit_revision,
-            reader,
+            stored,
         )?;
         Self::project(candidate, snapshot, None)
     }

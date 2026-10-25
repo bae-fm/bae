@@ -163,7 +163,12 @@ impl ImportService {
         let skipped = library_manager
             .load_skipped_import_candidates(&root_key)
             .await?;
-        let reads = library_manager.load_file_reads(&root_key).await?;
+        let reads = Arc::new(
+            library_manager
+                .load_file_reads(&root_key, services.file_tags.clone())
+                .await?,
+        );
+        let walk_reads = reads.clone();
 
         let directories = services.directories.clone();
         let watcher = scan.folder_watcher.clone();
@@ -184,7 +189,7 @@ impl ImportService {
                     decisions: &decisions,
                     new_grouping_key: &new_key,
                 },
-                &reads,
+                &walk_reads,
                 &walk_cancellation,
                 wants_folder,
             )
@@ -236,7 +241,7 @@ impl ImportService {
                 detail: format!("folder date task failed: {error}"),
             })??;
             let file_metadata = library_manager
-                .scan_item_seed(&item, stamp.generation, services.file_tags.clone())
+                .scan_item_seed(&item, stamp.generation, reads.clone())
                 .await?;
             items.push(crate::db::ScanItemToWrite {
                 item,

@@ -566,22 +566,23 @@ fn skipped_files(proposed: &[(ScannedFile, ProposedRole)]) -> Vec<SkippedFile> {
 /// title the first of them in name order to state one gives, and that file's
 /// album artists' line, else its track artists'. A file whose tags can't be read is
 /// passed over, said in the log.
-fn skipped_tags(proposed: &[(ScannedFile, ProposedRole)], reads: &FileReads) -> Option<SkippedTags> {
-    use crate::import::file_tag_snapshot::FileTagReader;
-
+fn skipped_tags(
+    proposed: &[(ScannedFile, ProposedRole)],
+    reads: &FileReads,
+) -> Result<Option<SkippedTags>, FolderScanError> {
     let mut playable: Vec<&ScannedFile> = proposed
         .iter()
         .filter(|(_, role)| *role == ProposedRole::Audio)
         .map(|(file, _)| file)
         .collect();
     if playable.is_empty() {
-        return None;
+        return Ok(None);
     }
     playable.sort_by(|a, b| natord::compare_ignore_case(&a.relative_path, &b.relative_path));
     reads.skipped_tags(&playable, || {
         for file in &playable {
-            let read = match crate::import::file_tag_snapshot::LoftyFileTagReader.read(&file.path) {
-                Ok(read) => read,
+            let tags = match reads.tags(file)? {
+                Ok(tags) => tags,
                 Err(error) => {
                     tracing::warn!(
                         "{}: its tags could not be read, so they name nothing: {error}",
@@ -590,22 +591,21 @@ fn skipped_tags(proposed: &[(ScannedFile, ProposedRole)], reads: &FileReads) -> 
                     continue;
                 }
             };
-            let tags = read.tags;
             if let Some(album_title) = tags.album_title {
                 let artists = if tags.album_artists.is_empty() {
                     tags.track_artists
                 } else {
                     tags.album_artists
                 };
-                return Some(SkippedTags {
+                return Ok(Some(SkippedTags {
                     album_title,
                     artist: (!artists.is_empty()).then(|| {
                         crate::credits::credit_line(artists.iter().map(|name| (name.as_str(), None)))
                     }),
-                });
+                }));
             }
         }
-        None
+        Ok(None)
     })
 }
 
@@ -729,7 +729,7 @@ pub(super) fn categorize_files_from_tree(
     if !releasable(&proposed) {
         info!("Invalid candidate: its audio is damaged, or it has none");
         return Ok(CategorizeOutcome::Invalid {
-            tags: skipped_tags(&proposed, reads),
+            tags: skipped_tags(&proposed, reads)?,
             files: skipped_files(&proposed),
         });
     }
@@ -752,6 +752,15 @@ pub(super) fn categorize_files_from_tree(
     // would pair a file's tags with a different file's samples.
     proposed.sort_by(|a, b| natord::compare_ignore_case(&a.0.relative_path, &b.0.relative_path));
     lay_audio_in_play_order(&mut proposed, &tagged, parts);
+    // Of the pictures the tracks' tags embed, the release's draft takes the
+    // first in this order.
+    reads.keep_first_cover(
+        &proposed
+            .iter()
+            .filter(|(_, role)| *role == ProposedRole::Audio)
+            .map(|(file, _)| file)
+            .collect::<Vec<_>>(),
+    );
 
     // Parse every CUE exactly once. A sheet that will not parse is not a sheet;
     // it stays a document, and the folder imports without it.

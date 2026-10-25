@@ -767,12 +767,13 @@ impl ImportServiceHandle {
                 })?;
             let mut replacement = current_candidate.clone();
             replacement.files = settled_files.clone();
-            let reader = self.file_tags.clone();
+            let reads = crate::import::folder_scanner::FileReads::new(self.file_tags.clone());
             let initialized = tokio::task::spawn_blocking(move || {
                 crate::import::file_metadata_seed::FileMetadataSeed::read(
                     &replacement,
                     stored.scan_generation,
-                    reader.as_ref(),
+                    &reads,
+                    None,
                 )
                 .map(|seed| seed.draft)
             })

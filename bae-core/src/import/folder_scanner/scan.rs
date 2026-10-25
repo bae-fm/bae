@@ -874,7 +874,9 @@ where
             decisions,
             new_grouping_key: &fresh_grouping_key,
         },
-        &FileReads::new(),
+        &FileReads::new(Arc::new(
+            crate::import::file_tag_snapshot::LoftyFileTagReader,
+        )),
         &ScanCancellation::new(),
         |_| {},
         on_item,
@@ -949,7 +951,9 @@ pub fn collect_release_candidate_files_with_scope(
         stored,
         &[],
         &ScanCancellation::new(),
-        &FileReads::new(),
+        &FileReads::new(Arc::new(
+            crate::import::file_tag_snapshot::LoftyFileTagReader,
+        )),
     )? {
         CategorizeOutcome::Valid(files) => Ok(files),
         CategorizeOutcome::Invalid { files, .. } => Err(InvalidReason::of(&files).into()),

@@ -501,16 +501,22 @@ when each folder was first seen. A scan writes as it finds; completing removes
 what it didn't see, in the same transaction that marks it complete. A failed or
 interrupted scan keeps both old and new entries.
 
-**What a rescan reads.** A rescan, such as the one every desktop launch makes
-of each watched folder, takes what the last scan of the folder stored for each
-file whose path, size and modification time are unchanged (§2.7): a track's
-stream and the disc and track numbers its tags state, whether an image decodes,
-what a CUE sheet parses to, and what a broken folder's tags call it. It opens
-only the files that are new or changed, so a rescan of a folder nothing in has
-changed opens none. A release whose tracks are exactly the ones its stored tags
-were read from — the same files, in the same order, unchanged — takes those
-tags for its draft rather than reading them again. A store that says two
-different things about one file fails the scan.
+**What a scan reads.** A scan reads each file once. It opens a track twice:
+FFmpeg's probe, which says whether it plays, and one read of its tags, which
+places it in play order, names a broken folder, and seeds its release's draft,
+picture included. A folder read again within the same scan, such as disc
+folders read as one release after each was read on its own, reads none of its
+files again.
+
+A rescan, such as the one every desktop launch makes of each watched folder,
+takes what the last scan of the folder stored for each file whose path, size
+and modification time are unchanged (§2.7): a track's stream and tags, whether
+an image decodes, what a CUE sheet parses to, and what a broken folder's tags
+call it. It opens only the files that are new or changed, so a rescan of a
+folder nothing in has changed opens none. A release's draft takes each
+unchanged track's tags, and the picture they embed, from the reading stored
+for the release, and reads only its new or changed tracks. A store that says
+two different things about one file fails the scan.
 
 **Edge cases.**
 

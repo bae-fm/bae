@@ -341,16 +341,17 @@ impl LibraryManager {
     }
 
     /// The draft a candidate about to be stored starts from: the folder as its
-    /// own file tags describe it. A folder whose tags cannot be read starts on
-    /// a blank draft and is logged, rather than kept out of the queue. Reads
-    /// audio files, which can be slow on a network share, so it runs on a
-    /// blocking thread and outside the folder-state commit lock every pane
-    /// control waits on.
+    /// own file tags describe it, taken from what `reads` — the pass that
+    /// found it — and the reading stored for it hold, and read where neither
+    /// knows. A folder whose tags cannot be read starts on a blank draft and
+    /// is logged, rather than kept out of the queue. Reading audio files can
+    /// be slow on a network share, so it runs on a blocking thread and outside
+    /// the folder-state commit lock every pane control waits on.
     pub(crate) async fn scan_item_seed(
         &self,
         item: &crate::import::folder_scanner::ScanItem,
         generation: u64,
-        reader: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
+        reads: std::sync::Arc<crate::import::folder_scanner::FileReads>,
     ) -> Result<Option<crate::import::file_metadata_seed::FileMetadataSeed>, LibraryError> {
         use crate::import::folder_scanner::ScanItem;
         let (ScanItem::Discovered(candidate) | ScanItem::Valid(candidate)) = item else {
@@ -365,41 +366,25 @@ impl LibraryManager {
             return Ok(None);
         }
         let folder = candidate.path.display().to_string();
-        // Tags the scans stored for these very tracks are what reading them
-        // again would give.
         let stored = self
             .database
-            .load_file_tag_snapshot_read_from(
+            .load_stored_file_tag_reading(
                 &candidate.watched_folder_path,
                 &candidate.key(),
-                candidate.files.audio().cloned().collect(),
+                &candidate.file_root,
             )
             .await?;
-        let read = match stored {
-            Some(stored) => crate::import::file_metadata_seed::FileMetadataSeed::project(
-                candidate,
-                crate::import::file_tag_snapshot::FileTagSnapshot {
-                    scan_generation: generation,
-                    file_edit_revision: candidate.file_edit_revision,
-                    ..stored
-                },
-                None,
-            ),
-            None => {
-                let candidate = candidate.clone();
-                tokio::task::spawn_blocking(move || {
-                    crate::import::file_metadata_seed::FileMetadataSeed::read(
-                        &candidate,
-                        generation,
-                        reader.as_ref(),
-                    )
-                })
-                .await
-                .map_err(|error| {
-                    LibraryError::Internal(format!("file tag read task failed: {error}"))
-                })?
-            }
-        };
+        let candidate = candidate.clone();
+        let read = tokio::task::spawn_blocking(move || {
+            crate::import::file_metadata_seed::FileMetadataSeed::read(
+                &candidate,
+                generation,
+                &reads,
+                stored.as_ref(),
+            )
+        })
+        .await
+        .map_err(|error| LibraryError::Internal(format!("file tag read task failed: {error}")))?;
         match read {
             Ok(seed) => Ok(Some(seed)),
             Err(error) => {
@@ -422,7 +407,9 @@ impl LibraryManager {
             .scan_item_seed(
                 item,
                 generation,
-                std::sync::Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
+                std::sync::Arc::new(crate::import::folder_scanner::FileReads::new(
+                    std::sync::Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
+                )),
             )
             .await?;
         self.save_folder_scan_item_with_seed(
@@ -671,12 +658,17 @@ impl LibraryManager {
     }
 
     /// What the scans of `watched_folder_path` stored about each file they
-    /// read, for the next pass over it to start from.
+    /// read, for the next pass over it to start from, reading any other
+    /// track's tags through `tags`.
     pub(crate) async fn load_file_reads(
         &self,
         watched_folder_path: &str,
+        tags: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     ) -> Result<crate::import::folder_scanner::FileReads, LibraryError> {
-        Ok(self.database.load_file_reads(watched_folder_path).await?)
+        Ok(self
+            .database
+            .load_file_reads(watched_folder_path, tags)
+            .await?)
     }
 
     /// Every candidate's user-set file decisions, keyed by content hash, so a
