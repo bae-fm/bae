@@ -510,8 +510,9 @@ fn superseded_keys(stored: &[StoredEntry], item: &ScanItem) -> Vec<String> {
 /// One scan item as a pass hands it to the store.
 pub(crate) struct ScanItemToWrite {
     pub(crate) item: ScanItem,
-    /// The draft the folder's own tags project, the reading it came from, and
-    /// the cover those tags embed. Seeds only a candidate with no draft yet.
+    /// The reading of the folder's own tags, which its scan row keeps, and
+    /// the draft and cover they project, which seed only a candidate with no
+    /// draft yet.
     pub(crate) file_metadata: Option<crate::import::file_metadata_seed::FileMetadataSeed>,
     pub(crate) folder_date: Option<crate::import::folder_scanner::FolderDate>,
 }

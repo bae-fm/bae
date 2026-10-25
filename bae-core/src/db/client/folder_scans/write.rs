@@ -349,7 +349,9 @@ pub(crate) fn ensure_candidate_state(
         }
     }
     // The folder's own cover is stored with the candidate so readers never
-    // recompute it; a candidate that already has a cover keeps it.
+    // recompute it; a candidate that already has a cover keeps it. The
+    // picture the tags embed comes with the draft they seed, so a candidate
+    // whose draft was already stored takes only the folder's images.
     let has_cover = sql
         .query_row(
             "SELECT 1 FROM import_candidate_cover WHERE content_hash = ?",
@@ -360,8 +362,8 @@ pub(crate) fn ensure_candidate_state(
         .is_some();
     if !has_cover {
         let embedded = match seed {
-            CandidateStateSeed::Blank(_) => None,
-            CandidateStateSeed::FileMetadata(seed) => seed.cover.clone(),
+            CandidateStateSeed::FileMetadata(seed) if !has_draft => seed.cover.clone(),
+            CandidateStateSeed::FileMetadata(_) | CandidateStateSeed::Blank(_) => None,
         };
         if let Some(cover) = crate::import::local_artwork::folder_cover(embedded, files.artwork()) {
             super::super::candidate_state_rows::save_cover(sql, &content_hash, &cover)?;

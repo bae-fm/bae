@@ -304,6 +304,63 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
         .same_reading(&reading.snapshot.unwrap()));
 }
 
+/// Two folders holding the same names at the same sizes and modification
+/// times hash alike, so they share one draft, and each still keeps the tags
+/// read from its own tracks: a rescan reads neither folder's files again.
+#[tokio::test]
+async fn folders_whose_files_hash_alike_each_keep_their_tags() {
+    let test = setup_import_service().await;
+    let watched = test.temp.path().join("watched");
+    let modified =
+        std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000);
+    for folder in ["First", "Second"] {
+        std::fs::create_dir_all(watched.join(folder)).unwrap();
+        let track = watched.join(folder).join("01.flac");
+        std::fs::write(&track, flac()).unwrap();
+        std::fs::File::options()
+            .write(true)
+            .open(&track)
+            .unwrap()
+            .set_times(std::fs::FileTimes::new().set_modified(modified))
+            .unwrap();
+    }
+    let root = PathBuf::from(
+        crate::import::watched_folder::canonical_absolute_root(&watched.to_string_lossy()).unwrap(),
+    );
+    let root_key = root.to_string_lossy().into_owned();
+    test.service
+        .library_manager
+        .add_watched_import_folder(&root_key)
+        .await
+        .unwrap();
+    let tags = Arc::new(CountingTagReader::default());
+    let (scan, _) = test.scan_with(
+        tags.clone(),
+        Arc::new(crate::import::folder_scanner::OsDirectoryReader),
+    );
+    scan.rescan(&root).await.unwrap();
+    let mut hashes = Vec::new();
+    for folder in ["First", "Second"] {
+        let stored = test
+            .service
+            .library_manager
+            .load_candidate_file_tag_snapshot(&root_key, &root.join(folder).to_string_lossy())
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(stored.snapshot.is_some(), "{folder} keeps the tags read from its track");
+        hashes.push(stored.candidate.files.content_hash());
+    }
+    assert_eq!(hashes[0], hashes[1], "the two folders hash alike");
+    let tracks = [root.join("First/01.flac"), root.join("Second/01.flac")];
+    let reads = || tracks.iter().map(|track| tags.reads_of(track)).collect::<Vec<_>>();
+    assert_eq!(reads(), vec![1, 1], "the first scan reads each track's tags once");
+
+    scan.rescan(&root).await.unwrap();
+
+    assert_eq!(reads(), vec![1, 1], "the rescan reads neither track's tags again");
+}
+
 /// Reads tags as [`CountingTagReader`] does, and says each track embeds
 /// `picture`.
 struct EmbeddingTagReader {

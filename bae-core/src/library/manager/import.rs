@@ -340,13 +340,15 @@ impl LibraryManager {
             .await?)
     }
 
-    /// The draft a candidate about to be stored starts from: the folder as its
-    /// own file tags describe it, taken from what `reads` — the pass that
-    /// found it — and the reading stored for it hold, and read where neither
-    /// knows. A folder whose tags cannot be read starts on a blank draft and
-    /// is logged, rather than kept out of the queue. Reading audio files can
-    /// be slow on a network share, so it runs on a blocking thread and outside
-    /// the folder-state commit lock every pane control waits on.
+    /// The folder about to be stored as its own file tags describe it: the
+    /// reading of its tracks' tags its scan row keeps, and the draft and cover
+    /// they seed a candidate that has none with. It is taken from what `reads`
+    /// — the pass that found it — and the reading stored for it hold, and read
+    /// where neither knows. A folder whose tags cannot be read keeps no
+    /// reading and, when it has no draft, starts on a blank one; it is logged
+    /// rather than kept out of the queue. Reading audio files can be slow on a
+    /// network share, so it runs on a blocking thread and outside the
+    /// folder-state commit lock every pane control waits on.
     pub(crate) async fn scan_item_seed(
         &self,
         item: &crate::import::folder_scanner::ScanItem,
@@ -357,14 +359,6 @@ impl LibraryManager {
         let (ScanItem::Discovered(candidate) | ScanItem::Valid(candidate)) = item else {
             return Ok(None);
         };
-        // A candidate with a draft is not re-seeded, so its tags go unread.
-        if self
-            .database
-            .candidate_has_draft(&candidate.files.content_hash())
-            .await?
-        {
-            return Ok(None);
-        }
         let folder = candidate.path.display().to_string();
         let stored = self
             .database
@@ -389,7 +383,8 @@ impl LibraryManager {
             Ok(seed) => Ok(Some(seed)),
             Err(error) => {
                 tracing::warn!(
-                    "{folder} starts on a blank draft: its file tags could not be read: {error}"
+                    "{folder} keeps no reading of its file tags, and starts on a blank draft \
+                     if it has none: they could not be read: {error}"
                 );
                 Ok(None)
             }

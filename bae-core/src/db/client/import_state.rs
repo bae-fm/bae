@@ -52,25 +52,6 @@ pub(super) fn move_pane_on(
     session_rows::move_pane_on(sql, content_hash, pane_move)
 }
 
-impl Database {
-    /// Whether a draft is stored for `content_hash`; the pre-fill never
-    /// re-seeds a candidate that has one.
-    pub(crate) async fn candidate_has_draft(&self, content_hash: &str) -> Result<bool, DbError> {
-        let content_hash = content_hash.to_string();
-        self.read(move |sql| {
-            Ok(sql
-                .query_row(
-                    "SELECT 1 FROM import_candidate_edit WHERE content_hash = ?",
-                    [&content_hash],
-                    |_| Ok(()),
-                )
-                .optional()?
-                .is_some())
-        })
-        .await
-    }
-}
-
 /// Replace every file decision held for `content_hash` with `edits`.
 pub(super) fn store_file_edits(
     sql: &SqlContext<'_, '_>,
