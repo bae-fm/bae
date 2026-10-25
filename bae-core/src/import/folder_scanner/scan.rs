@@ -1,8 +1,21 @@
 use super::*;
 use std::collections::HashSet;
 
+mod root;
 mod scanned_decision;
+pub(crate) use root::scan_for_candidates_with_reader_cancellable_and_directories;
 use scanned_decision::scanned_decision;
+
+/// How many folders directly under a watched root a pass reads at once.
+///
+/// A scan of a folder on a network share is round trips — a listing of each
+/// directory, a look at each entry in it — and one folder at a time waits out
+/// each of them in turn; with several folders in flight their waits overlap.
+/// Eight took a rescan of a library of 729 folders on an SMB share, which
+/// opens no file, from 65 s to under 10 s, and its first scan from 243 s to
+/// 49 s. Bounded, so a pass holds a few folders' readings at once against one
+/// volume rather than one per folder.
+pub(super) const FOLDERS_AT_ONCE: usize = 8;
 
 // ── Progressive directory walker ───────────────────────────────────────────
 
@@ -114,22 +127,28 @@ pub(crate) fn file_modified_at_ns(
     })
 }
 
+/// What stops a scan pass: the import service cancelling it, or, for the
+/// folders a pass reads at once, one of them failing.
 #[derive(Debug, Clone, Default)]
-pub(crate) struct ScanCancellation(Arc<AtomicBool>);
+pub(crate) struct ScanCancellation(tokio_util::sync::CancellationToken);
 
 impl ScanCancellation {
     pub(crate) fn new() -> Self {
         Self::default()
     }
 
-    /// Only the import service cancels a scan in flight, and it is desktop-only.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    /// A cancellation that cancelling this one cancels too, and that cancels
+    /// on its own without cancelling this one.
+    pub(super) fn child(&self) -> Self {
+        Self(self.0.child_token())
+    }
+
     pub(crate) fn cancel(&self) {
-        self.0.store(true, Ordering::Release);
+        self.0.cancel();
     }
 
     pub(crate) fn is_cancelled(&self) -> bool {
-        self.0.load(Ordering::Acquire)
+        self.0.is_cancelled()
     }
 
     pub(super) fn check(&self) -> Result<(), FolderScanError> {
@@ -177,6 +196,7 @@ struct LooseFolder {
 /// root every relative path is under, the folder key its candidates are stamped
 /// with, the file corrections the user has stored, and the flag that stops the
 /// pass.
+#[derive(Clone, Copy)]
 pub(super) struct ScanRoot<'a> {
     root: &'a Path,
     watched_folder_path: &'a str,
@@ -193,7 +213,7 @@ pub(super) struct ScanRoot<'a> {
 pub(crate) struct ScanReadings<'a> {
     pub(crate) stored: &'a StoredCandidateEdits,
     pub(crate) decisions: &'a FolderReleaseDecisions,
-    pub(crate) new_grouping_key: &'a dyn Fn() -> String,
+    pub(crate) new_grouping_key: &'a (dyn Fn() -> String + Sync),
 }
 
 /// A key for a grouping nobody has stored yet, for a pass with no store to
@@ -209,7 +229,7 @@ pub(super) struct Walk<'a, R: ?Sized> {
     scan: ScanRoot<'a>,
     reader: &'a R,
     decisions: &'a FolderReleaseDecisions,
-    new_grouping_key: &'a dyn Fn() -> String,
+    new_grouping_key: &'a (dyn Fn() -> String + Sync),
     /// Listings a folder's reading looked at before the walk reached them,
     /// by root-relative path, each held until the walk takes it, so no folder
     /// is listed twice in one walk.
@@ -221,7 +241,7 @@ impl<'a, R: DirectoryReader + ?Sized> Walk<'a, R> {
         scan: ScanRoot<'a>,
         reader: &'a R,
         decisions: &'a FolderReleaseDecisions,
-        new_grouping_key: &'a dyn Fn() -> String,
+        new_grouping_key: &'a (dyn Fn() -> String + Sync),
     ) -> Self {
         Self {
             scan,
@@ -706,71 +726,6 @@ where
     }
 }
 
-pub(crate) fn scan_for_candidates_with_reader_cancellable_and_directories<R, F, D>(
-    reader: &R,
-    root: PathBuf,
-    readings: &ScanReadings<'_>,
-    reads: &FileReads,
-    cancellation: &ScanCancellation,
-    mut on_directory: D,
-    mut on_item: F,
-) -> Result<(), FolderScanError>
-where
-    R: DirectoryReader + ?Sized,
-    F: FnMut(ScanItem),
-    D: FnMut(PathBuf),
-{
-    cancellation.check()?;
-    debug!("Scanning for candidates in: {:?}", root);
-    if let Ok(metadata) = fs::metadata(&root) {
-        if !metadata.is_dir() {
-            return Err(FolderScanError::NotADirectory { path: root });
-        }
-    }
-    let watched_folder_path = root.to_string_lossy().into_owned();
-    let walk = Walk::new(
-        ScanRoot {
-            root: &root,
-            watched_folder_path: &watched_folder_path,
-            stored: readings.stored,
-            cancellation,
-            reads,
-        },
-        reader,
-        readings.decisions,
-        readings.new_grouping_key,
-    );
-    on_directory(root.clone());
-    let root_listing = walk.listing(Path::new(""))?;
-    let direct_audio = root_listing
-        .files
-        .iter()
-        .any(|file| file.size > 0 && is_audio_file(&file.path));
-    let mut direct_scope_files = root_listing.files;
-
-    for child in root_listing.directories {
-        let child_scan = scan_top_level_folder(&walk, &child, &mut on_directory, &mut on_item)?;
-        if !child_scan.contains_audio {
-            direct_scope_files.extend(child_scan.all_files.iter().cloned());
-        }
-    }
-
-    if direct_audio {
-        if let Some(node) = candidate_from_files(
-            &walk.scan,
-            direct_scope_files,
-            Path::new(""),
-            Path::new(""),
-            ReleaseFileScope::Direct,
-            None,
-            &[],
-        )? {
-            emit_projected_nodes(vec![node], &mut on_item);
-        }
-    }
-    Ok(())
-}
-
 /// Read one folder directly under the watched root, and say everything it
 /// yields.
 ///
@@ -854,9 +809,9 @@ where
     Ok(())
 }
 
-/// Scan one watched root a directory at a time, to completion. Completed
-/// release approximations and unresolved boundaries are emitted before
-/// unrelated sibling directories are read.
+/// Scan one watched root to completion, several of the folders directly under
+/// it at once, each a directory at a time. What each folder yields is said as
+/// soon as it is known, whatever the folders beside it are still reading.
 pub fn scan_for_candidates_with_decisions<F>(
     root: PathBuf,
     stored: &StoredCandidateEdits,

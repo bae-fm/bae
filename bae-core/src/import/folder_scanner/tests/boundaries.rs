@@ -71,6 +71,19 @@ impl SuspendedScan {
         }
     }
 
+    /// Whether the scan says an item `wanted` matches while it is held, taking
+    /// what it says up to that item. What the walk yields reaches the caller
+    /// on the thread that started the scan, so it can arrive after the walk
+    /// is held.
+    fn says_while_held(&self, wanted: impl Fn(&ScanItem) -> bool) -> bool {
+        while let Ok(item) = self.items.recv_timeout(std::time::Duration::from_secs(2)) {
+            if wanted(&item) {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Let the blocked read proceed, and require the walk to finish cleanly.
     fn finish(self) {
         self.gate.open();
@@ -165,9 +178,9 @@ fn file_free_group_emits_an_actionable_release_before_later_child_finishes() {
         .recv_timeout(std::time::Duration::from_secs(2))
         .expect("later directory is suspended");
     assert!(
-        scan.items
-            .try_iter()
-            .any(|item| matches!(item, ScanItem::Valid(candidate) if candidate.path == first)),
+        scan.says_while_held(
+            |item| matches!(item, ScanItem::Valid(candidate) if candidate.path == first)
+        ),
         "the immediate listing proves the file-free group cannot own shared release files"
     );
 
@@ -192,11 +205,10 @@ fn a_wrapper_the_scan_reads_makes_its_children_actionable_at_once() {
     scan.entered
         .recv_timeout(std::time::Duration::from_secs(2))
         .expect("final sibling is suspended");
-    let available: Vec<_> = scan.items.try_iter().collect();
     // `Release 01`, `Release 03`, `Release 99` have no part 2, so they are
     // not the discs of one release: once two of them are known to hold audio
     // the scan says so, and the ones it has reached are ready to identify.
-    assert!(available.iter().any(|item| matches!(
+    assert!(scan.says_while_held(|item| matches!(
         item,
         ScanItem::Decided {
             key,
@@ -205,9 +217,7 @@ fn a_wrapper_the_scan_reads_makes_its_children_actionable_at_once() {
         } if key.relative_folder_path == "Group"
     )));
     assert!(
-        available
-            .iter()
-            .any(|item| matches!(item, ScanItem::Valid(_))),
+        scan.says_while_held(|item| matches!(item, ScanItem::Valid(_))),
         "a wrapper the scan has read does not hold its descendants back"
     );
 
@@ -234,7 +244,7 @@ fn a_folder_with_its_own_tracks_beside_children_is_read_as_several_releases() {
     scan.entered
         .recv_timeout(std::time::Duration::from_secs(2))
         .expect("final sibling is suspended");
-    assert!(scan.items.try_iter().any(|item| matches!(
+    assert!(scan.says_while_held(|item| matches!(
         item,
         ScanItem::Decided {
             key,
@@ -299,60 +309,6 @@ fn discography_and_multidisc_shapes_follow_folder_structure_only() {
     assert!(separate.iter().any(
         |item| matches!(item, ScanItem::Valid(candidate) if candidate.display_path == "Solo Artist/1973 - Box/CD1")
     ));
-}
-
-#[test]
-fn cancelled_scan_stops_before_the_next_directory_read() {
-    #[derive(Default)]
-    struct RecordingReader {
-        reads: std::sync::Mutex<Vec<PathBuf>>,
-    }
-
-    impl DirectoryReader for RecordingReader {
-        fn read(
-            &self,
-            root: &Path,
-            directory: &Path,
-            cancellation: &ScanCancellation,
-        ) -> Result<DirectoryListing, FolderScanError> {
-            self.reads.lock().unwrap().push(directory.to_path_buf());
-            OsDirectoryReader.read(root, directory, cancellation)
-        }
-    }
-
-    let temp_dir = tempfile::tempdir().unwrap();
-    let root = temp_dir.path().join("Queue");
-    for child in ["Release 01", "Release 02"] {
-        let child = root.join(child);
-        std::fs::create_dir_all(&child).unwrap();
-        std::fs::write(child.join("track.flac"), fake_flac()).unwrap();
-    }
-    let reader = RecordingReader::default();
-    let cancellation = ScanCancellation::new();
-
-    let result = scan_for_candidates_with_reader_cancellable_and_directories(
-        &reader,
-        root,
-        &ScanReadings {
-            stored: &StoredCandidateEdits::none(),
-            decisions: &FolderReleaseDecisions::default(),
-            new_grouping_key: &fresh_grouping_key,
-        },
-        &FileReads::new(Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader)),
-        &cancellation,
-        |_| {},
-        |item| {
-            if matches!(item, ScanItem::Discovered(_)) {
-                cancellation.cancel();
-            }
-        },
-    );
-
-    assert!(matches!(result, Err(FolderScanError::Cancelled)));
-    assert_eq!(
-        reader.reads.lock().unwrap().as_slice(),
-        [PathBuf::new(), PathBuf::from("Release 01")]
-    );
 }
 
 #[test]

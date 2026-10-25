@@ -28,11 +28,16 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
         .add_watched_folder(collection.to_string_lossy().into_owned())
         .await
         .unwrap();
+    // The scan reads both folders at once, so either can be found first.
+    let mut unfound: std::collections::HashSet<&str> = keys.iter().map(String::as_str).collect();
+    wait_for_scan_event(&mut scan_rx, "both albums", |event| {
+        if let ScanEvent::FolderCandidate { candidate: c, .. } = event {
+            unfound.remove(c.path.to_string_lossy().as_ref());
+        }
+        unfound.is_empty()
+    })
+    .await;
     for key in &keys {
-        wait_for_scan_event(&mut scan_rx, key, |event| {
-            matches!(event, ScanEvent::FolderCandidate { candidate: c, .. } if c.path.to_str() == Some(key.as_str()))
-        })
-        .await;
         f.handle
             .select_candidate_file_tags(key.clone())
             .await

@@ -3,8 +3,9 @@
 //! Each directory with direct audio approximates one release. A directory
 //! whose children hold the audio is read as one release or as separate ones:
 //! by the reading stored for it, or, with none, by the scan's own reading of
-//! its children (see [`heuristic_folder_release_decision`]). The walk lists one
-//! directory at a time and reports candidates as they become available.
+//! its children (see [`heuristic_folder_release_decision`]). A pass reads several
+//! of the folders directly under the watched root at once, each a directory at
+//! a time, and reports candidates as they become available.
 use super::file_validation;
 use crate::cue_flac::{parse_cue_sheet, CueSheet};
 use crate::util::content_type_hint::ContentTypeHint;
@@ -13,10 +14,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
+use std::sync::Arc;
 use tracing::{debug, info};
 
 mod candidates;

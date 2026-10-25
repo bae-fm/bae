@@ -447,9 +447,10 @@ scan (§3.1), the import list (§3.2), the clues in the files (§3.3), the looku
 The person watches folders; bae scans them and finds releases, a folder each,
 or folders read as one.
 
-Ana watches `~/Music`. bae walks it a directory at a time and reports
-candidates as it finds them. A *candidate* is a release the scan found, not yet
-imported:
+Ana watches `~/Music`. bae reads several of the folders directly in it at
+once, each a directory at a time, and reports candidates as it finds them: a
+folder's releases arrive as that folder is read, not in the order the folders'
+names sort in. A *candidate* is a release the scan found, not yet imported:
 
 - **A folder with audio directly in it** is one release. Ana's
   `Artist Name - Album Title (1979)/` with its eleven FLAC files, CUE sheet and

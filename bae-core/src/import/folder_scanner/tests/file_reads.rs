@@ -171,7 +171,9 @@ fn a_pass_holds_only_the_picture_a_release_takes() {
 #[test]
 fn a_pass_lets_the_oldest_picture_go_past_what_it_holds() {
     let tmp = tempfile::tempdir().unwrap();
-    for folder in ["First", "Second"] {
+    // Both under one folder of the root, which one walk reads in order, so
+    // `First`'s picture is the older.
+    for folder in ["Releases/First", "Releases/Second"] {
         std::fs::create_dir_all(tmp.path().join(folder)).unwrap();
         std::fs::write(tmp.path().join(folder).join("01.flac"), fake_flac()).unwrap();
     }
