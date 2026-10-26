@@ -35,12 +35,14 @@ pub(crate) struct TwoDevices {
     b: TestDevice,
 }
 
-/// Run `test` on a runtime with a deep stack: restoration and snapshot installation
-/// recurse further than a default test thread allows.
-pub(crate) fn run_two_device_test<F, Fut>(test: F)
+/// Run `test` over two devices of one library on a runtime with a deep stack:
+/// restoration and snapshot installation recurse further than a default test
+/// thread allows. Both devices are closed before the runtime ends, as closing a
+/// library in the bridge does: a device still syncing as its runtime shuts down
+/// has its next database call cancelled, which coven reports as a panic.
+pub(crate) fn run_two_device_test<F>(test: F)
 where
-    F: FnOnce() -> Fut + Send + 'static,
-    Fut: std::future::Future<Output = ()>,
+    F: AsyncFnOnce(&TwoDevices) + Send + 'static,
 {
     std::thread::Builder::new()
         .name("two-device-test".to_string())
@@ -52,7 +54,11 @@ where
                 .enable_all()
                 .build()
                 .expect("build the two-device runtime")
-                .block_on(test())
+                .block_on(async {
+                    let devices = TwoDevices::new().await;
+                    test(&devices).await;
+                    devices.close().await;
+                })
         })
         .expect("spawn the two-device test thread")
         .join()
@@ -70,7 +76,7 @@ impl TwoDevices {
 }
 
 impl TwoDevices {
-    pub(crate) async fn new() -> Self {
+    async fn new() -> Self {
         let clock: coven::ClockRef = Arc::new(coven::SystemClock);
         let storage = Arc::new(
             coven::MemoryStorage::builder()
@@ -137,6 +143,18 @@ impl TwoDevices {
         let b = device(dir_b, app_b, config_b, handle_b);
         b.database.start_sync().await.unwrap();
         Self { a, b }
+    }
+
+    /// Close both devices' libraries: stop each sync loop, end the manager's
+    /// tasks and close its store.
+    async fn close(&self) {
+        for device in [&self.a, &self.b] {
+            device
+                .manager
+                .close()
+                .await
+                .expect("close the device's library");
+        }
     }
 
     /// Wait until both loops have stopped before making concurrent offline edits.
@@ -312,5 +330,38 @@ fn device(dir: TempDir, app_dir: AppDir, config: Config, handle: coven::CovenHan
         cycles,
         _watcher: watcher,
         _dir: dir,
+    }
+}
+
+/// A two-device test closes both devices before its runtime ends, as closing a
+/// library in the bridge does before it drops the library's runtime: nothing of
+/// either device is left running for the runtime's shutdown to cancel under it.
+#[test]
+fn a_two_device_test_closes_both_devices_before_its_runtime_ends() {
+    let databases = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let kept = databases.clone();
+    run_two_device_test(async move |devices| {
+        kept.lock().expect("kept databases").extend([
+            devices.a().database().clone(),
+            devices.b().database().clone(),
+        ]);
+    });
+    let databases = std::mem::take(&mut *databases.lock().expect("kept databases"));
+    assert_eq!(databases.len(), 2);
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("build a runtime to read the devices from");
+    for database in databases {
+        let read = runtime.block_on(database.unsent_writes_for_test());
+        assert!(
+            matches!(
+                read,
+                Err(crate::db::DbError::Coven(coven::CovenError::Database(
+                    coven::DbError::StoreClosed
+                )))
+            ),
+            "the device's store is closed: {read:?}"
+        );
     }
 }

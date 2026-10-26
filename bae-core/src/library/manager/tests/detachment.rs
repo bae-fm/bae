@@ -2,16 +2,19 @@ use super::*;
 
 #[test]
 fn cancelling_queued_audio_keeps_only_this_device_playable() {
-    crate::sync::test_devices::run_two_device_test(|| check_release_detachment(false));
+    crate::sync::test_devices::run_two_device_test(async |devices| {
+        check_release_detachment(devices, false).await
+    });
 }
 
 #[test]
 fn making_uploaded_audio_local_keeps_only_this_device_playable() {
-    crate::sync::test_devices::run_two_device_test(|| check_release_detachment(true));
+    crate::sync::test_devices::run_two_device_test(async |devices| {
+        check_release_detachment(devices, true).await
+    });
 }
 
-async fn check_release_detachment(uploaded: bool) {
-    let devices = crate::sync::test_devices::TwoDevices::new().await;
+async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevices, uploaded: bool) {
     devices.pause().await;
     let manager = devices.a().manager();
     manager.database.set_uploads_paused(true).await.unwrap();
@@ -152,8 +155,6 @@ async fn check_release_detachment(uploaded: bool) {
             crate::ui::PlaybackErrorReason::NotUploaded
         ));
     }
-    devices.a().manager().close().await.unwrap();
-    devices.b().manager().close().await.unwrap();
 }
 
 #[tokio::test]

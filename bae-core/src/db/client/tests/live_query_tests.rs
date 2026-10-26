@@ -729,8 +729,7 @@ async fn album_detail_subscription_delivers_absence_after_deletion() {
 
 #[test]
 fn album_page_subscription_delivers_a_write_materialized_by_sync() {
-    crate::sync::test_devices::run_two_device_test(|| async {
-        let devices = crate::sync::test_devices::TwoDevices::new().await;
+    crate::sync::test_devices::run_two_device_test(async |devices| {
         let writer = devices.a().database();
         let reader = devices.b().database();
         let mut live = reader.subscribe_album_browse(&[], false, first_page());

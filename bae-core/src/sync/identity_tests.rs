@@ -139,8 +139,7 @@ async fn releases_on_both(devices: &TwoDevices, release_ids: &[&str]) {
 /// seen the other's library, is one artist once they sync.
 #[test]
 fn one_catalog_artist_credited_on_two_devices_is_one_artist() {
-    run_two_device_test(|| async {
-        let devices = TwoDevices::new().await;
+    run_two_device_test(async |devices| {
         devices.pause().await;
         let (_, _, release_a) = remote_album_by(
             devices.a(),
@@ -156,7 +155,7 @@ fn one_catalog_artist_credited_on_two_devices_is_one_artist() {
         .await;
         devices.resume().await;
 
-        releases_on_both(&devices, &[&release_a, &release_b]).await;
+        releases_on_both(devices, &[&release_a, &release_b]).await;
         for database in [devices.a().database(), devices.b().database()] {
             assert_eq!(
                 listed_artists(database).await.len(),
@@ -164,7 +163,7 @@ fn one_catalog_artist_credited_on_two_devices_is_one_artist() {
                 "one MusicBrainz artist is one library artist on every device"
             );
         }
-        assert_nothing_held(&devices).await;
+        assert_nothing_held(devices).await;
     });
 }
 
@@ -172,8 +171,7 @@ fn one_catalog_artist_credited_on_two_devices_is_one_artist() {
 /// once they sync.
 #[test]
 fn one_catalog_work_performed_on_two_devices_is_one_work() {
-    run_two_device_test(|| async {
-        let devices = TwoDevices::new().await;
+    run_two_device_test(async |devices| {
         devices.pause().await;
         let mut releases = Vec::new();
         for device in [devices.a(), devices.b()] {
@@ -232,7 +230,7 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
         }
         devices.resume().await;
 
-        releases_on_both(&devices, &[&releases[0], &releases[1]]).await;
+        releases_on_both(devices, &[&releases[0], &releases[1]]).await;
         for database in [devices.a().database(), devices.b().database()] {
             assert_eq!(
                 texts(database, "SELECT id FROM works").await.len(),
@@ -240,7 +238,7 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
                 "one MusicBrainz work is one library work on every device"
             );
         }
-        assert_nothing_held(&devices).await;
+        assert_nothing_held(devices).await;
     });
 }
 
@@ -249,8 +247,7 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
 /// files both under.
 #[test]
 fn one_release_group_identified_on_two_devices_is_one_album() {
-    run_two_device_test(|| async {
-        let devices = TwoDevices::new().await;
+    run_two_device_test(async |devices| {
         devices.pause().await;
         let mut releases = Vec::new();
         for (device, pressing) in [
@@ -274,7 +271,7 @@ fn one_release_group_identified_on_two_devices_is_one_album() {
         }
         devices.resume().await;
 
-        releases_on_both(&devices, &[&releases[0], &releases[1]]).await;
+        releases_on_both(devices, &[&releases[0], &releases[1]]).await;
         for database in [devices.a().database(), devices.b().database()] {
             assert_eq!(
                 listed_albums(database).await.len(),
@@ -282,7 +279,7 @@ fn one_release_group_identified_on_two_devices_is_one_album() {
                 "one release group is one album on every device"
             );
         }
-        assert_nothing_held(&devices).await;
+        assert_nothing_held(devices).await;
     });
 }
 
@@ -314,8 +311,7 @@ async fn album_artist_edit(device: &TestDevice, artist_ids: &[&str]) -> ReleaseU
 /// credit is one fact, and neither device's edit is refused.
 #[test]
 fn the_same_album_credit_added_on_two_devices_merges() {
-    run_two_device_test(|| async {
-        let devices = TwoDevices::new().await;
+    run_two_device_test(async |devices| {
         let (first, album_id, release_id) = remote_album_by(
             devices.a(),
             catalog_artist(None, Some(DISCOGS_ARTIST)),
@@ -324,7 +320,7 @@ fn the_same_album_credit_added_on_two_devices_merges() {
         .await;
         let (second, _, other_release) =
             remote_album_by(devices.a(), catalog_artist(Some(MB_ARTIST), None), "Other").await;
-        releases_on_both(&devices, &[&release_id, &other_release]).await;
+        releases_on_both(devices, &[&release_id, &other_release]).await;
 
         devices.pause().await;
         for device in [devices.a(), devices.b()] {
@@ -346,7 +342,7 @@ fn the_same_album_credit_added_on_two_devices_merges() {
                 vec![first.clone(), second.clone()]
             );
         }
-        assert_nothing_held(&devices).await;
+        assert_nothing_held(devices).await;
     });
 }
 
@@ -354,8 +350,7 @@ fn the_same_album_credit_added_on_two_devices_merges() {
 /// apart. The release has one record per catalog, and neither edit is refused.
 #[test]
 fn the_same_record_set_on_two_devices_merges() {
-    run_two_device_test(|| async {
-        let devices = TwoDevices::new().await;
+    run_two_device_test(async |devices| {
         let (_, _, release_id) =
             remote_album_by(devices.a(), catalog_artist(Some(MB_ARTIST), None), "Album").await;
         let musicbrainz = ReleaseRecord::new(
@@ -396,7 +391,7 @@ fn the_same_record_set_on_two_devices_merges() {
             .converge("SELECT id || ' ' || release_id || ' ' || catalog FROM release_records")
             .await;
         assert_eq!(texts(devices.a().database(), &records_of).await.len(), 2);
-        assert_nothing_held(&devices).await;
+        assert_nothing_held(devices).await;
     });
 }
 
@@ -445,8 +440,7 @@ async fn draft_crediting(device: &TestDevice, artist_id: &str) {
 /// draft never stops it from taking A's library.
 #[test]
 fn a_draft_on_one_device_never_blocks_an_artist_merge_from_another() {
-    run_two_device_test(|| async {
-        let devices = TwoDevices::new().await;
+    run_two_device_test(async |devices| {
         let (discogs, _, release_id) = remote_album_by(
             devices.a(),
             catalog_artist(None, Some(DISCOGS_ARTIST)),
@@ -455,7 +449,7 @@ fn a_draft_on_one_device_never_blocks_an_artist_merge_from_another() {
         .await;
         let (musicbrainz, album_id, other_release) =
             remote_album_by(devices.a(), catalog_artist(Some(MB_ARTIST), None), "Other").await;
-        releases_on_both(&devices, &[&release_id, &other_release]).await;
+        releases_on_both(devices, &[&release_id, &other_release]).await;
         draft_crediting(devices.b(), &musicbrainz).await;
 
         record_identity_conflict(devices.a(), &discogs, &musicbrainz).await;
@@ -477,7 +471,7 @@ fn a_draft_on_one_device_never_blocks_an_artist_merge_from_another() {
                 vec![discogs.clone()]
             );
         }
-        assert_nothing_held(&devices).await;
+        assert_nothing_held(devices).await;
     });
 }
 
@@ -486,8 +480,7 @@ fn a_draft_on_one_device_never_blocks_an_artist_merge_from_another() {
 /// merged artist on both devices.
 #[test]
 fn an_artist_merge_and_a_concurrent_credit_of_the_merged_artist_both_land() {
-    run_two_device_test(|| async {
-        let devices = TwoDevices::new().await;
+    run_two_device_test(async |devices| {
         let (discogs, _, release_id) = remote_album_by(
             devices.a(),
             catalog_artist(None, Some(DISCOGS_ARTIST)),
@@ -496,7 +489,7 @@ fn an_artist_merge_and_a_concurrent_credit_of_the_merged_artist_both_land() {
         .await;
         let (musicbrainz, _, other_release) =
             remote_album_by(devices.a(), catalog_artist(Some(MB_ARTIST), None), "Other").await;
-        releases_on_both(&devices, &[&release_id, &other_release]).await;
+        releases_on_both(devices, &[&release_id, &other_release]).await;
 
         devices.pause().await;
         record_identity_conflict(devices.a(), &discogs, &musicbrainz).await;
@@ -515,14 +508,14 @@ fn an_artist_merge_and_a_concurrent_credit_of_the_merged_artist_both_land() {
         assert_eq!(credited, musicbrainz, "B credits the artist it already has");
         devices.resume().await;
 
-        releases_on_both(&devices, &[&release_id, &other_release, &new_release]).await;
+        releases_on_both(devices, &[&release_id, &other_release, &new_release]).await;
         for database in [devices.a().database(), devices.b().database()] {
             assert_eq!(
                 album_artist_ids(database, &new_album).await,
                 vec![discogs.clone()]
             );
         }
-        assert_nothing_held(&devices).await;
+        assert_nothing_held(devices).await;
     });
 }
 
@@ -531,11 +524,10 @@ fn an_artist_merge_and_a_concurrent_credit_of_the_merged_artist_both_land() {
 /// it was added to.
 #[test]
 fn removing_an_albums_last_release_never_takes_a_concurrent_release_with_it() {
-    run_two_device_test(|| async {
-        let devices = TwoDevices::new().await;
+    run_two_device_test(async |devices| {
         let (_, album_id, release_id) =
             remote_album_by(devices.a(), catalog_artist(Some(MB_ARTIST), None), "Album").await;
-        releases_on_both(&devices, &[&release_id]).await;
+        releases_on_both(devices, &[&release_id]).await;
 
         devices.pause().await;
         devices
@@ -547,10 +539,10 @@ fn removing_an_albums_last_release_never_takes_a_concurrent_release_with_it() {
         let added = remote_release_in(devices.b(), &album_id).await;
         devices.resume().await;
 
-        releases_on_both(&devices, &[&added]).await;
+        releases_on_both(devices, &[&added]).await;
         for database in [devices.a().database(), devices.b().database()] {
             assert_eq!(listed_albums(database).await, vec![album_id.clone()]);
         }
-        assert_nothing_held(&devices).await;
+        assert_nothing_held(devices).await;
     });
 }
