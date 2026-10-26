@@ -189,7 +189,6 @@ ENTITY_DATA_OWNERS = {
     ),
     "kotlin": (
         "ConfigStore",
-        "LibraryStore",
         "OpenLibrary",
         "OutboxStore",
     ),

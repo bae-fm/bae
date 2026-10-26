@@ -13,7 +13,6 @@ import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryQueryStores
-import fm.bae.app.data.LibraryStore
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
 import fm.bae.app.data.SessionMessages
@@ -103,7 +102,6 @@ class OpenLibrary internal constructor(
     // Holds the multicast lock discovery needs, so it is built with the session
     // rather than per picker.
     val cast = Cast(appHandle, appContext)
-    val libraryStore: LibraryStore get() = stores.library
     val configStore: ConfigStore get() = stores.config
     val syncStatusStore: SyncStatusStore get() = stores.syncStatus
     val syncActivityStore: SyncActivityStore get() = stores.syncActivity

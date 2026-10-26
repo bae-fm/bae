@@ -7,7 +7,6 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import fm.bae.app.data.CastStore
 import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.DownloadStore
-import fm.bae.app.data.LibraryStore
 import fm.bae.app.data.LibraryTransferStores
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
@@ -624,7 +623,6 @@ object AppSessionHolder {
         messages: SessionMessages,
     ): OpenLibraryStores =
         OpenLibraryStores(
-            library = LibraryStore(),
             config = ConfigStore(config),
             syncStatus = SyncStatusStore(),
             syncActivity =

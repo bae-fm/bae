@@ -1,7 +1,6 @@
 package fm.bae.app.data
 
 class OpenLibraryStores(
-    val library: LibraryStore,
     val config: ConfigStore,
     val syncStatus: SyncStatusStore,
     val syncActivity: SyncActivityStore,
