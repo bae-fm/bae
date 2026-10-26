@@ -107,7 +107,7 @@ bae-test-support = { path = "../bae-test-support" }
 tokio = { version = "1.0", features = ["test-util"] }
 serial_test = "3.4.0"
 # The local HTTP servers tests stand in for catalogs and cover archives with.
-axum = "0.7"
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio", "json", "form"] }
 # The test log capture (`test_logs`) and the sync bench example's log output.
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 # The examples resolve the running user's home once, at the top, to build the

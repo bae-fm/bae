@@ -28,7 +28,7 @@ bae-audio = { path = "../bae-audio" }
 bae-util = { path = "../bae-util", features = ["test-utils"] }
 # The local stand-in for the Cover Art Archive: cover addresses are derived, so
 # a test that wants bytes at one has to answer it.
-axum = "0.7"
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
 coven = { workspace = true, features = ["test-utils"] }
 # For synthesizing a folder-cover image in tests that need a release with art.
 image = { version = "0.25", default-features = false, features = ["png"] }
