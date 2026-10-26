@@ -228,13 +228,15 @@ class BaeCorePlayer(
             }
         }
 
-    /** The current track's metadata, from the latest playback value. */
+    /** The current track's metadata, from the latest playback value; null when stopped. */
     private var currentMeta: Meta? = null
+
+    /** The current track's id, read from [currentMeta]. */
+    private val playingTrackId: String?
+        get() = currentMeta?.trackId
 
     private var sidePausePrompt: SidePausePrompt? = null
 
-    /** Null when stopped. */
-    private var playingTrackId: String? = null
     private var lastSeekRevision: ULong = 0u
 
     /** The latest library position core sent. Positions arrive on their own
@@ -421,7 +423,6 @@ class BaeCorePlayer(
             trackChanged = trackId != playingTrackId,
             durationMs = track.track.durationMs?.toLong(),
         )
-        playingTrackId = trackId
         currentMeta =
             Meta(
                 entryId = null,
@@ -444,7 +445,6 @@ class BaeCorePlayer(
     private fun onStopped() {
         transport = Transport.IDLE
         playWhenReady = false
-        playingTrackId = null
         currentMeta = null
         sidePausePrompt = null
         positionModel.reset()
