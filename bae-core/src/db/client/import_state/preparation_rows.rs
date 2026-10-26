@@ -60,6 +60,9 @@ pub(crate) struct CandidateSaveExtras {
     /// and stamped with the saved file revision.
     pub reshaped_files: Option<Vec<(String, CategorizedFiles)>>,
     pub pane: CandidatePaneWrite,
+    /// Where the candidate at this key stands once the save lands, written in
+    /// its transaction: a verdict's, which ends the run that reached it.
+    pub standing: Option<(String, crate::import::TriageRuntimeFacts)>,
 }
 
 /// What this save does to where the candidate's pane stands.
@@ -79,6 +82,7 @@ impl Default for CandidateSaveExtras {
             file_tag_snapshot: None,
             reshaped_files: None,
             pane: CandidatePaneWrite::Keep,
+            standing: None,
         }
     }
 }
@@ -288,6 +292,9 @@ pub(super) fn save_preparation_on(
                 scanned.candidate_path,
             )));
         }
+    }
+    if let Some((candidate_key, standing)) = &extras.standing {
+        super::write_standing_on(sql, candidate_key, standing)?;
     }
     Ok(CandidateSaved::Landed(reshaped))
 }

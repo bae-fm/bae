@@ -6,7 +6,9 @@
 //! the one key a selection names — never for the queue.
 
 use super::super::release_groupings::{load_candidate_on, skipped_on};
-use super::super::import_state::{load_album_pick_on, load_pane_rows_on, load_states_on};
+use super::super::import_state::{
+    load_album_pick_on, load_pane_rows_on, load_standing_on, load_states_on,
+};
 use super::super::source_releases::load_source_release_on;
 use super::super::records::{album_records_name_on, check_releases_in_library_on};
 use super::*;
@@ -42,6 +44,7 @@ pub(super) fn materialise(
                 // A Done row is read as the row it was in Found: its draft,
                 // its pick and its cover, whichever tab places it.
                 let row = placed.row.clone();
+                let live = placed.live.clone();
                 let content_hash = scanned.content_hash.as_deref().ok_or_else(|| {
                     DbError::Message(format!("candidate {} has no content hash", scanned.path))
                 })?;
@@ -95,6 +98,7 @@ pub(super) fn materialise(
                     .transpose()?;
                 Ok(WindowItemRows::Candidate {
                     row,
+                    live,
                     picked,
                     cover,
                     is_group_member: *is_group_member,
@@ -136,6 +140,7 @@ pub(super) enum WindowItemRows {
     Ready(ImportListItem),
     Candidate {
         row: crate::import::triage::TriageRow,
+        live: crate::import::CandidateLiveState,
         picked: Option<LinkedRows>,
         /// The candidate's stored cover selection, as the row draws it.
         /// Nothing stands in for an empty one: the row shows what the
@@ -151,6 +156,7 @@ impl WindowItemRows {
             Self::Ready(item) => Ok(item),
             Self::Candidate {
                 mut row,
+                live,
                 picked,
                 cover,
                 is_group_member,
@@ -187,7 +193,7 @@ impl WindowItemRows {
                 row.cover = cover;
                 Ok(ImportListItem::Candidate {
                     row,
-                    live: (),
+                    live,
                     is_group_member,
                 })
             }
@@ -402,10 +408,11 @@ pub(super) struct CandidateDetailRows {
     picked_library_status: Option<LibraryStatus>,
     album: crate::import::DraftAlbum,
     embedded_cover: Option<(FileVersion, Vec<u8>)>,
+    standing: crate::import::TriageRuntimeFacts,
 }
 
-/// One candidate, whole, before its runtime is folded in. `None` when the key
-/// names no scanned folder — which is what clears a selection.
+/// One candidate, whole, with its standing. `None` when the key names no
+/// scanned folder — which is what clears a selection.
 pub(super) fn load_candidate_detail_on(
     sql: &SqlReadContext<'_>,
     key: &str,
@@ -422,6 +429,7 @@ pub(super) fn load_candidate_detail_on(
     let content_hash = candidate.files.content_hash();
 
     let skipped = skipped_on(sql, &candidate)?;
+    let standing = load_standing_on(sql, key)?;
 
     let imported = sql
         .query_row(
@@ -499,7 +507,7 @@ pub(super) fn load_candidate_detail_on(
     };
     Ok(Some(CandidateDetailRows { candidate, source_error, actionable, skipped,
         imported, current, pane_rows, artist_resolutions, metadata_revision,
-        statuses, records, picked_library_status, album, embedded_cover }))
+        statuses, records, picked_library_status, album, embedded_cover, standing }))
 }
 
 /// The album an import of the candidate `content_hash`, linked to what
@@ -538,7 +546,7 @@ impl CandidateDetailRows {
     pub(super) fn process(self) -> Result<ImportCandidateDetailProjection, DbError> {
         let Self { candidate, source_error, actionable, skipped, imported, current,
             pane_rows, artist_resolutions, metadata_revision, statuses,
-            records, picked_library_status, album, embedded_cover } = self;
+            records, picked_library_status, album, embedded_cover, standing } = self;
         let metadata_provenance = current.as_ref().and_then(|state| state.metadata_provenance.clone());
         let release_link = current.as_ref().and_then(|state| state.release_link.clone());
     let metadata_author = current
@@ -625,6 +633,7 @@ impl CandidateDetailRows {
             lookup_choices,
             failure: pane_rows.failure,
             session: pane_rows.session,
+            standing,
         })
     }
 }

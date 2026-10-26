@@ -17,6 +17,12 @@
 //! on [`Revisions`] and read what they draw. The typed search and
 //! extraction's [`Signals`](crate::signals::Signals) live here too, beside the
 //! run they belong to, and are dropped with the rest of the key's entry.
+//!
+//! Where each key stands — the [`TriageRuntimeFacts`] its entry reads as — is
+//! also written to the device-local standings table, which the import list
+//! and the pane read beside the rows (see [`standings`]). What moves too often
+//! to be written — a run's state partway through, an import's progress, a
+//! search's answers, the signals — is held here alone.
 
 use super::candidate_search::CandidateSearch;
 use super::candidates::{
@@ -28,6 +34,7 @@ use super::search::{MetadataResult, SearchQuery};
 use super::types::{ImportProgress, ImportStep, Catalog, PrepareStep};
 use crate::db::LibraryStatus;
 use crate::identify::{IdentifyRunId, IdentifyState};
+use crate::import::triage::TriageRuntimeFacts;
 use crate::signals::{Failure, Signals};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -36,12 +43,12 @@ use tokio::sync::watch;
 use tracing::debug;
 
 mod batch;
-mod facts_watch;
 mod snapshots_watch;
+mod standings;
 mod values_watch;
 mod work;
-pub(crate) use facts_watch::RuntimeFactsWatch;
 pub use snapshots_watch::RuntimeSnapshotsWatch;
+pub(crate) use standings::StandingsHeld;
 pub(crate) use values_watch::{RuntimeValue, RuntimeValuesWatch};
 pub(crate) use work::CandidateWork;
 
@@ -279,6 +286,8 @@ pub struct CandidateRuntime {
     /// bus records into `inner`.
     work: Arc<Mutex<work::WorkInFlight>>,
     revisions: Arc<watch::Sender<Revisions>>,
+    /// Where each key stands, written to the standings table as it changes.
+    standings: standings::Standings,
     /// Test readers that hear every change to a key's runtime, and every
     /// move of the identification count.
     #[cfg(any(test, feature = "test-utils"))]
@@ -290,21 +299,40 @@ pub struct CandidateRuntime {
 #[cfg(any(test, feature = "test-utils"))]
 type TestReaders<T> = Arc<Mutex<Vec<tokio::sync::mpsc::UnboundedSender<T>>>>;
 
+/// A runtime with no standings table behind it, for a test of what reads
+/// and writes it in memory.
+#[cfg(any(test, feature = "test-utils"))]
 impl Default for CandidateRuntime {
     fn default() -> Self {
+        Self::of(Arc::default(), standings::Standings::without_table())
+    }
+}
+
+impl CandidateRuntime {
+    /// A runtime whose standings a writer on `runtime_handle` writes into
+    /// `library`'s table.
+    pub(crate) fn new(
+        library: crate::library::LibraryManager,
+        runtime_handle: &tokio::runtime::Handle,
+    ) -> Self {
+        let inner = Arc::default();
+        let standings = standings::Standings::writing(Arc::clone(&inner), library, runtime_handle);
+        Self::of(inner, standings)
+    }
+
+    fn of(inner: Arc<Mutex<Inner>>, standings: standings::Standings) -> Self {
         Self {
-            inner: Arc::new(Mutex::new(Inner::default())),
+            inner,
             work: Arc::default(),
             revisions: Arc::new(watch::Sender::new(Revisions::default())),
+            standings,
             #[cfg(any(test, feature = "test-utils"))]
             every_change: Arc::default(),
             #[cfg(any(test, feature = "test-utils"))]
             every_count: Arc::default(),
         }
     }
-}
 
-impl CandidateRuntime {
     /// Every key with something in flight right now, for a subscriber that
     /// joins after runs have started.
     pub fn all(&self) -> HashMap<String, CandidateRuntimeSnapshot> {
@@ -426,7 +454,7 @@ impl CandidateRuntime {
         key: &str,
         mutate: impl FnOnce(&mut Inner, &mut CandidateRuntimeState) -> R,
     ) -> R {
-        let (result, change, count) = {
+        let (result, change, count, standing_moved) = {
             let mut inner = self.inner.lock().unwrap();
             let entry = inner.runtime.get(key);
             let previous = entry.map(CandidateRuntimeState::snapshot);
@@ -434,24 +462,36 @@ impl CandidateRuntime {
             let mut next = entry.cloned().unwrap_or_default();
             let result = mutate(&mut inner, &mut next);
             let is_identifying = Identifying::of(&next);
-            let change = if next.is_idle() {
+            let (change, standing) = if next.is_idle() {
                 inner.runtime.remove(key);
-                previous.is_some().then(|| CandidateRuntimeChange::Removed {
+                let change = previous.is_some().then(|| CandidateRuntimeChange::Removed {
                     key: key.to_string(),
-                })
+                });
+                (change, TriageRuntimeFacts::default())
             } else {
                 let snapshot = next.snapshot();
+                let standing = TriageRuntimeFacts::of(&snapshot);
                 inner.runtime.insert(key.to_string(), next);
-                (previous.as_ref() != Some(&snapshot)).then(|| CandidateRuntimeChange::Updated {
-                    key: key.to_string(),
-                    runtime: snapshot,
-                })
+                let change = (previous.as_ref() != Some(&snapshot)).then(|| {
+                    CandidateRuntimeChange::Updated {
+                        key: key.to_string(),
+                        runtime: snapshot,
+                    }
+                });
+                (change, standing)
             };
+            let was_standing = previous
+                .as_ref()
+                .map(TriageRuntimeFacts::of)
+                .unwrap_or_default();
             let count = inner
                 .count_identification(key, was_identifying, is_identifying)
                 .then(|| inner.batch.progress());
-            (result, change, count)
+            (result, change, count, standing != was_standing)
         };
+        if standing_moved {
+            self.standings.mark(key);
+        }
         if change.is_some() || count.is_some() {
             self.runtime_changed(change, count);
         }
@@ -589,7 +629,7 @@ impl CandidateRuntime {
         if keys.is_empty() {
             return;
         }
-        let (reset, counted) = {
+        let (reset, counted, moved) = {
             let mut inner = self.inner.lock().unwrap();
             let previous = snapshots(&inner.runtime);
             let was_identifying = inner.identifying();
@@ -603,8 +643,26 @@ impl CandidateRuntime {
                     counted |= inner.batch.admit(key);
                 }
             }
-            ((next != previous).then_some(next), counted.then(|| inner.batch.progress()))
+            let standing = |runtimes: &HashMap<String, CandidateRuntimeSnapshot>, key: &str| {
+                runtimes
+                    .get(key)
+                    .map(TriageRuntimeFacts::of)
+                    .unwrap_or_default()
+            };
+            let moved: Vec<String> = keys
+                .iter()
+                .filter(|key| standing(&previous, key) != standing(&next, key))
+                .cloned()
+                .collect();
+            (
+                (next != previous).then_some(next),
+                counted.then(|| inner.batch.progress()),
+                moved,
+            )
         };
+        for key in &moved {
+            self.standings.mark(key);
+        }
         if reset.is_some() || counted.is_some() {
             self.runtime_changed(
                 reset.map(|runtimes| CandidateRuntimeChange::Reset { runtimes }),
@@ -631,6 +689,36 @@ impl CandidateRuntime {
                 .answered
                 .take()
                 .is_some_and(|answer| answer.import_asked)
+        })
+    }
+
+    /// Where the key stands once `run`'s answer is disposed of: what the
+    /// write of that answer stores in its own transaction, under `held`.
+    pub(super) fn standing_once_answered(
+        &self,
+        _held: &StandingsHeld,
+        candidate_key: &str,
+        run: IdentifyRunId,
+    ) -> TriageRuntimeFacts {
+        self.standing_once(candidate_key, |runtime| {
+            if answered_on(runtime, run) {
+                runtime.answered = None;
+            }
+        })
+    }
+
+    /// Where the key stands once `import_id` has ended: what the write of
+    /// that import's release stores in its own transaction, under `held`.
+    pub(crate) fn standing_once_imported(
+        &self,
+        _held: &StandingsHeld,
+        candidate_key: &str,
+        import_id: &str,
+    ) -> TriageRuntimeFacts {
+        self.standing_once(candidate_key, |runtime| {
+            if claimed_by(runtime, import_id) {
+                runtime.import = None;
+            }
         })
     }
 

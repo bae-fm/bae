@@ -23,7 +23,6 @@ async fn subscription() -> (ImportListSubscription, Database, tempfile::TempDir)
         ImportListView::default(),
         LibraryPageWindows::default(),
         outbox,
-        crate::import::candidate_runtime::RuntimeFactsWatch::of(&Default::default()),
         &tokio::runtime::Handle::current(),
     );
     (subscription, database, tmp)
@@ -101,7 +100,6 @@ async fn a_failed_upload_queue_read_makes_the_done_order_unreadable() {
         },
         LibraryPageWindows::default(),
         outbox,
-        crate::import::candidate_runtime::RuntimeFactsWatch::of(&Default::default()),
         &tokio::runtime::Handle::current(),
     );
 

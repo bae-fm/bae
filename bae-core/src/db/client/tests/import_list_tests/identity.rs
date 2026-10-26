@@ -87,7 +87,7 @@ async fn the_row_and_the_pane_name_the_same_records() {
         .await
         .unwrap()
         .expect("the scanned candidate has a pane")
-        .resolve(&crate::import::TriageRuntimeFacts::default());
+        .resolve();
     let crate::import::CandidatePanePlacement::Pending {
         records: pane_records,
         ..

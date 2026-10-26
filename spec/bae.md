@@ -2670,6 +2670,12 @@ Keyed by the candidate's content hash.
 | `import_candidate_session` | where the pane was, and its last failure |
 | `import_candidate_failure`, `import_candidate_artist_identity_conflict` | why the last import failed |
 
+Beside them, keyed by the candidate's key as the import list names it:
+
+| Table | Holds |
+|---|---|
+| `import_candidate_standing` | where a candidate something is running for stands: its identification queued, running, writing its answer (reading the pressing it picked unattended first, and whether Import was asked of that answer) or failed to write it; its import queued, running or writing its release. The import list and the pane read it with the rows, so each row's state (§3.2) and the filter's counts come from one read. A stored verdict ends the run it answers in its own transaction, and a release ends its import in its own. How far a run or an import has got is not stored. No row outlives the process: the table is emptied as the library opens |
+
 ### A.6 Identification
 
 | Table | Holds |
@@ -2703,8 +2709,8 @@ from their fact (§2.6); *independent* rows a fresh id. Every synced table's
 rows reach every device that can read their audience: a local release's rows
 too (§4.2). *Audience* is the store unless the table names one (§5.3); *owner*
 tables are changed only by their author's devices (§5.5). `local_release_files`,
-`local_release_origin` and `local_history` are not declared, so they never
-sync.
+`local_release_origin`, `local_history` and the import tables (A.4–A.7),
+`import_candidate_standing` among them, are not declared, so they never sync.
 
 | Table | Identity | Audience | Owner | File |
 |---|---|---|---|---|

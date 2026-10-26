@@ -164,7 +164,6 @@ async fn request(tab: TriageTab) -> ImportListRequest {
         })
         .collect(),
         upload_status: crate::import::list::UploadStatus::Read(Default::default()),
-        live_standings: Default::default(),
         selected: Default::default(),
     }
 }
@@ -444,7 +443,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
         .await
         .unwrap()
         .expect("the scanned candidate reads back")
-        .resolve(&crate::import::TriageRuntimeFacts::default());
+        .resolve();
     assert_eq!(
         pane.placement,
         crate::import::CandidatePanePlacement::Pending {

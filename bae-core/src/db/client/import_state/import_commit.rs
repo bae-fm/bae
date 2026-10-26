@@ -18,6 +18,7 @@ pub(crate) fn require_import_commit_guard(
             candidate_key,
             source,
             expectation,
+            standing: _,
         } => {
             let current = load_committing_candidate(sql, candidate_key, expectation)?;
             expectation
@@ -30,16 +31,23 @@ pub(crate) fn require_import_commit_guard(
 }
 
 /// End the import attempt the commit is, inside it: the release landing
-/// answers the failure an earlier attempt left. That failure stands until
-/// this write — an attempt that never commits, cancelled or failing with a
-/// failure of its own, leaves it as it found it or replaces it.
+/// answers the failure an earlier attempt left, and the candidate stands
+/// with the import ended. That failure stands until this write — an attempt
+/// that never commits, cancelled or failing with a failure of its own, leaves
+/// it as it found it or replaces it.
 pub(crate) fn end_import_attempt_of_commit(
     sql: &SqlContext<'_, '_>,
     guard: &ImportCommitGuard,
 ) -> Result<(), DbError> {
     match guard {
-        ImportCommitGuard::Candidate { expectation, .. } => {
-            super::delete_failure_on(sql, &expectation.candidate.content_hash)
+        ImportCommitGuard::Candidate {
+            candidate_key,
+            expectation,
+            standing,
+            ..
+        } => {
+            super::delete_failure_on(sql, &expectation.candidate.content_hash)?;
+            super::write_standing_on(sql, candidate_key, standing)
         }
         #[cfg(test)]
         ImportCommitGuard::UncheckedTestSetup { .. } => Ok(()),

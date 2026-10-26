@@ -177,6 +177,7 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
                     },
                     file_tag_snapshot: None,
                 },
+                standing: crate::import::TriageRuntimeFacts::default(),
             },
             None,
             &release,

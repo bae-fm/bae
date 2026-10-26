@@ -406,15 +406,29 @@ fn an_unreadable_upload_queue_orders_done_by_import_time() {
     );
 }
 
+/// The first candidate the queue reaches among those at `keys`, each stored
+/// as identifying.
 fn first_among(rows: &ImportQueueRows, view: ImportListView, keys: &[&str]) -> Option<String> {
-    let keys = keys.iter().map(|display_path| key(display_path)).collect();
-    first_candidate_among(rows, &request(view), &keys).expect("the queue orders")
+    let mut rows = rows.clone();
+    rows.standings = keys
+        .iter()
+        .map(|display_path| {
+            (
+                key(display_path),
+                crate::import::TriageRuntimeFacts {
+                    identification: Some(crate::import::triage::IdentificationStatus::Running),
+                    import: None,
+                },
+            )
+        })
+        .collect();
+    first_identifying_candidate(&rows, &request(view)).expect("the queue orders")
 }
 
-/// The first of several keys is the one the queue reaches first, not the one
-/// named first.
+/// The first of several identifying candidates is the one the queue reaches
+/// first, not the one named first.
 #[test]
-fn the_first_candidate_among_keys_follows_the_queue_order() {
+fn the_first_identifying_candidate_follows_the_queue_order() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release 1"), candidate("Release 2")];
     rows.states
@@ -441,7 +455,7 @@ fn the_first_candidate_among_keys_follows_the_queue_order() {
 /// The queue's order is the whole queue's: a filter that hides the row, or
 /// another tab on screen, does not.
 #[test]
-fn the_first_candidate_among_keys_ignores_the_filter_and_the_tab() {
+fn the_first_identifying_candidate_ignores_the_filter_and_the_tab() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release 1"), candidate("Release 2")];
 
@@ -460,7 +474,7 @@ fn the_first_candidate_among_keys_ignores_the_filter_and_the_tab() {
 }
 
 #[test]
-fn the_first_candidate_among_grouped_keys_is_the_groups_first_member() {
+fn the_first_identifying_candidate_of_a_group_is_its_first_member() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Group/Release 1"), candidate("Group/Release 2")];
 

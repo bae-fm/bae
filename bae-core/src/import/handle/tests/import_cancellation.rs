@@ -72,6 +72,7 @@ async fn assert_left_as_it_stood(handle: &ImportServiceHandle, key: &str) {
         handle.runtime.get(key).is_none(),
         "nothing is running for {key}"
     );
+    handle.standings_written().await;
     let pane = handle
         .candidate_pane(key)
         .await
@@ -175,6 +176,7 @@ struct StoreState {
 }
 
 async fn store_state(handle: &ImportServiceHandle, library_dir: &Path) -> StoreState {
+    handle.standings_written().await;
     let mut files = Vec::new();
     let mut dirs = vec![library_dir.to_path_buf()];
     while let Some(dir) = dirs.pop() {

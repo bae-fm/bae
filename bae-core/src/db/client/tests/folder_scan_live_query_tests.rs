@@ -230,7 +230,6 @@ async fn import_list_subscription_delivers_scan_progress_beside_its_last_read() 
         request.view,
         request.windows,
         outbox,
-        crate::import::candidate_runtime::RuntimeFactsWatch::of(&Default::default()),
         &tokio::runtime::Handle::current(),
     );
     let initial = subscription.next().await.unwrap();

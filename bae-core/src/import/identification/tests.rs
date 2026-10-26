@@ -596,9 +596,7 @@ impl Fixture {
             .load_import_candidate(&dir.to_string_lossy())
             .await
             .unwrap()
-            .map(|projection| {
-                projection.resolve(&crate::import::triage::TriageRuntimeFacts::default())
-            })
+            .map(crate::import::ImportCandidateDetailProjection::resolve)
     }
 
     /// The stored MusicBrainz release, if a fetch stored one.
@@ -904,5 +902,6 @@ include!("tests/requested.rs");
 include!("tests/admissions.rs");
 include!("tests/automatic.rs");
 include!("tests/row_live_state.rs");
+include!("tests/stored_standings.rs");
 include!("tests/auto_import.rs");
 include!("tests/reading_the_pick.rs");

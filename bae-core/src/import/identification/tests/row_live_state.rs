@@ -1,10 +1,8 @@
-// ── What is running for a row, joined to the page ───────────────────────────
+// ── What is running for a row, read with the page ──────────────────────────
 //
-// Under Found's All the list reads the tables and nothing else; what is
-// running for each candidate is joined to its row on the page in memory, and a
-// change to it for a row on the page delivers the page again at the same
-// request revision. The filter's counts are joined the same way, so a run or
-// an import starting or ending reads nothing again for them either.
+// Where each candidate stands is written to the standings table and read with
+// the rows, so a change to it delivers the page again at the same request
+// revision, its rows carrying it. The filter's counts are read the same way.
 
 /// A list subscription over the Pending tab, asking for `windows`.
 fn list_subscription(
@@ -17,7 +15,6 @@ fn list_subscription(
         crate::import::ImportListView::default(),
         windows,
         fixture.manager.subscribe_outbox_values(),
-        fixture.import.watch_runtime_facts(),
         &tokio::runtime::Handle::current(),
     )
 }
@@ -89,12 +86,11 @@ fn reported(key: &str, progress: crate::import::ImportProgress) -> ImportEvent {
     }
 }
 
-/// An import claiming a candidate moves no row, so the list reads nothing
-/// again: the page it already read is delivered again, at the same request
-/// revision, with the row saying the import owns it — waiting for the worker,
-/// then taken up, then writing — and what it offers at each. A progress tick
-/// within the running import changes neither and delivers nothing. The page
-/// the claim delivers counts the row In Progress.
+/// An import claiming a candidate writes its standing, so the list is read
+/// again at the same request revision, with the row saying the import owns it
+/// — waiting for the worker, then taken up, then writing — and what it offers
+/// at each. A progress tick within the running import is not written and
+/// delivers nothing. The page the claim delivers counts the row In Progress.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_claimed_import_reaches_its_row_on_the_page() {
     let fixture = Fixture::new("live-state-on-the-page").await;
@@ -116,7 +112,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     let claimed = next_page(&list).await;
     assert_eq!(
         claimed.request_revision, initial.request_revision,
-        "a claimed import read the list again"
+        "a claimed import changed the list's request"
     );
     assert_eq!(
         claimed.cause,
@@ -139,7 +135,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     assert_eq!(
         counted(&claimed, crate::import::PendingFilter::InProgress),
         1,
-        "the claimed import is counted with no read of the list"
+        "the claimed import is counted In Progress"
     );
 
     fixture
@@ -175,7 +171,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     );
 
     // A window move is one more request to the same query, and the rows it
-    // reads are joined with what is running as it stands.
+    // reads carry where each stands.
     list.set_windows(page_window(0, 49)).unwrap();
     let moved = next_page(&list).await;
     assert_eq!(moved.request_revision, initial.request_revision + 1);
@@ -189,10 +185,10 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     );
 }
 
-/// What is running for a candidate off the page reaches no row: it delivers
-/// the page again only for the count it moves. Once a new window puts the
-/// candidate on the page, the same subscription joins it and delivers its
-/// changes.
+/// Where a candidate off the page stands reaches no row: it delivers the page
+/// again only for the count it moves. Once a new window puts the candidate on
+/// the page, its row carries its standing and the same subscription delivers
+/// its changes.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
     let fixture = Fixture::new("live-state-off-the-page").await;
@@ -253,7 +249,7 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
     assert_eq!(
         page_live(&widened)[&off_key].facts.import,
         Some(crate::import::ImportStanding::Queued),
-        "the row the window now holds is joined with what is running for it"
+        "the row the window now holds carries where it stands"
     );
 
     fixture
@@ -273,8 +269,7 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
 }
 
 /// "Identify selected" asks for each row in turn. The page shows each row
-/// waiting and then running — the list, which none of it moves, reads nothing
-/// again for either.
+/// waiting and then running, at the list's one request revision.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_batch_identify_shows_each_row_queued_then_running() {
     let fixture = Fixture::new("batch-identify-rows").await;

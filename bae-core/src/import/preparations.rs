@@ -40,9 +40,35 @@ impl CandidatePreparations {
     /// `false` when the row's file decisions moved past the ones the verdict
     /// answers, or no row holds the candidate. A draft edited since the run
     /// began is replaced like any other: the later write wins.
+    ///
+    /// A verdict that lands stores, in its own transaction, `standing` as
+    /// where the candidate at `candidate_key` stands with the run that reached
+    /// it ended: no read sees the verdict with the run still going, or the run
+    /// ended without the verdict.
+    pub async fn store_run_verdict(
+        &self,
+        verdict: &NewImportCandidateVerdict,
+        candidate_key: &str,
+        standing: &crate::import::TriageRuntimeFacts,
+    ) -> Result<bool, LibraryError> {
+        self.store_verdict_with(verdict, Some((candidate_key.to_string(), standing.clone())))
+            .await
+    }
+
+    /// Record a verdict no run of this process reached, as a seeded library
+    /// or a test stores one: there is no standing for its write to end.
+    #[cfg(any(test, feature = "test-utils", debug_assertions))]
     pub async fn store_verdict(
         &self,
         verdict: &NewImportCandidateVerdict,
+    ) -> Result<bool, LibraryError> {
+        self.store_verdict_with(verdict, None).await
+    }
+
+    async fn store_verdict_with(
+        &self,
+        verdict: &NewImportCandidateVerdict,
+        standing: Option<(String, crate::import::TriageRuntimeFacts)>,
     ) -> Result<bool, LibraryError> {
         let Some(mut prep) = self
             .database
@@ -84,6 +110,7 @@ impl CandidatePreparations {
         };
         let extras = CandidateSaveExtras {
             pane,
+            standing,
             ..CandidateSaveExtras::default()
         };
         Ok(matches!(
@@ -154,6 +181,7 @@ impl CandidatePreparations {
             file_tag_snapshot: None,
             reshaped_files: Some(settled_candidates.to_vec()),
             pane: CandidatePaneWrite::Keep,
+            standing: None,
         };
         match self
             .database
@@ -486,6 +514,7 @@ impl CandidatePreparations {
             file_tag_snapshot,
             reshaped_files: None,
             pane: CandidatePaneWrite::Keep,
+            standing: None,
         };
         match self
             .database

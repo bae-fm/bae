@@ -125,10 +125,11 @@ pub fn import_status_of(
     })
 }
 
-/// The runtime facts a row reads: a change to any other part of a candidate's
-/// runtime — a progress tick within a running import — leaves the row as it
-/// was drawn. The default is a key nothing is running for: no identification
-/// work exists and no import has claimed it.
+/// Where a candidate stands: the runtime facts a row reads, and what the
+/// standings table stores for it. A change to any other part of a candidate's
+/// runtime — a progress tick within a running import — is not written and
+/// leaves the row as it was drawn. The default is a key nothing is running
+/// for: no identification work exists and no import has claimed it.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct TriageRuntimeFacts {
     pub identification: Option<IdentificationStatus>,

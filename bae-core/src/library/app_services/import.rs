@@ -3,8 +3,8 @@
 
 use super::*;
 use crate::import::{
-    ImportCandidateDetail, ImportCandidateDetailProjection, ImportListProjection,
-    ImportListRequest, ImportListSubscription, ImportListView, TriageRuntimeFacts,
+    ImportCandidateDetail, ImportListProjection, ImportListRequest, ImportListSubscription,
+    ImportListView,
 };
 
 impl AppServices {
@@ -172,15 +172,6 @@ impl AppServices {
         self.inner.identification.cancel_all().await
     }
 
-    /// What is running for every candidate the runtime holds, as the rows
-    /// read it.
-    pub(super) fn runtime_facts(&self) -> std::collections::HashMap<String, TriageRuntimeFacts> {
-        self.candidate_runtimes()
-            .iter()
-            .map(|(key, runtime)| (key.clone(), TriageRuntimeFacts::of(runtime)))
-            .collect()
-    }
-
     /// Every key with something in flight right now.
     pub fn candidate_runtimes(
         &self,
@@ -225,11 +216,9 @@ impl AppServices {
 
     /// The import list, reconfigurable by view and by window.
     ///
-    /// The list reads the tables, the upload standing the Done tab is ordered
-    /// by, and, while a filter entry past All narrows Found, the state what is
-    /// running puts each candidate in, which the subscription keeps current on
-    /// its own. What is running for each row on the page is joined to it, and
-    /// a change to it delivers the page again.
+    /// The list reads the tables — where each candidate stands among them —
+    /// and the upload standing the Done tab is ordered by, which the
+    /// subscription keeps current on its own.
     pub fn subscribe_import_list(
         &self,
         view: ImportListView,
@@ -241,20 +230,18 @@ impl AppServices {
             view,
             crate::library::LibraryPageWindows::new(),
             self.subscribe_outbox_values(),
-            self.inner.import.watch_runtime_facts(),
             runtime_handle,
         )
     }
 
-    /// The list request for one read of `view`: the upload standing and what
-    /// is running, as they stand now.
+    /// The list request for one read of `view`: the upload standing as it
+    /// stands now.
     pub(super) fn import_list_request(
         &self,
         view: ImportListView,
         windows: crate::library::LibraryPageWindows,
     ) -> ImportListRequest {
         ImportListRequest {
-            live_standings: view.pending_filter.live_standings(&self.runtime_facts()),
             view,
             windows,
             upload_status: crate::import::list::UploadStatus::of(
@@ -298,54 +285,35 @@ impl AppServices {
     /// queued, running or having its answer written — in the queue's order
     /// under `view`. `None` when nothing is being identified, or nothing that
     /// is has a row.
-    ///
-    /// Asked when the person goes to it rather than kept on the list: which
-    /// runs are in flight moves no row, and the list does not read it.
     pub async fn first_identifying_candidate(
         &self,
         view: ImportListView,
     ) -> Result<Option<String>, crate::library::LibraryError> {
-        let identifying: std::collections::HashSet<String> = self
-            .candidate_runtimes()
-            .into_iter()
-            .filter(|(_, runtime)| TriageRuntimeFacts::of(runtime).identifying())
-            .map(|(key, _)| key)
-            .collect();
-        if identifying.is_empty() {
-            return Ok(None);
-        }
         self.inner
             .manager
-            .first_import_candidate_among(
+            .first_identifying_import_candidate(
                 self.import_list_request(view, crate::library::LibraryPageWindows::new()),
-                identifying,
             )
             .await
     }
 
-    /// One candidate as the pane reads it, once, with its runtime joined.
+    /// One candidate as the pane reads it, once, with its standing.
     pub async fn load_import_candidate(
         &self,
         key: &str,
     ) -> Result<Option<ImportCandidateDetail>, crate::library::LibraryError> {
-        let runtime = self.candidate_runtimes().remove(key);
-        let facts = runtime
-            .as_ref()
-            .map(TriageRuntimeFacts::of)
-            .unwrap_or_default();
         Ok(self
             .inner
             .manager
             .load_import_candidate(key)
             .await?
-            .map(|projection| projection.resolve(&facts)))
+            .map(crate::import::ImportCandidateDetailProjection::resolve))
     }
 
-    /// One candidate as the pane reads it, and every later read of it. `None`
-    /// once the key names no scanned folder, which is what clears a selection.
     /// The import pane's candidate as it changes, read for the key the
-    /// subscription is set to: its rows, and what is running for it. Another
-    /// candidate is a new key on the same read.
+    /// subscription is set to: its rows and where it stands among them.
+    /// `None` once the key names no scanned folder, which is what clears a
+    /// selection. Another candidate is a new key on the same read.
     pub fn subscribe_import_candidate(
         &self,
         runtime_handle: &tokio::runtime::Handle,
@@ -354,49 +322,24 @@ impl AppServices {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let manager = self.inner.manager.clone();
         let query_runtime = runtime_handle.clone();
-        let import = self.inner.import.clone();
         let task = runtime_handle.spawn(async move {
             let mut key = keys.borrow_and_update().clone();
-            // What is running for the key, watched once there is one.
-            let mut watch = key
-                .clone()
-                .map(|key| import.watch_candidate_facts(key));
             let mut query = reconfigurable_live_query_events(
                 &query_runtime,
                 manager.subscribe_import_candidate(key.clone()),
             );
-            let mut projection: Option<ImportCandidateDetailProjection> = None;
             loop {
                 let value = tokio::select! {
                     event = query.recv() => match event {
                         None => return,
                         Some(Ok(read)) => {
-                            projection = read;
-                            let facts = watch.as_ref().map(|watch| watch.facts().clone()).unwrap_or_default();
-                            Ok(projection.clone().map(|read| read.resolve(&facts)))
+                            Ok(read.map(crate::import::ImportCandidateDetailProjection::resolve))
                         }
                         Some(Err(error)) => Err(error),
                     },
-                    facts = async {
-                        match watch.as_mut() {
-                            Some(watch) => watch.changed().await,
-                            None => std::future::pending().await,
-                        }
-                    } => {
-                        let Some(facts) = facts else { return };
-                        let Some(read) = projection.clone() else { continue };
-                        Ok(Some(read.resolve(&facts)))
-                    }
                     changed = keys.changed() => {
                         if changed.is_err() { return; }
                         key = keys.borrow_and_update().clone();
-                        projection = None;
-                        if let Some(key) = &key {
-                            match watch.as_mut() {
-                                Some(watch) => watch.set_key(key.clone()),
-                                None => watch = Some(import.watch_candidate_facts(key.clone())),
-                            }
-                        }
                         query.set(key.clone());
                         continue;
                     }

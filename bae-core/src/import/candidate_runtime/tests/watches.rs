@@ -16,31 +16,6 @@ fn signals_event(key: &str, text: &str) -> ImportEvent {
 }
 
 #[tokio::test]
-async fn a_facts_reader_behind_by_any_number_of_changes_reads_where_they_left_off() {
-    let runtime = CandidateRuntime::default();
-    let mut watch = RuntimeFactsWatch::of(&runtime);
-    for index in 0..3_000 {
-        claim(&runtime, &format!("/watch/a/rel{index}"));
-    }
-
-    assert!(watch.changed().await);
-    assert_eq!(watch.facts().len(), 3_000);
-}
-
-#[tokio::test]
-async fn a_facts_reader_passes_over_a_progress_tick() {
-    let runtime = CandidateRuntime::default();
-    let key = "/watch/a/rel1";
-    claim(&runtime, key);
-    runtime.record_event(&progress(key, 10));
-    let mut watch = RuntimeFactsWatch::of(&runtime);
-
-    runtime.record_event(&progress(key, 20));
-    let woke = tokio::time::timeout(std::time::Duration::from_millis(0), watch.changed()).await;
-    assert!(woke.is_err(), "a tick within an import changes no fact");
-}
-
-#[tokio::test]
 async fn a_snapshots_reader_is_told_everything_then_each_key_that_changed() {
     let runtime = CandidateRuntime::default();
     claim(&runtime, "/watch/a/rel1");

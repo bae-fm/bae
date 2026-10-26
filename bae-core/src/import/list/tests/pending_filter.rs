@@ -3,7 +3,8 @@
 
 use super::*;
 use crate::import::triage::{
-    keys_for, selection_offers, CandidateAction, CandidateLiveState, SelectionMember,
+    keys_for, selection_offers, CandidateAction, CandidateLiveState, IdentificationStatus,
+    PendingState, SelectionMember,
 };
 
 /// `state` with a draft to read: what identification or the tags wrote.
@@ -130,19 +131,34 @@ fn every_kind() -> ImportQueueRows {
     rows
 }
 
-/// What is running for three of `every_kind`'s candidates, as the request
-/// carries it: a run for Several, an import of Identified, and a run whose
+/// Where three of `every_kind`'s candidates stand, as the standings table
+/// holds them: a run for Several, an import of Identified, and a run whose
 /// answer bae could not store for Tagged.
-fn running() -> std::collections::BTreeMap<String, crate::import::LiveStanding> {
+fn running() -> std::collections::HashMap<String, TriageRuntimeFacts> {
     [
-        (key("Several"), crate::import::LiveStanding::Identifying),
-        (key("Identified"), crate::import::LiveStanding::Importing),
+        (
+            key("Several"),
+            TriageRuntimeFacts {
+                identification: Some(IdentificationStatus::Running),
+                import: None,
+            },
+        ),
+        (
+            key("Identified"),
+            TriageRuntimeFacts {
+                identification: None,
+                import: Some(crate::import::ImportStanding::Running),
+            },
+        ),
         (
             key("Tagged"),
-            crate::import::LiveStanding::Error {
-                failure: crate::signals::InternalFailure {
-                    detail: "writing the answer: the disk is full".to_string(),
-                },
+            TriageRuntimeFacts {
+                identification: Some(IdentificationStatus::FinalizationFailed {
+                    failure: crate::import::SaveFailure::NotWritten {
+                        error: "writing the answer: the disk is full".to_string(),
+                    },
+                }),
+                import: None,
             },
         ),
     ]
@@ -150,18 +166,12 @@ fn running() -> std::collections::BTreeMap<String, crate::import::LiveStanding> 
     .collect()
 }
 
-/// `view` flattened with `every_kind`'s candidates running as `running` has
+/// `view` flattened with `every_kind`'s candidates standing as `running` has
 /// them.
 fn flattened_running(rows: &ImportQueueRows, view: ImportListView) -> Flattened {
-    flatten(
-        rows,
-        &ImportListRequest {
-            view,
-            live_standings: running(),
-            ..ImportListRequest::default()
-        },
-    )
-    .expect("the queue flattens")
+    let mut rows = rows.clone();
+    rows.standings = running();
+    flattened(&rows, &view)
 }
 
 fn under(filter: PendingFilter) -> ImportListView {
@@ -217,8 +227,7 @@ fn each_state_is_under_one_entry_past_all() {
 
 /// The entries a list read counts, with nothing running.
 fn entries_at_rest(flat: &Flattened) -> Vec<PendingFilterEntry> {
-    flat.found_states
-        .entries(&std::collections::BTreeMap::new())
+    flat.pending_filter_entries.clone()
 }
 
 /// The entries list in the menu's order, the counted ones as much as the
@@ -307,16 +316,15 @@ fn every_row_shows_under_exactly_one_entry_past_all() {
     );
 }
 
-/// Each entry counts the rows it holds, from a read of the list under All —
-/// which reads nothing of what is running — with what is running as the
-/// snapshot is joined deciding a row's state over the tables: the count is the rows
-/// the list shows under that entry, All's is Found's total, and an entry
-/// holding a row can be chosen.
+/// Each entry counts the rows it holds, from a read of the list under All,
+/// with where each candidate stands deciding its row's state over the
+/// tables: the count is the rows the list shows under that entry, All's is
+/// Found's total, and an entry holding a row can be chosen.
 #[test]
 fn each_entry_counts_the_rows_it_holds() {
     let rows = every_kind();
-    let read = flattened(&rows, &view(TriageTab::Pending));
-    let entries = read.found_states.entries(&running());
+    let read = flattened_running(&rows, view(TriageTab::Pending));
+    let entries = read.pending_filter_entries.clone();
     let counts: Vec<(PendingFilter, u32)> = entries
         .iter()
         .map(|entry| (entry.filter, entry.count))
@@ -351,28 +359,86 @@ fn each_entry_counts_the_rows_it_holds() {
     }
 }
 
-/// A read places Found's rows in the states the tables put them in whatever
-/// the list shows: the tab on show, the text typed, the entry chosen and what
-/// is running leave them alone.
+/// A read counts Found's rows in the states they stand in whatever the list
+/// shows: the tab on show, the text typed and the entry chosen leave the
+/// counts alone.
 #[test]
-fn a_read_places_found_s_rows_whatever_the_list_shows() {
+fn a_read_counts_found_s_rows_whatever_the_list_shows() {
     let mut rows = every_kind();
     // The text filter reads a Done row's library text, which these rows
     // leave out.
     rows.candidates.retain(|row| row.display_path != "Imported");
     rows.imported.clear();
-    let at_rest = flattened(&rows, &view(TriageTab::Pending)).found_states;
-    let placed = |view: ImportListView| flattened_running(&rows, view).found_states;
-    assert_eq!(placed(under(PendingFilter::All)), at_rest);
-    assert_eq!(placed(under(PendingFilter::Unmatched)), at_rest);
-    assert_eq!(placed(view(TriageTab::Done)), at_rest);
-    assert_eq!(placed(view(TriageTab::Skipped)), at_rest);
+    let counted = |view: ImportListView| flattened_running(&rows, view).pending_filter_entries;
+    let all = counted(under(PendingFilter::All));
+    assert_eq!(counted(under(PendingFilter::Unmatched)), all);
+    assert_eq!(counted(view(TriageTab::Done)), all);
+    assert_eq!(counted(view(TriageTab::Skipped)), all);
     assert_eq!(
-        placed(ImportListView {
+        counted(ImportListView {
             filter_text: "several".to_string(),
             ..under(PendingFilter::NeedsYou)
         }),
-        at_rest
+        all
+    );
+    assert_ne!(
+        all,
+        flattened(&rows, &view(TriageTab::Pending)).pending_filter_entries,
+        "where the candidates stand moves the counts"
+    );
+}
+
+/// Where a row stands decides the entry that counts it over what the tables
+/// say: a run waiting counts it In Progress, a pick being read Identified,
+/// and an answer bae could not store Needs You.
+#[test]
+fn the_counts_follow_where_each_row_stands() {
+    let mut rows = queue();
+    rows.candidates = vec![
+        candidate("Queued"),
+        candidate("Reading"),
+        candidate("Not Stored"),
+        candidate("At Rest"),
+    ];
+    let identifying = |identification| TriageRuntimeFacts {
+        identification: Some(identification),
+        import: None,
+    };
+    rows.standings = [
+        (key("Queued"), identifying(IdentificationStatus::Queued)),
+        (
+            key("Reading"),
+            identifying(IdentificationStatus::ReadingPick {
+                import_asked: false,
+            }),
+        ),
+        (
+            key("Not Stored"),
+            identifying(IdentificationStatus::FinalizationFailed {
+                failure: crate::import::SaveFailure::NotWritten {
+                    error: "the disk is full".to_string(),
+                },
+            }),
+        ),
+    ]
+    .into_iter()
+    .collect();
+
+    let counts: Vec<(PendingFilter, u32)> = flattened(&rows, &view(TriageTab::Pending))
+        .pending_filter_entries
+        .iter()
+        .map(|entry| (entry.filter, entry.count))
+        .collect();
+    assert_eq!(
+        counts,
+        vec![
+            (PendingFilter::All, 4),
+            (PendingFilter::NeedsYou, 1),
+            (PendingFilter::InProgress, 1),
+            (PendingFilter::Identified, 1),
+            (PendingFilter::Unmatched, 0),
+            (PendingFilter::NotLookedUp, 1),
+        ]
     );
 }
 
@@ -564,23 +630,16 @@ fn importing_all_identified_rows_takes_exactly_the_shown_ones() {
 /// shows while runs go offers to cancel them instead.
 #[test]
 fn selecting_all_rows_in_progress_offers_their_cancel_and_no_import() {
-    let rows = every_kind();
-    let flat = flatten(
-        &rows,
-        &ImportListRequest {
-            view: under(PendingFilter::InProgress),
-            live_standings: [key("Identified"), key("Tagged")]
-                .into_iter()
-                .map(|key| (key, crate::import::LiveStanding::Identifying))
-                .collect(),
-            ..ImportListRequest::default()
-        },
-    )
-    .expect("the queue flattens");
+    let mut rows = every_kind();
     let identifying = TriageRuntimeFacts {
-        identification: Some(crate::import::IdentificationStatus::Running),
+        identification: Some(IdentificationStatus::Running),
         import: None,
     };
+    rows.standings = [key("Identified"), key("Tagged")]
+        .into_iter()
+        .map(|key| (key, identifying.clone()))
+        .collect();
+    let flat = flattened(&rows, &under(PendingFilter::InProgress));
     let members = select_all(&flat, &identifying);
     assert_eq!(members.len(), 2, "the entry shows the rows being identified");
 
@@ -620,46 +679,6 @@ fn needs_you_rows_offer_what_their_drafts_and_lookups_allow() {
         vec![key("Broke"), key("Lookup Failed"), key("Unread")],
         "a release the lookup could not read is retried as a failed lookup is"
     );
-}
-
-/// While an entry past All narrows the rows, every candidate something is
-/// running for is in the state it puts it in; under All, nothing running is
-/// read.
-#[test]
-fn live_standings_are_read_only_while_an_entry_narrows() {
-    let identifying = TriageRuntimeFacts {
-        identification: Some(crate::import::IdentificationStatus::Running),
-        import: None,
-    };
-    let importing = TriageRuntimeFacts {
-        identification: None,
-        import: Some(crate::import::ImportStanding::Queued),
-    };
-    let facts: std::collections::HashMap<String, TriageRuntimeFacts> = [
-        ("identifying".to_string(), identifying),
-        ("importing".to_string(), importing),
-        ("idle".to_string(), TriageRuntimeFacts::default()),
-    ]
-    .into_iter()
-    .collect();
-    let running = vec![
-        (
-            "identifying".to_string(),
-            crate::import::LiveStanding::Identifying,
-        ),
-        (
-            "importing".to_string(),
-            crate::import::LiveStanding::Importing,
-        ),
-    ];
-    for filter in PendingFilter::ENTRIES {
-        let standings: Vec<_> = filter.live_standings(&facts).into_iter().collect();
-        if filter == PendingFilter::All {
-            assert!(standings.is_empty(), "All read what is running");
-        } else {
-            assert_eq!(standings, running, "{filter:?}");
-        }
-    }
 }
 
 /// While the text filter or an entry narrows the tab on show, the summary

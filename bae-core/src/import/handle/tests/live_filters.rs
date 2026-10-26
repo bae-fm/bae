@@ -1,8 +1,8 @@
-//! In Progress follows the candidate runtime: a row shows while its run or
-//! import is queued or going, and leaves when it ends — and leaves the entry
-//! the tables put it under for as long. Every snapshot counts the filter's
-//! entries with what is running as its rows were joined, and a change that
-//! moves a count off the page delivers one.
+//! In Progress follows where each candidate stands: a row shows while its run
+//! or import is queued or going, and leaves when it ends — and leaves the
+//! entry the tables put it under for as long. Every snapshot counts the
+//! filter's entries with each row's standing, and a change that moves a count
+//! off the page delivers one.
 
 use super::*;
 use crate::import::{ImportListSubscription, ImportListView, PendingFilter};
@@ -252,7 +252,8 @@ async fn one_row_on_the_page() -> (ImportServiceHandle, TempDir, ImportListSubsc
         .windows
         .iter()
         .flat_map(|window| &window.items)
-        .filter_map(|item| item.candidate_key().map(str::to_string))
+        .filter_map(candidate_key)
+        .map(str::to_string)
         .collect();
     assert_eq!(on_page.len(), 1, "the page holds one row: {on_page:?}");
     let entries = &snapshot.pending_filter_entries;
@@ -262,6 +263,15 @@ async fn one_row_on_the_page() -> (ImportServiceHandle, TempDir, ImportListSubsc
     let on_page = on_page.into_iter().next().expect("one row");
     let off_page = if on_page == first_key { second_key } else { first_key };
     (handle, tmp, list, on_page, off_page)
+}
+
+/// The candidate whose row `item` is.
+fn candidate_key(item: &crate::import::ImportListItem) -> Option<&str> {
+    match item {
+        crate::import::ImportListItem::Candidate { row, .. } => Some(&row.candidate_key),
+        crate::import::ImportListItem::GroupHeader { .. }
+        | crate::import::ImportListItem::Invalid { .. } => None,
+    }
 }
 
 /// The next snapshot the list delivers.
@@ -297,7 +307,7 @@ async fn a_run_off_the_page_delivers_its_count() {
             .windows
             .iter()
             .flat_map(|window| &window.items)
-            .filter_map(|item| item.candidate_key())
+            .filter_map(candidate_key)
             .collect::<Vec<_>>(),
         vec![on_page.as_str()],
         "the page holds the same row"

@@ -56,8 +56,8 @@ impl CandidateAction {
 /// row among Found's states.
 ///
 /// The commands a row offers and the state it is in are these facts and what
-/// is running for it right now: the list joins the two into the row's
-/// [`CandidateLiveState`].
+/// is running for it right now, its standing: the read that places the row
+/// composes the two into the row's [`CandidateLiveState`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CandidateActionBasis {
     pub actionable: bool,
@@ -227,11 +227,8 @@ impl CandidateActionBasis {
 }
 
 /// What is running for one candidate right now, and the commands its row
-/// offers and the state it is in with it: the part of a row that changes
-/// without a write.
-///
-/// Joined to a row in memory rather than read with it — a run moving from
-/// queued to running moves no row, so it reruns no list read.
+/// offers and the state it is in with it: the part of a row its standing
+/// decides, read with the row from the standings table.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct CandidateLiveState {
     pub facts: TriageRuntimeFacts,

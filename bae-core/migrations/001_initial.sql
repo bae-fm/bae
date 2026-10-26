@@ -1406,6 +1406,27 @@ CREATE TABLE IF NOT EXISTS import_candidate_session (
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
 ) STRICT;
 
+-- Where each candidate something is running for stands right now, keyed as
+-- the candidate runtime keys it: its identification queued, running, having
+-- its answer written (the release it picked unattended read first, and
+-- whether an Import was asked of that answer), or its answer's write failed;
+-- its import queued, running or writing its release. A row exists only while
+-- one of the two is set. No run or import outlives the process, so the table
+-- is emptied as the library opens. How far a run or an import has got is not
+-- here: it moves too often to be written.
+CREATE TABLE IF NOT EXISTS import_candidate_standing (
+    candidate_key      TEXT PRIMARY KEY,
+    identification     TEXT CHECK (identification IN (
+        'queued', 'running', 'finalizing', 'reading_pick', 'not_written', 'inapplicable')),
+    import_asked       INTEGER CHECK (import_asked IN (0, 1)),
+    save_failure_error TEXT,
+    import             TEXT CHECK (import IN ('queued', 'running', 'writing')),
+    CHECK (identification IS NOT NULL OR import IS NOT NULL),
+    CHECK ((identification IS 'reading_pick') = (import_asked IS NOT NULL)),
+    CHECK ((identification IN ('not_written', 'inapplicable') IS 1)
+        = (save_failure_error IS NOT NULL))
+) STRICT;
+
 -- Why a candidate's import failed.
 CREATE TABLE IF NOT EXISTS import_candidate_failure (
     content_hash      TEXT PRIMARY KEY,

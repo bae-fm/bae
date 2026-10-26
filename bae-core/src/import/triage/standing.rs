@@ -36,7 +36,6 @@ use super::{IdentificationStatus, TriagePlacement, TriageRuntimeFacts};
 use crate::identify::{Declined, FolderCheck, MediumConflict, VerdictKind, VerdictSummary};
 use crate::import::ReleaseLink;
 use crate::signals::InternalFailure;
-use std::collections::BTreeMap;
 
 /// One state a Found row is in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -85,17 +84,6 @@ impl LiveStanding {
             }),
             None => None,
         }
-    }
-
-    /// The state what is running puts each candidate in, by key, for every
-    /// candidate whose state something running decides.
-    pub(crate) fn of_each<'a>(
-        facts: impl IntoIterator<Item = (&'a String, &'a TriageRuntimeFacts)>,
-    ) -> BTreeMap<String, Self> {
-        facts
-            .into_iter()
-            .filter_map(|(key, facts)| Self::of(facts).map(|live| (key.clone(), live)))
-            .collect()
     }
 
     pub fn state(&self) -> PendingState {

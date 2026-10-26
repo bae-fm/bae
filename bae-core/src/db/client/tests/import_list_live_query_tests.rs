@@ -22,7 +22,6 @@ pub(super) fn list_request(
             .map(|(offset, limit)| crate::library::LibraryPageWindow { offset, limit })
             .collect(),
         upload_status: crate::import::list::UploadStatus::Read(Default::default()),
-        live_standings: Default::default(),
         selected: Default::default(),
     }
 }
@@ -273,7 +272,7 @@ async fn the_pane_of_an_imported_candidate_is_placed_done() {
             .await
             .unwrap()
             .expect("the scanned candidate has a pane")
-            .resolve(&crate::import::TriageRuntimeFacts::default())
+            .resolve()
     };
 
     assert!(matches!(

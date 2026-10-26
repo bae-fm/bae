@@ -298,3 +298,6 @@ mod local_foreign_keys;
 
 #[cfg(test)]
 mod release_medium_tests;
+
+#[cfg(test)]
+mod candidate_standing_tests;

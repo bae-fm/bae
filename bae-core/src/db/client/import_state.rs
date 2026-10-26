@@ -12,6 +12,7 @@ mod prepared_asset_rows;
 mod rows;
 mod session_rows;
 mod signal_rows;
+mod standing_rows;
 mod verdict_rows;
 mod watched_folder_removal;
 
@@ -33,6 +34,7 @@ pub(super) use rows::{
     load_states_on,
 };
 use session_rows::load_session_on;
+pub(super) use standing_rows::{load_standing_on, load_standings_on, write_standing_on};
 use signal_rows::{delete_signals, insert_signals};
 
 use crate::import::folder_scanner::{

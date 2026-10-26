@@ -16,12 +16,11 @@
 //! the rows.
 //!
 //! What is running for a candidate right now — a run queued or in flight, an
-//! import that owns it — moves no row between tabs and reorders nothing, so
-//! under Found's All it is not an input to the read:
-//! [`ImportListSubscription`] joins it to each row the read delivers, as a
-//! [`CandidateLiveState`], and delivers the page again when it changes for a
-//! row on it. Only a filter entry past All reads it, since the state it puts
-//! a candidate in decides which entry holds the row.
+//! import that owns it — is read in the same pass, from the standings table
+//! the candidate runtime writes: each row carries it as its
+//! [`CandidateLiveState`], Found's filter entries hold and count each row in
+//! the state it puts the row in, and the selection's offers read it. So every
+//! read carries each row's standing already composed with the rows.
 
 use super::cover_art::{CoverChoice, RemoteCover};
 use super::folder_scanner::FolderCandidate;
@@ -29,9 +28,8 @@ use super::folder_scanner::{FolderReleaseDecisionKey, InvalidCandidate};
 use super::mapping::MappingTable;
 use super::triage::{
     import_status_of, place, stated_folder_check, CandidateActionBasis, CandidateLiveState,
-    LiveStanding, PendingStanding, PendingState, StoredLookup, TriageGroup,
-    TriageImportStatus, TriageMetadataSummary, TriagePlacement, TriageRow,
-    TriageRuntimeFacts, TriageTabCounts,
+    PendingStanding, StoredLookup, TriageGroup, TriageImportStatus, TriageMetadataSummary,
+    TriagePlacement, TriageRow, TriageRuntimeFacts, TriageTabCounts,
 };
 use super::types::{MetadataProvenance, RawReleaseEdit, ReleaseLink};
 use super::watched_folder::WatchedFolder;
@@ -41,7 +39,7 @@ use crate::identify::{IdentifyState, VerdictSummary};
 use crate::import::CandidateSession;
 use crate::library::{LibraryPageWindow, LibraryPageWindows};
 use crate::signals::Signals;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 
 mod flatten;
 mod pending_filter;
@@ -51,10 +49,10 @@ mod subscription;
 mod tests;
 
 pub(crate) use flatten::{
-    first_candidate_among, flatten, locate_candidate, release_keys_in_path_order, Flattened,
-    ItemRef,
+    first_identifying_candidate, flatten, locate_candidate, release_keys_in_path_order,
+    Flattened, ItemRef,
 };
-pub use pending_filter::{FoundStates, PendingFilter, PendingFilterEntry};
+pub use pending_filter::{PendingFilter, PendingFilterEntry};
 pub use subscription::{ImportListSubscription, ImportListSubscriptionError};
 
 pub use super::triage::TriageTab;
@@ -204,21 +202,18 @@ pub enum UploadStatusKnown {
     Unreadable,
 }
 
-/// Everything the list query is a function of.
+/// Everything the list query is a function of besides the tables.
 ///
-/// `upload_status`, `live_standings` and `selected` are held in memory
-/// rather than in a table this query reads — by the upload pipeline, the
-/// candidate runtime and the list subscription — so whoever builds the request
-/// reads them in: [`ImportListSubscription`] keeps them current.
+/// `upload_status` and `selected` are held in memory rather than in a table
+/// this query reads — by the upload pipeline and the list subscription — so
+/// whoever builds the request reads them in: [`ImportListSubscription`] keeps
+/// them current.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportListRequest {
     pub view: ImportListView,
     pub windows: LibraryPageWindows,
     /// Where the Done tab's uploads stand, as the queue last answered.
     pub upload_status: UploadStatus,
-    /// The state what is running puts each candidate in, while the view's
-    /// filter entry narrows Found's rows; empty under All.
-    pub live_standings: BTreeMap<String, LiveStanding>,
     /// The rows the person has selected in the list this request is read
     /// for, by key — the list subscription's selection, which only ever holds
     /// rows the list shows. Empty for a read no list owns.
@@ -226,7 +221,7 @@ pub struct ImportListRequest {
 }
 
 /// A test's request: the default view and windows, an upload queue that
-/// answered with nothing outstanding, nothing running and nothing selected.
+/// answered with nothing outstanding, and nothing selected.
 #[cfg(test)]
 impl Default for ImportListRequest {
     fn default() -> Self {
@@ -234,35 +229,14 @@ impl Default for ImportListRequest {
             view: ImportListView::default(),
             windows: LibraryPageWindows::default(),
             upload_status: UploadStatus::Read(BTreeMap::new()),
-            live_standings: BTreeMap::new(),
             selected: BTreeSet::new(),
         }
     }
 }
 
-impl ImportListRequest {
-    /// The state `row`, placed on Found, is in: the one what is running for
-    /// its candidate puts it in, or else the one the tables put it in.
-    pub(crate) fn pending_state(&self, row: &TriageRow) -> PendingState {
-        match self.live_standings.get(&row.candidate_key) {
-            Some(live) => live.state(),
-            None => row
-                .action_basis
-                .standing
-                .as_ref()
-                .expect("a row on Found has a standing")
-                .state(),
-        }
-    }
-}
-
 /// One item in the list, at one offset.
-///
-/// `Live` is what sits beside each candidate's row: nothing, `()`, as the
-/// tables read it, and a [`CandidateLiveState`] once
-/// [`ImportListItem::with_live`] has joined what is running for it.
 #[derive(Debug, Clone, PartialEq)]
-pub enum ImportListItem<Live = ()> {
+pub enum ImportListItem {
     GroupHeader {
         group: TriageGroup,
         watched_folder_path: String,
@@ -276,11 +250,13 @@ pub enum ImportListItem<Live = ()> {
     /// never a group member, since only Pending rows join a group.
     Candidate {
         row: TriageRow,
-        live: Live,
+        /// What is running for the candidate, as the read found it, and the
+        /// commands and state the row has with it.
+        live: CandidateLiveState,
         is_group_member: bool,
     },
     /// A folder that failed validation, presented as what the scan read of
-    /// it. It offers nothing to do, so nothing running for it is joined.
+    /// it. It offers nothing to do, and nothing runs for it.
     Invalid {
         candidate: InvalidCandidate,
         /// Whether the person has selected the row.
@@ -294,7 +270,7 @@ pub(crate) fn candidate_stable_key(candidate_key: &str) -> String {
     format!("candidate:{candidate_key}")
 }
 
-impl<Live> ImportListItem<Live> {
+impl ImportListItem {
     /// Stable identity for one item. Variant prefixes keep a candidate, a
     /// boundary and a group header at the same folder from sharing view state;
     /// the length prefix makes a two-component key unambiguous.
@@ -310,60 +286,6 @@ impl<Live> ImportListItem<Live> {
             Self::Invalid { candidate, .. } => {
                 format!("invalid:{}", candidate.path.display())
             }
-        }
-    }
-
-    /// The candidate whose row this is; `None` for a header or a folder that
-    /// is not a candidate.
-    pub(crate) fn candidate_key(&self) -> Option<&str> {
-        match self {
-            Self::Candidate { row, .. } => Some(&row.candidate_key),
-            Self::GroupHeader { .. } | Self::Invalid { .. } => None,
-        }
-    }
-}
-
-impl ImportListItem {
-    /// The item with what is running for its candidate joined to its row:
-    /// `facts` holds every candidate something is running for, by key, and a
-    /// candidate it does not hold has nothing running.
-    pub fn with_live(
-        self,
-        facts: &HashMap<String, TriageRuntimeFacts>,
-    ) -> ImportListItem<CandidateLiveState> {
-        let live = |basis: &CandidateActionBasis, key: &str| {
-            CandidateLiveState::of(basis, facts.get(key).cloned().unwrap_or_default())
-        };
-        match self {
-            Self::GroupHeader {
-                group,
-                watched_folder_path,
-                expanded,
-                entry_count,
-            } => ImportListItem::GroupHeader {
-                group,
-                watched_folder_path,
-                expanded,
-                entry_count,
-            },
-            Self::Candidate {
-                row,
-                live: (),
-                is_group_member,
-            } => ImportListItem::Candidate {
-                live: live(&row.action_basis, &row.candidate_key),
-                row,
-                is_group_member,
-            },
-            Self::Invalid {
-                candidate,
-                selected,
-                is_group_member,
-            } => ImportListItem::Invalid {
-                candidate,
-                selected,
-                is_group_member,
-            },
         }
     }
 }
@@ -387,39 +309,24 @@ pub(crate) struct GroupHeaderRow {
     pub(crate) entry_count: u32,
 }
 
-/// One placed candidate row, and which scanned row it came from.
+/// One placed candidate row, what is running for it, and which scanned row
+/// it came from.
 pub(crate) struct PlacedRow {
     /// The row with `matched` read off the verdict's lead and a reading
     /// naming no records. The window fills both in from what it reads for the
     /// rows it materialises, whichever tab places them.
     pub(crate) row: TriageRow,
+    /// What is running for the candidate, read from its standing.
+    pub(crate) live: CandidateLiveState,
     /// Index into [`crate::db::ImportQueueRows::candidates`].
     pub(crate) index: usize,
 }
 
-/// The items one window of the list holds, with `Live` beside each
-/// candidate's row as [`ImportListItem`] has it.
+/// The items one window of the list holds.
 #[derive(Debug, Clone, PartialEq)]
-pub struct ImportListWindow<Live = ()> {
+pub struct ImportListWindow {
     pub window: LibraryPageWindow,
-    pub items: Vec<ImportListItem<Live>>,
-}
-
-impl ImportListWindow {
-    /// The window with what is running for each candidate joined to its row.
-    pub fn with_live(
-        self,
-        facts: &HashMap<String, TriageRuntimeFacts>,
-    ) -> ImportListWindow<CandidateLiveState> {
-        ImportListWindow {
-            window: self.window,
-            items: self
-                .items
-                .into_iter()
-                .map(|item| item.with_live(facts))
-                .collect(),
-        }
-    }
+    pub items: Vec<ImportListItem>,
 }
 
 /// Everything the chrome around the list shows, computed in the same pass as
@@ -542,42 +449,42 @@ pub struct ImportListProjection {
     pub shown_keys: Vec<String>,
     /// The request's selected rows the list shows, in its order.
     pub selected: crate::import::selection::SelectedRows,
-    /// The state the tables put each of Found's rows in, whatever the view
-    /// shows: what the filter's counts start from.
-    pub found_states: FoundStates,
+    /// Every entry of Found's filter, in the menu's order, with how many of
+    /// Found's rows it holds, whatever the view shows.
+    pub pending_filter_entries: Vec<PendingFilterEntry>,
+    /// What the selection holds and can be told to do, with what is running
+    /// for each selected row.
+    pub selection: crate::import::selection::SelectionSummary,
 }
 
-/// A projection with what is running for each row on it joined, the live
-/// query's own bookkeeping — which request it answers and what woke it — and
-/// where the folder scans stand.
+/// A projection, the live query's own bookkeeping — which request it answers
+/// and what woke it — and where the folder scans stand.
 ///
-/// A change to the scans alone, or to what is running for a row on the page,
-/// delivers the last projection again beside it, with its revision and a
-/// [`coven::LiveQueryCause::Write`] cause: the value
+/// A change to the scans alone delivers the last projection again beside it,
+/// with its revision and a [`coven::LiveQueryCause::Write`] cause: the value
 /// of the same request changed.
 #[derive(Debug, Clone)]
 pub struct ImportListSnapshot {
-    pub windows: Vec<ImportListWindow<CandidateLiveState>>,
+    pub windows: Vec<ImportListWindow>,
     pub total_count: u64,
     pub summary: ImportQueueSummary,
     /// Every entry of Found's filter, in the menu's order, with how many of
-    /// Found's rows it holds as this snapshot's rows were joined.
+    /// Found's rows it holds.
     pub pending_filter_entries: Vec<PendingFilterEntry>,
     pub folder_scans: FolderScanProgress,
     /// The person's changes to the selection the rows' `selected` reflects.
     pub selection_revision: u64,
     /// What the selection holds and can be told to do: the selected rows
-    /// this snapshot shows, joined with what is running for them.
+    /// this snapshot shows, with what is running for them.
     pub selection: crate::import::selection::SelectionSummary,
     pub request_revision: u64,
     pub cause: coven::LiveQueryCause,
 }
 
-/// One candidate as the pane reads it, before its runtime is joined.
+/// One candidate as the pane reads it, before its commands are decided.
 ///
-/// The row is built here from what the tables say; a claimed import or a run
-/// in flight is joined by [`Self::resolve`] as the detail's live state, beside
-/// the row rather than inside it.
+/// The row is built here from what the tables say, its standing among them;
+/// [`Self::resolve`] decides the detail's live state from the two.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportCandidateDetailProjection {
     pub candidate: FolderCandidate,
@@ -629,6 +536,8 @@ pub struct ImportCandidateDetailProjection {
     /// Where the pane was when the person last left this candidate. `None`
     /// before the pane has been touched.
     pub session: Option<CandidateSession>,
+    /// What is running for the candidate, from its standing.
+    pub standing: TriageRuntimeFacts,
 }
 
 impl ImportCandidateDetailProjection {
@@ -643,8 +552,9 @@ impl ImportCandidateDetailProjection {
         })
     }
 
-    /// The pane's value, with this key's runtime joined.
-    pub fn resolve(self, facts: &TriageRuntimeFacts) -> ImportCandidateDetail {
+    /// The pane's value: the candidate with the commands and state its
+    /// standing gives it.
+    pub fn resolve(self) -> ImportCandidateDetail {
         let session = self.session_or_initial();
         let Self {
             candidate,
@@ -671,7 +581,10 @@ impl ImportCandidateDetailProjection {
             lookup_choices,
             failure,
             session: _,
+            standing: facts,
         } = self;
+        let import_standing = facts.import;
+        let importing = facts.importing();
         let file_evidence = signals
             .as_ref()
             .map(crate::import::file_evidence)
@@ -683,7 +596,7 @@ impl ImportCandidateDetailProjection {
         );
         // The attempt running now, or the one that completed, is what the pane
         // shows; an earlier failure is behind either.
-        let failure = if facts.importing()
+        let failure = if importing
             || matches!(
                 import_status.as_ref(),
                 Some(TriageImportStatus::Complete { .. })
@@ -703,7 +616,7 @@ impl ImportCandidateDetailProjection {
             candidate.grouping.is_some(),
             PendingStanding::stored(placement, release_link.as_ref(), verdict),
         );
-        let live = CandidateLiveState::of(&action_basis, facts.clone());
+        let live = CandidateLiveState::of(&action_basis, facts);
         // The catalogs the linked release is described in, as the row names
         // them: only a linked candidate names any.
         let draft_records = || {
@@ -729,7 +642,7 @@ impl ImportCandidateDetailProjection {
             TriageTab::Done => CandidatePanePlacement::Done,
         };
         let metadata_draft_is_blank = metadata_draft.is_blank();
-        let import_status = match facts.import {
+        let import_status = match import_standing {
             Some(standing) => Some(CandidateImportStatus::Importing { standing }),
             None => import_status.map(CandidateImportStatus::of),
         };

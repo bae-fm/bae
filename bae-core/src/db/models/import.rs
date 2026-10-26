@@ -156,6 +156,9 @@ pub(crate) enum ImportCommitGuard {
         candidate_key: String,
         source: crate::import::release_candidate::CandidateSource,
         expectation: crate::import::service::ImportExpectation,
+        /// Where the candidate stands once this import has ended, which the
+        /// commit stores with the release.
+        standing: crate::import::TriageRuntimeFacts,
     },
     /// A test's import of a release no scanned candidate stands behind,
     /// optionally answering for the candidate state at `content_hash`.

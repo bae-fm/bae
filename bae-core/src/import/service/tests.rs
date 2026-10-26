@@ -50,11 +50,13 @@ async fn setup_import_service() -> TestService {
         crate::providers::Providers::offline(),
     );
     let (_commands_tx, commands_rx) = tokio::sync::mpsc::unbounded_channel();
-    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::default());
+    let runtime = crate::import::CandidateRuntime::default();
+    let event_tx = crate::import::ImportEventBus::new(runtime.clone());
     TestService {
         service: ImportService {
             commands_rx,
             event_tx,
+            runtime,
             library_manager: manager,
             clock: Arc::new(coven::SystemClock),
             ids: Arc::new(coven::UuidIds),

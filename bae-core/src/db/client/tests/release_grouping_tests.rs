@@ -122,7 +122,7 @@ async fn a_grouping_missing_one_of_its_releases_says_so_and_can_be_undone() {
     assert!(!detail.actionable);
     assert!(
         detail
-            .resolve(&Default::default())
+            .resolve()
             .live
             .actions
             .contains(&crate::import::CandidateAction::Separate),

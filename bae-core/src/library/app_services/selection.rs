@@ -66,11 +66,12 @@ impl AppServices {
         }
     }
 
-    /// Run `action` on every selected candidate that offers it now, one at a
-    /// time in the order the list shows them, telling `progress` how many are
-    /// done of how many. The identification and import queues take what they
-    /// are handed first to first, so the top rows start first. A candidate
-    /// the action fails on is reported and the rest go on.
+    /// Run `action` on every selected candidate that offers it now — with
+    /// where each stands, read from the standings table — one at a time in the
+    /// order the list shows them, telling `progress` how many are done of how
+    /// many. The identification and import queues take what they are handed
+    /// first to first, so the top rows start first. A candidate the action
+    /// fails on is reported and the rest go on.
     pub async fn run_import_selection_action(
         &self,
         selected: &SelectedRows,
@@ -78,7 +79,8 @@ impl AppServices {
         progress: impl Fn(u64, u64),
     ) -> Result<Vec<SelectionActionFailure>, ImportError> {
         let selected = &selected.candidates;
-        let members = crate::import::selection::members(selected, &self.runtime_facts());
+        let standings = self.inner.manager.load_candidate_standings().await?;
+        let members = crate::import::selection::members(selected, &standings);
         let keys = keys_for(&members, action);
         let total = keys.len() as u64;
         let name_of = |key: &str| {

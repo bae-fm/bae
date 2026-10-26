@@ -474,15 +474,21 @@ async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail()
     .unwrap();
 
     let key = pane_candidate_path();
+    db.write_candidate_standings(vec![(
+        key.clone(),
+        crate::import::TriageRuntimeFacts {
+            identification: None,
+            import: Some(crate::import::ImportStanding::Running),
+        },
+    )])
+    .await
+    .unwrap();
     let detail = db
         .load_import_candidate(&key)
         .await
         .unwrap()
         .expect("the stored candidate has a detail")
-        .resolve(&crate::import::TriageRuntimeFacts {
-            identification: None,
-            import: Some(crate::import::ImportStanding::Running),
-        });
+        .resolve();
 
     assert!(detail.live.facts.importing());
     assert_eq!(
@@ -502,21 +508,27 @@ async fn the_pane_s_import_status_says_where_the_import_stands() {
     let (db, _tmp) = empty_db().await;
     stored_pane_candidate(&db).await;
     let key = pane_candidate_path();
-    let projection = db
-        .load_import_candidate(&key)
-        .await
-        .unwrap()
-        .expect("the stored candidate has a detail");
 
     for standing in [
         crate::import::ImportStanding::Queued,
         crate::import::ImportStanding::Running,
         crate::import::ImportStanding::Writing,
     ] {
-        let detail = projection.clone().resolve(&crate::import::TriageRuntimeFacts {
-            identification: None,
-            import: Some(standing),
-        });
+        db.write_candidate_standings(vec![(
+            key.clone(),
+            crate::import::TriageRuntimeFacts {
+                identification: None,
+                import: Some(standing),
+            },
+        )])
+        .await
+        .unwrap();
+        let detail = db
+            .load_import_candidate(&key)
+            .await
+            .unwrap()
+            .expect("the stored candidate has a detail")
+            .resolve();
         assert_eq!(
             detail.import_status,
             Some(crate::import::CandidateImportStatus::Importing { standing })

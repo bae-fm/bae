@@ -3,15 +3,18 @@
 //!
 //! The filter matches only the text each row shows.
 
+use super::pending_filter::pending_filter_entries;
 use super::{
-    FoundStates, GroupHeaderRow, ImportCandidateListLocation, ImportListItem,
-    ImportListNarrowing, ImportListOrder, ImportListRequest, ImportListView, ImportQueueSummary,
-    NarrowedCount, PendingFilter, PlacedRow, UploadStanding, UploadStatus,
+    GroupHeaderRow, ImportCandidateListLocation, ImportListItem, ImportListNarrowing,
+    ImportListOrder, ImportListRequest, ImportListView, ImportQueueSummary, NarrowedCount,
+    PendingFilter, PendingFilterEntry, PlacedRow, UploadStanding, UploadStatus,
 };
 use crate::db::{ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
+use crate::import::selection::SelectionSummary;
 use crate::import::triage::{
-    import_status_of, place, CandidateActionBasis, MatchedRelease, PendingStanding, StoredLookup,
-    TriageGroup, TriageImportStatus, TriageReading, TriageRow, TriageTab, TriageTabCounts,
+    import_status_of, place, CandidateActionBasis, CandidateLiveState, MatchedRelease,
+    PendingStanding, StoredLookup, TriageGroup, TriageImportStatus, TriageReading, TriageRow,
+    TriageTab, TriageTabCounts,
 };
 use crate::import::watched_folder::candidate_relative_path;
 use crate::import::folder_scanner::ScanItem;
@@ -44,9 +47,11 @@ pub(crate) struct Flattened {
     pub(crate) shown_keys: Vec<String>,
     /// The request's selected rows the list shows, in its order.
     pub(crate) selected: crate::import::selection::SelectedRows,
-    /// The state the tables put each of Found's rows in, whatever the view
-    /// shows.
-    pub(crate) found_states: FoundStates,
+    /// Every entry of Found's filter with how many of Found's rows it holds,
+    /// whatever the view shows.
+    pub(crate) pending_filter_entries: Vec<PendingFilterEntry>,
+    /// What the selected rows offer, with what is running for each.
+    pub(crate) selection: SelectionSummary,
 }
 
 /// One entry of the queue before the tab filter and the grouping runs.
@@ -126,30 +131,41 @@ pub(crate) fn flatten(
         counts,
         first_selected_position,
     );
+    let pending_filter_entries = pending_filter_entries(
+        placed
+            .iter()
+            .filter_map(|placed| placed.live.standing.as_ref().map(PendingStanding::state)),
+    );
+    let selection = SelectionSummary::of(&selected, &rows.standings);
     Ok(Flattened {
         items,
         headers,
-        found_states: FoundStates::of(placed.iter().map(|placed| &placed.row)),
         rows: placed,
         summary,
         shown_keys,
         selected,
+        pending_filter_entries,
+        selection,
     })
 }
 
-/// The first of `keys` in the queue's unfiltered order.
-pub(crate) fn first_candidate_among(
+/// The first candidate in the queue's unfiltered order whose identification
+/// is queued, running or having its answer written.
+pub(crate) fn first_identifying_candidate(
     rows: &ImportQueueRows,
     request: &ImportListRequest,
-    keys: &HashSet<String>,
 ) -> Result<Option<String>, LibraryError> {
     let Ordered {
         entries, placed, ..
     } = order(rows, &unfiltered(request))?;
     Ok(entries.iter().find_map(|entry| match entry.item {
         ItemRef::Candidate { index, .. } => {
-            let key = &placed[index].row.candidate_key;
-            keys.contains(key).then(|| key.clone())
+            let placed = &placed[index];
+            placed
+                .live
+                .facts
+                .identifying()
+                .then(|| placed.row.candidate_key.clone())
         }
         ItemRef::Header(_) | ItemRef::Invalid { .. } => None,
     }))
@@ -195,12 +211,19 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
             ScanCandidateKind::Tentative => {}
             ScanCandidateKind::Valid => {
                 let triage_row = place_row(rows, row, &request.selected)?;
+                let live = CandidateLiveState::of(
+                    &triage_row.action_basis,
+                    rows.standing_of(&triage_row.candidate_key),
+                );
                 let tab = triage_row.placement.tab();
                 counts.bump(tab);
                 let kept = match tab {
-                    TriageTab::Pending => view
-                        .pending_filter
-                        .holds(request.pending_state(&triage_row)),
+                    TriageTab::Pending => view.pending_filter.holds(
+                        live.standing
+                            .as_ref()
+                            .expect("a row on Found has a standing")
+                            .state(),
+                    ),
                     // Done is ordered by where uploads stand; until the queue
                     // first answers there is no order to show its rows in.
                     TriageTab::Done => request.upload_status != UploadStatus::Waiting,
@@ -226,6 +249,7 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
                 });
                 placed.push(PlacedRow {
                     row: triage_row,
+                    live,
                     index,
                 });
             }
@@ -422,7 +446,6 @@ fn unfiltered(request: &ImportListRequest) -> ImportListRequest {
     let mut request = request.clone();
     request.view.filter_text.clear();
     request.view.pending_filter = PendingFilter::All;
-    request.live_standings.clear();
     request
 }
 

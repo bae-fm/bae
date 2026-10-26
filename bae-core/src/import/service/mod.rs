@@ -135,6 +135,12 @@ pub(crate) enum ImportWorkerMessage {
     Shutdown,
 }
 
+/// The candidate an import commits, as the commit checks it.
+pub(super) struct CommittedCandidate {
+    pub(super) source: crate::import::release_candidate::CandidateSource,
+    pub(super) expectation: ImportExpectation,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct ImportExpectation {
     pub(crate) candidate: crate::import::CandidateAsRead,
@@ -193,6 +199,9 @@ impl ImportExpectation {
 pub struct ImportService {
     commands_rx: mpsc::UnboundedReceiver<ImportWorkerMessage>,
     event_tx: crate::import::handle::ImportEventBus,
+    /// What the bus's events have said about every candidate, held here for
+    /// the standing a commit ends.
+    runtime: CandidateRuntime,
     library_manager: LibraryManager,
     clock: coven::ClockRef,
     ids: coven::IdSourceRef,

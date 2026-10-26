@@ -101,14 +101,13 @@ impl LibraryManager {
             .await?)
     }
 
-    pub(crate) async fn first_import_candidate_among(
+    pub(crate) async fn first_identifying_import_candidate(
         &self,
         request: crate::import::ImportListRequest,
-        keys: std::collections::HashSet<String>,
     ) -> Result<Option<String>, LibraryError> {
         Ok(self
             .database
-            .first_import_candidate_among(request, keys)
+            .first_identifying_import_candidate(request)
             .await?)
     }
 
@@ -657,6 +656,27 @@ impl LibraryManager {
             .database
             .save_import_candidate_failure(content_hash, edit_revision, failure)
             .await?)
+    }
+
+    /// Remove every candidate's standing, as the library opens.
+    pub(crate) async fn clear_candidate_standings(&self) -> Result<(), LibraryError> {
+        Ok(self.database.clear_candidate_standings().await?)
+    }
+
+    /// Write where each of `standings` stands, in one transaction.
+    pub(crate) async fn write_candidate_standings(
+        &self,
+        standings: Vec<(String, crate::import::TriageRuntimeFacts)>,
+    ) -> Result<(), LibraryError> {
+        Ok(self.database.write_candidate_standings(standings).await?)
+    }
+
+    /// Where every candidate something is running for stands, by key.
+    pub(crate) async fn load_candidate_standings(
+        &self,
+    ) -> Result<std::collections::HashMap<String, crate::import::TriageRuntimeFacts>, LibraryError>
+    {
+        Ok(self.database.load_candidate_standings().await?)
     }
 
     /// What the scans of `watched_folder_path` stored about each file they

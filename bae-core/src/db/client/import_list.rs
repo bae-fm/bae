@@ -7,7 +7,9 @@
 
 mod window;
 
-use super::import_state::{load_matches_on, load_provenance_on, load_release_links_on};
+use super::import_state::{
+    load_matches_on, load_provenance_on, load_release_links_on, load_standings_on,
+};
 use super::*;
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
 use crate::import::folder_scanner::SkippedTags;
@@ -107,6 +109,16 @@ pub struct ImportQueueRows {
     /// Each grouping's anchor folder as (watched folder, path below it):
     /// `true` when its releases are read as one, `false` when kept apart.
     pub folder_readings: HashMap<(String, String), bool>,
+    /// Where each candidate something is running for stands, by key.
+    pub standings: HashMap<String, crate::import::TriageRuntimeFacts>,
+}
+
+impl ImportQueueRows {
+    /// Where the candidate at `key` stands: nothing running when it has no
+    /// standing.
+    pub(crate) fn standing_of(&self, key: &str) -> crate::import::TriageRuntimeFacts {
+        self.standings.get(key).cloned().unwrap_or_default()
+    }
 }
 
 pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQueueRows, DbError> {
@@ -186,6 +198,7 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
     };
 
     let states = state_rows(sql)?;
+    let standings = load_standings_on(sql)?;
     Ok(ImportQueueRows {
         watched_folders,
         candidates,
@@ -195,6 +208,7 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
         failures,
         states,
         folder_readings,
+        standings,
     })
 }
 
@@ -462,7 +476,8 @@ struct ImportListRows {
     summary: crate::import::ImportQueueSummary,
     shown_keys: Vec<String>,
     selected: crate::import::selection::SelectedRows,
-    found_states: crate::import::list::FoundStates,
+    pending_filter_entries: Vec<crate::import::PendingFilterEntry>,
+    selection: crate::import::selection::SelectionSummary,
 }
 
 /// One read of the list for `request`.
@@ -488,7 +503,8 @@ fn load_import_list_on(
         summary: flat.summary,
         shown_keys: flat.shown_keys,
         selected: flat.selected,
-        found_states: flat.found_states,
+        pending_filter_entries: flat.pending_filter_entries,
+        selection: flat.selection,
     })
 }
 
@@ -512,7 +528,8 @@ impl ImportListRows {
             summary: self.summary,
             shown_keys: self.shown_keys,
             selected: self.selected,
-            found_states: self.found_states,
+            pending_filter_entries: self.pending_filter_entries,
+            selection: self.selection,
         })
     }
 }
@@ -556,16 +573,16 @@ impl Database {
             .await
     }
 
-    /// The first of `keys` in the queue's order under `request`'s view; `None`
-    /// when the queue holds none of them.
-    pub(crate) async fn first_import_candidate_among(
+    /// The first candidate in the queue's order under `request`'s view whose
+    /// identification is queued, running or having its answer written; `None`
+    /// when none is.
+    pub(crate) async fn first_identifying_import_candidate(
         &self,
         request: ImportListRequest,
-        keys: HashSet<String>,
     ) -> Result<Option<String>, DbError> {
         self.read(move |sql| load_import_queue_on(&sql))
             .process(move |rows| {
-                crate::import::list::first_candidate_among(&rows, &request, &keys)
+                crate::import::list::first_identifying_candidate(&rows, &request)
                     .map_err(|error| DbError::Message(error.to_string()))
             })
             .await

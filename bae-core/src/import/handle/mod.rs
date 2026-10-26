@@ -11,7 +11,6 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
 
-mod candidate_facts_watch;
 mod combinations;
 mod edits;
 mod identification;
@@ -575,27 +574,29 @@ impl ImportServiceHandle {
         super::candidate_runtime::RuntimeValuesWatch::of(&self.runtime)
     }
 
-    /// One candidate's pane as it reads back from the tables, with this
-    /// process's runtime for it folded in.
+    /// One candidate's pane as it reads back from the tables, its standing
+    /// among them.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn candidate_pane(
         &self,
         key: &str,
     ) -> Result<Option<crate::import::ImportCandidateDetail>, crate::library::LibraryError> {
-        let runtime = self.runtime.get(key);
-        let facts = runtime
-            .as_ref()
-            .map(crate::import::triage::TriageRuntimeFacts::of)
-            .unwrap_or_default();
         Ok(self
             .library_manager
             .load_import_candidate(key)
             .await?
-            .map(|projection| projection.resolve(&facts)))
+            .map(crate::import::ImportCandidateDetailProjection::resolve))
     }
 
-    /// The query the pane subscribes to for one candidate, before this
-    /// process's runtime is folded in, for a test that watches it change.
+    /// Once every standing the runtime changed so far is written, for a test
+    /// that reads the tables right after.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn standings_written(&self) {
+        self.runtime.standings_written().await;
+    }
+
+    /// The query the pane subscribes to for one candidate, for a test that
+    /// watches it change.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn subscribe_candidate_pane(
         &self,
@@ -638,7 +639,6 @@ impl ImportServiceHandle {
             view,
             std::iter::once(window).collect(),
             self.library_manager.subscribe_outbox_values(),
-            self.watch_runtime_facts(),
             &self.runtime_handle,
         )
     }
@@ -815,6 +815,13 @@ impl ImportServiceHandle {
     /// and the write share the commit lock, and the write ends `run`'s pending
     /// save itself, so a caller torn down mid-write leaves nothing pending.
     ///
+    /// A verdict that lands stores where the candidate stands with `run`'s
+    /// answer ended in its own transaction, under the standings hold, which
+    /// is kept until the runtime has ended the answer too: no read sees the
+    /// verdict beside the run, or the run gone without its verdict. A write
+    /// that fails records the failure, which the runtime's writer stores in
+    /// its own transaction.
+    ///
     /// The pending save ends under the commit lock too, the lock an Import
     /// asked for while the answer's pick is read takes to mark the answer. So
     /// that ask lands on the answer before its write, which then carries it
@@ -834,8 +841,12 @@ impl ImportServiceHandle {
                 .folder_state_commit
                 .lock("store an identification verdict")
                 .await;
-            match this
-                .save_candidate_verdict_if_current_write(&candidate_key, &row)
+            let held = this.runtime.hold_standings().await;
+            let standing = this
+                .runtime
+                .standing_once_answered(&held, &candidate_key, run);
+            let written = match this
+                .save_candidate_verdict_if_current_write(&candidate_key, &row, &standing)
                 .await
             {
                 Ok(wrote) => {
@@ -856,16 +867,20 @@ impl ImportServiceHandle {
                     );
                     Err(error)
                 }
-            }
+            };
+            drop(held);
+            written
         })
         .await
     }
 
-    /// The write itself, under the commit lock its caller holds.
+    /// The write itself, under the commit lock and the standings hold its
+    /// caller holds.
     async fn save_candidate_verdict_if_current_write(
         &self,
         candidate_key: &str,
         row: &crate::db::NewImportCandidateVerdict,
+        standing: &crate::import::TriageRuntimeFacts,
     ) -> Result<bool, crate::library::LibraryError> {
         let Some(candidate) = self.answerable_candidate(candidate_key).await? else {
             return Ok(false);
@@ -877,7 +892,9 @@ impl ImportServiceHandle {
         {
             return Ok(false);
         }
-        self.preparations.store_verdict(row).await
+        self.preparations
+            .store_run_verdict(row, candidate_key, standing)
+            .await
     }
 
     /// The candidate at `key` as an identification can still answer it: a

@@ -9,7 +9,9 @@
 //! a fact in a table, read by [`crate::import::list`]. What is left
 //! is what is happening *right now*: a run in flight and an import in
 //! progress. That is [`CandidateRuntimeSnapshot`], held by
-//! [`super::candidate_runtime::CandidateRuntime`] and delivered per key.
+//! [`super::candidate_runtime::CandidateRuntime`] and delivered per key; where
+//! it leaves each key standing is written to the standings table the list
+//! reads beside the rows.
 
 use super::folder_scanner::{
     CategorizedFiles, FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey,

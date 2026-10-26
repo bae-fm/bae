@@ -14,7 +14,10 @@ impl ImportService {
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
     ) -> Result<ImportServiceHandle, crate::import::ImportError> {
-        let runtime = CandidateRuntime::default();
+        // No run or import outlives the process that held it, so the library
+        // opens with no candidate standing, before anything reads the list.
+        library_manager.clear_candidate_standings().await?;
+        let runtime = CandidateRuntime::new(library_manager.clone(), &runtime_handle);
         let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
         let services = crate::import::ImportServices::new(
             event_tx,
@@ -37,7 +40,7 @@ impl ImportService {
         ids: coven::IdSourceRef,
         file_tags: Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     ) -> ImportServiceHandle {
-        let runtime = CandidateRuntime::default();
+        let runtime = CandidateRuntime::new(library_manager.clone(), &runtime_handle);
         let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
         let mut services = crate::import::ImportServices::new(
             event_tx,
@@ -57,6 +60,7 @@ impl ImportService {
     ) -> ImportServiceHandle {
         let (fs_tx, fs_rx) = mpsc::unbounded_channel::<WatchReport>();
         let event_tx_for_worker = services.event_tx.clone();
+        let runtime_for_worker = runtime.clone();
         let library_manager = services.library_manager.clone();
         let clock = services.clock.clone();
         let ids = services.ids.clone();
@@ -81,6 +85,7 @@ impl ImportService {
                     let mut service = ImportService {
                         commands_rx,
                         event_tx: event_tx_for_worker,
+                        runtime: runtime_for_worker,
                         library_manager,
                         clock,
                         ids,
@@ -431,8 +436,7 @@ impl ImportService {
         );
 
         self.run_import(
-            crate::db::ImportCommitGuard::Candidate {
-                candidate_key: candidate_key.clone(),
+            CommittedCandidate {
                 source,
                 expectation: expectation.clone(),
             },
@@ -470,10 +474,15 @@ impl ImportService {
     /// the release in one transaction with the pictures `artist_images`
     /// fetched for its new artists, recording a `Remote` destination's
     /// uploads in that same write.
+    ///
+    /// The same transaction ends the import's standing, under the standings
+    /// hold, which is kept until the runtime has heard the import end too: no
+    /// read sees the release beside the running import, or the import gone
+    /// without its release.
     #[allow(clippy::too_many_arguments)]
     pub(super) async fn run_import(
         &self,
-        commit_guard: crate::db::ImportCommitGuard,
+        committed: CommittedCandidate,
         run: ImportRun<'_>,
         destination: ImportDestination,
         prepared: &mut PreparedMetadata,
@@ -778,6 +787,15 @@ impl ImportService {
         self.import_cancels.begin_writing(candidate_key, import_id)?;
         self.emit_phase_progress(run, &db_release.id, None, ImportPhase::Finalizing);
 
+        let held = self.runtime.hold_standings().await;
+        let commit_guard = crate::db::ImportCommitGuard::Candidate {
+            candidate_key: candidate_key.to_string(),
+            source: committed.source,
+            expectation: committed.expectation,
+            standing: self
+                .runtime
+                .standing_once_imported(&held, candidate_key, import_id),
+        };
         // Attaching the originals queues their uploads in the import transaction.
         let outbox_revision = library_manager
             .finalize_import_atomic(
@@ -829,6 +847,7 @@ impl ImportService {
                 candidate_key: candidate_key.to_string(),
                 progress,
             });
+        drop(held);
 
         info!("Import complete for release {}", db_release.id);
         Ok(())
