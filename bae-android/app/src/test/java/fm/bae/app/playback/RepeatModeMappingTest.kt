@@ -12,11 +12,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgePlaybackValueState
 import uniffi.bae_bridge.BridgeRepeatMode
-import uniffi.bae_bridge.NoHandle
-import uniffi.bae_bridge.UiEventCallback
 
 /**
  * The repeat-mode mapping in both directions. Core reports its mode as a
@@ -73,7 +71,7 @@ class RepeatModeMappingTest {
         return player(handle) to handle
     }
 
-    private fun player(handle: AppHandle): BaeCorePlayer =
+    private fun player(handle: AppHandleInterface): BaeCorePlayer =
         BaeCorePlayer(
             applicationLooper = Looper.getMainLooper(),
             appHandle = handle,
@@ -81,15 +79,11 @@ class RepeatModeMappingTest {
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
         )
 
-    private class RepeatModeRecordingHandle : AppHandle(NoHandle) {
+    private class RepeatModeRecordingHandle : FakeAppHandle() {
         val repeatModes = mutableListOf<BridgeRepeatMode>()
 
         override fun setRepeatMode(mode: BridgeRepeatMode) {
             repeatModes += mode
         }
-
-        override suspend fun savePlaybackState() {}
-
-        override fun subscribeUiEvents(callback: UiEventCallback) {}
     }
 }

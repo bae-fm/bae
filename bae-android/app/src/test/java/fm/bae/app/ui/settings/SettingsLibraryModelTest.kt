@@ -3,6 +3,7 @@ package fm.bae.app.ui.settings
 import android.os.Looper
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
+import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.FakeLiveSubscription
 import fm.bae.app.ui.PreviewData
 import kotlinx.coroutines.CoroutineScope
@@ -16,7 +17,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePerson
@@ -24,7 +24,6 @@ import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.LibraryNameCallback
 import uniffi.bae_bridge.LiveSubscription
-import uniffi.bae_bridge.NoHandle
 
 /**
  * A failed read of this device's person or of the library's name stays a
@@ -102,7 +101,7 @@ class SettingsLibraryModelTest {
 
     private class SettingsHandle(
         private val people: List<Result<List<BridgePerson>>> = emptyList(),
-    ) : AppHandle(NoHandle) {
+    ) : FakeAppHandle() {
         private var reads = 0
         val nameCallbacks = mutableListOf<LibraryNameCallback>()
 

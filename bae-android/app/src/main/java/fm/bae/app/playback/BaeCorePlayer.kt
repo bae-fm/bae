@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeLoadingTrack
 import uniffi.bae_bridge.BridgeNowPlayingTrack
 import uniffi.bae_bridge.BridgePlaybackContext
@@ -47,7 +47,7 @@ private val logger = BaeLogger(TAG)
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class BaeCorePlayer(
     applicationLooper: Looper,
-    private val appHandle: AppHandle,
+    private val appHandle: AppHandleInterface,
     private val system: PlaybackSystem,
     private val scope: CoroutineScope,
     private val queueUpcomingSource: QueueUpcomingSource = QueueUpcomingSource(appHandle),

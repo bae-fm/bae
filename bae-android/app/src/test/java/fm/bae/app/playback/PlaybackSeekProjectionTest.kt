@@ -11,11 +11,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgePlaybackPosition
 import uniffi.bae_bridge.BridgePlaybackValueState
-import uniffi.bae_bridge.NoHandle
-import uniffi.bae_bridge.UiEventCallback
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -346,7 +343,7 @@ class PlaybackSeekProjectionTest {
         assertEquals(durationMs, position.durationMs)
     }
 
-    private class SeekRecordingHandle : AppHandle(NoHandle) {
+    private class SeekRecordingHandle : FakeAppHandle() {
         val seekRatios = mutableListOf<Double>()
         var nextTrackCalls = 0
         var previousTrackCalls = 0
@@ -366,9 +363,5 @@ class PlaybackSeekProjectionTest {
             previousTrackCalls++
             previousTrackFailure?.let { throw it }
         }
-
-        override suspend fun savePlaybackState() {}
-
-        override fun subscribeUiEvents(callback: UiEventCallback) {}
     }
 }

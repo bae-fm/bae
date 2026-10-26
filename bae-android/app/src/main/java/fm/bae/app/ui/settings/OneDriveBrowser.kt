@@ -8,7 +8,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.OAuthProviders
 import fm.bae.app.performBridgeAction
-import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeStorageFolder
 
 private val logger = BaeLogger("bae.OneDriveBrowser")
@@ -37,7 +37,7 @@ internal class OneDriveFailure(
  * shown, with the failure and Retry; a failed first listing shows only those.
  */
 internal class OneDriveBrowser(
-    private val handle: AppHandle,
+    private val handle: AppHandleInterface,
     private val providers: OAuthProviders,
     private val errors: ErrorDisplays,
 ) {

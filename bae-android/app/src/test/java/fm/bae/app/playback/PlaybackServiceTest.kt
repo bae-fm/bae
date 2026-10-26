@@ -33,7 +33,6 @@ import org.robolectric.android.controller.ServiceController
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AlbumBrowseSubscription
 import uniffi.bae_bridge.AlbumDetailSubscription
-import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumBrowseSnapshot
 import uniffi.bae_bridge.BridgeAlbumBrowseWindow
@@ -43,39 +42,23 @@ import uniffi.bae_bridge.BridgeComposerBrowseSnapshot
 import uniffi.bae_bridge.BridgeComposerBrowseWindow
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerDetailSnapshot
-import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
-import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLibraryPageWindow
 import uniffi.bae_bridge.BridgeLibrarySearchSnapshot
 import uniffi.bae_bridge.BridgeLiveQueryCause
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseDetailSnapshot
 import uniffi.bae_bridge.BridgeSearchResults
-import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.BridgeWorkDetailSnapshot
-import uniffi.bae_bridge.CastDevicesCallback
 import uniffi.bae_bridge.ComposerBrowseSubscription
 import uniffi.bae_bridge.ComposerDetailSubscription
-import uniffi.bae_bridge.ConfigCallback
-import uniffi.bae_bridge.DownloadCallback
-import uniffi.bae_bridge.DownloadTransfersCallback
 import uniffi.bae_bridge.LibrarySearchSubscription
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.NoHandle
-import uniffi.bae_bridge.OutboxCallback
-import uniffi.bae_bridge.OutboxTransfersCallback
-import uniffi.bae_bridge.PlaybackPositionsCallback
-import uniffi.bae_bridge.PlaybackValuesCallback
-import uniffi.bae_bridge.QueueCallback
 import uniffi.bae_bridge.ReleaseDetailSubscription
-import uniffi.bae_bridge.SyncActivityCallback
-import uniffi.bae_bridge.SyncStatusCallback
-import uniffi.bae_bridge.UiEventCallback
 import uniffi.bae_bridge.WorkDetailSubscription
 
 @RunWith(RobolectricTestRunner::class)
@@ -148,7 +131,7 @@ class PlaybackServiceTest {
         return OpenLibrary(
             libraryId = "lib-1",
             appHandle = handle,
-            diagnostics = BridgeDiagnostics(NoHandle),
+            diagnostics = FakeDiagnostics(),
             stores =
                 OpenLibraryStores(
                     library = LibraryStore(),
@@ -182,134 +165,6 @@ class PlaybackServiceTest {
     /** The service over [session], driven through the lifecycle the system gives it. */
     private fun playbackService(session: OpenLibrary): ServiceController<PlaybackService> =
         ServiceController.of(PlaybackService { session }, null)
-}
-
-internal class FakeAppHandle(
-    private val albumPages: (offset: ULong, limit: ULong) -> List<BridgeAlbum> = { _, _ -> emptyList() },
-    private val composerPages: (offset: ULong, limit: ULong) -> List<BridgeComposerSummary> = { _, _ -> emptyList() },
-    private val albumDetails: Map<String, BridgeAlbumDetail> = emptyMap(),
-    private val composerDetails: Map<String, BridgeComposerDetail> = emptyMap(),
-    private val workDetails: Map<String, BridgeWorkDetail> = emptyMap(),
-    private val releaseDetails: Map<String, BridgeRelease> = emptyMap(),
-    private val searchResults: (query: String) -> BridgeSearchResults = { BridgeFixtures.searchResults() },
-    private val initialAlbumPageError: uniffi.bae_bridge.BridgeException? = null,
-    private val initialSearchError: (query: String) -> uniffi.bae_bridge.BridgeException? = { null },
-    var deliverAlbumPagesImmediately: Boolean = true,
-    var deliverAlbumBaselineImmediately: Boolean = true,
-    var deliverSearchResultsImmediately: Boolean = true,
-) : AppHandle(NoHandle) {
-    var pauseCount = 0
-    var resumeCount = 0
-
-    /** Offset/limit of each window the album browse was asked for — lets
-     *  browse-paging tests assert the requested window reached the bridge
-     *  unaltered. */
-    val albumPageWindows = mutableListOf<Pair<ULong, ULong>>()
-    val playReleaseCalls = mutableListOf<Triple<String, String?, Boolean>>()
-    val liveSubscriptions = mutableListOf<FakeLiveSubscription>()
-    val albumBrowseSubscriptions = mutableListOf<FakeAlbumBrowseSubscription>()
-    val composerBrowseSubscriptions = mutableListOf<FakeComposerBrowseSubscription>()
-    val albumDetailSubscriptions = mutableListOf<FakeAlbumDetailSubscription>()
-    val searchSubscriptions = mutableListOf<FakeLibrarySearchSubscription>()
-
-    private fun liveSubscription(): FakeLiveSubscription = FakeLiveSubscription().also(liveSubscriptions::add)
-
-    override fun pause() {
-        pauseCount++
-    }
-
-    override fun resume() {
-        resumeCount++
-    }
-
-    override suspend fun savePlaybackState() {}
-
-    override fun subscribeUiEvents(callback: UiEventCallback) {}
-
-    override fun subscribeConfig(callback: ConfigCallback): LiveSubscription = liveSubscription()
-
-    override fun subscribeSyncStatus(callback: SyncStatusCallback): LiveSubscription = liveSubscription()
-
-    override fun subscribeSyncActivity(callback: SyncActivityCallback): LiveSubscription = liveSubscription()
-
-    override fun subscribeDownloads(callback: DownloadCallback): LiveSubscription = liveSubscription()
-
-    override fun subscribeDownloadTransfers(callback: DownloadTransfersCallback): LiveSubscription = liveSubscription()
-
-    override fun subscribeOutbox(callback: OutboxCallback): LiveSubscription = liveSubscription()
-
-    override fun subscribeOutboxTransfers(callback: OutboxTransfersCallback): LiveSubscription = liveSubscription()
-
-    override fun subscribeCastDevices(callback: CastDevicesCallback): LiveSubscription = liveSubscription()
-
-    override fun subscribeQueue(callback: QueueCallback): LiveSubscription = liveSubscription()
-
-    override fun subscribePlaybackValues(callback: PlaybackValuesCallback): LiveSubscription = liveSubscription()
-
-    override fun subscribePlaybackPositions(callback: PlaybackPositionsCallback): LiveSubscription = liveSubscription()
-
-    override fun triggerSync() {}
-
-    override suspend fun fetchLibraryImageBytes(image: BridgeImageRef): ByteArray? = null
-
-    /** Deliver [value] on a search, as the answer to its newest request unless [revision] names
-     *  an earlier one. */
-    fun emitSearchResults(
-        subscription: Int,
-        value: BridgeSearchResults,
-        revision: ULong? = null,
-    ) {
-        searchSubscriptions[subscription].emit(Result.success(value), revision)
-    }
-
-    override fun subscribeAlbumBrowse(
-        sortCriteria: List<BridgeSortCriterion>,
-        groupByArtist: Boolean,
-    ): AlbumBrowseSubscription =
-        FakeAlbumBrowseSubscription(
-            albumPages,
-            albumPageWindows,
-            deliverAlbumPagesImmediately,
-            deliverAlbumBaselineImmediately,
-            initialAlbumPageError,
-        ).also(albumBrowseSubscriptions::add)
-
-    override fun subscribeComposerBrowse(sortCriteria: List<BridgeComposerSortCriterion>): ComposerBrowseSubscription =
-        FakeComposerBrowseSubscription(composerPages).also(composerBrowseSubscriptions::add)
-
-    override fun subscribeAlbumDetail(): AlbumDetailSubscription =
-        FakeAlbumDetailSubscription(FakeDetailRead { albumDetails[it] }).also(albumDetailSubscriptions::add)
-
-    override fun subscribeComposerDetail(): ComposerDetailSubscription =
-        FakeComposerDetailSubscription(FakeDetailRead { composerDetails[it] })
-
-    override fun subscribeWorkDetail(): WorkDetailSubscription = FakeWorkDetailSubscription(FakeDetailRead { workDetails[it] })
-
-    override fun subscribeReleaseDetail(): ReleaseDetailSubscription = FakeReleaseDetailSubscription(FakeDetailRead { releaseDetails[it] })
-
-    override fun subscribeLibrarySearch(): LibrarySearchSubscription =
-        FakeLibrarySearchSubscription { query ->
-            if (!deliverSearchResultsImmediately) {
-                null
-            } else {
-                initialSearchError(query)?.let { Result.failure(it) } ?: Result.success(searchResults(query))
-            }
-        }.also(searchSubscriptions::add)
-
-    fun failSearchResults(
-        subscription: Int,
-        error: uniffi.bae_bridge.BridgeException,
-    ) {
-        searchSubscriptions[subscription].emit(Result.failure(error))
-    }
-
-    override fun playRelease(
-        releaseId: String,
-        startTrackId: String?,
-        shuffle: Boolean,
-    ) {
-        playReleaseCalls.add(Triple(releaseId, startTrackId, shuffle))
-    }
 }
 
 /**

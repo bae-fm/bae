@@ -10,7 +10,7 @@ import fm.bae.app.BaeLogger
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
 import java.io.ByteArrayInputStream
@@ -143,7 +143,7 @@ class ImageStore(
      *  scheduler. */
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-    constructor(handle: AppHandle) : this(
+    constructor(handle: AppHandleInterface) : this(
         fetchLibraryImageBytes = { handle.fetchLibraryImageBytes(it) },
         fetchReleaseImageBytes = { releaseId, source -> handle.fetchReleaseImageBytes(releaseId, source) },
     )

@@ -10,7 +10,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.LibraryNameCallback
@@ -54,7 +54,7 @@ internal sealed interface LibraryNameRead {
  * decides would be.
  */
 internal class SettingsLibraryModel(
-    private val appHandle: AppHandle,
+    private val appHandle: AppHandleInterface,
     private val errors: ErrorDisplays,
     private val scope: CoroutineScope,
 ) {

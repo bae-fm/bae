@@ -9,7 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONException
 import org.json.JSONObject
-import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeOAuthClients
@@ -81,34 +81,34 @@ class OAuthSignIn private constructor(
         }
 
     override suspend fun signIn(
-        handle: AppHandle,
+        handle: AppHandleInterface,
         provider: BridgeCloudProvider,
     ) {
         handle.signIn(provider)
     }
 
     override suspend fun signInAgain(
-        handle: AppHandle,
+        handle: AppHandleInterface,
         deviceName: String,
     ): BridgeStorageSetup = handle.signInAgain(deviceName)
 
-    override suspend fun dropboxSharedFolders(handle: AppHandle): List<BridgeStorageFolder> = handle.dropboxSharedFolders()
+    override suspend fun dropboxSharedFolders(handle: AppHandleInterface): List<BridgeStorageFolder> = handle.dropboxSharedFolders()
 
-    override suspend fun oneDriveRoot(handle: AppHandle): BridgeStorageFolder = handle.onedriveRoot()
+    override suspend fun oneDriveRoot(handle: AppHandleInterface): BridgeStorageFolder = handle.onedriveRoot()
 
     override suspend fun oneDriveFolders(
-        handle: AppHandle,
+        handle: AppHandleInterface,
         parent: BridgeStorageLocation,
     ): List<BridgeStorageFolder> = handle.onedriveFolders(parent)
 
     override suspend fun createOneDriveFolder(
-        handle: AppHandle,
+        handle: AppHandleInterface,
         parent: BridgeStorageLocation,
         name: String,
     ): BridgeStorageFolder = handle.createOnedriveFolder(parent, name)
 
     override suspend fun setUpStorage(
-        handle: AppHandle,
+        handle: AppHandleInterface,
         location: BridgeStorageLocation,
         deviceName: String,
     ): BridgeStorageSetup = handle.setupOauthStorage(location, deviceName)

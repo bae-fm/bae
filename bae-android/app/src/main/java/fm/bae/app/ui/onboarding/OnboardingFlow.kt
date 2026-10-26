@@ -21,7 +21,7 @@ import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeCodeInfo
 import uniffi.bae_bridge.BridgeCodeMetadata
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeHost
+import uniffi.bae_bridge.BridgeHostInterface
 import uniffi.bae_bridge.BridgeInviteInfo
 import uniffi.bae_bridge.BridgeJoinControl
 import uniffi.bae_bridge.BridgeS3Credentials
@@ -142,7 +142,7 @@ internal fun codeReadStep(
 internal class OnboardingFlow(
     private val scope: CoroutineScope,
     private val context: Context,
-    private val host: BridgeHost,
+    private val host: BridgeHostInterface,
     private val oauthProvidersError: String?,
     restoreOver: RestoreOver?,
     private val onBootstrapped: (BridgeBootstrapResult) -> Unit,

@@ -12,15 +12,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeDurationClock
-import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeTrackDisplay
-import uniffi.bae_bridge.NoHandle
-import uniffi.bae_bridge.UiEventCallback
 
 /**
  * Skip-to-queue-item ([BaeCorePlayer.handleSeek]'s COMMAND_SEEK_TO_MEDIA_ITEM
@@ -127,17 +123,11 @@ class SeekToMediaItemTest {
         return player to handle
     }
 
-    private class SkipRecordingHandle : AppHandle(NoHandle) {
+    private class SkipRecordingHandle : FakeAppHandle() {
         val skippedEntryIds = mutableListOf<String>()
 
         override fun skipToEntry(entryId: String) {
             skippedEntryIds += entryId
         }
-
-        override suspend fun savePlaybackState() {}
-
-        override fun subscribeUiEvents(callback: UiEventCallback) {}
-
-        override suspend fun fetchLibraryImageBytes(image: BridgeImageRef): ByteArray? = null
     }
 }

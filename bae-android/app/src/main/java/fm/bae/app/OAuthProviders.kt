@@ -1,7 +1,7 @@
 package fm.bae.app
 
 import android.content.Context
-import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeStorageFolder
@@ -26,7 +26,7 @@ interface OAuthProviders {
 
     /** Sign the open library's device in to [provider] before choosing a folder on it. */
     suspend fun signIn(
-        handle: AppHandle,
+        handle: AppHandleInterface,
         provider: BridgeCloudProvider,
     )
 
@@ -35,32 +35,32 @@ interface OAuthProviders {
      * access its location needs, and reconnect that location under [deviceName].
      */
     suspend fun signInAgain(
-        handle: AppHandle,
+        handle: AppHandleInterface,
         deviceName: String,
     ): BridgeStorageSetup
 
     /** The Dropbox folders shared with the signed-in account, each a place a library can live. */
-    suspend fun dropboxSharedFolders(handle: AppHandle): List<BridgeStorageFolder>
+    suspend fun dropboxSharedFolders(handle: AppHandleInterface): List<BridgeStorageFolder>
 
     /** The top of the signed-in OneDrive. */
-    suspend fun oneDriveRoot(handle: AppHandle): BridgeStorageFolder
+    suspend fun oneDriveRoot(handle: AppHandleInterface): BridgeStorageFolder
 
     /** The folders inside [parent] on the signed-in OneDrive. */
     suspend fun oneDriveFolders(
-        handle: AppHandle,
+        handle: AppHandleInterface,
         parent: BridgeStorageLocation,
     ): List<BridgeStorageFolder>
 
     /** A new folder named [name] inside [parent] on the signed-in OneDrive. */
     suspend fun createOneDriveFolder(
-        handle: AppHandle,
+        handle: AppHandleInterface,
         parent: BridgeStorageLocation,
         name: String,
     ): BridgeStorageFolder
 
     /** Make [location] the open library's cloud home. */
     suspend fun setUpStorage(
-        handle: AppHandle,
+        handle: AppHandleInterface,
         location: BridgeStorageLocation,
         deviceName: String,
     ): BridgeStorageSetup

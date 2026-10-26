@@ -3,6 +3,7 @@ package fm.bae.app.ui.settings
 import android.os.Looper
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
+import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.ui.PreviewData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,13 +14,11 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
-import uniffi.bae_bridge.NoHandle
 
 /** A failed read of the library's people ends the spinner with the failure, and Retry reads again. */
 @RunWith(RobolectricTestRunner::class)
@@ -54,7 +53,7 @@ class MembersModelTest {
 
     private class PeopleHandle(
         private val answers: List<Result<List<BridgePerson>>>,
-    ) : AppHandle(NoHandle) {
+    ) : FakeAppHandle() {
         var reads = 0
             private set
 

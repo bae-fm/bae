@@ -4,6 +4,7 @@ import android.os.Looper
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.OAuthProviders
+import fm.bae.app.playback.FakeAppHandle
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -14,7 +15,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
@@ -24,7 +25,6 @@ import uniffi.bae_bridge.BridgeStorageFolder
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStorageSetup
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
-import uniffi.bae_bridge.NoHandle
 
 /**
  * The OneDrive picker moves into a folder only once its listing loads: a
@@ -60,7 +60,7 @@ class OneDriveBrowserTest {
                         music to listOf(offline(), Result.success(listOf(albums))),
                     ),
                 )
-            val browser = OneDriveBrowser(AppHandle(NoHandle), drive, Errors)
+            val browser = OneDriveBrowser(FakeAppHandle(), drive, Errors)
             browser.openRoot()
             val atRoot = checkNotNull(browser.shown)
 
@@ -81,7 +81,7 @@ class OneDriveBrowserTest {
     fun aFailedFirstListingShowsOnlyTheFailureUntilRetryLoadsIt() =
         runBlocking {
             val drive = Drive(mapOf(root to listOf(offline(), Result.success(listOf(music)))))
-            val browser = OneDriveBrowser(AppHandle(NoHandle), drive, Errors)
+            val browser = OneDriveBrowser(FakeAppHandle(), drive, Errors)
 
             browser.openRoot()
 
@@ -104,7 +104,7 @@ class OneDriveBrowserTest {
                         music to listOf(Result.success(listOf(albums))),
                     ),
                 )
-            val browser = OneDriveBrowser(AppHandle(NoHandle), drive, Errors)
+            val browser = OneDriveBrowser(FakeAppHandle(), drive, Errors)
             browser.openRoot()
             browser.open(checkNotNull(browser.shown), music)
             val inMusic = checkNotNull(browser.shown)
@@ -127,7 +127,7 @@ class OneDriveBrowserTest {
                     ),
                     created = albums,
                 )
-            val browser = OneDriveBrowser(AppHandle(NoHandle), drive, Errors)
+            val browser = OneDriveBrowser(FakeAppHandle(), drive, Errors)
             browser.openRoot()
             val atRoot = checkNotNull(browser.shown)
 
@@ -162,15 +162,15 @@ class OneDriveBrowserTest {
         var creates = 0
             private set
 
-        override suspend fun oneDriveRoot(handle: AppHandle) = root
+        override suspend fun oneDriveRoot(handle: AppHandleInterface) = root
 
         override suspend fun oneDriveFolders(
-            handle: AppHandle,
+            handle: AppHandleInterface,
             parent: BridgeStorageLocation,
         ): List<BridgeStorageFolder> = checkNotNull(answers[parent]).removeAt(0).getOrThrow()
 
         override suspend fun createOneDriveFolder(
-            handle: AppHandle,
+            handle: AppHandleInterface,
             parent: BridgeStorageLocation,
             name: String,
         ): BridgeStorageFolder {
@@ -181,19 +181,19 @@ class OneDriveBrowserTest {
         override fun register(host: BridgeHost) = error("not used")
 
         override suspend fun signIn(
-            handle: AppHandle,
+            handle: AppHandleInterface,
             provider: BridgeCloudProvider,
         ) = error("not used")
 
         override suspend fun signInAgain(
-            handle: AppHandle,
+            handle: AppHandleInterface,
             deviceName: String,
         ): BridgeStorageSetup = error("not used")
 
-        override suspend fun dropboxSharedFolders(handle: AppHandle): List<BridgeStorageFolder> = error("not used")
+        override suspend fun dropboxSharedFolders(handle: AppHandleInterface): List<BridgeStorageFolder> = error("not used")
 
         override suspend fun setUpStorage(
-            handle: AppHandle,
+            handle: AppHandleInterface,
             location: BridgeStorageLocation,
             deviceName: String,
         ): BridgeStorageSetup = error("not used")

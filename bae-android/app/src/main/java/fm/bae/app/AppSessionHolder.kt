@@ -583,7 +583,7 @@ object AppSessionHolder {
         val session =
             OpenLibrary(
                 libraryId = libraryId,
-                appHandle = handle,
+                appHandle = BridgeLibraryHandle(handle),
                 diagnostics = diagnostics,
                 stores = buildStores(config, handle, initialOutbox, initialDownloads, messages),
                 runtime =

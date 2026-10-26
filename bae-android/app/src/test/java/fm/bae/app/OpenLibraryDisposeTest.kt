@@ -13,6 +13,8 @@ import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.playback.AudioFocus
 import fm.bae.app.playback.BaeCorePlayer
+import fm.bae.app.playback.FakeAppHandle
+import fm.bae.app.playback.FakeDiagnostics
 import fm.bae.app.playback.PlaybackSystem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,14 +28,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.AppHandle
-import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLibraryRemoval
-import uniffi.bae_bridge.NoHandle
-import uniffi.bae_bridge.UiEventCallback
 
 /**
  * The switch path relies on [OpenLibrary.dispose] running the bridge's graceful
@@ -112,7 +109,7 @@ class OpenLibraryDisposeTest {
             OpenLibrary(
                 libraryId = "lib-1",
                 appHandle = handle,
-                diagnostics = BridgeDiagnostics(NoHandle),
+                diagnostics = FakeDiagnostics(),
                 stores =
                     OpenLibraryStores(
                         library = LibraryStore(),
@@ -147,7 +144,7 @@ class OpenLibraryDisposeTest {
     private class RecordingHandle(
         private val failShutdown: Boolean,
         private val failRemoval: Boolean,
-    ) : AppHandle(NoHandle) {
+    ) : FakeAppHandle() {
         val calls = mutableListOf<String>()
 
         override suspend fun shutdown() {
@@ -168,11 +165,5 @@ class OpenLibraryDisposeTest {
             }
             return BridgeLibraryRemoval.Removed
         }
-
-        override fun subscribeUiEvents(callback: UiEventCallback) {}
-
-        override suspend fun savePlaybackState() {}
-
-        override suspend fun fetchLibraryImageBytes(image: BridgeImageRef): ByteArray? = null
     }
 }

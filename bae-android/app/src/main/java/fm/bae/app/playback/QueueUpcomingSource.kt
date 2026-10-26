@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryPageWindow
 import uniffi.bae_bridge.BridgeQueueEntry
@@ -48,7 +48,7 @@ interface QueueUpcomingQuery {
 class QueueUpcomingSource(
     val open: () -> QueueUpcomingQuery,
 ) {
-    constructor(handle: AppHandle) : this(
+    constructor(handle: AppHandleInterface) : this(
         open = {
             val subscription = handle.subscribeQueueUpcoming()
             object : QueueUpcomingQuery {

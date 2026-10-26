@@ -12,12 +12,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.AppHandle
-import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgePlaybackPauseReason
 import uniffi.bae_bridge.BridgePlaybackValueState
-import uniffi.bae_bridge.NoHandle
-import uniffi.bae_bridge.UiEventCallback
 
 /**
  * The single-tap transport controls and the volume/mute intake. [BaeCorePlayer]
@@ -119,27 +115,12 @@ class PlaybackControlsTest {
         return player to handle
     }
 
-    private class ControlRecordingHandle : AppHandle(NoHandle) {
-        var pauseCount = 0
-        var resumeCount = 0
+    /** The fake handle, also counting stops ([FakeAppHandle] counts pauses and resumes). */
+    private class ControlRecordingHandle : FakeAppHandle() {
         var stopCount = 0
-
-        override fun pause() {
-            pauseCount++
-        }
-
-        override fun resume() {
-            resumeCount++
-        }
 
         override fun stop() {
             stopCount++
         }
-
-        override suspend fun savePlaybackState() {}
-
-        override fun subscribeUiEvents(callback: UiEventCallback) {}
-
-        override suspend fun fetchLibraryImageBytes(image: BridgeImageRef): ByteArray? = null
     }
 }

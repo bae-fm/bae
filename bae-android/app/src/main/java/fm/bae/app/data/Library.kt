@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AlbumBrowseSubscription
-import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.ArtistBrowseSubscription
 import uniffi.bae_bridge.BridgeAlbumBrowseSnapshot
 import uniffi.bae_bridge.BridgeAlbumDetail
@@ -114,7 +114,7 @@ private fun <Value> detailFlow(
     }
 
 /**
- * Narrow projection of [AppHandle] for library browse and detail live queries.
+ * Narrow projection of [AppHandleInterface] for library browse and detail live queries.
  * Each flow stays subscribed after an error and can deliver later values; the
  * error is an event rather than flow termination. Image bytes are not here —
  * every image in the app resolves through [fm.bae.app.data.ImageStore], which
@@ -122,7 +122,7 @@ private fun <Value> detailFlow(
  * Mirrors the macOS `Library` domain service.
  */
 class Library(
-    private val handle: AppHandle,
+    private val handle: AppHandleInterface,
 ) {
     internal fun albumBrowse(
         sortCriteria: List<BridgeSortCriterion>,

@@ -2,7 +2,7 @@ package fm.bae.app.data
 
 import android.content.Context
 import android.net.wifi.WifiManager
-import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 
 /**
@@ -15,7 +15,7 @@ import uniffi.bae_bridge.BridgeCastTranscodeFormat
  * nothing on most phones. The lock is held for exactly as long as the browse.
  */
 class Cast(
-    private val appHandle: AppHandle,
+    private val appHandle: AppHandleInterface,
     context: Context,
 ) {
     private val multicastLock =

@@ -64,7 +64,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeInvite
@@ -104,7 +104,7 @@ internal sealed interface PeopleRead {
  * list again.
  */
 internal class MembersModel(
-    private val appHandle: AppHandle,
+    private val appHandle: AppHandleInterface,
     private val errors: ErrorDisplays,
     private val scope: CoroutineScope,
 ) {

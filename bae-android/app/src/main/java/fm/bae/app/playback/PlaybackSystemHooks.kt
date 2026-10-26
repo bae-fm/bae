@@ -9,7 +9,7 @@ import fm.bae.app.BaeLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.AppHandleInterface
 
 private val systemHooksLogger = BaeLogger("bae.PlaybackSystemHooks")
 
@@ -32,7 +32,7 @@ class PlaybackSystem(
  */
 internal class PlaybackSystemHooks(
     private val system: PlaybackSystem,
-    private val appHandle: AppHandle,
+    private val appHandle: AppHandleInterface,
     private val scope: CoroutineScope,
     private val isPlaying: () -> Boolean,
     private val hasCurrentTrack: () -> Boolean,
@@ -76,7 +76,7 @@ internal class PlaybackSystemHooks(
     /**
      * Unregister the becoming-noisy receiver and stop following focus changes.
      * Idempotent. Called from [BaeCorePlayer.handleRelease] when Media3 releases
-     * the player, and directly from session teardown BEFORE the [AppHandle] is
+     * the player, and directly from session teardown BEFORE the bridge handle is
      * closed: focus changes and the noisy receiver call
      * `appHandle.pause()/resume()` spontaneously (no user action), so they must
      * stop touching the handle before it closes, or a stray system callback

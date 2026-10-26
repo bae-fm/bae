@@ -37,8 +37,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeConfig
-import uniffi.bae_bridge.BridgeDiagnostics
+import uniffi.bae_bridge.BridgeDiagnosticsInterface
 import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeUiEvent
 import uniffi.bae_bridge.CastDevicesCallback
@@ -58,14 +59,29 @@ import uniffi.bae_bridge.UiEventCallback
 private val logger = BaeLogger("bae.OpenLibrary")
 
 /**
- * One open library: the open [AppHandle] plus the stores and services wired
+ * The bridge handle of one open library: every call the app makes on it, and
+ * closing it, which only the [OpenLibrary] that owns it does.
+ */
+interface OpenLibraryHandle :
+    AppHandleInterface,
+    AutoCloseable
+
+/** The bridge's own [AppHandle] as the [OpenLibraryHandle] an [OpenLibrary] owns. */
+class BridgeLibraryHandle(
+    handle: AppHandle,
+) : OpenLibraryHandle,
+    AppHandleInterface by handle,
+    AutoCloseable by handle
+
+/**
+ * One open library: the open [OpenLibraryHandle] plus the stores and services wired
  * around it. Built by [AppSessionHolder] once the handle is open and its store
  * keys are held. Mirrors the macOS `AppService`.
  */
 class OpenLibrary internal constructor(
     val libraryId: String,
-    val appHandle: AppHandle,
-    val diagnostics: BridgeDiagnostics,
+    val appHandle: OpenLibraryHandle,
+    val diagnostics: BridgeDiagnosticsInterface,
     private val stores: OpenLibraryStores,
     private val runtime: OpenLibraryRuntime,
     private val appContext: Context,
@@ -348,7 +364,7 @@ class OpenLibrary internal constructor(
     }
 
     /**
-     * Stop the session service and close the Rust [AppHandle] (which tears down
+     * Stop the session service and close the Rust [appHandle] (which tears down
      * the runtime, sync, and playback engine). Called when a different library
      * is opened so the old session doesn't leak its handle.
      */
