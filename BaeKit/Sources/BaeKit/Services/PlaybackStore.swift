@@ -53,12 +53,16 @@ public class PlaybackStore {
     /// Rows past the first window stay placeholders while it is set.
     public private(set) var upcomingFailure: DisplayError?
 
-    /// Sent through Combine rather than `@Observable` because it changes at
-    /// display rate; only the progress bar re-renders.
+    /// Sent through Combine rather than `@Observable` because it changes with
+    /// every position core sends; the views showing it subscribe and redraw
+    /// themselves, so no SwiftUI view re-evaluates for it.
     @ObservationIgnored
     private let playbackPositionSubject = CurrentValueSubject<
         PlaybackPositionEvent, Never
     >(.reset)
+    /// What `playbackPositionSubject` last sent, and whether it is a seek's
+    /// projection; read by the store alone, so no view observes it.
+    @ObservationIgnored
     private var playbackPosition: PlaybackPositionState?
 
     /// The count of tracks each add puts in the queue; drives the queue

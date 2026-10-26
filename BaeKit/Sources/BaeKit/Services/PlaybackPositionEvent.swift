@@ -2,9 +2,10 @@ import Foundation
 
 /// Playback position broadcast by `PlaybackStore.playbackPositionPublisher`.
 ///
-/// Position ticks arrive at display rate during playback — far too frequent
-/// for `@Observable` to drive without thrashing the view tree. The store
-/// publishes them as a Combine signal so only the progress bar reacts.
+/// A position arrives with every tick core sends during playback, several a
+/// second — too often for `@Observable` to drive without re-evaluating every
+/// view that reads the store. The store publishes them as a Combine signal so
+/// only the views that subscribe to it react.
 /// `.position` carries the raw milliseconds (a nil duration when the track's
 /// length is unknown) and the `[0,1]` ratio; the seek bar
 /// renders its two clocks from them through core's projection, which is also

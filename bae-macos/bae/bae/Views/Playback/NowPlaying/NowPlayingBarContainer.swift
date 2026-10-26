@@ -2,9 +2,11 @@ import BaeKit
 import Combine
 import SwiftUI
 
-/// Isolates observation so that only slow-changing properties (track info, volume, etc.)
-/// trigger SwiftUI re-evaluation. Position ticks bypass SwiftUI entirely via the AppKit
-/// SeekBarNSView, which AppService updates directly.
+/// Reads the stores for `NowPlayingBar`, so the bar re-evaluates when what it
+/// shows changes: a playback value (core sends one only when it changed), the
+/// queue's shuffle, the queue panel, or the bar's settings. Positions never
+/// re-evaluate it: the seek bar's `SeekBarNSView` subscribes to
+/// `playbackPositionPublisher` from the environment and redraws itself.
 struct NowPlayingBarContainer: View {
     @Environment(Playback.self)
     var playback

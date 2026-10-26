@@ -2,7 +2,7 @@ import AppKit
 import BaeKit
 
 /// A seek slider between its time labels, updated by direct calls rather than
-/// SwiftUI observation, since position ticks arrive at display rate.
+/// SwiftUI observation, since a position arrives with every tick core sends.
 final class SeekBarNSView: NSView {
     private let elapsedField: NSTextField
     private let slider: SeekSlider

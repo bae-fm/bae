@@ -5,8 +5,8 @@ import SwiftUI
 
 /// A compact, display-only playback readout: a slim accent bar plus an elapsed
 /// label, updated imperatively from the playback-position Combine stream for
-/// the same reason as `SeekBarNSView` — position ticks arrive at display rate,
-/// far too frequent for SwiftUI observation. Unlike the seek bar it takes no
+/// the same reason as `SeekBarNSView` — a position arrives with every tick
+/// core sends, too often for SwiftUI observation. Unlike the seek bar it takes no
 /// input: the queue panel's now-playing card shows where playback is; seeking
 /// stays with the transport bar.
 final class ProgressStripNSView: NSView {
