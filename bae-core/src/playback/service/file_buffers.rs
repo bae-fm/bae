@@ -166,6 +166,7 @@ pub(super) async fn prepare_track_for_playback(
             file_id: segment.file_id.clone(),
             buffer,
             span: segment.span,
+            scrub_points: segment.scrub_points.clone(),
         });
     }
 

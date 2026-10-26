@@ -121,6 +121,9 @@ pub(super) trait FrameOutput {
     /// consumer stopped (a cancelled sink); the loop then exits without
     /// flushing.
     fn push(&mut self, skip_start: usize, take_end: usize) -> bool;
+
+    /// A packet the decoder accepted.
+    fn on_packet(&mut self, packet: crate::audio_codec::DecodedPacket);
 }
 
 /// i32 → `DecodedSink` output stage (loudness measurement, save re-encode,
@@ -162,6 +165,10 @@ impl FrameOutput for SinkOutput<'_> {
     fn push(&mut self, skip_start: usize, take_end: usize) -> bool {
         self.sink.on_samples(&self.converted[skip_start..take_end]);
         true
+    }
+
+    fn on_packet(&mut self, packet: crate::audio_codec::DecodedPacket) {
+        self.sink.on_packet(packet);
     }
 }
 
@@ -229,11 +236,15 @@ impl FrameOutput for TrackOutput<'_> {
         }
         push_samples_to_sink(self.sink, samples)
     }
+
+    /// Playback takes nothing from the packets themselves.
+    fn on_packet(&mut self, _packet: crate::audio_codec::DecodedPacket) {}
 }
 
 /// The shared packet/frame/trim loop both decode paths run: read packets for
-/// the audio stream, decode frames, trim each to `[start_sample, stop_sample)`
-/// via `frame_output_window`, and push the window into `out`. Flushes the
+/// the audio stream, hand each one the decoder accepts to `out`, decode
+/// frames, trim each to `[start_sample, stop_sample)` via
+/// `frame_output_window`, and push the window into `out`. Flushes the
 /// decoder afterwards unless the window's end was reached (flushing past it
 /// would emit samples past the window) or the consumer stopped.
 pub(super) unsafe fn run_decode_loop(
@@ -284,6 +295,13 @@ pub(super) unsafe fn run_decode_loop(
                 av_err_str(ret)
             ));
         }
+        out.on_packet(crate::audio_codec::DecodedPacket {
+            byte: u64::try_from(packet_position).ok(),
+            sample: (packet_pts != AV_NOPTS_VALUE)
+                .then(|| pts_to_sample(packet_pts, time_base, sample_rate))
+                .and_then(|sample| u64::try_from(sample).ok()),
+            size: u64::try_from(packet_size).expect("a packet's size is never negative"),
+        });
 
         while avcodec_receive_frame(res.codec_ctx, res.frame) >= 0 {
             if out.cancelled() {

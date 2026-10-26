@@ -415,6 +415,8 @@ pub(crate) struct TrackAudioMeta {
     pub release: DbRelease,
     pub audio_format: DbAudioFormat,
     pub audio_segments: Vec<DbAudioSegment>,
+    /// Every segment's scrub points, each segment's in sample order.
+    pub scrub_points: Vec<crate::db::DbScrubPoint>,
     pub audio_files: Vec<DbFile>,
 }
 
@@ -444,6 +446,10 @@ impl TrackAudioMeta {
             )));
         }
 
+        let scrub_points = database
+            .get_scrub_points_for_format(&audio_format.id)
+            .await?;
+
         let mut audio_files = Vec::new();
         for segment in &audio_segments {
             let audio_file = database
@@ -465,6 +471,7 @@ impl TrackAudioMeta {
             release,
             audio_format,
             audio_segments,
+            scrub_points,
             audio_files,
         })
     }
@@ -476,6 +483,8 @@ pub struct ResolvedTrackAudioSegment {
     pub file_size: u64,
     /// Where this segment sits inside its backing file, in samples and bytes.
     pub span: crate::db::SegmentSpan,
+    /// The frames a scrub inside this segment jumps to by byte.
+    pub scrub_points: crate::playback::ScrubPoints,
 }
 
 /// All resolved data needed to set up a playback reader for a track.
@@ -528,6 +537,13 @@ impl ResolvedTrackAudio {
                     file_id: segment.file_id.clone(),
                     file_size: audio_file.file_size as u64,
                     span: segment.span(),
+                    scrub_points: crate::playback::ScrubPoints::new(
+                        meta.scrub_points
+                            .iter()
+                            .filter(|stored| stored.audio_segment_id == segment.id)
+                            .map(|stored| stored.point)
+                            .collect(),
+                    ),
                 }
             })
             .collect();

@@ -161,10 +161,13 @@ where
     Ok(fmt_ctx)
 }
 
+/// Open and probe the input, returning whether the seek index the file's
+/// header gave the demuxer reaches past the stream's first sample (see
+/// [`header_index_passes_start`]).
 unsafe fn open_and_probe_input(
     fmt_ctx: &mut *mut ffmpeg_sys_next::AVFormatContext,
     avio: *mut ffmpeg_sys_next::AVIOContext,
-) -> Result<(), InputOpenProbeError> {
+) -> Result<bool, InputOpenProbeError> {
     use ffmpeg_sys_next::*;
 
     debug_assert_eq!((**fmt_ctx).pb, avio);
@@ -173,13 +176,34 @@ unsafe fn open_and_probe_input(
     if ret < 0 {
         return Err(InputOpenProbeError::Open(ret));
     }
+    // Read before probing: the probe's packets add index entries of their own.
+    let index_passes_start = header_index_passes_start(*fmt_ctx);
 
     let ret = avformat_find_stream_info(*fmt_ctx, ptr::null_mut());
     if ret < 0 {
         return Err(InputOpenProbeError::Probe(ret));
     }
 
-    Ok(())
+    Ok(index_passes_start)
+}
+
+/// Whether any stream's seek index, as the demuxer built it from the file's
+/// header, holds an entry past the stream's first sample. For a FLAC that
+/// index is its SEEKTABLE (read with `AVFMT_FLAG_FAST_SEEK`), and it is what
+/// `flac_seek` searches: a table of only placeholder points adds one entry
+/// before the first sample (placeholders read as timestamp -1), and a point
+/// at sample 0 one at the first frame, so a seek through either lands at the
+/// first frame and decodes forward from there.
+unsafe fn header_index_passes_start(fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext) -> bool {
+    use ffmpeg_sys_next::*;
+
+    (0..(*fmt_ctx).nb_streams as usize).any(|stream_index| {
+        let stream = *(*fmt_ctx).streams.add(stream_index);
+        (0..avformat_index_get_entries_count(stream)).any(|entry_index| {
+            let entry = avformat_index_get_entry(stream, entry_index);
+            !entry.is_null() && (*entry).timestamp > 0
+        })
+    })
 }
 
 unsafe fn open_probed_audio_codec(
@@ -303,6 +327,9 @@ struct BufferInput {
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     avio: *mut ffmpeg_sys_next::AVIOContext,
     avio_ctx_ptr: *mut StreamingAvioContext,
+    /// Whether the seek index the file's header gave the demuxer reaches past
+    /// the stream's first sample.
+    header_index_passes_start: bool,
 }
 
 enum BufferInputError {
@@ -399,25 +426,29 @@ unsafe fn open_buffer_input(
         return Err(BufferInputError::Alloc("Failed to allocate format context"));
     };
 
-    if let Err(e) = open_and_probe_input(&mut fmt_ctx, avio) {
-        let error = match e {
-            InputOpenProbeError::Open(ret) => {
-                free_format_and_custom_avio(fmt_ctx, avio);
-                BufferInputError::Open(ret)
-            }
-            InputOpenProbeError::Probe(ret) => {
-                close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-                BufferInputError::Probe(ret)
-            }
-        };
-        let read_failure = Box::from_raw(avio_ctx_ptr).read_failure();
-        return Err(read_failure.map_or(error, BufferInputError::SourceRead));
-    }
+    let header_index_passes_start = match open_and_probe_input(&mut fmt_ctx, avio) {
+        Ok(passes_start) => passes_start,
+        Err(e) => {
+            let error = match e {
+                InputOpenProbeError::Open(ret) => {
+                    free_format_and_custom_avio(fmt_ctx, avio);
+                    BufferInputError::Open(ret)
+                }
+                InputOpenProbeError::Probe(ret) => {
+                    close_input_and_free_custom_avio(&mut fmt_ctx, avio);
+                    BufferInputError::Probe(ret)
+                }
+            };
+            let read_failure = Box::from_raw(avio_ctx_ptr).read_failure();
+            return Err(read_failure.map_or(error, BufferInputError::SourceRead));
+        }
+    };
 
     Ok(BufferInput {
         fmt_ctx,
         avio,
         avio_ctx_ptr,
+        header_index_passes_start,
     })
 }
 
@@ -569,6 +600,7 @@ unsafe fn decode_buffer_to_sink_impl(
         mut fmt_ctx,
         avio,
         avio_ctx_ptr,
+        header_index_passes_start,
     } = open_buffer_input(&buffer, cancel.clone()).map_err(|e| e.into_decode_error(&cancel))?;
 
     // Count only the audio decode's errors: probing an embedded cover during
@@ -585,6 +617,14 @@ unsafe fn decode_buffer_to_sink_impl(
             audio,
             error: DecodeCodecOpenError::Missing(AVCodecID::AV_CODEC_ID_PCM_S64LE),
         }) => {
+            sink.on_stream(&decoded_stream(
+                AVCodecID::AV_CODEC_ID_PCM_S64LE,
+                header_index_passes_start,
+                seek_to_byte,
+                seek_to_sample,
+                (*audio.codecpar).sample_rate as u32,
+                stop_at_sample,
+            ));
             let result = decode_packed_s64_packets_to_sink(
                 fmt_ctx,
                 audio.stream_index,
@@ -617,6 +657,14 @@ unsafe fn decode_buffer_to_sink_impl(
     }
 
     sink.on_format(sample_rate, channels);
+    sink.on_stream(&decoded_stream(
+        (*audio.codecpar).codec_id,
+        header_index_passes_start,
+        seek_to_byte,
+        seek_to_sample,
+        sample_rate,
+        stop_at_sample,
+    ));
 
     let in_ch_layout = (*audio.codecpar).ch_layout;
     let mut swr_ctx = match allocate_swr_context(
@@ -714,6 +762,26 @@ unsafe fn decode_buffer_to_sink_impl(
     }
 
     Ok(())
+}
+
+/// What a sink decode tells its sink about the stream it opened. The decode
+/// starts at a frame start when it jumps by byte (to a recorded frame) or
+/// reads from the stream's first sample.
+fn decoded_stream(
+    codec_id: ffmpeg_sys_next::AVCodecID,
+    header_index_passes_start: bool,
+    seek_to_byte: Option<u64>,
+    seek_to_sample: Option<u64>,
+    sample_rate: u32,
+    stop_at_sample: Option<u64>,
+) -> super::DecodedStream {
+    super::DecodedStream {
+        content_type: super::probe::content_type_from_codec_id(codec_id),
+        header_index_passes_start,
+        starts_at_frame: seek_to_byte.is_some() || seek_to_sample.is_none_or(|sample| sample == 0),
+        sample_rate,
+        stop_at_sample,
+    }
 }
 
 unsafe fn allocate_swr_context(

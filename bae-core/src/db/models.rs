@@ -567,6 +567,21 @@ impl DbAudioSegment {
         }
     }
 }
+
+/// A frame in a segment's file that a scrub can jump to by byte: the frame's
+/// first sample and the byte the frame begins at, both within the file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ScrubPoint {
+    pub sample: u64,
+    pub byte: u64,
+}
+
+/// One stored scrub point and the segment whose file it lies in.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DbScrubPoint {
+    pub audio_segment_id: String,
+    pub point: ScrubPoint,
+}
 impl DbAlbumArtist {
     /// The credit's row id: one place of one album's list is one row on
     /// every device.

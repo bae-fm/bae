@@ -633,6 +633,28 @@ pub(super) fn insert_audio_segment_row(
     .map_err(DbError::from)
 }
 
+#[cfg(any(
+    test,
+    feature = "test-utils",
+    not(any(target_os = "ios", target_os = "android"))
+))]
+pub(super) fn insert_scrub_point_row(
+    conn: &SqlContext<'_, '_>,
+    point: &DbScrubPoint,
+) -> Result<(), DbError> {
+    conn.execute(
+        "INSERT INTO audio_segment_scrub_points (audio_format_segment_id, sample, byte) \
+         VALUES (?, ?, ?)",
+        params![
+            point.audio_segment_id,
+            sqlite_count(point.point.sample, "scrub point sample")?,
+            sqlite_count(point.point.byte, "scrub point byte")?,
+        ],
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
+
 /// A count or a position as SQLite's signed integer. One past `i64::MAX`
 /// cannot be stored and fails the write.
 #[cfg(any(

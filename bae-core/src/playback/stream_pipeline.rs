@@ -93,8 +93,9 @@ pub(crate) struct StreamDecodeParams {
 }
 
 /// One decoder window: the segment's span within its backing file, the buffer
-/// its bytes stream through, and the sample offset into the segment where
-/// output starts (a mid-track seek; 0 for a natural start). The seek policy —
+/// its bytes stream through, the sample offset into the segment where output
+/// starts (a mid-track seek; 0 for a natural start), and for a mid-track seek
+/// the stored scrub point it jumps to, if its file has them. The seek policy —
 /// byte jump vs sample seek, and the lead-in trim target — derives from these
 /// via [`Self::target_sample`] and [`Self::seek_to_byte`].
 #[derive(Clone)]
@@ -102,9 +103,12 @@ pub(crate) struct SegmentDecodeParams {
     buffer: SharedSparseBuffer,
     span: crate::db::SegmentSpan,
     start_offset: u64,
+    scrub_point: Option<crate::db::ScrubPoint>,
 }
 
 impl SegmentDecodeParams {
+    /// A window with no scrub point to jump to: a natural start jumps to the
+    /// span's landing byte, a mid-track seek seeks by sample.
     pub(crate) fn new(
         buffer: SharedSparseBuffer,
         span: crate::db::SegmentSpan,
@@ -114,6 +118,24 @@ impl SegmentDecodeParams {
             buffer,
             span,
             start_offset,
+            scrub_point: None,
+        }
+    }
+
+    /// A mid-track seek `start_offset` samples into the segment that jumps by
+    /// byte to `point`, a stored frame at or before the target, and decodes
+    /// forward from there.
+    pub(crate) fn from_scrub_point(
+        buffer: SharedSparseBuffer,
+        span: crate::db::SegmentSpan,
+        start_offset: u64,
+        point: crate::db::ScrubPoint,
+    ) -> Self {
+        Self {
+            buffer,
+            span,
+            start_offset,
+            scrub_point: Some(point),
         }
     }
 
@@ -124,14 +146,15 @@ impl SegmentDecodeParams {
         self.span.start_sample + self.start_offset
     }
 
-    /// The demuxer jump for this segment: the recorded landing byte, only at a
-    /// natural start (`start_offset == 0`) of a byte-seekable codec. A mid-track
-    /// seek or APE sample-seeks to [`Self::target_sample`] instead.
+    /// The demuxer jump for this segment: a mid-track seek's scrub point, or
+    /// the recorded landing byte at a natural start (`start_offset == 0`) of a
+    /// byte-seekable codec. Any other mid-track seek, and APE, sample-seeks to
+    /// [`Self::target_sample`] instead.
     pub(crate) fn seek_to_byte(&self, byte_seekable: bool) -> Option<u64> {
-        if self.start_offset == 0 && byte_seekable {
-            self.span.start_byte
-        } else {
-            None
+        match self.scrub_point {
+            Some(point) => Some(point.byte),
+            None if self.start_offset == 0 && byte_seekable => self.span.start_byte,
+            None => None,
         }
     }
 }
@@ -292,6 +315,8 @@ impl StreamDecodeParams {
     /// judge from frame coverage whether the track is usable. A failed read of
     /// the source is returned as that read's error. Carries no silence: the
     /// pass measures only stored audio. Blocking; run it off the async runtime.
+    /// Each segment's decode announces its stream to `sink` before its packets
+    /// (`DecodedSink::on_stream`), so a sink can tell the segments apart.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn verify_to_sink(
         &self,

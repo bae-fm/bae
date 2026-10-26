@@ -69,7 +69,7 @@ index = av_index_search_timestamp(st, timestamp, flags);
 seeks in one fetch. Without the flag, or without a seektable, it binary-searches
 the cloud (~10s). The seektable lives near the file *start* (after STREAMINFO),
 so reading it costs nothing extra — the problem is purely that FFmpeg ignores it
-unless asked. (No-seektable FLACs: see issue #226 — guarantee one at import.)
+unless asked. (FLACs without a usable seektable: see *What bae does*.)
 
 ## APE (Monkey's Audio) — `ape.c`
 
@@ -187,21 +187,55 @@ which computes the byte position directly from `block_align` and `byte_rate`:
 - **Track starts jump by byte.** Import records each track's first byte, the
   frame a playback seek would land on (`seek_landing_bytes`, opened without
   `AVFMT_FLAG_FAST_SEEK` so a FLAC binary-searches its real frames rather than
-  trusting a coarse seektable), stored on `audio_formats.start_byte`. Starting
-  a track seeks the demuxer straight to that byte, so no track start needs a
-  seektable, in any layout, local or remote. Over a cloud home the header and
-  the track's audio are fetched in parallel.
+  trusting a coarse seektable), stored on `audio_format_segments.start_byte`.
+  Starting a track seeks the demuxer straight to that byte, so no track start
+  needs a seektable, in any layout, local or remote. Over a cloud home the
+  header and the track's audio are fetched in parallel.
 - **In-track scrubs seek by sample** with `AVFMT_FLAG_FAST_SEEK` set
   (`bae-core/src/audio_codec/decode.rs`), so a seektable-bearing FLAC (nearly
-  every rip) and MP3 use their index: one fetch.
-- **A seektable-less FLAC scrubs by binary search, through the buffer.** The
-  demuxer declines (`flac_seek` returns -1) and avformat binary-searches the
-  file. The seek doesn't fail: its read of the file's end waits until the fill
-  fetches that window, and the search goes on, each step a fetch. Measured on
-  real files: scrubbing to the middle of the last track of a 1.5 GB single-file
-  album took 26 fetches one after another (77 in all, 54 MB), against 3 for a
-  seektable-bearing album; a 245 MB single-file album, 4; a per-track file, 4.
-  Track starts don't search: they jump by recorded byte.
+  every rip) and MP3 use their index: one fetch. The exception is a FLAC with
+  scrub points, below.
+- **A FLAC without a usable seektable scrubs by byte, to a stored scrub
+  point.** Left to FFmpeg, such a scrub is slow in one of two ways (FFmpeg
+  n8.1.2, `flacdec.c`):
+  - *No SEEKTABLE:* `flac_seek` returns -1 and avformat binary-searches the
+    file (`ff_seek_frame_binary`). The search doesn't fail over the buffer: its
+    read of the file's end waits for the fill, and each step is a fetch.
+    Measured on real files: the middle of the last track of a 1.5 GB
+    single-file album took 26 fetches one after another, against 3 for an
+    album with a seektable.
+  - *A SEEKTABLE of only placeholder points* (sample number all ones, the
+    space a ripper reserves): `found_seektable` is set and each placeholder
+    goes to `av_add_index_entry` at timestamp -1, so the index holds one entry,
+    at the first frame, before every sample. `flac_seek` finds it and
+    succeeds, and the decode reads every byte from the first frame to the
+    target. A seek to 20 s in a synthetic 30 s file read all 12 MB up to it.
+
+  Import's loudness pass, which decodes every segment from a frame start (its
+  recorded landing byte, or the file's first frame), checks the demuxer's
+  index right after `avformat_open_input` and before
+  `avformat_find_stream_info` (whose packets add entries of their own). A FLAC
+  whose index has no entry past sample 0 gets scrub points
+  (`audio_segment_scrub_points`): each packet the decoder accepts gives its
+  frame's byte (`pkt->pos`) and first sample (`pkt->pts`, the frame header's
+  own number, since the FLAC demuxer parses with `PARSER_FLAG_USE_CODEC_TS`).
+  A segment keeps its first frame, then the first frame each 10 seconds of
+  audio on, or sooner where the frame would start more than one fill window,
+  less the reads that follow it, past the last point. Those reads: FFmpeg's
+  FLAC parser holds `FLAC_MIN_HEADERS` (10) frames before it hands the first
+  on, and reads through a 32 KiB AVIO buffer, so the margin is 10 of the
+  segment's largest frames plus 32 KiB (`audio_codec/decode/scrub_points.rs`).
+  A one-frame margin was not enough: a scrub to the frame before the next
+  point read past the window.
+
+  A scrub jumps by byte (`AVSEEK_FLAG_BYTE`) to the last point at or before
+  its target and decodes forward; the `start_at_sample` trim makes the output
+  sample-exact. Over the buffer it reads the file's head (the probe) and one
+  window from the point. Measured on real files with a prototype (points every
+  10 s, direct jump), against the binary search: the 1.5 GB album's middle of
+  its last track went from 26 jumps to 3, the middle of its first from 6 to 2;
+  a 245 MB album's from 4 to 3 and 6 to 2; a per-track file's from 4 to 2 and
+  8 to 2; the album with a seektable takes 3 and 2.
 - **Probe read-ahead is one window.** Before the decoder has seeked to the
   track, the buffer keeps one window ahead of byte 0, not four, since the
   demuxer reads only the front metadata before it seeks away.

@@ -133,6 +133,7 @@ mod tests {
                 file_id: "file".to_string(),
                 file_size: 1_000_000,
                 span,
+                scrub_points: crate::playback::ScrubPoints::new(Vec::new()),
             }],
             duration_ms: 10_000,
             pregap_samples: None,

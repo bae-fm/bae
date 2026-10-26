@@ -338,6 +338,7 @@ fn test_prepared_track_with_file(
             file_id: file_id.to_string(),
             buffer,
             span: crate::db::SegmentSpan::whole_file(),
+            scrub_points: crate::playback::ScrubPoints::new(Vec::new()),
         }],
         sample_rate: 44_100,
         channels: 2,
@@ -411,3 +412,5 @@ include!("tests/side_pause_countdown.rs");
 
 include!("tests/history.rs");
 include!("tests/audio_focus.rs");
+
+mod scrub_points;

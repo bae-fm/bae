@@ -456,6 +456,7 @@ fn prepared_track_with_pregap_segments(
                 start_byte: Some(100),
                 end_byte: None,
             },
+            scrub_points: crate::playback::ScrubPoints::new(Vec::new()),
         },
         PreparedAudioSegment {
             role: DbAudioSegmentRole::Main,
@@ -467,6 +468,7 @@ fn prepared_track_with_pregap_segments(
                 start_byte: Some(2_000),
                 end_byte: Some(4_000),
             },
+            scrub_points: crate::playback::ScrubPoints::new(Vec::new()),
         },
     ];
     (prepared, pregap_buffer, main_buffer)

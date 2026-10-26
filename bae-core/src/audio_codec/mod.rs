@@ -1,8 +1,10 @@
 //! Unified audio codec module using FFmpeg.
 //!
-//! Provides decoding (any format to PCM, streamed from a sparse buffer),
-//! encoding (PCM to FLAC/MP3/AAC/Opus/WAV/AIFF, streamed frame by frame into an
-//! output sink), and seektable generation.
+//! Provides decoding (any format to PCM, streamed from a sparse buffer; the
+//! import's verifying decode also takes scrub points), encoding (PCM to
+//! FLAC/MP3/AAC/Opus/WAV/AIFF, streamed frame by frame into an output sink),
+//! and probing (a file's audio facts, and the byte a seek to a sample lands
+//! on).
 
 mod avio;
 mod decode;
@@ -17,7 +19,7 @@ mod tests;
 
 /// Buffer size for FFmpeg custom-IO (`avio`) contexts. The standard 32 KiB
 /// FFmpeg uses for its own file IO.
-const AVIO_BUFFER_SIZE: usize = 32768;
+pub(crate) const AVIO_BUFFER_SIZE: usize = 32768;
 
 // Only the desktop-gated save path (StreamDecodeParams::run_to_sink) consumes
 // this re-export; on iOS/Android that caller is compiled out, so the import is
@@ -101,6 +103,47 @@ pub trait DecodedSink {
     /// decoding. A verifying sink combines this count with decoded-frame
     /// completeness; strict decode callers reject the packet instead.
     fn add_discarded_packet_count(&mut self, _count: u32) {}
+    /// The stream the decode opened, once per decode, before its first
+    /// packet. Default: ignore it. Import's verifying sink reads it to decide
+    /// whether the packets that follow give scrub points.
+    fn on_stream(&mut self, _stream: &DecodedStream) {}
+    /// Each packet the decoder accepted, in file order. Default: ignore it.
+    fn on_packet(&mut self, _packet: DecodedPacket) {}
+}
+
+/// The stream a sink decode opened, as its sink sees it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DecodedStream {
+    /// The codec the decode found.
+    pub content_type: bae_util::content_type::ContentType,
+    /// Whether the seek index the demuxer built from the file's header holds
+    /// an entry past the stream's first sample. For a FLAC that index is its
+    /// SEEKTABLE, and it is what FFmpeg seeks a sample through: without one, a
+    /// FLAC seek binary-searches the file, and a table of only placeholder
+    /// points gives one entry before the first sample, so its seek lands on
+    /// the first frame and decodes everything up to the target.
+    pub header_index_passes_start: bool,
+    /// Whether the decode starts at a frame start: it jumped by byte to a
+    /// recorded frame, or reads from the stream's first sample. After a jump
+    /// into the middle of a frame the first packets carry wrong positions.
+    pub starts_at_frame: bool,
+    pub sample_rate: u32,
+    /// Where the decode's window ends: frames from here on belong to what
+    /// follows it.
+    pub stop_at_sample: Option<u64>,
+}
+
+/// A packet the decoder accepted, as the demuxer placed it: one frame, for
+/// FLAC.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DecodedPacket {
+    /// The byte the packet begins at in the file; `None` when the demuxer
+    /// doesn't know it.
+    pub byte: Option<u64>,
+    /// The packet's first sample; `None` when it carries no timestamp.
+    pub sample: Option<u64>,
+    /// Its length in bytes.
+    pub size: u64,
 }
 
 /// Call once at startup.

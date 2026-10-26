@@ -216,6 +216,7 @@ include!("tests/storage_sorting.rs");
 include!("tests/transfers.rs");
 mod detachment;
 mod primary_release;
+mod scrub_points_sync;
 #[cfg(feature = "oauth-providers")]
 mod sign_in;
 include!("tests/transfer_order.rs");

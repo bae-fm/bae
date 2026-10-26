@@ -186,11 +186,7 @@ impl PlaybackPreparedTrack {
                     continue;
                 }
             }
-            segments.push(SegmentDecodeParams::new(
-                segment.buffer.clone(),
-                segment.span,
-                remaining_offset,
-            ));
+            segments.push(segment.decode_params(remaining_offset));
             remaining_offset = 0;
         }
 
@@ -225,6 +221,36 @@ struct PreparedAudioSegment {
     buffer: SharedSparseBuffer,
     /// Where this segment sits inside its backing file, in samples and bytes.
     span: crate::db::SegmentSpan,
+    /// The frames a scrub inside this segment jumps to by byte.
+    scrub_points: crate::playback::ScrubPoints,
+}
+
+impl PreparedAudioSegment {
+    /// This segment's decoder window, starting `offset` samples in. A seek
+    /// into a segment with stored scrub points jumps by byte to the last one
+    /// at or before its target; any other start seeks as
+    /// [`SegmentDecodeParams::new`] says.
+    fn decode_params(&self, offset: u64) -> SegmentDecodeParams {
+        if offset == 0 || self.scrub_points.is_empty() {
+            return SegmentDecodeParams::new(self.buffer.clone(), self.span, offset);
+        }
+        let target = self.span.start_sample + offset;
+        match self.scrub_points.at_or_before(target) {
+            Some(point) => {
+                SegmentDecodeParams::from_scrub_point(self.buffer.clone(), self.span, offset, point)
+            }
+            None => {
+                // Import's first point is the frame the segment starts in, so
+                // every sample of the segment has one at or before it.
+                warn!(
+                    file_id = %self.file_id,
+                    target,
+                    "no stored scrub point at or before the seek target; seeking by sample"
+                );
+                SegmentDecodeParams::new(self.buffer.clone(), self.span, offset)
+            }
+        }
+    }
 }
 
 #[derive(Clone)]

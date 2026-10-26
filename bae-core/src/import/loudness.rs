@@ -19,24 +19,29 @@ use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
 use crate::playback::track_sources::{run_tracks_over_sources, SourceStream};
 use crate::playback::SharedSparseBuffer;
 
-/// The album loudness/peak plus the tracks whose decode looked broken (import
-/// decode-verify). `broken` carries a human-readable line per broken track (its
-/// path, track number, and reason); the caller fails the import on it when
-/// `verify_decode_on_import` is on.
+/// The album loudness/peak, the tracks whose decode looked broken (import
+/// decode-verify), and the scrub points the decodes gave. `broken` carries a
+/// human-readable line per broken track (its path, track number, and reason);
+/// the caller fails the import on it when `verify_decode_on_import` is on.
 pub(super) struct LoudnessResult {
     pub album_loudness_lufs: Option<f64>,
     pub album_peak_linear: Option<f64>,
     pub broken: Vec<String>,
+    /// The frames a scrub jumps to, for every segment whose file is a FLAC
+    /// the demuxer can only binary-search.
+    pub scrub_points: Vec<crate::db::DbScrubPoint>,
 }
 
 /// One track's decode outcome from the blocking measure task.
 enum TrackOutcome {
     /// The source was read through: the measurement (absent when
-    /// unmeasured/silent/failed) and the broken-decode reason (absent when the
-    /// decode produced enough of the expected window to be usable).
+    /// unmeasured/silent/failed), the broken-decode reason (absent when the
+    /// decode produced enough of the expected window to be usable), and the
+    /// scrub points its segments gave.
     Decoded {
         measured: Option<(ebur128::EbuR128, f64, f64)>,
         broken: Option<String>,
+        scrub_points: Vec<crate::db::DbScrubPoint>,
     },
     /// A read of the source failed, so the decode never saw the track's bytes.
     /// Says nothing about the audio.
@@ -162,6 +167,9 @@ struct LoudnessProgressSink {
     discarded_packet_count: u32,
     frames_since_emit: u64,
     progress: LoudnessProgress,
+    /// One entry per segment decoded so far, in order: the taker of its scrub
+    /// points, when its file needs them.
+    scrub_point_takers: Vec<Option<super::scrub_points::ScrubPointTaker>>,
 }
 
 impl LoudnessProgressSink {
@@ -176,7 +184,17 @@ impl LoudnessProgressSink {
             discarded_packet_count: 0,
             frames_since_emit: 0,
             progress,
+            scrub_point_takers: Vec::new(),
         }
+    }
+
+    /// Each decoded segment's scrub points, in decode order: `None` for a
+    /// segment whose file needs none.
+    fn take_scrub_points(&mut self) -> Vec<Option<Vec<crate::db::ScrubPoint>>> {
+        std::mem::take(&mut self.scrub_point_takers)
+            .into_iter()
+            .map(|taker| taker.map(super::scrub_points::ScrubPointTaker::finish))
+            .collect()
     }
 
     /// Count this track's newly measured frames, capped at its expected total,
@@ -272,6 +290,17 @@ impl crate::audio_codec::DecodedSink for LoudnessProgressSink {
         self.discarded_packet_count = self.discarded_packet_count.saturating_add(count);
     }
 
+    fn on_stream(&mut self, stream: &crate::audio_codec::DecodedStream) {
+        self.scrub_point_takers
+            .push(super::scrub_points::ScrubPointTaker::for_stream(stream));
+    }
+
+    fn on_packet(&mut self, packet: crate::audio_codec::DecodedPacket) {
+        if let Some(Some(taker)) = self.scrub_point_takers.last_mut() {
+            taker.observe(packet);
+        }
+    }
+
     fn on_samples(&mut self, samples: &[i32]) {
         // No meter: either creation failed (`error` is set and surfaced by
         // `into_result`) or a prior chunk failed and dropped it. Either way this
@@ -305,9 +334,8 @@ struct MeasuredTrack {
     /// Frames in its window: the sample window when known, else duration ×
     /// sample rate. With neither, the whole bar is indeterminate.
     total_frames: Option<u64>,
-    /// Its segments in play order: the file each reads, by file id, and its
-    /// window there.
-    segments: Vec<(String, crate::db::SegmentSpan)>,
+    /// Its segments in play order.
+    segments: Vec<crate::db::DbAudioSegment>,
     /// Whether the demuxer may jump to a segment's recorded start byte (not
     /// APE, which sample-seeks its index).
     byte_seekable: bool,
@@ -328,8 +356,9 @@ fn measure_track(
         Err(DecodeStop::Failed(reason)) => TrackOutcome::Decoded {
             measured: None,
             broken: Some(reason),
+            scrub_points: Vec::new(),
         },
-        Ok(()) => {
+        Ok(scrub_points) => {
             // A decode that fails outright is broken, but so is one that
             // returns Ok over fatal errors or a truncated body — `broken_reason`
             // reads the error count and frame shortfall the sink captured.
@@ -351,7 +380,11 @@ fn measure_track(
                     None
                 }
             };
-            TrackOutcome::Decoded { measured, broken }
+            TrackOutcome::Decoded {
+                measured,
+                broken,
+                scrub_points,
+            }
         }
     }
 }
@@ -365,27 +398,52 @@ enum DecodeStop {
 }
 
 /// Stream every segment of `track` through `sink`, seeking each the way
-/// playback does.
+/// playback does, and return the scrub points the segments' decodes gave.
 fn decode_track(
     track: &MeasuredTrack,
     streams: &HashMap<String, SharedSparseBuffer>,
     sink: &mut LoudnessProgressSink,
-) -> Result<(), DecodeStop> {
+) -> Result<Vec<crate::db::DbScrubPoint>, DecodeStop> {
     let segments = track
         .segments
         .iter()
-        .map(|(file_id, span)| {
+        .map(|segment| {
             let buffer = streams
-                .get(file_id)
+                .get(&segment.file_id)
                 .expect("every segment's file is open for its track")
                 .clone();
-            SegmentDecodeParams::new(buffer, *span, 0)
+            SegmentDecodeParams::new(buffer, segment.span(), 0)
         })
         .collect();
     let decode = StreamDecodeParams::new(segments, track.byte_seekable, 0, 0);
     let never_cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));
     match decode.verify_to_sink(sink, never_cancelled) {
-        Ok(()) => Ok(()),
+        Ok(()) => {
+            let per_segment = sink.take_scrub_points();
+            if per_segment.len() != track.segments.len() {
+                warn!(
+                    "loudness: track {} decoded {} streams for {} segments; storing no scrub points",
+                    track.index + 1,
+                    per_segment.len(),
+                    track.segments.len()
+                );
+                return Ok(Vec::new());
+            }
+            Ok(track
+                .segments
+                .iter()
+                .zip(per_segment)
+                .flat_map(|(segment, points)| {
+                    points
+                        .into_iter()
+                        .flatten()
+                        .map(|point| crate::db::DbScrubPoint {
+                            audio_segment_id: segment.id.clone(),
+                            point,
+                        })
+                })
+                .collect())
+        }
         Err(crate::audio_codec::DecodeError::SourceRead(error)) => {
             Err(DecodeStop::Unreadable(error))
         }
@@ -533,10 +591,7 @@ pub(super) async fn measure_loudness(
             index,
             title: tracks_to_files[index].db_track.title.clone(),
             total_frames: track_total_frames[index],
-            segments: segments
-                .iter()
-                .map(|segment| (segment.file_id.clone(), segment.span()))
-                .collect(),
+            segments: segments.iter().map(|segment| (*segment).clone()).collect(),
             byte_seekable: audio_formats[index].content_type
                 != bae_util::content_type::ContentType::Ape,
         });
@@ -549,7 +604,7 @@ pub(super) async fn measure_loudness(
             track
                 .segments
                 .iter()
-                .map(|(file_id, _)| file_id.clone())
+                .map(|segment| segment.file_id.clone())
                 .collect()
         },
         |file_id: &String| {
@@ -592,10 +647,17 @@ pub(super) async fn measure_loudness(
     let mut meters: Vec<ebur128::EbuR128> = Vec::new();
     let mut track_peaks: Vec<f64> = Vec::new();
     let mut broken_tracks: Vec<String> = Vec::new();
+    let mut all_scrub_points: Vec<crate::db::DbScrubPoint> = Vec::new();
     for (index, outcome) in outcomes {
-        let Some(TrackOutcome::Decoded { measured, broken }) = outcome else {
+        let Some(TrackOutcome::Decoded {
+            measured,
+            broken,
+            scrub_points,
+        }) = outcome
+        else {
             continue;
         };
+        all_scrub_points.extend(scrub_points);
         if let Some((meter, loudness_lufs, peak_linear)) = measured {
             audio_formats[index].track_loudness_lufs = Some(loudness_lufs);
             audio_formats[index].track_peak_linear = Some(peak_linear);
@@ -621,6 +683,7 @@ pub(super) async fn measure_loudness(
         album_loudness_lufs: album_loudness,
         album_peak_linear: album_peak,
         broken: broken_tracks,
+        scrub_points: all_scrub_points,
     })
 }
 

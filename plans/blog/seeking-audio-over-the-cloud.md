@@ -66,20 +66,41 @@ in advance both go out at once. On a 243 MB album that took the start from about
 header, the stream buffered 16 MB ahead of byte 0, which the demuxer abandons
 the moment it seeks to the track. Now it buffers one window.
 
-## What's left
+**Store scrub points for FLACs without a seektable.** A FLAC with no
+seektable still binary-searched when you scrubbed inside a track: FFmpeg reads
+the file's end, then bisects, and over the cloud each step is a round trip.
+We'd assumed that search failed over a streaming buffer and fell back to
+decoding from the start; measuring on real files showed it doesn't fail, it
+just waits for each read. Scrubbing to the middle of the last track of a
+1.5 GB single-file vinyl rip took 26 fetches one after another, against 3 for
+an album with a seektable. A seektable of only placeholder points is worse in
+a different way: FFmpeg "finds" a seek point before the first sample and
+decodes the whole file up to the target.
 
-A FLAC with no seektable still binary-searches when you scrub inside a track:
-FFmpeg reads the file's end, then bisects, and over the cloud each step is a
-round trip. We'd assumed that search failed over a streaming buffer and fell
-back to decoding from the start; measuring on real files showed it doesn't
-fail, it just waits for each read. Scrubbing to the middle of the last track of
-a 1.5 GB single-file vinyl rip took 26 fetches one after another, against 3 for
-an album with a seektable. Track starts are unaffected, since they jump by
-recorded byte.
+The first idea, handing FFmpeg index points before a scrub, didn't help: it
+still bisects between them. What worked was not asking FFmpeg to seek at all.
+Import already decodes every track to measure its loudness, and every packet
+it reads carries its frame's exact byte and first sample. So import keeps a
+few of them: each track's first frame, then one every 10 seconds of audio, or
+sooner when the bytes since the last would outgrow the 4 MB window one fetch
+brings in, less the ten frames FFmpeg's FLAC parser reads ahead before it
+hands one over. A scrub jumps by byte to the last point before the target and
+decodes forward, trimming to the exact sample. The points sync with the rest
+of the album's layout, so another device streaming it scrubs the same way.
 
-Import already knows where every track starts and ends, so the next step is to
-hand those to the demuxer as index points before a scrub, which should keep the
-search inside the track. We'll measure that before we claim it.
+Measured on the same files with a prototype of the jump (fetches one after
+another, before and after):
+
+| File | middle of last track | 10% into last track | middle of first track |
+|---|---|---|---|
+| 1.5 GB single-file vinyl rip, no seektable | 26 → 3 | 14 → 3 | 6 → 2 |
+| 417 MB single-file CD rip, no seektable | 6 → 3 | 7 → 2 | 7 → 2 |
+| 245 MB single-file CD rip, no seektable | 4 → 3 | 4 → 2 | 6 → 2 |
+| per-track file, no seektable | 4 → 2 | 6 → 1 | 8 → 2 |
+| 310 MB single-file album with a seektable | 3 | 2 | 2 |
+
+The output stayed sample-exact in every case: the same samples as decoding
+from the track's start and trimming.
 
 ## The lesson
 

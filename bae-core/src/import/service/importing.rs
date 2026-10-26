@@ -866,6 +866,7 @@ impl ImportService {
                     },
                     audio_formats: &built_audio.audio_formats,
                     audio_segments: &built_audio.audio_segments,
+                    scrub_points: &loudness.scrub_points,
                     records,
                 },
                 prepared_files,

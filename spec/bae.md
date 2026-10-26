@@ -1031,7 +1031,14 @@ Ana clicks Import. bae:
    is uploaded (§4.2).
 4. **Measures loudness** by decoding every track: its EBU R128 integrated
    loudness and true peak, and the album's over all its tracks. A near-silent
-   track stores no loudness and plays unchanged.
+   track stores no loudness and plays unchanged. The same decode records
+   *scrub points* for a FLAC whose seektable gives FFmpeg nothing to seek by
+   (none, or one of only placeholder points): for each segment of a track,
+   the frame it starts in, then the first frame each 10 seconds of audio on,
+   or sooner where the bytes from the last point would outgrow the window a
+   scrub fetches (§7.6). Each point is a frame's first sample and the byte it
+   starts at, read from a decode that began on a frame. Any other file gets
+   none.
 5. **Checks the audio decodes**, in the same pass. A track that fails, or
    decodes short, fails the import rather than failing later at play time.
    This check is a setting, on by default.
@@ -1051,7 +1058,7 @@ Ana clicks Import. bae:
    release, or another release of its album.
 7. **Writes everything in one transaction**, from the draft as it stands, read
    from no source again: the album; the release, with a fresh random id, and
-   this device's record of the folder's hash it read (§2.7); its tracks, files, segments, credits, roles, works, records,
+   this device's record of the folder's hash it read (§2.7); its tracks, files, segments, scrub points, credits, roles, works, records,
    cover, and the new artists' pictures. Each track row is made once its audio is bound, with the
    length that audio measures, so no track is ever stored without one. A track
    left untitled takes its file's name. Each credit, role
@@ -2177,6 +2184,14 @@ Reading ahead keeps playback from waiting on the network, and a seek fetches
 only what is under the new position. One buffer per file serves every track
 that plays from it, so the eleven tracks of a disc image share one.
 
+A track start jumps to the byte import recorded for it. A seek inside a track
+is left to FFmpeg, which seeks through the file's own index where it has one:
+a FLAC's seektable, APE's, an MP4's sample table. A FLAC with scrub points
+(§3.7) has no index FFmpeg can use, so the seek jumps to the last point at or
+before the new position and decodes forward to it: one window fetched from
+the point, instead of a search across the file with one fetch per step.
+Either way the first sample played is the one asked for.
+
 Offline, a track whose bytes aren't on the device stops playback with a typed
 reason the UI shows. A decoder that stops producing for good is caught and
 reported, rather than left behind a frozen position bar.
@@ -2612,6 +2627,7 @@ All sync.
 | `track_works` | work a track performs, in order |
 | `audio_formats` | track's format, pregap, loudness and peak |
 | `audio_format_segments` | span of a file a track reads: pregap or main, samples and bytes |
+| `audio_segment_scrub_points` | frame a seek inside a segment can jump to, keyed by the segment and the frame's first sample: that sample and the frame's byte; only for a FLAC with no usable seektable (§3.7) |
 
 Beside them, two device-local tables:
 
@@ -2741,6 +2757,7 @@ not declared, so they never sync.
 | `release_files` | independent | store | | the person's own; attached on upload; read on first use; detached to return to local paths |
 | `audio_formats` | independent | store | | |
 | `audio_format_segments` | independent | store | | |
+| `audio_segment_scrub_points` | independent: its segment, and a sample | store | | |
 | `covers` | shared key: the release | store | | bae's own; read on first use |
 | `artist_images` | shared key: the artist | store | | bae's own; read on first use |
 | `people` | shared key: the person's `MemberId` | store | yes | the avatar: bae's own; read on first use |

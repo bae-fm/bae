@@ -515,6 +515,21 @@ CREATE TABLE IF NOT EXISTS audio_format_segments (
 
 CREATE INDEX IF NOT EXISTS idx_audio_format_segments_format_id ON audio_format_segments (audio_format_id);
 
+-- Frames in a segment's file that a scrub jumps to by byte: each frame's first
+-- sample and the byte it begins at. Import writes them only for a FLAC the
+-- demuxer can only binary-search (no SEEKTABLE, or one with no point past the
+-- first sample): the segment's first frame, then the first frame 10 seconds
+-- of audio on, or sooner where the bytes from the last point would outgrow
+-- the window a scrub's jump fetches.
+CREATE TABLE IF NOT EXISTS audio_segment_scrub_points (
+    audio_format_segment_id TEXT NOT NULL,
+    -- Positions within the file: never negative, whichever device wrote the row.
+    sample INTEGER NOT NULL CHECK (sample >= 0),
+    byte INTEGER NOT NULL CHECK (byte >= 0),
+    PRIMARY KEY (audio_format_segment_id, sample),
+    FOREIGN KEY (audio_format_segment_id) REFERENCES audio_format_segments (id) ON DELETE CASCADE
+) STRICT;
+
 -- ── Playback ──────────────────────────────────────────────────────────────────
 
 -- The one row saying what this device was playing, so a restart resumes it.

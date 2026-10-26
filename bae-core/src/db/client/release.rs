@@ -31,6 +31,7 @@ pub(crate) struct ImportRows<'a> {
     pub artists: super::artist_resolution::ArtistCredits<'a>,
     pub audio_formats: &'a [DbAudioFormat],
     pub audio_segments: &'a [DbAudioSegment],
+    pub scrub_points: &'a [DbScrubPoint],
     pub records: &'a [crate::import::ReleaseRecord],
 }
 
@@ -426,6 +427,23 @@ impl Database {
         })
         .await
     }
+
+    /// Insert scrub points as the import commit writes them, for tests whose
+    /// segments a test inserted.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn insert_scrub_points_for_test(
+        &self,
+        points: &[DbScrubPoint],
+    ) -> Result<(), DbError> {
+        let points = points.to_vec();
+        self.call_sql(move |sql| {
+            for point in &points {
+                insert_scrub_point_row(&sql, point)?;
+            }
+            Ok(())
+        })
+        .await
+    }
     /// Find file by ID. Caller-provided ID — may not exist.
     pub async fn find_file_by_id(&self, file_id: &str) -> Result<Option<DbFile>, DbError> {
         let file_id = file_id.to_string();
@@ -478,6 +496,7 @@ impl Database {
             artist_images.expected_new_artists.iter().cloned().collect();
         let audio_formats = rows.audio_formats.to_vec();
         let audio_segments = rows.audio_segments.to_vec();
+        let scrub_points = rows.scrub_points.to_vec();
         let library_image = library_image.map(|(image, bytes)| (image.clone(), bytes.to_vec()));
         let artist_images: Vec<(DbLibraryImage, Vec<u8>)> = artist_images
             .images
@@ -627,6 +646,9 @@ impl Database {
                 }
                 for segment in &audio_segments {
                     insert_audio_segment_row(tx, segment)?;
+                }
+                for point in &scrub_points {
+                    insert_scrub_point_row(tx, point)?;
                 }
 
                 if let Some((image, _)) = &library_image {

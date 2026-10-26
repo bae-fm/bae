@@ -64,6 +64,7 @@ unsafe fn decode_audio_streaming_impl(
         mut fmt_ctx,
         avio,
         avio_ctx_ptr,
+        ..
     } = open_buffer_input(&buffer, cancel_token.clone())
         .map_err(|e| e.into_decode_error(&cancel_token))?;
 
@@ -104,15 +105,16 @@ unsafe fn decode_audio_streaming_impl(
         DecodeError::after_read(read_failure, e)
     })?;
 
-    // The by-byte seek is for FLAC, whose frame byte is recorded at import; APE
-    // has no per-frame byte positions, so it sample-seeks via its mandatory
-    // index instead.
+    // The by-byte seek is for FLAC, whose frame bytes are recorded at import: a
+    // track's first frame, and the scrub points of a FLAC with no usable
+    // seektable. APE has no per-frame byte positions, so it sample-seeks via its
+    // mandatory index instead.
     //
     // A sample seek costs one jump for a seektable-bearing FLAC (and for APE/MP4)
-    // now that AVFMT_FLAG_FAST_SEEK is set. A FLAC with no seektable binary-searches
-    // the file: its read of the file's end waits for the fill like any other read,
-    // so the search succeeds, one fetch per step. A seek that does fail decodes from
-    // the start and trims to the target, logged.
+    // now that AVFMT_FLAG_FAST_SEEK is set. A FLAC with no seektable and no stored
+    // scrub points binary-searches the file: its read of the file's end waits for
+    // the fill like any other read, so the search succeeds, one fetch per step. A
+    // seek that does fail decodes from the start and trims to the target, logged.
     if let Some(byte_pos) = seek_to_byte {
         seek_to_byte_or_warn(fmt_ctx, codec_ctx, audio.stream_index, byte_pos);
     } else if let Some(sample_pos) = seek_to_sample {

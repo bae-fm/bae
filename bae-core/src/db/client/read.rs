@@ -728,6 +728,16 @@ pub(super) fn row_to_audio_segment(row: &Row) -> rusqlite::Result<DbAudioSegment
     })
 }
 
+pub(super) fn row_to_scrub_point(row: &Row) -> rusqlite::Result<DbScrubPoint> {
+    Ok(DbScrubPoint {
+        audio_segment_id: row.get("audio_format_segment_id")?,
+        point: ScrubPoint {
+            sample: count_column(row, "sample")?,
+            byte: count_column(row, "byte")?,
+        },
+    })
+}
+
 pub(super) fn row_to_release_storage_summary(
     sql: &SqlReadContext<'_>,
     row: &Row,
