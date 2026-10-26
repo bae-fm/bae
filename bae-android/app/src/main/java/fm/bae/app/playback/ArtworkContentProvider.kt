@@ -31,7 +31,9 @@ private const val COVER_PATH_SEGMENTS = 4
  * each item's artwork with a URI ([uriFor]); Media3 grants the connected
  * controller read access to it and the controller fetches the bytes lazily,
  * so cover bytes never ride inline in the browse payload across Binder (where
- * a page of covers would blow the transaction size limit).
+ * a page of covers would blow the transaction size limit). The now-playing
+ * track's cover is tagged the same way ([BaeCorePlayer]), and the session's
+ * bitmap loader reads it from here for the notification and lock screen.
  *
  * The bytes come from the same open library the rest of the app reads, through
  * [fm.bae.app.data.ImageStore] — so there is one image-loading path, not a

@@ -183,7 +183,6 @@ class PlaybackServiceTest {
 }
 
 internal class FakeAppHandle(
-    private val imageBytes: Map<String, ByteArray> = emptyMap(),
     private val albumPages: (offset: ULong, limit: ULong) -> List<BridgeAlbum> = { _, _ -> emptyList() },
     private val composerPages: (offset: ULong, limit: ULong) -> List<BridgeComposerSummary> = { _, _ -> emptyList() },
     private val albumDetails: Map<String, BridgeAlbumDetail> = emptyMap(),
@@ -245,7 +244,7 @@ internal class FakeAppHandle(
 
     override fun triggerSync() {}
 
-    override suspend fun fetchLibraryImageBytes(image: BridgeImageRef): ByteArray? = imageBytes[image.id]
+    override suspend fun fetchLibraryImageBytes(image: BridgeImageRef): ByteArray? = null
 
     /** Deliver [value] on a search, as the answer to its newest request unless [revision] names
      *  an earlier one. */

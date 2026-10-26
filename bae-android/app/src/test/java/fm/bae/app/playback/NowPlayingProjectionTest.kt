@@ -6,13 +6,18 @@ import fm.bae.app.testCoverRef
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotSame
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeDurationClock
+import uniffi.bae_bridge.BridgePlaybackPosition
+import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeTrackDisplay
 
 /**
@@ -73,10 +78,7 @@ class NowPlayingProjectionTest {
 
     @Test
     fun currentMediaItemCarriesLockScreenMetadata() {
-        val coverBytes = byteArrayOf(1, 2, 3, 4)
-        // Main.immediate runs the artwork fetch inline (the fake returns without
-        // suspending), so the current item already carries its bytes here.
-        val player = player(imageBytes = mapOf("cover-1" to coverBytes))
+        val player = player()
         player.applyPlaybackState(
             playingState(
                 trackId = "cur",
@@ -96,7 +98,8 @@ class NowPlayingProjectionTest {
 
         assertEquals("cur", mediaItem.mediaId)
         assertEquals(185_000_000L, window.durationUs)
-        assertArrayEquals(coverBytes, metadata.artworkData)
+        assertEquals(ArtworkContentProvider.uriFor(RuntimeEnvironment.getApplication(), testCoverRef("cover-1")), metadata.artworkUri)
+        assertNull(metadata.artworkData)
         assertEquals("Title cur", sessionMetadata.title)
         assertEquals("Title cur", metadata.title)
         assertEquals("Artist Name", metadata.artist)
@@ -107,10 +110,57 @@ class NowPlayingProjectionTest {
         assertEquals(false, metadata.isBrowsable)
     }
 
-    private fun player(imageBytes: Map<String, ByteArray>): BaeCorePlayer {
+    @Test
+    fun positionKeepsThePlaylistAndAQueueChangeReplacesIt() {
+        val player = player()
+        player.onQueueValue(manual = listOf(entry("up1")), context = null, hasNext = true, hasPrevious = false, revision = 1uL)
+        player.applyPlaybackState(playingState(trackId = "cur", durationMs = 185_000uL))
+        val playing = player.currentTimeline
+
+        player.applyPositions(playbackPositions(position(trackId = "cur", positionMs = 1_000L)))
+        assertSame(playing, player.currentTimeline)
+
+        player.onQueueValue(manual = listOf(entry("up2")), context = null, hasNext = true, hasPrevious = false, revision = 2uL)
+        assertNotSame(playing, player.currentTimeline)
+        assertEquals(
+            "up2",
+            player.currentTimeline
+                .getWindow(1, Timeline.Window())
+                .mediaItem.mediaId,
+        )
+    }
+
+    @Test
+    fun replacedCoverChangesTheArtworkUri() {
+        val player = player()
+        val first = testCoverRef("cover-1")
+        val replaced = first.copy(version = "2")
+        player.applyPlaybackState(playingState(trackId = "cur", coverImage = first))
+        player.applyPlaybackState(pausedState(trackId = "cur", coverImage = replaced))
+
+        assertEquals(
+            ArtworkContentProvider.uriFor(RuntimeEnvironment.getApplication(), replaced),
+            player.currentMediaItem?.mediaMetadata?.artworkUri,
+        )
+    }
+
+    private fun entry(trackId: String) =
+        BridgeQueueEntry(
+            entryId = "entry-$trackId",
+            trackId = trackId,
+            display = meta(trackId).display,
+            durationClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 0u),
+        )
+
+    private fun position(
+        trackId: String,
+        positionMs: Long,
+    ) = BridgePlaybackPosition(trackId = trackId, positionMs = positionMs, durationMs = 185_000uL, progress = 0.0)
+
+    private fun player(): BaeCorePlayer {
         val context = RuntimeEnvironment.getApplication()
         val looper = android.os.Looper.getMainLooper()
-        val handle = FakeAppHandle(imageBytes)
+        val handle = FakeAppHandle()
         return BaeCorePlayer(
             applicationLooper = looper,
             appHandle = handle,

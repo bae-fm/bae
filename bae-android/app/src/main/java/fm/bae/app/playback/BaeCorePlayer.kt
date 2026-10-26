@@ -1,6 +1,6 @@
 package fm.bae.app.playback
 
-import android.content.Context
+import android.net.Uri
 import android.os.Looper
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -11,7 +11,6 @@ import androidx.media3.common.util.Util
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import fm.bae.app.BaeLogger
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
@@ -23,7 +22,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandle
-import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLoadingTrack
 import uniffi.bae_bridge.BridgeNowPlayingTrack
 import uniffi.bae_bridge.BridgePlaybackContext
@@ -50,7 +48,7 @@ private val logger = BaeLogger(TAG)
 class BaeCorePlayer(
     applicationLooper: Looper,
     private val appHandle: AppHandle,
-    system: PlaybackSystem,
+    private val system: PlaybackSystem,
     private val scope: CoroutineScope,
     private val queueUpcomingSource: QueueUpcomingSource = QueueUpcomingSource(appHandle),
 ) : SimpleBasePlayer(applicationLooper),
@@ -135,14 +133,14 @@ class BaeCorePlayer(
             meta: Meta,
             playingTrackId: String?,
             durationMs: Long,
-            artwork: ByteArray?,
+            artworkUri: Uri?,
         ): MediaItemData {
             val currentDurationMs = itemDurationMs(meta, playingTrackId, durationMs)
             val metadata =
                 mediaMetadata(
                     meta,
                     if (currentDurationMs == C.TIME_UNSET) null else currentDurationMs,
-                    artwork,
+                    artworkUri,
                 )
             return MediaItemData
                 .Builder(meta.trackId)
@@ -161,25 +159,45 @@ class BaeCorePlayer(
         internal fun mediaMetadata(
             meta: Meta,
             durationMs: Long?,
-            artwork: ByteArray?,
-        ): MediaMetadata {
-            val metadataBuilder =
-                MediaMetadata
-                    .Builder()
-                    .setTitle(meta.display.title)
-                    .setArtist(meta.display.artistNames)
-                    .setAlbumTitle(meta.display.albumTitle)
-                    .setDurationMs(durationMs)
-                    .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
-                    .setIsPlayable(true)
-                    .setIsBrowsable(false)
-            // Only the current track has artwork bytes (see getState).
-            artwork?.let {
-                metadataBuilder.setArtworkData(it, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
-            }
-            return metadataBuilder.build()
-        }
+            artworkUri: Uri?,
+        ): MediaMetadata =
+            MediaMetadata
+                .Builder()
+                .setTitle(meta.display.title)
+                .setArtist(meta.display.artistNames)
+                .setAlbumTitle(meta.display.albumTitle)
+                .setDurationMs(durationMs)
+                .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                .setIsPlayable(true)
+                .setIsBrowsable(false)
+                .setArtworkUri(artworkUri)
+                .build()
     }
+
+    /** What the Media3 playlist is built from: the up-next [entries], the
+     *  [current] track, and its duration ([C.TIME_UNSET] when unknown). */
+    private data class PlaylistSource(
+        val entries: List<Meta>,
+        val current: Meta?,
+        val durationMs: Long,
+    )
+
+    /** The Media3 playlist built from [source]. */
+    private class Playlist(
+        val source: PlaylistSource,
+        /** The tracks in play order; see [orderedMetas]. */
+        val metas: List<Meta>,
+        /** The current track's index in [metas], or [C.INDEX_UNSET]. */
+        val currentIndex: Int,
+        /**
+         * A [State] holding only the playlist. [getState] builds each state on it,
+         * so while the playlist is unchanged every state carries the same
+         * [androidx.media3.common.Timeline], and Media3's comparison of the old and
+         * new state finds the timelines equal by identity instead of comparing
+         * every item.
+         */
+        val state: State,
+    )
 
     internal enum class Transport { IDLE, BUFFERING, READY }
 
@@ -213,11 +231,6 @@ class BaeCorePlayer(
     /** The current track's metadata, from the latest playback value. */
     private var currentMeta: Meta? = null
 
-    /** The cover the current track's artwork is fetched for, and its bytes once
-     *  they arrive. */
-    private var currentArtworkCover: BridgeImageRef? = null
-    private var currentArtwork: ByteArray? = null
-
     private var sidePausePrompt: SidePausePrompt? = null
 
     /** Null when stopped. */
@@ -233,6 +246,9 @@ class BaeCorePlayer(
     private var media3RepeatMode: Int = Player.REPEAT_MODE_OFF
 
     private val positionModel = PlaybackPositionModel()
+
+    /** The latest playlist [currentPlaylist] built. */
+    private var playlist: Playlist = playlistFor(PlaylistSource(emptyList(), null, C.TIME_UNSET))
 
     private val _nowPlaying = MutableStateFlow<NowPlaying?>(null)
     val nowPlaying: StateFlow<NowPlaying?> = _nowPlaying.asStateFlow()
@@ -412,40 +428,6 @@ class BaeCorePlayer(
                 trackId = trackId,
                 display = track.display,
             )
-        refreshArtwork(track.display.coverImage)
-    }
-
-    /**
-     * Fetch the artwork bytes for [coverImage] unless they are already loaded. The
-     * reference includes the image's version, so a replaced cover is fetched again.
-     */
-    private fun refreshArtwork(coverImage: BridgeImageRef?) {
-        if (coverImage == currentArtworkCover) return
-        currentArtworkCover = coverImage
-        currentArtwork = null
-        if (coverImage == null) {
-            invalidateState()
-            return
-        }
-        scope.launch {
-            val bytes =
-                try {
-                    appHandle.fetchLibraryImageBytes(coverImage)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    logger.error("Failed to load now-playing artwork ${coverImage.id}", e)
-                    null
-                }
-            // The track may have changed while this fetched.
-            if (currentArtworkCover == coverImage) {
-                if (bytes == null) {
-                    logger.warning("now-playing artwork bytes absent for ${coverImage.id}")
-                }
-                currentArtwork = bytes
-                invalidateState()
-            }
-        }
     }
 
     private fun applyPaused(state: BridgePlaybackValueState.Paused) {
@@ -464,7 +446,6 @@ class BaeCorePlayer(
         playWhenReady = false
         playingTrackId = null
         currentMeta = null
-        refreshArtwork(null)
         sidePausePrompt = null
         positionModel.reset()
     }
@@ -557,18 +538,54 @@ class BaeCorePlayer(
     // ── Media3 state ─────────────────────────────────────────────────────
 
     override fun getState(): State {
-        val metas = orderedMetas(entries, currentMeta)
-        // The notification and lock screen show only the current track's cover.
-        val playlist =
+        val playlist = currentPlaylist()
+        val playbackState = playbackStateFor(transport, playlistIsEmpty = playlist.metas.isEmpty())
+
+        return playlist.state
+            .buildUpon()
+            .setAvailableCommands(availableCommands(hasNext, hasPrevious))
+            .setPlaybackState(playbackState)
+            .setPlayWhenReady(playWhenReady, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
+            .setRepeatMode(media3RepeatMode)
+            .setCurrentMediaItemIndex(playlist.currentIndex)
+            .setContentPositionMs(
+                PositionSupplier.getExtrapolating(
+                    positionModel.effectivePositionMs.coerceAtLeast(0L),
+                    if (playbackState == Player.STATE_READY && playWhenReady) 1.0f else 0.0f,
+                ),
+            ).build()
+    }
+
+    /** The playlist for the queue, the current track and its duration as they
+     *  are now, built again only when one of them changed. */
+    private fun currentPlaylist(): Playlist {
+        val source = PlaylistSource(entries, currentMeta, positionModel.durationMs ?: C.TIME_UNSET)
+        if (source != playlist.source) {
+            playlist = playlistFor(source)
+        }
+        return playlist
+    }
+
+    private fun playlistFor(source: PlaylistSource): Playlist {
+        val metas = orderedMetas(source.entries, source.current)
+        val currentTrackId = source.current?.trackId
+        // The notification and lock screen show only the current track's cover,
+        // which Media3 reads through the artwork provider.
+        val artworkUri =
+            source.current
+                ?.display
+                ?.coverImage
+                ?.let { ArtworkContentProvider.uriFor(system.context, it) }
+        val items =
             metas.map { meta ->
-                val artwork = if (meta.trackId == playingTrackId) currentArtwork else null
-                mediaItemData(meta, playingTrackId, positionModel.durationMs ?: C.TIME_UNSET, artwork)
+                val itemArtworkUri = if (meta.trackId == currentTrackId) artworkUri else null
+                mediaItemData(meta, currentTrackId, source.durationMs, itemArtworkUri)
             }
 
-        val requestedIndex = playingTrackId?.let { id -> metas.indexOfFirst { it.trackId == id } }
+        val requestedIndex = currentTrackId?.let { id -> metas.indexOfFirst { it.trackId == id } }
         val currentIndex =
             when {
-                playlist.isEmpty() -> {
+                metas.isEmpty() -> {
                     C.INDEX_UNSET
                 }
 
@@ -582,28 +599,13 @@ class BaeCorePlayer(
 
                 else -> {
                     logger.warning(
-                        "getState missing current track $playingTrackId in playlist ${metas.map { it.trackId }}",
+                        "playlist missing current track $currentTrackId in ${metas.map { it.trackId }}",
                     )
                     C.INDEX_UNSET
                 }
             }
 
-        val playbackState = playbackStateFor(transport, playlistIsEmpty = playlist.isEmpty())
-
-        return State
-            .Builder()
-            .setAvailableCommands(availableCommands(hasNext, hasPrevious))
-            .setPlaybackState(playbackState)
-            .setPlayWhenReady(playWhenReady, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
-            .setRepeatMode(media3RepeatMode)
-            .setPlaylist(playlist)
-            .setCurrentMediaItemIndex(currentIndex)
-            .setContentPositionMs(
-                PositionSupplier.getExtrapolating(
-                    positionModel.effectivePositionMs.coerceAtLeast(0L),
-                    if (playbackState == Player.STATE_READY && playWhenReady) 1.0f else 0.0f,
-                ),
-            ).build()
+        return Playlist(source, metas, currentIndex, State.Builder().setPlaylist(items).build())
     }
 
     // ── Transport commands, forwarded to core ────────────────────────────────
@@ -645,7 +647,7 @@ class BaeCorePlayer(
 
             Player.COMMAND_SEEK_TO_MEDIA_ITEM -> {
                 // The current track's slot has no entry id, so seeking to it does nothing.
-                val entryId = orderedMetas(entries, currentMeta).getOrNull(mediaItemIndex)?.entryId
+                val entryId = currentPlaylist().metas.getOrNull(mediaItemIndex)?.entryId
                 if (entryId != null) {
                     positionModel.clearPendingSeek()
                     appHandle.skipToEntry(entryId)

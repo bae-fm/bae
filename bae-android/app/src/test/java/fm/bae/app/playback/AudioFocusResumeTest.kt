@@ -58,7 +58,7 @@ class AudioFocusResumeTest {
     @Test
     fun aFocusChangeTheSystemSendsPausesPlayback() {
         val context = RuntimeEnvironment.getApplication()
-        val handle = FakeAppHandle(emptyMap())
+        val handle = FakeAppHandle()
         val audioFocus = AudioFocus(context)
         val player = player(context, handle, audioFocus)
 
@@ -72,7 +72,7 @@ class AudioFocusResumeTest {
     @Test
     fun transientLossWhileUserPausedDoesNotResumeOnRegain() {
         val context = RuntimeEnvironment.getApplication()
-        val handle = FakeAppHandle(emptyMap())
+        val handle = FakeAppHandle()
         val player = player(context, handle)
 
         player.startPlaying()
@@ -90,7 +90,7 @@ class AudioFocusResumeTest {
     @Test
     fun transientLossWhilePlayingResumesOnRegain() {
         val context = RuntimeEnvironment.getApplication()
-        val handle = FakeAppHandle(emptyMap())
+        val handle = FakeAppHandle()
         val player = player(context, handle)
 
         player.startPlaying()
@@ -106,7 +106,7 @@ class AudioFocusResumeTest {
     @Test
     fun permanentLossDoesNotResumeOnRegain() {
         val context = RuntimeEnvironment.getApplication()
-        val handle = FakeAppHandle(emptyMap())
+        val handle = FakeAppHandle()
         val player = player(context, handle)
 
         player.startPlaying()
@@ -122,7 +122,7 @@ class AudioFocusResumeTest {
     @Test
     fun userPauseDuringTransientLossDisarmsResume() {
         val context = RuntimeEnvironment.getApplication()
-        val handle = FakeAppHandle(emptyMap())
+        val handle = FakeAppHandle()
         val player = player(context, handle)
 
         player.startPlaying()
