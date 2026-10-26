@@ -755,5 +755,88 @@ fn album_page_subscription_delivers_a_write_materialized_by_sync() {
     });
 }
 
+/// The composer list on B is a local table B's triggers keep from the synced
+/// rows: applying A's writes runs them, and B's live query delivers what they
+/// wrote. A's work credit lists its composer; A's merge then lists the work
+/// under the survivor alone.
+#[test]
+fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
+    crate::sync::test_devices::run_two_device_test(async |devices| {
+        let writer = devices.a().database();
+        let reader = devices.b().database();
+        let sort = [ComposerSortCriterion {
+            field: ComposerSortField::Name,
+            direction: SortDirection::Ascending,
+        }];
+        let mut live = reader.subscribe_composer_browse(&sort, first_page());
+        assert_eq!(live.next().await.result.unwrap().total_count, 0);
+        let listed = async |live: &mut coven::ReconfigurableLiveQuery<
+            crate::library::LibraryPageWindows,
+            ComposerBrowseProjection,
+        >,
+                            expected: Vec<(&str, i64)>| {
+            tokio::time::timeout(Duration::from_secs(20), async {
+                loop {
+                    let shown = live.next().await.result.unwrap();
+                    let rows = shown.windows[0]
+                        .rows
+                        .iter()
+                        .map(|row| (row.artist.id.clone(), row.work_count))
+                        .collect::<Vec<_>>();
+                    if rows
+                        == expected
+                            .iter()
+                            .map(|(id, works)| (id.to_string(), *works))
+                            .collect::<Vec<_>>()
+                    {
+                        return shown;
+                    }
+                }
+            })
+            .await
+            .expect("B's composer browse delivers the listing A's write makes")
+        };
+
+        exec_batch(writer, &format!(
+            "INSERT INTO artists (id, name, name_key, created_at) VALUES
+                ('{COMPOSER_ID}', 'Composer Name First', 'composer name first', '2026-01-01T00:00:00Z'),
+                ('{OTHER_COMPOSER_ID}', 'Composer Name Second', 'composer name second', '2026-01-01T00:00:00Z');
+             INSERT INTO works (id, title, work_type, musicbrainz_work_id, created_at) VALUES
+                ('{COMPOSER_WORK_ID}', 'Work Title First', 'work', 'work-first', '2026-01-01T00:00:00Z'),
+                ('{OTHER_COMPOSER_WORK_ID}', 'Work Title Second', 'work', 'work-second', '2026-01-01T00:00:00Z');
+             INSERT INTO work_artists (id, work_id, artist_id, position, source, created_at) VALUES
+                ('{COMPOSER_LINK_ID}', '{COMPOSER_WORK_ID}', '{COMPOSER_ID}', 0, 'file_tags', '2026-01-01T00:00:00Z'),
+                ('{OTHER_COMPOSER_LINK_ID}', '{OTHER_COMPOSER_WORK_ID}', '{OTHER_COMPOSER_ID}', 0, 'file_tags', '2026-01-01T00:00:00Z');"
+        )).await;
+        devices
+            .settle("the remote work credits", |_, db| async move {
+                db.find_composer_detail(OTHER_COMPOSER_ID)
+                    .await
+                    .unwrap()
+                    .is_some()
+            })
+            .await;
+        let credited = listed(&mut live, vec![(COMPOSER_ID, 1), (OTHER_COMPOSER_ID, 1)]).await;
+        assert_eq!(credited.total_count, 2);
+
+        exec(
+            writer,
+            "INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES (?1, ?2, '2026-01-01T00:00:00Z')",
+            &[OTHER_COMPOSER_ID, COMPOSER_ID],
+        )
+        .await;
+        devices
+            .settle("the remote merge", |_, db| async move {
+                db.find_composer_detail(OTHER_COMPOSER_ID)
+                    .await
+                    .unwrap()
+                    .is_none()
+            })
+            .await;
+        let merged = listed(&mut live, vec![(COMPOSER_ID, 2)]).await;
+        assert_eq!(merged.total_count, 1);
+    });
+}
+
 #[path = "live_query_tests/id_sets.rs"]
 mod id_sets;

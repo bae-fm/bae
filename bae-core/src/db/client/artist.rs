@@ -128,7 +128,7 @@ impl Database {
     ) -> Result<Vec<DbComposerSummary>, DbError> {
         let order_by = composer_order_by(sort);
         let tail = format!("ORDER BY {order_by} LIMIT ? OFFSET ?");
-        let query = composer_summary_query(None, Some(&tail));
+        let query = composer_listing_query(None, Some(&tail));
         self.read(move |sql| {
             sql.query(
                 &query,
@@ -148,7 +148,7 @@ impl Database {
     {
         let order_by = composer_order_by(sort);
         let page_tail = format!("ORDER BY {order_by} LIMIT ? OFFSET ?");
-        let page_query = composer_summary_query(None, Some(&page_tail));
+        let page_query = composer_listing_query(None, Some(&page_tail));
         self.inner
             .handle
             .subscribe_reconfigurable(initial_windows, move |requested, sql| {
@@ -571,7 +571,7 @@ fn find_composer_detail_on(
 ) -> Result<Option<ComposerDetailRows>, DbError> {
     let composer = sql
         .query_row(
-            &composer_summary_query(Some("WHERE composer.id = ?"), None),
+            &composer_listing_query(Some("WHERE listing.artist_id = ?"), None),
             params![artist_id],
             row_to_composer_summary,
         )
@@ -613,24 +613,21 @@ fn find_composer_detail_on(
         .into_iter()
         .collect::<HashMap<_, _>>()
     };
-    let release_roles_query = format!(
-        "SELECT rar.id AS release_artist_role_id, rar.release_id,
+    let release_roles_query = "SELECT rar.id AS release_artist_role_id, rar.release_id,
                 rar.artist_id, rar.position,
                 rar.source AS role_source, rar.source_credit, rar.created_at,
                 a.id AS album_id, a.title AS album_title,
                 a.year AS album_year,
                 a.is_compilation AS album_is_compilation,
                 a.created_at AS album_created_at
-         FROM release_artist_roles rar
+         FROM composer_unlinked_credit unlinked
+         JOIN release_artist_roles rar ON rar.id = unlinked.credit_id
          JOIN releases r ON r.id = rar.release_id
          JOIN albums a ON a.id = r.album_id
-         WHERE {} = ? AND {}
-         ORDER BY a.title, r.album_order, r.id, rar.position",
-        shown_artist_id("rar.artist_id"),
-        unlinked_release_composer_role_predicate("rar")
-    );
+         WHERE unlinked.artist_id = ?
+         ORDER BY a.title, r.album_order, r.id, rar.position";
     let unlinked_release_roles =
-        sql.query(&release_roles_query, params![composer.artist.id], |row| {
+        sql.query(release_roles_query, params![composer.artist.id], |row| {
             Ok(DbReleaseRoleSummary {
                 role: DbReleaseArtistRole {
                     id: row.get("release_artist_role_id")?,
@@ -644,8 +641,7 @@ fn find_composer_detail_on(
                 album: row_to_album_with_prefix(row, "album_")?,
             })
         })?;
-    let track_roles_query = format!(
-        "SELECT tar.id AS track_artist_role_id, tar.track_id, tar.artist_id,
+    let track_roles_query = "SELECT tar.id AS track_artist_role_id, tar.track_id, tar.artist_id,
                 tar.position, tar.source AS role_source,
                 tar.source_credit, tar.created_at,
                 t.id AS track_id, t.release_id AS track_release_id,
@@ -662,18 +658,16 @@ fn find_composer_detail_on(
                 art.discogs_artist_id AS artist_discogs_artist_id,
                 art.musicbrainz_artist_id AS artist_musicbrainz_artist_id,
                 art.created_at AS artist_created_at
-         FROM track_artist_roles tar
+         FROM composer_unlinked_credit unlinked
+         JOIN track_artist_roles tar ON tar.id = unlinked.credit_id
          JOIN tracks t ON t.id = tar.track_id
          JOIN releases r ON r.id = t.release_id
          JOIN albums a ON a.id = r.album_id
-         JOIN artists art ON art.id = {shown}
-         WHERE {shown} = ? AND {}
-         ORDER BY a.title, r.album_order, r.id, t.position, tar.position",
-        unlinked_track_composer_role_predicate("tar"),
-        shown = shown_artist_id("tar.artist_id"),
-    );
+         JOIN artists art ON art.id = unlinked.artist_id
+         WHERE unlinked.artist_id = ?
+         ORDER BY a.title, r.album_order, r.id, t.position, tar.position";
     let unlinked_track_roles = sql.query(
-        &track_roles_query,
+        track_roles_query,
         params![composer.artist.id],
         row_to_track_role_summary,
     )?;
@@ -753,13 +747,11 @@ fn composer_work_group_sort_key(group: &DbComposerWorkGroup) -> String {
 }
 
 fn composer_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
-    let query = format!(
-        "SELECT COUNT(*) FROM ({})",
-        composer_summary_query(None, None)
-    );
-    sql.query_row(&query, [], |row| row.get::<_, i64>(0))
-        .map(|count| count as u64)
-        .map_err(DbError::from)
+    sql.query_row("SELECT COUNT(*) FROM composer_listing", [], |row| {
+        row.get::<_, i64>(0)
+    })
+    .map(|count| count as u64)
+    .map_err(DbError::from)
 }
 
 fn composer_rows_on<P: Params>(

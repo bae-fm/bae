@@ -314,6 +314,13 @@ mod tests {
         "local_release_origin",
         "local_history",
         "playback_state",
+        // What library lists sort, filter and count by, kept from the synced
+        // rows by local triggers.
+        "artist_shown_as",
+        "composer_work",
+        "composer_release",
+        "composer_unlinked_credit",
+        "composer_listing",
         // Import: the folders this device watches, what scanning found in
         // them, and each candidate's state while it is imported.
         "watched_import_folders",

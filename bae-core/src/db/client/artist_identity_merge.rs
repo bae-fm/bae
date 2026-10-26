@@ -252,7 +252,7 @@ fn apply_artist_identity_merge(
     // Drafts and conflicts are this device's alone: they move to the survivor.
     // Library credits are shared and stay as written, since another device may
     // be crediting the absorbed artist right now; reads show every credit
-    // through `merged_artist_survivors`.
+    // through `artist_shown_as`.
     for (table, unique_columns) in [
         (
             "import_candidate_album_artist_assignment",

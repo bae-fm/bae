@@ -133,18 +133,18 @@ pub(super) fn vacate_album_on(conn: &SqlContext<'_, '_>, album_id: &str) -> Resu
 }
 
 /// The id of the artist `artist_id` (an SQL expression) shows as: the survivor
-/// of its merges, or itself.
+/// of its merges, or itself (`artist_shown_as`).
 pub(super) fn shown_artist_id(artist_id: &str) -> String {
-    format!(
-        "COALESCE((SELECT survivor_id FROM merged_artist_survivors \
-                   WHERE artist_id = {artist_id}), {artist_id})"
-    )
+    format!("(SELECT shown_artist_id FROM artist_shown_as WHERE artist_id = {artist_id})")
 }
 
 /// Whether the `artists` row aliased `alias` shows as itself — it was not
 /// merged into another artist — so listings include it.
 pub(super) fn artist_is_shown(alias: &str) -> String {
-    format!("{alias}.id NOT IN (SELECT artist_id FROM merged_artist_survivors)")
+    format!(
+        "EXISTS (SELECT 1 FROM artist_shown_as shown_as \
+         WHERE shown_as.artist_id = {alias}.id AND shown_as.shown_artist_id = {alias}.id)"
+    )
 }
 
 /// Whether the album aliased `a` (every album listing's alias) holds a release,
@@ -152,46 +152,26 @@ pub(super) fn artist_is_shown(alias: &str) -> String {
 pub(super) const ALBUM_A_IS_SHOWN: &str =
     "EXISTS (SELECT 1 FROM releases shown_release WHERE shown_release.album_id = a.id)";
 
-pub(super) fn composer_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
-    let release_unlinked = unlinked_release_composer_role_predicate("rar");
-    let track_unlinked = unlinked_track_composer_role_predicate("tar");
-    let mut query = format!(
+/// The composer list's rows (`composer_listing`), each with its artist, as
+/// [`row_to_composer_summary`] reads them; `filter` and `tail` follow the join.
+pub(super) fn composer_listing_query(filter: Option<&str>, tail: Option<&str>) -> String {
+    let mut query = String::from(
         "SELECT composer.id AS artist_id,
                 composer.name AS artist_name,
                 composer.sort_name AS artist_sort_name,
                 composer.discogs_artist_id AS artist_discogs_artist_id,
                 composer.musicbrainz_artist_id AS artist_musicbrainz_artist_id,
                 composer.created_at AS artist_created_at,
-                COUNT(DISTINCT wa.work_id) AS work_count,
-                COUNT(DISTINCT linked.id) AS linked_release_count,
-                (
-                    SELECT COUNT(*) FROM release_artist_roles rar
-                    WHERE {release_role_artist} = composer.id
-                      AND {release_unlinked}
-                ) + (
-                    SELECT COUNT(*) FROM track_artist_roles tar
-                    WHERE {track_role_artist} = composer.id
-                      AND {track_unlinked}
-                ) AS unlinked_credit_count
-         FROM artists composer
-         LEFT JOIN work_artists wa ON {work_artist} = composer.id
-         LEFT JOIN track_works tw ON tw.work_id = wa.work_id
-         LEFT JOIN tracks linked_track ON linked_track.id = tw.track_id
-         LEFT JOIN releases linked ON linked.id = linked_track.release_id
+                listing.work_count,
+                listing.linked_release_count,
+                listing.unlinked_credit_count
+         FROM composer_listing listing
+         JOIN artists composer ON composer.id = listing.artist_id
          ",
-        release_role_artist = shown_artist_id("rar.artist_id"),
-        track_role_artist = shown_artist_id("tar.artist_id"),
-        work_artist = shown_artist_id("wa.artist_id"),
     );
     if let Some(filter) = filter {
         query.push_str(filter);
     }
-    query.push_str(&format!(
-        "
-         GROUP BY composer.id, composer.name, composer.sort_name, composer.discogs_artist_id, composer.musicbrainz_artist_id, composer.created_at
-         HAVING {} AND (work_count > 0 OR unlinked_credit_count > 0)",
-        artist_is_shown("composer")
-    ));
     if let Some(tail) = tail {
         query.push('\n');
         query.push_str(tail);
@@ -316,46 +296,6 @@ pub(super) fn album_browse_order(
             album_artist_links_sql()
         ),
         order,
-    )
-}
-
-pub(super) fn unlinked_release_composer_role_predicate(role_alias: &str) -> String {
-    unlinked_composer_role_predicate(
-        role_alias,
-        "release",
-        "JOIN tracks t_unlinked_release ON t_unlinked_release.id = tw_unlinked_release.track_id",
-        "t_unlinked_release.release_id",
-        "release_id",
-    )
-}
-
-pub(super) fn unlinked_track_composer_role_predicate(role_alias: &str) -> String {
-    unlinked_composer_role_predicate(
-        role_alias,
-        "track",
-        "",
-        "tw_unlinked_track.track_id",
-        "track_id",
-    )
-}
-
-pub(super) fn unlinked_composer_role_predicate(
-    role_alias: &str,
-    scope: &str,
-    track_join: &str,
-    linked_target_column: &str,
-    role_target_column: &str,
-) -> String {
-    format!(
-        "NOT EXISTS (
-            SELECT 1 FROM work_artists wa_unlinked_{scope}
-            JOIN track_works tw_unlinked_{scope} ON tw_unlinked_{scope}.work_id = wa_unlinked_{scope}.work_id
-            {track_join}
-            WHERE {work_artist} = {role_artist}
-              AND {linked_target_column} = {role_alias}.{role_target_column}
-        )",
-        work_artist = shown_artist_id(&format!("wa_unlinked_{scope}.artist_id")),
-        role_artist = shown_artist_id(&format!("{role_alias}.artist_id")),
     )
 }
 
@@ -533,21 +473,20 @@ pub(super) fn row_to_release_summary(
     })
 }
 
-/// ORDER BY for composer-page sorts. `composer.name ASC, composer.id ASC` is
-/// always appended — pagination needs a total order and `composer.name` is not
-/// unique — and is the whole clause when `sort` is empty. Mirrors
-/// `build_order_by`'s `a.id` album tie-break.
+/// ORDER BY for composer-page sorts, over `composer_listing listing`. Ties
+/// break by name ascending, then id — pagination needs a total order and a
+/// name is not unique — and that tie-break is the whole clause when `sort` is
+/// empty. A name the sort already orders by is not repeated, so an index of
+/// `composer_listing` serves each one-field sort. Mirrors `build_order_by`'s
+/// `a.id` album tie-break.
 pub(super) fn composer_order_by(sort: &[ComposerSortCriterion]) -> String {
-    if sort.is_empty() {
-        return "composer.name ASC, composer.id ASC".to_string();
-    }
-    let clause = sort
+    let mut terms = sort
         .iter()
         .map(|c| {
             let field = match c.field {
-                ComposerSortField::Name => "composer.name",
-                ComposerSortField::WorkCount => "work_count",
-                ComposerSortField::LinkedReleaseCount => "linked_release_count",
+                ComposerSortField::Name => "listing.name",
+                ComposerSortField::WorkCount => "listing.work_count",
+                ComposerSortField::LinkedReleaseCount => "listing.linked_release_count",
             };
             let direction = match c.direction {
                 SortDirection::Ascending => "ASC",
@@ -555,13 +494,16 @@ pub(super) fn composer_order_by(sort: &[ComposerSortCriterion]) -> String {
             };
             format!("{field} {direction}")
         })
-        .collect::<Vec<_>>()
-        .join(", ");
-    format!("{clause}, composer.name ASC, composer.id ASC")
+        .collect::<Vec<_>>();
+    if !sort.iter().any(|c| c.field == ComposerSortField::Name) {
+        terms.push("listing.name ASC".to_string());
+    }
+    terms.push("listing.artist_id ASC".to_string());
+    terms.join(", ")
 }
 
-/// ORDER BY for artist-page sorts. Same shape as `composer_order_by`, with
-/// `ar.name ASC, ar.id ASC` as the always-appended pagination tie-break.
+/// ORDER BY for artist-page sorts: each criterion, then `ar.name ASC, ar.id
+/// ASC` always appended as the pagination tie-break.
 pub(super) fn artist_order_by(sort: &[ArtistSortCriterion]) -> String {
     if sort.is_empty() {
         return "ar.name ASC, ar.id ASC".to_string();

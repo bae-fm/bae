@@ -297,7 +297,9 @@ Merging records that one artist was absorbed into the other; both rows stay, so
 a credit another device gave the absorbed artist still resolves. Every read
 shows the survivor. A chain of merges shows its last artist, and a loop, left by
 two devices merging a pair in opposite directions, shows the artist with the
-smallest id.
+smallest id. The artist each artist shows as is kept on the device
+(`artist_shown_as`), written in the same write as the artist or the merge that
+decides it, whichever device made that write.
 
 **Which artist a credit names.** One rule decides, inside the transaction that
 writes the credit, so nothing landing in between can make it wrong:
@@ -326,6 +328,15 @@ name.
 Works are compositions. Tracks link to them, in the order a track performs
 them, and they nest: a movement is part of a symphony, in the symphony's order.
 Works come from MusicBrainz, which names them; a work's artists come with it.
+
+**The composer list** shows every artist credited on a work, and every artist
+holding a catalog role credit that none of their works links: a release's
+credit is linked when a track of the release performs one of their works, a
+track's when the track performs one. A merged artist's works and credits count
+under the artist it shows as. Each row counts the artist's works, the releases
+a track of which performs one of them, and the unlinked credits; the list sorts
+by name, works or releases, ties going by name, then id. An artist's composer
+page lists those works and unlinked credits.
 
 ### 2.5 Catalog records
 
@@ -2654,7 +2665,7 @@ All sync.
 |---|---|
 | `artists` | artist: name, folded name, sort name, MusicBrainz and Discogs ids |
 | `artist_credits` | another name a credit prints for an artist, keyed by the artist and the folded name (§2.3) |
-| `artist_merges` | artist absorbed into another (§2.3); read through the view `merged_artist_survivors` |
+| `artist_merges` | artist absorbed into another (§2.3); the view `merged_artist_survivors` follows each chain to the artist it shows as |
 | `artist_images` | artist's picture, keyed by the artist; carries a file |
 | `albums` | album: title, year, compilation flag |
 | `album_artists` | album's credit, one per place in its list, from position 0: its artist, the other name it prints (none: the artist's own) and what follows it |
@@ -2675,12 +2686,22 @@ All sync.
 | `audio_format_segments` | span of a file a track reads: pregap or main, samples and bytes |
 | `audio_segment_scrub_points` | frame a seek inside a segment can jump to, keyed by the segment and the frame's first sample: that sample and the frame's byte; only for a FLAC with no usable seektable (§3.7) |
 
-Beside them, two device-local tables:
+Beside them, device-local tables:
 
 | Table | One row per |
 |---|---|
 | `local_release_files` | the original this device holds of a release file: its path and modification time (§4.2). Importing writes it; making the release local again rewrites it to the copy; attaching leaves it |
 | `local_release_origin` | release this device imported, keyed by the release: the hash of the folder's files it read (§2.7), unique, so one hash is one release here. Importing writes it in the release's own transaction; deleting the release deletes it |
+| `artist_shown_as` | artist, keyed by the artist: the artist it shows as (§2.3) |
+| `composer_work` | work and artist shown credited on it |
+| `composer_release` | release and artist shown credited on a work one of its tracks performs |
+| `composer_unlinked_credit` | catalog role credit none of its artist's works links (§2.4), keyed by the credit: the artist it shows as and its release |
+| `composer_listing` | artist the composer list shows (§2.4): its name and its counts of works, releases and unlinked credits, with an index for each of the list's sorts |
+
+Local triggers write the last five in the same write as the library rows they
+come from, on this device or applied from another, so they always match those
+rows. A write applied from another device can hold a row before a row it
+references; the triggers count a row once what it references is there.
 
 Whether a release is local or uploaded is not a column: it is whether its files
 are attached.

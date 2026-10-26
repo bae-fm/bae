@@ -586,12 +586,12 @@ fn search_library_on(
         row_to_artist_summary,
     )?;
     let composers = sql.query(
-        &composer_summary_query(
+        &composer_listing_query(
             Some(
                 "WHERE composer.name LIKE ? ESCAPE '\\' \
                  OR composer.sort_name LIKE ? ESCAPE '\\'",
             ),
-            Some("ORDER BY composer.name LIMIT ?"),
+            Some("ORDER BY listing.name LIMIT ?"),
         ),
         params![pattern, pattern, limit],
         row_to_composer_summary,
