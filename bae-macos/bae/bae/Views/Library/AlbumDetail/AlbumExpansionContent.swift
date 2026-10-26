@@ -10,7 +10,8 @@ struct AlbumExpansionContent: View {
     /// Fat detail for the release the user is currently viewing.
     let selectedRelease: ReleaseDetail
     let onBrowseImages: () -> Void
-    /// Cursor over the album's releases; drives the release picker.
+    /// Cursor over the album's releases, one item per release of
+    /// `detail.releases` in its order; drives the release picker.
     @Binding
     var releaseCursor: Cursor<ReleaseRef>
     let currentTrackId: String?
@@ -192,28 +193,28 @@ struct AlbumExpansionContent: View {
                     releaseCursor.select(id: releaseCursor.items[newIndex].id)
                 },
             ),
-            segments: releaseCursor.items.enumerated()
-                .map { index, ref in
-                    NativeSegmentedControl.Segment(
-                        label: detail.release(ref.id)?.displayName
-                            ?? String(localized: "Release \(index + 1)"),
-                        systemImage: releaseContainsCurrentTrack(id: ref.id)
-                            ? "speaker.fill" : nil,
-                    )
-                },
+            segments: pickerReleases.map { release in
+                NativeSegmentedControl.Segment(
+                    label: release.displayName,
+                    systemImage: release.tracks.contains {
+                        $0.id == currentTrackId
+                    } ? "speaker.fill" : nil,
+                )
+            },
         )
         .padding(.top, ThemeSpace.inline)
         .padding(.bottom, ThemeSpace.line)
     }
 
-    private func releaseContainsCurrentTrack(id: String) -> Bool {
-        guard let currentTrackId else {
-            return false
-        }
-        guard let release = detail.release(id) else {
-            return false
-        }
-        return release.tracks.contains(where: { $0.id == currentTrackId })
+    /// The releases the picker's segments name, one per cursor item. The
+    /// cursor is built over `detail.releases`; one built over anything else
+    /// would name the wrong release under a segment.
+    private var pickerReleases: [ReleaseDetail] {
+        precondition(
+            releaseCursor.items.map(\.id) == detail.releases.map(\.id),
+            "The release cursor is not over the album's releases"
+        )
+        return detail.releases
     }
 }
 
@@ -377,7 +378,7 @@ struct ReleaseFactsLine: View {
                     releaseCursor: Binding(
                         get: {
                             PreviewData.releaseCursor(
-                                releaseIds: detail.album.releaseIds,
+                                detail: detail,
                                 preferring: selectedReleaseId
                             )
                         },

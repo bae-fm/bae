@@ -26,7 +26,7 @@ func makeBridgeAlbum(
         cover: cover
     )
 }
-private func makeBridgeRelease(
+func makeBridgeRelease(
     id: String = "release-1",
     albumId: String = "album-1",
     displayName: String = "Release One",
@@ -101,16 +101,19 @@ private func makeBridgeReleaseSummary(
     )
 }
 
+/// An album detail as core reads one: never without a release, its primary
+/// release first.
 func makeBridgeAlbumDetail(
     albumId: String = "album-1",
     title: String = "Album Title",
-    releases: [BridgeRelease] = []
+    releases: [BridgeRelease] = [makeBridgeRelease()]
 ) -> BridgeAlbumDetail {
     BridgeAlbumDetail(
         album: makeBridgeAlbum(
             id: albumId,
             title: title,
             releaseIds: releases.map(\.id),
+            primaryReleaseId: releases[0].id
         ),
         releases: releases,
     )
@@ -348,6 +351,7 @@ struct ReleaseDetailTests {
         #expect(detail.releases.map(\.id) == ["r-1", "r-2"])
         #expect(detail.release("r-2")?.displayName == "Release Two")
         #expect(detail.release("r-3") == nil)
+        #expect(detail.primaryRelease.id == "r-1")
     }
 }
 

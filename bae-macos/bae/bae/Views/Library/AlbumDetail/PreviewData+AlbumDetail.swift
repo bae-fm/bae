@@ -25,20 +25,20 @@
             return AlbumDetail(bridge: bridge)
         }
 
-        /// The release cursor over an album's releases, preferring one id.
-        /// Holds the single empty-`releaseIds` guard for the preview builders.
+        /// The release cursor over an album's releases, as the detail view
+        /// builds it, preferring one id.
         @MainActor
         static func releaseCursor(
-            releaseIds: [String],
+            detail: AlbumDetail,
             preferring: String
         ) -> Cursor<ReleaseRef> {
             guard
                 let cursor = Cursor(
-                    items: releaseIds.map { ReleaseRef(id: $0) },
+                    items: detail.releases.map { ReleaseRef(id: $0.id) },
                     preferring: preferring,
                 )
             else {
-                fatalError("preview album has empty releaseIds")
+                fatalError("an album detail holds no release")
             }
             return cursor
         }
@@ -96,11 +96,8 @@
             isPlaying: Bool = false
         ) -> some View {
             let detail = albumDetail(albumId: albumId)
-            let primary = primaryRelease(of: detail)
-            let cursor = releaseCursor(
-                releaseIds: detail.album.releaseIds,
-                preferring: detail.album.primaryReleaseId
-            )
+            let primary = detail.primaryRelease
+            let cursor = releaseCursor(detail: detail, preferring: primary.id)
             return
                 albumExpansionContent(
                     detail: detail,
@@ -124,20 +121,7 @@
         /// (track list, track row).
         @MainActor
         static func releaseDetail(albumId: String) -> ReleaseDetail {
-            primaryRelease(of: albumDetail(albumId: albumId))
-        }
-
-        @MainActor
-        private static func primaryRelease(of detail: AlbumDetail)
-            -> ReleaseDetail
-        {
-            guard let primary = detail.release(detail.album.primaryReleaseId)
-            else {
-                fatalError(
-                    "no preview release for id: \(detail.album.primaryReleaseId)"
-                )
-            }
-            return primary
+            albumDetail(albumId: albumId).primaryRelease
         }
 
         /// One `Track` for the `TrackRowView` previews. `displayArtist` non-nil

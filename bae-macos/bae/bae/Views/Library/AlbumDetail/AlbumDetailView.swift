@@ -56,80 +56,74 @@ struct AlbumDetailView: View {
     var body: some View {
         Group {
             if let detail = albumRead.value {
-                let album = detail.album
-                let selectedReleaseId = activeReleaseId(album: album)
-
-                if let selectedDetail = detail.release(selectedReleaseId) {
-                    AlbumExpansionContent(
-                        detail: detail,
-                        selectedRelease: selectedDetail,
-                        onBrowseImages: {
-                            presentImages(release: selectedDetail)
-                        },
-                        releaseCursor: releaseCursorBinding(album: album),
-                        currentTrackId: playbackStore.nowPlaying.track?.track
-                            .trackId,
-                        loadingTrackId: playbackStore.nowPlaying.loadingTrackId,
-                        isPlaying: playbackStore.nowPlaying.isPlaying,
-                        onClose: { uiStore.closeAlbumDetail() },
-                        onPlay: {
-                            playback.playRelease(selectedReleaseId, nil, false)
-                        },
-                        onShuffle: {
-                            playback.playRelease(selectedReleaseId, nil, true)
-                        },
-                        onPlayFromTrack: { trackId in
-                            playback.playRelease(
-                                selectedReleaseId,
-                                trackId,
-                                false
-                            )
-                        },
-                        onTogglePlayPause: {
-                            playback.playPause(for: playbackStore.nowPlaying)
-                        },
-                        onAddNext: { trackId in
-                            queue.addNext([trackId])
-                        },
-                        onAddToQueue: { trackId in
-                            queue.addToQueue([trackId])
-                        },
-                        onAddNextAlbum: {
-                            queue.addNext(selectedDetail.tracks.map(\.id))
-                        },
-                        onAddAlbumToQueue: {
-                            queue.addToQueue(selectedDetail.tracks.map(\.id))
-                        },
-                        onEdit: {
-                            presentReleaseEditor(release: selectedDetail)
-                        },
-                        onOpenStorage: {
-                            presentReleaseStorageSheet(selectedDetail)
-                        },
-                        onExportRelease: {
-                            exportRelease(releaseId: selectedReleaseId)
-                        },
-                        onSaveReleaseAs: {
-                            saveReleaseAs(releaseId: selectedReleaseId)
-                        },
-                        onSetPrimaryRelease: {
-                            setPrimaryRelease(releaseId: selectedReleaseId)
-                        },
-                        onDeleteRelease: {
-                            releaseIdPendingDelete = selectedReleaseId
-                            showingDeleteConfirmation = true
-                        },
-                        onExportTrack: { trackId in
-                            exportTrack(trackId: trackId)
-                        },
-                    )
-                }
-                else {
-                    detailPlaceholder(releaseId: selectedReleaseId)
-                }
+                let selectedDetail = activeRelease(in: detail)
+                let selectedReleaseId = selectedDetail.id
+                AlbumExpansionContent(
+                    detail: detail,
+                    selectedRelease: selectedDetail,
+                    onBrowseImages: {
+                        presentImages(release: selectedDetail)
+                    },
+                    releaseCursor: releaseCursorBinding(detail: detail),
+                    currentTrackId: playbackStore.nowPlaying.track?.track
+                        .trackId,
+                    loadingTrackId: playbackStore.nowPlaying.loadingTrackId,
+                    isPlaying: playbackStore.nowPlaying.isPlaying,
+                    onClose: { uiStore.closeAlbumDetail() },
+                    onPlay: {
+                        playback.playRelease(selectedReleaseId, nil, false)
+                    },
+                    onShuffle: {
+                        playback.playRelease(selectedReleaseId, nil, true)
+                    },
+                    onPlayFromTrack: { trackId in
+                        playback.playRelease(
+                            selectedReleaseId,
+                            trackId,
+                            false
+                        )
+                    },
+                    onTogglePlayPause: {
+                        playback.playPause(for: playbackStore.nowPlaying)
+                    },
+                    onAddNext: { trackId in
+                        queue.addNext([trackId])
+                    },
+                    onAddToQueue: { trackId in
+                        queue.addToQueue([trackId])
+                    },
+                    onAddNextAlbum: {
+                        queue.addNext(selectedDetail.tracks.map(\.id))
+                    },
+                    onAddAlbumToQueue: {
+                        queue.addToQueue(selectedDetail.tracks.map(\.id))
+                    },
+                    onEdit: {
+                        presentReleaseEditor(release: selectedDetail)
+                    },
+                    onOpenStorage: {
+                        presentReleaseStorageSheet(selectedDetail)
+                    },
+                    onExportRelease: {
+                        exportRelease(releaseId: selectedReleaseId)
+                    },
+                    onSaveReleaseAs: {
+                        saveReleaseAs(releaseId: selectedReleaseId)
+                    },
+                    onSetPrimaryRelease: {
+                        setPrimaryRelease(releaseId: selectedReleaseId)
+                    },
+                    onDeleteRelease: {
+                        releaseIdPendingDelete = selectedReleaseId
+                        showingDeleteConfirmation = true
+                    },
+                    onExportTrack: { trackId in
+                        exportTrack(trackId: trackId)
+                    },
+                )
             }
             else {
-                detailPlaceholder(releaseId: nil)
+                detailPlaceholder
             }
         }
         .onAppear { showAlbum(albumId) }
@@ -202,7 +196,7 @@ struct AlbumDetailView: View {
     /// The placeholder shown before the album detail subscription delivers its
     /// first value. A failed subscription can be replaced from Retry.
     @ViewBuilder
-    private func detailPlaceholder(releaseId _: String?) -> some View {
+    private var detailPlaceholder: some View {
         if let error = albumRead.error {
             LoadFailureView(error: error) {
                 detailReader?.retry()
@@ -215,34 +209,27 @@ struct AlbumDetailView: View {
     }
 
     /// The selected release when it belongs to the album, else the primary one.
-    private func activeReleaseId(album: BridgeAlbum) -> String {
-        if let id = uiStore.selectedReleaseIdByAlbum[albumId],
-            album.releaseIds.contains(id)
-        {
-            return id
-        }
-        precondition(
-            album.releaseIds.contains(album.primaryReleaseId),
-            "primaryReleaseId missing from releaseIds for album \(album.id)"
-        )
-        return album.primaryReleaseId
+    private func activeRelease(in detail: AlbumDetail) -> ReleaseDetail {
+        uiStore.selectedReleaseIdByAlbum[albumId].flatMap(detail.release)
+            ?? detail.primaryRelease
     }
 
-    private func releaseCursorBinding(album: BridgeAlbum) -> Binding<
+    /// The cursor over the album's releases, one item per release of
+    /// `detail.releases` in its order, which the release picker names.
+    private func releaseCursorBinding(detail: AlbumDetail) -> Binding<
         Cursor<ReleaseRef>
     > {
         Binding(
             get: {
-                let items = album.releaseIds.map { ReleaseRef(id: $0) }
-                let preferringId = activeReleaseId(album: album)
-                // `activeReleaseId` names one of `album.releaseIds`, so the
-                // list is not empty.
+                // An album detail holds its primary release, so the list is
+                // not empty.
                 guard
-                    let cursor = Cursor(items: items, preferring: preferringId)
-                else {
-                    fatalError(
-                        "releaseIds empty though they hold the active release"
+                    let cursor = Cursor(
+                        items: detail.releases.map { ReleaseRef(id: $0.id) },
+                        preferring: activeRelease(in: detail).id
                     )
+                else {
+                    fatalError("an album detail holds no release")
                 }
                 return cursor
             },
@@ -250,7 +237,7 @@ struct AlbumDetailView: View {
                 let newId = newCursor.current.id
                 // "Default" is the primary release — if the user selects that,
                 // clear the override instead of storing a redundant entry.
-                if newId == album.primaryReleaseId {
+                if newId == detail.primaryRelease.id {
                     uiStore.clearSelectedRelease(inAlbum: albumId)
                 }
                 else {

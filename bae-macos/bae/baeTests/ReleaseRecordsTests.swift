@@ -78,9 +78,7 @@ struct ReleaseRecordsTests {
     @Test("the expansion line draws its arrow only when records describe it")
     func theExpansionDrawsItsArrowOnlyWhenDescribed() async throws {
         let detail = PreviewData.albumDetail(albumId: "a-01")
-        let described = try #require(
-            detail.release(detail.album.releaseIds[0])
-        )
+        let described = detail.primaryRelease
         #expect(!described.records.isEmpty, "the fixture carries records")
         var undescribed = described
         undescribed.records = []
@@ -104,7 +102,7 @@ struct ReleaseRecordsTests {
                 selectedRelease: release,
                 releaseCursor: .constant(
                     PreviewData.releaseCursor(
-                        releaseIds: detail.album.releaseIds,
+                        detail: detail,
                         preferring: release.id
                     )
                 )

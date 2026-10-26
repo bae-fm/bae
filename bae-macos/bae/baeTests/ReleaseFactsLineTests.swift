@@ -14,7 +14,7 @@ struct ReleaseFactsLineTests {
         let album = AlbumDetail(
             bridge: try #require(PreviewData.albumDetails[albumId])
         )
-        return try #require(album.release(album.album.primaryReleaseId))
+        return album.primaryRelease
     }
 
     @Test("the labels line shows each name group once, then its numbers")
