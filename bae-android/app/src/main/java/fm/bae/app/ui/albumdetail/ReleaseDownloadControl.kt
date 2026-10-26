@@ -19,7 +19,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,7 +36,6 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.DownloadStore
-import fm.bae.app.data.LiveValue
 import fm.bae.app.displayError
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
@@ -51,11 +49,9 @@ import fm.bae.app.ui.downloads.WaitingToDownloadText
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
-import uniffi.bae_bridge.bridgeReleaseDownloadStatus
 import uniffi.bae_bridge.bridgeReleasePlayabilityKey
 
 private val logger = BaeLogger("bae.ReleaseDownloadControl")
@@ -80,34 +76,19 @@ internal fun ReleaseDownloadControl(
         )
         return
     }
-    val downloads by session.downloadStore.state.collectAsState()
-    when (val current = downloads) {
-        is LiveValue.Current -> {
-            PlayableReleaseDownloadControl(session = session, release = release, snapshot = current.value)
-        }
-
-        // The download queue's read failed, so this release's place in it is unknown.
-        is LiveValue.Failed -> {
-            ErrorDetailDisclosure(current.error)
-        }
-    }
+    // Core reads the release's place in the download queue into the release itself.
+    val status = release.downloadStatus ?: return
+    PlayableReleaseDownloadControl(session = session, release = release, status = status)
 }
 
-/** The control for a release this device can play, from the download queue as [snapshot] has it. */
+/** The control for a release this device can play, in the download [status] core read for it. */
 @Composable
 private fun PlayableReleaseDownloadControl(
     session: OpenLibrary,
     release: BridgeRelease,
-    snapshot: BridgeDownloadSnapshot,
+    status: BridgeReleaseDownloadStatus,
 ) {
     val context = LocalContext.current
-    val status =
-        bridgeReleaseDownloadStatus(
-            pinned = release.pinned,
-            storageActions = release.storageActions,
-            downloads = snapshot,
-            releaseId = release.id,
-        ) ?: return
     val scope = rememberScreenScope()
     var unpinning by remember(release.id) { mutableStateOf(false) }
     var unpinError by remember(release.id) { mutableStateOf<DisplayError?>(null) }

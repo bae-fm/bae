@@ -152,14 +152,6 @@ impl crate::types::BridgeDownloadState {
             bae_core::library::DownloadPhase::Failed { error } => Self::Failed { error },
         }
     }
-
-    pub(crate) fn into_core(self) -> bae_core::library::DownloadPhase {
-        match self {
-            Self::Queued => bae_core::library::DownloadPhase::Queued,
-            Self::Active => bae_core::library::DownloadPhase::Active { progress: () },
-            Self::Failed { error } => bae_core::library::DownloadPhase::Failed { error },
-        }
-    }
 }
 
 impl crate::types::BridgeDownloadTransferChange {

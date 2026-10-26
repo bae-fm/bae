@@ -171,6 +171,7 @@ object PreviewData {
             coverFiles = emptyList(),
             galleryItems = emptyList(),
             playability = BridgeReleasePlayability.PLAYABLE,
+            downloadStatus = null,
             records = emptyList(),
             totalDuration = null,
             fileCount = trackGroups.sumOf { it.tracks.size }.toLong(),

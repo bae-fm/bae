@@ -112,6 +112,9 @@ pub struct ReleaseDetail {
     pub gallery_items: Vec<GalleryItem>,
     /// Whether this device can play the release now, and why not.
     pub playability: ReleasePlayability,
+    /// The download control's state for the release, from its entry in the
+    /// download queue as it was read; `None` when there is no control to show.
+    pub download_status: Option<ReleaseDownloadStatus>,
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<crate::import::ReleaseRecord>,
@@ -406,6 +409,7 @@ impl ReleaseDetail {
         album_artists: &[crate::credits::LibraryCredit],
         release_index: usize,
         ctx: &ReleaseResolveCtx<'_>,
+        downloads: &[crate::library::QueuedDownload],
     ) -> (ReleaseDetail, u32) {
         let release = raw.release;
         let audio_format_orphans = 0u32;
@@ -519,7 +523,14 @@ impl ReleaseDetail {
             ctx,
         );
 
+        let download_status = release_download_status(
+            summary.pinned,
+            &summary.storage_actions,
+            downloads,
+            &summary.id,
+        );
         let detail = ReleaseDetail {
+            download_status,
             summary,
             name,
             year: release.pressing.year,

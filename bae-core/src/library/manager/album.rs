@@ -348,6 +348,7 @@ impl LibraryManager {
 
         let has_cloud_home = self.has_cloud_home();
         let cover = covers.get(&primary_release_id).cloned();
+        let downloads = self.download_queue().phases().ops;
         let mut releases = Vec::with_capacity(raw.releases.len());
         for (i, (r, pinned)) in raw.releases.into_iter().zip(pin_states).enumerate() {
             let release_cover = covers.get(&r.release.id).cloned();
@@ -359,7 +360,7 @@ impl LibraryManager {
                 transfer_action: self.current_transfer_action(&r.release.id),
                 is_compilation: raw.album.is_compilation,
             };
-            let (detail, orphans) = ReleaseDetail::from_raw(r, &raw.artists, i, &ctx);
+            let (detail, orphans) = ReleaseDetail::from_raw(r, &raw.artists, i, &ctx, &downloads);
             self.report_audio_format_orphans(orphans);
             releases.push(detail);
         }

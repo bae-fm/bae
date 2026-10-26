@@ -453,7 +453,13 @@ impl LibraryManager {
             transfer_action: self.current_transfer_action(release_id),
             is_compilation,
         };
-        let (detail, orphans) = ReleaseDetail::from_raw(raw, &album_artists, release_index, &ctx);
+        let (detail, orphans) = ReleaseDetail::from_raw(
+            raw,
+            &album_artists,
+            release_index,
+            &ctx,
+            &self.download_queue().phases().ops,
+        );
         self.report_audio_format_orphans(orphans);
         detail
     }

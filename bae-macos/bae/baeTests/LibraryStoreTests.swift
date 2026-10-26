@@ -66,6 +66,7 @@ private func makeBridgeRelease(
         coverFiles: [],
         galleryItems: [],
         playability: .playable,
+        downloadStatus: nil,
         records: [],
         totalDuration: totalDuration,
         fileCount: fileCount,

@@ -335,6 +335,36 @@ async fn test_unpin_rejects_local_release() {
 
 /// Pin a Remote cloud-only release: coven fetches its files from the cloud into
 /// the pinned cache, so it reads as (Remote, pinned).
+/// A release's detail carries its download control's state, read from its
+/// entry in the download queue.
+#[tokio::test]
+async fn a_release_detail_says_where_its_download_stands() {
+    use bae_core::album_detail::ReleaseDownloadStatus;
+    tracing_init();
+    let tmp = TempDir::new().unwrap();
+    let mgr = setup_with_cloud(&tmp).await;
+    let release_id =
+        create_remote_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"bytes-a")]).await;
+    let status = |mgr: LibraryManager, release_id: String| async move {
+        mgr.find_release_detail(&release_id)
+            .await
+            .unwrap()
+            .expect("the library holds the release")
+            .download_status
+    };
+    assert_eq!(
+        status(mgr.clone(), release_id.clone()).await,
+        Some(ReleaseDownloadStatus::Available)
+    );
+
+    mgr.set_downloads_paused(true);
+    mgr.enqueue_pins(vec![release_id.clone()]).await.unwrap();
+    assert_eq!(
+        status(mgr.clone(), release_id.clone()).await,
+        Some(ReleaseDownloadStatus::Queued)
+    );
+}
+
 #[tokio::test]
 async fn test_pin_remote_fetches_into_pinned_cache() {
     tracing_init();

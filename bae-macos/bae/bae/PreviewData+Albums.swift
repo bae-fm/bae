@@ -191,6 +191,7 @@
                 coverFiles: [],
                 galleryItems: [],
                 playability: .playable,
+                downloadStatus: nil,
                 // Every catalog on the first album's first pressing, so the
                 // expansion preview shows what a release a MusicBrainz pick
                 // linked all the way out reads like; the rest are the ordinary

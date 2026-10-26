@@ -244,25 +244,6 @@ pub struct BridgeDownloadOp {
     pub state: BridgeDownloadState,
 }
 
-impl BridgeDownloadOp {
-    fn into_core(self) -> bae_core::library::QueuedDownload {
-        let Self {
-            release_id,
-            // The download status reads the queue entry, not the library's release.
-            release: _,
-            created_at,
-            state,
-        } = self;
-        bae_core::library::release_queue::ReleaseQueueOp {
-            release_id,
-            created_at,
-            // Downloads carry no operation-specific payload.
-            payload: (),
-            state: state.into_core(),
-        }
-    }
-}
-
 /// What the album-detail download control shows. Mirrors
 /// `ReleaseDownloadStatus`.
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
@@ -279,7 +260,7 @@ pub enum BridgeReleaseDownloadStatus {
 
 mirror_enum! {
     BridgeReleaseDownloadStatus = bae_core::album_detail::ReleaseDownloadStatus,
-    from_core: fn,
+    from_core: pub(crate) fn,
     variants: {
         Downloaded,
         Queued,
@@ -287,28 +268,6 @@ mirror_enum! {
         Failed { error },
         Available,
     },
-}
-
-/// The download control's state for one release, or `None` when there is no
-/// control to show. Core decides it, so no app re-derives it from its gates.
-#[uniffi::export]
-pub fn bridge_release_download_status(
-    pinned: bool,
-    storage_actions: Vec<BridgeReleaseStorageAction>,
-    downloads: BridgeDownloadSnapshot,
-    release_id: String,
-) -> Option<BridgeReleaseDownloadStatus> {
-    let actions: Vec<_> = storage_actions
-        .into_iter()
-        .map(BridgeReleaseStorageAction::into_core)
-        .collect();
-    let ops: Vec<_> = downloads
-        .downloads
-        .into_iter()
-        .map(BridgeDownloadOp::into_core)
-        .collect();
-    bae_core::album_detail::release_download_status(pinned, &actions, &ops, &release_id)
-        .map(BridgeReleaseDownloadStatus::from_core)
 }
 
 /// Per-state counts for the download queue, per release or overall.

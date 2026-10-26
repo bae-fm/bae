@@ -674,7 +674,7 @@ mod storage_inspector_reads;
 mod storage_reads;
 use live_query_events::reconfigurable_live_query_events;
 use shown_originals::ShownOriginals;
-use shown_transfers::ShownTransfers;
+use shown_transfers::{ShownDownloads, ShownTransfers};
 #[cfg(test)]
 #[path = "app_services_tests.rs"]
 mod tests;

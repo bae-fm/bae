@@ -294,15 +294,6 @@ impl BridgeReleaseStorageAction {
             A::Unpin => Self::Unpin,
         }
     }
-    pub(super) fn into_core(self) -> bae_core::album_detail::ReleaseStorageAction {
-        use bae_core::album_detail::ReleaseStorageAction as A;
-        match self {
-            Self::Upload => A::Upload,
-            Self::DetachAudio => A::DetachAudio,
-            Self::Pin => A::Pin,
-            Self::Unpin => A::Unpin,
-        }
-    }
 }
 
 impl BridgeReleaseStorageAction {
@@ -404,6 +395,10 @@ pub struct BridgeRelease {
     pub gallery_items: Vec<BridgeGalleryItem>,
     /// Whether this device can play the release now, and why not.
     pub playability: BridgeReleasePlayability,
+    /// The download control's state for the release, which core decides from
+    /// its entry in the download queue; `None` when there is no control to
+    /// show.
+    pub download_status: Option<crate::types::BridgeReleaseDownloadStatus>,
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<BridgeReleaseRecord>,

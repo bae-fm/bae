@@ -105,6 +105,7 @@ object BridgeFixtures {
             coverFiles = emptyList(),
             galleryItems = galleryItems,
             playability = BridgeReleasePlayability.PLAYABLE,
+            downloadStatus = null,
             records = emptyList(),
             totalDuration = null,
             fileCount = 0,

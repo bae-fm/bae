@@ -105,6 +105,7 @@ struct CoverPickerTests {
             coverFiles: [file],
             galleryItems: [],
             playability: .playable,
+            downloadStatus: nil,
             records: [],
             totalDuration: nil,
             fileCount: 2,

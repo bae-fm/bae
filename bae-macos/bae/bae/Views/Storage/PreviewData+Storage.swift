@@ -582,6 +582,7 @@
                 coverFiles: [imageFile],
                 galleryItems: [],
                 playability: .playable,
+                downloadStatus: nil,
                 records: [],
                 totalDuration: nil,
                 fileCount: Int64(files.count),
