@@ -123,12 +123,42 @@ pub enum CastError {
     AirPlayUnreadableSettings(UnreadableSetting),
 }
 
+/// Where the ephemeral server listens, and the address its URLs name.
+#[derive(Debug, Clone, Copy)]
+enum ServingNetwork {
+    /// Every interface, named by the machine's LAN address: a receiver on the
+    /// local network must reach it.
+    Lan,
+    /// This machine only, named `127.0.0.1`: a test's requests stay off the
+    /// network.
+    #[cfg(test)]
+    Loopback,
+}
+
+impl ServingNetwork {
+    /// The address to bind and the address the URLs name.
+    fn addresses(self) -> Result<(std::net::IpAddr, std::net::IpAddr), String> {
+        match self {
+            Self::Lan => {
+                let lan_ip = local_ip_address::local_ip()
+                    .map_err(|e| format!("no LAN IP address available: {e}"))?;
+                Ok((std::net::Ipv4Addr::UNSPECIFIED.into(), lan_ip))
+            }
+            #[cfg(test)]
+            Self::Loopback => {
+                let loopback = std::net::Ipv4Addr::LOCALHOST.into();
+                Ok((loopback, loopback))
+            }
+        }
+    }
+}
+
 /// The ephemeral Subsonic server the receiver fetches audio from: the
-/// bae-subsonic router bound on a random LAN port with a per-session credential,
+/// bae-subsonic router bound on a random port with a per-session credential,
 /// independent of the user's Subsonic settings. Alive only while a cast session
 /// is.
 struct EphemeralServer {
-    /// `http://<lan-ip>:<port>` — the base the receiver fetches from.
+    /// `http://<ip>:<port>` — the base the receiver fetches from.
     base_url: String,
     credential: SubsonicCredential,
     cancel: CancellationToken,
@@ -136,24 +166,23 @@ struct EphemeralServer {
 }
 
 impl EphemeralServer {
-    /// Bind the router on `0.0.0.0:0` (an OS-assigned port), read the port back,
-    /// and serve until cancelled. The base URL names the machine's LAN address so
-    /// the receiver can reach it.
-    async fn start(services: AppServices) -> Result<Self, String> {
+    /// Bind the router on `network` at an OS-assigned port, read the port back,
+    /// and serve until cancelled. The base URL names the address `network`
+    /// gives, so the receiver can reach it.
+    async fn start(services: AppServices, network: ServingNetwork) -> Result<Self, String> {
         let credential = SubsonicCredential {
             username: random_hex(8),
             password: random_hex(32),
         };
-        let listener = tokio::net::TcpListener::bind(("0.0.0.0", 0))
+        let (bind_ip, url_ip) = network.addresses()?;
+        let listener = tokio::net::TcpListener::bind((bind_ip, 0))
             .await
             .map_err(|e| format!("bind failed: {e}"))?;
         let port = listener
             .local_addr()
             .map_err(|e| format!("reading the bound port failed: {e}"))?
             .port();
-        let lan_ip = local_ip_address::local_ip()
-            .map_err(|e| format!("no LAN IP address available: {e}"))?;
-        let base_url = format!("http://{lan_ip}:{port}");
+        let base_url = format!("http://{url_ip}:{port}");
 
         let router = bae_subsonic::router(services, credential.clone());
         let cancel = CancellationToken::new();
@@ -202,6 +231,8 @@ pub struct CastController {
     devices_tx: tokio::sync::watch::Sender<Vec<RendererDevice>>,
     /// The ephemeral server, once a cast has started one.
     server: Arc<Mutex<Option<EphemeralServer>>>,
+    /// Where that server listens.
+    serving: ServingNetwork,
     /// The `cast_enabled` value the setting watcher last finished applying, so
     /// a test can wait for the watcher to act on a change it wrote.
     #[cfg(test)]
@@ -218,6 +249,16 @@ impl CastController {
         runtime: Handle,
         discovery: RendererDiscovery,
     ) -> Arc<Self> {
+        Self::start_serving_on(services, runtime, discovery, ServingNetwork::Lan)
+    }
+
+    /// [`Self::start`], with the ephemeral server on `serving`.
+    fn start_serving_on(
+        services: AppServices,
+        runtime: Handle,
+        discovery: RendererDiscovery,
+        serving: ServingNetwork,
+    ) -> Arc<Self> {
         let receivers = discovery.subscribe();
         let (devices_tx, _) = tokio::sync::watch::channel(discovery.devices());
         let controller = Arc::new(Self {
@@ -226,6 +267,7 @@ impl CastController {
             discovery: Mutex::new(discovery),
             devices_tx,
             server: Arc::new(Mutex::new(None)),
+            serving,
             #[cfg(test)]
             setting_applied: tokio::sync::watch::Sender::new(None),
         });
@@ -458,7 +500,7 @@ impl CastController {
         if self.server.lock().unwrap().is_some() {
             return Ok(());
         }
-        let server = EphemeralServer::start(self.services.clone())
+        let server = EphemeralServer::start(self.services.clone(), self.serving)
             .await
             .map_err(CastError::Serving)?;
         *self.server.lock().unwrap() = Some(server);
@@ -546,8 +588,9 @@ mod tests {
         }
     }
 
-    /// A controller over a fresh library, on the runtime it returns. The
-    /// `TempDir` owns that library's files, so it must outlive the controller.
+    /// A controller over a fresh library, on the runtime it returns, serving
+    /// casts on loopback. The `TempDir` owns that library's files, so it must
+    /// outlive the controller.
     fn test_controller(
         discovery: RendererDiscovery,
     ) -> (
@@ -557,8 +600,12 @@ mod tests {
         tempfile::TempDir,
     ) {
         let (runtime, services, tmp) = bae_test_support::runtime_with_services();
-        let controller =
-            CastController::start(services.clone(), runtime.handle().clone(), discovery);
+        let controller = CastController::start_serving_on(
+            services.clone(),
+            runtime.handle().clone(),
+            discovery,
+            ServingNetwork::Loopback,
+        );
         (runtime, controller, services, tmp)
     }
 
@@ -703,6 +750,18 @@ mod tests {
                 .await
                 .expect("server starts from the controller runtime");
         });
+        let base_url = controller
+            .server
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .base_url
+            .clone();
+        assert!(
+            base_url.starts_with("http://127.0.0.1:"),
+            "the test's server stays on loopback: {base_url}"
+        );
     }
 
     /// A raw serve carries `format=raw`; an MP3 conversion carries
@@ -792,9 +851,14 @@ mod tests {
         let (runtime, services, _tmp) = bae_test_support::runtime_with_services();
 
         runtime.block_on(async move {
-            let server = EphemeralServer::start(services)
+            let server = EphemeralServer::start(services, ServingNetwork::Loopback)
                 .await
                 .expect("the ephemeral server binds a real port");
+            assert!(
+                server.base_url.starts_with("http://127.0.0.1:"),
+                "the test's server stays on loopback: {}",
+                server.base_url
+            );
 
             let base = server.base_url.clone();
             let valid = stream_url_provider(base.clone(), server.credential.clone())(
