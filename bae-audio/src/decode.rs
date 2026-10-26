@@ -211,7 +211,7 @@ unsafe fn open_probed_audio_codec(
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
 ) -> Result<(AudioStreamInfo, *mut ffmpeg_sys_next::AVCodecContext), ProbedAudioCodecOpenError> {
     let audio = find_audio_stream(fmt_ctx).map_err(ProbedAudioCodecOpenError::MissingStream)?;
-    match open_audio_codec(audio.codecpar) {
+    match open_audio_codec(audio.stream) {
         Ok(codec_ctx) => Ok((audio, codec_ctx)),
         Err(error) => Err(ProbedAudioCodecOpenError::Codec { audio, error }),
     }
@@ -243,11 +243,14 @@ unsafe fn find_audio_stream(
     })
 }
 
+/// The decoder for `stream`'s codec, opened on the stream's parameters and
+/// time base.
 unsafe fn open_audio_codec(
-    codecpar: *const ffmpeg_sys_next::AVCodecParameters,
+    stream: *const ffmpeg_sys_next::AVStream,
 ) -> Result<*mut ffmpeg_sys_next::AVCodecContext, DecodeCodecOpenError> {
     use ffmpeg_sys_next::*;
 
+    let codecpar = (*stream).codecpar;
     let codec_id = (*codecpar).codec_id;
     let codec = avcodec_find_decoder(codec_id);
     if codec.is_null() {
@@ -264,6 +267,11 @@ unsafe fn open_audio_codec(
         avcodec_free_context(&mut (codec_ctx as *mut _));
         return Err(DecodeCodecOpenError::CopyParams(ret));
     }
+    // The packets' time base, which the parameters don't carry. Without it the
+    // decoder can't move a frame's timestamp past the encoder delay it drops
+    // (an MP3's LAME delay, an Opus pre-skip), and the frame keeps the
+    // timestamp of samples it no longer holds.
+    (*codec_ctx).pkt_timebase = (*stream).time_base;
 
     let ret = avcodec_open2(codec_ctx, codec, ptr::null_mut());
     if ret < 0 {
@@ -524,9 +532,11 @@ pub fn decode_audio_to_sink(
     )
 }
 
-/// The i32 decode with playback's full seek dispatch: jump by byte to a
-/// recorded landing (`seek_to_byte`), or seek by sample; trim the lead-in at
-/// `start_at_sample`; stop at `stop_at_sample`. [`decode_audio_to_sink`] is the
+/// The i32 decode with playback's seek dispatch: jump by byte to a recorded
+/// landing (`seek_to_byte`), or seek by sample; trim the lead-in at
+/// `start_at_sample`; stop at `stop_at_sample`. A lossy stream is read from its
+/// start instead of seeking, so its samples are the stream's own (see
+/// `decode_buffer_to_sink_impl`). [`decode_audio_to_sink`] is the
 /// sample-window special case. The save re-encoder drives this with the same
 /// per-segment derivation playback uses.
 #[allow(clippy::too_many_arguments)]
@@ -657,6 +667,22 @@ unsafe fn decode_buffer_to_sink_impl(
         return Err(DecodeError::after_read(read_failure, CHANNEL_COUNT_ERROR));
     }
 
+    // A sink takes the stream's own samples: what a decode from the stream's
+    // start puts out, from `start_at_sample` on. A lossless frame decodes the
+    // same wherever the decode started, so a seek to it is exact. A lossy
+    // decoder's output after a seek is not the decode from the start: it
+    // converges on it over a span no bound gives (Opus's float decoder still
+    // differs 8,000 samples past a target it landed 7,700 before), and an MP3
+    // seek's landed timestamp is the demuxer's estimate. So a lossy stream is
+    // read from its start and trimmed to the target.
+    let (seek_to_byte, seek_to_sample) =
+        if super::probe::content_type_from_codec_id((*audio.codecpar).codec_id).is_lossless_audio()
+        {
+            (seek_to_byte, seek_to_sample)
+        } else {
+            (None, None)
+        };
+
     sink.on_format(sample_rate, channels);
     sink.on_stream(&decoded_stream(
         (*audio.codecpar).codec_id,
@@ -682,12 +708,13 @@ unsafe fn decode_buffer_to_sink_impl(
         }
     };
 
-    let time_base = (*audio.stream).time_base;
+    let sample_clock = SampleClock::of_stream(audio.stream, sample_rate);
 
     seek_input_or_warn(
         fmt_ctx,
         codec_ctx,
         audio.stream_index,
+        &sample_clock,
         seek_to_byte,
         seek_to_sample,
     );
@@ -724,8 +751,7 @@ unsafe fn decode_buffer_to_sink_impl(
     let result = run_decode_loop(
         resources.core(),
         audio.stream_index,
-        time_base,
-        sample_rate,
+        &sample_clock,
         channels as usize,
         start_at_sample,
         stop_at_sample,
@@ -823,24 +849,48 @@ unsafe fn allocate_swr_context(
 /// decode uses. Jump by byte to a recorded frame when there is one (FLAC: a
 /// track's first frame, or a scrub point of a FLAC with no usable seektable),
 /// else seek by sample through the demuxer's index (APE, MP4, a
-/// seektable-bearing FLAC), else read from the stream's start. A landed seek
-/// drops whatever the decoder holds, as a demuxer seek requires; the caller's
+/// seektable-bearing FLAC), else read from the stream's start. The caller's
 /// `start_at_sample` trim then makes the first output sample exact.
+///
+/// The decoder is not flushed after the seek: it has been sent no packet, so
+/// it holds nothing to drop, and a flush does not return every decoder to the
+/// state it opened in -- AAC's decodes its next frames differently from a
+/// freshly opened one.
 unsafe fn seek_input_or_warn(
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
-    codec_ctx: *mut ffmpeg_sys_next::AVCodecContext,
+    codec_ctx: *const ffmpeg_sys_next::AVCodecContext,
     stream_index: c_int,
+    sample_clock: &SampleClock,
     seek_to_byte: Option<u64>,
     seek_to_sample: Option<u64>,
 ) {
-    let landed = match (seek_to_byte, seek_to_sample) {
+    match (seek_to_byte, seek_to_sample) {
         (Some(byte_pos), _) => seek_to_byte_or_warn(fmt_ctx, stream_index, byte_pos),
-        (None, Some(sample_pos)) => seek_to_sample_or_warn(fmt_ctx, stream_index, sample_pos),
-        (None, None) => return,
-    };
-    if landed {
-        ffmpeg_sys_next::avcodec_flush_buffers(codec_ctx);
+        (None, Some(sample_pos)) => seek_to_sample_or_warn(
+            fmt_ctx,
+            stream_index,
+            sample_clock,
+            sample_pos as i64 - seek_preroll(codec_ctx) as i64,
+        ),
+        (None, None) => {}
     }
+}
+
+/// How far before its target a sample seek lands, so a lossy decoder has
+/// rebuilt the state its frame at the target depends on by the time it gets
+/// there: the codec's own seek pre-roll where it states one (Opus's 80 ms), and
+/// at least one frame, which an MDCT frame overlaps (AAC's). The trim drops
+/// what the pre-roll decodes. The pre-roll may reach before sample 0: an AAC
+/// stream's priming frame sits there, which the decoder must be fed to put out
+/// its first frames as a decode from the start does. A lossless codec's frames
+/// stand alone.
+unsafe fn seek_preroll(codec_ctx: *const ffmpeg_sys_next::AVCodecContext) -> u64 {
+    if super::probe::content_type_from_codec_id((*codec_ctx).codec_id).is_lossless_audio() {
+        return 0;
+    }
+    let declared = u64::try_from((*codec_ctx).seek_preroll).unwrap_or(0);
+    let frame = u64::try_from((*codec_ctx).frame_size).unwrap_or(0);
+    declared.max(frame)
 }
 
 /// Jump straight to a recorded frame's byte offset: no seektable consulted, no
@@ -849,12 +899,12 @@ unsafe fn seek_input_or_warn(
 /// sample -- except a FLAC's last frame, which states none. Import never
 /// records a track start there; a scrub point on it is decoded untrimmed. A
 /// failure is not fatal — the caller decodes from the start instead, which is
-/// correct but reads more of the file than it needs. Whether it landed.
+/// correct but reads more of the file than it needs.
 unsafe fn seek_to_byte_or_warn(
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     stream_index: c_int,
     byte_pos: u64,
-) -> bool {
+) {
     use ffmpeg_sys_next::*;
 
     let ret = av_seek_frame(
@@ -869,7 +919,6 @@ unsafe fn seek_to_byte_or_warn(
             av_err_str(ret)
         );
     }
-    ret >= 0
 }
 
 /// Seek to the frame at or before `sample_pos`. With `AVFMT_FLAG_FAST_SEEK`
@@ -877,15 +926,16 @@ unsafe fn seek_to_byte_or_warn(
 /// seektable and no stored scrub points binary-searches the file: its read of
 /// the file's end waits for the fill like any other read, so the search
 /// succeeds, one fetch per step. A seek that does fail is logged and the
-/// caller decodes from the start, trimming to the target. Whether it landed.
+/// caller decodes from the start, trimming to the target.
 unsafe fn seek_to_sample_or_warn(
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     stream_index: c_int,
-    sample_pos: u64,
-) -> bool {
+    sample_clock: &SampleClock,
+    sample_pos: i64,
+) {
     use ffmpeg_sys_next::*;
 
-    let target_ts = sample_pos as i64;
+    let target_ts = sample_clock.timestamp_of(sample_pos);
     let ret = avformat_seek_file(fmt_ctx, stream_index, i64::MIN, target_ts, target_ts, 0);
     if ret < 0 {
         warn!(
@@ -894,7 +944,6 @@ unsafe fn seek_to_sample_or_warn(
             av_err_str(ret)
         );
     }
-    ret >= 0
 }
 
 #[cfg(test)]

@@ -6,9 +6,10 @@ use super::*;
 /// Whole-file collection and save keep rejecting the same packet; streaming
 /// playback applies the same discard policy and reports the packet as an error.
 ///
-/// Seeks as playback does: a jump by byte to a recorded landing
-/// (`seek_to_byte`), or by sample; the lead-in is trimmed at `start_at_sample`
-/// and the decode stops at `stop_at_sample`.
+/// Seeks as playback does -- a jump by byte to a recorded landing
+/// (`seek_to_byte`), or by sample -- except that a lossy stream is read from
+/// its start; the lead-in is trimmed at `start_at_sample` and the decode stops
+/// at `stop_at_sample`.
 #[allow(clippy::too_many_arguments)]
 pub fn decode_audio_to_verifying_sink(
     buffer: SharedSparseBuffer,

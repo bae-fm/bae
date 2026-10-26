@@ -18,54 +18,58 @@ fn rational(num: c_int, den: c_int) -> ffmpeg_sys_next::AVRational {
 }
 
 #[test]
-fn pts_to_sample_fast_paths_when_time_base_is_sample_rate() {
-    // time_base == 1/sample_rate: the pts already counts samples, returned as-is.
-    assert_eq!(pts_to_sample(1000, rational(1, 44_100), 44_100), 1000);
-    // Millisecond time base scales up: 500ms * 44100/1000 = 22050 samples.
-    assert_eq!(pts_to_sample(500, rational(1, 1000), 44_100), 22_050);
-    // CUE-frame time base (1/75) at 75 frames -> exactly one second of samples.
-    assert_eq!(pts_to_sample(75, rational(1, 75), 44_100), 44_100);
+fn a_sample_clock_counts_samples_from_the_streams_start() {
+    // A time base of one sample: timestamps count samples.
+    let samples = SampleClock::new(rational(1, 44_100), 44_100, 0);
+    assert_eq!(samples.sample_at(1000), 1000);
+    assert_eq!(samples.timestamp_of(1000), 1000);
+    // A millisecond time base: 500 ms is 22,050 samples, and back.
+    let millis = SampleClock::new(rational(1, 1000), 44_100, 0);
+    assert_eq!(millis.sample_at(500), 22_050);
+    assert_eq!(millis.timestamp_of(22_050), 500);
+    // An MP3's: 1/14,112,000 s, its first sample after a 1,105-sample delay.
+    let mp3 = SampleClock::new(rational(1, 14_112_000), 44_100, 1_105 * 320);
+    assert_eq!(mp3.sample_at(1_105 * 320), 0);
+    assert_eq!(mp3.sample_at(0), -1_105);
+    assert_eq!(mp3.timestamp_of(4_000), (1_105 + 4_000) * 320);
+    assert_eq!(mp3.timestamp_of(-1_105), 0);
 }
 
 #[test]
 fn frame_sample_bounds_tracks_position_across_pts_gaps() {
-    let tb = rational(1, 44_100);
+    let clock = SampleClock::new(rational(1, 44_100), 44_100, 0);
 
-    // A valid pts seeds the tracked position and advances it to the frame end.
-    let mut tracked = -1;
+    // A valid pts places the frame and advances the tracked position to its end.
+    let mut tracked = None;
     assert_eq!(
-        frame_sample_bounds(1000, 100, tb, 44_100, &mut tracked),
-        (1000, 1100)
+        frame_sample_bounds(1000, 100, &clock, &mut tracked),
+        Some((1000, 1100))
     );
-    assert_eq!(tracked, 1100);
+    assert_eq!(tracked, Some(1100));
 
     // A frame with no pts continues from the tracked position.
     assert_eq!(
-        frame_sample_bounds(
-            ffmpeg_sys_next::AV_NOPTS_VALUE,
-            200,
-            tb,
-            44_100,
-            &mut tracked
-        ),
-        (1100, 1300)
+        frame_sample_bounds(ffmpeg_sys_next::AV_NOPTS_VALUE, 200, &clock, &mut tracked),
+        Some((1100, 1300))
     );
-    assert_eq!(tracked, 1300);
+    assert_eq!(tracked, Some(1300));
 
-    // No pts and no tracked position yet: start is unknown (-1), and the
-    // tracked position stays unset rather than advancing from -1.
-    let mut untracked = -1;
+    // No pts and no tracked position yet: the frame is unplaced, and so is
+    // the next.
+    let mut untracked = None;
     assert_eq!(
-        frame_sample_bounds(
-            ffmpeg_sys_next::AV_NOPTS_VALUE,
-            50,
-            tb,
-            44_100,
-            &mut untracked
-        ),
-        (-1, 49)
+        frame_sample_bounds(ffmpeg_sys_next::AV_NOPTS_VALUE, 50, &clock, &mut untracked),
+        None
     );
-    assert_eq!(untracked, -1);
+    assert_eq!(untracked, None);
+
+    // A frame before the stream's first sample (an encoder delay the decoder
+    // kept) is placed before it.
+    let mut before = None;
+    assert_eq!(
+        frame_sample_bounds(-312, 960, &clock, &mut before),
+        Some((-312, 648))
+    );
 }
 
 #[test]
@@ -74,8 +78,7 @@ fn frame_output_window_trims_at_boundaries() {
 
     struct Row {
         name: &'static str,
-        frame_start: i64,
-        frame_end: i64,
+        bounds: Option<(i64, i64)>,
         output_len: usize,
         channels: usize,
         start: Option<u64>,
@@ -85,8 +88,7 @@ fn frame_output_window_trims_at_boundaries() {
     let rows = [
         Row {
             name: "no window emits whole frame",
-            frame_start: 0,
-            frame_end: 100,
+            bounds: Some((0, 100)),
             output_len: 200,
             channels: 2,
             start: None,
@@ -99,8 +101,7 @@ fn frame_output_window_trims_at_boundaries() {
         },
         Row {
             name: "empty output with no window skips",
-            frame_start: 0,
-            frame_end: 0,
+            bounds: Some((0, 0)),
             output_len: 0,
             channels: 2,
             start: None,
@@ -109,8 +110,7 @@ fn frame_output_window_trims_at_boundaries() {
         },
         Row {
             name: "frame entirely before start skips",
-            frame_start: 0,
-            frame_end: 100,
+            bounds: Some((0, 100)),
             output_len: 200,
             channels: 2,
             start: Some(200),
@@ -119,8 +119,7 @@ fn frame_output_window_trims_at_boundaries() {
         },
         Row {
             name: "start at frame_end is exclusive, skips",
-            frame_start: 0,
-            frame_end: 100,
+            bounds: Some((0, 100)),
             output_len: 200,
             channels: 2,
             start: Some(100),
@@ -129,8 +128,7 @@ fn frame_output_window_trims_at_boundaries() {
         },
         Row {
             name: "frame straddling start trims the lead-in",
-            frame_start: 0,
-            frame_end: 100,
+            bounds: Some((0, 100)),
             output_len: 200,
             channels: 2,
             start: Some(40),
@@ -143,8 +141,7 @@ fn frame_output_window_trims_at_boundaries() {
         },
         Row {
             name: "frame at or past end stops",
-            frame_start: 200,
-            frame_end: 300,
+            bounds: Some((200, 300)),
             output_len: 200,
             channels: 2,
             start: None,
@@ -153,8 +150,7 @@ fn frame_output_window_trims_at_boundaries() {
         },
         Row {
             name: "frame straddling end trims the tail and reaches end",
-            frame_start: 0,
-            frame_end: 100,
+            bounds: Some((0, 100)),
             output_len: 200,
             channels: 2,
             start: None,
@@ -167,8 +163,7 @@ fn frame_output_window_trims_at_boundaries() {
         },
         Row {
             name: "take_end clamps to a short output buffer",
-            frame_start: 0,
-            frame_end: 100,
+            bounds: Some((0, 100)),
             output_len: 50,
             channels: 1,
             start: None,
@@ -181,8 +176,7 @@ fn frame_output_window_trims_at_boundaries() {
         },
         Row {
             name: "start-skip past a reached end stops",
-            frame_start: 0,
-            frame_end: 100,
+            bounds: Some((0, 100)),
             output_len: 100,
             channels: 1,
             start: Some(70),
@@ -191,8 +185,7 @@ fn frame_output_window_trims_at_boundaries() {
         },
         Row {
             name: "start-skip clamped to output with no end skips",
-            frame_start: 0,
-            frame_end: 100,
+            bounds: Some((0, 100)),
             output_len: 50,
             channels: 1,
             start: Some(80),
@@ -200,9 +193,8 @@ fn frame_output_window_trims_at_boundaries() {
             expected: Skip,
         },
         Row {
-            name: "unknown frame_start disables trimming",
-            frame_start: -1,
-            frame_end: 99,
+            name: "an unplaced frame disables trimming",
+            bounds: None,
             output_len: 200,
             channels: 2,
             start: Some(50),
@@ -216,14 +208,7 @@ fn frame_output_window_trims_at_boundaries() {
     ];
 
     for row in rows {
-        let got = frame_output_window(
-            row.frame_start,
-            row.frame_end,
-            row.output_len,
-            row.channels,
-            row.start,
-            row.end,
-        );
+        let got = frame_output_window(row.bounds, row.output_len, row.channels, row.start, row.end);
         assert_eq!(got, row.expected, "{}", row.name);
     }
 }

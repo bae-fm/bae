@@ -2192,7 +2192,11 @@ a FLAC's seektable, APE's, an MP4's sample table. A FLAC with scrub points
 (§3.7) has no index FFmpeg can use, so the seek jumps to the last point at or
 before the new position and decodes forward to it: one window fetched from
 the point, instead of a search across the file with one fetch per step.
-Either way the first sample played is the one asked for.
+Either way the first sample played is the one asked for, except in an MP3:
+FFmpeg places a seek into an MP3 from the file's bitrate, so far into the
+file it can start a little off. A lossy track is seeked a little
+early and decoded up to the new position, so its decoder has the frames
+before it.
 
 Offline, a track whose bytes aren't on the device stops playback with a typed
 reason the UI shows. A decoder that stops producing for good is caught and

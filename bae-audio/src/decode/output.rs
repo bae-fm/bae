@@ -17,44 +17,98 @@ pub(super) enum FrameOutputWindow {
     },
 }
 
-pub(super) fn pts_to_sample(
-    pts: i64,
+/// Where a stream's timestamps put its samples. Sample 0 is the first sample
+/// a decode from the stream's start puts out: the stream's `start_time`, which
+/// for a codec with an encoder delay (an MP3's LAME delay) lies past the first
+/// packet's timestamp, the delay being samples the decoder drops. A target
+/// sample and every frame are placed on this one count, so a decode that
+/// starts at sample N puts out what a decode from the start puts out from N
+/// on.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct SampleClock {
     time_base: ffmpeg_sys_next::AVRational,
     sample_rate: u32,
-) -> i64 {
-    if time_base.num == 1 && time_base.den == sample_rate as c_int {
-        pts
-    } else {
-        (pts as f64 * time_base.num as f64 / time_base.den as f64 * sample_rate as f64) as i64
+    /// The timestamp of sample 0.
+    origin: i64,
+}
+
+impl SampleClock {
+    pub(super) fn new(
+        time_base: ffmpeg_sys_next::AVRational,
+        sample_rate: u32,
+        origin: i64,
+    ) -> Self {
+        Self {
+            time_base,
+            sample_rate,
+            origin,
+        }
+    }
+
+    /// The clock of `stream`, decoded at `sample_rate`.
+    ///
+    /// # Safety
+    /// `stream` must be a valid, probed stream.
+    pub(super) unsafe fn of_stream(
+        stream: *const ffmpeg_sys_next::AVStream,
+        sample_rate: u32,
+    ) -> Self {
+        let start_time = (*stream).start_time;
+        let origin = if start_time == ffmpeg_sys_next::AV_NOPTS_VALUE {
+            0
+        } else {
+            start_time
+        };
+        Self::new((*stream).time_base, sample_rate, origin)
+    }
+
+    fn samples(&self) -> ffmpeg_sys_next::AVRational {
+        ffmpeg_sys_next::AVRational {
+            num: 1,
+            den: self.sample_rate as c_int,
+        }
+    }
+
+    /// The sample a timestamp falls on.
+    pub(super) fn sample_at(&self, timestamp: i64) -> i64 {
+        unsafe {
+            ffmpeg_sys_next::av_rescale_q(timestamp - self.origin, self.time_base, self.samples())
+        }
+    }
+
+    /// The timestamp of `sample`, which lies before the stream's first when
+    /// negative.
+    pub(super) fn timestamp_of(&self, sample: i64) -> i64 {
+        self.origin
+            + unsafe { ffmpeg_sys_next::av_rescale_q(sample, self.samples(), self.time_base) }
     }
 }
 
+/// The samples `[start, end)` a frame of `num_samples` holds: from its
+/// timestamp when it has one, else following the frame before. `None` when
+/// neither places it -- a frame the decoder gives no timestamp before any
+/// frame that had one.
 pub(super) fn frame_sample_bounds(
     pts: i64,
     num_samples: usize,
-    time_base: ffmpeg_sys_next::AVRational,
-    sample_rate: u32,
-    tracked_sample_pos: &mut i64,
-) -> (i64, i64) {
+    sample_clock: &SampleClock,
+    tracked_sample_pos: &mut Option<i64>,
+) -> Option<(i64, i64)> {
     let frame_start = if pts != ffmpeg_sys_next::AV_NOPTS_VALUE {
-        let sample_pos = pts_to_sample(pts, time_base, sample_rate);
-        *tracked_sample_pos = sample_pos;
-        sample_pos
-    } else if *tracked_sample_pos >= 0 {
-        *tracked_sample_pos
+        Some(sample_clock.sample_at(pts))
     } else {
-        -1
+        *tracked_sample_pos
     };
-    let frame_end = frame_start + num_samples as i64;
-    if *tracked_sample_pos >= 0 {
-        *tracked_sample_pos = frame_end;
-    }
-    (frame_start, frame_end)
+    let bounds = frame_start.map(|start| (start, start + num_samples as i64));
+    *tracked_sample_pos = bounds.map(|(_, end)| end);
+    bounds
 }
 
+/// Which of a frame's converted samples fall in `[start_sample,
+/// end_sample)`. A frame whose samples are unknown (`bounds` `None`) is put
+/// out whole.
 pub(super) fn frame_output_window(
-    frame_start: i64,
-    frame_end: i64,
+    bounds: Option<(i64, i64)>,
     output_len: usize,
     channels: usize,
     start_sample: Option<u64>,
@@ -63,23 +117,23 @@ pub(super) fn frame_output_window(
     let mut skip_start = 0;
     let mut take_end = output_len;
 
-    if let Some(start) = start_sample {
+    if let (Some(start), Some((frame_start, frame_end))) = (start_sample, bounds) {
         let start = start as i64;
-        if frame_start >= 0 && frame_end <= start {
+        if frame_end <= start {
             return FrameOutputWindow::Skip;
         }
-        if frame_start >= 0 && frame_start < start {
+        if frame_start < start {
             skip_start = ((start - frame_start) as usize * channels).min(output_len);
         }
     }
 
     let mut reached_end = false;
-    if let Some(end) = end_sample {
+    if let (Some(end), Some((frame_start, frame_end))) = (end_sample, bounds) {
         let end = end as i64;
-        if frame_start >= 0 && frame_start >= end {
+        if frame_start >= end {
             return FrameOutputWindow::Stop;
         }
-        if frame_start >= 0 && frame_end > end {
+        if frame_end > end {
             take_end = ((end - frame_start) as usize * channels).min(output_len);
             reached_end = true;
         }
@@ -250,8 +304,7 @@ impl FrameOutput for TrackOutput<'_> {
 pub(super) unsafe fn run_decode_loop(
     res: &DecodeResources,
     stream_index: c_int,
-    time_base: ffmpeg_sys_next::AVRational,
-    sample_rate: u32,
+    sample_clock: &SampleClock,
     channels: usize,
     start_sample: Option<u64>,
     stop_sample: Option<u64>,
@@ -260,7 +313,7 @@ pub(super) unsafe fn run_decode_loop(
 ) -> Result<u32, String> {
     use ffmpeg_sys_next::*;
 
-    let mut tracked_sample_pos: i64 = -1;
+    let mut tracked_sample_pos: Option<i64> = None;
     let mut reached_stop = false;
     let mut consumer_stopped = false;
     let mut discarded_invalid_packets = 0u32;
@@ -298,7 +351,7 @@ pub(super) unsafe fn run_decode_loop(
         out.on_packet(crate::DecodedPacket {
             byte: u64::try_from(packet_position).ok(),
             sample: (packet_pts != AV_NOPTS_VALUE)
-                .then(|| pts_to_sample(packet_pts, time_base, sample_rate))
+                .then(|| sample_clock.sample_at(packet_pts))
                 .and_then(|sample| u64::try_from(sample).ok()),
             size: u64::try_from(packet_size).expect("a packet's size is never negative"),
         });
@@ -310,23 +363,11 @@ pub(super) unsafe fn run_decode_loop(
 
             let num_samples = (*res.frame).nb_samples as usize;
             let pts = (*res.frame).pts;
-            let (frame_start, frame_end) = frame_sample_bounds(
-                pts,
-                num_samples,
-                time_base,
-                sample_rate,
-                &mut tracked_sample_pos,
-            );
+            let bounds =
+                frame_sample_bounds(pts, num_samples, sample_clock, &mut tracked_sample_pos);
 
             let converted_len = out.convert(res.swr_ctx, res.frame, channels)?;
-            match frame_output_window(
-                frame_start,
-                frame_end,
-                converted_len,
-                channels,
-                start_sample,
-                stop_sample,
-            ) {
+            match frame_output_window(bounds, converted_len, channels, start_sample, stop_sample) {
                 FrameOutputWindow::Skip => {}
                 FrameOutputWindow::Stop => {
                     reached_stop = true;
@@ -461,9 +502,10 @@ pub(super) unsafe fn decode_packed_s64_packets_to_sink(
         AVSampleFormat::AV_SAMPLE_FMT_S64,
     )?;
 
+    let sample_clock = SampleClock::of_stream(stream, sample_rate);
     // Raw packets, no decoder: nothing to flush after the seek.
     if let Some(sample_pos) = start_sample {
-        seek_to_sample_or_warn(fmt_ctx, stream_index, sample_pos);
+        seek_to_sample_or_warn(fmt_ctx, stream_index, &sample_clock, sample_pos as i64);
     }
 
     let packet = av_packet_alloc();
@@ -472,10 +514,9 @@ pub(super) unsafe fn decode_packed_s64_packets_to_sink(
         return Err("Failed to allocate packet".to_string());
     }
 
-    let time_base = (*stream).time_base;
     let channels_usize = channels as usize;
     let bytes_per_frame = channels_usize * std::mem::size_of::<i64>();
-    let mut tracked_sample_pos: i64 = 0;
+    let mut tracked_sample_pos: Option<i64> = Some(0);
     let mut reached_end = false;
 
     while av_read_frame(fmt_ctx, packet) >= 0 {
@@ -486,13 +527,7 @@ pub(super) unsafe fn decode_packed_s64_packets_to_sink(
 
         let num_samples = (*packet).size as usize / bytes_per_frame;
         let pts = (*packet).pts;
-        let (frame_start, frame_end) = frame_sample_bounds(
-            pts,
-            num_samples,
-            time_base,
-            sample_rate,
-            &mut tracked_sample_pos,
-        );
+        let bounds = frame_sample_bounds(pts, num_samples, &sample_clock, &mut tracked_sample_pos);
 
         let input = (*packet).data as *const u8;
         let packet_samples =
@@ -507,8 +542,7 @@ pub(super) unsafe fn decode_packed_s64_packets_to_sink(
             };
 
         match frame_output_window(
-            frame_start,
-            frame_end,
+            bounds,
             packet_samples.len(),
             channels_usize,
             start_sample,

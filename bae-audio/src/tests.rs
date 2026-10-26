@@ -123,3 +123,4 @@ fn mp3_with_invalid_terminal_packet() -> (Vec<u8>, usize) {
 include!("tests/decode_and_encode.rs");
 include!("tests/seek_and_stream.rs");
 include!("tests/source_read_failure.rs");
+include!("tests/lossy_start.rs");

@@ -252,6 +252,22 @@ which computes the byte position directly from `block_align` and `byte_rate`:
   its last track went from 26 jumps to 3, the middle of its first from 6 to 2;
   a 245 MB album's from 4 to 3 and 6 to 2; a per-track file's from 4 to 2 and
   8 to 2; the album with a seektable takes 3 and 2.
+- **A lossy start is placed on the stream's own sample count.** Sample 0 is
+  the stream's `start_time` (an MP3's LAME delay puts it 1,105 samples past
+  the first packet), the decoder gets the stream's time base
+  (`pkt_timebase`) so a frame it trims an encoder delay from keeps the right
+  timestamp, and a sample seek converts the sample to the stream's time base
+  (an MP3's is 1/14,112,000 s). A sample seek lands a pre-roll early: the
+  codec's `seek_preroll` (Opus, 80 ms) or one frame (AAC's MDCT overlap),
+  reaching before sample 0 where an AAC stream's priming frame sits. The
+  decoder is not flushed after the seek, which would leave AAC's decoder in
+  other than its opening state. A sink decode (loudness, save, transcode)
+  reads a lossy stream from its start rather than seeking, because a lossy
+  decoder's output after a seek is not the decode from the start: Opus's
+  float decoder still differed 8,000 samples past a target it landed 7,700
+  before, and with `AVFMT_FLAG_FAST_SEEK` an MP3 seek's landed timestamp is
+  estimated from the byte position (673 samples off 12 s into a CBR file).
+  Playback seeks, and so inherits that estimate for MP3.
 - **Probe read-ahead is one window.** Before the decoder has seeked to the
   track, the buffer keeps one window ahead of byte 0, not four, since the
   demuxer reads only the front metadata before it seeks away.

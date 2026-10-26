@@ -105,10 +105,12 @@ unsafe fn decode_audio_streaming_impl(
         DecodeError::after_read(read_failure, e)
     })?;
 
+    let sample_clock = SampleClock::of_stream(audio.stream, sample_rate);
     seek_input_or_warn(
         fmt_ctx,
         codec_ctx,
         audio.stream_index,
+        &sample_clock,
         seek_to_byte,
         seek_to_sample,
     );
@@ -154,8 +156,7 @@ unsafe fn decode_audio_streaming_impl(
     let loop_result = run_decode_loop(
         resources.core(),
         audio.stream_index,
-        (*audio.stream).time_base,
-        sample_rate,
+        &sample_clock,
         channels as usize,
         start_at_sample,
         stop_at_sample,
