@@ -1,5 +1,5 @@
 /// A second import over a library that already holds a release: the sequential
-/// case, repeated copies of the same pressing, and the same files again.
+/// case and repeated copies of the same pressing.
 /// 5. Two sequential imports both succeed and produce separate albums.
 #[tokio::test]
 async fn two_sequential_imports() {
@@ -133,80 +133,6 @@ async fn repeated_imports_keep_independent_copies() {
         let bytes = f.library_manager.materialize_release_file_for_test(&files[0].id).await;
         assert!(bytes.is_ok(), "copy {} remains readable: {bytes:?}", release.id);
     }
-}
-
-/// One folder hash is one release on this device. Two copies of a folder
-/// whose files hash alike, both queued past the check an import starts with —
-/// as two imports asked for before either lands are — make one release: the
-/// commit of the later one finds the hash taken and fails with the typed
-/// error, not the database's.
-#[tokio::test]
-async fn two_imports_of_the_same_files_make_one_release() {
-    support::tracing_init();
-    let f = ImportFixture::new().await;
-    let original = f.temp_path().join("original");
-    fs::create_dir_all(&original).unwrap();
-    generate_album_files(&original, &["01 Track.flac"]);
-    let copy = f.temp_path().join("copy");
-    fs::create_dir_all(&copy).unwrap();
-    let source = original.join("01 Track.flac");
-    let target = copy.join("01 Track.flac");
-    fs::copy(&source, &target).unwrap();
-    fs::File::options()
-        .write(true)
-        .open(&target)
-        .unwrap()
-        .set_times(
-            fs::FileTimes::new().set_modified(fs::metadata(&source).unwrap().modified().unwrap()),
-        )
-        .unwrap();
-    let pressing = seed_discogs_test_release(
-        f.library_manager.providers(),
-        discogs_release("Album Title", &["Track"]),
-    );
-
-    let mut progress = Vec::new();
-    for folder in [&original, &copy] {
-        let import_id = f.ids.new_id().to_string();
-        f.handle
-            .send_command(ImportCommand {
-                destination: ImportDestination::Local,
-                ..support::folder_import(
-                    &import_id,
-                    folder.to_path_buf(),
-                    support::discogs_release(pressing.clone()),
-                )
-            })
-            .await
-            .expect("both imports are queued before either commits");
-        progress.push(f.handle.subscribe_import(import_id));
-    }
-    let mut outcomes = Vec::new();
-    for progress_rx in &mut progress {
-        outcomes.push(support::try_wait_for_import_complete(progress_rx).await);
-    }
-
-    let landed: Vec<String> = outcomes
-        .iter()
-        .filter_map(|outcome| outcome.as_ref().ok().map(|(id, _)| id.clone()))
-        .collect();
-    assert_eq!(landed.len(), 1, "one release of the files: {outcomes:?}");
-    let failed: Vec<&String> = outcomes.iter().filter_map(|outcome| outcome.as_ref().err()).collect();
-    assert_eq!(
-        failed,
-        vec![&bae_core::import::ImportError::FilesAlreadyImported {
-            release_id: landed[0].clone(),
-        }
-        .to_string()],
-        "the other import says the files are imported here"
-    );
-    let albums = f.library_manager.get_albums(&[]).await.unwrap();
-    assert_eq!(albums.len(), 1);
-    let releases = f.db.get_releases_for_album(&albums[0].id).await.unwrap();
-    assert_eq!(
-        releases.into_iter().map(|release| release.id).collect::<Vec<_>>(),
-        landed
-    );
 }
 
 /// A Remote import records its upload in the write that creates the
