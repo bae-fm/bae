@@ -403,11 +403,10 @@ fn transport_state_without_element_is_other() {
 
 // -- DLNA channel over a fake HTTP renderer -----------------------------------
 //
-// The routing tests the plan requires: driving a real `DlnaChannel` against a
-// fake renderer that records the SOAP actions it receives and answers the status
-// polls from scripted state. This is the class of test that caught the Cast
-// `stop()` bug — here it pins that our own `stop()` is never misread as an
-// end-of-track advance, and that a STOPPED after playing through is.
+// A real `DlnaChannel` driven against a fake renderer that records the SOAP
+// actions it receives and answers the status polls from scripted state: each
+// command reaches the renderer as its action, our own `stop()` is never read as
+// an end-of-track advance, and a STOPPED after playing through is.
 
 use std::sync::{Arc, Mutex};
 
@@ -576,8 +575,8 @@ fn stopped_after_playing_through_is_finished() {
     assert_eq!(again.player_state, RendererPlayerState::Idle);
 }
 
-/// The stop() bug guard: our own `stop()` produces a STOPPED that must NOT be
-/// read as an end-of-track advance, even though the renderer had played.
+/// Our own `stop()` produces a STOPPED that must NOT be read as an
+/// end-of-track advance, even though the renderer had played.
 #[test]
 fn our_own_stop_is_not_read_as_finished() {
     let runtime = bae_test_support::multi_thread_runtime();
