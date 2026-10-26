@@ -768,3 +768,117 @@ FILE "second.flac" WAVE
         decoded.0.len() / 2,
     );
 }
+
+/// Ten seconds of a stereo tone encoded as `format`, written as `name` with
+/// a CUE sheet that starts track 2 three seconds in, and the audio formats
+/// import builds for its two tracks.
+fn lossy_image(
+    dir: &std::path::Path,
+    name: &str,
+    format: bae_audio::EncodeFormat,
+) -> (Vec<u8>, BuiltAudioFormats) {
+    let samples: Vec<i32> = (0..44_100 * 10 * 2)
+        .map(|i| (((i / 2) as f64 * 0.031).sin() * 0.3 * i32::MAX as f64) as i32)
+        .collect();
+    let bytes = bae_audio::encode_i32(format, &samples, 44_100, 2).expect("encode the image");
+    let path = dir.join(name);
+    std::fs::write(&path, &bytes).expect("write the image");
+    let cue_path = dir.join(format!("{name}.cue"));
+    std::fs::write(
+        &cue_path,
+        format!(
+            "FILE \"{name}\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  \
+             TRACK 02 AUDIO\n    INDEX 01 00:03:00\n"
+        ),
+    )
+    .expect("write the cue");
+    let probe =
+        bae_audio::probe_audio_from_path(path.to_str().expect("UTF-8 path")).expect("probe");
+    let cue_pair = Arc::new(CueFlacAnalysis {
+        cue_sheet: crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue"),
+        audio_files: vec![CueAnalyzedAudioFile {
+            file_reference: name.to_string(),
+            path: path.clone(),
+            probe,
+        }],
+    });
+    let tracks: Vec<_> = (0..2u32)
+        .map(|index| TrackFile {
+            db_track: crate::db::DbTrack::new_test(
+                "release-id",
+                &format!("track-{index}"),
+                "Track Title",
+                index + 1,
+            ),
+            audio: crate::import::TrackAudio::CueBacked {
+                cue_pair: Arc::clone(&cue_pair),
+                cue_index: index as usize,
+            },
+        })
+        .collect();
+    let built = ImportService::build_audio_formats(
+        &tracks,
+        &HashMap::from([(path, "image".to_string())]),
+        &test_clock(),
+        &coven::SequentialIds::new(),
+    )
+    .expect("build audio formats");
+    (bytes, built)
+}
+
+/// Records the byte and first sample of each packet a decode reads.
+#[derive(Default)]
+struct PacketPlaces(Vec<bae_audio::DecodedPacket>);
+
+impl bae_audio::DecodedSink for PacketPlaces {
+    fn on_format(&mut self, _sample_rate: u32, _channels: u32) {}
+    fn on_samples(&mut self, _samples: &[i32]) {}
+    fn on_packet(&mut self, packet: bae_audio::DecodedPacket) {
+        self.0.push(packet);
+    }
+}
+
+/// Assert that the start byte import records for track 2 of a `format` image
+/// is the frame its first sample is in, as a decode from the stream's start
+/// places its frames.
+fn assert_track_start_is_its_frame(name: &str, format: bae_audio::EncodeFormat) {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let (bytes, built) = lossy_image(temp.path(), name, format);
+    let track2 = built
+        .audio_segments
+        .iter()
+        .find(|segment| segment.start_sample > 0)
+        .expect("track 2's segment");
+
+    let mut places = PacketPlaces::default();
+    let buffer = bae_audio::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
+    buffer.append_at(0, &bytes);
+    bae_audio::decode_audio_to_sink(
+        buffer,
+        None,
+        None,
+        &mut places,
+        Arc::new(std::sync::atomic::AtomicBool::new(false)),
+    )
+    .expect("decode the image");
+    let holding = places
+        .0
+        .iter()
+        .rev()
+        .find(|packet| packet.sample.is_some_and(|sample| sample <= track2.start_sample))
+        .expect("a frame at or before the track's start");
+    assert_eq!(
+        track2.start_byte, holding.byte,
+        "{name}: track 2 starts in the frame at {:?}",
+        holding.byte
+    );
+}
+
+/// An MP3 image's track start byte is the frame its first sample is in:
+/// past the MP3's encoder delay, which its timestamps count and its samples
+/// don't.
+#[test]
+fn an_mp3_image_tracks_start_byte_is_the_frame_holding_its_first_sample() {
+    bae_audio::init();
+    assert_track_start_is_its_frame("image.mp3", bae_audio::EncodeFormat::Mp3 { bitrate_kbps: 192 });
+}

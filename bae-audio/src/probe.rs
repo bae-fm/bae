@@ -285,27 +285,31 @@ fn open_and_probe(path: &str) -> Option<ProbeResult> {
     }
 }
 
-/// Convert a sample number to a timestamp in the stream's time base. For
-/// FLAC/APE the time base is `1/sample_rate`, so the timestamp is the sample
-/// number; otherwise scale by the time base. `None` when the time base is
-/// unusable (non-positive numerator, or a zero sample rate) -- the caller then
-/// fails the whole lookup.
+/// The timestamps of `samples` in `stream`, counted as a decode from the
+/// stream's start counts them: from its `start_time`, past any encoder delay.
+/// An error when the stream states no sample rate or an unusable time base.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn sample_to_timestamp(
-    sample: u64,
-    time_base: ffmpeg_sys_next::AVRational,
-    sample_rate: i64,
-) -> Option<i64> {
-    if time_base.num == 1 && time_base.den as i64 == sample_rate {
-        Some(sample as i64)
-    } else if sample_rate > 0 && time_base.num > 0 {
-        Some(
-            (sample as i128 * time_base.den as i128 / (time_base.num as i128 * sample_rate as i128))
-                as i64,
-        )
-    } else {
-        None
+unsafe fn stream_timestamps(
+    stream: *const ffmpeg_sys_next::AVStream,
+    samples: &[u64],
+) -> Result<Vec<i64>, String> {
+    let time_base = (*stream).time_base;
+    let sample_rate = (*(*stream).codecpar).sample_rate;
+    if sample_rate <= 0 || time_base.num <= 0 || time_base.den <= 0 {
+        return Err(format!(
+            "unusable time base {}/{} at {sample_rate} Hz",
+            time_base.num, time_base.den
+        ));
     }
+    let clock = crate::sample_clock::SampleClock::of_stream(stream, sample_rate as u32);
+    samples
+        .iter()
+        .map(|&sample| {
+            i64::try_from(sample)
+                .map(|sample| clock.timestamp_of(sample))
+                .map_err(|error| format!("sample {sample} is past any timestamp: {error}"))
+        })
+        .collect()
 }
 
 /// The byte of the frame holding each of `samples` -- where a playback seek to
@@ -330,17 +334,9 @@ pub fn seek_landing_bytes(path: &str, samples: &[u64]) -> Option<Vec<u64>> {
     unsafe {
         let (mut fmt_ctx, stream_index) = open_best_audio_stream(path, "seek_landing_bytes")?;
         let stream = *(*fmt_ctx).streams.add(stream_index as usize);
-        let time_base = (*stream).time_base;
         let codecpar = (*stream).codecpar;
-        let sample_rate = (*codecpar).sample_rate as i64;
-        let landings = samples
-            .iter()
-            .map(|&sample| {
-                sample_to_timestamp(sample, time_base, sample_rate)
-                    .ok_or_else(|| format!("invalid time base for sample {sample}"))
-            })
-            .collect::<Result<Vec<i64>, String>>()
-            .and_then(
+        let landings =
+            stream_timestamps(stream, samples).and_then(
                 |targets| match content_type_from_codec_id((*codecpar).codec_id) {
                     ContentType::Flac => flac_frame_landings(path, fmt_ctx, stream_index, &targets),
                     _ => targets

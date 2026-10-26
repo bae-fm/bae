@@ -11,6 +11,7 @@ mod decode;
 mod encode;
 mod probe;
 mod resample;
+mod sample_clock;
 pub mod sparse_buffer;
 #[cfg(any(test, feature = "test-instrumentation"))]
 pub mod test_reads;
