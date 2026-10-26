@@ -940,9 +940,12 @@ unsafe fn seek_to_byte_or_warn(
 /// Seek to the frame at or before `sample_pos`. With `AVFMT_FLAG_FAST_SEEK`
 /// set, a seektable-bearing FLAC (and APE/MP4) costs one jump. A FLAC with no
 /// seektable and no stored scrub points binary-searches the file: its read of
-/// the file's end waits for the fill like any other read, so the search
-/// succeeds, one fetch per step. A seek that does fail is logged and the
-/// caller decodes from the start, trimming to the target.
+/// the file's end waits for the fill like any other read, one fetch per step,
+/// though the search can't place a sample in the stream's final frames. A seek
+/// that fails is logged, and the decode reads on from wherever the failed
+/// search left the reader: the start when the demuxer didn't move it, the
+/// file's end after a FLAC search that read to it, where the decode finds no
+/// packets.
 unsafe fn seek_to_sample_or_warn(
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     stream_index: c_int,
