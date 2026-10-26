@@ -63,10 +63,12 @@ import uniffi.bae_bridge.ComposerBrowseSubscription
 import uniffi.bae_bridge.ComposerDetailSubscription
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCallback
+import uniffi.bae_bridge.DownloadTransfersCallback
 import uniffi.bae_bridge.LibrarySearchSubscription
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.OutboxCallback
+import uniffi.bae_bridge.OutboxTransfersCallback
 import uniffi.bae_bridge.PlaybackPositionsCallback
 import uniffi.bae_bridge.PlaybackValuesCallback
 import uniffi.bae_bridge.QueueCallback
@@ -232,7 +234,11 @@ internal class FakeAppHandle(
 
     override fun subscribeDownloads(callback: DownloadCallback): LiveSubscription = liveSubscription()
 
+    override fun subscribeDownloadTransfers(callback: DownloadTransfersCallback): LiveSubscription = liveSubscription()
+
     override fun subscribeOutbox(callback: OutboxCallback): LiveSubscription = liveSubscription()
+
+    override fun subscribeOutboxTransfers(callback: OutboxTransfersCallback): LiveSubscription = liveSubscription()
 
     override fun subscribeCastDevices(callback: CastDevicesCallback): LiveSubscription = liveSubscription()
 
