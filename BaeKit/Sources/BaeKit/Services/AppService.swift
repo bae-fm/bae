@@ -339,8 +339,8 @@ open class AppService: @unchecked Sendable, Observable {
             applyPlayback: { [weak self] values in
                 guard let self else { return }
                 playbackValues.apply(values)
-                mediaControlService.applyMediaControlValues(
-                    values.mediaControl,
+                mediaControlService.applyValues(
+                    values,
                     appHandle: appHandle
                 )
                 applyPlatformPlaybackValues(values)

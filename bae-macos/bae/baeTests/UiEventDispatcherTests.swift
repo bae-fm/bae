@@ -182,11 +182,7 @@ private func playbackValues(
         repeatMode: .off,
         remote: .local,
         preview: .idle,
-        mediaControl: BridgeMediaControlValues(
-            playback: .library(state: state),
-            volume: 1,
-            isMuted: false
-        )
+        mediaControl: .library
     )
 }
 

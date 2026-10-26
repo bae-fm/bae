@@ -3,7 +3,6 @@ package fm.bae.app.playback
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLoadingTrack
 import uniffi.bae_bridge.BridgeMediaControlPlayback
-import uniffi.bae_bridge.BridgeMediaControlValues
 import uniffi.bae_bridge.BridgeNowPlayingTrack
 import uniffi.bae_bridge.BridgePlaybackPauseReason
 import uniffi.bae_bridge.BridgePlaybackPosition
@@ -28,12 +27,7 @@ internal fun playbackValues(
         repeatMode = repeatMode,
         remote = uniffi.bae_bridge.BridgeRemotePlayback.Local,
         preview = BridgePreviewState.Idle,
-        mediaControl =
-            BridgeMediaControlValues(
-                playback = BridgeMediaControlPlayback.Library(state),
-                volume = volume,
-                isMuted = isMuted,
-            ),
+        mediaControl = BridgeMediaControlPlayback.Library,
     )
 
 /** Positions holding [library]; the media controls' timeline is not read on Android. */

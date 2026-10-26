@@ -22,14 +22,8 @@ struct MediaControlServiceTests {
         let clock = TestClock()
         let service = MediaControlService(now: clock.now)
 
-        service.applyMediaControlValues(
-            mediaControlValues(
-                playback: .preview(
-                    target: previewTarget,
-                    durationMs: 120_000,
-                    isPlaying: true
-                )
-            ),
+        service.applyValues(
+            previewValues(durationMs: 120_000, isPlaying: true),
             appHandle: fakeAppHandle
         )
         #expect(
@@ -37,8 +31,8 @@ struct MediaControlServiceTests {
                 == "Preview Track.flac"
         )
 
-        service.applyMediaControlValues(
-            mediaControlValues(playback: libraryPlayback(trackId: "track-1")),
+        service.applyValues(
+            libraryValues(playingState(trackId: "track-1")),
             appHandle: fakeAppHandle
         )
 
@@ -87,14 +81,8 @@ struct MediaControlServiceTests {
         service.clearNowPlaying()
         #expect(!scrubberEnabled)
 
-        service.applyMediaControlValues(
-            mediaControlValues(
-                playback: .preview(
-                    target: previewTarget,
-                    durationMs: 90_000,
-                    isPlaying: true
-                )
-            ),
+        service.applyValues(
+            previewValues(durationMs: 90_000, isPlaying: true),
             appHandle: fakeAppHandle
         )
         #expect(scrubberEnabled)
@@ -110,8 +98,8 @@ struct MediaControlServiceTests {
         let clock = TestClock()
         let service = MediaControlService(now: clock.now)
 
-        service.applyMediaControlValues(
-            mediaControlValues(playback: libraryPlayback(trackId: "track-1")),
+        service.applyValues(
+            libraryValues(playingState(trackId: "track-1")),
             appHandle: fakeAppHandle
         )
         service.applyPositions(
@@ -119,8 +107,8 @@ struct MediaControlServiceTests {
         )
         #expect(elapsedSeconds == nil)
 
-        service.applyMediaControlValues(
-            mediaControlValues(playback: libraryPlayback(trackId: "track-2")),
+        service.applyValues(
+            libraryValues(playingState(trackId: "track-2")),
             appHandle: fakeAppHandle
         )
         #expect(elapsedSeconds == 30.0)
@@ -134,14 +122,8 @@ struct MediaControlServiceTests {
         let clock = TestClock()
         let service = MediaControlService(now: clock.now)
 
-        service.applyMediaControlValues(
-            mediaControlValues(
-                playback: .preview(
-                    target: previewTarget,
-                    durationMs: 120_000,
-                    isPlaying: true
-                )
-            ),
+        service.applyValues(
+            previewValues(durationMs: 120_000, isPlaying: true),
             appHandle: fakeAppHandle
         )
         service.applyPositions(
@@ -149,14 +131,8 @@ struct MediaControlServiceTests {
         )
         #expect(elapsedSeconds == 45.0)
 
-        service.applyMediaControlValues(
-            mediaControlValues(
-                playback: .preview(
-                    target: previewTarget,
-                    durationMs: 120_000,
-                    isPlaying: false
-                )
-            ),
+        service.applyValues(
+            previewValues(durationMs: 120_000, isPlaying: false),
             appHandle: fakeAppHandle
         )
         #expect(elapsedSeconds == 45.0)
@@ -174,14 +150,8 @@ struct MediaControlServiceTests {
         let clock = TestClock()
         let service = MediaControlService(now: clock.now)
 
-        service.applyMediaControlValues(
-            mediaControlValues(
-                playback: .preview(
-                    target: previewTarget,
-                    durationMs: 120_000,
-                    isPlaying: true
-                )
-            ),
+        service.applyValues(
+            previewValues(durationMs: 120_000, isPlaying: true),
             appHandle: fakeAppHandle
         )
         service.applyPositions(
@@ -205,8 +175,8 @@ struct MediaControlServiceTests {
         let clock = TestClock()
         let service = MediaControlService(now: clock.now)
 
-        service.applyMediaControlValues(
-            mediaControlValues(playback: libraryPlayback(trackId: "track-1")),
+        service.applyValues(
+            libraryValues(playingState(trackId: "track-1")),
             appHandle: fakeAppHandle
         )
         service.applyPositions(
@@ -221,8 +191,8 @@ struct MediaControlServiceTests {
         #expect(elapsedSeconds == 10.0)
 
         clock.advance(ms: 200)
-        service.applyMediaControlValues(
-            mediaControlValues(playback: libraryPlayback(trackId: "track-1")),
+        service.applyValues(
+            libraryValues(playingState(trackId: "track-1")),
             appHandle: fakeAppHandle
         )
         #expect(elapsedSeconds == 10.0)
@@ -236,8 +206,8 @@ struct MediaControlServiceTests {
         let clock = TestClock()
         let service = MediaControlService(now: clock.now)
 
-        service.applyMediaControlValues(
-            mediaControlValues(playback: libraryPlayback(trackId: "track-1")),
+        service.applyValues(
+            libraryValues(playingState(trackId: "track-1")),
             appHandle: fakeAppHandle
         )
         service.applyPositions(
@@ -274,8 +244,8 @@ struct MediaControlServiceTests {
         let clock = TestClock()
         let service = MediaControlService(now: clock.now)
 
-        service.applyMediaControlValues(
-            mediaControlValues(playback: libraryPlayback(trackId: "track-1")),
+        service.applyValues(
+            libraryValues(playingState(trackId: "track-1")),
             appHandle: fakeAppHandle
         )
         service.applyPositions(
@@ -283,8 +253,8 @@ struct MediaControlServiceTests {
         )
 
         clock.advance(ms: 2_000)
-        service.applyMediaControlValues(
-            mediaControlValues(playback: pausedPlayback(trackId: "track-1")),
+        service.applyValues(
+            libraryValues(pausedState(trackId: "track-1")),
             appHandle: fakeAppHandle
         )
         #expect(elapsedSeconds == 12.0)
@@ -309,12 +279,8 @@ private final class TestClock: @unchecked Sendable {
     }
 }
 
-private func pausedPlayback(trackId: String) -> BridgeMediaControlPlayback {
-    guard case .library(.playing(let track)) = libraryPlayback(trackId: trackId)
-    else {
-        preconditionFailure("libraryPlayback is a playing library track")
-    }
-    return .library(state: .paused(track: track, reason: .manual))
+private func pausedState(trackId: String) -> BridgePlaybackValueState {
+    .paused(track: nowPlayingTrack(trackId: trackId), reason: .manual)
 }
 
 private func libraryPositions(
@@ -339,23 +305,23 @@ private let previewTarget = BridgePreviewTarget(
     endSample: nil
 )
 
-private func libraryPlayback(trackId: String) -> BridgeMediaControlPlayback {
-    .library(
-        state: .playing(
-            track: BridgeNowPlayingTrack(
-                track: BridgePlayingTrack(
-                    trackId: trackId,
-                    durationMs: 200_000
-                ),
-                display: BridgeTrackDisplay(
-                    title: "Track Title",
-                    artistNames: "Artist Name",
-                    albumId: "album-1",
-                    releaseId: "release-1",
-                    albumTitle: "Album Title",
-                    coverImage: nil
-                )
-            )
+private func playingState(trackId: String) -> BridgePlaybackValueState {
+    .playing(track: nowPlayingTrack(trackId: trackId))
+}
+
+private func nowPlayingTrack(trackId: String) -> BridgeNowPlayingTrack {
+    BridgeNowPlayingTrack(
+        track: BridgePlayingTrack(
+            trackId: trackId,
+            durationMs: 200_000
+        ),
+        display: BridgeTrackDisplay(
+            title: "Track Title",
+            artistNames: "Artist Name",
+            albumId: "album-1",
+            releaseId: "release-1",
+            albumTitle: "Album Title",
+            coverImage: nil
         )
     )
 }
@@ -405,12 +371,42 @@ private var elapsedSeconds: Double? {
     ] as? Double
 }
 
-private func mediaControlValues(
-    playback: BridgeMediaControlPlayback
-) -> BridgeMediaControlValues {
-    BridgeMediaControlValues(
-        playback: playback,
+/// Values whose media controls show the library playback in `state`.
+private func libraryValues(_ state: BridgePlaybackValueState)
+    -> BridgePlaybackValues
+{
+    playbackValues(state: state, preview: .idle, mediaControl: .library)
+}
+
+/// Values whose media controls show the preview of `previewTarget`.
+private func previewValues(durationMs: UInt64, isPlaying: Bool)
+    -> BridgePlaybackValues
+{
+    playbackValues(
+        state: .stopped,
+        preview: isPlaying
+            ? .playing(target: previewTarget, durationMs: durationMs)
+            : .paused(target: previewTarget, durationMs: durationMs),
+        mediaControl: .preview(
+            target: previewTarget,
+            durationMs: durationMs,
+            isPlaying: isPlaying
+        )
+    )
+}
+
+private func playbackValues(
+    state: BridgePlaybackValueState,
+    preview: BridgePreviewState,
+    mediaControl: BridgeMediaControlPlayback
+) -> BridgePlaybackValues {
+    BridgePlaybackValues(
+        state: state,
         volume: 1,
-        isMuted: false
+        isMuted: false,
+        repeatMode: .off,
+        remote: .local,
+        preview: preview,
+        mediaControl: mediaControl
     )
 }

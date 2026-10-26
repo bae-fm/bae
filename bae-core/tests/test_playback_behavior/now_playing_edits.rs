@@ -61,20 +61,18 @@ async fn now_playing_until(
                 .await
                 .expect("the playback values stay open")
                 .expect("the playback values resolve");
-            let media_control = value.media_control_values().playback;
+            let media_control = value.media_control();
             let PlaybackState::Paused { track, .. } = value.state else {
                 continue;
             };
             if track.track.track_id != track_id || !accept(&track.display) {
                 continue;
             }
-            match media_control {
-                bae_core::playback::MediaControlPlayback::Library {
-                    state: PlaybackState::Paused { track: shown, .. },
-                    ..
-                } => assert_eq!(shown, track, "the media controls show the same track"),
-                other => panic!("the media controls show the library's paused track, not {other:?}"),
-            }
+            assert_eq!(
+                media_control,
+                bae_core::playback::MediaControlPlayback::Library,
+                "the media controls show the library's paused track"
+            );
             return track.display;
         }
     })

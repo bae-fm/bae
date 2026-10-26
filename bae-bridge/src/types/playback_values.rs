@@ -235,18 +235,12 @@ pub struct BridgePreviewPosition {
     pub progress: f64,
 }
 
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeMediaControlValues {
-    pub playback: BridgeMediaControlPlayback,
-    pub volume: f32,
-    pub is_muted: bool,
-}
-
+/// What the operating-system media surface shows. Mirrors
+/// `bae_core::playback::MediaControlPlayback`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeMediaControlPlayback {
-    Library {
-        state: BridgePlaybackValueState,
-    },
+    /// The library playback, whose state is [`BridgePlaybackValues::state`].
+    Library,
     Preview {
         target: BridgePreviewTarget,
         duration_ms: u64,
@@ -306,7 +300,7 @@ pub struct BridgePlaybackValues {
     pub repeat_mode: BridgeRepeatMode,
     pub remote: BridgeRemotePlayback,
     pub preview: BridgePreviewState,
-    pub media_control: BridgeMediaControlValues,
+    pub media_control: BridgeMediaControlPlayback,
 }
 
 /// Where playback is in what it plays; sent as it moves. Each position names
@@ -393,7 +387,7 @@ mirror_enum! {
 
 impl BridgePlaybackValues {
     pub(crate) fn from_core(value: bae_core::playback::NowPlayingValues) -> Self {
-        let media_control = BridgeMediaControlValues::from_core(value.media_control_values());
+        let media_control = BridgeMediaControlPlayback::from_core(value.media_control());
         Self {
             state: BridgePlaybackValueState::from_core(value.state),
             volume: value.volume,
@@ -420,23 +414,11 @@ impl BridgePlaybackPositions {
     }
 }
 
-mirror_struct! {
-    BridgeMediaControlValues = bae_core::playback::MediaControlValues<bae_core::playback::NowPlayingTrack>,
-    from_core: fn,
-    fields: {
-        playback: (BridgeMediaControlPlayback),
-        volume,
-        is_muted,
-    },
-}
-
 mirror_enum! {
-    BridgeMediaControlPlayback = bae_core::playback::MediaControlPlayback<bae_core::playback::NowPlayingTrack>,
+    BridgeMediaControlPlayback = bae_core::playback::MediaControlPlayback,
     from_core: fn,
     variants: {
-        Library {
-            state: (BridgePlaybackValueState),
-        },
+        Library,
         Preview {
             target: (BridgePreviewTarget),
             duration_ms,

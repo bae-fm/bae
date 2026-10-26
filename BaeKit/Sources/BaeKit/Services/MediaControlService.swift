@@ -96,19 +96,20 @@ public final class MediaControlService: @unchecked Sendable {
         self.now = now
     }
 
-    // MARK: - Retained media-control values
+    // MARK: - Playback values
 
     /// Translate core's resolved media-control presentation onto the platform's
-    /// single Now Playing surface. A track or clip no elapsed time has been
+    /// single Now Playing surface: the preview clip it names, or the library
+    /// playback in `values.state`. A track or clip no elapsed time has been
     /// written for yet takes the latest position, which can arrive before the
     /// values that show it. One already moving keeps its line, rebased at a
     /// new rate: the latest position was read when it arrived, and the next
     /// one is measured against the line.
-    public func applyMediaControlValues(
-        _ values: BridgeMediaControlValues,
+    public func applyValues(
+        _ values: BridgePlaybackValues,
         appHandle: AppHandle
     ) {
-        switch values.playback {
+        switch values.mediaControl {
         case .preview(let target, let durationMs, let isPlaying):
             #if os(macOS)
                 updatePreviewNowPlaying(
@@ -117,7 +118,8 @@ public final class MediaControlService: @unchecked Sendable {
                     isPlaying: isPlaying
                 )
             #endif
-        case .library(let state):
+        case .library:
+            let state = values.state
             #if os(macOS)
                 if isShowingPreview, case .loading(.unprepared) = state {
                     clearNowPlaying()

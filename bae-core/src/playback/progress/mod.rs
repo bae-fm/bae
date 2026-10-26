@@ -84,18 +84,10 @@ pub struct PreviewPosition {
 /// never race two independent players onto one system slot. Where in the
 /// track it is comes from [`PlaybackPositions`]: a surface shows the
 /// position whose track or clip it presents.
-#[derive(Debug, Clone)]
-pub struct MediaControlValues<Track = crate::playback::PlayingTrack> {
-    pub playback: MediaControlPlayback<Track>,
-    pub volume: f32,
-    pub is_muted: bool,
-}
-
-#[derive(Debug, Clone)]
-pub enum MediaControlPlayback<Track = crate::playback::PlayingTrack> {
-    Library {
-        state: PlaybackState<Track>,
-    },
+#[derive(Debug, Clone, PartialEq)]
+pub enum MediaControlPlayback {
+    /// The library playback, whose state is [`PlaybackValues::state`].
+    Library,
     Preview {
         target: crate::playback::PreviewTarget,
         duration_ms: u64,
@@ -312,7 +304,7 @@ impl PlaybackPositions {
     }
 }
 
-impl<Track: Clone> PlaybackValues<Track> {
+impl<Track> PlaybackValues<Track> {
     /// The same values holding `f`'s result for the state's track, or `f`'s
     /// error.
     pub fn try_map_track<Mapped, Error>(
@@ -337,8 +329,9 @@ impl<Track: Clone> PlaybackValues<Track> {
         })
     }
 
-    pub fn media_control_values(&self) -> MediaControlValues<Track> {
-        let playback = match &self.preview {
+    /// What the operating-system media surface shows of these values.
+    pub fn media_control(&self) -> MediaControlPlayback {
+        match &self.preview {
             PreviewState::Playing {
                 target,
                 duration_ms,
@@ -355,14 +348,7 @@ impl<Track: Clone> PlaybackValues<Track> {
                 duration_ms: *duration_ms,
                 is_playing: false,
             },
-            PreviewState::Idle => MediaControlPlayback::Library {
-                state: self.state.clone(),
-            },
-        };
-        MediaControlValues {
-            playback,
-            volume: self.volume,
-            is_muted: self.is_muted,
+            PreviewState::Idle => MediaControlPlayback::Library,
         }
     }
 }
@@ -468,12 +454,7 @@ mod tests {
     #[test]
     fn media_control_uses_preview_only_while_preview_is_active() {
         let library = PlaybackValues::initial();
-        assert!(matches!(
-            library.media_control_values().playback,
-            MediaControlPlayback::Library {
-                state: PlaybackState::Stopped,
-            }
-        ));
+        assert_eq!(library.media_control(), MediaControlPlayback::Library);
 
         let preview = library
             .applying(&PlaybackProgress::PreviewStateChanged(
@@ -484,7 +465,7 @@ mod tests {
             ))
             .expect("preview state is retained");
         assert!(matches!(
-            preview.media_control_values().playback,
+            preview.media_control(),
             MediaControlPlayback::Preview {
                 duration_ms: 120_000,
                 is_playing: true,
@@ -495,12 +476,7 @@ mod tests {
         let idle = preview
             .applying(&PlaybackProgress::PreviewStateChanged(PreviewState::Idle))
             .expect("idle state is retained");
-        assert!(matches!(
-            idle.media_control_values().playback,
-            MediaControlPlayback::Library {
-                state: PlaybackState::Stopped,
-            }
-        ));
+        assert_eq!(idle.media_control(), MediaControlPlayback::Library);
     }
 
     #[test]
