@@ -33,7 +33,6 @@ CAPABILITY_TYPES = {
     "LibraryBootstrap",
     "LibraryBrowseSession",
     "LibrarySetup",
-    "LibraryStore",
     "MediaControlService",
     "MediaPaths",
     "MembershipStore",

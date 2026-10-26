@@ -314,10 +314,9 @@ final class ImportListSlot {
             )
             let list = PaginatedList<BridgeImportListItem>(
                 pageSource: ImportListPreviewPageSource(items: items),
-                ingest: { _ in },
                 onError: { _ in }
             )
-            list.preloadForPreview(ids: items.map(\.id))
+            list.preloadForPreview(rows: items)
             slot.list = list
             return slot
         }

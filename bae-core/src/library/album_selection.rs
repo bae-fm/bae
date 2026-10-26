@@ -1,19 +1,15 @@
 //! The album grid's multi-selection, read through one live query whose ids
 //! change as the selection does.
 
-use crate::album_detail::AlbumSummary;
-use crate::db::AlbumSelectionProjection;
 use crate::live_query::CancellableLiveQuery;
 use std::collections::BTreeSet;
-use std::sync::Arc;
 
-/// One value the subscription delivered: the ids it read and the summary of
-/// each that is still in the library. A requested id with no summary names
-/// an album that is gone.
+/// One value the subscription delivered: the ids it read, and those of them
+/// the library no longer shows, by id.
 #[derive(Debug, Clone)]
 pub struct AlbumSelectionSnapshot {
     pub requested: BTreeSet<String>,
-    pub albums: Vec<AlbumSummary>,
+    pub gone: Vec<String>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -31,22 +27,20 @@ impl From<crate::live_query::LiveQueryCancelled> for AlbumSelectionSubscriptionE
     }
 }
 
-/// The selected albums' summaries — what the grid's bulk actions act on —
-/// and whether each still exists. A new selection is a new request on the
-/// same query, and one read per database change answers every selected album.
+/// Which selected albums are gone from the library, wherever in the grid
+/// they sit — what leaves the selection. A new selection is a new request on
+/// the same query, and one read per database change answers every selected
+/// album.
 pub struct AlbumSelectionSubscription {
-    query: CancellableLiveQuery<BTreeSet<String>, AlbumSelectionProjection>,
-    resolve: Arc<dyn Fn(AlbumSelectionProjection) -> Vec<AlbumSummary> + Send + Sync>,
+    query: CancellableLiveQuery<BTreeSet<String>, Vec<String>>,
 }
 
 impl AlbumSelectionSubscription {
     pub(crate) fn new(
-        query: coven::ReconfigurableLiveQuery<BTreeSet<String>, AlbumSelectionProjection>,
-        resolve: impl Fn(AlbumSelectionProjection) -> Vec<AlbumSummary> + Send + Sync + 'static,
+        query: coven::ReconfigurableLiveQuery<BTreeSet<String>, Vec<String>>,
     ) -> Self {
         Self {
             query: CancellableLiveQuery::new(query),
-            resolve: Arc::new(resolve),
         }
     }
 
@@ -67,11 +61,9 @@ impl AlbumSelectionSubscription {
             .next()
             .await
             .map_err(AlbumSelectionSubscriptionError::from)?;
-        let requested = event.request.clone();
-        let projection = event.result?;
         Ok(AlbumSelectionSnapshot {
-            requested,
-            albums: (self.resolve)(projection),
+            requested: event.request.clone(),
+            gone: event.result?,
         })
     }
 

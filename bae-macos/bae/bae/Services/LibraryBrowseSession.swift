@@ -3,21 +3,19 @@ import Foundation
 import Observation
 
 /// The album grid's multi-selection read live through one query, opened on
-/// the first selection: each selected album's summary is kept current in the
-/// library store — what the bulk actions act on — and an album the read finds
-/// gone leaves the selection. A new selection moves the same query.
+/// the first selection: an album the read finds gone leaves the selection,
+/// wherever in the grid it sits, loaded or not. A new selection moves the
+/// same query.
 @MainActor
 private final class SelectedAlbums {
     private let library: Library
-    private let libraryStore: LibraryStore
     private let uiStore: UiStore
     private weak var selection: AlbumGridSelection?
     private var query: AlbumSelectionQuery?
     private var deliveries: Task<Void, Never>?
 
-    init(library: Library, libraryStore: LibraryStore, uiStore: UiStore) {
+    init(library: Library, uiStore: UiStore) {
         self.library = library
-        self.libraryStore = libraryStore
         self.uiStore = uiStore
     }
 
@@ -63,16 +61,8 @@ private final class SelectedAlbums {
     }
 
     private func deliver(_ snapshot: BridgeAlbumSelectionSnapshot) {
-        for album in snapshot.albums {
-            _ = libraryStore.internAlbumSummary(album)
-        }
-        let present = Set(snapshot.albums.map(\.id))
-        let gone = snapshot.requested.filter { !present.contains($0) }
-        guard !gone.isEmpty else { return }
-        for albumId in gone {
-            libraryStore.applyAlbumDetailSnapshot(albumId: albumId, bridge: nil)
-        }
-        selection?.remove(gone)
+        guard !snapshot.gone.isEmpty else { return }
+        selection?.remove(snapshot.gone)
     }
 
     deinit {
@@ -149,12 +139,10 @@ final class LibraryBrowseSession {
 
     init(
         library: Library,
-        libraryStore: LibraryStore,
         uiStore: UiStore
     ) {
         let selectedAlbums = SelectedAlbums(
             library: library,
-            libraryStore: libraryStore,
             uiStore: uiStore
         )
         self.albumSelection = selectedAlbums.makeSelection()
@@ -162,7 +150,6 @@ final class LibraryBrowseSession {
         self.albumGrouping = albumGrouping
         albums = Self.makeAlbumList(
             library: library,
-            store: libraryStore,
             uiStore: uiStore,
             grouping: albumGrouping
         )
@@ -177,11 +164,6 @@ final class LibraryBrowseSession {
             makePageSource: {
                 LibraryComposerPageSource(library: library, sort: $0)
             },
-            ingest: { rows in
-                for row in rows {
-                    _ = libraryStore.internComposerSummary(row)
-                }
-            },
             onError: { uiStore.showError($0) }
         )
         artists = BrowseListSlot(
@@ -192,18 +174,12 @@ final class LibraryBrowseSession {
             makePageSource: {
                 LibraryArtistPageSource(library: library, sort: $0)
             },
-            ingest: { rows in
-                for row in rows {
-                    _ = libraryStore.internArtistSummary(row)
-                }
-            },
             onError: { uiStore.showError($0) }
         )
     }
 
     private static func makeAlbumList(
         library: Library,
-        store: LibraryStore,
         uiStore: UiStore,
         grouping: AlbumGrouping
     ) -> BrowseListSlot<BridgeAlbum, BridgeSortCriterion> {
@@ -219,12 +195,18 @@ final class LibraryBrowseSession {
                     groupByArtist: grouping.byArtist
                 )
             },
-            ingest: { rows in
-                for row in rows { _ = store.internAlbumSummary(row) }
-            },
-            onSnapshot: { _, total in store.setAlbumTotal(total) },
             onError: { uiStore.showError($0) }
         )
+    }
+
+    /// How many albums the open library holds, as the album list's query
+    /// counted them, or `nil` before it has. Read by chrome that has no list
+    /// of its own (the Playback menu's Shuffle Library item disables at zero,
+    /// and an empty composer or artist list says why). Albums are the proxy
+    /// the UI owns for "anything to play": core's shuffle no-ops on zero
+    /// *tracks*, but the UI never loads a track count.
+    var albumTotal: Int? {
+        albums.list?.itemCount
     }
 
     func start() {

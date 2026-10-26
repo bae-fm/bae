@@ -700,29 +700,13 @@ pub(super) const RELEASE_R_STORED: &str =
     "EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id) AND \
      NOT EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id AND f.hash IS NULL)";
 
-/// Paginated storage-page query. Joins releases × albums; both halves of the
-/// returned row are the raw aggregates the resolver maps to `ReleaseSummary` /
-/// `AlbumSummary`.
-pub(super) fn storage_page_query(
-    order_by: &str,
-    where_clause: &str,
-    uploading_count: usize,
-) -> String {
+/// One Storage Manager row per release: releases × albums, both halves the
+/// raw aggregates the resolver maps to `ReleaseSummary` / `AlbumSummary`.
+/// `joins` and `where_clause` follow the FROM.
+fn storage_row_select(joins: &str, where_clause: &str) -> String {
     let album_columns = album_summary_columns();
-    let (queue_cte, queue_join) = if uploading_count == 0 {
-        (String::new(), String::new())
-    } else {
-        let values = (0..uploading_count)
-            .map(|position| format!("(?, {position})"))
-            .collect::<Vec<_>>()
-            .join(", ");
-        (
-            format!("WITH upload_queue(release_id, position) AS (VALUES {values}) "),
-            "JOIN upload_queue ON upload_queue.release_id = r.id".to_string(),
-        )
-    };
     format!(
-        "{queue_cte}SELECT \
+        "SELECT \
             r.id AS release_id, \
             r.album_id, \
             r.media AS release_media, \
@@ -737,10 +721,46 @@ pub(super) fn storage_page_query(
             {album_columns} \
         FROM releases r \
         JOIN albums a ON a.id = r.album_id \
-        {queue_join} \
-        {where_clause} \
-        ORDER BY {order_by} \
-        LIMIT ? OFFSET ?"
+        {joins} \
+        {where_clause}"
+    )
+}
+
+/// Paginated storage-page query: the rows `where_clause` keeps, in
+/// `order_by` order, one window at a time.
+pub(super) fn storage_page_query(
+    order_by: &str,
+    where_clause: &str,
+    uploading_count: usize,
+) -> String {
+    let (queue_cte, queue_join) = if uploading_count == 0 {
+        (String::new(), String::new())
+    } else {
+        let values = (0..uploading_count)
+            .map(|position| format!("(?, {position})"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        (
+            format!("WITH upload_queue(release_id, position) AS (VALUES {values}) "),
+            "JOIN upload_queue ON upload_queue.release_id = r.id".to_string(),
+        )
+    };
+    format!(
+        "{queue_cte}{} ORDER BY {order_by} LIMIT ? OFFSET ?",
+        storage_row_select(&queue_join, where_clause)
+    )
+}
+
+/// The rows of `selected_count` bound release ids that the list
+/// `list_where` filters to holds, by release id. `list_where` binds first,
+/// as for the list's count. SQLite folds the outer id filter into the list's
+/// rows, so each selected release is looked up by its key rather than the
+/// list read whole.
+pub(super) fn storage_selected_query(list_where: &str, selected_count: usize) -> String {
+    format!(
+        "SELECT * FROM ({}) WHERE release_id IN ({}) ORDER BY release_id",
+        storage_row_select("", list_where),
+        in_clause_placeholders(selected_count)
     )
 }
 

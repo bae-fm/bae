@@ -25,13 +25,11 @@
         /// they exercise the actual zero-count empty-state branches.
         @MainActor
         static func previewEmptyBacking(
-            uiStore: UiStore,
-            libraryStore: LibraryStore
+            uiStore: UiStore
         ) -> (library: Library, session: LibraryBrowseSession) {
             let library = emptyLibrary()
             let session = LibraryBrowseSession(
                 library: library,
-                libraryStore: libraryStore,
                 uiStore: uiStore
             )
             return (library, session)
@@ -45,8 +43,7 @@
         /// the detail placeholder (no release details are seeded).
         @MainActor
         static func previewGridBacking(
-            uiStore: UiStore,
-            libraryStore: LibraryStore
+            uiStore: UiStore
         ) -> (library: Library, session: LibraryBrowseSession) {
             let albums: [BridgeAlbum] = (0..<40)
                 .map { index in
@@ -69,7 +66,6 @@
             )
             let session = LibraryBrowseSession(
                 library: library,
-                libraryStore: libraryStore,
                 uiStore: uiStore
             )
             return (library, session)
@@ -82,8 +78,7 @@
         /// every slot shows the placeholder treatment.
         @MainActor
         static func previewComposerBacking(
-            uiStore: UiStore,
-            libraryStore: LibraryStore
+            uiStore: UiStore
         ) -> (library: Library, session: LibraryBrowseSession) {
             let composers = previewComposers()
             let works: [BridgeWorkSummary] = (0..<4)
@@ -112,7 +107,6 @@
             )
             let session = LibraryBrowseSession(
                 library: library,
-                libraryStore: libraryStore,
                 uiStore: uiStore
             )
             session.selectComposer("composer-0")

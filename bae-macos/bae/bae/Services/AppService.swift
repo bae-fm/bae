@@ -85,7 +85,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
                 try await appHandle.dismissAbandonedAttachment(record: record)
             }
         )
-        let libraryStore = LibraryStore()
         let downloadStore = DownloadStore()
         let castStore = CastStore()
         let outboxStore = OutboxStore(snapshot: seed.outbox)
@@ -123,14 +122,13 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
                 deviceName: deviceName
             )
         #endif
-        libraryBrowseSession = LibraryBrowseSession(
+        let libraryBrowseSession = LibraryBrowseSession(
             library: library,
-            libraryStore: libraryStore,
             uiStore: uiStore
         )
+        self.libraryBrowseSession = libraryBrowseSession
         storageManagerStore = StorageManagerStore(
             library: library,
-            libraryStore: libraryStore,
             onError: { uiStore.showError($0) }
         )
         desktopSubscriptions = DesktopSubscriptions(
@@ -143,7 +141,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         mainAppMenuTarget = MainAppMenuTarget(
             playbackStore: playbackStore,
             configStore: configStore,
-            libraryStore: libraryStore,
+            libraryBrowseSession: libraryBrowseSession,
             uiStore: uiStore,
             library: library,
             playback: playback,
@@ -155,7 +153,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             syncStatusStore: syncStatusStore,
             membershipStore: membershipStore,
             syncActivityStore: syncActivityStore,
-            libraryStore: libraryStore,
             downloadStore: downloadStore,
             castStore: castStore,
             outboxStore: outboxStore,

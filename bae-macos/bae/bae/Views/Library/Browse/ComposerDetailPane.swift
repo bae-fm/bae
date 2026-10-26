@@ -177,11 +177,7 @@ struct ComposerDetailPane: View {
             work: PreviewData.workDetail
         )
         let uiStore = UiStore()
-        let libraryStore = PreviewData.seededComposerStore()
-        let session = PreviewData.browseSession(
-            libraryStore: libraryStore,
-            uiStore: uiStore
-        )
+        let session = PreviewData.browseSession(uiStore: uiStore)
         session.selectComposer("composer-0")
         return ComposerDetailPane(paneDetail: paneDetail)
             .frame(width: 620, height: 720)
@@ -196,11 +192,7 @@ struct ComposerDetailPane: View {
             work: nil
         )
         let uiStore = UiStore()
-        let libraryStore = PreviewData.seededComposerStore()
-        let session = PreviewData.browseSession(
-            libraryStore: libraryStore,
-            uiStore: uiStore
-        )
+        let session = PreviewData.browseSession(uiStore: uiStore)
         session.selectComposer("composer-0")
         return ComposerDetailPane(paneDetail: paneDetail)
             .frame(width: 620, height: 720)
@@ -212,11 +204,7 @@ struct ComposerDetailPane: View {
     #Preview("Composer \u{2014} Empty") {
         let paneDetail = ComposerPaneDetail.empty
         let uiStore = UiStore()
-        let libraryStore = LibraryStore()
-        let session = PreviewData.browseSession(
-            libraryStore: libraryStore,
-            uiStore: uiStore
-        )
+        let session = PreviewData.browseSession(uiStore: uiStore)
         return ComposerDetailPane(paneDetail: paneDetail)
             .frame(width: 620, height: 720)
             .environment(session)

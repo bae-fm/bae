@@ -237,21 +237,20 @@ struct LibraryBrowseSessionAlbumProjectionTests {
     )
     func unmountedListUpdatesAlbumTotal() async throws {
         let probe = AlbumBrowseProbe()
-        let store = LibraryStore()
         let session = LibraryBrowseSession(
             library: Library(
                 albumBrowse: { _, _ in probe.query }
             ),
-            libraryStore: store,
             uiStore: UiStore()
         )
+        #expect(session.albumTotal == nil)
 
         session.start()
         try await Wait.until { probe.isSubscribed }
         probe.emit(rows: [makeBridgeAlbum()], total: 1)
-        try await Wait.until { store.albumTotal == 1 }
+        try await Wait.until { session.albumTotal == 1 }
 
-        #expect(store.albumTotal == 1)
+        #expect(session.albumTotal == 1)
     }
 
     @MainActor
@@ -264,7 +263,6 @@ struct LibraryBrowseSessionAlbumProjectionTests {
                 albumBrowse: { _, _ in pageProbe.query },
                 albumSelection: { selectionProbe.query() }
             ),
-            libraryStore: LibraryStore(),
             uiStore: UiStore()
         )
 
@@ -297,7 +295,6 @@ struct LibraryBrowseSessionAlbumProjectionTests {
         let selectionProbe = AlbumSelectionProbe()
         let session = LibraryBrowseSession(
             library: Library(albumSelection: { selectionProbe.query() }),
-            libraryStore: LibraryStore(),
             uiStore: UiStore()
         )
 
@@ -305,7 +302,7 @@ struct LibraryBrowseSessionAlbumProjectionTests {
         session.albumSelection.setSelected("album-b", selected: true)
         selectionProbe.emit(
             requested: ["album-a", "album-b"],
-            albums: [makeBridgeAlbum(id: "album-b")]
+            gone: ["album-a"]
         )
         try await Wait.until {
             !session.albumSelection.contains("album-a")
@@ -321,7 +318,6 @@ struct LibraryBrowseSessionAlbumProjectionTests {
         let selectionProbe = AlbumSelectionProbe()
         let session = LibraryBrowseSession(
             library: Library(albumSelection: { selectionProbe.query() }),
-            libraryStore: LibraryStore(),
             uiStore: UiStore()
         )
 
@@ -343,7 +339,6 @@ struct LibraryBrowseSessionAlbumProjectionTests {
         let selectionProbe = AlbumSelectionProbe()
         var session: LibraryBrowseSession? = LibraryBrowseSession(
             library: Library(albumSelection: { selectionProbe.query() }),
-            libraryStore: LibraryStore(),
             uiStore: UiStore()
         )
         weak var weakSession = session
@@ -396,10 +391,10 @@ private final class AlbumSelectionProbe: @unchecked Sendable {
         )
     }
 
-    func emit(requested: [String], albums: [BridgeAlbum]) {
+    func emit(requested: [String], gone: [String]) {
         let snapshot = BridgeAlbumSelectionSnapshot(
             requested: requested,
-            albums: albums
+            gone: gone
         )
         let waiter:
             CheckedContinuation<BridgeAlbumSelectionSnapshot, any Error>? =
@@ -412,49 +407,5 @@ private final class AlbumSelectionProbe: @unchecked Sendable {
                     return nil
                 }
         waiter?.resume(returning: snapshot)
-    }
-}
-
-@Suite("LibraryStore album detail ownership")
-struct LibraryStoreAlbumDetailOwnershipTests {
-    @MainActor
-    @Test("retry replaces the failed read and rejects its late value")
-    func retryRejectsOldRead() async throws {
-        let feed = DetailFeed<BridgeAlbumDetail>()
-        let store = LibraryStore()
-        let reader = store.albumDetailReader(
-            library: Library(albumDetail: { feed.query() })
-        )
-
-        reader.show("album-1")
-        feed.emitError()
-        try await Wait.until {
-            store.albumDetailErrors["album-1"] != nil
-        }
-
-        reader.retry()
-        try await Wait.until { feed.isCancelled(read: 0) }
-        #expect(feed.opened == 2)
-        feed.emit(
-            read: 1,
-            id: "album-1",
-            value: makeBridgeAlbumDetail(title: "Replacement Title")
-        )
-        try await Wait.until {
-            store.albumSummaries["album-1"]?.title == "Replacement Title"
-        }
-        feed.emit(
-            read: 0,
-            id: "album-1",
-            value: makeBridgeAlbumDetail(title: "Old Title")
-        )
-        // Read 0 was cancelled above and its loop has ended, so nothing will
-        // ever take this value: the check below is final, not early.
-
-        #expect(store.albumSummaries["album-1"]?.title == "Replacement Title")
-
-        reader.close()
-        try await Wait.until { feed.isCancelled(read: 1) }
-        #expect(feed.isCancelled(read: 1))
     }
 }

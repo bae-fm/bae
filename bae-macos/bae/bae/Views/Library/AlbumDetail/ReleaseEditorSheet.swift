@@ -112,7 +112,7 @@ struct ReleaseEditorSheet: View {
         .frame(width: 1_280, height: 900)
         .environment(PreviewData.artistAssignmentsLibrary())
         .environment(SettingsNavigation())
-        .albumDetailPreviewEnvironment(store: PreviewData.seededLibraryStore())
+        .albumDetailPreviewEnvironment()
         .candidateReaderPreviewEnvironment()
         .mainWindowPreviewEnvironment()
         .preferredColorScheme(.dark)

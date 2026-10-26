@@ -7,7 +7,7 @@ import BaeKit
 final class MainAppMenuTarget {
     let playbackStore: PlaybackStore
     let configStore: ConfigStore
-    let libraryStore: LibraryStore
+    let libraryBrowseSession: LibraryBrowseSession
     let uiStore: UiStore
     let library: Library
     let playback: Playback
@@ -16,7 +16,7 @@ final class MainAppMenuTarget {
     init(
         playbackStore: PlaybackStore,
         configStore: ConfigStore,
-        libraryStore: LibraryStore,
+        libraryBrowseSession: LibraryBrowseSession,
         uiStore: UiStore,
         library: Library,
         playback: Playback,
@@ -24,7 +24,7 @@ final class MainAppMenuTarget {
     ) {
         self.playbackStore = playbackStore
         self.configStore = configStore
-        self.libraryStore = libraryStore
+        self.libraryBrowseSession = libraryBrowseSession
         self.uiStore = uiStore
         self.library = library
         self.playback = playback

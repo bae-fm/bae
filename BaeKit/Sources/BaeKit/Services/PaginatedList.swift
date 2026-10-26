@@ -70,18 +70,19 @@ public struct RowLoadID: Hashable {
 
 // MARK: - PaginatedList
 
-/// A paginated, ordered view over one or more store slices.
+/// A paginated, ordered list of the rows its query returns.
 ///
 /// Rows load a page at a time: the aligned run of `pageSize` positions that
 /// holds them, each a live subscription delivering both content and count
-/// whenever its query changes. The ids the pages delivered sit in a sorted list
-/// of non-overlapping segments.
+/// whenever its query changes. The rows the pages delivered sit, by position,
+/// in a sorted list of non-overlapping segments, and a view draws each row
+/// from there: the list is the one place a row is held.
 ///
 /// A page stays live for as long as anyone holds it — a row on screen, a reveal
 /// on its way to a row — and a hold lasts as long as the task that took it.
 /// Pages nobody holds stay live too, up to `maximumUnheldPages`, so scrolling
 /// back finds them; past that the one farthest from the last page asked for is
-/// dropped, and its ids with it. A held page is never dropped, so a page in use
+/// dropped, and its rows with it. A held page is never dropped, so a page in use
 /// never empties under the rows showing it.
 @MainActor
 @Observable
@@ -89,6 +90,11 @@ public final class PaginatedList<Row: Identifiable & Sendable & Equatable>
 where Row.ID: Sendable {
     /// Total row count from the most recent subscription value.
     public private(set) var totalCount: Int = 0
+
+    /// How many distinct items the list's query counted, which is the row
+    /// count unless a row can show an item more than once; `nil` until the
+    /// query has answered.
+    public private(set) var itemCount: Int?
 
     public var sections: [BridgeLibraryBrowseSection] { pageSource.sections }
 
@@ -113,18 +119,20 @@ where Row.ID: Sendable {
         LoadEpoch(instance: ObjectIdentifier(self))
     }
 
-    /// The ids this list holds, by position. Read during render, so it stays
+    /// The rows this list holds, by position. Read during render, so it stays
     /// observed.
-    private var segments = LoadedSegments<Row.ID>()
+    private var segments = LoadedSegments<Row>()
 
     @ObservationIgnored
     private let pageSource: any PageSource<Row>
+    /// Handed each page's rows as they land, for a consumer that keeps its
+    /// own copy of them.
     @ObservationIgnored
-    private let ingest: ([Row]) -> Void
+    private let ingest: (([Row]) -> Void)?
+    /// Handed the ids the list holds and its item count whenever either
+    /// changes.
     @ObservationIgnored
     private let onSnapshot: (([Row.ID], Int) -> Void)?
-    @ObservationIgnored
-    private var reportedCount: Int?
     @ObservationIgnored
     /// The failure sink. It takes the error, not a rendered `DisplayError`:
     /// whether a failure is worth showing at all is core's answer (a cancellation
@@ -150,7 +158,7 @@ where Row.ID: Sendable {
 
     public init(
         pageSource: any PageSource<Row>,
-        ingest: @escaping ([Row]) -> Void,
+        ingest: (([Row]) -> Void)? = nil,
         onError: @escaping (any Error) -> Void,
         onSnapshot: (([Row.ID], Int) -> Void)? = nil
     ) {
@@ -164,12 +172,24 @@ where Row.ID: Sendable {
 
     /// Returns the ID at `position`.
     public func idAt(_ position: Int) -> Row.ID? {
-        segments.id(at: position)
+        segments.row(at: position)?.id
+    }
+
+    /// The row the list's query returned at `position`, or nil if its page
+    /// is not loaded.
+    public func row(at position: Int) -> Row? {
+        segments.row(at: position)
     }
 
     /// Returns the position of `id` in the loaded segments, or nil if not loaded.
     public func position(of id: Row.ID) -> Int? {
         segments.position(of: id)
+    }
+
+    /// The row of `id` the list's query returned, or nil if no loaded page
+    /// holds it. A row shown more than once is the same row at each place.
+    public func row(of id: Row.ID) -> Row? {
+        segments.position(of: id).flatMap(segments.row(at:))
     }
 
     public func section(at position: Int) -> BridgeLibraryBrowseSection? {
@@ -217,7 +237,7 @@ where Row.ID: Sendable {
     }
 
     /// Hold the page holding `position` while `body` runs. `body` starts once
-    /// the page has answered, so the ids it holds are there to read, and they
+    /// the page has answered, so the rows it holds are there to read, and they
     /// stay there until `body` returns.
     ///
     /// The page is the aligned one, never a window centred on `position`: a
@@ -312,10 +332,10 @@ where Row.ID: Sendable {
         dropUnheldPages()
     }
 
-    /// Take one page's delivered value: the rows go to the store, their ids
-    /// take the positions the page was asked for, and the new total clips
-    /// anything now past the end. Only what differs from what the list holds
-    /// is written, so a value that repeats it notifies no observer.
+    /// Take one page's delivered value: the rows take the positions the page
+    /// was asked for, and the new total clips anything now past the end. Only
+    /// what differs from what the list holds is written, so a value that
+    /// repeats it notifies no observer.
     private func apply(_ rows: [Row], page: Range<Int>, totalCount: Int) {
         if initialLoadError != nil {
             initialLoadError = nil
@@ -328,7 +348,7 @@ where Row.ID: Sendable {
         let upper = min(offset + rows.count, totalCount)
         if offset < upper {
             next.put(
-                rows.prefix(upper - offset).map(\.id),
+                Array(rows.prefix(upper - offset)),
                 at: offset,
                 totalCount: totalCount
             )
@@ -338,25 +358,29 @@ where Row.ID: Sendable {
             // for hold nothing, and only those leave.
             next.remove(offset..<max(offset, min(page.upperBound, totalCount)))
         }
-        let positionsChanged = next != segments
+        let segmentsChanged = next != segments
         let totalChanged = totalCount != self.totalCount
-        // Rows whose positions moved are taken again too: the store may have
-        // let them go while their positions were gone.
-        if rowsChanged || positionsChanged {
-            ingest(rows)
+        // Rows whose positions moved are handed on again too: a consumer
+        // keeping its own copy may have let them go while their positions
+        // were gone.
+        if rowsChanged || segmentsChanged {
+            ingest?(rows)
         }
         if totalChanged {
             self.totalCount = totalCount
         }
-        if positionsChanged {
+        if segmentsChanged {
             segments = next
         }
         let itemCount = pageSource.itemCount ?? totalCount
-        if positionsChanged || reportedCount != itemCount {
-            reportedCount = itemCount
+        let itemCountChanged = itemCount != self.itemCount
+        if itemCountChanged {
+            self.itemCount = itemCount
+        }
+        if segmentsChanged || itemCountChanged {
             onSnapshot?(allLoadedIds, itemCount)
         }
-        if rowsChanged || positionsChanged || totalChanged {
+        if rowsChanged || segmentsChanged || totalChanged {
             contentRevision += 1
         }
     }
@@ -415,9 +439,10 @@ where Row.ID: Sendable {
     // MARK: - Test/Preview support
 
     /// Seed segments synchronously for SwiftUI previews and tests.
-    public func preloadForPreview(ids: [Row.ID]) {
-        segments = LoadedSegments(ids)
-        totalCount = ids.count
+    public func preloadForPreview(rows: [Row]) {
+        segments = LoadedSegments(rows)
+        totalCount = rows.count
+        itemCount = pageSource.itemCount ?? rows.count
     }
 }
 
@@ -435,7 +460,7 @@ private struct LivePage<Row: Equatable> {
     /// has answered.
     var waiters: [CheckedContinuation<Void, Never>]?
     /// The rows its last value delivered, so a value that repeats them is not
-    /// taken into the store again.
+    /// handed on again.
     var rows: [Row]?
 
     init(identity: UUID, waiters: [CheckedContinuation<Void, Never>]) {
@@ -462,50 +487,50 @@ private struct LivePage<Row: Equatable> {
     }
 }
 
-/// Which id sits at which position, for the positions a list has loaded.
+/// Which row sits at which position, for the positions a list has loaded.
 ///
 /// Held as sorted, non-overlapping runs rather than one sparse array: only
 /// loaded positions cost anything, and pages that end up adjacent merge into
 /// one run. Nothing here knows about subscriptions — a page being dropped and
-/// its ids being forgotten are separate decisions, and the list makes the
+/// its rows being forgotten are separate decisions, and the list makes the
 /// second one deliberately.
-private struct LoadedSegments<ID: Hashable>: Equatable {
+private struct LoadedSegments<Row: Identifiable & Equatable>: Equatable {
     private struct Run: Equatable {
         let range: Range<Int>
-        let ids: [ID]
+        let rows: [Row]
     }
 
     private var runs: [Run] = []
 
     init() {}
 
-    /// One run covering `ids` from position zero.
-    init(_ ids: [ID]) {
-        runs = ids.isEmpty ? [] : [Run(range: 0..<ids.count, ids: ids)]
+    /// One run covering `rows` from position zero.
+    init(_ rows: [Row]) {
+        runs = rows.isEmpty ? [] : [Run(range: 0..<rows.count, rows: rows)]
     }
 
     var isEmpty: Bool { runs.isEmpty }
 
     /// Every id held, in position order.
-    var allIds: [ID] { runs.flatMap(\.ids) }
+    var allIds: [Row.ID] { runs.flatMap { $0.rows.map(\.id) } }
 
-    /// Every held position with its id, in position order.
-    var entries: [(position: Int, id: ID)] {
+    /// Every held position with its row's id, in position order.
+    var entries: [(position: Int, id: Row.ID)] {
         runs.flatMap { run in
-            zip(run.range, run.ids).map { (position: $0, id: $1) }
+            zip(run.range, run.rows).map { (position: $0, id: $1.id) }
         }
     }
 
-    func id(at position: Int) -> ID? {
+    func row(at position: Int) -> Row? {
         for run in runs where run.range.contains(position) {
-            return run.ids[position - run.range.lowerBound]
+            return run.rows[position - run.range.lowerBound]
         }
         return nil
     }
 
-    func position(of id: ID) -> Int? {
+    func position(of id: Row.ID) -> Int? {
         for run in runs {
-            if let local = run.ids.firstIndex(of: id) {
+            if let local = run.rows.firstIndex(where: { $0.id == id }) {
                 return run.range.lowerBound + local
             }
         }
@@ -520,32 +545,32 @@ private struct LoadedSegments<ID: Hashable>: Equatable {
         }
     }
 
-    /// Put `ids` at `offset` onwards, superseding whatever was there and
+    /// Put `rows` at `offset` onwards, superseding whatever was there and
     /// absorbing the runs they touch.
-    mutating func put(_ ids: [ID], at offset: Int, totalCount: Int) {
-        let new = Run(range: offset..<(offset + ids.count), ids: ids)
+    mutating func put(_ rows: [Row], at offset: Int, totalCount: Int) {
+        let new = Run(range: offset..<(offset + rows.count), rows: rows)
         var lower = new.range.lowerBound
         var upper = new.range.upperBound
-        var leftIds: [ID] = []
-        var rightIds: [ID] = []
+        var leftRows: [Row] = []
+        var rightRows: [Row] = []
         var remaining: [Run] = []
 
         for run in runs {
             if run.range.upperBound >= lower, run.range.lowerBound <= upper {
                 // Touches or overlaps: absorb the parts outside [lower, upper].
                 if run.range.lowerBound < lower {
-                    leftIds =
-                        Array(run.ids.prefix(lower - run.range.lowerBound))
-                        + leftIds
+                    leftRows =
+                        Array(run.rows.prefix(lower - run.range.lowerBound))
+                        + leftRows
                     lower = run.range.lowerBound
                 }
                 if run.range.upperBound > upper {
-                    rightIds += Array(
-                        run.ids.suffix(run.range.upperBound - upper)
+                    rightRows += Array(
+                        run.rows.suffix(run.range.upperBound - upper)
                     )
                     upper = run.range.upperBound
                 }
-                // The portion within [lower, upper] is superseded by `ids`.
+                // The portion within [lower, upper] is superseded by `rows`.
             }
             else if run.range.upperBound > new.range.lowerBound,
                 run.range.lowerBound < new.range.upperBound
@@ -558,7 +583,7 @@ private struct LoadedSegments<ID: Hashable>: Equatable {
         }
 
         remaining.append(
-            Run(range: lower..<upper, ids: leftIds + new.ids + rightIds)
+            Run(range: lower..<upper, rows: leftRows + new.rows + rightRows)
         )
         runs = remaining.sorted { $0.range.lowerBound < $1.range.lowerBound }
         clip(to: totalCount)
@@ -571,12 +596,12 @@ private struct LoadedSegments<ID: Hashable>: Equatable {
             guard run.range.lowerBound < upper else { return nil }
             return Run(
                 range: run.range.lowerBound..<upper,
-                ids: Array(run.ids.prefix(upper - run.range.lowerBound))
+                rows: Array(run.rows.prefix(upper - run.range.lowerBound))
             )
         }
     }
 
-    /// Forget the ids at `removed`, splitting the run that holds them.
+    /// Forget the rows at `removed`, splitting the run that holds them.
     mutating func remove(_ removed: Range<Int>) {
         runs = runs.flatMap { run -> [Run] in
             guard run.range.overlaps(removed) else { return [run] }
@@ -586,7 +611,7 @@ private struct LoadedSegments<ID: Hashable>: Equatable {
                 pieces.append(
                     Run(
                         range: run.range.lowerBound..<removed.lowerBound,
-                        ids: Array(run.ids.prefix(count))
+                        rows: Array(run.rows.prefix(count))
                     )
                 )
             }
@@ -595,7 +620,7 @@ private struct LoadedSegments<ID: Hashable>: Equatable {
                 pieces.append(
                     Run(
                         range: removed.upperBound..<run.range.upperBound,
-                        ids: Array(run.ids.dropFirst(start))
+                        rows: Array(run.rows.dropFirst(start))
                     )
                 )
             }

@@ -32,7 +32,7 @@ struct LibraryMenuCommandsTests {
     }
 
     @Test("a library's commands are enabled and checked from what it holds")
-    func libraryCommandsFollowTheLibrary() throws {
+    func libraryCommandsFollowTheLibrary() async throws {
         let menu = try #require(NSApp.mainMenu)
         let delegate = AppDelegate(runtime: .testHost)
         let target = Self.target(
@@ -56,7 +56,8 @@ struct LibraryMenuCommandsTests {
 
         // Not counted yet, then counted.
         #expect(try !valid("shuffleLibrary:"))
-        target.libraryStore.setAlbumTotal(3)
+        target.libraryBrowseSession.start()
+        try await Wait.until { target.libraryBrowseSession.albumTotal == 3 }
         #expect(try valid("shuffleLibrary:"))
 
         let fullWidth = try MenuLookup.item(menu, "fullWidthLibrary:")
@@ -92,14 +93,19 @@ struct LibraryMenuCommandsTests {
         pauseBetweenSides: Bool,
         selfIsAdmin: Bool
     ) -> MainAppMenuTarget {
-        MainAppMenuTarget(
+        let uiStore = UiStore()
+        let albums = (0..<3).map { makeBridgeAlbum(id: "album-\($0)") }
+        return MainAppMenuTarget(
             playbackStore: PlaybackStore(),
             configStore: PreviewData.makeConfigStore(
                 libraryFullWidth: fullWidth,
                 pauseBetweenSides: pauseBetweenSides
             ),
-            libraryStore: LibraryStore(),
-            uiStore: UiStore(),
+            libraryBrowseSession: LibraryBrowseSession(
+                library: Library(albumBrowse: { _, _ in .fixed(albums) }),
+                uiStore: uiStore
+            ),
+            uiStore: uiStore,
             library: Library.stub(),
             playback: Playback.stub(),
             membershipStore: MembershipStore.stub(

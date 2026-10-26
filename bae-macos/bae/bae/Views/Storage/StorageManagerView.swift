@@ -4,8 +4,6 @@ import SwiftUI
 struct StorageManagerView: View {
     @Environment(StorageManagerStore.self)
     private var storageManagerStore
-    @Environment(LibraryStore.self)
-    var libraryStore
     @Environment(ReleaseEditor.self)
     private var releaseEditor
     @Environment(Sync.self)
@@ -146,7 +144,6 @@ struct StorageManagerView: View {
                         sort: $sort,
                         inspectorPresented: $inspectorPresented,
                         sortingEnabled: filter != .uploading,
-                        libraryStore: libraryStore,
                         runner: runner,
                     )
                     Divider()
@@ -172,7 +169,6 @@ struct StorageManagerView: View {
     @MainActor
     struct StorageManagerPreviewFixture {
         let library: Library
-        let libraryStore: LibraryStore
         let storageManagerStore: StorageManagerStore
         let uiStore: UiStore
         let downloadStore: DownloadStore
@@ -197,13 +193,10 @@ struct StorageManagerView: View {
                 outputs: outputs,
                 uploadGroups: uploadGroups
             )
-            let libraryStore = LibraryStore()
             let uiStore = UiStore()
             self.library = library
-            self.libraryStore = libraryStore
             self.storageManagerStore = StorageManagerStore(
                 library: library,
-                libraryStore: libraryStore,
                 onError: { uiStore.showError($0) }
             )
             self.uiStore = uiStore
@@ -237,7 +230,6 @@ struct StorageManagerView: View {
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)
         .environment(ImageStore.stub())
-        .environment(fixture.libraryStore)
         .environment(ReleaseEditor.stub())
         .environment(Sync.stub())
         .environment(Downloads.stub())
@@ -263,7 +255,6 @@ struct StorageManagerView: View {
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)
         .environment(ImageStore.stub())
-        .environment(fixture.libraryStore)
         .environment(ReleaseEditor.stub())
         .environment(Sync.stub())
         .environment(Downloads.stub())
@@ -286,7 +277,6 @@ struct StorageManagerView: View {
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)
         .environment(ImageStore.stub())
-        .environment(fixture.libraryStore)
         .environment(ReleaseEditor.stub())
         .environment(Sync.stub())
         .environment(Downloads.stub())
@@ -317,7 +307,6 @@ struct StorageManagerView: View {
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)
         .environment(ImageStore.stub())
-        .environment(fixture.libraryStore)
         .environment(ReleaseEditor.stub())
         .environment(Sync.stub())
         .environment(Downloads.stub())
@@ -343,7 +332,6 @@ struct StorageManagerView: View {
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)
         .environment(ImageStore.stub())
-        .environment(fixture.libraryStore)
         .environment(ReleaseEditor.stub())
         .environment(Sync.stub())
         .environment(Downloads.stub())
@@ -368,7 +356,6 @@ struct StorageManagerView: View {
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)
         .environment(ImageStore.stub())
-        .environment(fixture.libraryStore)
         .environment(ReleaseEditor.stub())
         .environment(Sync.stub())
         .environment(Downloads.stub())
@@ -394,7 +381,6 @@ struct StorageManagerView: View {
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)
         .environment(ImageStore.stub())
-        .environment(fixture.libraryStore)
         .environment(ReleaseEditor.stub())
         .environment(Sync.stub())
         .environment(Downloads.stub())
@@ -424,7 +410,6 @@ struct StorageManagerView: View {
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)
         .environment(ImageStore.stub())
-        .environment(fixture.libraryStore)
         .environment(ReleaseEditor.stub())
         .environment(Sync.stub())
         .environment(Downloads.stub())
@@ -456,7 +441,6 @@ struct StorageManagerView: View {
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)
         .environment(ImageStore.stub())
-        .environment(fixture.libraryStore)
         .environment(ReleaseEditor.stub())
         .environment(Sync.stub())
         .environment(Downloads.stub())

@@ -54,7 +54,6 @@ struct LibraryBrowsePageSourceTests {
         var total: Int?
         let list = AlbumList(
             pageSource: LibraryAlbumPageSource(query: query),
-            ingest: { _ in },
             onError: { Issue.record("Page failed: \($0)") },
             onSnapshot: { _, count in total = count }
         )
@@ -97,7 +96,6 @@ struct LibraryBrowsePageSourceTests {
         )
         let list = AlbumList(
             pageSource: LibraryAlbumPageSource(query: query),
-            ingest: { _ in },
             onError: { Issue.record("Page failed: \($0)") }
         )
         await list.loadInitial()
@@ -114,12 +112,8 @@ struct LibraryBrowsePageSourceTests {
     func pagesShareOneQuery() async {
         let albums = (0..<120).map { makeBridgeAlbum(id: "album-\($0)") }
         let browse = RecordingBrowse(rows: albums)
-        let store = LibraryStore()
         let list = AlbumList(
             pageSource: LibraryAlbumPageSource(query: browse.query()),
-            ingest: { rows in
-                for row in rows { _ = store.internAlbumSummary(row) }
-            },
             onError: { _ in }
         )
 
@@ -147,7 +141,6 @@ struct LibraryBrowsePageSourceTests {
         )
         let list = AlbumList(
             pageSource: LibraryAlbumPageSource(query: browse.query()),
-            ingest: { _ in },
             onError: { _ in }
         )
 

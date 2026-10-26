@@ -29,11 +29,7 @@
         /// stores and stub services the app injects at the main window root.
         static func libraryGrid() -> some View {
             let uiStore = UiStore()
-            let libraryStore = LibraryStore()
-            let backing = LibraryView.previewGridBacking(
-                uiStore: uiStore,
-                libraryStore: libraryStore
-            )
+            let backing = LibraryView.previewGridBacking(uiStore: uiStore)
             return LibraryView()
                 .environment(ImageStore.stub())
                 .environment(Playback.stub())
@@ -43,7 +39,6 @@
                 .environment(
                     LibraryProjectionStore(library: backing.library)
                 )
-                .environment(libraryStore)
                 .environment(uiStore)
                 .environment(backing.session)
                 .environment(PreviewData.configStore())
@@ -56,11 +51,7 @@
         /// backing (`LibraryView.previewEmptyBacking`).
         static func libraryEmpty() -> some View {
             let uiStore = UiStore()
-            let libraryStore = LibraryStore()
-            let backing = LibraryView.previewEmptyBacking(
-                uiStore: uiStore,
-                libraryStore: libraryStore
-            )
+            let backing = LibraryView.previewEmptyBacking(uiStore: uiStore)
             let importScene = PreviewData.importTabScene()
             return MainAppView()
                 .environment(backing.library)
@@ -68,7 +59,6 @@
                     LibraryProjectionStore(library: backing.library)
                 )
                 .environment(backing.session)
-                .environment(libraryStore)
                 .environment(uiStore)
                 .environment(importScene.store)
                 .environment(importScene.slot(uiStore: uiStore))
@@ -76,7 +66,7 @@
                 .environment(Cast.stub())
                 .environment(CastStore())
                 .environment(SyncActivityStore.preview(needsAttention: false))
-                .albumDetailPreviewEnvironment(store: libraryStore)
+                .albumDetailPreviewEnvironment()
                 .environment(SettingsNavigation())
                 .mainWindowPreviewEnvironment()
                 .windowBackground()

@@ -87,19 +87,8 @@ impl LibraryManager {
     pub(crate) fn subscribe_album_selection(
         &self,
         initial: std::collections::BTreeSet<String>,
-    ) -> coven::ReconfigurableLiveQuery<
-        std::collections::BTreeSet<String>,
-        crate::db::AlbumSelectionProjection,
-    > {
+    ) -> coven::ReconfigurableLiveQuery<std::collections::BTreeSet<String>, Vec<String>> {
         self.database.subscribe_album_selection(initial)
-    }
-
-    pub(crate) fn resolve_album_selection(
-        &self,
-        projection: crate::db::AlbumSelectionProjection,
-    ) -> Vec<AlbumSummary> {
-        let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
-        resolve_album_rows(projection.albums, &covers)
     }
 
     /// Test-only. Production reads albums through `find_album_detail` /

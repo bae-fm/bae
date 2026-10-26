@@ -8,8 +8,6 @@ struct LibraryView: View {
     var queue
     @Environment(Library.self)
     var library
-    @Environment(LibraryStore.self)
-    var libraryStore
     @Environment(UiStore.self)
     var uiStore
     @Environment(LibraryBrowseSession.self)
@@ -126,14 +124,6 @@ extension LibraryView {
         QueueActions(library: library, queue: queue, uiStore: uiStore)
     }
 
-    /// Each album's primary release id, in the given order; a selected album
-    /// is loaded, so its summary is there.
-    private func primaryReleaseIds(for albumIds: [String]) -> [String] {
-        albumIds.compactMap {
-            libraryStore.albumSummaries[$0]?.primaryReleaseId
-        }
-    }
-
     /// Whether the page spans the window instead of the capped column.
     private var fullWidth: Bool {
         configStore.config.libraryFullWidth
@@ -197,16 +187,16 @@ extension LibraryView {
                         groupByArtist: session.albumGrouping.byArtist,
                         fullWidth: fullWidth,
                         selection: session.albumSelection,
-                        onPlay: { albumIds in
+                        onPlay: { albums in
                             playback.playReleases(
-                                primaryReleaseIds(for: albumIds)
+                                albums.map(\.primaryReleaseId)
                             )
                         },
-                        onAddToQueue: { albumIds in
-                            queueActions.addToQueue(albumIds)
+                        onAddToQueue: { albums in
+                            queueActions.addToQueue(albums.map(\.id))
                         },
-                        onAddNext: { albumIds in
-                            queueActions.addNext(albumIds)
+                        onAddNext: { albums in
+                            queueActions.addNext(albums.map(\.id))
                         },
                     ) { albumId in
                         AlbumDetailView(albumId: albumId)
@@ -301,11 +291,11 @@ extension LibraryView {
     }
 
     private func artistRow(at index: Int, list: ArtistList) -> some View {
-        let id = list.idAt(index)
+        let summary = list.row(at: index)
         return BrowseListRow(
-            id: id,
-            isSelected: id != nil && session.selectedArtistId == id,
-            summaries: \.artistSummaries,
+            summary: summary,
+            isSelected: summary != nil
+                && session.selectedArtistId == summary?.id,
             select: { id in
                 session.selectArtist(id)
             }
@@ -313,11 +303,11 @@ extension LibraryView {
     }
 
     private func composerRow(at index: Int, list: ComposerList) -> some View {
-        let id = list.idAt(index)
+        let summary = list.row(at: index)
         return BrowseListRow(
-            id: id,
-            isSelected: id != nil && session.detailSelection.composerId == id,
-            summaries: \.composerSummaries,
+            summary: summary,
+            isSelected: summary != nil
+                && session.detailSelection.composerId == summary?.id,
             select: { id in
                 session.selectComposer(id)
             }
@@ -358,11 +348,7 @@ extension LibraryView {
 #if DEBUG
     #Preview("Albums \u{2014} Empty") {
         let uiStore = UiStore()
-        let libraryStore = LibraryStore()
-        let backing = LibraryView.previewEmptyBacking(
-            uiStore: uiStore,
-            libraryStore: libraryStore
-        )
+        let backing = LibraryView.previewEmptyBacking(uiStore: uiStore)
         let library: Library = backing.library
         let session: LibraryBrowseSession = backing.session
         return LibraryView()
@@ -371,7 +357,6 @@ extension LibraryView {
             .environment(Downloads.stub())
             .environment(library)
             .environment(LibraryProjectionStore(library: library))
-            .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
             .environment(PreviewData.configStore())
@@ -383,11 +368,7 @@ extension LibraryView {
     #Preview("Composers \u{2014} Empty") {
         let uiStore = UiStore()
         uiStore.setLibraryBrowserMode(.composers)
-        let libraryStore = LibraryStore()
-        let backing = LibraryView.previewEmptyBacking(
-            uiStore: uiStore,
-            libraryStore: libraryStore
-        )
+        let backing = LibraryView.previewEmptyBacking(uiStore: uiStore)
         let library: Library = backing.library
         let session: LibraryBrowseSession = backing.session
         return LibraryView()
@@ -396,7 +377,6 @@ extension LibraryView {
             .environment(Downloads.stub())
             .environment(library)
             .environment(LibraryProjectionStore(library: library))
-            .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
             .environment(PreviewData.configStore())
@@ -408,11 +388,7 @@ extension LibraryView {
     #Preview("Composers \u{2014} Detail") {
         let uiStore = UiStore()
         uiStore.setLibraryBrowserMode(.composers)
-        let libraryStore = LibraryStore()
-        let backing = LibraryView.previewComposerBacking(
-            uiStore: uiStore,
-            libraryStore: libraryStore
-        )
+        let backing = LibraryView.previewComposerBacking(uiStore: uiStore)
         let library: Library = backing.library
         let session: LibraryBrowseSession = backing.session
         return LibraryView()
@@ -422,7 +398,6 @@ extension LibraryView {
             .environment(Downloads.stub())
             .environment(library)
             .environment(LibraryProjectionStore(library: library))
-            .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
             .environment(PreviewData.configStore())
@@ -438,11 +413,7 @@ extension LibraryView {
     /// The grid with the width cap lifted.
     #Preview("Albums \u{2014} Grid, full width") {
         let uiStore = UiStore()
-        let libraryStore = LibraryStore()
-        let backing = LibraryView.previewGridBacking(
-            uiStore: uiStore,
-            libraryStore: libraryStore
-        )
+        let backing = LibraryView.previewGridBacking(uiStore: uiStore)
         let library: Library = backing.library
         let session: LibraryBrowseSession = backing.session
         return LibraryView()
@@ -452,7 +423,6 @@ extension LibraryView {
             .environment(Downloads.stub())
             .environment(library)
             .environment(LibraryProjectionStore(library: library))
-            .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
             .environment(PreviewData.makeConfigStore(libraryFullWidth: true))
@@ -463,11 +433,7 @@ extension LibraryView {
     #Preview("Artists \u{2014} Empty") {
         let uiStore = UiStore()
         uiStore.setLibraryBrowserMode(.artists)
-        let libraryStore = LibraryStore()
-        let backing = LibraryView.previewEmptyBacking(
-            uiStore: uiStore,
-            libraryStore: libraryStore
-        )
+        let backing = LibraryView.previewEmptyBacking(uiStore: uiStore)
         let library: Library = backing.library
         let session: LibraryBrowseSession = backing.session
         return LibraryView()
@@ -476,7 +442,6 @@ extension LibraryView {
             .environment(Downloads.stub())
             .environment(library)
             .environment(LibraryProjectionStore(library: library))
-            .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
             .environment(PreviewData.configStore())

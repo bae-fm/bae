@@ -113,7 +113,7 @@ final class MainWindowController: HostingWindowController, NSMenuItemValidation
             return nowPlayingNavigation(target).isEnabled
         case #selector(shuffleLibrary(_:)):
             // No total while the library's albums are not counted yet.
-            guard let albumTotal = target.libraryStore.albumTotal else {
+            guard let albumTotal = target.libraryBrowseSession.albumTotal else {
                 return false
             }
             return albumTotal > 0

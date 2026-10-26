@@ -294,12 +294,16 @@ extension LibraryArtworkBrowserTests {
         onDone: @escaping () -> Void,
         body: (NSWindow, NSHostingView<AnyView>) async throws -> Value
     ) async throws -> Value {
-        let release = PreviewData.releaseDetail(albumId: "a-01")
-        release.summary.cover = BridgeImageRef(
-            id: release.id,
+        let album = try #require(PreviewData.albumDetails["a-01"])
+        var bridge = try #require(
+            album.releases.first { $0.id == album.album.primaryReleaseId }
+        )
+        bridge.cover = BridgeImageRef(
+            id: bridge.id,
             version: "cover-version",
             imageType: .cover
         )
+        let release = ReleaseDetail(bridge: bridge)
         let bytes = try Data(
             contentsOf: URL(
                 fileURLWithPath: PreviewData.previewArtPath("Booklet")

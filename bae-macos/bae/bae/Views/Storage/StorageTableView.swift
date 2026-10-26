@@ -25,7 +25,6 @@ struct StorageTableView: NSViewRepresentable {
     @Binding
     var inspectorPresented: Bool
     let sortingEnabled: Bool
-    let libraryStore: LibraryStore
     let runner: StorageActionRunner
 
     @Environment(ImageStore.self)
@@ -46,7 +45,6 @@ struct StorageTableView: NSViewRepresentable {
             sort: $sort,
             inspectorPresented: $inspectorPresented,
             sortingEnabled: sortingEnabled,
-            libraryStore: libraryStore,
             storageManagerStore: storageManagerStore,
             runner: runner,
             imageStore: imageStore,
@@ -128,9 +126,10 @@ struct StorageTableView: NSViewRepresentable {
         let appearanceChanged = coordinator.updateAppearance(appearance)
 
         // A new generation or changed count means the rows changed identity or
-        // length, so the table must reload from the list. A changed tone or
-        // accent redraws the cells, which host their content apart from the
-        // window and so don't follow it on their own.
+        // length, so the table must reload from the list; each cell follows
+        // the row at its position on its own. A changed tone or accent redraws
+        // the cells, which host their content apart from the window and so
+        // don't follow it on their own.
         let rowsChanged = coordinator.syncRows(
             totalCount: totalCount,
             epoch: epoch
@@ -164,10 +163,9 @@ extension StorageTableView {
         private let sort: Binding<BridgeStorageSort>
         private let inspectorPresented: Binding<Bool>
         private var sortingEnabled: Bool
-        private let libraryStore: LibraryStore
-        /// Narrows the selection to the releases the list holds: nothing
-        /// here acts on or counts a selected release the list no longer
-        /// shows.
+        /// Narrows the selection to the releases the list holds, and answers
+        /// with each one's row: nothing here acts on or counts a selected
+        /// release the list no longer shows.
         private let storageManagerStore: StorageManagerStore
         private let runner: StorageActionRunner
         private var imageStore: ImageStore
@@ -193,7 +191,6 @@ extension StorageTableView {
             sort: Binding<BridgeStorageSort>,
             inspectorPresented: Binding<Bool>,
             sortingEnabled: Bool,
-            libraryStore: LibraryStore,
             storageManagerStore: StorageManagerStore,
             runner: StorageActionRunner,
             imageStore: ImageStore,
@@ -205,7 +202,6 @@ extension StorageTableView {
             self.sort = sort
             self.inspectorPresented = inspectorPresented
             self.sortingEnabled = sortingEnabled
-            self.libraryStore = libraryStore
             self.storageManagerStore = storageManagerStore
             self.runner = runner
             self.imageStore = imageStore
@@ -290,28 +286,19 @@ extension StorageTableView {
         }
 
         /// Hold `row`'s page until the task is cancelled. A row whose page had
-        /// not landed is drawn as a placeholder, so it is redrawn once the
-        /// page answers.
+        /// not landed draws its placeholder until the page answers, when its
+        /// cells draw the row and, if it is selected, the table highlights it.
         private func holdPage(of row: Int) -> Task<Void, Never> {
             let list = list
             let landed = list.idAt(row) != nil
             return Task { @MainActor [weak self] in
                 await list.withPage(containing: row) {
-                    // Only the still-mounted list redraws; a tab switch swaps
-                    // the list before this resolves.
-                    if !landed, let self, list === self.list,
-                        let tableView = self.tableView,
-                        row < tableView.numberOfRows
-                    {
-                        tableView.reloadData(
-                            forRowIndexes: [row],
-                            columnIndexes: IndexSet(
-                                0..<tableView.numberOfColumns
-                            )
-                        )
+                    // Only the still-mounted list's selection applies; a tab
+                    // switch swaps the list before this resolves.
+                    if !landed, let self, list === self.list {
                         self.applySelection(
                             self.selection.wrappedValue,
-                            to: tableView
+                            to: self.tableView
                         )
                     }
                     await Task.untilCancelled()
@@ -521,39 +508,10 @@ extension StorageTableView.Coordinator {
         forRow row: Int,
         column: StorageTableColumn
     ) -> some View {
-        releaseCell(row: row, column: column)
+        StorageListCell(list: list, position: row, column: column)
             .environment(imageStore)
             .environment(outboxStore)
             .hostedAppearance(appearance)
-    }
-
-    private func releaseCell(
-        row: Int,
-        column: StorageTableColumn
-    ) -> AnyView {
-        guard let id = list.idAt(row) else {
-            // The page covering this row hasn't landed yet; the row's hold
-            // on it is loading it. A standing bar shows until the id arrives
-            // and the row reloads.
-            return AnyView(StorageRowPlaceholderCell(column: column))
-        }
-        guard let summary = libraryStore.releaseSummaries[id],
-            let album = libraryStore.albumSummaries[summary.albumId]
-        else {
-            // The id loaded but its summary/album didn't intern — a store
-            // inconsistency. Surface it; show the placeholder over a crash.
-            logger.error(
-                "Loaded release \(id) has no interned summary or album"
-            )
-            return AnyView(StorageRowPlaceholderCell(column: column))
-        }
-        return AnyView(
-            StorageReleaseCell(
-                release: summary,
-                album: album,
-                column: column
-            )
-        )
     }
 
     // MARK: Context menu
@@ -586,19 +544,20 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
         // A release mid-transition (uploading, pinning, or becoming local) can't
         // start another storage action (those race the transition), so the only
         // action it offers is cancelling — in every tab. Uploads live in the
-        // outbox; foreground transfers (pin/unpin/make-local) set `transfer`.
-        let transitioning = targets.filter { id in
-            outboxStore.isTransitioning(forRelease: id)
-                || libraryStore.releaseSummaries[id]?.transfer != nil
+        // outbox; foreground transfers (pin/unpin/make-local) set the row's
+        // `transferAction`.
+        let transitioning = targets.filter { target in
+            outboxStore.isTransitioning(forRelease: target.id)
+                || target.release.transferAction != nil
         }
         if !transitioning.isEmpty {
-            let cancellable = transitioning.filter { id in
+            let cancellable = transitioning.filter { target in
                 if let observation = outboxStore.storageUploadObservation(
-                    forRelease: id
+                    forRelease: target.id
                 ) {
                     return observation.canCancel
                 }
-                return libraryStore.releaseSummaries[id]?.transfer != nil
+                return target.release.transferAction != nil
             }
             if !cancellable.isEmpty {
                 addMenuItem(
@@ -606,7 +565,7 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
                     title: String(localized: "Cancel"),
                     action: #selector(cancelTransitionsAction(_:)),
                     symbol: "xmark.circle",
-                    representedObject: cancellable
+                    representedObject: cancellable.map(\.id)
                 )
             }
             return
@@ -619,7 +578,7 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
                 symbol: action.systemImage,
                 representedObject: StorageActionInvocation(
                     action: action,
-                    releaseIds: targets
+                    releaseIds: targets.map(\.id)
                 )
             )
         }
@@ -631,14 +590,14 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
             title: String(localized: "Export…"),
             action: #selector(runExportAction(_:)),
             symbol: "square.and.arrow.up",
-            representedObject: targets
+            representedObject: targets.map(\.id)
         )
         addMenuItem(
             to: menu,
             title: String(localized: "Save As…"),
             action: #selector(runSaveAsAction(_:)),
             symbol: "square.and.arrow.down",
-            representedObject: targets
+            representedObject: targets.map(\.id)
         )
     }
 
@@ -674,14 +633,24 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
 
     /// If the clicked release is already selected, act on the selected
     /// releases the list holds; otherwise act on and select that release.
-    private func menuTargets(forClickedRelease clickedId: String) -> [String] {
+    /// Each target is the row the list's query returned for it.
+    private func menuTargets(
+        forClickedRelease clickedId: String
+    ) -> [BridgeStorageRow] {
         let shown = storageManagerStore.shown(selection.wrappedValue)
-        if shown.contains(clickedId) {
-            return Array(shown)
+        let targets = shown.contains(clickedId) ? shown : [clickedId]
+        if !shown.contains(clickedId) {
+            selection.wrappedValue = [clickedId]
+            applySelection([clickedId], to: tableView)
         }
-        selection.wrappedValue = [clickedId]
-        applySelection([clickedId], to: tableView)
-        return [clickedId]
+        return targets.map { id in
+            // `shown` keeps only releases the list answers a row for, and
+            // the clicked row is loaded.
+            guard let row = storageManagerStore.row(of: id) else {
+                preconditionFailure("Release \(id) is shown but has no row")
+            }
+            return row
+        }
     }
 
     @objc
@@ -747,20 +716,15 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
     /// all. Callers handle the uploading case before reaching here (an uploading
     /// release offers only "Cancel Upload").
     private func intersectedActions(
-        of releaseIds: [String]
+        of targets: [BridgeStorageRow]
     ) -> [BridgeReleaseStorageAction] {
-        let perRelease = releaseIds.map { id in
-            Set(libraryStore.releaseSummaries[id]?.storageActions ?? [])
-        }
+        let perRelease = targets.map { Set($0.release.storageActions) }
         guard let common = perRelease.reduce(nil, intersectActions) else {
             return []
         }
         // Order off the first target's release; every action in `common` is by
         // construction present in it.
-        let order =
-            releaseIds.first
-            .flatMap { libraryStore.releaseSummaries[$0]?.storageActions }
-            ?? []
+        let order = targets.first?.release.storageActions ?? []
         return order.filter(common.contains)
     }
 }
@@ -784,4 +748,26 @@ private func intersectActions(
 ) -> Set<BridgeReleaseStorageAction> {
     guard let acc else { return next }
     return acc.intersection(next)
+}
+
+/// One cell of the storage table, drawn from the row the list's query
+/// returned at `position`, or a placeholder until that row's page lands. It
+/// reads the list itself, so it follows the row as the query answers again.
+private struct StorageListCell: View {
+    let list: StorageList
+    let position: Int
+    let column: StorageTableColumn
+
+    var body: some View {
+        if let row = list.row(at: position) {
+            StorageReleaseCell(
+                release: ReleaseSummary(from: row.release),
+                album: row.album,
+                column: column
+            )
+        }
+        else {
+            StorageRowPlaceholderCell(column: column)
+        }
+    }
 }

@@ -1,4 +1,4 @@
-public struct TrackGroup {
+public struct TrackGroup: Sendable {
     public var side: BridgeTrackSide
     /// The catalog key for the header word ("core.track.side" / "core.track.disc"),
     /// or `nil` for a flat single-disc group. Core-rendered onto the bridge row.

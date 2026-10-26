@@ -14,10 +14,9 @@ pub(crate) use client::RecordsChange;
 pub(crate) use client::ReleaseFileStream;
 pub(crate) use client::ReleaseMetadataRows;
 pub use client::{
-    AlbumBrowseProjection, AlbumDetailProjection, AlbumSelectionProjection, ArtistBrowseProjection,
-    ArtistDetailProjection, ComposerBrowseProjection, ComposerDetailProjection,
-    LibrarySearchProjection, ReleaseDetailProjection, StorageBrowseProjection,
-    StorageBrowseRequest, WorkDetailProjection,
+    AlbumBrowseProjection, AlbumDetailProjection, ArtistBrowseProjection, ArtistDetailProjection,
+    ComposerBrowseProjection, ComposerDetailProjection, LibrarySearchProjection,
+    ReleaseDetailProjection, StorageBrowseProjection, StorageBrowseRequest, WorkDetailProjection,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::{AlbumFields, ReleaseEditWrite};

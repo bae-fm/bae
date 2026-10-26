@@ -1,15 +1,12 @@
 import Foundation
-import Observation
 
 /// Slim per-release projection — what list views (storage manager,
-/// release pickers) render one row per release. Identity-stable
-/// `@Observable` class: in-band mutations like pin toggle, size
-/// updates, or media fixes re-render the row without rebuilding the
-/// list.
+/// release pickers) render one row per release. Built from the row a query
+/// returned, either the slim `BridgeReleaseSummary` a list reads or the fat
+/// `BridgeRelease` a detail reads, so both draw through one shape.
 ///
 /// Composed into [`ReleaseDetail`] — the detail wraps its summary so
-/// consumers that hold a detail treat it as a superset. Interning a
-/// detail also interns its summary.
+/// consumers that hold a detail treat it as a superset.
 ///
 /// Per-release UPLOAD progress is NOT a field here. The `OutboxStore`
 /// snapshot is the single source of truth for the queue; storage rows
@@ -22,40 +19,39 @@ import Observation
 /// its own determinate bar.
 
 /// An in-flight storage transition for a release.
-public struct TransferState: Equatable {
+public struct TransferState: Equatable, Sendable {
     public let label: String
 }
 
-@Observable
-public final class ReleaseSummary: Identifiable {
+public struct ReleaseSummary: Identifiable, Sendable {
     public let id: String
     public let albumId: String
     /// What the release is made of, each carrier with its count.
-    public var media: [BridgeMediaCount]
+    public let media: [BridgeMediaCount]
     /// The same media as core words them: "2×CD", "Vinyl".
-    public var mediaTerms: [BridgeFactTerm]
-    public var storageState: BridgeReleaseStorageState
+    public let mediaTerms: [BridgeFactTerm]
+    public let storageState: BridgeReleaseStorageState
     /// Whether coven keeps this release's files pinned locally on this device
     /// — the orthogonal coven-cache property, meaningful only when
     /// `storageState` is `.remote`. Kept separate from `storageState` so the UI
     /// never conflates "in the cloud" with "pinned locally".
-    public var pinned: Bool
+    public let pinned: Bool
     /// Storage transitions the user can take right now, pre-computed by core
     /// from the release's state and cloud-home presence. The album-detail
     /// "Storage…" sheet and the Storage Manager row context menu render these;
     /// neither re-derives availability.
-    public var storageActions: [BridgeReleaseStorageAction]
-    public var fileCount: Int64
-    public var totalSize: Int64
+    public let storageActions: [BridgeReleaseStorageAction]
+    public let fileCount: Int64
+    public let totalSize: Int64
     /// Reference to this release's own cover image (id + content version), or
     /// `nil` when none is cached. Keyed on the release id so each release
     /// renders its own art; `ImageView` fetches the bytes by id and caches the
     /// decoded image under the version.
-    public var cover: BridgeImageRef?
+    public let cover: BridgeImageRef?
     /// Non-nil while a pin/unpin/cloud/local transition runs. Core includes
-    /// the current action in release subscriptions, so later values refresh this
-    /// the same way they refresh storage state.
-    public var transfer: TransferState?
+    /// the current action in release subscriptions, so later values carry it
+    /// the same way they carry storage state.
+    public let transfer: TransferState?
 
     /// The media in the current locale's words: "2×CD", "Vinyl".
     public var mediaText: String {
@@ -83,7 +79,7 @@ public final class ReleaseSummary: Identifiable {
     }
 
     /// Build a summary from the fat `BridgeRelease` wire type — the summary
-    /// half of `LibraryStore.internReleaseDetail(_:)`'s two-slice write.
+    /// half of a `ReleaseDetail`.
     public init(from bridge: BridgeRelease) {
         id = bridge.id
         albumId = bridge.albumId
@@ -96,70 +92,6 @@ public final class ReleaseSummary: Identifiable {
         totalSize = bridge.totalSize
         cover = bridge.cover
         transfer = Self.transferState(from: bridge.transferAction)
-    }
-
-    /// Per-field conditional assignment. Only fields that changed
-    /// trigger @Observable re-render.
-    public func update(from bridge: BridgeReleaseSummary) {
-        if media != bridge.media {
-            media = bridge.media
-        }
-        if mediaTerms != bridge.mediaTerms {
-            mediaTerms = bridge.mediaTerms
-        }
-        if storageState != bridge.storageState {
-            storageState = bridge.storageState
-        }
-        if pinned != bridge.pinned {
-            pinned = bridge.pinned
-        }
-        if storageActions != bridge.storageActions {
-            storageActions = bridge.storageActions
-        }
-        if fileCount != bridge.fileCount {
-            fileCount = bridge.fileCount
-        }
-        if totalSize != bridge.totalSize {
-            totalSize = bridge.totalSize
-        }
-        if cover != bridge.cover {
-            cover = bridge.cover
-        }
-        let transfer = Self.transferState(from: bridge.transferAction)
-        if self.transfer != transfer {
-            self.transfer = transfer
-        }
-    }
-
-    public func update(from bridge: BridgeRelease) {
-        if media != bridge.facts.media {
-            media = bridge.facts.media
-        }
-        if mediaTerms != bridge.mediaTerms {
-            mediaTerms = bridge.mediaTerms
-        }
-        if storageState != bridge.storageState {
-            storageState = bridge.storageState
-        }
-        if pinned != bridge.pinned {
-            pinned = bridge.pinned
-        }
-        if storageActions != bridge.storageActions {
-            storageActions = bridge.storageActions
-        }
-        if fileCount != bridge.fileCount {
-            fileCount = bridge.fileCount
-        }
-        if totalSize != bridge.totalSize {
-            totalSize = bridge.totalSize
-        }
-        if cover != bridge.cover {
-            cover = bridge.cover
-        }
-        let transfer = Self.transferState(from: bridge.transferAction)
-        if self.transfer != transfer {
-            self.transfer = transfer
-        }
     }
 
     private static func transferState(

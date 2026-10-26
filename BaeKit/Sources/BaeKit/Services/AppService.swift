@@ -13,7 +13,6 @@ public struct AppServiceComponents {
     fileprivate let membershipStore: MembershipStore
     fileprivate let syncStatusStore: SyncStatusStore
     fileprivate let syncActivityStore: SyncActivityStore
-    fileprivate let libraryStore: LibraryStore
     fileprivate let downloadStore: DownloadStore
     fileprivate let castStore: CastStore
     fileprivate let outboxStore: OutboxStore
@@ -32,7 +31,6 @@ public struct AppServiceComponents {
         syncStatusStore: SyncStatusStore,
         membershipStore: MembershipStore,
         syncActivityStore: SyncActivityStore,
-        libraryStore: LibraryStore,
         downloadStore: DownloadStore,
         castStore: CastStore,
         outboxStore: OutboxStore,
@@ -50,7 +48,6 @@ public struct AppServiceComponents {
         self.syncStatusStore = syncStatusStore
         self.membershipStore = membershipStore
         self.syncActivityStore = syncActivityStore
-        self.libraryStore = libraryStore
         self.downloadStore = downloadStore
         self.castStore = castStore
         self.outboxStore = outboxStore
@@ -114,7 +111,6 @@ open class AppService: @unchecked Sendable, Observable {
     private let configStore: ConfigStore
     private let syncStatusStore: SyncStatusStore
     private let syncActivityStore: SyncActivityStore
-    private let libraryStore: LibraryStore
     /// The bytes each downloading release has moved.
     private let downloadStore: DownloadStore
     /// Which device playback is on, and what the picker found while it was open.
@@ -168,7 +164,6 @@ open class AppService: @unchecked Sendable, Observable {
         configStore = components.configStore
         syncStatusStore = components.syncStatusStore
         syncActivityStore = components.syncActivityStore
-        libraryStore = components.libraryStore
         downloadStore = components.downloadStore
         castStore = components.castStore
         outboxStore = components.outboxStore
@@ -395,7 +390,6 @@ extension AppService {
             .environment(syncStatusStore)
             .environment(membershipStore)
             .environment(syncActivityStore)
-            .environment(libraryStore)
             .environment(libraryProjectionStore)
             .environment(downloadStore)
             .environment(outboxStore)

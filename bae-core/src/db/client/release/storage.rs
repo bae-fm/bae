@@ -164,7 +164,7 @@ impl Database {
 
     /// Follow the Storage Manager list: every window the request names under
     /// its sort and filter, with the filtered set's count and total size and
-    /// which of the selected releases it holds read once per run. A new sort,
+    /// the rows of the selected releases it holds read once per run. A new sort,
     /// filter, window set, selection, or upload queue points the same query at
     /// it through its request handle.
     pub(crate) fn subscribe_storage_browse(
@@ -204,18 +204,22 @@ impl Database {
                     storage_count_on(&sql, &where_clause, uploading).map_err(CovenError::from)?;
                 let total_size = storage_total_size_on(&sql, &where_clause, uploading)
                     .map_err(CovenError::from)?;
-                let selected_in_list =
-                    storage_members_on(&sql, &where_clause, uploading, &request.selected)
+                let selected =
+                    storage_selected_on(&sql, &where_clause, uploading, &request.selected)
                         .map_err(CovenError::from)?;
                 // A row shows its own release's cover and its album's; only
                 // those covers are read.
-                let album_ids = windows
-                    .iter()
-                    .flat_map(|(_, rows)| rows.iter().map(|(_, album)| album.id.clone()))
+                let rows = || {
+                    windows
+                        .iter()
+                        .flat_map(|(_, rows)| rows.iter())
+                        .chain(selected.iter())
+                };
+                let album_ids = rows()
+                    .map(|(_, album)| album.id.clone())
                     .collect::<Vec<_>>();
-                let release_ids = windows
-                    .iter()
-                    .flat_map(|(_, rows)| rows.iter().map(|(release, _)| release.id.clone()))
+                let release_ids = rows()
+                    .map(|(release, _)| release.id.clone())
                     .collect::<Vec<_>>();
                 let mut cover_versions = album_cover_versions_on(&sql, &album_ids)?;
                 cover_versions.extend(super::files::image_versions_on(
@@ -228,12 +232,12 @@ impl Database {
                     windows,
                     total_count,
                     total_size,
-                    selected_in_list,
+                    selected,
                     cover_versions,
                 ))
             })
             .process(
-                |(request, windows, total_count, total_size, selected_in_list, cover_versions)| {
+                |(request, windows, total_count, total_size, selected, cover_versions)| {
                     let windows = windows
                         .into_iter()
                         .map(|(window, rows)| {
@@ -249,7 +253,7 @@ impl Database {
                         windows,
                         total_count,
                         total_size,
-                        selected_in_list,
+                        selected: super::release_projection::process_storage_rows(selected)?,
                         cover_versions,
                     })
                 },

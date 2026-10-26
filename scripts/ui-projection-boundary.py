@@ -179,7 +179,6 @@ ENTITY_DATA_OWNERS = {
         "ImportStore",
         "Library",
         "LibraryBrowseSession",
-        "LibraryStore",
         "OutboxStore",
         "OutputStore",
         "Outputs",

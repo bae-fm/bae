@@ -31,26 +31,19 @@ struct HostedAlbumGrid {
         sections: [BridgeLibraryBrowseSection] = [],
         grid: (AlbumList) -> some View
     ) async -> HostedAlbumGrid {
-        let store = LibraryStore()
         let uiStore = UiStore()
         let albums = Self.albums
         let list = AlbumList(
             pageSource: LibraryAlbumPageSource(
                 query: query(albums: albums, sections: sections)
             ),
-            ingest: { rows in
-                for row in rows { _ = store.internAlbumSummary(row) }
-            },
             onError: { error in
                 preconditionFailure("Hosted grid failed: \(error)")
             }
         )
         await list.loadInitial()
         if preloaded {
-            for album in albums {
-                _ = store.internAlbumSummary(album)
-            }
-            list.preloadForPreview(ids: albums.map(\.id))
+            list.preloadForPreview(rows: albums)
         }
         uiStore.selectAlbum(openAlbumId)
         let library = Library(getAlbumIndex: { _, albumId, _ in
@@ -59,7 +52,6 @@ struct HostedAlbumGrid {
         let view = AnyView(
             grid(list)
                 .environment(uiStore)
-                .environment(store)
                 .environment(library)
                 .environment(ImageStore.stub())
         )

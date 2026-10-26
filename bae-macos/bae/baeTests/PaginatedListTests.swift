@@ -16,9 +16,7 @@ struct PaginatedListTests {
     @MainActor
     @Test("loadInitial delivers the first live page and total count")
     func loadInitialAllocates() async {
-        let store = LibraryStore()
         let list = makeList(
-            store: store,
             albums: [
                 makeBridgeAlbum(id: "a1"),
                 makeBridgeAlbum(id: "a2"),
@@ -34,40 +32,66 @@ struct PaginatedListTests {
     }
 
     @MainActor
-    @Test("a page's ids land at their positions, and its rows in the store")
+    @Test("a page's rows land at their positions")
     func pagePopulatesPositions() async {
-        let store = LibraryStore()
         let list = makeList(
-            store: store,
             albums: (0..<60)
                 .map {
                     makeBridgeAlbum(id: "a\($0)", title: "Title \($0)")
                 }
         )
         await list.loadInitial()
-        #expect(list.idAt(55) == nil)
+        #expect(list.row(at: 55) == nil)
 
         let held = await list.withPage(containing: 55) {
-            (list.idAt(50), list.idAt(59))
+            (list.idAt(50), list.idAt(59), list.row(at: 55)?.title)
         }
 
-        #expect(held == ("a50", "a59"))
-        #expect(store.albumSummaries["a55"]?.title == "Title 55")
+        #expect(held == ("a50", "a59", "Title 55"))
+    }
+
+    @MainActor
+    @Test("a row is held only while its page is: a dropped page's rows go")
+    func droppedPageTakesItsRows() async {
+        let list = makeList(
+            albums: (0..<300).map { makeBridgeAlbum(id: "a\($0)") }
+        )
+        await list.loadInitial()
+        #expect(list.row(of: "a0")?.id == "a0")
+
+        // Four more pages nobody holds: the first, farthest from the last
+        // asked for, is dropped past the cap of three.
+        for offset in stride(from: 50, through: 200, by: 50) {
+            await list.withPage(containing: offset) {}
+        }
+
+        #expect(list.row(at: 0) == nil)
+        #expect(list.row(of: "a0") == nil)
+        #expect(list.row(of: "a200")?.id == "a200")
+    }
+
+    @MainActor
+    @Test("the item count is unknown until the query answers")
+    func itemCountFollowsTheQuery() async {
+        let list = makeList(
+            albums: (0..<3).map { makeBridgeAlbum(id: "a\($0)") }
+        )
+        #expect(list.itemCount == nil)
+
+        await list.loadInitial()
+
+        #expect(list.itemCount == 3)
     }
 
     @MainActor
     @Test("a page already live is not asked for again")
     func livePageNotAskedAgain() async {
-        let store = LibraryStore()
         let source = CountingAlbumPageSource(albums: [
             makeBridgeAlbum(id: "a1", title: "Alpha"),
             makeBridgeAlbum(id: "a2", title: "Beta"),
         ])
         let list = AlbumList(
             pageSource: source,
-            ingest: { rows in
-                for row in rows { _ = store.internAlbumSummary(row) }
-            },
             onError: { _ in },
         )
         await list.loadInitial()
@@ -81,8 +105,7 @@ struct PaginatedListTests {
     @MainActor
     @Test("empty page source yields totalCount == 0 and empty ids")
     func emptyList() async {
-        let store = LibraryStore()
-        let list = makeList(store: store, albums: [])
+        let list = makeList(albums: [])
 
         await list.loadInitial()
 
@@ -104,7 +127,6 @@ struct PaginatedListTests {
         var errors: [DisplayError] = []
         let list = AlbumList(
             pageSource: source,
-            ingest: { _ in },
             onError: { error in DisplayError(error).map { errors.append($0) } },
         )
 
@@ -124,7 +146,6 @@ struct PaginatedListTests {
         )
         let list = AlbumList(
             pageSource: source,
-            ingest: { _ in },
             onError: { _ in },
         )
         await list.loadInitial()
@@ -148,7 +169,6 @@ struct PaginatedListTests {
         var errors: [DisplayError] = []
         let list = AlbumList(
             pageSource: source,
-            ingest: { _ in },
             onError: { error in DisplayError(error).map { errors.append($0) } },
         )
 
@@ -170,10 +190,9 @@ struct PaginatedListRowLoadIDTests {
     @MainActor
     @Test("a row's task id differs across a list swap, at a fixed position")
     func differsAcrossSwap() async {
-        let store = LibraryStore()
         let albums = [makeBridgeAlbum(id: "a1")]
-        let first = makeList(store: store, albums: albums)
-        let second = makeList(store: store, albums: albums)
+        let first = makeList(albums: albums)
+        let second = makeList(albums: albums)
         await first.loadInitial()
         await second.loadInitial()
 
@@ -188,8 +207,7 @@ struct PaginatedListRowLoadIDTests {
     @MainActor
     @Test("a content load leaves a row's task id unchanged")
     func stableAcrossContentLoad() async {
-        let store = LibraryStore()
-        let list = makeList(store: store, albums: [makeBridgeAlbum(id: "a1")])
+        let list = makeList(albums: [makeBridgeAlbum(id: "a1")])
         await list.loadInitial()
         let before = RowLoadID(epoch: list.loadEpoch, index: 0)
 
@@ -208,17 +226,14 @@ struct PaginatedListRowLoadIDTests {
 @Suite("PaginatedList segment management")
 struct PaginatedListSegmentTests {
     @MainActor
-    private func albumList(_ store: LibraryStore) -> AlbumList {
-        makeList(
-            store: store,
-            albums: (0..<200).map { makeBridgeAlbum(id: "a\($0)") }
-        )
+    private func albumList() -> AlbumList {
+        makeList(albums: (0..<200).map { makeBridgeAlbum(id: "a\($0)") })
     }
 
     @MainActor
     @Test("adjacent pages coalesce into one contiguous run")
     func adjacentCoalesce() async {
-        let list = albumList(LibraryStore())
+        let list = albumList()
         await list.loadInitial()
 
         await list.withPage(containing: 50) {}
@@ -230,7 +245,7 @@ struct PaginatedListSegmentTests {
     @MainActor
     @Test("disjoint pages stay separate and sort by position")
     func disjointSortsByPosition() async {
-        let list = albumList(LibraryStore())
+        let list = albumList()
         await list.loadInitial()
 
         await list.withPage(containing: 150) {}
@@ -250,15 +265,11 @@ struct PaginatedListSegmentTests {
     @MainActor
     @Test("callers asking for a page on its way wait on its one fetch")
     func concurrentPageAsksCoalesce() async throws {
-        let store = LibraryStore()
         let source = GatedAlbumPageSource(
             albums: (0..<100).map { makeBridgeAlbum(id: "a\($0)") }
         )
         let list = AlbumList(
             pageSource: source,
-            ingest: { rows in
-                for row in rows { _ = store.internAlbumSummary(row) }
-            },
             onError: { _ in },
         )
         await list.loadInitial()
@@ -292,7 +303,6 @@ struct PaginatedListSegmentTests {
         let source = MutableAlbumPageSource(count: 55)
         let list = AlbumList(
             pageSource: source,
-            ingest: { _ in },
             onError: { _ in },
         )
         await list.loadInitial()
@@ -343,12 +353,8 @@ struct PaginatedListSegmentTests {
     @Test("a page value with a changed row is taken in")
     func changedRowIsTakenIn() async {
         let source = MutableAlbumPageSource(count: 120)
-        let store = LibraryStore()
         let list = AlbumList(
             pageSource: source,
-            ingest: { rows in
-                for row in rows { _ = store.internAlbumSummary(row) }
-            },
             onError: { _ in },
         )
         await list.loadInitial()
@@ -357,7 +363,7 @@ struct PaginatedListSegmentTests {
         await source.retitle("a3", "Retitled")
 
         #expect(list.contentRevision > revision)
-        #expect(store.albumSummaries["a3"]?.title == "Retitled")
+        #expect(list.row(at: 3)?.title == "Retitled")
         #expect(list.idAt(3) == "a3")
     }
 
@@ -368,7 +374,6 @@ struct PaginatedListSegmentTests {
         var errors: [String] = []
         let list = AlbumList(
             pageSource: source,
-            ingest: { _ in },
             onError: { errors.append($0.localizedDescription) },
         )
         await list.loadInitial()
@@ -401,7 +406,6 @@ struct PaginatedListSegmentTests {
         let source = MutableAlbumPageSource(count: total)
         let list = AlbumList(
             pageSource: source,
-            ingest: { _ in },
             onError: { _ in }
         )
         await list.loadInitial()
@@ -449,7 +453,6 @@ struct PaginatedListHoldTests {
         let source = MutableAlbumPageSource(count: 500)
         let list = AlbumList(
             pageSource: source,
-            ingest: { _ in },
             onError: { _ in }
         )
         await list.loadInitial()

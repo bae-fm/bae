@@ -522,10 +522,11 @@ async fn transition_completions_deliver_storage_values() {
     expect_storage_state(&values, &release_id, ReleaseStorageState::Local).await;
 }
 
-/// The Storage Manager's inspector shows a release only while the list holds
-/// it: the list answers which selected releases it holds wherever they sit,
-/// in a window or not, and a selected release whose upload finishes leaves
-/// the Uploading list and the answer together.
+/// The Storage Manager's inspector shows, and its actions act on, a release
+/// only while the list holds it: the list answers with the row of each
+/// selected release it holds wherever it sits, in a window or not, and a
+/// selected release whose upload finishes leaves the Uploading list and the
+/// answer together.
 #[tokio::test]
 async fn selected_releases_leave_the_uploading_list_with_their_upload() {
     tracing_init();
@@ -569,9 +570,24 @@ async fn selected_releases_leave_the_uploading_list_with_their_upload() {
     let queued = next().await;
     assert_eq!(queued.total_count, 2);
     assert_eq!(queued.windows[0].rows.len(), 1);
+    let selected_ids = queued
+        .selected
+        .iter()
+        .map(|row| row.release.id.clone())
+        .collect::<std::collections::BTreeSet<_>>();
     assert_eq!(
-        queued.selected_in_list, selected,
+        selected_ids, selected,
         "a selected release outside every window is still in the list"
+    );
+    let outside = queued
+        .selected
+        .iter()
+        .find(|row| row.release.id != queued.windows[0].rows[0].release.id)
+        .expect("one selected release sits outside the window");
+    assert_eq!(
+        (outside.album.title.as_str(), outside.release.file_count),
+        ("Album Title", 1),
+        "the row of a selected release outside every window is read whole"
     );
 
     mgr.drain_uploads_expecting_work().await.unwrap();
@@ -579,7 +595,7 @@ async fn selected_releases_leave_the_uploading_list_with_their_upload() {
         let value = next().await;
         if value.total_count == 0 {
             assert!(
-                value.selected_in_list.is_empty(),
+                value.selected.is_empty(),
                 "an uploaded release is no longer in the Uploading list"
             );
             break;

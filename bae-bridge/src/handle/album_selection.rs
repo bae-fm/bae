@@ -1,12 +1,11 @@
 use super::*;
 
-/// One value an album selection delivered: the ids it read, and the summary
-/// of each that is still in the library. A requested id with no summary names
-/// an album that is gone.
+/// One value an album selection delivered: the ids it read, and those of them
+/// the library no longer shows, by id.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeAlbumSelectionSnapshot {
     pub requested: Vec<String>,
-    pub albums: Vec<crate::types::BridgeAlbum>,
+    pub gone: Vec<String>,
 }
 
 /// The album grid's multi-selection read live: one query for as long as the
@@ -45,11 +44,7 @@ impl AlbumSelectionSubscription {
                 .await
                 .map(|snapshot| BridgeAlbumSelectionSnapshot {
                     requested: snapshot.requested.into_iter().collect(),
-                    albums: snapshot
-                        .albums
-                        .into_iter()
-                        .map(crate::types::BridgeAlbum::from_core)
-                        .collect(),
+                    gone: snapshot.gone,
                 })
                 .map_err(selection_error)
         })

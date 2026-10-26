@@ -34,7 +34,6 @@ struct StorageManagerPreviewScene: View {
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)
         .environment(ImageStore.stub())
-        .environment(fixture.libraryStore)
         .environment(ReleaseEditor.stub())
         .environment(Sync.stub())
         .environment(Downloads.stub())

@@ -85,14 +85,14 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
 }
 
 /// The grid's selection reads through one subscription: its ids move in
-/// place, an id with no summary names an album that is not in the library,
+/// place, it answers with the selected ids that name no album in the library,
 /// and deleting a selected album wakes the read that shows it gone.
 #[tokio::test]
 async fn album_selection_follows_its_ids_on_one_subscription() {
     let (db, _temp) = live_db().await;
     let mut live = db.subscribe_album_selection(BTreeSet::new());
     let requests = live.requests();
-    assert!(live.next().await.result.unwrap().albums.is_empty());
+    assert!(live.next().await.result.unwrap().is_empty());
 
     requests
         .set(
@@ -103,15 +103,7 @@ async fn album_selection_follows_its_ids_on_one_subscription() {
         .unwrap();
     let selected = live.next().await;
     assert_eq!(selected.request.len(), 2);
-    let selected = selected.result.unwrap();
-    assert_eq!(
-        selected
-            .albums
-            .iter()
-            .map(|album| album.id.as_str())
-            .collect::<Vec<_>>(),
-        vec![ALBUM_ID]
-    );
+    assert_eq!(selected.result.unwrap(), vec!["missing-album"]);
 
     exec(&db, "DELETE FROM albums WHERE id = ?1", &[ALBUM_ID]).await;
     let deleted = tokio::time::timeout(Duration::from_secs(2), live.next())
@@ -119,5 +111,5 @@ async fn album_selection_follows_its_ids_on_one_subscription() {
         .expect("deleting a selected album wakes the selection")
         .result
         .unwrap();
-    assert!(deleted.albums.is_empty());
+    assert_eq!(deleted, vec![ALBUM_ID, "missing-album"]);
 }

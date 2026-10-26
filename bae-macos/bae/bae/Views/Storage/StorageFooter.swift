@@ -41,7 +41,7 @@ struct StorageFooter: View {
 
     #Preview("With total") {
         StorageFooter(
-            list: PreviewData.storageList(store: LibraryStore()),
+            list: PreviewData.storageList(),
             totalSize: 857_000_000
         )
         .frame(width: previewWidth)
@@ -50,7 +50,7 @@ struct StorageFooter: View {
 
     #Preview("Total not yet loaded") {
         StorageFooter(
-            list: PreviewData.storageList(store: LibraryStore()),
+            list: PreviewData.storageList(),
             totalSize: nil
         )
         .frame(width: previewWidth)

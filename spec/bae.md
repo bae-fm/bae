@@ -2397,9 +2397,10 @@ Reads come two ways:
   import list, sync status, uploads, downloads and the queue are all live. A
   subscription that shows a window of a long list is pointed at a new window
   in place as the person scrolls. The Storage Manager's list is also told
-  which releases are selected in it, and each of its values says which of
-  them the list holds, on screen or not. Its inspector shows, and its storage
-  actions act on, a selected release only while the list holds it: a release
+  which releases are selected in it, and each of its values carries the row
+  of each one the list holds, on screen or not, which its storage actions are
+  offered from. Its inspector shows, and its storage actions act on, a
+  selected release only while the list holds it: a release
   that finishes uploading out of the sync queue, no longer matches the filter,
   or is deleted leaves the inspector and the actions' targets as it leaves the
   list, including while an action's confirmation or folder prompt is open.

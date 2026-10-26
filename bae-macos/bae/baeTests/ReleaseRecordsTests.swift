@@ -77,17 +77,16 @@ struct ReleaseRecordsTests {
     /// the line that says where its facts were read.
     @Test("the expansion line draws its arrow only when records describe it")
     func theExpansionDrawsItsArrowOnlyWhenDescribed() async throws {
-        let store = PreviewData.seededLibraryStore()
-        let summary = try #require(store.albumSummaries["a-01"])
+        let detail = PreviewData.albumDetail(albumId: "a-01")
         let described = try #require(
-            store.releaseDetails[summary.releaseIds[0]]
+            detail.release(detail.album.releaseIds[0])
         )
         #expect(!described.records.isEmpty, "the fixture carries records")
         var undescribed = described
         undescribed.records = []
 
-        let withRecords = try await pixels(of: described, in: summary, store)
-        let without = try await pixels(of: undescribed, in: summary, store)
+        let withRecords = try await pixels(of: described, in: detail)
+        let without = try await pixels(of: undescribed, in: detail)
         // Compared as one answer rather than as two collections: an
         // inequality between megabyte-sized captures is not a diff worth
         // computing.
@@ -97,16 +96,15 @@ struct ReleaseRecordsTests {
 
     private func pixels(
         of release: ReleaseDetail,
-        in summary: AlbumSummary,
-        _ store: LibraryStore
+        in detail: AlbumDetail
     ) async throws -> Data {
         return try await SnapshotTestSupport.withHostedWindow(
             PreviewData.albumExpansionContent(
-                summary: summary,
+                detail: detail,
                 selectedRelease: release,
                 releaseCursor: .constant(
                     PreviewData.releaseCursor(
-                        releaseIds: summary.releaseIds,
+                        releaseIds: detail.album.releaseIds,
                         preferring: release.id
                     )
                 )
@@ -115,7 +113,6 @@ struct ReleaseRecordsTests {
             .preferredColorScheme(.light)
             .background(.white)
             .environment(UiStore())
-            .environment(store)
             .environment(ImageStore.stub()),
             size: Self.cardSize
         ) { _, host in

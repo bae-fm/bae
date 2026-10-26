@@ -22,8 +22,6 @@ final class BrowseListSlot<
 
     private let defaultsKey: String
     private let makePageSource: ([Criterion]) -> any PageSource<Row>
-    private let ingest: ([Row]) -> Void
-    private let onSnapshot: (([Row.ID], Int) -> Void)?
     /// Takes the error, not a rendered line: whether a failure is worth showing
     /// is core's answer, and the sink is the one place that drops it.
     private let onError: (any Error) -> Void
@@ -32,14 +30,10 @@ final class BrowseListSlot<
         defaultsKey: String,
         defaultCriteria: [Criterion],
         makePageSource: @escaping ([Criterion]) -> any PageSource<Row>,
-        ingest: @escaping ([Row]) -> Void,
-        onSnapshot: (([Row.ID], Int) -> Void)? = nil,
         onError: @escaping (any Error) -> Void
     ) {
         self.defaultsKey = defaultsKey
         self.makePageSource = makePageSource
-        self.ingest = ingest
-        self.onSnapshot = onSnapshot
         self.onError = onError
         sortCriteria = Self.loadCriteria(
             key: defaultsKey,
@@ -79,9 +73,7 @@ final class BrowseListSlot<
     private func reload() async {
         let newList = PaginatedList<Row>(
             pageSource: makePageSource(sortCriteria),
-            ingest: ingest,
-            onError: onError,
-            onSnapshot: onSnapshot
+            onError: onError
         )
         await newList.loadInitial()
         guard !Task.isCancelled else {

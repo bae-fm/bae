@@ -10,8 +10,9 @@ pub struct BridgeStorageBrowseWindow {
 
 /// Every requested window of the Storage Manager list under the sort and
 /// filter it was read for — a UI that has since moved to another drops it —
-/// with the filtered set's row count and total size, and which of the
-/// selected releases the filtered set holds, in a window or not.
+/// with the filtered set's row count and total size, and the row of each
+/// selected release the filtered set holds, in a window or not, by release
+/// id.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeStorageBrowseSnapshot {
     pub sort: BridgeStorageSort,
@@ -19,7 +20,7 @@ pub struct BridgeStorageBrowseSnapshot {
     pub windows: Vec<BridgeStorageBrowseWindow>,
     pub total_count: u64,
     pub total_size: u64,
-    pub selected_in_list: Vec<String>,
+    pub selected: Vec<BridgeStorageRow>,
 }
 
 /// The Storage Manager list read live: one query for as long as the manager
@@ -56,8 +57,8 @@ impl AppHandle {
 
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl StorageBrowseSubscription {
-    /// Read `windows` of the list under `sort` and `filter`, and which of the
-    /// `selected` releases it holds, from now on.
+    /// Read `windows` of the list under `sort` and `filter`, and the rows of
+    /// the `selected` releases it holds, from now on.
     pub fn set_view(
         &self,
         sort: BridgeStorageSort,
@@ -103,7 +104,11 @@ impl StorageBrowseSubscription {
                         .collect(),
                     total_count: snapshot.total_count,
                     total_size: snapshot.total_size,
-                    selected_in_list: snapshot.selected_in_list.into_iter().collect(),
+                    selected: snapshot
+                        .selected
+                        .into_iter()
+                        .map(BridgeStorageRow::from_core)
+                        .collect(),
                 })
                 .map_err(live_read_error)
         })

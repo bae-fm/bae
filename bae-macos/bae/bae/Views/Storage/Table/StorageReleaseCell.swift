@@ -5,7 +5,7 @@ import SwiftUI
 /// `ImageStore` in the environment.
 struct StorageReleaseCell: View {
     let release: ReleaseSummary
-    let album: AlbumSummary
+    let album: BridgeAlbum
     let column: StorageTableColumn
 
     /// The album column's cover side.

@@ -3,24 +3,26 @@
     import SwiftUI
 
     // Preview support for `AlbumDetailView` and `AlbumExpansionContent`.
-    // Seeds a `LibraryStore` with the album summaries and release details the
-    // detail view reads, injects the services the view tree pulls from the
-    // environment, and factors the `AlbumExpansionContent` no-op-callback
-    // boilerplate shared by its previews into one builder.
+    // Answers the detail view's album read from the preview albums, injects
+    // the services the view tree pulls from the environment, and factors the
+    // `AlbumExpansionContent` no-op-callback boilerplate shared by its
+    // previews into one builder.
 
     extension PreviewData {
-        /// A `LibraryStore` seeded with every preview album's summary and its
-        /// releases' fat details. `AlbumDetailView.body` finds
-        /// `albumSummaries[albumId]` and `releaseDetails[…]` without a live
-        /// load, and its `.task` is a no-op because `loadReleaseDetail`
-        /// short-circuits when the detail is already present.
+        /// A library whose album detail read answers each id with the preview
+        /// album of that id, so `AlbumDetailView` runs its real read.
+        static func albumDetailLibrary() -> Library {
+            Library(albumDetail: { .fixed { albumDetails[$0] } })
+        }
+
+        /// One preview album as its detail read returns it. Fails loud when
+        /// the fixture id is unseeded.
         @MainActor
-        static func seededLibraryStore() -> LibraryStore {
-            let store = LibraryStore()
-            for detail in albumDetails.values {
-                store.internAlbumDetail(detail)
+        static func albumDetail(albumId: String) -> AlbumDetail {
+            guard let bridge = albumDetails[albumId] else {
+                fatalError("no preview album for id: \(albumId)")
             }
-            return store
+            return AlbumDetail(bridge: bridge)
         }
 
         /// The release cursor over an album's releases, preferring one id.
@@ -41,14 +43,13 @@
             return cursor
         }
 
-        /// Builds an `AlbumExpansionContent` against seeded store data with
-        /// no-op callbacks — the shared body of `AlbumExpansionContent`'s
-        /// previews. The cursor is a `Binding` so callers can pass a constant
-        /// cursor or a live `@State`-backed one (for the release picker to
-        /// cycle).
+        /// Builds an `AlbumExpansionContent` over a preview album with no-op
+        /// callbacks — the shared body of `AlbumExpansionContent`'s previews.
+        /// The cursor is a `Binding` so callers can pass a constant cursor or a
+        /// live `@State`-backed one (for the release picker to cycle).
         @MainActor
         static func albumExpansionContent(
-            summary: AlbumSummary,
+            detail: AlbumDetail,
             selectedRelease: ReleaseDetail,
             releaseCursor: Binding<Cursor<ReleaseRef>>,
             currentTrackId: String? = nil,
@@ -56,7 +57,7 @@
             isPlaying: Bool = false,
         ) -> some View {
             AlbumExpansionContent(
-                summary: summary,
+                detail: detail,
                 selectedRelease: selectedRelease,
                 onBrowseImages: {},
                 releaseCursor: releaseCursor,
@@ -85,9 +86,8 @@
         /// The expanded album detail for one seeded fixture album, sized to its
         /// natural width over the dark background — the shared body of
         /// `AlbumExpansionContent`'s previews and the `album-detail` gallery
-        /// scene. Seeds a throwaway store from `albumDetails[albumId]`, derives
-        /// the summary and primary release, and builds the content over a
-        /// constant cursor. Fails loud when the fixture id is unseeded.
+        /// scene. Builds the content over the album's primary release and a
+        /// constant cursor.
         @MainActor
         static func albumExpansionScene(
             albumId: String,
@@ -95,29 +95,15 @@
             loadingTrackId: String? = nil,
             isPlaying: Bool = false
         ) -> some View {
-            let store = LibraryStore()
-            guard let album = albumDetails[albumId] else {
-                fatalError("no preview album for id: \(albumId)")
-            }
-            store.internAlbumDetail(album)
-            guard let summary = store.albumSummaries[albumId] else {
-                fatalError(
-                    "preview seed did not create summary for: \(albumId)"
-                )
-            }
-            guard let primary = store.releaseDetails[summary.primaryReleaseId]
-            else {
-                fatalError(
-                    "no releaseDetail seeded for id: \(summary.primaryReleaseId)"
-                )
-            }
+            let detail = albumDetail(albumId: albumId)
+            let primary = primaryRelease(of: detail)
             let cursor = releaseCursor(
-                releaseIds: summary.releaseIds,
-                preferring: summary.primaryReleaseId
+                releaseIds: detail.album.releaseIds,
+                preferring: detail.album.primaryReleaseId
             )
             return
                 albumExpansionContent(
-                    summary: summary,
+                    detail: detail,
                     selectedRelease: primary,
                     releaseCursor: .constant(cursor),
                     currentTrackId: currentTrackId,
@@ -128,7 +114,6 @@
                 .frame(width: 1100)
                 .background(Theme.background)
                 .environment(UiStore())
-                .environment(store)
                 .environment(MediaPaths.stub())
                 .environment(ImageStore.stub())
         }
@@ -139,13 +124,20 @@
         /// (track list, track row).
         @MainActor
         static func releaseDetail(albumId: String) -> ReleaseDetail {
-            let store = seededLibraryStore()
-            guard let summary = store.albumSummaries[albumId],
-                let detail = store.releaseDetails[summary.primaryReleaseId]
+            primaryRelease(of: albumDetail(albumId: albumId))
+        }
+
+        @MainActor
+        private static func primaryRelease(of detail: AlbumDetail)
+            -> ReleaseDetail
+        {
+            guard let primary = detail.release(detail.album.primaryReleaseId)
             else {
-                fatalError("no preview release detail for album \(albumId)")
+                fatalError(
+                    "no preview release for id: \(detail.album.primaryReleaseId)"
+                )
             }
-            return detail
+            return primary
         }
 
         /// One `Track` for the `TrackRowView` previews. `displayArtist` non-nil
@@ -268,10 +260,7 @@
                 totalSize: files.reduce(Int64(0)) { $0 + $1.fileSize },
                 cover: nil
             )
-            return ReleaseDetail(
-                summary: ReleaseSummary(from: bridge),
-                bridge: bridge
-            )
+            return ReleaseDetail(bridge: bridge)
         }
     }
 
@@ -279,25 +268,25 @@
         /// Injects every service the `AlbumDetailView` tree reads from the
         /// environment so its real body — and the modal sheets it can present
         /// (images, the release editor, storage) — render without a
-        /// missing-environment trap. Nine `.stub` domain services plus the
+        /// missing-environment trap. Eight `.stub` domain services, a
+        /// `Library` whose album read answers from the preview albums, the
         /// four the modals reach (`Importer`, `ImportStore`, `OutboxStore`,
-        /// `ConfigStore`), fresh `PlaybackStore`/`UiStore`, and the passed-in
-        /// seeded `LibraryStore`. Nothing about the view is reconstructed.
+        /// `ConfigStore`), and fresh `PlaybackStore`/`UiStore`. Nothing about
+        /// the view is reconstructed.
         @MainActor
-        func albumDetailPreviewEnvironment(store: LibraryStore) -> some View {
+        func albumDetailPreviewEnvironment() -> some View {
             self
                 .environment(MediaPaths.stub())
                 .environment(ImageStore.stub())
                 .environment(Playback.stub())
                 .environment(Queue.stub())
-                .environment(Library.stub())
+                .environment(PreviewData.albumDetailLibrary())
                 .environment(ReleaseEditor.stub())
                 .environment(Sync.stub())
                 .environment(Downloads.stub())
                 .environment(TrackSave.stub())
                 .environment(Outputs.stub())
                 .environment(Importer.stub())
-                .environment(store)
                 .environment(PlaybackStore())
                 .environment(UiStore())
                 .environment(ImportStore())

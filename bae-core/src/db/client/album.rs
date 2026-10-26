@@ -270,43 +270,29 @@ impl Database {
             )
     }
 
-    /// Follow the summaries of the albums `initial` names — the grid's
-    /// multi-selection. An album missing from a value is not in the library.
-    /// The selection changes by pointing the same query at new ids through its
-    /// request handle, not by opening another one.
+    /// Follow which of the albums `initial` names — the grid's
+    /// multi-selection — the library no longer shows, by id. The selection
+    /// changes by pointing the same query at new ids through its request
+    /// handle, not by opening another one.
     pub(crate) fn subscribe_album_selection(
         &self,
         initial: BTreeSet<String>,
-    ) -> coven::ReconfigurableLiveQuery<BTreeSet<String>, AlbumSelectionProjection> {
-        let select = album_summary_select();
+    ) -> coven::ReconfigurableLiveQuery<BTreeSet<String>, Vec<String>> {
         self.inner
             .handle
             .subscribe_reconfigurable(initial, move |requested, sql| {
-                let album_ids: Vec<&String> = requested.iter().collect();
-                let mut rows = Vec::with_capacity(album_ids.len());
-                for chunk in album_ids.chunks(SQL_MAX_IN_VARS) {
-                    let query = format!(
-                        "{select} FROM albums a WHERE {ALBUM_A_IS_SHOWN} AND a.id IN ({})",
-                        in_clause_placeholders(chunk.len())
-                    );
-                    rows.extend(album_rows_on(
-                        &sql,
-                        &query,
-                        rusqlite::params_from_iter(chunk.iter()),
-                    )?);
-                }
-                let shown = rows.iter().map(|row| row.id.clone()).collect::<Vec<_>>();
-                let cover_versions = album_cover_versions_on(&sql, &shown)?;
-                Ok((rows, cover_versions))
-            })
-            .process(|(rows, cover_versions)| {
-                Ok(AlbumSelectionProjection {
-                    albums: rows
-                        .into_iter()
-                        .map(AlbumSummaryRow::process)
-                        .collect::<Result<_, _>>()?,
-                    cover_versions,
-                })
+                let requested =
+                    serde_json::to_string(requested).expect("album ids serialize as JSON");
+                let query = format!(
+                    "SELECT requested.value FROM json_each(?1) requested \
+                     WHERE NOT EXISTS ( \
+                         SELECT 1 FROM albums a \
+                         WHERE a.id = requested.value AND {ALBUM_A_IS_SHOWN} \
+                     ) \
+                     ORDER BY requested.value"
+                );
+                sql.query(&query, [requested], |row| row.get::<_, String>(0))
+                    .map_err(CovenError::from)
             })
     }
 
@@ -750,12 +736,6 @@ pub struct AlbumBrowseProjection {
     pub total_count: u64,
     pub row_count: u64,
     pub sections: Vec<crate::library::LibraryBrowseSection>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct AlbumSelectionProjection {
-    pub albums: Vec<DbAlbumSummary>,
-    pub cover_versions: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

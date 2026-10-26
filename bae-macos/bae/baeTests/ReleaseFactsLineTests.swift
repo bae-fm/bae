@@ -11,11 +11,10 @@ import Testing
 @Suite("The album header's release facts")
 struct ReleaseFactsLineTests {
     private static func release(_ albumId: String) throws -> ReleaseDetail {
-        let store = LibraryStore()
-        let album = try #require(PreviewData.albumDetails[albumId])
-        store.internAlbumDetail(album)
-        let summary = try #require(store.albumSummaries[albumId])
-        return try #require(store.releaseDetails[summary.primaryReleaseId])
+        let album = AlbumDetail(
+            bridge: try #require(PreviewData.albumDetails[albumId])
+        )
+        return try #require(album.release(album.album.primaryReleaseId))
     }
 
     @Test("the labels line shows each name group once, then its numbers")

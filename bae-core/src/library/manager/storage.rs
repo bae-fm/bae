@@ -214,15 +214,25 @@ impl LibraryManager {
         self.database.subscribe_storage_browse(initial)
     }
 
-    /// Each row's representative file id, in window then row order: what the
-    /// list's pin markers are watched by.
-    pub(crate) fn storage_browse_pin_files(
+    /// Every row a Storage Manager delivery resolves: each window's, in window
+    /// then row order, then each selected release's.
+    fn storage_browse_rows(
         projection: &crate::db::StorageBrowseProjection,
-    ) -> Vec<Option<String>> {
+    ) -> impl Iterator<Item = &crate::db::DbStorageRow> {
         projection
             .windows
             .iter()
             .flat_map(|window| &window.rows)
+            .chain(&projection.selected)
+    }
+
+    /// Each row's representative file id, in the order
+    /// [`Self::storage_browse_rows`] lists them: what the list's pin markers
+    /// are watched by.
+    pub(crate) fn storage_browse_pin_files(
+        projection: &crate::db::StorageBrowseProjection,
+    ) -> Vec<Option<String>> {
+        Self::storage_browse_rows(projection)
             .map(|row| row.release.any_file_id.clone())
             .collect()
     }
@@ -231,10 +241,7 @@ impl LibraryManager {
     pub(crate) fn storage_browse_release_ids(
         projection: &crate::db::StorageBrowseProjection,
     ) -> Vec<String> {
-        projection
-            .windows
-            .iter()
-            .flat_map(|window| &window.rows)
+        Self::storage_browse_rows(projection)
             .map(|row| row.release.id.clone())
             .collect()
     }
@@ -245,11 +252,7 @@ impl LibraryManager {
         projection: &crate::db::StorageBrowseProjection,
     ) -> Vec<crate::db::RecordedOriginal> {
         crate::album_detail::recorded_originals(
-            projection
-                .windows
-                .iter()
-                .flat_map(|window| &window.rows)
-                .flat_map(|row| &row.release.unstored_audio),
+            Self::storage_browse_rows(projection).flat_map(|row| &row.release.unstored_audio),
         )
     }
 
@@ -266,35 +269,33 @@ impl LibraryManager {
         let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
         let has_cloud_home = self.has_cloud_home();
         let mut pin_states = pin_states.into_iter();
+        let mut resolve = |raw: crate::db::DbStorageRow| {
+            let transfer_action = self.current_transfer_action(&raw.release.id);
+            StorageRow::from_raw(
+                raw,
+                has_cloud_home,
+                pin_states.next().expect("one pin state per row"),
+                transfer_action,
+                originals,
+                |release_id| covers.get(release_id).cloned(),
+            )
+        };
         let windows = projection
             .windows
             .into_iter()
             .map(|window| crate::library::LibraryBrowseWindow {
                 window: window.window,
-                rows: window
-                    .rows
-                    .into_iter()
-                    .map(|raw| {
-                        let transfer_action = self.current_transfer_action(&raw.release.id);
-                        StorageRow::from_raw(
-                            raw,
-                            has_cloud_home,
-                            pin_states.next().expect("one pin state per row"),
-                            transfer_action,
-                            originals,
-                            |release_id| covers.get(release_id).cloned(),
-                        )
-                    })
-                    .collect(),
+                rows: window.rows.into_iter().map(&mut resolve).collect(),
             })
             .collect();
+        let selected = projection.selected.into_iter().map(&mut resolve).collect();
         crate::library::StorageBrowseSnapshot {
             sort: projection.sort,
             filter: projection.filter,
             windows,
             total_count: projection.total_count,
             total_size: projection.total_size,
-            selected_in_list: projection.selected_in_list,
+            selected,
         }
     }
 

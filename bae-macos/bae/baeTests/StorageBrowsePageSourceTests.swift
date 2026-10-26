@@ -66,7 +66,7 @@ private let bySize = BridgeStorageSort(
 private func snapshot(
     sort: BridgeStorageSort,
     rows: [BridgeStorageRow],
-    selectedInList: [String] = []
+    selected: [BridgeStorageRow] = []
 ) -> BridgeStorageBrowseSnapshot {
     BridgeStorageBrowseSnapshot(
         sort: sort,
@@ -79,7 +79,7 @@ private func snapshot(
         ],
         totalCount: UInt64(rows.count),
         totalSize: 7,
-        selectedInList: selectedInList
+        selected: selected
     )
 }
 
@@ -138,18 +138,18 @@ struct StorageBrowsePageSourceTests {
 
     @MainActor
     @Test(
-        "a new selection moves the one query, leaving its windows, and its answer is delivered"
+        "a new selection moves the one query, leaving its windows, and its rows are delivered"
     )
     func selectionMovesOneQuery() async throws {
         let feed = StorageFeed()
         let rows = PreviewData.storageRows
-        let answers = SelectedInListBox()
+        let answers = SelectedRowsBox()
         let source = StorageBrowsePageSource(
             query: feed.query(),
             sort: byTitle,
             filter: .all,
             selected: [],
-            onListValue: { answers.values.append($0.selectedInList) }
+            onListValue: { answers.values.append($0.selected.map(\.id)) }
         )
         let page = source.subscribe(
             offset: 0,
@@ -171,7 +171,7 @@ struct StorageBrowsePageSourceTests {
             snapshot(
                 sort: byTitle,
                 rows: [rows[1]],
-                selectedInList: [rows[0].id]
+                selected: [rows[0]]
             )
         )
         try await Wait.until { !answers.values.isEmpty }
@@ -181,8 +181,8 @@ struct StorageBrowsePageSourceTests {
 }
 
 @MainActor
-private final class SelectedInListBox {
-    var values: [Set<String>] = []
+private final class SelectedRowsBox {
+    var values: [[String]] = []
 }
 
 @MainActor

@@ -263,11 +263,7 @@ struct MainAppView: View {
     /// `ignoresSafeArea` from sliding the bar under the canvas's fake chrome.
     #Preview("Main app") {
         let uiStore = UiStore()
-        let libraryStore = LibraryStore()
-        let backing = LibraryView.previewGridBacking(
-            uiStore: uiStore,
-            libraryStore: libraryStore
-        )
+        let backing = LibraryView.previewGridBacking(uiStore: uiStore)
         let library: Library = backing.library
         let session: LibraryBrowseSession = backing.session
         let libraryProjections = LibraryProjectionStore(library: library)
@@ -275,7 +271,6 @@ struct MainAppView: View {
         return MainAppView()
             .environment(library)
             .environment(session)
-            .environment(libraryStore)
             .environment(libraryProjections)
             .environment(uiStore)
             .environment(importScene.store)
@@ -286,7 +281,7 @@ struct MainAppView: View {
             .environment(Cast.stub())
             .environment(CastStore())
             .environment(SyncActivityStore.preview())
-            .albumDetailPreviewEnvironment(store: libraryStore)
+            .albumDetailPreviewEnvironment()
             .environment(
                 \.playbackPositionPublisher,
                 Empty<PlaybackPositionEvent, Never>().eraseToAnyPublisher()

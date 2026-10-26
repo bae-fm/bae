@@ -3,7 +3,7 @@
     import SwiftUI
 
     // Preview fixtures for the library browse views: composer/artist/work
-    // summaries and details, plus seeded `LibraryStore`s and a
+    // summaries and details, a seeded composer list, and a
     // `LibraryBrowseSession` builder. Generic placeholder names only. Reuses
     // the base `PreviewData.albums` for anything that needs `BridgeAlbum`s.
     extension PreviewData {
@@ -169,16 +169,6 @@
             image: nil,
         )
 
-        static let artistSummaries: [BridgeArtistSummary] = (0..<12)
-            .map { index in
-                BridgeArtistSummary(
-                    artistId: "artist-\(index)",
-                    name: "Artist Name \(index + 1)",
-                    albumCount: Int64(1 + index % 8),
-                    image: nil,
-                )
-            }
-
         static let artistDetail = BridgeArtistDetail(
             artist: artistSummary,
             creditNames: [
@@ -205,39 +195,43 @@
             )
         }
 
-        // MARK: - Seeded stores + session
-
-        @MainActor
-        static func seededComposerStore() -> LibraryStore {
-            let store = LibraryStore()
-            for summary in composerSummaries {
-                store.internComposerSummary(summary)
-            }
-            return store
-        }
-
-        @MainActor
-        static func seededArtistStore() -> LibraryStore {
-            let store = LibraryStore()
-            for summary in artistSummaries {
-                store.internArtistSummary(summary)
-            }
-            return store
-        }
+        // MARK: - Session
 
         /// A `LibraryBrowseSession` over `Library.stub()` — the detail-pane
         /// previews drive their content through `paneDetail`/`detail` props,
         /// so the session only supplies the selection state the panes read.
         @MainActor
-        static func browseSession(
-            libraryStore: LibraryStore,
-            uiStore: UiStore,
+        static func browseSession(uiStore: UiStore) -> LibraryBrowseSession {
+            LibraryBrowseSession(library: .stub(), uiStore: uiStore)
+        }
+
+        /// A started `LibraryBrowseSession` whose album list's query counts
+        /// `albumCount` albums, for the surfaces that read the library's
+        /// album total.
+        @MainActor
+        static func countedBrowseSession(
+            albumCount: Int,
+            uiStore: UiStore
         ) -> LibraryBrowseSession {
-            LibraryBrowseSession(
-                library: .stub(),
-                libraryStore: libraryStore,
-                uiStore: uiStore,
+            let albums = (0..<albumCount)
+                .map { index in
+                    BridgeAlbum(
+                        id: "counted-\(index)",
+                        title: "Album Title \(index + 1)",
+                        year: nil,
+                        isCompilation: false,
+                        artistNames: "Artist Name",
+                        releaseIds: ["rel-counted-\(index)"],
+                        primaryReleaseId: "rel-counted-\(index)",
+                        cover: nil,
+                    )
+                }
+            let session = LibraryBrowseSession(
+                library: Library(albumBrowse: { _, _ in .fixed(albums) }),
+                uiStore: uiStore
             )
+            session.start()
+            return session
         }
 
         /// The composer-list slot backing for `BrowseList`, seeded so its rows
@@ -249,10 +243,9 @@
                 pageSource: LibraryComposerPageSource(
                     query: .fixed(composerSummaries)
                 ),
-                ingest: { _ in },
                 onError: { _ in },
             )
-            list.preloadForPreview(ids: composerSummaries.map(\.artistId))
+            list.preloadForPreview(rows: composerSummaries)
             return list
         }
     }

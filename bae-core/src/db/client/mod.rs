@@ -28,9 +28,7 @@ use std::sync::Arc;
 use tracing::warn;
 
 mod album;
-pub use album::{
-    AlbumBrowseProjection, AlbumDetailProjection, AlbumSelectionProjection, LibrarySearchProjection,
-};
+pub use album::{AlbumBrowseProjection, AlbumDetailProjection, LibrarySearchProjection};
 pub use artist::{
     ArtistBrowseProjection, ArtistDetailProjection, ComposerBrowseProjection,
     ComposerDetailProjection, WorkDetailProjection,
@@ -141,7 +139,7 @@ mod write;
 use query::*;
 use read::*;
 use release_projection::{
-    find_release_detail_context_on, storage_count_on, storage_members_on, storage_page_on,
+    find_release_detail_context_on, storage_count_on, storage_page_on, storage_selected_on,
     storage_total_size_on,
 };
 pub use release_projection::{

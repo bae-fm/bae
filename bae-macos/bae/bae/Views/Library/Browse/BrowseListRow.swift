@@ -1,26 +1,25 @@
 import BaeKit
 import SwiftUI
 
-/// One master-list row in the composer/artist browser; until its summary loads
-/// it shows a placeholder and cannot be selected.
-struct BrowseListRow<Summary: BrowseSummaryDisplay>: View {
-    @Environment(LibraryStore.self)
-    private var libraryStore
+/// One master-list row in the composer/artist browser, drawn from the row the
+/// list's query returned at its position; until that row's page loads it
+/// shows a placeholder and cannot be selected.
+struct BrowseListRow<
+    Summary: BrowseSummaryDisplay & Identifiable
+>: View where Summary.ID == String {
     @State
     private var isHovered = false
 
-    let id: String?
+    let summary: Summary?
     let isSelected: Bool
-    let summaries: KeyPath<LibraryStore, [String: Summary]>
     let select: (String) -> Void
 
     var body: some View {
-        let summary = id.flatMap { libraryStore[keyPath: summaries][$0] }
         Button(action: {
-            guard let id else {
+            guard let summary else {
                 return
             }
-            select(id)
+            select(summary.id)
         }) {
             ZStack(alignment: .leading) {
                 SummaryRowPlaceholder()
@@ -108,31 +107,26 @@ private struct SummaryRowPlaceholder: View {
 
 #if DEBUG
     #Preview("Browse List Row") {
-        let libraryStore = PreviewData.seededComposerStore()
-        return VStack(spacing: ThemeSpace.inline) {
+        VStack(spacing: ThemeSpace.inline) {
             BrowseListRow(
-                id: "composer-0",
+                summary: PreviewData.composerSummaries[0],
                 isSelected: false,
-                summaries: \.composerSummaries,
                 select: { _ in }
             )
             BrowseListRow(
-                id: "composer-1",
+                summary: PreviewData.composerSummaries[1],
                 isSelected: true,
-                summaries: \.composerSummaries,
                 select: { _ in }
             )
-            // Not in the store: renders the placeholder.
-            BrowseListRow(
-                id: "composer-unloaded",
+            // Not loaded: renders the placeholder.
+            BrowseListRow<BridgeComposerSummary>(
+                summary: nil,
                 isSelected: false,
-                summaries: \.composerSummaries,
                 select: { _ in }
             )
         }
         .padding()
         .frame(width: 320)
-        .environment(libraryStore)
         .environment(ImageStore.stub())
     }
 #endif

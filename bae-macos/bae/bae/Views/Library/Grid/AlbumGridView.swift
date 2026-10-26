@@ -9,8 +9,6 @@ private let gridSpacing = ThemeSpace.page
 struct AlbumGridView<ExpansionContent: View>: View {
     @Environment(UiStore.self)
     private var uiStore
-    @Environment(LibraryStore.self)
-    private var libraryStore
     @Environment(Library.self)
     private var library
     let list: AlbumList
@@ -22,10 +20,11 @@ struct AlbumGridView<ExpansionContent: View>: View {
     let fullWidth: Bool
     /// The multi-selection, which modifier clicks and Esc change.
     let selection: AlbumGridSelection
-    /// Bulk actions, each given the target album ids in grid order.
-    let onPlay: ([String]) -> Void
-    let onAddToQueue: ([String]) -> Void
-    let onAddNext: ([String]) -> Void
+    /// Bulk actions, each given the target albums in grid order, as the
+    /// grid's query returned them.
+    let onPlay: ([BridgeAlbum]) -> Void
+    let onAddToQueue: ([BridgeAlbum]) -> Void
+    let onAddNext: ([BridgeAlbum]) -> Void
     @ViewBuilder
     let expansionContent: (_ albumId: String) -> ExpansionContent
 
@@ -361,7 +360,8 @@ extension AlbumGridView {
             }
     }
 
-    /// The album's card, or its placeholder until its summary is interned.
+    /// The album's card, drawn from the row the grid's query returned at
+    /// `position`, or its placeholder until that row's page lands.
     @ViewBuilder
     private func albumCard(
         _ albumId: String,
@@ -369,12 +369,12 @@ extension AlbumGridView {
         sectionId: String?,
         width: CGFloat
     ) -> some View {
-        if let summary = libraryStore.albumSummaries[albumId] {
+        if let album = list.row(at: position) {
             AlbumCardView(
-                title: summary.title,
-                artistNames: summary.artistNames,
-                year: summary.year,
-                cover: summary.cover,
+                title: album.title,
+                artistNames: album.artistNames,
+                year: album.year,
+                cover: album.cover,
                 isExpanded: uiStore.selectedAlbumId == albumId
                     && (!groupByArtist || expandedSectionId == sectionId),
                 isSelected: selection.contains(albumId),
@@ -617,16 +617,31 @@ extension AlbumGridView {
 
     /// The card's menu, acting on the whole selection when the card is in it.
     private func cardMenu(for albumId: String) -> AlbumCardMenu {
-        let targets = selection.orderedTargets(
-            for: albumId,
-            position: { list.position(of: $0) }
-        )
+        let targets = targetAlbums(for: albumId)
         return AlbumCardMenu(
             targetCount: targets.count,
             onPlay: { onPlay(targets) },
             onAddToQueue: { onAddToQueue(targets) },
             onAddNext: { onAddNext(targets) }
         )
+    }
+
+    /// The albums a card's menu acts on, in grid order: the whole selection
+    /// when the card is in it, else the card's own album. Each is the row the
+    /// grid's query returned, taken when the menu is built.
+    private func targetAlbums(for albumId: String) -> [BridgeAlbum] {
+        selection.orderedTargets(
+            for: albumId,
+            position: { list.position(of: $0) }
+        )
+        .map { id in
+            // `orderedTargets` keeps only ids the list holds at a position,
+            // so each has the row it holds there.
+            guard let album = list.row(of: id) else {
+                preconditionFailure("Album \(id) has a position but no row")
+            }
+            return album
+        }
     }
 
     /// The card's drag payload: the whole selection when the card is in it.
@@ -646,18 +661,12 @@ extension AlbumGridView {
     private struct GridPreview: View {
         let width: CGFloat
         let height: CGFloat
-        /// The seeded store, which the `#Preview` root also injects so the
-        /// preview audit resolves the detail view's environment there.
-        let store: LibraryStore
         private let sortCriteria: [BridgeSortCriterion] = [
             BridgeSortCriterion(field: .dateAdded, direction: .descending)
         ]
 
         var body: some View {
-            let list = AlbumList.preview(
-                albums: PreviewData.albums,
-                store: store
-            )
+            let list = AlbumList.preview(albums: PreviewData.albums)
             AlbumGridView(
                 list: list,
                 sortCriteria: sortCriteria,
@@ -677,20 +686,17 @@ extension AlbumGridView {
     }
 
     #Preview("Grid \u{2014} Wide") {
-        let store = PreviewData.seededLibraryStore()
-        GridPreview(width: 1100, height: 700, store: store)
-            .albumDetailPreviewEnvironment(store: store)
+        GridPreview(width: 1100, height: 700)
+            .albumDetailPreviewEnvironment()
     }
 
     #Preview("Grid \u{2014} Medium") {
-        let store = PreviewData.seededLibraryStore()
-        GridPreview(width: 700, height: 600, store: store)
-            .albumDetailPreviewEnvironment(store: store)
+        GridPreview(width: 700, height: 600)
+            .albumDetailPreviewEnvironment()
     }
 
     #Preview("Grid \u{2014} Narrow") {
-        let store = PreviewData.seededLibraryStore()
-        GridPreview(width: 400, height: 600, store: store)
-            .albumDetailPreviewEnvironment(store: store)
+        GridPreview(width: 400, height: 600)
+            .albumDetailPreviewEnvironment()
     }
 #endif

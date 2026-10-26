@@ -22,11 +22,11 @@ public struct StorageBrowseView: Equatable, Sendable {
 }
 
 /// What one value of the Storage Manager list says of the whole filtered
-/// list rather than of a window: its total size, and which of the selected
-/// releases it holds.
+/// list rather than of a window: its total size, and the row of each selected
+/// release it holds, wherever it sits in the list.
 public struct StorageListValue: Sendable {
     public let totalSize: UInt64
-    public let selectedInList: Set<String>
+    public let selected: [BridgeStorageRow]
 }
 
 /// The Storage Manager list read live through one query: its sort, filter,
@@ -89,10 +89,7 @@ extension StorageBrowseQuery {
                     totalSize: UInt64(
                         rows.reduce(Int64(0)) { $0 + $1.release.totalSize }
                     ),
-                    selectedInList: rows.map(\.id)
-                        .filter(
-                            view.selected.contains
-                        )
+                    selected: rows.filter { view.selected.contains($0.id) }
                 )
             },
             cancel: { requests.close() }
@@ -107,8 +104,8 @@ extension StorageBrowseQuery {
 /// pages the previous view's list registered, and the next list registers its
 /// own. The whole set of registered windows under the current view is what
 /// the query reads, and a value read under another view is not delivered.
-/// The selection rides on the same query, which answers which selected
-/// releases the list holds, wherever they sit in it.
+/// The selection rides on the same query, which answers with the rows of the
+/// selected releases the list holds, wherever they sit in it.
 public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
     private struct WindowKey: Hashable {
         let offset: UInt64
@@ -194,8 +191,8 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
         push(failing: nil)
     }
 
-    /// Ask which of `selected` the list holds, from the next value on. The
-    /// list's pages stay as they are.
+    /// Ask for the rows of `selected` the list holds, from the next value on.
+    /// The list's pages stay as they are.
     public func setSelection(_ selected: Set<String>) {
         let changed = lock.withLock {
             guard selected != self.selected else { return false }
@@ -291,7 +288,7 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
                     onListValue(
                         StorageListValue(
                             totalSize: snapshot.totalSize,
-                            selectedInList: Set(snapshot.selectedInList)
+                            selected: snapshot.selected
                         )
                     )
                     for window in snapshot.windows {

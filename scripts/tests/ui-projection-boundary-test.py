@@ -299,7 +299,7 @@ func fixtureChildCaption(_ row: FixtureProjection) -> some View {
 }
 
 struct FixtureChildCaption: View {
-    let library: LibraryStore?
+    let library: ImportStore?
     var body: some View { Text("") }
 }
 """
@@ -314,7 +314,7 @@ struct FixtureChildCaption: View {
                     "repeated FixtureChildRow) takes OutboxStore from the environment",
                     f"{child_relative}:21: FixtureChildCaption (built under "
                     f"repeated {under} > fixtureChildCaption) reaches entity-data "
-                    "owner LibraryStore",
+                    "owner ImportStore",
                 ],
             )
 
@@ -371,7 +371,7 @@ extension View {
 }
 
 struct FixtureScopedStoreReader: View {
-    let library: LibraryStore?
+    let library: ImportStore?
     var body: some View { EmptyView() }
 }
 """
@@ -384,7 +384,7 @@ struct FixtureScopedStoreReader: View {
                 [
                     f"{other_relative}:23: FixtureScopedStoreReader (built under "
                     "repeated FixtureScopedRow > fixtureScopedChrome) reaches "
-                    "entity-data owner LibraryStore",
+                    "entity-data owner ImportStore",
                 ],
             )
 

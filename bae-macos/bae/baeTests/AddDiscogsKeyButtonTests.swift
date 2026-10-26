@@ -146,12 +146,16 @@ struct AddDiscogsKeyButtonTests {
         navigation: SettingsNavigation = SettingsNavigation(),
         openSettings: OpenSettingsWindowAction = OpenSettingsWindowAction {}
     ) -> some View {
-        let libraryStore = LibraryStore()
-        libraryStore.setAlbumTotal(0)
+        let uiStore = UiStore()
         return
             content
-            .environment(UiStore())
-            .environment(libraryStore)
+            .environment(uiStore)
+            .environment(
+                PreviewData.countedBrowseSession(
+                    albumCount: 0,
+                    uiStore: uiStore
+                )
+            )
             .environment(config)
             .environment(navigation)
             .environment(\.openSettingsWindow, openSettings)

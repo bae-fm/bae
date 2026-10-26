@@ -108,33 +108,32 @@ pub(super) fn storage_total_size_on(
     .map_err(DbError::from)
 }
 
-/// Which of `release_ids` the list `where_clause` filters to holds, wherever
-/// in it they sit. `uploading` binds the clause's placeholders, as for the
-/// list's count.
-pub(super) fn storage_members_on(
+/// The rows of the `release_ids` the list `where_clause` filters to holds,
+/// wherever in it they sit, by release id. `uploading` binds the clause's
+/// placeholders, as for the list's count.
+pub(super) fn storage_selected_on(
     sql: &SqlReadContext<'_>,
     where_clause: &str,
     uploading: &[String],
     release_ids: &BTreeSet<String>,
-) -> Result<BTreeSet<String>, DbError> {
+) -> Result<Vec<(DbReleaseSummary, AlbumSummaryRow)>, DbError> {
     let release_ids = release_ids.iter().collect::<Vec<_>>();
-    let mut members = BTreeSet::new();
+    let mut rows = Vec::new();
     for chunk in release_ids.chunks(SQL_MAX_IN_VARS) {
-        let query = format!(
-            "SELECT id FROM (SELECT r.id AS id FROM releases r {where_clause}) \
-             WHERE id IN ({})",
-            in_clause_placeholders(chunk.len())
-        );
-        members.extend(
+        let query = storage_selected_query(where_clause, chunk.len());
+        rows.extend(
             sql.query(
                 &query,
                 rusqlite::params_from_iter(uploading.iter().chain(chunk.iter().copied())),
-                |row| row.get::<_, String>(0),
+                |row| {
+                    let release = row_to_release_summary(sql, row)?;
+                    Ok((release, AlbumSummaryRow::read(row)?))
+                },
             )
             .map_err(DbError::from)?,
         );
     }
-    Ok(members)
+    Ok(rows)
 }
 
 /// What the Storage Manager list reads: the sort and filter it shows, the
@@ -151,8 +150,8 @@ pub struct StorageBrowseRequest {
 }
 
 /// Every requested window of the Storage Manager list under the sort and
-/// filter it was read for, the filtered set's count and total size, and which
-/// of the selected releases the filtered set holds.
+/// filter it was read for, the filtered set's count and total size, and the
+/// rows of the selected releases the filtered set holds, by release id.
 #[derive(Debug, Clone, PartialEq)]
 pub struct StorageBrowseProjection {
     pub sort: StorageSortCriterion,
@@ -160,7 +159,7 @@ pub struct StorageBrowseProjection {
     pub windows: Vec<crate::library::LibraryBrowseWindow<DbStorageRow>>,
     pub total_count: u64,
     pub total_size: u64,
-    pub selected_in_list: BTreeSet<String>,
+    pub selected: Vec<DbStorageRow>,
     pub cover_versions: HashMap<String, String>,
 }
 

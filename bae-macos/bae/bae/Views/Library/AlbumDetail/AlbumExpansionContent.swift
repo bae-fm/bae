@@ -4,7 +4,9 @@ import SwiftUI
 /// The expanded album-detail card; `AlbumDetailView` owns the state and
 /// supplies every callback.
 struct AlbumExpansionContent: View {
-    let summary: AlbumSummary
+    /// The album and its releases as its detail read returned them; the
+    /// release picker names each release from here.
+    let detail: AlbumDetail
     /// Fat detail for the release the user is currently viewing.
     let selectedRelease: ReleaseDetail
     let onBrowseImages: () -> Void
@@ -36,8 +38,7 @@ struct AlbumExpansionContent: View {
     /// The album cover's side.
     private static let coverSize: CGFloat = 340
 
-    @Environment(LibraryStore.self)
-    private var libraryStore
+    private var album: BridgeAlbum { detail.album }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -51,13 +52,13 @@ struct AlbumExpansionContent: View {
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onBrowseImages)
                 VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                    Text(summary.title)
+                    Text(album.title)
                         .themeText(.hero)
                         .lineLimit(1)
                     HStack(spacing: ThemeSpace.related) {
-                        Text(summary.artistNames)
+                        Text(album.artistNames)
                             .foregroundStyle(.secondary)
-                        if let year = summary.year {
+                        if let year = album.year {
                             Text(verbatim: "\u{00B7}")
                                 .foregroundStyle(.tertiary)
                             Text(String(year))
@@ -91,7 +92,7 @@ struct AlbumExpansionContent: View {
                     .padding(.top, ThemeSpace.group)
                     AlbumTrackListView(
                         release: selectedRelease,
-                        isCompilation: summary.isCompilation,
+                        isCompilation: album.isCompilation,
                         currentTrackId: currentTrackId,
                         loadingTrackId: loadingTrackId,
                         isPlaying: isPlaying,
@@ -122,7 +123,7 @@ struct AlbumExpansionContent: View {
     }
 
     private var canSetAsPrimaryRelease: Bool {
-        selectedRelease.id != summary.primaryReleaseId
+        selectedRelease.id != album.primaryReleaseId
     }
 
     private var albumMenu: some View {
@@ -194,7 +195,7 @@ struct AlbumExpansionContent: View {
             segments: releaseCursor.items.enumerated()
                 .map { index, ref in
                     NativeSegmentedControl.Segment(
-                        label: libraryStore.releaseDetails[ref.id]?.displayName
+                        label: detail.release(ref.id)?.displayName
                             ?? String(localized: "Release \(index + 1)"),
                         systemImage: releaseContainsCurrentTrack(id: ref.id)
                             ? "speaker.fill" : nil,
@@ -209,10 +210,10 @@ struct AlbumExpansionContent: View {
         guard let currentTrackId else {
             return false
         }
-        guard let detail = libraryStore.releaseDetails[id] else {
+        guard let release = detail.release(id) else {
             return false
         }
-        return detail.tracks.contains(where: { $0.id == currentTrackId })
+        return release.tracks.contains(where: { $0.id == currentTrackId })
     }
 }
 
@@ -364,24 +365,19 @@ struct ReleaseFactsLine: View {
     private struct MultiReleasePreview: View {
         @State
         private var selectedReleaseId: String = "rel-a-04-0"
-        // Seeded at construction: the body is empty until the store holds the
-        // album, and an empty body never fires `onAppear`.
-        @State
-        private var store = PreviewData.seededLibraryStore()
+        private let detail = PreviewData.albumDetail(albumId: "a-04")
 
         var body: some View {
-            let summary = store.albumSummaries["a-04"]
-            let selected = store.releaseDetails[selectedReleaseId]
-            if let summary, let selected {
+            if let selected = detail.release(selectedReleaseId) {
                 PreviewData.albumExpansionContent(
-                    summary: summary,
+                    detail: detail,
                     selectedRelease: selected,
                     // Live cursor so selecting a release in the picker cycles
                     // the preview to that release's detail.
                     releaseCursor: Binding(
                         get: {
                             PreviewData.releaseCursor(
-                                releaseIds: summary.releaseIds,
+                                releaseIds: detail.album.releaseIds,
                                 preferring: selectedReleaseId
                             )
                         },
@@ -394,7 +390,6 @@ struct ReleaseFactsLine: View {
                 .frame(width: 1100)
                 .background(Theme.background)
                 .environment(UiStore())
-                .environment(store)
                 .environment(ImageStore.stub())
             }
             else {
@@ -412,6 +407,5 @@ struct ReleaseFactsLine: View {
         MultiReleasePreview()
             .environment(ImageStore.stub())
             .environment(UiStore())
-            .environment(LibraryStore())
     }
 #endif

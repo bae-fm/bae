@@ -97,10 +97,7 @@ struct CoverSheetView: View {
                         )
                         return
                     }
-                    self.release = ReleaseDetail(
-                        summary: ReleaseSummary(from: release),
-                        bridge: release
-                    )
+                    self.release = ReleaseDetail(bridge: release)
                     releaseError = nil
                 },
                 onError: { _, error in releaseError = DisplayError(error) }

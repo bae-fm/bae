@@ -6,14 +6,12 @@ import Observation
 public final class StorageManagerStore {
     public private(set) var list: StorageList?
     public private(set) var totalSize: UInt64?
-    /// Which selected releases the list holds, by core's answer, wherever in
-    /// the list they sit — loaded or not.
-    private var selectedInList: Set<String> = []
+    /// The row of each selected release the list holds, by core's answer,
+    /// wherever in the list it sits — loaded or not — by release id.
+    private var selectedRows: [String: BridgeStorageRow] = [:]
 
     @ObservationIgnored
     private let library: Library
-    @ObservationIgnored
-    private let libraryStore: LibraryStore
     @ObservationIgnored
     private let onError: (any Error) -> Void
     @ObservationIgnored
@@ -30,11 +28,9 @@ public final class StorageManagerStore {
 
     public init(
         library: Library,
-        libraryStore: LibraryStore,
         onError: @escaping (any Error) -> Void
     ) {
         self.library = library
-        self.libraryStore = libraryStore
         self.onError = onError
     }
 
@@ -48,7 +44,7 @@ public final class StorageManagerStore {
         let currentGeneration = generation
         totalSize = nil
         // The answer belongs to the view it was read under.
-        selectedInList = []
+        selectedRows = [:]
         let pageSource: StorageBrowsePageSource
         if let existing = self.pageSource {
             existing.setView(sort: sort, filter: filter)
@@ -62,19 +58,15 @@ public final class StorageManagerStore {
                 selected: selection,
                 onListValue: { [weak self] value in
                     self?.totalSize = value.totalSize
-                    self?.selectedInList = value.selectedInList
+                    self?.selectedRows = Dictionary(
+                        uniqueKeysWithValues: value.selected.map { ($0.id, $0) }
+                    )
                 }
             )
             self.pageSource = pageSource
         }
         let newList = StorageList(
             pageSource: pageSource,
-            ingest: { [libraryStore] rows in
-                for row in rows {
-                    _ = libraryStore.internAlbumSummary(row.album)
-                    _ = libraryStore.internReleaseSummary(row.release)
-                }
-            },
             onError: onError
         )
         rebuildTask = Task { [weak self] in
@@ -86,7 +78,7 @@ public final class StorageManagerStore {
         }
     }
 
-    /// Ask the list which of `selection` it holds.
+    /// Ask the list for the rows of `selection` it holds.
     public func select(_ selection: Set<String>) {
         self.selection = selection
         pageSource?.setSelection(selection)
@@ -98,15 +90,21 @@ public final class StorageManagerStore {
     /// never in it, so nothing showing this set shows a release the list
     /// doesn't.
     public func shown(_ selection: Set<String>) -> Set<String> {
-        selection.filter { id in
-            selectedInList.contains(id) || list?.position(of: id) != nil
-        }
+        selection.filter { row(of: $0) != nil }
+    }
+
+    /// The row the list's query returned for a release the list holds: the
+    /// selection's row, wherever the release sits, or the row of a loaded
+    /// page, which answers for a release just selected before core has.
+    /// `nil` for a release the list doesn't hold.
+    public func row(of releaseId: String) -> BridgeStorageRow? {
+        selectedRows[releaseId] ?? list?.row(of: releaseId)
     }
 
     public func cancel() {
         generation += 1
         selection = []
-        selectedInList = []
+        selectedRows = [:]
         rebuildTask?.cancel()
         rebuildTask = nil
         list?.cancel()

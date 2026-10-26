@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Track: Identifiable {
+public struct Track: Identifiable, Sendable {
     public let id: String
     public var title: String
     public var durationClock: BridgeDurationClock

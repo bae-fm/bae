@@ -17,11 +17,11 @@ struct LibraryEmptyState: View {
 
     @Environment(UiStore.self)
     private var uiStore
-    @Environment(LibraryStore.self)
-    private var libraryStore
+    @Environment(LibraryBrowseSession.self)
+    private var session
 
     var body: some View {
-        switch (libraryStore.albumTotal, nothingCredited) {
+        switch (session.albumTotal, nothingCredited) {
         case (0, _), (_, nil):
             ContentUnavailableView {
                 Text(title)
@@ -57,14 +57,18 @@ struct LibraryEmptyState: View {
         albumTotal: Int,
         discogsUsable: Bool
     ) -> some View {
-        let store = LibraryStore()
-        store.setAlbumTotal(albumTotal)
+        let uiStore = UiStore()
         return LibraryEmptyState(
             title: "No composers",
             nothingCredited: "No composer credits in your library"
         )
-        .environment(UiStore())
-        .environment(store)
+        .environment(uiStore)
+        .environment(
+            PreviewData.countedBrowseSession(
+                albumCount: albumTotal,
+                uiStore: uiStore
+            )
+        )
         .environment(
             PreviewData.makeConfigStore(
                 libraryFullWidth: false,

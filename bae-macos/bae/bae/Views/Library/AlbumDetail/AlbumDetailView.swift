@@ -27,8 +27,6 @@ struct AlbumDetailView: View {
     var configStore
     @Environment(TrackSave.self)
     var export
-    @Environment(LibraryStore.self)
-    var libraryStore
     @Environment(PlaybackStore.self)
     var playbackStore
     @Environment(UiStore.self)
@@ -51,22 +49,24 @@ struct AlbumDetailView: View {
     /// The view's one album read, moved as `albumId` changes.
     @State
     private var detailReader: DetailReader<BridgeAlbumDetail>?
+    /// What the read last returned for the album shown, or why it failed.
+    @State
+    private var albumRead = LibraryProjectionState<AlbumDetail>()
 
     var body: some View {
         Group {
-            if let summary = libraryStore.albumSummaries[albumId] {
-                let selectedReleaseId = activeReleaseId(summary: summary)
+            if let detail = albumRead.value {
+                let album = detail.album
+                let selectedReleaseId = activeReleaseId(album: album)
 
-                if let selectedDetail = libraryStore.releaseDetails[
-                    selectedReleaseId
-                ] {
+                if let selectedDetail = detail.release(selectedReleaseId) {
                     AlbumExpansionContent(
-                        summary: summary,
+                        detail: detail,
                         selectedRelease: selectedDetail,
                         onBrowseImages: {
                             presentImages(release: selectedDetail)
                         },
-                        releaseCursor: releaseCursorBinding(summary: summary),
+                        releaseCursor: releaseCursorBinding(album: album),
                         currentTrackId: playbackStore.nowPlaying.track?.track
                             .trackId,
                         loadingTrackId: playbackStore.nowPlaying.loadingTrackId,
@@ -171,9 +171,30 @@ struct AlbumDetailView: View {
 
     // MARK: - Data helpers
 
+    /// Point the view's one read at `albumId`. What the read returned for
+    /// the album shown before is not this album's, so it goes.
     private func showAlbum(_ albumId: String) {
+        if detailReader?.id != albumId {
+            albumRead = LibraryProjectionState()
+        }
         let reader =
-            detailReader ?? libraryStore.albumDetailReader(library: library)
+            detailReader
+            ?? DetailReader(
+                open: library.albumDetail,
+                onValue: { _, value in
+                    albumRead = LibraryProjectionState(
+                        value: value.map(AlbumDetail.init(bridge:)),
+                        delivered: true
+                    )
+                },
+                onError: { _, error in
+                    albumRead = LibraryProjectionState(
+                        value: albumRead.value,
+                        delivered: albumRead.delivered,
+                        error: DisplayError(error)
+                    )
+                }
+            )
         detailReader = reader
         reader.show(albumId)
     }
@@ -182,7 +203,7 @@ struct AlbumDetailView: View {
     /// first value. A failed subscription can be replaced from Retry.
     @ViewBuilder
     private func detailPlaceholder(releaseId _: String?) -> some View {
-        if let error = libraryStore.albumDetailErrors[albumId] {
+        if let error = albumRead.error {
             LoadFailureView(error: error) {
                 detailReader?.retry()
             }
@@ -194,27 +215,27 @@ struct AlbumDetailView: View {
     }
 
     /// The selected release when it belongs to the album, else the primary one.
-    private func activeReleaseId(summary: AlbumSummary) -> String {
+    private func activeReleaseId(album: BridgeAlbum) -> String {
         if let id = uiStore.selectedReleaseIdByAlbum[albumId],
-            summary.releaseIds.contains(id)
+            album.releaseIds.contains(id)
         {
             return id
         }
         precondition(
-            summary.releaseIds.contains(summary.primaryReleaseId),
-            "primaryReleaseId missing from releaseIds for album \(summary.id)"
+            album.releaseIds.contains(album.primaryReleaseId),
+            "primaryReleaseId missing from releaseIds for album \(album.id)"
         )
-        return summary.primaryReleaseId
+        return album.primaryReleaseId
     }
 
-    private func releaseCursorBinding(summary: AlbumSummary) -> Binding<
+    private func releaseCursorBinding(album: BridgeAlbum) -> Binding<
         Cursor<ReleaseRef>
     > {
         Binding(
             get: {
-                let items = summary.releaseIds.map { ReleaseRef(id: $0) }
-                let preferringId = activeReleaseId(summary: summary)
-                // `activeReleaseId` names one of `summary.releaseIds`, so the
+                let items = album.releaseIds.map { ReleaseRef(id: $0) }
+                let preferringId = activeReleaseId(album: album)
+                // `activeReleaseId` names one of `album.releaseIds`, so the
                 // list is not empty.
                 guard
                     let cursor = Cursor(items: items, preferring: preferringId)
@@ -229,7 +250,7 @@ struct AlbumDetailView: View {
                 let newId = newCursor.current.id
                 // "Default" is the primary release — if the user selects that,
                 // clear the override instead of storing a redundant entry.
-                if newId == summary.primaryReleaseId {
+                if newId == album.primaryReleaseId {
                     uiStore.clearSelectedRelease(inAlbum: albumId)
                 }
                 else {
@@ -571,22 +592,18 @@ extension AlbumDetailView {
 
 #if DEBUG
     #Preview("Album Detail — Single Disc") {
-        // Bind the seeded store to a `store` local the audit can resolve, so it
-        // credits the LibraryStore that albumDetailPreviewEnvironment injects.
-        let store = PreviewData.seededLibraryStore()
         AlbumDetailView(albumId: "a-01")
             .frame(width: 1100, height: 780)
             .background(Theme.background)
-            .albumDetailPreviewEnvironment(store: store)
+            .albumDetailPreviewEnvironment()
             .preferredColorScheme(.dark)
     }
 
     #Preview("Album Detail — Multiple Releases") {
-        let store = PreviewData.seededLibraryStore()
         AlbumDetailView(albumId: "a-04")
             .frame(width: 1100, height: 780)
             .background(Theme.background)
-            .albumDetailPreviewEnvironment(store: store)
+            .albumDetailPreviewEnvironment()
             .preferredColorScheme(.dark)
     }
 #endif

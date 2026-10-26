@@ -21,10 +21,7 @@ struct ComposerDetailPaneVirtualizationTests {
             }
         )
         let uiStore = UiStore()
-        let backing = LibraryView.previewComposerBacking(
-            uiStore: uiStore,
-            libraryStore: PreviewData.seededComposerStore()
-        )
+        let backing = LibraryView.previewComposerBacking(uiStore: uiStore)
         let detail = PreviewData.largeComposerDetail(workCount: 5_000)
         let size = NSSize(width: 620, height: 720)
         try await SnapshotTestSupport.withHostedWindow(

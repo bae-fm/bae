@@ -342,17 +342,15 @@
             )
         }
 
-        static let storageAlbum = AlbumSummary(
-            from: BridgeAlbum(
-                id: "album-store-1",
-                title: "Album Title",
-                year: 2021,
-                isCompilation: false,
-                artistNames: "Artist Name",
-                releaseIds: ["rel-store-1"],
-                primaryReleaseId: "rel-store-1",
-                cover: nil
-            )
+        static let storageAlbum = BridgeAlbum(
+            id: "album-store-1",
+            title: "Album Title",
+            year: 2021,
+            isCompilation: false,
+            artistNames: "Artist Name",
+            releaseIds: ["rel-store-1"],
+            primaryReleaseId: "rel-store-1",
+            cover: nil
         )
 
         // MARK: - Whole-screen: seeded list + Library
@@ -444,28 +442,17 @@
         }
 
         /// A pre-populated `StorageList` for the footer and whole-screen
-        /// previews — interns each row into `store` and seeds the ids so the
-        /// table paints without an async round-trip.
+        /// previews — seeded with the rows so the table paints without an
+        /// async round-trip.
         @MainActor
         static func storageList(
-            rows: [BridgeStorageRow] = storageRows,
-            store: LibraryStore
+            rows: [BridgeStorageRow] = storageRows
         ) -> StorageList {
-            for row in rows {
-                _ = store.internAlbumSummary(row.album)
-                _ = store.internReleaseSummary(row.release)
-            }
             let list = StorageList(
                 pageSource: storageLibrary(rows: rows).storagePageSource,
-                ingest: { rows in
-                    for row in rows {
-                        _ = store.internAlbumSummary(row.album)
-                        _ = store.internReleaseSummary(row.release)
-                    }
-                },
                 onError: { _ in }
             )
-            list.preloadForPreview(ids: rows.map(\.id))
+            list.preloadForPreview(rows: rows)
             return list
         }
 

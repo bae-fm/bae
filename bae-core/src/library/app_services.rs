@@ -209,14 +209,15 @@ impl AppServices {
         )
     }
 
-    /// The summaries of the albums the grid has selected, as one live query
-    /// whose ids move in place as the selection changes; it starts with none.
+    /// Which of the albums the grid has selected are gone from the library,
+    /// as one live query whose ids move in place as the selection changes; it
+    /// starts with none.
     pub fn subscribe_album_selection(&self) -> crate::library::AlbumSelectionSubscription {
-        let manager = self.inner.manager.clone();
-        let query = manager.subscribe_album_selection(std::collections::BTreeSet::new());
-        crate::library::AlbumSelectionSubscription::new(query, move |projection| {
-            manager.resolve_album_selection(projection)
-        })
+        crate::library::AlbumSelectionSubscription::new(
+            self.inner
+                .manager
+                .subscribe_album_selection(std::collections::BTreeSet::new()),
+        )
     }
 
     /// One live library search, pointed at a new query in place as the
