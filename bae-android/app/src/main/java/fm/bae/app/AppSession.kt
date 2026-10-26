@@ -44,6 +44,7 @@ import uniffi.bae_bridge.BridgeUiEvent
 import uniffi.bae_bridge.CastDevicesCallback
 import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCallback
+import uniffi.bae_bridge.DownloadTransfersCallback
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.OutboxCallback
 import uniffi.bae_bridge.PlaybackPositionsCallback
@@ -234,6 +235,16 @@ class OpenLibrary internal constructor(
                     override fun onError(error: uniffi.bae_bridge.BridgeException) {
                         scope.launch(Dispatchers.Main.immediate) {
                             subscriptionFailed("downloads", error)?.let(stores.transfers.downloads::fail)
+                        }
+                    }
+                },
+            )
+        valueSubscriptions +=
+            appHandle.subscribeDownloadTransfers(
+                object : DownloadTransfersCallback {
+                    override fun onChange(change: uniffi.bae_bridge.BridgeDownloadTransferChange) {
+                        scope.launch(Dispatchers.Main.immediate) {
+                            stores.transfers.downloads.applyTransferChange(change)
                         }
                     }
                 },

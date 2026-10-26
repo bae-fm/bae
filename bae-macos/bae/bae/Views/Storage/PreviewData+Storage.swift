@@ -19,6 +19,20 @@
 
         // MARK: - Download (pin) queue
 
+        /// The bytes the preview's active download has moved.
+        static let downloadTransfers: BridgeDownloadTransferChange = .reset(
+            transfers: [
+                BridgeKeyedDownloadTransfer(
+                    releaseId: "rel-row-1",
+                    progress: BridgeDownloadTransferProgress(
+                        bytesDone: 140_000_000,
+                        bytesTotal: 367_000_000,
+                        fraction: 140.0 / 367.0
+                    )
+                )
+            ]
+        )
+
         /// One active, one queued, one failed — the three download-row states.
         static let downloadOps: [BridgeDownloadOp] = [
             BridgeDownloadOp(
@@ -30,13 +44,7 @@
                     totalSize: 367_000_000
                 ),
                 createdAt: queuedAt(minutesAgo: 1),
-                state: .active(
-                    progress: BridgeDownloadTransferProgress(
-                        bytesDone: 140_000_000,
-                        bytesTotal: 367_000_000,
-                        fraction: 140.0 / 367.0
-                    )
-                )
+                state: .active
             ),
             BridgeDownloadOp(
                 releaseId: "rel-row-2",
@@ -80,7 +88,9 @@
         static func downloadStore(
             _ snapshot: BridgeDownloadSnapshot = downloadSnapshot()
         ) -> DownloadStore {
-            DownloadStore(snapshot: snapshot)
+            let store = DownloadStore(snapshot: snapshot)
+            store.applyTransferChange(downloadTransfers)
+            return store
         }
 
         static let emptyDownloadSnapshot = BridgeDownloadSnapshot(

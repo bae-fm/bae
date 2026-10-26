@@ -66,7 +66,12 @@ struct StorageTransferControls: View {
 
             switch item {
             case .download(let operation, _):
-                DownloadRow(op: operation) {
+                DownloadRow(
+                    op: operation,
+                    progress: downloadStore.progress(
+                        forRelease: operation.releaseId
+                    )
+                ) {
                     downloads.cancelDownload(operation.releaseId)
                 }
             case .output(let operation, _):

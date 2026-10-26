@@ -16,20 +16,28 @@ impl AppServices {
     pub async fn download_snapshot(
         &self,
     ) -> Result<crate::library::DownloadSnapshot, LibraryError> {
-        self.resolve_release_queue(self.inner.manager.download_queue())
+        self.resolve_release_queue(self.inner.manager.download_queue().phases())
             .await
     }
 
     /// The download queue as the Downloads pane shows it, and each change to
-    /// it: a change to the queue, or a library change to a release it names.
+    /// it: an entry coming, going, starting or failing, the queue pausing, or
+    /// a library change to a release it names. The bytes the active entry
+    /// moves are [`watch_download_transfers`](Self::watch_download_transfers).
     pub fn subscribe_download_values(
         &self,
         runtime_handle: &tokio::runtime::Handle,
-    ) -> QueueValues<(), crate::library::DownloadTransferProgress> {
+    ) -> QueueValues<(), ()> {
         self.subscribe_release_queue(
             runtime_handle,
             self.inner.manager.subscribe_download_queue(),
+            |contents| contents.phases(),
         )
+    }
+
+    /// The bytes each downloading release has moved, sent as they move.
+    pub fn watch_download_transfers(&self) -> crate::library::DownloadTransfersWatch {
+        crate::library::DownloadTransfersWatch::of(self.inner.manager.subscribe_download_queue())
     }
 
     /// The export queue as the Exporting pane shows it now.
@@ -46,7 +54,11 @@ impl AppServices {
         &self,
         runtime_handle: &tokio::runtime::Handle,
     ) -> QueueValues<crate::library::output_snapshot::OutputRequest, u8> {
-        self.subscribe_release_queue(runtime_handle, self.inner.manager.subscribe_output_queue())
+        self.subscribe_release_queue(
+            runtime_handle,
+            self.inner.manager.subscribe_output_queue(),
+            |contents| contents.clone(),
+        )
     }
 
     async fn resolve_release_queue<Extra: Clone, Progress: Clone>(
@@ -61,26 +73,34 @@ impl AppServices {
         Ok(queue.resolve(&releases))
     }
 
-    /// One live query reads the releases the queue names. A queue change that
-    /// names the same releases — progress, a state change, pause — resolves
-    /// the read it already has; one that adds or drops a release points the
-    /// query at the new set, and the read for that set resolves the queue as
-    /// it stands then.
-    fn subscribe_release_queue<Extra, Progress>(
+    /// One live query reads the releases the queue names; `shown` is what of
+    /// the queue the value carries. A queue change that names the same
+    /// releases — progress, a state change, pause — resolves the read it
+    /// already has; one that adds or drops a release points the query at the
+    /// new set, and the read for that set resolves the queue as it stands
+    /// then. A value equal to the one sent last is not sent again: a change
+    /// `shown` leaves out moves nothing a reader holds.
+    fn subscribe_release_queue<Extra, Progress, Shown>(
         &self,
         runtime_handle: &tokio::runtime::Handle,
         mut contents: tokio::sync::watch::Receiver<ReleaseQueueContents<Extra, Progress>>,
-    ) -> QueueValues<Extra, Progress>
+        shown: impl Fn(&ReleaseQueueContents<Extra, Progress>) -> ReleaseQueueContents<Extra, Shown>
+            + Send
+            + 'static,
+    ) -> QueueValues<Extra, Shown>
     where
-        Extra: Clone + Send + Sync + 'static,
+        Extra: Clone + PartialEq + Send + Sync + 'static,
         Progress: Clone + Send + Sync + 'static,
+        Shown: Clone + PartialEq + Send + Sync + 'static,
     {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let manager = self.inner.manager.clone();
         let query_runtime = runtime_handle.clone();
         runtime_handle.spawn(async move {
-            let mut queue = contents.borrow_and_update().clone();
+            let mut queue = shown(&contents.borrow_and_update());
             let mut request = queue.release_ids();
+            // The value last sent, which an equal one is not sent over.
+            let mut sent: Option<ReleaseQueueSnapshot<Extra, Shown>> = None;
             let mut releases = reconfigurable_live_query_events(
                 &query_runtime,
                 manager.subscribe_queued_releases(request.clone()),
@@ -91,23 +111,37 @@ impl AppServices {
                 tokio::select! {
                     event = releases.recv() => {
                         let Some(result) = event else { return };
-                        let value = result.map(|read| {
-                            let value = queue.resolve(&read);
-                            current = Some(read);
-                            value
-                        });
+                        let value = match result {
+                            Ok(read) => {
+                                let value = queue.resolve(&read);
+                                current = Some(read);
+                                if sent.as_ref() == Some(&value) { continue; }
+                                sent = Some(value.clone());
+                                Ok(value)
+                            }
+                            Err(error) => {
+                                // The next value after a failure is what says
+                                // the read recovered, even when it equals the
+                                // one before.
+                                sent = None;
+                                Err(error)
+                            }
+                        };
                         if tx.send(value).is_err() { return; }
                     }
                     changed = contents.changed() => {
                         if changed.is_err() { return; }
-                        queue = contents.borrow_and_update().clone();
+                        queue = shown(&contents.borrow_and_update());
                         let next = queue.release_ids();
                         if next != request {
                             request = next;
                             current = None;
                             releases.set(request.clone());
                         } else if let Some(read) = current.as_ref() {
-                            if tx.send(Ok(queue.resolve(read))).is_err() { return; }
+                            let value = queue.resolve(read);
+                            if sent.as_ref() == Some(&value) { continue; }
+                            sent = Some(value.clone());
+                            if tx.send(Ok(value)).is_err() { return; }
                         }
                     }
                 }

@@ -1,5 +1,6 @@
 package fm.bae.app.ui
 
+import fm.bae.app.data.DownloadStore
 import fm.bae.app.playback.SidePausePrompt
 import uniffi.bae_bridge.BridgeAbandonedAttachments
 import uniffi.bae_bridge.BridgeActiveDevice
@@ -15,6 +16,7 @@ import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadProgress
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
+import uniffi.bae_bridge.BridgeDownloadTransferChange
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeFactTerm
@@ -23,6 +25,7 @@ import uniffi.bae_bridge.BridgeFormerDeviceState
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
+import uniffi.bae_bridge.BridgeKeyedDownloadTransfer
 import uniffi.bae_bridge.BridgeLabelLine
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryImageType
@@ -339,6 +342,19 @@ object PreviewData {
             state = BridgeLibraryState.Openable(storage = null),
             isActive = isActive,
         )
+
+    /** A download store holding [snapshot], with [downloadingReleaseId]'s download at [downloadTransferProgress]. */
+    fun downloadStore(
+        snapshot: BridgeDownloadSnapshot = downloadSnapshot(),
+        downloadingReleaseId: String = "rel-1",
+    ): DownloadStore =
+        DownloadStore(snapshot).apply {
+            applyTransferChange(
+                BridgeDownloadTransferChange.Reset(
+                    listOf(BridgeKeyedDownloadTransfer(downloadingReleaseId, downloadTransferProgress())),
+                ),
+            )
+        }
 
     fun downloadTransferProgress(
         bytesDone: ULong = 120_000_000uL,

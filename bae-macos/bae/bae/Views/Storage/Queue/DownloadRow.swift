@@ -5,6 +5,8 @@ import SwiftUI
 /// cancel button.
 struct DownloadRow: View {
     let op: BridgeDownloadOp
+    /// How far the active download has gone; `nil` while none has arrived.
+    let progress: BridgeDownloadTransferProgress?
     let onCancel: () -> Void
 
     var body: some View {
@@ -55,7 +57,7 @@ struct DownloadRow: View {
 
     @ViewBuilder
     private var progressView: some View {
-        if case .active(let progress) = op.state {
+        if case .active = op.state, let progress {
             DownloadTransferProgressView(progress: progress)
         }
     }
@@ -65,7 +67,14 @@ struct DownloadRow: View {
     #Preview("Download states") {
         VStack(spacing: 0) {
             ForEach(PreviewData.downloadOps, id: \.releaseId) { op in
-                DownloadRow(op: op, onCancel: {})
+                DownloadRow(
+                    op: op,
+                    progress: PreviewData.downloadStore()
+                        .progress(
+                            forRelease: op.releaseId
+                        ),
+                    onCancel: {}
+                )
                 Divider()
             }
         }

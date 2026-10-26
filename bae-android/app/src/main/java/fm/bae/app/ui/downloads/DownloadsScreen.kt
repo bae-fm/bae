@@ -24,6 +24,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -35,6 +36,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.countLabelsText
+import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.LiveValue
 import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
@@ -93,6 +95,7 @@ internal fun DownloadsScreen(
                     } else {
                         DownloadsList(
                             snapshot = current.value,
+                            downloads = session.downloadStore,
                             onCancel = { releaseId -> session.appHandle.cancelDownload(releaseId) },
                         )
                     }
@@ -137,6 +140,7 @@ private fun DownloadsTopBar(
 @Composable
 private fun DownloadsList(
     snapshot: BridgeDownloadSnapshot,
+    downloads: DownloadStore,
     onCancel: (String) -> Unit,
 ) {
     val context = LocalContext.current
@@ -153,7 +157,9 @@ private fun DownloadsList(
             }
         }
         items(snapshot.downloads, key = { it.releaseId }) { op ->
-            DownloadQueueRow(op = op, onCancel = { onCancel(op.releaseId) })
+            // Collected per item, so a release's bytes arriving recompose its row alone.
+            val progress by remember(op.releaseId, downloads) { downloads.progress(op.releaseId) }.collectAsState()
+            DownloadQueueRow(op = op, progress = progress, onCancel = { onCancel(op.releaseId) })
             HorizontalDivider()
         }
     }
@@ -162,6 +168,7 @@ private fun DownloadsList(
 @Composable
 private fun DownloadQueueRow(
     op: BridgeDownloadOp,
+    progress: BridgeDownloadTransferProgress?,
     onCancel: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -187,7 +194,7 @@ private fun DownloadQueueRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            DownloadRowState(op.state)
+            DownloadRowState(op.state, progress)
         }
         IconButton(onClick = onCancel) {
             Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.cancel))
@@ -196,14 +203,17 @@ private fun DownloadQueueRow(
 }
 
 @Composable
-private fun DownloadRowState(state: BridgeDownloadState) {
+private fun DownloadRowState(
+    state: BridgeDownloadState,
+    progress: BridgeDownloadTransferProgress?,
+) {
     when (state) {
         BridgeDownloadState.Queued -> {
             WaitingToDownloadText()
         }
 
-        is BridgeDownloadState.Active -> {
-            DownloadProgressBytes(state.progress)
+        BridgeDownloadState.Active -> {
+            progress?.let { DownloadProgressBytes(it) }
         }
 
         is BridgeDownloadState.Failed -> {
@@ -220,6 +230,16 @@ internal fun WaitingToDownloadText() {
         style = ThemeText.detail.style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+}
+
+/** [releaseId]'s download progress, collected here so its bytes arriving recompose this alone. */
+@Composable
+internal fun ActiveDownloadProgress(
+    releaseId: String,
+    downloads: DownloadStore,
+) {
+    val progress by remember(releaseId, downloads) { downloads.progress(releaseId) }.collectAsState()
+    progress?.let { DownloadProgressBytes(it) }
 }
 
 /** The active-download progress bar plus its "{done} of {total}" byte line. */
@@ -262,22 +282,21 @@ private fun BridgeDownloadTransferProgress.bytesProgressText(context: Context): 
 @Composable
 private fun DownloadsListPreview() {
     BaeTheme {
-        DownloadsList(
-            snapshot =
-                PreviewData.downloadSnapshot(
-                    downloads =
-                        listOf(
-                            PreviewData.downloadOp(
-                                releaseId = "rel-1",
-                                state = BridgeDownloadState.Active(PreviewData.downloadTransferProgress()),
-                            ),
-                            PreviewData.downloadOp(releaseId = "rel-2", state = BridgeDownloadState.Queued),
-                            PreviewData.downloadOp(
-                                releaseId = "rel-3",
-                                state = BridgeDownloadState.Failed("Network unreachable"),
-                            ),
+        val snapshot =
+            PreviewData.downloadSnapshot(
+                downloads =
+                    listOf(
+                        PreviewData.downloadOp(releaseId = "rel-1", state = BridgeDownloadState.Active),
+                        PreviewData.downloadOp(releaseId = "rel-2", state = BridgeDownloadState.Queued),
+                        PreviewData.downloadOp(
+                            releaseId = "rel-3",
+                            state = BridgeDownloadState.Failed("Network unreachable"),
                         ),
-                ),
+                    ),
+            )
+        DownloadsList(
+            snapshot = snapshot,
+            downloads = PreviewData.downloadStore(snapshot, downloadingReleaseId = "rel-1"),
             onCancel = {},
         )
     }

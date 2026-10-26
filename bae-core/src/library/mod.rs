@@ -4,6 +4,7 @@ mod bootstrap_auth;
 mod browse;
 mod detail;
 pub mod download_snapshot;
+mod download_transfers;
 mod library_status;
 mod live_read;
 mod local_lifecycle;
@@ -31,9 +32,10 @@ pub use app_services::*;
 pub use browse::*;
 pub use detail::{DetailSnapshot, DetailSubscription};
 pub use download_snapshot::{
-    DownloadOp, DownloadProgress, DownloadQueueContents, DownloadRow, DownloadSnapshot,
-    DownloadState, DownloadTransferProgress,
+    DownloadOp, DownloadPhase, DownloadProgress, DownloadQueueContents, DownloadRow,
+    DownloadSnapshot, DownloadState, DownloadTransferProgress, QueuedDownload,
 };
+pub use download_transfers::{DownloadTransferChange, DownloadTransfersWatch};
 pub use library_status::{
     LibraryStatusSnapshot, LibraryStatusSubscription, LibraryStatusSubscriptionError,
 };

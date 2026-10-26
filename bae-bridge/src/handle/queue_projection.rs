@@ -168,19 +168,54 @@ mirror_enum! {
 mirror_struct! {
     crate::types::BridgeDownloadTransferProgress = bae_core::library::DownloadTransferProgress,
     from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
     fields: { bytes_done, bytes_total, fraction },
 }
 
-mirror_enum! {
-    crate::types::BridgeDownloadState = bae_core::library::DownloadState,
-    from_core: pub(super) fn,
-    into_core: pub(crate) fn,
-    variants: {
-        Queued,
-        Active { progress: (crate::types::BridgeDownloadTransferProgress) },
-        Failed { error },
-    },
+impl crate::types::BridgeDownloadState {
+    pub(super) fn from_core(state: bae_core::library::DownloadPhase) -> Self {
+        match state {
+            bae_core::library::DownloadPhase::Queued => Self::Queued,
+            bae_core::library::DownloadPhase::Active { progress: () } => Self::Active,
+            bae_core::library::DownloadPhase::Failed { error } => Self::Failed { error },
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::library::DownloadPhase {
+        match self {
+            Self::Queued => bae_core::library::DownloadPhase::Queued,
+            Self::Active => bae_core::library::DownloadPhase::Active { progress: () },
+            Self::Failed { error } => bae_core::library::DownloadPhase::Failed { error },
+        }
+    }
+}
+
+impl crate::types::BridgeDownloadTransferChange {
+    pub(super) fn from_core(change: bae_core::library::DownloadTransferChange) -> Self {
+        use bae_core::library::DownloadTransferChange;
+        match change {
+            DownloadTransferChange::Updated {
+                release_id,
+                progress,
+            } => Self::Updated {
+                release_id,
+                progress: crate::types::BridgeDownloadTransferProgress::from_core(progress),
+            },
+            DownloadTransferChange::Removed { release_id } => Self::Removed { release_id },
+            DownloadTransferChange::Reset(transfers) => Self::Reset {
+                transfers: transfers
+                    .into_iter()
+                    .map(
+                        |(release_id, progress)| crate::types::BridgeKeyedDownloadTransfer {
+                            release_id,
+                            progress: crate::types::BridgeDownloadTransferProgress::from_core(
+                                progress,
+                            ),
+                        },
+                    )
+                    .collect(),
+            },
+        }
+    }
 }
 
 impl crate::types::BridgeDownloadOp {

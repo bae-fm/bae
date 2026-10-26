@@ -176,24 +176,43 @@ pub enum BridgeOutboxTransferChange {
     },
 }
 
-/// A queued download's state.
+/// A queued download's phase. How far an active one has gone is its
+/// release's download transfer.
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum BridgeDownloadState {
     Queued,
-    Active {
-        progress: BridgeDownloadTransferProgress,
-    },
-    Failed {
-        error: String,
-    },
+    Active,
+    Failed { error: String },
 }
 
 /// Byte progress for the active download.
-#[derive(Debug, Clone, Default, PartialEq, uniffi::Record)]
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgeDownloadTransferProgress {
     pub bytes_done: u64,
     pub bytes_total: u64,
     pub fraction: f64,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeKeyedDownloadTransfer {
+    pub release_id: String,
+    pub progress: BridgeDownloadTransferProgress,
+}
+
+/// A change to one release's download progress, or every release's.
+/// Mirrors `DownloadTransferChange`.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeDownloadTransferChange {
+    Updated {
+        release_id: String,
+        progress: BridgeDownloadTransferProgress,
+    },
+    /// The release is no longer downloading.
+    Removed { release_id: String },
+    /// Every downloading release's progress; a release not listed has none.
+    Reset {
+        transfers: Vec<BridgeKeyedDownloadTransfer>,
+    },
 }
 
 /// What the library holds now for a queued release: what its queue row
@@ -226,7 +245,7 @@ pub struct BridgeDownloadOp {
 }
 
 impl BridgeDownloadOp {
-    fn into_core(self) -> bae_core::library::DownloadOp {
+    fn into_core(self) -> bae_core::library::QueuedDownload {
         let Self {
             release_id,
             // The download status reads the queue entry, not the library's release.
@@ -250,9 +269,8 @@ impl BridgeDownloadOp {
 pub enum BridgeReleaseDownloadStatus {
     Downloaded,
     Queued,
-    Downloading {
-        progress: BridgeDownloadTransferProgress,
-    },
+    /// Bytes are arriving; how many is the release's download transfer.
+    Downloading,
     Failed {
         error: String,
     },
@@ -265,7 +283,7 @@ mirror_enum! {
     variants: {
         Downloaded,
         Queued,
-        Downloading { progress: (BridgeDownloadTransferProgress) },
+        Downloading,
         Failed { error },
         Available,
     },

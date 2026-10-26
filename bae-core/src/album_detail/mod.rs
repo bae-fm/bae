@@ -177,9 +177,8 @@ pub enum ReleaseDownloadStatus {
     /// Kept offline, and no download in flight.
     Downloaded,
     Queued,
-    Downloading {
-        progress: crate::library::DownloadTransferProgress,
-    },
+    /// Bytes are arriving; how many is the release's download transfer.
+    Downloading,
     Failed {
         error: String,
     },
@@ -205,18 +204,16 @@ pub enum ReleaseDownloadStatus {
 pub fn release_download_status(
     pinned: bool,
     storage_actions: &[ReleaseStorageAction],
-    downloads: &[crate::library::DownloadOp],
+    downloads: &[crate::library::QueuedDownload],
     release_id: &str,
 ) -> Option<ReleaseDownloadStatus> {
-    use crate::library::DownloadState;
+    use crate::library::DownloadPhase;
 
     let queued = downloads.iter().find(|op| op.release_id == release_id);
     match queued.map(|op| &op.state) {
-        Some(DownloadState::Queued) => Some(ReleaseDownloadStatus::Queued),
-        Some(DownloadState::Active { progress }) => Some(ReleaseDownloadStatus::Downloading {
-            progress: progress.clone(),
-        }),
-        Some(DownloadState::Failed { error }) => Some(ReleaseDownloadStatus::Failed {
+        Some(DownloadPhase::Queued) => Some(ReleaseDownloadStatus::Queued),
+        Some(DownloadPhase::Active { progress: () }) => Some(ReleaseDownloadStatus::Downloading),
+        Some(DownloadPhase::Failed { error }) => Some(ReleaseDownloadStatus::Failed {
             error: error.clone(),
         }),
         None if pinned => Some(ReleaseDownloadStatus::Downloaded),
@@ -453,21 +450,13 @@ mod tests {
 
     fn download(
         release_id: &str,
-        state: crate::library::DownloadState,
-    ) -> crate::library::DownloadOp {
-        crate::library::DownloadOp {
+        state: crate::library::DownloadPhase,
+    ) -> crate::library::QueuedDownload {
+        crate::library::QueuedDownload {
             release_id: release_id.to_string(),
             created_at: 0,
             payload: (),
             state,
-        }
-    }
-
-    fn progress() -> crate::library::DownloadTransferProgress {
-        crate::library::DownloadTransferProgress {
-            bytes_done: 1,
-            bytes_total: 2,
-            fraction: 0.5,
         }
     }
 
@@ -476,19 +465,15 @@ mod tests {
     /// in the queue it decides the control — even once `pinned` has flipped.
     #[test]
     fn a_queue_entry_outranks_pinned() {
-        use crate::library::DownloadState;
+        use crate::library::DownloadPhase;
         let cases = [
-            (DownloadState::Queued, ReleaseDownloadStatus::Queued),
+            (DownloadPhase::Queued, ReleaseDownloadStatus::Queued),
             (
-                DownloadState::Active {
-                    progress: progress(),
-                },
-                ReleaseDownloadStatus::Downloading {
-                    progress: progress(),
-                },
+                DownloadPhase::Active { progress: () },
+                ReleaseDownloadStatus::Downloading,
             ),
             (
-                DownloadState::Failed {
+                DownloadPhase::Failed {
                     error: "read failed".to_string(),
                 },
                 ReleaseDownloadStatus::Failed {
@@ -571,7 +556,7 @@ mod tests {
                 &[Pin, DetachAudio],
                 &[download(
                     "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
-                    crate::library::DownloadState::Queued
+                    crate::library::DownloadPhase::Queued
                 )],
                 "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
             ),

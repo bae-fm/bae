@@ -69,6 +69,24 @@ impl AppHandle {
             },
         )
     }
+
+    /// The bytes each downloading release has moved, now and then as they
+    /// move.
+    pub fn subscribe_download_transfers(
+        &self,
+        callback: Box<dyn crate::types::DownloadTransfersCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        self.live_subscription(move |services, _| async move {
+            let mut transfers = services.watch_download_transfers();
+            while let Some(changes) = transfers.next().await {
+                for change in changes {
+                    callback.on_change(crate::types::BridgeDownloadTransferChange::from_core(
+                        change,
+                    ));
+                }
+            }
+        })
+    }
 }
 
 forward! { async this => {

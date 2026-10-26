@@ -30,7 +30,7 @@ pub enum ReleaseQueueState<Progress> {
     Failed { error: String },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseQueueOp<Extra, Progress> {
     pub release_id: String,
     pub created_at: i64,
@@ -110,6 +110,33 @@ impl<Extra: Clone, Progress: Clone> ReleaseQueueContents<Extra, Progress> {
         self.ops.iter().map(|op| op.release_id.clone()).collect()
     }
 
+    /// The same entries with the active one's progress left out: what the
+    /// queue's membership and phases are, for a reader that takes progress
+    /// apart from them.
+    pub fn phases(&self) -> ReleaseQueueContents<Extra, ()> {
+        ReleaseQueueContents {
+            ops: self
+                .ops
+                .iter()
+                .map(|op| ReleaseQueueOp {
+                    release_id: op.release_id.clone(),
+                    created_at: op.created_at,
+                    payload: op.payload.clone(),
+                    state: match &op.state {
+                        ReleaseQueueState::Queued => ReleaseQueueState::Queued,
+                        ReleaseQueueState::Active { .. } => {
+                            ReleaseQueueState::Active { progress: () }
+                        }
+                        ReleaseQueueState::Failed { error } => ReleaseQueueState::Failed {
+                            error: error.clone(),
+                        },
+                    },
+                })
+                .collect(),
+            paused: self.paused,
+        }
+    }
+
     /// How many entries are in each state.
     pub fn total(&self) -> ReleaseQueueProgress {
         let mut total = ReleaseQueueProgress::default();
@@ -148,7 +175,7 @@ impl<Extra: Clone, Progress: Clone> ReleaseQueueContents<Extra, Progress> {
 
 /// One queue entry as the pane shows it: the entry, and its release as the
 /// library holds it now — `None` once the library no longer has it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseQueueRow<Extra, Progress> {
     pub op: ReleaseQueueOp<Extra, Progress>,
     pub release: Option<QueuedRelease>,
@@ -156,7 +183,7 @@ pub struct ReleaseQueueRow<Extra, Progress> {
 
 /// The queue as the pane shows it: every entry resolved against the library,
 /// the per-state counts, and whether the queue is paused.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseQueueSnapshot<Extra, Progress> {
     pub rows: Vec<ReleaseQueueRow<Extra, Progress>>,
     pub total: ReleaseQueueProgress,

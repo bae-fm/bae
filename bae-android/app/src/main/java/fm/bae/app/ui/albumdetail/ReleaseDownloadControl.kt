@@ -36,6 +36,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.data.DownloadStore
 import fm.bae.app.data.LiveValue
 import fm.bae.app.displayError
 import fm.bae.app.ui.BaeTheme
@@ -45,7 +46,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
-import fm.bae.app.ui.downloads.DownloadProgressBytes
+import fm.bae.app.ui.downloads.ActiveDownloadProgress
 import fm.bae.app.ui.downloads.WaitingToDownloadText
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
@@ -114,6 +115,8 @@ private fun PlayableReleaseDownloadControl(
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.compact)) {
         DownloadControlBody(
             status = status,
+            releaseId = release.id,
+            downloads = session.downloadStore,
             unpinning = unpinning,
             // Progress arrives through the download snapshot; core skips ids already queued or pinned.
             onDownload = {
@@ -160,6 +163,8 @@ private suspend fun runUnpin(
 @Composable
 private fun DownloadControlBody(
     status: BridgeReleaseDownloadStatus,
+    releaseId: String,
+    downloads: DownloadStore,
     unpinning: Boolean,
     onDownload: () -> Unit,
     onCancel: () -> Unit,
@@ -181,8 +186,8 @@ private fun DownloadControlBody(
             }
         }
 
-        is BridgeReleaseDownloadStatus.Downloading -> {
-            DownloadProgressBytes(status.progress)
+        BridgeReleaseDownloadStatus.Downloading -> {
+            ActiveDownloadProgress(releaseId, downloads)
             DownloadActionButton(stringResource(R.string.cancel), Icons.Filled.Close, onCancel)
         }
 
@@ -256,6 +261,8 @@ private fun DownloadActionButton(
 private fun DownloadControlBodyStub(status: BridgeReleaseDownloadStatus) {
     DownloadControlBody(
         status = status,
+        releaseId = "rel-1",
+        downloads = PreviewData.downloadStore(),
         unpinning = false,
         onDownload = {},
         onCancel = {},
@@ -276,7 +283,7 @@ private fun DownloadControlAvailablePreview() {
 @Composable
 private fun DownloadControlDownloadingPreview() {
     BaeTheme {
-        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Downloading(PreviewData.downloadTransferProgress()))
+        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Downloading)
     }
 }
 

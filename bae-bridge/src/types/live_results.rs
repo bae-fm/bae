@@ -62,6 +62,9 @@ callbacks! {
     PlaybackValuesCallback: on_value(value: BridgePlaybackValues) + on_error;
     PlaybackPositionsCallback: on_value(value: BridgePlaybackPositions);
     DownloadCallback: on_value(value: BridgeDownloadSnapshot) + on_error;
+    /// Every downloading release's progress as a `Reset` when the
+    /// subscription opens, then each one that moved or ended.
+    DownloadTransfersCallback: on_change(change: super::BridgeDownloadTransferChange);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     OutputCallback: on_value(value: BridgeOutputSnapshot) + on_error;
 

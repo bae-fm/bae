@@ -46,5 +46,13 @@ pub type DownloadOp = ReleaseQueueOp<(), DownloadTransferProgress>;
 pub type DownloadProgress = ReleaseQueueProgress;
 /// The download queue as it stands, before its releases are read.
 pub type DownloadQueueContents = ReleaseQueueContents<(), DownloadTransferProgress>;
-pub type DownloadRow = ReleaseQueueRow<(), DownloadTransferProgress>;
-pub type DownloadSnapshot = ReleaseQueueSnapshot<(), DownloadTransferProgress>;
+/// A download as the Downloads pane lists it: its phase without the active
+/// one's bytes, which travel apart, keyed by release
+/// ([`DownloadTransfersWatch`](super::DownloadTransfersWatch)).
+pub type QueuedDownload = ReleaseQueueOp<(), ()>;
+pub type DownloadPhase = ReleaseQueueState<()>;
+pub type DownloadRow = ReleaseQueueRow<(), ()>;
+/// The download queue as the Downloads pane shows it: its entries and their
+/// phases, each beside its release. It changes as entries come, go, start or
+/// fail, not as bytes arrive.
+pub type DownloadSnapshot = ReleaseQueueSnapshot<(), ()>;

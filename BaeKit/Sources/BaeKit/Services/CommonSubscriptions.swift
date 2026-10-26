@@ -169,6 +169,25 @@ private final class DownloadValueSink: DownloadCallback, @unchecked Sendable {
     }
 }
 
+private final class DownloadTransfersSink: DownloadTransfersCallback,
+    @unchecked Sendable
+{
+    private let apply:
+        @MainActor @Sendable (BridgeDownloadTransferChange) -> Void
+
+    init(
+        apply:
+            @escaping @MainActor @Sendable (BridgeDownloadTransferChange) ->
+            Void
+    ) {
+        self.apply = apply
+    }
+
+    func onChange(change: BridgeDownloadTransferChange) {
+        Task { @MainActor in apply(change) }
+    }
+}
+
 private final class CastDevicesValueSink: CastDevicesCallback,
     @unchecked Sendable
 {
@@ -261,6 +280,11 @@ final class CommonSubscriptions {
                         },
                         fail: onError
                     )
+                ),
+                appHandle.subscribeDownloadTransfers(
+                    callback: DownloadTransfersSink { [downloadStore] change in
+                        downloadStore.applyTransferChange(change)
+                    }
                 ),
                 appHandle.subscribeCastDevices(
                     callback: CastDevicesValueSink { [castStore] devices in

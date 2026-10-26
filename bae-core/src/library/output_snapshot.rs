@@ -16,7 +16,7 @@ pub type OutputQueueContents = ReleaseQueueContents<OutputRequest, u8>;
 pub type OutputRow = ReleaseQueueRow<OutputRequest, u8>;
 pub type OutputSnapshot = ReleaseQueueSnapshot<OutputRequest, u8>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct OutputRequest {
     pub target_dir: PathBuf,
     pub kind: OutputKind,
@@ -27,7 +27,7 @@ pub struct OutputRequest {
 /// through the captured preset. The preset is captured whole at enqueue time so
 /// a config edit or delete after enqueue can't change or break a queued save —
 /// the worker never re-reads config.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum OutputKind {
     Export,
     Save { preset: crate::config::SavePreset },
