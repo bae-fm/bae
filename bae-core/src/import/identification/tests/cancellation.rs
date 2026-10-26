@@ -401,17 +401,11 @@ async fn switching_automatic_identification_off_lets_a_settling_write_land() {
         fixture.identified_for(&dir).await.is_some(),
         "the answer being written when automatic identification went off still landed"
     );
-    let runtime = fixture.import.candidate_runtime(&key);
+    let runtime = fixture.import.candidate_runtime(&key).await.unwrap();
     assert!(
         runtime
             .as_ref()
-            .is_none_or(|runtime| runtime.saving.is_none()),
-        "nothing is left saying the commit is still pending: {runtime:?}"
-    );
-    assert!(
-        runtime
-            .as_ref()
-            .is_none_or(|runtime| runtime.save_failed.is_none()),
-        "and the write that landed reports no failure: {runtime:?}"
+            .is_none_or(|runtime| runtime.identification.is_none()),
+        "nothing is left saying the commit is still pending, nor any failure: {runtime:?}"
     );
 }

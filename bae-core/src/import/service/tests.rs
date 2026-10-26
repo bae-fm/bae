@@ -38,6 +38,9 @@ async fn setup_import_service() -> TestService {
     let config = Config::with_defaults(database.store_id(), temp_dir.path().join("preferences"));
 
     let preparations = crate::import::CandidatePreparations::new(database.clone());
+    // The runtime writes its standings into the library the import commits
+    // into.
+    let runtime = crate::import::CandidateRuntime::new(database.clone());
     let manager = LibraryManager::new(
         database,
         crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
@@ -50,7 +53,6 @@ async fn setup_import_service() -> TestService {
         crate::providers::Providers::offline(),
     );
     let (_commands_tx, commands_rx) = tokio::sync::mpsc::unbounded_channel();
-    let runtime = crate::import::CandidateRuntime::default();
     let event_tx = crate::import::ImportEventBus::new(runtime.clone());
     TestService {
         service: ImportService {
@@ -64,6 +66,19 @@ async fn setup_import_service() -> TestService {
         },
         preparations,
         temp: temp_dir,
+    }
+}
+
+impl ImportService {
+    /// Queue `import_id` of the candidate at `key` as asking for an import
+    /// does — its claim on the candidate and its cancel — for a test that runs
+    /// the worker's steps itself.
+    async fn queue_import_for_test(&self, key: &str, import_id: &str) {
+        self.runtime
+            .claim_for_import(key, import_id, false)
+            .await
+            .expect("a test queues an import of a candidate no import owns");
+        self.import_cancels.register(key, import_id);
     }
 }
 
@@ -615,7 +630,7 @@ impl TestService {
         TestScan,
         tokio::sync::mpsc::UnboundedReceiver<crate::import::handle::ImportEvent>,
     ) {
-        let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::default());
+        let event_tx = crate::import::ImportEventBus::new(self.service.runtime.clone());
         let events = event_tx.every_event();
         let (fs_tx, fs_rx) = tokio::sync::mpsc::unbounded_channel();
         let scan = TestScan {

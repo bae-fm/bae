@@ -28,15 +28,24 @@ impl ImportService {
         percent: Option<u8>,
         phase: ImportPhase,
     ) {
-        event_tx.send(crate::import::handle::ImportEvent::ImportProgress {
-                candidate_key: run.candidate_key.to_string(),
-                progress: ImportProgress::Progress {
-                    id: id.to_string(),
-                    percent,
-                    phase,
-                    import_id: run.import_id.to_string(),
-                },
+        event_tx.send(Self::phase_progress(run, id, percent, phase));
+    }
+
+    /// The event that says the import reached `phase`, `percent` through it.
+    pub(super) fn phase_progress(
+        run: super::ImportRun<'_>,
+        id: &str,
+        percent: Option<u8>,
+        phase: ImportPhase,
+    ) -> crate::import::handle::ImportEvent {
+        crate::import::handle::ImportEvent::ImportProgress {
+            candidate_key: run.candidate_key.to_string(),
+            progress: ImportProgress::Progress {
+                id: id.to_string(),
+                percent,
+                phase,
+                import_id: run.import_id.to_string(),
             },
-        );
+        }
     }
 }

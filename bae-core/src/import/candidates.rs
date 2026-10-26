@@ -8,10 +8,10 @@
 //! settled on, the release an import wrote and the error one failed with — is
 //! a fact in a table, read by [`crate::import::list`]. What is left
 //! is what is happening *right now*: a run in flight and an import in
-//! progress. That is [`CandidateRuntimeSnapshot`], held by
-//! [`super::candidate_runtime::CandidateRuntime`] and delivered per key; where
-//! it leaves each key standing is written to the standings table the list
-//! reads beside the rows.
+//! progress. Where each stands is the standings table's, which the list reads
+//! beside the rows; [`CandidateRuntimeSnapshot`] is that standing with what
+//! [`super::candidate_runtime::CandidateRuntime`] holds beside it — the state
+//! a run published, how far an import has got — delivered per key.
 
 use super::folder_scanner::{
     CategorizedFiles, FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey,
@@ -22,7 +22,7 @@ use crate::identify::IdentifyState;
 
 /// Where a stored candidate stands in the queue, read once from the three
 /// places that each hold one fact about it: the skip table, the releases this
-/// device imported, and the runtime's import claims. Every gate that decides what
+/// device imported, and the standings table's import claims. Every gate that decides what
 /// may be done to a candidate reads this rather than composing the three
 /// on its own.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -121,24 +121,17 @@ impl SaveFailure {
     }
 }
 
-/// What is in flight for one key, one fact per field. An entry exists only
-/// while at least one of them is `Some`; all of them `None` is the absence of
-/// an entry, not a value. No field is inferred from another or from the order
-/// events arrived in — each has exactly one writer.
+/// What is in flight for one key. An entry exists only while one of its
+/// parts is `Some`; all of them `None` is the absence of an entry, not a
+/// value.
+///
+/// Where a folder candidate's identification and import stand is read from
+/// the standings table, the only place it is held; the state a run published
+/// and how far an import has got come from the candidate runtime beside it,
+/// and so does the whole of a library release's re-identify run.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CandidateRuntimeSnapshot {
-    /// Identification is planned for this key and has not started. `None` once
-    /// its run starts, and for a key nobody queued.
-    pub queued: Option<Admission>,
-    /// The latest state a run in flight published. Never terminal — a run's
-    /// terminal state is its answer, and answering ends it.
-    pub running: Option<IdentifyState>,
-    /// The answer a run reached, held until whoever asked for it says what
-    /// became of it.
-    pub saving: Option<SavingAnswer>,
-    /// Why the last write of a terminal state did not land. Cleared by the
-    /// next run of this key.
-    pub save_failed: Option<SaveFailure>,
+    pub identification: Option<IdentificationRuntime>,
     /// The running import: claimed, preparing, or partway through a phase.
     pub import: Option<ImportInFlight>,
     /// The typed search a person submitted for this candidate, as its sources
@@ -154,15 +147,38 @@ pub struct CandidateRuntimeSnapshot {
 }
 
 impl CandidateRuntimeSnapshot {
-    /// What identification is doing for the key, as its pane shows it (see
-    /// [`IdentificationInFlight::of`]).
-    pub fn identification(&self) -> Option<IdentificationInFlight> {
-        IdentificationInFlight::of(
-            self.queued,
-            self.running.clone(),
-            self.saving.as_ref().map(|answer| answer.state.clone()),
-        )
+    /// What identification is doing for the key, as its pane shows it: the
+    /// run in flight or the answer being written, else the wait for a run.
+    /// `None` when nothing is identifying the key, and its pane shows the
+    /// stored verdict; a write that failed reaches the pane through the row.
+    pub fn identification_in_flight(&self) -> Option<IdentificationInFlight> {
+        match self.identification.as_ref()? {
+            IdentificationRuntime::Queued(_) => Some(IdentificationInFlight::Queued),
+            IdentificationRuntime::Running(state) => {
+                Some(IdentificationInFlight::Run(state.clone()))
+            }
+            IdentificationRuntime::Saving(answer) => {
+                Some(IdentificationInFlight::Run(answer.state.clone()))
+            }
+            IdentificationRuntime::SaveFailed(_) => None,
+        }
     }
+}
+
+/// Where one key's identification stands right now.
+#[derive(Debug, Clone, PartialEq)]
+pub enum IdentificationRuntime {
+    /// Planned for this key and not started.
+    Queued(Admission),
+    /// The latest state the run in flight published — its answer, once it
+    /// reaches one, until the standings table says the answer is being
+    /// written.
+    Running(IdentifyState),
+    /// The answer a run reached, while it is being written.
+    Saving(SavingAnswer),
+    /// Why the last write of an answer did not land. Cleared by the next run
+    /// of this key.
+    SaveFailed(SaveFailure),
 }
 
 /// A run's answer while it is being written, and what was asked of it.
@@ -187,20 +203,22 @@ pub enum IdentificationInFlight {
     Run(IdentifyState),
 }
 
-impl IdentificationInFlight {
-    /// A key's runtime fields read as one: the run in flight, else the answer
-    /// being written, else the wait for a run — the order a row reads them
-    /// in. `None` when nothing is identifying the key, and its pane shows the
-    /// stored verdict.
-    pub fn of(
-        queued: Option<Admission>,
-        running: Option<IdentifyState>,
-        saving: Option<IdentifyState>,
-    ) -> Option<Self> {
-        running
-            .or(saving)
-            .map(Self::Run)
-            .or_else(|| queued.map(|_| Self::Queued))
+/// The files an identification is of: a candidate's content hash and its
+/// file-decision revision. Candidates sharing them are one identification
+/// job, since the answer is stored under them, and a standing recorded for
+/// other files than a candidate has now is not that candidate's.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CandidateFiles {
+    pub content_hash: String,
+    pub file_edit_revision: u64,
+}
+
+impl CandidateFiles {
+    pub fn of(candidate: &FolderCandidate) -> Self {
+        Self {
+            content_hash: candidate.files.content_hash(),
+            file_edit_revision: candidate.file_edit_revision,
+        }
     }
 }
 

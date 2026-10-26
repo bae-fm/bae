@@ -1407,24 +1407,43 @@ CREATE TABLE IF NOT EXISTS import_candidate_session (
 ) STRICT;
 
 -- Where each candidate something is running for stands right now, keyed as
--- the candidate runtime keys it: its identification queued, running, having
--- its answer written (the release it picked unattended read first, and
--- whether an Import was asked of that answer), or its answer's write failed;
--- its import queued, running or writing its release. A row exists only while
--- one of the two is set. No run or import outlives the process, so the table
--- is emptied as the library opens. How far a run or an import has got is not
--- here: it moves too often to be written.
+-- the import list keys it. This table is the only place that holds it: every
+-- change is a write its owner awaits, and the guards that decide what may
+-- happen next read it in the write they guard.
+--
+-- Its identification is of the files it names (`content_hash`,
+-- `file_edit_revision`, as `scan_candidate` holds them), and reads as the
+-- candidate's only while those are its files: queued by an admission,
+-- running as `identify_run`, having that run's answer written (the release
+-- it picked unattended read first, and whether an Import was asked of that
+-- answer), or the answer's write failed. Its import is the one `import_id`
+-- names, queued, running or writing its release; a second import is refused
+-- while one stands. A row exists only while one of the two is set. No run or
+-- import outlives the process, so the table is emptied as the library opens.
+-- How far a run or an import has got is not here: it moves too often to be
+-- written.
 CREATE TABLE IF NOT EXISTS import_candidate_standing (
     candidate_key      TEXT PRIMARY KEY,
     identification     TEXT CHECK (identification IN (
         'queued', 'running', 'finalizing', 'reading_pick', 'not_written', 'inapplicable')),
+    content_hash       TEXT,
+    file_edit_revision INTEGER CHECK (file_edit_revision >= 0),
+    admission          TEXT CHECK (admission IN ('automatic', 'requested')),
+    identify_run       INTEGER CHECK (identify_run >= 0),
     import_asked       INTEGER CHECK (import_asked IN (0, 1)),
     save_failure_error TEXT,
     import             TEXT CHECK (import IN ('queued', 'running', 'writing')),
+    import_id          TEXT,
     CHECK (identification IS NOT NULL OR import IS NOT NULL),
+    CHECK ((identification IS NOT NULL) = (content_hash IS NOT NULL)),
+    CHECK ((identification IS NOT NULL) = (file_edit_revision IS NOT NULL)),
+    CHECK ((identification IS 'queued') = (admission IS NOT NULL)),
+    CHECK ((identification IN ('running', 'finalizing', 'reading_pick') IS 1)
+        = (identify_run IS NOT NULL)),
     CHECK ((identification IS 'reading_pick') = (import_asked IS NOT NULL)),
     CHECK ((identification IN ('not_written', 'inapplicable') IS 1)
-        = (save_failure_error IS NOT NULL))
+        = (save_failure_error IS NOT NULL)),
+    CHECK ((import IS NOT NULL) = (import_id IS NOT NULL))
 ) STRICT;
 
 -- Why a candidate's import failed.

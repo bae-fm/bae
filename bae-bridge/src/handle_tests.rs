@@ -749,10 +749,7 @@ mod candidate_runtime {
         let key = "/watch/Album Title".to_string();
         let running = crate::types::BridgeCandidateRuntimeSnapshot::from_core(
             bae_core::import::CandidateRuntimeSnapshot {
-                queued: None,
-                running: None,
-                saving: None,
-                save_failed: None,
+                identification: None,
                 import: Some(bae_core::import::ImportInFlight {
                     progress_percent: None,
                     step: bae_core::import::ImportStep::Running(
@@ -824,6 +821,13 @@ mod candidate_runtime {
             "a late subscriber is replayed the running import"
         );
 
+        // The import fails as the worker fails it: its failure ends the
+        // claim, then announces it.
+        handle.runtime.block_on(
+            handle
+                .services
+                .end_candidate_import_for_test(&key, "import-1"),
+        );
         handle
             .services
             .import_emit_event_for_test(bae_core::import::ImportEvent::ImportProgress {

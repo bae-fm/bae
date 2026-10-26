@@ -13,8 +13,8 @@ impl AppServices {
     delegate_async!(import, import_combine_folder => combine_folder(folder: crate::import::FolderReleaseDecisionKey) -> Result<String, crate::import::ImportError>);
     delegate_async!(import, import_separate_candidate => separate_candidate(key: &str) -> Result<Vec<String>, crate::import::ImportError>);
     delegate_async!(import, import_add_watched_folder => add_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
-    delegate_sync!(import, import_cancel => cancel_import(candidate_key: &str) -> Result<(), crate::import::ImportError>);
-    delegate_sync!(import, import_cancel_all => cancel_all_imports() -> ());
+    delegate_async!(import, import_cancel => cancel_import(candidate_key: &str) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_cancel_all => cancel_all_imports() -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_remove_watched_folder => remove_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
     delegate_sync!(import, import_scan_watched_folders => scan_watched_folders() -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_watched_folders => watched_folders() -> Result<Vec<crate::import::WatchedFolder>, crate::import::ImportError>);
@@ -172,17 +172,34 @@ impl AppServices {
         self.inner.identification.cancel_all().await
     }
 
-    /// Every key with something in flight right now.
-    pub fn candidate_runtimes(
+    /// Every key with something in flight right now, read from the
+    /// standings table and the runtime.
+    pub async fn candidate_runtimes(
         &self,
-    ) -> std::collections::HashMap<String, crate::import::CandidateRuntimeSnapshot> {
-        self.inner.import.candidate_runtimes()
+    ) -> Result<
+        std::collections::HashMap<String, crate::import::CandidateRuntimeSnapshot>,
+        crate::library::LibraryError,
+    > {
+        self.inner.import.candidate_runtimes().await
     }
 
-    /// What is in flight for one key — the read a view does once when it
-    /// appears, after it has subscribed to the changes.
-    pub fn candidate_runtime(&self, key: &str) -> Option<crate::import::CandidateRuntimeSnapshot> {
-        self.inner.import.candidate_runtime(key)
+    /// What is in flight for one key right now, read from the standings table
+    /// and the runtime.
+    pub async fn candidate_runtime(
+        &self,
+        key: &str,
+    ) -> Result<Option<crate::import::CandidateRuntimeSnapshot>, crate::library::LibraryError> {
+        self.inner.import.candidate_runtime(key).await
+    }
+
+    /// What is in flight for one key as the runtime stream last read it — the
+    /// read a view does once when it appears, after it has subscribed to the
+    /// stream ([`Self::watch_candidate_runtimes`]), so the two agree.
+    pub fn latest_candidate_runtime(
+        &self,
+        key: &str,
+    ) -> Option<crate::import::CandidateRuntimeSnapshot> {
+        self.inner.import.latest_candidate_runtime(key)
     }
 
     /// Claim a candidate the way committing an import does, for a test with
@@ -192,6 +209,31 @@ impl AppServices {
         self.inner
             .import
             .claim_candidate_for_import_for_test(candidate_key, import_id)
+            .await;
+    }
+
+    /// Move an import's claim the way the worker's steps do, for a test with
+    /// no worker behind it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn move_candidate_import_for_test(
+        &self,
+        candidate_key: &str,
+        import_id: &str,
+        standing: crate::import::ImportStanding,
+    ) {
+        self.inner
+            .import
+            .move_candidate_import_for_test(candidate_key, import_id, standing)
+            .await;
+    }
+
+    /// End an import's claim on a candidate the way the import's own ending
+    /// does, for a test with no worker behind it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn end_candidate_import_for_test(&self, candidate_key: &str, import_id: &str) {
+        self.inner
+            .import
+            .end_candidate_import_for_test(candidate_key, import_id)
             .await;
     }
 
@@ -206,7 +248,8 @@ impl AppServices {
         self.inner.import.watch_candidate_runtimes()
     }
 
-    /// Every change to a key's runtime from now on, for a test.
+    /// Every key's runtime as each write of its standing leaves it, in the
+    /// order they land, from now on, for a test.
     #[cfg(feature = "test-utils")]
     pub fn every_candidate_runtime_change_for_test(
         &self,

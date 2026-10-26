@@ -8,6 +8,7 @@ use super::documents::ReleaseToRead;
 use super::state::{
     step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, PressingKey, TitleSearch,
 };
+use crate::import::candidate_runtime::RunSubject;
 use crate::import::search::{search_source, CatalogNumberSearch, SearchQuery, SourceLookup};
 use crate::import::{
     CandidateRuntime, CandidateWork, Catalog, ImportEvent, ImportEventBus, LookupChoices,
@@ -85,8 +86,8 @@ struct IdentifyServiceInner {
     library_manager: LibraryManager,
     runtime_handle: tokio::runtime::Handle,
     event_tx: ImportEventBus,
-    /// The record `event_tx` keeps each candidate in, which holds the
-    /// candidate's run in flight.
+    /// What each run publishes is recorded here, and a folder candidate's
+    /// run writes where it stands through it.
     candidates: CandidateRuntime,
     /// Source of [`IdentifyRunId`]s: every run this service starts is told
     /// apart from every other, including earlier runs of the same candidate.
@@ -100,11 +101,22 @@ struct IdentifyServiceInner {
 /// One identify run of one candidate. A candidate is identified once at a
 /// time, but a run that ends and the run that replaces it report on the
 /// same bus under the same key, so a consumer waiting on one of them tells
-/// the two apart by this id rather than by the candidate.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// the two apart by this id rather than by the candidate. Ids are handed out
+/// in order, so a later run's is the greater.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct IdentifyRunId(u64);
 
 impl IdentifyRunId {
+    /// The run's number, as the standings table stores it.
+    pub(crate) fn number(self) -> u64 {
+        self.0
+    }
+
+    /// The run a stored number names.
+    pub(crate) fn of_number(number: u64) -> Self {
+        Self(number)
+    }
+
     /// A run id for an event a test forges onto the bus, or an extraction a
     /// test starts without the run it normally feeds; nothing a service
     /// allocates collides with it.
@@ -135,9 +147,9 @@ impl IdentifyServiceHandle {
         IdentifyServiceHandle { inner }
     }
 
-    /// Allocate the id for a run about to be started. Separate from
-    /// [`Self::start`] so a consumer can subscribe to the bus knowing which
-    /// run it is waiting for before that run's first state is sent.
+    /// Allocate the id for a run about to be started. Separate from starting
+    /// it so a consumer can subscribe to the bus knowing which run it is
+    /// waiting for before that run's first state is sent.
     pub fn new_run(&self) -> IdentifyRunId {
         IdentifyRunId(
             self.inner
@@ -148,6 +160,11 @@ impl IdentifyServiceHandle {
 
     /// Start identifying `key` as `run`. Fire-and-forget; states come back as
     /// `ImportEvent::IdentifyStateChanged` carrying `run`.
+    ///
+    /// `subject` is what the run identifies. A folder candidate's run writes
+    /// where it stands — started, answered, ended — to the standings table
+    /// before it sends the state that says so; a library release's has no
+    /// standing.
     ///
     /// `priority` is the run's, not the call's: every provider lookup this run
     /// dispatches is admitted under it, so a candidate a person opened outranks
@@ -171,10 +188,11 @@ impl IdentifyServiceHandle {
     /// stops waiting.
     #[must_use]
     #[allow(clippy::too_many_arguments)]
-    pub fn start(
+    pub(crate) fn start(
         &self,
         run: IdentifyRunId,
         key: String,
+        subject: RunSubject,
         priority: CallPriority,
         choices: LookupChoices,
         title_search: Option<TitleSearch>,
@@ -200,6 +218,7 @@ impl IdentifyServiceHandle {
                         inner,
                         run,
                         key,
+                        subject,
                         generation,
                         priority,
                         choices,
@@ -261,6 +280,7 @@ async fn run_driver(
     inner: Arc<IdentifyServiceInner>,
     run: IdentifyRunId,
     key: String,
+    subject: RunSubject,
     // Whether this is still the key's current run, so a run a later start
     // superseded cannot deregister its successor.
     generation: u64,
@@ -275,10 +295,12 @@ async fn run_driver(
         inner,
         run,
         key,
+        subject,
         priority,
         event_tx,
         token,
     };
+    let mut standing = RunStanding::NotStarted;
 
     let mut state = IdentifyState::Idle;
     // The run's first step is its start, ahead of anything the extraction has
@@ -325,7 +347,7 @@ async fn run_driver(
             },
         };
 
-        state = driver.advance(state, event);
+        state = driver.advance(state, event, &mut standing).await;
 
         // The run is over the moment the reducer stops moving: a terminal state
         // is its answer, `Idle` is its cancellation. The driver deregisters and
@@ -347,18 +369,40 @@ struct Driver {
     inner: Arc<IdentifyServiceInner>,
     run: IdentifyRunId,
     key: String,
+    subject: RunSubject,
     priority: CallPriority,
     /// Where the effects' answers come back to the driver loop.
     event_tx: mpsc::UnboundedSender<IdentifyEvent>,
     token: CancellationToken,
 }
 
+/// Where a folder candidate's run stands in the standings table, as its own
+/// driver knows it.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum RunStanding {
+    /// Nothing reported yet.
+    NotStarted,
+    /// The table holds this run.
+    Held,
+    /// The table holds another identification of the candidate — the run was
+    /// cancelled before it started, or the candidate was admitted again — so
+    /// what the run reports is no standing's.
+    Unheld,
+}
+
 impl Driver {
-    /// Feed `event` to the reducer, send the state it lands on, and dispatch
-    /// the effects it asked for. A terminal state's effects go out as well:
-    /// what a run keeps beyond itself is asked for in the step that ends it.
-    fn advance(&self, state: IdentifyState, event: IdentifyEvent) -> IdentifyState {
+    /// Feed `event` to the reducer, record the state it lands on and where
+    /// it leaves the run standing, send the state, and dispatch the effects
+    /// it asked for. A terminal state's effects go out as well: what a run
+    /// keeps beyond itself is asked for in the step that ends it.
+    async fn advance(
+        &self,
+        state: IdentifyState,
+        event: IdentifyEvent,
+        standing: &mut RunStanding,
+    ) -> IdentifyState {
         let (state, effects) = step(state, event);
+        self.record(&state, standing).await;
 
         // Every state `step` returns is sent, including one identical to the
         // last (a stale response the reducer's `for_barcode` guard dropped).
@@ -381,6 +425,96 @@ impl Driver {
             );
         }
         state
+    }
+
+    /// Record `state` as what the run published, and, for a folder
+    /// candidate, write where it leaves the run standing: the first state
+    /// starts it, its answer moves it to being written, and `Idle` ends it.
+    /// What a run publishes is recorded before the table names the run and
+    /// forgotten once it no longer does, so a reader of both always finds it.
+    async fn record(&self, state: &IdentifyState, standing: &mut RunStanding) {
+        let candidates = &self.inner.candidates;
+        let (key, run) = (self.key.as_str(), self.run);
+        let RunSubject::Candidate(files) = &self.subject else {
+            match state {
+                IdentifyState::Idle => candidates.forget_run(key, run),
+                _ => candidates.record_run_state(key, run, false, state),
+            }
+            return;
+        };
+        match (*standing, state) {
+            (RunStanding::Unheld, _) | (RunStanding::NotStarted, IdentifyState::Idle) => {}
+            (RunStanding::Held, IdentifyState::Idle) => {
+                // The table still names the run, so what it published stays
+                // beside it.
+                if let Err(error) = candidates.run_ended(key, run).await {
+                    tracing::error!(
+                        "identify: {key}'s run {run:?} ended, and recording that failed: {error}"
+                    );
+                }
+            }
+            (RunStanding::NotStarted, _) => {
+                candidates.record_run_state(key, run, true, state);
+                match candidates.run_started(key, files, run).await {
+                    Ok(true) => {
+                        *standing = RunStanding::Held;
+                        if state.is_terminal() {
+                            self.record_answer(state, standing).await;
+                        }
+                    }
+                    Ok(false) => {
+                        debug!(
+                            "identify: {key} is not waiting for run {run:?}; it holds no standing"
+                        );
+                        candidates.forget_run(key, run);
+                        *standing = RunStanding::Unheld;
+                    }
+                    // The run cannot say where it stands, so it breaks: its
+                    // answer says why.
+                    Err(error) => {
+                        candidates.forget_run(key, run);
+                        *standing = RunStanding::Unheld;
+                        emit_step(
+                            &self.event_tx,
+                            IdentifyEvent::Broke {
+                                failure: InternalFailure::logged(
+                                    &format!("recording that {key}'s run started"),
+                                    error,
+                                ),
+                            },
+                        );
+                    }
+                }
+            }
+            (RunStanding::Held, _) => {
+                candidates.record_run_state(key, run, true, state);
+                if state.is_terminal() {
+                    self.record_answer(state, standing).await;
+                }
+            }
+        }
+    }
+
+    /// The run reached `answer`, which is now being written.
+    async fn record_answer(&self, answer: &IdentifyState, standing: &mut RunStanding) {
+        let candidates = &self.inner.candidates;
+        let (key, run) = (self.key.as_str(), self.run);
+        match candidates
+            .run_answered(key, run, answer.picks_unattended())
+            .await
+        {
+            Ok(true) => {}
+            Ok(false) => {
+                debug!("identify: {key}'s run {run:?} answered after it lost its standing");
+                candidates.forget_run(key, run);
+                *standing = RunStanding::Unheld;
+            }
+            // The table still names the run as running; the write of its
+            // answer ends it either way, so what it published stays beside it.
+            Err(error) => tracing::error!(
+                "identify: {key}'s run {run:?} answered, and recording that failed: {error}"
+            ),
+        }
     }
 }
 

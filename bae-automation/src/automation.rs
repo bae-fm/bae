@@ -95,7 +95,11 @@ impl Automation {
     /// presents one flat list across both, so it walks all three tabs and
     /// sorts by the key callers name candidates by.
     pub async fn list_candidates(&self) -> Result<Vec<AutomationCandidate>, AutomationError> {
-        let runtime = self.services.candidate_runtimes();
+        let runtime = self
+            .services
+            .candidate_runtimes()
+            .await
+            .map_err(AutomationError::from)?;
         let mut candidates = Vec::new();
         for tab in [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped] {
             let view = ImportListView {
@@ -148,7 +152,11 @@ impl Automation {
             .await
             .map_err(AutomationError::from)?
         {
-            let runtime = self.services.candidate_runtimes();
+            let runtime = self
+                .services
+                .candidate_runtimes()
+                .await
+                .map_err(AutomationError::from)?;
             return Ok(automation_candidate_from_folder(&detail, &runtime));
         }
         if let Some(bae_core::import::ImportCandidateSnapshot::Invalid(candidate)) = self

@@ -84,9 +84,9 @@ async fn await_import_outcome(
 
 /// The event feed holds every event sent after it was taken, however many,
 /// and only one reader takes it.
-#[test]
-fn the_event_feed_holds_every_event_and_is_taken_once() {
-    let bus = ImportEventBus::new(CandidateRuntime::default());
+#[tokio::test]
+async fn the_event_feed_holds_every_event_and_is_taken_once() {
+    let bus = ImportEventBus::new(CandidateRuntime::for_test().await);
     let mut feed = bus.take_feed().expect("the feed is there to take");
     for _ in 0..3 {
         bus.send(ImportEvent::Scan(ScanEvent::Finished));
@@ -99,39 +99,85 @@ fn the_event_feed_holds_every_event_and_is_taken_once() {
     assert!(bus.take_feed().is_none(), "the feed is taken once");
 }
 
-/// A reader that hears an import end and then asks the runtime finds the
-/// claim already released: the bus records an event before any reader hears
+/// A reader that hears how far an import has got and then asks the runtime
+/// finds it already there: the bus records an event before any reader hears
 /// it.
 #[tokio::test]
-async fn an_import_outcome_is_recorded_before_any_reader_hears_it() {
-    let runtime = CandidateRuntime::default();
+async fn an_import_s_progress_is_recorded_before_any_reader_hears_it() {
+    let runtime = CandidateRuntime::for_test().await;
     let bus = ImportEventBus::new(runtime.clone());
     let mut events = bus.every_event();
-    runtime.claim_for_import("candidate", "import-1").unwrap();
-    assert!(runtime
-        .get("candidate")
-        .is_some_and(|candidate| candidate.import.is_some()));
+    runtime
+        .claim_for_import("candidate", "import-1", false)
+        .await
+        .unwrap();
+    runtime
+        .move_import(
+            "candidate",
+            "import-1",
+            Some(crate::import::ImportStanding::Running),
+        )
+        .await
+        .unwrap();
 
     bus.send(ImportEvent::ImportProgress {
         candidate_key: "candidate".to_string(),
-        progress: crate::import::ImportProgress::Complete {
+        progress: crate::import::ImportProgress::Progress {
             id: REL_1.to_string(),
+            percent: Some(40),
+            phase: crate::import::ImportPhase::ReadingFiles,
             import_id: "import-1".to_string(),
-            album_id: "album-1".to_string(),
         },
     });
 
-    let outcome = events.recv().await.unwrap();
-    assert!(matches!(
-        outcome,
-        ImportEvent::ImportProgress {
-            progress: crate::import::ImportProgress::Complete { .. },
-            ..
-        }
-    ));
-    assert!(runtime
-        .get("candidate")
-        .is_none_or(|candidate| candidate.import.is_none()));
+    events.recv().await.unwrap();
+    assert_eq!(
+        runtime
+            .snapshot("candidate")
+            .await
+            .unwrap()
+            .and_then(|candidate| candidate.import)
+            .and_then(|import| import.progress_percent),
+        Some(40)
+    );
+}
+
+/// Put `key` on the identification queue as the queue admits it, with the
+/// files the scan holds it with.
+async fn admit(handle: &ImportServiceHandle, key: &str) {
+    let candidate = handle
+        .get_release_candidate(key)
+        .await
+        .unwrap()
+        .expect("the candidate is stored");
+    handle
+        .admit_identification(
+            vec![(key.to_string(), crate::import::CandidateFiles::of(&candidate))],
+            crate::import::Admission::Requested,
+        )
+        .await
+        .unwrap();
+}
+
+/// Start `run` of the queued `key`, as the identify driver records its first
+/// state.
+async fn start_run(handle: &ImportServiceHandle, key: &str, run: crate::identify::IdentifyRunId) {
+    let candidate = handle
+        .get_release_candidate(key)
+        .await
+        .unwrap()
+        .expect("the candidate is stored");
+    handle.runtime.record_run_state(
+        key,
+        run,
+        true,
+        &crate::import::candidate_runtime::tests::triangulating(),
+    );
+    assert!(handle
+        .runtime
+        .run_started(key, &crate::import::CandidateFiles::of(&candidate), run)
+        .await
+        .unwrap());
 }
 
 include!("tests/identity.rs");

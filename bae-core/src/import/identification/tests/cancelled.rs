@@ -7,7 +7,7 @@
 /// answer are all gone.
 async fn await_not_identifying(fixture: &Fixture, key: &str) {
     tokio::time::timeout(Duration::from_secs(10), async {
-        while fixture.identification_status(key).is_some() || fixture.import.is_identifying(key)
+        while fixture.identification_status(key).await.is_some() || fixture.import.is_identifying(key)
         {
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
@@ -46,14 +46,10 @@ async fn a_cancelled_waiting_candidate_is_never_looked_up() {
     let dirs = flooded_queue(&fixture).await;
     let sweep = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
-    let waiting = dirs
-        .iter()
-        .find(|dir| {
-            fixture.identification_status(&dir.to_string_lossy())
-                == Some(crate::import::IdentificationStatus::Queued)
-        })
-        .expect("one candidate is over the cap and waiting")
-        .clone();
+    let waiting = fixture
+        .first_queued(&dirs)
+        .await
+        .expect("one candidate is over the cap and waiting");
     let waiting_key = waiting.to_string_lossy().into_owned();
 
     fixture.identification().cancel(vec![waiting_key.clone()]).await.unwrap();
@@ -112,7 +108,7 @@ async fn a_cancelled_run_leaves_the_candidate_as_it_was_until_asked_again() {
         "a cancel stores nothing: no verdict, and nothing about the cancel"
     );
     assert!(
-        fixture.import.candidate_runtime(&key).is_none(),
+        fixture.import.candidate_runtime(&key).await.unwrap().is_none(),
         "nothing is left running or failed for it"
     );
     fixture.drain_automatic().await;
@@ -181,7 +177,7 @@ async fn a_cancelled_answer_is_not_written() {
     let sweep = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/release-group/rg-1?", 1).await;
     assert_eq!(
-        fixture.identification_status(&key),
+        fixture.identification_status(&key).await,
         Some(crate::import::IdentificationStatus::Running),
         "the run is reading its offered release's document"
     );
@@ -195,7 +191,7 @@ async fn a_cancelled_answer_is_not_written() {
     await_not_identifying(&fixture, &key).await;
 
     assert!(fixture.identified_for(&dir).await.is_none());
-    assert!(fixture.import.candidate_runtime(&key).is_none());
+    assert!(fixture.import.candidate_runtime(&key).await.unwrap().is_none());
 }
 
 /// A run the queue never started — a re-identify sheet's — ends through the
@@ -255,20 +251,16 @@ async fn cancelling_from_the_pane_takes_a_waiting_candidate_off_the_queue() {
         fixture.import.clone(),
     );
     wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
-    let waiting = dirs
-        .iter()
-        .find(|dir| {
-            fixture.identification_status(&dir.to_string_lossy())
-                == Some(crate::import::IdentificationStatus::Queued)
-        })
-        .expect("one candidate is over the cap and waiting")
-        .clone();
+    let waiting = fixture
+        .first_queued(&dirs)
+        .await
+        .expect("one candidate is over the cap and waiting");
     let key = waiting.to_string_lossy().into_owned();
     assert_eq!(
         fixture
             .import
-            .candidate_runtime(&key)
-            .and_then(|runtime| runtime.identification()),
+            .candidate_runtime(&key).await.unwrap()
+            .and_then(|runtime| runtime.identification_in_flight()),
         Some(crate::import::IdentificationInFlight::Queued),
         "its pane shows it waiting"
     );
@@ -281,7 +273,7 @@ async fn cancelling_from_the_pane_takes_a_waiting_candidate_off_the_queue() {
     services.pane_cancel_identification(&key).await.unwrap();
 
     assert!(
-        fixture.import.candidate_runtime(&key).is_none(),
+        fixture.import.candidate_runtime(&key).await.unwrap().is_none(),
         "nothing is waiting or running for it"
     );
     assert_eq!(

@@ -140,24 +140,46 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
 #[tokio::test(flavor = "multi_thread")]
 async fn the_library_opens_with_no_standing_a_crash_left() {
     let fixture = Fixture::new("standings-cleared-on-open").await;
+    let dir = fixture.disc_id_candidate("Album");
+    fixture.scan(1).await;
+    let running = dir.to_string_lossy().into_owned();
+    let files = crate::import::CandidateFiles {
+        content_hash: fixture.content_hash(&dir),
+        file_edit_revision: 0,
+    };
+    // What a run and an import left as the process that held them died.
     fixture
         .database
-        .write_candidate_standings(vec![
+        .change_candidate_identifications(vec![
             (
-                "/watched/Running".to_string(),
-                crate::import::TriageRuntimeFacts {
-                    identification: Some(crate::import::IdentificationStatus::Running),
-                    import: None,
+                running.clone(),
+                crate::import::candidate_runtime::IdentificationChange::Admit {
+                    files: files.clone(),
+                    admission: crate::import::Admission::Requested,
                 },
             ),
             (
-                "/watched/Writing".to_string(),
-                crate::import::TriageRuntimeFacts {
-                    identification: None,
-                    import: Some(crate::import::ImportStanding::Writing),
+                running,
+                crate::import::candidate_runtime::IdentificationChange::RunStarted {
+                    files,
+                    run: IdentifyRunId::for_test(1),
                 },
             ),
         ])
+        .await
+        .unwrap();
+    fixture
+        .database
+        .claim_candidate_import("/watched/Writing", "import-1", None)
+        .await
+        .unwrap();
+    fixture
+        .database
+        .move_candidate_import(
+            "/watched/Writing",
+            "import-1",
+            Some(crate::import::ImportStanding::Writing),
+        )
         .await
         .unwrap();
     assert_eq!(fixture.database.load_candidate_standings().await.unwrap().len(), 2);

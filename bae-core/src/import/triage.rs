@@ -22,7 +22,7 @@ use super::folder_scanner::FolderReleaseDecisionKey;
 use super::search::{ImportSearchReleaseDetail, SourceTracks};
 use super::types::{Catalog, ReleaseLink};
 use super::MetadataAuthor;
-use super::{CandidateRuntimeSnapshot, ImportedRelease};
+use super::ImportedRelease;
 use crate::identify::{FolderCheck, LeadMatch, VerdictSummary};
 
 mod actions;
@@ -125,11 +125,10 @@ pub fn import_status_of(
     })
 }
 
-/// Where a candidate stands: the runtime facts a row reads, and what the
-/// standings table stores for it. A change to any other part of a candidate's
-/// runtime — a progress tick within a running import — is not written and
-/// leaves the row as it was drawn. The default is a key nothing is running
-/// for: no identification work exists and no import has claimed it.
+/// Where a candidate stands, as its row reads it from the standings table.
+/// How far a run or an import has got is not part of it, and leaves the row
+/// as it was drawn. The default is a key nothing is running for: no
+/// identification work exists and no import has claimed it.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct TriageRuntimeFacts {
     pub identification: Option<IdentificationStatus>,
@@ -153,47 +152,6 @@ pub enum ImportStanding {
 }
 
 impl TriageRuntimeFacts {
-    /// One order over the fields, most recent fact first: what the last write
-    /// failed with, then the answer being written — its picked release being
-    /// read, or nothing to read — then the run in flight, then the queue it is
-    /// waiting in.
-    pub fn of(runtime: &CandidateRuntimeSnapshot) -> Self {
-        let identification = if let Some(failure) = &runtime.save_failed {
-            Some(IdentificationStatus::FinalizationFailed {
-                failure: failure.clone(),
-            })
-        } else if let Some(answer) = &runtime.saving {
-            Some(if answer.state.picks_unattended() {
-                IdentificationStatus::ReadingPick {
-                    import_asked: answer.import_asked,
-                }
-            } else {
-                IdentificationStatus::Finalizing
-            })
-        } else if runtime.running.is_some() {
-            Some(IdentificationStatus::Running)
-        } else {
-            runtime.queued.map(|_| IdentificationStatus::Queued)
-        };
-        let import = runtime.import.as_ref().map(|import| {
-            use crate::import::{ImportPhase, ImportStep, PrepareStep};
-            match import.step {
-                ImportStep::Preparing(PrepareStep::Queued) => ImportStanding::Queued,
-                ImportStep::Preparing(
-                    PrepareStep::ValidatingSourceFiles | PrepareStep::FetchingArtistPictures,
-                )
-                | ImportStep::Running(ImportPhase::ReadingFiles | ImportPhase::MeasuringLoudness) => {
-                    ImportStanding::Running
-                }
-                ImportStep::Running(ImportPhase::Finalizing) => ImportStanding::Writing,
-            }
-        });
-        Self {
-            identification,
-            import,
-        }
-    }
-
     /// An import owns the candidate, whatever it has reached.
     pub fn importing(&self) -> bool {
         self.import.is_some()

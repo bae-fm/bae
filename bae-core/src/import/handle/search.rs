@@ -407,7 +407,7 @@ impl ImportServiceHandle {
             let revision = this
                 .pick_candidate_release_write(candidate_key.clone(), link)
                 .await?;
-            this.cancel_identification(&candidate_key);
+            this.cancel_identification(&candidate_key).await?;
             this.announce_metadata_changed(candidate_key);
             Ok(revision)
         })
@@ -426,7 +426,7 @@ impl ImportServiceHandle {
             let revision = this
                 .read_candidate_file_tags_write(candidate_key.clone())
                 .await?;
-            this.cancel_identification(&candidate_key);
+            this.cancel_identification(&candidate_key).await?;
             this.announce_metadata_changed(candidate_key);
             Ok(revision)
         })

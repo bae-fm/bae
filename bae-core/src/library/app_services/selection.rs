@@ -79,7 +79,7 @@ impl AppServices {
         progress: impl Fn(u64, u64),
     ) -> Result<Vec<SelectionActionFailure>, ImportError> {
         let selected = &selected.candidates;
-        let standings = self.inner.manager.load_candidate_standings().await?;
+        let standings = self.inner.manager.load_candidate_standing_facts().await?;
         let members = crate::import::selection::members(selected, &standings);
         let keys = keys_for(&members, action);
         let total = keys.len() as u64;
@@ -126,7 +126,7 @@ impl AppServices {
                 self.rerun_identify(key.to_string());
                 Ok(())
             }
-            CandidateAction::CancelImport => self.import_cancel(key),
+            CandidateAction::CancelImport => self.import_cancel(key).await,
             CandidateAction::ResetToFileMetadata => self
                 .import_select_candidate_file_tags(key.to_string())
                 .await

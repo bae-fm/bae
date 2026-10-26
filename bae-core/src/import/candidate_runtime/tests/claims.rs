@@ -1,105 +1,105 @@
 // What an import's claim on a candidate records, and what it refuses.
 
-#[test]
-fn a_second_claim_on_an_owned_candidate_is_refused_and_changes_nothing() {
-    let runtime = CandidateRuntime::default();
+#[tokio::test]
+async fn a_second_claim_on_an_owned_candidate_is_refused_and_changes_nothing() {
+    let runtime = CandidateRuntime::for_test().await;
     let key = "/watch/a/rel1";
-    runtime.claim_for_import(key, "imp-1").unwrap();
-    let claimed = runtime.get(key);
-    let mut changes = runtime.every_change();
+    runtime.claim_for_import(key, "imp-1", false).await.unwrap();
+    let claimed = runtime.snapshot(key).await.unwrap();
 
     assert!(matches!(
-        runtime.claim_for_import(key, "imp-2"),
+        runtime.claim_for_import(key, "imp-2", false).await,
         Err(crate::import::ImportError::CandidateImportInProgress)
     ));
-    assert_eq!(runtime.get(key), claimed);
-    assert!(drain(&mut changes).is_empty());
+    assert_eq!(runtime.snapshot(key).await.unwrap(), claimed);
 }
 
-#[test]
-fn a_claim_is_the_queued_step_until_the_worker_reports() {
-    let runtime = CandidateRuntime::default();
-    let mut changes = runtime.every_change();
+/// The refusal is the claim's row: a runtime that holds nothing of the first
+/// claim — another one over the same library — is refused all the same.
+#[tokio::test]
+async fn a_claim_is_refused_by_the_claim_the_table_holds() {
+    let runtime = CandidateRuntime::for_test().await;
+    let key = "/watch/a/rel1";
+    runtime.claim_for_import(key, "imp-1", false).await.unwrap();
+
+    let holding_nothing = runtime.over_the_same_library_for_test();
+    assert!(holding_nothing.inner.lock().unwrap().runtime.is_empty());
+    assert!(matches!(
+        holding_nothing.claim_for_import(key, "imp-2", false).await,
+        Err(crate::import::ImportError::CandidateImportInProgress)
+    ));
+    assert!(holding_nothing.import_claimed(key).await.unwrap());
+}
+
+#[tokio::test]
+async fn a_claim_is_the_queued_step_until_the_worker_takes_it_up() {
+    let runtime = CandidateRuntime::for_test().await;
     let key = "/watch/a/rel1";
 
-    runtime.claim_for_import(key, "imp-1").unwrap();
+    runtime.claim_for_import(key, "imp-1", false).await.unwrap();
     assert_eq!(
-        runtime.get(key).and_then(|runtime| runtime.import),
+        runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.import),
         Some(ImportInFlight {
             progress_percent: None,
             step: ImportStep::Preparing(PrepareStep::Queued),
         })
     );
-    drain(&mut changes);
 
-    runtime.release_import_claim(key, "imp-1");
-    assert!(runtime.get(key).is_none());
-    assert_eq!(
-        drain(&mut changes),
-        vec![CandidateRuntimeChange::Removed {
-            key: key.to_string()
-        }],
+    runtime.move_import(key, "imp-1", None).await.unwrap();
+    assert!(
+        runtime.snapshot(key).await.unwrap().is_none(),
         "with nothing else running, releasing the claim empties the key"
     );
 }
 
-/// A claim starts from the queue whatever the import before it had reached,
-/// and only its own import's reports move it: work an ended import left
-/// running can still report, about an import the key no longer has.
-#[test]
-fn only_the_claiming_imports_reports_move_its_claim() {
-    let runtime = CandidateRuntime::default();
+/// Only the import holding a claim moves or ends it, and a report from an
+/// import that already ended moves nothing a reader draws.
+#[tokio::test]
+async fn only_the_claiming_import_moves_its_claim() {
+    let runtime = CandidateRuntime::for_test().await;
     let key = "/watch/a/rel1";
-    runtime.claim_for_import(key, "imp-1").unwrap();
+    claim(&runtime, key).await;
     runtime.record_event(&progress(key, 60));
+    runtime.move_import(key, "imp-1", None).await.unwrap();
     runtime.record_event(&ImportEvent::ImportProgress {
         candidate_key: key.to_string(),
         progress: ImportProgress::Cancelled {
             import_id: "imp-1".to_string(),
         },
     });
-    let mut changes = runtime.every_change();
 
-    runtime.record_event(&progress(key, 70));
-    assert!(
-        runtime.get(key).is_none(),
-        "a report from the ended import puts no import back on the key"
-    );
-    assert!(drain(&mut changes).is_empty());
-
-    runtime.claim_for_import(key, "imp-2").unwrap();
+    runtime.claim_for_import(key, "imp-2", false).await.unwrap();
     let queued = Some(ImportInFlight {
         progress_percent: None,
         step: ImportStep::Preparing(PrepareStep::Queued),
     });
-    assert_eq!(runtime.get(key).and_then(|runtime| runtime.import), queued);
     runtime.record_event(&progress(key, 80));
-    runtime.record_event(&ImportEvent::ImportProgress {
-        candidate_key: key.to_string(),
-        progress: ImportProgress::Failed {
-            error: "the disk filled".to_string(),
-            import_id: "imp-1".to_string(),
-        },
-    });
     assert_eq!(
-        runtime.get(key).and_then(|runtime| runtime.import),
+        runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.import),
         queued,
-        "neither the ended import's progress nor its ending moves the new claim"
+        "the ended import's report does not move the new claim"
     );
-    runtime.release_import_claim(key, "imp-1");
+    assert!(
+        runtime
+            .move_import(key, "imp-1", Some(ImportStanding::Running))
+            .await
+            .is_err(),
+        "nor may the ended import move it"
+    );
+    assert!(runtime.move_import(key, "imp-1", None).await.is_err());
     assert_eq!(
-        runtime.get(key).and_then(|runtime| runtime.import),
+        runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.import),
         queued,
-        "nor does releasing the ended import's claim"
+        "nor end it"
     );
 }
 
 /// The scan dropping a candidate an import holds — the folder removed, read
 /// with other files, or found invalid — does not end the import. The claim
 /// stays until the import's own ending, so no second import takes the key
-/// meanwhile, and the count of imports comes down with that ending.
-#[test]
-fn an_import_outlives_its_candidate_leaving_the_scan() {
+/// meanwhile.
+#[tokio::test]
+async fn an_import_outlives_its_candidate_leaving_the_scan() {
     let key = "/watch/a/rel1";
     let mut reshaped = folder_candidate(key, "/watch/a");
     reshaped.file_edit_revision = 1;
@@ -119,21 +119,22 @@ fn an_import_outlives_its_candidate_leaving_the_scan() {
         })),
     ];
     for departure in departures {
-        let runtime = CandidateRuntime::default();
+        let runtime = CandidateRuntime::for_test().await;
         runtime.record_event(&scanned(folder_candidate(key, "/watch/a")));
-        claim(&runtime, key);
+        claim(&runtime, key).await;
         runtime.record_event(&progress(key, 42));
 
         runtime.record_event(&departure);
-        assert_eq!(runtime.imports_in_flight(), 1, "{departure:?}");
+        assert!(runtime.import_claimed(key).await.unwrap(), "{departure:?}");
         assert!(
             matches!(
-                runtime.claim_for_import(key, "imp-2"),
+                runtime.claim_for_import(key, "imp-2", false).await,
                 Err(crate::import::ImportError::CandidateImportInProgress)
             ),
             "{departure:?} let a second import claim the key"
         );
 
+        runtime.move_import(key, "imp-1", None).await.unwrap();
         runtime.record_event(&ImportEvent::ImportProgress {
             candidate_key: key.to_string(),
             progress: ImportProgress::Failed {
@@ -141,7 +142,26 @@ fn an_import_outlives_its_candidate_leaving_the_scan() {
                 import_id: "imp-1".to_string(),
             },
         });
-        assert_eq!(runtime.imports_in_flight(), 0, "{departure:?}");
-        assert!(runtime.get(key).is_none(), "{departure:?}");
+        assert!(runtime.snapshot(key).await.unwrap().is_none(), "{departure:?}");
     }
+}
+
+/// Claiming a candidate for an import ends whatever run or answer its
+/// identification holds, in the claim's own write.
+#[tokio::test]
+async fn a_claim_that_ends_identification_ends_it_in_its_own_write() {
+    let runtime = CandidateRuntime::for_test().await;
+    let key = "/watch/a/rel1";
+    let files = scanned_key(&runtime, key).await;
+    runtime
+        .admit(vec![(key.to_string(), files.clone())], Admission::Requested)
+        .await
+        .unwrap();
+    report(&runtime, key, &files, run(1), triangulating()).await;
+
+    runtime.claim_for_import(key, "imp-1", true).await.unwrap();
+    let facts = runtime.standing_facts(key).await.unwrap();
+    assert_eq!(facts.identification, None);
+    assert_eq!(facts.import, Some(ImportStanding::Queued));
+    assert_eq!(runtime.identification_progress(), (0, 0));
 }

@@ -37,48 +37,72 @@ impl CandidatePreparations {
     /// links the candidate to it and replaces the draft; one that picked none
     /// leaves the link and the draft alone.
     ///
-    /// `false` when the row's file decisions moved past the ones the verdict
-    /// answers, or no row holds the candidate. A draft edited since the run
-    /// began is replaced like any other: the later write wins.
+    /// Nothing lands when the row's file decisions moved past the ones the
+    /// verdict answers, or no row holds the candidate. A draft edited since
+    /// the run began is replaced like any other: the later write wins.
     ///
-    /// A verdict that lands stores, in its own transaction, `standing` as
-    /// where the candidate at `candidate_key` stands with the run that reached
-    /// it ended: no read sees the verdict with the run still going, or the run
-    /// ended without the verdict.
-    pub async fn store_run_verdict(
+    /// A verdict `run` reached that lands ends that run's identification of
+    /// the candidate at `candidate_key` in its own transaction, and returns
+    /// what that did: no read sees the verdict with the run still going, or
+    /// the run ended without the verdict. `None` when the verdict did not
+    /// land, which ends nothing.
+    pub(crate) async fn store_run_verdict(
         &self,
         verdict: &NewImportCandidateVerdict,
         candidate_key: &str,
-        standing: &crate::import::TriageRuntimeFacts,
-    ) -> Result<bool, LibraryError> {
-        self.store_verdict_with(verdict, Some((candidate_key.to_string(), standing.clone())))
-            .await
+        run: crate::identify::IdentifyRunId,
+    ) -> Result<Option<crate::import::candidate_runtime::IdentificationMove>, LibraryError> {
+        let Some((prep, expected, extras)) = self.verdict_save(verdict).await? else {
+            return Ok(None);
+        };
+        Ok(
+            match self
+                .database
+                .save_run_verdict(prep, expected, extras, candidate_key.to_string(), run)
+                .await?
+            {
+                crate::db::RunVerdictSaved::Landed(ended) => Some(ended),
+                crate::db::RunVerdictSaved::Superseded => None,
+            },
+        )
     }
 
     /// Record a verdict no run of this process reached, as a seeded library
-    /// or a test stores one: there is no standing for its write to end.
+    /// or a test stores one: there is no run for its write to end.
     #[cfg(any(test, feature = "test-utils", debug_assertions))]
     pub async fn store_verdict(
         &self,
         verdict: &NewImportCandidateVerdict,
     ) -> Result<bool, LibraryError> {
-        self.store_verdict_with(verdict, None).await
+        let Some((prep, expected, extras)) = self.verdict_save(verdict).await? else {
+            return Ok(false);
+        };
+        Ok(matches!(
+            self.database
+                .save_candidate_preparation(prep, expected, extras)
+                .await?,
+            CandidateSaved::Landed(_)
+        ))
     }
 
-    async fn store_verdict_with(
+    /// The candidate's whole state with `verdict` recorded, ready to save
+    /// against the revisions it was loaded at; `None` when no row holds the
+    /// candidate or its file decisions moved past the ones the verdict
+    /// answers.
+    async fn verdict_save(
         &self,
         verdict: &NewImportCandidateVerdict,
-        standing: Option<(String, crate::import::TriageRuntimeFacts)>,
-    ) -> Result<bool, LibraryError> {
+    ) -> Result<Option<(CandidatePreparation, CandidateSaveExpectation, CandidateSaveExtras)>, LibraryError>
+    {
         let Some(mut prep) = self
             .database
             .load_candidate_preparation(&verdict.content_hash)
             .await?
         else {
-            return Ok(false);
+            return Ok(None);
         };
         if prep.file_edits.revision != verdict.file_edit_revision {
-            return Ok(false);
+            return Ok(None);
         }
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
@@ -110,15 +134,9 @@ impl CandidatePreparations {
         };
         let extras = CandidateSaveExtras {
             pane,
-            standing,
             ..CandidateSaveExtras::default()
         };
-        Ok(matches!(
-            self.database
-                .save_candidate_preparation(prep, expected, extras)
-                .await?,
-            CandidateSaved::Landed(_)
-        ))
+        Ok(Some((prep, expected, extras)))
     }
 
     /// Record one candidate's user-set file decisions, **and clear whatever
@@ -181,7 +199,6 @@ impl CandidatePreparations {
             file_tag_snapshot: None,
             reshaped_files: Some(settled_candidates.to_vec()),
             pane: CandidatePaneWrite::Keep,
-            standing: None,
         };
         match self
             .database
@@ -514,7 +531,6 @@ impl CandidatePreparations {
             file_tag_snapshot,
             reshaped_files: None,
             pane: CandidatePaneWrite::Keep,
-            standing: None,
         };
         match self
             .database

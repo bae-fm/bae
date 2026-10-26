@@ -1,5 +1,6 @@
 mod candidate_mutation_race;
 mod commit_lock_waits;
+mod failing_standing_writes;
 mod album_detail_during_import;
 mod artist_pictures;
 mod import_cancellation;
@@ -967,7 +968,7 @@ async fn a_pick_lands_and_is_announced_when_its_caller_is_torn_down() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_bulk_import_skips_a_row_being_identified_and_says_so() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    handle.admit_identification(vec![key.clone()], crate::import::Admission::Requested);
+    admit(&handle, &key).await;
 
     let refused = handle.import_selected(&key).await;
 
@@ -976,12 +977,18 @@ async fn a_bulk_import_skips_a_row_being_identified_and_says_so() {
         Err(crate::import::ImportError::CandidateBeingIdentified)
     ));
     let runtime = handle
-        .candidate_runtime(&key)
+        .candidate_runtime(&key).await.unwrap()
         .expect("the queued run is still the key's");
     assert!(runtime.import.is_none(), "the skipped row is not claimed");
-    assert!(runtime.queued.is_some(), "and its run is not cancelled");
+    assert!(
+        matches!(
+            runtime.identification,
+            Some(crate::import::IdentificationRuntime::Queued(_))
+        ),
+        "and its run is not cancelled"
+    );
 
-    handle.withdraw_identification(&key);
+    handle.withdraw_identification(&key).await.unwrap();
     handle.claim_candidate_for_import(&key, "import-1").await;
     assert!(matches!(
         handle.import_selected(&key).await,

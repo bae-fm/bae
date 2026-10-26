@@ -557,8 +557,20 @@ impl Fixture {
     }
 
     /// Where the queue has `key`, as the runtime publishes it.
-    fn identification_status(&self, key: &str) -> Option<crate::import::IdentificationStatus> {
-        crate::import::TriageRuntimeFacts::of(&self.import.candidate_runtime(key)?).identification
+    async fn identification_status(&self, key: &str) -> Option<crate::import::IdentificationStatus> {
+        self.import.standing_facts_for_test(key).await.identification
+    }
+
+    /// The first of `dirs` the queue holds waiting.
+    async fn first_queued(&self, dirs: &[PathBuf]) -> Option<PathBuf> {
+        for dir in dirs {
+            if self.identification_status(&dir.to_string_lossy()).await
+                == Some(crate::import::IdentificationStatus::Queued)
+            {
+                return Some(dir.clone());
+            }
+        }
+        None
     }
 
     async fn stored(&self) -> BTreeMap<String, DbImportCandidateState> {

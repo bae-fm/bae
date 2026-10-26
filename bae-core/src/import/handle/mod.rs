@@ -20,9 +20,11 @@ mod scan;
 mod search;
 mod session;
 mod shared_album;
+mod verdict_write;
 mod watch;
 
 pub use import::ImportStart;
+pub(crate) use verdict_write::VerdictWrite;
 pub(crate) use scan::external_metadata_with_cover;
 
 use super::candidate_runtime::CandidateRuntime;
@@ -140,6 +142,24 @@ impl ImportEventBus {
         self.wait_if_held(&event);
         self.runtime.record_event(&event);
         self.delivery.deliver(event);
+    }
+
+    /// Record `event` in the runtime, await `written` — the standing it
+    /// announces — and hand the event to every reader only once that write
+    /// landed: a reader that hears it finds the standing in the table, and
+    /// what the event says beside it already recorded. A write that fails is
+    /// returned, and the event is not sent.
+    pub(crate) async fn send_once_written<E>(
+        &self,
+        event: ImportEvent,
+        written: impl std::future::Future<Output = Result<(), E>>,
+    ) -> Result<(), E> {
+        #[cfg(test)]
+        self.wait_if_held(&event);
+        self.runtime.record_event(&event);
+        written.await?;
+        self.delivery.deliver(event);
+        Ok(())
     }
 
     /// Every event since the bus started, none dropped, each on the reader
@@ -304,18 +324,6 @@ pub enum DiscogsSaveOutcome {
     Rejected,
 }
 
-/// What one verdict write did.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum VerdictWrite {
-    /// The candidate can no longer be answered, or its files are not the ones
-    /// the run read.
-    Refused,
-    /// The row landed. `import_asked`: a person asked, while the release the
-    /// answer picks unattended was read, for the candidate to be imported once
-    /// it was stored.
-    Stored { import_asked: bool },
-}
-
 /// Handle for sending import requests and subscribing to progress updates.
 #[derive(Clone)]
 pub struct ImportServiceHandle {
@@ -447,13 +455,16 @@ impl ImportServiceHandle {
             .map_err(|reason| crate::import::ImportError::GroupingBlocked { reason })
     }
 
+    /// The handle over the started workers. Starts the live read of every
+    /// candidate's runtime as one of the library's own tasks, which closing
+    /// the library ends; refused once the library is closing.
     pub(super) fn new(
         worker: WorkerThread<crate::import::service::ImportWorkerMessage>,
         watcher: WorkerThread<WatcherCommand>,
         services: crate::import::ImportServices,
         runtime: CandidateRuntime,
         runtime_handle: tokio::runtime::Handle,
-    ) -> Self {
+    ) -> Result<Self, crate::library::LibraryError> {
         let crate::import::ImportServices {
             event_tx,
             library_manager,
@@ -465,6 +476,10 @@ impl ImportServiceHandle {
             folder_state_commit,
             import_cancels,
         } = services;
+        library_manager.spawn_supervised_task(
+            "candidate runtime snapshots",
+            runtime.clone().keep_snapshots_current(),
+        )?;
         let identify = crate::identify::IdentifyServiceHandle::new(
             library_manager.clone(),
             runtime_handle.clone(),
@@ -477,7 +492,7 @@ impl ImportServiceHandle {
             runtime.clone(),
             library_manager.clone(),
         );
-        Self {
+        Ok(Self {
             worker,
             library_manager,
             preparations,
@@ -491,7 +506,7 @@ impl ImportServiceHandle {
             import_cancels,
             watcher,
             runtime_handle,
-        }
+        })
     }
 
     /// Stop and join both worker threads; later calls do nothing. Called from
@@ -534,15 +549,95 @@ impl ImportServiceHandle {
             .await;
     }
 
-    /// Every key with something in flight right now.
-    pub fn candidate_runtimes(&self) -> HashMap<String, CandidateRuntimeSnapshot> {
-        self.runtime.all()
+    /// End an import's claim on a candidate the way the import's own ending
+    /// does, for a test with no worker behind it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn end_candidate_import_for_test(&self, candidate_key: &str, import_id: &str) {
+        self.runtime
+            .move_import(candidate_key, import_id, None)
+            .await
+            .expect("a test ends the claim it made");
     }
 
-    /// What is in flight for one key — the read a view does once when it
-    /// appears, after it has subscribed to the changes.
-    pub fn candidate_runtime(&self, key: &str) -> Option<CandidateRuntimeSnapshot> {
-        self.runtime.get(key)
+    /// Move an import's claim the way the worker's steps do, for a test with
+    /// no worker behind it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn move_candidate_import_for_test(
+        &self,
+        candidate_key: &str,
+        import_id: &str,
+        standing: crate::import::ImportStanding,
+    ) {
+        self.runtime
+            .move_import(candidate_key, import_id, Some(standing))
+            .await
+            .expect("a test moves the claim it made");
+    }
+
+    /// Every key with something in flight right now, read from the standings
+    /// table and the runtime.
+    pub async fn candidate_runtimes(
+        &self,
+    ) -> Result<HashMap<String, CandidateRuntimeSnapshot>, crate::library::LibraryError> {
+        self.runtime.snapshots().await
+    }
+
+    /// What is in flight for one key right now, read from the standings table
+    /// and the runtime.
+    pub async fn candidate_runtime(
+        &self,
+        key: &str,
+    ) -> Result<Option<CandidateRuntimeSnapshot>, crate::library::LibraryError> {
+        self.runtime.snapshot(key).await
+    }
+
+    /// Where one key stands, as its row reads it from the standings table, for
+    /// a test.
+    #[cfg(test)]
+    pub(crate) async fn standing_facts_for_test(&self, key: &str) -> crate::import::TriageRuntimeFacts {
+        self.runtime
+            .standing_facts(key)
+            .await
+            .expect("a test reads the standings table")
+    }
+
+    /// Put `key` where a run's answer being written puts it — queued, `run`
+    /// started and then answered with `answer` — as the queue and the
+    /// identify driver would, for a test of what disposes of that answer.
+    #[cfg(test)]
+    pub(crate) async fn hold_answer_for_test(
+        &self,
+        key: &str,
+        run: crate::identify::IdentifyRunId,
+        answer: &crate::identify::IdentifyState,
+    ) {
+        let candidate = self
+            .get_release_candidate(key)
+            .await
+            .unwrap()
+            .expect("the candidate is stored");
+        let files = crate::import::CandidateFiles::of(&candidate);
+        self.runtime
+            .admit(
+                vec![(key.to_string(), files.clone())],
+                crate::import::Admission::Requested,
+            )
+            .await
+            .unwrap();
+        self.runtime.record_run_state(key, run, true, answer);
+        assert!(self.runtime.run_started(key, &files, run).await.unwrap());
+        assert!(self
+            .runtime
+            .run_answered(key, run, answer.picks_unattended())
+            .await
+            .unwrap());
+    }
+
+    /// What is in flight for one key as the runtime stream last read it — the
+    /// read a view does once when it appears, after it has subscribed to the
+    /// stream, so the two agree.
+    pub fn latest_candidate_runtime(&self, key: &str) -> Option<CandidateRuntimeSnapshot> {
+        self.runtime.latest_snapshots().get(key).cloned()
     }
 
     /// Every key with something in flight, and each key that changes after.
@@ -550,8 +645,8 @@ impl ImportServiceHandle {
         super::RuntimeSnapshotsWatch::of(&self.runtime)
     }
 
-    /// Every change to a key's runtime from now on, none coalesced, for a
-    /// test that checks the order they come in.
+    /// Every key's runtime as each write of its standing leaves it, in the
+    /// order they land, from now on, for a test that checks that order.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn every_runtime_change_for_test(
         &self,
@@ -586,13 +681,6 @@ impl ImportServiceHandle {
             .load_import_candidate(key)
             .await?
             .map(crate::import::ImportCandidateDetailProjection::resolve))
-    }
-
-    /// Once every standing the runtime changed so far is written, for a test
-    /// that reads the tables right after.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn standings_written(&self) {
-        self.runtime.standings_written().await;
     }
 
     /// The query the pane subscribes to for one candidate, for a test that
@@ -688,23 +776,21 @@ impl ImportServiceHandle {
             )
             | None => None,
         };
+        let runtime = self.runtime.snapshot(key).await?;
         if let Some((candidate, actionable)) = candidate {
             let standing = self.candidate_standing(key, &candidate).await?;
             return Ok(Some(ImportCandidateSnapshot::Folder {
                 candidate,
-                runtime: self.runtime.get(key),
+                runtime,
                 actionable,
                 skipped: standing.skipped,
                 is_added: standing.imported,
             }));
         }
-        Ok(self
-            .runtime
-            .get(key)
-            .map(|runtime| ImportCandidateSnapshot::Runtime {
-                key: key.to_string(),
-                runtime,
-            }))
+        Ok(runtime.map(|runtime| ImportCandidateSnapshot::Runtime {
+            key: key.to_string(),
+            runtime,
+        }))
     }
 
     /// The stored candidate whose preparation may still be changed. A caller
@@ -725,8 +811,10 @@ impl ImportServiceHandle {
     }
 
     /// Whether the stored candidate at `key` is set aside, already in the
-    /// library, or claimed by a running import. Read from the tables and the
-    /// runtime because the list's query lands after the commit it reflects.
+    /// library, or claimed by a running import — the claim read from its
+    /// standing, which a caller about to write reads under the commit lock.
+    /// Read from the tables because the list's query lands after the commit
+    /// it reflects.
     pub(crate) async fn candidate_standing(
         &self,
         key: &str,
@@ -741,10 +829,7 @@ impl ImportServiceHandle {
                 .library_manager
                 .is_content_hash_imported(&candidate.files.content_hash())
                 .await?,
-            claimed: self
-                .runtime
-                .get(key)
-                .is_some_and(|runtime| runtime.import.is_some()),
+            claimed: self.runtime.import_claimed(key).await?,
         })
     }
 
@@ -780,16 +865,24 @@ impl ImportServiceHandle {
             .lock("claim a candidate for a test")
             .await;
         self.runtime
-            .claim_for_import(candidate_key, import_id)
+            .claim_for_import(candidate_key, import_id, false)
+            .await
             .expect("a test claims a candidate no import owns");
     }
 
-    async fn release_import_claim(&self, candidate_key: &str, import_id: &str) {
+    async fn release_import_claim(
+        &self,
+        candidate_key: &str,
+        import_id: &str,
+    ) -> Result<(), crate::library::LibraryError> {
         let _commit = self
             .folder_state_commit
             .lock("release an import claim")
             .await;
-        self.runtime.release_import_claim(candidate_key, import_id);
+        Ok(self
+            .runtime
+            .move_import(candidate_key, import_id, None)
+            .await?)
     }
 
     /// Run a durable write to completion once it has been asked for.
@@ -808,109 +901,6 @@ impl ImportServiceHandle {
         E: From<tokio::task::JoinError> + Send + 'static,
     {
         self.runtime_handle.spawn(write).await?
-    }
-
-    /// Store the verdict `run` reached, unless the candidate can no longer be
-    /// answered or its files are not the ones the verdict answers. The check
-    /// and the write share the commit lock, and the write ends `run`'s pending
-    /// save itself, so a caller torn down mid-write leaves nothing pending.
-    ///
-    /// A verdict that lands stores where the candidate stands with `run`'s
-    /// answer ended in its own transaction, under the standings hold, which
-    /// is kept until the runtime has ended the answer too: no read sees the
-    /// verdict beside the run, or the run gone without its verdict. A write
-    /// that fails records the failure, which the runtime's writer stores in
-    /// its own transaction.
-    ///
-    /// The pending save ends under the commit lock too, the lock an Import
-    /// asked for while the answer's pick is read takes to mark the answer. So
-    /// that ask lands on the answer before its write, which then carries it
-    /// out, or after the save has ended, as an import of the stored pick:
-    /// never in between, where it would be lost.
-    pub(crate) async fn save_candidate_verdict_if_current(
-        &self,
-        candidate_key: &str,
-        run: crate::identify::IdentifyRunId,
-        row: &crate::db::NewImportCandidateVerdict,
-    ) -> Result<VerdictWrite, crate::library::LibraryError> {
-        let this = self.clone();
-        let candidate_key = candidate_key.to_string();
-        let row = row.clone();
-        self.committed(async move {
-            let _commit = this
-                .folder_state_commit
-                .lock("store an identification verdict")
-                .await;
-            let held = this.runtime.hold_standings().await;
-            let standing = this
-                .runtime
-                .standing_once_answered(&held, &candidate_key, run);
-            let written = match this
-                .save_candidate_verdict_if_current_write(&candidate_key, &row, &standing)
-                .await
-            {
-                Ok(wrote) => {
-                    let import_asked = this.runtime.end_identification_answer(&candidate_key, run);
-                    Ok(if wrote {
-                        VerdictWrite::Stored { import_asked }
-                    } else {
-                        VerdictWrite::Refused
-                    })
-                }
-                Err(error) => {
-                    this.runtime.fail_identification(
-                        &candidate_key,
-                        run,
-                        crate::import::SaveFailure::NotWritten {
-                            error: error.to_string(),
-                        },
-                    );
-                    Err(error)
-                }
-            };
-            drop(held);
-            written
-        })
-        .await
-    }
-
-    /// The write itself, under the commit lock and the standings hold its
-    /// caller holds.
-    async fn save_candidate_verdict_if_current_write(
-        &self,
-        candidate_key: &str,
-        row: &crate::db::NewImportCandidateVerdict,
-        standing: &crate::import::TriageRuntimeFacts,
-    ) -> Result<bool, crate::library::LibraryError> {
-        let Some(candidate) = self.answerable_candidate(candidate_key).await? else {
-            return Ok(false);
-        };
-        // A verdict on other files than the candidate has now would describe
-        // a shape it no longer has.
-        if candidate.files.content_hash() != row.content_hash
-            || candidate.file_edit_revision != row.file_edit_revision
-        {
-            return Ok(false);
-        }
-        self.preparations
-            .store_run_verdict(row, candidate_key, standing)
-            .await
-    }
-
-    /// The candidate at `key` as an identification can still answer it: a
-    /// stored, actionable candidate whose standing is answerable.
-    pub(crate) async fn answerable_candidate(
-        &self,
-        key: &str,
-    ) -> Result<Option<crate::import::folder_scanner::FolderCandidate>, crate::library::LibraryError>
-    {
-        let Some(candidate) = self.get_release_candidate(key).await? else {
-            return Ok(None);
-        };
-        if !self.candidate_standing(key, &candidate).await?.answerable() {
-            return Ok(None);
-        }
-        Ok(Some(candidate))
     }
 }
 

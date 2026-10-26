@@ -202,7 +202,7 @@ async fn a_relaunch_queues_no_candidate_the_library_stored() {
     );
     assert!(fixture.identified_for(&dir).await.is_none());
     assert!(
-        import.candidate_runtime(&dir.to_string_lossy()).is_none(),
+        import.candidate_runtime(&dir.to_string_lossy()).await.unwrap().is_none(),
         "nothing is waiting either"
     );
     identification.stop();
@@ -216,14 +216,10 @@ async fn turning_automatic_identification_off_finishes_what_is_queued() {
     let dirs = flooded_queue(&fixture).await;
     let sweep = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
-    let waiting = dirs
-        .iter()
-        .find(|dir| {
-            fixture.identification_status(&dir.to_string_lossy())
-                == Some(crate::import::IdentificationStatus::Queued)
-        })
-        .expect("one candidate is over the cap and waiting")
-        .clone();
+    let waiting = fixture
+        .first_queued(&dirs)
+        .await
+        .expect("one candidate is over the cap and waiting");
 
     fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.provider.release();

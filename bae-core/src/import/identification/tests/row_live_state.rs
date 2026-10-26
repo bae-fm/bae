@@ -138,6 +138,12 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
         "the claimed import is counted In Progress"
     );
 
+    // The worker takes the import up: it writes where the import stands,
+    // then reports it.
+    fixture
+        .import
+        .move_candidate_import_for_test(&key, "import-1", crate::import::ImportStanding::Running)
+        .await;
     fixture
         .import
         .emit_event_for_test(reported(&key, preparing("import-1")));
@@ -153,6 +159,10 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
         &key,
         running(crate::import::ImportPhase::MeasuringLoudness, Some(40)),
     ));
+    fixture
+        .import
+        .move_candidate_import_for_test(&key, "import-1", crate::import::ImportStanding::Writing)
+        .await;
     fixture.import.emit_event_for_test(reported(
         &key,
         running(crate::import::ImportPhase::Finalizing, None),
@@ -252,6 +262,14 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
         "the row the window now holds carries where it stands"
     );
 
+    fixture
+        .import
+        .move_candidate_import_for_test(
+            &off_key,
+            "import-off",
+            crate::import::ImportStanding::Running,
+        )
+        .await;
     fixture
         .import
         .emit_event_for_test(reported(&off_key, preparing("import-off")));

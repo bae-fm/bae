@@ -210,9 +210,10 @@ desktop_only! {
     pub(crate) use candidate_runtime::CandidateWork;
     pub use candidate_search::{CandidateSearch, SearchStatus, SourceSearch};
     pub use candidates::{
-        Admission, CandidateRuntimeSnapshot, CandidateStanding, FolderScanStatus,
-        IdentificationInFlight, ImportCandidateSnapshot, ImportInFlight, ImportedRelease,
-        SaveFailure, SavingAnswer, WatchedFolderScanStatus,
+        Admission, CandidateFiles, CandidateRuntimeSnapshot, CandidateStanding,
+        FolderScanStatus, IdentificationInFlight, IdentificationRuntime,
+        ImportCandidateSnapshot, ImportInFlight, ImportedRelease, SaveFailure, SavingAnswer,
+        WatchedFolderScanStatus,
     };
     pub use cover_art::{CoverChoice, CoverImageSource};
     pub use import_failure::{ImportFailure, ImportFailureReason};

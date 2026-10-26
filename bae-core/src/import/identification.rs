@@ -29,7 +29,7 @@ use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};
 use super::folder_scanner::FolderCandidate;
 use crate::db::{DbImportCandidateState, NewImportCandidateVerdict};
 use crate::identify::{IdentifyRunId, IdentifyState, TerminalVerdict, TitleSearch};
-use crate::import::candidates::Admission;
+use crate::import::candidates::{Admission, CandidateFiles};
 use crate::import::LookupChoices;
 use crate::library::LibraryManager;
 use crate::signals::ExtractionSource;
@@ -54,9 +54,6 @@ use settle::*;
 /// provider rate limiter already paces the network. Settles run beside them.
 const MAX_IN_FLIGHT: usize = 4;
 
-/// A candidate's content hash and file-decision revision. Candidates sharing it
-/// are one job, since the answer is stored under it.
-type CandidateIdentity = (String, u64);
 
 /// The services the queue runs on.
 #[derive(Clone)]
@@ -70,14 +67,14 @@ enum Command {
     /// A person asked for this candidate to be identified now.
     Request { candidate_key: String },
     /// A person cancelled these candidates' identification. `done` hears
-    /// once the jobs are gone.
+    /// once the jobs are gone, or the first ending that could not be written.
     Cancel {
         candidate_keys: Vec<String>,
-        done: tokio::sync::oneshot::Sender<()>,
+        done: tokio::sync::oneshot::Sender<Result<(), crate::library::LibraryError>>,
     },
     /// A person cancelled every identification the queue holds.
     CancelAll {
-        done: tokio::sync::oneshot::Sender<()>,
+        done: tokio::sync::oneshot::Sender<Result<(), crate::library::LibraryError>>,
     },
     /// Say when every release found so far has been admitted and every job
     /// `drain` names has ended.
@@ -145,7 +142,7 @@ pub fn start(import: ImportServiceHandle, library_manager: LibraryManager) -> Id
         .spawn(move || runtime.block_on(completion_tasks.wait()))
         .expect("identification queue executor thread");
 
-    IdentificationHandle::new(context, token, tasks, executor_thread, command_tx)
+    IdentificationHandle::new(token, tasks, executor_thread, command_tx)
 }
 
 #[cfg(test)]

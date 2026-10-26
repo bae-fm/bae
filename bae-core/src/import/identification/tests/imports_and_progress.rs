@@ -375,7 +375,7 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
         "and its driver is gone: the run ended at the verdict it reached"
     );
     assert_eq!(
-        fixture.identification_status(&key),
+        fixture.identification_status(&key).await,
         None,
         "and the queue holds nothing for a candidate it has finished with"
     );

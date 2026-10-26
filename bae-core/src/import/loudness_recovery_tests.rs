@@ -73,7 +73,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
         temp.path().to_path_buf(),
         std::fs::metadata(temp.path()).unwrap().len(),
     )]);
-    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::default());
+    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
 
     let result = measure_loudness(
         &event_tx,

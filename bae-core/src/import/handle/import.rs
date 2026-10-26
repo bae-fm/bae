@@ -251,20 +251,20 @@ impl ImportServiceHandle {
         // it and what follows imports the stored pick. Every request kind
         // waits: the read is not cancelled, and the draft it replaces is not
         // imported.
-        if self.runtime.ask_import_once_stored(candidate_key) {
+        if self.runtime.ask_import_once_stored(candidate_key).await.map_err(crate::library::LibraryError::from)? {
             info!("{candidate_key} imports once the release its run picked is read and stored");
             return Ok(ImportStart::WhenPickStored);
         }
         match request {
             ImportRequest::Candidate => {}
             ImportRequest::Selection => {
-                let facts = self
+                if self
                     .runtime
-                    .get(candidate_key)
-                    .as_ref()
-                    .map(crate::import::triage::TriageRuntimeFacts::of)
-                    .unwrap_or_default();
-                if facts.identifying() {
+                    .standing_facts(candidate_key)
+                    .await
+                    .map_err(crate::library::LibraryError::from)?
+                    .identifying()
+                {
                     return Err(crate::import::ImportError::CandidateBeingIdentified);
                 }
             }
@@ -357,10 +357,14 @@ impl ImportServiceHandle {
         };
 
         // Claimed under the lock the standing was read under, so no second
-        // import can claim these files in between.
-        self.runtime.claim_for_import(candidate_key, &import_id)?;
-        // Once claimed, the candidate is not identification's to answer.
-        self.cancel_identification(candidate_key);
+        // import can claim these files in between. Once claimed, the
+        // candidate is not identification's to answer: the claim ends its
+        // run in the same write, and its work stops.
+        self.runtime
+            .claim_for_import(candidate_key, &import_id, true)
+            .await?;
+        self.identify.cancel(candidate_key);
+        self.extraction.cancel(candidate_key);
         drop(commit);
         self.send_claimed_command(command, expectation).await?;
         Ok(ImportStart::Queued { import_id })
@@ -633,7 +637,9 @@ impl ImportServiceHandle {
         let import_id = command.import_id.clone();
         let candidate_key = command.candidate_key.clone();
         let commit = self.folder_state_commit.lock("queue a test import").await;
-        self.runtime.claim_for_import(&candidate_key, &import_id)?;
+        self.runtime
+            .claim_for_import(&candidate_key, &import_id, false)
+            .await?;
         drop(commit);
         self.send_claimed_command(command, expectation).await?;
         Ok(import_id)
@@ -658,7 +664,7 @@ impl ImportServiceHandle {
             .is_err()
         {
             self.import_cancels.forget(&candidate_key, &import_id);
-            self.release_import_claim(&candidate_key, &import_id).await;
+            self.release_import_claim(&candidate_key, &import_id).await?;
             return Err(crate::import::ImportError::Internal {
                 detail: "Failed to queue import command".to_string(),
             });
@@ -692,32 +698,47 @@ impl ImportServiceHandle {
     /// Cancel the waiting or running import of `candidate_key`, leaving the
     /// candidate as it stood before the import was asked for. An import already
     /// writing its release finishes, and that is the error.
-    pub fn cancel_import(&self, candidate_key: &str) -> Result<(), crate::import::ImportError> {
+    pub async fn cancel_import(&self, candidate_key: &str) -> Result<(), crate::import::ImportError> {
         match self.import_cancels.cancel(candidate_key) {
             CancelOutcome::NotImporting | CancelOutcome::CancelledRunning => Ok(()),
             CancelOutcome::CancelledWaiting { import_id } => {
-                self.announce_cancelled_import(candidate_key, import_id);
-                Ok(())
+                self.end_cancelled_import(candidate_key, import_id).await
             }
             CancelOutcome::Writing => Err(crate::import::ImportError::ImportWriting),
         }
     }
 
-    /// Cancel every import that has not begun writing its release.
-    pub fn cancel_all_imports(&self) {
+    /// Cancel every import that has not begun writing its release. Each one
+    /// cancelled while it waited ends here; the first whose ending cannot be
+    /// written fails the cancel, after the rest have been tried.
+    pub async fn cancel_all_imports(&self) -> Result<(), crate::import::ImportError> {
+        let mut failed = Ok(());
         for (candidate_key, import_id) in self.import_cancels.cancel_all() {
-            self.announce_cancelled_import(&candidate_key, import_id);
+            let ended = self.end_cancelled_import(&candidate_key, import_id).await;
+            if failed.is_ok() {
+                failed = ended;
+            }
         }
+        failed
     }
 
-    /// Announce the end of an import cancelled while waiting: the worker skips
-    /// it, so it never will.
-    fn announce_cancelled_import(&self, candidate_key: &str, import_id: String) {
+    /// End an import cancelled while it waited, and announce it: the worker
+    /// skips it, so it never will.
+    async fn end_cancelled_import(
+        &self,
+        candidate_key: &str,
+        import_id: String,
+    ) -> Result<(), crate::import::ImportError> {
         info!("Import of {candidate_key} was cancelled before it started");
+        self.runtime
+            .move_import(candidate_key, &import_id, None)
+            .await
+            .map_err(crate::library::LibraryError::from)?;
         self.event_tx.send(ImportEvent::ImportProgress {
             candidate_key: candidate_key.to_string(),
             progress: ImportProgress::Cancelled { import_id },
         });
+        Ok(())
     }
 
     /// Every import event since the service started, for the one

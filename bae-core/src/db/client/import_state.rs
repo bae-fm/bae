@@ -27,14 +27,17 @@ pub(super) use pane_rows::{
 };
 pub(crate) use preparation_rows::{
     CandidatePaneWrite, CandidateSaveExpectation,
-    CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
+    CandidateSaveExtras, CandidateSaved, RunVerdictSaved, ScannedCandidateKey,
 };
 pub(super) use rows::{
     load_candidate_file_edits_on, load_matches_on, load_provenance_on, load_release_links_on,
     load_states_on,
 };
 use session_rows::load_session_on;
-pub(super) use standing_rows::{load_standing_on, load_standings_on, write_standing_on};
+pub(crate) use standing_rows::ImportClaim;
+pub(super) use standing_rows::{
+    change_identification_on, load_standing_facts_on, load_standing_on, move_import_on,
+};
 use signal_rows::{delete_signals, insert_signals};
 
 use crate::import::folder_scanner::{

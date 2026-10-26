@@ -83,6 +83,66 @@ pub(super) fn delete_failure_on(sql: &SqlContext<'_, '_>, content_hash: &str) ->
     Ok(())
 }
 
+/// Record that an import of `content_hash` at `edit_revision` failed, inside
+/// the caller's write.
+fn save_failure_on(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    edit_revision: u64,
+    failure: &ImportFailure,
+) -> Result<(), DbError> {
+    let edit_revision = i64::try_from(edit_revision).map_err(|error| {
+        DbError::Message(format!(
+            "candidate edit revision {edit_revision} exceeds SQLite's integer range: {error}"
+        ))
+    })?;
+    let current_revision = sql
+        .query_row(
+            "SELECT edit_revision FROM import_candidate_state WHERE content_hash = ?",
+            [content_hash],
+            |row| row.get::<_, i64>(0),
+        )
+        .optional()?
+        .ok_or_else(|| {
+            DbError::Message("import failure has no current candidate state row".to_string())
+        })?;
+    if current_revision != edit_revision {
+        return Err(DbError::Message(format!(
+            "candidate file decisions changed from revision {edit_revision}"
+        )));
+    }
+    let failed_at = failure.failed_at.to_rfc3339();
+    sql.execute(
+        "INSERT INTO import_candidate_failure \
+             (content_hash, error, failed_at) \
+         VALUES (?, ?, ?) \
+         ON CONFLICT (content_hash) DO UPDATE SET \
+             error = excluded.error, failed_at = excluded.failed_at",
+        params![content_hash, failure.reason.detail, failed_at],
+    )?;
+    sql.execute(
+        "DELETE FROM import_candidate_artist_identity_conflict WHERE content_hash = ?",
+        [content_hash],
+    )?;
+    if let Some(conflict) = &failure.artist_identity_conflict {
+        sql.execute(
+            "INSERT INTO import_candidate_artist_identity_conflict (\
+                 content_hash, incoming_artist_name, discogs_artist_id, \
+                 musicbrainz_artist_id, discogs_library_artist_id, \
+                 musicbrainz_library_artist_id) VALUES (?, ?, ?, ?, ?, ?)",
+            params![
+                content_hash,
+                conflict.incoming_artist_name,
+                conflict.discogs_artist_id,
+                conflict.musicbrainz_artist_id,
+                conflict.discogs_artist.artist_id,
+                conflict.musicbrainz_artist.artist_id,
+            ],
+        )?;
+    }
+    Ok(())
+}
+
 impl Database {
     /// Record that an import of this candidate failed, so the pane still
     /// offers Retry after a relaunch.
@@ -94,59 +154,29 @@ impl Database {
     ) -> Result<(), DbError> {
         let content_hash = content_hash.to_string();
         let failure = failure.clone();
-        let edit_revision = i64::try_from(edit_revision).map_err(|error| {
-            DbError::Message(format!(
-                "candidate edit revision {edit_revision} exceeds SQLite's integer range: {error}"
-            ))
-        })?;
+        self.call(move |sql| save_failure_on(sql, &content_hash, edit_revision, &failure))
+            .await
+    }
+
+    /// Record that the import `import_id` of the candidate at
+    /// `candidate_key` failed, and end its claim on the candidate, in one
+    /// write: no read sees the import ended without its failure, or the
+    /// failure beside the import still going.
+    pub(crate) async fn fail_candidate_import(
+        &self,
+        content_hash: &str,
+        edit_revision: u64,
+        failure: &ImportFailure,
+        candidate_key: &str,
+        import_id: &str,
+    ) -> Result<(), DbError> {
+        let content_hash = content_hash.to_string();
+        let failure = failure.clone();
+        let candidate_key = candidate_key.to_string();
+        let import_id = import_id.to_string();
         self.call(move |sql| {
-            let current_revision = sql
-                .query_row(
-                    "SELECT edit_revision FROM import_candidate_state WHERE content_hash = ?",
-                    [&content_hash],
-                    |row| row.get::<_, i64>(0),
-                )
-                .optional()?
-                .ok_or_else(|| {
-                    DbError::Message(
-                        "import failure has no current candidate state row".to_string(),
-                    )
-                })?;
-            if current_revision != edit_revision {
-                return Err(DbError::Message(format!(
-                    "candidate file decisions changed from revision {edit_revision}"
-                )));
-            }
-            let failed_at = failure.failed_at.to_rfc3339();
-            sql.execute(
-                "INSERT INTO import_candidate_failure \
-                     (content_hash, error, failed_at) \
-                 VALUES (?, ?, ?) \
-                 ON CONFLICT (content_hash) DO UPDATE SET \
-                     error = excluded.error, failed_at = excluded.failed_at",
-                params![content_hash, failure.reason.detail, failed_at],
-            )?;
-            sql.execute(
-                "DELETE FROM import_candidate_artist_identity_conflict WHERE content_hash = ?",
-                [&content_hash],
-            )?;
-            if let Some(conflict) = &failure.artist_identity_conflict {
-                sql.execute(
-                    "INSERT INTO import_candidate_artist_identity_conflict (\
-                         content_hash, incoming_artist_name, discogs_artist_id, \
-                         musicbrainz_artist_id, discogs_library_artist_id, \
-                         musicbrainz_library_artist_id) VALUES (?, ?, ?, ?, ?, ?)",
-                    params![
-                        content_hash,
-                        conflict.incoming_artist_name,
-                        conflict.discogs_artist_id,
-                        conflict.musicbrainz_artist_id,
-                        conflict.discogs_artist.artist_id,
-                        conflict.musicbrainz_artist.artist_id,
-                    ],
-                )?;
-            }
-            Ok(())
+            save_failure_on(sql, &content_hash, edit_revision, &failure)?;
+            super::move_import_on(sql, &candidate_key, &import_id, None)
         })
         .await
     }

@@ -13,19 +13,19 @@ impl Fixture {
         key: &str,
         status: crate::import::IdentificationStatus,
     ) {
-        tokio::time::timeout(Duration::from_secs(20), async {
-            while self.identification_status(key).as_ref() != Some(&status) {
+        let reached = tokio::time::timeout(Duration::from_secs(20), async {
+            while self.identification_status(key).await.as_ref() != Some(&status) {
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
         })
-        .await
-        .unwrap_or_else(|_| {
+        .await;
+        if reached.is_err() {
             panic!(
                 "{key} never read as {status:?}, it reads {:?}; requests so far: {:?}",
-                self.identification_status(key),
+                self.identification_status(key).await,
                 self.provider.requests()
-            )
-        });
+            );
+        }
     }
 
     /// A disc-ID candidate whose one release `release_id` the run picks
@@ -110,14 +110,14 @@ async fn a_settle_reading_its_pick_holds_no_slot() {
         fixture.provider.requests()
     );
     assert_eq!(
-        fixture.identification_status(&settling_key),
+        fixture.identification_status(&settling_key).await,
         Some(crate::import::IdentificationStatus::ReadingPick {
             import_asked: false,
         })
     );
     for dir in &running {
         assert_eq!(
-            fixture.identification_status(&dir.to_string_lossy()),
+            fixture.identification_status(&dir.to_string_lossy()).await,
             Some(crate::import::IdentificationStatus::Running),
             "{} started while the pick was read",
             dir.display()
@@ -193,14 +193,14 @@ async fn import_from_the_pane_while_the_pick_is_read_imports_it_once_stored() {
         .expect("the import is asked for");
     assert_eq!(started, crate::import::ImportStart::WhenPickStored);
     assert_eq!(
-        fixture.identification_status(&key),
+        fixture.identification_status(&key).await,
         Some(crate::import::IdentificationStatus::ReadingPick { import_asked: true }),
         "the read goes on, asked to import"
     );
     assert!(
         fixture
             .import
-            .candidate_runtime(&key)
+            .candidate_runtime(&key).await.unwrap()
             .is_some_and(|runtime| runtime.import.is_none()),
         "nothing is claimed while the pick is read"
     );

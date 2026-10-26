@@ -33,7 +33,7 @@ pub(super) enum Settled {
 /// What one settled answer reports back to the driver loop.
 pub(super) struct Finished {
     /// The identity of the job the answer settles.
-    pub(super) identity: CandidateIdentity,
+    pub(super) identity: CandidateFiles,
     pub(super) representative_key: String,
     /// The run whose answer this is.
     pub(super) run: IdentifyRunId,
@@ -55,7 +55,7 @@ enum SettledLead {
 /// runtime's pending save for an answer that never reached a write.
 pub(super) async fn settle_answer(
     context: Context,
-    identity: CandidateIdentity,
+    identity: CandidateFiles,
     candidate: FolderCandidate,
     run: IdentifyRunId,
     state: IdentifyState,
@@ -72,27 +72,47 @@ pub(super) async fn settle_answer(
         &token,
     )
     .await;
-    match &settled {
+    let files = CandidateFiles::of(&candidate);
+    let ended = match &settled {
         // A write that ran ended its own pending save.
-        Settled::Stored { .. } | Settled::Refused | Settled::WriteFailed { .. } => {}
-        Settled::Abandoned => context
-            .import
-            .end_identification_answer(&representative_key, run),
-        Settled::Unwritable { error } => context.import.fail_identification(
-            &representative_key,
-            run,
-            crate::import::SaveFailure::NotWritten {
-                error: error.clone(),
-            },
-        ),
-        Settled::Inapplicable { error } => context.import.fail_identification(
-            &representative_key,
-            run,
-            crate::import::SaveFailure::Inapplicable {
-                error: error.clone(),
-            },
-        ),
-    }
+        Settled::Stored { .. } | Settled::Refused | Settled::WriteFailed { .. } => Ok(()),
+        Settled::Abandoned => {
+            context
+                .import
+                .end_identification_answer(&representative_key, run)
+                .await
+        }
+        Settled::Unwritable { error } => {
+            context
+                .import
+                .fail_identification(
+                    &representative_key,
+                    run,
+                    &files,
+                    crate::import::SaveFailure::NotWritten {
+                        error: error.clone(),
+                    },
+                )
+                .await
+        }
+        Settled::Inapplicable { error } => {
+            context
+                .import
+                .fail_identification(
+                    &representative_key,
+                    run,
+                    &files,
+                    crate::import::SaveFailure::Inapplicable {
+                        error: error.clone(),
+                    },
+                )
+                .await
+        }
+    };
+    super::queue::record(
+        &format!("end {representative_key}'s answer, which no verdict write ended"),
+        ended,
+    );
     Finished {
         identity,
         representative_key,

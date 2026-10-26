@@ -37,10 +37,21 @@ impl ImportServiceHandle {
         choices: crate::import::LookupChoices,
         title_search: Option<crate::identify::TitleSearch>,
     ) -> bool {
+        let subject = match &source {
+            crate::signals::ExtractionSource::Candidate { candidate } => {
+                crate::import::candidate_runtime::RunSubject::Candidate(
+                    crate::import::CandidateFiles::of(candidate),
+                )
+            }
+            crate::signals::ExtractionSource::Release { .. } => {
+                crate::import::candidate_runtime::RunSubject::Release
+            }
+        };
         let snapshots = self.extraction.start(run, key.clone(), source, priority);
         if self.identify.start(
             run,
             key.clone(),
+            subject,
             priority,
             choices,
             title_search,
@@ -63,7 +74,13 @@ impl ImportServiceHandle {
     /// The one cancellation that is not a command is a reshaped or vanished
     /// candidate: it has no single decision point, so both halves cancel it
     /// off their own listeners on the scan's events.
-    pub(crate) fn cancel_identification(&self, candidate_key: &str) {
+    ///
+    /// A cancel that cannot write where the candidate stands fails, and the
+    /// candidate still reads as identifying: whoever asked for it is told.
+    pub(crate) async fn cancel_identification(
+        &self,
+        candidate_key: &str,
+    ) -> Result<(), crate::library::LibraryError> {
         self.identify.cancel(candidate_key);
         self.extraction.cancel(candidate_key);
         // Nothing is going to write what the cancelled run reached, including
@@ -71,7 +88,7 @@ impl ImportServiceHandle {
         // disposes of reads as a commit still pending, for good. It is also the
         // only ending a library release re-identified in its own sheet gets —
         // its run stores no verdict, so no write would end it.
-        self.runtime.end_identification(candidate_key);
+        Ok(self.runtime.cancel_identification(candidate_key).await?)
     }
 
     /// Stop only the extraction behind `key`, for a run that reached its
@@ -110,42 +127,54 @@ impl ImportServiceHandle {
         self.extraction.register_analyzer(analyzer);
     }
 
-    /// This key is waiting on `admission` for a run that has not started yet.
-    pub(crate) fn admit_identification(
+    /// These candidates are waiting on `admission` for runs that have not
+    /// started yet.
+    pub(crate) async fn admit_identification(
         &self,
-        candidate_keys: Vec<String>,
+        candidates: Vec<(String, crate::import::CandidateFiles)>,
         admission: crate::import::Admission,
-    ) {
-        self.runtime.admit(candidate_keys, admission);
+    ) -> Result<(), crate::library::LibraryError> {
+        Ok(self.runtime.admit(candidates, admission).await?)
     }
 
     /// This key is not waiting any more.
-    pub(crate) fn withdraw_identification(&self, candidate_key: &str) {
-        self.runtime.withdraw(candidate_key);
+    pub(crate) async fn withdraw_identification(
+        &self,
+        candidate_key: &str,
+    ) -> Result<(), crate::library::LibraryError> {
+        Ok(self.runtime.withdraw(candidate_key).await?)
     }
 
-    /// A terminal result `run` reached could not be committed.
-    pub(crate) fn fail_identification(
+    /// A terminal result `run` reached for `files` could not be committed.
+    pub(crate) async fn fail_identification(
         &self,
         candidate_key: &str,
         run: crate::identify::IdentifyRunId,
+        files: &crate::import::CandidateFiles,
         failure: crate::import::SaveFailure,
-    ) {
-        self.runtime.fail_identification(candidate_key, run, failure);
+    ) -> Result<(), crate::library::LibraryError> {
+        Ok(self
+            .runtime
+            .fail_identification(candidate_key, run, files, failure)
+            .await?)
     }
 
     /// `run`'s answer is disposed of with no write ever asked for it. An
     /// Import asked for while its pick was read goes with it: no pick is
     /// stored, so nothing imports.
-    pub(crate) fn end_identification_answer(
+    pub(crate) async fn end_identification_answer(
         &self,
         candidate_key: &str,
         run: crate::identify::IdentifyRunId,
-    ) {
-        let import_asked = self.runtime.end_identification_answer(candidate_key, run);
+    ) -> Result<(), crate::library::LibraryError> {
+        let import_asked = self
+            .runtime
+            .end_identification_answer(candidate_key, run)
+            .await?;
         if import_asked {
             info!("identification: {candidate_key}'s answer was given up; the Import asked of it is dropped");
         }
+        Ok(())
     }
 
     /// The settled snapshot `run` was judged against — what a settle of that

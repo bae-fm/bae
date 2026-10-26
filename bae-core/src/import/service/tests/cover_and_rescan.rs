@@ -183,7 +183,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             crate::util::content_type::ContentType::Bmp
         );
         let mut events = test.service.event_tx.every_event();
-        test.service.import_cancels.register(&key, "import-cover");
+        test.service.queue_import_for_test(&key, "import-cover").await;
         let result = test
             .service
             .prepare_and_run_folder_import(
@@ -288,7 +288,7 @@ async fn an_import_commits_after_a_pass_finds_its_folder_unchanged() {
         "the pass stamps the reading it kept"
     );
 
-    test.service.import_cancels.register(&key, "import-1");
+    test.service.queue_import_for_test(&key, "import-1").await;
     test.service
         .prepare_and_run_folder_import(
             "import-1".to_string(),
@@ -433,9 +433,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
     let audio_path = folder.join("01.flac");
     let opens_before = crate::test_reads::count(crate::test_reads::FileRead::Probe, &audio_path);
 
-    service
-        .import_cancels
-        .register(&folder.to_string_lossy(), "import-1");
+    service.queue_import_for_test(&folder.to_string_lossy(), "import-1").await;
     let result = service
         .prepare_and_run_folder_import(
             "import-1".to_string(),

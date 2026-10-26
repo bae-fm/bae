@@ -1,139 +1,304 @@
 //! Each candidate's standing as the standings table stores and reads it back.
 
-use super::empty_db;
-use crate::import::triage::{IdentificationStatus, ImportStanding, TriageRuntimeFacts};
-use crate::import::SaveFailure;
+use super::{empty_db, exec_batch};
+use crate::identify::IdentifyRunId;
+use crate::import::candidate_runtime::{
+    IdentificationChange, IdentificationStage, StoredIdentification, StoredImport, StoredStanding,
+};
+use crate::import::candidates::{Admission, CandidateFiles, SaveFailure};
+use crate::import::triage::ImportStanding;
 
-fn standing(
-    identification: Option<IdentificationStatus>,
-    import: Option<ImportStanding>,
-) -> TriageRuntimeFacts {
-    TriageRuntimeFacts {
-        identification,
-        import,
+/// Store `key` as a candidate the scan holds with `files`, as the scan would.
+async fn scanned(db: &super::super::Database, key: &str, files: &CandidateFiles) {
+    exec_batch(
+        db,
+        &format!(
+            "INSERT OR IGNORE INTO watched_import_folders (path, position) VALUES ('/music', 0);
+             INSERT OR IGNORE INTO folder_scan_roots (watched_folder_path, generation, status, volume)
+                 VALUES ('/music', 1, 'complete', 'local');
+             DELETE FROM scan_candidate WHERE path = '{key}';
+             INSERT INTO scan_candidate (watched_folder_path, path, generation, kind, name,
+                 display_path, folder, file_root, scope, content_hash, file_edit_revision)
+                 VALUES ('/music', '{key}', 1, 'valid', 'Album', '{key}', '{key}', '{key}',
+                     'recursive', '{hash}', {revision});",
+            hash = files.content_hash,
+            revision = files.file_edit_revision,
+        ),
+    )
+    .await;
+}
+
+fn files_of(key: &str) -> CandidateFiles {
+    CandidateFiles {
+        content_hash: format!("hash:{key}"),
+        file_edit_revision: 0,
     }
 }
 
-/// Every standing a candidate can have reads back as it was written.
+fn run(number: u64) -> IdentifyRunId {
+    IdentifyRunId::for_test(number)
+}
+
+/// Apply `changes` to `key` one write each.
+async fn change(db: &super::super::Database, key: &str, changes: Vec<IdentificationChange>) {
+    for change in changes {
+        db.change_candidate_identifications(vec![(key.to_string(), change)])
+            .await
+            .unwrap();
+    }
+}
+
+/// Every stage a candidate's identification can reach, and every standing of
+/// its import, reads back as the change that reached it left it.
 #[tokio::test]
 async fn every_standing_reads_back_as_written() {
     let (db, _tmp) = empty_db().await;
-    let standings = vec![
+    let admit = |key: &str| IdentificationChange::Admit {
+        files: files_of(key),
+        admission: Admission::Requested,
+    };
+    let start = |key: &str| IdentificationChange::RunStarted {
+        files: files_of(key),
+        run: run(1),
+    };
+    let answer = |reads_pick| IdentificationChange::RunAnswered {
+        run: run(1),
+        reads_pick,
+    };
+    let fail = |key: &str, failure| IdentificationChange::AnswerFailed {
+        files: files_of(key),
+        run: run(1),
+        failure,
+    };
+    let not_written = SaveFailure::NotWritten {
+        error: "the disk is full".to_string(),
+    };
+    let inapplicable = SaveFailure::Inapplicable {
+        error: "a track has no title".to_string(),
+    };
+    let cases = [
         (
-            "/music/Queued".to_string(),
-            standing(Some(IdentificationStatus::Queued), None),
+            "/music/Queued",
+            vec![admit("/music/Queued")],
+            IdentificationStage::Queued {
+                admission: Admission::Requested,
+            },
         ),
         (
-            "/music/Running".to_string(),
-            standing(Some(IdentificationStatus::Running), None),
+            "/music/Running",
+            vec![admit("/music/Running"), start("/music/Running")],
+            IdentificationStage::Running { run: run(1) },
         ),
         (
-            "/music/Finalizing".to_string(),
-            standing(Some(IdentificationStatus::Finalizing), None),
+            "/music/Finalizing",
+            vec![
+                admit("/music/Finalizing"),
+                start("/music/Finalizing"),
+                answer(false),
+            ],
+            IdentificationStage::Finalizing { run: run(1) },
         ),
         (
-            "/music/Reading".to_string(),
-            standing(
-                Some(IdentificationStatus::ReadingPick {
-                    import_asked: false,
-                }),
-                None,
-            ),
+            "/music/Asked",
+            vec![
+                admit("/music/Asked"),
+                start("/music/Asked"),
+                answer(true),
+                IdentificationChange::ImportAsked,
+            ],
+            IdentificationStage::ReadingPick {
+                run: run(1),
+                import_asked: true,
+            },
         ),
         (
-            "/music/Asked".to_string(),
-            standing(
-                Some(IdentificationStatus::ReadingPick { import_asked: true }),
-                None,
-            ),
+            "/music/Not Written",
+            vec![fail("/music/Not Written", not_written.clone())],
+            IdentificationStage::Failed {
+                failure: not_written,
+            },
         ),
         (
-            "/music/Not Written".to_string(),
-            standing(
-                Some(IdentificationStatus::FinalizationFailed {
-                    failure: SaveFailure::NotWritten {
-                        error: "the disk is full".to_string(),
-                    },
-                }),
-                None,
-            ),
-        ),
-        (
-            "/music/Inapplicable".to_string(),
-            standing(
-                Some(IdentificationStatus::FinalizationFailed {
-                    failure: SaveFailure::Inapplicable {
-                        error: "a track has no title".to_string(),
-                    },
-                }),
-                None,
-            ),
-        ),
-        (
-            "/music/Import Queued".to_string(),
-            standing(None, Some(ImportStanding::Queued)),
-        ),
-        (
-            "/music/Import Running".to_string(),
-            standing(None, Some(ImportStanding::Running)),
-        ),
-        (
-            "/music/Import Writing".to_string(),
-            standing(None, Some(ImportStanding::Writing)),
-        ),
-        (
-            "/music/Both".to_string(),
-            standing(
-                Some(IdentificationStatus::Queued),
-                Some(ImportStanding::Queued),
-            ),
+            "/music/Inapplicable",
+            vec![fail("/music/Inapplicable", inapplicable.clone())],
+            IdentificationStage::Failed {
+                failure: inapplicable,
+            },
         ),
     ];
-    db.write_candidate_standings(standings.clone())
+    for (key, changes, stage) in cases {
+        scanned(&db, key, &files_of(key)).await;
+        change(&db, key, changes).await;
+        assert_eq!(
+            db.load_candidate_standing(key).await.unwrap(),
+            StoredStanding {
+                identification: Some(StoredIdentification {
+                    files: files_of(key),
+                    stage,
+                }),
+                import: None,
+            },
+            "{key}"
+        );
+    }
+
+    let key = "/music/Import";
+    db.claim_candidate_import(key, "import-1", None)
         .await
         .unwrap();
-
-    assert_eq!(
-        db.load_candidate_standings().await.unwrap(),
-        standings.into_iter().collect()
-    );
+    for standing in [
+        ImportStanding::Queued,
+        ImportStanding::Running,
+        ImportStanding::Writing,
+    ] {
+        db.move_candidate_import(key, "import-1", Some(standing))
+            .await
+            .unwrap();
+        assert_eq!(
+            db.load_candidate_standing(key).await.unwrap(),
+            StoredStanding {
+                identification: None,
+                import: Some(StoredImport {
+                    import_id: "import-1".to_string(),
+                    standing,
+                }),
+            }
+        );
+    }
 }
 
-/// A candidate nothing is running for has no row: writing that standing
-/// removes the row it had.
+/// A candidate nothing is running for has no row: ending the last thing
+/// going for it removes the row it had.
 #[tokio::test]
 async fn nothing_running_removes_the_row() {
     let (db, _tmp) = empty_db().await;
-    let key = "/music/Album".to_string();
-    db.write_candidate_standings(vec![(
-        key.clone(),
-        standing(Some(IdentificationStatus::Running), None),
-    )])
-    .await
-    .unwrap();
-    db.write_candidate_standings(vec![(key, TriageRuntimeFacts::default())])
+    let key = "/music/Album";
+    scanned(&db, key, &files_of(key)).await;
+    change(
+        &db,
+        key,
+        vec![IdentificationChange::Admit {
+            files: files_of(key),
+            admission: Admission::Automatic,
+        }],
+    )
+    .await;
+    db.claim_candidate_import(key, "import-1", None)
+        .await
+        .unwrap();
+
+    change(&db, key, vec![IdentificationChange::Withdraw]).await;
+    assert_eq!(
+        db.load_candidate_standing(key)
+            .await
+            .unwrap()
+            .identification,
+        None
+    );
+    db.move_candidate_import(key, "import-1", None)
         .await
         .unwrap();
 
     assert!(db.load_candidate_standings().await.unwrap().is_empty());
+    assert_eq!(
+        db.load_candidate_standing(key).await.unwrap(),
+        StoredStanding::default()
+    );
+}
+
+/// A second claim on a candidate an import owns is refused by the row, and
+/// changes nothing — the identification change asked with it included.
+#[tokio::test]
+async fn a_claim_while_another_stands_is_refused_whole() {
+    let (db, _tmp) = empty_db().await;
+    let key = "/music/Album";
+    scanned(&db, key, &files_of(key)).await;
+    change(
+        &db,
+        key,
+        vec![
+            IdentificationChange::Admit {
+                files: files_of(key),
+                admission: Admission::Requested,
+            },
+            IdentificationChange::RunStarted {
+                files: files_of(key),
+                run: run(1),
+            },
+        ],
+    )
+    .await;
+    db.claim_candidate_import(key, "import-1", None)
+        .await
+        .unwrap();
+    let claimed = db.load_candidate_standing(key).await.unwrap();
+
+    assert_eq!(
+        db.claim_candidate_import(key, "import-2", Some(IdentificationChange::Cancelled))
+            .await
+            .unwrap(),
+        crate::db::ImportClaim::Refused
+    );
+    assert_eq!(db.load_candidate_standing(key).await.unwrap(), claimed);
+}
+
+/// An identification of other files than the scan holds the candidate with
+/// reads as nothing; the import half is the candidate's whatever its files.
+#[tokio::test]
+async fn an_identification_of_other_files_reads_as_nothing() {
+    let (db, _tmp) = empty_db().await;
+    let key = "/music/Album";
+    scanned(&db, key, &files_of(key)).await;
+    change(
+        &db,
+        key,
+        vec![IdentificationChange::Admit {
+            files: files_of(key),
+            admission: Admission::Automatic,
+        }],
+    )
+    .await;
+    db.claim_candidate_import(key, "import-1", None)
+        .await
+        .unwrap();
+
+    scanned(
+        &db,
+        key,
+        &CandidateFiles {
+            file_edit_revision: 1,
+            ..files_of(key)
+        },
+    )
+    .await;
+    let standing = db.load_candidate_standing(key).await.unwrap();
+    assert_eq!(standing.identification, None);
+    assert!(standing.import.is_some());
+    assert_eq!(
+        db.load_candidate_standing_facts().await.unwrap()[key].identification,
+        None
+    );
 }
 
 /// Clearing the table, as the library opens, removes every standing.
 #[tokio::test]
 async fn clearing_removes_every_standing() {
     let (db, _tmp) = empty_db().await;
-    db.write_candidate_standings(vec![
-        (
-            "/music/One".to_string(),
-            standing(Some(IdentificationStatus::Running), None),
-        ),
-        (
-            "/music/Two".to_string(),
-            standing(None, Some(ImportStanding::Writing)),
-        ),
-    ])
-    .await
-    .unwrap();
+    for key in ["/music/One", "/music/Two"] {
+        scanned(&db, key, &files_of(key)).await;
+        change(
+            &db,
+            key,
+            vec![IdentificationChange::Admit {
+                files: files_of(key),
+                admission: Admission::Automatic,
+            }],
+        )
+        .await;
+    }
+    db.claim_candidate_import("/music/Two", "import-1", None)
+        .await
+        .unwrap();
     db.clear_candidate_standings().await.unwrap();
 
     assert!(db.load_candidate_standings().await.unwrap().is_empty());

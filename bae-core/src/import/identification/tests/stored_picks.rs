@@ -398,7 +398,7 @@ async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
 
     let finished = settle_answer(
         fixture.context(),
-        candidate_identity(&candidate),
+        crate::import::CandidateFiles::of(&candidate),
         candidate,
         IdentifyRunId::for_test(1),
         TerminalVerdict::NotFoundAnywhere { ledger: None }.resume_state(
@@ -445,26 +445,18 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
         |result: &MetadataResult| crate::db::LibraryStatus::absent(&result.release_id);
     fixture
         .import
-        .emit_event_for_test(ImportEvent::IdentifyStateChanged {
-            candidate_key: key.clone(),
+        .hold_answer_for_test(
+            &key,
             run,
-            state: row
-                .verdict
+            &row.verdict
                 .clone()
                 .resume_state(&not_in_library, Default::default(), Default::default()),
-            priority: CallPriority::Background,
-        });
-    tokio::time::timeout(Duration::from_secs(10), async {
-        while fixture
-            .import
-            .candidate_runtime(&key)
-            .is_none_or(|runtime| runtime.saving.is_none())
-        {
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    })
-    .await
-    .expect("the terminal state is recorded as a pending save");
+        )
+        .await;
+    assert!(matches!(
+        fixture.identification_status(&key).await,
+        Some(crate::import::IdentificationStatus::Finalizing)
+    ));
 
     // One poll asks for the write; dropping the future at the end of the block
     // is the caller being torn down.
@@ -481,11 +473,7 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
     }
 
     tokio::time::timeout(Duration::from_secs(10), async {
-        while fixture
-            .import
-            .candidate_runtime(&key)
-            .is_some_and(|runtime| runtime.saving.is_some())
-        {
+        while fixture.identification_status(&key).await.is_some() {
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
     })

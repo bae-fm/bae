@@ -199,7 +199,7 @@ impl LibraryManager {
     /// Run `task` on the manager's runtime until it ends or the manager closes.
     /// A task that panics is reported, since nothing else awaits it. A library
     /// that has closed starts nothing and says so to the caller.
-    pub(super) fn spawn_supervised_task<F>(
+    pub(crate) fn spawn_supervised_task<F>(
         &self,
         task_name: &'static str,
         task: F,

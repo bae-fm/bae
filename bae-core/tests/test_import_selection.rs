@@ -357,7 +357,10 @@ async fn a_bulk_identify_admits_the_rows_as_the_list_shows_them() {
     assert!(failures.is_empty(), "{failures:?}");
 
     let admitted = reached_in_order(&mut changes, expected.len(), |runtime| {
-        runtime.queued == Some(Admission::Requested)
+        runtime.identification
+            == Some(bae_core::import::IdentificationRuntime::Queued(
+                Admission::Requested,
+            ))
     })
     .await;
     assert_eq!(admitted, expected);

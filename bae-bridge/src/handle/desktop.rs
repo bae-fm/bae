@@ -197,9 +197,17 @@ forward! {
             this.services.rerun_identify(candidate_key);
         }
 
-        /// Cancel every import that has not begun writing its release.
+        /// Cancel every import that has not begun writing its release. The
+        /// cancel writes where each candidate stands, which this call does not
+        /// wait for: an ending that cannot be written is logged, and the
+        /// candidate still reads as importing.
         fn cancel_all_imports() {
-            this.services.import_cancel_all();
+            let services = this.services.clone();
+            this.runtime.spawn(async move {
+                if let Err(error) = services.import_cancel_all().await {
+                    tracing::error!("cancelling every waiting import failed: {error}");
+                }
+            });
         }
 
         /// Re-ask only the providers whose part of the search failed, keeping what

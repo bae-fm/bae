@@ -85,13 +85,6 @@ impl LiveList {
     }
 }
 
-fn import_event(key: &str, progress: crate::import::ImportProgress) -> ImportEvent {
-    ImportEvent::ImportProgress {
-        candidate_key: key.to_string(),
-        progress,
-    }
-}
-
 /// An import shows under In Progress while it waits for the worker and while
 /// it runs, and leaves when it ends.
 #[tokio::test(flavor = "multi_thread")]
@@ -103,21 +96,14 @@ async fn importing_shows_a_queued_and_a_running_import_until_it_ends() {
     handle.claim_candidate_for_import(&key, "import-1").await;
     list.shows(&[&key]).await;
 
-    handle.event_tx.send(import_event(
-        &key,
-        crate::import::ImportProgress::Preparing {
-            import_id: "import-1".to_string(),
-            step: crate::import::PrepareStep::ValidatingSourceFiles,
-        },
-    ));
+    handle
+        .runtime
+        .move_import(&key, "import-1", Some(crate::import::ImportStanding::Running))
+        .await
+        .unwrap();
     list.shows(&[&key]).await;
 
-    handle.event_tx.send(import_event(
-        &key,
-        crate::import::ImportProgress::Cancelled {
-            import_id: "import-1".to_string(),
-        },
-    ));
+    handle.end_candidate_import_for_test(&key, "import-1").await;
     list.shows(&[]).await;
     shut_down(handle).await;
 }
@@ -130,18 +116,13 @@ async fn identifying_shows_a_queued_and_a_running_run_until_it_ends() {
     let mut list = LiveList::new(&handle, PendingFilter::InProgress);
     list.shows(&[]).await;
 
-    handle.admit_identification(vec![key.clone()], crate::import::Admission::Requested);
+    admit(&handle, &key).await;
     list.shows(&[&key]).await;
 
-    handle.event_tx.send(ImportEvent::IdentifyStateChanged {
-        candidate_key: key.clone(),
-        run: crate::identify::IdentifyRunId::for_test(1),
-        state: crate::import::candidate_runtime::tests::triangulating(),
-        priority: crate::util::rate_limiter::CallPriority::Interactive,
-    });
+    start_run(&handle, &key, crate::identify::IdentifyRunId::for_test(1)).await;
     list.shows(&[&key]).await;
 
-    handle.cancel_identification(&key);
+    handle.cancel_identification(&key).await.unwrap();
     list.shows(&[]).await;
     shut_down(handle).await;
 }
@@ -172,12 +153,7 @@ async fn a_row_leaves_its_stored_entry_while_an_import_owns_it() {
     handle.claim_candidate_for_import(&key, "import-1").await;
     list.shows(&[]).await;
 
-    handle.event_tx.send(import_event(
-        &key,
-        crate::import::ImportProgress::Cancelled {
-            import_id: "import-1".to_string(),
-        },
-    ));
+    handle.end_candidate_import_for_test(&key, "import-1").await;
     list.shows(&[&key]).await;
     shut_down(handle).await;
 }
@@ -199,12 +175,7 @@ async fn the_entry_counts_follow_what_is_running() {
     list.counts(PendingFilter::All, 1).await;
     list.shows(&[&key]).await;
 
-    handle.event_tx.send(import_event(
-        &key,
-        crate::import::ImportProgress::Cancelled {
-            import_id: "import-1".to_string(),
-        },
-    ));
+    handle.end_candidate_import_for_test(&key, "import-1").await;
     list.counts(PendingFilter::InProgress, 0).await;
     list.counts(PendingFilter::All, 1).await;
     shut_down(handle).await;
@@ -297,7 +268,7 @@ fn counted(entries: &[crate::import::PendingFilterEntry], filter: PendingFilter)
 async fn a_run_off_the_page_delivers_its_count() {
     let (handle, _tmp, list, on_page, off_page) = one_row_on_the_page().await;
 
-    handle.admit_identification(vec![off_page], crate::import::Admission::Requested);
+    admit(&handle, &off_page).await;
     let moved = delivered(&list).await;
 
     assert_eq!(counted(&moved.pending_filter_entries, PendingFilter::InProgress), Some(1));

@@ -46,7 +46,7 @@ impl ImportServiceHandle {
         {
             let _commit = self.folder_state_commit.lock("check folders to combine").await;
             for key in &keys {
-                self.ensure_combination_idle(key)?;
+                self.ensure_combination_idle(key).await?;
                 members.push(self.editable_candidate_for_commit(key).await?);
             }
         }
@@ -75,7 +75,7 @@ impl ImportServiceHandle {
             .await?
             .map_err(|reason| ImportError::GroupingBlocked { reason })?;
         for candidate_key in keys {
-            self.cancel_identification(&candidate_key);
+            self.cancel_identification(&candidate_key).await?;
             self.event_tx
                 .send(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }));
         }
@@ -166,7 +166,7 @@ impl ImportServiceHandle {
     async fn separate_candidate_write(&self, key: &str) -> Result<Vec<String>, ImportError> {
         {
             let _commit = self.folder_state_commit.lock("check a release to separate").await;
-            self.ensure_combination_idle(key)?;
+            self.ensure_combination_idle(key).await?;
         }
         match self.library_manager.load_grouping(key).await? {
             Some(crate::db::GroupingFacts::Anchored { folder, .. }) => {
@@ -181,7 +181,7 @@ impl ImportServiceHandle {
                 let (returned, regrouped) =
                     self.library_manager.separate_picked_grouping(key).await?;
                 let keys = crate::import::list::release_keys_in_path_order(&returned);
-                self.cancel_identification(key);
+                self.cancel_identification(key).await?;
                 self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
                     candidate_key: key.into(),
                 }));
@@ -259,16 +259,28 @@ impl ImportServiceHandle {
         Ok(())
     }
 
-    fn ensure_combination_idle(&self, key: &str) -> Result<(), ImportError> {
-        if let Some(runtime) = self.runtime.get(key) {
-            if runtime.import.is_some() {
-                return Err(ImportError::CandidateImportInProgress);
-            }
-            if runtime.queued.is_some() || runtime.running.is_some() {
-                return Err(ImportError::Internal {
-                    detail: format!("identification is still running for {key}"),
-                });
-            }
+    /// Refuse to combine or separate a release an import owns or that is
+    /// waiting for or running an identification, read from its standing
+    /// under the commit lock the caller holds.
+    async fn ensure_combination_idle(&self, key: &str) -> Result<(), ImportError> {
+        let facts = self
+            .runtime
+            .standing_facts(key)
+            .await
+            .map_err(crate::library::LibraryError::from)?;
+        if facts.importing() {
+            return Err(ImportError::CandidateImportInProgress);
+        }
+        if matches!(
+            facts.identification,
+            Some(
+                crate::import::IdentificationStatus::Queued
+                    | crate::import::IdentificationStatus::Running
+            )
+        ) {
+            return Err(ImportError::Internal {
+                detail: format!("identification is still running for {key}"),
+            });
         }
         Ok(())
     }

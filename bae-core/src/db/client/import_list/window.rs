@@ -429,7 +429,7 @@ pub(super) fn load_candidate_detail_on(
     let content_hash = candidate.files.content_hash();
 
     let skipped = skipped_on(sql, &candidate)?;
-    let standing = load_standing_on(sql, key)?;
+    let standing = load_standing_on(sql, key)?.facts();
 
     let imported = sql
         .query_row(

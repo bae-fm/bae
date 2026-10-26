@@ -1,54 +1,54 @@
-//! What is happening right now for each candidate, one fact per field: the
-//! queue it waits in, the run in flight, the answer being written, the write
-//! that failed, the import running, the search a person typed.
+//! What is happening right now for each candidate.
 //!
-//! Each field has one writer and is never inferred from another. The queue
-//! owns `queued`; the identify driver's reports own the run and its answer,
-//! which only an Import asked for while the answer's pick is read marks; the
-//! write of its answer owns `save_failed`; the import worker owns `import`;
-//! the search owns `search`. Where waiting hands over to running, the run's
-//! first report clears `queued`, so a key never reads as idle in between.
+//! Where each folder candidate stands — its identification queued, running,
+//! having its answer written or failed to write it, its import queued,
+//! running or writing — is held in one place, the standings table (see
+//! [`StoredStanding`]). Every change to it is a write its owner awaits, made
+//! here or inside the owner's own write: the queue admits and withdraws, the
+//! identify driver records its run starting, answering and ending, the
+//! verdict write ends the answer, the import worker moves its import, and a
+//! claim refuses while another import stands. A write that fails fails the
+//! operation that asked for it.
 //!
-//! Every identification of an import candidate is counted here, in one batch
-//! (see [`batch::IdentificationBatch`]): a key joins when it is admitted and
-//! leaves when it is neither waiting nor holding a run.
+//! This runtime holds what is not a standing: the state each run last
+//! published, which a pane draws while the table names that run; how far an
+//! import has got; a person's typed search; extraction's
+//! [`Signals`](crate::signals::Signals); the count of identifications in
+//! flight; and the whole of a library release's re-identify run, which is no
+//! list row's and has no standing. [`CandidateRuntimeSnapshot`] is the table's
+//! standing with these beside it.
 //!
-//! A key has an entry only while something is happening for it. Readers wake
-//! on [`Revisions`] and read what they draw. The typed search and
-//! extraction's [`Signals`](crate::signals::Signals) live here too, beside the
-//! run they belong to, and are dropped with the rest of the key's entry.
-//!
-//! Where each key stands — the [`TriageRuntimeFacts`] its entry reads as — is
-//! also written to the device-local standings table, which the import list
-//! and the pane read beside the rows (see [`standings`]). What moves too often
-//! to be written — a run's state partway through, an import's progress, a
-//! search's answers, the signals — is held here alone.
+//! A key has an entry only while something is held for it. Readers wake on
+//! [`Revisions`] and read what they draw.
 
 use super::candidate_search::CandidateSearch;
-use super::candidates::{
-    Admission, CandidateRuntimeSnapshot, ImportInFlight, SaveFailure, SavingAnswer,
-};
+use super::candidates::{CandidateRuntimeSnapshot, ImportInFlight};
 use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
 use super::search::{MetadataResult, SearchQuery};
-use super::types::{ImportProgress, ImportStep, Catalog, PrepareStep};
-use crate::db::LibraryStatus;
+use super::types::{Catalog, ImportProgress, ImportStep};
+use crate::db::{Database, LibraryStatus};
 use crate::identify::{IdentifyRunId, IdentifyState};
-use crate::import::triage::TriageRuntimeFacts;
 use crate::signals::{Failure, Signals};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tokio::sync::watch;
 use tracing::debug;
 
 mod batch;
+mod snapshots;
 mod snapshots_watch;
-mod standings;
+mod standing_writes;
+mod stored_standing;
 mod values_watch;
 mod work;
 pub use snapshots_watch::RuntimeSnapshotsWatch;
-pub(crate) use standings::StandingsHeld;
+pub(crate) use standing_writes::RunSubject;
+pub(crate) use stored_standing::{
+    IdentificationChange, IdentificationMove, IdentificationStage, StoredIdentification,
+    StoredImport, StoredStanding,
+};
 pub(crate) use values_watch::{RuntimeValue, RuntimeValuesWatch};
 pub(crate) use work::CandidateWork;
 
@@ -76,13 +76,13 @@ pub enum CandidateRuntimeChange {
 /// either moving and reads the part it draws.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct Revisions {
-    /// Every key's runtime and the two counts, which move only with it.
+    /// What this runtime holds for each key, and the identification count.
     pub(crate) runtime: u64,
     pub(crate) signals: u64,
 }
 
 /// The files a candidate's runtime was recorded against; a scan reporting
-/// the key with other files drops the runtime.
+/// the key with other files ends its work.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CandidateShape {
     content_hash: String,
@@ -110,130 +110,37 @@ struct RunningSearch {
     search: CandidateSearch,
 }
 
-/// A run and the state it is at; the snapshot carries only the state.
+/// The state a run last published, and whether it is a folder candidate's,
+/// whose standing the table holds, or a library release's.
 #[derive(Clone, PartialEq)]
-struct RunState {
-    run: IdentifyRunId,
+struct PublishedState {
     state: IdentifyState,
+    of_candidate: bool,
 }
 
-/// A run's terminal answer, held until it is disposed of, and whether a
-/// person asked for the candidate to be imported once it stores the release
-/// it picks unattended. The ask is this answer's, so whatever disposes of the
-/// answer disposes of it too.
+/// How far the import that last reported for a key has got. The import id
+/// tells it from an import that already ended.
 #[derive(Clone, PartialEq)]
-struct HeldAnswer {
-    run: IdentifyRunId,
-    state: IdentifyState,
-    import_asked: bool,
-}
-
-/// The import that owns a key and how far it has got. The import id tells its
-/// reports from those of an import that already ended.
-#[derive(Clone, PartialEq)]
-struct ClaimedImport {
+struct ImportReport {
     import_id: String,
     in_flight: ImportInFlight,
 }
 
-/// The run whose durable write did not land, and what stopped it.
-#[derive(Clone, PartialEq)]
-struct FailedSave {
-    run: IdentifyRunId,
-    failure: SaveFailure,
-}
-
-/// One key's runtime; [`CandidateRuntimeSnapshot`] is derived from it.
+/// What this runtime holds for one key.
 #[derive(Clone, Default, PartialEq)]
 struct CandidateRuntimeState {
-    /// Set by the queue on admission; cleared by the run's first report, or
-    /// by the queue when no run came of it.
-    queued: Option<Admission>,
-    /// From the driver's reports; never terminal and never `Idle`.
-    running: Option<RunState>,
-    /// The terminal answer a run reached, held until whoever asked for it
-    /// disposes of it: the verdict write, or a re-identify sheet closing.
-    answered: Option<HeldAnswer>,
-    /// Set when an answer's write fails; cleared by the key's next run.
-    save_failed: Option<FailedSave>,
-    /// Set when an import is queued, advanced by its reports, cleared when it
+    /// The state each of the key's runs last published, by run, until the run
     /// ends.
-    import: Option<ClaimedImport>,
+    runs: BTreeMap<IdentifyRunId, PublishedState>,
+    import: Option<ImportReport>,
     search: Option<RunningSearch>,
 }
 
-/// Where a key stands in identification, as the count reads it.
-#[derive(Clone, Copy, Default, PartialEq, Eq)]
-struct Identifying {
-    /// Admitted and its run has not reported yet, which is what joins the
-    /// batch; a re-identified library release is never marked, so the count
-    /// is the import queue's work alone.
-    queued: bool,
-    /// Waiting, running, or holding an answer not yet disposed of; a failed
-    /// write is over.
-    in_flight: bool,
-}
-
-impl Identifying {
-    fn of(state: &CandidateRuntimeState) -> Self {
-        Self {
-            queued: state.queued.is_some(),
-            in_flight: state.queued.is_some()
-                || state.running.is_some()
-                || state.answered.is_some(),
-        }
-    }
-}
-
 impl CandidateRuntimeState {
-    /// Nothing is happening for the key, so its entry is removed.
+    /// Nothing is held for the key, so its entry is removed.
     fn is_idle(&self) -> bool {
-        self.queued.is_none()
-            && self.running.is_none()
-            && self.answered.is_none()
-            && self.save_failed.is_none()
-            && self.import.is_none()
-            && self.search.is_none()
+        self.runs.is_empty() && self.import.is_none() && self.search.is_none()
     }
-
-    fn snapshot(&self) -> CandidateRuntimeSnapshot {
-        CandidateRuntimeSnapshot {
-            queued: self.queued,
-            running: self.running.as_ref().map(|run| run.state.clone()),
-            saving: self.answered.as_ref().map(|answer| SavingAnswer {
-                state: answer.state.clone(),
-                import_asked: answer.import_asked,
-            }),
-            save_failed: self.save_failed.as_ref().map(|failed| failed.failure.clone()),
-            import: self.import.as_ref().map(|claimed| claimed.in_flight.clone()),
-            search: self.search.as_ref().map(|running| running.search.clone()),
-        }
-    }
-}
-
-/// Whether the answer the key holds is `run`'s.
-fn answered_on(runtime: &CandidateRuntimeState, run: IdentifyRunId) -> bool {
-    runtime
-        .answered
-        .as_ref()
-        .is_some_and(|answered| answered.run == run)
-}
-
-/// Whether `import_id` is the import that holds the key.
-fn claimed_by(runtime: &CandidateRuntimeState, import_id: &str) -> bool {
-    runtime
-        .import
-        .as_ref()
-        .is_some_and(|claimed| claimed.import_id == import_id)
-}
-
-fn snapshots(
-    runtime: &HashMap<String, CandidateRuntimeState>,
-) -> HashMap<String, CandidateRuntimeSnapshot> {
-    runtime
-        .iter()
-        .map(|(key, state)| (key.clone(), state.snapshot()))
-        .collect()
 }
 
 #[derive(Default)]
@@ -258,25 +165,6 @@ impl Inner {
         self.next_search_run += 1;
         run
     }
-
-    /// Apply a key's change to the batch; `true` when the counts moved.
-    fn count_identification(&mut self, key: &str, was: Identifying, is: Identifying) -> bool {
-        if !was.queued && is.queued {
-            return self.batch.admit(key);
-        }
-        if was.in_flight && !is.in_flight {
-            return self.batch.end(key);
-        }
-        false
-    }
-
-    /// What every key's identification is doing right now.
-    fn identifying(&self) -> HashMap<String, Identifying> {
-        self.runtime
-            .iter()
-            .map(|(key, state)| (key.clone(), Identifying::of(state)))
-            .collect()
-    }
 }
 
 #[derive(Clone)]
@@ -286,67 +174,97 @@ pub struct CandidateRuntime {
     /// bus records into `inner`.
     work: Arc<Mutex<work::WorkInFlight>>,
     revisions: Arc<watch::Sender<Revisions>>,
-    /// Where each key stands, written to the standings table as it changes.
-    standings: standings::Standings,
-    /// Test readers that hear every change to a key's runtime, and every
-    /// move of the identification count.
-    #[cfg(any(test, feature = "test-utils"))]
-    every_change: TestReaders<CandidateRuntimeChange>,
+    /// Bumped with every change to what `inner` holds for a key, which the
+    /// live runtime snapshots read beside the standings table.
+    held_changed: Arc<watch::Sender<()>>,
+    /// The library the standings table is in.
+    database: Database,
+    /// Taken across each write of a standing and the count it moves, so the
+    /// count follows the writes in the order they landed.
+    standing_writes: Arc<tokio::sync::Mutex<()>>,
+    /// Every key's snapshot as the live read last composed it.
+    snapshots: Arc<watch::Sender<Arc<HashMap<String, CandidateRuntimeSnapshot>>>>,
+    /// Test readers that hear every move of the identification count, and
+    /// every key's runtime as each write of its standing leaves it.
     #[cfg(any(test, feature = "test-utils"))]
     every_count: TestReaders<(u32, u32)>,
+    #[cfg(any(test, feature = "test-utils"))]
+    every_change: TestReaders<CandidateRuntimeChange>,
+    /// The directory a test runtime's database is in, kept as long as the
+    /// runtime is.
+    #[cfg(any(test, feature = "test-utils"))]
+    _test_directory: Option<Arc<tempfile::TempDir>>,
 }
 
 #[cfg(any(test, feature = "test-utils"))]
 type TestReaders<T> = Arc<Mutex<Vec<tokio::sync::mpsc::UnboundedSender<T>>>>;
 
-/// A runtime with no standings table behind it, for a test of what reads
-/// and writes it in memory.
-#[cfg(any(test, feature = "test-utils"))]
-impl Default for CandidateRuntime {
-    fn default() -> Self {
-        Self::of(Arc::default(), standings::Standings::without_table())
-    }
-}
-
 impl CandidateRuntime {
-    /// A runtime whose standings a writer on `runtime_handle` writes into
-    /// `library`'s table.
-    pub(crate) fn new(
-        library: crate::library::LibraryManager,
-        runtime_handle: &tokio::runtime::Handle,
-    ) -> Self {
-        let inner = Arc::default();
-        let standings = standings::Standings::writing(Arc::clone(&inner), library, runtime_handle);
-        Self::of(inner, standings)
-    }
-
-    fn of(inner: Arc<Mutex<Inner>>, standings: standings::Standings) -> Self {
+    /// A runtime over the standings table of `database`, which the library
+    /// emptied as it opened.
+    pub(crate) fn new(database: Database) -> Self {
         Self {
-            inner,
+            inner: Arc::default(),
             work: Arc::default(),
             revisions: Arc::new(watch::Sender::new(Revisions::default())),
-            standings,
+            held_changed: Arc::new(watch::Sender::new(())),
+            database,
+            standing_writes: Arc::default(),
+            // The library opens with the table empty and nothing held, so
+            // nothing is in flight until the first change.
+            snapshots: Arc::new(watch::Sender::new(Arc::default())),
+            #[cfg(any(test, feature = "test-utils"))]
+            every_count: Arc::default(),
             #[cfg(any(test, feature = "test-utils"))]
             every_change: Arc::default(),
             #[cfg(any(test, feature = "test-utils"))]
-            every_count: Arc::default(),
+            _test_directory: None,
         }
     }
 
-    /// Every key with something in flight right now, for a subscriber that
-    /// joins after runs have started.
-    pub fn all(&self) -> HashMap<String, CandidateRuntimeSnapshot> {
-        snapshots(&self.inner.lock().unwrap().runtime)
+    /// A runtime over a library database of its own, in a directory it
+    /// keeps, for a test of what the runtime holds and the standings it
+    /// writes.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn for_test() -> Self {
+        let directory = tempfile::TempDir::new().expect("a test runtime has a directory");
+        let path = directory.path().join("library.db");
+        let database = Database::new_test(
+            path.to_str().expect("a temporary path is UTF-8"),
+            Arc::new(coven::SystemClock),
+        )
+        .await
+        .expect("a test runtime's database opens");
+        Self {
+            _test_directory: Some(Arc::new(directory)),
+            ..Self::new(database)
+        }
     }
 
-    /// What is in flight for a key, or `None` when nothing is.
-    pub fn get(&self, key: &str) -> Option<CandidateRuntimeSnapshot> {
-        self.inner
-            .lock()
-            .unwrap()
-            .runtime
-            .get(key)
-            .map(CandidateRuntimeState::snapshot)
+    /// Run `statements` against this runtime's library, for a test that
+    /// stores the rows a scan would.
+    #[cfg(test)]
+    pub(crate) async fn execute_local_sql_for_test(&self, statements: &str) {
+        self.database
+            .execute_local_sql_for_test(statements)
+            .await
+            .expect("a test's statements run");
+    }
+
+    /// `key`'s row as the standings table reads it, for a test.
+    #[cfg(test)]
+    pub(crate) async fn stored_standing_for_test(&self, key: &str) -> StoredStanding {
+        self.database
+            .load_candidate_standing(key)
+            .await
+            .expect("a test reads the standings table")
+    }
+
+    /// Another runtime over this one's library, holding nothing of what this
+    /// one holds, for a test of what the table alone decides.
+    #[cfg(test)]
+    pub(crate) fn over_the_same_library_for_test(&self) -> Self {
+        Self::new(self.database.clone())
     }
 
     /// The signals extraction has found for a key so far, or `None` before it
@@ -383,17 +301,6 @@ impl CandidateRuntime {
         self.inner.lock().unwrap().batch.progress()
     }
 
-    /// How many keys an import owns right now.
-    pub(crate) fn imports_in_flight(&self) -> u32 {
-        self.inner
-            .lock()
-            .unwrap()
-            .runtime
-            .values()
-            .filter(|state| state.import.is_some())
-            .count() as u32
-    }
-
     /// The latest signals extraction reported for every key.
     pub(crate) fn all_signals(&self) -> HashMap<String, Signals> {
         self.inner
@@ -405,7 +312,16 @@ impl CandidateRuntime {
             .collect()
     }
 
-    /// Every change to a key's runtime from now on, for a test.
+    /// Every move of the identification count from now on, for a test.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub(crate) fn every_count(&self) -> tokio::sync::mpsc::UnboundedReceiver<(u32, u32)> {
+        let (reader, counts) = tokio::sync::mpsc::unbounded_channel();
+        self.every_count.lock().unwrap().push(reader);
+        counts
+    }
+
+    /// Every key's runtime as each write of its standing leaves it, in the
+    /// order the writes land, from now on, for a test.
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) fn every_change(
         &self,
@@ -415,85 +331,45 @@ impl CandidateRuntime {
         changes
     }
 
-    /// Every move of the identification count from now on, for a test.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub(crate) fn every_count(&self) -> tokio::sync::mpsc::UnboundedReceiver<(u32, u32)> {
-        let (reader, counts) = tokio::sync::mpsc::unbounded_channel();
-        self.every_count.lock().unwrap().push(reader);
-        counts
-    }
-
-    /// Say a key's runtime or the counts changed; `count` is the
-    /// identification count when it moved.
-    fn runtime_changed(&self, change: Option<CandidateRuntimeChange>, count: Option<(u32, u32)>) {
+    /// Say what this runtime holds changed; `count` is the identification
+    /// count when it moved.
+    fn held_changed(&self, count: Option<(u32, u32)>) {
         #[cfg(any(test, feature = "test-utils"))]
-        {
-            if let Some(change) = &change {
-                self.every_change
-                    .lock()
-                    .unwrap()
-                    .retain(|reader| reader.send(change.clone()).is_ok());
-            }
-            if let Some(count) = count {
-                self.every_count
-                    .lock()
-                    .unwrap()
-                    .retain(|reader| reader.send(count).is_ok());
-            }
+        if let Some(count) = count {
+            self.every_count
+                .lock()
+                .unwrap()
+                .retain(|reader| reader.send(count).is_ok());
         }
         #[cfg(not(any(test, feature = "test-utils")))]
-        let _ = (change, count);
+        let _ = count;
+        self.held_changed.send_replace(());
         self.revisions.send_modify(|revisions| revisions.runtime += 1);
     }
 
     /// Apply `mutate` to the key's entry under the map's lock, creating one if
-    /// needed, and say so if its snapshot or the counts changed. An entry left
-    /// idle is removed. Returns what `mutate` returned.
+    /// needed, and say so if it changed. An entry left idle is removed.
+    /// Returns what `mutate` returned.
     fn set<R>(
         &self,
         key: &str,
         mutate: impl FnOnce(&mut Inner, &mut CandidateRuntimeState) -> R,
     ) -> R {
-        let (result, change, count, standing_moved) = {
+        let (result, changed) = {
             let mut inner = self.inner.lock().unwrap();
-            let entry = inner.runtime.get(key);
-            let previous = entry.map(CandidateRuntimeState::snapshot);
-            let was_identifying = entry.map(Identifying::of).unwrap_or_default();
-            let mut next = entry.cloned().unwrap_or_default();
+            let previous = inner.runtime.get(key).cloned();
+            let mut next = previous.clone().unwrap_or_default();
             let result = mutate(&mut inner, &mut next);
-            let is_identifying = Identifying::of(&next);
-            let (change, standing) = if next.is_idle() {
-                inner.runtime.remove(key);
-                let change = previous.is_some().then(|| CandidateRuntimeChange::Removed {
-                    key: key.to_string(),
-                });
-                (change, TriageRuntimeFacts::default())
-            } else {
-                let snapshot = next.snapshot();
-                let standing = TriageRuntimeFacts::of(&snapshot);
-                inner.runtime.insert(key.to_string(), next);
-                let change = (previous.as_ref() != Some(&snapshot)).then(|| {
-                    CandidateRuntimeChange::Updated {
-                        key: key.to_string(),
-                        runtime: snapshot,
-                    }
-                });
-                (change, standing)
+            let next = (!next.is_idle()).then_some(next);
+            let changed = next != previous;
+            match next {
+                Some(next) => inner.runtime.insert(key.to_string(), next),
+                None => inner.runtime.remove(key),
             };
-            let was_standing = previous
-                .as_ref()
-                .map(TriageRuntimeFacts::of)
-                .unwrap_or_default();
-            let count = inner
-                .count_identification(key, was_identifying, is_identifying)
-                .then(|| inner.batch.progress());
-            (result, change, count, standing != was_standing)
+            (result, changed)
         };
-        if standing_moved {
-            self.standings.mark(key);
-        }
-        if change.is_some() || count.is_some() {
-            self.runtime_changed(change, count);
+        if changed {
+            self.held_changed(None);
         }
         result
     }
@@ -511,10 +387,7 @@ impl CandidateRuntime {
     /// Put every failed source of `key`'s search back to looking on a new run,
     /// returning the query, the sources to re-ask and the run; `None` when
     /// there is nothing to re-ask.
-    pub(super) fn retry_search(
-        &self,
-        key: &str,
-    ) -> Option<(SearchQuery, Vec<Catalog>, u64)> {
+    pub(super) fn retry_search(&self, key: &str) -> Option<(SearchQuery, Vec<Catalog>, u64)> {
         self.set(key, |inner, runtime| {
             let running = runtime.search.as_mut()?;
             let mut search = running.search.clone();
@@ -606,237 +479,49 @@ impl CandidateRuntime {
         })
     }
 
-    /// The scan dropped or reshaped the key: its work in flight ends and
-    /// everything held for it goes, its signals too, except an import's
-    /// claim, which only that import's ending clears.
+    /// The state `run` of `key` published; a folder candidate's is drawn
+    /// while the standings table names the run.
+    pub(crate) fn record_run_state(
+        &self,
+        key: &str,
+        run: IdentifyRunId,
+        of_candidate: bool,
+        state: &IdentifyState,
+    ) {
+        self.set(key, |_, runtime| {
+            runtime.runs.insert(
+                run,
+                PublishedState {
+                    state: state.clone(),
+                    of_candidate,
+                },
+            );
+        });
+    }
+
+    /// `run` of `key` is over: what it published is not drawn any more.
+    pub(crate) fn forget_run(&self, key: &str, run: IdentifyRunId) {
+        self.set(key, |_, runtime| {
+            runtime.runs.remove(&run);
+        });
+    }
+
+    /// Every run of `key` is over.
+    fn forget_runs(&self, key: &str) {
+        self.set(key, |_, runtime| runtime.runs.clear());
+    }
+
+    /// The scan dropped or reshaped the key: its work in flight ends, and its
+    /// search and signals go with the files they were of. What its runs
+    /// published goes as each run ends; an import outlives it, and only that
+    /// import's ending clears it.
     fn end_candidate(&self, key: &str) {
         self.end_work(key);
         let signals_removed = self.inner.lock().unwrap().signals.remove(key).is_some();
-        self.set(key, |_, runtime| {
-            *runtime = CandidateRuntimeState {
-                import: runtime.import.take(),
-                ..CandidateRuntimeState::default()
-            };
-        });
+        self.set(key, |_, runtime| runtime.search = None);
         if signals_removed {
             self.revisions.send_modify(|revisions| revisions.signals += 1);
         }
-    }
-
-    /// Mark every one of `keys` as waiting on `admission` as one change, so the
-    /// count opens at its total.
-    pub(super) fn admit(&self, keys: Vec<String>, admission: Admission) {
-        if keys.is_empty() {
-            return;
-        }
-        let (reset, counted, moved) = {
-            let mut inner = self.inner.lock().unwrap();
-            let previous = snapshots(&inner.runtime);
-            let was_identifying = inner.identifying();
-            for key in &keys {
-                inner.runtime.entry(key.clone()).or_default().queued = Some(admission);
-            }
-            let next = snapshots(&inner.runtime);
-            let mut counted = false;
-            for key in &keys {
-                if !was_identifying.get(key).copied().unwrap_or_default().queued {
-                    counted |= inner.batch.admit(key);
-                }
-            }
-            let standing = |runtimes: &HashMap<String, CandidateRuntimeSnapshot>, key: &str| {
-                runtimes
-                    .get(key)
-                    .map(TriageRuntimeFacts::of)
-                    .unwrap_or_default()
-            };
-            let moved: Vec<String> = keys
-                .iter()
-                .filter(|key| standing(&previous, key) != standing(&next, key))
-                .cloned()
-                .collect();
-            (
-                (next != previous).then_some(next),
-                counted.then(|| inner.batch.progress()),
-                moved,
-            )
-        };
-        for key in &moved {
-            self.standings.mark(key);
-        }
-        if reset.is_some() || counted.is_some() {
-            self.runtime_changed(
-                reset.map(|runtimes| CandidateRuntimeChange::Reset { runtimes }),
-                counted,
-            );
-        }
-    }
-
-    /// This key is not waiting any more: its run started, or nothing came of
-    /// the admission that put it here.
-    pub(super) fn withdraw(&self, candidate_key: &str) {
-        self.set(candidate_key, |_, runtime| runtime.queued = None);
-    }
-
-    /// `run`'s answer is disposed of, whatever became of it. Only that run's
-    /// answer goes, not a newer run's. Returns whether a person had asked for
-    /// the candidate to be imported once that answer stored its pick.
-    pub(super) fn end_identification_answer(&self, candidate_key: &str, run: IdentifyRunId) -> bool {
-        self.set(candidate_key, |_, runtime| {
-            if !answered_on(runtime, run) {
-                return false;
-            }
-            runtime
-                .answered
-                .take()
-                .is_some_and(|answer| answer.import_asked)
-        })
-    }
-
-    /// Where the key stands once `run`'s answer is disposed of: what the
-    /// write of that answer stores in its own transaction, under `held`.
-    pub(super) fn standing_once_answered(
-        &self,
-        _held: &StandingsHeld,
-        candidate_key: &str,
-        run: IdentifyRunId,
-    ) -> TriageRuntimeFacts {
-        self.standing_once(candidate_key, |runtime| {
-            if answered_on(runtime, run) {
-                runtime.answered = None;
-            }
-        })
-    }
-
-    /// Where the key stands once `import_id` has ended: what the write of
-    /// that import's release stores in its own transaction, under `held`.
-    pub(crate) fn standing_once_imported(
-        &self,
-        _held: &StandingsHeld,
-        candidate_key: &str,
-        import_id: &str,
-    ) -> TriageRuntimeFacts {
-        self.standing_once(candidate_key, |runtime| {
-            if claimed_by(runtime, import_id) {
-                runtime.import = None;
-            }
-        })
-    }
-
-    /// Ask for the candidate to be imported once the answer being written
-    /// stores the release it picks unattended, which is still being read.
-    /// `false`, asking nothing, when no answer that picks unattended is
-    /// held for the key.
-    pub(super) fn ask_import_once_stored(&self, candidate_key: &str) -> bool {
-        self.set(candidate_key, |_, runtime| match runtime.answered.as_mut() {
-            Some(answer) if answer.state.picks_unattended() => {
-                answer.import_asked = true;
-                true
-            }
-            Some(_) | None => false,
-        })
-    }
-
-    /// `run`'s answer could not be written; the entry says why. bae's own
-    /// failure, so it is logged as one.
-    pub(super) fn fail_identification(
-        &self,
-        candidate_key: &str,
-        run: IdentifyRunId,
-        failure: SaveFailure,
-    ) {
-        tracing::error!(
-            "identification: {candidate_key}'s answer did not land: {}",
-            failure.error()
-        );
-        self.set(candidate_key, |_, runtime| {
-            if answered_on(runtime, run) {
-                runtime.answered = None;
-            }
-            runtime.save_failed = Some(FailedSave { run, failure });
-        });
-    }
-
-    /// Identification of this key is over and nothing will write what it
-    /// found: a cancel, or a re-identified library release's sheet closing.
-    pub(super) fn end_identification(&self, candidate_key: &str) {
-        self.set(candidate_key, |_, runtime| {
-            runtime.running = None;
-            runtime.answered = None;
-        });
-    }
-
-    /// Record what `run` published: a non-terminal state is the run in flight,
-    /// a terminal one its answer, and `Idle` a cancel that ends only that run.
-    /// A new run clears the last run's failed write, and any state but `Idle`
-    /// ends the wait, so the key is never neither waiting nor running.
-    fn record_identify_state(&self, candidate_key: &str, run: IdentifyRunId, state: &IdentifyState) {
-        self.set(candidate_key, |_, runtime| {
-            if matches!(state, IdentifyState::Idle) {
-                if runtime
-                    .running
-                    .as_ref()
-                    .is_some_and(|running| running.run == run)
-                {
-                    runtime.running = None;
-                }
-                return;
-            }
-            runtime.queued = None;
-            if !runtime
-                .running
-                .as_ref()
-                .is_some_and(|running| running.run == run)
-            {
-                runtime.save_failed = None;
-            }
-            if state.is_terminal() {
-                runtime.running = None;
-                runtime.answered = Some(HeldAnswer {
-                    run,
-                    state: state.clone(),
-                    import_asked: false,
-                });
-            } else {
-                runtime.running = Some(RunState {
-                    run,
-                    state: state.clone(),
-                });
-            }
-        });
-    }
-
-    /// Record that `import_id` owns this candidate, from the moment its command
-    /// is queued rather than when the worker first reports, since whether
-    /// identification may still answer the candidate reads this. Refused when
-    /// an import already owns it.
-    pub(super) fn claim_for_import(
-        &self,
-        candidate_key: &str,
-        import_id: &str,
-    ) -> Result<(), crate::import::ImportError> {
-        self.set(candidate_key, |_, runtime| {
-            if runtime.import.is_some() {
-                return Err(crate::import::ImportError::CandidateImportInProgress);
-            }
-            runtime.import = Some(ClaimedImport {
-                import_id: import_id.to_string(),
-                in_flight: ImportInFlight {
-                    progress_percent: None,
-                    step: ImportStep::Preparing(PrepareStep::Queued),
-                },
-            });
-            Ok(())
-        })
-    }
-
-    /// Undo [`Self::claim_for_import`] for a command that never made it onto
-    /// the worker's queue.
-    pub(super) fn release_import_claim(&self, candidate_key: &str, import_id: &str) {
-        self.set(candidate_key, |_, runtime| {
-            if claimed_by(runtime, import_id) {
-                runtime.import = None;
-            }
-        });
     }
 
     /// A scan reported `candidate`. A first report or a repeat of the recorded
@@ -872,13 +557,15 @@ impl CandidateRuntime {
         self.end_candidate(key);
     }
 
+    /// Hold what `event` says that is not a standing: how far an import has
+    /// got, which files a candidate has, the signals extraction found. Every
+    /// standing an event announces is written before it is sent.
     pub(super) fn record_event(&self, event: &ImportEvent) {
         match event {
             ImportEvent::ImportProgress {
                 candidate_key,
                 progress,
             } => {
-                // Every ending leaves the map; its row is already written.
                 let in_flight = match progress {
                     ImportProgress::Preparing { step, .. } => Some(ImportInFlight {
                         progress_percent: None,
@@ -894,25 +581,32 @@ impl CandidateRuntime {
                     | ImportProgress::Cancelled { .. } => None,
                 };
                 let import_id = progress.import_id();
-                // Only the import holding the claim moves it; a late report
-                // from an ended import is dropped.
-                self.set(candidate_key, |_, runtime| {
-                    if !claimed_by(runtime, import_id) {
-                        debug!("{candidate_key}: dropped a report of import {import_id}, which does not hold it");
-                        return;
+                self.set(candidate_key, |_, runtime| match in_flight {
+                    Some(in_flight) => {
+                        runtime.import = Some(ImportReport {
+                            import_id: import_id.to_string(),
+                            in_flight,
+                        });
                     }
-                    runtime.import = in_flight.map(|in_flight| ClaimedImport {
-                        import_id: import_id.to_string(),
-                        in_flight,
-                    });
+                    // An ending clears only its own import's progress: a late
+                    // ending of an import that was replaced leaves the
+                    // replacement's.
+                    None => {
+                        if runtime
+                            .import
+                            .as_ref()
+                            .is_some_and(|report| report.import_id == import_id)
+                        {
+                            runtime.import = None;
+                        } else {
+                            debug!("{candidate_key}: import {import_id} ended after another reported");
+                        }
+                    }
                 });
             }
-            ImportEvent::IdentifyStateChanged {
-                candidate_key,
-                run,
-                state,
-                priority: _,
-            } => self.record_identify_state(candidate_key, *run, state),
+            // The driver records its own run's state, beside the standing it
+            // writes, before it sends it.
+            ImportEvent::IdentifyStateChanged { .. } => {}
             ImportEvent::Scan(
                 ScanEvent::FolderCandidate { candidate, .. }
                 | ScanEvent::CandidateDiscovered { candidate, .. },

@@ -3,13 +3,6 @@
 
 use super::*;
 
-pub(super) fn candidate_identity(candidate: &FolderCandidate) -> CandidateIdentity {
-    (
-        candidate.files.content_hash(),
-        candidate.file_edit_revision,
-    )
-}
-
 /// Put the found releases at `keys` on the queue as one automatic admission,
 /// except those that cannot be answered and those whose files already have a
 /// stored result, such as a folder renamed after it was identified.

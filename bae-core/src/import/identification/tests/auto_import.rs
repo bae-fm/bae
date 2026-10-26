@@ -333,7 +333,7 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
         loop {
             let landed = fixture
                 .import
-                .candidate_runtime(&key)
+                .candidate_runtime(&key).await.unwrap()
                 .and_then(|runtime| runtime.search)
                 .is_some_and(|search| {
                     matches!(
@@ -424,7 +424,7 @@ async fn an_automatic_import_that_cannot_start_is_recorded_as_its_failed_import(
     assert!(
         fixture
             .import
-            .candidate_runtime(&key)
+            .candidate_runtime(&key).await.unwrap()
             .is_none_or(|runtime| runtime.import.is_none()),
         "nothing claims the candidate"
     );

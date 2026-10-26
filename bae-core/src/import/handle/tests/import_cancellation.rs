@@ -69,10 +69,9 @@ async fn await_cancelled(
 /// failure on its row.
 async fn assert_left_as_it_stood(handle: &ImportServiceHandle, key: &str) {
     assert!(
-        handle.runtime.get(key).is_none(),
+        handle.candidate_runtime(key).await.unwrap().is_none(),
         "nothing is running for {key}"
     );
-    handle.standings_written().await;
     let pane = handle
         .candidate_pane(key)
         .await
@@ -105,7 +104,7 @@ async fn a_running_import_cancelled_writes_nothing() {
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
 
-    handle.cancel_import(&key).unwrap();
+    handle.cancel_import(&key).await.unwrap();
     await_cancelled(&mut events, &[&import_id]).await;
     handle.import_cancels.release_runs();
 
@@ -125,10 +124,10 @@ async fn a_waiting_import_cancelled_ends_at_once_and_never_runs() {
     let running_id = handle.start_import(&running).await.unwrap().expect_queued();
     let waiting_id = handle.start_import(&waiting).await.unwrap().expect_queued();
 
-    handle.cancel_import(&waiting).unwrap();
+    handle.cancel_import(&waiting).await.unwrap();
     await_cancelled(&mut events, &[&waiting_id]).await;
     assert_left_as_it_stood(&handle, &waiting).await;
-    handle.cancel_import(&running).unwrap();
+    handle.cancel_import(&running).await.unwrap();
     await_cancelled(&mut events, &[&running_id]).await;
     handle.import_cancels.release_runs();
 
@@ -145,7 +144,7 @@ async fn cancelling_every_import_ends_the_running_and_the_waiting() {
     let running_id = handle.start_import(&running).await.unwrap().expect_queued();
     let waiting_id = handle.start_import(&waiting).await.unwrap().expect_queued();
 
-    handle.cancel_all_imports();
+    handle.cancel_all_imports().await.unwrap();
     await_cancelled(&mut events, &[&running_id, &waiting_id]).await;
     handle.import_cancels.release_runs();
 
@@ -161,9 +160,9 @@ async fn cancelling_every_import_ends_the_running_and_the_waiting() {
 #[tokio::test(flavor = "multi_thread")]
 async fn nothing_importing_is_nothing_to_cancel() {
     let (handle, _tmp, key, _) = two_importable().await;
-    handle.cancel_import(&key).unwrap();
-    handle.cancel_all_imports();
-    assert!(handle.runtime.get(&key).is_none());
+    handle.cancel_import(&key).await.unwrap();
+    handle.cancel_all_imports().await.unwrap();
+    assert!(handle.candidate_runtime(&key).await.unwrap().is_none());
     shut_down(handle).await;
 }
 
@@ -176,7 +175,6 @@ struct StoreState {
 }
 
 async fn store_state(handle: &ImportServiceHandle, library_dir: &Path) -> StoreState {
-    handle.standings_written().await;
     let mut files = Vec::new();
     let mut dirs = vec![library_dir.to_path_buf()];
     while let Some(dir) = dirs.pop() {
@@ -317,7 +315,7 @@ async fn cancelled_mid_run_leaves_the_store_as_it_was_and_starts_over() {
         .await
         .expect("the import reaches its measurement");
 
-    handle.cancel_import(&key).unwrap();
+    handle.cancel_import(&key).await.unwrap();
     await_cancelled(&mut events, &[&import_id]).await;
     // The measuring thread says where it had got after the import ended.
     held.release();
@@ -368,7 +366,7 @@ async fn a_failed_import_leaves_only_its_failure_and_starts_over() {
         "the failure is recorded"
     );
     assert_eq!(after, before, "the failed import left nothing else behind");
-    assert!(handle.runtime.get(&key).is_none(), "nothing is running");
+    assert!(handle.candidate_runtime(&key).await.unwrap().is_none(), "nothing is running");
 
     assert_imports_again_from_the_start(&handle, &key).await;
     let pane = handle.candidate_pane(&key).await.unwrap().unwrap();
@@ -397,7 +395,7 @@ async fn a_cancelled_retry_leaves_the_failure_it_retried() {
 
     handle.import_cancels.hold_runs();
     let retry = handle.start_import(&key).await.unwrap().expect_queued();
-    handle.cancel_import(&key).unwrap();
+    handle.cancel_import(&key).await.unwrap();
     await_cancelled(&mut events, &[&retry]).await;
     handle.import_cancels.release_runs();
 
@@ -425,7 +423,7 @@ async fn an_import_asked_for_again_after_a_waiting_cancel_is_the_one_that_runs()
     let mut events = handle.every_event();
     let running_id = handle.start_import(&running).await.unwrap().expect_queued();
     let cancelled_id = handle.start_import(&waiting).await.unwrap().expect_queued();
-    handle.cancel_import(&waiting).unwrap();
+    handle.cancel_import(&waiting).await.unwrap();
     await_cancelled(&mut events, &[&cancelled_id]).await;
 
     let again_id = handle
@@ -459,7 +457,10 @@ async fn an_import_asked_for_again_after_a_waiting_cancel_is_the_one_that_runs()
     assert_eq!(outcomes[&running_id], "complete");
     assert_eq!(outcomes[&again_id], "complete");
     assert_eq!(album_count(&handle).await, 2);
-    assert!(handle.runtime.get(&waiting).is_none(), "nothing is left running");
+    assert!(
+        handle.candidate_runtime(&waiting).await.unwrap().is_none(),
+        "nothing is left running"
+    );
     shut_down(handle).await;
 }
 

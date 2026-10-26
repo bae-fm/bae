@@ -179,6 +179,7 @@ impl LibraryManager {
         crate::import::ImportService::start(
             runtime_handle,
             self.clone(),
+            self.database.clone(),
             self.preparations.clone(),
             self.clock.clone(),
             self.ids.clone(),
@@ -197,6 +198,7 @@ impl LibraryManager {
         crate::import::ImportService::start_reading_tags_with(
             runtime_handle,
             self.clone(),
+            self.database.clone(),
             self.preparations.clone(),
             self.clock.clone(),
             self.ids.clone(),
@@ -658,25 +660,40 @@ impl LibraryManager {
             .await?)
     }
 
+    /// Record that the import `import_id` of the candidate at
+    /// `candidate_key` failed, ending its claim in the same write.
+    pub(crate) async fn fail_candidate_import(
+        &self,
+        content_hash: &str,
+        edit_revision: u64,
+        failure: &crate::import::ImportFailure,
+        candidate_key: &str,
+        import_id: &str,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .fail_candidate_import(
+                content_hash,
+                edit_revision,
+                failure,
+                candidate_key,
+                import_id,
+            )
+            .await?)
+    }
+
     /// Remove every candidate's standing, as the library opens.
     pub(crate) async fn clear_candidate_standings(&self) -> Result<(), LibraryError> {
         Ok(self.database.clear_candidate_standings().await?)
     }
 
-    /// Write where each of `standings` stands, in one transaction.
-    pub(crate) async fn write_candidate_standings(
-        &self,
-        standings: Vec<(String, crate::import::TriageRuntimeFacts)>,
-    ) -> Result<(), LibraryError> {
-        Ok(self.database.write_candidate_standings(standings).await?)
-    }
-
-    /// Where every candidate something is running for stands, by key.
-    pub(crate) async fn load_candidate_standings(
+    /// Where every candidate something is running for stands, as the rows
+    /// read it.
+    pub(crate) async fn load_candidate_standing_facts(
         &self,
     ) -> Result<std::collections::HashMap<String, crate::import::TriageRuntimeFacts>, LibraryError>
     {
-        Ok(self.database.load_candidate_standings().await?)
+        Ok(self.database.load_candidate_standing_facts().await?)
     }
 
     /// What the scans of `watched_folder_path` stored about each file they

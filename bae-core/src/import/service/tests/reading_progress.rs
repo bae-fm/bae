@@ -23,9 +23,7 @@ async fn assert_reading_progress(destination: ImportDestination) {
     let service = &test.service;
 
     let mut events = service.event_tx.every_event();
-    service
-        .import_cancels
-        .register(&candidate_key, "import-reading-progress");
+    service.queue_import_for_test(&candidate_key, "import-reading-progress").await;
     service
         .prepare_and_run_folder_import(
             "import-reading-progress".to_string(),

@@ -100,24 +100,18 @@ impl crate::types::BridgeInvalidCandidateDetail {
 
 impl crate::types::BridgeCandidateRuntimeSnapshot {
     pub(crate) fn from_core(runtime: bae_core::import::CandidateRuntimeSnapshot) -> Self {
-        // A failed write reaches the UI through the row's live state.
+        // A failed write, and whether an Import was asked of the answer,
+        // reach the UI through the row's live state.
+        let identification = runtime
+            .identification_in_flight()
+            .map(crate::types::BridgeIdentificationInFlight::from_core);
         let bae_core::import::CandidateRuntimeSnapshot {
-            queued,
-            running,
-            saving,
-            save_failed: _,
+            identification: _,
             import,
             search,
         } = runtime;
         crate::types::BridgeCandidateRuntimeSnapshot {
-            // Whether an Import was asked of the answer reaches the UI through
-            // the row's live state too.
-            identification: bae_core::import::IdentificationInFlight::of(
-                queued,
-                running,
-                saving.map(|answer| answer.state),
-            )
-            .map(crate::types::BridgeIdentificationInFlight::from_core),
+            identification,
             import: import.map(crate::types::BridgeImportInFlight::from_core),
             search: search.map(crate::types::BridgeCandidateSearch::from_core),
         }

@@ -19,8 +19,8 @@ fn invalid(candidate: &FolderCandidate) -> ImportEvent {
     }))
 }
 
-#[test]
-fn a_candidate_leaving_or_reshaped_ends_its_work_and_its_run() {
+#[tokio::test]
+async fn a_candidate_leaving_or_reshaped_ends_its_work() {
     for grouping in [None, Some("group-1".to_string())] {
         let mut candidate = folder_candidate("/watch/a/rel1", "/watch/a");
         candidate.grouping = grouping;
@@ -52,10 +52,9 @@ fn a_candidate_leaving_or_reshaped_ends_its_work_and_its_run() {
             ),
         ];
         for (name, departure) in departures {
-            let runtime = CandidateRuntime::default();
+            let runtime = CandidateRuntime::for_test().await;
             runtime.record_event(&scanned(candidate.clone()));
             let tokens = start_both(&runtime, &key);
-            runtime.record_event(&identify(&key, 1, triangulating()));
             let other = start_both(&runtime, "/watch/a/other");
 
             runtime.record_event(&departure);
@@ -64,7 +63,6 @@ fn a_candidate_leaving_or_reshaped_ends_its_work_and_its_run() {
                 tokens.iter().all(|token| token.is_cancelled()),
                 "{key} {name}: its work goes on"
             );
-            assert!(runtime.get(&key).is_none(), "{key} {name}: its run is still recorded");
             assert!(
                 other.iter().all(|token| !token.is_cancelled()),
                 "{key} {name}: another key's work ended"

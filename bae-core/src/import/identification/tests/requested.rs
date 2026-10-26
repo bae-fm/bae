@@ -280,11 +280,11 @@ async fn a_release_its_draft_cannot_be_read_from_is_no_match() {
     let key = dir.to_string_lossy().into_owned();
     assert!(
         !matches!(
-            fixture.identification_status(&key),
+            fixture.identification_status(&key).await,
             Some(crate::import::IdentificationStatus::FinalizationFailed { .. })
         ),
         "nothing was picked to fail applying, got {:?}",
-        fixture.identification_status(&key)
+        fixture.identification_status(&key).await
     );
 }
 
@@ -353,13 +353,10 @@ async fn explicit_lookup_stores_its_verdict_for_a_pre_filled_candidate() {
     tokio::time::timeout(Duration::from_secs(5), async {
         while fixture
             .import
-            .candidate_runtimes()
-            .get(&key)
-            .is_some_and(|runtime| {
-                crate::import::triage::TriageRuntimeFacts::of(runtime)
-                    .identification
-                    .is_some()
-            })
+            .standing_facts_for_test(&key)
+            .await
+            .identification
+            .is_some()
         {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
@@ -684,10 +681,9 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
     assert_eq!(
         fixture
             .import
-            .candidate_runtimes()
-            .remove(&key)
-            .as_ref()
-            .and_then(|runtime| crate::import::TriageRuntimeFacts::of(runtime).identification),
+            .standing_facts_for_test(&key)
+            .await
+            .identification,
         None,
         "the queue holds nothing for a candidate whose answer has landed"
     );

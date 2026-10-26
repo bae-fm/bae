@@ -19,10 +19,7 @@ mod triage_tests {
     fn an_idle_candidate_crosses_with_its_running_import() {
         let idle =
             BridgeCandidateRuntimeSnapshot::from_core(bae_core::import::CandidateRuntimeSnapshot {
-                queued: None,
-                running: None,
-                saving: None,
-                save_failed: None,
+                identification: None,
                 import: Some(bae_core::import::ImportInFlight {
                     progress_percent: Some(40),
                     step: bae_core::import::ImportStep::Running(
@@ -44,10 +41,9 @@ mod triage_tests {
     fn a_queued_candidate_crosses_as_queued() {
         let queued =
             BridgeCandidateRuntimeSnapshot::from_core(bae_core::import::CandidateRuntimeSnapshot {
-                queued: Some(bae_core::import::Admission::Automatic),
-                running: None,
-                saving: None,
-                save_failed: None,
+                identification: Some(bae_core::import::IdentificationRuntime::Queued(
+                    bae_core::import::Admission::Automatic,
+                )),
                 import: None,
                 search: None,
             });

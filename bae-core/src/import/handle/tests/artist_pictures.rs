@@ -324,7 +324,7 @@ async fn the_import_says_it_is_fetching_artist_pictures_while_it_fetches_them() 
     );
     assert_eq!(
         pick.handle
-            .candidate_runtime(&pick.key)
+            .candidate_runtime(&pick.key).await.unwrap()
             .and_then(|runtime| runtime.import)
             .map(|import| import.step),
         Some(fetching),

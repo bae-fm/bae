@@ -67,12 +67,15 @@ async fn a_planned_candidate_is_queued_before_its_driver_reports() {
         .await
         .expect("the queue state is published before identification")
         .expect("candidate runtime remains open");
-    let crate::import::CandidateRuntimeChange::Reset { runtimes } = change else {
-        panic!("the queue publishes its admission before starting drivers");
+    let crate::import::CandidateRuntimeChange::Updated { key: changed, runtime } = change else {
+        panic!("the queue writes its admission before starting drivers");
     };
+    assert_eq!(changed, key);
     assert_eq!(
-        crate::import::TriageRuntimeFacts::of(&runtimes[&key]).identification,
-        Some(crate::import::IdentificationStatus::Queued)
+        runtime.identification,
+        Some(crate::import::IdentificationRuntime::Queued(
+            crate::import::Admission::Automatic
+        ))
     );
 
     fixture.provider.release();
@@ -103,15 +106,10 @@ async fn a_shared_identify_job_runs_one_member_and_leaves_the_rest_queued() {
 
     if tokio::time::timeout(Duration::from_secs(10), async {
         loop {
-            let runtimes = fixture.import.candidate_runtimes();
-            let statuses: Vec<Option<crate::import::IdentificationStatus>> = keys
-                .iter()
-                .map(|key| {
-                    runtimes.get(key).and_then(|runtime| {
-                        crate::import::TriageRuntimeFacts::of(runtime).identification
-                    })
-                })
-                .collect();
+            let mut statuses: Vec<Option<crate::import::IdentificationStatus>> = Vec::new();
+            for key in &keys {
+                statuses.push(fixture.import.standing_facts_for_test(key).await.identification);
+            }
             let running = statuses
                 .iter()
                 .filter(|status| **status == Some(crate::import::IdentificationStatus::Running))
@@ -132,7 +130,7 @@ async fn a_shared_identify_job_runs_one_member_and_leaves_the_rest_queued() {
         panic!(
             "one member runs the shared job and the other waits on its answer; \
              runtimes: {:?}; requests: {:?}; identifying: {:?}",
-            fixture.import.candidate_runtimes(),
+            fixture.import.candidate_runtimes().await.unwrap(),
             fixture.provider.requests(),
             keys.iter()
                 .map(|key| fixture.import.is_identifying(key))

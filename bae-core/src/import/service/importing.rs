@@ -10,6 +10,7 @@ impl ImportService {
     pub(crate) async fn start(
         runtime_handle: tokio::runtime::Handle,
         library_manager: LibraryManager,
+        database: crate::db::Database,
         preparations: crate::import::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
@@ -17,7 +18,7 @@ impl ImportService {
         // No run or import outlives the process that held it, so the library
         // opens with no candidate standing, before anything reads the list.
         library_manager.clear_candidate_standings().await?;
-        let runtime = CandidateRuntime::new(library_manager.clone(), &runtime_handle);
+        let runtime = CandidateRuntime::new(database);
         let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
         let services = crate::import::ImportServices::new(
             event_tx,
@@ -26,7 +27,7 @@ impl ImportService {
             clock.clone(),
             ids.clone(),
         );
-        Ok(Self::start_with(runtime_handle, services, runtime))
+        Ok(Self::start_with(runtime_handle, services, runtime)?)
     }
 
     /// [`Self::start`] reading folders' tags through `file_tags`, for a test
@@ -35,12 +36,13 @@ impl ImportService {
     pub(crate) fn start_reading_tags_with(
         runtime_handle: tokio::runtime::Handle,
         library_manager: LibraryManager,
+        database: crate::db::Database,
         preparations: crate::import::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
         file_tags: Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     ) -> ImportServiceHandle {
-        let runtime = CandidateRuntime::new(library_manager.clone(), &runtime_handle);
+        let runtime = CandidateRuntime::new(database);
         let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
         let mut services = crate::import::ImportServices::new(
             event_tx,
@@ -51,13 +53,14 @@ impl ImportService {
         );
         services.file_tags = file_tags;
         Self::start_with(runtime_handle, services, runtime)
+            .expect("a test's library is open while its import service starts")
     }
 
     fn start_with(
         runtime_handle: tokio::runtime::Handle,
         services: crate::import::ImportServices,
         runtime: CandidateRuntime,
-    ) -> ImportServiceHandle {
+    ) -> Result<ImportServiceHandle, crate::library::LibraryError> {
         let (fs_tx, fs_rx) = mpsc::unbounded_channel::<WatchReport>();
         let event_tx_for_worker = services.event_tx.clone();
         let runtime_for_worker = runtime.clone();
@@ -131,9 +134,17 @@ impl ImportService {
             ImportRunEnd::Ran(result) => result,
             // Whoever cancelled it while it waited already said it ended.
             ImportRunEnd::CancelledWaiting => return,
-            // It wrote nothing and failed at nothing: no failure is recorded.
+            // It wrote nothing and failed at nothing: no failure is recorded,
+            // and its claim ends.
             ImportRunEnd::CancelledRunning => {
                 info!("Import of {candidate_key} was cancelled");
+                if let Err(error) = self
+                    .runtime
+                    .move_import(&candidate_key, &import_id, None)
+                    .await
+                {
+                    error!("could not end the cancelled import of {candidate_key}: {error}");
+                }
                 self.event_tx
                     .send(crate::import::handle::ImportEvent::ImportProgress {
                         candidate_key,
@@ -155,12 +166,20 @@ impl ImportService {
 
             // The row goes first and the event second: the event is what the
             // pane showing this import redraws from, and the row is what a
-            // relaunched pane reads instead. A row that will not write is
-            // logged rather than swallowing the failure the user is waiting
-            // to see.
+            // relaunched pane reads instead. The same write ends the import's
+            // claim, so no read sees the import ended without its failure. A
+            // row that will not write is logged rather than swallowing the
+            // failure the user is waiting to see; the candidate then still
+            // reads as importing, which the log says why.
             if let Err(write) = self
                 .library_manager
-                .save_import_candidate_failure(&content_hash, edit_revision, &failure)
+                .fail_candidate_import(
+                    &content_hash,
+                    edit_revision,
+                    &failure,
+                    &candidate_key,
+                    &import_id,
+                )
                 .await
             {
                 error!("could not record the failed import of {candidate_key}: {write}");
@@ -208,13 +227,23 @@ impl ImportService {
 
         let import_start = std::time::Instant::now();
         self.event_tx
-            .send(crate::import::handle::ImportEvent::ImportProgress {
-                candidate_key: candidate_key.clone(),
-                progress: ImportProgress::Preparing {
-                    import_id: import_id.clone(),
-                    step: PrepareStep::ValidatingSourceFiles,
+            .send_once_written(
+                crate::import::handle::ImportEvent::ImportProgress {
+                    candidate_key: candidate_key.clone(),
+                    progress: ImportProgress::Preparing {
+                        import_id: import_id.clone(),
+                        step: PrepareStep::ValidatingSourceFiles,
+                    },
                 },
-            });
+                self.runtime.move_import(
+                    &candidate_key,
+                    &import_id,
+                    Some(crate::import::ImportStanding::Running),
+                ),
+            )
+            .await
+            .map_err(crate::library::LibraryError::from)
+            .map_err(crate::import::ImportError::from)?;
 
         let stored_candidate = match library_manager
             .load_release_candidate(&candidate_key)
@@ -475,10 +504,11 @@ impl ImportService {
     /// fetched for its new artists, recording a `Remote` destination's
     /// uploads in that same write.
     ///
-    /// The same transaction ends the import's standing, under the standings
-    /// hold, which is kept until the runtime has heard the import end too: no
-    /// read sees the release beside the running import, or the import gone
-    /// without its release.
+    /// The same transaction ends the import's claim on the candidate: no read
+    /// sees the release beside the running import, or the import gone
+    /// without its release. Its steps write where it stands — running once it
+    /// is taken up, writing once it writes — before they are announced, and
+    /// a step that cannot be written fails the import.
     #[allow(clippy::too_many_arguments)]
     pub(super) async fn run_import(
         &self,
@@ -785,16 +815,24 @@ impl ImportService {
         // Past here the release is written in one transaction, which a cancel
         // no longer interrupts; one that came first stops the import here.
         self.import_cancels.begin_writing(candidate_key, import_id)?;
-        self.emit_phase_progress(run, &db_release.id, None, ImportPhase::Finalizing);
+        self.event_tx
+            .send_once_written(
+                Self::phase_progress(run, &db_release.id, None, ImportPhase::Finalizing),
+                self.runtime.move_import(
+                    candidate_key,
+                    import_id,
+                    Some(crate::import::ImportStanding::Writing),
+                ),
+            )
+            .await
+            .map_err(crate::library::LibraryError::from)
+            .map_err(crate::import::ImportError::from)?;
 
-        let held = self.runtime.hold_standings().await;
         let commit_guard = crate::db::ImportCommitGuard::Candidate {
             candidate_key: candidate_key.to_string(),
             source: committed.source,
             expectation: committed.expectation,
-            standing: self
-                .runtime
-                .standing_once_imported(&held, candidate_key, import_id),
+            import_id: import_id.to_string(),
         };
         // Attaching the originals queues their uploads in the import transaction.
         let outbox_revision = library_manager
@@ -847,7 +885,6 @@ impl ImportService {
                 candidate_key: candidate_key.to_string(),
                 progress,
             });
-        drop(held);
 
         info!("Import complete for release {}", db_release.id);
         Ok(())

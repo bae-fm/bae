@@ -30,8 +30,9 @@ pub use client::{
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::{
     CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
-    FolderReadingCommit, FolderReadingStamp, FolderReadingWrite, GroupingFacts, ImportRows,
-    NewArtistImages, ScanItemSeed, ScanItemToWrite, ScannedCandidateKey,
+    FolderReadingCommit, FolderReadingStamp, FolderReadingWrite, GroupingFacts, ImportClaim,
+    ImportRows, NewArtistImages, RunVerdictSaved, ScanItemSeed, ScanItemToWrite,
+    ScannedCandidateKey,
 };
 pub(crate) use client::{
     OutboxDisplayContext, OutboxDisplayRequest, QueueCatalogProjection, QueueCatalogRequest,

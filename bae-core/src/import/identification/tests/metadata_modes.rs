@@ -299,7 +299,7 @@ async fn disabling_automatic_lookup_lets_what_it_queued_finish() {
         fixture.identified_for(&dir).await.is_some(),
         "the run the setting admitted stores its answer"
     );
-    assert_eq!(fixture.identification_status(&key), None);
+    assert_eq!(fixture.identification_status(&key).await, None);
 }
 
 #[tokio::test(flavor = "multi_thread")]

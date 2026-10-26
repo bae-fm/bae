@@ -267,6 +267,11 @@ async fn a_candidate_carries_the_import_service_s_runtime() {
     let fixture = automation_over().await;
     let key = scan(&fixture, "A").await;
     fixture.claim(&key).await;
+    // The worker takes the import up, then reports how far it has got.
+    fixture
+        .services
+        .move_candidate_import_for_test(&key, IMPORT_ID, bae_core::import::ImportStanding::Running)
+        .await;
     fixture.record(importing(&key, 42));
 
     let candidate = fixture.get_candidate(&key).await.expect("published");

@@ -172,7 +172,7 @@ async fn make_service() -> (
     UnboundedReceiver<ImportEvent>,
     TempDir,
 ) {
-    let candidates = CandidateRuntime::default();
+    let candidates = CandidateRuntime::for_test().await;
     let tx = ImportEventBus::new(candidates.clone());
     let rx = tx.every_event();
     let (library_manager, lib_tmp) = make_library_manager().await;

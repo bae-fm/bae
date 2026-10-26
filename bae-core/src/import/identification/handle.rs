@@ -5,7 +5,6 @@ use super::*;
 /// The running identification queue.
 #[derive(Clone)]
 pub struct IdentificationHandle {
-    context: Context,
     token: CancellationToken,
     tasks: TaskTracker,
     executor_thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
@@ -14,14 +13,12 @@ pub struct IdentificationHandle {
 
 impl IdentificationHandle {
     pub(super) fn new(
-        context: Context,
         token: CancellationToken,
         tasks: TaskTracker,
         executor_thread: std::thread::JoinHandle<()>,
         commands: mpsc::UnboundedSender<Command>,
     ) -> Self {
         Self {
-            context,
             token,
             tasks,
             executor_thread: Arc::new(Mutex::new(Some(executor_thread))),
@@ -47,28 +44,24 @@ impl IdentificationHandle {
     }
 
     /// Identify this candidate now with a fresh run, whatever is stored or
-    /// running. It is marked waiting right away, so the person sees it queued.
+    /// running. The queue marks it waiting as it takes the request: the queue
+    /// is the one writer of that mark.
     pub fn rerun_identify(&self, candidate_key: String) {
         if self.token.is_cancelled() {
             return;
         }
-        self.context
-            .import
-            .admit_identification(vec![candidate_key.clone()], Admission::Requested);
         let sent = self.commands.send(Command::Request {
             candidate_key: candidate_key.clone(),
         });
         if sent.is_err() {
             warn!("identification: the queue has stopped; {candidate_key} was not identified");
-            self.context
-                .import
-                .withdraw_identification(&candidate_key);
         }
     }
 
     /// Take these candidates' jobs off the queue, whatever they are doing, and
-    /// store nothing. Returns once they are gone; fails only when the queue has
-    /// stopped.
+    /// store nothing. Returns once they are gone; fails when the queue has
+    /// stopped, or with the first ending of a candidate's standing that could
+    /// not be written.
     pub async fn cancel(
         &self,
         candidate_keys: Vec<String>,
@@ -97,13 +90,13 @@ impl IdentificationHandle {
     }
 
     async fn await_cancel(
-        cancelled: tokio::sync::oneshot::Receiver<()>,
+        cancelled: tokio::sync::oneshot::Receiver<Result<(), crate::library::LibraryError>>,
     ) -> Result<(), crate::library::LibraryError> {
         cancelled.await.map_err(|error| {
             crate::library::LibraryError::Internal(
                 format!("the identification queue stopped before the cancel ended: {error}"),
             )
-        })
+        })?
     }
 
     /// Wait until every release found so far has been admitted and every

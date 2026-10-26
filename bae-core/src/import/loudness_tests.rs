@@ -5,17 +5,17 @@ fn progress(event_tx: &crate::import::handle::ImportEventBus, total: Option<u64>
     LoudnessProgress::new(event_tx, "test", "release-1", "import-1", total)
 }
 
-fn sink_with(total: Option<u64>, done: u64, errors: u32) -> LoudnessProgressSink {
-    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::default());
+async fn sink_with(total: Option<u64>, done: u64, errors: u32) -> LoudnessProgressSink {
+    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let mut sink = LoudnessProgressSink::new(total, progress(&event_tx, total));
     sink.done_frames = done;
     sink.decode_error_count = errors;
     sink
 }
 
-#[test]
-fn measured_frames_control_progress_value_and_determinacy() {
-    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::default());
+#[tokio::test]
+async fn measured_frames_control_progress_value_and_determinacy() {
+    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let mut rx = event_tx.every_event();
 
     // 100 frames of earlier tracks are done; this track has measured 450 of
@@ -52,30 +52,30 @@ fn measured_frames_control_progress_value_and_determinacy() {
 /// The broken signature: a gross frame shortfall (a truncated body under a
 /// valid header) or any fatal decode error. A full-window decode, including
 /// one that discarded an invalid packet, is not broken.
-#[test]
-fn broken_reason_flags_shortfall_and_errors_not_clean() {
+#[tokio::test]
+async fn broken_reason_flags_shortfall_and_errors_not_clean() {
     assert!(
-        sink_with(Some(1000), 1000, 0).broken_reason().is_none(),
+        sink_with(Some(1000), 1000, 0).await.broken_reason().is_none(),
         "a full-window decode is clean"
     );
     assert!(
-        sink_with(Some(1000), 970, 0).broken_reason().is_none(),
+        sink_with(Some(1000), 970, 0).await.broken_reason().is_none(),
         "a 3% shortfall is boundary rounding, within slack"
     );
     assert!(
-        sink_with(Some(1000), 100, 0).broken_reason().is_some(),
+        sink_with(Some(1000), 100, 0).await.broken_reason().is_some(),
         "a 90% shortfall is a truncated body"
     );
     assert!(
-        sink_with(Some(1000), 1000, 1).broken_reason().is_some(),
+        sink_with(Some(1000), 1000, 1).await.broken_reason().is_some(),
         "a fatal decode error is broken even with the full window"
     );
     assert!(
-        sink_with(None, 0, 0).broken_reason().is_none(),
+        sink_with(None, 0, 0).await.broken_reason().is_none(),
         "with no expected count, a shortfall can't be asserted"
     );
 
-    let mut complete_with_discard = sink_with(Some(1000), 1000, 0);
+    let mut complete_with_discard = sink_with(Some(1000), 1000, 0).await;
     crate::audio_codec::DecodedSink::add_discarded_packet_count(&mut complete_with_discard, 1);
     crate::audio_codec::DecodedSink::add_discarded_packet_count(&mut complete_with_discard, 1);
     assert_eq!(complete_with_discard.discarded_packet_count, 2);
@@ -84,7 +84,7 @@ fn broken_reason_flags_shortfall_and_errors_not_clean() {
         "a discarded packet is recoverable when frame coverage is complete"
     );
 
-    let mut unknown_with_discard = sink_with(None, 0, 0);
+    let mut unknown_with_discard = sink_with(None, 0, 0).await;
     crate::audio_codec::DecodedSink::add_discarded_packet_count(&mut unknown_with_discard, 1);
     assert!(
         unknown_with_discard.broken_reason().is_some(),
@@ -97,8 +97,8 @@ fn broken_reason_flags_shortfall_and_errors_not_clean() {
 /// far too few frames), while the same window of the intact fixture decodes
 /// clean. Rides the same decode-error count + frame count the import
 /// verify uses.
-#[test]
-fn truncated_flac_decode_is_flagged_broken_intact_is_not() {
+#[tokio::test]
+async fn truncated_flac_decode_is_flagged_broken_intact_is_not() {
     crate::audio_codec::init();
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -120,7 +120,7 @@ fn truncated_flac_decode_is_flagged_broken_intact_is_not() {
     };
     let never = || Arc::new(std::sync::atomic::AtomicBool::new(false));
 
-    let mut sink = sink_with(Some(total), 0, 0);
+    let mut sink = sink_with(Some(total), 0, 0).await;
     let ok = crate::audio_codec::decode_audio_to_verifying_sink(
         buffer_of(&clean),
         None,
@@ -140,7 +140,7 @@ fn truncated_flac_decode_is_flagged_broken_intact_is_not() {
     // Truncated to 60% of its bytes: the 25s window is past the surviving
     // audio, so the decode errors out or yields far too few frames.
     let truncated = &clean[..clean.len() * 6 / 10];
-    let mut sink = sink_with(Some(total), 0, 0);
+    let mut sink = sink_with(Some(total), 0, 0).await;
     let res = crate::audio_codec::decode_audio_to_verifying_sink(
         buffer_of(truncated),
         None,
@@ -269,7 +269,7 @@ fn cue_flac_fixture(name: &str) -> PathBuf {
 /// size is `size`, returning the pass's error.
 async fn measure_failure(path: &std::path::Path, size: u64) -> crate::import::ImportError {
     let event_tx =
-        crate::import::ImportEventBus::new(crate::import::CandidateRuntime::default());
+        crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let mut audio_formats = vec![audio_format("track-0", "af-0")];
     let audio_segments = vec![whole_file_main_segment("af-0", "file-0")];
     let file_ids = HashMap::from([(path.to_path_buf(), "file-0".to_string())]);
@@ -364,7 +364,7 @@ async fn measure_loudness_fails_on_a_source_whose_read_fails() {
 /// decode) and stays unmeasured.
 #[tokio::test]
 async fn measure_loudness_skips_track_with_no_segments() {
-    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::default());
+    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let mut audio_formats = vec![audio_format("track-0", "af-0")];
     let audio_segments: Vec<crate::db::DbAudioSegment> = Vec::new();
     let file_ids = HashMap::new();
@@ -390,7 +390,7 @@ async fn measure_loudness_skips_track_with_no_segments() {
 #[tokio::test]
 async fn measure_loudness_computes_track_and_album_values() {
     crate::audio_codec::init();
-    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::default());
+    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let path = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
     let mut audio_formats = vec![audio_format("track-0", "af-0")];
     let audio_segments = vec![whole_file_main_segment("af-0", "file-0")];
@@ -424,7 +424,7 @@ async fn measure_loudness_computes_track_and_album_values() {
 #[tokio::test]
 async fn measure_loudness_progress_weights_tracks_by_frames() {
     crate::audio_codec::init();
-    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::default());
+    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let mut rx = event_tx.every_event();
     let path = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
     let mut audio_formats = vec![
@@ -473,7 +473,7 @@ async fn measure_loudness_progress_weights_tracks_by_frames() {
 #[tokio::test]
 async fn measure_loudness_leaves_ungated_track_unmeasured() {
     crate::audio_codec::init();
-    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::default());
+    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let path = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
     let mut audio_formats = vec![audio_format("track-0", "af-0")];
     // ~50 ms at 44.1 kHz — far short of a 400 ms gated block.
@@ -516,7 +516,7 @@ async fn peak_open_sources(
     file_ids: &HashMap<PathBuf, String>,
     tracks: &[TrackFile],
 ) -> usize {
-    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::default());
+    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let source_file_sizes: HashMap<PathBuf, u64> = file_ids
         .keys()
         .map(|path| (path.clone(), std::fs::metadata(path).unwrap().len()))

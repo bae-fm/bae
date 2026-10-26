@@ -69,13 +69,14 @@ impl AppHandle {
     }
 
     /// What is in flight for one key right now — the read a view does once
-    /// when it appears, after it has subscribed to the changes.
+    /// when it appears, after it has subscribed to the changes. It is the
+    /// value the runtime stream last delivered, so the two agree.
     pub fn candidate_runtime(
         &self,
         candidate_key: String,
     ) -> Option<crate::types::BridgeCandidateRuntimeSnapshot> {
         self.services
-            .candidate_runtime(&candidate_key)
+            .latest_candidate_runtime(&candidate_key)
             .map(crate::types::BridgeCandidateRuntimeSnapshot::from_core)
     }
 

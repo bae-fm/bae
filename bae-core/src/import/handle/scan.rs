@@ -45,7 +45,7 @@ impl ImportServiceHandle {
                 .await?
             {
                 if skipped {
-                    self.cancel_identification(&path);
+                    self.cancel_identification(&path).await?;
                 }
                 self.event_tx
                     .send(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
@@ -61,7 +61,7 @@ impl ImportServiceHandle {
             .await?;
         if changed {
             if skipped {
-                self.cancel_identification(&path);
+                self.cancel_identification(&path).await?;
             }
             self.event_tx
                 .send(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
@@ -524,7 +524,7 @@ impl ImportServiceHandle {
             let revision = this
                 .clear_candidate_metadata_write(candidate_key.clone())
                 .await?;
-            this.cancel_identification(&candidate_key);
+            this.cancel_identification(&candidate_key).await?;
             this.announce_metadata_changed(candidate_key);
             Ok(revision)
         })

@@ -30,14 +30,10 @@ async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
     let sweep = fixture.drain_automatic_task();
     // The cap's worth of lookups are out, and one candidate is still waiting.
     wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
-    let waiting = dirs
-        .iter()
-        .find(|dir| {
-            fixture.identification_status(&dir.to_string_lossy())
-                == Some(crate::import::IdentificationStatus::Queued)
-        })
-        .expect("one candidate is over the cap and waiting")
-        .clone();
+    let waiting = fixture
+        .first_queued(&dirs)
+        .await
+        .expect("one candidate is over the cap and waiting");
     let waiting_key = waiting.to_string_lossy().into_owned();
     // Read from here, so the first state the waiting candidate reports is the
     // requested run's.
@@ -53,7 +49,7 @@ async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
     .await
     .expect("the queue takes the request");
     assert_eq!(
-        fixture.identification_status(&waiting_key),
+        fixture.identification_status(&waiting_key).await,
         Some(crate::import::IdentificationStatus::Queued),
         "the request waits for a slot like any other job"
     );
@@ -154,7 +150,7 @@ async fn a_request_superseding_a_run_keeps_the_rest_of_its_group() {
     fixture.start_explicit_lookup(&other);
 
     tokio::time::timeout(Duration::from_secs(10), async {
-        while fixture.identification_status(&other.to_string_lossy())
+        while fixture.identification_status(&other.to_string_lossy()).await
             != Some(crate::import::IdentificationStatus::Running)
         {
             tokio::time::sleep(Duration::from_millis(10)).await;
@@ -163,7 +159,7 @@ async fn a_request_superseding_a_run_keeps_the_rest_of_its_group() {
     .await
     .expect("the request supersedes the run that was going");
     assert_eq!(
-        fixture.identification_status(&running.to_string_lossy()),
+        fixture.identification_status(&running.to_string_lossy()).await,
         Some(crate::import::IdentificationStatus::Queued),
         "the candidate whose run was superseded waits on the answer this one \
          stores rather than being dropped"
@@ -177,10 +173,10 @@ async fn a_request_superseding_a_run_keeps_the_rest_of_its_group() {
         .unwrap();
     tokio::time::timeout(Duration::from_secs(10), async {
         while fixture
-            .identification_status(&running.to_string_lossy())
+            .identification_status(&running.to_string_lossy()).await
             .is_some()
             || fixture
-                .identification_status(&other.to_string_lossy())
+                .identification_status(&other.to_string_lossy()).await
                 .is_some()
         {
             tokio::time::sleep(Duration::from_millis(10)).await;
@@ -230,7 +226,7 @@ async fn automatic_off_leaves_the_queue_to_finish() {
         fixture.identified_for(&automatic).await.is_some(),
         "the run the setting admitted stores its answer"
     );
-    assert_eq!(fixture.identification_status(&automatic_key), None);
+    assert_eq!(fixture.identification_status(&automatic_key).await, None);
 }
 
 /// A run a person asked for is counted like any other: it opens a batch of its

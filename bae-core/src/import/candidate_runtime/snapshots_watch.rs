@@ -1,27 +1,22 @@
 //! Every candidate's runtime for a reader that draws each key: all of it
 //! first, then each key that changed since it last read.
 
-use super::{CandidateRuntime, CandidateRuntimeChange, CandidateRuntimeSnapshot, Revisions};
+use super::{CandidateRuntime, CandidateRuntimeChange, CandidateRuntimeSnapshot};
 use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::sync::watch;
 
 pub struct RuntimeSnapshotsWatch {
     /// What the reader was last told; `None` before the first read.
-    told: Option<HashMap<String, CandidateRuntimeSnapshot>>,
-    revisions: watch::Receiver<Revisions>,
-    read_at: u64,
-    runtime: CandidateRuntime,
+    told: Option<Arc<HashMap<String, CandidateRuntimeSnapshot>>>,
+    snapshots: watch::Receiver<Arc<HashMap<String, CandidateRuntimeSnapshot>>>,
 }
 
 impl RuntimeSnapshotsWatch {
     pub(crate) fn of(runtime: &CandidateRuntime) -> Self {
-        let revisions = runtime.watch_revisions();
-        let read_at = revisions.borrow().runtime;
         Self {
             told: None,
-            revisions,
-            read_at,
-            runtime: runtime.clone(),
+            snapshots: runtime.watch_snapshots(),
         }
     }
 
@@ -29,18 +24,15 @@ impl RuntimeSnapshotsWatch {
     /// for keys to change and name each one. `None` once the runtime is gone.
     pub async fn next(&mut self) -> Option<Vec<CandidateRuntimeChange>> {
         let Some(told) = &mut self.told else {
-            let runtimes = self.runtime.all();
+            let runtimes = self.snapshots.borrow_and_update().clone();
             self.told = Some(runtimes.clone());
-            return Some(vec![CandidateRuntimeChange::Reset { runtimes }]);
+            return Some(vec![CandidateRuntimeChange::Reset {
+                runtimes: (*runtimes).clone(),
+            }]);
         };
         loop {
-            self.revisions.changed().await.ok()?;
-            let revision = self.revisions.borrow_and_update().runtime;
-            if revision == self.read_at {
-                continue;
-            }
-            self.read_at = revision;
-            let next = self.runtime.all();
+            self.snapshots.changed().await.ok()?;
+            let next = self.snapshots.borrow_and_update().clone();
             let mut changes: Vec<CandidateRuntimeChange> = told
                 .keys()
                 .filter(|key| !next.contains_key(*key))

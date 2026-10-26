@@ -148,9 +148,9 @@ mod tests {
 
     const WORK: CandidateWork = CandidateWork::Extraction;
 
-    #[test]
-    fn starting_a_key_again_advances_the_generation_and_cancels_the_last() {
-        let runtime = CandidateRuntime::default();
+    #[tokio::test]
+    async fn starting_a_key_again_advances_the_generation_and_cancels_the_last() {
+        let runtime = CandidateRuntime::for_test().await;
         let (first, first_generation) =
             runtime.start_work(WORK, "cand".to_string(), |token, generation| (token, generation));
         let (second, second_generation) =
@@ -161,9 +161,9 @@ mod tests {
         assert!(!second.is_cancelled());
     }
 
-    #[test]
-    fn generations_are_unique_across_keys_and_kinds() {
-        let runtime = CandidateRuntime::default();
+    #[tokio::test]
+    async fn generations_are_unique_across_keys_and_kinds() {
+        let runtime = CandidateRuntime::for_test().await;
         let a = runtime.start_work(WORK, "a".to_string(), |_, generation| generation);
         let b = runtime.start_work(WORK, "b".to_string(), |_, generation| generation);
         let c = runtime.start_work(CandidateWork::Identify, "a".to_string(), |_, generation| {
@@ -172,9 +172,9 @@ mod tests {
         assert!(a != b && b != c && a != c);
     }
 
-    #[test]
-    fn only_the_current_generation_emits() {
-        let runtime = CandidateRuntime::default();
+    #[tokio::test]
+    async fn only_the_current_generation_emits() {
+        let runtime = CandidateRuntime::for_test().await;
         let stale = runtime.start_work(WORK, "cand".to_string(), |_, generation| generation);
         assert_eq!(runtime.while_work_current(WORK, "cand", stale, || "sent"), Some("sent"));
 
@@ -186,9 +186,9 @@ mod tests {
         assert_eq!(runtime.while_work_current(WORK, "cand", live, || "sent"), None);
     }
 
-    #[test]
-    fn a_release_removes_only_the_current_generation() {
-        let runtime = CandidateRuntime::default();
+    #[tokio::test]
+    async fn a_release_removes_only_the_current_generation() {
+        let runtime = CandidateRuntime::for_test().await;
         let stale = runtime.start_work(WORK, "cand".to_string(), |_, generation| generation);
         let (live, live_generation) =
             runtime.start_work(WORK, "cand".to_string(), |token, generation| (token, generation));
@@ -201,9 +201,9 @@ mod tests {
         assert!(!runtime.is_working(WORK, "cand"));
     }
 
-    #[test]
-    fn a_removal_or_rebind_ends_every_kind_of_work_for_its_key_alone() {
-        let runtime = CandidateRuntime::default();
+    #[tokio::test]
+    async fn a_removal_or_rebind_ends_every_kind_of_work_for_its_key_alone() {
+        let runtime = CandidateRuntime::for_test().await;
         let extraction =
             runtime.start_work(CandidateWork::Extraction, "gone".to_string(), |token, _| token);
         let identify =

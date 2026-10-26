@@ -105,21 +105,21 @@ async fn handle_event(
         }
         // A person's decision about the candidate ends its identification.
         ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }) => {
-            queue.withdraw(context, &candidate.key());
+            queue.withdraw(context, &candidate.key()).await;
         }
         ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key }) => {
-            queue.withdraw(context, &candidate_key);
+            queue.withdraw(context, &candidate_key).await;
         }
         ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
             candidate_key,
             skipped: true,
         }) => {
-            queue.withdraw(context, &candidate_key);
+            queue.withdraw(context, &candidate_key).await;
         }
         // Gone, or taken by an import: a run left going would never finish.
         ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key })
         | ImportEvent::ImportProgress { candidate_key, .. } => {
-            queue.withdraw(context, &candidate_key);
+            queue.withdraw(context, &candidate_key).await;
         }
         _ => {}
     }
@@ -141,7 +141,7 @@ async fn advance(
     // Something outside the queue ended the run, which ends this candidate's
     // identification; the rest of its job waits for a run of its own.
     if matches!(state, IdentifyState::Idle) {
-        queue.withdraw(context, key);
+        queue.withdraw(context, key).await;
         return;
     }
     if !state.is_terminal() {
@@ -201,9 +201,9 @@ pub(super) async fn finish(
         return;
     };
     let job = queue.jobs.remove(index).expect("the located job exists");
-    let keys = job.keys();
-    for key in &keys {
-        context.import.withdraw_identification(key);
+    let marks = job.marks();
+    for (key, _) in &marks {
+        super::withdraw(context, key).await;
     }
     match done.settled {
         Settled::Stored {
@@ -234,24 +234,38 @@ pub(super) async fn finish(
             );
         }
         Settled::WriteFailed { error } | Settled::Unwritable { error } => {
-            for key in &keys {
-                context.import.fail_identification(
-                    key,
-                    done.run,
-                    crate::import::SaveFailure::NotWritten {
-                        error: error.clone(),
-                    },
+            for (key, files) in &marks {
+                super::record(
+                    &format!("record that {key}'s answer was not written"),
+                    context
+                        .import
+                        .fail_identification(
+                            key,
+                            done.run,
+                            files,
+                            crate::import::SaveFailure::NotWritten {
+                                error: error.clone(),
+                            },
+                        )
+                        .await,
                 );
             }
         }
         Settled::Inapplicable { error } => {
-            for key in &keys {
-                context.import.fail_identification(
-                    key,
-                    done.run,
-                    crate::import::SaveFailure::Inapplicable {
-                        error: error.clone(),
-                    },
+            for (key, files) in &marks {
+                super::record(
+                    &format!("record that {key}'s answer could not be read into its draft"),
+                    context
+                        .import
+                        .fail_identification(
+                            key,
+                            done.run,
+                            files,
+                            crate::import::SaveFailure::Inapplicable {
+                                error: error.clone(),
+                            },
+                        )
+                        .await,
                 );
             }
         }
@@ -295,10 +309,10 @@ async fn follow(context: &Context, queue: &mut Queue, key: &str) {
         return;
     };
     let Some(candidate) = answerable_candidate(context, key).await else {
-        queue.withdraw(context, key);
+        queue.withdraw(context, key).await;
         return;
     };
-    if !held.running && candidate_identity(&candidate) != held.identity {
+    if !held.running && CandidateFiles::of(&candidate) != held.identity {
         admit(context, queue, vec![candidate], held.admission).await;
     }
 }

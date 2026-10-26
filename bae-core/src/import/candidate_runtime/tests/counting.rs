@@ -1,221 +1,212 @@
 // ── The identification count ────────────────────────────────────────────────
 //
-// What the count does over the queue operations this map already exposes.
+// What the count does over the writes of each candidate's identification.
 
-/// The count as the sidebar reads it.
-struct CountReader {
-    runtime: CandidateRuntime,
-    last: (u32, u32),
-}
-
-fn counted_runtime() -> (CandidateRuntime, CountReader) {
-    let runtime = CandidateRuntime::default();
-    (
-        runtime.clone(),
-        CountReader {
-            runtime,
-            last: (0, 0),
-        },
-    )
-}
-
-/// The count, if it moved since the last read.
-fn counts(reader: &mut CountReader) -> Vec<(u32, u32)> {
-    let now = reader.runtime.identification_progress();
-    if now == reader.last {
+/// The count as the sidebar reads it, if it moved since the last read.
+fn counts(runtime: &CandidateRuntime, last: &mut (u32, u32)) -> Vec<(u32, u32)> {
+    let now = runtime.identification_progress();
+    if now == *last {
         return Vec::new();
     }
-    reader.last = now;
+    *last = now;
     vec![now]
 }
 
 /// A Lookup a person starts is an identification like any other: it opens a
 /// batch on its own, without a sweep pass behind it.
-#[test]
-fn a_lookup_started_by_hand_opens_a_batch() {
-    let (runtime, mut events) = counted_runtime();
+#[tokio::test]
+async fn a_lookup_started_by_hand_opens_a_batch() {
+    let runtime = CandidateRuntime::for_test().await;
+    let mut last = (0, 0);
     let key = "/watch/a/rel1";
+    let files = scanned_key(&runtime, key).await;
 
-    runtime.admit(vec![key.to_string()], Admission::Requested);
-    assert_eq!(counts(&mut events), vec![(0, 1)]);
+    runtime
+        .admit(vec![(key.to_string(), files.clone())], Admission::Requested)
+        .await
+        .unwrap();
+    assert_eq!(counts(&runtime, &mut last), vec![(0, 1)]);
 
-    runtime.record_event(&identify(key, 1, triangulating()));
+    report(&runtime, key, &files, run(1), triangulating()).await;
     assert_eq!(
-        counts(&mut events),
+        counts(&runtime, &mut last),
         Vec::new(),
         "the run starting is the same identification, still waited on"
     );
 
-    runtime.record_event(&identify(key, 1, manual_only()));
+    runtime.record_run_state(key, run(1), true, &manual_only());
+    runtime.run_answered(key, run(1), false).await.unwrap();
     assert_eq!(
-        counts(&mut events),
+        counts(&runtime, &mut last),
         Vec::new(),
         "and so is the answer waiting on its write"
     );
 
-    runtime.end_identification_answer(key, run(1));
+    runtime.end_identification_answer(key, run(1)).await.unwrap();
     assert_eq!(
-        counts(&mut events),
+        counts(&runtime, &mut last),
         vec![(0, 0)],
         "the write landing ends the only identification, and the batch with it"
     );
 }
 
-/// The run reporting is what takes its key off the queue, so the key is never
-/// neither waiting nor running — which would read as an identification that
-/// ended and started again.
-#[test]
-fn a_run_reporting_takes_its_key_off_the_queue() {
-    let (runtime, mut events) = counted_runtime();
-    let key = "/watch/a/rel1";
-
-    runtime.admit(vec![key.to_string()], Admission::Requested);
-    assert_eq!(
-        runtime.get(key).and_then(|state| state.queued),
-        Some(Admission::Requested)
-    );
-
-    runtime.record_event(&identify(key, 1, triangulating()));
-    let state = runtime.get(key).expect("the run is in flight");
-    assert_eq!(state.queued, None, "it is not waiting any more");
-    assert!(state.running.is_some());
-    assert_eq!(counts(&mut events), vec![(0, 1)], "one identification, once");
-}
-
 /// The sweep's queue is a batch: what it publishes is admitted, and each
 /// verdict advances the count until the last one ends it.
-#[test]
-fn the_sweeps_queue_is_counted_and_drains_to_nothing() {
-    let (runtime, mut events) = counted_runtime();
+#[tokio::test]
+async fn the_sweeps_queue_is_counted_and_drains_to_nothing() {
+    let runtime = CandidateRuntime::for_test().await;
+    let mut last = (0, 0);
     let first = "/watch/a/rel1";
     let second = "/watch/a/rel2";
+    let first_files = scanned_key(&runtime, first).await;
+    let second_files = scanned_key(&runtime, second).await;
 
-    runtime.admit(vec![first.to_string(), second.to_string()], Admission::Automatic);
-    assert_eq!(counts(&mut events), vec![(0, 2)]);
+    runtime
+        .admit(
+            vec![
+                (first.to_string(), first_files.clone()),
+                (second.to_string(), second_files.clone()),
+            ],
+            Admission::Automatic,
+        )
+        .await
+        .unwrap();
+    assert_eq!(counts(&runtime, &mut last), vec![(0, 2)]);
 
-    runtime.record_event(&identify(first, 1, manual_only()));
-    runtime.end_identification_answer(first, run(1));
-    assert_eq!(counts(&mut events), vec![(1, 2)]);
+    report(&runtime, first, &first_files, run(1), manual_only()).await;
+    runtime.end_identification_answer(first, run(1)).await.unwrap();
+    assert_eq!(counts(&runtime, &mut last), vec![(1, 2)]);
 
-    runtime.record_event(&identify(second, 2, manual_only()));
-    runtime.end_identification_answer(second, run(2));
-    assert_eq!(counts(&mut events), vec![(0, 0)]);
+    report(&runtime, second, &second_files, run(2), manual_only()).await;
+    runtime.end_identification_answer(second, run(2)).await.unwrap();
+    assert_eq!(counts(&runtime, &mut last), vec![(0, 0)]);
 }
 
 /// A key the sweep drops before it runs is an identification that is over —
 /// nothing is going to answer it, and the count must not wait on it for ever.
-#[test]
-fn a_key_dropped_from_the_queue_before_it_ran_is_over() {
-    let (runtime, mut events) = counted_runtime();
+#[tokio::test]
+async fn a_key_dropped_from_the_queue_before_it_ran_is_over() {
+    let runtime = CandidateRuntime::for_test().await;
+    let mut last = (0, 0);
     let first = "/watch/a/rel1";
     let second = "/watch/a/rel2";
+    let marks = vec![
+        (first.to_string(), scanned_key(&runtime, first).await),
+        (second.to_string(), scanned_key(&runtime, second).await),
+    ];
 
-    runtime.admit(vec![first.to_string(), second.to_string()], Admission::Automatic);
-    assert_eq!(counts(&mut events), vec![(0, 2)]);
+    runtime.admit(marks, Admission::Automatic).await.unwrap();
+    assert_eq!(counts(&runtime, &mut last), vec![(0, 2)]);
 
-    runtime.withdraw(second);
+    runtime.withdraw(second).await.unwrap();
     assert_eq!(
-        counts(&mut events),
+        counts(&runtime, &mut last),
         vec![(1, 2)],
         "the dropped key is counted as ended, not taken out of the total"
     );
 
-    runtime.withdraw(first);
-    assert_eq!(counts(&mut events), vec![(0, 0)]);
-}
-
-/// A Lookup that never reached a run still ends: whoever queued it clears the
-/// mark, and that is the identification over.
-#[test]
-fn a_lookup_that_never_ran_ends_when_its_mark_is_cleared() {
-    let (runtime, mut events) = counted_runtime();
-    let key = "/watch/a/rel1";
-
-    runtime.admit(vec![key.to_string()], Admission::Requested);
-    assert_eq!(counts(&mut events), vec![(0, 1)]);
-    runtime.withdraw(key);
-    assert_eq!(counts(&mut events), vec![(0, 0)]);
+    runtime.withdraw(first).await.unwrap();
+    assert_eq!(counts(&runtime, &mut last), vec![(0, 0)]);
 }
 
 /// A write that failed is a run that is over: the row says why, and nothing is
 /// waiting on a write that is not coming.
-#[test]
-fn a_failed_write_ends_the_identification() {
-    let (runtime, mut events) = counted_runtime();
+#[tokio::test]
+async fn a_failed_write_ends_the_identification() {
+    let runtime = CandidateRuntime::for_test().await;
+    let mut last = (0, 0);
     let key = "/watch/a/rel1";
+    let files = scanned_key(&runtime, key).await;
 
-    runtime.admit(vec![key.to_string()], Admission::Requested);
-    runtime.record_event(&identify(key, 1, manual_only()));
-    assert_eq!(counts(&mut events), vec![(0, 1)]);
+    runtime
+        .admit(vec![(key.to_string(), files.clone())], Admission::Requested)
+        .await
+        .unwrap();
+    report(&runtime, key, &files, run(1), manual_only()).await;
+    assert_eq!(counts(&runtime, &mut last), vec![(0, 1)]);
 
-    runtime.fail_identification(
-        key,
-        run(1),
-        crate::import::SaveFailure::NotWritten {
-            error: "disk is full".to_string(),
-        },
-    );
-    assert_eq!(counts(&mut events), vec![(0, 0)]);
+    runtime
+        .fail_identification(key, run(1), &files, not_written("disk is full"))
+        .await
+        .unwrap();
+    assert_eq!(counts(&runtime, &mut last), vec![(0, 0)]);
     assert_eq!(
-        runtime.get(key).and_then(|state| state.save_failed),
-        Some(crate::import::SaveFailure::NotWritten {
-            error: "disk is full".to_string(),
+        identification(&runtime, key).await,
+        Some(crate::import::IdentificationStatus::FinalizationFailed {
+            failure: not_written("disk is full"),
         }),
         "the failure stays on the row after the batch is over"
     );
 }
 
-/// A candidate whose folder left the scan mid-run takes its identification
-/// with it.
-#[test]
-fn a_candidate_that_leaves_the_scan_ends_its_identification() {
-    let (runtime, mut events) = counted_runtime();
+/// A run cancelled because its candidate left the scan ends its
+/// identification with its end.
+#[tokio::test]
+async fn a_cancelled_run_s_end_ends_its_identification() {
+    let runtime = CandidateRuntime::for_test().await;
+    let mut last = (0, 0);
     let key = "/watch/a/rel1";
+    let files = scanned_key(&runtime, key).await;
 
-    runtime.admit(vec![key.to_string()], Admission::Requested);
-    runtime.record_event(&identify(key, 1, triangulating()));
-    assert_eq!(counts(&mut events), vec![(0, 1)]);
+    runtime
+        .admit(vec![(key.to_string(), files.clone())], Admission::Requested)
+        .await
+        .unwrap();
+    report(&runtime, key, &files, run(1), triangulating()).await;
+    assert_eq!(counts(&runtime, &mut last), vec![(0, 1)]);
 
-    runtime.record_event(&ImportEvent::Scan(ScanEvent::CandidateRemoved {
-        candidate_key: key.to_string(),
-    }));
-    assert_eq!(counts(&mut events), vec![(0, 0)]);
+    runtime.run_ended(key, run(1)).await.unwrap();
+    assert_eq!(counts(&runtime, &mut last), vec![(0, 0)]);
 }
 
 /// A second batch counts only its own work — the first one's total described
 /// identifications that are over.
-#[test]
-fn a_batch_after_a_drain_starts_from_zero() {
-    let (runtime, mut events) = counted_runtime();
+#[tokio::test]
+async fn a_batch_after_a_drain_starts_from_zero() {
+    let runtime = CandidateRuntime::for_test().await;
+    let mut last = (0, 0);
     let first = "/watch/a/rel1";
     let second = "/watch/a/rel2";
+    let first_files = scanned_key(&runtime, first).await;
+    let second_files = scanned_key(&runtime, second).await;
 
-    runtime.admit(vec![first.to_string(), second.to_string()], Admission::Automatic);
-    assert_eq!(counts(&mut events), vec![(0, 2)]);
-    runtime.withdraw(first);
-    assert_eq!(counts(&mut events), vec![(1, 2)]);
-    runtime.withdraw(second);
-    assert_eq!(counts(&mut events), vec![(0, 0)]);
+    runtime
+        .admit(
+            vec![
+                (first.to_string(), first_files.clone()),
+                (second.to_string(), second_files),
+            ],
+            Admission::Automatic,
+        )
+        .await
+        .unwrap();
+    assert_eq!(counts(&runtime, &mut last), vec![(0, 2)]);
+    runtime.withdraw(first).await.unwrap();
+    assert_eq!(counts(&runtime, &mut last), vec![(1, 2)]);
+    runtime.withdraw(second).await.unwrap();
+    assert_eq!(counts(&runtime, &mut last), vec![(0, 0)]);
 
-    runtime.admit(vec![first.to_string()], Admission::Requested);
-    assert_eq!(counts(&mut events), vec![(0, 1)]);
+    runtime
+        .admit(vec![(first.to_string(), first_files)], Admission::Requested)
+        .await
+        .unwrap();
+    assert_eq!(counts(&runtime, &mut last), vec![(0, 1)]);
 }
 
 /// A library release being re-identified in its own sheet is not the import
-/// queue's work: nothing admits it, its run reaches the sheet through the same
-/// map, and the filter row's count never picks it up — which is also what
-/// keeps the count off a verdict that sits there for as long as the sheet is
-/// open, with no write to end it.
-#[test]
-fn a_release_re_identified_in_its_own_sheet_is_not_counted() {
-    let (runtime, mut events) = counted_runtime();
+/// queue's work: nothing admits it, its run reaches the sheet through the
+/// runtime, and the count never picks it up.
+#[tokio::test]
+async fn a_release_re_identified_in_its_own_sheet_is_not_counted() {
+    let runtime = CandidateRuntime::for_test().await;
+    let mut last = (0, 0);
     let key = "reidentify:release-1";
 
-    runtime.record_event(&identify(key, 1, triangulating()));
-    runtime.record_event(&identify(key, 1, manual_only()));
+    runtime.record_run_state(key, run(1), false, &triangulating());
+    runtime.record_run_state(key, run(1), false, &manual_only());
     assert!(
-        runtime.get(key).is_some(),
-        "the sheet reads its run off the same map"
+        runtime.snapshot(key).await.unwrap().is_some(),
+        "the sheet reads its run off the runtime"
     );
-    assert_eq!(counts(&mut events), Vec::new());
+    assert_eq!(counts(&runtime, &mut last), Vec::new());
 }

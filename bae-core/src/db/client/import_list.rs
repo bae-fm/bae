@@ -8,7 +8,7 @@
 mod window;
 
 use super::import_state::{
-    load_matches_on, load_provenance_on, load_release_links_on, load_standings_on,
+    load_matches_on, load_provenance_on, load_release_links_on, load_standing_facts_on,
 };
 use super::*;
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
@@ -198,7 +198,7 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
     };
 
     let states = state_rows(sql)?;
-    let standings = load_standings_on(sql)?;
+    let standings = load_standing_facts_on(sql)?;
     Ok(ImportQueueRows {
         watched_folders,
         candidates,

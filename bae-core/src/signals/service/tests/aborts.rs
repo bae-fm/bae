@@ -28,7 +28,7 @@ async fn fast_pass_join_error_reports_why_there_is_no_pass() {
 /// not coming.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
-    let candidates = CandidateRuntime::default();
+    let candidates = CandidateRuntime::for_test().await;
     let tx = ImportEventBus::new(candidates.clone());
     let mut rx = tx.every_event();
     let (library_manager, _lib_tmp) = make_library_manager().await;

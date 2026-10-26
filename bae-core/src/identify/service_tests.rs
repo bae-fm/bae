@@ -26,7 +26,7 @@ async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
         crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),
         crate::providers::Providers::offline(),
     );
-    let candidates = CandidateRuntime::default();
+    let candidates = CandidateRuntime::for_test().await;
     let event_tx = ImportEventBus::new(candidates.clone());
     let handle = IdentifyServiceHandle::new(
         manager,
@@ -175,6 +175,7 @@ async fn a_driver_that_reaches_its_verdict_is_gone_without_a_cancel() {
     assert!(handle.start(
         handle.new_run(),
         "k".to_string(),
+        RunSubject::Release,
         CallPriority::Interactive,
         LookupChoices::default(),
         None,
@@ -224,6 +225,7 @@ async fn a_run_reads_the_latest_snapshot_however_many_landed_before_it_looked() 
     assert!(handle.start(
         handle.new_run(),
         "k".to_string(),
+        RunSubject::Release,
         CallPriority::Interactive,
         LookupChoices::default(),
         None,
@@ -255,6 +257,7 @@ async fn an_extraction_ending_does_not_end_the_run() {
     assert!(handle.start(
         handle.new_run(),
         "k".to_string(),
+        RunSubject::Release,
         CallPriority::Interactive,
         LookupChoices::default(),
         None,
@@ -295,6 +298,7 @@ async fn a_cancel_mid_run_reports_idle_and_deregisters() {
     assert!(handle.start(
         handle.new_run(),
         "k".to_string(),
+        RunSubject::Release,
         CallPriority::Interactive,
         LookupChoices::default(),
         None,
@@ -392,19 +396,23 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
         inner: inner.clone(),
         run: IdentifyRunId::for_test(1),
         key: "k".to_string(),
+        subject: RunSubject::Release,
         priority: CallPriority::Interactive,
         event_tx,
         token: CancellationToken::new(),
     };
-    let settled = driver.advance(
-        reading,
-        IdentifyEvent::ReleasesRead {
-            read: vec![ReleaseReading {
-                release: MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
-                document: Ok(document),
-            }],
-        },
-    );
+    let settled = driver
+        .advance(
+            reading,
+            IdentifyEvent::ReleasesRead {
+                read: vec![ReleaseReading {
+                    release: MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+                    document: Ok(document),
+                }],
+            },
+            &mut RunStanding::NotStarted,
+        )
+        .await;
     assert!(settled.is_terminal(), "the step ends the run: {settled:?}");
 
     drivers_ended(&inner).await;

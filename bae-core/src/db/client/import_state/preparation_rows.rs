@@ -60,9 +60,6 @@ pub(crate) struct CandidateSaveExtras {
     /// and stamped with the saved file revision.
     pub reshaped_files: Option<Vec<(String, CategorizedFiles)>>,
     pub pane: CandidatePaneWrite,
-    /// Where the candidate at this key stands once the save lands, written in
-    /// its transaction: a verdict's, which ends the run that reached it.
-    pub standing: Option<(String, crate::import::TriageRuntimeFacts)>,
 }
 
 /// What this save does to where the candidate's pane stands.
@@ -82,9 +79,19 @@ impl Default for CandidateSaveExtras {
             file_tag_snapshot: None,
             reshaped_files: None,
             pane: CandidatePaneWrite::Keep,
-            standing: None,
         }
     }
+}
+
+/// What a run's verdict save did.
+#[derive(Debug)]
+pub(crate) enum RunVerdictSaved {
+    /// The verdict landed, and this is what it did to the run's
+    /// identification of the candidate.
+    Landed(crate::import::candidate_runtime::IdentificationMove),
+    /// The stored revisions had moved past the expectation; nothing was
+    /// written.
+    Superseded,
 }
 
 /// What a save did.
@@ -293,9 +300,6 @@ pub(super) fn save_preparation_on(
             )));
         }
     }
-    if let Some((candidate_key, standing)) = &extras.standing {
-        super::write_standing_on(sql, candidate_key, standing)?;
-    }
     Ok(CandidateSaved::Landed(reshaped))
 }
 
@@ -326,6 +330,35 @@ impl Database {
     ) -> Result<CandidateSaved, DbError> {
         self.call(move |sql| save_preparation_on(sql, &prep, &expected, &extras))
             .await
+    }
+
+    /// [`Self::save_candidate_preparation`] for the verdict `run` reached:
+    /// a save that lands ends that run's identification of the candidate at
+    /// `candidate_key` in the same transaction, so no read sees the verdict
+    /// beside the run still going, or the run ended without its verdict.
+    pub(crate) async fn save_run_verdict(
+        &self,
+        prep: CandidatePreparation,
+        expected: CandidateSaveExpectation,
+        extras: CandidateSaveExtras,
+        candidate_key: String,
+        run: crate::identify::IdentifyRunId,
+    ) -> Result<RunVerdictSaved, DbError> {
+        self.call(move |sql| {
+            match save_preparation_on(sql, &prep, &expected, &extras)? {
+                CandidateSaved::Landed(_) => Ok(RunVerdictSaved::Landed(
+                    super::change_identification_on(
+                        sql,
+                        &candidate_key,
+                        &crate::import::candidate_runtime::IdentificationChange::AnswerEnded {
+                            run,
+                        },
+                    )?,
+                )),
+                CandidateSaved::Superseded => Ok(RunVerdictSaved::Superseded),
+            }
+        })
+        .await
     }
 
     /// The instant a write stamps on what it stores.

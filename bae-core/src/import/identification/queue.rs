@@ -18,7 +18,7 @@ struct Entry {
 /// Every entry that shares one identity. One member runs, and its stored
 /// answer covers them all.
 struct Job {
-    identity: CandidateIdentity,
+    identity: CandidateFiles,
     /// At least one: a job is removed with its last member.
     members: Vec<Entry>,
     state: JobState,
@@ -92,19 +92,31 @@ impl Job {
         }
     }
 
+    /// Every member with the files it is identified as.
+    fn marks(&self) -> Vec<(String, CandidateFiles)> {
+        self.members
+            .iter()
+            .map(|member| (member.candidate.key(), CandidateFiles::of(&member.candidate)))
+            .collect()
+    }
+
     /// Mark every member as waiting again; a run's first report took its
     /// representative's mark off.
-    fn mark_waiting(&self, context: &Context) {
-        context
-            .import
-            .admit_identification(self.keys(), self.admission());
+    async fn mark_waiting(&self, context: &Context) {
+        record(
+            "mark a job's candidates waiting",
+            context
+                .import
+                .admit_identification(self.marks(), self.admission())
+                .await,
+        );
     }
 }
 
 /// How the queue holds one key.
 struct Held {
     admission: Admission,
-    identity: CandidateIdentity,
+    identity: CandidateFiles,
     /// Whether a run of this key's own is answering or being written.
     running: bool,
 }
@@ -122,7 +134,7 @@ impl Queue {
         self.jobs.iter().position(|job| job.holds(key))
     }
 
-    fn index_of_identity(&self, identity: &CandidateIdentity) -> Option<usize> {
+    fn index_of_identity(&self, identity: &CandidateFiles) -> Option<usize> {
         self.jobs.iter().position(|job| &job.identity == identity)
     }
 
@@ -170,7 +182,7 @@ impl Queue {
     /// waiting automatic job. A candidate already held as this identity is
     /// left alone by an automatic admission and restarted by a request; one
     /// held as another identity is taken out first.
-    fn place(
+    async fn place(
         &mut self,
         context: &Context,
         candidates: Vec<FolderCandidate>,
@@ -180,14 +192,15 @@ impl Queue {
         let mut content_hashes = Vec::new();
         for candidate in candidates {
             let key = candidate.key();
-            let identity = candidate_identity(&candidate);
+            let identity = CandidateFiles::of(&candidate);
             if let Some(index) = self.index_of_key(&key) {
                 if admission == Admission::Automatic && self.jobs[index].identity == identity {
                     continue;
                 }
-                self.take_out(context, &key);
+                self.take_out(context, &key).await;
             }
-            content_hashes.push(identity.0.clone());
+            content_hashes.push(identity.content_hash.clone());
+            let mark = (key, identity.clone());
             let entry = Entry {
                 candidate,
                 admission,
@@ -201,13 +214,13 @@ impl Queue {
                     let running = job.running_representative();
                     job.state = JobState::Waiting;
                     if let Some(representative) = running {
-                        context.import.cancel_identification(&representative);
+                        cancel(context, &representative).await;
                     }
                     let job = self
                         .jobs
                         .remove(index)
                         .expect("the located job still exists");
-                    job.mark_waiting(context);
+                    job.mark_waiting(context).await;
                     let position = self.request_position();
                     self.jobs.insert(position, job);
                 }
@@ -226,15 +239,18 @@ impl Queue {
                     }
                 }
             }
-            marked.push(key);
+            marked.push(mark);
         }
-        context.import.admit_identification(marked, admission);
+        record(
+            "mark the admitted candidates waiting",
+            context.import.admit_identification(marked, admission).await,
+        );
         content_hashes
     }
 
     /// Remove `key` from whatever job holds it, ending the run it was
     /// answering for, and leave its mark to the caller.
-    fn take_out(&mut self, context: &Context, key: &str) {
+    async fn take_out(&mut self, context: &Context, key: &str) {
         let Some(index) = self.index_of_key(key) else {
             return;
         };
@@ -251,8 +267,8 @@ impl Queue {
             JobState::Running { representative, .. } if representative == key
         );
         if lost_its_run {
-            context.import.cancel_identification(key);
             job.state = JobState::Waiting;
+            cancel(context, key).await;
         }
         if job.members.is_empty() {
             self.jobs.remove(index);
@@ -262,52 +278,67 @@ impl Queue {
                 .jobs
                 .remove(index)
                 .expect("the located job still exists");
-            job.mark_waiting(context);
+            job.mark_waiting(context).await;
             self.jobs.push_front(job);
         }
     }
 
-    /// Take `key` off the queue and off the runtime's waiting mark.
-    fn withdraw(&mut self, context: &Context, key: &str) {
-        self.take_out(context, key);
-        context.import.withdraw_identification(key);
+    /// Take `key` off the queue and off its waiting mark.
+    async fn withdraw(&mut self, context: &Context, key: &str) {
+        self.take_out(context, key).await;
+        withdraw(context, key).await;
     }
 
     /// A person cancelled `key`'s identification: its whole job leaves the
     /// queue, its run ends and an answer being written is given up, and
     /// nothing else happens. A run the queue did not start, such as a library
     /// release's re-identify sheet, is ended too.
-    fn cancel(&mut self, context: &Context, key: &str) {
+    ///
+    /// Every ending is tried; the first that could not be written is the
+    /// cancel's failure, for the person who asked.
+    async fn cancel(
+        &mut self,
+        context: &Context,
+        key: &str,
+    ) -> Result<(), crate::library::LibraryError> {
         let Some(index) = self.index_of_key(key) else {
-            context.import.cancel_identification(key);
-            return;
+            return context.import.cancel_identification(key).await;
         };
         let job = self
             .jobs
             .remove(index)
             .expect("the located job still exists");
-        self.end_cancelled(context, job);
+        self.end_cancelled(context, job).await
     }
 
-    fn end_cancelled(&mut self, context: &Context, job: Job) {
+    async fn end_cancelled(
+        &mut self,
+        context: &Context,
+        job: Job,
+    ) -> Result<(), crate::library::LibraryError> {
+        let mut ended = Ok(());
         match &job.state {
             JobState::Waiting => {}
             JobState::Running { representative, .. } => {
-                context.import.cancel_identification(representative);
+                first_failure(
+                    &mut ended,
+                    context.import.cancel_identification(representative).await,
+                );
             }
             JobState::Settling { abandon, .. } => abandon.cancel(),
         }
         for key in job.keys() {
-            context.import.withdraw_identification(&key);
+            first_failure(&mut ended, context.import.withdraw_identification(&key).await);
         }
         info!(
             "identification: cancelled {} candidate(s) of one job",
             job.members.len()
         );
+        ended
     }
 
     /// Take every entry with this identity off the queue.
-    fn retire(&mut self, context: &Context, identity: &CandidateIdentity) {
+    async fn retire(&mut self, context: &Context, identity: &CandidateFiles) {
         let Some(index) = self.index_of_identity(identity) else {
             return;
         };
@@ -316,7 +347,7 @@ impl Queue {
             .remove(index)
             .expect("the located job still exists");
         for key in job.keys() {
-            context.import.withdraw_identification(&key);
+            withdraw(context, &key).await;
         }
     }
 
@@ -342,10 +373,10 @@ impl Queue {
     }
 
     /// Stop every run the queue has going, at shutdown.
-    fn cancel_every_run(&self, context: &Context) {
+    async fn cancel_every_run(&self, context: &Context) {
         for job in &self.jobs {
             if let JobState::Running { representative, .. } = &job.state {
-                context.import.cancel_identification(representative);
+                cancel(context, representative).await;
             }
         }
     }
@@ -365,7 +396,7 @@ impl Queue {
     /// The settling job an answer belongs to, if the queue still has one.
     fn settling_job(
         &self,
-        identity: &CandidateIdentity,
+        identity: &CandidateFiles,
         key: &str,
         run: IdentifyRunId,
     ) -> Option<usize> {
@@ -378,6 +409,41 @@ impl Queue {
                 )
         })
     }
+}
+
+/// What became of a standing write the queue made. The queue runs on its
+/// own, so nobody waits on it to hear a failure: it is logged, and the
+/// candidate reads as the table last held it.
+pub(super) fn record(doing: &str, written: Result<(), crate::library::LibraryError>) {
+    if let Err(error) = written {
+        tracing::error!("identification: could not {doing}: {error}");
+    }
+}
+
+/// Keep the first failure of several writes tried in turn.
+fn first_failure(
+    kept: &mut Result<(), crate::library::LibraryError>,
+    next: Result<(), crate::library::LibraryError>,
+) {
+    if kept.is_ok() {
+        *kept = next;
+    }
+}
+
+/// End `key`'s identification: its run stops, and its standing says so.
+async fn cancel(context: &Context, key: &str) {
+    record(
+        &format!("end {key}'s identification"),
+        context.import.cancel_identification(key).await,
+    );
+}
+
+/// Take `key` off its waiting mark.
+pub(super) async fn withdraw(context: &Context, key: &str) {
+    record(
+        &format!("take {key} off the identification queue"),
+        context.import.withdraw_identification(key).await,
+    );
 }
 
 /// Run the queue until the token is cancelled. A setting changing puts nothing
@@ -418,7 +484,7 @@ pub(super) async fn run(
             biased;
             _ = token.cancelled() => {
                 info!("identification: the queue is shutting down");
-                queue.cancel_every_run(context);
+                queue.cancel_every_run(context).await;
                 while let Some(result) = settling.join_next().await {
                     if let Err(error) = result {
                         warn!("identification: a settle task failed: {error}");
@@ -437,19 +503,21 @@ pub(super) async fn run(
                         request(context, &mut queue, candidate_key).await;
                     }
                     Command::Cancel { candidate_keys, done } => {
+                        let mut cancelled = Ok(());
                         for key in &candidate_keys {
-                            queue.cancel(context, key);
+                            first_failure(&mut cancelled, queue.cancel(context, key).await);
                         }
-                        if done.send(()).is_err() {
+                        if done.send(cancelled).is_err() {
                             debug!("identification: the cancel's caller left before it ended");
                         }
                     }
                     Command::CancelAll { done } => {
                         let keys: Vec<String> = queue.jobs.iter().flat_map(Job::keys).collect();
+                        let mut cancelled = Ok(());
                         for key in &keys {
-                            queue.cancel(context, key);
+                            first_failure(&mut cancelled, queue.cancel(context, key).await);
                         }
-                        if done.send(()).is_err() {
+                        if done.send(cancelled).is_err() {
                             debug!("identification: the cancel's caller left before it ended");
                         }
                     }
@@ -496,7 +564,7 @@ pub(super) async fn admit(
     candidates: Vec<FolderCandidate>,
     admission: Admission,
 ) {
-    let content_hashes = queue.place(context, candidates, admission);
+    let content_hashes = queue.place(context, candidates, admission).await;
     if let Err(error) = context
         .import
         .move_admitted_panes(content_hashes)
@@ -510,8 +578,6 @@ pub(super) async fn admit(
 async fn request(context: &Context, queue: &mut Queue, candidate_key: String) {
     let Some(candidate) = answerable_candidate(context, &candidate_key).await else {
         warn!("identification: cannot identify {candidate_key}: no answer can be stored for it");
-        // Clear the waiting mark the handle set.
-        context.import.withdraw_identification(&candidate_key);
         return;
     };
     admit(context, queue, vec![candidate], Admission::Requested).await;
@@ -533,7 +599,7 @@ async fn fill_slots(context: &Context, queue: &mut Queue) {
                     "identification: cannot read what {key} runs from ({error}); \
                      leaving its job unanswered"
                 );
-                queue.retire(context, &identity);
+                queue.retire(context, &identity).await;
                 continue;
             }
         };
@@ -558,7 +624,7 @@ async fn fill_slots(context: &Context, queue: &mut Queue) {
         ) {
             // No source to ask: no run will report, so the job cannot hold a slot.
             warn!("identification: no source to ask about {key}; leaving its job unanswered");
-            queue.retire(context, &identity);
+            queue.retire(context, &identity).await;
             continue;
         }
         let index = queue
