@@ -168,10 +168,8 @@ OPEN_CHILD_FINDINGS = (
 ENTITY_DATA_OWNERS = {
     "swift": (
         "AppService",
-        "CandidateRuntime",
         "Cast",
         "ConfigStore",
-        "Database",
         "Discogs",
         "DownloadStore",
         "Downloads",
@@ -187,17 +185,13 @@ ENTITY_DATA_OWNERS = {
         "PreviewAudio",
         "Queue",
         "ReleaseEditor",
-        "StorageStore",
         "Sync",
     ),
     "kotlin": (
-        "AppSession",
         "ConfigStore",
-        "Database",
         "LibraryStore",
         "OpenLibrary",
         "OutboxStore",
-        "PlaybackStore",
     ),
 }
 
