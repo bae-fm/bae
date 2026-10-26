@@ -226,3 +226,54 @@ fn a_scrub_inside_a_track_of_a_single_file_album_jumps_to_its_scrub_point() {
     assert!(points[0].sample <= start_sample && points[1].sample > start_sample);
     check_worst_scrub(&flac, track, &points, 2);
 }
+
+/// Seconds of quiet 24-bit stereo tone at 96 kHz, encoded as a FLAC with no
+/// seektable, `frames` samples per channel long. It compresses well, so ten
+/// seconds fit in one fill window and time alone spaces the points.
+fn quiet_flac(frames: u64) -> Vec<u8> {
+    let samples: Vec<i32> = (0..frames * u64::from(CHANNELS))
+        .map(|i| ((i as f64 * 0.001).sin() * 0.01 * i32::MAX as f64) as i32)
+        .collect();
+    encode_i32(
+        EncodeFormat::Flac {
+            bits_per_sample: 24,
+        },
+        &samples,
+        SAMPLE_RATE,
+        CHANNELS,
+    )
+    .expect("encode the quiet FLAC")
+}
+
+/// A file whose last frame is the first one ten seconds past its first point,
+/// so the spacing would put a point there. A decode that jumps to a FLAC's
+/// last frame can't date it and so can't trim to a target in it: a scrub into
+/// that frame must still play exactly from its target.
+#[test]
+fn a_scrub_into_the_last_frame_plays_from_its_target() {
+    crate::audio_codec::init();
+    // STREAMINFO follows the 4-byte marker and its 4-byte block header; its
+    // maximum block size is bytes 2..4, which this encoder uses for every
+    // frame but the last.
+    let pilot = quiet_flac(u64::from(SAMPLE_RATE));
+    let block = u64::from(u16::from_be_bytes([pilot[10], pilot[11]]));
+    let ten_seconds = 10 * u64::from(SAMPLE_RATE);
+    let last_frame_start = ten_seconds.div_ceil(block) * block;
+    let total = last_frame_start + 1_000;
+    let flac = quiet_flac(total);
+    let whole = SegmentSpan::whole_file();
+    let points = import_scrub_points(&flac, whole);
+
+    let target = total - 10;
+    let (_, played) = scrub(&flac, whole, &points, target, total);
+    let reference = from_track_start(&flac, points[0].byte, target, total);
+    assert_eq!(
+        played.len(),
+        (total - target) as usize * CHANNELS as usize,
+        "the scrub plays from its target, points {points:?}"
+    );
+    assert!(
+        played == reference,
+        "the scrub's samples differ from a decode from the track's start"
+    );
+}

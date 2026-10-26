@@ -238,9 +238,11 @@ which computes the byte position directly from `block_align` and `byte_rate`:
   less the reads that follow it, past the last point. Those reads: FFmpeg's
   FLAC parser holds `FLAC_MIN_HEADERS` (10) frames before it hands the first
   on, and reads through a 32 KiB AVIO buffer, so the margin is 10 of the
-  segment's largest frames plus 32 KiB (`audio_codec/decode/scrub_points.rs`).
+  segment's largest frames plus 32 KiB (`import/scrub_points.rs`).
   A one-frame margin was not enough: a scrub to the frame before the next
-  point read past the window.
+  point read past the window. The segment's last frame is never a point: the
+  parser gives a file's last frame no timestamp, so a decode that jumps to it
+  can't trim to the target. The frame before it stands in.
 
   A scrub jumps by byte (`AVSEEK_FLAG_BYTE`) to the last point at or before
   its target and decodes forward; the `start_at_sample` trim makes the output

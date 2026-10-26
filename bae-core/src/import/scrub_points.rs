@@ -81,7 +81,7 @@ impl ScrubPointTaker {
 
     /// The segment's scrub points: its first frame, then the first frame 10
     /// seconds of audio past the last point, or an earlier one that starts too
-    /// far past it for one window to reach.
+    /// far past it for one window to reach -- never the segment's last frame.
     pub(crate) fn finish(self) -> Vec<ScrubPoint> {
         if self.unplaced > 0 {
             warn!(
@@ -119,6 +119,23 @@ impl ScrubPointTaker {
             };
             if due {
                 points.push(frame.start);
+            }
+        }
+
+        // A decode that jumps to a FLAC's last frame can't date it: the parser
+        // gives the last frame no timestamp, and nothing before it was read, so
+        // the decode can't trim to a target in it. The segment's last frame may
+        // be its file's last, so it is never a point; the frame before it, which
+        // a jump can date, serves its samples.
+        if let [.., before, last] = self.frames.as_slice() {
+            if points.last() == Some(&last.start) {
+                points.pop();
+                if points
+                    .last()
+                    .is_none_or(|point| point.sample < before.start.sample)
+                {
+                    points.push(before.start);
+                }
             }
         }
         points

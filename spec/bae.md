@@ -1036,9 +1036,11 @@ Ana clicks Import. bae:
    (none, or one of only placeholder points): for each segment of a track,
    the frame it starts in, then the first frame each 10 seconds of audio on,
    or sooner where the bytes from the last point would outgrow the window a
-   scrub fetches (§7.6). Each point is a frame's first sample and the byte it
-   starts at, read from a decode that began on a frame. Any other file gets
-   none.
+   scrub fetches (§7.6). A segment's last frame is never a point: a decode
+   that jumps to a FLAC's last frame can't tell which sample it holds, so the
+   frame before it stands in. Each point is a frame's first sample and the
+   byte it starts at, read from a decode that began on a frame. Any other file
+   gets none.
 5. **Checks the audio decodes**, in the same pass. A track that fails, or
    decodes short, fails the import rather than failing later at play time.
    This check is a setting, on by default.
