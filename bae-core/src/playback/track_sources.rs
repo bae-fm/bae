@@ -20,8 +20,8 @@ use std::hash::Hash;
 use std::num::NonZeroUsize;
 
 use crate::playback::data_source::{AudioDataReader, FillErrorHandler, FillTask};
-use crate::playback::sparse_buffer::create_sparse_buffer;
-use crate::playback::SharedSparseBuffer;
+use bae_audio::sparse_buffer::create_sparse_buffer;
+use bae_audio::sparse_buffer::SharedSparseBuffer;
 
 /// One source file open for the tracks reading it: the buffer its bytes
 /// stream through and the fill task that holds the file.

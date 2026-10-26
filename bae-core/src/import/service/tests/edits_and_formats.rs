@@ -13,7 +13,7 @@ fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
     let audio_path = PathBuf::from(format!("{dir}/Test Album.ape"));
     let cue_path = PathBuf::from(format!("{dir}/Test Album.cue"));
     let cue_sheet = crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue");
-    let probe = crate::audio_codec::probe_audio_from_path(
+    let probe = bae_audio::probe_audio_from_path(
         audio_path.to_str().expect("fixture path is UTF-8"),
     )
     .expect("analyze ape");
@@ -56,7 +56,7 @@ fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
 /// ascending, in-file end bytes and the last track runs to EOF (`None`).
 #[test]
 fn build_audio_formats_gives_ape_cue_tracks_real_end_bytes() {
-    crate::audio_codec::init();
+    bae_audio::init();
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/cue_ape");
     let tracks = cue_backed_tracks(dir);
     assert_eq!(

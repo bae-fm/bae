@@ -5,8 +5,7 @@
 //! pairs with the `unsafe extern "C"` read/write/seek callbacks FFmpeg invokes
 //! directly.
 
-use crate::playback::sparse_buffer::BufferStop;
-use crate::playback::{PlaybackError, SharedSparseBuffer};
+use crate::sparse_buffer::{BufferStop, SharedSparseBuffer, SourceReadError};
 use std::io::{Seek, SeekFrom, Write};
 use std::os::raw::{c_int, c_void};
 use std::sync::{Arc, OnceLock};
@@ -41,7 +40,7 @@ pub(super) unsafe fn free_format_and_custom_avio(
 /// The sparse-buffer reader a streaming decode reads from. Its `read` blocks
 /// until the fill delivers the bytes.
 pub(crate) struct StreamingAvioContext {
-    reader: std::sync::Mutex<crate::playback::sparse_buffer::BufferReader>,
+    reader: std::sync::Mutex<crate::sparse_buffer::BufferReader>,
     buffer: SharedSparseBuffer, // kept for total_size queries
     /// Set by the playback service to stop this decoder alone, leaving the others
     /// on the same buffer running.
@@ -51,7 +50,7 @@ pub(crate) struct StreamingAvioContext {
     /// one depends on where it lands (an empty probe is "Invalid data found", a
     /// mid-stream one ends the packet loop like EOF), so the decode consults
     /// this to report the read's own cause instead.
-    read_failure: OnceLock<Arc<PlaybackError>>,
+    read_failure: OnceLock<SourceReadError>,
 }
 
 impl StreamingAvioContext {
@@ -68,7 +67,7 @@ impl StreamingAvioContext {
         }
     }
 
-    pub(super) fn read_failure(&self) -> Option<Arc<PlaybackError>> {
+    pub(super) fn read_failure(&self) -> Option<SourceReadError> {
         self.read_failure.get().cloned()
     }
 

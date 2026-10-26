@@ -344,9 +344,7 @@ where
         })
         .map_err(|e| BootstrapError::Internal(format!("Failed to create runtime: {e}")))?;
 
-    timing.stage(&library_id, "initialize audio codecs", || {
-        crate::audio_codec::init()
-    });
+    timing.stage(&library_id, "initialize audio codecs", bae_audio::init);
 
     #[cfg(unix)]
     timing.stage(&library_id, "raise open-file limit", || {

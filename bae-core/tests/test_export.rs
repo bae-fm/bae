@@ -124,10 +124,8 @@ async fn export_track_from_cloud_only_release() {
     // FLAC is lossless: the exported file decodes to the same PCM as the
     // cloud copy.
     let exported = fs::read(&out).unwrap();
-    let exported_pcm =
-        bae_core::audio_codec::decode_audio(buffer_from(&exported), None, None).unwrap();
-    let original_pcm =
-        bae_core::audio_codec::decode_audio(buffer_from(&original_bytes), None, None).unwrap();
+    let exported_pcm = bae_audio::decode_audio(buffer_from(&exported), None, None).unwrap();
+    let original_pcm = bae_audio::decode_audio(buffer_from(&original_bytes), None, None).unwrap();
     assert_eq!(exported_pcm.samples, original_pcm.samples);
 }
 
@@ -321,16 +319,14 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
     assert!(cue.contains("  TRACK 01 AUDIO"));
     assert!(cue.contains("  TRACK 02 AUDIO"));
 
-    let image_pcm = bae_core::audio_codec::decode_audio(
+    let image_pcm = bae_audio::decode_audio(
         buffer_from(&fs::read(subdir.join("album.flac")).unwrap()),
         None,
         None,
     )
     .unwrap();
-    let first_pcm =
-        bae_core::audio_codec::decode_audio(buffer_from(&first_bytes), None, None).unwrap();
-    let second_pcm =
-        bae_core::audio_codec::decode_audio(buffer_from(&second_bytes), None, None).unwrap();
+    let first_pcm = bae_audio::decode_audio(buffer_from(&first_bytes), None, None).unwrap();
+    let second_pcm = bae_audio::decode_audio(buffer_from(&second_bytes), None, None).unwrap();
     assert_eq!(
         image_pcm.samples.len(),
         first_pcm.samples.len() + second_pcm.samples.len()
@@ -367,8 +363,8 @@ async fn export_release_missing_file_is_hard_error() {
 
 /// A sparse buffer pre-filled with the whole byte slice, so a decode exercises
 /// the window logic without waiting on a fill.
-fn buffer_from(bytes: &[u8]) -> bae_core::playback::SharedSparseBuffer {
-    let buffer = bae_core::playback::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
+fn buffer_from(bytes: &[u8]) -> bae_audio::sparse_buffer::SharedSparseBuffer {
+    let buffer = bae_audio::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
     buffer.append_at(0, bytes);
     buffer
 }

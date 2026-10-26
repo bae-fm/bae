@@ -4,7 +4,7 @@
 static MULTI_WINDOW_FLAC: std::sync::LazyLock<Vec<u8>> = std::sync::LazyLock::new(|| {
     use rand::{Rng, SeedableRng};
 
-    bae_core::audio_codec::init();
+    bae_audio::init();
 
     const SAMPLE_RATE: u32 = 44_100;
     const TRACK_SECONDS: u32 = 60;
@@ -27,8 +27,8 @@ static MULTI_WINDOW_FLAC: std::sync::LazyLock<Vec<u8>> = std::sync::LazyLock::ne
             }
         })
         .collect();
-    let flac = bae_core::audio_codec::encode_i32(
-        bae_core::audio_codec::EncodeFormat::Flac {
+    let flac = bae_audio::encode_i32(
+        bae_audio::EncodeFormat::Flac {
             bits_per_sample: 16,
         },
         &samples,

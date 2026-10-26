@@ -41,7 +41,7 @@ async fn regrouping_disc_folders_probes_each_audio_file_once() {
     assert_eq!(releases, vec![4], "the discs read as one release");
     for track in &tracks {
         assert_eq!(
-            crate::test_reads::count(crate::test_reads::FileRead::Probe, track),
+            bae_audio::test_reads::probes(track),
             1,
             "{} is probed once",
             track.display()
@@ -65,7 +65,7 @@ impl ReadableFiles {
         use crate::test_reads::{count, FileRead};
         let mut reads = Vec::new();
         for track in &self.tracks {
-            reads.push((track.clone(), "probe", count(FileRead::Probe, track)));
+            reads.push((track.clone(), "probe", bae_audio::test_reads::probes(track)));
             reads.push((track.clone(), "tags", tags.reads_of(track)));
         }
         for image in &self.images {
@@ -222,7 +222,6 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
 /// the album is read as one, leave nothing stored beside the album.
 #[tokio::test]
 async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
-    use crate::test_reads::{count, FileRead};
     let test = setup_import_service().await;
     let watched = test.temp.path().join("watched");
     for disc in ["Disc 1", "Disc 2"] {
@@ -253,7 +252,7 @@ async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
     let reads = || {
         tracks
             .iter()
-            .map(|track| (count(FileRead::Probe, track), tags.reads_of(track)))
+            .map(|track| (bae_audio::test_reads::probes(track), tags.reads_of(track)))
             .collect::<Vec<_>>()
     };
     scan.rescan(&root).await.unwrap();

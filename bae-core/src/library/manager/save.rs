@@ -453,7 +453,7 @@ impl SaveTrackPlan {
     /// The decode of this track's saved audio from its files' open `streams`.
     pub(crate) fn decode(
         &self,
-        streams: &HashMap<String, crate::playback::SharedSparseBuffer>,
+        streams: &HashMap<String, bae_audio::sparse_buffer::SharedSparseBuffer>,
     ) -> Result<StreamDecodeParams, LibraryError> {
         let window = self.segments();
         let segments = window

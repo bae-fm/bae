@@ -6,8 +6,8 @@
 /// the decoded output may start slightly before the requested position — the
 /// actual alignment is recovered by correlating against the ground truth.
 fn check_seek_to_produces_correct_samples(sample_rate: u32, channels: u32, bits_per_sample: u32) {
-    use crate::playback::create_track_stream_pair_with_capacity;
-    use crate::playback::sparse_buffer::create_sparse_buffer;
+    use crate::track_stream::create_track_stream_pair_with_capacity;
+    use crate::sparse_buffer::create_sparse_buffer;
     use std::thread;
 
     let duration_secs = 2;
@@ -195,8 +195,8 @@ fn test_seek_to_stereo_96000_16bit() {
 /// signature; the seektable path never does it. Remove the flag and this fails.
 #[test]
 fn flac_seek_uses_seektable_not_binary_search() {
-    use crate::playback::create_track_stream_pair_with_capacity;
-    use crate::playback::sparse_buffer::create_sparse_buffer;
+    use crate::track_stream::create_track_stream_pair_with_capacity;
+    use crate::sparse_buffer::create_sparse_buffer;
     use std::thread;
 
     init();
@@ -205,7 +205,7 @@ fn flac_seek_uses_seektable_not_binary_search() {
     // carrying a 6-point seektable.
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/tests/fixtures/cue_flac/Test Album.flac"
+        "/../bae-core/tests/fixtures/cue_flac/Test Album.flac"
     );
     let flac = std::fs::read(path).expect("read fixture");
     let file_len = flac.len() as u64;
@@ -283,14 +283,14 @@ fn flac_seek_uses_seektable_not_binary_search() {
 ///   where output begins.
 #[test]
 fn byte_seek_to_landing_is_sample_exact() {
-    use crate::playback::create_track_stream_pair_with_capacity;
-    use crate::playback::sparse_buffer::create_sparse_buffer;
+    use crate::track_stream::create_track_stream_pair_with_capacity;
+    use crate::sparse_buffer::create_sparse_buffer;
     use std::thread;
 
     init();
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/tests/fixtures/cue_flac/Test Album.flac"
+        "/../bae-core/tests/fixtures/cue_flac/Test Album.flac"
     );
     let flac = std::fs::read(path).expect("read fixture");
     let sample_rate = 44100u64;
@@ -620,7 +620,7 @@ fn streaming_wav_encode_into_a_plain_write_sink_is_unsized_pcm() {
         encoder.finish().expect("streaming WAV encode");
         let bytes = out.0.lock().unwrap().clone();
 
-        let wav = crate::audio_codec::parse_streamed_wav(&bytes).expect("a WAV stream");
+        let wav = crate::parse_streamed_wav(&bytes).expect("a WAV stream");
         if bits == 16 {
             assert_eq!(&bytes[36..40], b"data", "data follows fmt directly");
             assert_eq!(bytes.len() - wav.data.len(), 44, "a canonical header");
@@ -718,7 +718,8 @@ fn seek_landing_bytes_search_a_long_flac_rather_than_read_it() {
 
     let landing = seek_landing_bytes(path, &[target]).expect("landing")[0];
 
-    let read = crate::test_reads::bytes(crate::test_reads::FileRead::LandingSearch, file.path());
+    let read = crate::test_reads::landing_search(file.path());
+    assert!(read > 0, "the search's reads are counted");
     assert!(
         read < flac.len() as u64 / 10,
         "finding one landing read {read} of the file's {} bytes",

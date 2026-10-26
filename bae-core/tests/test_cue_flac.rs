@@ -208,7 +208,7 @@ async fn test_cue_flac_records_track_positions() {
 /// samples against the XLD ground truth.
 #[tokio::test]
 async fn test_cue_flac_playback_uses_track_positions() {
-    use bae_core::audio_codec::decode_audio;
+    use bae_audio::decode_audio;
 
     let mut fixture = CueFlacCaptureFixture::new()
         .await
@@ -404,7 +404,7 @@ impl CueFlacCaptureFixture {
 /// contain all ~30s instead of ~10s.
 #[tokio::test]
 async fn test_cue_flac_export_single_track() {
-    use bae_core::audio_codec::decode_audio;
+    use bae_audio::decode_audio;
 
     tracing_init();
 
@@ -468,7 +468,7 @@ async fn test_cue_flac_export_single_track() {
 /// from the full decode of the source.
 #[tokio::test]
 async fn test_cue_flac_gapless_track_boundary() {
-    use bae_core::audio_codec::decode_audio;
+    use bae_audio::decode_audio;
 
     tracing_init();
     let temp_root = TempDir::new().expect("temp root");
@@ -541,8 +541,8 @@ fn create_test_discogs_release() -> DiscogsRelease {
 
 /// A sparse buffer pre-filled with the whole byte slice, so a decode exercises
 /// the window logic without waiting on a fill.
-fn buffer_from(bytes: &[u8]) -> bae_core::playback::SharedSparseBuffer {
-    let buffer = bae_core::playback::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
+fn buffer_from(bytes: &[u8]) -> bae_audio::sparse_buffer::SharedSparseBuffer {
+    let buffer = bae_audio::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
     buffer.append_at(0, bytes);
     buffer
 }
@@ -560,9 +560,9 @@ fn generate_generated_pregap_album(dir: &Path) {
             [sample, sample]
         })
         .collect();
-    bae_core::audio_codec::init();
-    let flac = bae_core::audio_codec::encode_i32(
-        bae_core::audio_codec::EncodeFormat::Flac {
+    bae_audio::init();
+    let flac = bae_audio::encode_i32(
+        bae_audio::EncodeFormat::Flac {
             bits_per_sample: 16,
         },
         &samples,
@@ -595,7 +595,7 @@ struct CollectedDecode {
     samples: Vec<i32>,
 }
 
-impl bae_core::audio_codec::DecodedSink for CollectedDecode {
+impl bae_audio::DecodedSink for CollectedDecode {
     fn on_format(&mut self, _sample_rate: u32, channels: u32) {
         self.channels = channels as usize;
     }

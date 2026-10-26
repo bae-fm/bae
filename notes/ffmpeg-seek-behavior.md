@@ -204,7 +204,7 @@ which computes the byte position directly from `block_align` and `byte_rate`:
   no track start needs a seektable, in any layout, local or remote. Over a cloud home the
   header and the track's audio are fetched in parallel.
 - **In-track scrubs seek by sample** with `AVFMT_FLAG_FAST_SEEK` set
-  (`bae-core/src/audio_codec/decode.rs`), so a seektable-bearing FLAC (nearly
+  (`bae-audio/src/decode.rs`), so a seektable-bearing FLAC (nearly
   every rip) and MP3 use their index: one fetch. The exception is a FLAC with
   scrub points, below.
 - **A FLAC without a usable seektable scrubs by byte, to a stored scrub
@@ -238,7 +238,7 @@ which computes the byte position directly from `block_align` and `byte_rate`:
   less the reads that follow it, past the last point. Those reads: FFmpeg's
   FLAC parser holds `FLAC_MIN_HEADERS` (10) frames before it hands the first
   on, and reads through a 32 KiB AVIO buffer, so the margin is 10 of the
-  segment's largest frames plus 32 KiB (`import/scrub_points.rs`).
+  segment's largest frames plus 32 KiB (`bae-core/src/import/scrub_points.rs`).
   A one-frame margin was not enough: a scrub to the frame before the next
   point read past the window. The segment's last frame is never a point: the
   parser gives a file's last frame no timestamp, so a decode that jumps to it

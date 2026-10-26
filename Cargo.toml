@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "bae-audio",
     "bae-automation",
     "bae-bridge",
     "bae-cast",

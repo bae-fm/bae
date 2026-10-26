@@ -284,8 +284,8 @@ async fn seek_over_remote_cloud_costs_chunks_not_the_whole_file() {
 
 /// A sparse buffer pre-filled with the whole byte slice, so a decode exercises
 /// the window logic without waiting on a fill.
-fn buffer_from(bytes: &[u8]) -> bae_core::playback::SharedSparseBuffer {
-    let buffer = bae_core::playback::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
+fn buffer_from(bytes: &[u8]) -> bae_audio::sparse_buffer::SharedSparseBuffer {
+    let buffer = bae_audio::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
     buffer.append_at(0, bytes);
     buffer
 }

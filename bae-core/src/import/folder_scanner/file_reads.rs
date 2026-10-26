@@ -754,7 +754,7 @@ fn probe(
         FolderScanError::Other(format!("audio path is not UTF-8: {}", file.path.display()))
     })?;
     unchanged(file, "changed before its audio facts could be read")?;
-    let stream = match crate::audio_codec::probe_audio_from_path(path) {
+    let stream = match bae_audio::probe_audio_from_path(path) {
         None => Playability::Unplayable,
         Some(probe) => match scanned_audio(&probe) {
             Some(audio) => Playability::Measured(audio),

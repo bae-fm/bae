@@ -31,7 +31,6 @@ use super::{
     repeat_to_str, source_to_str, ContextSource, ContextStart, NextEntry, PersistedPlayback,
     PreviousAction, PublishedQueue, QueueEntryId, QueueSnapshot,
 };
-use crate::audio_codec::DecodeError;
 use crate::db::{DbAudioSegmentRole, DbPlaybackContext, DbPlaybackState};
 use crate::diagnostics::{
     AnomalyKind, LocalId, PlaybackCommandKind, PlaybackOperation, PlaybackStartSource,
@@ -49,14 +48,16 @@ use crate::playback::progress::emit_progress;
 use crate::playback::progress::{
     PlaybackProgress, PlaybackProgressHandle, PlaybackQueueProjection,
 };
+use bae_audio::DecodeError;
 // Imported by path so the sample feed reads `source::PlaybackSource`, apart
 // from the queue's `ContextSource`.
 use crate::playback::source;
 use crate::playback::source::{TrackCrossing, TrackFmt};
-use crate::playback::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use crate::playback::timeline::{StreamPosition, TrackTime, TrackTimeline};
-use crate::playback::{PlayingTrack, TrackStream};
+use crate::playback::PlayingTrack;
 use crate::pressing::PhysicalMedium;
+use bae_audio::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
+use bae_audio::track_stream::TrackStream;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc as tokio_mpsc;

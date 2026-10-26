@@ -4,12 +4,12 @@
 //! plays.
 
 use super::*;
-use crate::audio_codec::{encode_i32, EncodeFormat, AVIO_BUFFER_SIZE};
 use crate::db::{ScrubPoint, SegmentSpan};
-use crate::playback::create_track_stream_pair_with_capacity;
-use crate::playback::sparse_buffer::FILL_WINDOW_SIZE;
+use crate::playback::data_source::FILL_WINDOW_SIZE;
 use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
 use crate::playback::ScrubPoints;
+use bae_audio::track_stream::create_track_stream_pair_with_capacity;
+use bae_audio::{encode_i32, EncodeFormat, AVIO_BUFFER_SIZE};
 use std::sync::atomic::AtomicBool;
 
 const SAMPLE_RATE: u32 = 96_000;
@@ -49,13 +49,13 @@ fn filled_buffer(bytes: &[u8]) -> SharedSparseBuffer {
 /// discards its samples.
 struct TakesScrubPoints(Option<crate::import::scrub_points::ScrubPointTaker>);
 
-impl crate::audio_codec::DecodedSink for TakesScrubPoints {
+impl bae_audio::DecodedSink for TakesScrubPoints {
     fn on_format(&mut self, _sample_rate: u32, _channels: u32) {}
     fn on_samples(&mut self, _samples: &[i32]) {}
-    fn on_stream(&mut self, stream: &crate::audio_codec::DecodedStream) {
+    fn on_stream(&mut self, stream: &bae_audio::DecodedStream) {
         self.0 = crate::import::scrub_points::ScrubPointTaker::for_stream(stream);
     }
-    fn on_packet(&mut self, packet: crate::audio_codec::DecodedPacket) {
+    fn on_packet(&mut self, packet: bae_audio::DecodedPacket) {
         if let Some(taker) = self.0.as_mut() {
             taker.observe(packet);
         }
@@ -177,7 +177,7 @@ fn check_worst_scrub(flac: &[u8], segment: SegmentSpan, points: &[ScrubPoint], n
 
 #[test]
 fn a_scrub_in_a_file_without_a_seektable_jumps_to_its_scrub_point() {
-    crate::audio_codec::init();
+    bae_audio::init();
     let flac = noise_flac(30);
     let whole = SegmentSpan::whole_file();
     let points = import_scrub_points(&flac, whole);
@@ -203,15 +203,14 @@ fn a_scrub_in_a_file_without_a_seektable_jumps_to_its_scrub_point() {
 /// sample lies in.
 #[test]
 fn a_scrub_inside_a_track_of_a_single_file_album_jumps_to_its_scrub_point() {
-    crate::audio_codec::init();
+    bae_audio::init();
     let flac = noise_flac(30);
     let dir = tempfile::TempDir::new().unwrap();
     let path = dir.path().join("album.flac");
     std::fs::write(&path, &flac).unwrap();
     let start_sample = 12 * u64::from(SAMPLE_RATE) + 1_234;
-    let start_byte =
-        crate::audio_codec::seek_landing_bytes(path.to_str().unwrap(), &[start_sample])
-            .expect("the track's landing byte")[0];
+    let start_byte = bae_audio::seek_landing_bytes(path.to_str().unwrap(), &[start_sample])
+        .expect("the track's landing byte")[0];
     let track = SegmentSpan {
         start_sample,
         end_sample: None,
@@ -251,7 +250,7 @@ fn quiet_flac(frames: u64) -> Vec<u8> {
 /// that frame must still play exactly from its target.
 #[test]
 fn a_scrub_into_the_last_frame_plays_from_its_target() {
-    crate::audio_codec::init();
+    bae_audio::init();
     // STREAMINFO follows the 4-byte marker and its 4-byte block header; its
     // maximum block size is bytes 2..4, which this encoder uses for every
     // frame but the last.

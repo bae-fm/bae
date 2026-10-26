@@ -342,7 +342,7 @@ async fn output_device_changed_is_a_noop_when_stopped() {
 /// (the AVIO cancel token does not unpark a write-blocked decoder; only the
 /// sink's cancel flag does).
 fn spawn_ring_filling_decoder(
-    mut sink: crate::playback::track_stream::TrackSink,
+    mut sink: bae_audio::track_stream::TrackSink,
 ) -> (
     Arc<std::sync::atomic::AtomicBool>,
     std::thread::JoinHandle<()>,

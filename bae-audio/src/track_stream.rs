@@ -108,7 +108,7 @@ pub struct TrackSink {
 impl TrackSink {
     /// Push what fits and return how many samples landed; a full ring pushes
     /// fewer than `samples.len()`.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn push_samples(&mut self, samples: &[f32]) -> usize {
         if self.state.is_cancelled() {
             return 0;
@@ -266,7 +266,7 @@ impl TrackStream {
         self.state.unpark_decoder();
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn is_cancelled(&self) -> bool {
         self.state.is_cancelled()
     }

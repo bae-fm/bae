@@ -211,7 +211,7 @@ async fn test_seek_lands_near_target_position() {
 /// The captured sample count should correspond to roughly the remaining duration.
 #[tokio::test]
 async fn test_cue_flac_seek_respects_track_end_boundary() {
-    use bae_core::audio_codec::decode_audio;
+    use bae_audio::decode_audio;
 
     // Real-time capture: at full speed track 2's decoder finishes the whole
     // track before the seek restarts it at 5s, so its sample count overshoots

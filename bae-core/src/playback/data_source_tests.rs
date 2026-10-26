@@ -1,5 +1,5 @@
 use super::*;
-use crate::playback::sparse_buffer::create_sparse_buffer;
+use bae_audio::sparse_buffer::create_sparse_buffer;
 use std::io::Write;
 use std::sync::Mutex;
 use std::time::Duration;
@@ -95,10 +95,10 @@ const WINDOW: u64 = CLOUD_STREAM_READ_SIZE;
 
 /// The OS error kind a failed buffer carries, when it failed on an I/O error.
 fn failure_kind(buffer: &SharedSparseBuffer) -> Option<std::io::ErrorKind> {
-    buffer.failure().and_then(|error| match error.as_ref() {
-        PlaybackError::Io { source, .. } => Some(source.kind()),
-        _ => None,
-    })
+    let error = buffer.failure()?;
+    std::error::Error::source(&error)
+        .and_then(|source| source.downcast_ref::<std::io::Error>())
+        .map(std::io::Error::kind)
 }
 
 /// A preload reader's fetch waits while the playing track has a fetch in
@@ -160,7 +160,7 @@ fn start_recording_fill(
         // `Err`. So `expect` here fails the test on a genuine fill error
         // without firing on clean teardown.
         fill_buffer
-            .fill_on_demand(move |start, len| {
+            .fill_on_demand(FILL_WINDOW_SIZE, move |start, len| {
                 let contents = contents.clone();
                 let log = log.clone();
                 let gate = gate.clone();
@@ -170,7 +170,7 @@ fn start_recording_fill(
                     if let Some(gate) = &gate {
                         gate.wait_for(start).await;
                     }
-                    Ok(contents[start as usize..end as usize].to_vec())
+                    Ok::<_, PlaybackError>(contents[start as usize..end as usize].to_vec())
                 }
             })
             .await
@@ -354,7 +354,7 @@ async fn forward_play_evicts_so_memory_stays_bounded() {
     // No ceiling is set on this reader, so it fetches the cushion ahead and
     // evicts behind: the whole file passes through but only a window's worth
     // is retained.
-    let bound = MIN_READAHEAD + KEEP_BEHIND + 2 * WINDOW;
+    let bound = 2 * FILL_WINDOW_SIZE + 2 * WINDOW;
     let buffered = buffer.total_buffered();
     assert!(
         buffered <= bound,
@@ -375,8 +375,8 @@ async fn a_ceiling_fetches_the_whole_track_then_stops() {
     let source_size = 16 * WINDOW;
     let contents: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
 
-    // The track ends at 12 windows -- past the cushion (MIN_READAHEAD, 4
-    // windows) and short of the 16-window file.
+    // The track ends at 12 windows -- past the one-window cushion a reader
+    // with no ceiling gets, and short of the 16-window file.
     let ceiling = 12 * WINDOW;
     let buffer = create_sparse_buffer(source_size);
     let mut reader = buffer.new_reader();
@@ -399,7 +399,7 @@ async fn a_ceiling_fetches_the_whole_track_then_stops() {
         "the fill must buffer up to the track ceiling ({}W), not stop at the \
          {}W cushion",
         ceiling / WINDOW,
-        MIN_READAHEAD / WINDOW,
+        FILL_WINDOW_SIZE / WINDOW,
     );
     assert!(
         !buffer.is_buffered(ceiling + WINDOW),
@@ -479,10 +479,14 @@ async fn fill_follows_the_buffer_and_exits_when_it_is_dropped() {
     let contents: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
     let buffer = create_sparse_buffer(source_size);
     let weak = Arc::downgrade(&buffer);
-    let fill = tokio::spawn(buffer.clone().fill_on_demand(move |start, len| {
-        let bytes = contents[start as usize..(start + len) as usize].to_vec();
-        async move { Ok(bytes) }
-    }));
+    let fill = tokio::spawn(
+        buffer
+            .clone()
+            .fill_on_demand(FILL_WINDOW_SIZE, move |start, len| {
+                let bytes = contents[start as usize..(start + len) as usize].to_vec();
+                async move { Ok::<_, PlaybackError>(bytes) }
+            }),
+    );
 
     // Let the spawned fill run to its park. With no reader it fetches nothing
     // and holds only a weak ref, leaving the test as the buffer's sole owner.
@@ -696,17 +700,21 @@ async fn a_failed_fetch_fails_the_buffer_with_the_read_error() {
     // The reader waits on the second window, which the fetch can't read.
     let mut reader = buffer.new_reader();
     assert!(reader.seek(WINDOW));
-    let fill = tokio::spawn(buffer.clone().fill_on_demand(move |start, len| {
-        let result = if start == 0 {
-            Ok(contents[..len as usize].to_vec())
-        } else {
-            Err(PlaybackError::io(
-                format!("Failed to read {len} bytes at {start} from /volume/track.flac"),
-                std::io::Error::from(std::io::ErrorKind::StorageFull),
-            ))
-        };
-        async move { result }
-    }));
+    let fill = tokio::spawn(
+        buffer
+            .clone()
+            .fill_on_demand(FILL_WINDOW_SIZE, move |start, len| {
+                let result = if start == 0 {
+                    Ok(contents[..len as usize].to_vec())
+                } else {
+                    Err(PlaybackError::io(
+                        format!("Failed to read {len} bytes at {start} from /volume/track.flac"),
+                        std::io::Error::from(std::io::ErrorKind::StorageFull),
+                    ))
+                };
+                async move { result }
+            }),
+    );
 
     let stop = timeout(
         Duration::from_secs(5),
@@ -718,7 +726,7 @@ async fn a_failed_fetch_fails_the_buffer_with_the_read_error() {
     .await
     .expect("a failed fetch must unblock the reader")
     .expect("read task");
-    let Err(crate::playback::sparse_buffer::BufferStop::Failed(seen)) = stop else {
+    let Err(bae_audio::sparse_buffer::BufferStop::Failed(seen)) = stop else {
         panic!("the reader must get the read failure, got {stop:?}");
     };
     assert!(seen.to_string().contains("/volume/track.flac"), "{seen}");
@@ -728,7 +736,7 @@ async fn a_failed_fetch_fails_the_buffer_with_the_read_error() {
         .expect("the fill exits on the failure")
         .expect("fill task")
         .expect_err("the fill returns the failure for its owner to report");
-    assert!(Arc::ptr_eq(&reported, &seen), "one error, not a copy");
+    assert!(seen.shares(&reported), "one error, not a copy");
     assert_eq!(failure_kind(&buffer), Some(std::io::ErrorKind::StorageFull));
 }
 
@@ -741,13 +749,17 @@ async fn a_fetch_failing_after_teardown_reports_nothing() {
     let mut reader = buffer.new_reader();
     assert!(reader.seek(0));
     let fetch_gate = gate.clone();
-    let fill = tokio::spawn(buffer.clone().fill_on_demand(move |start, _len| {
-        let gate = fetch_gate.clone();
-        async move {
-            gate.wait_for(start).await;
-            Err::<Vec<u8>, _>(PlaybackError::internal("late read failure"))
-        }
-    }));
+    let fill = tokio::spawn(
+        buffer
+            .clone()
+            .fill_on_demand(FILL_WINDOW_SIZE, move |start, _len| {
+                let gate = fetch_gate.clone();
+                async move {
+                    gate.wait_for(start).await;
+                    Err::<Vec<u8>, _>(PlaybackError::internal("late read failure"))
+                }
+            }),
+    );
     for _ in 0..20 {
         tokio::task::yield_now().await;
     }

@@ -1,7 +1,7 @@
-use crate::audio_codec::{EncodeFormat, StreamingEncoder};
 use crate::library::SaveTrackPlan;
 use crate::playback::track_sources::{run_tracks_over_sources, SourceStream};
-use crate::playback::SharedSparseBuffer;
+use bae_audio::sparse_buffer::SharedSparseBuffer;
+use bae_audio::{EncodeFormat, StreamingEncoder};
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};

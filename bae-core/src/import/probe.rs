@@ -16,7 +16,7 @@
 //! becomes a valid scanned candidate; CUE slices are closed by the next INDEX
 //! 01 boundary or by the referenced audio file's probed end.
 
-use crate::audio_codec::ProbeResult;
+use bae_audio::ProbeResult;
 use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::audio_layout::{audio_layout, UnitContribution};
 use crate::import::types::{AudioFile, CueAnalyzedAudioFile, CueFlacAnalysis};

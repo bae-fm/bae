@@ -171,7 +171,7 @@ pub enum ImportError {
     #[error("the source audio for {track} could not be read: {error}")]
     SourceRead {
         track: String,
-        error: std::sync::Arc<crate::playback::PlaybackError>,
+        error: bae_audio::sparse_buffer::SourceReadError,
     },
 
     /// Candidate preparation is immutable from the moment import owns it.

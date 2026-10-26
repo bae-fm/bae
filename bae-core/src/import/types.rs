@@ -13,11 +13,11 @@
 //! An import always lands as a local, playable release. An
 //! [`ImportDestination::Remote`] import then uploads to the cloud in the background.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use crate::audio_codec::ProbeResult;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::cue_flac::CueSheet;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::db::DbTrack;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+use bae_audio::ProbeResult;
 use serde::{Deserialize, Serialize};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod progress;

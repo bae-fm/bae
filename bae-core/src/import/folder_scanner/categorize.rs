@@ -881,7 +881,7 @@ fn lay_audio_in_play_order(
 /// What a file's audio is, as `probe` read it: `None` for audio bae does
 /// not play — no sample rate or channels, a codec bae does not decode, or a
 /// lossy stream whose bitrate could not be read.
-pub(crate) fn scanned_audio(probe: &crate::audio_codec::ProbeResult) -> Option<ScannedAudio> {
+pub(crate) fn scanned_audio(probe: &bae_audio::ProbeResult) -> Option<ScannedAudio> {
     if probe.sample_rate == 0 || probe.channels == 0 {
         return None;
     }

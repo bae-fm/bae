@@ -7,7 +7,7 @@
 //! the same code paths production uses.
 use bae_test_support as support;
 
-use bae_core::audio_codec::{decode_audio, probe_audio_from_path};
+use bae_audio::{decode_audio, probe_audio_from_path};
 use bae_core::cue_flac::parse_cue_sheet;
 use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::discid::read_rip_artifacts;
@@ -426,8 +426,8 @@ fn decode_alac_fixture_smoke() {
 
 /// A sparse buffer pre-filled with the whole byte slice, so a decode exercises
 /// the window logic without waiting on a fill.
-fn buffer_from(bytes: &[u8]) -> bae_core::playback::SharedSparseBuffer {
-    let buffer = bae_core::playback::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
+fn buffer_from(bytes: &[u8]) -> bae_audio::sparse_buffer::SharedSparseBuffer {
+    let buffer = bae_audio::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
     buffer.append_at(0, bytes);
     buffer
 }

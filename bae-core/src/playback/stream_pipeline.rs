@@ -10,7 +10,6 @@
 //! diagnostic logging from here so the two players can't drift on the
 //! decode/seek mapping.
 
-use crate::audio_codec::DecodeError;
 use crate::playback::audio_output::{
     audio_event_channel, AudioEvent, AudioEventReceiver, AudioOutput, AudioStream,
 };
@@ -18,10 +17,9 @@ use crate::playback::error::PlaybackError;
 use crate::playback::progress::{emit_progress, PlaybackProgress};
 use crate::playback::service::log_streaming_decode_failure;
 use crate::playback::source::{PlaybackSource, TrackFmt};
-use crate::playback::sparse_buffer::{BufferStop, SharedSparseBuffer};
-use crate::playback::track_stream::{
-    create_track_stream_pair, ReadyReceiver, TrackSink, TrackStream,
-};
+use bae_audio::sparse_buffer::{BufferStop, SharedSparseBuffer};
+use bae_audio::track_stream::{create_track_stream_pair, ReadyReceiver, TrackSink, TrackStream};
+use bae_audio::DecodeError;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc as tokio_mpsc;
@@ -236,7 +234,7 @@ impl StreamDecodeParams {
             } else {
                 Some(segment.target_sample())
             };
-            decode_errors += crate::audio_codec::decode_audio_streaming(
+            decode_errors += bae_audio::decode_audio_streaming(
                 segment.buffer.clone(),
                 sink,
                 seek_to_byte,
@@ -281,7 +279,7 @@ impl StreamDecodeParams {
         &self,
         sample_rate: u32,
         channels: u32,
-        sink: &mut dyn crate::audio_codec::DecodedSink,
+        sink: &mut dyn bae_audio::DecodedSink,
         cancel: Arc<AtomicBool>,
     ) -> Result<(), String> {
         sink.on_format(sample_rate, channels);
@@ -293,7 +291,7 @@ impl StreamDecodeParams {
             } else {
                 Some(segment.target_sample())
             };
-            crate::audio_codec::decode_audio_to_sink_with_seek(
+            bae_audio::decode_audio_to_sink_with_seek(
                 segment.buffer.clone(),
                 seek_to_byte,
                 seek_to_sample,
@@ -320,7 +318,7 @@ impl StreamDecodeParams {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn verify_to_sink(
         &self,
-        sink: &mut dyn crate::audio_codec::DecodedSink,
+        sink: &mut dyn bae_audio::DecodedSink,
         cancel: Arc<AtomicBool>,
     ) -> Result<(), DecodeError> {
         for segment in &self.segments {
@@ -330,7 +328,7 @@ impl StreamDecodeParams {
             } else {
                 Some(segment.target_sample())
             };
-            crate::audio_codec::decode_audio_to_verifying_sink(
+            bae_audio::decode_audio_to_verifying_sink(
                 segment.buffer.clone(),
                 seek_to_byte,
                 seek_to_sample,
@@ -347,7 +345,7 @@ impl StreamDecodeParams {
 /// Push `frames` frames of silence into the sink in chunks, checking `cancel`
 /// between chunks so an aborted save stops promptly.
 fn push_silence_to_sink(
-    sink: &mut dyn crate::audio_codec::DecodedSink,
+    sink: &mut dyn bae_audio::DecodedSink,
     frames: u64,
     channels: u32,
     cancel: &AtomicBool,
@@ -705,7 +703,7 @@ pub(crate) fn report_dropped_audio_events(
 mod tests {
     use super::*;
     use crate::playback::audio_output::{CaptureAudioOutput, FailingAudioOutput};
-    use crate::playback::sparse_buffer::create_sparse_buffer;
+    use bae_audio::sparse_buffer::create_sparse_buffer;
 
     fn one_segment_decode(buffer: SharedSparseBuffer) -> StreamDecodeParams {
         StreamDecodeParams::new(
@@ -727,7 +725,7 @@ mod tests {
         frames: u64,
     }
 
-    impl crate::audio_codec::DecodedSink for FrameCount {
+    impl bae_audio::DecodedSink for FrameCount {
         fn on_format(&mut self, _sample_rate: u32, channels: u32) {
             self.channels = channels;
         }
@@ -741,7 +739,7 @@ mod tests {
     /// CUE fixture image read, with the window's recorded landing byte, and
     /// the frames it decoded.
     fn verified_window_reads() -> (Vec<u64>, u64, u64) {
-        crate::audio_codec::init();
+        bae_audio::init();
         let path = concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/tests/fixtures/cue_flac/Test Album.flac"
@@ -749,7 +747,7 @@ mod tests {
         let bytes = std::fs::read(path).unwrap();
         let start_sample = 20 * 44_100;
         let landing =
-            crate::audio_codec::seek_landing_bytes(path, &[start_sample]).expect("landing byte")[0];
+            bae_audio::seek_landing_bytes(path, &[start_sample]).expect("landing byte")[0];
         let buffer = create_sparse_buffer(bytes.len() as u64);
         buffer.append_at(0, &bytes);
         let decode = StreamDecodeParams::new(
@@ -844,8 +842,8 @@ mod tests {
     /// track and advance a few seconds in.
     #[test]
     fn multi_segment_track_finishes_only_after_last_segment() {
-        use crate::audio_codec::{encode_i32, EncodeFormat};
-        use crate::playback::create_track_stream_pair_with_capacity;
+        use bae_audio::track_stream::create_track_stream_pair_with_capacity;
+        use bae_audio::{encode_i32, EncodeFormat};
 
         let sample_rate = 44_100u32;
         let total_frames = 2 * sample_rate as usize;

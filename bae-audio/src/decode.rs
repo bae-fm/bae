@@ -11,7 +11,8 @@ use super::avio::{
     streaming_avio_read_callback, streaming_avio_seek_callback, StreamingAvioContext,
 };
 use super::{av_err_str, DecodeError, DecodedAudio, DecodedSink, AVIO_BUFFER_SIZE};
-use crate::playback::{PlaybackError, SharedSparseBuffer, TrackSink};
+use crate::sparse_buffer::{SharedSparseBuffer, SourceReadError};
+use crate::track_stream::TrackSink;
 use std::cell::Cell;
 use std::os::raw::{c_int, c_void};
 use std::ptr;
@@ -339,7 +340,7 @@ enum BufferInputError {
     /// The open or probe failed because a read of the source failed. Whatever
     /// FFmpeg reported for it (an empty probe reads as "Invalid data found") is
     /// a consequence, not the cause.
-    SourceRead(Arc<PlaybackError>),
+    SourceRead(SourceReadError),
 }
 
 impl BufferInputError {
@@ -368,7 +369,7 @@ unsafe fn release_buffer_input(
     fmt_ctx: &mut *mut ffmpeg_sys_next::AVFormatContext,
     avio: *mut ffmpeg_sys_next::AVIOContext,
     avio_ctx_ptr: *mut StreamingAvioContext,
-) -> Option<Arc<PlaybackError>> {
+) -> Option<SourceReadError> {
     close_input_and_free_custom_avio(fmt_ctx, avio);
     Box::from_raw(avio_ctx_ptr).read_failure()
 }
@@ -499,9 +500,9 @@ impl DecodedSink for CollectingSink {
 /// the format then each interleaved-i32 chunk into `sink`. `cancel` aborts
 /// between frames. Blocking — run it off the async runtime.
 ///
-/// Sets no read-ahead ceiling on its reader: the fill keeps one window
-/// (`MIN_READAHEAD`) ahead of the decode and evicts behind it, so a whole-file
-/// decode holds about one window of compressed bytes. (Playback's ceiling
+/// Sets no read-ahead ceiling on its reader: the fill keeps one window ahead
+/// of the decode and evicts behind it, so a whole-file decode holds about one
+/// window of compressed bytes. (Playback's ceiling
 /// exists to buffer the rest of a track against network stalls; a decode that
 /// consumes as fast as it reads needs only the cushion.)
 pub fn decode_audio_to_sink(
@@ -529,7 +530,7 @@ pub fn decode_audio_to_sink(
 /// sample-window special case. The save re-encoder drives this with the same
 /// per-segment derivation playback uses.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn decode_audio_to_sink_with_seek(
+pub fn decode_audio_to_sink_with_seek(
     buffer: SharedSparseBuffer,
     seek_to_byte: Option<u64>,
     seek_to_sample: Option<u64>,

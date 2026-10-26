@@ -14,7 +14,7 @@
 
 use crate::playback::audio_output::{duration_millis, AudioEvent, AudioEventSender};
 use crate::playback::timeline::{StreamPosition, TrackTimeline};
-use crate::playback::track_stream::TrackStream;
+use bae_audio::track_stream::TrackStream;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -321,7 +321,7 @@ impl PlaybackSource {
 mod tests {
     use super::*;
     use crate::playback::audio_output::audio_event_channel;
-    use crate::playback::track_stream::create_track_stream_pair;
+    use bae_audio::track_stream::create_track_stream_pair;
 
     fn fmt(track_id: &str) -> TrackFmt {
         TrackFmt {

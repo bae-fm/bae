@@ -1,4 +1,5 @@
 use super::*;
+use crate::test_source::{io_kind, TestReadError};
 use std::thread;
 use std::time::Duration;
 
@@ -261,10 +262,10 @@ fn a_failed_buffer_hands_readers_the_read_error_and_the_first_stop_wins() {
     });
 
     buffer.wait_until_parked(1);
-    let full = Arc::new(PlaybackError::io(
+    let full = SourceReadError::new(Arc::new(TestReadError::io(
         "Failed to read 100 bytes at 0 from /volume/track.flac",
-        std::io::Error::from(std::io::ErrorKind::StorageFull),
-    ));
+        std::io::ErrorKind::StorageFull,
+    )));
     assert!(buffer.fail(full), "the first stop is taken");
 
     let seen = join_within(handle, Duration::from_secs(5))
@@ -280,16 +281,17 @@ fn a_failed_buffer_hands_readers_the_read_error_and_the_first_stop_wins() {
         !buffer.is_cancelled(),
         "a later cancel doesn't mask the failure"
     );
-    let kind = buffer.failure().and_then(|error| match error.as_ref() {
-        PlaybackError::Io { source, .. } => Some(source.kind()),
-        _ => None,
-    });
+    let kind = buffer.failure().as_ref().and_then(io_kind);
     assert_eq!(kind, Some(std::io::ErrorKind::StorageFull));
 
     let torn_down = create_sparse_buffer(100);
     torn_down.cancel();
     assert!(
-        !torn_down.fail(Arc::new(PlaybackError::internal("late read failure"))),
+        !torn_down.fail(SourceReadError::new(Arc::new(ShortRead {
+            offset: 0,
+            requested: 100,
+            received: 0,
+        }))),
         "a failure after teardown is not taken"
     );
     assert!(torn_down.is_cancelled());

@@ -1,22 +1,18 @@
 //! How many times this test binary has read each file, by what read it, so a
-//! test can assert that asking about a folder again reads nothing off disk --
-//! and, for reads that report it, how many bytes they read.
+//! test can assert that asking about a folder again reads nothing off disk.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
-/// What read a file.
+/// What read a file. A probe's opens are counted where the probe runs, by
+/// `bae_audio::test_reads`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum FileRead {
-    /// FFmpeg opened it to find its stream.
-    Probe,
     /// Its header was checked for the image its name says.
     ImageCheck,
     /// It was parsed as a CUE sheet.
     CueParse,
-    /// FFmpeg searched it for the bytes its samples land on.
-    LandingSearch,
 }
 
 fn counts() -> &'static Mutex<HashMap<(FileRead, PathBuf), u64>> {
@@ -38,30 +34,6 @@ pub(crate) fn count(read: FileRead, path: &Path) -> u64 {
     counts()
         .lock()
         .expect("file read counts mutex poisoned")
-        .get(&(read, path.to_path_buf()))
-        .copied()
-        .unwrap_or(0)
-}
-
-fn byte_counts() -> &'static Mutex<HashMap<(FileRead, PathBuf), u64>> {
-    static BYTES: OnceLock<Mutex<HashMap<(FileRead, PathBuf), u64>>> = OnceLock::new();
-    BYTES.get_or_init(Default::default)
-}
-
-/// Count `bytes` read from `path` by `read`.
-pub(crate) fn record_bytes(read: FileRead, path: &Path, bytes: u64) {
-    *byte_counts()
-        .lock()
-        .expect("file read bytes mutex poisoned")
-        .entry((read, path.to_path_buf()))
-        .or_default() += bytes;
-}
-
-/// How many bytes `read` has read from `path`.
-pub(crate) fn bytes(read: FileRead, path: &Path) -> u64 {
-    byte_counts()
-        .lock()
-        .expect("file read bytes mutex poisoned")
         .get(&(read, path.to_path_buf()))
         .copied()
         .unwrap_or(0)

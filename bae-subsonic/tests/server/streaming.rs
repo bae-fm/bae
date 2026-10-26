@@ -74,7 +74,7 @@ async fn stream_raw_serves_a_cue_track_as_its_own_pcm() {
         served.content_length.is_none(),
         "the stream's length is not known before it ends"
     );
-    let wav = bae_core::audio_codec::parse_streamed_wav(&served.body).expect("a WAV stream");
+    let wav = bae_audio::parse_streamed_wav(&served.body).expect("a WAV stream");
     let image = decode_bytes(&std::fs::read(cue_fixture("Test Album.flac")).unwrap());
     assert_eq!(wav.sample_rate, image.sample_rate);
     assert_eq!(wav.channels, image.channels);
@@ -117,7 +117,7 @@ async fn stream_wav_is_the_tracks_pcm_in_an_unsized_wav() {
     assert_eq!(served.status, StatusCode::OK);
     assert_eq!(served.content_type, "audio/wav");
     assert!(served.content_length.is_none(), "no length is claimed");
-    let wav = bae_core::audio_codec::parse_streamed_wav(&served.body).expect("a WAV stream");
+    let wav = bae_audio::parse_streamed_wav(&served.body).expect("a WAV stream");
     assert_eq!(wav.riff_size, u32::MAX, "RIFF size: unknown");
     assert_eq!(wav.data_size, u32::MAX, "data size: unknown");
     assert_eq!(&served.body[36..40], b"data", "data follows fmt directly");
@@ -643,9 +643,9 @@ async fn first_song_id(router: &Router, release_id: &str) -> String {
 
 /// Decode encoded audio bytes by writing them to a temp file, filling a sparse
 /// buffer through the local reader, and running the real decoder.
-fn decode_bytes(bytes: &[u8]) -> bae_core::audio_codec::DecodedAudio {
+fn decode_bytes(bytes: &[u8]) -> bae_audio::DecodedAudio {
     use bae_core::playback::data_source::{AudioDataReader, LocalReader};
-    use bae_core::playback::sparse_buffer::create_sparse_buffer;
+    use bae_audio::sparse_buffer::create_sparse_buffer;
     use std::io::Write;
 
     let mut file = tempfile::NamedTempFile::new().unwrap();
@@ -654,7 +654,7 @@ fn decode_bytes(bytes: &[u8]) -> bae_core::audio_codec::DecodedAudio {
     let buffer = create_sparse_buffer(bytes.len() as u64);
     let reader = Box::new(LocalReader::new(file.path().to_str().unwrap()));
     reader.start_reading(buffer.clone(), Box::new(|_| {}));
-    bae_core::audio_codec::decode_audio(buffer, None, None).expect("decode transcoded bytes")
+    bae_audio::decode_audio(buffer, None, None).expect("decode transcoded bytes")
 }
 
 // ─────────────────────────── credit lines ───────────────────────────────────

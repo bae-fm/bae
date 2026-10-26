@@ -652,7 +652,7 @@ fn projecting_the_table_opens_no_audio() {
     let durations = source_durations(&files).expect("scanned fixture audio has durations");
     let opens_after_probing: Vec<u64> = ["CDImage.flac", "bonus.flac"]
         .iter()
-        .map(|name| crate::test_reads::count(crate::test_reads::FileRead::Probe, &tmp.path().join(name)))
+        .map(|name| bae_audio::test_reads::probes(&tmp.path().join(name)))
         .collect();
 
     let first = blank_table(&files, &durations);
@@ -660,7 +660,7 @@ fn projecting_the_table_opens_no_audio() {
 
     for (index, name) in ["CDImage.flac", "bonus.flac"].iter().enumerate() {
         assert_eq!(
-            crate::test_reads::count(crate::test_reads::FileRead::Probe, &tmp.path().join(name)),
+            bae_audio::test_reads::probes(&tmp.path().join(name)),
             opens_after_probing[index],
             "{name} must not be read again by projecting the table",
         );
@@ -852,7 +852,7 @@ fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
     let mut files = scan(tmp.path());
     let durations = source_durations(&files).unwrap();
     let opens = ["first.flac", "second.flac"]
-        .map(|name| crate::test_reads::count(crate::test_reads::FileRead::Probe, &tmp.path().join(name)));
+        .map(|name| bae_audio::test_reads::probes(&tmp.path().join(name)));
     let expected = vec![
         SheetReferenceOptions {
             file_reference: "first.wav".into(),
@@ -906,7 +906,7 @@ fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
     assert_eq!(sheet.reference_options, expected);
     for (name, count) in ["first.flac", "second.flac"].into_iter().zip(opens) {
         assert_eq!(
-            crate::test_reads::count(crate::test_reads::FileRead::Probe, &tmp.path().join(name)),
+            bae_audio::test_reads::probes(&tmp.path().join(name)),
             count
         );
     }

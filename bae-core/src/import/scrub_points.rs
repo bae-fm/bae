@@ -6,9 +6,9 @@
 //! packet it reads carries its frame's exact byte and first sample. A few of
 //! those, stored, let a scrub jump by byte instead.
 
-use crate::audio_codec::{DecodedPacket, DecodedStream, AVIO_BUFFER_SIZE};
+use bae_audio::{DecodedPacket, DecodedStream, AVIO_BUFFER_SIZE};
 use crate::db::ScrubPoint;
-use crate::playback::sparse_buffer::FILL_WINDOW_SIZE;
+use crate::playback::data_source::FILL_WINDOW_SIZE;
 use bae_util::content_type::ContentType;
 use tracing::{debug, warn};
 

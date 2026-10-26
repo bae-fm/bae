@@ -1,33 +1,37 @@
-//! Unified audio codec module using FFmpeg.
+//! bae's audio codec over FFmpeg, and the buffers it reads from and writes to.
 //!
-//! Provides decoding (any format to PCM, streamed from a sparse buffer; the
+//! Provides decoding (any format to PCM, streamed from a [`sparse_buffer`]; the
 //! import's verifying decode also takes scrub points), encoding (PCM to
 //! FLAC/MP3/AAC/Opus/WAV/AIFF, streamed frame by frame into an output sink),
 //! and probing (a file's audio facts, and the byte a seek to a sample lands
-//! on).
+//! on). A decode for playback writes into one track's [`track_stream`].
 
 mod avio;
 mod decode;
 mod encode;
 mod probe;
 mod resample;
+pub mod sparse_buffer;
+#[cfg(any(test, feature = "test-instrumentation"))]
+pub mod test_reads;
+pub mod track_stream;
 #[cfg(any(test, feature = "test-utils"))]
 mod wav_read;
 
+#[cfg(test)]
+mod test_source;
 #[cfg(test)]
 mod tests;
 
 /// Buffer size for FFmpeg custom-IO (`avio`) contexts. The standard 32 KiB
 /// FFmpeg uses for its own file IO.
-pub(crate) const AVIO_BUFFER_SIZE: usize = 32768;
+pub const AVIO_BUFFER_SIZE: usize = 32768;
 
-// Only the desktop-gated save path (StreamDecodeParams::run_to_sink) consumes
-// this re-export; on iOS/Android that caller is compiled out, so the import is
-// unused there and fails the deny(warnings) mobile clippy build.
-pub(crate) use decode::decode_audio_to_sink_with_seek;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) use decode::verification::decode_audio_to_verifying_sink;
-pub use decode::{decode_audio, decode_audio_streaming, decode_audio_to_sink};
+pub use decode::verification::decode_audio_to_verifying_sink;
+pub use decode::{
+    decode_audio, decode_audio_streaming, decode_audio_to_sink, decode_audio_to_sink_with_seek,
+};
 #[cfg(any(test, feature = "test-utils"))]
 pub use encode::encode_i32;
 pub use encode::{EncodeFormat, StreamEncodeFormat, StreamingEncoder, WriteSeek};
@@ -49,7 +53,7 @@ pub enum DecodeError {
     /// dropped network volume, a failed cloud fetch. Says nothing about the
     /// audio: the bytes never reached the decoder. Carries the read's own error.
     #[error("source read failed: {0}")]
-    SourceRead(std::sync::Arc<crate::playback::PlaybackError>),
+    SourceRead(sparse_buffer::SourceReadError),
     /// The bytes that arrived don't decode as audio.
     #[error("{0}")]
     Decode(String),
@@ -64,7 +68,7 @@ impl DecodeError {
     /// callback recorded is the cause, whatever FFmpeg reported for it;
     /// otherwise it is the decode's own failure.
     fn after_read(
-        read_failure: Option<std::sync::Arc<crate::playback::PlaybackError>>,
+        read_failure: Option<sparse_buffer::SourceReadError>,
         message: impl Into<String>,
     ) -> Self {
         match read_failure {

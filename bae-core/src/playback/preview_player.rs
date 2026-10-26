@@ -22,12 +22,12 @@ use crate::playback::data_source::{AudioDataReader, LocalReader};
 use crate::playback::progress::{emit_progress, PlaybackProgress, PreviewState};
 use crate::playback::service::{dispatch_command, PlaybackCommand};
 use crate::playback::source::TrackFmt;
-use crate::playback::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use crate::playback::stream_pipeline::{
     log_stream_diagnostic, report_dropped_audio_events, start_stream_pipeline, DecodeFailureReport,
     DecoderSetup, SegmentDecodeParams, StreamDecodeParams, StreamPipeline,
 };
 use crate::playback::timeline::{StreamPosition, TrackTimeline};
+use bae_audio::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use std::time::Duration;
 use tokio::sync::mpsc as tokio_mpsc;
 use tokio::task::JoinHandle;
@@ -614,18 +614,17 @@ fn spawn_preview_listener(
     })
 }
 
-async fn probe_preview_audio(path: &str) -> Option<crate::audio_codec::ProbeResult> {
+async fn probe_preview_audio(path: &str) -> Option<bae_audio::ProbeResult> {
     let probe_path = path.to_string();
     let result =
-        tokio::task::spawn_blocking(move || crate::audio_codec::probe_audio_from_path(&probe_path))
-            .await;
+        tokio::task::spawn_blocking(move || bae_audio::probe_audio_from_path(&probe_path)).await;
     resolve_preview_probe(path, result)
 }
 
 fn resolve_preview_probe(
     path: &str,
-    result: Result<Option<crate::audio_codec::ProbeResult>, tokio::task::JoinError>,
-) -> Option<crate::audio_codec::ProbeResult> {
+    result: Result<Option<bae_audio::ProbeResult>, tokio::task::JoinError>,
+) -> Option<bae_audio::ProbeResult> {
     match result {
         Ok(Some(probe)) if probe.sample_rate > 0 && probe.channels > 0 => Some(probe),
         Ok(Some(probe)) => {

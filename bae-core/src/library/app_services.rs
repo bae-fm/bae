@@ -7,7 +7,7 @@ use crate::playback::PlaybackHandle;
 use std::sync::Arc;
 
 /// One track's stored audio, open for a single decode into a
-/// [`DecodedSink`](crate::audio_codec::DecodedSink).
+/// [`DecodedSink`](bae_audio::DecodedSink).
 pub struct TrackDecode {
     decode: crate::playback::stream_pipeline::StreamDecodeParams,
     sample_rate: u32,
@@ -19,7 +19,7 @@ impl TrackDecode {
     /// Blocking; run it off the async runtime.
     pub fn run_to_sink(
         &self,
-        sink: &mut dyn crate::audio_codec::DecodedSink,
+        sink: &mut dyn bae_audio::DecodedSink,
         cancel: Arc<std::sync::atomic::AtomicBool>,
     ) -> Result<(), String> {
         self.decode
@@ -30,7 +30,7 @@ impl TrackDecode {
     /// or return why one can't be read, so a caller learns of an unreadable
     /// file before it commits to output. Blocking; run it off the async
     /// runtime.
-    pub fn wait_readable(&self) -> Result<(), crate::playback::sparse_buffer::BufferStop> {
+    pub fn wait_readable(&self) -> Result<(), bae_audio::sparse_buffer::BufferStop> {
         self.decode.wait_readable()
     }
 }
@@ -505,8 +505,8 @@ impl AppServices {
         &self,
         file_id: &str,
         size: u64,
-    ) -> crate::playback::SharedSparseBuffer {
-        let buffer = crate::playback::sparse_buffer::create_sparse_buffer(size);
+    ) -> bae_audio::sparse_buffer::SharedSparseBuffer {
+        let buffer = bae_audio::sparse_buffer::create_sparse_buffer(size);
         let reader = crate::playback::data_source::create_audio_reader(
             &self.inner.manager,
             file_id,
@@ -533,8 +533,10 @@ impl AppServices {
     pub fn open_track_decode(&self, audio: &crate::library::ResolvedTrackAudio) -> TrackDecode {
         use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
 
-        let mut streams: std::collections::HashMap<&str, crate::playback::SharedSparseBuffer> =
-            std::collections::HashMap::new();
+        let mut streams: std::collections::HashMap<
+            &str,
+            bae_audio::sparse_buffer::SharedSparseBuffer,
+        > = std::collections::HashMap::new();
         let segments = audio
             .segments
             .iter()

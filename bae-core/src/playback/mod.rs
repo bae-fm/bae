@@ -19,10 +19,8 @@ mod repeat_mode;
 mod scrub_points;
 pub mod service;
 pub mod source;
-pub mod sparse_buffer;
 pub mod stream_pipeline;
 pub mod timeline;
-pub mod track_stream;
 // Whole-release passes (import loudness, release saves) are desktop-only.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) mod track_sources;
@@ -64,9 +62,4 @@ pub use service::{
     PlaybackTrackSide,
 };
 pub use source::{TrackCrossing, TrackFmt};
-pub use sparse_buffer::SharedSparseBuffer;
 pub use timeline::{StreamPosition, TrackTime, TrackTimeline};
-pub use track_stream::{create_track_stream_pair, TrackSink, TrackStream};
-
-#[cfg(test)]
-pub use track_stream::create_track_stream_pair_with_capacity;

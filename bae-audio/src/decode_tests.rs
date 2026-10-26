@@ -230,7 +230,7 @@ fn frame_output_window_trims_at_boundaries() {
 
 #[test]
 fn packed_s64_decoder_rejects_zero_channels_before_format_signal() {
-    crate::audio_codec::init();
+    crate::init();
 
     unsafe {
         let fmt_ctx = ffmpeg_sys_next::avformat_alloc_context();

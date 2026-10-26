@@ -210,7 +210,7 @@ struct DrainSource {
     controls: AudioOutputControls,
     source_channels: usize,
     /// `None` when the source is already 44.1 kHz stereo (pass-through).
-    resampler: Option<crate::audio_codec::Resampler>,
+    resampler: Option<bae_audio::Resampler>,
     /// Resampled 44.1 kHz stereo interleaved samples awaiting emission.
     out_buf: Vec<f32>,
     /// Source samples pulled per drain iteration.
@@ -236,7 +236,7 @@ impl DrainSource {
         {
             None
         } else {
-            let resampler = crate::audio_codec::Resampler::new(
+            let resampler = bae_audio::Resampler::new(
                 source_sample_rate,
                 source_channels,
                 PCM_SAMPLE_RATE,
@@ -360,8 +360,8 @@ fn f32_to_i16(sample: f32) -> i16 {
 mod tests {
     use super::*;
     use crate::playback::audio_output::audio_event_channel;
-    use crate::playback::create_track_stream_pair;
     use crate::playback::source::{PlaybackSource, TrackFmt};
+    use bae_audio::track_stream::create_track_stream_pair;
     use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
     fn track_fmt() -> TrackFmt {
@@ -528,7 +528,7 @@ mod tests {
     fn drain_source_resamples_to_the_receiver_rate() {
         // A ring large enough to hold the whole input without a concurrent reader.
         let (mut sink, stream, _ready) =
-            crate::playback::create_track_stream_pair_with_capacity(48_000, 2, 48_000 * 2);
+            bae_audio::track_stream::create_track_stream_pair_with_capacity(48_000, 2, 48_000 * 2);
         // 20 000 frames of 48 kHz stereo, then finish so the source drains.
         sink.push_samples(&vec![0.0f32; 20_000 * 2]);
         sink.mark_finished();

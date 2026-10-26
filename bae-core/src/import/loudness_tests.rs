@@ -1,5 +1,5 @@
 use super::*;
-use crate::playback::sparse_buffer::create_sparse_buffer;
+use bae_audio::sparse_buffer::create_sparse_buffer;
 
 fn progress(event_tx: &crate::import::handle::ImportEventBus, total: Option<u64>) -> LoudnessProgress {
     LoudnessProgress::new(event_tx, "test", "release-1", "import-1", total)
@@ -76,8 +76,8 @@ async fn broken_reason_flags_shortfall_and_errors_not_clean() {
     );
 
     let mut complete_with_discard = sink_with(Some(1000), 1000, 0).await;
-    crate::audio_codec::DecodedSink::add_discarded_packet_count(&mut complete_with_discard, 1);
-    crate::audio_codec::DecodedSink::add_discarded_packet_count(&mut complete_with_discard, 1);
+    bae_audio::DecodedSink::add_discarded_packet_count(&mut complete_with_discard, 1);
+    bae_audio::DecodedSink::add_discarded_packet_count(&mut complete_with_discard, 1);
     assert_eq!(complete_with_discard.discarded_packet_count, 2);
     assert!(
         complete_with_discard.broken_reason().is_none(),
@@ -85,7 +85,7 @@ async fn broken_reason_flags_shortfall_and_errors_not_clean() {
     );
 
     let mut unknown_with_discard = sink_with(None, 0, 0).await;
-    crate::audio_codec::DecodedSink::add_discarded_packet_count(&mut unknown_with_discard, 1);
+    bae_audio::DecodedSink::add_discarded_packet_count(&mut unknown_with_discard, 1);
     assert!(
         unknown_with_discard.broken_reason().is_some(),
         "a discarded packet needs an expected frame count to prove recovery"
@@ -99,7 +99,7 @@ async fn broken_reason_flags_shortfall_and_errors_not_clean() {
 /// verify uses.
 #[tokio::test]
 async fn truncated_flac_decode_is_flagged_broken_intact_is_not() {
-    crate::audio_codec::init();
+    bae_audio::init();
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/tests/fixtures/cue_flac/Test Album.flac"
@@ -121,7 +121,7 @@ async fn truncated_flac_decode_is_flagged_broken_intact_is_not() {
     let never = || Arc::new(std::sync::atomic::AtomicBool::new(false));
 
     let mut sink = sink_with(Some(total), 0, 0).await;
-    let ok = crate::audio_codec::decode_audio_to_verifying_sink(
+    let ok = bae_audio::decode_audio_to_verifying_sink(
         buffer_of(&clean),
         None,
         Some(start),
@@ -141,7 +141,7 @@ async fn truncated_flac_decode_is_flagged_broken_intact_is_not() {
     // audio, so the decode errors out or yields far too few frames.
     let truncated = &clean[..clean.len() * 6 / 10];
     let mut sink = sink_with(Some(total), 0, 0).await;
-    let res = crate::audio_codec::decode_audio_to_verifying_sink(
+    let res = bae_audio::decode_audio_to_verifying_sink(
         buffer_of(truncated),
         None,
         Some(start),
@@ -302,10 +302,9 @@ async fn measure_failure(path: &std::path::Path, size: u64) -> crate::import::Im
 /// The OS error kind a `SourceRead` import error carries.
 fn source_read_kind(error: &crate::import::ImportError) -> Option<std::io::ErrorKind> {
     match error {
-        crate::import::ImportError::SourceRead { error, .. } => match error.as_ref() {
-            crate::playback::PlaybackError::Io { source, .. } => Some(source.kind()),
-            _ => None,
-        },
+        crate::import::ImportError::SourceRead { error, .. } => std::error::Error::source(error)
+            .and_then(|source| source.downcast_ref::<std::io::Error>())
+            .map(std::io::Error::kind),
         _ => None,
     }
 }
@@ -315,7 +314,7 @@ fn source_read_kind(error: &crate::import::ImportError) -> Option<std::io::Error
 /// track, which would claim the audio is bad.
 #[tokio::test]
 async fn measure_loudness_fails_on_a_source_that_cannot_be_opened() {
-    crate::audio_codec::init();
+    bae_audio::init();
     let missing = PathBuf::from("/nonexistent/track.flac");
 
     let error = measure_failure(&missing, 1).await;
@@ -336,7 +335,7 @@ async fn measure_loudness_fails_on_a_source_that_cannot_be_opened() {
 /// even though the bytes that did arrive are valid FLAC.
 #[tokio::test]
 async fn measure_loudness_fails_on_a_source_whose_read_fails() {
-    crate::audio_codec::init();
+    bae_audio::init();
     let fixture = std::fs::read(cue_flac_fixture(
         "03 Test Artist - Track Three (Brown Noise).flac",
     ))
@@ -389,7 +388,7 @@ async fn measure_loudness_skips_track_with_no_segments() {
 /// aggregate over the measured tracks.
 #[tokio::test]
 async fn measure_loudness_computes_track_and_album_values() {
-    crate::audio_codec::init();
+    bae_audio::init();
     let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let path = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
     let mut audio_formats = vec![audio_format("track-0", "af-0")];
@@ -423,7 +422,7 @@ async fn measure_loudness_computes_track_and_album_values() {
 
 #[tokio::test]
 async fn measure_loudness_progress_weights_tracks_by_frames() {
-    crate::audio_codec::init();
+    bae_audio::init();
     let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let mut rx = event_tx.every_event();
     let path = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
@@ -472,7 +471,7 @@ async fn measure_loudness_progress_weights_tracks_by_frames() {
 /// real decode.)
 #[tokio::test]
 async fn measure_loudness_leaves_ungated_track_unmeasured() {
-    crate::audio_codec::init();
+    bae_audio::init();
     let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let path = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
     let mut audio_formats = vec![audio_format("track-0", "af-0")];
@@ -552,7 +551,7 @@ fn track_loudness(audio_formats: &[crate::db::DbAudioFormat]) -> Vec<Option<f64>
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn measure_loudness_holds_at_most_parallelism_track_files_open() {
-    crate::audio_codec::init();
+    bae_audio::init();
     let dir = tempfile::tempdir().unwrap();
     let fixture = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
     let count = 24;
@@ -598,7 +597,7 @@ async fn measure_loudness_holds_at_most_parallelism_track_files_open() {
 /// of them are measured at once.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn measure_loudness_reads_a_cue_image_through_one_open_file() {
-    crate::audio_codec::init();
+    bae_audio::init();
     let dir = tempfile::tempdir().unwrap();
     let image = dir.path().join("Test Album.flac");
     std::fs::copy(cue_flac_fixture("Test Album.flac"), &image).unwrap();

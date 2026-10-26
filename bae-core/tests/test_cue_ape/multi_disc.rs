@@ -4,7 +4,7 @@
 /// audio from track 2 must match the XLD-split reference.
 #[tokio::test]
 async fn test_cue_ape_next_track() {
-    use bae_core::audio_codec::decode_audio;
+    use bae_audio::decode_audio;
 
     let mut fixture = CueApeTestFixture::with_capture()
         .await
@@ -295,8 +295,8 @@ async fn test_multi_disc_cue_ape_remote_unpin() {
 
 /// A sparse buffer pre-filled with the whole byte slice, so a decode exercises
 /// the window logic without waiting on a fill.
-fn buffer_from(bytes: &[u8]) -> bae_core::playback::SharedSparseBuffer {
-    let buffer = bae_core::playback::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
+fn buffer_from(bytes: &[u8]) -> bae_audio::sparse_buffer::SharedSparseBuffer {
+    let buffer = bae_audio::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
     buffer.append_at(0, bytes);
     buffer
 }

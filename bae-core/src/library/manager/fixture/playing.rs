@@ -58,7 +58,7 @@ impl LibraryManager {
             let unplayable = || invalid(format!("{} is no audio bae plays", path.display()));
             let probe = path
                 .to_str()
-                .and_then(crate::audio_codec::probe_audio_from_path)
+                .and_then(bae_audio::probe_audio_from_path)
                 .ok_or_else(unplayable)?;
             scanned_audio
                 .push(crate::import::folder_scanner::scanned_audio(&probe).ok_or_else(unplayable)?);

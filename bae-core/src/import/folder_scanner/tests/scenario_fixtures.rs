@@ -12,9 +12,9 @@ fn fake_mp3() -> Vec<u8> {
     static BYTES: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
     BYTES
         .get_or_init(|| {
-            crate::audio_codec::init();
-            crate::audio_codec::encode_i32(
-                crate::audio_codec::EncodeFormat::Mp3 { bitrate_kbps: 320 },
+            bae_audio::init();
+            bae_audio::encode_i32(
+                bae_audio::EncodeFormat::Mp3 { bitrate_kbps: 320 },
                 &vec![0i32; 44_100],
                 44_100,
                 2,

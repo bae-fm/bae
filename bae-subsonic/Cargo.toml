@@ -11,6 +11,8 @@ path = "src/lib.rs"
 
 [dependencies]
 bae-core = { path = "../bae-core" }
+# The transcode encoder and the buffer a served track streams from.
+bae-audio = { path = "../bae-audio" }
 bae-util = { path = "../bae-util" }
 axum = { version = "0.8", default-features = false, features = ["http1", "tokio", "query"] }
 bytes = "1"
@@ -26,6 +28,8 @@ tracing = { workspace = true }
 [dev-dependencies]
 bae-test-support = { path = "../bae-test-support" }
 bae-core = { path = "../bae-core", features = ["test-utils"] }
+# The WAV reader the transcode tests check served bytes with.
+bae-audio = { path = "../bae-audio", features = ["test-utils"] }
 tempfile = "3"
 tokio = { version = "1", features = ["net", "sync", "rt", "rt-multi-thread", "macros", "time"] }
 md5 = { package = "md-5", version = "0.10" }

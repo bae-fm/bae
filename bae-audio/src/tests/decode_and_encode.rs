@@ -141,7 +141,7 @@ fn seek_landing_bytes_follow_content_not_time_when_bitrate_swings() {
     init();
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/tests/fixtures/cue_flac/Test Album.flac"
+        "/../bae-core/tests/fixtures/cue_flac/Test Album.flac"
     );
     let probe = probe_audio_from_path(path).expect("probe fixture");
     let sr = probe.sample_rate as u64;
@@ -263,7 +263,7 @@ fn probe_audio_from_path_maps_audio_format_fixtures() {
     init();
     let fixture = |name: &str| {
         format!(
-            "{}/test-fixtures/audio-format/{name}",
+            "{}/../bae-core/test-fixtures/audio-format/{name}",
             env!("CARGO_MANIFEST_DIR")
         )
     };
@@ -295,7 +295,7 @@ fn decode_audio_decodes_audio_format_fixtures() {
         "placeholder-dsd.dff",
     ] {
         let bytes = std::fs::read(format!(
-            "{}/test-fixtures/audio-format/{name}",
+            "{}/../bae-core/test-fixtures/audio-format/{name}",
             env!("CARGO_MANIFEST_DIR")
         ))
         .unwrap();
@@ -307,126 +307,13 @@ fn decode_audio_decodes_audio_format_fixtures() {
     }
 }
 
-/// The i32 decode path reads through a buffer being filled *concurrently* by a
-/// `LocalReader`: the decode blocks on the fill and produces exactly the
-/// pre-filled result — and, because the sink path sets no read-ahead ceiling,
-/// the fill keeps only a window ahead and evicts behind the decode, so the
-/// buffer never holds the whole file.
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn i32_decode_streams_from_a_live_fill_and_stays_windowed() {
-    use crate::playback::data_source::{AudioDataReader, LocalReader};
-    use crate::playback::sparse_buffer::create_sparse_buffer;
-
-    init();
-
-    /// Order-sensitive digest of the decode, so two decodes can be compared
-    /// without holding both PCM streams.
-    #[derive(Default)]
-    struct DigestSink {
-        format: Option<(u32, u32)>,
-        count: u64,
-        digest: u64,
-    }
-    impl DecodedSink for DigestSink {
-        fn on_format(&mut self, sample_rate: u32, channels: u32) {
-            self.format = Some((sample_rate, channels));
-        }
-        fn on_samples(&mut self, samples: &[i32]) {
-            for &sample in samples {
-                self.count += 1;
-                self.digest = self
-                    .digest
-                    .wrapping_mul(1099511628211)
-                    .wrapping_add(sample as u32 as u64);
-            }
-        }
-    }
-
-    // ~100s of pseudo-noise as WAV (~17 MiB): comfortably larger than the
-    // fill's read-ahead window plus its keep-behind margin, so an unwindowed
-    // buffer would blow the residency bound below.
-    let sample_rate = 44_100u32;
-    let seconds = 100usize;
-    let samples: Vec<i32> = (0..sample_rate as usize * seconds * 2)
-        .map(|i| (i as u32).wrapping_mul(2_654_435_761) as i32)
-        .collect();
-    let wav = encode_i32(
-        EncodeFormat::PcmWav {
-            bits_per_sample: 16,
-        },
-        &samples,
-        sample_rate,
-        2,
-    )
-    .unwrap();
-    drop(samples);
-
-    let never = || Arc::new(std::sync::atomic::AtomicBool::new(false));
-
-    // Ground truth: the same window over a fully pre-filled buffer.
-    let prefilled = buffer_from(&wav);
-    let expected = tokio::task::spawn_blocking({
-        let cancel = never();
-        move || {
-            let mut sink = DigestSink::default();
-            decode_audio_to_sink(prefilled, None, None, &mut sink, cancel).expect("prefilled");
-            sink
-        }
-    })
-    .await
-    .expect("prefilled decode task");
-
-    // Live fill: the decoder starts against an empty buffer and blocks on the
-    // LocalReader's windows as they land.
-    let mut temp = tempfile::NamedTempFile::new().unwrap();
-    std::io::Write::write_all(&mut temp, &wav).unwrap();
-    std::io::Write::flush(&mut temp).unwrap();
-    let buffer = create_sparse_buffer(wav.len() as u64);
-    Box::new(LocalReader::new(temp.path()))
-        .start_reading(buffer.clone(), Box::new(|_| {}));
-
-    let streamed = tokio::task::spawn_blocking({
-        let buffer = buffer.clone();
-        let cancel = never();
-        move || {
-            let mut sink = DigestSink::default();
-            decode_audio_to_sink(buffer, None, None, &mut sink, cancel).expect("streamed");
-            sink
-        }
-    })
-    .await
-    .expect("streamed decode task");
-
-    assert_eq!(streamed.format, expected.format);
-    assert_eq!(
-        streamed.count, expected.count,
-        "live-fill decode must produce the same sample count"
-    );
-    assert_eq!(
-        streamed.digest, expected.digest,
-        "live-fill decode must be byte-identical to the pre-filled decode"
-    );
-
-    // The residency bound: one 4 MiB read-ahead window plus the 4 MiB
-    // keep-behind margin, with slack for in-flight windows — far below the
-    // whole file. Without eviction (or with a whole-file ceiling) the buffer
-    // would hold all ~17 MiB.
-    let bound = 13 * 1024 * 1024;
-    let buffered = buffer.total_buffered();
-    assert!(
-        buffered <= bound,
-        "buffer must stay windowed: held {buffered} bytes, bound {bound}, whole file {}",
-        wav.len()
-    );
-}
-
 /// A buffer cancelled mid-decode (a failed fill, or the caller aborting) must
 /// fail the i32 decode rather than return a truncated `Ok` — a consumer
 /// treating a partial decode as the whole window (a save writing a short file
 /// as success) would be silent corruption.
 #[test]
 fn i32_decode_fails_loud_when_the_buffer_is_cancelled_mid_stream() {
-    use crate::playback::sparse_buffer::create_sparse_buffer;
+    use crate::sparse_buffer::create_sparse_buffer;
 
     init();
 
@@ -612,7 +499,7 @@ fn sink_decode_discards_an_invalid_terminal_mp3_packet_after_complete_audio() {
 
 #[test]
 fn streaming_decode_continues_after_an_invalid_terminal_mp3_packet() {
-    use crate::playback::create_track_stream_pair_with_capacity;
+    use crate::track_stream::create_track_stream_pair_with_capacity;
 
     init();
     let (damaged, expected_samples) = mp3_with_invalid_terminal_packet();
@@ -844,8 +731,8 @@ fn test_flac_roundtrip_is_lossless() {
 
 #[test]
 fn test_streaming_decode() {
-    use crate::playback::create_track_stream_pair_with_capacity;
-    use crate::playback::sparse_buffer::create_sparse_buffer;
+    use crate::track_stream::create_track_stream_pair_with_capacity;
+    use crate::sparse_buffer::create_sparse_buffer;
     use std::thread;
 
     init();
@@ -911,8 +798,8 @@ fn test_streaming_decode() {
 
 #[test]
 fn test_streaming_decode_treats_cancelled_input_as_normal_stop() {
-    use crate::playback::create_track_stream_pair_with_capacity;
-    use crate::playback::sparse_buffer::create_sparse_buffer;
+    use crate::track_stream::create_track_stream_pair_with_capacity;
+    use crate::sparse_buffer::create_sparse_buffer;
 
     init();
 
@@ -934,8 +821,8 @@ fn test_streaming_decode_treats_cancelled_input_as_normal_stop() {
 
 #[test]
 fn streaming_decode_reports_truncated_flac_packet_stream() {
-    use crate::playback::create_track_stream_pair_with_capacity;
-    use crate::playback::sparse_buffer::create_sparse_buffer;
+    use crate::track_stream::create_track_stream_pair_with_capacity;
+    use crate::sparse_buffer::create_sparse_buffer;
 
     init();
 

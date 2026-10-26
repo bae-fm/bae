@@ -108,6 +108,14 @@ impl PlaybackError {
     }
 }
 
+/// A fill whose source came back short is a broken read path: bae's own
+/// failure, not the device's or the network's.
+impl From<bae_audio::sparse_buffer::ShortRead> for PlaybackError {
+    fn from(short: bae_audio::sparse_buffer::ShortRead) -> Self {
+        Self::internal(short.to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -8,26 +8,12 @@
 //! every track that plays from the same file, and each decoder gets its own
 //! `BufferReader` with an independent position. Readers never conflict.
 
-use crate::playback::PlaybackError;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 use tokio::sync::Notify;
 use tracing::debug;
-
-pub(crate) const FILL_WINDOW_SIZE: u64 = coven::CHUNK_SIZE as u64 * 64;
-/// The minimum the fill keeps buffered ahead of a reader whose track ceiling
-/// isn't set yet -- the brief probe phase before the decoder reads the header
-/// and seeks to the track's start. One window: the demuxer reads only the front
-/// metadata (header + seektable, ~100 KB for a FLAC) before it seeks, so keeping
-/// more than a window ahead of byte 0 just speculatively fetches front bytes the
-/// decoder abandons the instant it seeks away -- wasted reads and wasted buffer on
-/// every track that doesn't start at byte 0. Once the decoder
-/// seeks and sets its real ceiling (the track's end byte), read-ahead is bounded
-/// by that instead and reaches the rest of the track.
-pub(crate) const MIN_READAHEAD: u64 = FILL_WINDOW_SIZE;
-pub(crate) const KEEP_BEHIND: u64 = FILL_WINDOW_SIZE;
 
 /// Hands each buffer a small process-unique id so the fill's per-window fetch
 /// logs and the decoder's first-sample log can be tied to one track's stream.
@@ -79,21 +65,62 @@ fn publish_demand_pos(demands: &mut HashMap<u64, ReaderDemand>, id: u64, pos: u6
         .or_insert(ReaderDemand { pos, ceiling: None });
 }
 
+/// The first gap the fill fetches next: the most-behind reader's first, up to
+/// its ceiling, or one `window` past it while it has no ceiling. One window,
+/// because a reader with no ceiling yet is in the brief probe phase before the
+/// decoder reads the header and seeks to the track's start: the demuxer reads
+/// only the front metadata (header + seektable, ~100 KB for a FLAC) before it
+/// seeks, so keeping more than a window ahead of byte 0 just speculatively
+/// fetches front bytes the decoder abandons the instant it seeks away -- wasted
+/// reads and wasted buffer on every track that doesn't start at byte 0. Once the
+/// decoder seeks and sets its real ceiling (the track's end byte), read-ahead is
+/// bounded by that instead and reaches the rest of the track.
 fn pick_window_gap(
     buffer: &SparseStreamingBuffer,
     windows: &[ReaderDemand],
     total: u64,
+    window: u64,
 ) -> Option<(u64, u64)> {
     for demand in windows {
         let ceil = match demand.ceiling {
             Some(ceiling) if demand.pos < ceiling => ceiling.min(total),
-            _ => (demand.pos + MIN_READAHEAD).min(total),
+            _ => (demand.pos + window).min(total),
         };
         if let Some(gap) = buffer.next_gap(demand.pos, ceil) {
             return Some(gap);
         }
     }
     None
+}
+
+/// Why a buffer's source stopped delivering bytes: the error its fill hit,
+/// shared by every reader of the buffer. A decoder reports it as the cause of
+/// its stop, with the error's own text and causes; what kind of failure it is
+/// stays with the fill's owner, which gets the same error typed.
+#[derive(Debug, Clone, thiserror::Error)]
+#[error(transparent)]
+pub struct SourceReadError(Arc<dyn std::error::Error + Send + Sync>);
+
+impl SourceReadError {
+    /// The failure `error` stands for, shared with whoever else holds it.
+    pub fn new(error: Arc<impl std::error::Error + Send + Sync + 'static>) -> Self {
+        Self(error)
+    }
+
+    /// Whether this is the failure `error` stands for, rather than a copy.
+    #[cfg(any(test, feature = "test-instrumentation"))]
+    pub fn shares<E>(&self, error: &Arc<E>) -> bool {
+        std::ptr::addr_eq(Arc::as_ptr(&self.0), Arc::as_ptr(error))
+    }
+}
+
+/// The source delivered fewer bytes than the fill asked it for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("Source read returned {received} bytes for requested {requested} at {offset}")]
+pub struct ShortRead {
+    pub offset: u64,
+    pub requested: u64,
+    pub received: u64,
 }
 
 /// Why a buffer stopped serving bytes. Terminal: the first stop wins and a
@@ -107,7 +134,7 @@ pub enum BufferStop {
     /// missing file, a full disk, a dropped network volume, a cloud fetch), so
     /// a reader that hits it reports *that*, not whatever its decoder makes of
     /// the bytes that never came.
-    Failed(Arc<PlaybackError>),
+    Failed(SourceReadError),
 }
 
 /// Internal state protected by mutex.
@@ -129,7 +156,7 @@ struct SparseInner {
     demands: HashMap<u64, ReaderDemand>,
     /// How many `read()` calls are parked on `data_available`. A test waits on
     /// it to act only once a reader is provably blocked.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-instrumentation"))]
     parked_reads: usize,
 }
 
@@ -159,17 +186,18 @@ pub struct SparseStreamingBuffer {
     next_reader_id: AtomicU64,
     /// Process-unique id for this buffer, for log correlation (the fill's
     /// per-window fetch logs and the decoder's first-sample log carry it) and as
-    /// the [`crate::playback::data_source::FetchArbiter`] foreground designation.
+    /// the playback fetch arbiter's foreground designation.
     id: u64,
     /// Total bytes appended into this buffer (every fill window that landed,
     /// including a window re-fetched after a backward seek). Lets the decoder
-    /// report how much was fetched from coven to reach the first audio sample.
+    /// report how much was fetched from the source to reach the first audio
+    /// sample.
     bytes_fetched: AtomicU64,
     /// Every byte offset a reader was positioned at when `read()` served bytes,
     /// in call order. Lets a test see the demuxer's actual read pattern -- e.g.
     /// whether a seek jumped near the target (seektable) or read the file's end
     /// and bisected (binary search).
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-instrumentation"))]
     read_log: Mutex<Vec<u64>>,
 }
 
@@ -181,7 +209,7 @@ impl SparseStreamingBuffer {
                 ranges: Vec::new(),
                 stop: None,
                 demands: HashMap::new(),
-                #[cfg(test)]
+                #[cfg(any(test, feature = "test-instrumentation"))]
                 parked_reads: 0,
             }),
             total_size,
@@ -190,26 +218,27 @@ impl SparseStreamingBuffer {
             next_reader_id: AtomicU64::new(0),
             id: NEXT_BUFFER_ID.fetch_add(1, Ordering::Relaxed),
             bytes_fetched: AtomicU64::new(0),
-            #[cfg(test)]
+            #[cfg(any(test, feature = "test-instrumentation"))]
             read_log: Mutex::new(Vec::new()),
         }
     }
 
     /// This buffer's process-unique id, used to correlate fetch/first-sample
     /// logs for one track and to designate the foreground track in the
-    /// [`crate::playback::data_source::FetchArbiter`].
+    /// playback fetch arbiter.
     pub fn id(&self) -> u64 {
         self.id
     }
 
     /// Total bytes appended into this buffer so far. Read by the decoder to
-    /// report how much was fetched from coven before the first audio sample.
+    /// report how much was fetched from the source before the first audio
+    /// sample.
     pub fn bytes_fetched(&self) -> u64 {
         self.bytes_fetched.load(Ordering::Relaxed)
     }
 
     /// Test-only: the byte offsets `read()` served, in call order.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn read_log(&self) -> Vec<u64> {
         self.read_log.lock().unwrap().clone()
     }
@@ -218,7 +247,7 @@ impl SparseStreamingBuffer {
     /// bytes. A read parks in the same step that releases the lock it
     /// published its demand under, so whatever the caller does next reaches a
     /// blocked reader. Panics after 10s.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn wait_until_parked(&self, count: usize) {
         let deadline = Instant::now() + Duration::from_secs(10);
         loop {
@@ -349,7 +378,7 @@ impl SparseStreamingBuffer {
 
     /// Every live reader's current read position, ascending. Test-only -- the
     /// fill loop uses `demand_windows`, which carries each position's ceiling.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn demands_sorted(&self) -> Vec<u64> {
         self.demand_windows().into_iter().map(|d| d.pos).collect()
     }
@@ -414,14 +443,14 @@ impl SparseStreamingBuffer {
         Some((cursor, limit))
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn is_buffered(&self, pos: u64) -> bool {
         let inner = self.inner.lock().unwrap();
         inner.ranges.iter().any(|r| r.contains(pos))
     }
 
     /// Contiguous bytes buffered from `pos`; 0 if `pos` itself isn't buffered.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn contiguous_from(&self, pos: u64) -> u64 {
         let inner = self.inner.lock().unwrap();
         for range in &inner.ranges {
@@ -448,17 +477,26 @@ impl SparseStreamingBuffer {
     }
 
     /// Fetch on demand until the buffer stops or its last real user is
-    /// dropped. The wake signal remains private: this owner clones it for the
-    /// loop, then releases its own strong reference before every await.
+    /// dropped, `window` bytes at a time at most. The fill keeps one window
+    /// ahead of a reader with no ceiling (see `pick_window_gap`), and keeps one
+    /// window behind the most-behind reader before evicting. The wake signal
+    /// remains private: this owner clones it for the loop, then releases its own
+    /// strong reference before every await.
     ///
-    /// A failed fetch (or a short one) fails the buffer with that error, which
-    /// unblocks every reader with it, and returns it for the owner to report.
-    /// A failure on a buffer already stopped or dropped belongs to a track that
-    /// has left, so it returns `Ok` and nothing reports it.
-    pub async fn fill_on_demand<F, Fut>(self: Arc<Self>, fetch: F) -> Result<(), Arc<PlaybackError>>
+    /// A failed fetch (or a short one, as `E::from(ShortRead)`) fails the buffer
+    /// with that error, which unblocks every reader with it, and returns it for
+    /// the owner to report. A failure on a buffer already stopped or dropped
+    /// belongs to a track that has left, so it returns `Ok` and nothing reports
+    /// it.
+    pub async fn fill_on_demand<F, Fut, E>(
+        self: Arc<Self>,
+        window: u64,
+        fetch: F,
+    ) -> Result<(), Arc<E>>
     where
         F: Fn(u64, u64) -> Fut,
-        Fut: std::future::Future<Output = Result<Vec<u8>, PlaybackError>>,
+        Fut: std::future::Future<Output = Result<Vec<u8>, E>>,
+        E: std::error::Error + From<ShortRead> + Send + Sync + 'static,
     {
         let wake = self.fill_wake.clone();
         let weak_buffer = Arc::downgrade(&self);
@@ -484,9 +522,9 @@ impl SparseStreamingBuffer {
 
             let windows = buffer.demand_windows();
             if let Some(floor) = windows.first() {
-                buffer.evict_before(floor.pos.saturating_sub(KEEP_BEHIND));
+                buffer.evict_before(floor.pos.saturating_sub(window));
             }
-            let gap = pick_window_gap(&buffer, &windows, total);
+            let gap = pick_window_gap(&buffer, &windows, total, window);
             drop(buffer);
 
             let Some((gap_start, gap_end)) = gap else {
@@ -494,13 +532,14 @@ impl SparseStreamingBuffer {
                 continue;
             };
 
-            let window = FILL_WINDOW_SIZE.min(gap_end - gap_start);
-            let fetched = match fetch(gap_start, window).await {
-                Ok(data) if data.len() == window as usize => Ok(data),
-                Ok(data) => Err(PlaybackError::internal(format!(
-                    "Source read returned {} bytes for requested {window} at {gap_start}",
-                    data.len()
-                ))),
+            let len = window.min(gap_end - gap_start);
+            let fetched = match fetch(gap_start, len).await {
+                Ok(data) if data.len() == len as usize => Ok(data),
+                Ok(data) => Err(E::from(ShortRead {
+                    offset: gap_start,
+                    requested: len,
+                    received: data.len() as u64,
+                })),
                 Err(error) => Err(error),
             };
             let data = match fetched {
@@ -508,7 +547,9 @@ impl SparseStreamingBuffer {
                 Err(error) => {
                     let error = Arc::new(error);
                     return match weak_buffer.upgrade() {
-                        Some(buffer) if buffer.fail(error.clone()) => Err(error),
+                        Some(buffer) if buffer.fail(SourceReadError::new(error.clone())) => {
+                            Err(error)
+                        }
                         _ => {
                             debug!("fill_on_demand: read failed on a stopped or dropped buffer: {error}");
                             Ok(())
@@ -519,7 +560,7 @@ impl SparseStreamingBuffer {
 
             let Some(buffer) = weak_buffer.upgrade() else {
                 debug!(
-                    "fill_on_demand: buffer dropped during fetch, discarding {window} bytes at {gap_start}"
+                    "fill_on_demand: buffer dropped during fetch, discarding {len} bytes at {gap_start}"
                 );
                 return Ok(());
             };
@@ -540,7 +581,7 @@ impl SparseStreamingBuffer {
     /// Returns `false` when the buffer had already stopped -- teardown ran
     /// first, so the failure belongs to a track that has left the pipeline and
     /// there is nothing to report.
-    pub fn fail(&self, error: Arc<PlaybackError>) -> bool {
+    pub fn fail(&self, error: SourceReadError) -> bool {
         self.stop_with(BufferStop::Failed(error))
     }
 
@@ -575,34 +616,34 @@ impl SparseStreamingBuffer {
     }
 
     /// The source-read error this buffer failed with, if it did.
-    pub fn failure(&self) -> Option<Arc<PlaybackError>> {
+    pub fn failure(&self) -> Option<SourceReadError> {
         match &self.inner.lock().unwrap().stop {
             Some(BufferStop::Failed(error)) => Some(error.clone()),
             Some(BufferStop::Cancelled) | None => None,
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn ranges_count(&self) -> usize {
         let inner = self.inner.lock().unwrap();
         inner.ranges.len()
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn total_buffered(&self) -> u64 {
         let inner = self.inner.lock().unwrap();
         inner.ranges.iter().map(|r| r.data.len() as u64).sum()
     }
 
     /// The buffered ranges as `(start, end)` pairs.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn get_ranges(&self) -> Vec<(u64, u64)> {
         let inner = self.inner.lock().unwrap();
         inner.ranges.iter().map(|r| (r.start, r.end())).collect()
     }
 
     /// Number of live readers' demands currently registered.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn demand_count(&self) -> usize {
         self.inner.lock().unwrap().demands.len()
     }
@@ -730,7 +771,7 @@ impl BufferReader {
 
                     buf[..to_read]
                         .copy_from_slice(&range.data[offset_in_range..offset_in_range + to_read]);
-                    #[cfg(test)]
+                    #[cfg(any(test, feature = "test-instrumentation"))]
                     self.buffer.read_log.lock().unwrap().push(read_pos);
                     self.read_pos += to_read as u64;
                     // Advance the demand to where the next read will land so the
@@ -775,12 +816,12 @@ impl BufferReader {
                 self.last_wait_log = Some(now);
             }
             self.buffer.wake_fill();
-            #[cfg(test)]
+            #[cfg(any(test, feature = "test-instrumentation"))]
             {
                 inner.parked_reads += 1;
             }
             inner = self.buffer.data_available.wait(inner).unwrap();
-            #[cfg(test)]
+            #[cfg(any(test, feature = "test-instrumentation"))]
             {
                 inner.parked_reads -= 1;
             }

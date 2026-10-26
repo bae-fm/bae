@@ -12,6 +12,7 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 "$(git rev-parse --show-toplevel)/scripts/build-layout.sh"
 
 WORKSPACE_CRATES=(
+    bae-audio
     bae-automation
     bae-bridge
     bae-cast
@@ -174,6 +175,7 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
     CLIPPY_ARGS=(clippy --all-targets)
     core_changed=0
     util_changed=0
+    audio_changed=0
     MOBILE_CHECK_ARGS=(check --lib --target aarch64-apple-ios)
     for crate in "${DIRECTLY_CHANGED_CRATES[@]}"; do
         CLIPPY_ARGS+=(-p "$crate")
@@ -186,6 +188,10 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
                 util_changed=1
                 MOBILE_CHECK_ARGS+=(-p bae-util)
                 ;;
+            bae-audio)
+                audio_changed=1
+                MOBILE_CHECK_ARGS+=(-p bae-audio)
+                ;;
         esac
     done
     if [ "$core_changed" -eq 1 ]; then
@@ -193,6 +199,9 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
     fi
     if [ "$util_changed" -eq 1 ]; then
         CLIPPY_ARGS+=(--features bae-util/test-utils)
+    fi
+    if [ "$audio_changed" -eq 1 ]; then
+        CLIPPY_ARGS+=(--features bae-audio/test-utils,bae-audio/test-instrumentation)
     fi
     CLIPPY_ARGS+=(-- -D warnings)
     run_check "clippy (directly changed crates)" cargo "${CLIPPY_ARGS[@]}" || {
@@ -211,11 +220,11 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
         exit 1
     }
 
-    # The mobile apps build bae-core and bae-util without their desktop-only
-    # modules, where anything only those modules use is dead code and fails
-    # the build.
-    if [ "$core_changed" -eq 1 ] || [ "$util_changed" -eq 1 ]; then
-        run_check "bae-core and bae-util for iOS (desktop-only code)" \
+    # The mobile apps build bae-core, bae-util and bae-audio without their
+    # desktop-only modules, where anything only those modules use is dead code
+    # and fails the build.
+    if [ "$core_changed" -eq 1 ] || [ "$util_changed" -eq 1 ] || [ "$audio_changed" -eq 1 ]; then
+        run_check "bae-core, bae-util and bae-audio for iOS (desktop-only code)" \
             cargo "${MOBILE_CHECK_ARGS[@]}" || {
             echo "Gate code only desktop modules use with the same cfg and try again"
             exit 1

@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 /// A sparse buffer pre-filled with the whole byte slice, so a decode exercises
 /// the window logic without waiting on a fill.
-fn buffer_from(bytes: &[u8]) -> crate::playback::SharedSparseBuffer {
-    let buffer = crate::playback::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
+fn buffer_from(bytes: &[u8]) -> crate::sparse_buffer::SharedSparseBuffer {
+    let buffer = crate::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
     buffer.append_at(0, bytes);
     buffer
 }

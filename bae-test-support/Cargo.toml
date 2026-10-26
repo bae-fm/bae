@@ -21,6 +21,8 @@ path = "src/lib.rs"
 # below build on. bae-core dev-depends back on this crate; Cargo permits that
 # cycle because it runs only through dev-dependencies.
 bae-core = { path = "../bae-core", features = ["test-utils"] }
+# The decoded-audio shape the sample helpers read.
+bae-audio = { path = "../bae-audio" }
 # test-utils gives the test transport whose hosts `RemoteImageHost::route`
 # sends here.
 bae-util = { path = "../bae-util", features = ["test-utils"] }

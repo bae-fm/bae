@@ -257,7 +257,7 @@ async fn playback_error_reason_for_file(
     file: &DbFile,
 ) -> crate::ui::PlaybackErrorReason {
     use crate::playback::data_source::{create_audio_reader, FetchArbiter};
-    use crate::playback::sparse_buffer::create_sparse_buffer;
+    use bae_audio::sparse_buffer::create_sparse_buffer;
 
     let buffer = create_sparse_buffer(file.file_size as u64);
     let reader = create_audio_reader(manager, &file.id, FetchArbiter::new(), None, false);
@@ -292,7 +292,7 @@ async fn playback_error_reason_for_file(
     assert!(
         matches!(
             read,
-            Err(crate::playback::sparse_buffer::BufferStop::Failed(_))
+            Err(bae_audio::sparse_buffer::BufferStop::Failed(_))
         ),
         "the waiting read ends on the fetch failure: {read:?}"
     );

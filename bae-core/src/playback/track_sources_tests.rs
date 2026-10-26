@@ -329,7 +329,7 @@ async fn a_dropped_pass_stops_the_streams_its_tracks_read() {
     assert!(
         matches!(
             next_read,
-            Err(crate::playback::sparse_buffer::BufferStop::Cancelled)
+            Err(bae_audio::sparse_buffer::BufferStop::Cancelled)
         ),
         "the dropped pass stopped its stream: {next_read:?}"
     );

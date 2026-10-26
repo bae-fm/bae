@@ -1,5 +1,5 @@
 use super::*;
-use crate::audio_codec::ProbeResult;
+use bae_audio::ProbeResult;
 use crate::import::types::{CueAnalyzedAudioFile, CueFlacAnalysis, TrackFile};
 use std::sync::Arc;
 
@@ -178,7 +178,7 @@ INDEX 01 00:00:00
 /// to end with no gaps or overlaps.
 #[test]
 fn cue_backed_segments_emit_audio_pregap_byte_window() {
-    crate::audio_codec::init();
+    bae_audio::init();
     let audio_path = PathBuf::from(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/tests/fixtures/cue_ape/Test Album.ape"
@@ -208,7 +208,7 @@ INDEX 01 01:00:00
     .expect("write cue");
 
     let cue_sheet = crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue");
-    let probe = crate::audio_codec::probe_audio_from_path(
+    let probe = bae_audio::probe_audio_from_path(
         audio_path.to_str().expect("fixture path is UTF-8"),
     )
     .expect("analyze ape");
@@ -619,7 +619,7 @@ fn a_slice_before_a_data_track_ends_where_the_data_starts() {
 #[derive(Default)]
 struct CollectedSamples(Vec<i32>);
 
-impl crate::audio_codec::DecodedSink for CollectedSamples {
+impl bae_audio::DecodedSink for CollectedSamples {
     fn on_format(&mut self, _sample_rate: u32, _channels: u32) {}
 
     fn on_samples(&mut self, samples: &[i32]) {
@@ -636,7 +636,7 @@ impl crate::audio_codec::DecodedSink for CollectedSamples {
 /// decodes whole from it.
 #[test]
 fn a_pregap_in_the_final_frames_of_the_file_before_gets_its_byte() {
-    crate::audio_codec::init();
+    bae_audio::init();
     let temp = tempfile::tempdir().expect("tempdir");
     let sample_rate = 44_100u64;
     // Two seconds: 150 CD frames of 588 samples each.
@@ -646,8 +646,8 @@ fn a_pregap_in_the_final_frames_of_the_file_before_gets_its_byte() {
         let samples: Vec<i32> = (0..frames * 2)
             .map(|i| ((i as f64 * 0.013).sin() * 0.5 * i32::MAX as f64) as i32)
             .collect();
-        crate::audio_codec::encode_i32(
-            crate::audio_codec::EncodeFormat::Flac {
+        bae_audio::encode_i32(
+            bae_audio::EncodeFormat::Flac {
                 bits_per_sample: 16,
             },
             &samples,
@@ -676,7 +676,7 @@ FILE "second.flac" WAVE
     .expect("write cue");
 
     let probe = |path: &std::path::Path| {
-        crate::audio_codec::probe_audio_from_path(path.to_str().expect("UTF-8 path"))
+        bae_audio::probe_audio_from_path(path.to_str().expect("UTF-8 path"))
             .expect("probe")
     };
     let cue_pair = Arc::new(CueFlacAnalysis {
@@ -737,11 +737,11 @@ FILE "second.flac" WAVE
     );
 
     let buffer = || {
-        let buffer = crate::playback::sparse_buffer::create_sparse_buffer(first.len() as u64);
+        let buffer = bae_audio::sparse_buffer::create_sparse_buffer(first.len() as u64);
         buffer.append_at(0, &first);
         buffer
     };
-    let ground = crate::audio_codec::decode_audio(buffer(), None, None).expect("decode first");
+    let ground = bae_audio::decode_audio(buffer(), None, None).expect("decode first");
     let decode = crate::playback::stream_pipeline::StreamDecodeParams::new(
         vec![crate::playback::stream_pipeline::SegmentDecodeParams::new(
             buffer(),

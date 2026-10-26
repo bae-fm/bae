@@ -588,13 +588,13 @@ impl ResolvedTrackAudio {
     /// The WAV the track's stream is served as uncompressed: PCM at the depth
     /// it was stored at (16, 24 or 32 bits), or 16 for a lossy codec, which
     /// has no stored depth and decodes to nothing finer.
-    pub fn wav_stream_format(&self) -> crate::audio_codec::StreamEncodeFormat {
+    pub fn wav_stream_format(&self) -> bae_audio::StreamEncodeFormat {
         let bits_per_sample = match self.bits_per_sample {
             Some(17..=24) => 24,
             Some(25..) => 32,
             Some(_) | None => 16,
         };
-        crate::audio_codec::StreamEncodeFormat::PcmWav { bits_per_sample }
+        bae_audio::StreamEncodeFormat::PcmWav { bits_per_sample }
     }
 
     /// The silent frames bae generates before the track's first stored sample,

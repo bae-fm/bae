@@ -136,7 +136,7 @@ async fn test_cue_ape_records_correct_durations() {
 /// playback service uses). Compare against the XLD-split reference FLAC.
 #[tokio::test]
 async fn test_cue_ape_track2_samples_match_xld_reference() {
-    use bae_core::audio_codec::decode_audio;
+    use bae_audio::decode_audio;
 
     tracing_init();
 
@@ -324,7 +324,7 @@ impl CueApeTestFixture {
 /// the right region, with no decode errors shifting the audio.
 #[tokio::test]
 async fn test_cue_ape_track_playback_matches_reference() {
-    use bae_core::audio_codec::decode_audio;
+    use bae_audio::decode_audio;
 
     for (track_index, reference_file, label) in [
         (0usize, "01 Test Artist - Track One.flac", "track 1"),
@@ -389,7 +389,7 @@ async fn test_cue_ape_track_playback_matches_reference() {
 /// against the XLD reference starting at the 27s mark.
 #[tokio::test]
 async fn test_cue_ape_seek() {
-    use bae_core::audio_codec::decode_audio;
+    use bae_audio::decode_audio;
 
     let mut fixture = CueApeTestFixture::with_capture()
         .await
@@ -528,7 +528,7 @@ async fn test_cue_ape_seek() {
 /// the XLD-split reference FLAC (exact ground truth).
 #[tokio::test]
 async fn test_cue_ape_auto_advance_no_replay() {
-    use bae_core::audio_codec::decode_audio;
+    use bae_audio::decode_audio;
 
     let mut fixture = CueApeTestFixture::with_capture()
         .await

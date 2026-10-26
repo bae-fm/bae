@@ -123,7 +123,7 @@ pub(super) trait FrameOutput {
     fn push(&mut self, skip_start: usize, take_end: usize) -> bool;
 
     /// A packet the decoder accepted.
-    fn on_packet(&mut self, packet: crate::audio_codec::DecodedPacket);
+    fn on_packet(&mut self, packet: crate::DecodedPacket);
 }
 
 /// i32 → `DecodedSink` output stage (loudness measurement, save re-encode,
@@ -167,7 +167,7 @@ impl FrameOutput for SinkOutput<'_> {
         true
     }
 
-    fn on_packet(&mut self, packet: crate::audio_codec::DecodedPacket) {
+    fn on_packet(&mut self, packet: crate::DecodedPacket) {
         self.sink.on_packet(packet);
     }
 }
@@ -228,7 +228,7 @@ impl FrameOutput for TrackOutput<'_> {
         if !self.first_sample_logged {
             self.first_sample_logged = true;
             info!(
-                "first audio sample: buffer={} fetched {}B from coven in {}ms",
+                "first audio sample: buffer={} fetched {}B from its source in {}ms",
                 self.buffer.id(),
                 self.buffer.bytes_fetched(),
                 self.decode_start.elapsed().as_millis(),
@@ -238,7 +238,7 @@ impl FrameOutput for TrackOutput<'_> {
     }
 
     /// Playback takes nothing from the packets themselves.
-    fn on_packet(&mut self, _packet: crate::audio_codec::DecodedPacket) {}
+    fn on_packet(&mut self, _packet: crate::DecodedPacket) {}
 }
 
 /// The shared packet/frame/trim loop both decode paths run: read packets for
@@ -295,7 +295,7 @@ pub(super) unsafe fn run_decode_loop(
                 av_err_str(ret)
             ));
         }
-        out.on_packet(crate::audio_codec::DecodedPacket {
+        out.on_packet(crate::DecodedPacket {
             byte: u64::try_from(packet_position).ok(),
             sample: (packet_pts != AV_NOPTS_VALUE)
                 .then(|| pts_to_sample(packet_pts, time_base, sample_rate))

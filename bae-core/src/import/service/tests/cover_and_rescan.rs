@@ -431,7 +431,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         .expect("the candidate is stored")
         .snapshot;
     let audio_path = folder.join("01.flac");
-    let opens_before = crate::test_reads::count(crate::test_reads::FileRead::Probe, &audio_path);
+    let opens_before = bae_audio::test_reads::probes(&audio_path);
 
     service.queue_import_for_test(&folder.to_string_lossy(), "import-1").await;
     let result = service
@@ -460,7 +460,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         "got: {err:?}"
     );
     assert_eq!(
-        crate::test_reads::count(crate::test_reads::FileRead::Probe, &audio_path),
+        bae_audio::test_reads::probes(&audio_path),
         opens_before,
         "import must reuse the stored scan facts without reopening the audio probe",
     );

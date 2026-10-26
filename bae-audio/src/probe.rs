@@ -236,11 +236,8 @@ pub fn probe_audio_from_path(path: &str) -> Option<ProbeResult> {
 /// logged) when it cannot be opened, has no audio stream, or states no usable
 /// duration.
 fn open_and_probe(path: &str) -> Option<ProbeResult> {
-    #[cfg(test)]
-    crate::test_reads::record(
-        crate::test_reads::FileRead::Probe,
-        std::path::Path::new(path),
-    );
+    #[cfg(feature = "test-instrumentation")]
+    crate::test_reads::record_probe(std::path::Path::new(path));
     unsafe {
         use ffmpeg_sys_next::*;
 
@@ -354,8 +351,7 @@ pub fn seek_landing_bytes(path: &str, samples: &[u64]) -> Option<Vec<u64>> {
             );
 
         #[cfg(test)]
-        crate::test_reads::record_bytes(
-            crate::test_reads::FileRead::LandingSearch,
+        crate::test_reads::record_landing_search(
             std::path::Path::new(path),
             (*(*fmt_ctx).pb).bytes_read as u64,
         );
@@ -463,8 +459,7 @@ unsafe fn flac_final_frames(path: &str) -> Result<Vec<(i64, u64)>, String> {
         .ok_or_else(|| "cannot open it to read its final frames".to_string())?;
     let frames = flac_final_frames_in(fmt_ctx, stream_index);
     #[cfg(test)]
-    crate::test_reads::record_bytes(
-        crate::test_reads::FileRead::LandingSearch,
+    crate::test_reads::record_landing_search(
         std::path::Path::new(path),
         (*(*fmt_ctx).pb).bytes_read as u64,
     );

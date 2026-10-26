@@ -13,7 +13,7 @@ async fn listening_counts_consumed_audio_across_decoder_replacement_and_pause() 
     prepared.channels = 1;
     let fmt = prepared.track_fmt(StreamPosition::START);
     let (mut sink, stream, _) =
-        crate::playback::create_track_stream_pair_with_capacity(100, 1, 4000);
+        bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 4000);
     sink.push_samples(&vec![0.25; 4000]);
     let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, fmt)));
     let (mut audio_tx, audio_rx) = audio_event_channel();
@@ -45,7 +45,7 @@ async fn listening_counts_consumed_audio_across_decoder_replacement_and_pause() 
     // The decoder starts at thirty seconds after a seek. Only its hundred
     // consumed samples add to the nineteen seconds already heard.
     let (mut sink, stream, _) =
-        crate::playback::create_track_stream_pair_with_capacity(100, 1, 1000);
+        bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 1000);
     sink.push_samples(&vec![0.25; 1000]);
     let fmt = match &service.slot {
         PlaybackSlot::Active(cur) => cur.prepared.track_fmt(StreamPosition::from_millis(30_000)),
@@ -91,7 +91,7 @@ async fn a_counted_play_is_saved_again_only_at_its_next_boundary() {
     prepared.channels = 1;
     let fmt = prepared.track_fmt(StreamPosition::START);
     let (mut sink, stream, _) =
-        crate::playback::create_track_stream_pair_with_capacity(100, 1, 4000);
+        bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 4000);
     sink.push_samples(&vec![0.25; 4000]);
     let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, fmt)));
     let (mut audio_tx, audio_rx) = audio_event_channel();
@@ -166,8 +166,8 @@ async fn gapless_crossing_records_the_finishing_play_and_starts_a_distinct_one()
     };
     let first = prepared(TRACK_A);
     let second = prepared(TRACK_B);
-    let (mut a, source_a, _) = crate::playback::create_track_stream_pair_with_capacity(100, 1, 100);
-    let (mut b, source_b, _) = crate::playback::create_track_stream_pair_with_capacity(100, 1, 100);
+    let (mut a, source_a, _) = bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 100);
+    let (mut b, source_b, _) = bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 100);
     a.push_samples(&vec![0.25; 100]);
     a.mark_finished();
     b.push_samples(&vec![0.25; 100]);
@@ -218,7 +218,7 @@ async fn airplay_completion_waits_for_the_audio_still_in_the_receiver() {
         prepared.sample_rate = 100;
         prepared.channels = 1;
         let (mut sink, stream, _) =
-            crate::playback::create_track_stream_pair_with_capacity(100, 1, 4000);
+            bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 4000);
         sink.push_samples(&vec![0.25; 4000]);
         sink.mark_finished();
         let mut source =
@@ -324,7 +324,7 @@ async fn a_short_track_of_unknown_length_heard_to_its_end_counts_as_played() {
     prepared.sample_rate = 100;
     prepared.channels = 1;
     let (mut sink, stream, _) =
-        crate::playback::create_track_stream_pair_with_capacity(100, 1, 2000);
+        bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 2000);
     sink.push_samples(&vec![0.25; 2000]);
     sink.mark_finished();
     let mut source =

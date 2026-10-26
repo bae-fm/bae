@@ -4,15 +4,19 @@
 //! - Local files (non-storage releases, or storage releases with local backend)
 //! - Cloud storage (storage releases with cloud backend)
 
-use crate::playback::sparse_buffer::{SharedSparseBuffer, FILL_WINDOW_SIZE};
-#[cfg(test)]
-use crate::playback::sparse_buffer::{KEEP_BEHIND, MIN_READAHEAD};
 use crate::playback::PlaybackError;
+use bae_audio::sparse_buffer::{SharedSparseBuffer, SourceReadError};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::Notify;
 use tracing::{debug, error, info};
+
+/// How much a fill fetches at a time: 64 of coven's chunks, 4 MiB. The buffer
+/// keeps one window ahead of a reader that hasn't set its ceiling and one
+/// behind the most-behind reader, and import spaces a FLAC's scrub points so a
+/// seek to one reads from a single window.
+pub(crate) const FILL_WINDOW_SIZE: u64 = coven::CHUNK_SIZE as u64 * 64;
 
 /// Prioritizes audio byte fetches so the track the user is waiting to hear gets
 /// the bandwidth. One foreground track is designated at a time -- the playing
@@ -23,7 +27,7 @@ use tracing::{debug, error, info};
 /// the foreground via [`FetchArbiter::set_foreground`] whenever a track becomes
 /// current.
 pub struct FetchArbiter {
-    /// The [`crate::playback::sparse_buffer::SparseStreamingBuffer::id`] of the
+    /// The [`bae_audio::sparse_buffer::SparseStreamingBuffer::id`] of the
     /// foreground (playing) track, or `u64::MAX` for none.
     foreground_buffer: AtomicU64,
     /// Count of foreground fetches currently awaiting bytes. A preload fetch
@@ -163,7 +167,7 @@ fn fail_audio_read(on_error: FillErrorHandler, buffer: &SharedSparseBuffer, erro
     // returned: the user switched away while the open was in flight. The error
     // belongs to a track that has already left the pipeline, so there is
     // nothing left to report.
-    if !buffer.fail(error.clone()) {
+    if !buffer.fail(SourceReadError::new(error.clone())) {
         debug!("ignoring read failure on a stopped buffer: {error}");
         return;
     }
@@ -204,7 +208,7 @@ impl AudioDataReader for LocalReader {
             let file = tokio::sync::Mutex::new(file);
 
             let result = buffer
-                .fill_on_demand(|src_off, len| {
+                .fill_on_demand(FILL_WINDOW_SIZE, |src_off, len| {
                     let file = &file;
                     let path = &path;
                     async move {
@@ -377,7 +381,7 @@ impl AudioDataReader for CovenFileReader {
             // competing with the playing track.
             let fetched = AtomicU64::new(0);
             let started = Instant::now();
-            let result = buffer.fill_on_demand(|src_off, len| {
+            let result = buffer.fill_on_demand(FILL_WINDOW_SIZE, |src_off, len| {
                 let fut = stream.read_at(src_off, len);
                 let arbiter = &arbiter;
                 let fetched = &fetched;
@@ -472,3 +476,7 @@ fn spawn_window_prefetch(
 #[cfg(test)]
 #[path = "data_source_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "data_source_decode_tests.rs"]
+mod decode_tests;

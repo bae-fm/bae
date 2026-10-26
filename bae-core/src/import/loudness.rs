@@ -17,7 +17,7 @@ use crate::import::types::TrackFile;
 use crate::playback::data_source::LocalReader;
 use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
 use crate::playback::track_sources::{run_tracks_over_sources, SourceStream};
-use crate::playback::SharedSparseBuffer;
+use bae_audio::sparse_buffer::SharedSparseBuffer;
 
 /// The album loudness/peak, the tracks whose decode looked broken (import
 /// decode-verify), and the scrub points the decodes gave. `broken` carries a
@@ -45,7 +45,7 @@ enum TrackOutcome {
     },
     /// A read of the source failed, so the decode never saw the track's bytes.
     /// Says nothing about the audio.
-    Unreadable(Arc<crate::playback::PlaybackError>),
+    Unreadable(bae_audio::sparse_buffer::SourceReadError),
 }
 
 /// Where one loudness pass reports its scan: the candidate row's phase percent,
@@ -268,7 +268,7 @@ fn progress_fraction(frames_done: u64, total_frames: Option<u64>) -> Option<f32>
     total_frames.and_then(|total| (total > 0).then(|| frames_done.min(total) as f32 / total as f32))
 }
 
-impl crate::audio_codec::DecodedSink for LoudnessProgressSink {
+impl bae_audio::DecodedSink for LoudnessProgressSink {
     fn on_format(&mut self, sample_rate: u32, channels: u32) {
         match crate::loudness::LoudnessMeter::new(channels, sample_rate) {
             Ok(meter) => {
@@ -290,12 +290,12 @@ impl crate::audio_codec::DecodedSink for LoudnessProgressSink {
         self.discarded_packet_count = self.discarded_packet_count.saturating_add(count);
     }
 
-    fn on_stream(&mut self, stream: &crate::audio_codec::DecodedStream) {
+    fn on_stream(&mut self, stream: &bae_audio::DecodedStream) {
         self.scrub_point_takers
             .push(super::scrub_points::ScrubPointTaker::for_stream(stream));
     }
 
-    fn on_packet(&mut self, packet: crate::audio_codec::DecodedPacket) {
+    fn on_packet(&mut self, packet: bae_audio::DecodedPacket) {
         if let Some(Some(taker)) = self.scrub_point_takers.last_mut() {
             taker.observe(packet);
         }
@@ -392,7 +392,7 @@ fn measure_track(
 /// Why a track's decode could not go on.
 enum DecodeStop {
     /// A read of the source failed.
-    Unreadable(Arc<crate::playback::PlaybackError>),
+    Unreadable(bae_audio::sparse_buffer::SourceReadError),
     /// The decode itself failed, for the reason given.
     Failed(String),
 }
@@ -444,7 +444,7 @@ fn decode_track(
                 })
                 .collect())
         }
-        Err(crate::audio_codec::DecodeError::SourceRead(error)) => {
+        Err(bae_audio::DecodeError::SourceRead(error)) => {
             Err(DecodeStop::Unreadable(error))
         }
         Err(e) => {

@@ -10,7 +10,7 @@ use super::*;
 /// (`seek_to_byte`), or by sample; the lead-in is trimmed at `start_at_sample`
 /// and the decode stops at `stop_at_sample`.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn decode_audio_to_verifying_sink(
+pub fn decode_audio_to_verifying_sink(
     buffer: SharedSparseBuffer,
     seek_to_byte: Option<u64>,
     seek_to_sample: Option<u64>,

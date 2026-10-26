@@ -126,7 +126,7 @@ async fn test_auto_advance_plays_pregap() {
 /// 01: a seek counts from the track's start, as the player shows it.
 #[tokio::test]
 async fn test_cue_flac_seek() {
-    use bae_core::audio_codec::decode_audio;
+    use bae_audio::decode_audio;
 
     // Real-time capture: at full speed the decoder can finish track 2 and move
     // to the next track before the seek lands, leaving nothing after the seek.
@@ -299,7 +299,7 @@ async fn restore_without_a_saved_position_shows_the_track_start() {
 /// matches the XLD reference from INDEX 01.
 #[tokio::test]
 async fn test_direct_play_skips_pregap_cue_flac() {
-    use bae_core::audio_codec::decode_audio;
+    use bae_audio::decode_audio;
 
     let mut fixture = CueFlacTestFixture::new(support::TestAudioDevice::Capture)
         .await
@@ -412,9 +412,9 @@ fn generate_back_album_files(dir: &std::path::Path) {
             [sample, sample]
         })
         .collect();
-    bae_core::audio_codec::init();
-    let flac = bae_core::audio_codec::encode_i32(
-        bae_core::audio_codec::EncodeFormat::Flac {
+    bae_audio::init();
+    let flac = bae_audio::encode_i32(
+        bae_audio::EncodeFormat::Flac {
             bits_per_sample: 16,
         },
         &samples,

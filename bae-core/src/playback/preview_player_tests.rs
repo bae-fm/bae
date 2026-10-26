@@ -54,7 +54,7 @@ async fn switching_previews_keeps_the_main_player_resume() {
         .display()
         .to_string();
     let sample_rate = u64::from(
-        crate::audio_codec::probe_audio_from_path(&path)
+        bae_audio::probe_audio_from_path(&path)
             .expect("probe fixture")
             .sample_rate,
     );
@@ -79,9 +79,8 @@ async fn preview_plays_only_the_requested_sample_window() {
     let fixture_dir =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac");
     let path = fixture_dir.join("Test Album.flac");
-    let probe =
-        crate::audio_codec::probe_audio_from_path(path.to_str().expect("fixture path is UTF-8"))
-            .expect("probe fixture");
+    let probe = bae_audio::probe_audio_from_path(path.to_str().expect("fixture path is UTF-8"))
+        .expect("probe fixture");
     let sample_rate = u64::from(probe.sample_rate);
     let target = PreviewTarget::sample_range(
         path.display().to_string(),
@@ -124,8 +123,8 @@ async fn preview_plays_only_the_requested_sample_window() {
     let reference_bytes = std::fs::read(reference_path).expect("read reference fixture");
     let reference_buffer = create_sparse_buffer(reference_bytes.len() as u64);
     reference_buffer.append_at(0, &reference_bytes);
-    let reference = crate::audio_codec::decode_audio(reference_buffer, None, None)
-        .expect("decode reference fixture");
+    let reference =
+        bae_audio::decode_audio(reference_buffer, None, None).expect("decode reference fixture");
     let expected: Vec<f32> = reference
         .samples
         .iter()
@@ -148,9 +147,8 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
     let fixture_dir =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac");
     let path = fixture_dir.join("Test Album.flac");
-    let probe =
-        crate::audio_codec::probe_audio_from_path(path.to_str().expect("fixture path is UTF-8"))
-            .expect("probe fixture");
+    let probe = bae_audio::probe_audio_from_path(path.to_str().expect("fixture path is UTF-8"))
+        .expect("probe fixture");
     let sample_rate = u64::from(probe.sample_rate);
     let target = PreviewTarget::sample_range(
         path.display().to_string(),
@@ -180,8 +178,8 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
     let reference_bytes = std::fs::read(reference_path).expect("read reference fixture");
     let reference_buffer = create_sparse_buffer(reference_bytes.len() as u64);
     reference_buffer.append_at(0, &reference_bytes);
-    let reference = crate::audio_codec::decode_audio(reference_buffer, None, None)
-        .expect("decode reference fixture");
+    let reference =
+        bae_audio::decode_audio(reference_buffer, None, None).expect("decode reference fixture");
     let half_second = probe.sample_rate as usize * probe.channels as usize / 2;
     let expected: Vec<f32> = reference
         .samples
@@ -333,18 +331,17 @@ async fn failed_preview_seek_surfaces_idle() {
 /// driving a decoder with defaults.
 #[tokio::test]
 async fn resolve_preview_probe_rejects_absent_or_failed_probe() {
-    let unprobeable: Result<Option<crate::audio_codec::ProbeResult>, tokio::task::JoinError> =
-        Ok(None);
+    let unprobeable: Result<Option<bae_audio::ProbeResult>, tokio::task::JoinError> = Ok(None);
     assert!(resolve_preview_probe("path", unprobeable).is_none());
 
     let join_failed = tokio::spawn(async { panic!("preview probe panic") })
         .await
-        .map(|()| Option::<crate::audio_codec::ProbeResult>::None);
+        .map(|()| Option::<bae_audio::ProbeResult>::None);
     assert!(resolve_preview_probe("path", join_failed).is_none());
 }
 
-fn probe(sample_rate: u32, channels: u32) -> crate::audio_codec::ProbeResult {
-    crate::audio_codec::ProbeResult {
+fn probe(sample_rate: u32, channels: u32) -> bae_audio::ProbeResult {
+    bae_audio::ProbeResult {
         content_type: bae_util::content_type::ContentType::Flac,
         duration: Duration::from_secs(1),
         sample_rate,
@@ -382,7 +379,7 @@ fn resolve_preview_probe_rejects_zero_channels() {
 /// to another file, closes it.
 #[tokio::test(flavor = "multi_thread")]
 async fn ending_a_preview_closes_its_file() {
-    crate::audio_codec::init();
+    bae_audio::init();
     let dir = tempfile::TempDir::new().unwrap();
     let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac");
     let first = dir.path().join("first.flac");

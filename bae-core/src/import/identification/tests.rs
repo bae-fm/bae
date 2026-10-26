@@ -421,7 +421,7 @@ impl Fixture {
         FLAC_FIXTURES
             .iter()
             .map(|name| {
-                crate::audio_codec::probe_audio_from_path(dir.join(name).to_str().unwrap())
+                bae_audio::probe_audio_from_path(dir.join(name).to_str().unwrap())
                     .expect("fixture FLAC probes")
                     .duration
                     .as_millis() as u64

@@ -135,12 +135,12 @@ fn release_image_cue_writes_catalog_and_date() {
 /// Returns the temp dir — which has to outlive the read-back — and the
 /// tagged file's path.
 fn write_tags_to_encoded_flac(cover: Option<&[u8]>) -> (tempfile::TempDir, std::path::PathBuf) {
-    crate::audio_codec::init();
+    bae_audio::init();
     let samples: Vec<i32> = (0..4410)
         .map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32)
         .collect();
-    let flac = crate::audio_codec::encode_i32(
-        crate::audio_codec::EncodeFormat::Flac {
+    let flac = bae_audio::encode_i32(
+        bae_audio::EncodeFormat::Flac {
             bits_per_sample: 16,
         },
         &samples,
@@ -233,12 +233,12 @@ fn write_tags_round_trips_through_mp4_ilst() {
     use lofty::prelude::*;
     use lofty::tag::TagType;
 
-    crate::audio_codec::init();
+    bae_audio::init();
     let samples: Vec<i32> = (0..44_100 * 2)
         .map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32)
         .collect();
-    let m4a = crate::audio_codec::encode_i32(
-        crate::audio_codec::EncodeFormat::Aac { bitrate_kbps: 256 },
+    let m4a = bae_audio::encode_i32(
+        bae_audio::EncodeFormat::Aac { bitrate_kbps: 256 },
         &samples,
         44_100,
         2,

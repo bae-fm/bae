@@ -11,6 +11,7 @@ name = "bae_core"
 path = "src/lib.rs"
 
 [dependencies]
+bae-audio = { path = "../bae-audio" }
 bae-util = { path = "../bae-util" }
 coven = { workspace = true }
 rusqlite = { workspace = true }
@@ -85,16 +86,6 @@ ebur128 = "0.1.10"
 [target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows", target_os = "ios"))'.dependencies]
 cpal = "0.15"
 
-# FFmpeg decode/encode powers in-process audio playback. On desktop it is the
-# whole decode engine; on Android and iOS it is the in-core decode path (Android
-# additionally has an offload fast-path that skips it for hardware-supported
-# codecs). Linked for the cross targets via ffmpeg-sys-next's FFMPEG_DIR path —
-# see scripts/build-ffmpeg-{android,ios}.sh and the FFMPEG_DIR/BINDGEN_EXTRA_CLANG_ARGS
-# exports in bae-bridge/build-{android,ios}.sh.
-[target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows", target_os = "android", target_os = "ios"))'.dependencies]
-ffmpeg-next = { version = "8.1", default-features = false, features = ["codec", "format", "software-resampling"] }
-ffmpeg-sys-next = { version = "8.1", default-features = false, features = ["avcodec", "avformat", "swresample"] }
-
 # Whether a watched folder is on a network volume (src/import/volume.rs): a
 # drive letter mapped to a share looks local by spelling, and only
 # `GetDriveTypeW` tells it apart.
@@ -102,6 +93,10 @@ ffmpeg-sys-next = { version = "8.1", default-features = false, features = ["avco
 windows-sys = { version = "0.61", features = ["Win32_Storage_FileSystem", "Win32_System_WindowsProgramming"] }
 
 [dev-dependencies]
+# The test codec helpers (WAV reader, whole-buffer encoder), and the
+# instrumentation bae-core's unit tests read: probe counts, buffer ranges and
+# reads.
+bae-audio = { path = "../bae-audio", features = ["test-utils", "test-instrumentation"] }
 # The test transport and the retry that sleeps no real time, for bae-core's
 # own unit tests.
 bae-util = { path = "../bae-util", features = ["test-utils"] }
@@ -130,6 +125,10 @@ image = { version = "0.25", default-features = false, features = ["jpeg", "png",
 # Encodes the non-UTF-8 tags the import tests read back.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dev-dependencies]
 encoding_rs = "0.8"
+
+# The scrub-point test reads a FLAC's frames straight off FFmpeg's demuxer.
+[target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows", target_os = "android", target_os = "ios"))'.dev-dependencies]
+ffmpeg-next = { version = "8.1", default-features = false, features = ["codec", "format", "software-resampling"] }
 
 [[test]]
 name = "test_close_open_files"
@@ -201,9 +200,10 @@ oauth-providers = []
 # macOS bridge builds turn it on; release builds leave it out.
 dev-reset = []
 # Forwards coven's test-utils so bae-core's own integration tests get the
-# re-exported clock/id fakes (FixedClock, …), and bae-util's so they get its
-# test transport and a retry that sleeps no real time.
-test-utils = ["coven/test-utils", "bae-util/test-utils"]
+# re-exported clock/id fakes (FixedClock, …), bae-util's so they get its test
+# transport and a retry that sleeps no real time, and bae-audio's so they get
+# its test codec helpers.
+test-utils = ["coven/test-utils", "bae-util/test-utils", "bae-audio/test-utils"]
 
 [lints]
 workspace = true

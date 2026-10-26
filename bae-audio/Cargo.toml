@@ -1,0 +1,51 @@
+[package]
+name = "bae-audio"
+version = "0.0.0-dev"
+authors = ["dima"]
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+
+[lib]
+name = "bae_audio"
+path = "src/lib.rs"
+
+[dependencies]
+# Content types, which a probe and a decoded stream name.
+bae-util = { path = "../bae-util" }
+# The lock-free ring a decode writes one track's PCM into (src/track_stream.rs).
+rtrb = "0.3.2"
+# The fill's wake signal (src/sparse_buffer.rs) and a track's ready signal
+# (src/track_stream.rs).
+tokio = { version = "1.0", features = ["sync"] }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+# FFmpeg decode/encode. On desktop it is the whole decode engine; on Android and
+# iOS it is the in-core decode path (Android additionally has an offload
+# fast-path that skips it for hardware-supported codecs). Linked for the cross
+# targets via ffmpeg-sys-next's FFMPEG_DIR path — see
+# scripts/build-ffmpeg-{android,ios}.sh and the FFMPEG_DIR/BINDGEN_EXTRA_CLANG_ARGS
+# exports in bae-bridge/build-{android,ios}.sh.
+[target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows", target_os = "android", target_os = "ios"))'.dependencies]
+ffmpeg-next = { version = "8.1", default-features = false, features = ["codec", "format", "software-resampling"] }
+ffmpeg-sys-next = { version = "8.1", default-features = false, features = ["avcodec", "avformat", "swresample"] }
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+tempfile = "3.8"
+
+[features]
+default = []
+# The WAV reader and the whole-buffer i32 encoder bae-core's and bae-subsonic's
+# tests build and check audio with.
+test-utils = []
+# What bae-core's own unit tests read back and drive: the files each probe
+# opened (for tests that assert a second look at a folder opens nothing), where
+# a buffer's readers read and what it holds, and a non-blocking push into a
+# track's stream. It records as it runs, so only bae-core's dev-dependency turns
+# it on, never a build that ships or a debug app.
+test-instrumentation = []
+
+[lints]
+workspace = true

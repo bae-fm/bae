@@ -431,7 +431,7 @@ fn test_compute_discid_routes_cue_ape() {
     )
     .unwrap();
     let audio_path = folder.join("Test Album.ape");
-    let opens_before = crate::test_reads::count(crate::test_reads::FileRead::Probe, &audio_path);
+    let opens_before = bae_audio::test_reads::probes(&audio_path);
     let computed = read_rip_artifacts(&categorized)
         .disc_id
         .computed()
@@ -439,7 +439,7 @@ fn test_compute_discid_routes_cue_ape() {
         .map(|[disc]: [crate::signals::ComputedDiscId; 1]| disc)
         .expect("CUE+APE pair must compute one disc ID");
     assert_eq!(
-        crate::test_reads::count(crate::test_reads::FileRead::Probe, &audio_path),
+        bae_audio::test_reads::probes(&audio_path),
         opens_before,
         "DiscID must reuse the duration retained by the folder scan"
     );
@@ -468,15 +468,15 @@ fn test_compute_discid_routes_cue_ape() {
 fn test_compute_discid_routes_cue_mp3() {
     use tempfile::TempDir;
 
-    crate::audio_codec::init();
+    bae_audio::init();
     let tmp = TempDir::new().unwrap();
     let folder = tmp.path();
     let mp3_path = folder.join("Test Album.mp3");
     // 9s silent stereo MP3 — short enough to keep the test fast, long
     // enough to span the CUE's three 3-second tracks.
     let samples = vec![0i32; 44_100 * 9 * 2];
-    let mp3_bytes = crate::audio_codec::encode_i32(
-        crate::audio_codec::EncodeFormat::Mp3 { bitrate_kbps: 320 },
+    let mp3_bytes = bae_audio::encode_i32(
+        bae_audio::EncodeFormat::Mp3 { bitrate_kbps: 320 },
         &samples,
         44_100,
         2,

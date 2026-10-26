@@ -27,9 +27,9 @@ fn noise_flac(seconds: u32, seed: u32) -> Vec<u8> {
             (state as i32 >> 16) << 16
         })
         .collect();
-    bae_core::audio_codec::init();
-    bae_core::audio_codec::encode_i32(
-        bae_core::audio_codec::EncodeFormat::Flac {
+    bae_audio::init();
+    bae_audio::encode_i32(
+        bae_audio::EncodeFormat::Flac {
             bits_per_sample: 16,
         },
         &samples,

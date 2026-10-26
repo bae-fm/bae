@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 use tracing::warn;
 
-use crate::audio_codec::ProbeResult;
+use bae_audio::ProbeResult;
 use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, SegmentSpan};
 use crate::import::types::{CueFlacAnalysis, TrackAudio, TrackFile};
 use crate::import::ImportError;
@@ -21,7 +21,7 @@ use super::ImportService;
 
 fn ensure_probe_audio_format(
     path: &Path,
-    probe: &crate::audio_codec::ProbeResult,
+    probe: &bae_audio::ProbeResult,
 ) -> Result<(), ImportError> {
     if probe.sample_rate == 0 || probe.channels == 0 {
         return Err(ImportError::UnusableFile {
@@ -306,7 +306,7 @@ fn cue_file_landing_bytes(
         warn!("cue_track_start_bytes: non-UTF-8 path, cannot seek byte offsets: {file_path:?}");
         return None;
     };
-    let landings = crate::audio_codec::seek_landing_bytes(path, &start_samples)?;
+    let landings = bae_audio::seek_landing_bytes(path, &start_samples)?;
     Some(start_samples.into_iter().zip(landings).collect())
 }
 

@@ -73,12 +73,12 @@ fn missing_title_falls_back_to_filename_stem() {
 /// needed.
 #[test]
 fn mp3_with_id3v2_tags() {
-    crate::audio_codec::init();
+    bae_audio::init();
     // 0.5s of stereo 44.1kHz silence is enough for FFmpeg to emit a
     // valid MP3 the tag writer can attach to.
     let samples = vec![0i32; 44_100 / 2 * 2];
-    let mp3_bytes = crate::audio_codec::encode_i32(
-        crate::audio_codec::EncodeFormat::Mp3 { bitrate_kbps: 320 },
+    let mp3_bytes = bae_audio::encode_i32(
+        bae_audio::EncodeFormat::Mp3 { bitrate_kbps: 320 },
         &samples,
         44_100,
         2,
