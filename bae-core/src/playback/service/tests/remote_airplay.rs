@@ -9,43 +9,65 @@ struct FakeAirPlayControlState {
     failure: std::sync::OnceLock<String>,
 }
 
-struct FakeAirPlayControl(Arc<FakeAirPlayControlState>);
+struct FakeAirPlayControl {
+    state: Arc<FakeAirPlayControlState>,
+    latency: std::time::Duration,
+}
 
 impl crate::playback::airplay_output::AirPlayStreamControl for FakeAirPlayControl {
     fn flush(&self) {
-        self.0
+        self.state
             .flushed
             .fetch_add(1, std::sync::atomic::Ordering::Release);
     }
     fn reanchor(&self) {
-        self.0
+        self.state
             .reanchored
             .fetch_add(1, std::sync::atomic::Ordering::Release);
     }
     fn failure(&self) -> Option<String> {
-        self.0.failure.get().cloned()
+        self.state.failure.get().cloned()
+    }
+    fn latency(&self) -> std::time::Duration {
+        self.latency
     }
 }
 
-/// Install an AirPlay renderer on `service` with a fake control published, a
-/// tagged saved local output (volume `saved_tag`), and the given latency.
+/// A fake AirPlay session bound as the live one: what it recorded, and the
+/// session itself, which the test holds the way an output stream does.
+#[must_use = "the session is live only while this is held"]
+struct InstalledAirPlay {
+    state: Arc<FakeAirPlayControlState>,
+    _session: Arc<dyn crate::playback::airplay_output::AirPlayStreamControl>,
+}
+
+/// Install an AirPlay renderer on `service` with a tagged saved local output
+/// (volume `saved_tag`) and a fake session at the receiver `latency` bound as
+/// the live one.
 fn install_airplay(
     service: &mut PlaybackService,
     latency: std::time::Duration,
     saved_tag: f32,
-) -> Arc<FakeAirPlayControlState> {
+) -> InstalledAirPlay {
     let state = Arc::new(FakeAirPlayControlState::default());
-    let control: Arc<dyn crate::playback::airplay_output::AirPlayStreamControl> =
-        Arc::new(FakeAirPlayControl(state.clone()));
+    let session: Arc<dyn crate::playback::airplay_output::AirPlayStreamControl> =
+        Arc::new(FakeAirPlayControl {
+            state: state.clone(),
+            latency,
+        });
+    let control = Arc::new(crate::playback::airplay_output::AirPlayControl::new());
+    control.bind(&session);
     let saved = TestAudioOutput::new();
     saved.set_volume(saved_tag);
     service.renderer = Renderer::AirPlay(renderer::AirPlayRenderer::new(
         test_device(),
         control,
         Box::new(saved),
-        latency,
     ));
-    state
+    InstalledAirPlay {
+        state,
+        _session: session,
+    }
 }
 
 #[tokio::test]
@@ -53,7 +75,8 @@ async fn airplay_pause_flushes_and_resume_reanchors() {
     let (_home, mut service, _progress_rx) = test_playback_service().await;
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
-    let state = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
+    let airplay = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
+    let state = &airplay.state;
 
     service.pause();
     assert_eq!(
@@ -79,9 +102,10 @@ async fn airplay_position_is_offset_by_receiver_latency() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
-    install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
+    // The live session's receiver reported a quarter-second latency.
+    let _airplay = install_airplay(&mut service, std::time::Duration::from_millis(250), 0.5);
 
-    // A tick at 5 s of decoded position: the audible position is 5 − 2 = 3 s.
+    // A tick at 5 s of decoded position: the audible position is 5 − 0.25 s.
     let mut fmt = test_track_fmt("t");
     fmt.timeline = TrackTimeline::new(Some(std::time::Duration::from_secs(60)), std::time::Duration::ZERO);
     service
@@ -96,8 +120,8 @@ async fn airplay_position_is_offset_by_receiver_latency() {
         }
     };
     assert_eq!(
-        position, 3_000,
-        "position reflects the ~2 s receiver latency"
+        position, 4_750,
+        "position reflects the live session's receiver latency"
     );
 }
 
@@ -106,7 +130,7 @@ async fn airplay_stop_restores_the_local_output_and_returns_to_local() {
     let (_home, mut service, _progress_rx) = test_playback_service().await;
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
-    install_airplay(&mut service, std::time::Duration::from_secs(2), 0.777);
+    let _airplay = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.777);
 
     service.stop().await;
 
@@ -135,7 +159,7 @@ async fn airplay_stop_reads_the_live_position_and_returns_to_local() {
         TrackPhase::Playing,
     );
     let saved_tag = 0.5;
-    install_airplay(&mut service, std::time::Duration::from_secs(2), saved_tag);
+    let _airplay = install_airplay(&mut service, std::time::Duration::from_secs(2), saved_tag);
 
     // Playback progressed on AirPlay: decode is local, so the slot's position is
     // the live one the resume reads.
@@ -176,7 +200,8 @@ async fn airplay_seek_flushes_and_reanchors() {
         ))),
         audio_rx,
     ));
-    let state = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
+    let airplay = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
+    let state = &airplay.state;
 
     service.seek(StreamPosition::from_duration(std::time::Duration::from_secs(20))).await;
 
@@ -208,7 +233,7 @@ async fn airplay_advance_on_local_end_stays_on_airplay() {
         test_prepared_track(TRACK_A, create_sparse_buffer(1_024)),
         TrackPhase::Playing,
     );
-    install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
+    let _airplay = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
 
     service.handle_auto_advance(TRACK_A.to_string()).await;
 
@@ -226,9 +251,10 @@ impl crate::playback::airplay_output::AirPlaySink for NoopAirPlaySink {
         &self,
         _source: Box<dyn crate::playback::airplay_output::PcmSource>,
     ) -> Result<Arc<dyn crate::playback::airplay_output::AirPlayStreamControl>, AudioError> {
-        Ok(Arc::new(FakeAirPlayControl(Arc::new(
-            FakeAirPlayControlState::default(),
-        ))))
+        Ok(Arc::new(FakeAirPlayControl {
+            state: Arc::new(FakeAirPlayControlState::default()),
+            latency: std::time::Duration::from_secs(2),
+        }))
     }
 }
 
@@ -248,7 +274,6 @@ async fn play_on_airplay_swaps_the_sink_and_keeps_decode_local() {
         .handle_play_on_airplay(renderer::AirPlayConnect::new(
             Box::new(NoopAirPlaySink),
             test_device(),
-            std::time::Duration::from_secs(2),
         ))
         .await;
 
@@ -273,7 +298,8 @@ async fn airplay_receiver_death_ends_airplay_and_returns_to_local() {
         test_prepared_track(TRACK_T, create_sparse_buffer(1_024)),
         TrackPhase::Playing,
     );
-    let state = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
+    let airplay = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
+    let state = &airplay.state;
     while progress_rx.try_recv().is_ok() {}
 
     // The receiver went away: the session reports the transport as failed.

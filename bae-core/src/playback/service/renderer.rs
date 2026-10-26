@@ -90,9 +90,12 @@ impl Renderer {
         }
     }
 
+    /// How long the audio sent to an AirPlay receiver takes to be heard: the
+    /// live session's latency. None when no audio is on its way to a receiver
+    /// — playing here, on a fetching device, or with no AirPlay stream open.
     pub(super) fn airplay_latency(&self) -> Option<Duration> {
         match self {
-            Self::AirPlay(airplay) => Some(airplay.latency),
+            Self::AirPlay(airplay) => airplay.control.latency(),
             Self::Local | Self::Remote(_) => None,
         }
     }
@@ -133,56 +136,45 @@ impl RemoteEnd {
 }
 
 /// A live AirPlay session driven through the swapped output sink. The decode
-/// pipeline runs unchanged; this holds the receiver, the control handle the
-/// service drives pause/resume/seek through, the local output to restore when
-/// AirPlay ends, and the receiver latency the audible position is offset by.
+/// pipeline runs unchanged; this holds the receiver, the handle on its live
+/// session the service drives pause/resume/seek through and reads the receiver
+/// latency from, and the local output to restore when AirPlay ends.
 pub(super) struct AirPlayRenderer {
     device: RemoteDevice,
-    control: Arc<dyn crate::playback::airplay_output::AirPlayStreamControl>,
+    control: Arc<crate::playback::airplay_output::AirPlayControl>,
     /// The local (cpal/aaudio) output, put back when AirPlay playback ends.
     saved_output: Box<dyn crate::playback::audio_output::AudioOutput>,
-    /// The receiver's audio latency — the offset between what has been sent and
-    /// what is audible, for the position the UI shows.
-    latency: Duration,
 }
 
 impl AirPlayRenderer {
     pub(super) fn new(
         device: RemoteDevice,
-        control: Arc<dyn crate::playback::airplay_output::AirPlayStreamControl>,
+        control: Arc<crate::playback::airplay_output::AirPlayControl>,
         saved_output: Box<dyn crate::playback::audio_output::AudioOutput>,
-        latency: Duration,
     ) -> Self {
         Self {
             device,
             control,
             saved_output,
-            latency,
         }
     }
 }
 
 /// Everything a `PlayOnAirPlay` command carries: the sink that opens the
 /// receiver session (built off the service thread by bae-cast with the device's
-/// address, encryption, and latency), the device, and the receiver latency. A
-/// manual `Debug` keeps `PlaybackCommand`'s derive working.
+/// address and encryption) and the device. A manual `Debug` keeps
+/// `PlaybackCommand`'s derive working.
 pub(crate) struct AirPlayConnect {
     sink: Box<dyn crate::playback::airplay_output::AirPlaySink>,
     device: RemoteDevice,
-    latency: Duration,
 }
 
 impl AirPlayConnect {
     pub(super) fn new(
         sink: Box<dyn crate::playback::airplay_output::AirPlaySink>,
         device: RemoteDevice,
-        latency: Duration,
     ) -> Self {
-        Self {
-            sink,
-            device,
-            latency,
-        }
+        Self { sink, device }
     }
 }
 
@@ -190,7 +182,6 @@ impl std::fmt::Debug for AirPlayConnect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AirPlayConnect")
             .field("device", &self.device)
-            .field("latency", &self.latency)
             .finish_non_exhaustive()
     }
 }
@@ -620,11 +611,7 @@ impl PlaybackService {
     /// slot, the decoder, and the advance path are unchanged — only where the
     /// audio goes changes, so `play_track` takes its ordinary local branch.
     pub(super) async fn handle_play_on_airplay(&mut self, connect: AirPlayConnect) {
-        let AirPlayConnect {
-            sink,
-            device,
-            latency,
-        } = connect;
+        let AirPlayConnect { sink, device } = connect;
 
         let current = self.current_track_position();
         let target = self.current_play_target();
@@ -639,12 +626,8 @@ impl PlaybackService {
         let airplay_output =
             crate::playback::airplay_output::AirPlayOutput::new(sink, volume, control.clone());
         let saved_output = std::mem::replace(&mut self.audio_output, Box::new(airplay_output));
-        self.renderer = Renderer::AirPlay(AirPlayRenderer::new(
-            device.clone(),
-            control,
-            saved_output,
-            latency,
-        ));
+        self.renderer =
+            Renderer::AirPlay(AirPlayRenderer::new(device.clone(), control, saved_output));
         self.hand_over_to_device(device, current, target).await;
     }
 

@@ -24,11 +24,10 @@ mod dlna;
 pub mod renderer;
 
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 use bae_core::config::SubsonicCredential;
 use bae_core::library::AppServices;
-use bae_core::playback::airplay_output::{AirPlaySink, PCM_SAMPLE_RATE};
+use bae_core::playback::airplay_output::AirPlaySink;
 use bae_core::playback::{PlaybackProgress, RemoteDevice, RemotePlayback};
 use bae_core::renderer::{
     CoverUrlProvider, MediaUrlProvider, RendererChannel, RendererFlavor, RendererMediaSource,
@@ -51,17 +50,6 @@ use renderer::{
     RendererConnection, RendererDevice, RendererDiscovery, RendererServiceType, ReportedRenderer,
 };
 
-/// The RAOP audio latency the sender assumes when a receiver doesn't report one
-/// — ~2 s at 44.1 kHz. Used both to pace the stream ahead and to offset the
-/// position the UI shows back to what is audible.
-const AIRPLAY_LATENCY_FRAMES: u32 = 88_200;
-
-/// [`AIRPLAY_LATENCY_FRAMES`] as time, at the rate the receiver is sent PCM:
-/// the offset playback takes off the position it shows.
-fn airplay_latency() -> Duration {
-    Duration::from_secs_f64(f64::from(AIRPLAY_LATENCY_FRAMES) / f64::from(PCM_SAMPLE_RATE))
-}
-
 /// Build the push-audio sink for an AirPlay receiver, or a kind-specific error
 /// when it can't be driven: one advertising a setting bae can't read, a
 /// PIN-gated receiver, or one offering only encryption the sender can't
@@ -81,7 +69,6 @@ fn build_airplay_sink(
         Dialect::AirPlay2 => Ok(Box::new(Ap2Sink {
             receiver: addr,
             airplay_port: port,
-            latency_frames: Some(AIRPLAY_LATENCY_FRAMES),
             // The receiver's features decide whether it requires PTP or accepts NTP.
             timing: TimingProtocol::from_features(capabilities.features),
         })),
@@ -101,7 +88,6 @@ fn build_airplay_sink(
                 receiver: addr,
                 rtsp_port: port,
                 encryption,
-                latency_frames: Some(AIRPLAY_LATENCY_FRAMES),
                 // The receiver plays at its hardware volume; bae attenuates locally
                 // in the output drain, so seed the session at full.
                 initial_volume: 1.0,
@@ -398,7 +384,6 @@ impl CastController {
                     id: device.id,
                     name: device.name,
                 },
-                airplay_latency(),
             );
             return Ok(());
         }

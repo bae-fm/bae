@@ -16,6 +16,7 @@
 //! pause/resume — no sockets, no real device.
 
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use tracing::warn;
 
@@ -44,9 +45,9 @@ pub trait PcmSource: Send {
 }
 
 /// The transport controls the playback service drives a live AirPlay stream
-/// through: pause (FLUSH), resume/seek (re-anchor), and whether the audio flow
-/// failed. Implemented by the RAOP and AirPlay 2 sessions in bae-cast, and by
-/// the test fake.
+/// through: pause (FLUSH), resume/seek (re-anchor), whether the audio flow
+/// failed, and the receiver latency the stream runs at. Implemented by the RAOP
+/// and AirPlay 2 sessions in bae-cast, and by the test fake.
 pub trait AirPlayStreamControl: Send + Sync {
     /// Stop sending and drop the receiver's buffer (pause / pre-seek).
     fn flush(&self);
@@ -55,6 +56,11 @@ pub trait AirPlayStreamControl: Send + Sync {
     /// Why the audio flow to the receiver failed for good (a dead receiver),
     /// when it has, so the service should end AirPlay.
     fn failure(&self) -> Option<String>;
+    /// How long audio sent now takes to be heard: the receiver latency the
+    /// session paces its sends ahead by, settled during its setup. Playback
+    /// holds the position, the play it records, and the track's completion
+    /// back by it.
+    fn latency(&self) -> Duration;
 }
 
 /// Starts pushing decoded PCM to an AirPlay receiver. bae-cast implements it
@@ -68,6 +74,9 @@ pub trait AirPlaySink: Send {
     ) -> Result<Arc<dyn AirPlayStreamControl>, AudioError>;
 }
 
+/// The playback service's handle on whichever receiver session is live. The
+/// AirPlay renderer outlives each session: every output stream opens its own
+/// (and owns it, so dropping the stream tears it down), and binds it here.
 pub(crate) struct AirPlayControl {
     session: Mutex<Option<std::sync::Weak<dyn AirPlayStreamControl>>>,
 }
@@ -79,7 +88,8 @@ impl AirPlayControl {
         }
     }
 
-    fn bind(&self, session: &Arc<dyn AirPlayStreamControl>) {
+    /// Make `session` the live one. The stream that opened it holds it.
+    pub(crate) fn bind(&self, session: &Arc<dyn AirPlayStreamControl>) {
         *self.session.lock().unwrap() = Some(Arc::downgrade(session));
     }
 
@@ -91,20 +101,24 @@ impl AirPlayControl {
             .and_then(std::sync::Weak::upgrade)
             .map(|session| run(session.as_ref()))
     }
-}
 
-impl AirPlayStreamControl for AirPlayControl {
-    fn flush(&self) {
+    pub(crate) fn flush(&self) {
         self.with_session(|session| session.flush());
     }
 
-    fn reanchor(&self) {
+    pub(crate) fn reanchor(&self) {
         self.with_session(|session| session.reanchor());
     }
 
-    fn failure(&self) -> Option<String> {
+    pub(crate) fn failure(&self) -> Option<String> {
         // No session bound has nothing to fail.
         self.with_session(|session| session.failure()).flatten()
+    }
+
+    /// The live session's receiver latency. With no session live, no audio is
+    /// on its way to a receiver, so there is none.
+    pub(crate) fn latency(&self) -> Option<Duration> {
+        self.with_session(|session| session.latency())
     }
 }
 
@@ -401,6 +415,9 @@ mod tests {
         fn failure(&self) -> Option<String> {
             None
         }
+        fn latency(&self) -> Duration {
+            Duration::from_millis(250)
+        }
     }
 
     impl AirPlaySink for FakeSink {
@@ -417,8 +434,8 @@ mod tests {
     }
 
     /// `create_stream` converts the drained f32 to 16-bit stereo and publishes a
-    /// control into the slot; the control drives flush/reanchor and drop tears the
-    /// session down.
+    /// control into the slot; the control drives flush/reanchor, reads the
+    /// session's latency, and drop tears the session down.
     #[test]
     fn create_stream_drives_the_sink_and_publishes_control() {
         let source = playing_source(4);
@@ -441,10 +458,12 @@ mod tests {
         control.reanchor();
         assert!(state.flushed.load(Ordering::Acquire));
         assert!(state.reanchored.load(Ordering::Acquire));
+        assert_eq!(control.latency(), Some(Duration::from_millis(250)));
 
-        // Dropping the stream tears the session down.
+        // Dropping the stream tears the session down; no audio is in flight.
         drop(stream);
         assert!(state.torn_down.load(Ordering::Acquire));
+        assert_eq!(control.latency(), None);
     }
 
     /// A track the converter can't be set up for is refused before anything

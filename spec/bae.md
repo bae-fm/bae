@@ -2222,6 +2222,11 @@ it gets MP3.
 or offers only an encryption bae doesn't implement, is refused with that
 reason.
 
+bae sends audio ahead of what the receiver plays by the delay the receiver
+reports when the connection is set up, or two seconds when it reports none.
+The position shown, the play recorded in history, and the end of each track
+follow what the receiver is playing: each is held back by that same delay.
+
 A receiver takes 44.1 kHz stereo, so bae converts every other track on the way
 out. A track bae can't set up a conversion for doesn't play on the speaker,
 which says it can't play the track's sample rate; it is never sent

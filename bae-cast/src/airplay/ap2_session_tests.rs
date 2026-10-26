@@ -237,6 +237,7 @@ fn build_response(cseq: &str, body: &[u8]) -> Vec<u8> {
 use crate::airplay::secure_rng::SecureRng;
 use crate::airplay::srp::SrpGroup;
 use crate::airplay::tlv8::{state, tlv_type, Tlv8};
+use bae_core::playback::airplay_output::AirPlayStreamControl;
 use bae_core::playback::airplay_output::PcmSource;
 use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
@@ -304,9 +305,21 @@ struct Captured {
     pcm: Vec<u8>,
 }
 
+/// The latency a session settled on: the frames it paces by, and the time it
+/// tells playback through [`AirPlayStreamControl::latency`].
+struct SessionLatency {
+    paced_frames: u32,
+    told: Duration,
+}
+
 /// Run a whole AirPlay 2 session against the scripted fake receiver with the
-/// sender using `timing`, returning what the receiver saw.
-fn run_full_ap2_session(timing: super::super::airplay2::TimingProtocol) -> Captured {
+/// sender using `timing`, the receiver reporting `audio_latency` frames on its
+/// SETUP stream response (or none), returning what the receiver saw and the
+/// latency the session settled on.
+fn run_full_ap2_session(
+    timing: super::super::airplay2::TimingProtocol,
+    audio_latency: Option<u64>,
+) -> (Captured, SessionLatency) {
     let tcp = TcpListener::bind(("127.0.0.1", 0)).unwrap();
     let addr = tcp.local_addr().unwrap();
     // Bind the audio (data) socket up front so its real port rides in SETUP.
@@ -443,13 +456,19 @@ fn run_full_ap2_session(timing: super::super::airplay2::TimingProtocol) -> Captu
                     "eventPort".to_string(),
                     Plist::Integer(1),
                 )])),
-                ("SETUP", 1) => bplist::encode(&Plist::Dict(vec![(
-                    "streams".to_string(),
-                    Plist::Array(vec![Plist::Dict(vec![
+                ("SETUP", 1) => {
+                    let mut stream = vec![
                         ("dataPort".to_string(), Plist::Integer(u64::from(data_port))),
                         ("controlPort".to_string(), Plist::Integer(1)),
-                    ])]),
-                )])),
+                    ];
+                    if let Some(frames) = audio_latency {
+                        stream.push(("audioLatency".to_string(), Plist::Integer(frames)));
+                    }
+                    bplist::encode(&Plist::Dict(vec![(
+                        "streams".to_string(),
+                        Plist::Array(vec![Plist::Dict(stream)]),
+                    )]))
+                }
                 _ => Vec::new(),
             };
             writer
@@ -492,22 +511,30 @@ fn run_full_ap2_session(timing: super::super::airplay2::TimingProtocol) -> Captu
         addr.ip(),
         addr.port(),
         Box::new(FixedSource { packets_left: 5 }),
-        Some(88_200),
         timing,
         Arc::new(crate::airplay::stream::SystemClock::new()),
     )
     .expect("AirPlay 2 session starts");
 
     let captured = server.join().unwrap();
+    let paced_frames = session.control.stream.latency_frames();
+    let session: Arc<dyn AirPlayStreamControl> = Arc::new(session);
+    let told = session.latency();
     drop(session);
-    captured
+    (captured, SessionLatency { paced_frames, told })
 }
 
 /// A full NTP session: the control order, the shk, and the decrypted PCM, with
-/// NTP timing (no network-time anchor).
+/// NTP timing (no network-time anchor), at the default latency for a receiver
+/// that reports none.
 #[test]
 fn full_ap2_session_pairs_sets_up_and_streams_encrypted_audio() {
-    let c = run_full_ap2_session(super::super::airplay2::TimingProtocol::Ntp);
+    let (c, latency) = run_full_ap2_session(super::super::airplay2::TimingProtocol::Ntp, None);
+    assert_eq!(
+        latency.told,
+        Duration::from_secs(2),
+        "a receiver that reports no latency gets the 2 s default"
+    );
     assert_eq!(
         c.methods,
         vec!["SETUP", "SETUP", "SETPEERS", "SETRATEANCHORTIME", "RECORD"],
@@ -531,10 +558,28 @@ fn full_ap2_session_pairs_sets_up_and_streams_encrypted_audio() {
 /// the network-time anchor — the decision `TimingProtocol::from_features` makes.
 #[test]
 fn ptp_receiver_gets_ptp_timing_and_the_network_anchor() {
-    let c = run_full_ap2_session(super::super::airplay2::TimingProtocol::Ptp);
+    let (c, _) = run_full_ap2_session(super::super::airplay2::TimingProtocol::Ptp, None);
     assert_eq!(c.timing_protocol, "PTP");
     assert!(
         c.anchor_has_network_time,
         "PTP carries the network-time anchor in SETRATEANCHORTIME"
+    );
+}
+
+/// A receiver that reports its `audioLatency` (11 025 frames, 0.25 s): the
+/// session paces by it, and playback is told that latency, not the ~2 s
+/// default.
+#[test]
+fn playback_is_told_the_latency_the_receiver_reports() {
+    let (_, latency) =
+        run_full_ap2_session(super::super::airplay2::TimingProtocol::Ntp, Some(11_025));
+    assert_eq!(
+        latency.paced_frames, 11_025,
+        "the session paces by the reported latency"
+    );
+    assert_eq!(
+        latency.told,
+        Duration::from_millis(250),
+        "playback offsets by the latency the session paces by"
     );
 }

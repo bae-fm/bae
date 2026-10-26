@@ -15,6 +15,7 @@
 use std::io::{BufReader, Read, Write};
 use std::net::{IpAddr, TcpStream, UdpSocket};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use bae_core::playback::airplay_output::{PcmSource, PCM_CHANNELS, PCM_SAMPLE_RATE};
 use tracing::warn;
@@ -478,7 +479,6 @@ impl Ap2Session {
         receiver: IpAddr,
         airplay_port: u16,
         source: Box<dyn PcmSource>,
-        latency_frames: Option<u32>,
         timing: super::airplay2::TimingProtocol,
         clock: Arc<dyn MonotonicClock>,
     ) -> Result<Self, Ap2Error> {
@@ -530,11 +530,8 @@ impl Ap2Session {
         };
         let ports = control.run_setup_sequence(&shk, &params)?;
 
-        // The receiver's reported latency wins; the caller's value is the fallback.
-        let latency = ports
-            .audio_latency_frames
-            .or(latency_frames)
-            .unwrap_or(DEFAULT_LATENCY_FRAMES);
+        // The receiver's reported latency, else the dialect's default.
+        let latency = ports.audio_latency_frames.unwrap_or(DEFAULT_LATENCY_FRAMES);
         let endpoints = StreamEndpoints {
             receiver,
             audio_port: ports.data_port,
@@ -577,6 +574,11 @@ impl Ap2Session {
 
     pub(crate) fn reanchor(&self) -> Result<(), Ap2Error> {
         self.control.reanchor()
+    }
+
+    /// The receiver latency the stream paces by, settled by the SETUP sequence.
+    pub(crate) fn latency(&self) -> Duration {
+        self.control.stream.latency()
     }
 
     /// Why the audio flow to the receiver failed for good (a dead

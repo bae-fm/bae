@@ -12,6 +12,7 @@
 
 use std::net::{IpAddr, UdpSocket};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use bae_core::playback::airplay_output::{PcmSource, PCM_CHANNELS, PCM_SAMPLE_RATE};
 use tracing::warn;
@@ -251,7 +252,6 @@ impl RaopSession {
         rtsp_port: u16,
         source: Box<dyn PcmSource>,
         cipher: RaopCipher,
-        latency_frames: Option<u32>,
         volume: f32,
         clock: Arc<dyn MonotonicClock>,
     ) -> Result<Self, RaopError> {
@@ -283,11 +283,8 @@ impl RaopSession {
             volume,
         )?;
 
-        // The receiver's reported latency wins; the caller's value is the fallback,
-        // and the constant only the last resort when neither is known.
-        let latency = reported_latency
-            .or(latency_frames)
-            .unwrap_or(DEFAULT_LATENCY_FRAMES);
+        // The receiver's reported latency, else the buffer AirPort Express expects.
+        let latency = reported_latency.unwrap_or(DEFAULT_LATENCY_FRAMES);
         let endpoints = StreamEndpoints {
             receiver,
             audio_port: negotiated.server_port,
@@ -332,6 +329,11 @@ impl RaopSession {
         self.control.reanchor();
     }
 
+    /// The receiver latency the stream paces by, settled by the handshake.
+    pub(crate) fn latency(&self) -> Duration {
+        self.control.stream.latency()
+    }
+
     /// Why the audio flow to the receiver failed for good (a dead
     /// receiver), when it has, so the session should be ended.
     pub(crate) fn failure(&self) -> Option<String> {
@@ -353,6 +355,7 @@ impl Drop for RaopSession {
 mod tests {
     use super::*;
     use crate::airplay::crypto::apple_public_key;
+    use bae_core::playback::airplay_output::AirPlayStreamControl;
     use std::io::{BufRead, BufReader, Write};
     use std::net::TcpListener;
 
@@ -475,8 +478,81 @@ mod tests {
         );
     }
 
+    /// A source with nothing to send: the session runs, no audio flows.
+    struct SilentSource;
+    impl PcmSource for SilentSource {
+        fn next_frames(&mut self, _out: &mut [i16]) -> usize {
+            0
+        }
+    }
+
+    /// A whole RAOP session against a scripted loopback receiver that reports
+    /// `Audio-Latency: 11025` on RECORD: playback is told the latency the
+    /// session paces by, the receiver's, not the ~2 s default.
+    #[test]
+    fn playback_is_told_the_latency_the_receiver_reports() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let addr = listener.local_addr().unwrap();
+        // The receiver's audio and control ports, bound so the stream's sends land.
+        let audio = UdpSocket::bind(("127.0.0.1", 0)).unwrap();
+        let control = UdpSocket::bind(("127.0.0.1", 0)).unwrap();
+        let (audio_port, control_port) = (
+            audio.local_addr().unwrap().port(),
+            control.local_addr().unwrap().port(),
+        );
+
+        let server = std::thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            let mut writer = stream;
+            // Answer every request until the sender closes the connection.
+            loop {
+                let (method, cseq, _body) = read_request(&mut reader);
+                if method.is_empty() {
+                    break;
+                }
+                let extra = match method.as_str() {
+                    "SETUP" => format!(
+                        "Transport: RTP/AVP/UDP;unicast;server_port={audio_port};\
+                         control_port={control_port};timing_port=1\r\n"
+                    ),
+                    "RECORD" => "Audio-Latency: 11025\r\n".to_string(),
+                    _ => String::new(),
+                };
+                writer
+                    .write_all(format!("RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\n{extra}\r\n").as_bytes())
+                    .unwrap();
+                writer.flush().unwrap();
+            }
+        });
+
+        let session = RaopSession::start(
+            addr.ip(),
+            addr.port(),
+            Box::new(SilentSource),
+            RaopCipher::none(),
+            1.0,
+            Arc::new(crate::airplay::stream::SystemClock::new()),
+        )
+        .expect("the RAOP session starts");
+
+        let paced = session.control.stream.latency_frames();
+        let session: Arc<dyn AirPlayStreamControl> = Arc::new(session);
+        let told = session.latency();
+        drop(session);
+        server.join().unwrap();
+
+        assert_eq!(paced, 11_025, "the session paces by the reported latency");
+        assert_eq!(
+            told,
+            Duration::from_millis(250),
+            "playback offsets by the latency the session paces by"
+        );
+    }
+
     /// Read one RTSP request from the fake receiver's socket: the method, the
-    /// CSeq, and the body (drained by Content-Length).
+    /// CSeq, and the body (drained by Content-Length). A closed connection
+    /// reads as an empty method.
     fn read_request(reader: &mut impl BufRead) -> (String, String, String) {
         let mut line = String::new();
         reader.read_line(&mut line).unwrap();

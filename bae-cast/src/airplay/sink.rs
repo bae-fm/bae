@@ -7,6 +7,7 @@
 
 use std::net::IpAddr;
 use std::sync::Arc;
+use std::time::Duration;
 
 use bae_core::playback::airplay_output::{AirPlaySink, AirPlayStreamControl, PcmSource};
 use bae_core::playback::AudioError;
@@ -26,8 +27,6 @@ pub(crate) struct RaopSink {
     /// The encryption the receiver requires — `None` for `et=0`, `RsaAes` for
     /// `et=1`.
     pub encryption: RaopEncryption,
-    /// The receiver's reported audio latency in frames, if known.
-    pub latency_frames: Option<u32>,
     pub initial_volume: f32,
 }
 
@@ -46,7 +45,6 @@ impl AirPlaySink for RaopSink {
             self.rtsp_port,
             source,
             cipher,
-            self.latency_frames,
             self.initial_volume,
             Arc::new(SystemClock::new()),
         )
@@ -70,6 +68,10 @@ impl AirPlayStreamControl for RaopSession {
     fn failure(&self) -> Option<String> {
         self.failure()
     }
+
+    fn latency(&self) -> Duration {
+        self.latency()
+    }
 }
 
 /// The parameters an [`AirPlaySink`] needs to open an AirPlay 2 session: pair
@@ -78,7 +80,6 @@ pub(crate) struct Ap2Sink {
     pub receiver: IpAddr,
     /// The receiver's AirPlay control port (`_airplay._tcp`, usually 7000).
     pub airplay_port: u16,
-    pub latency_frames: Option<u32>,
     /// The clock the receiver requires, decided from its features — PTP or NTP.
     pub timing: TimingProtocol,
 }
@@ -92,7 +93,6 @@ impl AirPlaySink for Ap2Sink {
             self.receiver,
             self.airplay_port,
             source,
-            self.latency_frames,
             self.timing,
             Arc::new(SystemClock::new()),
         )
@@ -117,5 +117,9 @@ impl AirPlayStreamControl for Ap2Session {
 
     fn failure(&self) -> Option<String> {
         self.failure()
+    }
+
+    fn latency(&self) -> Duration {
+        self.latency()
     }
 }

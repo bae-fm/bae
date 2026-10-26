@@ -20,7 +20,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use bae_core::playback::airplay_output::PcmSource;
+use bae_core::playback::airplay_output::{PcmSource, PCM_SAMPLE_RATE};
 use tracing::{debug, warn};
 
 use super::crypto::RaopCipher;
@@ -267,6 +267,12 @@ impl RaopStreamControl {
     /// audible.
     pub(super) fn latency_frames(&self) -> u32 {
         self.latency_frames
+    }
+
+    /// [`latency_frames`](Self::latency_frames) as time, at the rate the
+    /// stream carries PCM: what playback holds its audible position back by.
+    pub(super) fn latency(&self) -> Duration {
+        Duration::from_secs_f64(f64::from(self.latency_frames) / f64::from(PCM_SAMPLE_RATE))
     }
 
     /// The re-anchor counter the audio thread watches: a change means restart the
