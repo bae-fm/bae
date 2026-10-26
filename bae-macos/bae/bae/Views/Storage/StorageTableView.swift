@@ -34,6 +34,10 @@ struct StorageTableView: NSViewRepresentable {
     private var outboxStore
     @Environment(StorageManagerStore.self)
     private var storageManagerStore
+    @Environment(\.surfaceTone)
+    private var tone
+    @Environment(\.accentChoice)
+    private var accent
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
@@ -47,7 +51,12 @@ struct StorageTableView: NSViewRepresentable {
             runner: runner,
             imageStore: imageStore,
             outboxStore: outboxStore,
+            appearance: appearance,
         )
+    }
+
+    private var appearance: HostedAppearance {
+        HostedAppearance(tone: tone, accent: accent)
     }
 
     func makeNSView(context: Context) -> NSScrollView {
@@ -116,10 +125,17 @@ struct StorageTableView: NSViewRepresentable {
             outboxStore: outboxStore,
             sortingEnabled: sortingEnabled,
         )
+        let appearanceChanged = coordinator.updateAppearance(appearance)
 
         // A new generation or changed count means the rows changed identity or
-        // length, so the table must reload from the list.
-        if coordinator.syncRows(totalCount: totalCount, epoch: epoch) {
+        // length, so the table must reload from the list. A changed tone or
+        // accent redraws the cells, which host their content apart from the
+        // window and so don't follow it on their own.
+        let rowsChanged = coordinator.syncRows(
+            totalCount: totalCount,
+            epoch: epoch
+        )
+        if rowsChanged || appearanceChanged {
             tableView.reloadData()
         }
         coordinator.holdRowsInView()
@@ -156,6 +172,9 @@ extension StorageTableView {
         private let runner: StorageActionRunner
         private var imageStore: ImageStore
         private var outboxStore: OutboxStore
+        /// The tone and accent of the window the table is in, which its
+        /// hosted cells draw in.
+        private var appearance: HostedAppearance
         weak var tableView: NSTableView?
 
         private var rootEpoch: LoadEpoch?
@@ -179,6 +198,7 @@ extension StorageTableView {
             runner: StorageActionRunner,
             imageStore: ImageStore,
             outboxStore: OutboxStore,
+            appearance: HostedAppearance,
         ) {
             self.list = list
             self.selection = selection
@@ -190,6 +210,7 @@ extension StorageTableView {
             self.runner = runner
             self.imageStore = imageStore
             self.outboxStore = outboxStore
+            self.appearance = appearance
         }
 
         func update(
@@ -202,6 +223,14 @@ extension StorageTableView {
             self.imageStore = imageStore
             self.outboxStore = outboxStore
             self.sortingEnabled = sortingEnabled
+        }
+
+        /// Take the window's tone and accent. Returns whether either changed,
+        /// which the drawn cells must be redrawn for.
+        func updateAppearance(_ appearance: HostedAppearance) -> Bool {
+            let changed = appearance != self.appearance
+            self.appearance = appearance
+            return changed
         }
 
         /// Detect a changed list generation or row count. Returns whether the
@@ -485,7 +514,8 @@ extension StorageTableView.Coordinator {
 
     /// SwiftUI content for a cell, wrapped with the environment values the
     /// hosted cell views read at the leaf (`ImageView` needs `ImageStore`;
-    /// the storage badge reads `OutboxStore`).
+    /// the storage badge reads `OutboxStore`), and the window's tone and
+    /// accent, which a hosted cell doesn't inherit.
     @ViewBuilder
     private func content(
         forRow row: Int,
@@ -494,6 +524,7 @@ extension StorageTableView.Coordinator {
         releaseCell(row: row, column: column)
             .environment(imageStore)
             .environment(outboxStore)
+            .hostedAppearance(appearance)
     }
 
     private func releaseCell(

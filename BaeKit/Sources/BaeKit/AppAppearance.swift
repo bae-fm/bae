@@ -36,21 +36,32 @@ private struct AppearanceStyle: ViewModifier {
     }
 }
 
-/// The tone and accent of the window a view is drawn in, for a view hosted
-/// apart from the window's own SwiftUI tree — a table cell's — which inherits
-/// neither. Its appearance it takes from the window it is in.
-private struct HostedAppearance: ViewModifier {
-    let accent: AccentChoice
-    let tone: SurfaceTone
+/// The tone and accent of the window a view is drawn in, handed to a view
+/// hosted apart from the window's own SwiftUI tree — a table cell's — which
+/// inherits neither.
+public struct HostedAppearance: Equatable, Sendable {
+    public let tone: SurfaceTone
+    public let accent: AccentChoice
+
+    public init(tone: SurfaceTone, accent: AccentChoice) {
+        self.tone = tone
+        self.accent = accent
+    }
+}
+
+/// Draws a hosted view in a `HostedAppearance`. Its light or dark appearance
+/// it takes from the window it is in.
+private struct HostedAppearanceStyle: ViewModifier {
+    let appearance: HostedAppearance
 
     @Environment(\.colorScheme)
     private var colorScheme
 
     func body(content: Content) -> some View {
         content.toned(
-            tone,
-            accent: accent,
-            accentColor: accent.color(in: colorScheme)
+            appearance.tone,
+            accent: appearance.accent,
+            accentColor: appearance.accent.color(in: colorScheme)
         )
     }
 }
@@ -85,10 +96,7 @@ extension View {
 
     /// Draw in the tone and accent of the window around a view that is
     /// hosted apart from that window's SwiftUI tree, such as a table cell.
-    public func hostedAppearance(
-        accent: AccentChoice,
-        tone: SurfaceTone
-    ) -> some View {
-        modifier(HostedAppearance(accent: accent, tone: tone))
+    public func hostedAppearance(_ appearance: HostedAppearance) -> some View {
+        modifier(HostedAppearanceStyle(appearance: appearance))
     }
 }

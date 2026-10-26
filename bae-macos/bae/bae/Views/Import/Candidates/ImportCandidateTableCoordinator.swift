@@ -23,7 +23,7 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     /// The rows of `list` the table was last loaded with.
     private var shownRows: ImportCandidateTableRows?
     /// The appearance the table's rows were last drawn in.
-    private var drawnAppearance: ImportListRowEnvironment.Appearance?
+    private var drawnAppearance: HostedAppearance?
     /// The content the table last took, which a new delivery is read against.
     private var content: ImportCandidateTableContent?
     /// Each row in view's hold on its page, by row.

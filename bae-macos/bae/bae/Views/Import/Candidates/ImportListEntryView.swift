@@ -28,13 +28,8 @@ struct ImportListRowEnvironment {
     /// `nil` in a preview or a test with no bridge behind it.
     let importer: Importer?
     let candidateRuntime: AnyPublisher<BridgeCandidateRuntimeChange, Never>
-    let appearance: Appearance
-
     /// The tone and accent the window draws in.
-    struct Appearance: Equatable {
-        let tone: SurfaceTone
-        let accent: AccentChoice
-    }
+    let appearance: HostedAppearance
 }
 
 /// One row of the import list, with what it is drawn with.
@@ -70,10 +65,7 @@ struct ImportListEntryView: View {
                 \.candidateRuntimePublisher,
                 entry.environment.candidateRuntime
             )
-            .hostedAppearance(
-                accent: entry.environment.appearance.accent,
-                tone: entry.environment.appearance.tone
-            )
+            .hostedAppearance(entry.environment.appearance)
     }
 
     @ViewBuilder

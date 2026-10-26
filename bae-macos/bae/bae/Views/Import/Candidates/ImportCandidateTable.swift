@@ -42,7 +42,7 @@ struct ImportCandidateTable: NSViewRepresentable {
             imageStore: imageStore,
             importer: importer,
             candidateRuntime: candidateRuntime,
-            appearance: ImportListRowEnvironment.Appearance(
+            appearance: HostedAppearance(
                 tone: tone,
                 accent: accent
             )
