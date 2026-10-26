@@ -1,9 +1,10 @@
 use super::*;
 
-/// The album, release, artist, composer, work, import candidate, and invalid
-/// import folder detail views read live through one subscription each, whose id moves in place as
-/// the view shows another item. A macro rather than a generic: uniffi exports concrete
-/// objects and records, so each detail needs its own named types.
+/// The album, release, artist, composer, work, import candidate, invalid
+/// import folder, and storage inspector detail views read live through one
+/// subscription each, whose id moves in place as the view shows another item.
+/// A macro rather than a generic: uniffi exports concrete objects and records,
+/// so each detail needs its own named types.
 macro_rules! detail_subscription {
     (
         object: $object:ident,
@@ -103,6 +104,20 @@ impl DetailValue for crate::types::BridgeImportCandidateDetail {
 #[cfg(feature = "desktop")]
 impl DetailValue for crate::types::BridgeInvalidCandidateDetail {
     type Core = bae_core::import::InvalidCandidateDetail;
+}
+
+// Gated on the target, as the export queue its transfers include is.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl DetailValue for crate::types::BridgeStorageInspector {
+    type Core = bae_core::library::storage_inspector::StorageInspector;
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+detail_subscription! {
+    object: StorageInspectorSubscription,
+    subscribe: subscribe_storage_inspector,
+    snapshot: BridgeStorageInspectorSnapshot,
+    value: crate::types::BridgeStorageInspector,
 }
 
 #[cfg(feature = "desktop")]

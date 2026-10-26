@@ -1,6 +1,7 @@
 //! The in-memory export queue's types. Its snapshot is the single source of
-//! truth for the Storage Manager's Exporting pane while a release is being
-//! copied out to a user directory.
+//! truth for a release's export in the Storage Manager's inspector and for
+//! the automation surface's export status while a release is being copied out
+//! to a user directory.
 
 use super::release_queue::{
     ReleaseQueueContents, ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueRow,

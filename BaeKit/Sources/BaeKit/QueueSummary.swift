@@ -43,21 +43,7 @@ public enum QueueSummary {
 }
 
 extension BridgeOutboxSnapshot {
-    public var summaryText: String { QueueSummary.line(summaryParts) }
-
     /// The user's pause target. `Pausing` still counts as requested even though
     /// the provider write already in progress has not finished yet.
     public var pauseRequested: Bool { pauseState != .running }
 }
-
-extension BridgeDownloadSnapshot {
-    public var summaryText: String { QueueSummary.line(summaryParts) }
-}
-
-// The export queue is desktop-gated, so `BridgeOutputSnapshot` isn't generated
-// for iOS. The outbox and download snapshots exist on both platforms.
-#if !os(iOS)
-    extension BridgeOutputSnapshot {
-        public var summaryText: String { QueueSummary.line(summaryParts) }
-    }
-#endif

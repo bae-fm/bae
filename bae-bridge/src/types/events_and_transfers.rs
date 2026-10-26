@@ -375,32 +375,12 @@ pub struct BridgeOutputOp {
     pub kind: BridgeOutputKind,
 }
 
-/// Per-state counts for the export queue.
-#[derive(Debug, Clone, Default, uniffi::Record)]
-pub struct BridgeOutputProgress {
-    pub queued: u32,
-    pub active: u32,
-    pub failed: u32,
-}
-
-/// The export queue as the Exporting pane renders it. Mirrors `OutputSnapshot`.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeOutputSnapshot {
-    pub outputs: Vec<BridgeOutputOp>,
-    pub total: BridgeOutputProgress,
-    /// The summary line's parts, in core's order.
-    pub summary_parts: Vec<BridgeCountLabel>,
-    /// Whether the person paused the queue.
-    pub paused: bool,
-}
-
 /// One file in a release's upload group. Mirrors `UploadFileOp` with its state
 /// flattened; how far it has gone is the transfer keyed by its `file_id`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeUploadFileOp {
     pub pending: Option<crate::types::BridgePendingWait>,
     pub file_id: String,
-    pub release_file_key: Option<std::sync::Arc<BridgeRowKey>>,
     pub label: BridgeUploadFileLabel,
     pub state: BridgeUploadFileState,
 }
@@ -420,22 +400,18 @@ pub enum BridgeOutboxPauseState {
     Paused,
 }
 
-/// The upload queue as the Storage Manager renders it, sent each time it
-/// changes; the bytes its files move are its transfers.
+/// The upload queue's summary, sent each time the queue changes: which
+/// releases have uploads queued and whether it is paused. Mirrors
+/// `OutboxSummary`. The files are the storage inspector's, read for one
+/// release; the bytes they move are the queue's transfers.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeOutboxSnapshot {
     /// Increases with each change to the queue, so a subscriber that skipped
     /// values can still tell an enqueue it was told about has finished.
     pub revision: u64,
-    /// A group leaves when coven has no uploads remaining for its release.
-    pub upload_groups: Vec<BridgeUploadReleaseGroup>,
-    pub other_files: Vec<BridgeUploadFileOp>,
-    /// `upload_groups` per release id.
+    /// Each release with uploads queued, and how many wait and are being
+    /// sent. A release leaves when coven has none remaining for it.
     pub per_release: std::collections::HashMap<String, BridgeUploadProgress>,
-    /// Across all uploads.
-    pub total: BridgeUploadProgress,
-    /// The summary line's parts, in core's order.
-    pub summary_parts: Vec<BridgeCountLabel>,
     pub pause_state: BridgeOutboxPauseState,
 }
 

@@ -706,40 +706,6 @@ forward! {
 // Gated on the target, not on `desktop`: bae-core gates `mod export` itself on the
 // target, so the export queue and the track exporter exist on every non-mobile
 // build whether or not this crate's `desktop` feature is on.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[uniffi::export]
-impl AppHandle {
-    pub fn subscribe_outputs(
-        &self,
-        callback: Box<dyn crate::types::OutputCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_channel(
-            |services, runtime| services.subscribe_output_values(runtime),
-            move |value| match value {
-                Ok(value) => {
-                    callback.on_value(crate::types::BridgeOutputSnapshot::from_core(value))
-                }
-                Err(error) => callback.on_error(BridgeError::database_query(error)),
-            },
-        )
-    }
-}
-
-forward! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    async this => {
-        /// The export queue as the Exporting pane shows it now, each entry
-        /// beside its release as the library holds it.
-        fn get_output_snapshot() -> crate::types::BridgeOutputSnapshot {
-            this.services
-                .output_snapshot()
-                .await
-                .map(crate::types::BridgeOutputSnapshot::from_core)
-                .map_err(BridgeError::database_query)
-        }
-    }
-}
-
 forward! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     sync this => {

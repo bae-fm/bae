@@ -3,9 +3,9 @@ import Foundation
 /// Controls for the in-memory download (pin) queue: enqueue releases to pin,
 /// pause/resume the queue, and cancel downloads.
 /// Mirrors the outbox controls on `Sync`, wrapping the corresponding
-/// `handle.*` methods. The queue itself lives in bae-core; the Downloads pane
-/// reads its state from `DownloadStore` (the download projection is the sole
-/// writer).
+/// `handle.*` methods. The queue itself lives in bae-core; the Storage
+/// Manager's inspector reads a release's entry in it, and `DownloadStore`
+/// holds the bytes each download has moved.
 public final class Downloads: Sendable, Observable {
     /// Enqueue releases to pin locally. They join the serial download
     /// queue; the worker drains them one at a time. Fire-and-forget — progress

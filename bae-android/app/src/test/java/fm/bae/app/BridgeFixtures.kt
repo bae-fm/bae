@@ -43,7 +43,6 @@ import uniffi.bae_bridge.BridgeSourceAvailability
 import uniffi.bae_bridge.BridgeSubsonicConfig
 import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSearchResult
-import uniffi.bae_bridge.BridgeUploadProgress
 import uniffi.bae_bridge.BridgeWorkSummary
 
 /**
@@ -238,16 +237,7 @@ object BridgeFixtures {
     fun outboxSnapshot(pauseState: BridgeOutboxPauseState = BridgeOutboxPauseState.RUNNING): BridgeOutboxSnapshot =
         BridgeOutboxSnapshot(
             revision = 0uL,
-            uploadGroups = emptyList(),
-            otherFiles = emptyList(),
             perRelease = emptyMap(),
-            total =
-                BridgeUploadProgress(
-                    queued = 0u,
-                    uploading = 0u,
-                    activity = null,
-                ),
-            summaryParts = emptyList(),
             pauseState = pauseState,
         )
 

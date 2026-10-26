@@ -131,6 +131,8 @@ mod queue_projection;
 mod queue_upcoming;
 mod service_status;
 mod storage_browse;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod storage_inspector;
 mod sync_status;
 mod ui_events;
 

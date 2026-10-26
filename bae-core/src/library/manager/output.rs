@@ -60,8 +60,9 @@ impl LibraryManager {
 
     /// Shared enqueue body for both release-level outputs. Skips ids already in
     /// the queue (any state) and fails for a release the library does not
-    /// hold. The entry names the release by id only; the Exporting pane reads
-    /// its title, file count, and size from the library as it shows the row.
+    /// hold. The entry names the release by id only; a reader of the queue
+    /// reads its title, file count, and size from the library as it shows the
+    /// row.
     /// Wakes the parked worker and publishes the queue's new contents.
     async fn enqueue_output(
         &self,
@@ -69,8 +70,8 @@ impl LibraryManager {
         target_dir: std::path::PathBuf,
         kind: crate::library::OutputKind,
     ) -> Result<(), LibraryError> {
-        // The target dir round-trips back to the Exporting pane as a string (the
-        // snapshot renders `target_dir` for each row), so it must be valid UTF-8.
+        // The target dir crosses to the apps as a string (the snapshot carries
+        // `target_dir` for each row), so it must be valid UTF-8.
         // Fail loud here rather than let a non-UTF-8 path be lossily rewritten into
         // a different directory the output would then write to.
         target_dir.to_str().ok_or_else(|| {

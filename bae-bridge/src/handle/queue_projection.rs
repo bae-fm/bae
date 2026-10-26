@@ -1,3 +1,4 @@
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mirror_struct! {
     crate::types::BridgeUploadReleaseGroup = bae_core::library::UploadReleaseGroup,
     from_core: pub(super) fn,
@@ -8,12 +9,9 @@ mirror_struct! {
     },
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl crate::types::BridgeUploadFileOp {
     pub(super) fn from_core(file: bae_core::library::UploadFileOp) -> Self {
-        let release_file_key = file
-            .release_file_key()
-            .cloned()
-            .map(crate::types::BridgeRowKey::from_core);
         let bae_core::library::UploadFileOp {
             file,
             phase,
@@ -23,7 +21,6 @@ impl crate::types::BridgeUploadFileOp {
         Self {
             pending: pending.map(crate::types::BridgePendingWait::from_core),
             file_id: file.id().to_string(),
-            release_file_key,
             label: crate::types::BridgeUploadFileLabel::from_core(label),
             state: match phase {
                 coven::UploadPhase::Waiting => crate::types::BridgeUploadFileState::Waiting,
@@ -38,6 +35,7 @@ mirror_struct! {
     fields: { bytes_done, bytes_total },
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mirror_enum! {
     crate::types::BridgeUploadFileLabel = bae_core::library::UploadFileLabel,
     from_core: fn,
@@ -93,48 +91,23 @@ impl crate::types::BridgeOutboxTransferChange {
 }
 
 impl crate::types::BridgeOutboxSnapshot {
-    /// The queue `state` holds, at its revision.
-    pub(super) fn from_core(state: bae_core::library::OutboxState) -> Self {
-        let bae_core::library::OutboxState {
-            revision, queue, ..
-        } = state;
-        // Derived aggregates borrow `&queue`; compute them before the move.
-        let per_release = queue
-            .per_release_progress()
-            .into_iter()
-            .map(|(release_id, progress)| {
-                (
-                    release_id,
-                    crate::types::BridgeUploadProgress::from_core(progress),
-                )
-            })
-            .collect();
-        let summary_parts = queue
-            .summary_parts()
-            .into_iter()
-            .map(crate::types::BridgeCountLabel::from_core)
-            .collect();
-
-        let bae_core::library::OutboxQueue {
-            upload_groups,
-            other_files,
-            total,
+    pub(super) fn from_core(summary: bae_core::library::OutboxSummary) -> Self {
+        let bae_core::library::OutboxSummary {
+            revision,
+            per_release,
             pause_state,
-        } = queue;
-
+        } = summary;
         crate::types::BridgeOutboxSnapshot {
             revision,
-            upload_groups: upload_groups
+            per_release: per_release
                 .into_iter()
-                .map(crate::types::BridgeUploadReleaseGroup::from_core)
+                .map(|(release_id, progress)| {
+                    (
+                        release_id,
+                        crate::types::BridgeUploadProgress::from_core(progress),
+                    )
+                })
                 .collect(),
-            per_release,
-            other_files: other_files
-                .into_iter()
-                .map(crate::types::BridgeUploadFileOp::from_core)
-                .collect(),
-            total: crate::types::BridgeUploadProgress::from_core(total),
-            summary_parts,
             pause_state: crate::types::BridgeOutboxPauseState::from_core(pause_state),
         }
     }
@@ -237,39 +210,6 @@ impl crate::types::BridgeDownloadOp {
     }
 }
 
-/// Shared projection for the download and export queue snapshots, which are both
-/// aliases of the same generic `ReleaseQueueSnapshot`. Parameterized over the
-/// per-row and per-progress converters so each snapshot keeps its own named fields.
-fn project_release_queue_snapshot<Extra, Progress, Op, Prog>(
-    snapshot: bae_core::library::release_queue::ReleaseQueueSnapshot<Extra, Progress>,
-    row_from_core: impl Fn(bae_core::library::release_queue::ReleaseQueueRow<Extra, Progress>) -> Op,
-    progress_from_core: impl Fn(bae_core::library::release_queue::ReleaseQueueProgress) -> Prog,
-) -> (Vec<Op>, Prog, bool) {
-    let bae_core::library::release_queue::ReleaseQueueSnapshot {
-        rows,
-        total,
-        paused,
-    } = snapshot;
-    (
-        rows.into_iter().map(row_from_core).collect(),
-        progress_from_core(total),
-        paused,
-    )
-}
-
-/// Shared projection for the download and export per-state counts, both aliases
-/// of the same generic `ReleaseQueueProgress`.
-fn release_queue_progress_counts(
-    p: bae_core::library::release_queue::ReleaseQueueProgress,
-) -> (u32, u32, u32) {
-    let bae_core::library::release_queue::ReleaseQueueProgress {
-        queued,
-        active,
-        failed,
-    } = p;
-    (queued, active, failed)
-}
-
 impl crate::types::BridgeDownloadSnapshot {
     pub(super) fn from_core(snapshot: bae_core::library::DownloadSnapshot) -> Self {
         let summary_parts = snapshot
@@ -278,14 +218,17 @@ impl crate::types::BridgeDownloadSnapshot {
             .into_iter()
             .map(crate::types::BridgeCountLabel::from_core)
             .collect();
-        let (downloads, total, paused) = project_release_queue_snapshot(
-            snapshot,
-            crate::types::BridgeDownloadOp::from_core,
-            crate::types::BridgeDownloadProgress::from_core,
-        );
-        crate::types::BridgeDownloadSnapshot {
-            downloads,
+        let bae_core::library::release_queue::ReleaseQueueSnapshot {
+            rows,
             total,
+            paused,
+        } = snapshot;
+        crate::types::BridgeDownloadSnapshot {
+            downloads: rows
+                .into_iter()
+                .map(crate::types::BridgeDownloadOp::from_core)
+                .collect(),
+            total: crate::types::BridgeDownloadProgress::from_core(total),
             summary_parts,
             paused,
         }
@@ -294,7 +237,11 @@ impl crate::types::BridgeDownloadSnapshot {
 
 impl crate::types::BridgeDownloadProgress {
     pub(super) fn from_core(p: bae_core::library::DownloadProgress) -> Self {
-        let (queued, active, failed) = release_queue_progress_counts(p);
+        let bae_core::library::release_queue::ReleaseQueueProgress {
+            queued,
+            active,
+            failed,
+        } = p;
         crate::types::BridgeDownloadProgress {
             queued,
             active,
@@ -334,41 +281,6 @@ impl crate::types::BridgeOutputOp {
             created_at,
             state: crate::types::BridgeOutputState::from_core(state),
             kind: crate::types::BridgeOutputKind::from_core(&kind),
-        }
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl crate::types::BridgeOutputSnapshot {
-    pub(super) fn from_core(snapshot: bae_core::library::OutputSnapshot) -> Self {
-        let summary_parts = snapshot
-            .total
-            .summary_parts("core.queue.output")
-            .into_iter()
-            .map(crate::types::BridgeCountLabel::from_core)
-            .collect();
-        let (outputs, total, paused) = project_release_queue_snapshot(
-            snapshot,
-            crate::types::BridgeOutputOp::from_core,
-            crate::types::BridgeOutputProgress::from_core,
-        );
-        crate::types::BridgeOutputSnapshot {
-            outputs,
-            total,
-            summary_parts,
-            paused,
-        }
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl crate::types::BridgeOutputProgress {
-    pub(super) fn from_core(p: bae_core::library::OutputProgress) -> Self {
-        let (queued, active, failed) = release_queue_progress_counts(p);
-        crate::types::BridgeOutputProgress {
-            queued,
-            active,
-            failed,
         }
     }
 }

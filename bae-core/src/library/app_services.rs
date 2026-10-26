@@ -658,6 +658,8 @@ mod release_queue_reads;
 mod selection;
 mod shown_originals;
 mod shown_transfers;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod storage_inspector_reads;
 mod storage_reads;
 use live_query_events::reconfigurable_live_query_events;
 use shown_originals::ShownOriginals;

@@ -13,6 +13,13 @@ private func cloudUploadReceipt(
     )
 }
 
+/// A release's upload counts with nothing waiting or being sent.
+private let idleProgress = BridgeUploadProgress(
+    queued: 0,
+    uploading: 0,
+    activity: nil
+)
+
 /// The Bridge* records are generated at build from `bae-bridge/src/types.rs`;
 /// these start from `OutboxStore.emptySnapshot`.
 @Suite("OutboxStore")
@@ -97,7 +104,7 @@ struct OutboxStoreTransferTests {
 struct StorageStatusBandCloudTransitionTests {
     @Test("only an upload coven has admitted can be cancelled")
     func cancellationFollowsTheAdmittedUpload() {
-        var active = OutboxStore.emptySnapshot.total
+        var active = idleProgress
         active.queued = 1
         active.activity = .queued
         #expect(
@@ -113,7 +120,7 @@ struct StorageStatusBandCloudTransitionTests {
 
     @Test("an upload in progress suppresses storage actions")
     func uploadSuppressesStorageActions() {
-        var progress = OutboxStore.emptySnapshot.total
+        var progress = idleProgress
         progress.queued = 1
         progress.activity = .queued
 
@@ -140,7 +147,7 @@ struct StorageStatusBandCloudTransitionTests {
 struct CloudImportQueuePresentationTests {
     @Test("an active storage row carries its release rate and progress")
     func activeStorageRowCarriesRateAndProgress() {
-        var progress = OutboxStore.emptySnapshot.total
+        var progress = idleProgress
         progress.uploading = 1
         progress.activity = .uploading
         let observation = StorageUploadObservation.active(
@@ -162,7 +169,7 @@ struct CloudImportQueuePresentationTests {
     /// that phase belongs to the list of those files.
     @Test("an active upload line is its phase and encrypted bytes, no count")
     func activeUploadIncludesPhaseAndBytes() {
-        var progress = OutboxStore.emptySnapshot.total
+        var progress = idleProgress
         progress.uploading = 2
         progress.queued = 3
         progress.activity = .uploading
@@ -184,7 +191,7 @@ struct CloudImportQueuePresentationTests {
 
     @Test("a waiting upload is presented as queued")
     func waitingUploadIsQueued() {
-        var progress = OutboxStore.emptySnapshot.total
+        var progress = idleProgress
         progress.queued = 2
         progress.activity = .queued
 
@@ -193,7 +200,7 @@ struct CloudImportQueuePresentationTests {
 
     @Test("a release's file list summary counts the files in its phase")
     func fileListSummaryCountsFiles() {
-        var progress = OutboxStore.emptySnapshot.total
+        var progress = idleProgress
         progress.uploading = 2
         progress.queued = 3
         progress.activity = .uploading
@@ -213,7 +220,7 @@ struct CloudImportQueuePresentationTests {
     /// otherwise draw a bar that never ends.
     @Test("files that are only waiting draw no bar")
     func waitingFilesDrawNoBar() {
-        var progress = OutboxStore.emptySnapshot.total
+        var progress = idleProgress
         progress.queued = 2
         progress.activity = .queued
 
@@ -255,7 +262,7 @@ struct StorageCloudUploadHandoffTests {
 
         var active = OutboxStore.emptySnapshot
         active.revision = 2
-        active.perRelease["release-a"] = active.total
+        active.perRelease["release-a"] = idleProgress
         store.applySnapshot(active)
         guard
             case .active = store.storageUploadObservation(
@@ -274,7 +281,7 @@ struct StorageCloudUploadHandoffTests {
 
         var active = OutboxStore.emptySnapshot
         active.revision = 2
-        active.perRelease["release-a"] = active.total
+        active.perRelease["release-a"] = idleProgress
         store.applySnapshot(active)
         store.finishCloudUploads(
             for: command,
@@ -305,7 +312,7 @@ struct StorageCloudUploadHandoffTests {
     @Test("an active target remains active while its sibling hands off")
     func activeTargetDoesNotBlockItsSiblingHandoff() {
         var snapshot = OutboxStore.emptySnapshot
-        snapshot.perRelease["release-b"] = snapshot.total
+        snapshot.perRelease["release-b"] = idleProgress
         let store = OutboxStore(snapshot: snapshot)
 
         let command = store.beginCloudUploads(
@@ -321,7 +328,7 @@ struct StorageCloudUploadHandoffTests {
         )
         #expect(
             store.storageUploadObservation(forRelease: "release-b")
-                == .active(progress: snapshot.total, transfer: nil)
+                == .active(progress: idleProgress, transfer: nil)
         )
     }
 

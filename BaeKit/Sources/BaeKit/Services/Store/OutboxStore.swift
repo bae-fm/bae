@@ -25,13 +25,15 @@ public final class UploadTransferValue {
     }
 }
 
-/// Mirror of core's cloud upload queue, rendered by the Storage Manager's
-/// queue panel and used by every storage row to read its per-release upload
-/// progress and rate (no cached `pendingUploads` field on `ReleaseSummary`).
-/// The retained outbox subscription lands the queue each time it changes and
-/// it is swapped wholesale; the transfer subscription lands each file's and
-/// release's bytes and rate into that key's own value, so a progress change
-/// redraws only what draws that key. Views read both at the leaf.
+/// Mirror of core's cloud upload queue summary, which every storage row
+/// reads for its per-release upload counts (no cached `pendingUploads` field
+/// on `ReleaseSummary`), and of the queue's transfers. The retained outbox
+/// subscription lands the summary each time the queue changes and it is
+/// swapped wholesale; the queued files themselves are the Storage Manager
+/// inspector's, read for one release in core. The transfer subscription
+/// lands each file's and release's bytes and rate into that key's own value,
+/// so a progress change redraws only what draws that key. Views read both at
+/// the leaf.
 @Observable
 public class OutboxStore {
     public var snapshot: BridgeOutboxSnapshot
@@ -261,15 +263,7 @@ public class OutboxStore {
     public static var emptySnapshot: BridgeOutboxSnapshot {
         BridgeOutboxSnapshot(
             revision: 0,
-            uploadGroups: [],
-            otherFiles: [],
             perRelease: [:],
-            total: BridgeUploadProgress(
-                queued: 0,
-                uploading: 0,
-                activity: nil,
-            ),
-            summaryParts: [],
             pauseState: .running,
         )
     }

@@ -1,34 +1,140 @@
-//! The release's files with their queued uploads joined by release-file row key.
+//! The Storage Manager inspector's release: its files, each beside the upload
+//! coven holds for it, and the release's entry in each transfer queue.
 
-/// Preserve the original file and transfer records across the projection.
-/// The bridge instantiates these with its wire records, without duplicating
-/// the joining logic or round-tripping their display fields through core.
-#[derive(Debug, PartialEq)]
-pub enum StorageInspectorFile<File, Upload> {
+use super::{DownloadRow, DownloadSnapshot, OutputRow, OutputSnapshot};
+use super::{UploadFileOp, UploadReleaseGroup};
+use crate::album_detail::FileDetail;
+
+/// What the inspector shows of one release, read in core for the release id
+/// it is set to.
+#[derive(Debug, Clone)]
+pub struct StorageInspector {
+    /// The release's entry in each transfer queue that holds one: downloads,
+    /// then exports, then uploads.
+    pub transfers: Vec<StorageInspectorTransfer>,
+    pub files: Vec<StorageInspectorFile>,
+}
+
+/// One row of the inspector's file list.
+#[derive(Debug, Clone)]
+pub enum StorageInspectorFile {
     /// A release file and its upload, if one is queued: coven queues at most
     /// one pending attachment per row.
     ReleaseFile {
-        file: File,
-        upload: Option<Upload>,
+        file: FileDetail,
+        upload: Option<UploadFileOp>,
+    },
+    /// An upload of the release that names none of its file rows, such as
+    /// its cover.
+    Upload { upload: UploadFileOp },
+}
+
+/// The release's entry in one transfer queue, beside whether that queue is
+/// paused: each queue has its own pause state.
+#[derive(Debug, Clone, PartialEq)]
+pub enum StorageInspectorTransfer {
+    Download {
+        operation: DownloadRow,
+        paused: bool,
+    },
+    Output {
+        operation: OutputRow,
+        paused: bool,
     },
     Upload {
-        upload: Upload,
+        group: UploadReleaseGroup,
+        paused: bool,
     },
 }
 
-/// Each transfer queue has its own pause state and one operation per release.
-pub enum StorageInspectorTransfer<Download, Output, Upload> {
-    Download { operation: Download, paused: bool },
-    Output { operation: Output, paused: bool },
-    Upload { group: Upload, paused: bool },
+impl StorageInspector {
+    /// The release's `files` in their order, each beside its queued upload,
+    /// then the uploads that name none of them, read from `transfers`.
+    pub(crate) fn of(files: Vec<FileDetail>, transfers: Vec<StorageInspectorTransfer>) -> Self {
+        let uploads = transfers
+            .iter()
+            .find_map(|transfer| match transfer {
+                StorageInspectorTransfer::Upload { group, .. } => Some(
+                    group
+                        .files
+                        .iter()
+                        .map(|upload| (upload.release_file_key().cloned(), upload.clone()))
+                        .collect(),
+                ),
+                StorageInspectorTransfer::Download { .. }
+                | StorageInspectorTransfer::Output { .. } => None,
+            })
+            .unwrap_or_default();
+        let files = join_files(
+            files
+                .into_iter()
+                .map(|file| (file.id.clone(), file))
+                .collect(),
+            uploads,
+        )
+        .into_iter()
+        .map(|row| match row {
+            Joined::ReleaseFile { file, upload } => {
+                StorageInspectorFile::ReleaseFile { file, upload }
+            }
+            Joined::Upload { upload } => StorageInspectorFile::Upload { upload },
+        })
+        .collect();
+        Self { transfers, files }
+    }
 }
 
-/// Queued uploads and their release-file row keys, where they have one.
-pub type InspectorUploads<Upload> = Vec<(Option<coven::RowKey>, Upload)>;
+/// The release's entry in each queue, downloads first, then exports, then
+/// its upload group (`upload`, from a queue paused when `uploads_paused`).
+pub(crate) fn storage_inspector_transfers(
+    release_id: &str,
+    downloads: &DownloadSnapshot,
+    outputs: &OutputSnapshot,
+    upload: Option<UploadReleaseGroup>,
+    uploads_paused: bool,
+) -> Vec<StorageInspectorTransfer> {
+    let mut items = Vec::new();
+    if let Some(operation) = selected_release(release_id, &downloads.rows, |row| &row.op.release_id)
+    {
+        items.push(StorageInspectorTransfer::Download {
+            operation: operation.clone(),
+            paused: downloads.paused,
+        });
+    }
+    if let Some(operation) = selected_release(release_id, &outputs.rows, |row| &row.op.release_id) {
+        items.push(StorageInspectorTransfer::Output {
+            operation: operation.clone(),
+            paused: outputs.paused,
+        });
+    }
+    if let Some(group) = upload {
+        assert_eq!(
+            group.release_id, release_id,
+            "the shown upload group is the selected release's"
+        );
+        items.push(StorageInspectorTransfer::Upload {
+            group,
+            paused: uploads_paused,
+        });
+    }
+    items
+}
 
-fn selected_release<T>(release_id: &str, records: Vec<(String, T)>) -> Option<T> {
-    let mut selected = records.into_iter().filter(|(id, _)| id == release_id);
-    let result = selected.next().map(|(_, record)| record);
+/// The release's upload group among `groups`, which hold one per release.
+pub(crate) fn selected_upload_group(
+    release_id: &str,
+    groups: &[UploadReleaseGroup],
+) -> Option<UploadReleaseGroup> {
+    selected_release(release_id, groups, |group| &group.release_id).cloned()
+}
+
+fn selected_release<'a, T>(
+    release_id: &str,
+    records: &'a [T],
+    id: impl Fn(&T) -> &String,
+) -> Option<&'a T> {
+    let mut selected = records.iter().filter(|record| id(record) == release_id);
+    let result = selected.next();
     assert!(
         selected.next().is_none(),
         "duplicate release in transfer queue"
@@ -36,50 +142,20 @@ fn selected_release<T>(release_id: &str, records: Vec<(String, T)>) -> Option<T>
     result
 }
 
-pub fn storage_inspector_transfers<Download, Output, Upload>(
-    release_id: &str,
-    downloads: (Vec<(String, Download)>, bool),
-    outputs: (Vec<(String, Output)>, bool),
-    uploads: (Vec<(String, Upload)>, bool),
-) -> Vec<StorageInspectorTransfer<Download, Output, Upload>> {
-    let mut items = Vec::new();
-    if let Some(operation) = selected_release(release_id, downloads.0) {
-        items.push(StorageInspectorTransfer::Download {
-            operation,
-            paused: downloads.1,
-        });
-    }
-    if let Some(operation) = selected_release(release_id, outputs.0) {
-        items.push(StorageInspectorTransfer::Output {
-            operation,
-            paused: outputs.1,
-        });
-    }
-    if let Some(group) = selected_release(release_id, uploads.0) {
-        items.push(StorageInspectorTransfer::Upload {
-            group,
-            paused: uploads.1,
-        });
-    }
-    items
-}
-
-pub fn storage_inspector_release_files<File, Upload>(
-    release_id: &str,
-    files: Vec<(String, File)>,
-    upload_groups: Vec<(String, InspectorUploads<Upload>)>,
-) -> Vec<StorageInspectorFile<File, Upload>> {
-    let uploads = selected_release(release_id, upload_groups).unwrap_or_default();
-    storage_inspector_files(files, uploads)
+/// A release file joined with its upload, or an upload that joins none.
+#[derive(Debug, PartialEq)]
+enum Joined<File, Upload> {
+    ReleaseFile { file: File, upload: Option<Upload> },
+    Upload { upload: Upload },
 }
 
 /// Release files retain their order and identity when transfers start or end.
 /// Uploads matching none of the release's file rows remain visible after the
 /// release files.
-fn storage_inspector_files<File, Upload>(
+fn join_files<File, Upload>(
     files: Vec<(String, File)>,
-    mut uploads: InspectorUploads<Upload>,
-) -> Vec<StorageInspectorFile<File, Upload>> {
+    mut uploads: Vec<(Option<coven::RowKey>, Upload)>,
+) -> Vec<Joined<File, Upload>> {
     let mut rows = Vec::with_capacity(files.len());
     for (id, file) in files {
         let row = coven::RowKey::from(id.as_str());
@@ -87,80 +163,14 @@ fn storage_inspector_files<File, Upload>(
             .iter()
             .position(|(key, _)| key.as_ref() == Some(&row))
             .map(|index| uploads.remove(index).1);
-        rows.push(StorageInspectorFile::ReleaseFile { file, upload });
+        rows.push(Joined::ReleaseFile { file, upload });
     }
     for (_, upload) in uploads {
-        rows.push(StorageInspectorFile::Upload { upload });
+        rows.push(Joined::Upload { upload });
     }
     rows
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn joins_release_rows_and_keeps_unmatched_uploads_separate() {
-        let rows = storage_inspector_files(
-            vec![
-                ("audio".into(), "track.flac"),
-                ("notes".into(), "notes.txt"),
-            ],
-            vec![(None, "unmatched"), (Some("audio".into()), "progress")],
-        );
-        assert_eq!(
-            rows,
-            vec![
-                StorageInspectorFile::ReleaseFile {
-                    file: "track.flac",
-                    upload: Some("progress")
-                },
-                StorageInspectorFile::ReleaseFile {
-                    file: "notes.txt",
-                    upload: None
-                },
-                StorageInspectorFile::Upload {
-                    upload: "unmatched"
-                },
-            ]
-        );
-    }
-
-    #[test]
-    fn finishing_uploads_keeps_the_contents_in_order() {
-        let rows = storage_inspector_files::<_, ()>(
-            vec![("b".into(), "b.flac"), ("a".into(), "a.flac")],
-            vec![],
-        );
-        assert_eq!(
-            rows,
-            vec![
-                StorageInspectorFile::ReleaseFile {
-                    file: "b.flac",
-                    upload: None
-                },
-                StorageInspectorFile::ReleaseFile {
-                    file: "a.flac",
-                    upload: None
-                },
-            ]
-        );
-    }
-
-    #[test]
-    fn uploads_survive_an_empty_file_set_in_queue_order() {
-        let rows = storage_inspector_files::<(), _>(
-            vec![],
-            vec![(None, "unmatched"), (Some("a".into()), "queued")],
-        );
-        assert_eq!(
-            rows,
-            vec![
-                StorageInspectorFile::Upload {
-                    upload: "unmatched"
-                },
-                StorageInspectorFile::Upload { upload: "queued" },
-            ]
-        );
-    }
-}
+#[path = "storage_inspector_tests.rs"]
+mod tests;

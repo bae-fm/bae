@@ -433,39 +433,44 @@ async fn display_names_join_by_table_and_row_while_rates_use_object_identity() {
         .find(|file| file.label == UploadFileLabel::Cover)
         .unwrap();
     assert_ne!(cover.file.id(), release.files[0].file.id());
-    let rows = crate::library::storage_inspector::storage_inspector_release_files(
-        "release",
-        vec![
-            ("first".into(), "First.flac"),
-            ("second".into(), "Renamed.flac"),
-        ],
-        snapshot
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    {
+        use crate::library::storage_inspector::{
+            StorageInspector, StorageInspectorFile, StorageInspectorTransfer,
+        };
+        let file = |id: &str, name: &str| crate::album_detail::FileDetail {
+            id: id.into(),
+            original_filename: name.into(),
+            file_size: 101,
+            is_image: false,
+            content_type: "audio/flac".into(),
+            source_audio: None,
+        };
+        let group = snapshot
             .upload_groups
             .into_iter()
-            .map(|group| {
-                (
-                    group.release_id,
-                    group
-                        .files
-                        .into_iter()
-                        .map(|upload| (upload.release_file_key().cloned(), upload))
-                        .collect(),
-                )
-            })
-            .collect(),
-    );
-    let crate::library::storage_inspector::StorageInspectorFile::ReleaseFile {
-        upload: Some(upload),
-        ..
-    } = &rows[0]
-    else {
-        panic!("the release file retains its place with its upload")
-    };
-    assert_ne!(
-        upload.file.id(),
-        replaced,
-        "the row's upload is the file attached last"
-    );
+            .find(|group| group.release_id == "release")
+            .unwrap();
+        let inspector = StorageInspector::of(
+            vec![file("first", "First.flac"), file("second", "Renamed.flac")],
+            vec![StorageInspectorTransfer::Upload {
+                group,
+                paused: false,
+            }],
+        );
+        let StorageInspectorFile::ReleaseFile {
+            upload: Some(upload),
+            ..
+        } = &inspector.files[0]
+        else {
+            panic!("the release file retains its place with its upload")
+        };
+        assert_ne!(
+            upload.file.id(),
+            replaced,
+            "the row's upload is the file attached last"
+        );
+    }
     handle.close().await.unwrap();
 }
 

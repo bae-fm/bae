@@ -16,8 +16,8 @@ struct DownloadStoreTransferTests {
     }
 
     @Test("a release's progress follows each change that names it")
-    func releaseProgressFollowsItsChanges() {
-        let store = DownloadStore(snapshot: PreviewData.emptyDownloadSnapshot)
+    func releaseProgressFollowsItsChanges() throws {
+        let store = DownloadStore()
         store.applyTransferChange(
             .reset(transfers: [
                 BridgeKeyedDownloadTransfer(
@@ -26,14 +26,19 @@ struct DownloadStoreTransferTests {
                 )
             ])
         )
-        #expect(store.progress(forRelease: "release-a") == progress(10))
+        let value = try #require(store.transfer(forRelease: "release-a"))
+        #expect(value.progress == progress(10))
 
         store.applyTransferChange(
             .updated(releaseId: "release-a", progress: progress(40))
         )
-        #expect(store.progress(forRelease: "release-a") == progress(40))
+        #expect(
+            store.transfer(forRelease: "release-a") === value,
+            "the release keeps its one observed value"
+        )
+        #expect(value.progress == progress(40))
 
         store.applyTransferChange(.removed(releaseId: "release-a"))
-        #expect(store.progress(forRelease: "release-a") == nil)
+        #expect(store.transfer(forRelease: "release-a") == nil)
     }
 }

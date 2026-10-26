@@ -216,8 +216,8 @@ struct ShotScene {
                 StorageManagerPreviewScene(
                     selectedReleaseId: "rel-row-1",
                     inspectorPresented: true,
-                    downloadSnapshot: PreviewData.emptyDownloadSnapshot,
-                    outputSnapshot: PreviewData.emptyOutputSnapshot
+                    downloads: [],
+                    outputs: []
                 )
             )
         },
@@ -229,9 +229,9 @@ struct ShotScene {
                 StorageManagerPreviewScene(
                     selectedReleaseId: "rel-row-1",
                     inspectorPresented: true,
-                    downloadSnapshot: PreviewData.emptyDownloadSnapshot,
-                    outputSnapshot: PreviewData.emptyOutputSnapshot,
-                    outboxSnapshot: PreviewData.outboxSnapshot(uploadGroups: [])
+                    downloads: [],
+                    outputs: [],
+                    uploadGroups: []
                 )
             )
         },
@@ -244,11 +244,9 @@ struct ShotScene {
                     rows: Array(PreviewData.storageRows.prefix(2)),
                     selectedReleaseId: "rel-row-2",
                     inspectorPresented: true,
-                    downloadSnapshot: PreviewData.emptyDownloadSnapshot,
-                    outputSnapshot: PreviewData.emptyOutputSnapshot,
-                    outboxSnapshot: PreviewData.outboxSnapshot(
-                        uploadGroups: [PreviewData.uploadGroupQueued]
-                    )
+                    downloads: [],
+                    outputs: [],
+                    uploadGroups: [PreviewData.uploadGroupQueued]
                 )
             )
         },

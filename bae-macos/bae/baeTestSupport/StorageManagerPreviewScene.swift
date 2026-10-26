@@ -11,18 +11,18 @@ struct StorageManagerPreviewScene: View {
         rows: [BridgeStorageRow] = PreviewData.storageRows,
         selectedReleaseId: String? = nil,
         inspectorPresented: Bool = false,
-        downloadSnapshot: BridgeDownloadSnapshot =
-            PreviewData.downloadSnapshot(),
-        outputSnapshot: BridgeOutputSnapshot = PreviewData.outputSnapshot(),
-        outboxSnapshot: BridgeOutboxSnapshot = PreviewData.outboxSnapshot()
+        downloads: [BridgeDownloadOp] = PreviewData.downloadOps,
+        outputs: [BridgeOutputOp] = PreviewData.outputOps,
+        uploadGroups: [BridgeUploadReleaseGroup] =
+            PreviewData.defaultUploadGroups
     ) {
         fixture = StorageManagerPreviewFixture(
             rows: rows,
             selectedReleaseId: selectedReleaseId,
             inspectorPresented: inspectorPresented,
-            downloadSnapshot: downloadSnapshot,
-            outputSnapshot: outputSnapshot,
-            outboxSnapshot: outboxSnapshot
+            downloads: downloads,
+            outputs: outputs,
+            uploadGroups: uploadGroups
         )
     }
 
@@ -42,7 +42,6 @@ struct StorageManagerPreviewScene: View {
         .environment(PreviewData.configStore())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
-        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
     }
 }

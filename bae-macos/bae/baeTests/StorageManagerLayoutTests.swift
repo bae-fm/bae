@@ -62,9 +62,9 @@ final class StorageManagerLayoutTests: XCTestCase {
         let size = NSSize(width: 700, height: 400)
         try await SnapshotTestSupport.withHostedWindow(
             StorageManagerPreviewScene(
-                downloadSnapshot: PreviewData.emptyDownloadSnapshot,
-                outputSnapshot: PreviewData.emptyOutputSnapshot,
-                outboxSnapshot: PreviewData.outboxSnapshot(uploadGroups: [])
+                downloads: [],
+                outputs: [],
+                uploadGroups: []
             )
             .frame(width: size.width, height: size.height),
             size: size
@@ -144,9 +144,9 @@ final class StorageManagerLayoutTests: XCTestCase {
             StorageManagerPreviewScene(
                 selectedReleaseId: "rel-row-4",
                 inspectorPresented: true,
-                downloadSnapshot: PreviewData.emptyDownloadSnapshot,
-                outputSnapshot: PreviewData.emptyOutputSnapshot,
-                outboxSnapshot: PreviewData.outboxSnapshot(uploadGroups: [])
+                downloads: [],
+                outputs: [],
+                uploadGroups: []
             )
             .frame(width: size.width, height: size.height),
             size: size
@@ -198,8 +198,8 @@ final class StorageManagerLayoutTests: XCTestCase {
             StorageManagerPreviewScene(
                 selectedReleaseId: "rel-row-1",
                 inspectorPresented: true,
-                downloadSnapshot: PreviewData.emptyDownloadSnapshot,
-                outputSnapshot: PreviewData.emptyOutputSnapshot
+                downloads: [],
+                outputs: []
             )
             .frame(width: size.width, height: size.height),
             size: size

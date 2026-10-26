@@ -10,12 +10,12 @@ import uniffi.bae_bridge.BridgeOutboxTransferChange
 import uniffi.bae_bridge.BridgeUploadTransfer
 
 /**
- * Mirror of core's cloud-upload queue. Core sends the queue each time it
- * changes — including each pause/resume — so the Settings pause toggle renders
- * its state from [BridgeOutboxSnapshot.pauseState] rather than tracking it
- * optimistically, or the failure of the last read in its place. The whole
- * queue's transfer arrives apart, with each part a provider confirms, so only
- * what draws it follows it.
+ * Mirror of core's cloud-upload queue summary. Core sends it each time the
+ * queue changes — including each pause/resume — so the Settings pause toggle
+ * renders its state from [BridgeOutboxSnapshot.pauseState] rather than
+ * tracking it optimistically, or the failure of the last read in its place.
+ * The whole queue's transfer arrives apart, with each part a provider
+ * confirms, so only what draws it follows it.
  */
 class OutboxStore(
     initialSnapshot: BridgeOutboxSnapshot,

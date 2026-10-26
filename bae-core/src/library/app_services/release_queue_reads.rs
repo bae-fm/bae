@@ -40,15 +40,16 @@ impl AppServices {
         crate::library::DownloadTransfersWatch::of(self.inner.manager.subscribe_download_queue())
     }
 
-    /// The export queue as the Exporting pane shows it now.
+    /// The export queue as it stands now, each entry beside its release.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn output_snapshot(&self) -> Result<crate::library::OutputSnapshot, LibraryError> {
         self.resolve_release_queue(self.inner.manager.output_queue())
             .await
     }
 
-    /// The export queue as the Exporting pane shows it, and each change to
+    /// The export queue, each entry beside its release, and each change to
     /// it: a change to the queue, or a library change to a release it names.
+    /// The storage inspector reads it.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub fn subscribe_output_values(
         &self,

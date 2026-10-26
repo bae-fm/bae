@@ -60,7 +60,7 @@ extension ImportView {
                 // a folder that is selected, and it was flashing on every
                 // click. Never the previous candidate either — the pane reads
                 // the selected key, which holds nothing until this one lands.
-                ImportCandidatePendingPane(selection: selection)
+                PendingReadPane(selection: selection)
                     .frame(
                         minWidth: 620,
                         maxWidth: .infinity,
@@ -77,38 +77,5 @@ extension ImportView {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-/// The pane for a selected row whose read has not been delivered yet.
-///
-/// Empty rather than a placeholder, and empty rather than a spinner: the read
-/// almost always lands within a frame or two, and a spinner that appears and
-/// leaves that fast is a flash of its own. One shows only if the wait outlasts
-/// `spinnerDelay`, which is the case worth reporting — a folder whose read is
-/// genuinely slow.
-private struct ImportCandidatePendingPane: View {
-    /// Restarts the wait when the selection moves to another folder while one
-    /// is still pending.
-    let selection: BridgeSingleSelection
-
-    private static let spinnerDelay = Duration.milliseconds(150)
-
-    @State
-    private var waitedLongEnough = false
-
-    var body: some View {
-        VStack {
-            if waitedLongEnough {
-                ProgressView().controlSize(.small)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .task(id: selection) {
-            waitedLongEnough = false
-            try? await Task.sleep(for: Self.spinnerDelay)
-            guard !Task.isCancelled else { return }
-            waitedLongEnough = true
-        }
     }
 }

@@ -1,13 +1,15 @@
-//! The upload queue and its transfers for a reader that draws them: the queue
-//! each time it changes, and each transfer as it moves.
+//! The upload queue and its transfers for a reader that draws them: the
+//! queue's summary each time it changes, and each transfer as it moves.
 
-use super::{LibraryManager, OutboxState, OutboxTransfers, UploadTransfer, UploadTransferKey};
+use super::{
+    LibraryManager, OutboxState, OutboxSummary, OutboxTransfers, UploadTransfer, UploadTransferKey,
+};
 use tokio::sync::watch;
 
 type OutboxValues = watch::Receiver<Option<Result<OutboxState, String>>>;
 
-/// The upload queue: as it stands first, then each time its revision moves,
-/// or the failure that kept it from being read.
+/// The upload queue's summary: as it stands first, then each time the
+/// queue's revision moves, or the failure that kept it from being read.
 pub struct OutboxQueueWatch {
     manager: LibraryManager,
     values: OutboxValues,
@@ -34,33 +36,48 @@ impl OutboxQueueWatch {
     /// nothing has been published yet; after that, the next queue whose
     /// revision differs, or a failure. A transfer that moves on the same
     /// queue wakes nothing here. `None` once the outbox is gone.
-    pub async fn next(&mut self) -> Option<Result<OutboxState, String>> {
+    pub async fn next(&mut self) -> Option<Result<OutboxSummary, String>> {
         if self.told.is_none() {
-            let current = self.values.borrow_and_update().clone();
-            let value = match current {
+            let published = self.values.borrow_and_update().as_ref().map(Self::summary);
+            let value = match published {
                 Some(value) => value,
                 None => self
                     .manager
                     .outbox_state()
                     .await
+                    .map(|state| state.summary())
                     .map_err(|error| error.to_string()),
             };
-            self.told = Some(Self::telling(&value));
+            self.told = Some(match &value {
+                Ok(summary) => Told::Revision(summary.revision),
+                Err(_) => Told::Failure,
+            });
             return Some(value);
         }
         loop {
             self.values.changed().await.ok()?;
-            let Some(value) = self.values.borrow_and_update().clone() else {
+            let current = self.values.borrow_and_update();
+            let Some(published) = current.as_ref() else {
                 tracing::warn!("outbox value stream published an absent queue");
                 continue;
             };
-            let told = Self::telling(&value);
+            let told = Self::telling(published);
             if self.told == Some(told) && told != Told::Failure {
                 continue;
             }
+            let value = Self::summary(published);
+            drop(current);
             self.told = Some(told);
             return Some(value);
         }
+    }
+
+    /// What of the published queue the reader is told, read in place.
+    fn summary(value: &Result<OutboxState, String>) -> Result<OutboxSummary, String> {
+        value
+            .as_ref()
+            .map(OutboxState::summary)
+            .map_err(Clone::clone)
     }
 
     fn telling(value: &Result<OutboxState, String>) -> Told {

@@ -285,25 +285,13 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
     )
 }
 
-/// Empty transfer queues, as a freshly opened library's core reports them.
+/// An empty upload queue, as a freshly opened library's core reports it.
 @MainActor
 private var emptySeed: LibrarySessionSeed {
     LibrarySessionSeed(
         name: "Test Library",
         storage: nil,
-        outbox: OutboxStore.emptySnapshot,
-        downloads: BridgeDownloadSnapshot(
-            downloads: [],
-            total: BridgeDownloadProgress(queued: 0, active: 0, failed: 0),
-            summaryParts: [],
-            paused: false
-        ),
-        outputs: BridgeOutputSnapshot(
-            outputs: [],
-            total: BridgeOutputProgress(queued: 0, active: 0, failed: 0),
-            summaryParts: [],
-            paused: false
-        )
+        outbox: OutboxStore.emptySnapshot
     )
 }
 
@@ -339,12 +327,6 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
 
     override func subscribeSyncStatus(
         callback _: any SyncStatusCallback
-    ) -> LiveSubscription {
-        NoopLiveSubscription()
-    }
-
-    override func subscribeDownloads(
-        callback _: any DownloadCallback
     ) -> LiveSubscription {
         NoopLiveSubscription()
     }

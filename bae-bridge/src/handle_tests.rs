@@ -420,7 +420,6 @@ async fn upload_file_op_preserves_object_and_row_identity() {
         label: bae_core::library::UploadFileLabel::Filename("Track.flac".into()),
     });
     assert_eq!(bridge.file_id, id);
-    assert!(bridge.release_file_key.is_some());
     assert_eq!(bridge.state, crate::types::BridgeUploadFileState::Uploading);
     handle.close().await.unwrap();
 }

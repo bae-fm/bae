@@ -44,7 +44,7 @@ impl AppHandle {
         })
     }
 
-    /// The upload queue now, then each time it changes.
+    /// The upload queue's summary now, then each time the queue changes.
     pub fn subscribe_outbox(
         &self,
         callback: Box<dyn crate::types::OutboxCallback>,
@@ -53,8 +53,8 @@ impl AppHandle {
             let mut queue = services.watch_outbox_queue();
             while let Some(value) = queue.next().await {
                 match value {
-                    Ok(state) => {
-                        callback.on_value(crate::types::BridgeOutboxSnapshot::from_core(state))
+                    Ok(summary) => {
+                        callback.on_value(crate::types::BridgeOutboxSnapshot::from_core(summary))
                     }
                     Err(error) => callback.on_error(BridgeError::internal(error)),
                 }
@@ -148,14 +148,14 @@ forward! { async this => {
             .map_err(BridgeError::from)
     }
 
-    /// The upload queue as it stands now.
+    /// The upload queue's summary as it stands now.
     fn get_outbox_snapshot() -> crate::types::BridgeOutboxSnapshot {
         let state = this
             .services
             .outbox_state()
             .await
             .map_err(BridgeError::from)?;
-        Ok(crate::types::BridgeOutboxSnapshot::from_core(state))
+        Ok(crate::types::BridgeOutboxSnapshot::from_core(state.summary()))
     }
 
     /// Retry failed uploads now: drain coven's upload queue immediately instead

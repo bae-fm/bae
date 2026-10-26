@@ -176,7 +176,6 @@ struct StorageManagerView: View {
         let storageManagerStore: StorageManagerStore
         let uiStore: UiStore
         let downloadStore: DownloadStore
-        let outputStore: OutputStore
         let outboxStore: OutboxStore
 
         let initialSelection: Set<String>
@@ -186,13 +185,17 @@ struct StorageManagerView: View {
             rows: [BridgeStorageRow] = PreviewData.storageRows,
             selectedReleaseId: String? = nil,
             inspectorPresented: Bool = false,
-            downloadSnapshot: BridgeDownloadSnapshot =
-                PreviewData
-                .downloadSnapshot(),
-            outputSnapshot: BridgeOutputSnapshot = PreviewData.outputSnapshot(),
-            outboxSnapshot: BridgeOutboxSnapshot = PreviewData.outboxSnapshot()
+            downloads: [BridgeDownloadOp] = PreviewData.downloadOps,
+            outputs: [BridgeOutputOp] = PreviewData.outputOps,
+            uploadGroups: [BridgeUploadReleaseGroup] =
+                PreviewData.defaultUploadGroups
         ) {
-            let library = PreviewData.storageLibrary(rows: rows)
+            let library = PreviewData.storageLibrary(
+                rows: rows,
+                downloads: downloads,
+                outputs: outputs,
+                uploadGroups: uploadGroups
+            )
             let libraryStore = LibraryStore()
             let uiStore = UiStore()
             self.library = library
@@ -205,9 +208,10 @@ struct StorageManagerView: View {
             self.uiStore = uiStore
             initialSelection = selectedReleaseId.map { [$0] } ?? []
             initialInspectorPresented = inspectorPresented
-            downloadStore = PreviewData.downloadStore(downloadSnapshot)
-            outputStore = PreviewData.outputStore(outputSnapshot)
-            outboxStore = PreviewData.outboxStore(outboxSnapshot)
+            downloadStore = PreviewData.downloadStore()
+            outboxStore = PreviewData.outboxStore(
+                PreviewData.outboxSnapshot(uploadGroups: uploadGroups)
+            )
         }
     }
 
@@ -240,7 +244,6 @@ struct StorageManagerView: View {
         .environment(Importer.stub())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
-        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
         .frame(width: 1_440, height: 900)
     }
@@ -266,7 +269,6 @@ struct StorageManagerView: View {
         .environment(Importer.stub())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
-        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
         .frame(width: 940, height: 760)
     }
@@ -289,7 +291,6 @@ struct StorageManagerView: View {
         .environment(Importer.stub())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
-        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
         .frame(
             width: StorageManagerView.minimumWidth,
@@ -300,9 +301,9 @@ struct StorageManagerView: View {
     #Preview("Dense — compact, selected") {
         let fixture = StorageManagerPreviewFixture(
             selectedReleaseId: "rel-row-4",
-            downloadSnapshot: PreviewData.emptyDownloadSnapshot,
-            outputSnapshot: PreviewData.emptyOutputSnapshot,
-            outboxSnapshot: PreviewData.outboxSnapshot(uploadGroups: [])
+            downloads: [],
+            outputs: [],
+            uploadGroups: []
         )
         StorageManagerView(
             initialSelection: fixture.initialSelection,
@@ -320,7 +321,6 @@ struct StorageManagerView: View {
         .environment(Importer.stub())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
-        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
         .frame(
             width: StorageManagerView.minimumWidth,
@@ -346,7 +346,6 @@ struct StorageManagerView: View {
         .environment(Importer.stub())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
-        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
         .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
@@ -371,7 +370,6 @@ struct StorageManagerView: View {
         .environment(Importer.stub())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
-        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
         .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
@@ -397,7 +395,6 @@ struct StorageManagerView: View {
         .environment(Importer.stub())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
-        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
         .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
@@ -407,11 +404,9 @@ struct StorageManagerView: View {
             rows: Array(PreviewData.storageRows.prefix(2)),
             selectedReleaseId: "rel-row-2",
             inspectorPresented: true,
-            downloadSnapshot: PreviewData.emptyDownloadSnapshot,
-            outputSnapshot: PreviewData.emptyOutputSnapshot,
-            outboxSnapshot: PreviewData.outboxSnapshot(
-                uploadGroups: [PreviewData.uploadGroupQueued]
-            )
+            downloads: [],
+            outputs: [],
+            uploadGroups: [PreviewData.uploadGroupQueued]
         )
         StorageManagerView(
             initialSelection: fixture.initialSelection,
@@ -429,7 +424,6 @@ struct StorageManagerView: View {
         .environment(Importer.stub())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
-        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
         .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
@@ -441,11 +435,9 @@ struct StorageManagerView: View {
             rows: Array(PreviewData.storageRows.prefix(3)),
             selectedReleaseId: "rel-row-3",
             inspectorPresented: true,
-            downloadSnapshot: PreviewData.emptyDownloadSnapshot,
-            outputSnapshot: PreviewData.emptyOutputSnapshot,
-            outboxSnapshot: PreviewData.outboxSnapshot(
-                uploadGroups: [PreviewData.uploadGroupPending]
-            )
+            downloads: [],
+            outputs: [],
+            uploadGroups: [PreviewData.uploadGroupPending]
         )
         StorageManagerView(
             initialSelection: fixture.initialSelection,
@@ -463,7 +455,6 @@ struct StorageManagerView: View {
         .environment(Importer.stub())
         .environment(fixture.uiStore)
         .environment(fixture.downloadStore)
-        .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
         .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }

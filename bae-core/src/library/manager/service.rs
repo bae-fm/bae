@@ -502,8 +502,8 @@ impl LibraryManager {
     }
 
     /// The export queue as it stands: each entry's state and whether the
-    /// queue is paused. The Exporting pane reads it resolved against the
-    /// library, through `AppServices::output_snapshot`.
+    /// queue is paused. `AppServices::output_snapshot` and the storage
+    /// inspector read it resolved against the library.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub fn output_queue(&self) -> crate::library::OutputQueueContents {
         self.outputs.contents()

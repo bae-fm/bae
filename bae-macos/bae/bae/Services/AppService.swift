@@ -30,11 +30,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     /// the same service and store instances installed in the view tree.
     let mainAppMenuTarget: MainAppMenuTarget
 
-    /// In-memory export queue mirror — per-release state and summary. The export
-    /// value stream is the sole writer; the Storage Manager's Exporting pane reads
-    /// it.
-    private let outputStore: OutputStore
-
     /// Owns the desktop value subscriptions and their apply wiring.
     private let desktopSubscriptions: DesktopSubscriptions
     private let desktopEvents: DesktopEventHandler
@@ -88,7 +83,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             }
         )
         let libraryStore = LibraryStore()
-        let downloadStore = DownloadStore(snapshot: seed.downloads)
+        let downloadStore = DownloadStore()
         let castStore = CastStore()
         let outboxStore = OutboxStore(snapshot: seed.outbox)
         let library = Library(handle: appHandle)
@@ -107,7 +102,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         )
         self.uiStore = uiStore
         self.importStore = importStore
-        outputStore = OutputStore(snapshot: seed.outputs)
         previewAudio = PreviewAudio(handle: appHandle)
         releaseEditor = ReleaseEditor(
             handle: appHandle,
@@ -139,7 +133,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         desktopSubscriptions = DesktopSubscriptions(
             appHandle: appHandle,
             importStore: importStore,
-            outputStore: outputStore,
             uiStore: uiStore
         )
         desktopEvents = DesktopEventHandler(importStore: importStore)
@@ -229,7 +222,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             .environment(automation)
             .environment(subsonic)
             .environment(export)
-            .environment(outputStore)
             .environment(uiStore)
             .environment(
                 \.playbackPositionPublisher,

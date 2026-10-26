@@ -2403,6 +2403,12 @@ Reads come two ways:
   that finishes uploading out of the sync queue, no longer matches the filter,
   or is deleted leaves the inspector and the actions' targets as it leaves the
   list, including while an action's confirmation or folder prompt is open.
+  The inspector reads its release live by id: the release's files, each beside
+  the upload coven holds for it, and its entry in the download, export and
+  upload queues, worked out in core. The upload queue's own subscription says
+  only which releases have uploads queued, how many, and whether it is paused;
+  the bytes each upload and download moves arrive apart, per file and per
+  release.
 
 What a read returns is already resolved: labels, paths, flags, totals, sides
 and positions are worked out in core, and a surface only renders them. A

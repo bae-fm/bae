@@ -46,6 +46,11 @@ public final class Library: Sendable, Observable {
     public let storageBrowse:
         @Sendable (_ sort: BridgeStorageSort, _ filter: BridgeStorageFilter)
             -> StorageBrowseQuery
+    /// Open the Storage Manager inspector's live read of the release it
+    /// shows: its files beside their uploads and its entry in each transfer
+    /// queue, read in core.
+    public let storageInspector:
+        @Sendable () -> DetailQuery<BridgeStorageInspector>
     public let resolveToTrackIds:
         @Sendable (_ ids: [String]) async throws -> [String]
     /// Whether the library page spans the window's full width instead of
@@ -109,6 +114,10 @@ public final class Library: Sendable, Observable {
             -> StorageBrowseQuery = { _, _ in
                 fatalError("Library storage browse is not installed")
             },
+        storageInspector:
+            @escaping @Sendable () -> DetailQuery<BridgeStorageInspector> = {
+                fatalError("Library storage inspector is not installed")
+            },
         resolveToTrackIds:
             @escaping @Sendable ([String]) async throws -> [String] = {
                 _ in throw StubError.notImplemented
@@ -131,6 +140,7 @@ public final class Library: Sendable, Observable {
         self.searchArtists = searchArtists
         self.resolveReleaseEditCredits = resolveReleaseEditCredits
         self.storageBrowse = storageBrowse
+        self.storageInspector = storageInspector
         self.resolveToTrackIds = resolveToTrackIds
         self.setLibraryFullWidth = setLibraryFullWidth
     }
@@ -190,6 +200,9 @@ public final class Library: Sendable, Observable {
                     StorageBrowseQuery(
                         handle.subscribeStorageBrowse(sort: $0, filter: $1)
                     )
+                },
+                storageInspector: {
+                    DetailQuery(handle.subscribeStorageInspector())
                 },
                 resolveToTrackIds: {
                     try await handle.resolveToTrackIds(ids: $0)
@@ -327,6 +340,25 @@ extension DetailQuery where Value == BridgeWorkDetail {
         )
     }
 }
+
+// The inspector's read exists in the desktop bindings only.
+#if os(macOS)
+    extension DetailQuery where Value == BridgeStorageInspector {
+        init(_ subscription: any StorageInspectorSubscriptionProtocol) {
+            self.init(
+                setId: { try subscription.setId(id: $0) },
+                next: {
+                    let snapshot = try await subscription.next()
+                    return DetailDelivery(
+                        id: snapshot.id,
+                        value: snapshot.value
+                    )
+                },
+                cancel: { try? await subscription.cancel() }
+            )
+        }
+    }
+#endif
 
 /// A live read of the album grid's multi-selection: set the selected ids,
 /// and take each value it delivers — the summary of every selected album

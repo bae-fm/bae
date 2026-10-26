@@ -1,12 +1,10 @@
 import BaeKit
 import SwiftUI
 
-/// The selected release's active transfers.
+/// The selected release's active transfers, as the inspector read them.
 struct StorageTransferControls: View {
     @Environment(DownloadStore.self)
     private var downloadStore
-    @Environment(OutputStore.self)
-    private var outputStore
     @Environment(OutboxStore.self)
     private var outboxStore
     @Environment(Downloads.self)
@@ -18,14 +16,9 @@ struct StorageTransferControls: View {
     @Environment(UiStore.self)
     private var uiStore
 
-    let releaseId: String
+    let items: [BridgeStorageInspectorTransfer]
+
     var body: some View {
-        let items = bridgeStorageInspectorTransfers(
-            releaseId: releaseId,
-            downloads: downloadStore.snapshot,
-            outputs: outputStore.snapshot,
-            outbox: outboxStore.snapshot
-        )
         VStack(spacing: 0) {
             ForEach(items, id: \.queueId) { item in
                 section(item)
@@ -66,9 +59,10 @@ struct StorageTransferControls: View {
 
             switch item {
             case .download(let operation, _):
+                // The row alone reads the bytes the download moves.
                 DownloadRow(
                     op: operation,
-                    progress: downloadStore.progress(
+                    transfer: downloadStore.transfer(
                         forRelease: operation.releaseId
                     )
                 ) {

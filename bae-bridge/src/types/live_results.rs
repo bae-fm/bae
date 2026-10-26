@@ -65,8 +65,6 @@ callbacks! {
     /// Every downloading release's progress as a `Reset` when the
     /// subscription opens, then each one that moved or ended.
     DownloadTransfersCallback: on_change(change: super::BridgeDownloadTransferChange);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    OutputCallback: on_value(value: BridgeOutputSnapshot) + on_error;
 
     /// What every candidate has in flight: a `Reset` with every running key
     /// when the subscription opens, then `Updated` as a key advances and

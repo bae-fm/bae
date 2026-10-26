@@ -305,22 +305,6 @@ private final class FakeHandle: LibrarySessionHandle, @unchecked Sendable {
     func getOutboxSnapshot() async throws -> BridgeOutboxSnapshot {
         try outbox.get()
     }
-    func getDownloadSnapshot() async throws -> BridgeDownloadSnapshot {
-        BridgeDownloadSnapshot(
-            downloads: [],
-            total: BridgeDownloadProgress(queued: 0, active: 0, failed: 0),
-            summaryParts: [],
-            paused: false
-        )
-    }
-    func getOutputSnapshot() async throws -> BridgeOutputSnapshot {
-        BridgeOutputSnapshot(
-            outputs: [],
-            total: BridgeOutputProgress(queued: 0, active: 0, failed: 0),
-            summaryParts: [],
-            paused: false
-        )
-    }
     func shutdown() async throws { shutdownFlag.set() }
 }
 

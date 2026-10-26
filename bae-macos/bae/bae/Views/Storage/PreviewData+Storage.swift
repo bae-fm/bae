@@ -68,37 +68,12 @@
             ),
         ]
 
-        static func downloadSnapshot(
-            ops: [BridgeDownloadOp] = downloadOps,
-            paused: Bool = false
-        ) -> BridgeDownloadSnapshot {
-            BridgeDownloadSnapshot(
-                downloads: ops,
-                total: BridgeDownloadProgress(queued: 1, active: 1, failed: 1),
-                summaryParts: [
-                    BridgeCountLabel(key: "core.queue.downloading", count: 1),
-                    BridgeCountLabel(key: "core.queue.failed", count: 1),
-                    BridgeCountLabel(key: "core.queue.queued", count: 1),
-                ],
-                paused: paused
-            )
-        }
-
         @MainActor
-        static func downloadStore(
-            _ snapshot: BridgeDownloadSnapshot = downloadSnapshot()
-        ) -> DownloadStore {
-            let store = DownloadStore(snapshot: snapshot)
+        static func downloadStore() -> DownloadStore {
+            let store = DownloadStore()
             store.applyTransferChange(downloadTransfers)
             return store
         }
-
-        static let emptyDownloadSnapshot = BridgeDownloadSnapshot(
-            downloads: [],
-            total: BridgeDownloadProgress(queued: 0, active: 0, failed: 0),
-            summaryParts: [],
-            paused: false
-        )
 
         // MARK: - Export / save queue
 
@@ -143,36 +118,6 @@
             ),
         ]
 
-        static func outputSnapshot(
-            ops: [BridgeOutputOp] = outputOps,
-            paused: Bool = false
-        ) -> BridgeOutputSnapshot {
-            BridgeOutputSnapshot(
-                outputs: ops,
-                total: BridgeOutputProgress(queued: 1, active: 1, failed: 1),
-                summaryParts: [
-                    BridgeCountLabel(key: "core.queue.output", count: 1),
-                    BridgeCountLabel(key: "core.queue.failed", count: 1),
-                    BridgeCountLabel(key: "core.queue.queued", count: 1),
-                ],
-                paused: paused
-            )
-        }
-
-        @MainActor
-        static func outputStore(
-            _ snapshot: BridgeOutputSnapshot = outputSnapshot()
-        ) -> OutputStore {
-            OutputStore(snapshot: snapshot)
-        }
-
-        static let emptyOutputSnapshot = BridgeOutputSnapshot(
-            outputs: [],
-            total: BridgeOutputProgress(queued: 0, active: 0, failed: 0),
-            summaryParts: [],
-            paused: false
-        )
-
         // MARK: - Cloud outbox
 
         /// A file coven can't upload until its source is back where it was.
@@ -192,42 +137,36 @@
             BridgeUploadFileOp(
                 pending: nil,
                 fileId: "covers:rel-row-1",
-                releaseFileKey: nil,
                 label: .cover,
                 state: .waiting
             ),
             BridgeUploadFileOp(
                 pending: nil,
                 fileId: "release_files:f-2",
-                releaseFileKey: nil,
                 label: .filename(name: "02 Track Title.flac"),
                 state: .uploading
             ),
             BridgeUploadFileOp(
                 pending: nil,
                 fileId: "release_files:f-3",
-                releaseFileKey: nil,
                 label: .filename(name: "03 Track Title.flac"),
                 state: .waiting
             ),
             BridgeUploadFileOp(
                 pending: nil,
                 fileId: "release_files:rel-row-1-audio",
-                releaseFileKey: nil,
                 label: .filename(name: "04 Track Title.flac"),
                 state: .uploading
             ),
             BridgeUploadFileOp(
                 pending: unavailableFilePending,
                 fileId: "release_files:f-5",
-                releaseFileKey: nil,
                 label: .filename(name: "05 Track Title.flac"),
                 state: .waiting
             ),
             BridgeUploadFileOp(
                 pending: nil,
                 fileId: "release_files:f-6",
-                releaseFileKey: nil,
                 label: .filename(name: "06 Track Title.flac"),
                 state: .waiting
             ),
@@ -256,7 +195,6 @@
                 BridgeUploadFileOp(
                     pending: nil,
                     fileId: "release_files:rel-row-2-audio",
-                    releaseFileKey: nil,
                     label: .filename(name: "01 Track Title.flac"),
                     state: .waiting
                 )
@@ -275,7 +213,6 @@
                 BridgeUploadFileOp(
                     pending: unavailableFilePending,
                     fileId: "release_files:rel-row-3-audio",
-                    releaseFileKey: nil,
                     label: .filename(name: "01 Track Title.flac"),
                     state: .waiting
                 )
@@ -287,31 +224,20 @@
             )
         )
 
+        static let defaultUploadGroups = [uploadGroup, uploadGroupQueued]
+
+        /// The upload queue's summary while `uploadGroups` are queued.
         static func outboxSnapshot(
-            uploadGroups: [BridgeUploadReleaseGroup] = [
-                uploadGroup, uploadGroupQueued,
-            ],
+            uploadGroups: [BridgeUploadReleaseGroup] = defaultUploadGroups,
             pauseState: BridgeOutboxPauseState = .running
         ) -> BridgeOutboxSnapshot {
-            let perRelease = Dictionary(
-                uniqueKeysWithValues: uploadGroups.map { group in
-                    (group.releaseId, group.progress)
-                }
-            )
-            return BridgeOutboxSnapshot(
+            BridgeOutboxSnapshot(
                 revision: 1,
-                uploadGroups: uploadGroups,
-                otherFiles: [],
-                perRelease: perRelease,
-                total: BridgeUploadProgress(
-                    queued: 5,
-                    uploading: 2,
-                    activity: .uploading
+                perRelease: Dictionary(
+                    uniqueKeysWithValues: uploadGroups.map { group in
+                        (group.releaseId, group.progress)
+                    }
                 ),
-                summaryParts: [
-                    BridgeCountLabel(key: "core.queue.uploading", count: 2),
-                    BridgeCountLabel(key: "core.queue.queued", count: 5),
-                ],
                 pauseState: pauseState
             )
         }
@@ -531,18 +457,59 @@
 
         /// A `Library` whose storage reads serve the fixture rows and nothing
         /// else — enough for `StorageManagerView`'s own `rebuildList()` to
-        /// populate the table.
+        /// populate the table — and whose inspector shows each row's release
+        /// with its entry in `downloads`, `outputs` and `uploadGroups`.
         static func storageLibrary(
-            rows: [BridgeStorageRow] = storageRows
+            rows: [BridgeStorageRow] = storageRows,
+            downloads: [BridgeDownloadOp] = downloadOps,
+            outputs: [BridgeOutputOp] = outputOps,
+            uploadGroups: [BridgeUploadReleaseGroup] = defaultUploadGroups
         ) -> Library {
             let details = Dictionary(
                 uniqueKeysWithValues: rows.map { row in
                     (row.id, storageReleaseDetail(for: row))
                 }
             )
+            let inspectors = details.mapValues { detail in
+                storageInspector(
+                    release: detail,
+                    download: downloads.first { $0.releaseId == detail.id },
+                    output: outputs.first { $0.releaseId == detail.id },
+                    upload: uploadGroups.first { $0.releaseId == detail.id }
+                )
+            }
             return Library(
                 releaseDetail: { .fixed { details[$0] } },
-                storageBrowse: { _, _ in .fixed(rows) }
+                storageBrowse: { _, _ in .fixed(rows) },
+                storageInspector: { .fixed { inspectors[$0] } }
+            )
+        }
+
+        /// What core's inspector read delivers for `release` beside its
+        /// queue entries, every queue running. The fixture uploads name no
+        /// release file, so they list after the release's files.
+        private static func storageInspector(
+            release: BridgeRelease,
+            download: BridgeDownloadOp?,
+            output: BridgeOutputOp?,
+            upload: BridgeUploadReleaseGroup?
+        ) -> BridgeStorageInspector {
+            var transfers: [BridgeStorageInspectorTransfer] = []
+            if let download {
+                transfers.append(.download(operation: download, paused: false))
+            }
+            if let output {
+                transfers.append(.output(operation: output, paused: false))
+            }
+            if let upload {
+                transfers.append(.upload(group: upload, paused: false))
+            }
+            return BridgeStorageInspector(
+                transfers: transfers,
+                files: release.files.map {
+                    .releaseFile(file: $0, operation: nil)
+                }
+                    + (upload?.files ?? []).map { .upload(operation: $0) }
             )
         }
 

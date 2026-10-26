@@ -67,7 +67,7 @@ pub struct CountLabel {
 
 impl ReleaseQueueProgress {
     /// The summary parts for a release queue: its active verb (`active_key`,
-    /// e.g. downloading vs exporting), then failed, then queued — each part
+    /// e.g. downloading vs uploading), then failed, then queued — each part
     /// dropped when its count is zero. The order and the drop rule are the
     /// decision; only the active verb differs by queue, so the caller names it.
     pub fn summary_parts(&self, active_key: &str) -> Vec<CountLabel> {
@@ -486,8 +486,8 @@ mod tests {
     use std::sync::Arc;
 
     /// The summary parts read active-then-failed-then-queued, drop any zero, and
-    /// take the active verb the caller names — so download and export share this
-    /// one decision and differ only in that verb.
+    /// take the active verb the caller names — so every queue line shares this
+    /// one decision and differs only in that verb.
     #[test]
     fn summary_parts_order_drop_and_active_verb() {
         let progress = ReleaseQueueProgress {
@@ -511,7 +511,7 @@ mod tests {
         );
         assert!(
             ReleaseQueueProgress::default()
-                .summary_parts("core.queue.output")
+                .summary_parts("core.queue.uploading")
                 .is_empty(),
             "an idle queue has no parts"
         );

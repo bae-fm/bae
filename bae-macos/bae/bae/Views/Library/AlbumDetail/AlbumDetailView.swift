@@ -350,7 +350,7 @@ extension AlbumDetailView {
     /// Export a release verbatim to a folder — a pure copy-out that reproduces
     /// the imported file set. Changes no state, so it's offered regardless of the
     /// release's locality. The copy runs on the output queue and surfaces in the
-    /// Storage Manager's Exporting pane.
+    /// Storage Manager's inspector for the release.
     private func exportRelease(releaseId: String) {
         guard let targetDir = OutputTarget.resolveExportDir() else {
             return

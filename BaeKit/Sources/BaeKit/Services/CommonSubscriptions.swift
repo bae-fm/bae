@@ -147,28 +147,6 @@ private final class OutboxTransfersSink: OutboxTransfersCallback,
     }
 }
 
-private final class DownloadValueSink: DownloadCallback, @unchecked Sendable {
-    private let apply: @MainActor @Sendable (BridgeDownloadSnapshot) -> Void
-    private let fail: @MainActor @Sendable (any Error) -> Void
-
-    init(
-        apply:
-            @escaping @MainActor @Sendable (BridgeDownloadSnapshot) -> Void,
-        fail: @escaping @MainActor @Sendable (any Error) -> Void
-    ) {
-        self.apply = apply
-        self.fail = fail
-    }
-
-    func onValue(value: BridgeDownloadSnapshot) {
-        Task { @MainActor in apply(value) }
-    }
-
-    func onError(error: BridgeError) {
-        Task { @MainActor in fail(error) }
-    }
-}
-
 private final class DownloadTransfersSink: DownloadTransfersCallback,
     @unchecked Sendable
 {
@@ -272,14 +250,6 @@ final class CommonSubscriptions {
                     callback: OutboxTransfersSink { [outboxStore] change in
                         outboxStore.applyTransferChange(change)
                     }
-                ),
-                appHandle.subscribeDownloads(
-                    callback: DownloadValueSink(
-                        apply: { [downloadStore] value in
-                            downloadStore.applySnapshot(value)
-                        },
-                        fail: onError
-                    )
                 ),
                 appHandle.subscribeDownloadTransfers(
                     callback: DownloadTransfersSink { [downloadStore] change in

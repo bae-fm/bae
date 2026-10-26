@@ -386,3 +386,53 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
     );
     assert!(read.paused);
 }
+
+/// The inspector reads the release it is set to in core: its entry in each
+/// queue beside that queue's pause state, and nothing of a release the
+/// library does not hold.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[tokio::test(flavor = "multi_thread")]
+async fn the_storage_inspector_reads_the_release_it_is_set_to() {
+    use crate::library::storage_inspector::StorageInspectorTransfer;
+    let (services, _track_ids, temp_dir) = playing_app_services(1).await;
+    let release_id = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
+    let manager = &services.inner.manager;
+    manager.set_outputs_paused(true);
+    manager
+        .enqueue_export(release_id, temp_dir.path().join("export-out"))
+        .await
+        .unwrap();
+
+    let inspector = services.subscribe_storage_inspector(&tokio::runtime::Handle::current());
+    inspector.set(Some(release_id.to_string())).unwrap();
+    let next = || async {
+        tokio::time::timeout(std::time::Duration::from_secs(5), inspector.next())
+            .await
+            .expect("the inspector delivers")
+            .expect("the inspector reads")
+    };
+    let shown = loop {
+        let snapshot = next().await;
+        assert_eq!(snapshot.id.as_deref(), Some(release_id));
+        let value = snapshot.value.expect("the library holds the release");
+        if !value.transfers.is_empty() {
+            break value;
+        }
+    };
+    let [StorageInspectorTransfer::Output { operation, paused }] = shown.transfers.as_slice()
+    else {
+        panic!(
+            "only the export queue holds the release: {:?}",
+            shown.transfers
+        );
+    };
+    assert_eq!(operation.op.release_id, release_id);
+    assert!(*paused, "the export queue's own pause state");
+    assert!(shown.files.is_empty(), "the seeded release has no files");
+
+    let missing = "f0a5c8e2-7d61-4b9e-a3c4-1e2d3f4a5b6c";
+    inspector.set(Some(missing.to_string())).unwrap();
+    let gone = next().await;
+    assert_eq!(gone.id.as_deref(), Some(missing));
+    assert!(gone.value.is_none(), "no such release");
+}

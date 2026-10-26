@@ -11,26 +11,17 @@ public final class DownloadTransferValue {
     }
 }
 
-/// Mirror of core's download (pin) queue, rendered by the Storage Manager's
-/// Downloads pane. The retained download subscription lands the queue —
-/// entries, phases, pause — each time it changes, and it is swapped
-/// wholesale; the transfer subscription lands each downloading release's
-/// bytes into that release's own value, so bytes arriving redraw only what
-/// draws that release's progress. Views read both at the leaf.
+/// The bytes each downloading release has moved. The transfer subscription
+/// lands each release's progress into that release's own value, so bytes
+/// arriving redraw only what draws that release's progress. The queue's
+/// entries are the Storage Manager inspector's, read for one release in core.
 @Observable
 public class DownloadStore {
-    public var snapshot: BridgeDownloadSnapshot
     /// Each downloading release's progress, one value per release; the map
     /// changes only as releases start and stop downloading.
     private var transfers: [String: DownloadTransferValue] = [:]
 
-    public init(snapshot: BridgeDownloadSnapshot) {
-        self.snapshot = snapshot
-    }
-
-    public func applySnapshot(_ snapshot: BridgeDownloadSnapshot) {
-        self.snapshot = snapshot
-    }
+    public init() {}
 
     /// Apply one change the transfer subscription delivered.
     public func applyTransferChange(_ change: BridgeDownloadTransferChange) {
@@ -53,11 +44,13 @@ public class DownloadStore {
         }
     }
 
-    /// How far a release's download has gone; `nil` while none has arrived
-    /// for it.
-    public func progress(forRelease releaseId: String)
-        -> BridgeDownloadTransferProgress?
+    /// A release's download progress as its own observed value, for a view
+    /// to hand to the one leaf that draws it: reading this follows only the
+    /// release starting and stopping its download, and the leaf alone
+    /// follows `.progress`. `nil` while none has arrived for it.
+    public func transfer(forRelease releaseId: String)
+        -> DownloadTransferValue?
     {
-        transfers[releaseId]?.progress
+        transfers[releaseId]
     }
 }

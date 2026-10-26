@@ -16,7 +16,6 @@ const DIRECT_KEYS: &[&str] = &[
     // Storage queue summary (UI composes counts).
     "core.queue.uploading",
     "core.queue.downloading",
-    "core.queue.output",
     "core.queue.failed",
     "core.queue.queued",
     // A queue row whose release the library no longer holds.

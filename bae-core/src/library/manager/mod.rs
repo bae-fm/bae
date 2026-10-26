@@ -754,7 +754,7 @@ pub struct LibraryManager {
     /// clones; transient (empty after a restart — a release that wasn't fully
     /// pinned stays cloud-only).
     downloads: crate::library::Downloads,
-    /// The "Export…" and save queue and the Exporting pane's stream. A single
+    /// The "Export…" and save queue and the stream the inspector reads. A single
     /// serial worker drains it one release at a time. Shared across manager
     /// clones; transient. An output changes no release state — it only reads,
     /// and writes to a user directory. Desktop-only: see the `output` module.

@@ -4,8 +4,8 @@ import Foundation
 /// Controls for the in-memory export queue: enqueue a release export
 /// out to a folder, pause/resume the queue, cancel a release's export, and retry
 /// failed ones. Mirrors `Downloads`, wrapping the corresponding `handle.*`
-/// methods. The queue itself lives in bae-core; the Exporting pane reads its
-/// state from `OutputStore` (the export projection is the sole writer).
+/// methods. The queue itself lives in bae-core; the Storage Manager's
+/// inspector reads a release's entry in it.
 final class Outputs: Sendable, Observable {
     /// Enqueue a verbatim release export to `targetDir`. It joins the serial
     /// output queue; the worker drains it one release at a time. Fire-and-forget

@@ -8,10 +8,6 @@ public protocol LibrarySessionHandle: AnyObject, Sendable {
     func libraryName() async throws -> String
     func storageLocation() async throws -> BridgeStorageLocation?
     func getOutboxSnapshot() async throws -> BridgeOutboxSnapshot
-    func getDownloadSnapshot() async throws -> BridgeDownloadSnapshot
-    #if os(macOS)
-        func getOutputSnapshot() async throws -> BridgeOutputSnapshot
-    #endif
     func shutdown() async throws
 }
 
@@ -21,35 +17,16 @@ public struct LibrarySessionSeed: Sendable {
     public let name: String
     public let storage: BridgeStorageLocation?
     public let outbox: BridgeOutboxSnapshot
-    public let downloads: BridgeDownloadSnapshot
-    #if os(macOS)
-        public let outputs: BridgeOutputSnapshot
-        public init(
-            name: String,
-            storage: BridgeStorageLocation?,
-            outbox: BridgeOutboxSnapshot,
-            downloads: BridgeDownloadSnapshot,
-            outputs: BridgeOutputSnapshot
-        ) {
-            self.name = name
-            self.storage = storage
-            self.outbox = outbox
-            self.downloads = downloads
-            self.outputs = outputs
-        }
-    #else
-        public init(
-            name: String,
-            storage: BridgeStorageLocation?,
-            outbox: BridgeOutboxSnapshot,
-            downloads: BridgeDownloadSnapshot
-        ) {
-            self.name = name
-            self.storage = storage
-            self.outbox = outbox
-            self.downloads = downloads
-        }
-    #endif
+
+    public init(
+        name: String,
+        storage: BridgeStorageLocation?,
+        outbox: BridgeOutboxSnapshot
+    ) {
+        self.name = name
+        self.storage = storage
+        self.outbox = outbox
+    }
 
     static func read(from handle: some LibrarySessionHandle) async throws
         -> Self
@@ -57,24 +34,7 @@ public struct LibrarySessionSeed: Sendable {
         let name = try await handle.libraryName()
         let storage = try await handle.storageLocation()
         let outbox = try await handle.getOutboxSnapshot()
-        let downloads = try await handle.getDownloadSnapshot()
-        #if os(macOS)
-            let outputs = try await handle.getOutputSnapshot()
-            return Self(
-                name: name,
-                storage: storage,
-                outbox: outbox,
-                downloads: downloads,
-                outputs: outputs
-            )
-        #else
-            return Self(
-                name: name,
-                storage: storage,
-                outbox: outbox,
-                downloads: downloads
-            )
-        #endif
+        return Self(name: name, storage: storage, outbox: outbox)
     }
 }
 

@@ -1,27 +1,6 @@
 import BaeKit
 import Foundation
 
-private final class OutputValueSink: OutputCallback, @unchecked Sendable {
-    private let apply: @MainActor @Sendable (BridgeOutputSnapshot) -> Void
-    private let fail: @MainActor @Sendable (any Error) -> Void
-
-    init(
-        apply: @escaping @MainActor @Sendable (BridgeOutputSnapshot) -> Void,
-        fail: @escaping @MainActor @Sendable (any Error) -> Void
-    ) {
-        self.apply = apply
-        self.fail = fail
-    }
-
-    func onValue(value: BridgeOutputSnapshot) {
-        Task { @MainActor in apply(value) }
-    }
-
-    func onError(error: BridgeError) {
-        Task { @MainActor in fail(error) }
-    }
-}
-
 private final class CandidateRuntimeSink: CandidateRuntimeCallback,
     @unchecked Sendable
 {
@@ -229,7 +208,6 @@ final class DesktopSubscriptions {
 
     private let appHandle: AppHandle
     private let importStore: ImportStore
-    private let outputStore: OutputStore
     private let uiStore: UiStore
     /// The import list's selection, installed in the view environment.
     let importSelection: ImportSelection
@@ -238,12 +216,10 @@ final class DesktopSubscriptions {
     init(
         appHandle: AppHandle,
         importStore: ImportStore,
-        outputStore: OutputStore,
         uiStore: UiStore
     ) {
         self.appHandle = appHandle
         self.importStore = importStore
-        self.outputStore = outputStore
         self.uiStore = uiStore
         // The list's selection sink is the observations' one owner: it lives
         // as long as the list slot that calls it.
@@ -352,14 +328,6 @@ final class DesktopSubscriptions {
     func start() {
         precondition(subscriptions.isEmpty)
         subscriptions = [
-            appHandle.subscribeOutputs(
-                callback: OutputValueSink(
-                    apply: { [outputStore] value in
-                        outputStore.applySnapshot(value)
-                    },
-                    fail: { [uiStore] error in uiStore.showError(error) }
-                )
-            ),
             appHandle.subscribeCandidateRuntime(
                 callback: CandidateRuntimeSink { [importStore] change in
                     importStore.candidateRuntimeSubject.send(change)

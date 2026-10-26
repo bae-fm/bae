@@ -20,6 +20,7 @@ pub mod release_queue;
 pub mod save;
 pub mod search;
 mod storage_browse;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod storage_inspector;
 pub(crate) mod storage_transitions;
 mod sync_activity;
@@ -50,6 +51,7 @@ pub use outbox_snapshot::{
     UploadFileLabel, UploadFileOp, UploadProgress, UploadReleaseGroup, UploadState, UploadSubject,
     UploadTransfer, UploadTransferKey,
 };
+pub use outbox_snapshot_summary::OutboxSummary;
 pub use outbox_watch::{OutboxQueueWatch, OutboxTransferChange, OutboxTransfersWatch};
 pub use output_snapshot::{
     OutputKind, OutputOp, OutputProgress, OutputQueueContents, OutputRow, OutputSnapshot,

@@ -115,12 +115,12 @@ open class AppService: @unchecked Sendable, Observable {
     private let syncStatusStore: SyncStatusStore
     private let syncActivityStore: SyncActivityStore
     private let libraryStore: LibraryStore
-    /// In-memory download (pin) queue mirror — per-release state and summary.
+    /// The bytes each downloading release has moved.
     private let downloadStore: DownloadStore
     /// Which device playback is on, and what the picker found while it was open.
     private let castStore: CastStore
-    /// Cloud outbox processing mirror — queue depth, per-item state, summary
-    /// (carries the sync-pause flag).
+    /// Cloud outbox mirror — which releases have uploads queued, the
+    /// sync-pause flag, and each upload's transfer.
     private let outboxStore: OutboxStore
 
     private let membershipStore: MembershipStore

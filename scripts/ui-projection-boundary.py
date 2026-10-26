@@ -181,7 +181,6 @@ ENTITY_DATA_OWNERS = {
         "LibraryBrowseSession",
         "LibraryStore",
         "OutboxStore",
-        "OutputStore",
         "Outputs",
         "Playback",
         "PlaybackStore",
