@@ -104,16 +104,14 @@ pub struct BridgeImportCandidateListLocation {
     pub visible_position: u64,
 }
 
-/// Everything the chrome around the list shows. All but the folder scans is
-/// computed in the same pass as the items, so none of it can drift from them;
-/// the scans are read on their own, since a scan's progress moves no row.
+/// Everything the chrome around the list shows, computed in the same pass as
+/// the items, so none of it can drift from them. Where the folder scans stand
+/// is [`BridgeFolderScans`], sent on its own: a scan's progress moves no row.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportQueueSummary {
     /// `skipped` counts the Skipped rows **plus** the invalid folders.
     pub counts: BridgeTriageTabCounts,
     pub watched_folders: Vec<BridgeWatchedFolder>,
-    pub folder_scan_statuses: Vec<BridgeWatchedFolderScanStatus>,
-    pub folder_scan_activity: Option<BridgeFolderScanActivity>,
     /// Every group header the whole queue has, across all tabs — what
     /// disclosure state is retained against.
     pub group_keys: Vec<BridgeFolderReleaseDecisionKey>,
@@ -162,6 +160,17 @@ pub struct BridgeImportListNarrowing {
 pub struct BridgeNarrowedCount {
     pub shown: u32,
     pub total: u32,
+}
+
+/// Where each watched folder's scan stands. Mirrors
+/// `bae_core::import::FolderScanProgress`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeFolderScans {
+    /// Every scanned root, in watched-folder order.
+    pub statuses: Vec<BridgeWatchedFolderScanStatus>,
+    /// The current walks, totalled for the filter bar's activity control;
+    /// absent while no root is scanning.
+    pub activity: Option<BridgeFolderScanActivity>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

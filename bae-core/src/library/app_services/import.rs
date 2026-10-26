@@ -269,12 +269,18 @@ impl AppServices {
     ) -> ImportListSubscription {
         ImportListSubscription::start(
             |request| self.inner.manager.subscribe_import_list(request),
-            self.inner.manager.subscribe_folder_scan_progress(),
             view,
             crate::library::LibraryPageWindows::new(),
             self.subscribe_outbox_values(),
             runtime_handle,
         )
+    }
+
+    /// Where each watched folder's scan stands: the first value at once, then
+    /// a value only when the scans changed, which the live query tests on the
+    /// processed progress.
+    pub fn subscribe_folder_scans(&self) -> coven::LiveQuery<crate::import::FolderScanProgress> {
+        self.inner.manager.subscribe_folder_scan_progress()
     }
 
     /// The list request for one read of `view`: the upload standing as it

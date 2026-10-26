@@ -99,6 +99,19 @@ struct IdentificationProgressIndicator: View {
     }
 }
 
+/// The filter row's place for the scan indicator, shown while a root is
+/// scanning. It reads the folder scans itself, so a scan's step redraws this
+/// alone and nothing around it.
+struct FolderScanActivitySlot: View {
+    let importStore: ImportStore
+
+    var body: some View {
+        if let activity = importStore.folderScans.activity {
+            FolderScanProgressIndicator(activity: activity)
+        }
+    }
+}
+
 /// The filter row's watched-folder scan indicator; clicking it lists each
 /// root's found count.
 struct FolderScanProgressIndicator: View {

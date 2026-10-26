@@ -386,11 +386,12 @@ pub struct NarrowedCount {
 
 /// Where each watched folder's scan stands, for the chrome around the list.
 ///
-/// Read apart from the list, and by its own live query: a scan re-confirms
-/// every folder it walks by moving its row to the scan's generation, which
-/// moves the found count and nothing the list shows. Counted inside the list's
-/// read, each of those writes cost a whole-queue read, and a rescan of a large
-/// folder kept the list reading back to back until it finished.
+/// Read apart from the list, by its own live query, and sent on its own
+/// subscription: a scan re-confirms every folder it walks by moving its row
+/// to the scan's generation, which moves the found count and nothing the list
+/// shows. Counted inside the list's read, each of those writes cost a
+/// whole-queue read, and a rescan of a large folder kept the list reading back
+/// to back until it finished; sent with the list, each resent its page.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FolderScanProgress {
     /// Every scanned root, in watched-folder order.
@@ -457,12 +458,8 @@ pub struct ImportListProjection {
     pub selection: crate::import::selection::SelectionSummary,
 }
 
-/// A projection, the live query's own bookkeeping — which request it answers
-/// and what woke it — and where the folder scans stand.
-///
-/// A change to the scans alone delivers the last projection again beside it,
-/// with its revision and a [`coven::LiveQueryCause::Write`] cause: the value
-/// of the same request changed.
+/// A projection, and the live query's own bookkeeping: which request it
+/// answers and what woke it.
 #[derive(Debug, Clone)]
 pub struct ImportListSnapshot {
     pub windows: Vec<ImportListWindow>,
@@ -471,7 +468,6 @@ pub struct ImportListSnapshot {
     /// Every entry of Found's filter, in the menu's order, with how many of
     /// Found's rows it holds.
     pub pending_filter_entries: Vec<PendingFilterEntry>,
-    pub folder_scans: FolderScanProgress,
     /// The person's changes to the selection the rows' `selected` reflects.
     pub selection_revision: u64,
     /// What the selection holds and can be told to do: the selected rows

@@ -189,8 +189,6 @@ struct ImportListPageSourceTests {
                     skipped: 0
                 ),
                 watchedFolders: [BridgeWatchedFolder(path: "/w", name: "w")],
-                folderScanStatuses: [],
-                folderScanActivity: nil,
                 groupKeys: [],
                 pendingCovers: [],
                 narrowed: nil,

@@ -41,6 +41,27 @@ private final class CandidateRuntimeSink: CandidateRuntimeCallback,
     }
 }
 
+private final class FolderScansSink: FolderScansCallback, @unchecked Sendable {
+    private let apply: @MainActor @Sendable (BridgeFolderScans) -> Void
+    private let fail: @MainActor @Sendable (any Error) -> Void
+
+    init(
+        apply: @escaping @MainActor @Sendable (BridgeFolderScans) -> Void,
+        fail: @escaping @MainActor @Sendable (any Error) -> Void
+    ) {
+        self.apply = apply
+        self.fail = fail
+    }
+
+    func onValue(value: BridgeFolderScans) {
+        Task { @MainActor in apply(value) }
+    }
+
+    func onError(error: BridgeError) {
+        Task { @MainActor in fail(error) }
+    }
+}
+
 /// The read behind the one selected import candidate, whose key moves in place
 /// as the selection moves. Several selected candidates, or none, read nothing
 /// here: the pane several open reads core's selection summary instead.
@@ -247,8 +268,8 @@ final class DesktopSubscriptions {
             observations: (selectionObservation, invalidSelectionObservation)
         )
         // A watched folder that could not be read. Wired before anything can
-        // deliver a summary, and fed from the list's live query rather than a
-        // transient event, so a scan that failed while the app was still
+        // deliver the folder scans, and fed from their live query rather than
+        // a transient event, so a scan that failed while the app was still
         // starting up is raised on the first delivery instead of being
         // published to nobody.
         importStore.onScanFailure = Self.scanFailureAlert(on: uiStore)
@@ -343,6 +364,14 @@ final class DesktopSubscriptions {
                 callback: CandidateRuntimeSink { [importStore] change in
                     importStore.candidateRuntimeSubject.send(change)
                 }
+            ),
+            appHandle.subscribeFolderScans(
+                callback: FolderScansSink(
+                    apply: { [importStore] scans in
+                        importStore.applyFolderScans(scans)
+                    },
+                    fail: { [uiStore] error in uiStore.showError(error) }
+                )
             ),
         ]
         importList.startLoad()

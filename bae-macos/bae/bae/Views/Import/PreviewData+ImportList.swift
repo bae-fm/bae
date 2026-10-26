@@ -107,8 +107,6 @@
             done: UInt32,
             skipped: UInt32,
             watchedFolders: [BridgeWatchedFolder],
-            folderScanStatuses: [BridgeWatchedFolderScanStatus] = [],
-            folderScanActivity: BridgeFolderScanActivity? = nil,
             groupKeys: [BridgeFolderReleaseDecisionKey] = [],
             pendingCovers: [BridgeRemoteImageSet] = [],
             narrowed: BridgeNarrowedCount? = nil,
@@ -121,8 +119,6 @@
                     skipped: skipped
                 ),
                 watchedFolders: watchedFolders,
-                folderScanStatuses: folderScanStatuses,
-                folderScanActivity: folderScanActivity,
                 groupKeys: groupKeys,
                 pendingCovers: pendingCovers,
                 narrowed: narrowed,

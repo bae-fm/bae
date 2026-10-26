@@ -170,25 +170,6 @@ struct ImportCandidateListContent: View {
         (listSlot.list?.totalCount ?? 0) == 0
     }
 
-    /// Each watched root's scan state, by path.
-    private var scanStatuses: [String: BridgeFolderScanStatus] {
-        Dictionary(
-            summary.folderScanStatuses.map {
-                ($0.watchedFolderPath, $0.status)
-            },
-            uniquingKeysWith: { first, _ in first }
-        )
-    }
-
-    /// The watched roots on a network volume.
-    private var networkFolders: Set<String> {
-        Set(
-            summary.folderScanStatuses
-                .filter(\.onNetworkVolume)
-                .map(\.watchedFolderPath)
-        )
-    }
-
     var body: some View {
         ImportSidebarList {
             VStack(spacing: 0) {
@@ -225,14 +206,10 @@ struct ImportCandidateListContent: View {
                             onCancelAll: onCancelAllImports
                         )
                     }
-                    if let activity = summary.folderScanActivity {
-                        FolderScanProgressIndicator(activity: activity)
-                    }
+                    FolderScanActivitySlot(importStore: importStore)
                     CandidateListMenu(
                         watchedFolders: importStore.watchedFolders,
                         refreshingFolders: uiStore.refreshingWatchedFolders,
-                        scanStatuses: scanStatuses,
-                        networkFolders: networkFolders,
                         hasGroups: !summary.groupKeys.isEmpty,
                         sortOrder: listSlot.sortOrder,
                         pendingFilter: uiStore

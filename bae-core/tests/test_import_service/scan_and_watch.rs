@@ -139,6 +139,17 @@ async fn wait_for_candidates(
     wait_for_tab(f, what, bae_core::import::TriageTab::Pending, accept).await
 }
 
+/// The first folder scans `accept` admits; panics at the hang guard.
+async fn wait_for_folder_scans(
+    f: &ImportFixture,
+    what: &str,
+    accept: impl FnMut(&bae_core::import::FolderScanProgress) -> bool,
+) -> bae_core::import::FolderScanProgress {
+    tokio::time::timeout(HANG_GUARD, f.handle.wait_for_folder_scans(accept))
+        .await
+        .unwrap_or_else(|_| panic!("timed out waiting for {what}"))
+}
+
 /// The first read of one tab that `accept` admits; panics at the hang guard.
 async fn wait_for_tab(
     f: &ImportFixture,
@@ -307,11 +318,11 @@ async fn unavailable_watched_folder_remains_durable_and_reports_scan_failure() {
         .add_watched_folder(missing_key.clone())
         .await
         .unwrap();
-    wait_for_candidates(
+    wait_for_folder_scans(
         &f,
         "unavailable watched root reports a failed scan",
-        |projection| {
-            projection.folder_scans.statuses.iter().any(|status| {
+        |scans| {
+            scans.statuses.iter().any(|status| {
                 status.watched_folder_path == missing_key
                     && matches!(
                         status.status,
@@ -374,8 +385,8 @@ async fn adding_an_already_watched_folder_reads_it_again() {
     let root_key = root.to_string_lossy().into_owned();
 
     f.handle.add_watched_folder(root_key.clone()).await.unwrap();
-    wait_for_candidates(&f, "the first scan of the added root", |projection| {
-        projection.folder_scans.statuses.iter().any(|status| {
+    wait_for_folder_scans(&f, "the first scan of the added root", |scans| {
+        scans.statuses.iter().any(|status| {
             status.watched_folder_path == root_key
                 && matches!(status.status, bae_core::import::FolderScanStatus::Complete)
         })
@@ -416,8 +427,8 @@ async fn adding_a_folder_inside_a_watched_one_reads_the_watched_one_again() {
     let root_key = root.to_string_lossy().into_owned();
 
     f.handle.add_watched_folder(root_key.clone()).await.unwrap();
-    wait_for_candidates(&f, "the first scan of the added root", |projection| {
-        projection.folder_scans.statuses.iter().any(|status| {
+    wait_for_folder_scans(&f, "the first scan of the added root", |scans| {
+        scans.statuses.iter().any(|status| {
             status.watched_folder_path == root_key
                 && matches!(status.status, bae_core::import::FolderScanStatus::Complete)
         })
@@ -465,9 +476,9 @@ fn path_string(path: &Path) -> String {
 /// Wait until every one of `roots` has been read to the end.
 async fn wait_for_reads(f: &ImportFixture, what: &str, roots: &[&Path]) {
     let roots: Vec<String> = roots.iter().map(|root| path_string(root)).collect();
-    wait_for_candidates(f, what, |projection| {
+    wait_for_folder_scans(f, what, |scans| {
         roots.iter().all(|root| {
-            projection.folder_scans.statuses.iter().any(|status| {
+            scans.statuses.iter().any(|status| {
                 &status.watched_folder_path == root
                     && matches!(status.status, bae_core::import::FolderScanStatus::Complete)
             })
@@ -621,23 +632,25 @@ async fn refresh_missing_watched_folder_records_failure_and_preserves_candidates
         .refresh_watched_folder(root_key.clone())
         .await
         .expect("the refresh ran; what it found is the folder's status");
-    let projection = wait_for_candidates(&f, "the failed refresh leaves its status", |projection| {
-        projection
-            .folder_scans
-            .statuses
+    let scans = wait_for_folder_scans(&f, "the failed refresh leaves its status", |scans| {
+        scans.statuses.iter().any(|status| {
+            matches!(
+                status.status,
+                bae_core::import::FolderScanStatus::Failed { .. }
+            )
+        })
+    })
+    .await;
+    let projection = wait_for_candidates(&f, "the candidate stays", |projection| {
+        candidate_rows(projection)
             .iter()
-            .any(|status| {
-                matches!(
-                    status.status,
-                    bae_core::import::FolderScanStatus::Failed { .. }
-                )
-            })
+            .any(|row| row.candidate_key == album_key)
     })
     .await;
     assert!(candidate_rows(&projection)
         .iter()
         .any(|row| row.candidate_key == album_key));
-    assert!(projection.folder_scans.statuses.iter().any(|status| {
+    assert!(scans.statuses.iter().any(|status| {
         status.watched_folder_path == root_key
             && matches!(
                 status.status,

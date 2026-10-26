@@ -19,7 +19,6 @@ async fn subscription() -> (ImportListSubscription, Database, tempfile::TempDir)
     let (_outbox_tx, outbox) = tokio::sync::watch::channel(None);
     let subscription = ImportListSubscription::start(
         |request| database.subscribe_import_list(request),
-        database.subscribe_folder_scan_progress(),
         ImportListView::default(),
         LibraryPageWindows::default(),
         outbox,
@@ -93,7 +92,6 @@ async fn a_failed_upload_queue_read_makes_the_done_order_unreadable() {
     let (outbox_tx, outbox) = tokio::sync::watch::channel(None);
     let subscription = ImportListSubscription::start(
         |request| database.subscribe_import_list(request),
-        database.subscribe_folder_scan_progress(),
         ImportListView {
             tab: crate::import::triage::TriageTab::Done,
             ..ImportListView::default()

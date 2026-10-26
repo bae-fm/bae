@@ -199,11 +199,11 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
     assert_eq!(moved.windows[0].items, initial.windows[0].items);
 }
 
-/// The list subscription delivers a scan's progress beside the rows it
-/// already read: the count moves, and the list's revision and rows stay what
-/// its last read answered.
+/// A scan's progress moves the folder scans' own query and sends the list
+/// subscription nothing: the next list value after it is the one a new
+/// request asks for, with the rows its last read held.
 #[tokio::test]
-async fn import_list_subscription_delivers_scan_progress_beside_its_last_read() {
+async fn a_scans_progress_moves_the_scans_and_sends_the_list_nothing() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
@@ -226,39 +226,48 @@ async fn import_list_subscription_delivers_scan_progress_beside_its_last_read() 
     let (_outbox, outbox) = tokio::sync::watch::channel(None);
     let subscription = crate::import::ImportListSubscription::start(
         |request| db.subscribe_import_list(request),
-        db.subscribe_folder_scan_progress(),
         request.view,
         request.windows,
         outbox,
         &tokio::runtime::Handle::current(),
     );
+    let mut scans = db.subscribe_folder_scan_progress();
     let initial = subscription.next().await.unwrap();
     assert_eq!(initial.cause, coven::LiveQueryCause::Request);
-    assert_eq!(
-        initial
-            .folder_scans
+    let found = |progress: crate::import::FolderScanProgress| {
+        progress
             .activity
             .expect("the rescan is in flight")
-            .found_count,
-        0
-    );
+            .found_count
+    };
+    assert_eq!(found(scans.next().await.unwrap()), 0);
 
     db.save_folder_scan_item(root, rescan, &scan_candidate(root, "first"))
         .await
         .unwrap();
-    let progressed = tokio::time::timeout(Duration::from_secs(2), subscription.next())
+    let progressed = tokio::time::timeout(Duration::from_secs(2), scans.next())
         .await
         .expect("the re-confirmed folder moves the scan progress")
         .unwrap();
-    assert_eq!(progressed.cause, coven::LiveQueryCause::Write);
-    assert_eq!(progressed.request_revision, initial.request_revision);
-    assert_eq!(progressed.total_count, 2);
+    assert_eq!(found(progressed), 1);
+
+    subscription
+        .set_windows(
+            std::iter::once(crate::library::LibraryPageWindow {
+                offset: 0,
+                limit: 49,
+            })
+            .collect(),
+        )
+        .unwrap();
+    let next = tokio::time::timeout(Duration::from_secs(2), subscription.next())
+        .await
+        .expect("a new request reruns the list")
+        .unwrap();
     assert_eq!(
-        progressed
-            .folder_scans
-            .activity
-            .expect("the rescan is in flight")
-            .found_count,
-        1
+        next.cause,
+        coven::LiveQueryCause::Request,
+        "the scan's progress sent the list nothing"
     );
+    assert_eq!(next.windows[0].items, initial.windows[0].items);
 }

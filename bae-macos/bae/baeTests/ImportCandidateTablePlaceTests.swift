@@ -302,8 +302,6 @@ extension ImportCandidateTablePlaceTests {
         BridgeImportQueueSummary(
             counts: BridgeTriageTabCounts(pending: 80, done: 0, skipped: 0),
             watchedFolders: [],
-            folderScanStatuses: [],
-            folderScanActivity: nil,
             groupKeys: [],
             pendingCovers: [],
             narrowed: nil,

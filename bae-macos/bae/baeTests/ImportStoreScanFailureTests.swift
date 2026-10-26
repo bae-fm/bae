@@ -6,27 +6,11 @@ import Testing
 
 @Suite("Watched folder scan failures")
 struct ImportStoreScanFailureTests {
-    /// A summary carrying `statuses`, with everything else empty. The alert
-    /// reads nothing but the scan statuses.
-    private static func summary(
+    /// Folder scans holding `statuses`, with no scan running.
+    private static func scans(
         _ statuses: [BridgeWatchedFolderScanStatus]
-    ) -> BridgeImportQueueSummary {
-        BridgeImportQueueSummary(
-            counts: BridgeTriageTabCounts(pending: 0, done: 0, skipped: 0),
-            watchedFolders: [],
-            folderScanStatuses: statuses,
-            folderScanActivity: nil,
-            groupKeys: [],
-            pendingCovers: [],
-            narrowed: nil,
-            narrowing: BridgeImportListNarrowing(
-                tab: .pending,
-                filterText: "",
-                pendingFilter: .all
-            ),
-            firstSelectedPosition: nil,
-            doneUploadStatus: nil
-        )
+    ) -> BridgeFolderScans {
+        BridgeFolderScans(statuses: statuses, activity: nil)
     }
 
     private static func failed(
@@ -52,8 +36,8 @@ struct ImportStoreScanFailureTests {
         )
     }
 
-    /// The failure a scan wrote before the UI existed is in the first summary
-    /// the store is given, which is the launch case: the app's own startup scan
+    /// The failure a scan wrote before the UI existed is in the first folder
+    /// scans the store is given, which is the launch case: the app's own startup scan
     /// runs and fails before any of this is subscribed.
     @MainActor
     @Test("a root already failed in the first delivery is reported")
@@ -62,8 +46,8 @@ struct ImportStoreScanFailureTests {
         var raised: [(String, String)] = []
         store.onScanFailure = { path, detail in raised.append((path, detail)) }
 
-        store.applySummary(
-            Self.summary([Self.failed("/Media", "no such column")])
+        store.applyFolderScans(
+            Self.scans([Self.failed("/Media", "no such column")])
         )
 
         #expect(raised.count == 1)
@@ -71,9 +55,9 @@ struct ImportStoreScanFailureTests {
         #expect(raised.first?.1 == "no such column")
     }
 
-    /// The summary is re-delivered on every verdict the sweep commits, and the
-    /// timer re-reads every root every quarter hour — the same fault must not
-    /// raise the alert again. A different fault on the same root does.
+    /// The timer re-reads every root every quarter hour, and the scans are
+    /// re-delivered as any root's scan moves — the same fault must not raise
+    /// the alert again. A different fault on the same root does.
     @MainActor
     @Test("the same failure is reported once, a different one again")
     func repeatedDeliveriesReportOnlyNewFailures() {
@@ -81,17 +65,17 @@ struct ImportStoreScanFailureTests {
         var raised: [(String, String)] = []
         store.onScanFailure = { path, detail in raised.append((path, detail)) }
 
-        store.applySummary(Self.summary([Self.failed("/Media", "offline")]))
-        // A delivery that says the same thing, then one that adds a row so the
-        // summary differs while the failure does not.
-        store.applySummary(Self.summary([Self.failed("/Media", "offline")]))
-        store.applySummary(
-            Self.summary([
+        store.applyFolderScans(Self.scans([Self.failed("/Media", "offline")]))
+        // A delivery that says the same thing, then one that adds a root so
+        // the scans differ while the failure does not.
+        store.applyFolderScans(Self.scans([Self.failed("/Media", "offline")]))
+        store.applyFolderScans(
+            Self.scans([
                 Self.failed("/Media", "offline"), Self.complete("/Other"),
             ])
         )
-        store.applySummary(
-            Self.summary([Self.failed("/Media", "no such column")])
+        store.applyFolderScans(
+            Self.scans([Self.failed("/Media", "no such column")])
         )
 
         #expect(raised.map(\.1) == ["offline", "no such column"])
@@ -106,9 +90,9 @@ struct ImportStoreScanFailureTests {
         var raised: [(String, String)] = []
         store.onScanFailure = { path, detail in raised.append((path, detail)) }
 
-        store.applySummary(Self.summary([Self.failed("/Media", "offline")]))
-        store.applySummary(Self.summary([Self.complete("/Media")]))
-        store.applySummary(Self.summary([Self.failed("/Media", "offline")]))
+        store.applyFolderScans(Self.scans([Self.failed("/Media", "offline")]))
+        store.applyFolderScans(Self.scans([Self.complete("/Media")]))
+        store.applyFolderScans(Self.scans([Self.failed("/Media", "offline")]))
 
         #expect(raised.map(\.1) == ["offline", "offline"])
     }

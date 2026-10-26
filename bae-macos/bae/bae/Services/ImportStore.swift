@@ -34,8 +34,7 @@ class ImportStore {
     private var clickCount: UInt64 = 0
 
     /// Everything the chrome around the list shows: the tab counts, the
-    /// watched folders and their scan statuses, the group keys and Pending's
-    /// covers. Defaults to an
+    /// watched folders, the group keys and Pending's covers. Defaults to an
     /// empty summary rather than `nil`: "not loaded yet" and "the queue is
     /// genuinely empty" render identically, so no surface needs to tell them
     /// apart.
@@ -47,8 +46,6 @@ class ImportStore {
     private(set) var summary = BridgeImportQueueSummary(
         counts: BridgeTriageTabCounts(pending: 0, done: 0, skipped: 0),
         watchedFolders: [],
-        folderScanStatuses: [],
-        folderScanActivity: nil,
         groupKeys: [],
         pendingCovers: [],
         narrowed: nil,
@@ -61,12 +58,21 @@ class ImportStore {
         doneUploadStatus: nil
     )
 
-    /// The fault each watched root was last reported as having. A summary is
-    /// re-delivered on every verdict the sweep commits, and a root that cannot
-    /// be read fails the same way on every re-scan the timer starts, so this is
-    /// what keeps one broken folder from raising one alert every time either
-    /// happens. Rebuilt from each delivery, so a root that reads cleanly again
-    /// — or stops being watched — leaves, and its next break is news.
+    /// Where each watched folder's scan stands, from the folder scans' own
+    /// subscription: a scan moves its found count with every folder it walks,
+    /// which moves nothing the list shows. Empty until the first delivery,
+    /// which renders as no scan running. Core's query sends a value only when
+    /// it changed, so each delivery is written as it comes.
+    private(set) var folderScans = BridgeFolderScans(
+        statuses: [],
+        activity: nil
+    )
+
+    /// The fault each watched root was last reported as having. A root that
+    /// cannot be read fails the same way on every re-scan the timer starts, so
+    /// this is what keeps one broken folder from raising one alert every time.
+    /// Rebuilt from each delivery, so a root that reads cleanly again — or
+    /// stops being watched — leaves, and its next break is news.
     @ObservationIgnored
     private var reportedScanFailures: [String: String] = [:]
 
@@ -74,9 +80,9 @@ class ImportStore {
     /// folder's path and the untranslated fault. Set by whoever owns an error
     /// surface — this store has none.
     ///
-    /// The failure arrives on the summary rather than as a transient event
-    /// because that is where it lives: the scan writes it to
-    /// `folder_scan_roots` and the list's live query reads it back, so it is
+    /// The failure arrives on the folder scans rather than as a transient
+    /// event because that is where it lives: the scan writes it to
+    /// `folder_scan_roots` and the scans' live query reads it back, so it is
     /// delivered whenever the UI subscribes rather than only to whoever was
     /// already listening. A scan that failed during launch, before any of this
     /// existed, is in the first delivery.
@@ -88,6 +94,11 @@ class ImportStore {
     func applySummary(_ next: BridgeImportQueueSummary) {
         guard next != summary else { return }
         summary = next
+    }
+
+    /// Take delivered folder scans.
+    func applyFolderScans(_ next: BridgeFolderScans) {
+        folderScans = next
         reportNewScanFailures()
     }
 
@@ -108,7 +119,7 @@ class ImportStore {
 
     private func reportNewScanFailures() {
         var current: [String: String] = [:]
-        for status in summary.folderScanStatuses {
+        for status in folderScans.statuses {
             guard case .failed(let detail) = status.status else { continue }
             current[status.watchedFolderPath] = detail
             if reportedScanFailures[status.watchedFolderPath] != detail {

@@ -475,7 +475,13 @@
                     done: 0,
                     skipped: 0,
                     watchedFolders: [releaseQueueWatchedFolder],
-                    folderScanStatuses: [
+                    groupKeys: [releaseQueueGroupKey],
+                    pendingCovers: pendingCovers(releaseQueueRows)
+                )
+            )
+            scene.store.applyFolderScans(
+                BridgeFolderScans(
+                    statuses: [
                         BridgeWatchedFolderScanStatus(
                             watchedFolderPath: releaseQueueRoot,
                             watchedFolderName: releaseQueueWatchedFolder.name,
@@ -483,7 +489,7 @@
                             onNetworkVolume: false
                         )
                     ],
-                    folderScanActivity: BridgeFolderScanActivity(
+                    activity: BridgeFolderScanActivity(
                         foundCount: 27,
                         folders: [
                             BridgeActiveFolderScan(
@@ -493,9 +499,7 @@
                                 foundCount: 27
                             )
                         ]
-                    ),
-                    groupKeys: [releaseQueueGroupKey],
-                    pendingCovers: pendingCovers(releaseQueueRows)
+                    )
                 )
             )
             scene.store.identificationProgress = (identified: 27, total: 40)
@@ -529,7 +533,6 @@
                     skipped: base.counts.skipped,
                     watchedFolders: base.watchedFolders
                         + [releaseQueueWatchedFolder],
-                    folderScanStatuses: base.folderScanStatuses,
                     groupKeys: base.groupKeys,
                     pendingCovers: base.pendingCovers
                 )

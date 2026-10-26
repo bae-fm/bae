@@ -11,7 +11,6 @@ fn list_subscription(
 ) -> crate::import::ImportListSubscription {
     crate::import::ImportListSubscription::start(
         |request| fixture.manager.subscribe_import_list(request),
-        fixture.manager.subscribe_folder_scan_progress(),
         crate::import::ImportListView::default(),
         windows,
         fixture.manager.subscribe_outbox_values(),

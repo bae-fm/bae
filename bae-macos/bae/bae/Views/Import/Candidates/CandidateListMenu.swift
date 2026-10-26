@@ -6,35 +6,40 @@ import SwiftUI
 /// hides Found's rows or a scan failed, opening
 /// `CandidateListMenuController`'s menu on a press.
 ///
-/// Found's filter entries are read here from `importStore`, so a count
-/// moving re-renders the trigger alone and reaches the menu, open or not.
+/// Found's filter entries and the folder scans are read here from
+/// `importStore`, so a count moving or a scan stepping re-renders the trigger
+/// alone and reaches the menu, open or not.
 struct CandidateListMenu: View {
     let watchedFolders: [BridgeWatchedFolder]
     /// Roots with a refresh in flight; their Refresh entry is disabled.
     let refreshingFolders: Set<String>
-    /// Each root's scan state, by path. A failed scan also marks the trigger.
-    let scanStatuses: [String: BridgeFolderScanStatus]
-    /// Roots on a network volume, which are checked on a schedule rather than
-    /// reported the moment they change.
-    let networkFolders: Set<String>
     /// Whether the queue has folder groups; without any, Expand All and
     /// Collapse All are disabled.
     let hasGroups: Bool
     let sortOrder: BridgeImportListOrder
     /// The entry Found's rows are narrowed to.
     let pendingFilter: BridgePendingFilter
-    /// Holds Found's filter entries, with how many rows each holds.
+    /// Holds Found's filter entries, with how many rows each holds, and where
+    /// each watched root's scan stands.
     let importStore: ImportStore
     /// Whether the tab on show is Found, the one tab the filter applies to.
     let pendingFilterApplies: Bool
     let actions: CandidateListMenuActions
 
     private var state: CandidateListMenuState {
-        CandidateListMenuState(
+        let statuses = importStore.folderScans.statuses
+        return CandidateListMenuState(
             watchedFolders: watchedFolders,
             refreshingFolders: refreshingFolders,
-            scanStatuses: scanStatuses,
-            networkFolders: networkFolders,
+            // Each root's scan state, by path. A failed scan also marks the
+            // trigger.
+            scanStatuses: Dictionary(
+                statuses.map { ($0.watchedFolderPath, $0.status) },
+                uniquingKeysWith: { first, _ in first }
+            ),
+            networkFolders: Set(
+                statuses.filter(\.onNetworkVolume).map(\.watchedFolderPath)
+            ),
             hasGroups: hasGroups,
             sortOrder: sortOrder,
             pendingFilter: pendingFilter,
@@ -145,6 +150,27 @@ private struct CandidateListMenuTrigger: NSViewRepresentable {
         importStore.applyPendingFilterEntries(
             PreviewData.pendingFilterEntries()
         )
+        importStore.applyFolderScans(
+            BridgeFolderScans(
+                statuses: [
+                    BridgeWatchedFolderScanStatus(
+                        watchedFolderPath: "/Music/Rips",
+                        watchedFolderName: "Rips",
+                        status: .scanning(foundCount: 8),
+                        onNetworkVolume: false
+                    ),
+                    BridgeWatchedFolderScanStatus(
+                        watchedFolderPath: "/Volumes/Vault",
+                        watchedFolderName: "Vault",
+                        status: .failed(
+                            error: "The volume could not be reached."
+                        ),
+                        onNetworkVolume: true
+                    ),
+                ],
+                activity: nil
+            )
+        )
         return CandidateListMenu(
             watchedFolders: [
                 PreviewData.importWatchedFolder,
@@ -152,13 +178,6 @@ private struct CandidateListMenuTrigger: NSViewRepresentable {
                 BridgeWatchedFolder(path: "/Volumes/Vault", name: "Vault"),
             ],
             refreshingFolders: [],
-            scanStatuses: [
-                "/Music/Rips": .scanning(foundCount: 8),
-                "/Volumes/Vault": .failed(
-                    error: "The volume could not be reached."
-                ),
-            ],
-            networkFolders: ["/Volumes/Vault"],
             hasGroups: true,
             sortOrder: .newestFirst,
             pendingFilter: .needsYou,

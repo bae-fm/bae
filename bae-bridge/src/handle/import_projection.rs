@@ -582,12 +582,17 @@ mirror_struct! {
     fields: { shown, total },
 }
 
+mirror_struct! {
+    crate::types::BridgeFolderScans = bae_core::import::FolderScanProgress,
+    from_core: pub(super) fn,
+    fields: {
+        statuses: (each crate::types::BridgeWatchedFolderScanStatus),
+        activity: (opt crate::types::BridgeFolderScanActivity),
+    },
+}
+
 impl crate::types::BridgeImportQueueSummary {
-    /// The list's summary and where the folder scans stand.
-    fn from_core(
-        summary: bae_core::import::ImportQueueSummary,
-        folder_scans: bae_core::import::FolderScanProgress,
-    ) -> Self {
+    fn from_core(summary: bae_core::import::ImportQueueSummary) -> Self {
         let bae_core::import::ImportQueueSummary {
             counts,
             watched_folders,
@@ -598,18 +603,12 @@ impl crate::types::BridgeImportQueueSummary {
             first_selected_position,
             done_upload_status,
         } = summary;
-        let bae_core::import::FolderScanProgress { statuses, activity } = folder_scans;
         Self {
             counts: crate::types::BridgeTriageTabCounts::from_core(counts),
             watched_folders: watched_folders
                 .into_iter()
                 .map(crate::types::BridgeWatchedFolder::from_core)
                 .collect(),
-            folder_scan_statuses: statuses
-                .into_iter()
-                .map(crate::types::BridgeWatchedFolderScanStatus::from_core)
-                .collect(),
-            folder_scan_activity: activity.map(crate::types::BridgeFolderScanActivity::from_core),
             group_keys: group_keys
                 .into_iter()
                 .map(crate::types::BridgeFolderReleaseDecisionKey::from_core)
@@ -680,7 +679,6 @@ impl crate::types::BridgeImportListSnapshot {
             total_count,
             summary,
             pending_filter_entries,
-            folder_scans,
             selection_revision,
             selection,
             request_revision,
@@ -692,7 +690,7 @@ impl crate::types::BridgeImportListSnapshot {
                 .map(crate::types::BridgeImportListWindow::from_core)
                 .collect(),
             total_count,
-            summary: crate::types::BridgeImportQueueSummary::from_core(summary, folder_scans),
+            summary: crate::types::BridgeImportQueueSummary::from_core(summary),
             pending_filter_entries: pending_filter_entries
                 .into_iter()
                 .map(crate::types::BridgePendingFilterEntry::from_core)
