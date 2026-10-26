@@ -28,6 +28,7 @@ mod tests;
 /// FFmpeg uses for its own file IO.
 pub const AVIO_BUFFER_SIZE: usize = 32768;
 
+pub use decode::byte_jump_keeps_place;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use decode::verification::decode_audio_to_verifying_sink;
 pub use decode::{

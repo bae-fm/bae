@@ -200,9 +200,15 @@ which computes the byte position directly from `block_align` and `byte_rate`:
   are read in order once and indexed to bound the search), stored on
   `audio_format_segments.start_byte`. A start in a FLAC's last frame is
   recorded as the frame before it, since a decode that jumps to the last frame
-  can't date it. Starting a track seeks the demuxer straight to that byte, so
-  no track start needs a seektable, in any layout, local or remote. Over a cloud home the
-  header and the track's audio are fetched in parallel.
+  can't date it. Starting a FLAC, WavPack, Opus or Vorbis track seeks the
+  demuxer straight to that byte, so no track start needs a seektable, in any
+  layout, local or remote: their packets state their own first sample (frame
+  header, block header, Ogg page granule). Every other codec's track start
+  seeks by sample instead (`bae_audio::byte_jump_keeps_place`): after a byte
+  jump the WAV, AIFF and MP3 demuxers restart their timestamps at 0, MP4's
+  can't jump by byte, and APE's packets state no byte. The recorded byte is
+  still fetched ahead. Over a cloud home the header and the track's audio are
+  fetched in parallel.
 - **In-track scrubs seek by sample** with `AVFMT_FLAG_FAST_SEEK` set
   (`bae-audio/src/decode.rs`), so a seektable-bearing FLAC (nearly
   every rip) and MP3 use their index: one fetch. The exception is a FLAC with

@@ -82,9 +82,9 @@ impl DecoderSetup {
 #[derive(Clone)]
 pub(crate) struct StreamDecodeParams {
     segments: Vec<SegmentDecodeParams>,
-    /// Whether the demuxer may jump by byte to a segment's recorded start_byte.
-    /// False for APE, which has no per-frame byte positions and sample-seeks
-    /// its mandatory index instead.
+    /// Whether the demuxer may jump by byte to a segment's recorded start_byte:
+    /// whether the codec's frames keep their place after a byte jump
+    /// (`bae_audio::byte_jump_keeps_place`). The rest seek by sample.
     byte_seekable: bool,
     leading_silence_frames: u64,
     trailing_silence_frames: u64,

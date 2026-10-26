@@ -161,7 +161,6 @@ impl PlaybackPreparedTrack {
 
     /// Decoder windows for this track starting `offset` samples in.
     fn decode_params(&self, offset: u64, include_pregap: bool) -> StreamDecodeParams {
-        use bae_util::content_type::ContentType;
         let mut remaining_offset = offset;
         let leading_silence_frames = if include_pregap {
             self.generated_pregap_frames.saturating_sub(offset)
@@ -193,7 +192,7 @@ impl PlaybackPreparedTrack {
 
         StreamDecodeParams::new(
             segments,
-            self.content_type != ContentType::Ape,
+            bae_audio::byte_jump_keeps_place(&self.content_type),
             leading_silence_frames,
             0,
         )

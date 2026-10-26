@@ -478,11 +478,10 @@ impl SaveTrackPlan {
     }
 }
 
-/// Whether this track's codec supports a by-byte jump to a recorded landing.
-/// Same dispatch playback applies: APE has no per-frame byte positions and
-/// sample-seeks its mandatory index instead.
+/// Whether this track's codec keeps its place on a by-byte jump to a recorded
+/// landing, as playback decides it.
 fn byte_seekable(meta: &TrackAudioMeta) -> bool {
-    meta.audio_format.content_type != bae_util::content_type::ContentType::Ape
+    bae_audio::byte_jump_keeps_place(&meta.audio_format.content_type)
 }
 
 /// A format with no recorded pregap has none.

@@ -402,6 +402,41 @@ fn test_track_fmt(track_id: &str) -> TrackFmt {
     }
 }
 
+/// Run `decode` to its end, as playback's decoder thread does, and return the
+/// samples it played.
+fn play_decode(
+    decode: crate::playback::stream_pipeline::StreamDecodeParams,
+    sample_rate: u32,
+    channels: u32,
+) -> Vec<f32> {
+    let (mut sink, mut stream, _ready) =
+        bae_audio::track_stream::create_track_stream_pair_with_capacity(
+            sample_rate,
+            channels,
+            4 * sample_rate as usize,
+        );
+    let decoder = std::thread::spawn(move || {
+        decode.run_decoder(
+            &mut sink,
+            Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        )
+    });
+    let mut played = Vec::new();
+    let mut chunk = [0.0f32; 4_096];
+    loop {
+        let pulled = stream.pull_samples(&mut chunk);
+        played.extend_from_slice(&chunk[..pulled]);
+        if pulled == 0 && stream.is_finished() {
+            break;
+        }
+    }
+    decoder
+        .join()
+        .expect("the decoder thread")
+        .expect("the decode runs to the window's end");
+    played
+}
+
 include!("tests/buffers_and_loading.rs");
 include!("tests/starvation_and_start.rs");
 include!("tests/queue_and_diagnostics.rs");
@@ -413,4 +448,5 @@ include!("tests/side_pause_countdown.rs");
 include!("tests/history.rs");
 include!("tests/audio_focus.rs");
 
+mod image_track_starts;
 mod scrub_points;

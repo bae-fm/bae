@@ -57,6 +57,8 @@ pub mod sync;
 pub(crate) mod test_files;
 #[cfg(test)]
 pub(crate) mod test_gate;
+#[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
+pub(crate) mod test_images;
 #[cfg(test)]
 pub(crate) mod test_logs;
 #[cfg(test)]

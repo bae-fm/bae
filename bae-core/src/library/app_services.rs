@@ -553,7 +553,7 @@ impl AppServices {
         TrackDecode {
             decode: StreamDecodeParams::new(
                 segments,
-                audio.content_type != bae_util::content_type::ContentType::Ape,
+                bae_audio::byte_jump_keeps_place(&audio.content_type),
                 audio.generated_pregap_frames(),
                 0,
             ),

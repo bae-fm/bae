@@ -8,7 +8,6 @@ use crate::db::{ScrubPoint, SegmentSpan};
 use crate::playback::data_source::FILL_WINDOW_SIZE;
 use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
 use crate::playback::ScrubPoints;
-use bae_audio::track_stream::create_track_stream_pair_with_capacity;
 use bae_audio::{encode_i32, EncodeFormat, AVIO_BUFFER_SIZE};
 use std::sync::atomic::AtomicBool;
 
@@ -81,24 +80,7 @@ fn import_scrub_points(flac: &[u8], span: SegmentSpan) -> Vec<ScrubPoint> {
 
 /// Run `decode` to its end and return the samples it played.
 fn play(decode: StreamDecodeParams) -> Vec<f32> {
-    let (mut sink, mut stream, _ready) =
-        create_track_stream_pair_with_capacity(SAMPLE_RATE, CHANNELS, 4 * SAMPLE_RATE as usize);
-    let decoder =
-        std::thread::spawn(move || decode.run_decoder(&mut sink, Arc::new(AtomicBool::new(false))));
-    let mut played = Vec::new();
-    let mut chunk = [0.0f32; 4_096];
-    loop {
-        let pulled = stream.pull_samples(&mut chunk);
-        played.extend_from_slice(&chunk[..pulled]);
-        if pulled == 0 && stream.is_finished() {
-            break;
-        }
-    }
-    decoder
-        .join()
-        .expect("the decoder thread")
-        .expect("the decode runs to the window's end");
-    played
+    super::play_decode(decode, SAMPLE_RATE, CHANNELS)
 }
 
 /// Scrub `segment` of `flac`, with `points` stored for it, to `target`

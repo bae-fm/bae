@@ -592,8 +592,7 @@ pub(super) async fn measure_loudness(
             title: tracks_to_files[index].db_track.title.clone(),
             total_frames: track_total_frames[index],
             segments: segments.iter().map(|segment| (*segment).clone()).collect(),
-            byte_seekable: audio_formats[index].content_type
-                != bae_util::content_type::ContentType::Ape,
+            byte_seekable: bae_audio::byte_jump_keeps_place(&audio_formats[index].content_type),
         });
     }
 

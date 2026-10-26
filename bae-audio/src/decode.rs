@@ -243,6 +243,22 @@ unsafe fn find_audio_stream(
     })
 }
 
+/// Whether a decode that jumps by byte to a recorded frame knows which
+/// samples the frames it then reads hold: their packets state their own first
+/// sample -- a FLAC frame's header, a WavPack block's, an Ogg page's granule
+/// (Opus, Vorbis). Every other demuxer loses its place on a byte jump: WAV's,
+/// AIFF's and MP3's restart their timestamps at 0, so a track would play from
+/// twice its start; MP4's can't jump by byte; APE's packets state no byte. A
+/// decode of those seeks by sample, through the demuxer's own index or
+/// arithmetic.
+pub fn byte_jump_keeps_place(content_type: &bae_util::content_type::ContentType) -> bool {
+    use bae_util::content_type::ContentType;
+    matches!(
+        content_type,
+        ContentType::Flac | ContentType::WavPack | ContentType::Opus | ContentType::Vorbis
+    )
+}
+
 /// The decoder for `stream`'s codec, opened on the stream's parameters and
 /// time base.
 unsafe fn open_audio_codec(

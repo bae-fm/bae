@@ -2186,7 +2186,10 @@ Reading ahead keeps playback from waiting on the network, and a seek fetches
 only what is under the new position. One buffer per file serves every track
 that plays from it, so the eleven tracks of a disc image share one.
 
-A track start jumps to the byte import recorded for it. A seek inside a track
+A track start in a FLAC, WavPack, Opus or Vorbis file jumps to the byte
+import recorded for it, since those files' frames state their own position;
+in any other it seeks to its first sample, the recorded byte fetched ahead.
+A seek inside a track
 is left to FFmpeg, which seeks through the file's own index where it has one:
 a FLAC's seektable, APE's, an MP4's sample table. A FLAC with scrub points
 (§3.7) has no index FFmpeg can use, so the seek jumps to the last point at or
