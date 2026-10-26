@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Shuffle
@@ -22,11 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -97,30 +92,6 @@ fun QueueScreen(
     }
 }
 
-/** The optimistic order of the two lanes, each reordered on its own; a null is a context row not yet loaded. */
-internal class QueueOrder {
-    val manual = mutableStateListOf<BridgeQueueEntry?>()
-    val context = mutableStateListOf<BridgeQueueEntry?>()
-    var contextShuffled by mutableStateOf(false)
-
-    /** What the context plays from, which labels its section; null when nothing plays from a context. */
-    var contextKind by mutableStateOf<BridgePlaybackSourceKind?>(null)
-
-    /** The queue revision [context] was seeded from, which re-keys each context row's load. */
-    var revision by mutableStateOf(0uL)
-
-    val isEmpty: Boolean
-        get() = manual.isEmpty() && context.isEmpty()
-
-    /** The lane (manual or context) holding the entry id, or null if neither. */
-    fun laneOf(entryId: String): SnapshotStateList<BridgeQueueEntry?>? =
-        when {
-            manual.any { it?.entryId == entryId } -> manual
-            context.any { it?.entryId == entryId } -> context
-            else -> null
-        }
-}
-
 /**
  * The queue as a sheet shows it: its optimistic order, the drag state that reorders it, and the
  * failures of the commands the sheet sends.
@@ -147,51 +118,44 @@ internal fun rememberReorderableQueue(
     val reorderState =
         rememberReorderableLazyListState(listState) { from, to ->
             // A reorder stays within one lane; section headers match no row key.
-            val lane = order.laneOf(from.key as? String ?: "")
-            if (lane == null || lane !== order.laneOf(to.key as? String ?: "")) {
-                logger.debug("reorder: drag spans lanes or key not a row (from=${from.key}, to=${to.key}); ignoring")
-                return@rememberReorderableLazyListState
-            }
-            val fromPos = lane.indexOfFirst { it?.entryId == from.key }
-            val toPos = lane.indexOfFirst { it?.entryId == to.key }
-            if (fromPos < 0 || toPos < 0) {
-                // laneOf just matched both keys, so missing them now is an unexpected race.
-                logger.warning("reorder: key not found in lane (from=${from.key}, to=${to.key}); ignoring")
-                return@rememberReorderableLazyListState
-            }
-            val moved = lane.removeAt(fromPos)
-            if (moved == null) {
-                // A drag key only comes from a loaded row.
-                logger.warning("reorder: resolved position $fromPos held no loaded entry (from=${from.key}); ignoring")
-                return@rememberReorderableLazyListState
-            }
-            lane.add(toPos, moved)
-            // A null `before` means the lane's end.
-            val beforeEntryId = lane.getOrNull(toPos + 1)?.entryId
-            failures.run("reorderEntry ${moved.entryId} before $beforeEntryId") {
-                session.appHandle.reorderEntry(moved.entryId, beforeEntryId)
-            }
-        }
+            val fromKey = from.key as? String ?: ""
+            val toKey = to.key as? String ?: ""
+            val manualFrom = order.manual.indexOfFirst { it.entryId == fromKey }
+            val manualTo = order.manual.indexOfFirst { it.entryId == toKey }
+            val contextFrom = order.context.indexOf(fromKey)
+            val contextTo = order.context.indexOf(toKey)
+            when {
+                manualFrom >= 0 && manualTo >= 0 -> {
+                    val moved = order.manual.removeAt(manualFrom)
+                    order.manual.add(manualTo, moved)
+                    // A null `before` means the lane's end.
+                    val beforeEntryId = order.manual.getOrNull(manualTo + 1)?.entryId
+                    failures.run("reorderEntry ${moved.entryId} before $beforeEntryId") {
+                        session.appHandle.reorderEntry(moved.entryId, beforeEntryId)
+                    }
+                }
 
-    LaunchedEffect(queue, reorderState.isAnyItemDragging) {
-        if (!reorderState.isAnyItemDragging) {
-            order.manual.clear()
-            order.manual.addAll(queue.manual)
-            order.context.clear()
-            when (val context = queue.context) {
-                null -> {
-                    order.contextShuffled = false
-                    order.contextKind = null
+                contextFrom != null && contextTo != null -> {
+                    order.context.move(contextFrom, contextTo)
+                    // A null `before` means the lane's end.
+                    val beforeEntryId = order.context.itemAt(contextTo + 1)?.entryId
+                    failures.run("reorderEntry $fromKey before $beforeEntryId") {
+                        session.appHandle.reorderEntry(fromKey, beforeEntryId)
+                    }
                 }
 
                 else -> {
-                    // Unloaded indices seed as null and render as placeholders.
-                    order.context.addAll((0 until context.upcomingTotal).map(context::itemAt))
-                    order.contextShuffled = context.shuffled
-                    order.contextKind = context.kind
+                    logger.debug("reorder: drag spans lanes or names no row (from=${from.key}, to=${to.key})")
                 }
             }
-            order.revision = queue.revision
+        }
+
+    // Values wait out a drag, then re-seed the lanes; a page of the tail fills only its rows.
+    LaunchedEffect(queue, reorderState.isAnyItemDragging) {
+        if (reorderState.isAnyItemDragging) {
+            order.dragging()
+        } else {
+            order.apply(queue.manual, queue.context, queue.revision)
         }
     }
     return ReorderableQueue(order, reorderState, failures, readFailure)
@@ -234,47 +198,60 @@ internal fun LazyListScope.queueContent(
         // Always fully resolved, so no load hook.
         queueRows(
             session,
-            QueueLane(order.manual, revision = 0uL, loadRange = null),
+            QueueLane(size = order.manual.size, itemAt = order.manual::get, revision = 0uL, loadRange = null),
             reorderState,
             failures,
             onSkipped,
         )
     }
 
-    if (order.context.isNotEmpty()) {
-        item(key = "ctxhdr") {
-            val labelRes =
-                when (order.contextKind) {
-                    BridgePlaybackSourceKind.LIBRARY -> R.string.queue_section_your_library
-                    BridgePlaybackSourceKind.RELEASE, null -> R.string.queue_section_playing_from
-                }
-            ContextSectionLabel(
-                session = session,
-                failures = failures,
-                text = stringResource(labelRes),
-                shuffled = order.contextShuffled,
-            )
-        }
-        // The context tail is library-scaled and only partly resolved; a null
-        // element renders a placeholder and triggers loadUpcomingRange.
-        queueRows(
-            session,
-            QueueLane(
-                order.context,
-                revision = order.revision,
-                loadRange = { offset, limit -> session.playback.loadUpcomingRange(offset, limit) },
-            ),
-            reorderState,
-            failures,
-            onSkipped,
-        )
-        item(key = "upcoming-failure") { UpcomingFailure(session) }
+    if (order.context.size > 0) {
+        contextLane(session, queue, onSkipped)
     }
 }
 
-/** One lane's rows for [queueRows]; [loadRange] fetches unloaded rows and is null for the manual lane. */
-private data class QueueLane(
-    val items: List<BridgeQueueEntry?>,
+// The context section: its label, its rows, and a stopped read of its tail with Retry.
+private fun LazyListScope.contextLane(
+    session: OpenLibrary,
+    queue: ReorderableQueue,
+    onSkipped: (() -> Unit)?,
+) {
+    val order = queue.order
+    item(key = "ctxhdr") {
+        val labelRes =
+            when (order.context.kind) {
+                BridgePlaybackSourceKind.LIBRARY -> R.string.queue_section_your_library
+                BridgePlaybackSourceKind.RELEASE, null -> R.string.queue_section_playing_from
+            }
+        ContextSectionLabel(
+            session = session,
+            failures = queue.failures,
+            text = stringResource(labelRes),
+            shuffled = order.context.shuffled,
+        )
+    }
+    // The context tail is library-scaled and only partly read: the lazy list
+    // asks only the rows it places, and an unread row renders a placeholder
+    // and triggers loadUpcomingRange.
+    queueRows(
+        session,
+        QueueLane(
+            size = order.context.size,
+            itemAt = order.context::itemAt,
+            revision = order.revision ?: 0uL,
+            loadRange = { offset, limit -> session.playback.loadUpcomingRange(offset, limit) },
+        ),
+        queue.reorderState,
+        queue.failures,
+        onSkipped,
+    )
+    item(key = "upcoming-failure") { UpcomingFailure(session) }
+}
+
+/** One lane's rows for [queueRows], read per row; [loadRange] fetches unloaded rows and is null for the manual lane. */
+private class QueueLane(
+    val size: Int,
+    val itemAt: (Int) -> BridgeQueueEntry?,
     val revision: ULong,
     val loadRange: (suspend (offset: Int, limit: Int) -> Unit)?,
 )
@@ -287,7 +264,8 @@ private fun LazyListScope.queueRows(
     failures: QueueFailures,
     onSkipped: (() -> Unit)?,
 ) {
-    itemsIndexed(lane.items, key = { index, item -> item?.entryId ?: "placeholder-$index" }) { index, item ->
+    items(count = lane.size, key = { index -> lane.itemAt(index)?.entryId ?: "placeholder-$index" }) { index ->
+        val item = lane.itemAt(index)
         if (item == null) {
             LaunchedEffect(lane.revision, index) {
                 lane.loadRange?.invoke(
