@@ -10,7 +10,7 @@
 /// A 64-bit NTP timestamp: seconds since 1900-01-01 in the high word, a binary
 /// fraction of a second in the low word.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct NtpTime {
+pub(crate) struct NtpTime {
     pub seconds: u32,
     pub fraction: u32,
 }
@@ -21,7 +21,7 @@ impl NtpTime {
 
     /// The NTP time for a Unix instant given in nanoseconds. Injectable so the
     /// timing responder and sync sender are tested at known clocks.
-    pub fn from_unix_nanos(unix_nanos: u128) -> Self {
+    pub(crate) fn from_unix_nanos(unix_nanos: u128) -> Self {
         let unix_secs = (unix_nanos / 1_000_000_000) as u64;
         let sub_nanos = (unix_nanos % 1_000_000_000) as u64;
         NtpTime {
@@ -31,21 +31,22 @@ impl NtpTime {
     }
 
     /// Wall-clock now as an NTP timestamp.
-    pub fn now() -> Self {
+    pub(crate) fn now() -> Self {
         let since_epoch = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default();
         Self::from_unix_nanos(since_epoch.as_nanos())
     }
 
-    pub fn to_bytes(self) -> [u8; 8] {
+    pub(crate) fn to_bytes(self) -> [u8; 8] {
         let mut out = [0u8; 8];
         out[0..4].copy_from_slice(&self.seconds.to_be_bytes());
         out[4..8].copy_from_slice(&self.fraction.to_be_bytes());
         out
     }
 
-    pub fn from_bytes(bytes: &[u8; 8]) -> Self {
+    #[cfg(test)]
+    pub(crate) fn from_bytes(bytes: &[u8; 8]) -> Self {
         NtpTime {
             seconds: u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]),
             fraction: u32::from_be_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]),
@@ -54,22 +55,22 @@ impl NtpTime {
 }
 
 /// RAOP RTP payload types (the low 7 bits of the second header byte).
-pub mod payload_type {
+pub(crate) mod payload_type {
     /// Timing request, receiver → sender.
-    pub const TIMING_REQUEST: u8 = 0x52;
+    pub(crate) const TIMING_REQUEST: u8 = 0x52;
     /// Timing response, sender → receiver.
-    pub const TIMING_RESPONSE: u8 = 0x53;
+    pub(crate) const TIMING_RESPONSE: u8 = 0x53;
     /// Sync packet, sender → receiver on the control channel.
-    pub const SYNC: u8 = 0x54;
+    pub(crate) const SYNC: u8 = 0x54;
     /// Realtime audio data, sender → receiver.
-    pub const AUDIO: u8 = 0x60;
+    pub(crate) const AUDIO: u8 = 0x60;
 }
 
 /// Serialize one RAOP audio data packet: a 12-byte RTP header (`0x80`, then
 /// `0x60` with the marker bit on the first packet after RECORD/FLUSH, the 16-bit
 /// sequence, the 32-bit RTP timestamp, and the 32-bit SSRC) followed by the
 /// already-encrypted payload.
-pub fn audio_packet(
+pub(crate) fn audio_packet(
     marker: bool,
     sequence: u16,
     timestamp: u32,
@@ -90,7 +91,7 @@ pub fn audio_packet(
 /// the RTP timestamp of the next audio packet; `played_ts` is what the receiver
 /// should be hearing now (`now_ts` minus the receiver latency). The extension bit
 /// is set on the first sync after RECORD/FLUSH.
-pub fn sync_packet(first: bool, played_ts: u32, ntp: NtpTime, now_ts: u32) -> Vec<u8> {
+pub(crate) fn sync_packet(first: bool, played_ts: u32, ntp: NtpTime, now_ts: u32) -> Vec<u8> {
     let mut out = Vec::with_capacity(20);
     out.push(0x80 | if first { 0x10 } else { 0x00 });
     out.push(0x80 | payload_type::SYNC);
@@ -106,7 +107,11 @@ pub fn sync_packet(first: bool, played_ts: u32, ntp: NtpTime, now_ts: u32) -> Ve
 /// 32-byte response — echoing the request's transmit timestamp as the origin and
 /// filling in receive/transmit, per NTP. Returns `None` for a datagram that isn't
 /// a timing request.
-pub fn timing_response(request: &[u8], received: NtpTime, sending: NtpTime) -> Option<Vec<u8>> {
+pub(crate) fn timing_response(
+    request: &[u8],
+    received: NtpTime,
+    sending: NtpTime,
+) -> Option<Vec<u8>> {
     if request.len() < 32 || request[1] & 0x7F != payload_type::TIMING_REQUEST {
         return None;
     }

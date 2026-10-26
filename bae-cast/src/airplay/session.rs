@@ -30,7 +30,7 @@ const DEFAULT_LATENCY_FRAMES: u32 = 88_200;
 
 /// A failure setting up or running a RAOP session.
 #[derive(Debug, thiserror::Error)]
-pub enum RaopError {
+pub(crate) enum RaopError {
     /// The control connection failed at the socket level.
     #[error("RAOP connection error: {0}")]
     Io(#[from] std::io::Error),
@@ -44,7 +44,7 @@ pub enum RaopError {
 
 /// The receiver's UDP ports, parsed from a SETUP response's `Transport` header.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct NegotiatedTransport {
+pub(crate) struct NegotiatedTransport {
     /// Where audio datagrams go (`server_port`).
     pub server_port: u16,
     /// Where sync datagrams go (`control_port`).
@@ -56,7 +56,7 @@ pub struct NegotiatedTransport {
 /// Map a 0.0–1.0 volume to the RAOP dB level SET_PARAMETER carries: silence is
 /// the sentinel −144, otherwise a linear map onto the −30 dB … 0 dB range the
 /// receiver applies.
-pub fn volume_to_raop_db(level: f32) -> f32 {
+pub(crate) fn volume_to_raop_db(level: f32) -> f32 {
     let level = level.clamp(0.0, 1.0);
     if level <= 0.0 {
         -144.0
@@ -67,7 +67,7 @@ pub fn volume_to_raop_db(level: f32) -> f32 {
 
 /// Build the ANNOUNCE SDP body for an `L16` PCM stream. The `rsaaeskey`/`aesiv`
 /// lines appear only for an encrypted stream.
-pub fn build_announce_sdp(
+pub(crate) fn build_announce_sdp(
     session_id: u32,
     local_ip: IpAddr,
     receiver_ip: IpAddr,
@@ -92,7 +92,7 @@ pub fn build_announce_sdp(
 
 /// Parse the receiver's ports from a SETUP `Transport` header
 /// (`RTP/AVP/UDP;unicast;server_port=6000;control_port=6001;timing_port=6002`).
-pub fn parse_transport(header: &str) -> Option<NegotiatedTransport> {
+pub(crate) fn parse_transport(header: &str) -> Option<NegotiatedTransport> {
     let mut server = None;
     let mut control = None;
     let mut timing = None;
@@ -139,7 +139,7 @@ fn parse_audio_latency(response: &RtspResponse) -> Option<u32> {
 /// RTP anchor, and an initial volume SET_PARAMETER. Returns the receiver's ports
 /// and the audio latency it reported, if any.
 #[allow(clippy::too_many_arguments)]
-pub fn perform_handshake(
+pub(crate) fn perform_handshake(
     conn: &mut RtspConnection,
     uri: &str,
     sdp: &str,
@@ -237,7 +237,7 @@ impl RaopControl {
 
 /// A live RAOP session: the control connection and the running audio stream.
 /// Dropping it tears the receiver down and stops the stream threads.
-pub struct RaopSession {
+pub(crate) struct RaopSession {
     control: RaopControl,
     _stream: RaopStream,
 }
@@ -246,7 +246,7 @@ impl RaopSession {
     /// Connect to `receiver`, run the handshake, and start streaming `source`.
     /// `cipher` is the negotiated encryption ([`RaopCipher::none`] for `et=0`).
     #[allow(clippy::too_many_arguments)]
-    pub fn start(
+    pub(crate) fn start(
         receiver: IpAddr,
         rtsp_port: u16,
         source: Box<dyn PcmSource>,
@@ -324,17 +324,17 @@ impl RaopSession {
         })
     }
 
-    pub fn flush(&self) -> Result<(), RaopError> {
+    pub(crate) fn flush(&self) -> Result<(), RaopError> {
         self.control.flush()
     }
 
-    pub fn reanchor(&self) {
+    pub(crate) fn reanchor(&self) {
         self.control.reanchor();
     }
 
     /// Why the audio flow to the receiver failed for good (a dead
     /// receiver), when it has, so the session should be ended.
-    pub fn failure(&self) -> Option<String> {
+    pub(crate) fn failure(&self) -> Option<String> {
         self.control.stream.failure()
     }
 }

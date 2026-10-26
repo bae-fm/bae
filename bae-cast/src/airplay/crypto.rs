@@ -28,7 +28,7 @@ use rsa::{BigUint, Oaep, RsaPublicKey};
 use sha1::Sha1;
 
 /// AES-128 key/IV width in bytes.
-pub const AES_BLOCK: usize = 16;
+pub(crate) const AES_BLOCK: usize = 16;
 
 /// The Apple RAOP public-key modulus (2048-bit, big-endian hex). Exponent 65537.
 const APPLE_MODULUS_HEX: &str = "\
@@ -42,7 +42,7 @@ dde698beddf3599603eb3e6f61372bb628f6559f599a78bf500687aa7f4976c0\
 562d412956f8989e18a6355bd81597825e0fc875343ec782117625cdbf98447b";
 
 /// Apple's RAOP public key, for wrapping the AES session key.
-pub fn apple_public_key() -> RsaPublicKey {
+pub(crate) fn apple_public_key() -> RsaPublicKey {
     let modulus = hex::decode(APPLE_MODULUS_HEX).expect("valid Apple modulus hex");
     let n = BigUint::from_bytes_be(&modulus);
     let e = BigUint::from(65_537u32);
@@ -50,7 +50,10 @@ pub fn apple_public_key() -> RsaPublicKey {
 }
 
 /// RSA-OAEP(SHA-1)-encrypt `aes_key` to `public_key` for the SDP `rsaaeskey`.
-pub fn wrap_aes_key(public_key: &RsaPublicKey, aes_key: &[u8]) -> Result<Vec<u8>, rsa::Error> {
+pub(crate) fn wrap_aes_key(
+    public_key: &RsaPublicKey,
+    aes_key: &[u8],
+) -> Result<Vec<u8>, rsa::Error> {
     public_key.encrypt(
         &mut super::secure_rng::SecureRng,
         Oaep::new::<Sha1>(),
@@ -62,7 +65,7 @@ pub fn wrap_aes_key(public_key: &RsaPublicKey, aes_key: &[u8]) -> Result<Vec<u8>
 /// the session key and IV. `et=0` receivers use [`RaopCipher::none`], which
 /// passes the payload through untouched.
 #[derive(Clone)]
-pub enum RaopCipher {
+pub(crate) enum RaopCipher {
     /// No audio encryption (`et=0`).
     None,
     /// AES-128-CBC with a per-session key and IV (`et=1`).
@@ -77,13 +80,13 @@ pub enum RaopCipher {
 
 impl RaopCipher {
     /// A pass-through cipher for an unencrypted stream.
-    pub fn none() -> Self {
+    pub(crate) fn none() -> Self {
         RaopCipher::None
     }
 
     /// A fresh AES-128-CBC cipher: random key + IV, the key RSA-wrapped to
     /// `public_key`.
-    pub fn new_aes(public_key: &RsaPublicKey) -> Result<Self, rsa::Error> {
+    pub(crate) fn new_aes(public_key: &RsaPublicKey) -> Result<Self, rsa::Error> {
         use rand::RngCore as _;
         let mut key = [0u8; AES_BLOCK];
         let mut iv = [0u8; AES_BLOCK];
@@ -102,7 +105,7 @@ impl RaopCipher {
     /// against `public_key`). The wire path uses [`RaopCipher::new_aes`]; this
     /// keeps the key fixed for golden-fixture tests.
     #[cfg(test)]
-    pub fn from_key_iv(
+    pub(crate) fn from_key_iv(
         public_key: &RsaPublicKey,
         key: [u8; AES_BLOCK],
         iv: [u8; AES_BLOCK],
@@ -115,14 +118,14 @@ impl RaopCipher {
         })
     }
 
-    /// Whether this stream is encrypted (drives whether the SDP carries the
-    /// `rsaaeskey`/`aesiv` lines).
-    pub fn is_encrypted(&self) -> bool {
+    /// Whether this stream is encrypted.
+    #[cfg(test)]
+    pub(crate) fn is_encrypted(&self) -> bool {
         matches!(self, RaopCipher::Aes { .. })
     }
 
     /// The base64 `rsaaeskey` SDP value, present only for an encrypted stream.
-    pub fn rsaaeskey_b64(&self) -> Option<&str> {
+    pub(crate) fn rsaaeskey_b64(&self) -> Option<&str> {
         match self {
             RaopCipher::None => None,
             RaopCipher::Aes { rsaaeskey_b64, .. } => Some(rsaaeskey_b64),
@@ -130,7 +133,7 @@ impl RaopCipher {
     }
 
     /// The base64 `aesiv` SDP value, present only for an encrypted stream.
-    pub fn aesiv_b64(&self) -> Option<String> {
+    pub(crate) fn aesiv_b64(&self) -> Option<String> {
         match self {
             RaopCipher::None => None,
             RaopCipher::Aes { iv, .. } => Some(BASE64.encode(iv)),
@@ -140,7 +143,7 @@ impl RaopCipher {
     /// Encrypt one audio packet's payload in place: whole 16-byte blocks under
     /// AES-128-CBC (IV reset to the session value for this packet), the trailing
     /// `len % 16` bytes left untouched. A no-op for an unencrypted stream.
-    pub fn encrypt_packet(&self, payload: &mut [u8]) {
+    pub(crate) fn encrypt_packet(&self, payload: &mut [u8]) {
         let RaopCipher::Aes { key, iv, .. } = self else {
             return;
         };

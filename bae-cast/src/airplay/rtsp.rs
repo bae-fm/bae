@@ -14,12 +14,11 @@
 
 use std::io::{self, BufRead, BufReader, Write};
 use std::net::{IpAddr, SocketAddr, TcpStream};
-use std::time::Duration;
 
-/// The RTSP methods AirPlay uses. `Method::Other` carries any additional verb a
-/// dialect needs (the AirPlay 2 pairing flow POSTs, `GET_PARAMETER`).
+/// The RTSP methods AirPlay uses. `Method::Other` carries a verb the scripted
+/// test receiver reads that it has no variant for.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Method {
+pub(crate) enum Method {
     Options,
     Announce,
     Setup,
@@ -32,11 +31,12 @@ pub enum Method {
     SetPeers,
     /// AirPlay 2 RTP-timeline anchor (`SETRATEANCHORTIME`).
     SetRateAnchorTime,
+    #[cfg(test)]
     Other(String),
 }
 
 impl Method {
-    pub fn as_str(&self) -> &str {
+    pub(crate) fn as_str(&self) -> &str {
         match self {
             Method::Options => "OPTIONS",
             Method::Announce => "ANNOUNCE",
@@ -48,6 +48,7 @@ impl Method {
             Method::Post => "POST",
             Method::SetPeers => "SETPEERS",
             Method::SetRateAnchorTime => "SETRATEANCHORTIME",
+            #[cfg(test)]
             Method::Other(s) => s,
         }
     }
@@ -57,7 +58,7 @@ impl Method {
 /// `CSeq`, `User-Agent`, and `Session` headers are added by [`RtspConnection`],
 /// not carried here, so a request value only names what's specific to it.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RtspRequest {
+pub(crate) struct RtspRequest {
     pub method: Method,
     pub uri: String,
     pub headers: Vec<(String, String)>,
@@ -68,7 +69,7 @@ pub struct RtspRequest {
 
 impl RtspRequest {
     /// A request with no body (OPTIONS, RECORD, FLUSH, TEARDOWN).
-    pub fn new(method: Method, uri: impl Into<String>) -> Self {
+    pub(crate) fn new(method: Method, uri: impl Into<String>) -> Self {
         RtspRequest {
             method,
             uri: uri.into(),
@@ -80,7 +81,7 @@ impl RtspRequest {
 
     /// A request carrying a typed body (ANNOUNCE's SDP, SET_PARAMETER's text, a
     /// pairing plist/TLV8).
-    pub fn with_body(
+    pub(crate) fn with_body(
         method: Method,
         uri: impl Into<String>,
         content_type: impl Into<String>,
@@ -95,7 +96,7 @@ impl RtspRequest {
         }
     }
 
-    pub fn header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+    pub(crate) fn header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.headers.push((key.into(), value.into()));
         self
     }
@@ -104,7 +105,7 @@ impl RtspRequest {
     /// headers (User-Agent, Session) are written after the request's own headers;
     /// `Content-Length` is always emitted (0 for a bodyless request), matching
     /// what receivers expect.
-    pub fn serialize(&self, cseq: u32, extra: &[(String, String)]) -> Vec<u8> {
+    pub(crate) fn serialize(&self, cseq: u32, extra: &[(String, String)]) -> Vec<u8> {
         let mut head = format!(
             "{} {} RTSP/1.0\r\nCSeq: {cseq}\r\n",
             self.method.as_str(),
@@ -125,7 +126,7 @@ impl RtspRequest {
 
 /// One parsed RTSP response.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RtspResponse {
+pub(crate) struct RtspResponse {
     pub status: u16,
     pub reason: String,
     pub headers: Vec<(String, String)>,
@@ -134,25 +135,25 @@ pub struct RtspResponse {
 
 impl RtspResponse {
     /// A header value looked up case-insensitively (RTSP header names are).
-    pub fn header(&self, key: &str) -> Option<&str> {
+    pub(crate) fn header(&self, key: &str) -> Option<&str> {
         self.headers
             .iter()
             .find(|(k, _)| k.eq_ignore_ascii_case(key))
             .map(|(_, v)| v.as_str())
     }
 
-    pub fn cseq(&self) -> Option<u32> {
+    pub(crate) fn cseq(&self) -> Option<u32> {
         self.header("CSeq").and_then(|v| v.trim().parse().ok())
     }
 
-    pub fn is_success(&self) -> bool {
+    pub(crate) fn is_success(&self) -> bool {
         (200..300).contains(&self.status)
     }
 
     /// Read one response from `reader`: the status line, headers to the blank
     /// line, then exactly `Content-Length` body bytes (none when the header is
     /// absent).
-    pub fn read_from(reader: &mut impl BufRead) -> io::Result<RtspResponse> {
+    pub(crate) fn read_from(reader: &mut impl BufRead) -> io::Result<RtspResponse> {
         let mut status_line = String::new();
         if reader.read_line(&mut status_line)? == 0 {
             return Err(io::Error::new(
@@ -229,7 +230,7 @@ fn parse_status_line(line: &str) -> io::Result<(u16, String)> {
 /// `CSeq`, and the headers every request on this connection carries. Owned and
 /// driven on one thread (each call blocks on the socket), matching how the Cast
 /// and UPnP channels own theirs.
-pub struct RtspConnection {
+pub(crate) struct RtspConnection {
     writer: TcpStream,
     reader: BufReader<TcpStream>,
     cseq: u32,
@@ -244,7 +245,11 @@ pub struct RtspConnection {
 
 impl RtspConnection {
     /// Open the RTSP control connection to `addr:port`.
-    pub fn connect(addr: IpAddr, port: u16, user_agent: impl Into<String>) -> io::Result<Self> {
+    pub(crate) fn connect(
+        addr: IpAddr,
+        port: u16,
+        user_agent: impl Into<String>,
+    ) -> io::Result<Self> {
         let stream = TcpStream::connect(SocketAddr::new(addr, port))?;
         stream.set_nodelay(true).ok();
         Self::from_stream(stream, user_agent)
@@ -252,7 +257,10 @@ impl RtspConnection {
 
     /// Build a connection over an already-open stream (loopback fakes in tests use
     /// this).
-    pub fn from_stream(stream: TcpStream, user_agent: impl Into<String>) -> io::Result<Self> {
+    pub(crate) fn from_stream(
+        stream: TcpStream,
+        user_agent: impl Into<String>,
+    ) -> io::Result<Self> {
         let local_addr = stream.local_addr()?.ip();
         let reader = BufReader::new(stream.try_clone()?);
         Ok(RtspConnection {
@@ -265,30 +273,27 @@ impl RtspConnection {
         })
     }
 
-    pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
-        self.writer.set_read_timeout(timeout)
-    }
-
     /// Take the underlying TCP stream back, for handing a control connection off to
     /// the encrypted transport after AirPlay 2 pair-verify. The buffered reader is
     /// dropped — safe only when the last response was fully consumed (each RTSP
     /// request reads exactly its `Content-Length` body, so nothing is left over).
-    pub fn into_stream(self) -> TcpStream {
+    pub(crate) fn into_stream(self) -> TcpStream {
         self.writer
     }
 
-    pub fn local_addr(&self) -> IpAddr {
+    pub(crate) fn local_addr(&self) -> IpAddr {
         self.local_addr
     }
 
-    pub fn session(&self) -> Option<&str> {
+    #[cfg(test)]
+    pub(crate) fn session(&self) -> Option<&str> {
         self.session.as_deref()
     }
 
     /// Send `request` and read its response, advancing `CSeq` and attaching the
     /// connection's `User-Agent` and `Session` headers. A response whose `CSeq`
     /// doesn't echo the request's is a protocol error.
-    pub fn request(&mut self, request: &RtspRequest) -> io::Result<RtspResponse> {
+    pub(crate) fn request(&mut self, request: &RtspRequest) -> io::Result<RtspResponse> {
         self.cseq += 1;
         let cseq = self.cseq;
 

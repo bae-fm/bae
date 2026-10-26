@@ -23,7 +23,7 @@ use bae_util::error_text::CauseChain;
 /// receiver's liveness check satisfied. The live protocol path is not
 /// exercisable without a physical device; the session's logic is tested against a
 /// fake channel instead.
-pub struct RustCastChannel {
+pub(crate) struct RustCastChannel {
     device: rust_cast::CastDevice<'static>,
     /// The launched media receiver's virtual-connection transport id — the
     /// destination every media command addresses.
@@ -44,7 +44,7 @@ impl RustCastChannel {
     /// Connect to the device at `host:port`, open the virtual connection, and
     /// launch the media receiver so it is ready for a LOAD. Blocks on the
     /// network; the caller runs it off the async runtime.
-    pub fn connect(host: IpAddr, port: u16) -> Result<Self, RendererError> {
+    pub(crate) fn connect(host: IpAddr, port: u16) -> Result<Self, RendererError> {
         // Cast devices present self-signed certificates, so host verification is
         // skipped — the connection is LAN-local and authenticated by the media
         // URL's own credential, not TLS identity.

@@ -32,7 +32,7 @@ const SERVICE_TYPES: [RendererServiceType; 2] =
 /// A discovered AirPlay receiver: enough to display it, reach its RTSP port, and
 /// decide how to connect.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AirPlayDevice {
+pub(crate) struct AirPlayDevice {
     /// Stable receiver identifier — the device id (MAC) it advertises, used to
     /// collapse the same receiver seen on both service types.
     pub id: String,
@@ -49,7 +49,7 @@ pub struct AirPlayDevice {
 impl AirPlayDevice {
     /// Project into the merged renderer-device list the picker shows across
     /// flavors, carrying what the sender needs to open the connection.
-    pub fn to_renderer_device(&self) -> RendererDevice {
+    pub(crate) fn to_renderer_device(&self) -> RendererDevice {
         RendererDevice {
             id: self.id.clone(),
             name: self.name.clone(),

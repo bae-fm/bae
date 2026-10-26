@@ -26,7 +26,7 @@ use num_bigint::BigUint;
 use sha2::{Digest, Sha512};
 
 /// The SRP group: modulus `N` and generator `g`.
-pub struct SrpGroup {
+pub(crate) struct SrpGroup {
     pub n: BigUint,
     pub g: BigUint,
 }
@@ -34,7 +34,7 @@ pub struct SrpGroup {
 impl SrpGroup {
     /// The 3072-bit group (RFC 5054 group 3072 / RFC 3526 MODP), which HomeKit
     /// pairing uses.
-    pub fn rfc5054_3072() -> Self {
+    pub(crate) fn rfc5054_3072() -> Self {
         SrpGroup {
             n: BigUint::parse_bytes(RFC5054_N_3072, 16).expect("valid 3072-bit modulus"),
             g: BigUint::from(5u8),
@@ -44,15 +44,15 @@ impl SrpGroup {
 
 /// A hash of `data`. Boxed as a function so the tests can drive the SRP math with
 /// SHA-1 (the RFC 5054 vector's hash) while production uses SHA-512.
-pub type HashFn = fn(&[u8]) -> Vec<u8>;
+pub(crate) type HashFn = fn(&[u8]) -> Vec<u8>;
 
 /// SHA-512, the hash HomeKit SRP uses.
-pub fn sha512(data: &[u8]) -> Vec<u8> {
+pub(crate) fn sha512(data: &[u8]) -> Vec<u8> {
     Sha512::digest(data).to_vec()
 }
 
 /// A client-side SRP-6a exchange in progress.
-pub struct SrpClient {
+pub(crate) struct SrpClient {
     group: SrpGroup,
     hash: HashFn,
     username: Vec<u8>,
@@ -72,7 +72,7 @@ struct Completed {
 
 /// An SRP failure.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SrpError {
+pub(crate) enum SrpError {
     /// The receiver's public value `B` was 0 mod N — an abort per RFC 5054.
     InvalidServerPublic,
     /// `process` has not been called yet.
@@ -84,7 +84,7 @@ pub enum SrpError {
 impl SrpClient {
     /// Start an exchange with a chosen private `a` (production supplies random
     /// bytes; the vector test supplies the fixed `a`).
-    pub fn new(
+    pub(crate) fn new(
         group: SrpGroup,
         hash: HashFn,
         username: &[u8],
@@ -105,13 +105,13 @@ impl SrpClient {
 
     /// The client public value `A`, minimal big-endian — what the sender puts on
     /// the wire.
-    pub fn public_a(&self) -> Vec<u8> {
+    pub(crate) fn public_a(&self) -> Vec<u8> {
         self.a_pub.to_bytes_be()
     }
 
     /// Process the receiver's `salt` and `B`: derive `x`, `u`, `S`, `K`, and the
     /// client proof `M1`.
-    pub fn process(&mut self, salt: &[u8], b_pub_bytes: &[u8]) -> Result<(), SrpError> {
+    pub(crate) fn process(&mut self, salt: &[u8], b_pub_bytes: &[u8]) -> Result<(), SrpError> {
         let n = &self.group.n;
         let b_pub = BigUint::from_bytes_be(b_pub_bytes);
         if &b_pub % n == BigUint::from(0u8) {
@@ -180,7 +180,7 @@ impl SrpClient {
     }
 
     /// The client proof `M1` to send to the receiver.
-    pub fn proof_m1(&self) -> Result<&[u8], SrpError> {
+    pub(crate) fn proof_m1(&self) -> Result<&[u8], SrpError> {
         self.completed
             .as_ref()
             .map(|c| c.m1.as_slice())
@@ -189,7 +189,7 @@ impl SrpClient {
 
     /// The shared session key `K = H(S)` — the secret the audio-stream keys are
     /// derived from.
-    pub fn shared_key(&self) -> Result<&[u8], SrpError> {
+    pub(crate) fn shared_key(&self) -> Result<&[u8], SrpError> {
         self.completed
             .as_ref()
             .map(|c| c.session_key.as_slice())
@@ -197,7 +197,7 @@ impl SrpClient {
     }
 
     /// Verify the receiver's proof `M2 = H(A | M1 | K)`.
-    pub fn verify_m2(&self, server_m2: &[u8]) -> Result<(), SrpError> {
+    pub(crate) fn verify_m2(&self, server_m2: &[u8]) -> Result<(), SrpError> {
         let c = self.completed.as_ref().ok_or(SrpError::NotProcessed)?;
         let expected = (self.hash)(
             &[

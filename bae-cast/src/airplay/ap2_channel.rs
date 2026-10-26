@@ -29,20 +29,20 @@ pub(crate) fn hkdf32(salt: &[u8], ikm: &[u8], info: &[u8]) -> [u8; 32] {
 /// The control-channel keys derived from the pair-verify shared secret: the
 /// sender's write key (controller → accessory) and read key (accessory →
 /// controller).
-pub fn control_keys(shared: &[u8; 32]) -> ([u8; 32], [u8; 32]) {
+pub(crate) fn control_keys(shared: &[u8; 32]) -> ([u8; 32], [u8; 32]) {
     let write = hkdf32(b"Control-Salt", shared, b"Control-Write-Encryption-Key");
     let read = hkdf32(b"Control-Salt", shared, b"Control-Read-Encryption-Key");
     (write, read)
 }
 
 /// The audio session key `shk` the SETUP streams plist carries to the receiver.
-pub fn audio_key(shared: &[u8; 32]) -> [u8; 32] {
+pub(crate) fn audio_key(shared: &[u8; 32]) -> [u8; 32] {
     hkdf32(b"Events-Salt", shared, b"Events-Write-Encryption-Key")
 }
 
 /// A failure on the encrypted channel — a block whose tag didn't verify.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-pub enum ChannelError {
+pub(crate) enum ChannelError {
     #[error("encrypted control channel: block failed to decrypt")]
     Decrypt,
 }
@@ -50,7 +50,7 @@ pub enum ChannelError {
 /// The sender's half of the HomeKit secure transport over one control
 /// connection: it seals outgoing bytes and reassembles/decrypts incoming ones,
 /// tracking a counter per direction.
-pub struct HapChannel {
+pub(crate) struct HapChannel {
     write_cipher: ChaCha20Poly1305,
     read_cipher: ChaCha20Poly1305,
     write_counter: u64,
@@ -61,14 +61,14 @@ pub struct HapChannel {
 
 impl HapChannel {
     /// Build the channel from the pair-verify shared secret.
-    pub fn from_shared_secret(shared: &[u8; 32]) -> Self {
+    pub(crate) fn from_shared_secret(shared: &[u8; 32]) -> Self {
         let (write_key, read_key) = control_keys(shared);
         Self::from_keys(&write_key, &read_key)
     }
 
     /// Build the channel from explicit write/read keys (the receiver side of a
     /// test swaps them).
-    pub fn from_keys(write_key: &[u8; 32], read_key: &[u8; 32]) -> Self {
+    pub(crate) fn from_keys(write_key: &[u8; 32], read_key: &[u8; 32]) -> Self {
         HapChannel {
             write_cipher: ChaCha20Poly1305::new(Key::from_slice(write_key)),
             read_cipher: ChaCha20Poly1305::new(Key::from_slice(read_key)),
@@ -85,7 +85,7 @@ impl HapChannel {
     }
 
     /// Seal `plaintext` into one or more length-prefixed encrypted blocks.
-    pub fn seal(&mut self, plaintext: &[u8]) -> Vec<u8> {
+    pub(crate) fn seal(&mut self, plaintext: &[u8]) -> Vec<u8> {
         let mut out = Vec::with_capacity(plaintext.len() + 18);
         for block in plaintext.chunks(MAX_BLOCK) {
             let aad = (block.len() as u16).to_le_bytes();
@@ -108,13 +108,13 @@ impl HapChannel {
     }
 
     /// Add bytes read from the socket to the reassembly buffer.
-    pub fn feed(&mut self, data: &[u8]) {
+    pub(crate) fn feed(&mut self, data: &[u8]) {
         self.in_buf.extend_from_slice(data);
     }
 
     /// Decrypt the next complete block, or `None` if the buffer holds only a
     /// partial one. Call repeatedly to drain everything fed so far.
-    pub fn next_block(&mut self) -> Result<Option<Vec<u8>>, ChannelError> {
+    pub(crate) fn next_block(&mut self) -> Result<Option<Vec<u8>>, ChannelError> {
         if self.in_buf.len() < 2 {
             return Ok(None);
         }

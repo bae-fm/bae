@@ -13,14 +13,14 @@ use std::time::Duration;
 
 /// The AVTransport service type, named in every AVTransport `SOAPACTION` header
 /// and in the `u:` namespace of its action elements.
-pub const AV_TRANSPORT: &str = "urn:schemas-upnp-org:service:AVTransport:1";
+pub(crate) const AV_TRANSPORT: &str = "urn:schemas-upnp-org:service:AVTransport:1";
 /// The RenderingControl service type, for `SetVolume`.
-pub const RENDERING_CONTROL: &str = "urn:schemas-upnp-org:service:RenderingControl:1";
+pub(crate) const RENDERING_CONTROL: &str = "urn:schemas-upnp-org:service:RenderingControl:1";
 
 /// One built SOAP request: the `SOAPACTION` header value and the envelope body
 /// to POST. The control URL it goes to is the caller's (it differs per service).
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SoapRequest {
+pub(crate) struct SoapRequest {
     /// The `SOAPACTION` header value, quoted: `"<service-type>#<action>"`.
     pub soap_action: String,
     /// The full `<s:Envelope>` XML to send as the request body.
@@ -31,7 +31,7 @@ pub struct SoapRequest {
 /// renderer shows on-screen, plus the `protocolInfo` MIME that tells it how to
 /// decode the stream. Mirrors the fields a Cast LOAD carries.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DidlMetadata<'a> {
+pub(crate) struct DidlMetadata<'a> {
     pub title: &'a str,
     pub artist: &'a str,
     pub album: &'a str,
@@ -45,7 +45,7 @@ pub struct DidlMetadata<'a> {
 /// `SetAVTransportURI(InstanceID=0, CurrentURI=url, CurrentURIMetaData=<DIDL>)`.
 /// The DIDL document is XML-escaped as it is embedded, since it rides as text
 /// inside the envelope.
-pub fn set_av_transport_uri(url: &str, metadata: &DidlMetadata) -> SoapRequest {
+pub(crate) fn set_av_transport_uri(url: &str, metadata: &DidlMetadata) -> SoapRequest {
     let didl = didl_lite(url, metadata);
     let arguments = format!(
         "<InstanceID>0</InstanceID>\
@@ -58,22 +58,22 @@ pub fn set_av_transport_uri(url: &str, metadata: &DidlMetadata) -> SoapRequest {
 }
 
 /// `Play(InstanceID=0, Speed=1)`.
-pub fn play() -> SoapRequest {
+pub(crate) fn play() -> SoapRequest {
     av_transport_action("Play", "<InstanceID>0</InstanceID><Speed>1</Speed>")
 }
 
 /// `Pause(InstanceID=0)`.
-pub fn pause() -> SoapRequest {
+pub(crate) fn pause() -> SoapRequest {
     av_transport_action("Pause", "<InstanceID>0</InstanceID>")
 }
 
 /// `Stop(InstanceID=0)`.
-pub fn stop() -> SoapRequest {
+pub(crate) fn stop() -> SoapRequest {
     av_transport_action("Stop", "<InstanceID>0</InstanceID>")
 }
 
 /// `Seek(InstanceID=0, Unit=REL_TIME, Target=H:MM:SS)`.
-pub fn seek(position: Duration) -> SoapRequest {
+pub(crate) fn seek(position: Duration) -> SoapRequest {
     let arguments = format!(
         "<InstanceID>0</InstanceID><Unit>REL_TIME</Unit><Target>{}</Target>",
         format_hms(position),
@@ -82,19 +82,19 @@ pub fn seek(position: Duration) -> SoapRequest {
 }
 
 /// `GetTransportInfo(InstanceID=0)` — the poll that reads `CurrentTransportState`.
-pub fn get_transport_info() -> SoapRequest {
+pub(crate) fn get_transport_info() -> SoapRequest {
     av_transport_action("GetTransportInfo", "<InstanceID>0</InstanceID>")
 }
 
 /// `GetPositionInfo(InstanceID=0)` — the poll that reads `RelTime`/`TrackDuration`.
-pub fn get_position_info() -> SoapRequest {
+pub(crate) fn get_position_info() -> SoapRequest {
     av_transport_action("GetPositionInfo", "<InstanceID>0</InstanceID>")
 }
 
 /// `SetVolume(InstanceID=0, Channel=Master, DesiredVolume=0..=100)` on
 /// RenderingControl. `level` (0.0–1.0) is clamped and scaled to the UPnP 0–100
 /// integer range.
-pub fn set_volume(level: f32) -> SoapRequest {
+pub(crate) fn set_volume(level: f32) -> SoapRequest {
     let percent = (level.clamp(0.0, 1.0) * 100.0).round() as u32;
     let arguments = format!(
         "<InstanceID>0</InstanceID><Channel>Master</Channel><DesiredVolume>{percent}</DesiredVolume>"
@@ -161,7 +161,7 @@ fn didl_lite(url: &str, metadata: &DidlMetadata) -> String {
 /// Escape the five XML special characters so arbitrary text (titles, URLs, and a
 /// whole embedded DIDL document) is safe inside element content and attributes.
 /// UTF-8 (unicode) passes through unchanged.
-pub fn xml_escape(input: &str) -> String {
+pub(crate) fn xml_escape(input: &str) -> String {
     let mut out = String::with_capacity(input.len());
     for ch in input.chars() {
         match ch {
@@ -186,7 +186,7 @@ fn format_hms(position: Duration) -> String {
 /// track's duration, each absent when the renderer omits it or returns the
 /// `NOT_IMPLEMENTED` / zero placeholders many use before playback starts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct PositionInfo {
+pub(crate) struct PositionInfo {
     pub rel_time: Option<Duration>,
     pub track_duration: Option<Duration>,
 }
@@ -195,7 +195,7 @@ pub struct PositionInfo {
 /// `CurrentTransportState`. `Other` carries any value outside the set we act on,
 /// so an unknown state is a plain unknown rather than a misread of a known one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TransportState {
+pub(crate) enum TransportState {
     Playing,
     PausedPlayback,
     Stopped,
@@ -210,7 +210,7 @@ pub enum TransportState {
 /// while a track loads, and a real track never has zero length — carrying it as
 /// a duration would let end-of-track detection fire off a fake value. A zero
 /// `RelTime` is a genuine position 0 and is kept.
-pub fn parse_position_info(body: &str) -> PositionInfo {
+pub(crate) fn parse_position_info(body: &str) -> PositionInfo {
     PositionInfo {
         rel_time: element_text(body, "RelTime").and_then(|t| parse_hms(&t)),
         track_duration: element_text(body, "TrackDuration")
@@ -221,7 +221,7 @@ pub fn parse_position_info(body: &str) -> PositionInfo {
 
 /// Parse `GetTransportInfo`'s response into a [`TransportState`]. A response
 /// without the element is treated as `Other` (unknown), never as a known state.
-pub fn parse_transport_state(body: &str) -> TransportState {
+pub(crate) fn parse_transport_state(body: &str) -> TransportState {
     match element_text(body, "CurrentTransportState").as_deref() {
         Some("PLAYING") => TransportState::Playing,
         Some("PAUSED_PLAYBACK") | Some("PAUSED_RECORDING") => TransportState::PausedPlayback,

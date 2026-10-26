@@ -37,7 +37,7 @@ const BPLIST_CONTENT_TYPE: &str = "application/x-apple-binary-plist";
 
 /// The SETUP session (step 1) body: the timing protocol and session identity the
 /// receiver keys its session on. NTP mode omits the PTP `timingPeerInfo`.
-pub fn setup_session_body(
+pub(crate) fn setup_session_body(
     timing_protocol: &str,
     group_uuid: &str,
     session_uuid: &str,
@@ -83,7 +83,7 @@ pub fn setup_session_body(
 /// The SETUP audio-stream (step 2) body: one realtime stream with the audio key
 /// the receiver decrypts packets with, the sender's control/timing ports, and
 /// the latency window.
-pub fn setup_stream_body(shk: &[u8; 32], control_port: u16, timing_port: u16) -> Plist {
+pub(crate) fn setup_stream_body(shk: &[u8; 32], control_port: u16, timing_port: u16) -> Plist {
     let stream = Plist::Dict(vec![
         // 96 = realtime audio (RTP payload type 0x60).
         ("type".to_string(), Plist::Integer(96)),
@@ -109,7 +109,7 @@ pub fn setup_stream_body(shk: &[u8; 32], control_port: u16, timing_port: u16) ->
 }
 
 /// The SETPEERS body: the timing peers as an array of IP-address strings.
-pub fn set_peers_body(peers: &[IpAddr]) -> Plist {
+pub(crate) fn set_peers_body(peers: &[IpAddr]) -> Plist {
     Plist::Array(
         peers
             .iter()
@@ -120,7 +120,11 @@ pub fn set_peers_body(peers: &[IpAddr]) -> Plist {
 
 /// The SETRATEANCHORTIME body: `rate` 1 to play or 0 to pause, the RTP timestamp
 /// the anchor pins, and — for PTP timing — the network-time anchor it maps to.
-pub fn set_rate_anchor_body(rate: u8, rtp_time: u32, ptp_anchor: Option<(u64, u32, u64)>) -> Plist {
+pub(crate) fn set_rate_anchor_body(
+    rate: u8,
+    rtp_time: u32,
+    ptp_anchor: Option<(u64, u32, u64)>,
+) -> Plist {
     let mut entries = vec![
         ("rate".to_string(), Plist::Integer(u64::from(rate))),
         ("rtpTime".to_string(), Plist::Integer(u64::from(rtp_time))),
@@ -142,7 +146,7 @@ pub fn set_rate_anchor_body(rate: u8, rtp_time: u32, ptp_anchor: Option<(u64, u3
 /// The receiver's ports and reported latency parsed from a SETUP audio-stream
 /// response plist.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Ap2StreamPorts {
+pub(crate) struct Ap2StreamPorts {
     /// Where audio datagrams go (`dataPort`).
     pub data_port: u16,
     /// Where sync datagrams go (`controlPort`).
@@ -153,7 +157,7 @@ pub struct Ap2StreamPorts {
 
 /// Pull the receiver's `dataPort`/`controlPort` (and `audioLatency`, if present)
 /// out of a SETUP streams response.
-pub fn parse_stream_ports(response: &Plist) -> Option<Ap2StreamPorts> {
+pub(crate) fn parse_stream_ports(response: &Plist) -> Option<Ap2StreamPorts> {
     let stream = match response.get("streams")? {
         Plist::Array(items) => items.first()?,
         _ => return None,
@@ -170,7 +174,7 @@ pub fn parse_stream_ports(response: &Plist) -> Option<Ap2StreamPorts> {
 
 /// A failure driving the AirPlay 2 control channel.
 #[derive(Debug, thiserror::Error)]
-pub enum Ap2Error {
+pub(crate) enum Ap2Error {
     #[error("AirPlay 2 control I/O error: {0}")]
     Io(#[from] std::io::Error),
     #[error(transparent)]
@@ -189,7 +193,7 @@ pub enum Ap2Error {
 /// The AirPlay 2 control connection after pair-verify: RTSP requests sealed onto
 /// the encrypted transport, responses decrypted back. Built from the shared
 /// secret pair-verify produced.
-pub struct Ap2Control {
+pub(crate) struct Ap2Control {
     writer: TcpStream,
     reader: BufReader<TcpStream>,
     channel: HapChannel,
@@ -201,7 +205,7 @@ pub struct Ap2Control {
 impl Ap2Control {
     /// Wrap an already-verified stream in the encrypted transport. `uri` is the
     /// RTSP request URI (`rtsp://<local>/<session-id>`).
-    pub fn new(
+    pub(crate) fn new(
         stream: TcpStream,
         shared_secret: &[u8; 32],
         uri: impl Into<String>,
@@ -218,13 +222,8 @@ impl Ap2Control {
         })
     }
 
-    /// The audio session key `shk` the SETUP streams body carries.
-    pub fn audio_key(shared_secret: &[u8; 32]) -> [u8; 32] {
-        audio_key(shared_secret)
-    }
-
     /// Send one RTSP request over the encrypted channel and read its response.
-    pub fn request(&mut self, request: &RtspRequest) -> Result<RtspResponse, Ap2Error> {
+    pub(crate) fn request(&mut self, request: &RtspRequest) -> Result<RtspResponse, Ap2Error> {
         self.cseq += 1;
         let extra = vec![("User-Agent".to_string(), self.user_agent.clone())];
         let plaintext = request.serialize(self.cseq, &extra);
@@ -264,7 +263,7 @@ impl Ap2Control {
     /// The §control sequence a HomePod requires: SETUP (session), SETUP (audio
     /// stream), SETPEERS, SETRATEANCHORTIME, RECORD — returning the receiver's
     /// audio/control ports.
-    pub fn run_setup_sequence(
+    pub(crate) fn run_setup_sequence(
         &mut self,
         shk: &[u8; 32],
         session: &Ap2SetupParams,
@@ -322,7 +321,7 @@ impl Ap2Control {
     /// Change the playback rate with a fresh SETRATEANCHORTIME — `0` pauses the
     /// receiver's rendering, `1` resumes it. AirPlay 2's equivalent of RAOP's
     /// FLUSH / re-anchor.
-    pub fn set_rate(&mut self, rate: u8) -> Result<(), Ap2Error> {
+    pub(crate) fn set_rate(&mut self, rate: u8) -> Result<(), Ap2Error> {
         self.request_expecting(
             &RtspRequest::with_body(
                 Method::SetRateAnchorTime,
@@ -336,7 +335,7 @@ impl Ap2Control {
     }
 
     /// TEARDOWN the session over the encrypted channel.
-    pub fn teardown(&mut self) -> Result<(), Ap2Error> {
+    pub(crate) fn teardown(&mut self) -> Result<(), Ap2Error> {
         self.request_expecting(
             &RtspRequest::new(Method::Teardown, self.uri.clone()),
             "TEARDOWN",
@@ -380,7 +379,7 @@ impl Ap2Control {
 }
 
 /// The session-identity and port parameters the AirPlay 2 setup sequence carries.
-pub struct Ap2SetupParams {
+pub(crate) struct Ap2SetupParams {
     pub timing_protocol: String,
     pub group_uuid: String,
     pub session_uuid: String,
@@ -466,7 +465,7 @@ impl Ap2SessionControl {
 
 /// A live AirPlay 2 session: the encrypted control connection and the running
 /// audio stream. Dropping it tears the receiver down and stops the threads.
-pub struct Ap2Session {
+pub(crate) struct Ap2Session {
     control: Ap2SessionControl,
     _stream: RaopStream,
 }
@@ -475,7 +474,7 @@ impl Ap2Session {
     /// Connect to an AirPlay 2 receiver, run transient pair-setup then pair-verify,
     /// drive the encrypted SETUP/SETPEERS/SETRATEANCHORTIME/RECORD sequence, and
     /// start streaming `source` as ChaCha-encrypted audio.
-    pub fn start(
+    pub(crate) fn start(
         receiver: IpAddr,
         airplay_port: u16,
         source: Box<dyn PcmSource>,
@@ -572,17 +571,17 @@ impl Ap2Session {
         })
     }
 
-    pub fn flush(&self) -> Result<(), Ap2Error> {
+    pub(crate) fn flush(&self) -> Result<(), Ap2Error> {
         self.control.flush()
     }
 
-    pub fn reanchor(&self) -> Result<(), Ap2Error> {
+    pub(crate) fn reanchor(&self) -> Result<(), Ap2Error> {
         self.control.reanchor()
     }
 
     /// Why the audio flow to the receiver failed for good (a dead
     /// receiver), when it has, so the session should be ended.
-    pub fn failure(&self) -> Option<String> {
+    pub(crate) fn failure(&self) -> Option<String> {
         self.control.stream.failure()
     }
 }

@@ -33,7 +33,7 @@ const ACTION_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// A connected UPnP renderer, driven by SOAP over blocking HTTP on the session
 /// thread.
-pub struct DlnaChannel {
+pub(crate) struct DlnaChannel {
     client: reqwest::blocking::Client,
     /// The AVTransport control URL (load/play/pause/seek/stop, the status polls).
     av_transport_url: String,
@@ -70,7 +70,7 @@ struct PlaybackTracking {
 impl DlnaChannel {
     /// Build a channel for a renderer at the given control URLs. There is no
     /// network handshake — the first `load` sends the first SOAP action.
-    pub fn connect(
+    pub(crate) fn connect(
         av_transport_url: String,
         rendering_control_url: Option<String>,
     ) -> Result<Self, RendererError> {

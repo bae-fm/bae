@@ -41,7 +41,7 @@ fn pair_verify_nonce(label: &[u8; 8]) -> Nonce {
 /// The pair-verify state machine, driven M1→M3 and yielding the X25519 shared
 /// secret once M4 arrives. The sender's Ed25519 identity is ephemeral: transient
 /// sessions store nothing.
-pub struct PairVerify {
+pub(crate) struct PairVerify {
     phase: Phase,
     ephemeral: StaticSecret,
     ephemeral_public: PublicKey,
@@ -58,7 +58,7 @@ enum Phase {
 }
 
 impl PairVerify {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let ephemeral = StaticSecret::random_from_rng(SecureRng);
         let ephemeral_public = PublicKey::from(&ephemeral);
         PairVerify {
@@ -70,7 +70,7 @@ impl PairVerify {
     }
 
     /// The M1 body: state M1 and our ephemeral X25519 public key.
-    pub fn start(&mut self) -> Result<Vec<u8>, PairingError> {
+    pub(crate) fn start(&mut self) -> Result<Vec<u8>, PairingError> {
         if !matches!(self.phase, Phase::Init) {
             return Err(PairingError::WrongState);
         }
@@ -92,7 +92,7 @@ impl PairVerify {
     /// transient pairing is unauthenticated, and the sender holds no device
     /// long-term key. Decryption's AEAD tag still authenticates that both sides
     /// derived the same key.
-    pub fn handle_m2(&mut self, response_body: &[u8]) -> Result<Vec<u8>, PairingError> {
+    pub(crate) fn handle_m2(&mut self, response_body: &[u8]) -> Result<Vec<u8>, PairingError> {
         if !matches!(self.phase, Phase::AwaitingM2) {
             return Err(PairingError::WrongState);
         }
@@ -169,7 +169,7 @@ impl PairVerify {
 
     /// Handle the receiver's M4: on success, the pair-verify shared secret the
     /// audio cipher keys from.
-    pub fn handle_m4(&mut self, response_body: &[u8]) -> Result<[u8; 32], PairingError> {
+    pub(crate) fn handle_m4(&mut self, response_body: &[u8]) -> Result<[u8; 32], PairingError> {
         let Phase::AwaitingM4(shared) = std::mem::replace(&mut self.phase, Phase::Done) else {
             return Err(PairingError::WrongState);
         };
@@ -183,7 +183,7 @@ impl PairVerify {
 /// The ChaCha20-Poly1305 cipher an AirPlay 2 sender applies to each audio packet.
 /// Keyed from the pair-verify shared secret; the 8-byte counter increments per
 /// packet and rides at the tail of the datagram.
-pub struct Ap2AudioCipher {
+pub(crate) struct Ap2AudioCipher {
     cipher: ChaCha20Poly1305,
     counter: u64,
 }
@@ -191,7 +191,7 @@ pub struct Ap2AudioCipher {
 impl Ap2AudioCipher {
     /// Derive the audio key (`shk`) from the pair-verify shared secret — the same
     /// key the SETUP streams plist hands the receiver.
-    pub fn from_shared_secret(shared: &[u8; 32]) -> Self {
+    pub(crate) fn from_shared_secret(shared: &[u8; 32]) -> Self {
         let key = super::ap2_channel::audio_key(shared);
         Ap2AudioCipher {
             cipher: ChaCha20Poly1305::new(Key::from_slice(&key)),
@@ -202,7 +202,7 @@ impl Ap2AudioCipher {
     /// Seal one packet's payload: `aad` is the RTP header's timestamp+SSRC (bytes
     /// 4..12). Returns the ciphertext+tag followed by the 8-byte little-endian
     /// nonce counter, which the sender appends after the RTP payload.
-    pub fn seal(&mut self, aad: &[u8], payload: &[u8]) -> Vec<u8> {
+    pub(crate) fn seal(&mut self, aad: &[u8], payload: &[u8]) -> Vec<u8> {
         let mut nonce_bytes = [0u8; 12];
         nonce_bytes[4..].copy_from_slice(&self.counter.to_le_bytes());
         let sealed = self
@@ -219,41 +219,17 @@ impl Ap2AudioCipher {
         out
     }
 
-    /// The counter the next `seal` will use — exposed for the position/anchor
-    /// bookkeeping and tests.
-    pub fn counter(&self) -> u64 {
+    /// The counter the next `seal` will use.
+    #[cfg(test)]
+    pub(crate) fn counter(&self) -> u64 {
         self.counter
-    }
-}
-
-/// The mapping an AirPlay 2 SETRATEANCHORTIME establishes: RTP timestamp `rtp`
-/// is playing at network time `anchor_ntp`. Given that anchor and a target
-/// network time, the RTP timestamp due then follows from the sample rate. Pure,
-/// so the anchor math is tested without a clock.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct RateAnchor {
-    pub rtp_time: u32,
-    pub anchor_ntp: super::rtp::NtpTime,
-    pub sample_rate: u32,
-}
-
-impl RateAnchor {
-    /// The RTP timestamp playing at `now` (NTP), advancing the anchor by the
-    /// elapsed seconds × sample rate.
-    pub fn rtp_at(&self, now: super::rtp::NtpTime) -> u32 {
-        let anchor_secs = f64::from(self.anchor_ntp.seconds)
-            + f64::from(self.anchor_ntp.fraction) / f64::from(u32::MAX);
-        let now_secs = f64::from(now.seconds) + f64::from(now.fraction) / f64::from(u32::MAX);
-        let elapsed = (now_secs - anchor_secs).max(0.0);
-        self.rtp_time
-            .wrapping_add((elapsed * f64::from(self.sample_rate)) as u32)
     }
 }
 
 /// Which clock an AirPlay 2 receiver uses, decided from its features — PTP for
 /// receivers that advertise it, else the NTP timing responder RAOP already runs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TimingProtocol {
+pub(crate) enum TimingProtocol {
     /// The receiver participates in the sender's NTP timing (RAOP-style).
     Ntp,
     /// The receiver requires PTP (IEEE 1588) clock synchronization.
@@ -265,7 +241,7 @@ impl TimingProtocol {
     const SUPPORTS_PTP: u64 = 1 << 42;
 
     /// Decide the timing protocol from a receiver's features value.
-    pub fn from_features(features: u64) -> Self {
+    pub(crate) fn from_features(features: u64) -> Self {
         if features & Self::SUPPORTS_PTP != 0 {
             TimingProtocol::Ptp
         } else {
@@ -277,7 +253,6 @@ impl TimingProtocol {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::airplay::rtp::NtpTime;
     use ed25519_dalek::{Signature, Verifier, VerifyingKey};
     use x25519_dalek::{PublicKey, StaticSecret};
 
@@ -450,27 +425,6 @@ mod tests {
             )
             .unwrap();
         assert_eq!(plain, payload);
-    }
-
-    /// The rate anchor advances the RTP timestamp by elapsed × sample rate.
-    #[test]
-    fn rate_anchor_advances_with_elapsed_time() {
-        let anchor = RateAnchor {
-            rtp_time: 1000,
-            anchor_ntp: NtpTime {
-                seconds: 100,
-                fraction: 0,
-            },
-            sample_rate: 44_100,
-        };
-        // One second later, 44100 more frames have played.
-        let later = NtpTime {
-            seconds: 101,
-            fraction: 0,
-        };
-        assert_eq!(anchor.rtp_at(later), 1000 + 44_100);
-        // At the anchor instant, the RTP time is exactly the anchor.
-        assert_eq!(anchor.rtp_at(anchor.anchor_ntp), 1000);
     }
 
     /// PTP is chosen only when the receiver advertises the PTP feature bit.

@@ -27,20 +27,20 @@ use super::crypto::RaopCipher;
 use super::rtp::{self, NtpTime};
 
 /// Frames of audio per RTP packet — the RAOP constant echoed in the SDP fmtp.
-pub const FRAMES_PER_PACKET: u32 = 352;
+pub(crate) const FRAMES_PER_PACKET: u32 = 352;
 
 /// How a packet's PCM payload is encrypted — the one thing the two dialects
 /// differ on in the send path. RAOP encrypts the payload in place (AES-128-CBC or
 /// not at all); AirPlay 2 seals it with ChaCha20-Poly1305, the RTP header's
 /// timestamp+SSRC as associated data, and the 8-byte nonce trailing the datagram.
-pub enum PayloadCrypto {
+pub(crate) enum PayloadCrypto {
     Raop(RaopCipher),
     Ap2(super::airplay2::Ap2AudioCipher),
 }
 
 /// Turns each packet's PCM into RTP audio bytes, advancing the sequence and
 /// timestamp and encrypting the payload. Pure and deterministic.
-pub struct Packetizer {
+pub(crate) struct Packetizer {
     ssrc: u32,
     crypto: PayloadCrypto,
     channels: u32,
@@ -52,7 +52,7 @@ pub struct Packetizer {
 impl Packetizer {
     /// Start at `initial_timestamp` (the RECORD anchor). `first` marks the first
     /// packet after RECORD/FLUSH, which carries the RTP marker bit.
-    pub fn new(
+    pub(crate) fn new(
         ssrc: u32,
         crypto: PayloadCrypto,
         channels: u32,
@@ -72,7 +72,7 @@ impl Packetizer {
     /// Serialize one packet from `frames` interleaved i16 samples (already
     /// zero-padded to a whole packet). Advances the sequence (wrapping) and the
     /// timestamp by the frame count.
-    pub fn packet(&mut self, frames: &[i16]) -> Vec<u8> {
+    pub(crate) fn packet(&mut self, frames: &[i16]) -> Vec<u8> {
         let mut payload = Vec::with_capacity(frames.len() * 2);
         for sample in frames {
             payload.extend_from_slice(&sample.to_le_bytes());
@@ -112,7 +112,7 @@ impl Packetizer {
     /// Re-anchor after a FLUSH: the next packet carries the marker bit again so
     /// the receiver treats the resumed stream as a fresh start. The RTP timestamp
     /// keeps advancing — the sync packet re-establishes the mapping.
-    pub fn reanchor(&mut self) {
+    pub(crate) fn reanchor(&mut self) {
         self.first = true;
     }
 }
@@ -120,7 +120,7 @@ impl Packetizer {
 /// Decides how many packets are due by a moment in the stream, so the sender runs
 /// slightly ahead of real time to keep the receiver's buffer full. Timing only —
 /// no I/O — so a test drives it with virtual elapsed durations.
-pub struct Pacer {
+pub(crate) struct Pacer {
     sample_rate: u32,
     latency_frames: u32,
     frames_sent: u64,
@@ -129,7 +129,7 @@ pub struct Pacer {
 impl Pacer {
     /// `latency_frames` is how far ahead of the playback clock the sender stays
     /// (the receiver's reported audio latency, ~2 s).
-    pub fn new(sample_rate: u32, latency_frames: u32) -> Self {
+    pub(crate) fn new(sample_rate: u32, latency_frames: u32) -> Self {
         Pacer {
             sample_rate,
             latency_frames,
@@ -140,27 +140,27 @@ impl Pacer {
     /// Whole packets still owed at `elapsed` since the anchor: the target is the
     /// latency lead plus the frames the playback clock has reached, minus what's
     /// already been sent.
-    pub fn packets_due(&self, elapsed: Duration) -> u64 {
+    pub(crate) fn packets_due(&self, elapsed: Duration) -> u64 {
         let played = (elapsed.as_secs_f64() * f64::from(self.sample_rate)) as u64;
         let target = u64::from(self.latency_frames) + played;
         target.saturating_sub(self.frames_sent) / u64::from(FRAMES_PER_PACKET)
     }
 
     /// Account for one packet just sent.
-    pub fn record_packet(&mut self) {
+    pub(crate) fn record_packet(&mut self) {
         self.frames_sent += u64::from(FRAMES_PER_PACKET);
     }
 
-    /// Total frames handed to the receiver so far — the basis for the position the
-    /// UI shows (minus the receiver latency).
-    pub fn frames_sent(&self) -> u64 {
+    /// Total frames handed to the receiver so far.
+    #[cfg(test)]
+    pub(crate) fn frames_sent(&self) -> u64 {
         self.frames_sent
     }
 }
 
 /// A monotonic clock the pacing loop reads elapsed time from, and re-anchors on a
 /// FLUSH. Injectable so tests don't sleep.
-pub trait MonotonicClock: Send + Sync {
+pub(crate) trait MonotonicClock: Send + Sync {
     /// Time since the clock was created or last [`reset`](MonotonicClock::reset).
     fn elapsed(&self) -> Duration;
     /// Restart the elapsed count from now (the re-anchor point after a FLUSH).
@@ -168,12 +168,12 @@ pub trait MonotonicClock: Send + Sync {
 }
 
 /// The real clock: elapsed since the last reset.
-pub struct SystemClock {
+pub(crate) struct SystemClock {
     start: Mutex<Instant>,
 }
 
 impl SystemClock {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         SystemClock {
             start: Mutex::new(Instant::now()),
         }
@@ -191,7 +191,7 @@ impl MonotonicClock for SystemClock {
 }
 
 /// The UDP endpoints a SETUP response resolves to.
-pub struct StreamEndpoints {
+pub(crate) struct StreamEndpoints {
     pub receiver: IpAddr,
     /// Where audio datagrams go.
     pub audio_port: u16,
@@ -220,7 +220,7 @@ pub(super) struct StreamSockets {
 /// The live push-audio stream shared by both dialects: the UDP audio flow, the
 /// timing responder, and — for RAOP — the periodic sync packets. Dropping it
 /// stops every thread. Created by a session after RECORD.
-pub struct RaopStream {
+pub(crate) struct RaopStream {
     stop: Arc<AtomicBool>,
     threads: Vec<JoinHandle<()>>,
 }

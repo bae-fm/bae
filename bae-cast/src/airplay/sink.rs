@@ -20,7 +20,7 @@ use super::session::RaopSession;
 use super::stream::SystemClock;
 
 /// The parameters an [`AirPlaySink`] needs to open a RAOP session to a receiver.
-pub struct RaopSink {
+pub(crate) struct RaopSink {
     pub receiver: IpAddr,
     pub rtsp_port: u16,
     /// The encryption the receiver requires — `None` for `et=0`, `RsaAes` for
@@ -74,7 +74,7 @@ impl AirPlayStreamControl for RaopSession {
 
 /// The parameters an [`AirPlaySink`] needs to open an AirPlay 2 session: pair
 /// (transient) then push ChaCha-encrypted audio to a HomePod-class receiver.
-pub struct Ap2Sink {
+pub(crate) struct Ap2Sink {
     pub receiver: IpAddr,
     /// The receiver's AirPlay control port (`_airplay._tcp`, usually 7000).
     pub airplay_port: u16,

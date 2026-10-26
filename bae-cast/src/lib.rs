@@ -6,7 +6,7 @@
 //! behind the one queue), which drives a device only through the interfaces it
 //! defines: a Cast or UPnP device as a `RendererChannel`, an AirPlay receiver as
 //! an `AirPlaySink`. This crate owns everything behind them: the Google Cast
-//! ([`cast`]), UPnP ([`dlna`]) and AirPlay ([`airplay`]) wires, discovering
+//! (`cast`), UPnP (`dlna`) and AirPlay (`airplay`) wires, discovering
 //! devices ([`renderer`]), serving audio over HTTP with a per-session
 //! credential, and turning a device id into a connected channel or sink that it
 //! hands the service.
@@ -18,9 +18,9 @@
 
 #![deny(unreachable_pub, dead_code)]
 
-pub mod airplay;
-pub mod cast;
-pub mod dlna;
+mod airplay;
+mod cast;
+mod dlna;
 pub mod renderer;
 
 use std::sync::{Arc, Mutex};

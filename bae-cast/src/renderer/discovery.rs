@@ -15,8 +15,8 @@
 //! Both publish the same merged [`RendererDevice`] list through a
 //! `PublishedDevices` and are started and stopped with the picker's visibility.
 //! The mapping from an advertised service to a device — TXT record parsing and
-//! all — is the same code on both paths ([`crate::cast::discovery`],
-//! [`crate::airplay::discovery`]); only who reads the network differs.
+//! all — is the same code on both paths (`crate::cast::discovery`,
+//! `crate::airplay::discovery`); only who reads the network differs.
 
 use std::collections::HashMap;
 use std::net::IpAddr;

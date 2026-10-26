@@ -1,7 +1,7 @@
 //! Remote renderers as the device picker sees them: one merged list of the
 //! Cast, UPnP and AirPlay devices on the network, and where it comes from.
 //!
-//! Each protocol module ([`crate::cast`], [`crate::dlna`], [`crate::airplay`])
+//! Each protocol module (`crate::cast`, `crate::dlna`, `crate::airplay`)
 //! maps what its devices advertise to a [`RendererDevice`]; [`discovery`] runs
 //! their browses side by side, or takes the services a host's browser reports,
 //! and merges them into the one [`device`] list. A device carries the

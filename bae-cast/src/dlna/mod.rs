@@ -13,11 +13,11 @@
 //! the renderer as the shared [`bae_core::renderer::RendererChannel`], including the
 //! end-of-track inference UPnP's reason-less STOPPED requires.
 
-pub mod channel;
-pub mod discovery;
-pub mod soap;
+pub(crate) mod channel;
+pub(crate) mod discovery;
+pub(crate) mod soap;
 
-pub use channel::DlnaChannel;
+pub(crate) use channel::DlnaChannel;
 pub(crate) use discovery::DlnaDiscovery;
 
 #[cfg(test)]

@@ -19,30 +19,27 @@
 //! announce, [`rtsp`] is the control connection both dialects drive, and
 //! [`sink`] opens either dialect's session behind bae-core's AirPlay output.
 
-pub mod airplay2;
-pub mod ap2_channel;
-pub mod ap2_session;
-pub mod bplist;
-pub mod capabilities;
-pub mod crypto;
-pub mod discovery;
-pub mod pairing;
-pub mod rtp;
-pub mod rtsp;
+pub(crate) mod airplay2;
+pub(crate) mod ap2_channel;
+pub(crate) mod ap2_session;
+pub(crate) mod bplist;
+pub(crate) mod capabilities;
+pub(crate) mod crypto;
+pub(crate) mod discovery;
+pub(crate) mod pairing;
+pub(crate) mod rtp;
+pub(crate) mod rtsp;
 mod secure_rng;
-pub mod session;
-pub mod sink;
-pub mod srp;
-pub mod stream;
-pub mod tlv8;
+pub(crate) mod session;
+pub(crate) mod sink;
+pub(crate) mod srp;
+pub(crate) mod stream;
+pub(crate) mod tlv8;
 
 use pairing::PairingError;
 use tlv8::{tlv_type, Tlv8};
 
-pub use capabilities::{
-    AirPlayCapabilities, Dialect, RaopCodec, RaopEncryption, RaopParams, UnreadableSetting,
-};
-pub use discovery::AirPlayDevice;
+pub(crate) use capabilities::{AirPlayCapabilities, UnreadableSetting};
 pub(crate) use discovery::AirPlayDiscovery;
 
 /// The receiver's Error TLV, if it sent one: pairing stops on any nonzero

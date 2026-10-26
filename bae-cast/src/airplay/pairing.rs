@@ -32,7 +32,7 @@ const TRANSIENT_PIN: &[u8] = b"3939";
 
 /// The transient pair-setup state machine. Built, then driven M1→M3, yielding the
 /// SRP shared secret once M4 arrives.
-pub struct TransientPairing {
+pub(crate) struct TransientPairing {
     phase: Phase,
 }
 
@@ -48,13 +48,13 @@ enum Phase {
 }
 
 impl TransientPairing {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         TransientPairing { phase: Phase::Init }
     }
 
     /// The body of the first `POST /pair-setup` (M1): method 0, state M1, and the
     /// transient flag.
-    pub fn start(&mut self) -> Result<Vec<u8>, PairingError> {
+    pub(crate) fn start(&mut self) -> Result<Vec<u8>, PairingError> {
         if !matches!(self.phase, Phase::Init) {
             return Err(PairingError::WrongState);
         }
@@ -68,7 +68,7 @@ impl TransientPairing {
 
     /// Handle the receiver's M2 (salt + B): run the SRP exchange and return the
     /// M3 body (`{State=M3, PublicKey=A, Proof=M1}`) to POST.
-    pub fn handle_m2(&mut self, response_body: &[u8]) -> Result<Vec<u8>, PairingError> {
+    pub(crate) fn handle_m2(&mut self, response_body: &[u8]) -> Result<Vec<u8>, PairingError> {
         if !matches!(self.phase, Phase::AwaitingM2) {
             return Err(PairingError::WrongState);
         }
@@ -106,7 +106,7 @@ impl TransientPairing {
 
     /// Handle the receiver's M4: verify its server proof (when present) and return
     /// the SRP shared secret the stream keys derive from.
-    pub fn handle_m4(&mut self, response_body: &[u8]) -> Result<Vec<u8>, PairingError> {
+    pub(crate) fn handle_m4(&mut self, response_body: &[u8]) -> Result<Vec<u8>, PairingError> {
         let Phase::AwaitingM4(client) = std::mem::replace(&mut self.phase, Phase::Done) else {
             return Err(PairingError::WrongState);
         };
@@ -125,7 +125,7 @@ impl TransientPairing {
 
 /// A failure during transient pairing.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-pub enum PairingError {
+pub(crate) enum PairingError {
     /// A method was called out of sequence.
     #[error("pairing step called out of sequence")]
     WrongState,

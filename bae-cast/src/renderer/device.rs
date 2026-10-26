@@ -1,6 +1,6 @@
 //! A discovered remote renderer, merged across flavors.
 //!
-//! Cast discovery ([`crate::cast`]) and UPnP discovery ([`crate::dlna`]) both
+//! Cast discovery (`crate::cast`) and UPnP discovery (`crate::dlna`) both
 //! produce [`RendererDevice`]s so the picker shows one list — a speaker is a
 //! speaker, not segregated by protocol. Each device carries the flavor-specific
 //! [`RendererConnection`] needed to build its channel, and reports its

@@ -69,7 +69,7 @@ fn parse_stream_ports_reads_the_response() {
 #[test]
 fn setup_sequence_runs_over_the_encrypted_channel() {
     let shared = [0x33u8; 32];
-    let shk = Ap2Control::audio_key(&shared);
+    let shk = audio_key(&shared);
     let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
     let addr = listener.local_addr().unwrap();
 

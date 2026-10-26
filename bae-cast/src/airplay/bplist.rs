@@ -10,7 +10,7 @@
 
 /// A property-list value.
 #[derive(Debug, Clone, PartialEq)]
-pub enum Plist {
+pub(crate) enum Plist {
     Bool(bool),
     /// A non-negative integer (AirPlay bodies use unsigned counts, ports, clocks).
     Integer(u64),
@@ -25,7 +25,7 @@ pub enum Plist {
 
 impl Plist {
     /// Look up a key in a dict value.
-    pub fn get(&self, key: &str) -> Option<&Plist> {
+    pub(crate) fn get(&self, key: &str) -> Option<&Plist> {
         match self {
             Plist::Dict(entries) => entries.iter().find(|(k, _)| k == key).map(|(_, v)| v),
             _ => None,
@@ -33,7 +33,7 @@ impl Plist {
     }
 
     /// The integer value, if this is one.
-    pub fn as_integer(&self) -> Option<u64> {
+    pub(crate) fn as_integer(&self) -> Option<u64> {
         match self {
             Plist::Integer(v) => Some(*v),
             _ => None,
@@ -41,7 +41,8 @@ impl Plist {
     }
 
     /// The string value, if this is one.
-    pub fn as_string(&self) -> Option<&str> {
+    #[cfg(test)]
+    pub(crate) fn as_string(&self) -> Option<&str> {
         match self {
             Plist::String(s) => Some(s),
             _ => None,
@@ -61,7 +62,7 @@ enum Node {
 }
 
 /// Encode a value tree to `bplist00` bytes.
-pub fn encode(root: &Plist) -> Vec<u8> {
+pub(crate) fn encode(root: &Plist) -> Vec<u8> {
     let mut nodes: Vec<Node> = Vec::new();
     flatten(root, &mut nodes);
     let object_count = nodes.len();
@@ -209,7 +210,7 @@ fn int_bytes(v: u64, width: usize) -> Vec<u8> {
 
 /// A malformed binary plist.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-pub enum BplistError {
+pub(crate) enum BplistError {
     /// The `bplist00` header was missing.
     #[error("not a bplist00 payload")]
     BadHeader,
@@ -251,7 +252,7 @@ const MAX_DECODED_OBJECTS: usize = 1 << 16;
 /// reference is checked against the payload before it is used, so a malformed
 /// receiver response is an error, never an oversized allocation or a runaway
 /// recursion.
-pub fn decode(bytes: &[u8]) -> Result<Plist, BplistError> {
+pub(crate) fn decode(bytes: &[u8]) -> Result<Plist, BplistError> {
     if bytes.len() < 8 + 32 || &bytes[..8] != b"bplist00" {
         return Err(BplistError::BadHeader);
     }

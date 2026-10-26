@@ -8,10 +8,10 @@
 //! types it drives are the shared renderer ones — the receiver fetches audio over
 //! HTTP itself, exactly like a UPnP renderer.
 
-pub mod channel;
-pub mod discovery;
+pub(crate) mod channel;
+pub(crate) mod discovery;
 
-pub use channel::RustCastChannel;
+pub(crate) use channel::RustCastChannel;
 pub(crate) use discovery::CastDiscovery;
 
 #[cfg(test)]
