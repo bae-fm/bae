@@ -5,64 +5,22 @@ import Testing
 
 @testable import bae
 
-/// The list's rows selected through the native list: each change reaches core
-/// as the selection, a click is never undone by a list read from before it,
-/// and Select All asks core for every row the list shows.
+/// The list's rows selected through its table: each press and key reaches
+/// core as the selection change it is, the table highlights what core holds,
+/// a click is never undone by a list read from before it, and Select All
+/// asks core for every row the list shows.
 @Suite("Import list selection")
 struct ImportListSelectionTests {
     @MainActor
-    @Test("native row selection reaches core as the selection")
+    @Test("a click on a row reaches core as the selection")
     func candidateCanBeSelected() async throws {
         try await assertCandidateCanBeSelected(isGroupMember: false)
     }
 
     @MainActor
-    @Test("native group-member selection reaches core as the selection")
+    @Test("a click on a group member reaches core as the selection")
     func groupedCandidateCanBeSelected() async throws {
         try await assertCandidateCanBeSelected(isGroupMember: true)
-    }
-
-    /// The list with its rows' selection wired the way the import view wires
-    /// it: read from the store, each read noted in `reads`, and each change
-    /// handed to the slot.
-    @MainActor
-    private static func selectableList(
-        store: ImportStore,
-        slot: ImportListSlot,
-        uiStore: UiStore,
-        reads: CallLog<Set<String>>? = nil
-    ) -> some View {
-        ImportCandidateListContent(
-            importStore: store,
-            listSlot: slot,
-            selectedKeys: Binding(
-                get: {
-                    let keys = store.shownSelectedKeys
-                    reads?.record(keys)
-                    return keys
-                },
-                set: {
-                    slot.changeSelection(
-                        to: $0,
-                        from: store.shownSelectedKeys,
-                        by: .replace
-                    )
-                }
-            ),
-            onAddFolder: {},
-            onRemoveFolder: { _ in },
-            onRefreshFolder: { _ in },
-            onCombineFolder: { _ in },
-            onSeparate: { _ in },
-            onShowInLibrary: { _ in },
-            onPerform: { _ in },
-            onCancelAllIdentification: {},
-            onCancelAllImports: {}
-        )
-        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-        .environment(uiStore)
-        .environment(ImportSelection())
-        .environment(ImageStore.stub())
     }
 
     @MainActor
@@ -77,10 +35,8 @@ struct ImportListSelectionTests {
             importStore: store,
             uiStore: uiStore,
             items: [
-                .candidate(
-                    stableKey:
-                        "candidate:\(PreviewData.triageRowIdentified.candidateKey)",
-                    row: PreviewData.triageRowIdentified,
+                PreviewData.candidateItem(
+                    PreviewData.triageRowIdentified,
                     isGroupMember: isGroupMember
                 )
             ],
@@ -91,21 +47,12 @@ struct ImportListSelectionTests {
                 })
             )
         )
-        let size = NSSize(width: 400, height: 320)
-        try await SnapshotTestSupport.withHostedWindow(
-            Self.selectableList(store: store, slot: slot, uiStore: uiStore)
-                .frame(width: size.width, height: size.height),
-            size: size
-        ) { _, host in
-            try await SnapshotTestSupport.settle(host)
-
-            // Exercise the native list selection, not a second checkbox state.
-            let tableView = try Self.table(in: host)
-            tableView.selectRowIndexes(
-                IndexSet(integer: 0),
-                byExtendingSelection: false
-            )
-            try await SnapshotTestSupport.settle(host)
+        try await ImportListHosting.withList(
+            store: store,
+            slot: slot,
+            uiStore: uiStore
+        ) { table in
+            try ImportListHosting.press(row: 0, in: table)
 
             try await Wait.until { !changes.all.isEmpty }
             #expect(
@@ -115,6 +62,7 @@ struct ImportListSelectionTests {
                     ])
                 ]
             )
+            #expect(table.selectedRowIndexes == [0])
         }
     }
 
@@ -146,35 +94,23 @@ struct ImportListSelectionTests {
             )
         )
         store.applySelectionRevision(1)
-        let reads = CallLog<Set<String>>()
-        let size = NSSize(width: 400, height: 320)
-        try await SnapshotTestSupport.withHostedWindow(
-            Self.selectableList(
-                store: store,
-                slot: slot,
-                uiStore: uiStore,
-                reads: reads
-            )
-            .frame(width: size.width, height: size.height),
-            size: size
-        ) { _, host in
-            try await SnapshotTestSupport.settle(host)
-            let tableView = try Self.table(in: host)
-            #expect(tableView.selectedRowIndexes == [0])
-            let firstKey = PreviewData.triageRowIdentified.candidateKey
+        try await ImportListHosting.withList(
+            store: store,
+            slot: slot,
+            uiStore: uiStore
+        ) { table in
+            #expect(table.selectedRowIndexes == [0])
             let secondKey = PreviewData.triageRowUnidentified.candidateKey
 
-            let readsBeforeClick = reads.all.count
-            tableView.selectRowIndexes([1], byExtendingSelection: false)
-            try await SnapshotTestSupport.settle(host)
-            #expect(tableView.selectedRowIndexes == [1])
+            try ImportListHosting.press(row: 1, in: table)
+            try await Wait.until { table.selectedRowIndexes == [1] }
 
             // A list read from before the click's write: the first row still
             // selected, at the revision the click started from.
             store.ingest([first, second])
             store.applySelectionRevision(1)
-            try await SnapshotTestSupport.settle(host)
-            #expect(tableView.selectedRowIndexes == [1])
+            try await Wait.untilSteady { table.selectedRowIndexes }
+            #expect(table.selectedRowIndexes == [1])
 
             // The write lands, and the list read that reflects it.
             written.continuation.yield(())
@@ -183,41 +119,119 @@ struct ImportListSelectionTests {
                 Self.row(PreviewData.triageRowUnidentified, selected: true),
             ])
             store.applySelectionRevision(2)
-            try await SnapshotTestSupport.settle(host)
-            #expect(tableView.selectedRowIndexes == [1])
+            try await Wait.untilSteady { table.selectedRowIndexes }
+            #expect(table.selectedRowIndexes == [1])
             #expect(store.shownSelectedKeys == [secondKey])
-
-            let afterClick = reads.all.dropFirst(readsBeforeClick)
-            #expect(!afterClick.contains([firstKey]))
         }
     }
 
-    /// The table SwiftUI builds for the list.
+    /// Command-click adds a row and takes one out, keeping the rest.
     @MainActor
-    private static func table(in host: NSView) throws -> NSTableView {
-        try #require(
-            SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSTableView }
-                .first
+    @Test("a Command-click toggles its row in core's selection")
+    func commandClickToggles() async throws {
+        let uiStore = UiStore()
+        let store = PreviewData.importTabScene().store
+        let changes = CallLog<BridgeSelectionChange>()
+        let slot = ImportListSlot.preview(
+            importStore: store,
+            uiStore: uiStore,
+            items: [
+                Self.row(PreviewData.triageRowIdentified, selected: true),
+                Self.row(PreviewData.triageRowUnidentified, selected: false),
+            ],
+            selection: ImportSelection(
+                operations: .stub(change: { change in
+                    changes.record(change)
+                    return 1
+                })
+            )
         )
+        try await ImportListHosting.withList(
+            store: store,
+            slot: slot,
+            uiStore: uiStore
+        ) { table in
+            try ImportListHosting.press(row: 1, in: table, modifiers: .command)
+
+            try await Wait.until { !changes.all.isEmpty }
+            #expect(
+                changes.all == [
+                    .toggle(
+                        add: [PreviewData.triageRowUnidentified.candidateKey],
+                        remove: []
+                    )
+                ]
+            )
+            try await Wait.until { table.selectedRowIndexes == [0, 1] }
+        }
     }
 
-    private static func row(
-        _ row: BridgeTriageRow,
-        selected: Bool
-    ) -> BridgeImportListItem {
-        var row = row
-        row.selected = selected
-        return PreviewData.candidateItem(row)
-    }
-
-    /// While the list has focus it offers the window its Select All, which
-    /// Edit ▸ Select All and Command-A run, and which asks core for every
-    /// row the list's view shows rather than selecting the table's loaded
-    /// rows; it takes the offer back once focus leaves.
+    /// A header is never selected: a press on one asks nothing of core, and
+    /// the down arrow from the row above it goes on to the row past it.
     @MainActor
-    @Test("the focused list's Select All asks core for every shown row")
-    func focusedListSelectAllAsksCore() async throws {
+    @Test("headers are skipped by clicks and the arrow keys")
+    func headersAreNotSelected() async throws {
+        let uiStore = UiStore()
+        let store = PreviewData.importTabScene().store
+        let changes = CallLog<BridgeSelectionChange>()
+        let header = PreviewData.groupHeaderItem(
+            key: BridgeFolderReleaseDecisionKey(
+                watchedFolderPath: "/library",
+                relativeFolderPath: "Group"
+            ),
+            name: "Group",
+            entryCount: 1
+        )
+        let slot = ImportListSlot.preview(
+            importStore: store,
+            uiStore: uiStore,
+            items: [
+                Self.row(PreviewData.triageRowIdentified, selected: true),
+                header,
+                PreviewData.candidateItem(
+                    PreviewData.triageRowUnidentified,
+                    isGroupMember: true
+                ),
+            ],
+            selection: ImportSelection(
+                operations: .stub(change: { change in
+                    changes.record(change)
+                    return 1
+                })
+            )
+        )
+        store.applySelectionRevision(1)
+        try await ImportListHosting.withList(
+            store: store,
+            slot: slot,
+            uiStore: uiStore
+        ) { table in
+            let window = try #require(table.window)
+            try ImportListHosting.press(row: 1, in: table)
+            try await Wait.untilSteady { table.selectedRowIndexes }
+            #expect(changes.all.isEmpty)
+            #expect(table.selectedRowIndexes == [0])
+
+            #expect(HostedInput.focus(table, in: window))
+            try HostedInput.keyDown(.downArrow, in: window)
+            try await Wait.until { !changes.all.isEmpty }
+            #expect(
+                changes.all == [
+                    .replace(keys: [
+                        PreviewData.triageRowUnidentified.candidateKey
+                    ])
+                ]
+            )
+            try await Wait.until { table.selectedRowIndexes == [2] }
+        }
+    }
+
+    /// Edit ▸ Select All and Command-A go up the responder chain to the
+    /// table, which asks core for every row the list's view shows rather
+    /// than selecting the rows it has loaded.
+    @MainActor
+    @Test("Select All asks core for every shown row")
+    func selectAllAsksCore() async throws {
         let uiStore = UiStore()
         let store = PreviewData.importTabScene().store
         let selectAlls = CallLog<Void>()
@@ -231,29 +245,105 @@ struct ImportListSelectionTests {
                 operations: .stub(selectAll: { selectAlls.record(()) })
             )
         )
-        let shownRowsSelectAll = ShownRowsSelectAll()
-        let size = NSSize(width: 400, height: 320)
-        try await SnapshotTestSupport.withHostedWindow(
-            Self.selectableList(store: store, slot: slot, uiStore: uiStore)
-                .environment(\.shownRowsSelectAll, shownRowsSelectAll)
-                .frame(width: size.width, height: size.height),
-            size: size
-        ) { window, host in
-            try await SnapshotTestSupport.settle(host)
-            #expect(shownRowsSelectAll.offered == nil)
-            let tableView = try Self.table(in: host)
-            #expect(window.makeFirstResponder(tableView))
-            try await Wait.until { shownRowsSelectAll.offered != nil }
-
-            let selectAll = try #require(shownRowsSelectAll.offered)
-            selectAll()
+        try await ImportListHosting.withList(
+            store: store,
+            slot: slot,
+            uiStore: uiStore
+        ) { table in
+            let window = try #require(table.window)
+            #expect(HostedInput.focus(table, in: window))
+            let responder = try #require(window.firstResponder)
+            #expect(
+                responder.tryToPerform(
+                    #selector(NSResponder.selectAll(_:)),
+                    with: nil
+                )
+            )
 
             try await Wait.until { !selectAlls.all.isEmpty }
             #expect(selectAlls.all.count == 1)
-            #expect(tableView.selectedRowIndexes.isEmpty)
-
-            #expect(window.makeFirstResponder(nil))
-            try await Wait.until { shownRowsSelectAll.offered == nil }
+            #expect(table.selectedRowIndexes.isEmpty)
         }
+    }
+
+    private static func row(
+        _ row: BridgeTriageRow,
+        selected: Bool
+    ) -> BridgeImportListItem {
+        var row = row
+        row.selected = selected
+        return PreviewData.candidateItem(row)
+    }
+}
+
+/// The import list hosted the way the import view hosts it, for tests that
+/// drive its table.
+@MainActor
+enum ImportListHosting {
+    /// The list wired the way the import view wires it.
+    static func list(
+        store: ImportStore,
+        slot: ImportListSlot,
+        uiStore: UiStore
+    ) -> some View {
+        ImportCandidateListContent(
+            importStore: store,
+            listSlot: slot,
+            onAddFolder: {},
+            onRemoveFolder: { _ in },
+            onRefreshFolder: { _ in },
+            onCombineFolder: { _ in },
+            onSeparate: { _ in },
+            onShowInLibrary: { _ in },
+            onPerform: { _ in },
+            onCancelAllIdentification: {},
+            onCancelAllImports: {}
+        )
+        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+        .environment(uiStore)
+        .environment(ImportSelection())
+        .environment(ImageStore.stub())
+    }
+
+    /// Host the list, wait for its table to lay out its rows, and hand the
+    /// table to `body`.
+    static func withList(
+        store: ImportStore,
+        slot: ImportListSlot,
+        uiStore: UiStore,
+        size: NSSize = NSSize(width: 400, height: 320),
+        _ body: (ImportCandidateTableView) async throws -> Void
+    ) async throws {
+        try await SnapshotTestSupport.withHostedWindow(
+            list(store: store, slot: slot, uiStore: uiStore)
+                .frame(width: size.width, height: size.height),
+            size: size
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            try await body(try table(in: host))
+        }
+    }
+
+    /// A press on `row`, through the table's own mouse handling.
+    static func press(
+        row: Int,
+        in table: NSTableView,
+        modifiers: NSEvent.ModifierFlags = []
+    ) throws {
+        let rect = table.rect(ofRow: row)
+        try HostedInput.track(
+            table,
+            at: table.convert(NSPoint(x: rect.midX, y: rect.midY), to: nil),
+            modifiers: modifiers
+        )
+    }
+
+    /// The list's table.
+    static func table(in host: NSView) throws -> ImportCandidateTableView {
+        try #require(
+            SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? ImportCandidateTableView }
+                .first
+        )
     }
 }

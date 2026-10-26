@@ -289,7 +289,10 @@ struct ImportListSlotTests {
             firstIdentifyingCandidate: { _ in nil }
         )
 
-        slot.changeSelection(to: ["/music/Album"], from: [], by: .toggle)
+        slot.changeSelection(
+            .toggle(add: ["/music/Album"], remove: []),
+            showing: ["/music/Album"]
+        )
         var entered = toggleEntered.stream.makeAsyncIterator()
         await entered.next()
         slot.selectAllShown()

@@ -22,6 +22,11 @@ private let importListLogger = Logger.bae("ImportListSlot")
 final class ImportListSlot {
     private(set) var list: PaginatedList<BridgeImportListItem>?
     private(set) var sortOrder: BridgeImportListOrder
+    /// Where the person is in the list, as the table last recorded it. Held
+    /// here rather than by the table so the import tab finds it again after
+    /// another tab was shown. Nothing draws from it.
+    @ObservationIgnored
+    var place: ImportListPlace?
     @ObservationIgnored
     private let defaults: UserDefaults
     private static let sortPreferenceKey = "importCandidateSortOrder"
@@ -185,9 +190,7 @@ final class ImportListSlot {
         guard let pages, let list else { return nil }
         try await pages.waitForView(next)
         let position = Int(location.visiblePosition)
-        let placed = await list.withPage(containing: position) {
-            list.idAt(position) == location.stableKey
-        }
+        let placed = await list.holds(location.stableKey, at: position)
         guard !Task.isCancelled, placed else { return nil }
         return position
     }
@@ -321,44 +324,44 @@ final class ImportListSlot {
     #endif
 }
 
+// MARK: - Place
+
+extension ImportListSlot {
+    /// Where the candidate on top of `place` sits now in the list the view
+    /// shows, as core places it: `nil` when the place's row is not a
+    /// candidate's, or core places it where this view does not show it — on
+    /// another tab, or where the view's filters would put it elsewhere. A
+    /// failed read is reported, and answers `nil`.
+    func position(ofPlace place: ImportListPlace) async -> Int? {
+        guard case .candidate(let stableKey, let candidateKey) = place.row
+        else { return nil }
+        do {
+            guard let location = try await locateCandidate(view, candidateKey),
+                let list
+            else { return nil }
+            let position = Int(location.visiblePosition)
+            let placed = await list.holds(stableKey, at: position)
+            guard !Task.isCancelled, placed else { return nil }
+            return position
+        }
+        catch {
+            uiStore.showError(error)
+            return nil
+        }
+    }
+}
+
 // MARK: - Selection
 
 extension ImportListSlot {
-    /// Apply what a person did to the list's rows: `selected` is what the
-    /// list's own selection handling made of the loaded rows it knew as
-    /// `shown`, and `gesture` how they pointed. A plain click selects exactly
-    /// what it names; a Command-click adds and takes out; a Shift-click
-    /// selects the whole run it spans, past the loaded pages.
+    /// Apply what a person did to the list's rows: `change` goes to core, and
+    /// `shown` are the loaded rows the list shows selected until core's list
+    /// reflects the write.
     func changeSelection(
-        to selected: Set<String>,
-        from shown: Set<String>,
-        by gesture: SelectionGesture
+        _ change: BridgeSelectionChange,
+        showing shown: Set<String>
     ) {
-        let change: BridgeSelectionChange
-        switch gesture {
-        case .replace:
-            change = .replace(keys: selected.sorted())
-        case .toggle:
-            change = .toggle(
-                add: selected.subtracting(shown).sorted(),
-                remove: shown.subtracting(selected).sorted()
-            )
-        case .extend:
-            let added = selected.subtracting(shown)
-                .sorted {
-                    (list?.position(of: "candidate:\($0)") ?? 0)
-                        < (list?.position(of: "candidate:\($1)") ?? 0)
-                }
-            guard let from = added.first, let to = added.last else {
-                change = .toggle(
-                    add: [],
-                    remove: shown.subtracting(selected).sorted()
-                )
-                break
-            }
-            change = .extend(from: from, to: to)
-        }
-        let click = importStore.beginSelectionClick(selected)
+        let click = importStore.beginSelectionClick(shown)
         writeSelection { [importStore] selection in
             do {
                 let revision = try await selection.change(change)
@@ -412,12 +415,13 @@ extension ImportListSlot {
     }
 }
 
-/// How a person pointed at rows of the list.
-enum SelectionGesture {
-    /// A plain click or arrow key: select exactly what it names.
-    case replace
-    /// Command held: add and take out, keeping the rest.
-    case toggle
-    /// Shift held: select the whole run from the anchor.
-    case extend
+extension PaginatedList<BridgeImportListItem> {
+    /// Whether the list holds `stableKey` at `position`, once the page that
+    /// covers it has answered.
+    fileprivate func holds(_ stableKey: String, at position: Int) async -> Bool
+    {
+        await withPage(containing: position) {
+            idAt(position) == stableKey
+        }
+    }
 }

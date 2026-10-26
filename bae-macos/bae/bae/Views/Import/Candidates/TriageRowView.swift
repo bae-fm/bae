@@ -22,7 +22,8 @@ struct TriageRowView: View {
     let menuOffers: () -> CandidateActionMenu
     let onPerform: (ImportCandidateActionOffer) -> Void
     /// Open the release this device imported from the row's files: what a
-    /// Done row's Show in Library and double-click do. `nil` off Done.
+    /// Done row's Show in Library does, as a double-click on the row in the
+    /// list's table does. `nil` off Done.
     let onShowInLibrary: (() -> Void)?
 
     init(
@@ -48,11 +49,6 @@ struct TriageRowView: View {
         rowContent
             .groupMemberRail(isGroupMember)
             .contentShape(Rectangle())
-            // Simultaneous, so the list's own click still selects the row.
-            .simultaneousGesture(
-                TapGesture(count: 2).onEnded { onShowInLibrary?() },
-                including: onShowInLibrary == nil ? .subviews : .all
-            )
             .contextMenu {
                 if let onShowInLibrary {
                     Button("Show in Library", action: onShowInLibrary)

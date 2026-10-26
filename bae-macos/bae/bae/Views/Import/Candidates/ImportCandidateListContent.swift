@@ -1,4 +1,5 @@
 import BaeKit
+import Combine
 import SwiftUI
 
 func releaseGroupDisclosureID(
@@ -29,9 +30,6 @@ enum ImportListHierarchyLayout {
     /// The leading padding a member row adds on top of its own edge padding
     /// so its content lands at `memberContentInset`.
     static var memberInset: CGFloat { memberContentInset - rowEdgePadding }
-    /// Air over a group boundary, drawn as its own spacer row so every real
-    /// row keeps a symmetric box for the selection highlight.
-    static let groupBoundaryAir = ThemeSpace.related
 }
 
 /// The filter row's geometry: one hit box and one glyph for every control at
@@ -70,153 +68,6 @@ extension View {
     }
 }
 
-struct ImportCandidateListRowBounds: Equatable {
-    let stableKey: String
-    let bounds: CGRect
-}
-
-struct ImportCandidateListGeometry: Equatable {
-    var rows: [ImportCandidateListRowBounds] = []
-    var viewport: CGRect?
-}
-
-struct ImportCandidateListGeometryKey: PreferenceKey {
-    static let defaultValue = ImportCandidateListGeometry()
-
-    static func reduce(
-        value: inout ImportCandidateListGeometry,
-        nextValue: () -> ImportCandidateListGeometry
-    ) {
-        let next = nextValue()
-        value.rows.append(contentsOf: next.rows)
-        if let viewport = next.viewport { value.viewport = viewport }
-    }
-}
-
-/// What a delivery of the list's content was read as: the revision it
-/// brought the list to, what the view narrowed it by, and where the first
-/// selected row sits in it.
-struct ImportCandidateListContentRead: Equatable {
-    let revision: UInt64
-    let narrowing: BridgeImportListNarrowing
-    let firstSelected: Int?
-}
-
-/// Which row the list keeps on top across content changes, and whether a
-/// restore's scroll is still due.
-///
-/// A reference the view holds rather than view state: it is written on every
-/// layout that moves the rows, and nothing the list draws reads it, so
-/// recording it must not ask the list for a new body. As `@State` value, each
-/// new top row re-evaluated the list and made SwiftUI reconcile every row
-/// while the person scrolled.
-@MainActor
-final class ImportCandidateListViewport {
-    private var anchorKey: String?
-    private var appliedContentRevision: UInt64?
-    /// What the list was narrowed by when its content last changed.
-    private var appliedNarrowing: BridgeImportListNarrowing?
-    /// Set while a restore's scroll has not run yet, when layouts still
-    /// measure the list where it stood before and cannot pick the anchor.
-    private var awaitingRestoreScroll = false
-
-    /// The scroll the last restore asked for has run.
-    func restoreScrolled() {
-        awaitingRestoreScroll = false
-    }
-
-    private func accept(
-        contentRevision: UInt64,
-        narrowing: BridgeImportListNarrowing
-    ) {
-        appliedContentRevision = contentRevision
-        appliedNarrowing = narrowing
-    }
-
-    private func observe(
-        _ rows: [ImportCandidateListRowBounds],
-        viewport: CGRect,
-        contentRevision: UInt64,
-        narrowing: BridgeImportListNarrowing
-    ) {
-        if appliedContentRevision == nil {
-            appliedContentRevision = contentRevision
-        }
-        if appliedNarrowing == nil {
-            appliedNarrowing = narrowing
-        }
-        guard appliedContentRevision == contentRevision else { return }
-        anchorKey =
-            rows
-            .filter {
-                $0.bounds.maxY > viewport.minY
-                    && $0.bounds.minY < viewport.maxY
-            }
-            .min { $0.bounds.minY < $1.bounds.minY }?
-            .stableKey
-    }
-
-    /// Where the list scrolls once its content changes. Narrowed anew — a
-    /// different tab, filter text or filter entry — it shows its first
-    /// selected row, or its top where no selected row is in it: the row on top
-    /// before may be gone, or anywhere. Otherwise it keeps the row that was
-    /// on top.
-    private func contentChanged(
-        to revision: UInt64,
-        narrowing: BridgeImportListNarrowing,
-        firstSelected: Int?,
-        positionOf: (String) -> Int?
-    ) -> Int? {
-        guard revision != appliedContentRevision else { return nil }
-        appliedContentRevision = revision
-        let narrowedAnew = appliedNarrowing.map { $0 != narrowing } ?? false
-        appliedNarrowing = narrowing
-        if narrowedAnew {
-            return firstSelected ?? 0
-        }
-        return anchorKey.flatMap(positionOf)
-    }
-
-    func update(
-        rows: [ImportCandidateListRowBounds],
-        viewport: CGRect,
-        content: ImportCandidateListContentRead,
-        revealInProgress: Bool,
-        positionOf: (String) -> Int?
-    ) -> Int? {
-        let contentRevision = content.revision
-        let narrowing = content.narrowing
-        let firstSelected = content.firstSelected
-        if revealInProgress {
-            accept(contentRevision: contentRevision, narrowing: narrowing)
-            observe(
-                rows,
-                viewport: viewport,
-                contentRevision: contentRevision,
-                narrowing: narrowing
-            )
-            return nil
-        }
-        if let restore = contentChanged(
-            to: contentRevision,
-            narrowing: narrowing,
-            firstSelected: firstSelected,
-            positionOf: positionOf
-        ) {
-            awaitingRestoreScroll = true
-            return restore
-        }
-        guard !awaitingRestoreScroll else { return nil }
-        observe(
-            rows,
-            viewport: viewport,
-            contentRevision: contentRevision,
-            narrowing: narrowing
-        )
-        return nil
-    }
-}
-
 // periphery:ignore
 /// What restarts the list's take of a pending reveal: a new request, or the
 /// list it scrolls coming into existence under one already waiting.
@@ -241,10 +92,8 @@ private final class ImportCandidateRevealOperation {
 struct ImportCandidateListContent: View {
     /// The loaded entries and the summary the chrome around them reads.
     let importStore: ImportStore
-    /// The paged list and the view it is showing.
+    /// The paged list, the view it is showing and the person's place in it.
     let listSlot: ImportListSlot
-    @Binding
-    var selectedKeys: Set<String>
     let onAddFolder: () -> Void
     /// Stop watching `path`.
     let onRemoveFolder: (_ path: String) -> Void
@@ -271,15 +120,12 @@ struct ImportCandidateListContent: View {
     @Environment(\.displayScale)
     private var displayScale
     @State
-    private var viewport = ImportCandidateListViewport()
-    @State
     private var revealOperation: ImportCandidateRevealOperation?
+    /// The positions reveals land on, which the table scrolls to.
+    @State
+    private var reveals = PassthroughSubject<Int, Never>()
     @FocusState
     private var filterFocused: Bool
-    @FocusState
-    private var listFocused: Bool
-    @Environment(\.shownRowsSelectAll)
-    private var shownRowsSelectAll
 
     private var filterTextBinding: Binding<String> {
         Binding(
@@ -297,16 +143,6 @@ struct ImportCandidateListContent: View {
             set: {
                 cancelReveal()
                 listSlot.setTab($0)
-            }
-        )
-    }
-
-    private var candidateSelectionBinding: Binding<Set<String>> {
-        Binding(
-            get: { selectedKeys },
-            set: {
-                cancelReveal()
-                selectedKeys = $0
             }
         )
     }
@@ -354,136 +190,132 @@ struct ImportCandidateListContent: View {
     }
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ImportSidebarList {
-                VStack(spacing: 0) {
-                    TriageTabBar(
-                        activeTab: activeTabBinding,
-                        counts: summary.counts
+        ImportSidebarList {
+            VStack(spacing: 0) {
+                TriageTabBar(
+                    activeTab: activeTabBinding,
+                    counts: summary.counts
+                )
+                .padding(ThemeSpace.related)
+
+                // Separates choosing the tab from filtering it.
+                Divider()
+
+                HStack(spacing: ThemeSpace.related) {
+                    ImportListFilterField(
+                        text: filterTextBinding,
+                        focused: $filterFocused,
+                        narrowed: summary.narrowedCount(
+                            under: shownNarrowing
+                        )
                     )
-                    .padding(ThemeSpace.related)
-
-                    // Separates choosing the tab from filtering it.
-                    Divider()
-
-                    HStack(spacing: ThemeSpace.related) {
-                        ImportListFilterField(
-                            text: filterTextBinding,
-                            focused: $filterFocused,
-                            narrowed: summary.narrowedCount(
-                                under: shownNarrowing
-                            )
-                        )
-                        if let progress = importStore.identificationProgress,
-                            progress.total > 0
-                        {
-                            IdentificationProgressIndicator(
-                                identified: progress.identified,
-                                total: progress.total,
-                                onGoToUnidentified: goToFirstUnidentified(
-                                    using: proxy
-                                ),
-                                onCancelAll: onCancelAllIdentification
-                            )
-                        }
-                        if importStore.importsInFlight > 0 {
-                            ImportActivityIndicator(
-                                count: importStore.importsInFlight,
-                                onCancelAll: onCancelAllImports
-                            )
-                        }
-                        if let activity = summary.folderScanActivity {
-                            FolderScanProgressIndicator(activity: activity)
-                        }
-                        CandidateListMenu(
-                            watchedFolders: importStore.watchedFolders,
-                            refreshingFolders: uiStore.refreshingWatchedFolders,
-                            scanStatuses: scanStatuses,
-                            networkFolders: networkFolders,
-                            hasGroups: !summary.groupKeys.isEmpty,
-                            sortOrder: listSlot.sortOrder,
-                            pendingFilter: uiStore
-                                .importCandidatePendingFilter,
-                            importStore: importStore,
-                            pendingFilterApplies: uiStore
-                                .importCandidateTab == .pending,
-                            actions: CandidateListMenuActions(
-                                onSetSortOrder: { order in
-                                    cancelReveal()
-                                    listSlot.setSortOrder(order)
-                                },
-                                onSetPendingFilter: { filter in
-                                    cancelReveal()
-                                    listSlot.setPendingFilter(filter)
-                                },
-                                onAddFolder: onAddFolder,
-                                onSetAllGroupsExpanded: { expanded in
-                                    cancelReveal()
-                                    listSlot.setGroupsExpanded(
-                                        summary.groupKeys,
-                                        expanded
-                                    )
-                                },
-                                onRefreshFolder: onRefreshFolder,
-                                onRemoveFolder: onRemoveFolder
-                            )
+                    if let progress = importStore.identificationProgress,
+                        progress.total > 0
+                    {
+                        IdentificationProgressIndicator(
+                            identified: progress.identified,
+                            total: progress.total,
+                            onGoToUnidentified: goToFirstUnidentified,
+                            onCancelAll: onCancelAllIdentification
                         )
                     }
-                    .padding(.horizontal, ThemeSpace.group)
-                    .frame(height: ImportFilterBarLayout.rowHeight)
-                    // A click anywhere on the row puts the caret in the
-                    // field; the controls at the end keep their own clicks.
-                    .contentShape(Rectangle())
-                    .onTapGesture { filterFocused = true }
-                }
-            } content: {
-                switch summary.doneUploadStatus {
-                case .waiting:
-                    UploadQueueWaiting()
-                case .read, .unreadable, nil:
-                    if activeTabIsEmpty {
-                        emptyState
+                    if importStore.importsInFlight > 0 {
+                        ImportActivityIndicator(
+                            count: importStore.importsInFlight,
+                            onCancelAll: onCancelAllImports
+                        )
                     }
-                    else {
-                        VStack(spacing: 0) {
-                            if summary.doneUploadStatus == .unreadable {
-                                UploadStatusUnreadableNotice()
-                            }
-                            tabList(proxy)
+                    if let activity = summary.folderScanActivity {
+                        FolderScanProgressIndicator(activity: activity)
+                    }
+                    CandidateListMenu(
+                        watchedFolders: importStore.watchedFolders,
+                        refreshingFolders: uiStore.refreshingWatchedFolders,
+                        scanStatuses: scanStatuses,
+                        networkFolders: networkFolders,
+                        hasGroups: !summary.groupKeys.isEmpty,
+                        sortOrder: listSlot.sortOrder,
+                        pendingFilter: uiStore
+                            .importCandidatePendingFilter,
+                        importStore: importStore,
+                        pendingFilterApplies: uiStore
+                            .importCandidateTab == .pending,
+                        actions: CandidateListMenuActions(
+                            onSetSortOrder: { order in
+                                cancelReveal()
+                                listSlot.setSortOrder(order)
+                            },
+                            onSetPendingFilter: { filter in
+                                cancelReveal()
+                                listSlot.setPendingFilter(filter)
+                            },
+                            onAddFolder: onAddFolder,
+                            onSetAllGroupsExpanded: { expanded in
+                                cancelReveal()
+                                listSlot.setGroupsExpanded(
+                                    summary.groupKeys,
+                                    expanded
+                                )
+                            },
+                            onRefreshFolder: onRefreshFolder,
+                            onRemoveFolder: onRemoveFolder
+                        )
+                    )
+                }
+                .padding(.horizontal, ThemeSpace.group)
+                .frame(height: ImportFilterBarLayout.rowHeight)
+                // A click anywhere on the row puts the caret in the
+                // field; the controls at the end keep their own clicks.
+                .contentShape(Rectangle())
+                .onTapGesture { filterFocused = true }
+            }
+        } content: {
+            switch summary.doneUploadStatus {
+            case .waiting:
+                UploadQueueWaiting()
+            case .read, .unreadable, nil:
+                if activeTabIsEmpty {
+                    emptyState
+                }
+                else {
+                    VStack(spacing: 0) {
+                        if summary.doneUploadStatus == .unreadable {
+                            UploadStatusUnreadableNotice()
                         }
+                        tabList
                     }
                 }
             }
-            .task(id: summary.groupKeys) {
-                listSlot.retainGroups(summary.groupKeys)
-            }
-            // Decode Pending's covers as the queue lands, so its first frame
-            // is not a grid of spinners.
-            .task(id: pendingCovers) {
-                await imageStore.warm(
-                    pendingCovers,
-                    pointSize: TriageRowView.coverPointSize,
-                    displayScale: displayScale
-                )
-            }
-            .onDisappear {
-                cancelReveal()
-            }
-            .task(
-                id: PendingRevealID(
-                    seq: uiStore.pendingImportCandidateReveal?.seq,
-                    listLoaded: listSlot.list != nil
-                )
-            ) {
-                // A reveal taken before the list exists would be lost.
-                guard listSlot.list != nil,
-                    let request = uiStore.pendingImportCandidateReveal
-                else { return }
-                // Once taken, the person's next action cancels it.
-                uiStore.consumeImportCandidateReveal(seq: request.seq)
-                startReveal(using: proxy) {
-                    try await listSlot.revealCandidate(request.candidateKey)
-                }
+        }
+        .task(id: summary.groupKeys) {
+            listSlot.retainGroups(summary.groupKeys)
+        }
+        // Decode Pending's covers as the queue lands, so its first frame
+        // is not a grid of spinners.
+        .task(id: pendingCovers) {
+            await imageStore.warm(
+                pendingCovers,
+                pointSize: TriageRowView.coverPointSize,
+                displayScale: displayScale
+            )
+        }
+        .onDisappear {
+            cancelReveal()
+        }
+        .task(
+            id: PendingRevealID(
+                seq: uiStore.pendingImportCandidateReveal?.seq,
+                listLoaded: listSlot.list != nil
+            )
+        ) {
+            // A reveal taken before the list exists would be lost.
+            guard listSlot.list != nil,
+                let request = uiStore.pendingImportCandidateReveal
+            else { return }
+            // Once taken, the person's next action cancels it.
+            uiStore.consumeImportCandidateReveal(seq: request.seq)
+            startReveal {
+                try await listSlot.revealCandidate(request.candidateKey)
             }
         }
     }
@@ -498,222 +330,39 @@ struct ImportCandidateListContent: View {
     }
 
     @ViewBuilder
-    private func tabList(_ proxy: ScrollViewProxy) -> some View {
+    private var tabList: some View {
         if let list = listSlot.list {
-            entryList(list, proxy: proxy)
-                // Edit ▸ Select All and Command-A cover every row the list
-                // shows while it has focus, loaded or not, rather than the
-                // rows its table holds.
-                .focused($listFocused)
-                .onChange(of: listFocused, initial: true) { _, focused in
-                    offerSelectAll(focused)
-                }
-                .onDisappear { offerSelectAll(false) }
+            ImportCandidateTable(
+                list: list,
+                importStore: importStore,
+                listSlot: listSlot,
+                actions: entryActions,
+                reveals: reveals.eraseToAnyPublisher(),
+                revealInProgress: revealOperation != nil,
+                onPersonSelected: cancelReveal
+            )
+            .background(Theme.surface)
         }
     }
 }
 
-/// The list itself.
+/// The rows' actions.
 extension ImportCandidateListContent {
-    /// Offer the window's Select All while the list has focus, or take it
-    /// back.
-    private func offerSelectAll(_ focused: Bool) {
-        guard focused else {
-            shownRowsSelectAll?.offered = nil
-            return
-        }
-        shownRowsSelectAll?.offered = {
-            cancelReveal()
-            listSlot.selectAllShown()
-        }
-    }
-
-    /// Rows over the paged list; each visible position holds its page.
-    private func entryList(
-        _ list: PaginatedList<BridgeImportListItem>,
-        proxy: ScrollViewProxy
-    ) -> some View {
-        List(selection: candidateSelectionBinding) {
-            ForEach(0..<list.totalCount, id: \.self) { index in
-                let stableKey = list.idAt(index)
-                // The air is the row's own top padding, never a row of its
-                // own: the list crashes when it scrolls to a row while an
-                // index's count of rows changes, as an air row would when rows
-                // land.
-                entry(at: index, in: list)
-                    .padding(.top, airAbove(index, in: list))
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                    .id(index)
-                    .background {
-                        if let stableKey {
-                            rowGeometry(stableKey: stableKey)
-                        }
-                    }
-                    .task(
-                        id: RowLoadID(epoch: list.loadEpoch, index: index)
-                    ) {
-                        await list.holdPage(containing: index)
-                    }
-            }
-        }
-        .listStyle(.plain)
-        .background {
-            GeometryReader { geometry in
-                Color.clear.preference(
-                    key: ImportCandidateListGeometryKey.self,
-                    value: ImportCandidateListGeometry(
-                        viewport: geometry.frame(in: .global)
-                    )
+    private var entryActions: ImportListEntryActions {
+        ImportListEntryActions(
+            onSetGroupExpanded: { group, expanded in
+                cancelReveal()
+                listSlot.setGroupExpanded(
+                    releaseGroupDisclosureID(group.key),
+                    expanded
                 )
-            }
-        }
-        .onPreferenceChange(ImportCandidateListGeometryKey.self) { geometry in
-            guard let bounds = geometry.viewport else { return }
-            if let target = viewport.update(
-                rows: geometry.rows,
-                viewport: bounds,
-                content: contentRead(list),
-                revealInProgress: revealOperation != nil,
-                positionOf: { list.position(of: $0) }
-            ) {
-                // Run on its own turn so the layouts before it can be told
-                // from the ones after.
-                Task { @MainActor in
-                    proxy.scrollTo(target, anchor: .top)
-                    viewport.restoreScrolled()
-                }
-            }
-        }
-        .scrollContentBackground(.hidden)
-        .background(Theme.surface)
-    }
-
-    /// What the list's content was last read as.
-    private func contentRead(
-        _ list: PaginatedList<BridgeImportListItem>
-    ) -> ImportCandidateListContentRead {
-        ImportCandidateListContentRead(
-            revision: list.contentRevision,
-            narrowing: summary.narrowing,
-            firstSelected: summary.firstSelectedPosition.map { Int($0) }
+            },
+            onCombineFolder: onCombineFolder,
+            onSeparate: onSeparate,
+            onShowInLibrary: onShowInLibrary,
+            onPerform: onPerform,
+            menuOffers: menuOffers(for:)
         )
-    }
-
-    private func rowGeometry(stableKey: String) -> some View {
-        GeometryReader { geometry in
-            Color.clear.preference(
-                key: ImportCandidateListGeometryKey.self,
-                value: ImportCandidateListGeometry(rows: [
-                    ImportCandidateListRowBounds(
-                        stableKey: stableKey,
-                        bounds: geometry.frame(in: .global)
-                    )
-                ])
-            )
-        }
-    }
-
-    @ViewBuilder
-    private func entry(
-        at index: Int,
-        in list: PaginatedList<BridgeImportListItem>
-    ) -> some View {
-        if let stableKey = list.idAt(index),
-            let item = importStore.items[stableKey]
-        {
-            switch item {
-            case .groupHeader(_, let group, _, let expanded, _):
-                releaseGroupHeader(group, expanded: expanded)
-            case .candidate(_, let row, let isGroupMember):
-                candidateRow(row, isGroupMember: isGroupMember)
-            case .invalid(_, let invalid, _, let isGroupMember):
-                invalidRow(invalid, isGroupMember: isGroupMember)
-            }
-        }
-        else {
-            // Holds the scroll geometry until the row's page lands.
-            Color.clear.frame(height: TriageRowView.coverPointSize)
-        }
-    }
-
-    /// The air over the row at `index`: every header past the top, and the
-    /// first top-level row after a group's members; zero until its page lands.
-    private func airAbove(
-        _ index: Int,
-        in list: PaginatedList<BridgeImportListItem>
-    ) -> CGFloat {
-        guard index > 0, let key = list.idAt(index),
-            let item = importStore.items[key]
-        else { return 0 }
-        let boundary =
-            switch item {
-            case .groupHeader:
-                true
-            case .candidate, .invalid:
-                isGroupMember(at: index, in: list) == false
-                    && isGroupMember(at: index - 1, in: list) == true
-            }
-        return boundary ? ImportListHierarchyLayout.groupBoundaryAir : 0
-    }
-
-    /// Whether the item at `index` is a group member; `nil` while its page
-    /// has not landed.
-    private func isGroupMember(
-        at index: Int,
-        in list: PaginatedList<BridgeImportListItem>
-    ) -> Bool? {
-        guard index >= 0, let key = list.idAt(index),
-            let item = importStore.items[key]
-        else { return nil }
-        switch item {
-        case .groupHeader:
-            return false
-        case .candidate(_, _, let isMember):
-            return isMember
-        case .invalid(_, _, _, let isMember):
-            return isMember
-        }
-    }
-
-    /// A folder group's header row; its members follow as sibling rows.
-    private func releaseGroupHeader(
-        _ group: BridgeTriageGroup,
-        expanded: Bool
-    ) -> some View {
-        Button {
-            cancelReveal()
-            listSlot.setGroupExpanded(
-                releaseGroupDisclosureID(group.key),
-                !expanded
-            )
-        } label: {
-            HStack(spacing: ImportListHierarchyLayout.headerSpacing) {
-                Image(systemName: expanded ? "chevron.down" : "chevron.right")
-                    .themeIcon(ImportListHierarchyLayout.headerChevron)
-                    .foregroundStyle(.tertiary)
-                    .frame(width: ImportListHierarchyLayout.headerChevron.size)
-                Text(group.name)
-                    .themeText(.strong)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
-            .padding(.vertical, ThemeSpace.inline)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .contextMenu {
-            // A header that only names a shared path component offers
-            // nothing.
-            if group.combinable {
-                Button("Combine as One Release") {
-                    onCombineFolder(group.key)
-                }
-            }
-        }
     }
 
     /// What a row's menu offers: the selection's actions when the row is
@@ -740,55 +389,17 @@ extension ImportCandidateListContent {
         revealOperation?.cancel()
         revealOperation = nil
     }
-
-    /// Every tab's row, drawn the same: a Done row is the row it was in
-    /// Found, and offers the release imported from it.
-    private func candidateRow(
-        _ row: BridgeTriageRow,
-        isGroupMember: Bool
-    ) -> some View {
-        TriageRowView(
-            row: row,
-            coverContent: importStore.sidebarCover(for: row),
-            isGroupMember: isGroupMember,
-            menuOffers: { menuOffers(for: row) },
-            onPerform: onPerform,
-            onShowInLibrary: row.importedRelease.map { release in
-                { onShowInLibrary(release) }
-            }
-        )
-        .tag(row.candidateKey)
-    }
-
-    /// A folder that failed validation is selected like any row, which opens
-    /// the pane that looks into it.
-    private func invalidRow(
-        _ invalid: BridgeInvalidCandidate,
-        isGroupMember: Bool
-    ) -> some View {
-        InvalidCandidateRow(
-            invalid: invalid,
-            isGroupMember: isGroupMember,
-            onSeparate: { onSeparate(invalid.candidateKey) }
-        )
-        .tag(invalid.candidateKey)
-    }
 }
 
 extension ImportCandidateListContent {
     /// Go to the first row still being identified.
-    private func goToFirstUnidentified(
-        using proxy: ScrollViewProxy
-    ) -> () -> Void {
-        {
-            startReveal(using: proxy) {
-                try await listSlot.revealFirstIdentifying()?.position
-            }
+    private func goToFirstUnidentified() {
+        startReveal {
+            try await listSlot.revealFirstIdentifying()?.position
         }
     }
 
     private func startReveal(
-        using proxy: ScrollViewProxy,
         locate: @escaping @MainActor () async throws -> Int?
     ) {
         revealOperation?.cancel()
@@ -805,8 +416,7 @@ extension ImportCandidateListContent {
                 else {
                     return
                 }
-                proxy.scrollTo(position, anchor: .center)
-                await Task.yield()
+                reveals.send(position)
             }
             catch is CancellationError {}
             catch {
@@ -827,7 +437,6 @@ extension ImportCandidateListContent {
         return ImportCandidateListContent(
             importStore: scene.store,
             listSlot: scene.slot(uiStore: uiStore),
-            selectedKeys: .constant([PreviewData.importTabCandidate.key]),
             onAddFolder: {},
             onRemoveFolder: { _ in },
             onRefreshFolder: { _ in },
@@ -856,7 +465,6 @@ extension ImportCandidateListContent {
         return ImportCandidateListContent(
             importStore: scene.store,
             listSlot: scene.slot(uiStore: uiStore),
-            selectedKeys: .constant([]),
             onAddFolder: {},
             onRemoveFolder: { _ in },
             onRefreshFolder: { _ in },

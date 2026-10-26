@@ -8,7 +8,6 @@ extension ImportView {
         ImportCandidateListContent(
             importStore: importStore,
             listSlot: listSlot,
-            selectedKeys: candidateSelectionBinding,
             onAddFolder: {
                 uiStore.setImportFolderPickerPresented(true)
             },

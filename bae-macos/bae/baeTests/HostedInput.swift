@@ -87,7 +87,7 @@ enum HostedInput {
 
     /// The keys the tests press: what each types and which key it is.
     enum Key {
-        case `return`, escape, space, rightArrow
+        case `return`, escape, space, rightArrow, downArrow
 
         var characters: String {
             switch self {
@@ -99,6 +99,11 @@ enum HostedInput {
                     utf16CodeUnits: [UInt16(NSRightArrowFunctionKey)],
                     count: 1
                 )
+            case .downArrow:
+                String(
+                    utf16CodeUnits: [UInt16(NSDownArrowFunctionKey)],
+                    count: 1
+                )
             }
         }
 
@@ -108,6 +113,7 @@ enum HostedInput {
             case .escape: 53
             case .space: 49
             case .rightArrow: 124
+            case .downArrow: 125
             }
         }
     }
@@ -149,9 +155,9 @@ enum HostedInput {
         }
     }
 
-    /// A press of `control` at `point` in its window's coordinates that
-    /// runs the control's own mouse-tracking loop to its release, as a
-    /// person's press of a slider does.
+    /// A press of `control` at `point` in its window's coordinates, with
+    /// `modifiers` held, that runs the control's own mouse-tracking loop to
+    /// its release, as a person's press of a slider or a table's row does.
     ///
     /// The release is queued for the loop to take. A loop that ends without
     /// taking it — it also reads the real mouse, whose button is up — leaves
@@ -159,15 +165,29 @@ enum HostedInput {
     /// outside any pool here; so whatever release is left is taken off the
     /// queue. The last event the app took is kept as its current event, so
     /// a windowless one is taken last in its place.
-    static func track(_ control: NSControl, at point: NSPoint) throws {
+    static func track(
+        _ control: NSControl,
+        at point: NSPoint,
+        modifiers: NSEvent.ModifierFlags = []
+    ) throws {
         let window = try #require(control.window)
         try autoreleasepool {
             NSApp.postEvent(
-                try mouseEvent(.leftMouseUp, at: point, in: window),
+                try mouseEvent(
+                    .leftMouseUp,
+                    at: point,
+                    in: window,
+                    modifiers: modifiers
+                ),
                 atStart: true
             )
             control.mouseDown(
-                with: try mouseEvent(.leftMouseDown, at: point, in: window)
+                with: try mouseEvent(
+                    .leftMouseDown,
+                    at: point,
+                    in: window,
+                    modifiers: modifiers
+                )
             )
             while NSApp.nextEvent(
                 matching: .leftMouseUp,
@@ -202,14 +222,15 @@ enum HostedInput {
         _ type: NSEvent.EventType,
         at point: NSPoint,
         in window: NSWindow,
-        count: Int = 1
+        count: Int = 1,
+        modifiers: NSEvent.ModifierFlags = []
     ) throws -> NSEvent {
         pressed(window)
         return try #require(
             NSEvent.mouseEvent(
                 with: type,
                 location: point,
-                modifierFlags: [],
+                modifierFlags: modifiers,
                 timestamp: ProcessInfo.processInfo.systemUptime,
                 windowNumber: window.windowNumber,
                 context: nil,

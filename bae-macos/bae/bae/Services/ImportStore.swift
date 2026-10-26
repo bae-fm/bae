@@ -212,10 +212,10 @@ class ImportStore {
     }
 
     /// The keys of the loaded rows the person has selected, as core's rows
-    /// say — what the list's own selection handling reads. Rows past the
-    /// loaded pages may be selected too; core holds the whole selection.
-    /// Kept as the rows land rather than worked out on each read: the list
-    /// reads it for every row it reconciles.
+    /// say — what the list's table highlights. Rows past the loaded pages may
+    /// be selected too; core holds the whole selection. Kept as the rows land
+    /// rather than worked out on each read: the table reads it on every
+    /// update.
     private(set) var selectedLoadedKeys: Set<String> = []
 
     private func updateSelectedLoadedKeys() {

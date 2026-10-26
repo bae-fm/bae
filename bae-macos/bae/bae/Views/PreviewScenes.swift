@@ -123,7 +123,6 @@
             return ImportCandidateListContent(
                 importStore: scene.store,
                 listSlot: scene.slot(uiStore: uiStore),
-                selectedKeys: .constant([]),
                 onAddFolder: {},
                 onRemoveFolder: { _ in },
                 onRefreshFolder: { _ in },
