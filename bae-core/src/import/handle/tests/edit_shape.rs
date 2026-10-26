@@ -1,7 +1,7 @@
 #[test]
 fn validation_folds_validate_token_outcomes() {
     use crate::config::DiscogsValidation;
-    use crate::discogs::client::DiscogsError;
+    use bae_catalogs::discogs::client::DiscogsError;
 
     assert_eq!(
         DiscogsCheck::of(Ok(())).validation(),
@@ -83,11 +83,11 @@ fn remap_links_errors_on_unmapped_id() {
 
 // ── editor seed (the prefetch's `seed`, projected from the mapper) ───
 
-fn mb_credit(id: &str, name: &str) -> crate::musicbrainz::MbArtistCredit {
-    crate::musicbrainz::MbArtistCredit {
+fn mb_credit(id: &str, name: &str) -> bae_catalogs::musicbrainz::MbArtistCredit {
+    bae_catalogs::musicbrainz::MbArtistCredit {
         joinphrase: None,
         name: name.to_string(),
-        artist: Some(crate::musicbrainz::MbArtistRef {
+        artist: Some(bae_catalogs::musicbrainz::MbArtistRef {
             id: Some(id.to_string()),
             name: Some(name.to_string()),
             sort_name: Some(name.to_string()),
@@ -95,13 +95,13 @@ fn mb_credit(id: &str, name: &str) -> crate::musicbrainz::MbArtistCredit {
     }
 }
 
-fn mb_track(number: &str, title: &str) -> crate::musicbrainz::MbTrack {
-    crate::musicbrainz::MbTrack {
+fn mb_track(number: &str, title: &str) -> bae_catalogs::musicbrainz::MbTrack {
+    bae_catalogs::musicbrainz::MbTrack {
         position: None,
         number: Some(number.to_string()),
         title: None,
         length: None,
-        recording: Some(crate::musicbrainz::MbRecording {
+        recording: Some(bae_catalogs::musicbrainz::MbRecording {
             id: None,
             title: Some(title.to_string()),
             artist_credit: vec![],
@@ -113,8 +113,8 @@ fn mb_track(number: &str, title: &str) -> crate::musicbrainz::MbTrack {
 
 /// A 2-side vinyl release credited to "Artist Name": A1, A2 on side 1; B1 on
 /// side 2, pressed in 1969 on "Label" (CAT-1, US).
-fn vinyl_response() -> crate::musicbrainz::MbReleaseResponse {
-    crate::musicbrainz::MbReleaseResponse {
+fn vinyl_response() -> bae_catalogs::musicbrainz::MbReleaseResponse {
+    bae_catalogs::musicbrainz::MbReleaseResponse {
         id: REL_1.to_string(),
         title: "Album Title".to_string(),
         disambiguation: None,
@@ -125,18 +125,18 @@ fn vinyl_response() -> crate::musicbrainz::MbReleaseResponse {
         packaging: None,
         barcode: None,
         artist_credit: vec![mb_credit("mb-artist-1", "Artist Name")],
-        release_group: Some(crate::musicbrainz::MbReleaseGroupRef {
+        release_group: Some(bae_catalogs::musicbrainz::MbReleaseGroupRef {
             id: "rg-1".to_string(),
             first_release_date: Some("1969".to_string()),
             relations: None,
         }),
-        label_info: vec![crate::musicbrainz::MbLabelInfo {
+        label_info: vec![bae_catalogs::musicbrainz::MbLabelInfo {
             catalog_number: Some("CAT-1".to_string()),
-            label: Some(crate::musicbrainz::MbLabel {
+            label: Some(bae_catalogs::musicbrainz::MbLabel {
                 name: Some("Label".to_string()),
             }),
         }],
-        media: vec![crate::musicbrainz::MbMedium {
+        media: vec![bae_catalogs::musicbrainz::MbMedium {
             discs: vec![],
             format: Some("12\" Vinyl".to_string()),
             tracks: vec![
@@ -146,7 +146,7 @@ fn vinyl_response() -> crate::musicbrainz::MbReleaseResponse {
             ],
         }],
         relations: vec![],
-        cover_art_archive: crate::musicbrainz::MbCoverArtArchive {
+        cover_art_archive: bae_catalogs::musicbrainz::MbCoverArtArchive {
             front: false,
             darkened: false,
         },
@@ -155,10 +155,10 @@ fn vinyl_response() -> crate::musicbrainz::MbReleaseResponse {
 
 /// The editor seed for a release: its reading's editable values.
 fn values_for(
-    response: &crate::musicbrainz::MbReleaseResponse,
+    response: &bae_catalogs::musicbrainz::MbReleaseResponse,
 ) -> crate::import::release_values::ReleaseValues {
     crate::import::payloads::ReleasePayloads::for_test(
-        crate::import::MetadataRef::new(crate::catalog::Catalog::MusicBrainz, &response.id),
+        crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, &response.id),
         serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
         Vec::new(),
     )
@@ -168,7 +168,7 @@ fn values_for(
     .expect("synthetic MB response reads")
 }
 
-fn seed_for(response: &crate::musicbrainz::MbReleaseResponse) -> crate::import::ReleaseUserEdit {
+fn seed_for(response: &bae_catalogs::musicbrainz::MbReleaseResponse) -> crate::import::ReleaseUserEdit {
     values_for(response).user_edit()
 }
 

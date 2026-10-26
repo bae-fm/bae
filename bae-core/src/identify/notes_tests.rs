@@ -3,9 +3,9 @@
 //! disambiguation and annotation.
 
 use super::*;
-use crate::catalog::Catalog;
 use crate::import::search::musicbrainz_release_notes;
 use crate::signals::{TextLine, TextOrigin};
+use bae_catalogs::catalog::Catalog;
 
 fn folder(line: &str) -> CandidateText {
     CandidateText::of(
@@ -38,7 +38,7 @@ fn discogs(document: serde_json::Value) -> MetadataResult {
 /// A MusicBrainz release document as its catalog serves it, as a result
 /// carrying its notes.
 fn musicbrainz(release_id: &str, document: serde_json::Value) -> MetadataResult {
-    let release: crate::musicbrainz::MbReleaseResponse =
+    let release: bae_catalogs::musicbrainz::MbReleaseResponse =
         serde_json::from_value(document).expect("the release document parses");
     MetadataResult {
         notes: musicbrainz_release_notes(&release),

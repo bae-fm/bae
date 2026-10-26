@@ -12,11 +12,11 @@ use crate::identify::{MediumConflict, NamedNote,
     Findings, IdentifyFailure, IdentifyRunView, LookupProvenance, NarrowedOut, TerminalVerdict,
 };
 use crate::import::album_links::AlbumLinks;
-use crate::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
+use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
 use crate::import::search::{MetadataResult, SourceTracks};
 use bae_types::pressing::{Medium, StatedFormat, StatedMedia};
 use crate::import::MetadataRef;
-use crate::catalog::Catalog;
+use bae_catalogs::catalog::Catalog;
 use std::str::FromStr;
 
 /// What a stored column holds that no writer here produces.

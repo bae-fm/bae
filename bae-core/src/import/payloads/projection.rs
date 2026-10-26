@@ -102,7 +102,7 @@ impl ReleasePayloads {
         for (catalog, key, json) in self.album_documents()? {
             let album = match catalog {
                 Catalog::MusicBrainz => {
-                    let group = crate::musicbrainz::parse_release_group(json)
+                    let group = bae_catalogs::musicbrainz::parse_release_group(json)
                         .map_err(|error| self.source_data(error.to_string()))?;
                     let credits = usable_supplemental_credits(group.artist_credit, key)?;
                     AlbumMetadata {
@@ -113,7 +113,7 @@ impl ReleasePayloads {
                     }
                 }
                 Catalog::Discogs => {
-                    let master = crate::discogs::client::parse_discogs_master_json(json)?;
+                    let master = bae_catalogs::discogs::client::parse_discogs_master_json(json)?;
                     AlbumMetadata {
                         title: master.title.unwrap_or_default(),
                         artists: crate::import::discogs_mapper::discogs_credits(&master.artists),
@@ -192,9 +192,9 @@ fn merge_record(records: &mut Vec<ReleaseRecord>, incoming: ReleaseRecord) {
 /// release or the other facts the linked document supplies. Keep the selected
 /// release's strict validation in its mapper.
 fn usable_supplemental_credits(
-    credits: Vec<crate::musicbrainz::MbArtistCredit>,
+    credits: Vec<bae_catalogs::musicbrainz::MbArtistCredit>,
     entity_id: &str,
-) -> Result<Vec<crate::musicbrainz::MbArtistCredit>, ImportError> {
+) -> Result<Vec<bae_catalogs::musicbrainz::MbArtistCredit>, ImportError> {
     let mut usable = Vec::new();
     for credit in credits {
         match crate::import::musicbrainz_mapper::artist_credits(

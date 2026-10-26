@@ -134,7 +134,7 @@ jobs:
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
 
-      - name: Run bae-core, bae-util, bae-audio, bae-types and bae-cast unit tests (Windows)
+      - name: Run bae-core, bae-util, bae-audio, bae-types, bae-catalogs and bae-cast unit tests (Windows)
         # The only place bae's Rust actually EXECUTES on Windows. Windows-only
         # code paths (the atomic-write directory handling, path semantics) shipped
         # broken while CI merely compiled them; this is the regression gate. The
@@ -151,13 +151,13 @@ jobs:
         env:
           TMP: ${{ runner.temp }}
           TEMP: ${{ runner.temp }}
-        run: cargo nextest run -p bae-core -p bae-util -p bae-audio -p bae-types -p bae-cast --lib --target ${{ matrix.target }}
+        run: cargo nextest run -p bae-core -p bae-util -p bae-audio -p bae-types -p bae-catalogs -p bae-cast --lib --target ${{ matrix.target }}
 
       - name: Clippy (baeium / default features)
         # The host clippy in ci.yml targets macOS, so lint the Windows target too.
-        run: cargo clippy -p bae-core -p bae-util -p bae-audio -p bae-types -p bae-bridge --target ${{ matrix.target }} -- -D warnings
+        run: cargo clippy -p bae-core -p bae-util -p bae-audio -p bae-types -p bae-catalogs -p bae-bridge --target ${{ matrix.target }} -- -D warnings
 
       - name: Clippy (full edition, OAuth + desktop)
         # Dead-code warnings are feature-specific, so lint the OAuth/desktop code
         # on the Windows target too. No cloudkit on Windows.
-        run: cargo clippy -p bae-core -p bae-util -p bae-audio -p bae-types -p bae-cast -p bae-bridge --target ${{ matrix.target }} --features oauth-providers,desktop -- -D warnings
+        run: cargo clippy -p bae-core -p bae-util -p bae-audio -p bae-types -p bae-catalogs -p bae-cast -p bae-bridge --target ${{ matrix.target }} --features oauth-providers,desktop -- -D warnings

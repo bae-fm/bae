@@ -285,7 +285,7 @@ async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
     let typed = fixture
         .manager
         .search_musicbrainz(
-            crate::musicbrainz::ReleaseSearchParams {
+            bae_catalogs::musicbrainz::ReleaseSearchParams {
                 artist: Some("Artist".to_string()),
                 album: Some("Album".to_string()),
                 ..Default::default()
@@ -325,7 +325,7 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
     TerminalVerdict::Found {
         findings: crate::identify::Findings {
             matches: vec![MetadataResult {
-                source: crate::catalog::Catalog::MusicBrainz,
+                source: bae_catalogs::catalog::Catalog::MusicBrainz,
                 release_id: "mb-1".to_string(),
                 title: "Album".to_string(),
                 artist: None,
@@ -372,7 +372,7 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
 fn the_lengths_a_source_states_do_not_decide() {
     let payloads: crate::import::payloads::ReleasePayloads =
         crate::import::payloads::ReleasePayloads::for_test(
-            crate::import::MetadataRef::new(crate::catalog::Catalog::MusicBrainz, "mb-1"),
+            crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, "mb-1"),
             release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000]),
             Vec::new(),
         );
@@ -392,7 +392,7 @@ fn the_lengths_a_source_states_do_not_decide() {
 #[test]
 fn a_document_lists_its_tracks_titles() {
     let payloads = crate::import::payloads::ReleasePayloads::for_test(
-        crate::import::MetadataRef::new(crate::catalog::Catalog::MusicBrainz, "mb-1"),
+        crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, "mb-1"),
         release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000]),
         Vec::new(),
     );

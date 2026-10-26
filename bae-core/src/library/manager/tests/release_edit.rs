@@ -91,7 +91,7 @@ async fn release_edit_seed_uses_persisted_track_ids() {
 #[tokio::test]
 async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
     use crate::import::MetadataRef;
-    use crate::catalog::Catalog;
+    use bae_catalogs::catalog::Catalog;
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     insert_editable_tracks(&manager, &release.id, 2).await;
     let persisted_ids = manager
@@ -255,7 +255,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
     )
     .await;
     let identity = crate::import::ReleaseRecord::new(
-        &crate::import::MetadataRef::new(crate::catalog::Catalog::MusicBrainz, "source-release"),
+        &crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, "source-release"),
         Some("source-group".to_string()));
     manager
         .database

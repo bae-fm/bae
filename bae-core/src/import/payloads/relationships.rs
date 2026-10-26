@@ -48,8 +48,8 @@ impl AlbumClaims {
     }
 }
 
-fn album_urls(relations: &[crate::musicbrainz::MbRelation]) -> Vec<MetadataRef> {
-    crate::musicbrainz::relation_urls(relations)
+fn album_urls(relations: &[bae_catalogs::musicbrainz::MbRelation]) -> Vec<MetadataRef> {
+    bae_catalogs::musicbrainz::relation_urls(relations)
         .filter_map(parse_catalog_url)
         .filter_map(|page| match page {
             CatalogPage::Group { catalog, key } => Some(MetadataRef::new(catalog, key)),
@@ -61,7 +61,7 @@ fn album_urls(relations: &[crate::musicbrainz::MbRelation]) -> Vec<MetadataRef> 
 impl ReleasePayloads {
     pub(super) fn discogs_counterpart_keys(&self) -> Result<Vec<String>, ImportError> {
         let response = self.musicbrainz_anchor()?;
-        let mut keys: Vec<_> = crate::musicbrainz::relation_urls(&response.relations)
+        let mut keys: Vec<_> = bae_catalogs::musicbrainz::relation_urls(&response.relations)
             .filter_map(parse_catalog_url)
             .filter_map(|page| match page {
                 CatalogPage::Release {
@@ -109,19 +109,19 @@ impl ReleasePayloads {
         let anchor = self.musicbrainz_anchor()?;
         let mut found = Found::default();
 
-        let mut pages: Vec<CatalogPage> = crate::musicbrainz::relation_urls(&anchor.relations)
+        let mut pages: Vec<CatalogPage> = bae_catalogs::musicbrainz::relation_urls(&anchor.relations)
             .filter_map(parse_catalog_url)
             .collect();
         if let Some(group) = &anchor.release_group {
             if let Some(relations) = &group.relations {
-                pages.extend(crate::musicbrainz::relation_urls(relations).filter_map(parse_catalog_url));
+                pages.extend(bae_catalogs::musicbrainz::relation_urls(relations).filter_map(parse_catalog_url));
             }
             match self.document(PayloadSource::MusicBrainzReleaseGroup, &group.id) {
                 Some(json) => {
-                    let document = crate::musicbrainz::parse_release_group(json)
+                    let document = bae_catalogs::musicbrainz::parse_release_group(json)
                         .map_err(|error| self.source_data(error.to_string()))?;
                     pages.extend(
-                        crate::musicbrainz::relation_urls(&document.relations)
+                        bae_catalogs::musicbrainz::relation_urls(&document.relations)
                             .filter_map(parse_catalog_url),
                     );
                 }
@@ -159,7 +159,7 @@ impl ReleasePayloads {
                 found.unread |= self.was_unfetched(PayloadSource::Wikidata, item);
                 continue;
             };
-            let entity = crate::wikidata::parse_entity(json)
+            let entity = bae_catalogs::wikidata::parse_entity(json)
                 .map_err(|error| self.source_data(error.to_string()))?;
             for page in entity.catalog_pages() {
                 if let CatalogPage::Group { catalog, key } = page {
@@ -186,7 +186,7 @@ impl ReleasePayloads {
                 incomplete = true;
                 continue;
             };
-            match crate::discogs::client::parse_discogs_release_json(json)?.master_id {
+            match bae_catalogs::discogs::client::parse_discogs_release_json(json)?.master_id {
                 Some(master) => filed.push((key, master)),
                 None => incomplete = true,
             }
@@ -275,7 +275,7 @@ impl ReleasePayloads {
                         if let Some(json) =
                             self.document(PayloadSource::MusicBrainzReleaseGroup, &identity.key)
                         {
-                            let group = crate::musicbrainz::parse_release_group(json)
+                            let group = bae_catalogs::musicbrainz::parse_release_group(json)
                                 .map_err(|error| self.source_data(error.to_string()))?;
                             claims.extend(album_urls(&group.relations));
                         }
@@ -284,14 +284,14 @@ impl ReleasePayloads {
                         if let Some(json) = self
                             .document(PayloadSource::MusicBrainzDiscogsMasterXref, &identity.key)
                         {
-                            let group = crate::musicbrainz::parse_release_group(json)
+                            let group = bae_catalogs::musicbrainz::parse_release_group(json)
                                 .map_err(|error| self.source_data(error.to_string()))?;
                             claims.push(MetadataRef::new(Catalog::MusicBrainz, group.id));
                         }
                     }
                     Catalog::Wikidata => {
                         if let Some(json) = self.document(PayloadSource::Wikidata, &identity.key) {
-                            let item = crate::wikidata::parse_entity(json)
+                            let item = bae_catalogs::wikidata::parse_entity(json)
                                 .map_err(|error| self.source_data(error.to_string()))?;
                             claims.extend(item.catalog_pages().into_iter().filter_map(|page| {
                                 match page {

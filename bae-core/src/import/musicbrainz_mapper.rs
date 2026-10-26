@@ -17,8 +17,8 @@ use crate::import::source_release::{
     SourceRelease, SourceWork, SourceWorkEvent, TracklistEntry,
 };
 use crate::import::{ArtistCredit, CreditedRole, ImportError, SourceCredit};
-use crate::catalog::Catalog;
-use crate::musicbrainz::{release_labels, MbArtistRef, MbRelation, MbReleaseResponse, MbTrack, MbWork};
+use bae_catalogs::catalog::Catalog;
+use bae_catalogs::musicbrainz::{release_labels, MbArtistRef, MbRelation, MbReleaseResponse, MbTrack, MbWork};
 use bae_types::pressing::{Medium, Pressing, StatedMedia};
 use std::collections::HashSet;
 use std::num::NonZeroU8;
@@ -158,7 +158,7 @@ fn source_work(work: &MbWork, reported: &mut HashSet<String>) -> SourceWork {
 /// The one MB → pressing projection. The committed release, the picker's detail,
 /// and a search result all read it, so a pressing shown is the pressing stored.
 pub(crate) fn pressing(response: &MbReleaseResponse) -> (Pressing, StatedMedia) {
-    let (facts, media) = crate::musicbrainz::pressing::read(crate::musicbrainz::pressing::Stated {
+    let (facts, media) = bae_catalogs::musicbrainz::pressing::read(bae_catalogs::musicbrainz::pressing::Stated {
         release_id: &response.id,
         country: response.country.as_deref(),
         status: response.status.as_deref(),
@@ -275,7 +275,7 @@ pub(crate) fn medium_sides(
 /// its printed name as a credit of its own; the last credit's join is not
 /// kept, since nothing follows it.
 pub(crate) fn artist_credits(
-    credits: &[crate::musicbrainz::MbArtistCredit],
+    credits: &[bae_catalogs::musicbrainz::MbArtistCredit],
     entity_id: &str,
 ) -> Result<Vec<SourceCredit>, ImportError> {
     let mut stated: Vec<SourceCredit> = Vec::new();
@@ -334,7 +334,7 @@ pub(crate) fn mediums(response: &MbReleaseResponse) -> Vec<SourceMedium> {
         .media
         .iter()
         .map(|medium| SourceMedium {
-            medium: crate::musicbrainz::pressing::medium(&response.id, medium.format.as_deref()),
+            medium: bae_catalogs::musicbrainz::pressing::medium(&response.id, medium.format.as_deref()),
             disc_ids: medium.discs.iter().fold(Vec::new(), |mut held, disc| {
                 if !held.contains(&disc.id) {
                     held.push(disc.id.clone());

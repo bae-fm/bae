@@ -11,7 +11,7 @@ use super::verdict_rows::{
 };
 use super::*;
 use crate::import::{AlbumLink, MetadataProvenance, MetadataRef, PressingLink, ReleaseLink};
-use crate::catalog::Catalog;
+use bae_catalogs::catalog::Catalog;
 use std::str::FromStr;
 
 type CandidateProvenances = HashMap<String, MetadataProvenance>;
@@ -452,7 +452,7 @@ pub(crate) fn load_matches_rows_on(
                 .entry((content_hash, position))
                 .or_default()
                 .cover_copies
-                .push(crate::remote_image::DownscaledCopy { url, max_edge });
+                .push(bae_catalogs::remote_image::DownscaledCopy { url, max_edge });
         }
         for (content_hash, position, medium) in media {
             entries

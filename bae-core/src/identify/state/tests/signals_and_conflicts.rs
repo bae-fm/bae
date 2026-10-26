@@ -2,7 +2,7 @@ use super::*;
 use crate::identify::{IdentifyFailure, LookupProvenance};
 use crate::import::album_links::AlbumLinks;
 use crate::import::LookupChoices;
-use crate::catalog::Catalog;
+use bae_catalogs::catalog::Catalog;
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
 
 fn mk_result(release_id: &str, group_id: Option<&str>) -> MetadataResult {

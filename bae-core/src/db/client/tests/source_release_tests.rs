@@ -2,9 +2,9 @@
 //! for exactly one extraction of a release at a time.
 
 use super::empty_db;
-use crate::catalog::Catalog;
 use crate::import::payloads::ReleasePayloads;
 use crate::import::{MetadataRef, PayloadSource, SourcePayload};
+use bae_catalogs::catalog::Catalog;
 
 /// A MusicBrainz release with everything its tracklist can state: a vinyl
 /// medium and a CD medium, a credit that names no artist, composer
@@ -341,7 +341,7 @@ async fn an_unfetched_release_reads_as_nothing() {
 async fn a_stored_release_carries_what_its_album_s_group_was_read_to_be() {
     use crate::import::album_links::{AlbumLink, AlbumStatement};
     use crate::import::ReleaseRecord;
-    use crate::remote_image::RemoteCover;
+    use bae_catalogs::remote_image::RemoteCover;
 
     let through = |master: &str| AlbumLink {
         album: MetadataRef::new(Catalog::Discogs, master),

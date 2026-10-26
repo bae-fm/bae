@@ -241,13 +241,13 @@ fn cast_transcode_format_is_mp3_by_default_and_survives_toml_roundtrip() {
 #[test]
 fn lookup_catalog_preferences_are_total_over_the_asked_catalogs() {
     let mut prefs = LookupCatalogPreferences::default();
-    for catalog in crate::catalog::Catalog::LOOKUP {
+    for catalog in bae_catalogs::catalog::Catalog::LOOKUP {
         assert!(prefs.enabled(catalog), "every asked catalog starts asked");
     }
 
-    prefs.set(crate::catalog::Catalog::Discogs, false);
-    assert!(prefs.enabled(crate::catalog::Catalog::MusicBrainz));
-    assert!(!prefs.enabled(crate::catalog::Catalog::Discogs));
+    prefs.set(bae_catalogs::catalog::Catalog::Discogs, false);
+    assert!(prefs.enabled(bae_catalogs::catalog::Catalog::MusicBrainz));
+    assert!(!prefs.enabled(bae_catalogs::catalog::Catalog::Discogs));
 }
 
 /// The availability list folds two questions that are not the same — whether
@@ -257,8 +257,8 @@ fn lookup_catalog_preferences_are_total_over_the_asked_catalogs() {
 /// which of the two to fix while the person's switch waits underneath it.
 #[test]
 fn metadata_sources_fold_the_credential_and_the_switch() {
-    use crate::catalog::Catalog;
     use crate::import::SourceAvailability;
+    use bae_catalogs::catalog::Catalog;
 
     let mut config = make_test_config(PathBuf::from("unused"));
     assert_eq!(
@@ -298,8 +298,8 @@ fn metadata_sources_fold_the_credential_and_the_switch() {
 /// off the only source still being asked would leave nothing to ask.
 #[test]
 fn the_only_asked_source_is_the_one_that_cannot_be_switched_off() {
-    use crate::catalog::Catalog;
     use crate::import::is_the_only_asked_source;
+    use bae_catalogs::catalog::Catalog;
 
     let mut config = make_test_config(PathBuf::from("unused"));
     let sources = config.metadata_sources();

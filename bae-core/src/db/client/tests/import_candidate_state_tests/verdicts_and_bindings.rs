@@ -193,7 +193,7 @@ async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
 async fn fetched(db: &Database, release_id: &str) {
     db.save_source_release(
         &crate::import::payloads::ReleasePayloads::for_test(
-            crate::import::MetadataRef::new(crate::catalog::Catalog::MusicBrainz, release_id),
+            crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, release_id),
             serde_json::json!({
                 "id": release_id,
                 "title": "Album",
@@ -214,7 +214,7 @@ async fn fetched(db: &Database, release_id: &str) {
 fn release_link(release_id: &str) -> crate::import::PressingLink {
     crate::import::PressingLink {
         record: crate::import::MetadataRef::new(
-            crate::catalog::Catalog::MusicBrainz,
+            bae_catalogs::catalog::Catalog::MusicBrainz,
             release_id.to_string(),
         ),
         partners: vec![],
@@ -224,7 +224,7 @@ fn release_link(release_id: &str) -> crate::import::PressingLink {
 fn release_pick(release_id: &str) -> crate::import::MetadataProvenance {
     crate::import::MetadataProvenance::ExternalRelease {
         record: crate::import::MetadataRef::new(
-            crate::catalog::Catalog::MusicBrainz,
+            bae_catalogs::catalog::Catalog::MusicBrainz,
             release_id.to_string(),
         ),
     }
@@ -539,7 +539,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
     let (state, _) = identify_step(
         IdentifyState::Idle,
         IdentifyEvent::Started {
-            providers: vec![crate::catalog::Catalog::MusicBrainz],
+            providers: vec![bae_catalogs::catalog::Catalog::MusicBrainz],
             choices: crate::import::LookupChoices::default(),
             title_search: None,
         },

@@ -188,14 +188,14 @@ impl LibraryManager {
             self,
             &link.record,
             crate::import::payloads::ReadDepth::Complete,
-            crate::util::rate_limiter::CallPriority::Interactive,
+            bae_catalogs::rate_limiter::CallPriority::Interactive,
         )
         .await?;
         let partners = crate::import::service::prepare_partners(
             self,
             &link.record,
             &link.partners,
-            crate::util::rate_limiter::CallPriority::Interactive,
+            bae_catalogs::rate_limiter::CallPriority::Interactive,
         )
         .await?;
         let audio = self.release_read_audio(release_id).await?;

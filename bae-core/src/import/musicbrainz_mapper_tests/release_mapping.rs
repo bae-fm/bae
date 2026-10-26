@@ -1,5 +1,5 @@
 use super::*;
-use crate::musicbrainz::{
+use bae_catalogs::musicbrainz::{
     MbArtistCredit, MbArtistRef, MbMedium, MbRecording, MbReleaseResponse, MbTrack, MbWork,
 };
 use crate::import::MetadataRef;
@@ -68,7 +68,7 @@ fn make_response(media: Vec<MbMedium>) -> MbReleaseResponse {
                 sort_name: Some("Artist Name A".to_string()),
             }),
         }],
-        release_group: Some(crate::musicbrainz::MbReleaseGroupRef {
+        release_group: Some(bae_catalogs::musicbrainz::MbReleaseGroupRef {
             id: "rg-test".to_string(),
             first_release_date: Some("2024".to_string()),
             relations: None,
@@ -76,7 +76,7 @@ fn make_response(media: Vec<MbMedium>) -> MbReleaseResponse {
         label_info: vec![],
         media,
         relations: vec![],
-        cover_art_archive: crate::musicbrainz::MbCoverArtArchive {
+        cover_art_archive: bae_catalogs::musicbrainz::MbCoverArtArchive {
             front: false,
             darkened: false,
         },
@@ -453,14 +453,14 @@ fn pressing_reads_year_every_label_barcode_and_every_fact() {
     response.packaging = Some("Gatefold Cover".to_string());
     response.barcode = Some("012345678905".to_string());
     response.label_info = vec![
-        crate::musicbrainz::MbLabelInfo {
-            label: Some(crate::musicbrainz::MbLabel {
+        bae_catalogs::musicbrainz::MbLabelInfo {
+            label: Some(bae_catalogs::musicbrainz::MbLabel {
                 name: Some("Label A".to_string()),
             }),
             catalog_number: Some("AB 100".to_string()),
         },
-        crate::musicbrainz::MbLabelInfo {
-            label: Some(crate::musicbrainz::MbLabel {
+        bae_catalogs::musicbrainz::MbLabelInfo {
+            label: Some(bae_catalogs::musicbrainz::MbLabel {
                 name: Some("Label B".to_string()),
             }),
             catalog_number: Some("CL 719".to_string()),

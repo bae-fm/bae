@@ -1,8 +1,8 @@
 use super::*;
-use crate::discogs::client::DiscogsSearchResult;
+use bae_catalogs::discogs::client::DiscogsSearchResult;
 use bae_types::pressing::{MediaCount, Medium, StatedMedia};
 use crate::import::discogs_mapper::parse_duration_to_ms;
-use crate::musicbrainz::{
+use bae_catalogs::musicbrainz::{
     MbArtistCredit, MbMedium, MbRecording, MbReleaseGroupRef, MbReleaseResponse, MbTrack,
 };
 
@@ -24,7 +24,7 @@ fn mb_detail(response: &MbReleaseResponse) -> ImportSearchReleaseDetail {
 
 /// The titles a Discogs document reads for the folder's `audio`.
 fn discogs_titles(json: &str, audio: &[u64]) -> Vec<String> {
-    let release = crate::discogs::client::parse_discogs_release_json(json)
+    let release = bae_catalogs::discogs::client::parse_discogs_release_json(json)
         .expect("the Discogs fixture parses");
     crate::import::payloads::ReleasePayloads::for_test(
         crate::import::MetadataRef::new(Catalog::Discogs, &release.id),
@@ -81,7 +81,7 @@ fn response_with_media(media: Vec<MbMedium>) -> MbReleaseResponse {
         label_info: vec![],
         media,
         relations: vec![],
-        cover_art_archive: crate::musicbrainz::MbCoverArtArchive {
+        cover_art_archive: bae_catalogs::musicbrainz::MbCoverArtArchive {
             front: true,
             darkened: false,
         },
@@ -258,7 +258,7 @@ fn discid_metadata_carries_every_medium_into_pairing() {
         result.barcode = vec![barcode.to_string()];
         result.formats = formats
             .iter()
-            .map(|(name, descriptions)| crate::discogs::DiscogsFormat {
+            .map(|(name, descriptions)| bae_catalogs::discogs::DiscogsFormat {
                 name: name.to_string(),
                 qty: "1".to_string(),
                 descriptions: descriptions.iter().map(|d| d.to_string()).collect(),
@@ -399,16 +399,16 @@ fn discogs_search_result_carries_remote_cover_pair() {
     assert_eq!(
         metadata.cover_art,
         Some(RemoteCover {
-            image: crate::remote_image::RemoteImageSet::with_copies(
+            image: bae_catalogs::remote_image::RemoteImageSet::with_copies(
                 "https://discogs.example/full.jpg".to_string(),
-                vec![crate::remote_image::DownscaledCopy {
+                vec![bae_catalogs::remote_image::DownscaledCopy {
                     url: "https://discogs.example/thumb.jpg".to_string(),
                     max_edge: 150,
                 }],
             ),
             label: Catalog::Discogs.cover_source_label().to_string(),
             source: Catalog::Discogs,
-            standing: crate::remote_image::CoverStanding::Stated,
+            standing: bae_catalogs::remote_image::CoverStanding::Stated,
         })
     );
 }
@@ -461,14 +461,14 @@ fn discid_metadata_skips_only_releases_without_one_matching_medium() {
     }]);
     let multiple_matches = response_with_media(vec![
         MbMedium {
-            discs: vec![crate::musicbrainz::MbDisc {
+            discs: vec![bae_catalogs::musicbrainz::MbDisc {
                 id: "disc-1".to_string(),
             }],
             format: Some("CD".to_string()),
             tracks: vec![make_mb_track("1", "First CD Track")],
         },
         MbMedium {
-            discs: vec![crate::musicbrainz::MbDisc {
+            discs: vec![bae_catalogs::musicbrainz::MbDisc {
                 id: "disc-1".to_string(),
             }],
             format: Some("CD".to_string()),
@@ -476,7 +476,7 @@ fn discid_metadata_skips_only_releases_without_one_matching_medium() {
         },
     ]);
     let mut valid = response_with_media(vec![MbMedium {
-        discs: vec![crate::musicbrainz::MbDisc {
+        discs: vec![bae_catalogs::musicbrainz::MbDisc {
             id: "disc-1".to_string(),
         }],
         format: Some("CD".to_string()),
@@ -484,7 +484,7 @@ fn discid_metadata_skips_only_releases_without_one_matching_medium() {
     }]);
     valid.id = "mb-release-2".to_string();
 
-    let answered = |release: crate::musicbrainz::MbReleaseResponse| {
+    let answered = |release: bae_catalogs::musicbrainz::MbReleaseResponse| {
         let json = serde_json::to_string(&release).unwrap();
         (release, json)
     };
@@ -522,7 +522,7 @@ fn mb_detail_offers_the_stated_archive_front_alone() {
     assert_eq!(
         detail.cover_art,
         vec![RemoteCover {
-            standing: crate::remote_image::CoverStanding::Stated,
+            standing: bae_catalogs::remote_image::CoverStanding::Stated,
             ..RemoteCover::musicbrainz_release("mb-release-1")
         }]
     );
@@ -611,8 +611,8 @@ fn mb_detail_pressing_matches_the_committed_pressing() {
     response.status = Some("Promotion".to_string());
     response.packaging = Some("Digipak".to_string());
     response.barcode = Some("4900000000011".to_string());
-    response.label_info = vec![crate::musicbrainz::MbLabelInfo {
-        label: Some(crate::musicbrainz::MbLabel {
+    response.label_info = vec![bae_catalogs::musicbrainz::MbLabelInfo {
+        label: Some(bae_catalogs::musicbrainz::MbLabel {
             name: Some("Label".to_string()),
         }),
         catalog_number: Some("CAT-8556".to_string()),
@@ -834,7 +834,7 @@ fn nested_index_durations_align_after_preceding_tracks() {
 /// the counted media, and pairing reads each medium.
 #[test]
 fn a_musicbrainz_search_result_states_its_media() {
-    let release: crate::musicbrainz::SearchRelease = serde_json::from_value(serde_json::json!({
+    let release: bae_catalogs::musicbrainz::SearchRelease = serde_json::from_value(serde_json::json!({
         "id": "mb-release-1",
         "title": "Album Title",
         "date": "1970",
@@ -875,7 +875,7 @@ fn a_musicbrainz_search_result_states_its_media() {
 fn a_discogs_search_result_reads_its_format_entries() {
     let mut result = result_with_title("Artist - Album");
     result.country = Some("Japan".to_string());
-    result.formats = vec![crate::discogs::DiscogsFormat {
+    result.formats = vec![bae_catalogs::discogs::DiscogsFormat {
         name: "CD".to_string(),
         qty: "2".to_string(),
         descriptions: vec![

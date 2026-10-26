@@ -23,7 +23,7 @@ impl AppServices {
     delegate_async!(import, import_get_candidate => get_candidate(key: &str) -> Result<Option<crate::import::ImportCandidateSnapshot>, crate::library::LibraryError>);
     delegate_async!(import, import_read_watched_folders => read_watched_folders() -> Result<Vec<crate::import::WatchedFolderScanStatus>, crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_skipped => set_candidate_skipped(path: String, skipped: bool) -> Result<(), crate::import::ImportError>);
-    delegate_async!(import, import_search_with_status => search_with_status(query: crate::import::SearchQuery, source: crate::catalog::Catalog) -> Result<crate::import::GroupedSearchResults, crate::import::ImportError>);
+    delegate_async!(import, import_search_with_status => search_with_status(query: crate::import::SearchQuery, source: bae_catalogs::catalog::Catalog) -> Result<crate::import::GroupedSearchResults, crate::import::ImportError>);
     delegate_sync!(import, import_retry_candidate_search => retry_candidate_search(candidate_key: String) -> ());
     delegate_sync!(import, import_clear_candidate_search => clear_candidate_search(candidate_key: String) -> ());
     delegate_async!(import, import_start_import => start_import(candidate_key: &str) -> Result<crate::import::ImportStart, crate::import::ImportError>);
@@ -39,7 +39,7 @@ impl AppServices {
     delegate_async!(import, import_set_sheet_binding => set_sheet_binding(candidate_key: String, sheet_file_id: String, file_reference: String, audio_file_id: Option<String>) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_sheet_disc => set_sheet_disc(candidate_key: String, sheet_file_id: String, disc: crate::import::folder_scanner::SheetDisc) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_fetch_remote_covers => fetch_remote_covers(target: crate::import::cover_art::CoverTarget) -> Result<crate::import::cover_art::RemoteCoverGallery, crate::import::ImportError>);
-    delegate_async!(import, import_fetch_remote_image_bytes => fetch_remote_image_bytes(image: crate::remote_image::RemoteImageSet, pixels: Option<u32>) -> Result<Option<crate::remote_image::RemoteImage>, crate::import::ImportError>);
+    delegate_async!(import, import_fetch_remote_image_bytes => fetch_remote_image_bytes(image: bae_catalogs::remote_image::RemoteImageSet, pixels: Option<u32>) -> Result<Option<bae_catalogs::remote_image::RemoteImage>, crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_cover => set_candidate_cover(candidate_key: &str, cover: crate::import::CoverSelection) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_album => set_candidate_album(candidate_key: &str, album_id: Option<String>) -> Result<(), crate::import::ImportError>);
     delegate_async!(manager, search_albums => search_albums(query: &crate::library::LibrarySearchQuery) -> Result<Vec<crate::db::DbAlbumSearchResult>, crate::library::LibraryError>);
@@ -137,7 +137,7 @@ impl AppServices {
             run,
             candidate_key.clone(),
             crate::signals::ExtractionSource::Release { release_id },
-            crate::util::rate_limiter::CallPriority::Interactive,
+            bae_catalogs::rate_limiter::CallPriority::Interactive,
             choices,
             title_search,
         ) {

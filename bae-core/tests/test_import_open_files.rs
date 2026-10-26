@@ -103,7 +103,7 @@ async fn a_box_set_import_holds_a_bounded_number_of_files_open() {
     let (library_manager, album_dir, _temp) = support::setup_test_library_with_album_dir().await;
     write_box_set(&album_dir);
 
-    let release = bae_core::discogs::DiscogsRelease {
+    let release = bae_catalogs::discogs::DiscogsRelease {
         tracklist: (1..=DISCS)
             .flat_map(|disc| {
                 (1..=TRACKS_PER_DISC).map(move |track| {

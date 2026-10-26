@@ -89,8 +89,8 @@ fn make_mb_release_for_re_identify(
     release_id: &str,
     release_group_id: &str,
     track_count: usize,
-) -> crate::musicbrainz::MbReleaseResponse {
-    use crate::musicbrainz::{
+) -> bae_catalogs::musicbrainz::MbReleaseResponse {
+    use bae_catalogs::musicbrainz::{
         MbArtistCredit, MbArtistRef, MbMedium, MbReleaseGroupRef, MbReleaseResponse, MbTrack,
     };
     MbReleaseResponse {
@@ -133,7 +133,7 @@ fn make_mb_release_for_re_identify(
                 .collect(),
         }],
         relations: vec![],
-        cover_art_archive: crate::musicbrainz::MbCoverArtArchive {
+        cover_art_archive: bae_catalogs::musicbrainz::MbCoverArtArchive {
             front: false,
             darkened: false,
         },
@@ -334,7 +334,7 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
     .to_string();
     manager.providers().discogs().seed_release_cache(discogs_release_id, discogs_raw);
     manager.providers().discogs().seed_artist_image_response("1", None);
-    manager.providers().musicbrainz().seed_discogs_page_lookup(&[(crate::musicbrainz::DiscogsPage::Release(discogs_release_id.to_string()), None)]);
+    manager.providers().musicbrainz().seed_discogs_page_lookup(&[(bae_catalogs::musicbrainz::DiscogsPage::Release(discogs_release_id.to_string()), None)]);
     reidentify(
         &manager,
         &release.id,
@@ -653,7 +653,7 @@ async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {
 #[tokio::test]
 async fn re_identify_with_a_partner_writes_both_identity_rows() {
     use crate::import::MetadataRef;
-    use crate::catalog::Catalog;
+    use bae_catalogs::catalog::Catalog;
     let (manager, _temp_dir) = setup_test_manager().await;
     manager
         .set_discogs_key(
@@ -712,12 +712,12 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
         }],
     })
     .to_string();
-    crate::discogs::client::parse_discogs_release_json(&discogs_raw)
+    bae_catalogs::discogs::client::parse_discogs_release_json(&discogs_raw)
         .expect("the rendered Discogs release parses");
     manager.providers().discogs().seed_release_cache(discogs_release_id, discogs_raw);
     manager.providers().musicbrainz().seed_discogs_page_lookup(&[
-        (crate::musicbrainz::DiscogsPage::Release(discogs_release_id.to_string()), None),
-        (crate::musicbrainz::DiscogsPage::Master(discogs_master_id.to_string()), None),
+        (bae_catalogs::musicbrainz::DiscogsPage::Release(discogs_release_id.to_string()), None),
+        (bae_catalogs::musicbrainz::DiscogsPage::Master(discogs_master_id.to_string()), None),
     ]);
 
     reidentify(

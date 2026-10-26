@@ -388,7 +388,7 @@ async fn no_image_answer_is_stored() {
 }
 
 #[tokio::test]
-async fn artwork_http_failures_keep_provider_classification_after_retries() {
+async fn artwork_http_failures_keep_their_status_after_retries() {
     for (status, attempts) in [(400, 1), (401, 1), (429, 4), (500, 4)] {
         let (host, url) = start_counting_host(status, Vec::new()).await;
         let error = RemoteImageCache::for_test(direct_http())
@@ -396,26 +396,23 @@ async fn artwork_http_failures_keep_provider_classification_after_retries() {
             .await
             .unwrap_err();
         assert_eq!(host.hits(), attempts, "status {status}");
-        assert_eq!(
-            crate::import::search::remote_image_failure(&error),
-            Some(crate::signals::LookupFailure::Provider {
-                status: Some(status)
-            }),
+        assert!(
+            matches!(error, RemoteImageError::Status { status: answered, .. } if answered == status),
             "{error}"
         );
     }
 }
 
 #[tokio::test]
-async fn required_missing_artwork_keeps_not_found_classification() {
+async fn required_missing_artwork_is_a_not_found_status() {
     let (host, url) = start_counting_host(404, Vec::new()).await;
     let cache = RemoteImageCache::for_test(direct_http());
     assert!(cache.fetch(&url).await.unwrap().is_none());
     let error = cache.fetch_required(&url).await.unwrap_err();
     assert_eq!(host.hits(), 1);
-    assert_eq!(
-        crate::import::search::remote_image_failure(&error),
-        Some(crate::signals::LookupFailure::Provider { status: Some(404) })
+    assert!(
+        matches!(error, RemoteImageError::Status { status: 404, .. }),
+        "{error}"
     );
 }
 
@@ -444,20 +441,20 @@ pub(super) async fn truncated_body_url() -> String {
 }
 
 #[tokio::test]
-async fn artwork_interrupted_body_is_a_network_failure() {
+async fn artwork_interrupted_body_is_a_transport_failure() {
     let url = truncated_body_url().await;
     let error = RemoteImageCache::for_test(direct_http())
         .fetch_required(&url)
         .await
         .unwrap_err();
-    assert_eq!(
-        crate::import::search::remote_image_failure(&error),
-        Some(crate::signals::LookupFailure::Network)
+    assert!(
+        matches!(&error, RemoteImageError::Transport { error, .. } if error.is_decode()),
+        "{error}"
     );
 }
 
 #[tokio::test]
-async fn artwork_stalled_body_keeps_timeout_classification() {
+async fn artwork_stalled_body_is_a_timeout() {
     let url = start_declared_length_response(256).await;
     let client = bae_util::http::client_builder()
         .timeout(Duration::from_millis(30))
@@ -468,63 +465,62 @@ async fn artwork_stalled_body_keeps_timeout_classification() {
         Err(error) => error,
         Ok(_) => panic!("stalled body should time out"),
     };
-    assert_eq!(
-        crate::import::search::remote_image_failure(&error),
-        Some(crate::signals::LookupFailure::Timeout)
+    assert!(
+        matches!(&error, RemoteImageError::Transport { error, .. } if error.is_timeout()),
+        "{error}"
     );
 }
 
 #[tokio::test]
-async fn artwork_invalid_request_is_an_internal_failure() {
+async fn artwork_invalid_request_is_a_request_bae_could_not_build() {
     let error = RemoteImageCache::for_test(direct_http())
         .fetch_required("not a URL")
         .await
         .unwrap_err();
-    assert_eq!(crate::import::search::remote_image_failure(&error), None);
-    let crate::ui::UiError::Diagnostic { category, detail } =
-        crate::import::ImportError::from(error).ui_error();
-    assert_eq!(category, crate::ui::UiErrorCategory::Internal);
-    assert!(detail.contains("relative URL without a base"), "{detail}");
+    assert!(
+        matches!(&error, RemoteImageError::Transport { error, .. } if error.is_builder()),
+        "{error}"
+    );
+    assert!(
+        error.to_string().contains("relative URL without a base"),
+        "{error}"
+    );
 }
 
-/// An image request to a host no resolver knows names the DNS failure in the
-/// detail a surface shows, where reqwest's own text says only that sending
-/// failed.
+/// An image request to a host no resolver knows names the DNS failure in its
+/// text, where reqwest's own text says only that sending failed.
 #[tokio::test]
 async fn artwork_unresolvable_host_names_its_dns_failure() {
     let error = RemoteImageCache::for_test(direct_http())
         .fetch_required("http://bae-test.invalid/cover.jpg")
         .await
         .unwrap_err();
-    assert_eq!(
-        crate::import::search::remote_image_failure(&error),
-        Some(crate::signals::LookupFailure::Network)
+    assert!(
+        matches!(&error, RemoteImageError::Transport { error, .. } if error.is_connect()),
+        "{error}"
     );
-    let crate::ui::UiError::Diagnostic { category, detail } =
-        crate::import::ImportError::from(error).ui_error();
-    assert_eq!(category, crate::ui::UiErrorCategory::Import);
-    assert!(detail.contains("dns error"), "{detail}");
+    assert!(error.to_string().contains("dns error"), "{error}");
 }
 
 #[tokio::test]
 async fn supported_cover_formats_keep_original_remote_bytes_and_type() {
-    assert!(include_bytes!("../test-fixtures/cover-art/solid.gif").len() < 100);
-    assert!(include_bytes!("../test-fixtures/cover-art/solid.webp").len() < 100);
+    assert!(include_bytes!("../../bae-core/test-fixtures/cover-art/solid.gif").len() < 100);
+    assert!(include_bytes!("../../bae-core/test-fixtures/cover-art/solid.webp").len() < 100);
     for (bytes, content_type) in [
         (
-            include_bytes!("../test-fixtures/cover-art/solid.gif").as_slice(),
+            include_bytes!("../../bae-core/test-fixtures/cover-art/solid.gif").as_slice(),
             ContentType::Gif,
         ),
         (
-            include_bytes!("../test-fixtures/cover-art/solid.webp").as_slice(),
+            include_bytes!("../../bae-core/test-fixtures/cover-art/solid.webp").as_slice(),
             ContentType::Webp,
         ),
         (
-            include_bytes!("../test-fixtures/cover-art/animated.gif").as_slice(),
+            include_bytes!("../../bae-core/test-fixtures/cover-art/animated.gif").as_slice(),
             ContentType::Gif,
         ),
         (
-            include_bytes!("../test-fixtures/cover-art/animated.webp").as_slice(),
+            include_bytes!("../../bae-core/test-fixtures/cover-art/animated.webp").as_slice(),
             ContentType::Webp,
         ),
     ] {
@@ -558,7 +554,7 @@ async fn remote_cover_dimensions_are_bounded() {
 
 #[tokio::test]
 async fn remote_cover_decode_allocation_is_bounded() {
-    let mut bytes = include_bytes!("../test-fixtures/cover-art/solid.gif").to_vec();
+    let mut bytes = include_bytes!("../../bae-core/test-fixtures/cover-art/solid.gif").to_vec();
     bytes[6..8].copy_from_slice(&6000u16.to_le_bytes());
     bytes[8..10].copy_from_slice(&6000u16.to_le_bytes());
     let url = start_mock(vec![(200, bytes)]).await;
@@ -575,8 +571,8 @@ async fn remote_cover_decode_allocation_is_bounded() {
 #[tokio::test]
 async fn truncated_gif_and_webp_fail_remote_validation_and_normalization() {
     for bytes in [
-        include_bytes!("../test-fixtures/cover-art/solid.gif").as_slice(),
-        include_bytes!("../test-fixtures/cover-art/solid.webp").as_slice(),
+        include_bytes!("../../bae-core/test-fixtures/cover-art/solid.gif").as_slice(),
+        include_bytes!("../../bae-core/test-fixtures/cover-art/solid.webp").as_slice(),
     ] {
         let truncated = &bytes[..20];
         assert!(bae_util::stored_image::stored_jpeg(truncated).is_err());

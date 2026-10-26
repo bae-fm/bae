@@ -2,7 +2,6 @@
 
 pub mod album_detail;
 pub mod app;
-pub mod catalog;
 pub mod collections;
 #[doc(hidden)]
 pub mod config;
@@ -13,8 +12,6 @@ pub mod db;
 #[cfg(all(feature = "dev-reset", unix))]
 pub mod dev_reset;
 pub mod diagnostics;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod discogs;
 pub mod history;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod identify;
@@ -33,8 +30,6 @@ pub(crate) mod live_query;
 pub mod loudness;
 pub mod mediums;
 pub mod migrations;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod musicbrainz;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod open_files_peak;
 pub mod people;
@@ -42,10 +37,7 @@ pub mod playback;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod providers;
 pub mod queue;
-pub mod remote_image;
 pub mod renderer;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod serde_helpers;
 // The extraction machinery (OCR, disc-ID compute) is desktop-only and gated
 // submodule-by-submodule inside `signals`. The module itself stays on every
 // target for the pure `LookupFailure` type, which the shared metadata-search path
@@ -65,5 +57,3 @@ pub(crate) mod test_logs;
 pub(crate) mod test_reads;
 pub mod ui;
 pub mod util;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod wikidata;

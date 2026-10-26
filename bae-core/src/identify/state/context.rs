@@ -8,7 +8,6 @@ use super::{
     BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, LibraryStatus, MetadataResult,
     SearchProgress, SourceFailure,
 };
-use crate::catalog::Catalog;
 use crate::identify::agreements::CandidateText;
 use crate::identify::combine::LookupAnswers;
 use crate::identify::documents::DocumentReading;
@@ -21,6 +20,7 @@ use crate::signals::{
     ArtworkScan, AudioFacts, AudioOrigin, BarcodeSignal, DiscIdSignal, LookupFailure, Signals,
     SourcedValue, TextSignal,
 };
+use bae_catalogs::catalog::Catalog;
 
 /// The disc-ID signal and what asking about each of its disc IDs produced.
 #[derive(Clone, Debug, PartialEq)]

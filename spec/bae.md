@@ -2539,7 +2539,8 @@ bindings export none of their symbols.
 
 | Crate | Holds |
 |---|---|
-| bae-core | the library, schema, import, identification, catalogs, files, playback, outputs, sync integration, settings |
+| bae-core | the library, schema, import, identification, files, playback, outputs, sync integration, settings |
+| bae-catalogs | the MusicBrainz, Discogs and Wikidata clients and the rate their requests are admitted at, the catalogs bae knows and the pages they publish, and the covers they offer with the cache their images are read through |
 | bae-audio | the audio codec over FFmpeg (decode, encode, probe, resample), the sparse buffer a decode reads a file's bytes from, and the stream a decoded track plays from |
 | bae-types | the domain values the catalogs, identification and the library share: what a pressing is, how two pieces of written text name one thing, and how a barcode is read |
 | bae-util | what the other crates build on, with no library vocabulary and nothing else in bae beneath it: content types, duration labels, outbound HTTP and its retries, error text, stored images, text encodings, the embedded-server lifecycle |

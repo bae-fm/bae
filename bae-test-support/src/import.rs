@@ -122,7 +122,7 @@ impl DraftSource {
 pub fn discogs_release(release_id: impl Into<String>) -> DraftSource {
     DraftSource::Pick(bae_core::import::PressingLink {
         record: bae_core::import::MetadataRef::new(
-            bae_core::catalog::Catalog::Discogs,
+            bae_catalogs::catalog::Catalog::Discogs,
             release_id.into(),
         ),
         partners: vec![],
@@ -224,7 +224,7 @@ pub struct ImportedRelease {
 /// completion, and read back the tracks it landed. The arrange every playback
 /// test binary starts from.
 pub async fn imported_release_setup<G>(
-    release: bae_core::discogs::DiscogsRelease,
+    release: bae_catalogs::discogs::DiscogsRelease,
     candidate_key: &str,
     import_id: String,
     generate_files: G,

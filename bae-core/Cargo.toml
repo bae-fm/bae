@@ -12,15 +12,16 @@ path = "src/lib.rs"
 
 [dependencies]
 bae-audio = { path = "../bae-audio" }
+bae-catalogs = { path = "../bae-catalogs" }
 bae-types = { path = "../bae-types" }
 bae-util = { path = "../bae-util" }
 coven = { workspace = true }
 rusqlite = { workspace = true }
-reqwest = { workspace = true, features = ["form", "json", "query", "rustls"] }
+# The telemetry upload's request and the provider errors import classifies;
+# the transport is bae-util's.
+reqwest = { workspace = true }
 serde = { version = "1.0", features = ["derive"] }
-# `raw_value`: a MusicBrainz Disc ID answer lists whole release documents,
-# each kept as the bytes MusicBrainz sent for a read to start from.
-serde_json = { version = "1.0", features = ["raw_value"] }
+serde_json = "1.0"
 toml = "1.1.8"
 tokio = { version = "1.0", features = ["full"] }
 thiserror = { workspace = true }
@@ -41,8 +42,8 @@ rtrb = "0.3.2"
 tokio-util = { version = "0.7", features = ["io", "rt"] }
 rand = "0.9"
 tracing = { workspace = true }
-# The shared remote-image cache spools downloads to a temporary file before an
-# atomic persist. Desktop extraction also stages cover files for barcode OCR.
+# The app directory's files are staged in a temporary file before an atomic
+# persist. Desktop extraction also stages cover files for barcode OCR.
 tempfile = "3.8"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -104,6 +105,9 @@ bae-audio = { path = "../bae-audio", features = ["test-utils", "test-instrumenta
 bae-util = { path = "../bae-util", features = ["test-utils"] }
 # The pressing values bae-core's unit tests build their fixtures from.
 bae-types = { path = "../bae-types", features = ["test-utils"] }
+# The catalog clients' and the image cache's test constructors, and the
+# requests the rate limiter queued and admitted, which its unit tests read.
+bae-catalogs = { path = "../bae-catalogs", features = ["test-utils", "test-instrumentation"] }
 # Shared integration-test helpers. A real crate rather than a `tests/support`
 # include so they compile once and `dead_code` stays armed on them; the cycle
 # back to bae-core is dev-only, which Cargo allows.
@@ -206,9 +210,10 @@ dev-reset = []
 # Forwards coven's test-utils so bae-core's own integration tests get the
 # re-exported clock/id fakes (FixedClock, …), bae-util's so they get its test
 # transport and a retry that sleeps no real time, bae-audio's so they get its
-# test codec helpers, and bae-types's so they get the pressing values their
-# fixtures are built from.
-test-utils = ["coven/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils"]
+# test codec helpers, bae-types's so they get the pressing values their
+# fixtures are built from, and bae-catalogs's so they get the catalog clients'
+# and the image cache's test constructors.
+test-utils = ["coven/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils", "bae-catalogs/test-utils"]
 
 [lints]
 workspace = true

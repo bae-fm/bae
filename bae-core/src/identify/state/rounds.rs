@@ -17,11 +17,11 @@ use super::{
     combined, BarcodeProgress, CatalogProgress, DocumentReading, Effect, LookupState,
     SignalsContext,
 };
-use crate::catalog::Catalog;
 use crate::identify::documents::ReleaseToRead;
 use crate::identify::row_facts::FolderFacts;
 use crate::import::search::MetadataResult;
 use crate::import::MetadataRef;
+use bae_catalogs::catalog::Catalog;
 use bae_types::pressing::ReleaseLabel;
 
 /// Take the round the results in hand call for: `catalog` with the numbers

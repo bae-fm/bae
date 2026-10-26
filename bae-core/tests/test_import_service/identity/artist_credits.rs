@@ -355,7 +355,7 @@ async fn a_discogs_credit_imports_with_its_printed_name_and_join() {
     let f = ImportFixture::new().await;
     let mut release = discogs_release("Album Credited", &["Track One"]);
     release.artists = vec![
-        bae_core::discogs::DiscogsArtist {
+        bae_catalogs::discogs::DiscogsArtist {
             anv: Some("A Variation".to_string()),
             join: Some("&".to_string()),
             ..support::discogs_artist("discogs-artist-a", "Artist A")

@@ -41,7 +41,7 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
         std::sync::Arc::new(coven::UuidIds),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        bae_core::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
+        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
         bae_core::providers::Providers::offline(),
     );
     let handle = library_manager
@@ -122,7 +122,7 @@ fn seed_two_credit_mb_release(
             credit("mb-artist-a", "Artist A"),
             credit("mb-artist-b", "Artist B"),
         ],
-        cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
+        cover_art_archive: bae_catalogs::musicbrainz::MbCoverArtArchive {
             front: true,
             darkened: false,
         },
@@ -206,7 +206,7 @@ fn seed_mb_release_with_media(
     f: &ImportFixture,
     mb_release_id: &str,
     mb_group_id: &str,
-    media: Vec<bae_core::musicbrainz::MbMedium>,
+    media: Vec<bae_catalogs::musicbrainz::MbMedium>,
 ) -> String {
     let response = MbReleaseResponse {
         date: Some("2004".to_string()),
@@ -223,7 +223,7 @@ fn seed_mb_release_with_media(
             }),
         }],
         media,
-        cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
+        cover_art_archive: bae_catalogs::musicbrainz::MbCoverArtArchive {
             front: true,
             darkened: false,
         },
@@ -516,7 +516,7 @@ fn seed_mb_release_with_front_cover(
             recording: None,
             ..support::mb_track(1, "Track")
         }])],
-        cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
+        cover_art_archive: bae_catalogs::musicbrainz::MbCoverArtArchive {
             front: true,
             darkened: false,
         },

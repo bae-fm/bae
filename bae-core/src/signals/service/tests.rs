@@ -1,6 +1,6 @@
 use super::*;
 use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkScan, TextOrigin};
-use crate::util::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallPriority;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -159,7 +159,7 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
         Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        crate::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
+        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
         crate::providers::Providers::offline(),
     );
     (manager, tmp)

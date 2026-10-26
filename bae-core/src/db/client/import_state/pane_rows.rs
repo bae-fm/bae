@@ -14,7 +14,7 @@ mod writes;
 use super::verdict_rows::unreadable;
 use super::*;
 use crate::db::client::candidate_state_rows::COVER_COLUMNS;
-use crate::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
+use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
 use std::str::FromStr;
 use crate::import::{
     ArtistAssignment, ArtistCredit, AudioFile, CandidateDraft, CandidateTrack, CoverSelection, Credited,
@@ -808,7 +808,7 @@ pub(super) fn load_cover_options_on(
             // An option the catalog serves no copies of has none.
             image: RemoteImageSet::with_copies(url, copies.remove(&position).unwrap_or_default()),
             label,
-            source: crate::catalog::Catalog::from_str(&source).map_err(|error| {
+            source: bae_catalogs::catalog::Catalog::from_str(&source).map_err(|error| {
                 DbError::Message(format!("a stored cover option's catalog is unreadable: {error}"))
             })?,
             standing: CoverStanding::from_column(&standing)

@@ -3,6 +3,7 @@ members = [
     "bae-audio",
     "bae-automation",
     "bae-bridge",
+    "bae-catalogs",
     "bae-cast",
     "bae-core",
     "bae-desktop",

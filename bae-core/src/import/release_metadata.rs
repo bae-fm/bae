@@ -1,5 +1,5 @@
 use super::{ImportError, SourceCredit};
-use crate::catalog::Catalog;
+use bae_catalogs::catalog::Catalog;
 use bae_types::pressing::Pressing;
 
 /// Album facts can come from a release or its parent without claiming a

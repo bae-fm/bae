@@ -269,7 +269,7 @@ pub(super) async fn pick(handle: &ImportServiceHandle, key: &str, release_id: &s
     handle
         .select_candidate_release(key.to_string(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
-                    crate::catalog::Catalog::MusicBrainz,
+                    bae_catalogs::catalog::Catalog::MusicBrainz,
                     release_id.to_string(),
                 ),
                 partners: vec![],
@@ -284,7 +284,7 @@ pub(super) async fn pick(handle: &ImportServiceHandle, key: &str, release_id: &s
 pub(super) fn seed_mb_release_with_catalog(
     providers: &crate::providers::Providers,
     release_id: &str, catalog_number: &str) {
-    let response = crate::musicbrainz::MbReleaseResponse {
+    let response = bae_catalogs::musicbrainz::MbReleaseResponse {
         id: release_id.to_string(),
         title: "Album Title".to_string(),
         disambiguation: None,
@@ -294,32 +294,32 @@ pub(super) fn seed_mb_release_with_catalog(
         status: None,
         packaging: None,
         barcode: None,
-        artist_credit: vec![crate::musicbrainz::MbArtistCredit {
+        artist_credit: vec![bae_catalogs::musicbrainz::MbArtistCredit {
             joinphrase: None,
             name: "Artist Name".to_string(),
-            artist: Some(crate::musicbrainz::MbArtistRef {
+            artist: Some(bae_catalogs::musicbrainz::MbArtistRef {
                 id: Some("mb-artist-1".to_string()),
                 name: Some("Artist Name".to_string()),
                 sort_name: Some("Artist Name".to_string()),
             }),
         }],
         release_group: None,
-        label_info: vec![crate::musicbrainz::MbLabelInfo {
-            label: Some(crate::musicbrainz::MbLabel {
+        label_info: vec![bae_catalogs::musicbrainz::MbLabelInfo {
+            label: Some(bae_catalogs::musicbrainz::MbLabel {
                 name: Some("Label Name".to_string()),
             }),
             catalog_number: Some(catalog_number.to_string()),
         }],
-        media: vec![crate::musicbrainz::MbMedium {
+        media: vec![bae_catalogs::musicbrainz::MbMedium {
             discs: vec![],
             format: Some("CD".to_string()),
             tracks: (1..=2)
-                .map(|number| crate::musicbrainz::MbTrack {
+                .map(|number| bae_catalogs::musicbrainz::MbTrack {
                     position: Some(number),
                     number: Some(number.to_string()),
                     title: None,
                     length: None,
-                    recording: Some(crate::musicbrainz::MbRecording {
+                    recording: Some(bae_catalogs::musicbrainz::MbRecording {
                         id: None,
                         title: Some("Track One".to_string()),
                         artist_credit: vec![],
@@ -330,7 +330,7 @@ pub(super) fn seed_mb_release_with_catalog(
                 .collect(),
         }],
         relations: vec![],
-        cover_art_archive: crate::musicbrainz::MbCoverArtArchive {
+        cover_art_archive: bae_catalogs::musicbrainz::MbCoverArtArchive {
             front: false,
             darkened: false,
         },

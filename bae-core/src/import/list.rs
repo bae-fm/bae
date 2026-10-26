@@ -23,7 +23,7 @@
 //! read carries each row's standing already composed with the rows.
 
 use super::cover_art::CoverChoice;
-use crate::remote_image::RemoteCover;
+use bae_catalogs::remote_image::RemoteCover;
 use super::folder_scanner::FolderCandidate;
 use super::folder_scanner::{FolderReleaseDecisionKey, InvalidCandidate};
 use super::mapping::MappingTable;
@@ -341,7 +341,7 @@ pub struct ImportQueueSummary {
     pub group_keys: Vec<FolderReleaseDecisionKey>,
     /// The lead-match covers of the Pending rows the view's filters keep, in
     /// queue order, to decode before Pending opens.
-    pub pending_covers: Vec<crate::remote_image::RemoteImageSet>,
+    pub pending_covers: Vec<bae_catalogs::remote_image::RemoteImageSet>,
     /// How many of the tab's entries the list shows, of how many it has,
     /// while the text filter or the filter entry narrows it; `None` while
     /// nothing does.

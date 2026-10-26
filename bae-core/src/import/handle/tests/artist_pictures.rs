@@ -141,7 +141,7 @@ async fn picked_discogs_release() -> DiscogsPick {
         ],
     })
     .to_string();
-    crate::discogs::client::parse_discogs_release_json(&raw_release)
+    bae_catalogs::discogs::client::parse_discogs_release_json(&raw_release)
         .expect("the rendered Discogs release parses");
     handle
         .library_manager
@@ -152,14 +152,14 @@ async fn picked_discogs_release() -> DiscogsPick {
         .library_manager
         .providers()
         .musicbrainz()
-        .seed_discogs_page_lookup(&[(crate::musicbrainz::DiscogsPage::Release(source_release_id.clone()), None)]);
+        .seed_discogs_page_lookup(&[(bae_catalogs::musicbrainz::DiscogsPage::Release(source_release_id.clone()), None)]);
 
     handle
         .select_candidate_release(
             key.clone(),
             crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
-                    crate::catalog::Catalog::Discogs,
+                    bae_catalogs::catalog::Catalog::Discogs,
                     source_release_id,
                 ),
                 partners: vec![],

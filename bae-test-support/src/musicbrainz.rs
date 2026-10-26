@@ -3,13 +3,13 @@
 
 /// One track on a synthetic MusicBrainz medium: numbered `position`, its title
 /// carried by the recording (where a real MB document usually carries it).
-pub fn mb_track(position: i64, title: &str) -> bae_core::musicbrainz::MbTrack {
-    bae_core::musicbrainz::MbTrack {
+pub fn mb_track(position: i64, title: &str) -> bae_catalogs::musicbrainz::MbTrack {
+    bae_catalogs::musicbrainz::MbTrack {
         position: Some(position),
         number: Some(position.to_string()),
         title: None,
         length: None,
-        recording: Some(bae_core::musicbrainz::MbRecording {
+        recording: Some(bae_catalogs::musicbrainz::MbRecording {
             id: None,
             title: Some(title.to_string()),
             artist_credit: vec![],
@@ -20,8 +20,10 @@ pub fn mb_track(position: i64, title: &str) -> bae_core::musicbrainz::MbTrack {
 }
 
 /// One CD medium holding `tracks`, with no disc ids.
-pub fn mb_medium(tracks: Vec<bae_core::musicbrainz::MbTrack>) -> bae_core::musicbrainz::MbMedium {
-    bae_core::musicbrainz::MbMedium {
+pub fn mb_medium(
+    tracks: Vec<bae_catalogs::musicbrainz::MbTrack>,
+) -> bae_catalogs::musicbrainz::MbMedium {
+    bae_catalogs::musicbrainz::MbMedium {
         discs: vec![],
         format: Some("CD".to_string()),
         tracks,
@@ -45,8 +47,8 @@ pub fn mb_release(
     release_id: &str,
     release_group_id: &str,
     title: &str,
-) -> bae_core::musicbrainz::MbReleaseResponse {
-    bae_core::musicbrainz::MbReleaseResponse {
+) -> bae_catalogs::musicbrainz::MbReleaseResponse {
+    bae_catalogs::musicbrainz::MbReleaseResponse {
         id: release_id.to_string(),
         title: title.to_string(),
         disambiguation: None,
@@ -56,16 +58,16 @@ pub fn mb_release(
         status: Some("Official".to_string()),
         packaging: None,
         barcode: None,
-        artist_credit: vec![bae_core::musicbrainz::MbArtistCredit {
+        artist_credit: vec![bae_catalogs::musicbrainz::MbArtistCredit {
             joinphrase: None,
             name: "Artist Name".to_string(),
-            artist: Some(bae_core::musicbrainz::MbArtistRef {
+            artist: Some(bae_catalogs::musicbrainz::MbArtistRef {
                 id: Some("mb-artist-1".to_string()),
                 name: Some("Artist Name".to_string()),
                 sort_name: Some("Artist Name".to_string()),
             }),
         }],
-        release_group: Some(bae_core::musicbrainz::MbReleaseGroupRef {
+        release_group: Some(bae_catalogs::musicbrainz::MbReleaseGroupRef {
             id: release_group_id.to_string(),
             first_release_date: None,
             relations: None,
@@ -73,7 +75,7 @@ pub fn mb_release(
         label_info: vec![],
         media: vec![mb_medium(vec![mb_track(1, "Track One")])],
         relations: vec![],
-        cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
+        cover_art_archive: bae_catalogs::musicbrainz::MbCoverArtArchive {
             front: false,
             darkened: false,
         },
@@ -85,8 +87,8 @@ pub fn mb_release(
 /// release id. The release document is `response`'s own serialization, so what
 /// the import parses and what it archives cannot disagree.
 pub fn seed_mb_release(
-    musicbrainz: &bae_core::musicbrainz::MusicBrainz,
-    response: bae_core::musicbrainz::MbReleaseResponse,
+    musicbrainz: &bae_catalogs::musicbrainz::MusicBrainz,
+    response: bae_catalogs::musicbrainz::MbReleaseResponse,
     release_group_id: &str,
 ) -> String {
     let release_id = response.id.clone();

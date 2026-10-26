@@ -1,7 +1,7 @@
 // coven requires every synced row's primary key to be a v4 UUID.
 const RELEASE_THAT_WAS_DELETED: &str = "763072b0-643f-4469-8ac7-799c4550a769";
 
-use bae_core::discogs::models::DiscogsRelease;
+use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_core::import::{ImportCommand, ImportDestination};
 use bae_core::library::LibraryManager;
 use bae_core::config::SidePauseCountdown;

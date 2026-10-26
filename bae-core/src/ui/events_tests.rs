@@ -5,7 +5,7 @@ use crate::config::{Config, ConfigHandle};
 use crate::db::Database;
 use crate::import::ImportEvent;
 use crate::library::{AppServices, LibraryManager};
-use crate::util::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallPriority;
 use std::sync::Arc;
 use std::time::Duration;
 use tempfile::TempDir;
@@ -33,7 +33,7 @@ async fn services() -> (AppServices, TempDir) {
         Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        crate::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
+        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
         crate::providers::Providers::offline(),
     );
     let services = AppServices::for_test(manager)

@@ -2,7 +2,7 @@ use super::*;
 use crate::import::candidate_search::CandidateSearch;
 use crate::import::cover_art::RemoteCoverGallery;
 use crate::import::search::{search_source, SearchQuery};
-use crate::util::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallPriority;
 
 impl ImportServiceHandle {
     /// Bytes of provider art for a slot `pixels` wide on its longer side: the
@@ -17,9 +17,9 @@ impl ImportServiceHandle {
     /// no image, which is what it has, rather than as a failed load.
     pub async fn fetch_remote_image_bytes(
         &self,
-        image: crate::remote_image::RemoteImageSet,
+        image: bae_catalogs::remote_image::RemoteImageSet,
         pixels: Option<u32>,
-    ) -> Result<Option<crate::remote_image::RemoteImage>, crate::import::ImportError> {
+    ) -> Result<Option<bae_catalogs::remote_image::RemoteImage>, crate::import::ImportError> {
         Ok(self
             .library_manager
             .fetch_remote_image(image.url_covering(pixels))
@@ -269,7 +269,7 @@ impl ImportServiceHandle {
     async fn records_gallery(
         &self,
         records: &[crate::import::ReleaseRecord],
-    ) -> Result<Vec<crate::remote_image::RemoteCover>, crate::import::ImportError> {
+    ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
         let mut covers = Vec::new();
         for record in records
             .iter()
@@ -306,7 +306,7 @@ impl ImportServiceHandle {
                 },
             };
             for cover in gallery {
-                crate::remote_image::push_unique_cover(&mut covers, cover);
+                bae_catalogs::remote_image::push_unique_cover(&mut covers, cover);
             }
         }
         Ok(covers)

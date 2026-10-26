@@ -1,5 +1,5 @@
 use super::*;
-use bae_core::catalog::Catalog;
+use bae_catalogs::catalog::Catalog;
 use bae_core::import::ImportError;
 
 #[test]
@@ -12,7 +12,7 @@ fn unexpected_import_data_is_distinct_from_domain_refusals() {
         ImportError::CoverArt {
             detail: "unsupported image decoder".into(),
         },
-        ImportError::MusicBrainz(bae_core::musicbrainz::MusicBrainzError::Other(
+        ImportError::MusicBrainz(bae_catalogs::musicbrainz::MusicBrainzError::Other(
             "invalid release JSON".into(),
         )),
     ] {
@@ -97,7 +97,7 @@ fn an_import_refusal_inside_a_library_error_crosses_as_itself() {
 
 #[test]
 fn expected_provider_errors_remain_domain_failures() {
-    use bae_core::{discogs::client::DiscogsError, musicbrainz::MusicBrainzError};
+    use bae_catalogs::{discogs::client::DiscogsError, musicbrainz::MusicBrainzError};
     for error in [
         ImportError::MusicBrainz(MusicBrainzError::NotFound("release".into())),
         ImportError::MusicBrainz(MusicBrainzError::Provider {
@@ -181,7 +181,7 @@ fn expected_local_and_draft_failures_keep_their_presentation() {
 #[test]
 fn artwork_request_conditions_remain_expected_at_the_bridge() {
     for status in [404, 500] {
-        let error = ImportError::from(bae_core::remote_image::RemoteImageError::Status {
+        let error = ImportError::from(bae_catalogs::remote_image::RemoteImageError::Status {
             status,
             detail: "artwork request failed".into(),
         });
@@ -217,7 +217,7 @@ async fn actual_artwork_data_failure_reaches_the_bridge_with_its_detail() {
         stream.shutdown().await.unwrap();
     });
     let error = ImportError::from(
-        bae_core::remote_image::RemoteImageCache::for_test(
+        bae_catalogs::remote_image::RemoteImageCache::for_test(
             bae_util::http::Http::for_test().serve("images.example", &origin),
         )
         .fetch("https://images.example/cover")

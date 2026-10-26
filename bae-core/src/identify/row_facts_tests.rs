@@ -1,6 +1,6 @@
 use super::*;
-use crate::catalog::Catalog;
 use crate::signals::{TextLine, TextOrigin};
+use bae_catalogs::catalog::Catalog;
 
 fn text(lines: &[&str]) -> CandidateText {
     CandidateText::of(

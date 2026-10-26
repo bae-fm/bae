@@ -25,7 +25,7 @@
 //! it, so neither needs the `--test-threads=1` flag the suite once required.
 
 #![cfg(feature = "test-utils")]
-use bae_core::discogs::models::DiscogsRelease;
+use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_core::playback::{PlaybackProgress, PlaybackState};
 use bae_test_support as support;
 use serial_test::serial;

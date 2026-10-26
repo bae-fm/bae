@@ -1,5 +1,5 @@
 pub mod client;
-pub(crate) mod formats;
+pub mod formats;
 pub mod models;
 use crate::catalog::Catalog;
 use crate::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
@@ -10,7 +10,7 @@ use tracing::debug;
 
 /// Discogs packs the artist and album into one title field, separated by " - ".
 /// `None` when there's no separator; an empty artist half also comes back `None`.
-pub(crate) fn split_title(title: &str) -> Option<(Option<&str>, &str)> {
+pub fn split_title(title: &str) -> Option<(Option<&str>, &str)> {
     title
         .split_once(" - ")
         .map(|(a, b)| (a.trim(), b.trim()))
@@ -31,7 +31,7 @@ const DISCOGS_THUMBNAIL_EDGE: u32 = 150;
 /// A Discogs cover from the two addresses Discogs gives an image: the image
 /// (`uri`, or a search result's `cover_image`) and its thumbnail (`uri150`, or
 /// `thumb`). A cover with only a thumbnail is that thumbnail at its one size.
-pub(crate) fn remote_cover_from_urls<I>(
+pub fn remote_cover_from_urls<I>(
     cover_image: Option<&str>,
     thumb: Option<&str>,
     entity: &str,

@@ -102,7 +102,7 @@ struct Inner {
     next_ticket: u64,
     /// Every queued ticket admitted, in admission order, so a test can see
     /// which waiter went ahead of which.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-instrumentation"))]
     admitted: Vec<(CallPriority, u64)>,
 }
 
@@ -116,7 +116,7 @@ impl Inner {
             interactive: VecDeque::new(),
             background: VecDeque::new(),
             next_ticket: 0,
-            #[cfg(test)]
+            #[cfg(any(test, feature = "test-instrumentation"))]
             admitted: Vec::new(),
         }
     }
@@ -280,7 +280,7 @@ impl RateLimiter {
         }
         let admission = inner.admit(now);
         inner.remove(priority, id);
-        #[cfg(test)]
+        #[cfg(any(test, feature = "test-instrumentation"))]
         inner.admitted.push((priority, id));
         Turn::Admitted(admission)
     }
@@ -326,14 +326,14 @@ impl RateLimiter {
     }
 
     /// The tickets waiting in `priority`'s queue, oldest first.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-instrumentation"))]
     pub(crate) fn queued_tickets(&self, priority: CallPriority) -> Vec<u64> {
         self.lock().queue(priority).iter().copied().collect()
     }
 
     /// Every queued ticket admitted so far, in admission order. A call admitted
     /// without queueing — the limiter was idle — took no ticket and is absent.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-instrumentation"))]
     pub(crate) fn admitted_tickets(&self) -> Vec<(CallPriority, u64)> {
         self.lock().admitted.clone()
     }

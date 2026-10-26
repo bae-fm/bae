@@ -1,7 +1,7 @@
 #![cfg(feature = "test-utils")]
 //! Where an import keeps its files, and what deleting a release leaves.
+use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_core::db::LibraryImageType;
-use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::{CoverSelection, ImportCommand};
 use bae_test_support as support;
 use bae_util::content_type::ContentType;

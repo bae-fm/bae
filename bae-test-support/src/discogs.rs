@@ -18,8 +18,8 @@ pub fn discogs_fixture_id(fixture_id: &str) -> String {
 }
 
 /// One artist credit on a synthetic Discogs release.
-pub fn discogs_artist(id: &str, name: &str) -> bae_core::discogs::DiscogsArtist {
-    bae_core::discogs::DiscogsArtist {
+pub fn discogs_artist(id: &str, name: &str) -> bae_catalogs::discogs::DiscogsArtist {
+    bae_catalogs::discogs::DiscogsArtist {
         id: id.to_string(),
         name: name.to_string(),
         anv: None,
@@ -33,8 +33,8 @@ pub fn discogs_track(
     position: &str,
     title: &str,
     duration: &str,
-) -> bae_core::discogs::DiscogsTrack {
-    bae_core::discogs::DiscogsTrack {
+) -> bae_catalogs::discogs::DiscogsTrack {
+    bae_catalogs::discogs::DiscogsTrack {
         type_: "track".to_string(),
         position: position.to_string(),
         title: title.to_string(),
@@ -63,8 +63,8 @@ pub fn discogs_test_release(
     id: &str,
     title: &str,
     tracks: &[(&str, &str)],
-) -> bae_core::discogs::DiscogsRelease {
-    bae_core::discogs::DiscogsRelease {
+) -> bae_catalogs::discogs::DiscogsRelease {
+    bae_catalogs::discogs::DiscogsRelease {
         id: id.to_string(),
         title: title.to_string(),
         year: Some(2024),
@@ -90,10 +90,10 @@ pub fn discogs_test_release(
 }
 
 fn discogs_fixture_artist_ids(
-    release: &bae_core::discogs::DiscogsRelease,
+    release: &bae_catalogs::discogs::DiscogsRelease,
 ) -> std::collections::BTreeSet<String> {
     fn collect_track(
-        track: &bae_core::discogs::DiscogsTrack,
+        track: &bae_catalogs::discogs::DiscogsTrack,
         ids: &mut std::collections::BTreeSet<String>,
     ) {
         ids.extend(track.artists.iter().map(|artist| artist.id.clone()));
@@ -145,14 +145,14 @@ fn discogs_fixture_artist_ids(
 /// not the (arbitrary) one the caller wrote on the fixture.
 pub fn seed_discogs_test_release(
     providers: &bae_core::providers::Providers,
-    release: bae_core::discogs::DiscogsRelease,
+    release: bae_catalogs::discogs::DiscogsRelease,
 ) -> String {
     let numeric = |value: &str| -> u64 {
         discogs_fixture_id(value)
             .parse()
             .expect("a rendered Discogs id is numeric")
     };
-    let credit = |artist: &bae_core::discogs::DiscogsArtist| {
+    let credit = |artist: &bae_catalogs::discogs::DiscogsArtist| {
         serde_json::json!({
             "id": numeric(&artist.id),
             "name": artist.name,
@@ -160,7 +160,7 @@ pub fn seed_discogs_test_release(
             "join": artist.join.clone().unwrap_or_default(),
         })
     };
-    let role_credit = |artist: &bae_core::discogs::DiscogsRoleArtist| {
+    let role_credit = |artist: &bae_catalogs::discogs::DiscogsRoleArtist| {
         serde_json::json!({
             "id": artist.id.as_deref().map(numeric),
             "name": artist.name,
@@ -229,18 +229,21 @@ pub fn seed_discogs_test_release(
     })
     .to_string();
 
-    let parsed = bae_core::discogs::client::parse_discogs_release_json(&raw_json)
+    let parsed = bae_catalogs::discogs::client::parse_discogs_release_json(&raw_json)
         .expect("the rendered test release parses as the endpoint's own JSON");
     let id = parsed.id.clone();
     providers.discogs().seed_release_cache(&id, raw_json);
     // A complete read asks MusicBrainz about the release's address and its
     // master's in one request; neither is linked from anything there.
-    let lookups: Vec<_> = std::iter::once(bae_core::musicbrainz::DiscogsPage::Release(id.clone()))
-        .chain(
-            master_id.map(|master| bae_core::musicbrainz::DiscogsPage::Master(master.to_string())),
-        )
-        .map(|page| (page, None))
-        .collect();
+    let lookups: Vec<_> =
+        std::iter::once(bae_catalogs::musicbrainz::DiscogsPage::Release(id.clone()))
+            .chain(
+                master_id.map(|master| {
+                    bae_catalogs::musicbrainz::DiscogsPage::Master(master.to_string())
+                }),
+            )
+            .map(|page| (page, None))
+            .collect();
     providers.musicbrainz().seed_discogs_page_lookup(&lookups);
     id
 }

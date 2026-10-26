@@ -346,7 +346,7 @@ impl Fixture {
             ids,
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
-            crate::remote_image::RemoteImageCache::for_test(http.clone()),
+            bae_catalogs::remote_image::RemoteImageCache::for_test(http.clone()),
             // Production request spacing: admission order is part of what these
             // tests measure.
             crate::providers::Providers::new(http),
@@ -618,7 +618,7 @@ impl Fixture {
     ) -> Option<crate::import::source_release::SourceRelease> {
         self.manager
             .load_source_release(&crate::import::MetadataRef::new(
-                crate::catalog::Catalog::MusicBrainz,
+                bae_catalogs::catalog::Catalog::MusicBrainz,
                 release_id,
             ))
             .await
@@ -632,7 +632,7 @@ impl Fixture {
     ) -> Option<crate::import::source_release::SourceRelease> {
         self.manager
             .load_source_release(&crate::import::MetadataRef::new(
-                crate::catalog::Catalog::Discogs,
+                bae_catalogs::catalog::Catalog::Discogs,
                 release_id,
             ))
             .await
@@ -759,7 +759,7 @@ impl Fixture {
         let verdict = TerminalVerdict::Found {
             findings: crate::identify::Findings {
                 matches: vec![MetadataResult {
-                    source: crate::catalog::Catalog::MusicBrainz,
+                    source: bae_catalogs::catalog::Catalog::MusicBrainz,
                     release_id: release_id.to_string(),
                     title: "Album".to_string(),
                     artist: Some("Artist".to_string()),
@@ -819,7 +819,7 @@ impl Fixture {
                     },
                     pick: matches!(settled_draft, SettledDraft::Picked).then(|| {
                         let record = crate::import::MetadataRef::new(
-                            crate::catalog::Catalog::MusicBrainz,
+                            bae_catalogs::catalog::Catalog::MusicBrainz,
                             release_id.to_string(),
                         );
                         crate::db::VerdictPick {
@@ -863,7 +863,7 @@ fn stored_pressing(
     track_lengths: &[u64],
 ) -> crate::import::source_release::SourceRelease {
     crate::import::payloads::ReleasePayloads::for_test(
-        crate::import::MetadataRef::new(crate::catalog::Catalog::MusicBrainz, release_id),
+        crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, release_id),
         release_json(release_id, group_id, track_lengths),
         Vec::new(),
     )

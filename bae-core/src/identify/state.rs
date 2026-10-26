@@ -20,13 +20,13 @@ use super::combine::{combine_results, Findings, LibraryStatuses};
 use super::documents::{DocumentReading, ReleaseReading};
 use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use super::view::{run_view, IdentifyRunView};
-use crate::catalog::Catalog;
 use crate::db::LibraryStatus;
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::LookupChoices;
 use crate::signals::{
     ArtworkScan, AudioFacts, BarcodeSignal, InternalFailure, LookupFailure, Signals,
 };
+use bae_catalogs::catalog::Catalog;
 
 /// One candidate's identify state. Every settled state carries the ledger its
 /// run recorded as it ended, `None` when there was nothing to lay out.

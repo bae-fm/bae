@@ -2,7 +2,7 @@
 //! when the person cannot tell which of them their copy is.
 
 use super::*;
-use crate::util::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallPriority;
 
 impl ImportServiceHandle {
     /// Link the candidate to the album the pressings its stored lookup offers

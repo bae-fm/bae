@@ -23,6 +23,9 @@ path = "src/lib.rs"
 bae-core = { path = "../bae-core", features = ["test-utils"] }
 # The decoded-audio shape the sample helpers read.
 bae-audio = { path = "../bae-audio" }
+# The canned catalog answers and the image cache the helpers build, through
+# the clients' test constructors.
+bae-catalogs = { path = "../bae-catalogs", features = ["test-utils"] }
 # The labels the canned catalog releases state.
 bae-types = { path = "../bae-types" }
 # test-utils gives the test transport whose hosts `RemoteImageHost::route`

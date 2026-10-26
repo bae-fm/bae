@@ -1,6 +1,6 @@
 use super::*;
 use crate::import::source_release::SourceRelease;
-use crate::discogs::models::{DiscogsArtist, DiscogsRoleArtist, DiscogsTrack};
+use bae_catalogs::discogs::models::{DiscogsArtist, DiscogsRoleArtist, DiscogsTrack};
 use crate::import::MetadataRef;
 
 /// A lone Discogs release document as bae keeps it: its own facts and
@@ -241,7 +241,7 @@ fn test_cd_multi_disc() {
 fn with_formats(mut release: DiscogsRelease, formats: &[(&str, &str)]) -> DiscogsRelease {
     release.formats = formats
         .iter()
-        .map(|(name, qty)| crate::discogs::DiscogsFormat {
+        .map(|(name, qty)| bae_catalogs::discogs::DiscogsFormat {
             name: (*name).into(),
             qty: (*qty).into(),
             descriptions: Vec::new(),
@@ -343,7 +343,7 @@ fn test_single_disc() {
         make_track("3", "Track 3"),
     ]);
 
-    release.formats = vec![crate::discogs::DiscogsFormat {
+    release.formats = vec![bae_catalogs::discogs::DiscogsFormat {
         name: "CD".into(),
         qty: "1".into(),
         descriptions: vec!["Album".into()],
@@ -695,5 +695,85 @@ fn album_credits_keep_their_printed_names_and_joins() {
     assert_eq!(
         crate::import::SourceCredit::line(&credits),
         "A Variation & Artist B, Artist C"
+    );
+}
+
+/// Every Barcode identifier reaches the pressing as printed, each code once:
+/// an EAN and a UPC are both kept, and one code listed as printed and as
+/// scanned is kept in its first spelling.
+#[test]
+fn release_barcodes_reach_pressing_metadata() {
+    let json = r#"{"id":123,"title":"Album Title","identifiers":[
+            {"type":"Matrix / Runout","value":"MATRIX-7"},
+            {"type":"Barcode","value":" \t"},
+            {"type":"Barcode","value":"0 12345 67890 5","description":"Text"},
+            {"type":"Barcode","value":"012345678905","description":"Scanned"},
+            {"type":"Barcode","value":"5 012345 678900","description":"EAN"}
+        ]}"#;
+    let release = bae_catalogs::discogs::client::parse_discogs_release_json(json).unwrap();
+    assert_eq!(release.barcodes, ["0 12345 67890 5", "5 012345 678900"]);
+    let payloads: crate::import::payloads::ReleasePayloads =
+        crate::import::payloads::ReleasePayloads::for_test(
+            crate::import::MetadataRef::new(Catalog::Discogs, "123"),
+            json.to_string(),
+            Vec::new(),
+        );
+    assert_eq!(
+        payloads.extract().unwrap().detail(&[]).barcodes,
+        release.barcodes
+    );
+    assert_eq!(
+        metadata(&release)
+            .pressing
+            .barcodes,
+        release.barcodes
+    );
+}
+
+#[test]
+fn blank_pressing_fields_are_absent_in_discogs_documents() {
+    for value in ["", " \t"] {
+        let raw = serde_json::json!({
+            "id":123, "title":"Album Title", "country":value,
+            "formats":[{"name":value}], "labels":[{"name":value,"catno":value}],
+            "identifiers":[{"type":"Barcode","value":value}]
+        })
+        .to_string();
+        let release = bae_catalogs::discogs::client::parse_discogs_release_json(&raw).unwrap();
+        assert!(release.country.is_none());
+        let (pressing, media) = pressing(&release);
+        assert!(pressing.facts.is_empty());
+        assert_eq!(media, bae_types::pressing::StatedMedia::Undescribed);
+        assert!(release.labels.is_empty());
+        assert!(pressing.labels.is_empty());
+        assert!(release.barcodes.is_empty());
+    }
+}
+
+/// Every label is read with its own catalog number, and the pressing keeps
+/// them all.
+#[test]
+fn every_label_and_its_catalog_number_is_read() {
+    use bae_types::pressing::ReleaseLabel;
+    let raw = serde_json::json!({
+        "id": 123, "title": "Album",
+        "labels": [
+            {"name": "Label A", "catno": "AB 100"},
+            {"name": "Label B", "catno": "CL 719"},
+            {"name": "Label B", "catno": "CL 719"},
+            {"name": "Label C", "catno": ""}
+        ]
+    })
+    .to_string();
+    let release = bae_catalogs::discogs::client::parse_discogs_release_json(&raw).unwrap();
+    let expected = vec![
+        ReleaseLabel::of(Some("Label A"), Some("AB 100")),
+        ReleaseLabel::of(Some("Label B"), Some("CL 719")),
+        ReleaseLabel::of(Some("Label C"), None),
+    ];
+    assert_eq!(release.labels, expected);
+    assert_eq!(
+        pressing(&release).0.labels,
+        expected
     );
 }

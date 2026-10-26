@@ -1,5 +1,4 @@
 use super::*;
-use crate::catalog::Catalog;
 use crate::db::LibraryStatus;
 use crate::identify::state::{
     step, BarcodeEvidence, BarcodeProgress, DiscIdEvidence, DiscidProgress, IdentifyEvent,
@@ -8,6 +7,7 @@ use crate::identify::state::{
 use crate::identify::state::{LookupState, ProviderLookup, ValueLookup};
 use crate::identify::view::{BarcodeStepView, IdentifyStateView, LookupView};
 use crate::identify::CatalogProgress;
+use bae_catalogs::catalog::Catalog;
 
 fn mk_result(release_id: &str) -> MetadataResult {
     MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("group-1"))

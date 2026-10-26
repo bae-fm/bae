@@ -22,7 +22,7 @@ use crate::import::album_links::{self, AlbumLink, AlbumLinks, GroupLinks};
 use crate::import::release_group::{group_results, ReleaseGroup};
 use crate::import::search::{MetadataResult, SearchQuery};
 use crate::import::types::{CatalogAvailability, MetadataRef, SourceAvailability};
-use crate::catalog::Catalog;
+use bae_catalogs::catalog::Catalog;
 use crate::signals::Failure;
 use tracing::debug;
 

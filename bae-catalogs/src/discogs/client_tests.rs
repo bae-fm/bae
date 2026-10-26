@@ -235,58 +235,6 @@ fn release_without_master_has_no_album_identity() {
     }
 }
 
-/// Every Barcode identifier reaches the pressing as printed, each code once:
-/// an EAN and a UPC are both kept, and one code listed as printed and as
-/// scanned is kept in its first spelling.
-#[test]
-fn release_barcodes_reach_pressing_metadata() {
-    let json = r#"{"id":123,"title":"Album Title","identifiers":[
-            {"type":"Matrix / Runout","value":"MATRIX-7"},
-            {"type":"Barcode","value":" \t"},
-            {"type":"Barcode","value":"0 12345 67890 5","description":"Text"},
-            {"type":"Barcode","value":"012345678905","description":"Scanned"},
-            {"type":"Barcode","value":"5 012345 678900","description":"EAN"}
-        ]}"#;
-    let release = parse_discogs_release_json(json).unwrap();
-    assert_eq!(release.barcodes, ["0 12345 67890 5", "5 012345 678900"]);
-    let payloads: crate::import::payloads::ReleasePayloads =
-        crate::import::payloads::ReleasePayloads::for_test(
-            crate::import::MetadataRef::new(crate::catalog::Catalog::Discogs, "123"),
-            json.to_string(),
-            Vec::new(),
-        );
-    assert_eq!(
-        payloads.extract().unwrap().detail(&[]).barcodes,
-        release.barcodes
-    );
-    assert_eq!(
-        crate::import::discogs_mapper::metadata(&release)
-            .pressing
-            .barcodes,
-        release.barcodes
-    );
-}
-
-#[test]
-fn blank_pressing_fields_are_absent_in_discogs_documents() {
-    for value in ["", " \t"] {
-        let raw = serde_json::json!({
-            "id":123, "title":"Album Title", "country":value,
-            "formats":[{"name":value}], "labels":[{"name":value,"catno":value}],
-            "identifiers":[{"type":"Barcode","value":value}]
-        })
-        .to_string();
-        let release = parse_discogs_release_json(&raw).unwrap();
-        assert!(release.country.is_none());
-        let (pressing, media) = crate::import::discogs_mapper::pressing(&release);
-        assert!(pressing.facts.is_empty());
-        assert_eq!(media, bae_types::pressing::StatedMedia::Undescribed);
-        assert!(release.labels.is_empty());
-        assert!(pressing.labels.is_empty());
-        assert!(release.barcodes.is_empty());
-    }
-}
-
 /// Discogs writes a label with no catalog number as `none`, and its data
 /// holds other spellings too: each keeps the label's name and no number.
 #[test]
@@ -303,34 +251,6 @@ fn a_none_catalog_number_is_no_number() {
             "{placeholder}"
         );
     }
-}
-
-/// Every label is read with its own catalog number, and the pressing keeps
-/// them all.
-#[test]
-fn every_label_and_its_catalog_number_is_read() {
-    use bae_types::pressing::ReleaseLabel;
-    let raw = serde_json::json!({
-        "id": 123, "title": "Album",
-        "labels": [
-            {"name": "Label A", "catno": "AB 100"},
-            {"name": "Label B", "catno": "CL 719"},
-            {"name": "Label B", "catno": "CL 719"},
-            {"name": "Label C", "catno": ""}
-        ]
-    })
-    .to_string();
-    let release = parse_discogs_release_json(&raw).unwrap();
-    let expected = vec![
-        ReleaseLabel::of(Some("Label A"), Some("AB 100")),
-        ReleaseLabel::of(Some("Label B"), Some("CL 719")),
-        ReleaseLabel::of(Some("Label C"), None),
-    ];
-    assert_eq!(release.labels, expected);
-    assert_eq!(
-        crate::import::discogs_mapper::pressing(&release).0.labels,
-        expected
-    );
 }
 
 #[test]
@@ -888,7 +808,7 @@ struct DiscogsMinute {
     arrivals: std::collections::VecDeque<tokio::time::Instant>,
 }
 
-impl crate::util::rate_limiter::load_model::Window for DiscogsMinute {
+impl crate::rate_limiter::load_model::Window for DiscogsMinute {
     fn arrive(&mut self, at: tokio::time::Instant) -> (StatusCode, reqwest::header::HeaderMap) {
         while self
             .arrivals
@@ -912,8 +832,8 @@ impl crate::util::rate_limiter::load_model::Window for DiscogsMinute {
     }
 }
 
-fn discogs_load(others: Vec<Duration>) -> crate::util::rate_limiter::load_model::Load {
-    crate::util::rate_limiter::load_model::Load {
+fn discogs_load(others: Vec<Duration>) -> crate::rate_limiter::load_model::Load {
+    crate::rate_limiter::load_model::Load {
         requests: 300,
         latency: Duration::from_millis(50)..Duration::from_secs(1),
         others,
@@ -931,7 +851,7 @@ async fn sustained_load_stays_inside_discogs_minute() {
     let load = discogs_load(Vec::new());
     let requests = load.requests as u32;
 
-    let outcome = crate::util::rate_limiter::load_model::sustain(
+    let outcome = crate::rate_limiter::load_model::sustain(
         limiter,
         DiscogsMinute::default(),
         discogs_rate_answer,
@@ -962,7 +882,7 @@ async fn sustained_load_yields_discogs_minute_to_another_client() {
     let load = discogs_load(others);
     let requests = load.requests as u32;
 
-    let outcome = crate::util::rate_limiter::load_model::sustain(
+    let outcome = crate::rate_limiter::load_model::sustain(
         limiter,
         DiscogsMinute::default(),
         discogs_rate_answer,
@@ -977,21 +897,4 @@ async fn sustained_load_yields_discogs_minute_to_another_client() {
         "took {:?}: slowed past the share another client leaves",
         outcome.elapsed
     );
-}
-
-/// A request that never reached Discogs names what failed underneath in the
-/// detail a surface shows, where reqwest's own text says only that sending
-/// failed.
-#[tokio::test]
-async fn a_transport_failure_names_its_cause_in_the_detail_a_surface_shows() {
-    let client = client_at("http://127.0.0.1:1".to_string());
-    let error = client
-        .get_release("510001", CallPriority::Interactive)
-        .await
-        .expect_err("nothing listens on port 1");
-    assert!(matches!(error, DiscogsError::Transport(_)), "{error}");
-    let crate::ui::UiError::Diagnostic { category, detail } =
-        crate::import::ImportError::from(error).ui_error();
-    assert_eq!(category, crate::ui::UiErrorCategory::Import);
-    assert!(detail.contains("tcp connect error"), "{detail}");
 }

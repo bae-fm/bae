@@ -7,7 +7,7 @@
 //! back into a string, for the user-facing `ImportProgress::Failed { error }`.
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use crate::catalog::Catalog;
+use bae_catalogs::catalog::Catalog;
 
 /// Two exact provider identities that currently belong to different library
 /// artists. Import stops until the person chooses how this credit is used.
@@ -79,12 +79,12 @@ pub enum ImportError {
     /// distinctions preserved from the wire.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("MusicBrainz request failed: {0}")]
-    MusicBrainz(#[from] crate::musicbrainz::MusicBrainzError),
+    MusicBrainz(#[from] bae_catalogs::musicbrainz::MusicBrainzError),
 
     /// A Discogs request failed. InvalidApiKey/NotFound preserved.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("Discogs request failed: {0}")]
-    Discogs(#[from] crate::discogs::client::DiscogsError),
+    Discogs(#[from] bae_catalogs::discogs::client::DiscogsError),
 
     /// A Discogs operation was requested but no API key is configured.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -137,7 +137,7 @@ pub enum ImportError {
 
     /// A catalog's image or an archive gallery could not be read.
     #[error(transparent)]
-    RemoteImage(#[from] crate::remote_image::RemoteImageError),
+    RemoteImage(#[from] bae_catalogs::remote_image::RemoteImageError),
 
     /// The selected local cover disappeared or could not be read.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -299,12 +299,12 @@ impl ImportError {
     /// internal faults, and every variant chooses its class, so a new failure
     /// has to say how it is shown.
     pub fn category(&self) -> crate::ui::UiErrorCategory {
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        use crate::discogs::client::DiscogsError;
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        use crate::musicbrainz::MusicBrainzError;
-        use crate::remote_image::RemoteImageError;
         use crate::ui::UiErrorCategory as C;
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        use bae_catalogs::discogs::client::DiscogsError;
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        use bae_catalogs::musicbrainz::MusicBrainzError;
+        use bae_catalogs::remote_image::RemoteImageError;
         match self {
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             Self::GroupingBlocked { reason } => reason.category(),
@@ -386,7 +386,7 @@ impl ImportError {
 #[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
 mod tests {
     use super::*;
-    use crate::musicbrainz::MusicBrainzError;
+    use bae_catalogs::musicbrainz::MusicBrainzError;
 
     /// A MusicBrainz timeout raised with `?` arrives at the terminal consumer as
     /// a matchable `MusicBrainz(Timeout)`, so a retry policy can read the
@@ -417,14 +417,14 @@ mod tests {
     /// policy can distinguish it from a hard failure.
     #[test]
     fn discogs_error_is_preserved_unflattened() {
-        let err: ImportError = crate::discogs::client::DiscogsError::Provider {
+        let err: ImportError = bae_catalogs::discogs::client::DiscogsError::Provider {
             status: reqwest::StatusCode::SERVICE_UNAVAILABLE,
             told_wait: None,
         }
         .into();
         assert!(matches!(
             err,
-            ImportError::Discogs(crate::discogs::client::DiscogsError::Provider {
+            ImportError::Discogs(bae_catalogs::discogs::client::DiscogsError::Provider {
                 status: reqwest::StatusCode::SERVICE_UNAVAILABLE,
                 ..
             })
@@ -433,9 +433,9 @@ mod tests {
     #[test]
     fn invalid_request_preserves_the_discogs_transport_cause() {
         let request_error = reqwest::Client::new().get("not a URL").build().unwrap_err();
-        let error = super::ImportError::from(crate::discogs::client::DiscogsError::Transport(
-            request_error,
-        ));
+        let error = super::ImportError::from(
+            bae_catalogs::discogs::client::DiscogsError::Transport(request_error),
+        );
         assert!(
             error.to_string().contains("relative URL without a base"),
             "{error}"
@@ -497,7 +497,7 @@ mod tests {
     /// lookup.
     #[test]
     fn only_a_provider_s_error_is_a_failed_lookup() {
-        let refused: ImportError = crate::musicbrainz::MusicBrainzError::Timeout.into();
+        let refused: ImportError = bae_catalogs::musicbrainz::MusicBrainzError::Timeout.into();
         assert_eq!(
             crate::import::search::provider_failure(&refused),
             Some(crate::signals::LookupFailure::Timeout)
@@ -506,5 +506,65 @@ mod tests {
             detail: "the release was stored and did not read back".to_string(),
         };
         assert_eq!(crate::import::search::provider_failure(&local), None);
+    }
+
+    /// A lookup that never reached MusicBrainz names what failed underneath — the
+    /// DNS lookup, the refused connection — in the detail a surface shows, where
+    /// reqwest's own text says only that sending failed. The request's path and
+    /// query stay out of it.
+    #[tokio::test]
+    async fn a_musicbrainz_network_failure_names_its_cause_in_the_detail_a_surface_shows() {
+        for (origin, cause) in [
+            ("http://bae-test.invalid", "dns error"),
+            ("http://127.0.0.1:1", "tcp connect error"),
+        ] {
+            let musicbrainz = bae_catalogs::musicbrainz::MusicBrainz::for_test(
+                bae_util::http::Http::for_test().serve_every_host(origin),
+            );
+            let error = musicbrainz
+                .lookup_by_discid(
+                    "disc-unreachable",
+                    bae_catalogs::rate_limiter::CallPriority::Interactive,
+                )
+                .await
+                .expect_err("nothing answers there");
+            assert!(matches!(error, MusicBrainzError::Network(_)), "{error}");
+            let crate::ui::UiError::Diagnostic { category, detail } =
+                ImportError::from(error).ui_error();
+            assert_eq!(category, crate::ui::UiErrorCategory::Import);
+            assert!(detail.contains(cause), "{detail}");
+            assert!(!detail.contains("disc-unreachable"), "{detail}");
+        }
+    }
+
+    /// A request that never reached Discogs names what failed underneath in the
+    /// detail a surface shows, where reqwest's own text says only that sending
+    /// failed.
+    #[tokio::test]
+    async fn a_discogs_transport_failure_names_its_cause_in_the_detail_a_surface_shows() {
+        let client = bae_catalogs::discogs::client::DiscogsClient::new(
+            std::sync::Arc::new(bae_catalogs::discogs::client::Discogs::for_test(
+                bae_util::http::Http::for_test().serve("api.discogs.com", "http://127.0.0.1:1"),
+            )),
+            "token".to_string(),
+        );
+        let error = client
+            .get_release(
+                "510001",
+                bae_catalogs::rate_limiter::CallPriority::Interactive,
+            )
+            .await
+            .expect_err("nothing listens on port 1");
+        assert!(
+            matches!(
+                error,
+                bae_catalogs::discogs::client::DiscogsError::Transport(_)
+            ),
+            "{error}"
+        );
+        let crate::ui::UiError::Diagnostic { category, detail } =
+            ImportError::from(error).ui_error();
+        assert_eq!(category, crate::ui::UiErrorCategory::Import);
+        assert!(detail.contains("tcp connect error"), "{detail}");
     }
 }

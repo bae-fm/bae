@@ -21,7 +21,7 @@
 use super::folder_scanner::FolderReleaseDecisionKey;
 use super::search::{ImportSearchReleaseDetail, SourceTracks};
 use super::types::ReleaseLink;
-use crate::catalog::Catalog;
+use bae_catalogs::catalog::Catalog;
 use super::MetadataAuthor;
 use super::ImportedRelease;
 use crate::identify::{FolderCheck, LeadMatch, VerdictSummary};

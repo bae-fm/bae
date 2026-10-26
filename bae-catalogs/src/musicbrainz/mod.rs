@@ -13,7 +13,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use crate::util::rate_limiter::{CallPriority, RateAnswer, RateLimiter, WindowCount};
+use crate::rate_limiter::{CallPriority, RateAnswer, RateLimiter, WindowCount};
 use bae_util::error_text::CauseChain;
 use bae_util::http::{is_cacheable, CachedResponse, Http};
 use bae_util::retry::{Repeat, RetryPolicy};
@@ -23,7 +23,7 @@ use reqwest::StatusCode;
 use thiserror::Error;
 use tracing::{debug, warn};
 
-pub(crate) mod pressing;
+pub mod pressing;
 mod types;
 pub use types::*;
 
@@ -396,14 +396,14 @@ impl MusicBrainz {
     }
 
     /// The requests waiting in `priority`'s queue for a slot, oldest first.
-    #[cfg(test)]
-    pub(crate) fn queued_requests(&self, priority: CallPriority) -> Vec<u64> {
+    #[cfg(any(test, feature = "test-instrumentation"))]
+    pub fn queued_requests(&self, priority: CallPriority) -> Vec<u64> {
         self.limiter.queued_tickets(priority)
     }
 
     /// Every request that waited for its slot, in the order admitted.
-    #[cfg(test)]
-    pub(crate) fn admitted_requests(&self) -> Vec<(CallPriority, u64)> {
+    #[cfg(any(test, feature = "test-instrumentation"))]
+    pub fn admitted_requests(&self) -> Vec<(CallPriority, u64)> {
         self.limiter.admitted_tickets()
     }
 

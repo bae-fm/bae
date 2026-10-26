@@ -1,9 +1,9 @@
 //! The cover a candidate is committed with, and the gallery its picker offers.
 //! What catalogs serve — the covers, their image sets, the cache that reads
-//! them — is [`crate::remote_image`].
+//! them — is [`bae_catalogs::remote_image`].
 
-use crate::catalog::Catalog;
-use crate::remote_image::{RemoteCover, RemoteImageSet};
+use bae_catalogs::catalog::Catalog;
+use bae_catalogs::remote_image::{RemoteCover, RemoteImageSet};
 
 /// The persisted owner whose external identities supply a cover gallery.
 pub enum CoverTarget {

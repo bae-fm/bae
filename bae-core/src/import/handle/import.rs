@@ -1,6 +1,6 @@
 use super::*;
 use crate::import::import_cancel::CancelOutcome;
-use crate::util::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallPriority;
 
 #[derive(PartialEq, Eq)]
 enum FileTagSnapshotMatch {

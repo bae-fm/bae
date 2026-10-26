@@ -270,7 +270,7 @@ fn indeterminate_import_progress_serializes_without_a_fraction() {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod identify_mirrors {
     use super::*;
-    use bae_core::catalog::Catalog;
+    use bae_catalogs::catalog::Catalog;
     use bae_core::db::LibraryStatus;
     use bae_core::identify::combine::LookupProvenance;
     use bae_core::identify::state::{DiscIdEvidence, SignalsContext};

@@ -51,7 +51,7 @@ impl LibraryManager {
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         opening: impl Into<LibraryOpening>,
-        remote_images: crate::remote_image::RemoteImageCache,
+        remote_images: bae_catalogs::remote_image::RemoteImageCache,
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         providers: crate::providers::Providers,
     ) -> Result<Self, crate::db::DbError> {
@@ -105,7 +105,7 @@ impl LibraryManager {
         ids: IdSourceRef,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
-        remote_images: crate::remote_image::RemoteImageCache,
+        remote_images: bae_catalogs::remote_image::RemoteImageCache,
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         providers: crate::providers::Providers,
     ) -> Self {
@@ -133,7 +133,7 @@ impl LibraryManager {
         ids: IdSourceRef,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
-        remote_images: crate::remote_image::RemoteImageCache,
+        remote_images: bae_catalogs::remote_image::RemoteImageCache,
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         providers: crate::providers::Providers,
     ) -> Self {
@@ -302,8 +302,8 @@ impl LibraryManager {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn search_musicbrainz(
         &self,
-        params: crate::musicbrainz::ReleaseSearchParams,
-        priority: crate::util::rate_limiter::CallPriority,
+        params: bae_catalogs::musicbrainz::ReleaseSearchParams,
+        priority: bae_catalogs::rate_limiter::CallPriority,
     ) -> Result<Vec<crate::import::search::MetadataResult>, crate::import::ImportError> {
         self.providers.search_musicbrainz(params, priority).await
     }
@@ -312,7 +312,7 @@ impl LibraryManager {
     pub(crate) async fn lookup_musicbrainz_discid(
         &self,
         discid: &str,
-        priority: crate::util::rate_limiter::CallPriority,
+        priority: bae_catalogs::rate_limiter::CallPriority,
     ) -> Result<
         Vec<(
             crate::import::search::MetadataResult,
@@ -329,7 +329,7 @@ impl LibraryManager {
     pub(crate) async fn lookup_musicbrainz_isrcs(
         &self,
         isrcs: &[String],
-        priority: crate::util::rate_limiter::CallPriority,
+        priority: bae_catalogs::rate_limiter::CallPriority,
     ) -> Result<Vec<crate::import::search::MetadataResult>, crate::signals::Failure> {
         self.providers
             .lookup_musicbrainz_isrcs(isrcs, priority)
@@ -343,7 +343,10 @@ impl LibraryManager {
         &self,
         release_id: &str,
         group_id: Option<&str>,
-    ) -> Result<Vec<crate::remote_image::RemoteCover>, crate::remote_image::RemoteImageError> {
+    ) -> Result<
+        Vec<bae_catalogs::remote_image::RemoteCover>,
+        bae_catalogs::remote_image::RemoteImageError,
+    > {
         self.providers
             .musicbrainz_gallery(release_id, group_id)
             .await
@@ -353,7 +356,10 @@ impl LibraryManager {
     pub(crate) async fn musicbrainz_group_gallery(
         &self,
         group_id: &str,
-    ) -> Result<Vec<crate::remote_image::RemoteCover>, crate::remote_image::RemoteImageError> {
+    ) -> Result<
+        Vec<bae_catalogs::remote_image::RemoteCover>,
+        bae_catalogs::remote_image::RemoteImageError,
+    > {
         self.providers.musicbrainz_group_gallery(group_id).await
     }
 
@@ -363,7 +369,7 @@ impl LibraryManager {
         &self,
         primary: &crate::import::source_release::SourceRelease,
         partners: &[crate::import::source_release::SourceRelease],
-    ) -> Result<Vec<crate::remote_image::RemoteCover>, crate::import::ImportError> {
+    ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
         self.providers.pick_gallery_covers(primary, partners).await
     }
 
@@ -371,8 +377,10 @@ impl LibraryManager {
     pub(crate) async fn fetch_remote_image(
         &self,
         url: &str,
-    ) -> Result<Option<crate::remote_image::RemoteImage>, crate::remote_image::RemoteImageError>
-    {
+    ) -> Result<
+        Option<bae_catalogs::remote_image::RemoteImage>,
+        bae_catalogs::remote_image::RemoteImageError,
+    > {
         self.remote_images.fetch(url).await
     }
 
@@ -380,7 +388,8 @@ impl LibraryManager {
     pub(crate) async fn fetch_required_remote_image(
         &self,
         url: &str,
-    ) -> Result<crate::remote_image::RemoteImage, crate::remote_image::RemoteImageError> {
+    ) -> Result<bae_catalogs::remote_image::RemoteImage, bae_catalogs::remote_image::RemoteImageError>
+    {
         self.remote_images.fetch_required(url).await
     }
 

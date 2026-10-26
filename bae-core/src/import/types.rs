@@ -12,13 +12,13 @@
 //!
 //! An import always lands as a local, playable release. An
 //! [`ImportDestination::Remote`] import then uploads to the cloud in the background.
-use crate::catalog::Catalog;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::cue_flac::CueSheet;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::db::DbTrack;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use bae_audio::ProbeResult;
+use bae_catalogs::catalog::Catalog;
 use serde::{Deserialize, Serialize};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod progress;
@@ -320,7 +320,7 @@ pub struct CandidateMetadataDraft {
     /// every claimed release's own, then their albums' — in the order it
     /// shows them (see `source_release::pick_covers`). None for a draft read
     /// from the files' tags, typed in, or linked to an album.
-    pub cover_options: Vec<crate::remote_image::RemoteCover>,
+    pub cover_options: Vec<bae_catalogs::remote_image::RemoteCover>,
     pub assets: CandidatePreparedAssets,
 }
 
@@ -330,7 +330,7 @@ pub struct CandidateMetadataDraft {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct CandidatePreparedAssets {
-    pub remote_cover: Option<crate::remote_image::RemoteImage>,
+    pub remote_cover: Option<bae_catalogs::remote_image::RemoteImage>,
 }
 
 /// Discogs' answer for the picture of one artist an import is about to

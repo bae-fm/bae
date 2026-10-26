@@ -309,7 +309,7 @@ impl AppServices {
     /// throw away an answer the person is reading.
     pub async fn set_metadata_source_enabled(
         &self,
-        source: crate::catalog::Catalog,
+        source: bae_catalogs::catalog::Catalog,
         enabled: bool,
     ) -> Result<(), crate::config::ConfigError> {
         self.inner

@@ -12,17 +12,17 @@ use tracing::warn;
 
 /// What a MusicBrainz release states about its pressing, as the document
 /// writes it.
-pub(crate) struct Stated<'a, Media> {
-    pub(crate) release_id: &'a str,
-    pub(crate) country: Option<&'a str>,
-    pub(crate) status: Option<&'a str>,
-    pub(crate) packaging: Option<&'a str>,
+pub struct Stated<'a, Media> {
+    pub release_id: &'a str,
+    pub country: Option<&'a str>,
+    pub status: Option<&'a str>,
+    pub packaging: Option<&'a str>,
     /// Each medium's format, in medium order.
-    pub(crate) media: Media,
+    pub media: Media,
 }
 
 /// A MusicBrainz release's pressing facts, and its media in their own shape.
-pub(crate) fn read<'a>(
+pub fn read<'a>(
     stated: Stated<'a, impl IntoIterator<Item = Option<&'a str>>>,
 ) -> (PressingFacts, StatedMedia) {
     let release_id = stated.release_id;
@@ -69,7 +69,7 @@ pub(crate) fn read<'a>(
 }
 
 /// A MusicBrainz release's media, one entry per medium it lists.
-pub(crate) fn media<'a>(
+pub fn media<'a>(
     release_id: &str,
     formats: impl IntoIterator<Item = Option<&'a str>>,
 ) -> StatedMedia {
@@ -86,7 +86,7 @@ pub(crate) fn media<'a>(
 
 /// The carrier one MusicBrainz medium's format names, `None` where it names
 /// none bae knows.
-pub(crate) fn medium(release_id: &str, format: Option<&str>) -> Option<Medium> {
+pub fn medium(release_id: &str, format: Option<&str>) -> Option<Medium> {
     let format = format?;
     match Medium::musicbrainz(format) {
         Lookup::Carrier(medium) => Some(medium),

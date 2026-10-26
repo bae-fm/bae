@@ -447,7 +447,7 @@ fn create_side_pause_test_album(format: &str, positions: [&str; 3]) -> DiscogsRe
         .split_once('x')
         .filter(|(qty, _)| qty.parse::<u32>().is_ok())
         .unwrap_or(("1", format));
-    release.formats = vec![bae_core::discogs::DiscogsFormat {
+    release.formats = vec![bae_catalogs::discogs::DiscogsFormat {
         name: name.to_string(),
         qty: qty.to_string(),
         descriptions: Vec::new(),

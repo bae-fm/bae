@@ -2,7 +2,7 @@ use super::*;
 use crate::identify::LeadMatch;
 use crate::import::search::SourceTracks;
 use crate::import::{ImportStanding, MetadataRef, PendingFilter, PressingLink, SaveFailure};
-use crate::catalog::Catalog;
+use bae_catalogs::catalog::Catalog;
 use crate::signals::InternalFailure;
 use std::collections::HashSet;
 

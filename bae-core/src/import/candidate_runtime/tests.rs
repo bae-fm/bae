@@ -6,9 +6,9 @@ use crate::import::candidates::{
 };
 use crate::import::folder_scanner::{CategorizedFiles, InvalidCandidate};
 use crate::import::types::{CatalogAvailability, ImportPhase, ImportProgress, PrepareStep, SourceAvailability};
-use crate::catalog::Catalog;
+use bae_catalogs::catalog::Catalog;
 use crate::import::{ImportStanding, ImportStep};
-use crate::util::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallPriority;
 use std::path::PathBuf;
 
 fn empty_categorized() -> CategorizedFiles {

@@ -5,8 +5,8 @@
 //! on, every one an exact frame start the file's own packets confirm. A FLAC
 //! with a real seektable gets none.
 
+use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_core::db::ScrubPoint;
-use bae_core::discogs::models::DiscogsRelease;
 use bae_core::library::{LibraryManager, ResolvedTrackAudio};
 use bae_test_support as support;
 use std::path::Path;

@@ -8,8 +8,8 @@
 //!
 //! These tests use storageless imports for simplicity (the CUE/FLAC handling
 //! is independent of storage configuration).
+use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_core::db::DbAudioSegmentRole;
-use bae_core::discogs::models::DiscogsRelease;
 use bae_core::library::LibraryManager;
 use bae_test_support as support;
 use bae_util::content_type::ContentType;

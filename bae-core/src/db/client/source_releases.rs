@@ -7,7 +7,7 @@
 
 use crate::import::album_links::AlbumLinks;
 use super::*;
-use crate::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
+use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
 use crate::import::release_metadata::{AlbumMetadata, ReleaseMetadata};
 use crate::import::source_release::{
     ArchiveRelease, CatalogFacts, DisplayCredit, PartDirection, EntryKind, PerformedWork, ReleaseCovers,
@@ -607,7 +607,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         .iter()
         .filter(|album| album.catalog == Catalog::MusicBrainz)
     {
-        crate::remote_image::push_unique_cover(
+        bae_catalogs::remote_image::push_unique_cover(
             &mut covers.album,
             RemoteCover::musicbrainz_release_group(&group.key),
         );

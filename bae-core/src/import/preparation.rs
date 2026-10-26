@@ -189,7 +189,7 @@ impl CandidatePreparation {
 /// stored candidate's cover is always ready to import.
 pub(crate) fn check_cover_bytes(
     cover: Option<&CoverSelection>,
-    image: Option<&crate::remote_image::RemoteImage>,
+    image: Option<&bae_catalogs::remote_image::RemoteImage>,
 ) -> Result<(), String> {
     match (cover, image) {
         (Some(CoverSelection::Remote(_, _)), Some(_))

@@ -47,7 +47,7 @@ pub(super) fn load_asset_rows_on(
              WHERE content_hash = ?",
             [content_hash],
             |row| {
-                Ok(crate::remote_image::RemoteImage {
+                Ok(bae_catalogs::remote_image::RemoteImage {
                     content_type: ContentType::from_mime(&row.get::<_, String>(0)?),
                     bytes: row.get(1)?,
                 })

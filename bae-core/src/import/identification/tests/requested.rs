@@ -124,7 +124,7 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
         .manager
         .providers()
         .musicbrainz()
-        .seed_discogs_page_lookup(&[(crate::musicbrainz::DiscogsPage::Release("70000201".to_string()), None)]);
+        .seed_discogs_page_lookup(&[(bae_catalogs::musicbrainz::DiscogsPage::Release("70000201".to_string()), None)]);
     // Hold MusicBrainz's answer, so the run is genuinely still asking when the
     // source is switched off rather than racing a run that already settled.
     fixture.provider.hold("/release?");
@@ -143,7 +143,7 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
 
     fixture
         .manager
-        .set_metadata_source_enabled(crate::catalog::Catalog::Discogs, false)
+        .set_metadata_source_enabled(bae_catalogs::catalog::Catalog::Discogs, false)
         .await
         .expect("MusicBrainz is still asked, so Discogs can be switched off");
     fixture.identification().rerun_identify(key.clone());
@@ -164,7 +164,7 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
             .iter()
             .map(|result| result.source)
             .collect::<Vec<_>>(),
-        vec![crate::catalog::Catalog::MusicBrainz],
+        vec![bae_catalogs::catalog::Catalog::MusicBrainz],
         "the run that stored the answer asked only the source still switched on"
     );
     assert_eq!(

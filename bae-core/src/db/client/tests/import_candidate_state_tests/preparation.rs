@@ -196,12 +196,12 @@ async fn a_remote_cover_stored_without_its_bytes_is_refused_on_read() {
             &pane_candidate_path(),
             &as_read(&hash, 0),
             &CoverSelection::Remote(
-                crate::remote_image::RemoteImageSet::original(
+                bae_catalogs::remote_image::RemoteImageSet::original(
                     "https://example.invalid/cover".to_string(),
                 ),
                 Catalog::Discogs,
             ),
-            Some(&crate::remote_image::RemoteImage {
+            Some(&bae_catalogs::remote_image::RemoteImage {
                 bytes: vec![1, 2, 3],
                 content_type: bae_util::content_type::ContentType::Jpeg,
             }),
@@ -637,7 +637,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         file_edits.sheet_discs
     );
 
-    let chosen_bytes = crate::remote_image::RemoteImage {
+    let chosen_bytes = bae_catalogs::remote_image::RemoteImage {
         bytes: vec![1, 2, 3],
         content_type: bae_util::content_type::ContentType::Jpeg,
     };
@@ -645,7 +645,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         .set_cover(
             &hash,
             &CoverSelection::Remote(
-                crate::remote_image::RemoteImageSet::original("https://example.invalid/cover".to_string()),
+                bae_catalogs::remote_image::RemoteImageSet::original("https://example.invalid/cover".to_string()),
                 Catalog::MusicBrainz,
             ),
             Some(&chosen_bytes),
@@ -665,7 +665,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     assert_eq!(
         cleared.cover,
         Some(CoverSelection::Remote(
-            crate::remote_image::RemoteImageSet::original("https://example.invalid/cover".to_string()),
+            bae_catalogs::remote_image::RemoteImageSet::original("https://example.invalid/cover".to_string()),
             Catalog::MusicBrainz,
         )),
         "a draft that brings no image of its own says nothing about the cover, \

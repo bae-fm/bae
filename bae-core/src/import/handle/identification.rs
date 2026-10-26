@@ -33,7 +33,7 @@ impl ImportServiceHandle {
         run: crate::identify::IdentifyRunId,
         key: String,
         source: crate::signals::ExtractionSource,
-        priority: crate::util::rate_limiter::CallPriority,
+        priority: bae_catalogs::rate_limiter::CallPriority,
         choices: crate::import::LookupChoices,
         title_search: Option<crate::identify::TitleSearch>,
     ) -> bool {

@@ -65,7 +65,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
         Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        crate::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
+        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
         crate::providers::Providers::offline(),
     );
 

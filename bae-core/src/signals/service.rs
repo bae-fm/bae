@@ -24,7 +24,7 @@ use crate::signals::{
     ArtworkScan, AudioOrigin, BarcodeSignal, DiscIdSignal, InternalFailure, Signals, SourcedValue,
     TextSignal,
 };
-use crate::util::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallPriority;
 use bae_util::session_cache::SessionCache;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};

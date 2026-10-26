@@ -48,7 +48,7 @@ impl Pressing {
 mod tests {
     use super::*;
     use crate::import::search::MetadataResult;
-    use crate::catalog::Catalog;
+    use bae_catalogs::catalog::Catalog;
     use bae_types::pressing::ReleaseLabel;
 
     fn record(source: Catalog, id: &str, labels: &[(&str, &str)]) -> MetadataResult {

@@ -8,7 +8,7 @@ use super::*;
 /// disambiguation, and what a Discogs format entry writes beside its name.
 #[test]
 fn a_search_result_carries_its_notes() {
-    let release: crate::musicbrainz::SearchRelease = serde_json::from_value(serde_json::json!({
+    let release: bae_catalogs::musicbrainz::SearchRelease = serde_json::from_value(serde_json::json!({
         "id": "mb-release-1",
         "title": "Album Title",
         "disambiguation": "made in Nordland",
@@ -19,11 +19,11 @@ fn a_search_result_carries_its_notes() {
         vec!["made in Nordland".to_string()]
     );
 
-    let result = crate::discogs::client::DiscogsSearchResult {
+    let result = bae_catalogs::discogs::client::DiscogsSearchResult {
         id: 1,
         title: "Artist - Album".to_string(),
         year: None,
-        formats: vec![crate::discogs::DiscogsFormat {
+        formats: vec![bae_catalogs::discogs::DiscogsFormat {
             name: "Vinyl".to_string(),
             qty: "1".to_string(),
             descriptions: vec!["LP".to_string()],

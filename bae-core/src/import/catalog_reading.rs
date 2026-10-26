@@ -13,7 +13,7 @@ use crate::import::release_values::ReleaseValues;
 use crate::import::search::SourceTracks;
 use crate::import::source_release::{not_fetched, SourceRelease};
 use crate::import::ImportError;
-use crate::catalog::Catalog;
+use bae_catalogs::catalog::Catalog;
 use crate::signals::AudioOrigin;
 use std::collections::BTreeSet;
 

@@ -2,7 +2,7 @@ use crate::import::folder_scanner::{
     FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
 };
 use crate::import::types::{ImportCommand, ImportProgress};
-use crate::catalog::Catalog;
+use bae_catalogs::catalog::Catalog;
 use crate::import::watched_folder::WatchedFolder;
 use crate::library::manager::DiscogsCheck;
 use crate::library::LibraryManager;
@@ -280,7 +280,7 @@ pub enum ImportEvent {
         state: crate::identify::IdentifyState,
         /// The run's priority, which tells a candidate a person opened from
         /// one the automatic admission picked up.
-        priority: crate::util::rate_limiter::CallPriority,
+        priority: bae_catalogs::rate_limiter::CallPriority,
     },
     /// Full snapshot of a candidate's extracted signals (disc ID, barcodes,
     /// classified text), sent on every change of the extraction, including an
@@ -298,7 +298,7 @@ pub enum ImportEvent {
         artwork: crate::signals::ArtworkScan,
         /// The extraction's priority, as in
         /// [`ImportEvent::IdentifyStateChanged`].
-        priority: crate::util::rate_limiter::CallPriority,
+        priority: bae_catalogs::rate_limiter::CallPriority,
     },
 }
 
@@ -321,7 +321,7 @@ pub struct GroupedSearchResults {
 #[derive(Debug)]
 pub enum DiscogsSaveOutcome {
     Valid,
-    Unvalidated(crate::discogs::client::DiscogsError),
+    Unvalidated(bae_catalogs::discogs::client::DiscogsError),
     Rejected,
 }
 

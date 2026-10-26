@@ -16,17 +16,17 @@ use tracing::{debug, warn};
 
 /// Every fact a release's format entries state.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct FormatsReading {
-    pub(crate) media: StatedMedia,
-    pub(crate) status: Option<ReleaseStatus>,
-    pub(crate) packaging: Option<Packaging>,
-    pub(crate) details: Vec<DiscogsDetail>,
+pub struct FormatsReading {
+    pub media: StatedMedia,
+    pub status: Option<ReleaseStatus>,
+    pub packaging: Option<Packaging>,
+    pub details: Vec<DiscogsDetail>,
 }
 
 /// Read a Discogs release's format entries. `release_id` names the release
 /// in what is logged: a name or description outside Discogs's lists is kept
 /// out of the facts, and the list is what needs it.
-pub(crate) fn read(release_id: &str, formats: &[DiscogsFormat]) -> FormatsReading {
+pub fn read(release_id: &str, formats: &[DiscogsFormat]) -> FormatsReading {
     let mut media = Vec::new();
     let mut status = None;
     let mut packaging = None;

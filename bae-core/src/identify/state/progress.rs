@@ -4,11 +4,11 @@
 //! and settles once all of them have.
 
 use super::{Effect, LookupOutcome, SignalState, SignalsContext};
-use crate::catalog::Catalog;
 use crate::db::LibraryStatus;
 use crate::identify::NotAskedReason;
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::signals::{DiscIdSignal, LookupFailure};
+use bae_catalogs::catalog::Catalog;
 
 /// What one lookup produced: each match paired with its library status.
 pub type LookupResults = Vec<(MetadataResult, LibraryStatus)>;

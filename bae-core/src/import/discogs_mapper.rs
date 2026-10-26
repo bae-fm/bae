@@ -1,4 +1,4 @@
-use crate::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack};
+use bae_catalogs::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack};
 use crate::import::medium_coverage::MediumCoverage;
 use crate::import::release_values::{position_number, ReleaseValues, TrackCredits, TrackValues};
 use crate::import::source_release::{
@@ -6,7 +6,7 @@ use crate::import::source_release::{
     TracklistEntry,
 };
 use crate::import::{ArtistCredit, CreditedRole, ImportError};
-use crate::catalog::Catalog;
+use bae_catalogs::catalog::Catalog;
 use bae_types::pressing::{Medium, Pressing, PressingFacts, ReleaseArea, StatedMedia};
 use std::collections::HashSet;
 use tracing::{debug, warn};
@@ -99,7 +99,7 @@ pub(crate) fn metadata(release: &DiscogsRelease) -> super::release_metadata::Rel
     // With no artists list, fall back to the artist half of the "Artist - Album"
     // title split.
     let release_refs: Vec<crate::import::SourceCredit> = if release.artists.is_empty() {
-        match crate::discogs::split_title(&release.title).and_then(|(artist, _)| artist) {
+        match bae_catalogs::discogs::split_title(&release.title).and_then(|(artist, _)| artist) {
             Some(name) => vec![crate::import::SourceCredit::plain(discogs_artist_ref(
                 name.to_owned(),
                 None,
@@ -124,7 +124,7 @@ pub(crate) fn metadata(release: &DiscogsRelease) -> super::release_metadata::Rel
 /// The pressing a Discogs release describes, shared by detail and imported
 /// metadata, and its media in the release's own shape.
 pub(crate) fn pressing(release: &DiscogsRelease) -> (Pressing, StatedMedia) {
-    let formats = crate::discogs::formats::read(&release.id, &release.formats);
+    let formats = bae_catalogs::discogs::formats::read(&release.id, &release.formats);
     let pressing = Pressing {
         year: release.year.map(|y| y as i32),
         labels: release.labels.clone(),

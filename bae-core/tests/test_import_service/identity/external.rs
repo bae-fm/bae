@@ -4,7 +4,7 @@ fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> Discog
     let tracks: Vec<(&str, &str)> = tracks.iter().map(|title| (*title, "3:00")).collect();
     DiscogsRelease {
         year: Some(1996),
-        formats: vec![bae_core::discogs::DiscogsFormat {
+        formats: vec![bae_catalogs::discogs::DiscogsFormat {
             name: "CD".to_string(),
             qty: "1".to_string(),
             descriptions: vec![
@@ -267,14 +267,14 @@ fn seed_discogs_for_xref(
         }],
     })
     .to_string();
-    bae_core::discogs::client::parse_discogs_release_json(&raw_json)
+    bae_catalogs::discogs::client::parse_discogs_release_json(&raw_json)
         .expect("the rendered Discogs release parses");
     f.library_manager.providers().discogs().seed_release_cache(release_id, raw_json);
     // MusicBrainz is asked about the release's address and its master's in
     // one request; neither is linked from anything there.
     f.library_manager.providers().musicbrainz().seed_discogs_page_lookup(&[
-        (bae_core::musicbrainz::DiscogsPage::Release(release_id.to_string()), None),
-        (bae_core::musicbrainz::DiscogsPage::Master(rendered_master), None),
+        (bae_catalogs::musicbrainz::DiscogsPage::Release(release_id.to_string()), None),
+        (bae_catalogs::musicbrainz::DiscogsPage::Master(rendered_master), None),
     ]);
     release_id.to_string()
 }

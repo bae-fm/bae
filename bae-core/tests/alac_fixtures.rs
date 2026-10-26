@@ -8,8 +8,8 @@
 use bae_test_support as support;
 
 use bae_audio::{decode_audio, probe_audio_from_path};
+use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_core::cue_flac::parse_cue_sheet;
-use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::discid::read_rip_artifacts;
 use bae_core::import::folder_scanner::{
     collect_release_candidate_files_with_scope, scan_for_candidates_with_decisions,

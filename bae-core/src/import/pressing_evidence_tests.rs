@@ -114,22 +114,22 @@ fn a_number_or_a_name_on_any_label_is_shared() {
 /// A MusicBrainz record's media, one format name per medium, read in
 /// MusicBrainz's list.
 fn per_medium(names: &[&str]) -> StatedMedia {
-    crate::musicbrainz::pressing::media("mb-1", names.iter().map(|name| Some(*name)))
+    bae_catalogs::musicbrainz::pressing::media("mb-1", names.iter().map(|name| Some(*name)))
 }
 
 /// A Discogs record's format entries, each a format name and its
 /// descriptions, read in Discogs's lists.
 fn formats(entries: &[(&str, &[&str])]) -> StatedMedia {
-    let entries: Vec<crate::discogs::DiscogsFormat> = entries
+    let entries: Vec<bae_catalogs::discogs::DiscogsFormat> = entries
         .iter()
-        .map(|(name, descriptions)| crate::discogs::DiscogsFormat {
+        .map(|(name, descriptions)| bae_catalogs::discogs::DiscogsFormat {
             name: name.to_string(),
             qty: "1".to_string(),
             descriptions: descriptions.iter().map(|d| d.to_string()).collect(),
             text: None,
         })
         .collect();
-    crate::discogs::formats::read("dg-1", &entries).media
+    bae_catalogs::discogs::formats::read("dg-1", &entries).media
 }
 
 /// What a MusicBrainz record stating `a` and a Discogs record stating `b`

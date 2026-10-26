@@ -1,6 +1,6 @@
 use super::*;
-use crate::catalog::Catalog;
 use crate::signals::TextOrigin;
+use bae_catalogs::catalog::Catalog;
 
 fn line(text: &str) -> TextLine {
     TextLine {

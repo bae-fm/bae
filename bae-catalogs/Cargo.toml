@@ -1,0 +1,65 @@
+[package]
+name = "bae-catalogs"
+version = "0.0.0-dev"
+authors = ["dima"]
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+
+[lib]
+name = "bae_catalogs"
+path = "src/lib.rs"
+
+[dependencies]
+# The shared transport, its retries and response cache, and the error text a
+# request failure prints.
+bae-util = { path = "../bae-util" }
+# Every catalog request is an HTTPS GET with a query string.
+reqwest = { workspace = true, features = ["query", "rustls"] }
+serde = { version = "1.0", features = ["derive"] }
+# `raw_value`: a MusicBrainz Disc ID answer lists whole release documents,
+# each kept as the bytes MusicBrainz sent for a read to start from.
+serde_json = { version = "1.0", features = ["raw_value"] }
+# The rate limiter's waits and the image cache's disk work, which runs on the
+# blocking pool.
+tokio = { version = "1.0", features = ["macros", "rt", "sync", "time"] }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+# The remote-image cache spools a download to a temporary file before an
+# atomic persist.
+tempfile = "3.8"
+
+# The catalog clients read releases into pressing values and compare their
+# words, and only the import pipeline asks a catalog anything; the predicate is
+# spelled as the code that gates the clients spells it.
+[target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
+bae-types = { path = "../bae-types" }
+
+[dev-dependencies]
+# The test transport and the retry that sleeps no real time.
+bae-util = { path = "../bae-util", features = ["test-utils"] }
+bae-types = { path = "../bae-types", features = ["test-utils"] }
+tokio = { version = "1.0", features = ["macros", "net", "io-util", "rt-multi-thread", "test-util"] }
+# The local HTTP servers tests stand in for catalogs and cover archives with.
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio", "json", "form"] }
+# The images the cache tests serve.
+image = { version = "0.25", default-features = false, features = ["png"] }
+# The rate limiter's load model draws its request times.
+rand = "0.9"
+# The reset times the MusicBrainz rate tests state.
+chrono = "0.4"
+
+[features]
+default = []
+# The clients' `for_test` constructors and the image cache over a temporary
+# directory, for the tests of every crate that builds on this one. Dev/test-only:
+# a production build never enables it.
+test-utils = ["bae-util/test-utils"]
+# What bae-core's own unit tests read back: the MusicBrainz requests waiting
+# for a slot and the order the rate limiter admitted them in. It records as it
+# runs, so only bae-core's dev-dependency turns it on, never a build that ships
+# or a debug app.
+test-instrumentation = []
+
+[lints]
+workspace = true

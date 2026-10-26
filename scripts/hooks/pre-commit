@@ -165,6 +165,7 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
     util_changed=0
     audio_changed=0
     types_changed=0
+    catalogs_changed=0
     MOBILE_CHECK_ARGS=(check --lib --target aarch64-apple-ios)
     for crate in "${DIRECTLY_CHANGED_CRATES[@]}"; do
         CLIPPY_ARGS+=(-p "$crate")
@@ -185,6 +186,10 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
                 types_changed=1
                 MOBILE_CHECK_ARGS+=(-p bae-types)
                 ;;
+            bae-catalogs)
+                catalogs_changed=1
+                MOBILE_CHECK_ARGS+=(-p bae-catalogs)
+                ;;
         esac
     done
     if [ "$core_changed" -eq 1 ]; then
@@ -198,6 +203,9 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
     fi
     if [ "$types_changed" -eq 1 ]; then
         CLIPPY_ARGS+=(--features bae-types/test-utils)
+    fi
+    if [ "$catalogs_changed" -eq 1 ]; then
+        CLIPPY_ARGS+=(--features bae-catalogs/test-utils,bae-catalogs/test-instrumentation)
     fi
     CLIPPY_ARGS+=(-- -D warnings)
     run_check "clippy (directly changed crates)" cargo "${CLIPPY_ARGS[@]}" || {
@@ -216,12 +224,12 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
         exit 1
     }
 
-    # The mobile apps build bae-core, bae-util, bae-audio and bae-types without
-    # their desktop-only modules, where anything only those modules use is dead
-    # code and fails the build.
+    # The mobile apps build bae-core, bae-util, bae-audio, bae-types and
+    # bae-catalogs without their desktop-only modules, where anything only those
+    # modules use is dead code and fails the build.
     if [ "$core_changed" -eq 1 ] || [ "$util_changed" -eq 1 ] || [ "$audio_changed" -eq 1 ] \
-        || [ "$types_changed" -eq 1 ]; then
-        run_check "bae-core, bae-util, bae-audio and bae-types for iOS (desktop-only code)" \
+        || [ "$types_changed" -eq 1 ] || [ "$catalogs_changed" -eq 1 ]; then
+        run_check "bae-core and the crates below it for iOS (desktop-only code)" \
             cargo "${MOBILE_CHECK_ARGS[@]}" || {
             echo "Gate code only desktop modules use with the same cfg and try again"
             exit 1

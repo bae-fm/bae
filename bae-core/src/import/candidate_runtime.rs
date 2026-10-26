@@ -29,7 +29,7 @@ use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
 use super::search::{MetadataResult, SearchQuery};
 use super::types::{ImportProgress, ImportStep};
-use crate::catalog::Catalog;
+use bae_catalogs::catalog::Catalog;
 use crate::db::{Database, LibraryStatus};
 use crate::identify::{IdentifyRunId, IdentifyState};
 use crate::signals::{Failure, Signals};

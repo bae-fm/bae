@@ -1,6 +1,6 @@
 use super::*;
 use crate::import::source_release::UnfetchedReason;
-use crate::musicbrainz::DiscogsPage;
+use bae_catalogs::musicbrainz::DiscogsPage;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 pub(super) type DocumentKey = (PayloadSource, String);
@@ -28,7 +28,7 @@ pub(super) fn related_documents(
                 .and_then(|group| group.relations.as_ref())
             {
                 for page in
-                    crate::musicbrainz::relation_urls(relations).filter_map(parse_catalog_url)
+                    bae_catalogs::musicbrainz::relation_urls(relations).filter_map(parse_catalog_url)
                 {
                     if let Some(request) = page_document(&page, true) {
                         next.push(request);
@@ -36,26 +36,26 @@ pub(super) fn related_documents(
                 }
             }
             (
-                crate::musicbrainz::relation_urls(&release.relations)
+                bae_catalogs::musicbrainz::relation_urls(&release.relations)
                     .map(str::to_owned)
                     .collect::<Vec<_>>(),
                 false,
             )
         }
         PayloadSource::MusicBrainzReleaseGroup | PayloadSource::MusicBrainzDiscogsMasterXref => {
-            let group = crate::musicbrainz::parse_release_group(json).map_err(mb_data)?;
+            let group = bae_catalogs::musicbrainz::parse_release_group(json).map_err(mb_data)?;
             if source == PayloadSource::MusicBrainzDiscogsMasterXref {
                 next.push((PayloadSource::MusicBrainzReleaseGroup, group.id.clone()));
             }
             (
-                crate::musicbrainz::relation_urls(&group.relations)
+                bae_catalogs::musicbrainz::relation_urls(&group.relations)
                     .map(str::to_owned)
                     .collect(),
                 true,
             )
         }
         PayloadSource::Discogs => {
-            let release = crate::discogs::client::parse_discogs_release_json(json)?;
+            let release = bae_catalogs::discogs::client::parse_discogs_release_json(json)?;
             // The release's page states its master, so the walk holds the
             // lookups by both addresses at once and asks them together.
             if let Some(master) = release.master_id {
@@ -66,13 +66,13 @@ pub(super) fn related_documents(
             (Vec::new(), false)
         }
         PayloadSource::DiscogsMaster => {
-            crate::discogs::client::parse_discogs_master_json(json)?;
+            bae_catalogs::discogs::client::parse_discogs_master_json(json)?;
             next.push((PayloadSource::MusicBrainzDiscogsMasterXref, key.to_owned()));
             (Vec::new(), true)
         }
         PayloadSource::Wikidata => {
             let item =
-                crate::wikidata::parse_entity(json).map_err(|error| ImportError::SourceData {
+                bae_catalogs::wikidata::parse_entity(json).map_err(|error| ImportError::SourceData {
                     catalog: Catalog::Wikidata,
                     detail: error.to_string(),
                 })?;
@@ -352,8 +352,8 @@ enum Fetched {
 }
 
 struct FetchDocuments<'a> {
-    musicbrainz: &'a crate::musicbrainz::MusicBrainz,
-    wikidata: &'a crate::wikidata::Wikidata,
+    musicbrainz: &'a bae_catalogs::musicbrainz::MusicBrainz,
+    wikidata: &'a bae_catalogs::wikidata::Wikidata,
     discogs: Option<&'a DiscogsClient>,
     priority: CallPriority,
     documents: HashMap<DocumentKey, String>,
@@ -472,8 +472,8 @@ impl FetchDocuments<'_> {
 
 impl<'a> FetchDocuments<'a> {
     fn new(
-        musicbrainz: &'a crate::musicbrainz::MusicBrainz,
-        wikidata: &'a crate::wikidata::Wikidata,
+        musicbrainz: &'a bae_catalogs::musicbrainz::MusicBrainz,
+        wikidata: &'a bae_catalogs::wikidata::Wikidata,
         discogs: Option<&'a DiscogsClient>,
         priority: CallPriority,
     ) -> Self {
@@ -491,8 +491,8 @@ impl<'a> FetchDocuments<'a> {
 /// The documents `release` links to, as far as `depth` follows them, asked of
 /// MusicBrainz, Wikidata and — when a client is given — Discogs.
 pub(crate) async fn fetch_documents(
-    musicbrainz: &crate::musicbrainz::MusicBrainz,
-    wikidata: &crate::wikidata::Wikidata,
+    musicbrainz: &bae_catalogs::musicbrainz::MusicBrainz,
+    wikidata: &bae_catalogs::wikidata::Wikidata,
     discogs: Option<&DiscogsClient>,
     release: &MetadataRef,
     depth: ReadDepth,
@@ -520,8 +520,8 @@ pub(crate) async fn fetch_documents(
 /// lookup's document, so the release's own page is recorded among what the
 /// read stopped short of, and a complete read asks for it.
 pub(crate) async fn read_disc_id_release(
-    musicbrainz: &crate::musicbrainz::MusicBrainz,
-    wikidata: &crate::wikidata::Wikidata,
+    musicbrainz: &bae_catalogs::musicbrainz::MusicBrainz,
+    wikidata: &bae_catalogs::wikidata::Wikidata,
     discogs: Option<&DiscogsClient>,
     answered: &DiscIdRelease,
     priority: CallPriority,

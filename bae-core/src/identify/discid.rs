@@ -3,7 +3,7 @@
 //! scan, release re-identify resolution) lives in `crate::signals`.
 
 use crate::signals::{Failure, InternalFailure};
-use crate::util::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallPriority;
 
 /// Look up a disc ID on MusicBrainz and pair each match with its library
 /// status, keeping each match's document as the answer states it. Empty when

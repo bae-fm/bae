@@ -107,7 +107,7 @@ async fn a_pick_stores_the_result_and_automatic_identification_leaves_it_alone()
         .import
         .select_candidate_release(key.clone(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
-                    crate::catalog::Catalog::MusicBrainz,
+                    bae_catalogs::catalog::Catalog::MusicBrainz,
                     "mb-chosen".to_string(),
                 ),
                 partners: Vec::new(),
@@ -147,7 +147,7 @@ async fn a_pick_stores_the_result_and_automatic_identification_leaves_it_alone()
             .release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
             record: crate::import::MetadataRef::new(
-                crate::catalog::Catalog::MusicBrainz,
+                bae_catalogs::catalog::Catalog::MusicBrainz,
                 "mb-chosen".to_string()
             ),
             partners: Vec::new(),

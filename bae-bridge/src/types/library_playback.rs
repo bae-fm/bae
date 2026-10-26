@@ -39,7 +39,7 @@ impl BridgeDiscogsSaveOutcome {
 }
 
 /// A service that publishes descriptions of releases. Mirrors
-/// `bae_core::catalog::Catalog`.
+/// `bae_catalogs::catalog::Catalog`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeCatalog {
     MusicBrainz,
@@ -68,7 +68,7 @@ impl BridgeCatalog {
 }
 
 mirror_enum! {
-    BridgeCatalog = bae_core::catalog::Catalog,
+    BridgeCatalog = bae_catalogs::catalog::Catalog,
     from_core: pub fn,
     into_core: pub fn,
     variants: {
@@ -873,14 +873,14 @@ pub struct BridgeDownscaledCopy {
 }
 
 mirror_struct! {
-    BridgeRemoteImageSet = bae_core::remote_image::RemoteImageSet,
+    BridgeRemoteImageSet = bae_catalogs::remote_image::RemoteImageSet,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: { url, downscaled: (each BridgeDownscaledCopy) },
 }
 
 mirror_struct! {
-    BridgeDownscaledCopy = bae_core::remote_image::DownscaledCopy,
+    BridgeDownscaledCopy = bae_catalogs::remote_image::DownscaledCopy,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: { url, max_edge },

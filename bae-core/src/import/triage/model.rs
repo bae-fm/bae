@@ -127,7 +127,7 @@ pub struct MatchedRelease {
     pub artist: Option<String>,
     pub pressing: Option<MatchedPressing>,
     /// The lead pressing's cover, in every size its catalog serves.
-    pub cover: Option<crate::remote_image::RemoteImageSet>,
+    pub cover: Option<bae_catalogs::remote_image::RemoteImageSet>,
     pub evidence: MatchEvidence,
 }
 

@@ -33,7 +33,7 @@ use crate::import::candidates::{Admission, CandidateFiles};
 use crate::import::LookupChoices;
 use crate::library::LibraryManager;
 use crate::signals::ExtractionSource;
-use crate::util::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallPriority;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{mpsc, watch};
 use tokio_util::sync::CancellationToken;

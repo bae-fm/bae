@@ -11,6 +11,8 @@ path = "src/lib.rs"
 
 [dependencies]
 bae-core = { path = "../bae-core" }
+# The catalog a release's links name.
+bae-catalogs = { path = "../bae-catalogs" }
 # The transcode encoder and the buffer a served track streams from.
 bae-audio = { path = "../bae-audio" }
 bae-util = { path = "../bae-util" }

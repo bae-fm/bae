@@ -4,7 +4,7 @@ use crate::import::handle::ImportServiceHandle;
 use crate::import::handle::{ScanEvent, WatcherCommand};
 use crate::import::types::{ImportCommand, ImportDestination, ImportProgress, MetadataRef};
 use crate::library::LibraryManager;
-use crate::util::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallPriority;
 
 use {
     crate::db::{
@@ -13,7 +13,7 @@ use {
     },
     crate::import::folder_scanner::ScanItem,
     crate::import::audio_layout::resolve_track_files,
-    crate::catalog::Catalog,
+    bae_catalogs::catalog::Catalog,
     crate::import::types::{
         CoverSelection, ImportPhase, PrepareStep, TrackFile,
     },
@@ -213,11 +213,11 @@ pub struct ImportService {
 /// checked and dropped: the resize re-encodes the bytes, so it does not
 /// describe what is stored.
 fn downloaded_cover(
-    image: crate::remote_image::RemoteImage,
+    image: bae_catalogs::remote_image::RemoteImage,
     url: &str,
     source: Catalog,
 ) -> Result<cover_image::CoverCandidate, crate::import::ImportError> {
-    let crate::remote_image::RemoteImage {
+    let bae_catalogs::remote_image::RemoteImage {
         bytes,
         content_type,
     } = image;
@@ -658,7 +658,7 @@ async fn prepare(
 ) -> Result<crate::import::source_release::SourceRelease, crate::import::ImportError> {
     if let Some(stored) = library_manager.load_source_release(release_ref).await? {
         let discogs_configured =
-            library_manager.can_fetch_releases_from(crate::catalog::Catalog::Discogs)?;
+            library_manager.can_fetch_releases_from(bae_catalogs::catalog::Catalog::Discogs)?;
         if !stored.fetch_could_add(depth, discogs_configured) {
             return Ok(stored);
         }

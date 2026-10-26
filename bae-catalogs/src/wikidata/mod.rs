@@ -18,7 +18,7 @@ use thiserror::Error;
 use tracing::{debug, warn};
 
 use crate::catalog::{Catalog, CatalogPage};
-use crate::util::rate_limiter::{CallPriority, RateLimiter};
+use crate::rate_limiter::{CallPriority, RateLimiter};
 use bae_util::error_text::CauseChain;
 use bae_util::http::{is_cacheable, CachedResponse, Http};
 use bae_util::retry::{Repeat, RetryPolicy};

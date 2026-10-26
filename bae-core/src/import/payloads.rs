@@ -8,16 +8,16 @@
 //! import surfaces need out of it at once. The documents themselves are never
 //! stored: a set lives as long as the fetch that returned it.
 
-use crate::discogs::client::DiscogsClient;
-use crate::discogs::DiscogsRelease;
-use crate::remote_image::RemoteCover;
+use bae_catalogs::discogs::client::DiscogsClient;
+use bae_catalogs::discogs::DiscogsRelease;
+use bae_catalogs::remote_image::RemoteCover;
 use crate::import::source_release::{
     not_fetched, ArchiveRelease, CatalogFacts, ReleaseCovers, SourceRelease, UnfetchedDocument,
 };
 use crate::import::{ImportError, MetadataRef, PayloadSource, ReleaseRecord, SourcePayload};
-use crate::catalog::{parse_catalog_url, Catalog, CatalogPage};
-use crate::musicbrainz::MbReleaseResponse;
-use crate::util::rate_limiter::CallPriority;
+use bae_catalogs::catalog::{parse_catalog_url, Catalog, CatalogPage};
+use bae_catalogs::musicbrainz::MbReleaseResponse;
+use bae_catalogs::rate_limiter::CallPriority;
 use tracing::warn;
 
 mod projection;
@@ -158,7 +158,7 @@ impl ReleasePayloads {
 
     /// The anchoring Discogs release, parsed, as [`Self::musicbrainz_anchor`].
     fn discogs_anchor(&self) -> Result<DiscogsRelease, ImportError> {
-        crate::discogs::client::parse_discogs_release_json(&self.anchor)
+        bae_catalogs::discogs::client::parse_discogs_release_json(&self.anchor)
             .map_err(|e| self.source_data(format!("stored Discogs release does not parse: {e}")))
     }
 
@@ -173,7 +173,7 @@ impl ReleasePayloads {
         let Some(json) = self.document(PayloadSource::Discogs, &counterpart.key) else {
             return Ok(None);
         };
-        crate::discogs::client::parse_discogs_release_json(json)
+        bae_catalogs::discogs::client::parse_discogs_release_json(json)
             .map(Some)
             .map_err(ImportError::from)
     }
@@ -198,7 +198,7 @@ impl ReleasePayloads {
         let mut covers = Vec::new();
         match self.release.catalog {
             Catalog::MusicBrainz => {
-                covers.extend(crate::remote_image::musicbrainz_release_cover(
+                covers.extend(bae_catalogs::remote_image::musicbrainz_release_cover(
                     &self.musicbrainz_anchor()?,
                 ));
                 if let Some(release) = self.discogs_xref()? {
@@ -208,7 +208,7 @@ impl ReleasePayloads {
             Catalog::Discogs => {
                 covers.extend(self.discogs_anchor()?.covers);
                 if let Some(release) = self.musicbrainz_xref()? {
-                    covers.extend(crate::remote_image::musicbrainz_release_cover(
+                    covers.extend(bae_catalogs::remote_image::musicbrainz_release_cover(
                         &release,
                     ));
                 }
@@ -233,13 +233,13 @@ impl ReleasePayloads {
         };
         let mut covers: Vec<RemoteCover> = musicbrainz
             .as_ref()
-            .and_then(crate::remote_image::musicbrainz_album_cover)
+            .and_then(bae_catalogs::remote_image::musicbrainz_album_cover)
             .into_iter()
             .collect();
         for (catalog, key, json) in self.album_documents()? {
             match catalog {
                 Catalog::Discogs => {
-                    covers.extend(crate::discogs::client::parse_discogs_master_covers(json)?)
+                    covers.extend(bae_catalogs::discogs::client::parse_discogs_master_covers(json)?)
                 }
                 Catalog::MusicBrainz => covers.push(RemoteCover::musicbrainz_release_group(key)),
                 other => not_fetched(other),

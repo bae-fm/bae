@@ -137,7 +137,7 @@ fn a_narrowed_catalog_number_search_keeps_only_its_number() {
 /// result keeps each pair in order.
 #[test]
 fn a_musicbrainz_search_result_keeps_every_label() {
-    let release: crate::musicbrainz::SearchRelease = serde_json::from_value(serde_json::json!({
+    let release: bae_catalogs::musicbrainz::SearchRelease = serde_json::from_value(serde_json::json!({
         "id": "mb-release-1",
         "title": "Album",
         "label-info": [

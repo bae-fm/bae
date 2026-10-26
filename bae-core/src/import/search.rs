@@ -4,20 +4,20 @@
 
 use bae_types::text_match::catalog_key;
 use bae_types::barcode::{comparison_key, written_digits, Barcode, Unusable};
-use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
-use crate::remote_image::{RemoteCover, RemoteImageError};
+use bae_catalogs::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
+use bae_catalogs::remote_image::{RemoteCover, RemoteImageError};
 use crate::import::parse_year;
 use crate::import::album_links::AlbumLinks;
 use crate::import::types::MetadataRef;
-use crate::catalog::{parse_catalog_url, Catalog, CatalogPage};
+use bae_catalogs::catalog::{parse_catalog_url, Catalog, CatalogPage};
 use crate::import::ImportError;
-use crate::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
+use bae_catalogs::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
 use bae_types::pressing::{
     DiscogsDetail, Packaging, PressingFacts, ReleaseArea, ReleaseLabel, ReleaseStatus,
     StatedMedia,
 };
 use crate::signals::{Failure, InternalFailure, LookupFailure};
-use crate::util::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallPriority;
 use tracing::warn;
 
 /// A metadata search result from either MusicBrainz or Discogs.
@@ -270,11 +270,11 @@ impl ImportSearchReleaseDetail {
 /// with a number, so a release found by a later label's number does not
 /// answer a catalog-number search.
 pub fn discogs_search_result_to_metadata(
-    r: crate::discogs::client::DiscogsSearchResult,
+    r: bae_catalogs::discogs::client::DiscogsSearchResult,
 ) -> MetadataResult {
     // Search titles use "Artist - Album"; split once. No separator means the
     // whole title is the album and the artist is unknown.
-    let (artist, album) = match crate::discogs::split_title(&r.title) {
+    let (artist, album) = match bae_catalogs::discogs::split_title(&r.title) {
         Some((artist, album)) => (artist.map(str::to_string), album.to_string()),
         None => (None, r.title.clone()),
     };
@@ -286,7 +286,7 @@ pub fn discogs_search_result_to_metadata(
     )]);
     let release_id = r.id.to_string();
     let notes = discogs_notes(&r.formats);
-    let formats = crate::discogs::formats::read(&release_id, &r.formats);
+    let formats = bae_catalogs::discogs::formats::read(&release_id, &r.formats);
     let area = r
         .country
         .as_deref()
@@ -325,7 +325,7 @@ pub fn discogs_search_result_to_metadata(
 /// in order: its format entries' text, each line of its notes, the names of
 /// the companies it credits, then what each identifier other than a barcode
 /// reads — a barcode is its own field.
-pub(crate) fn discogs_release_notes(release: &crate::discogs::DiscogsRelease) -> Vec<String> {
+pub(crate) fn discogs_release_notes(release: &bae_catalogs::discogs::DiscogsRelease) -> Vec<String> {
     discogs_notes(&release.formats)
         .into_iter()
         .chain(release.notes.iter().flat_map(|notes| lines(notes)))
@@ -361,7 +361,7 @@ fn lines(prose: &str) -> impl Iterator<Item = String> + '_ {
 
 /// What a Discogs release's format entries write beside their names, in
 /// order: the part of its notes a search result carries too.
-fn discogs_notes(formats: &[crate::discogs::DiscogsFormat]) -> Vec<String> {
+fn discogs_notes(formats: &[bae_catalogs::discogs::DiscogsFormat]) -> Vec<String> {
     formats
         .iter()
         .filter_map(|format| format.text.clone())
@@ -405,7 +405,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
     let notes = musicbrainz_release_notes(&r);
     let (pressing, media) = crate::import::musicbrainz_mapper::pressing(&r);
     let links = release_links_of(&r.relations);
-    let cover_art = crate::remote_image::musicbrainz_release_cover(&r);
+    let cover_art = bae_catalogs::remote_image::musicbrainz_release_cover(&r);
     Some(MetadataResult {
         source: Catalog::MusicBrainz,
         release_id: r.id,
@@ -436,8 +436,8 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
 /// The releases on other catalogs a MusicBrainz release's relations name as
 /// the same release, in relation order. A link to an album page names an
 /// album, not this pressing, and is not one of them.
-pub(crate) fn release_links_of(relations: &[crate::musicbrainz::MbRelation]) -> Vec<MetadataRef> {
-    crate::musicbrainz::relation_urls(relations)
+pub(crate) fn release_links_of(relations: &[bae_catalogs::musicbrainz::MbRelation]) -> Vec<MetadataRef> {
+    bae_catalogs::musicbrainz::relation_urls(relations)
         .filter_map(parse_catalog_url)
         .filter_map(|page| match page {
             CatalogPage::Release { catalog, key } if catalog != Catalog::MusicBrainz => {
@@ -465,7 +465,7 @@ fn mb_discid_releases_to_metadata(
 
 fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) -> MetadataResult {
     let labels = musicbrainz::release_labels(&r.label_info);
-    let (facts, media) = crate::musicbrainz::pressing::read(crate::musicbrainz::pressing::Stated {
+    let (facts, media) = bae_catalogs::musicbrainz::pressing::read(bae_catalogs::musicbrainz::pressing::Stated {
         release_id: &r.id,
         country: r.country.as_deref(),
         status: r.status.as_deref(),
@@ -507,7 +507,7 @@ fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) 
 /// unstated: the search endpoint takes no `inc` and returns no
 /// `cover-art-archive` block, so the result says nothing about whether the
 /// archive holds one. A stated cover from another record is preferred over it
-/// wherever covers are picked ([`crate::remote_image::offered_covers`]),
+/// wherever covers are picked ([`bae_catalogs::remote_image::offered_covers`]),
 /// and the release's own document states it once a pick fetches it.
 pub(crate) async fn search_mb(
     musicbrainz: &musicbrainz::MusicBrainz,
@@ -915,3 +915,7 @@ mod search_tests;
 #[cfg(test)]
 #[path = "search_notes_tests.rs"]
 mod search_notes_tests;
+
+#[cfg(test)]
+#[path = "remote_image_failure_tests.rs"]
+mod remote_image_failure_tests;

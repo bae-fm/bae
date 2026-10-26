@@ -143,19 +143,22 @@ pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, st
         handle.store_id(),
         app_dir.registered_library(&handle.store_id().to_string()),
     );
-    let manager = runtime
-        .block_on(bae_core::library::LibraryManager::open(
-            app_dir,
-            Arc::new(bae_core::config::ConfigHandle::new(config)),
-            Arc::new(coven::SystemClock),
-            Arc::new(coven::UuidIds),
-            bae_core::diagnostics::Diagnostics::noop(),
-            runtime.handle().clone(),
-            bae_core::library::LibraryOpening::Open(handle),
-            bae_core::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-            bae_core::providers::Providers::offline(),
-        ))
-        .expect("open test library");
+    let manager =
+        runtime
+            .block_on(bae_core::library::LibraryManager::open(
+                app_dir,
+                Arc::new(bae_core::config::ConfigHandle::new(config)),
+                Arc::new(coven::SystemClock),
+                Arc::new(coven::UuidIds),
+                bae_core::diagnostics::Diagnostics::noop(),
+                runtime.handle().clone(),
+                bae_core::library::LibraryOpening::Open(handle),
+                bae_catalogs::remote_image::RemoteImageCache::for_test(
+                    bae_util::http::Http::for_test(),
+                ),
+                bae_core::providers::Providers::offline(),
+            ))
+            .expect("open test library");
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     let services = runtime
         .block_on(bae_core::library::AppServices::for_test(manager))

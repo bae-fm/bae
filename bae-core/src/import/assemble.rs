@@ -13,7 +13,7 @@ use crate::db::{
     DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart,
 };
 use crate::import::{ArtistAssignment, AudioFile, CandidateDraft, ImportError, ReleaseDraft, ReleaseRows, TrackArtistAssignments, TrackBinding, WorkGraphRows};
-use crate::catalog::Catalog;
+use bae_catalogs::catalog::Catalog;
 use chrono::{DateTime, Utc};
 use coven::{Clock, IdSource};
 use std::collections::{HashMap, HashSet};

@@ -107,7 +107,7 @@ struct MusicBrainzSecond {
     last: Option<tokio::time::Instant>,
 }
 
-impl crate::util::rate_limiter::load_model::Window for MusicBrainzSecond {
+impl crate::rate_limiter::load_model::Window for MusicBrainzSecond {
     fn arrive(
         &mut self,
         at: tokio::time::Instant,
@@ -147,7 +147,7 @@ async fn sustained_load_keeps_a_second_between_arrivals() {
     let limiter = Arc::new(musicbrainz.limiter);
     let requests = 200;
 
-    let outcome = crate::util::rate_limiter::load_model::sustain(
+    let outcome = crate::rate_limiter::load_model::sustain(
         limiter,
         MusicBrainzSecond {
             start: tokio::time::Instant::now(),
@@ -155,7 +155,7 @@ async fn sustained_load_keeps_a_second_between_arrivals() {
             last: None,
         },
         mb_rate_answer,
-        crate::util::rate_limiter::load_model::Load {
+        crate::rate_limiter::load_model::Load {
             requests,
             latency: Duration::from_millis(40)..Duration::from_millis(230),
             others: Vec::new(),

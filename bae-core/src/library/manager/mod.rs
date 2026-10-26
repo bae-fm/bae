@@ -702,7 +702,7 @@ pub enum CoverSelection {
     /// Download from a remote URL.
     RemoteCover {
         url: String,
-        source: crate::catalog::Catalog,
+        source: bae_catalogs::catalog::Catalog,
     },
 }
 
@@ -762,7 +762,7 @@ pub struct LibraryManager {
     outputs: crate::library::Outputs,
     /// Session cache of provider image responses, keyed by URL. Candidate
     /// preparation and library images own their bytes independently.
-    remote_images: crate::remote_image::RemoteImageCache,
+    remote_images: bae_catalogs::remote_image::RemoteImageCache,
     /// The services releases are looked up in, built once by the app.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     providers: crate::providers::Providers,
@@ -771,7 +771,8 @@ pub struct LibraryManager {
     /// shares one key read and one client. Held under one lock with the key's
     /// own writes, so no client outlives the key it was built with.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    discogs_client: Arc<std::sync::Mutex<Option<Arc<crate::discogs::client::DiscogsClient>>>>,
+    discogs_client:
+        Arc<std::sync::Mutex<Option<Arc<bae_catalogs::discogs::client::DiscogsClient>>>>,
     /// The one writer of import candidates' stored state.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     preparations: crate::import::CandidatePreparations,

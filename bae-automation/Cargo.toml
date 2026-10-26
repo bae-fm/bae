@@ -11,6 +11,8 @@ path = "src/lib.rs"
 
 [dependencies]
 bae-core = { path = "../bae-core" }
+# The catalogs and covers its records carry.
+bae-catalogs = { path = "../bae-catalogs" }
 # The pressing values its records carry.
 bae-types = { path = "../bae-types" }
 bae-mirror = { path = "../bae-mirror" }

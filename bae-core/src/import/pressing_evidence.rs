@@ -13,7 +13,7 @@
 use bae_types::barcode::comparison_key;
 use crate::import::search::MetadataResult;
 use crate::import::types::MetadataRef;
-use crate::catalog::Catalog;
+use bae_catalogs::catalog::Catalog;
 use bae_types::pressing::{Medium, ReleaseArea, ReleaseLabel, StatedMedia};
 use bae_types::text_match::{catalog_key, LabelName};
 use tracing::debug;

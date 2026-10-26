@@ -314,30 +314,6 @@ async fn only_transient_musicbrainz_failures_are_retried() {
     );
 }
 
-/// A lookup that never reached MusicBrainz names what failed underneath — the
-/// DNS lookup, the refused connection — in the detail a surface shows, where
-/// reqwest's own text says only that sending failed. The request's path and
-/// query stay out of it.
-#[tokio::test]
-async fn a_network_failure_names_its_cause_in_the_detail_a_surface_shows() {
-    for (origin, cause) in [
-        ("http://bae-test.invalid", "dns error"),
-        ("http://127.0.0.1:1", "tcp connect error"),
-    ] {
-        let musicbrainz = MusicBrainz::for_test(Http::for_test().serve_every_host(origin));
-        let error = musicbrainz
-            .lookup_by_discid("disc-unreachable", CallPriority::Interactive)
-            .await
-            .expect_err("nothing answers there");
-        assert!(matches!(error, MusicBrainzError::Network(_)), "{error}");
-        let crate::ui::UiError::Diagnostic { category, detail } =
-            crate::import::ImportError::from(error).ui_error();
-        assert_eq!(category, crate::ui::UiErrorCategory::Import);
-        assert!(detail.contains(cause), "{detail}");
-        assert!(!detail.contains("disc-unreachable"), "{detail}");
-    }
-}
-
 // ── release_labels ────────────────────────────────────────────────────────
 
 fn label_info(name: Option<&str>, catalog_number: Option<&str>) -> MbLabelInfo {

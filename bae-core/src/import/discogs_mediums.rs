@@ -18,7 +18,7 @@
 //! belongs with the medium of the first row after it that names one, and rows
 //! after the last such row with the last medium.
 
-use crate::discogs::DiscogsTrack;
+use bae_catalogs::discogs::DiscogsTrack;
 use bae_types::pressing::{Medium, StatedMedia};
 use tracing::debug;
 

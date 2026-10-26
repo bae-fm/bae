@@ -2,8 +2,8 @@ use crate::discogs::models::{
     DiscogsArtist, DiscogsMaster, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack,
 };
 use crate::discogs::remote_cover_from_urls;
+use crate::rate_limiter::{CallPriority, RateAnswer, RateLimiter, WindowCount};
 use crate::remote_image::RemoteCover;
-use crate::util::rate_limiter::{CallPriority, RateAnswer, RateLimiter, WindowCount};
 use bae_util::error_text::CauseChain;
 use bae_util::http::{is_cacheable, CachedResponse, Http};
 use bae_util::retry::{retry_with_backoff_if, Repeat, RetryPolicy};
@@ -460,9 +460,7 @@ fn image_covers(images: Option<Vec<Image>>, entity: &str, id: u64) -> Vec<Remote
 }
 
 /// Artwork from an archived master document, using the release image parser.
-pub(crate) fn parse_discogs_master_covers(
-    raw_json: &str,
-) -> Result<Vec<RemoteCover>, DiscogsError> {
+pub fn parse_discogs_master_covers(raw_json: &str) -> Result<Vec<RemoteCover>, DiscogsError> {
     Ok(parse_discogs_master_json(raw_json)?.covers)
 }
 #[derive(Debug, Deserialize)]

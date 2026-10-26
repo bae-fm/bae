@@ -527,7 +527,7 @@ async fn the_pane_s_import_status_says_where_the_import_stands() {
 }
 
 fn remote_with_copies(url: &str) -> CoverSelection {
-    use crate::remote_image::{DownscaledCopy, RemoteImageSet};
+    use bae_catalogs::remote_image::{DownscaledCopy, RemoteImageSet};
     CoverSelection::Remote(
         RemoteImageSet::with_copies(
             url.to_string(),
@@ -544,8 +544,8 @@ fn remote_with_copies(url: &str) -> CoverSelection {
 
 /// The bytes a remote cover is stored with, fetched with it; none for a cover
 /// the folder holds.
-fn fetched_bytes(cover: &CoverSelection) -> Option<crate::remote_image::RemoteImage> {
-    matches!(cover, CoverSelection::Remote(_, _)).then(|| crate::remote_image::RemoteImage {
+fn fetched_bytes(cover: &CoverSelection) -> Option<bae_catalogs::remote_image::RemoteImage> {
+    matches!(cover, CoverSelection::Remote(_, _)).then(|| bae_catalogs::remote_image::RemoteImage {
         bytes: vec![1, 2, 3],
         content_type: bae_util::content_type::ContentType::Jpeg,
     })
@@ -558,7 +558,7 @@ async fn a_cover_choice_round_trips_in_every_shape() {
     for cover in [
         CoverSelection::Local("cover.jpg".to_string()),
         CoverSelection::Remote(
-            crate::remote_image::RemoteImageSet::original(
+            bae_catalogs::remote_image::RemoteImageSet::original(
                 "https://example.invalid/front".to_string(),
             ),
             Catalog::Discogs,
@@ -615,12 +615,12 @@ async fn a_remote_cover_round_trips_the_exact_prepared_bytes() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let cover = CoverSelection::Remote(
-        crate::remote_image::RemoteImageSet::original(
+        bae_catalogs::remote_image::RemoteImageSet::original(
             "https://example.invalid/image".to_string(),
         ),
         Catalog::Discogs,
     );
-    let image = crate::remote_image::RemoteImage {
+    let image = bae_catalogs::remote_image::RemoteImage {
         bytes: vec![1, 2, 3, 4],
         content_type: bae_util::content_type::ContentType::Jpeg,
     };
@@ -650,7 +650,7 @@ async fn a_remote_cover_without_exact_bytes_writes_nothing() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let cover = CoverSelection::Remote(
-        crate::remote_image::RemoteImageSet::original(
+        bae_catalogs::remote_image::RemoteImageSet::original(
             "https://example.invalid/image".to_string(),
         ),
         Catalog::Discogs,
@@ -687,10 +687,10 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let current_cover = CoverSelection::Remote(
-        crate::remote_image::RemoteImageSet::original("https://example.invalid/current".to_string()),
+        bae_catalogs::remote_image::RemoteImageSet::original("https://example.invalid/current".to_string()),
         Catalog::Discogs,
     );
-    let current_image = crate::remote_image::RemoteImage {
+    let current_image = bae_catalogs::remote_image::RemoteImage {
         bytes: vec![1, 2, 3],
         content_type: bae_util::content_type::ContentType::Jpeg,
     };
@@ -706,10 +706,10 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
         .unwrap();
 
     let stale_cover = CoverSelection::Remote(
-        crate::remote_image::RemoteImageSet::original("https://example.invalid/stale".to_string()),
+        bae_catalogs::remote_image::RemoteImageSet::original("https://example.invalid/stale".to_string()),
         Catalog::MusicBrainz,
     );
-    let stale_image = crate::remote_image::RemoteImage {
+    let stale_image = bae_catalogs::remote_image::RemoteImage {
         bytes: vec![4, 5, 6],
         content_type: bae_util::content_type::ContentType::Png,
     };
@@ -751,13 +751,13 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
     draft.tracks[0].stated_length_ms = Some(181_000);
     draft.tracks[0].roles = vec![crate::import::CreditedRole {
         artist: credit("Role Artist", Some("role-artist")),
-        source: crate::catalog::Catalog::Discogs,
+        source: bae_catalogs::catalog::Catalog::Discogs,
         role: Some("Written-By".to_string()),
     }];
     draft.tracks[0].works = vec!["mb-work-child".to_string()];
     draft.release_roles = vec![crate::import::CreditedRole {
         artist: credit("Release Composer", None),
-        source: crate::catalog::Catalog::Discogs,
+        source: bae_catalogs::catalog::Catalog::Discogs,
         role: None,
     }];
     draft.works = crate::import::WorkGraph {
@@ -815,26 +815,26 @@ async fn an_applied_releases_cover_options_are_stored_with_the_draft() {
     fetched(&db, "release-1").await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let options = vec![
-        crate::remote_image::RemoteCover {
-            image: crate::remote_image::RemoteImageSet::with_copies(
+        bae_catalogs::remote_image::RemoteCover {
+            image: bae_catalogs::remote_image::RemoteImageSet::with_copies(
                 "https://example.test/front.jpg".to_string(),
-                vec![crate::remote_image::DownscaledCopy {
+                vec![bae_catalogs::remote_image::DownscaledCopy {
                     url: "https://example.test/front-250.jpg".to_string(),
                     max_edge: 250,
                 }],
             ),
             label: "Front".to_string(),
-            source: crate::catalog::Catalog::MusicBrainz,
-            standing: crate::remote_image::CoverStanding::Stated,
+            source: bae_catalogs::catalog::Catalog::MusicBrainz,
+            standing: bae_catalogs::remote_image::CoverStanding::Stated,
         },
-        crate::remote_image::RemoteCover {
-            image: crate::remote_image::RemoteImageSet::with_copies(
+        bae_catalogs::remote_image::RemoteCover {
+            image: bae_catalogs::remote_image::RemoteImageSet::with_copies(
                 "https://example.test/album.jpg".to_string(),
                 Vec::new(),
             ),
             label: "Album".to_string(),
-            source: crate::catalog::Catalog::Discogs,
-            standing: crate::remote_image::CoverStanding::Unstated,
+            source: bae_catalogs::catalog::Catalog::Discogs,
+            standing: bae_catalogs::remote_image::CoverStanding::Unstated,
         },
     ];
     let revision = crate::import::CandidatePreparations::new(db.clone())

@@ -56,7 +56,7 @@ pub enum RemoteImageError {
 /// Where the Cover Art Archive serves images from. Every path under it is fixed
 /// by the entity's MusicBrainz id, so an image's address is knowable without
 /// asking the archive anything.
-pub(crate) const ARCHIVE: &str = "https://coverartarchive.org";
+pub const ARCHIVE: &str = "https://coverartarchive.org";
 
 /// A remote cover art option from an external source: where the image and its
 /// downscaled copies live, and which service is offering them.
@@ -100,7 +100,7 @@ pub enum CoverStanding {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl CoverStanding {
     /// The stored column value.
-    pub(crate) fn as_str(self) -> &'static str {
+    pub fn as_str(self) -> &'static str {
         match self {
             Self::Stated => "stated",
             Self::Unstated => "unstated",
@@ -108,7 +108,7 @@ impl CoverStanding {
     }
 
     /// The standing a stored column value names.
-    pub(crate) fn from_column(value: &str) -> Option<Self> {
+    pub fn from_column(value: &str) -> Option<Self> {
         match value {
             "stated" => Some(Self::Stated),
             "unstated" => Some(Self::Unstated),
@@ -277,7 +277,7 @@ pub fn musicbrainz_album_cover(
 /// rows on one release can name the same archive entity, and the picker should
 /// show that image once — stated, when either of the two stated it.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) fn push_unique_cover(covers: &mut Vec<RemoteCover>, cover: RemoteCover) {
+pub fn push_unique_cover(covers: &mut Vec<RemoteCover>, cover: RemoteCover) {
     match covers
         .iter_mut()
         .find(|existing| existing.image.url == cover.image.url)
@@ -655,7 +655,7 @@ impl RemoteImageCache {
         read_disk(Arc::clone(&self.disk), url.to_string()).await
     }
 
-    pub(crate) async fn fetch_required(&self, url: &str) -> Result<RemoteImage, RemoteImageError> {
+    pub async fn fetch_required(&self, url: &str) -> Result<RemoteImage, RemoteImageError> {
         self.fetch(url)
             .await?
             .ok_or_else(|| RemoteImageError::Status {

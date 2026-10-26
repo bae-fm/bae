@@ -114,7 +114,7 @@ async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
 #[tokio::test]
 async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
     use crate::config::DiscogsValidation;
-    use crate::discogs::client::DiscogsError;
+    use bae_catalogs::discogs::client::DiscogsError;
     use crate::import::{DiscogsSaveOutcome, ImportError};
 
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -152,7 +152,7 @@ async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
 #[tokio::test]
 async fn discogs_validation_signals_confirm_and_reject() {
     use crate::config::DiscogsValidation;
-    use crate::discogs::client::DiscogsKeySignal;
+    use bae_catalogs::discogs::client::DiscogsKeySignal;
     let (manager, _temp_dir) = setup_test_manager().await;
     // A success confirms a stored Unvalidated key.
     manager

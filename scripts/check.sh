@@ -113,6 +113,8 @@ check "clippy (bae-audio + test features)" \
   cargo clippy -p bae-audio --tests --features test-utils,test-instrumentation -- -D warnings
 check "clippy (bae-types + test-utils)" \
   cargo clippy -p bae-types --tests --features bae-types/test-utils -- -D warnings
+check "clippy (bae-catalogs + test features)" \
+  cargo clippy -p bae-catalogs --tests --features test-utils,test-instrumentation -- -D warnings
 check "clippy (bae-bridge)"         cargo clippy -p bae-bridge -- -D warnings
 check "clippy (bae-core --features oauth-providers)" \
   cargo clippy -p bae-core --features oauth-providers -- -D warnings
@@ -134,6 +136,8 @@ check "dead_code (bae-audio lib only)" \
   cargo rustc -p bae-audio --lib --profile check -- -D warnings
 check "dead_code (bae-types lib only)" \
   cargo rustc -p bae-types --lib --profile check -- -D warnings
+check "dead_code (bae-catalogs lib only)" \
+  cargo rustc -p bae-catalogs --lib --profile check -- -D warnings
 check "dead_code (bae-cast lib only)" \
   cargo rustc -p bae-cast --lib --profile check -- -D warnings
 
@@ -154,12 +158,13 @@ check "cargo deny" cargo deny check
 
 check "cargo doc" env RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 
-# ── Rust tests (util + audio + types + loc + theme + bridge + automation) ─────────────────────
+# ── Rust tests (util + audio + types + catalogs + loc + theme + bridge + automation) ──────────
 section "Rust tests"
 
 check "cargo test (bae-util)"          cargo test -p bae-util
 check "cargo test (bae-audio)"         cargo test -p bae-audio
 check "cargo test (bae-types)"         cargo test -p bae-types
+check "cargo test (bae-catalogs)"      cargo test -p bae-catalogs
 check "cargo test (bae-loc)"           cargo test -p bae-loc
 check "cargo test (bae-theme)"         cargo test -p bae-theme
 # Both editions: default features are baeium's, `desktop` the full build's.

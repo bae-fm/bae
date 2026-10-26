@@ -1,5 +1,5 @@
 use super::*;
-use crate::util::rate_limiter::CallPriority;
+use bae_catalogs::rate_limiter::CallPriority;
 
 impl ImportServiceHandle {
     /// Tell surfaces a folder candidate's files were bound anew.
@@ -868,16 +868,16 @@ impl ImportServiceHandle {
 /// The cover [`ImportServiceHandle::fetch_release_cover`] fetched, with the
 /// bytes its catalog served.
 pub(crate) type FetchedCover = (
-    crate::remote_image::RemoteCover,
-    crate::remote_image::RemoteImage,
+    bae_catalogs::remote_image::RemoteCover,
+    bae_catalogs::remote_image::RemoteImage,
 );
 
 /// A fetch of an external release's cover that failed, naming the catalog
 /// that offered it.
 #[derive(Debug)]
 pub(crate) struct CoverFetchFailure {
-    pub(crate) source: crate::catalog::Catalog,
-    pub(crate) error: crate::remote_image::RemoteImageError,
+    pub(crate) source: bae_catalogs::catalog::Catalog,
+    pub(crate) error: bae_catalogs::remote_image::RemoteImageError,
 }
 
 /// The metadata `draft`, read from an external release, makes with the

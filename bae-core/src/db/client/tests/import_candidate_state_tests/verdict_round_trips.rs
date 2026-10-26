@@ -39,7 +39,7 @@ async fn round_trip_preserves_the_verdict_including_provenance() {
 async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     use crate::import::album_links::{AlbumLink, AlbumLinks, AlbumStatement};
     use crate::import::MetadataRef;
-    use crate::catalog::Catalog;
+    use bae_catalogs::catalog::Catalog;
     use bae_types::pressing::{
         DiscogsDetail, Medium, Packaging, Region, ReleaseArea, ReleaseStatus, StatedFormat,
         StatedMedia,
@@ -112,17 +112,17 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     discogs.discogs_details = vec![DiscogsDetail::Reissue, DiscogsDetail::Size12In];
     // A cover with every copy the archive serves, one with Discogs's one
     // thumbnail, and one served at its one size.
-    musicbrainz.cover_art = Some(crate::remote_image::RemoteCover::musicbrainz_release(
+    musicbrainz.cover_art = Some(bae_catalogs::remote_image::RemoteCover::musicbrainz_release(
         "rel-1",
     ));
-    discogs.cover_art = crate::discogs::remote_cover_from_urls(
+    discogs.cover_art = bae_catalogs::discogs::remote_cover_from_urls(
         Some("https://images.example/front.jpg"),
         Some("https://images.example/front-150.jpg"),
         "release",
         42,
     );
     let mut undescribed = sample_match();
-    undescribed.cover_art = crate::discogs::remote_cover_from_urls(
+    undescribed.cover_art = bae_catalogs::discogs::remote_cover_from_urls(
         Some("https://images.example/only.jpg"),
         None,
         "release",
@@ -262,7 +262,7 @@ async fn a_failed_verdict_round_trips_what_its_answering_lookups_found() {
     let verdict = TerminalVerdict::Failed {
         failures: vec![crate::identify::IdentifyFailure::Search(
             crate::import::search::SourceFailure {
-                source: crate::catalog::Catalog::MusicBrainz,
+                source: bae_catalogs::catalog::Catalog::MusicBrainz,
                 failure: crate::signals::LookupFailure::Provider { status: Some(503) },
             },
         )],

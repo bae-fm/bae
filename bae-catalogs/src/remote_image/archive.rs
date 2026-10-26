@@ -254,13 +254,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn gallery_interrupted_body_is_a_network_failure() {
+    async fn gallery_interrupted_body_is_a_transport_failure() {
         let url = super::super::tests::truncated_body_url().await;
         let http = Http::new().expect("the test HTTP client builds");
         let error = fetch_gallery(&http, &url).await.unwrap_err();
-        assert_eq!(
-            crate::import::search::remote_image_failure(&error),
-            Some(crate::signals::LookupFailure::Network)
+        assert!(
+            matches!(&error, RemoteImageError::Transport { error, .. } if error.is_decode()),
+            "{error}"
         );
     }
 

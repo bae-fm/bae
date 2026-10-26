@@ -194,7 +194,7 @@ pub(crate) fn decline(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::Catalog;
+    use bae_catalogs::catalog::Catalog;
 
     fn listing(release_id: &str, count: u32) -> MetadataResult {
         MetadataResult {

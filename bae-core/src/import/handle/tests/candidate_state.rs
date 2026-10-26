@@ -97,7 +97,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         import_handle.new_identification_run(),
         key.clone(),
         ExtractionSource::Candidate { candidate },
-        crate::util::rate_limiter::CallPriority::Interactive,
+        bae_catalogs::rate_limiter::CallPriority::Interactive,
     );
     reached
         .recv_timeout(HANG_GUARD)

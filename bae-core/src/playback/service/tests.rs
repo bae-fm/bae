@@ -156,7 +156,7 @@ async fn seeded_library_manager_with_track_length(
         Arc::new(coven::UuidIds),
         diagnostics,
         tokio::runtime::Handle::current(),
-        crate::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
+        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
         crate::providers::Providers::offline(),
     );
     (home, manager)

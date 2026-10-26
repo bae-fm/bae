@@ -1,4 +1,4 @@
-use bae_core::discogs::models::DiscogsRelease;
+use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_core::import::{ImportCommand, ImportDestination};
 use bae_core::library::LibraryManager;
 use bae_core::playback::{PlaybackProgress, PlaybackState, TrackTime};
