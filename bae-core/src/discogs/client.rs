@@ -559,7 +559,7 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
     });
     let covers = image_covers(release.images, "r", release.id);
     let master_id = release.master_id.map(|id| id.to_string());
-    let labels = crate::pressing::ReleaseLabel::list(
+    let labels = bae_types::pressing::ReleaseLabel::list(
         release
             .labels
             .into_iter()
@@ -573,7 +573,7 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
         .flatten()
         .partition(|identifier| identifier.kind == "Barcode");
     // Discogs often lists one code twice: as printed and as scanned.
-    let barcode_values = crate::barcode::each_product_once(
+    let barcode_values = bae_types::barcode::each_product_once(
         barcodes
             .into_iter()
             .filter_map(|identifier| identifier.value),

@@ -7,8 +7,8 @@
 //! rather than dropped — see [`super::combine`].
 
 use super::row_facts::Fact;
-use crate::pressing::{CdAudio, DiscogsDetail, Medium, StatedMedia};
 use crate::signals::AudioOrigin;
+use bae_types::pressing::{CdAudio, DiscogsDetail, Medium, StatedMedia};
 
 /// What the folder's own files say about its audio, as combine reads it: the
 /// rip evidence, which speaks to its medium; and whether the audio is one
@@ -25,7 +25,7 @@ pub struct FolderAudio<'a> {
     pub track_titles: &'a [String],
     /// Where most of the tracks' recordings were registered, as their ISRC
     /// tags say — see [`crate::isrc::registered_in`].
-    pub registered_in: Option<crate::pressing::ReleaseArea>,
+    pub registered_in: Option<bae_types::pressing::ReleaseArea>,
 }
 
 impl FolderAudio<'static> {
@@ -175,8 +175,8 @@ impl RippedFrom {
 mod tests {
     use super::download as download_fact;
     use super::*;
-    use crate::pressing::StatedFormat;
     use crate::signals::CdProof;
+    use bae_types::pressing::StatedFormat;
 
     fn per_medium(media: &[Option<Medium>]) -> StatedMedia {
         StatedMedia::PerMedium(media.to_vec())

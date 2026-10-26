@@ -338,7 +338,7 @@ fn fixture_release(
         packaging: None,
         discogs_details: Vec::new(),
         barcodes: Vec::new(),
-        media: crate::pressing::StatedMedia::Undescribed,
+        media: bae_types::pressing::StatedMedia::Undescribed,
         links: Vec::new(),
         cover_art: None,
         source_group_id: None,

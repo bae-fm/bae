@@ -372,7 +372,7 @@ impl ArtistAssignment {
     pub(crate) fn credit_a_compilation(album_artists: &[Credited]) -> bool {
         matches!(
             album_artists,
-            [only] if crate::text_match::is_various_artists(only.artist.name())
+            [only] if bae_types::text_match::is_various_artists(only.artist.name())
         )
     }
 

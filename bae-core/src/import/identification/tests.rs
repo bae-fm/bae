@@ -254,7 +254,7 @@ impl ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
         let digits: String = folder.chars().filter(|c| c.is_ascii_digit()).collect();
         let ordinal: u32 = digits.parse().expect("a numbered candidate folder");
         ArtworkAnalysis {
-            barcodes: vec![crate::barcode::with_check_digit(&format!(
+            barcodes: vec![bae_types::barcode::with_check_digit(&format!(
                 "01234567{ordinal:04}"
             ))],
             text_lines: Vec::new(),
@@ -770,7 +770,7 @@ impl Fixture {
                     packaging: None,
                     discogs_details: Vec::new(),
                     barcodes: Vec::new(),
-                    media: crate::pressing::StatedMedia::Undescribed,
+                    media: bae_types::pressing::StatedMedia::Undescribed,
                     links: Vec::new(),
                     cover_art: None,
                     source_group_id: Some(group_id.to_string()),

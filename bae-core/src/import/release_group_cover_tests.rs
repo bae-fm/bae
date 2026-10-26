@@ -69,17 +69,17 @@ fn a_card_heading_prefers_a_stated_cover_to_an_unstated_address() {
     };
     let cd = |mut release: MetadataResult, format: &str| {
         let medium = match format {
-            "LP" => crate::pressing::Medium::Vinyl,
-            _ => crate::pressing::Medium::Cd,
+            "LP" => bae_types::pressing::Medium::Vinyl,
+            _ => bae_types::pressing::Medium::Cd,
         };
         release.media = match release.source {
             Catalog::Discogs => {
-                crate::pressing::StatedMedia::Formats(vec![crate::pressing::StatedFormat {
+                bae_types::pressing::StatedMedia::Formats(vec![bae_types::pressing::StatedFormat {
                     medium: Some(medium),
                     quantity: 1,
                 }])
             }
-            _ => crate::pressing::StatedMedia::PerMedium(vec![Some(medium)]),
+            _ => bae_types::pressing::StatedMedia::PerMedium(vec![Some(medium)]),
         };
         release
     };

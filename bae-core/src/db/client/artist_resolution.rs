@@ -414,7 +414,7 @@ fn resolve_by_name_on<Q: QueryOne + QueryRows>(
         .iter()
         .enumerate()
         .filter(|(_, pending)| {
-            crate::text_match::same_artist_name(&pending.name, &credit.name)
+            bae_types::text_match::same_artist_name(&pending.name, &credit.name)
                 && ids_agree(pending, credit)
         })
         .map(|(index, _)| index)
@@ -614,7 +614,7 @@ pub(super) fn name_matches_on<Q: QueryRows>(
     credit: &DbArtist,
     staged: &[(String, DbArtist)],
 ) -> Result<Vec<DbArtist>, DbError> {
-    let key = crate::text_match::artist_name_key(&credit.name);
+    let key = bae_types::text_match::artist_name_key(&credit.name);
     if key.is_empty() {
         return Ok(Vec::new());
     }

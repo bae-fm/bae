@@ -53,7 +53,7 @@ pub(crate) fn blank_candidate_draft(files: &CategorizedFiles) -> CandidateDraft 
         album_artist_assignments: Vec::new(),
         album_year: String::new(),
         pressing: crate::import::RawPressingEdit::from_pressing(
-            &crate::pressing::Pressing::blank(),
+            &bae_types::pressing::Pressing::blank(),
         ),
         mediums,
         tracks,

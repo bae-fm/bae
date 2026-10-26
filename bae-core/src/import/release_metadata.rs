@@ -1,6 +1,6 @@
 use super::{ImportError, SourceCredit};
 use crate::catalog::Catalog;
-use crate::pressing::Pressing;
+use bae_types::pressing::Pressing;
 
 /// Album facts can come from a release or its parent without claiming a
 /// particular pressing or borrowing that parent's tracklist.
@@ -28,7 +28,7 @@ impl AlbumMetadata {
         } else {
             for SourceCredit { credit: artist, .. } in &mut self.artists {
                 if let Some(linked) = other.artists.iter().map(|linked| &linked.credit).find(
-                    |linked| crate::text_match::same_artist_name(&linked.name, &artist.name),
+                    |linked| bae_types::text_match::same_artist_name(&linked.name, &artist.name),
                 ) {
                     artist.musicbrainz_artist_id = artist
                         .musicbrainz_artist_id

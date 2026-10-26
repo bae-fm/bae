@@ -100,8 +100,8 @@ impl BridgeCandidateFiles {
 }
 
 impl BridgePressingEdit {
-    pub(super) fn from_core(pressing: bae_core::pressing::Pressing) -> Self {
-        let bae_core::pressing::Pressing {
+    pub(super) fn from_core(pressing: bae_types::pressing::Pressing) -> Self {
+        let bae_types::pressing::Pressing {
             year,
             labels,
             barcodes,

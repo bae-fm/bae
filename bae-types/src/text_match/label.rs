@@ -20,7 +20,7 @@ use std::sync::OnceLock;
 
 /// One label's name, read into what the comparisons ask of it.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct LabelName {
+pub struct LabelName {
     /// Its words, with the trade words it ends on dropped, run together the
     /// way the candidate's text is read.
     stated: String,
@@ -36,7 +36,7 @@ pub(crate) struct LabelName {
 impl LabelName {
     /// `None` when nothing of the name is left once its trade words are
     /// dropped.
-    pub(crate) fn of(name: &str) -> Option<Self> {
+    pub fn of(name: &str) -> Option<Self> {
         let words = without_trade_words(super::words(name));
         if words.is_empty() {
             return None;
@@ -57,7 +57,7 @@ impl LabelName {
 
     /// Whether the two name one label: they read alike, or one is written as
     /// the other's initials.
-    pub(crate) fn same_label(&self, other: &Self) -> bool {
+    pub fn same_label(&self, other: &Self) -> bool {
         self.stated == other.stated
             || self.written_as_initials_of(other)
             || other.written_as_initials_of(self)
@@ -69,19 +69,19 @@ impl LabelName {
 
     /// Its words run together, as a line of text is searched for it.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn stated(&self) -> &str {
+    pub fn stated(&self) -> &str {
         &self.stated
     }
 
     /// Its initials, when its words make some.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn initials(&self) -> Option<&str> {
+    pub fn initials(&self) -> Option<&str> {
         self.initials.as_deref()
     }
 
     /// The initials it is written as, when it is.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn written_initials(&self) -> Option<&str> {
+    pub fn written_initials(&self) -> Option<&str> {
         self.written_initials.as_deref()
     }
 }
@@ -90,7 +90,7 @@ impl LabelName {
 /// [`LabelName::same_label`] says. Two names that name no label — nothing but
 /// trade words — are one only when they are written alike, as
 /// [`super::normalize`] compares them.
-pub(crate) fn same_label_name(a: &str, b: &str) -> bool {
+pub fn same_label_name(a: &str, b: &str) -> bool {
     match (LabelName::of(a), LabelName::of(b)) {
         (Some(a), Some(b)) => a.same_label(&b),
         (None, None) => super::normalize(a) == super::normalize(b),

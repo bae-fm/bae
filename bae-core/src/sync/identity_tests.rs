@@ -305,7 +305,7 @@ async fn album_artist_edit(device: &TestDevice, artist_ids: &[&str]) -> ReleaseU
         album_title: "Album".to_string(),
         album_artist_assignments: crate::import::Credited::plain_list(assignments),
         album_year: None,
-        pressing: crate::pressing::Pressing::blank(),
+        pressing: bae_types::pressing::Pressing::blank(),
         tracks: Vec::new(),
     }
 }

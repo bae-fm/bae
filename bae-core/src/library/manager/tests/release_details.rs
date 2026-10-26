@@ -565,7 +565,7 @@ async fn find_release_detail_name_uses_year_and_media() {
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.pressing.year = Some(2024);
-    release.pressing.facts = crate::pressing::made_of(crate::pressing::Medium::Cd, 2);
+    release.pressing.facts = bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 2);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
@@ -578,7 +578,7 @@ async fn find_release_detail_name_uses_year_and_media() {
         detail.name,
         crate::album_detail::ReleaseName::Described {
             year: Some(2024),
-            media: crate::pressing::made_of(crate::pressing::Medium::Cd, 2).media,
+            media: bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 2).media,
         }
     );
 }
@@ -590,7 +590,7 @@ async fn find_release_detail_name_prefers_release_name() {
     let mut release = create_test_release(&album.id);
     release.release_name = Some("Deluxe Edition".to_string());
     release.pressing.year = Some(2024);
-    release.pressing.facts = crate::pressing::made_of(crate::pressing::Medium::Cd, 1);
+    release.pressing.facts = bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 

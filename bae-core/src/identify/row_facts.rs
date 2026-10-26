@@ -5,8 +5,8 @@
 
 use super::agreements::CandidateText;
 use crate::import::search::MetadataResult;
-use crate::pressing::{Country, ReleaseArea};
-use crate::text_match::{squash, track_title_key};
+use bae_types::pressing::{Country, ReleaseArea};
+use bae_types::text_match::{squash, track_title_key};
 
 /// What a row's fact says against the folder's, worst first, so the derived
 /// order ranks rows.
@@ -71,7 +71,7 @@ impl FolderFacts {
         let numbers: Vec<&str> = results
             .iter()
             .flat_map(|result| &result.labels)
-            .filter_map(crate::pressing::ReleaseLabel::catalog_number)
+            .filter_map(bae_types::pressing::ReleaseLabel::catalog_number)
             .collect();
         let catalogs = text.highest_stating(|lines| {
             let mut stated: Vec<String> = Vec::new();
@@ -323,7 +323,7 @@ fn title_spellings(title: &str) -> Vec<String> {
 
 /// The years a title writes as words of their own.
 fn title_years(title: &str) -> Vec<i32> {
-    crate::text_match::words(title)
+    bae_types::text_match::words(title)
         .iter()
         .filter_map(|word| year_of(word))
         .collect()

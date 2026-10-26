@@ -25,16 +25,16 @@ fn pressing(release_id: &str, notes: &[&str]) -> (MetadataResult, LibraryStatus)
             title: "Album One".to_string(),
             artist: Some("Artist One".to_string()),
             year: Some(1987),
-            labels: vec![crate::pressing::ReleaseLabel::of(
+            labels: vec![bae_types::pressing::ReleaseLabel::of(
                 Some("Label One"),
                 Some("L1-100"),
             )],
             notes: notes.iter().map(|note| note.to_string()).collect(),
             packaging: Some(match release_id {
-                "rel-alpha" => crate::pressing::Packaging::JewelCase,
-                "rel-beta" => crate::pressing::Packaging::Digipak,
-                "rel-gamma" => crate::pressing::Packaging::GatefoldCover,
-                _ => crate::pressing::Packaging::CardboardSleeve,
+                "rel-alpha" => bae_types::pressing::Packaging::JewelCase,
+                "rel-beta" => bae_types::pressing::Packaging::Digipak,
+                "rel-gamma" => bae_types::pressing::Packaging::GatefoldCover,
+                _ => bae_types::pressing::Packaging::CardboardSleeve,
             }),
             ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("rg-album-one"))
         },
@@ -128,7 +128,10 @@ fn numbers_in_the_notes_give_no_point() {
 fn the_notes_never_outrank_an_earlier_field() {
     let (numbered, status) = pressing("rel-alpha", &["Pressed By Plant Alpha"]);
     let unnumbered = MetadataResult {
-        labels: vec![crate::pressing::ReleaseLabel::of(Some("Label One"), None)],
+        labels: vec![bae_types::pressing::ReleaseLabel::of(
+            Some("Label One"),
+            None,
+        )],
         ..pressing("rel-beta", &["Made In Nordland By Plant Beta"]).0
     };
     let outcome = by_catalog(
@@ -179,7 +182,10 @@ fn stating_a_year_never_outranks_an_earlier_field() {
         ..pressing("rel-undated", &[]).0
     };
     let dated = MetadataResult {
-        labels: vec![crate::pressing::ReleaseLabel::of(Some("Label One"), None)],
+        labels: vec![bae_types::pressing::ReleaseLabel::of(
+            Some("Label One"),
+            None,
+        )],
         ..pressing("rel-dated", &[]).0
     };
     let outcome = by_catalog(

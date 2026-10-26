@@ -112,7 +112,7 @@ pub(crate) fn insert_draft(
             params![
                 content_hash,
                 crate::mediums::medium_position(index),
-                medium.carrier.map(crate::pressing::Medium::key),
+                medium.carrier.map(bae_types::pressing::Medium::key),
                 medium.sides,
             ],
         )?;
@@ -386,7 +386,7 @@ pub(crate) fn load_drafts_on(
     for (content_hash, carrier, sides) in medium_rows {
         let carrier = carrier
             .map(|key| {
-                crate::pressing::Medium::from_key(&key)
+                bae_types::pressing::Medium::from_key(&key)
                     .ok_or_else(|| unreadable("draft medium", &key))
             })
             .transpose()?;
@@ -451,7 +451,7 @@ struct StoredDraftRow {
     year: String,
     labels: Vec<RawLabelEdit>,
     barcodes: Vec<String>,
-    facts: crate::pressing::PressingFacts,
+    facts: bae_types::pressing::PressingFacts,
 }
 
 /// The draft's `labels` column: the form's label rows as typed.

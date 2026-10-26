@@ -24,7 +24,7 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
                 album_title: "Album Title".to_string(),
                 album_artist_assignments: vec![bae_core::import::Credited::plain(ArtistAssignment::named("Artist Name"))],
                 album_year: None,
-                pressing: bae_core::pressing::Pressing::blank(),
+                pressing: bae_types::pressing::Pressing::blank(),
                 tracks: vec![TrackUserEdit {
                     title: "Track Title".to_string(),
                     artist_assignments: TrackArtistAssignments::AlbumArtists,

@@ -31,7 +31,7 @@ fn an_unusable_barcode_leaves_the_comparison_unknown() {
 /// contradicts nothing, since it spans countries and overlaps other regions.
 #[test]
 fn countries_and_regions_compare_by_what_they_name() {
-    use crate::pressing::{area, Region, ReleaseArea};
+    use bae_types::pressing::{area, Region, ReleaseArea};
     let mut a = release(Catalog::MusicBrainz, "mb-1");
     let mut b = release(Catalog::Discogs, "dg-1");
     a.area = Some(area("JP"));
@@ -71,12 +71,12 @@ fn countries_and_regions_compare_by_what_they_name() {
 fn labels_agree_by_name_and_never_disagree() {
     let mut a = release(Catalog::MusicBrainz, "mb-1");
     let mut b = release(Catalog::Discogs, "dg-1");
-    a.labels = vec![crate::pressing::ReleaseLabel::of(Some("Label Name Records"), None)];
-    b.labels = vec![crate::pressing::ReleaseLabel::of(Some("Label Name"), None)];
+    a.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Label Name Records"), None)];
+    b.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Label Name"), None)];
     assert_eq!(evidence(&a, &b).label, Comparison::Same);
-    b.labels = vec![crate::pressing::ReleaseLabel::of(Some("LN"), None)];
+    b.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("LN"), None)];
     assert_eq!(evidence(&a, &b).label, Comparison::Same);
-    b.labels = vec![crate::pressing::ReleaseLabel::of(Some("LM"), None)];
+    b.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("LM"), None)];
     assert_eq!(evidence(&a, &b).label, Comparison::Unknown);
     b.labels = Vec::new();
     assert_eq!(evidence(&a, &b).label, Comparison::Unknown);
@@ -87,10 +87,10 @@ fn labels_agree_by_name_and_never_disagree() {
 fn catalog_numbers_compare_squashed_and_never_disagree() {
     let mut a = release(Catalog::MusicBrainz, "mb-1");
     let mut b = release(Catalog::Discogs, "dg-1");
-    a.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("WPCR-80001"))];
-    b.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("wpcr 80001"))];
+    a.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("WPCR-80001"))];
+    b.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("wpcr 80001"))];
     assert_eq!(evidence(&a, &b).catalog, Comparison::Same);
-    b.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("WPCR-80002"))];
+    b.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("WPCR-80002"))];
     assert_eq!(evidence(&a, &b).catalog, Comparison::Unknown);
 }
 
@@ -98,7 +98,7 @@ fn catalog_numbers_compare_squashed_and_never_disagree() {
 /// either label's is the same number — and the same label.
 #[test]
 fn a_number_or_a_name_on_any_label_is_shared() {
-    use crate::pressing::ReleaseLabel;
+    use bae_types::pressing::ReleaseLabel;
     let mut a = release(Catalog::MusicBrainz, "mb-1");
     let mut b = release(Catalog::Discogs, "dg-1");
     a.labels = vec![
@@ -114,7 +114,7 @@ fn a_number_or_a_name_on_any_label_is_shared() {
 /// A MusicBrainz record's media, one format name per medium, read in
 /// MusicBrainz's list.
 fn per_medium(names: &[&str]) -> StatedMedia {
-    crate::pressing::musicbrainz::media("mb-1", names.iter().map(|name| Some(*name)))
+    crate::musicbrainz::pressing::media("mb-1", names.iter().map(|name| Some(*name)))
 }
 
 /// A Discogs record's format entries, each a format name and its
@@ -129,7 +129,7 @@ fn formats(entries: &[(&str, &[&str])]) -> StatedMedia {
             text: None,
         })
         .collect();
-    crate::pressing::discogs_formats::read("dg-1", &entries).media
+    crate::discogs::formats::read("dg-1", &entries).media
 }
 
 /// What a MusicBrainz record stating `a` and a Discogs record stating `b`
@@ -236,7 +236,7 @@ fn a_word_outside_the_vocabulary_is_logged_and_settles_by_catalog() {
 fn a_medium_left_unstated_is_weighed_against_a_complete_account() {
     assert_eq!(
         media(
-            StatedMedia::PerMedium(vec![Some(crate::pressing::Medium::Cd), None]),
+            StatedMedia::PerMedium(vec![Some(bae_types::pressing::Medium::Cd), None]),
             formats(&[("Cassette", &[])])
         ),
         Comparison::Different,
@@ -244,7 +244,7 @@ fn a_medium_left_unstated_is_weighed_against_a_complete_account() {
     );
     assert_eq!(
         media(
-            StatedMedia::PerMedium(vec![Some(crate::pressing::Medium::Cd), None]),
+            StatedMedia::PerMedium(vec![Some(bae_types::pressing::Medium::Cd), None]),
             formats(&[("CD", &["Album"])])
         ),
         Comparison::Unknown,
@@ -272,8 +272,8 @@ fn a_medium_left_unstated_is_weighed_against_a_complete_account() {
 fn support_needs_identity_evidence_and_no_contradiction() {
     let mut a = release(Catalog::MusicBrainz, "mb-1");
     let mut b = release(Catalog::Discogs, "dg-1");
-    a.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
-    b.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
+    a.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
+    b.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     a.year = Some(1992);
     b.year = Some(1992);
     assert_eq!(evidence(&a, &b).support(), None);
@@ -300,8 +300,8 @@ fn two_records_of_one_catalog_are_never_one_pressing() {
     let mut b = release(Catalog::Discogs, "dg-2");
     a.barcodes = vec!["012345678905".to_string()];
     b.barcodes = vec!["012345678905".to_string()];
-    a.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
-    b.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
+    a.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
+    b.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     assert_eq!(evidence(&a, &b).support(), None);
 }
 
@@ -311,7 +311,7 @@ fn two_records_of_one_catalog_are_never_one_pressing() {
 /// does not keep the pair apart; with any of those missing, it still does.
 #[test]
 fn barcode_label_and_year_outweigh_a_different_country() {
-    use crate::pressing::{area, ReleaseLabel};
+    use bae_types::pressing::{area, ReleaseLabel};
     let mut a = release(Catalog::MusicBrainz, "mb-1");
     let mut b = release(Catalog::Discogs, "dg-1");
     a.barcodes = vec!["4012345678901".to_string()];
@@ -350,8 +350,8 @@ fn barcode_label_and_year_outweigh_a_different_country() {
     );
     b.labels = vec![ReleaseLabel::of(Some("Door"), None)];
 
-    b.media = StatedMedia::PerMedium(vec![Some(crate::pressing::Medium::Vinyl)]);
-    a.media = StatedMedia::PerMedium(vec![Some(crate::pressing::Medium::Cd)]);
+    b.media = StatedMedia::PerMedium(vec![Some(bae_types::pressing::Medium::Vinyl)]);
+    a.media = StatedMedia::PerMedium(vec![Some(bae_types::pressing::Medium::Cd)]);
     assert_eq!(
         evidence(&a, &b).support(),
         None,

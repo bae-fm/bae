@@ -85,7 +85,7 @@ fn lead(release_id: &str) -> LeadMatch {
         title: "Album Title".to_string(),
         artist: Some("Artist Name".to_string()),
         year: Some(1999),
-        media: crate::pressing::made_of(crate::pressing::Medium::Cd, 1).media,
+        media: bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1).media,
         cover: Some(crate::remote_image::RemoteImageSet::original(
             "https://example.test/front.jpg".to_string(),
         )),

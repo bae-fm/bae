@@ -3,19 +3,19 @@
 //! The two catalogs describe the same object in their own words: a barcode
 //! with or without spaces, a catalog number with or without a dash. The
 //! country and the media arrive already read into bae's vocabulary
-//! (`crate::pressing`). Each pressing fact is compared as the meaning behind
+//! (`bae_types::pressing`). Each pressing fact is compared as the meaning behind
 //! the spelling, and the answer for
 //! each is one of three — the same, different, or nothing to say — never the
 //! equality of two optional strings. [`PressingEvidence::support`] then says
 //! whether the two records are candidates for one pressing and how well
 //! supported that claim is.
 
-use crate::barcode::comparison_key;
+use bae_types::barcode::comparison_key;
 use crate::import::search::MetadataResult;
 use crate::import::types::MetadataRef;
 use crate::catalog::Catalog;
-use crate::pressing::{Medium, ReleaseArea, ReleaseLabel, StatedMedia};
-use crate::text_match::{catalog_key, LabelName};
+use bae_types::pressing::{Medium, ReleaseArea, ReleaseLabel, StatedMedia};
+use bae_types::text_match::{catalog_key, LabelName};
 use tracing::debug;
 
 /// What two records say about one pressing fact.

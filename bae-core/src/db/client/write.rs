@@ -14,7 +14,7 @@ pub(super) fn insert_artist_row(
         params![
             artist.id,
             artist.name,
-            crate::text_match::artist_name_key(&artist.name),
+            bae_types::text_match::artist_name_key(&artist.name),
             artist.sort_name,
             artist.discogs_artist_id,
             artist.musicbrainz_artist_id,
@@ -181,7 +181,7 @@ pub(super) fn insert_release_medium_row(
             medium.id,
             medium.release_id,
             medium.position,
-            medium.medium.carrier.map(crate::pressing::Medium::key),
+            medium.medium.carrier.map(bae_types::pressing::Medium::key),
             medium.medium.sides,
             medium.created_at.to_rfc3339(),
         ],

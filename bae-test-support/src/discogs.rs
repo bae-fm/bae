@@ -70,7 +70,7 @@ pub fn discogs_test_release(
         year: Some(2024),
         formats: vec![],
         country: Some("US".to_string()),
-        labels: bae_core::pressing::ReleaseLabel::list([(Some("Test Label".to_string()), None)]),
+        labels: bae_types::pressing::ReleaseLabel::list([(Some("Test Label".to_string()), None)]),
         covers: vec![],
         barcodes: vec![],
         artists: vec![discogs_artist("discogs-artist-1", "Artist Name")],

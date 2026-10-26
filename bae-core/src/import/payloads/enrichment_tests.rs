@@ -145,7 +145,7 @@ fn the_pressing_is_the_selected_record_s_alone() {
     );
     assert_eq!(
         parsed.pressing.facts.media,
-        crate::pressing::made_of(crate::pressing::Medium::Vinyl, 1).media,
+        bae_types::pressing::made_of(bae_types::pressing::Medium::Vinyl, 1).media,
         "the selected pressing's own media, not the linked release's CD"
     );
     assert_eq!(

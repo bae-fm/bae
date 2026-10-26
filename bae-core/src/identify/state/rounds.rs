@@ -22,7 +22,7 @@ use crate::identify::documents::ReleaseToRead;
 use crate::identify::row_facts::FolderFacts;
 use crate::import::search::MetadataResult;
 use crate::import::MetadataRef;
-use crate::pressing::ReleaseLabel;
+use bae_types::pressing::ReleaseLabel;
 
 /// Take the round the results in hand call for: `catalog` with the numbers
 /// that came into effect, and the lookups and reads to dispatch — none when
@@ -214,7 +214,7 @@ fn album_artists(rows: &[Vec<MetadataResult>]) -> Vec<Option<String>> {
         };
         if !artists
             .iter()
-            .any(|held| crate::text_match::same_artist_name(held, &artist))
+            .any(|held| bae_types::text_match::same_artist_name(held, &artist))
         {
             artists.push(artist);
         }
@@ -229,7 +229,7 @@ fn asked_of(providers: &[super::ProviderLookup], source: Catalog) -> bool {
 /// Whether two printed barcodes are one code.
 fn same_barcode(a: &str, b: &str) -> bool {
     a == b
-        || crate::barcode::comparison_key(a)
+        || bae_types::barcode::comparison_key(a)
             .ok()
-            .is_some_and(|key| crate::barcode::comparison_key(b).ok() == Some(key))
+            .is_some_and(|key| bae_types::barcode::comparison_key(b).ok() == Some(key))
 }

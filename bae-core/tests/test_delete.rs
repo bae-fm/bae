@@ -19,7 +19,7 @@ fn create_test_release(album_id: &str) -> DbRelease {
         id: Uuid::new_v4().to_string(),
         album_id: album_id.to_string(),
         release_name: None,
-        pressing: bae_core::pressing::Pressing {
+        pressing: bae_types::pressing::Pressing {
             year: Some(2024),
             labels: Vec::new(),
             facts: Default::default(),

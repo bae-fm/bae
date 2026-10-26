@@ -807,9 +807,9 @@ fn failed_discid_lookup_preserves_track_count() {
 fn an_unchosen_catalog_number_narrows_nothing() {
     let (state, _) = update(started(), disc_only(&["LBL 001"]));
     let mut r_a = mk_result("rel-a", Some("g-x"));
-    r_a.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("LBL-001"))];
+    r_a.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("LBL-001"))];
     let mut r_b = mk_result("rel-b", Some("g-y"));
-    r_b.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("LBL-002"))];
+    r_b.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("LBL-002"))];
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupAnswered {

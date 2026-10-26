@@ -40,7 +40,7 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     use crate::import::album_links::{AlbumLink, AlbumLinks, AlbumStatement};
     use crate::import::MetadataRef;
     use crate::catalog::Catalog;
-    use crate::pressing::{
+    use bae_types::pressing::{
         DiscogsDetail, Medium, Packaging, Region, ReleaseArea, ReleaseStatus, StatedFormat,
         StatedMedia,
     };

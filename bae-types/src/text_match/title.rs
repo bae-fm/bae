@@ -16,7 +16,7 @@ use std::sync::OnceLock;
 /// `Album Title`. Every trailing group goes, so a name that is nothing but
 /// brackets comes back empty. What a folder name and an album tag are read
 /// as when the words alone are wanted.
-pub(crate) fn strip_trailing_brackets(raw: &str) -> String {
+pub fn strip_trailing_brackets(raw: &str) -> String {
     static TRAILING_BRACKET: OnceLock<Regex> = OnceLock::new();
     let bracket =
         TRAILING_BRACKET.get_or_init(|| Regex::new(r"\s*[\[\(][^\]\)]*[\]\)]\s*$").unwrap());
@@ -36,7 +36,7 @@ pub(crate) fn strip_trailing_brackets(raw: &str) -> String {
 /// An album's title as it names the album: without its trailing bracketed
 /// tails (see [`strip_trailing_brackets`]), or whole when it is nothing but
 /// brackets — then the brackets are its name.
-pub(crate) fn bare_album_title(title: &str) -> String {
+pub fn bare_album_title(title: &str) -> String {
     let bare = strip_trailing_brackets(title);
     if bare.is_empty() {
         title.to_string()
@@ -47,8 +47,8 @@ pub(crate) fn bare_album_title(title: &str) -> String {
 
 /// A track title as two are compared: without its bracketed parts, wherever
 /// they sit, since they name a version rather than the song — "(Remastered)",
-/// "[Live]" — and squashed, see [`super::squash`].
-pub(crate) fn track_title_key(title: &str) -> String {
+/// "\[Live\]" — and squashed, see [`super::squash`].
+pub fn track_title_key(title: &str) -> String {
     let mut kept = String::with_capacity(title.len());
     let mut depth = 0u32;
     for c in title.chars() {
@@ -66,7 +66,7 @@ pub(crate) fn track_title_key(title: &str) -> String {
 /// bracketed tails — "(Remastered)", "[Deluxe Edition]" — and its stop words
 /// left out. Two releases whose titles share one of these are taken to be
 /// able to name one album.
-pub(crate) fn album_title_words(title: &str) -> Vec<String> {
+pub fn album_title_words(title: &str) -> Vec<String> {
     super::words(&strip_trailing_brackets(title))
         .into_iter()
         .filter(|word| !super::is_stop_word(word))

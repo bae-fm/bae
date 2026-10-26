@@ -61,7 +61,7 @@ pub struct BridgeReleaseUserEdit {
     pub tracks: Vec<BridgeTrackUserEdit>,
 }
 
-/// Mirror of `bae_core::pressing::Pressing` as an edit claims it: a
+/// Mirror of `bae_types::pressing::Pressing` as an edit claims it: a
 /// release's identifiers and year, and what it is. Per-field `None` means
 /// "this field isn't set"; no labels means none is.
 #[derive(Debug, Clone, uniffi::Record)]

@@ -28,7 +28,7 @@ use crate::import::folder_scanner::CategorizedFiles;
 #[cfg(test)]
 use crate::import::folder_scanner::ScannedFile;
 use crate::import::{ArtistCredit, ImportError};
-use crate::pressing::Pressing;
+use bae_types::pressing::Pressing;
 #[cfg(test)]
 use bae_util::content_type::ContentType;
 use std::path::Path;
@@ -152,7 +152,7 @@ impl UnitAlbum {
 
 /// Whether `artists` is the one credit a compilation is given.
 fn names_various_artists(artists: &[String]) -> bool {
-    matches!(artists, [only] if crate::text_match::is_various_artists(only))
+    matches!(artists, [only] if bae_types::text_match::is_various_artists(only))
 }
 
 /// What the folder's units, together, say of the album. Units that state a
@@ -304,7 +304,7 @@ fn same_names(a: &[String], b: &[String]) -> bool {
     a.len() == b.len()
         && a.iter()
             .zip(b)
-            .all(|(a, b)| crate::text_match::same_artist_name(a, b))
+            .all(|(a, b)| bae_types::text_match::same_artist_name(a, b))
 }
 
 /// One track as files or a CUE sheet state it, before the folder's discs are

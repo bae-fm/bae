@@ -434,7 +434,7 @@ mod conversion_roundtrip {
                 year: String::new(),
                 labels: Vec::new(),
                 barcodes: Vec::new(),
-                facts: bae_core::pressing::PressingFacts::default(),
+                facts: bae_types::pressing::PressingFacts::default(),
             },
             tracks: vec![bae_core::import::RawTrackEdit {
                 id: "track-id".to_string(),
@@ -495,8 +495,8 @@ mod conversion_roundtrip {
 /// Facts stating one of every kind: a region, two media, a status, a
 /// packaging and details of both wordings.
 #[cfg(feature = "desktop")]
-fn every_kind_of_fact() -> bae_core::pressing::PressingFacts {
-    use bae_core::pressing::*;
+fn every_kind_of_fact() -> bae_types::pressing::PressingFacts {
+    use bae_types::pressing::*;
     PressingFacts {
         area: Some(ReleaseArea::Region(Region::UkAndEurope)),
         media: vec![

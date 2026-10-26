@@ -463,7 +463,7 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
         .draft;
     assert_eq!(
         draft.pressing.facts.media,
-        crate::pressing::made_of(crate::pressing::Medium::Vinyl, 1).media
+        bae_types::pressing::made_of(bae_types::pressing::Medium::Vinyl, 1).media
     );
     assert_eq!(
         crate::import::release_values::place_labels(

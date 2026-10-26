@@ -9,12 +9,12 @@
 //! heading rows are laid out against it, are chosen when the release is read
 //! against the audio (see `import::catalog_reading`).
 
-use crate::pressing::Pressing;
+use bae_types::pressing::Pressing;
 use crate::remote_image::RemoteCover;
 use crate::import::medium_coverage::MediumCoverage;
 use crate::import::release_metadata::ReleaseMetadata;
 use crate::import::search::ImportSearchReleaseDetail;
-use crate::pressing::{Medium, StatedMedia};
+use bae_types::pressing::{Medium, StatedMedia};
 use crate::import::{ArtistCredit, ImportError, MetadataRef, ReleaseRecord};
 use crate::catalog::Catalog;
 

@@ -114,7 +114,7 @@ impl BridgeRelease {
             album_id,
             name: crate::types::BridgeReleaseName::from_core(name),
             year,
-            labels: bae_core::pressing::label_lines(&labels)
+            labels: bae_types::pressing::label_lines(&labels)
                 .into_iter()
                 .map(crate::types::BridgeLabelLine::from_core)
                 .collect(),

@@ -903,18 +903,18 @@ fn build_group(
 /// name different labels, or none names any: no pressing speaks for the
 /// album over another.
 fn agreed_label<'a>(pressings: impl Iterator<Item = &'a Pressing>) -> Option<String> {
-    let named: Vec<Vec<crate::pressing::ReleaseLabel>> = pressings
+    let named: Vec<Vec<bae_types::pressing::ReleaseLabel>> = pressings
         .map(Pressing::labels)
         .filter(|labels| labels.iter().any(|label| label.name().is_some()))
         .collect();
     let (first, others) = named.split_first()?;
     first
         .iter()
-        .filter_map(crate::pressing::ReleaseLabel::name)
+        .filter_map(bae_types::pressing::ReleaseLabel::name)
         .find(|name| {
             others.iter().all(|labels| {
-                labels.iter().filter_map(crate::pressing::ReleaseLabel::name).any(|other| {
-                    crate::text_match::same_label_name(name, other)
+                labels.iter().filter_map(bae_types::pressing::ReleaseLabel::name).any(|other| {
+                    bae_types::text_match::same_label_name(name, other)
                 })
             })
         })

@@ -160,13 +160,13 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
-    release.pressing.facts = crate::pressing::made_of(crate::pressing::Medium::Cd, 2);
+    release.pressing.facts = bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 2);
     let first = crate::db::DbTrack::new_test(&release.id, TRACK_1, "First Track", 1);
     let mut second = crate::db::DbTrack::new_test(&release.id, TRACK_2, "Second Track", 1);
     let second_disc = crate::db::DbReleaseMedium::new(
         &release.id,
         std::num::NonZeroU16::new(2).expect("disc 2"),
-        crate::mediums::ReleaseMedium::one_sided(Some(crate::pressing::Medium::Cd)),
+        crate::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)),
         chrono::Utc::now(),
     );
     second.medium_id.clone_from(&second_disc.id);
@@ -279,10 +279,10 @@ async fn release_metadata_edit_preserves_records_and_audio() {
                     "Edited Album Artist",
                 ))],
                 album_year: Some(1984),
-                pressing: crate::pressing::Pressing {
+                pressing: bae_types::pressing::Pressing {
                     year: Some(1991),
-                    labels: vec![crate::pressing::ReleaseLabel::of(Some("Edited Label"), Some("CAT-1"))],
-                    facts: crate::pressing::PressingFacts { area: Some(crate::pressing::area("US")), ..Default::default() },
+                    labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Edited Label"), Some("CAT-1"))],
+                    facts: bae_types::pressing::PressingFacts { area: Some(bae_types::pressing::area("US")), ..Default::default() },
                     barcodes: vec!["123456789".to_string()],
                 },
                 tracks: vec![crate::import::TrackUserEdit {
@@ -347,7 +347,7 @@ async fn a_named_album_artist_already_in_the_library_is_linked() {
             crate::import::Credited::plain(crate::import::ArtistAssignment::named("Album Artist Two")),
         ],
         album_year: None,
-        pressing: crate::pressing::Pressing::blank(),
+        pressing: bae_types::pressing::Pressing::blank(),
         tracks: Vec::new(),
     };
     manager
@@ -387,7 +387,7 @@ async fn an_album_credit_list_naming_one_artist_twice_keeps_both_credits() {
             crate::import::Credited::plain(crate::import::ArtistAssignment::named("Album Artist One")),
         ],
         album_year: None,
-        pressing: crate::pressing::Pressing::blank(),
+        pressing: bae_types::pressing::Pressing::blank(),
         tracks: Vec::new(),
     };
 
@@ -417,7 +417,7 @@ fn credited_release_edit(track_artists: [&[&str]; 2]) -> crate::import::ReleaseU
             crate::import::Credited::plain(crate::import::ArtistAssignment::named("Album Artist Two")),
         ],
         album_year: Some(2024),
-        pressing: crate::pressing::Pressing::blank(),
+        pressing: bae_types::pressing::Pressing::blank(),
         tracks: track_artists
             .iter()
             .enumerate()

@@ -18,7 +18,7 @@ use bae_core::musicbrainz::{
     MbArtistCredit, MbArtistRef, MbRecording, MbRelation, MbReleaseResponse, MbTrack,
     MbUrlResource, MbWork,
 };
-use bae_core::pressing::ReleaseLabel;
+use bae_types::pressing::ReleaseLabel;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;

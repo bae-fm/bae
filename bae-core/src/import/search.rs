@@ -2,8 +2,8 @@
 //! Discogs for release metadata, checking Cover Art Archive for thumbnails, and
 //! fetching full release details for the import confirmation step.
 
-use crate::text_match::catalog_key;
-use crate::barcode::{comparison_key, written_digits, Barcode, Unusable};
+use bae_types::text_match::catalog_key;
+use bae_types::barcode::{comparison_key, written_digits, Barcode, Unusable};
 use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
 use crate::remote_image::{RemoteCover, RemoteImageError};
 use crate::import::parse_year;
@@ -12,7 +12,7 @@ use crate::import::types::MetadataRef;
 use crate::catalog::{parse_catalog_url, Catalog, CatalogPage};
 use crate::import::ImportError;
 use crate::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
-use crate::pressing::{
+use bae_types::pressing::{
     DiscogsDetail, Packaging, PressingFacts, ReleaseArea, ReleaseLabel, ReleaseStatus,
     StatedMedia,
 };
@@ -286,7 +286,7 @@ pub fn discogs_search_result_to_metadata(
     )]);
     let release_id = r.id.to_string();
     let notes = discogs_notes(&r.formats);
-    let formats = crate::pressing::discogs_formats::read(&release_id, &r.formats);
+    let formats = crate::discogs::formats::read(&release_id, &r.formats);
     let area = r
         .country
         .as_deref()
@@ -465,7 +465,7 @@ fn mb_discid_releases_to_metadata(
 
 fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) -> MetadataResult {
     let labels = musicbrainz::release_labels(&r.label_info);
-    let (facts, media) = crate::pressing::musicbrainz::read(crate::pressing::musicbrainz::Stated {
+    let (facts, media) = crate::musicbrainz::pressing::read(crate::musicbrainz::pressing::Stated {
         release_id: &r.id,
         country: r.country.as_deref(),
         status: r.status.as_deref(),

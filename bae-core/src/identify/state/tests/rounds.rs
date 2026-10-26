@@ -17,7 +17,7 @@ fn credited(
 ) -> MetadataResult {
     MetadataResult {
         artist: Some(artist.to_string()),
-        labels: vec![crate::pressing::ReleaseLabel::of(Some(label), Some(number))],
+        labels: vec![bae_types::pressing::ReleaseLabel::of(Some(label), Some(number))],
         ..mk_result_from(source, release_id, Some("g"))
     }
 }
@@ -129,7 +129,7 @@ fn a_number_the_text_prints_that_a_found_release_carries_is_searched_on_both_cat
     let (state, _, _) = answer_rounds(
         (reading.0, effects.into_iter().chain(reading.1).collect()),
         |release| ReleaseDocument {
-            labels: vec![crate::pressing::ReleaseLabel::of(
+            labels: vec![bae_types::pressing::ReleaseLabel::of(
                 Some("Label"),
                 Some(if release.key == "mb-2" { "ZZ-1" } else { "AB 12345-2" }),
             )],
@@ -248,7 +248,7 @@ fn a_row_with_no_link_and_no_barcode_is_looked_up_by_its_number_under_its_label(
     let (state, effects, asked) = answer_rounds(
         reading,
         |release| ReleaseDocument {
-            labels: vec![crate::pressing::ReleaseLabel::of(
+            labels: vec![bae_types::pressing::ReleaseLabel::of(
                 Some("Label One"),
                 Some("XY-100"),
             )],
@@ -567,7 +567,7 @@ fn a_rows_number_searched_under_its_artist_is_not_looked_up_again() {
     let (mut state, effects, mut asked) = answer_rounds(
         answered,
         |_| ReleaseDocument {
-            labels: vec![crate::pressing::ReleaseLabel::of(
+            labels: vec![bae_types::pressing::ReleaseLabel::of(
                 Some("Label"),
                 Some("AB-100"),
             )],
@@ -664,7 +664,7 @@ fn a_number_is_not_searched_again_once_no_row_is_offered() {
         },
     );
     let other_tracks = |_: &MetadataRef| ReleaseDocument {
-        labels: vec![crate::pressing::ReleaseLabel::of(
+        labels: vec![bae_types::pressing::ReleaseLabel::of(
             Some("Label"),
             Some("AB-100"),
         )],
@@ -738,7 +738,7 @@ fn a_release_the_disc_id_answered_is_read_from_its_answer() {
     // Two pressings, told apart by where each was released.
     let released_in = |release_id: &str, country: &str| {
         let (mut result, status) = pair(release_id, Some("g"));
-        result.area = Some(crate::pressing::area(country));
+        result.area = Some(bae_types::pressing::area(country));
         (result, status)
     };
     let (_, effects) = super::step(

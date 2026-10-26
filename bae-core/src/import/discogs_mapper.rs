@@ -7,7 +7,7 @@ use crate::import::source_release::{
 };
 use crate::import::{ArtistCredit, CreditedRole, ImportError};
 use crate::catalog::Catalog;
-use crate::pressing::{Medium, Pressing, PressingFacts, ReleaseArea, StatedMedia};
+use bae_types::pressing::{Medium, Pressing, PressingFacts, ReleaseArea, StatedMedia};
 use std::collections::HashSet;
 use tracing::{debug, warn};
 
@@ -124,7 +124,7 @@ pub(crate) fn metadata(release: &DiscogsRelease) -> super::release_metadata::Rel
 /// The pressing a Discogs release describes, shared by detail and imported
 /// metadata, and its media in the release's own shape.
 pub(crate) fn pressing(release: &DiscogsRelease) -> (Pressing, StatedMedia) {
-    let formats = crate::pressing::discogs_formats::read(&release.id, &release.formats);
+    let formats = crate::discogs::formats::read(&release.id, &release.formats);
     let pressing = Pressing {
         year: release.year.map(|y| y as i32),
         labels: release.labels.clone(),

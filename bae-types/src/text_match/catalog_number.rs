@@ -9,7 +9,7 @@ use bae_util::desktop_only;
 /// placeholder — `[none]` on MusicBrainz, `none` on Discogs, and in their
 /// data also `None`, `(none)`, `- none` and `-none-` — which all squash to
 /// `none`.
-pub(crate) fn catalog_key(stated: &str) -> Option<String> {
+pub fn catalog_key(stated: &str) -> Option<String> {
     let key = squash(stated);
     (!key.is_empty() && key != "none").then_some(key)
 }
@@ -26,7 +26,7 @@ desktop_only! {
     ///
     /// Run together the pieces are [`squash`] of the text, as
     /// [`super::words`] are: each piece is one or more of its words.
-    pub(crate) fn catalog_words(text: &str) -> Vec<String> {
+    pub fn catalog_words(text: &str) -> Vec<String> {
         printed_pieces(text)
             .into_iter()
             .map(|(_, piece)| super::squash(piece))
@@ -46,7 +46,7 @@ desktop_only! {
     /// one number with it — `SD 19244-2`, `Z1 12345` — as long as the two
     /// hold three digits or more. Separators are kept as written, since
     /// MusicBrainz indexes `WPCR-80001` and `WPCR 80001` apart.
-    pub(crate) fn printed_catalog_numbers(text: &str) -> Vec<String> {
+    pub fn printed_catalog_numbers(text: &str) -> Vec<String> {
         let pieces = printed_pieces(text);
         let mut numbers: Vec<String> = Vec::new();
         let mut at = 0;

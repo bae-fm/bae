@@ -189,8 +189,8 @@ fn release_storage_state_and_actions_serialize_snake_case() {
     let summary = AutomationReleaseSummary::from_core(bae_core::album_detail::ReleaseSummary {
         id: "rel-1".to_string(),
         album_id: "alb-1".to_string(),
-        media: vec![bae_core::pressing::MediaCount {
-            medium: bae_core::pressing::Medium::Digital,
+        media: vec![bae_types::pressing::MediaCount {
+            medium: bae_types::pressing::Medium::Digital,
             count: 1,
         }],
         storage_state: ReleaseStorageState::Remote,
@@ -288,15 +288,15 @@ mod identify_mirrors {
             title: "Album Title".to_string(),
             artist: Some("Artist Name".to_string()),
             year: Some(1999),
-            labels: vec![bae_core::pressing::ReleaseLabel::of(
+            labels: vec![bae_types::pressing::ReleaseLabel::of(
                 Some("Label A"),
                 Some("AB 100"),
             )],
-            area: Some(bae_core::pressing::ReleaseArea::Country(
-                bae_core::pressing::Country::from_code("US").unwrap(),
+            area: Some(bae_types::pressing::ReleaseArea::Country(
+                bae_types::pressing::Country::from_code("US").unwrap(),
             )),
-            media: bae_core::pressing::StatedMedia::PerMedium(vec![Some(
-                bae_core::pressing::Medium::Cd,
+            media: bae_types::pressing::StatedMedia::PerMedium(vec![Some(
+                bae_types::pressing::Medium::Cd,
             )]),
             ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some(group_id))
         }

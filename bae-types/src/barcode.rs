@@ -287,8 +287,8 @@ fn upc_e_expansion(body: &[u8]) -> Option<Vec<u8>> {
 
 /// `body` with its check digit appended — for a test that needs many
 /// distinct codes rather than one written out.
-#[cfg(test)]
-pub(crate) fn with_check_digit(body: &str) -> String {
+#[cfg(any(test, feature = "test-utils"))]
+pub fn with_check_digit(body: &str) -> String {
     let digits: Vec<u8> = body.bytes().map(|byte| byte - b'0').collect();
     format!("{body}{}", check_digit(&digits))
 }

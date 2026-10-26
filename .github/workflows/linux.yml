@@ -74,9 +74,10 @@ jobs:
         cargo clippy -p bae-core --tests --features bae-core/test-utils -- -D warnings
         cargo clippy -p bae-util --tests --features bae-util/test-utils -- -D warnings
         cargo clippy -p bae-audio --tests --features test-utils,test-instrumentation -- -D warnings
+        cargo clippy -p bae-types --tests --features bae-types/test-utils -- -D warnings
         cargo clippy -p bae-bridge -- -D warnings
 
-    - name: Dead-code (bae-core, bae-util, bae-audio and bae-cast lib only)
+    - name: Dead-code (bae-core, bae-util, bae-audio, bae-types and bae-cast lib only)
       # Each crate's production code alone, so an item only its tests use fails
       # as dead code. The flag goes to the one crate: RUSTFLAGS would recompile
       # every dependency for this one check.
@@ -84,6 +85,7 @@ jobs:
         cargo rustc -p bae-core --lib --profile check -- -D warnings
         cargo rustc -p bae-util --lib --profile check -- -D warnings
         cargo rustc -p bae-audio --lib --profile check -- -D warnings
+        cargo rustc -p bae-types --lib --profile check -- -D warnings
         cargo rustc -p bae-cast --lib --profile check -- -D warnings
 
     - name: Check for new #[allow(dead_code)]
@@ -98,10 +100,11 @@ jobs:
           exit 1
         fi
 
-    - name: Run util, audio, localization, theme and bridge tests
+    - name: Run util, audio, types, localization, theme and bridge tests
       run: |
         cargo nextest run -p bae-util
         cargo nextest run -p bae-audio
+        cargo nextest run -p bae-types
         cargo nextest run -p bae-loc
         cargo nextest run -p bae-theme
         # Both editions: default features are baeium's, `desktop` the full build's.

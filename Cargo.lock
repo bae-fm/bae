@@ -750,6 +750,7 @@ dependencies = [
  "bae-core",
  "bae-mirror",
  "bae-test-support",
+ "bae-types",
  "bae-util",
  "coven",
  "schemars",
@@ -770,6 +771,7 @@ dependencies = [
  "bae-loc",
  "bae-mirror",
  "bae-test-support",
+ "bae-types",
  "bae-util",
  "coven",
  "jni",
@@ -834,6 +836,7 @@ dependencies = [
  "axum",
  "bae-audio",
  "bae-test-support",
+ "bae-types",
  "bae-util",
  "base64 0.22.1",
  "chrono",
@@ -926,6 +929,7 @@ dependencies = [
  "bae-audio",
  "bae-core",
  "bae-test-support",
+ "bae-types",
  "bae-util",
  "bytes",
  "chrono",
@@ -946,6 +950,7 @@ dependencies = [
  "axum",
  "bae-audio",
  "bae-core",
+ "bae-types",
  "bae-util",
  "coven",
  "image",
@@ -963,6 +968,16 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "toml",
+]
+
+[[package]]
+name = "bae-types"
+version = "0.0.0-dev"
+dependencies = [
+ "bae-util",
+ "regex",
+ "serde",
+ "unicode-normalization",
 ]
 
 [[package]]

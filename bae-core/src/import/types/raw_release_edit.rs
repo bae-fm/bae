@@ -78,7 +78,7 @@ pub struct RawPressingEdit {
     /// One row per barcode, as typed; shaping leaves out a blank row and a
     /// repeated one.
     pub barcodes: Vec<String>,
-    pub facts: crate::pressing::PressingFacts,
+    pub facts: bae_types::pressing::PressingFacts,
 }
 
 /// One label row of the form, each field as typed, empty meaning "not set".
@@ -212,13 +212,13 @@ impl RawTrackEdit {
 
 impl RawPressingEdit {
     /// Parse and normalize raw pressing text into a wire
-    /// [`Pressing`](crate::pressing::Pressing): empty fields become `None`,
+    /// [`Pressing`](bae_types::pressing::Pressing): empty fields become `None`,
     /// blank and repeated label and barcode rows are dropped, and the year
     /// parses.
-    fn shape(&self) -> Result<crate::pressing::Pressing, EditValidationError> {
-        Ok(crate::pressing::Pressing {
+    fn shape(&self) -> Result<bae_types::pressing::Pressing, EditValidationError> {
+        Ok(bae_types::pressing::Pressing {
             year: parse_optional_year(&self.year)?,
-            labels: crate::pressing::ReleaseLabel::list(self.labels.iter().map(|label| {
+            labels: bae_types::pressing::ReleaseLabel::list(self.labels.iter().map(|label| {
                 (
                     trim_to_option(&label.name),
                     trim_to_option(&label.catalog_number),
@@ -237,9 +237,9 @@ impl RawPressingEdit {
         })
     }
 
-    /// Render a wire [`Pressing`](crate::pressing::Pressing) back to raw
+    /// Render a wire [`Pressing`](bae_types::pressing::Pressing) back to raw
     /// editor text.
-    pub fn from_pressing(pressing: &crate::pressing::Pressing) -> Self {
+    pub fn from_pressing(pressing: &bae_types::pressing::Pressing) -> Self {
         Self {
             year: pressing.year.map(|y| y.to_string()).unwrap_or_default(),
             labels: pressing

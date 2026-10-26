@@ -461,7 +461,7 @@ async fn musicbrainz_id_surfaces_when_present() {
         id: bae_test_support::test_uuid("mb-release-1"),
         album_id: album.id.clone(),
         release_name: None,
-        pressing: bae_core::pressing::Pressing::blank(),
+        pressing: bae_types::pressing::Pressing::blank(),
         source_folder_name: None,
         album_loudness_lufs: None,
         album_peak_linear: None,
@@ -470,7 +470,7 @@ async fn musicbrainz_id_surfaces_when_present() {
     let medium = bae_core::db::DbReleaseMedium::new(
         &release.id,
         std::num::NonZeroU16::MIN,
-        bae_core::mediums::ReleaseMedium::one_sided(Some(bae_core::pressing::Medium::Cd)),
+        bae_core::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)),
         now,
     );
     let track = DbTrack {
@@ -691,7 +691,7 @@ async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
         id: bae_test_support::test_uuid("credit-release"),
         album_id: album.id.clone(),
         release_name: None,
-        pressing: bae_core::pressing::Pressing::blank(),
+        pressing: bae_types::pressing::Pressing::blank(),
         source_folder_name: None,
         album_loudness_lufs: None,
         album_peak_linear: None,

@@ -9,7 +9,7 @@
 //! (see `SourceRelease::read`). Among those, [`Fit`] orders what decides.
 
 use crate::import::audio_layout::LENGTH_DISAGREEMENT_MS;
-use crate::pressing::{CdAudio, Medium};
+use bae_types::pressing::{CdAudio, Medium};
 use crate::signals::AudioOrigin;
 use std::cmp::Reverse;
 use std::collections::BTreeSet;

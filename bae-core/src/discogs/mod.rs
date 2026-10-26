@@ -1,4 +1,5 @@
 pub mod client;
+pub(crate) mod formats;
 pub mod models;
 use crate::catalog::Catalog;
 use crate::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};

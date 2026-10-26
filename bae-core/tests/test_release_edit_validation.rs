@@ -35,7 +35,7 @@ async fn seed(db: &Database) -> (String, String) {
         id: Uuid::new_v4().to_string(),
         album_id: album.id.clone(),
         release_name: None,
-        pressing: bae_core::pressing::Pressing::blank(),
+        pressing: bae_types::pressing::Pressing::blank(),
 
         source_folder_name: None,
         album_loudness_lufs: None,
@@ -72,7 +72,7 @@ fn wire_edit(album_title: &str, album_artist_seed_names: &[&str]) -> ReleaseUser
             .map(|name| bae_core::import::Credited::plain(ArtistAssignment::named(*name)))
             .collect(),
         album_year: None,
-        pressing: bae_core::pressing::Pressing::blank(),
+        pressing: bae_types::pressing::Pressing::blank(),
         tracks: vec![TrackUserEdit {
             title: "Original Track".to_string(),
             artist_assignments: TrackArtistAssignments::AlbumArtists,

@@ -514,14 +514,14 @@ fn unique_output_path(
 
 /// The code a saved CUE sheet's `CATALOG` line states: the one product every
 /// barcode of the pressing names, in the one spelling codes are compared by
-/// (see [`crate::barcode::comparison_key`]). None where the pressing states
+/// (see [`bae_types::barcode::comparison_key`]). None where the pressing states
 /// none, or names two products — a sheet has room for one, and neither is the
 /// disc's more than the other.
 fn media_catalog_number(barcodes: &[String]) -> Option<String> {
     let mut codes: Vec<String> = Vec::new();
     for key in barcodes
         .iter()
-        .filter_map(|barcode| crate::barcode::comparison_key(barcode).ok())
+        .filter_map(|barcode| bae_types::barcode::comparison_key(barcode).ok())
     {
         if !codes.contains(&key) {
             codes.push(key);

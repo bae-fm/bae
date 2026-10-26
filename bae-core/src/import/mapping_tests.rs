@@ -5,7 +5,7 @@ use crate::import::folder_scanner::{
 };
 use crate::import::pane::blank_candidate_draft;
 use crate::import::probe::{source_durations, SourceDurations};
-use crate::pressing::{made_of, Medium};
+use bae_types::pressing::{made_of, Medium};
 use std::fs;
 use std::path::Path;
 

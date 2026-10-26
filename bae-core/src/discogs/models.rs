@@ -29,7 +29,7 @@ pub struct DiscogsRelease {
     pub formats: Vec<DiscogsFormat>,
     pub country: Option<String>,
     /// Every label with its catalog number, in Discogs's order.
-    pub labels: Vec<crate::pressing::ReleaseLabel>,
+    pub labels: Vec<bae_types::pressing::ReleaseLabel>,
     pub covers: Vec<RemoteCover>,
     /// Every Barcode identifier's value, in Discogs's order, as printed.
     pub barcodes: Vec<String>,

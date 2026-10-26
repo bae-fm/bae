@@ -6,9 +6,9 @@
 use super::combine::LookupProvenance;
 use super::row_facts::FolderFacts;
 use crate::import::search::MetadataResult;
-use crate::pressing::{ReleaseArea, ReleaseLabel};
 use crate::signals::{SourcedValue, TextLine, TextOrigin};
-use crate::text_match::{
+use bae_types::pressing::{ReleaseArea, ReleaseLabel};
+use bae_types::text_match::{
     bare_album_title, catalog_key, catalog_words, is_stop_word, squash, words, written_words,
     LabelName,
 };
@@ -203,7 +203,7 @@ impl CandidateText {
                 .collect(),
             barcode_keys: barcodes
                 .iter()
-                .filter_map(|code| crate::barcode::comparison_key(&code.value).ok())
+                .filter_map(|code| bae_types::barcode::comparison_key(&code.value).ok())
                 .collect(),
         }
     }
@@ -211,7 +211,8 @@ impl CandidateText {
     /// Whether `barcode`, as a record prints it, is one of the codes the
     /// folder's files carry.
     pub fn carries_barcode(&self, barcode: &str) -> bool {
-        crate::barcode::comparison_key(barcode).is_ok_and(|key| self.barcode_keys.contains(&key))
+        bae_types::barcode::comparison_key(barcode)
+            .is_ok_and(|key| self.barcode_keys.contains(&key))
     }
 
     /// Whether the text states `value` — whole words of one of its lines.

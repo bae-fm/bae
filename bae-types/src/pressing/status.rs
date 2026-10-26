@@ -35,7 +35,7 @@ desktop_only! {
         /// The status a MusicBrainz release's `status` names. `None` for a name
         /// outside the list, which the caller logs: the list is what needs the
         /// new name.
-        pub(crate) fn musicbrainz(name: &str) -> Option<Self> {
+        pub fn musicbrainz(name: &str) -> Option<Self> {
             MUSICBRAINZ_RELEASE_STATUSES
                 .iter()
                 .find(|(stated, _)| super::same_name(stated, name))

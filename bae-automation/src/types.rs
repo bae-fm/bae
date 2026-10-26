@@ -494,9 +494,9 @@ pub struct AutomationMetadataResult {
     pub title: String,
     pub artist: Option<String>,
     pub year: Option<i32>,
-    pub labels: Vec<bae_core::pressing::ReleaseLabel>,
+    pub labels: Vec<bae_types::pressing::ReleaseLabel>,
     /// What the record says the pressing is.
-    pub facts: bae_core::pressing::PressingFacts,
+    pub facts: bae_types::pressing::PressingFacts,
     /// Every barcode this source prints for the pressing, in its order;
     /// empty where it prints none.
     pub barcodes: Vec<String>,

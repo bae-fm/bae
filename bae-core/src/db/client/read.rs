@@ -518,7 +518,7 @@ pub(super) fn row_to_release_medium(row: &Row) -> rusqlite::Result<DbReleaseMedi
     let medium: Option<String> = row.get("medium")?;
     let carrier = medium
         .map(|key| {
-            crate::pressing::Medium::from_key(&key).ok_or_else(|| {
+            bae_types::pressing::Medium::from_key(&key).ok_or_else(|| {
                 rusqlite::Error::FromSqlConversionFailure(
                     0,
                     rusqlite::types::Type::Text,
@@ -556,7 +556,7 @@ pub(super) fn row_to_release(row: &Row) -> rusqlite::Result<DbRelease> {
         id: row.get("id")?,
         album_id: row.get("album_id")?,
         release_name: row.get("release_name")?,
-        pressing: crate::pressing::Pressing {
+        pressing: bae_types::pressing::Pressing {
             year: row.get("year")?,
             labels: super::pressing_columns::read_labels(row, "labels")?,
             barcodes: super::pressing_columns::read_barcodes(row, "barcodes")?,

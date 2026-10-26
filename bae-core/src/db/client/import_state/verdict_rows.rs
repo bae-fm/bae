@@ -14,7 +14,7 @@ use crate::identify::{MediumConflict, NamedNote,
 use crate::import::album_links::AlbumLinks;
 use crate::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
 use crate::import::search::{MetadataResult, SourceTracks};
-use crate::pressing::{Medium, StatedFormat, StatedMedia};
+use bae_types::pressing::{Medium, StatedFormat, StatedMedia};
 use crate::import::MetadataRef;
 use crate::catalog::Catalog;
 use std::str::FromStr;

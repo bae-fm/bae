@@ -63,17 +63,17 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
     );
     assert_eq!(
         release.pressing.facts,
-        bae_core::pressing::PressingFacts {
-            area: Some(bae_core::pressing::ReleaseArea::Country(
-                bae_core::pressing::Country::from_code("US").unwrap()
+        bae_types::pressing::PressingFacts {
+            area: Some(bae_types::pressing::ReleaseArea::Country(
+                bae_types::pressing::Country::from_code("US").unwrap()
             )),
-            media: vec![bae_core::pressing::MediaCount {
-                medium: bae_core::pressing::Medium::Cd,
+            media: vec![bae_types::pressing::MediaCount {
+                medium: bae_types::pressing::Medium::Cd,
                 count: 1,
             }],
-            status: Some(bae_core::pressing::ReleaseStatus::Promotion),
+            status: Some(bae_types::pressing::ReleaseStatus::Promotion),
             packaging: None,
-            discogs_details: vec![bae_core::pressing::DiscogsDetail::Reissue],
+            discogs_details: vec![bae_types::pressing::DiscogsDetail::Reissue],
         }
     );
 
@@ -111,10 +111,10 @@ async fn a_user_edit_overlays_the_picked_release() {
         album_title: "Edited Title".to_string(),
         album_artist_assignments: vec![bae_core::import::Credited::plain(ArtistAssignment::named("Artist Edited"))],
         album_year: Some(1977),
-        pressing: bae_core::pressing::Pressing {
+        pressing: bae_types::pressing::Pressing {
             // User typed JP — we expect this to land on the release row.
-            facts: bae_core::pressing::PressingFacts { area: Some(bae_core::pressing::ReleaseArea::Country(bae_core::pressing::Country::from_code("JP").unwrap())), ..Default::default() },
-            ..bae_core::pressing::Pressing::blank()
+            facts: bae_types::pressing::PressingFacts { area: Some(bae_types::pressing::ReleaseArea::Country(bae_types::pressing::Country::from_code("JP").unwrap())), ..Default::default() },
+            ..bae_types::pressing::Pressing::blank()
         },
         tracks: vec![TrackUserEdit {
             title: "Edited Track".to_string(),
@@ -144,8 +144,8 @@ async fn a_user_edit_overlays_the_picked_release() {
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(
         release.pressing.facts.area,
-        Some(bae_core::pressing::ReleaseArea::Country(
-            bae_core::pressing::Country::from_code("JP").unwrap()
+        Some(bae_types::pressing::ReleaseArea::Country(
+            bae_types::pressing::Country::from_code("JP").unwrap()
         ))
     );
     // The overlay is the whole pressing block, so the fields it leaves empty

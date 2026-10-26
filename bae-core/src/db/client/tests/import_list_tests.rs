@@ -47,7 +47,7 @@ fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -
                 packaging: None,
                 discogs_details: Vec::new(),
                 barcodes: Vec::new(),
-                media: crate::pressing::StatedMedia::Undescribed,
+                media: bae_types::pressing::StatedMedia::Undescribed,
                 links: Vec::new(),
                 cover_art: None,
                 source_group_id: Some("group-1".to_string()),

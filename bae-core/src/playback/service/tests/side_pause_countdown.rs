@@ -229,7 +229,7 @@ fn release_of(mediums: &[crate::mediums::ReleaseMedium]) -> crate::db::DbRelease
 /// named by the disc that ended.
 #[test]
 fn a_cd_release_pauses_at_disc_changes_only() {
-    let cd = crate::mediums::ReleaseMedium::one_sided(Some(crate::pressing::Medium::Cd));
+    let cd = crate::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd));
     let mediums = release_of(&[cd, cd]);
     let first = info_on("first", &mediums, (1, 1));
     let second = info_on("second", &mediums, (1, 1));
@@ -244,7 +244,7 @@ fn a_cd_release_pauses_at_disc_changes_only() {
 #[test]
 fn a_two_record_release_pauses_at_each_side() {
     let record = crate::mediums::ReleaseMedium {
-        carrier: Some(crate::pressing::Medium::Vinyl),
+        carrier: Some(bae_types::pressing::Medium::Vinyl),
         sides: std::num::NonZeroU8::new(2).expect("two sides"),
     };
     let mediums = release_of(&[record, record]);

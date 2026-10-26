@@ -6,7 +6,7 @@ use regex::Regex;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
-use crate::text_match::{normalize, printed_catalog_numbers, strip_trailing_brackets};
+use bae_types::text_match::{normalize, printed_catalog_numbers, strip_trailing_brackets};
 use strsim::jaro_winkler;
 
 /// The catalog numbers the lines print, each once in first-seen order — see

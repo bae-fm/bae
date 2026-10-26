@@ -136,7 +136,7 @@ fn the_text_prints_a_catalog_number_only_whole() {
 #[test]
 fn the_number_offered_is_the_number_confirmed() {
     let printed = "1986 Label AB 12345-2";
-    let offered = crate::text_match::printed_catalog_numbers(printed);
+    let offered = bae_types::text_match::printed_catalog_numbers(printed);
     assert_eq!(offered, vec!["AB 12345-2"]);
     let folder = text(&[printed]);
     assert!(folder.prints_catalog(&offered[0]));
@@ -158,7 +158,7 @@ fn the_label_the_year_and_the_country_are_read_out_of_the_text() {
             labels: vec![ReleaseLabel::of(Some("Harbor Records"), None)],
             year: Some(1976),
             album_first_year: Some(1971),
-            area: Some(crate::pressing::area("US")),
+            area: Some(bae_types::pressing::area("US")),
             status: None,
             packaging: None,
             discogs_details: Vec::new(),
@@ -177,7 +177,7 @@ fn the_label_the_year_and_the_country_are_read_out_of_the_text() {
 fn a_country_code_inside_a_word_states_nothing() {
     let judged = judge(
         &MetadataResult {
-            area: Some(crate::pressing::area("US")),
+            area: Some(bae_types::pressing::area("US")),
             status: None,
             packaging: None,
             discogs_details: Vec::new(),
@@ -366,7 +366,7 @@ fn an_area_agrees_whichever_way_the_folder_spells_it() {
     ] {
         let judged = judge(
             &MetadataResult {
-                area: Some(crate::pressing::area(area)),
+                area: Some(bae_types::pressing::area(area)),
                 ..result()
             },
             &text(&[folder]),
@@ -386,7 +386,7 @@ fn read_off(origin: TextOrigin, text: &str) -> TextLine {
 fn states_country(code: &str, lines: &[TextLine]) -> bool {
     judge(
         &MetadataResult {
-            area: Some(crate::pressing::area(code)),
+            area: Some(bae_types::pressing::area(code)),
             ..result()
         },
         &CandidateText::of(lines, &[], &[]),
@@ -463,7 +463,7 @@ fn an_area_the_folder_does_not_name_is_no_agreement() {
     ] {
         let judged = judge(
             &MetadataResult {
-                area: Some(crate::pressing::area(area)),
+                area: Some(bae_types::pressing::area(area)),
                 ..result()
             },
             &text(&[folder]),

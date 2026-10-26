@@ -58,14 +58,14 @@ async fn storage_page_sort_by_media_nulls_last() {
 
     for (title, media) in &[
         ("Album No Media", None),
-        ("Album CD", Some(crate::pressing::Medium::Cd)),
-        ("Album Vinyl", Some(crate::pressing::Medium::Vinyl)),
+        ("Album CD", Some(bae_types::pressing::Medium::Cd)),
+        ("Album Vinyl", Some(bae_types::pressing::Medium::Vinyl)),
     ] {
         let mut album = create_test_album();
         album.title = title.to_string();
         let mut release = create_test_release(&album.id);
         release.pressing.facts = media
-            .map(|medium| crate::pressing::made_of(medium, 1))
+            .map(|medium| bae_types::pressing::made_of(medium, 1))
             .unwrap_or_default();
         manager.database.insert_album(&album).await.unwrap();
         insert_release(&manager, &release).await;

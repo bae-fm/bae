@@ -58,7 +58,7 @@ fn draft() -> CandidateDraft {
             facts: Default::default(),
         },
         mediums: vec![crate::mediums::ReleaseMedium::one_sided(Some(
-            crate::pressing::Medium::Cd,
+            bae_types::pressing::Medium::Cd,
         ))],
         tracks: vec![track(0, "First Track"), track(1, "Second Track")],
         release_roles: Vec::new(),
@@ -305,7 +305,7 @@ fn a_draft_keeps_only_the_works_its_tracks_perform() {
 fn each_track_row_sits_on_the_medium_row_its_place_names() {
     let mut draft = draft();
     draft.mediums.push(crate::mediums::ReleaseMedium::one_sided(Some(
-        crate::pressing::Medium::Cd,
+        bae_types::pressing::Medium::Cd,
     )));
     draft.tracks[1].place = place(2, 1);
     let parsed = assemble(&draft).parsed;

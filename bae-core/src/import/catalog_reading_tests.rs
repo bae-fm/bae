@@ -4,7 +4,7 @@ use crate::import::source_release::{
     CatalogFacts, EntryKind, ReleaseCovers, SourceMedium, TracklistEntry,
 };
 use crate::import::{ArtistCredit, MetadataRef};
-use crate::pressing::{Medium, Pressing, StatedMedia};
+use bae_types::pressing::{Medium, Pressing, StatedMedia};
 use crate::signals::{AudioSource, CdProof};
 
 /// One tracklist row: a track at `position` with `title`, stating `length`.

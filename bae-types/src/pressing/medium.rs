@@ -150,7 +150,7 @@ pub enum CdAudio {
 desktop_only! {
 /// What a catalog's word for a medium turns out to be.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Lookup {
+pub enum Lookup {
     /// A format name of the catalog's list, and the carrier it names.
     Carrier(Medium),
     /// A format name of the catalog's list that names no carrier:
@@ -163,7 +163,7 @@ pub(crate) enum Lookup {
 
 /// What the name of a Discogs format entry is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum DiscogsFormatName {
+pub enum DiscogsFormatName {
     /// A medium, and the carrier it names.
     Carrier(Medium),
     /// A medium combining two basic formats, whose kind one of the entry's
@@ -179,13 +179,13 @@ impl Medium {
     /// What a MusicBrainz medium's format name names. A MusicBrainz medium
     /// states one format name and nothing else, so anything outside the list
     /// is a name the table has not been given yet.
-    pub(crate) fn musicbrainz(name: &str) -> Lookup {
+    pub fn musicbrainz(name: &str) -> Lookup {
         found(MUSICBRAINZ_FORMAT_NAMES, name)
     }
 
     /// What the name of one Discogs format entry is. `None` for a name
     /// outside Discogs's list.
-    pub(crate) fn discogs(name: &str) -> Option<DiscogsFormatName> {
+    pub fn discogs(name: &str) -> Option<DiscogsFormatName> {
         DISCOGS_FORMAT_NAMES
             .iter()
             .find(|(stated, _)| super::same_name(stated, name))

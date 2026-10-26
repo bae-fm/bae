@@ -9,16 +9,16 @@ pub struct AutomationReleaseUserEdit {
     pub tracks: Vec<AutomationTrackUserEdit>,
 }
 
-/// Mirrors `bae_core::pressing::Pressing`.
+/// Mirrors `bae_types::pressing::Pressing`.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationPressingEdit {
     pub year: Option<i32>,
     #[schemars(schema_with = "labels_schema")]
-    pub labels: Vec<bae_core::pressing::ReleaseLabel>,
+    pub labels: Vec<bae_types::pressing::ReleaseLabel>,
     /// Every barcode the pressing is printed with, in order.
     pub barcodes: Vec<String>,
     #[schemars(schema_with = "pressing_facts_schema")]
-    pub facts: bae_core::pressing::PressingFacts,
+    pub facts: bae_types::pressing::PressingFacts,
 }
 
 /// One track's editable fields: its title and artists. Its medium, side and

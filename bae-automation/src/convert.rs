@@ -368,7 +368,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    AutomationPressingEdit = bae_core::pressing::Pressing,
+    AutomationPressingEdit = bae_types::pressing::Pressing,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: { year, labels, barcodes, facts },

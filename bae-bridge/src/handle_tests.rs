@@ -549,13 +549,13 @@ fn work_detail_conversion_preserves_work_release_rows() {
             album_title: "Album Title A".to_string(),
             name: bae_core::album_detail::ReleaseName::Described {
                 year: Some(2026),
-                media: vec![bae_core::pressing::MediaCount {
-                    medium: bae_core::pressing::Medium::Cd,
+                media: vec![bae_types::pressing::MediaCount {
+                    medium: bae_types::pressing::Medium::Cd,
                     count: 2,
                 }],
             },
-            media: vec![bae_core::pressing::MediaCount {
-                medium: bae_core::pressing::Medium::Cd,
+            media: vec![bae_types::pressing::MediaCount {
+                medium: bae_types::pressing::Medium::Cd,
                 count: 2,
             }],
             cover: None,

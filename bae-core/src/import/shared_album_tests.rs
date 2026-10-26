@@ -2,7 +2,7 @@ use super::*;
 use crate::import::release_group::{group_results, unranked};
 use crate::import::search::MetadataResult;
 use crate::import::{AudioFile, CandidateTrack, RawPressingEdit, RawTrackEdit};
-use crate::pressing::{MediaCount, Medium, PressingFacts};
+use bae_types::pressing::{MediaCount, Medium, PressingFacts};
 
 fn release(catalog: Catalog, release_id: &str, album: Option<&str>, year: i32) -> MetadataResult {
     MetadataResult {
@@ -17,7 +17,7 @@ fn release(catalog: Catalog, release_id: &str, album: Option<&str>, year: i32) -
         packaging: None,
         discogs_details: Vec::new(),
         barcodes: Vec::new(),
-        media: crate::pressing::StatedMedia::Undescribed,
+        media: bae_types::pressing::StatedMedia::Undescribed,
         links: Vec::new(),
         cover_art: None,
         source_group_id: album.map(str::to_string),
@@ -154,8 +154,8 @@ fn draft() -> CandidateDraft {
             labels: vec![label("label from tags", "TAG-1")],
             barcodes: vec!["0123456789012".to_string()],
             facts: PressingFacts {
-                area: Some(crate::pressing::ReleaseArea::Country(
-                    crate::pressing::Country::from_code("DE").expect("a country"),
+                area: Some(bae_types::pressing::ReleaseArea::Country(
+                    bae_types::pressing::Country::from_code("DE").expect("a country"),
                 )),
                 ..PressingFacts::default()
             },

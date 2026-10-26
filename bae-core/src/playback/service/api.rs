@@ -22,7 +22,7 @@ impl PlaybackTrackInfo {
             .medium_of(track)
             .medium
             .carrier
-            .and_then(crate::pressing::Medium::physical)
+            .and_then(bae_types::pressing::Medium::physical)
             .map(|physical| {
                 let boundary = match physical {
                     PhysicalMedium::Record | PhysicalMedium::Cassette => {

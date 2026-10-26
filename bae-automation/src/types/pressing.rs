@@ -5,7 +5,7 @@
 //! keys for a client to read.
 
 use super::*;
-use bae_core::pressing::{
+use bae_types::pressing::{
     Country, DiscogsDetail, MediaCount, Medium, Packaging, Region, ReleaseArea, ReleaseStatus,
 };
 
@@ -41,7 +41,7 @@ pub struct CandidatePressingFactInput {
     pub fact: AutomationPressingFactEdit,
 }
 
-/// `bae_core::pressing::PressingFacts` as it serializes.
+/// `bae_types::pressing::PressingFacts` as it serializes.
 pub(crate) fn pressing_facts_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
     schemars::json_schema!({
         "type": "object",
@@ -56,7 +56,7 @@ pub(crate) fn pressing_facts_schema(generator: &mut schemars::SchemaGenerator) -
     })
 }
 
-/// `Vec<bae_core::pressing::ReleaseLabel>` as it serializes: each label's
+/// `Vec<bae_types::pressing::ReleaseLabel>` as it serializes: each label's
 /// name and catalog number, at least one of them.
 pub(crate) fn labels_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
     schemars::json_schema!({

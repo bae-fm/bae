@@ -15,7 +15,7 @@ use super::{LookupOutcome, LookupState};
 use crate::catalog::Catalog;
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::MetadataRef;
-use crate::text_match::{catalog_key, same_label_name};
+use bae_types::text_match::{catalog_key, same_label_name};
 
 /// What an offered row's pressing is asked for by on one catalog.
 #[derive(Clone, Debug, PartialEq, Eq)]

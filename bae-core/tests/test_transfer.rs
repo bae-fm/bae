@@ -65,7 +65,7 @@ async fn create_local_release(
         id: Uuid::new_v4().to_string(),
         album_id: album.id.clone(),
         release_name: None,
-        pressing: bae_core::pressing::Pressing::blank(),
+        pressing: bae_types::pressing::Pressing::blank(),
         source_folder_name: None,
         album_loudness_lufs: None,
         album_peak_linear: None,

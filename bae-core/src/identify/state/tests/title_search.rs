@@ -218,7 +218,7 @@ fn a_failed_search_stores_what_the_other_provider_found() {
                 discogs_pair("dg-1", Some("g-x")),
                 {
                     let (mut result, status) = discogs_pair("dg-2", Some("g-x"));
-                    result.packaging = Some(crate::pressing::Packaging::Digipak);
+                    result.packaging = Some(bae_types::pressing::Packaging::Digipak);
                     (result, status)
                 },
                 discogs_pair("dg-3", Some("g-y")),

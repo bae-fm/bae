@@ -107,7 +107,7 @@ desktop_only! {
     impl ReleaseArea {
         /// The area a MusicBrainz release's `country` code names. `None` for a
         /// code outside MusicBrainz's list, which the caller logs.
-        pub(crate) fn musicbrainz(code: &str) -> Option<Self> {
+        pub fn musicbrainz(code: &str) -> Option<Self> {
             Country::from_code(code).map(Self::Country).or_else(|| {
                 MUSICBRAINZ_REGION_CODES
                     .iter()
@@ -118,7 +118,7 @@ desktop_only! {
 
         /// The area a Discogs release's `country` names. `None` for a name
         /// outside Discogs's list, which the caller logs.
-        pub(crate) fn discogs(name: &str) -> Option<Self> {
+        pub fn discogs(name: &str) -> Option<Self> {
             DISCOGS_COUNTRIES
                 .iter()
                 .find(|(stated, _)| super::same_name(stated, name))
@@ -133,7 +133,7 @@ desktop_only! {
         /// ("U.S.A."): a lowercase code is usually prose ("for all of us"),
         /// and a stray capital one ("LET IT BE") only matters for a release
         /// from that area.
-        pub(crate) fn names(self) -> &'static [&'static str] {
+        pub fn names(self) -> &'static [&'static str] {
             match self {
                 Self::Country(country) => country.names(),
                 Self::Region(region) => region.writings().0,
@@ -141,7 +141,7 @@ desktop_only! {
         }
 
         /// The codes and abbreviations the area is written as.
-        pub(crate) fn codes(self) -> impl Iterator<Item = &'static str> {
+        pub fn codes(self) -> impl Iterator<Item = &'static str> {
             let (code, abbreviations): (Option<Country>, &'static [&'static str]) = match self {
                 Self::Country(country) => (Some(country), &[]),
                 Self::Region(region) => (None, region.writings().1),

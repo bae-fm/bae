@@ -19,7 +19,7 @@
 //! after the last such row with the last medium.
 
 use crate::discogs::DiscogsTrack;
-use crate::pressing::{Medium, StatedMedia};
+use bae_types::pressing::{Medium, StatedMedia};
 use tracing::debug;
 
 /// The position prefixes Discogs editors write before a disc's track

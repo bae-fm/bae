@@ -17,7 +17,7 @@ use super::{names_other_album, AlbumLink, AlbumStatement, Found};
 use crate::import::search::MetadataResult;
 use crate::import::types::MetadataRef;
 use crate::catalog::Catalog;
-use crate::text_match::{album_title_words, catalog_key, LabelName};
+use bae_types::text_match::{album_title_words, catalog_key, LabelName};
 
 /// What a release prints that can say which album it is, read into the form
 /// two releases' are compared in.
@@ -38,7 +38,7 @@ impl Printed {
             barcodes: result
                 .barcodes
                 .iter()
-                .filter_map(|stated| crate::barcode::comparison_key(stated).ok())
+                .filter_map(|stated| bae_types::barcode::comparison_key(stated).ok())
                 .collect(),
             numbers: result
                 .labels

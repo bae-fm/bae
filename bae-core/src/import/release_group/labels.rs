@@ -4,14 +4,14 @@ use super::Pressing;
 
 /// Whether two records state the same label: names of one label, and the
 /// same number, each compared the way two spellings of one are.
-fn same_label(a: &crate::pressing::ReleaseLabel, b: &crate::pressing::ReleaseLabel) -> bool {
+fn same_label(a: &bae_types::pressing::ReleaseLabel, b: &bae_types::pressing::ReleaseLabel) -> bool {
     let same_name = match (a.name(), b.name()) {
-        (Some(a), Some(b)) => crate::text_match::same_label_name(a, b),
+        (Some(a), Some(b)) => bae_types::text_match::same_label_name(a, b),
         (a, b) => a.is_none() && b.is_none(),
     };
     same_name
-        && a.catalog_number().and_then(crate::text_match::catalog_key)
-            == b.catalog_number().and_then(crate::text_match::catalog_key)
+        && a.catalog_number().and_then(bae_types::text_match::catalog_key)
+            == b.catalog_number().and_then(bae_types::text_match::catalog_key)
 }
 
 impl Pressing {
@@ -26,8 +26,8 @@ impl Pressing {
     /// Every label the row's records state, as one list in the order of the
     /// record the row leads with: the lead's labels, then each label another
     /// record states that the lead does not, in that record's order.
-    pub fn labels(&self) -> Vec<crate::pressing::ReleaseLabel> {
-        let mut labels: Vec<crate::pressing::ReleaseLabel> = Vec::new();
+    pub fn labels(&self) -> Vec<bae_types::pressing::ReleaseLabel> {
+        let mut labels: Vec<bae_types::pressing::ReleaseLabel> = Vec::new();
         for label in self.releases.iter().flat_map(|release| &release.labels) {
             if !labels.iter().any(|stated| same_label(stated, label)) {
                 labels.push(label.clone());
@@ -37,9 +37,9 @@ impl Pressing {
     }
 
     /// The row's labels as it shows them: each name once, each catalog
-    /// number once, as [`crate::pressing::label_lines()`] groups them.
-    pub fn label_lines(&self) -> Vec<crate::pressing::LabelLine> {
-        crate::pressing::label_lines(&self.labels())
+    /// number once, as [`bae_types::pressing::label_lines()`] groups them.
+    pub fn label_lines(&self) -> Vec<bae_types::pressing::LabelLine> {
+        bae_types::pressing::label_lines(&self.labels())
     }
 
 }
@@ -49,7 +49,7 @@ mod tests {
     use super::*;
     use crate::import::search::MetadataResult;
     use crate::catalog::Catalog;
-    use crate::pressing::ReleaseLabel;
+    use bae_types::pressing::ReleaseLabel;
 
     fn record(source: Catalog, id: &str, labels: &[(&str, &str)]) -> MetadataResult {
         MetadataResult {
@@ -61,8 +61,8 @@ mod tests {
         }
     }
 
-    fn line(name: &str, numbers: &[&str]) -> crate::pressing::LabelLine {
-        crate::pressing::LabelLine {
+    fn line(name: &str, numbers: &[&str]) -> bae_types::pressing::LabelLine {
+        bae_types::pressing::LabelLine {
             names: vec![name.to_string()],
             catalog_numbers: numbers.iter().map(|number| number.to_string()).collect(),
         }

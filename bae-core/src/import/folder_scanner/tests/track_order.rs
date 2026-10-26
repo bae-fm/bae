@@ -241,7 +241,7 @@ fn a_catalog_tracklist_lands_on_the_files_its_numbers_are_tagged_with() {
             album_title: "Album Title".into(),
             album_artist_assignments: Vec::new(),
             album_year: None,
-            pressing: crate::pressing::Pressing::blank(),
+            pressing: bae_types::pressing::Pressing::blank(),
             tracks: ["Catalog One", "Catalog Two", "Catalog Three"]
                 .into_iter()
                 .map(|title| crate::import::TrackUserEdit {

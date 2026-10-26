@@ -23,6 +23,8 @@ path = "src/lib.rs"
 bae-core = { path = "../bae-core", features = ["test-utils"] }
 # The decoded-audio shape the sample helpers read.
 bae-audio = { path = "../bae-audio" }
+# The labels the canned catalog releases state.
+bae-types = { path = "../bae-types" }
 # test-utils gives the test transport whose hosts `RemoteImageHost::route`
 # sends here.
 bae-util = { path = "../bae-util", features = ["test-utils"] }

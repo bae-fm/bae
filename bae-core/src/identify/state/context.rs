@@ -194,7 +194,7 @@ impl IsrcEvidence {
 
     /// Where most of the audio's recordings were registered — see
     /// [`crate::isrc::registered_in`].
-    fn registered_in(&self) -> Option<crate::pressing::ReleaseArea> {
+    fn registered_in(&self) -> Option<bae_types::pressing::ReleaseArea> {
         crate::isrc::registered_in(self.tagged.iter().map(String::as_str))
     }
 
@@ -340,7 +340,8 @@ impl CatalogEvidence {
 /// Two spellings of one catalog number compare alike: `SD 19244-2` and
 /// `sd19244-2`.
 pub(crate) fn number_key(value: &str) -> String {
-    crate::text_match::catalog_key(value).unwrap_or_else(|| crate::text_match::squash(value))
+    bae_types::text_match::catalog_key(value)
+        .unwrap_or_else(|| bae_types::text_match::squash(value))
 }
 
 /// The album title and artist a run searches by.
@@ -365,7 +366,7 @@ impl TitleSearch {
     /// as `[MR2002]` taken off, since catalogs match nothing with them — see
     /// `text_match::bare_album_title`.
     pub fn of_draft(album: &str, artist: &str) -> Option<Self> {
-        Self::of(&crate::text_match::bare_album_title(album), artist)
+        Self::of(&bae_types::text_match::bare_album_title(album), artist)
     }
 }
 

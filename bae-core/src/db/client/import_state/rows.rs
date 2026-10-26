@@ -394,7 +394,7 @@ pub(crate) fn load_matches_rows_on(
                     medium: super::super::pressing_columns::keyed(
                         row,
                         "medium",
-                        crate::pressing::Medium::from_key,
+                        bae_types::pressing::Medium::from_key,
                     )?,
                     quantity: row.get(4)?,
                 },

@@ -111,7 +111,7 @@ pub struct MatchEvidence {
 pub struct MatchedPressing {
     pub year: Option<i32>,
     /// Each carrier the source lists, with its count.
-    pub media: Vec<crate::pressing::MediaCount>,
+    pub media: Vec<bae_types::pressing::MediaCount>,
     /// The source's track count, when it listed one.
     pub track_count: Option<u32>,
 }

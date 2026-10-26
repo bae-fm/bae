@@ -23,7 +23,7 @@
 use super::agreements::Agreements;
 use crate::catalog::Catalog;
 use crate::import::release_group::{Judgements, Pressing};
-use crate::pressing::{LabelLine, PressingFacts};
+use bae_types::pressing::{LabelLine, PressingFacts};
 use std::collections::{HashMap, HashSet};
 
 type ReleaseKey = (Catalog, String);

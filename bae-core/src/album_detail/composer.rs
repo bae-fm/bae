@@ -63,7 +63,7 @@ pub struct WorkReleaseSummary {
     pub album_id: String,
     pub album_title: String,
     pub name: ReleaseName,
-    pub media: Vec<crate::pressing::MediaCount>,
+    pub media: Vec<bae_types::pressing::MediaCount>,
     pub cover: Option<ImageRef>,
 }
 

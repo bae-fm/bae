@@ -1,5 +1,5 @@
 use super::*;
-use crate::pressing::ReleaseLabel;
+use bae_types::pressing::ReleaseLabel;
 
 const GROUP: &str = "mb-group";
 

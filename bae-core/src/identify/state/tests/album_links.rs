@@ -46,7 +46,7 @@ fn packed_in(
     source: Catalog,
     release_id: &str,
     group: &str,
-    packaging: crate::pressing::Packaging,
+    packaging: bae_types::pressing::Packaging,
 ) -> MetadataResult {
     MetadataResult {
         packaging: Some(packaging),
@@ -175,7 +175,7 @@ fn disc_run_reading(
 /// Discogs records are read in turn. The album their documents state is kept.
 #[test]
 fn a_disc_id_s_releases_are_looked_up_on_discogs_by_their_links() {
-    use crate::pressing::Packaging::{Digipak, JewelCase};
+    use bae_types::pressing::Packaging::{Digipak, JewelCase};
     let reading = disc_run_reading(
         vec![
             (
@@ -269,7 +269,7 @@ fn a_disc_id_s_releases_are_looked_up_on_discogs_by_their_links() {
 /// that release's notes name puts its row first.
 #[test]
 fn a_linked_release_s_note_word_breaks_the_tie() {
-    use crate::pressing::Packaging::{Digipak, JewelCase};
+    use bae_types::pressing::Packaging::{Digipak, JewelCase};
     let reading = disc_run_reading(
         vec![
             (
@@ -347,7 +347,7 @@ fn a_catalog_number_only_a_document_states_joins_the_albums() {
     let (state, effects, _) = answer_rounds(
         reading,
         |release| ReleaseDocument {
-            labels: vec![crate::pressing::ReleaseLabel::of(Some("Imprint"), Some("LB-100"))],
+            labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Imprint"), Some("LB-100"))],
             album_links: match release.catalog {
                 Catalog::MusicBrainz => AlbumLinks::Read(Vec::new()),
                 _ => AlbumLinks::NotAsked,

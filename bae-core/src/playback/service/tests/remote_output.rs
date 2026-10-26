@@ -638,7 +638,7 @@ async fn a_queued_track_renamed_while_another_plays_remotely_loads_with_its_new_
                     },
                 })],
                 album_year: None,
-                pressing: crate::pressing::Pressing::blank(),
+                pressing: bae_types::pressing::Pressing::blank(),
                 tracks: vec![
                     crate::import::TrackUserEdit {
                         title: "Track Title".to_string(),

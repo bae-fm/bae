@@ -5,9 +5,9 @@
 //! and a name outside MusicBrainz's lists is logged and left out rather than
 //! carried as text.
 
-use super::medium::Lookup;
-use super::stated_media::StatedMedia;
-use super::{Medium, Packaging, PressingFacts, ReleaseArea, ReleaseStatus};
+use bae_types::pressing::medium::Lookup;
+use bae_types::pressing::stated_media::StatedMedia;
+use bae_types::pressing::{Medium, Packaging, PressingFacts, ReleaseArea, ReleaseStatus};
 use tracing::warn;
 
 /// What a MusicBrainz release states about its pressing, as the document
@@ -94,8 +94,7 @@ pub(crate) fn medium(release_id: &str, format: Option<&str>) -> Option<Medium> {
         Lookup::Unrecognized => {
             warn!(
                 musicbrainz_release_id = release_id,
-                format,
-                "a MusicBrainz medium format is outside MusicBrainz's format list"
+                format, "a MusicBrainz medium format is outside MusicBrainz's format list"
             );
             None
         }
@@ -105,7 +104,7 @@ pub(crate) fn medium(release_id: &str, format: Option<&str>) -> Option<Medium> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::pressing::{Country, MediaCount, Region};
+    use bae_types::pressing::{Country, MediaCount, Region};
 
     /// A release modelled on a real Japanese CD issue: an ISO code, the
     /// Official status, a jewel case, one CD.

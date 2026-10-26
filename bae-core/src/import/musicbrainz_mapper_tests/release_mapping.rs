@@ -235,7 +235,7 @@ fn numeric_vinyl_tracks_are_usable_without_side_boundaries() {
     assert_eq!(parsed.mediums[0].sides.get(), 1, "positions that name no letter are one side");
     assert_eq!(
         parsed.pressing.facts.media,
-        crate::pressing::made_of(crate::pressing::Medium::Vinyl, 1).media
+        bae_types::pressing::made_of(bae_types::pressing::Medium::Vinyl, 1).media
     );
     assert_eq!(
         crate::import::release_values::value_labels(&parsed),
@@ -477,31 +477,31 @@ fn pressing_reads_year_every_label_barcode_and_every_fact() {
         Pressing {
             year: Some(1971),
             labels: vec![
-                crate::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
-                crate::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
+                bae_types::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
+                bae_types::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
             ],
             barcodes: vec!["012345678905".to_string()],
-            facts: crate::pressing::PressingFacts {
-                area: Some(crate::pressing::area("GB")),
+            facts: bae_types::pressing::PressingFacts {
+                area: Some(bae_types::pressing::area("GB")),
                 media: vec![
-                    crate::pressing::MediaCount {
+                    bae_types::pressing::MediaCount {
                         medium: Medium::Vinyl,
                         count: 2,
                     },
-                    crate::pressing::MediaCount {
+                    bae_types::pressing::MediaCount {
                         medium: Medium::Cd,
                         count: 1,
                     },
                 ],
-                status: Some(crate::pressing::ReleaseStatus::Official),
-                packaging: Some(crate::pressing::Packaging::GatefoldCover),
+                status: Some(bae_types::pressing::ReleaseStatus::Official),
+                packaging: Some(bae_types::pressing::Packaging::GatefoldCover),
                 discogs_details: Vec::new(),
             },
         }
     );
     assert_eq!(
         media,
-        crate::pressing::StatedMedia::PerMedium(vec![
+        bae_types::pressing::StatedMedia::PerMedium(vec![
             Some(Medium::Vinyl),
             Some(Medium::Vinyl),
             Some(Medium::Cd)

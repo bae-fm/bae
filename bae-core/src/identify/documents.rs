@@ -30,8 +30,8 @@
 use crate::import::album_links::AlbumLinks;
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::MetadataRef;
-use crate::pressing::ReleaseLabel;
 use crate::signals::LookupFailure;
+use bae_types::pressing::ReleaseLabel;
 
 /// Where a run is with its offered rows' documents: each record's document,
 /// or why it could not be fetched, in the order they were read.
@@ -159,10 +159,11 @@ impl DocumentReading {
                 result.notes = document.notes.clone();
                 result.links = document.links.clone();
                 for barcode in &document.barcodes {
-                    let key = crate::barcode::comparison_key(barcode).ok();
+                    let key = bae_types::barcode::comparison_key(barcode).ok();
                     let stated = result.barcodes.iter().any(|stated| {
                         stated == barcode
-                            || (key.is_some() && crate::barcode::comparison_key(stated).ok() == key)
+                            || (key.is_some()
+                                && bae_types::barcode::comparison_key(stated).ok() == key)
                     });
                     if !stated {
                         result.barcodes.push(barcode.clone());

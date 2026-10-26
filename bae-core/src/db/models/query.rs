@@ -104,7 +104,7 @@ pub struct DbWorkReleaseSummary {
     pub album_title: String,
     pub release_name: Option<String>,
     pub year: Option<i32>,
-    pub media: Vec<crate::pressing::MediaCount>,
+    pub media: Vec<bae_types::pressing::MediaCount>,
     pub release_index: i64,
 }
 
@@ -140,7 +140,7 @@ pub struct DbReleaseStorageSummary {
     pub album_id: String,
     pub album_title: String,
     pub artist_names: String,
-    pub media: Vec<crate::pressing::MediaCount>,
+    pub media: Vec<bae_types::pressing::MediaCount>,
     /// Whether all audio files are attached for sharing. Pending uploads are
     /// reported independently by the upload queue.
     pub remote: bool,
@@ -283,7 +283,7 @@ pub struct DbTrackWithArtists {
 pub struct DbReleaseSummary {
     pub id: String,
     pub album_id: String,
-    pub media: Vec<crate::pressing::MediaCount>,
+    pub media: Vec<bae_types::pressing::MediaCount>,
     /// Whether all audio files are attached for sharing. Pending uploads are
     /// reported independently by the upload queue.
     pub remote: bool,

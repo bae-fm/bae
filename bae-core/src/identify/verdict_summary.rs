@@ -67,7 +67,7 @@ pub struct LeadMatch {
     pub title: String,
     pub artist: Option<String>,
     pub year: Option<i32>,
-    pub media: Vec<crate::pressing::MediaCount>,
+    pub media: Vec<bae_types::pressing::MediaCount>,
     /// The lead match's cover, with the copies its catalog serves.
     pub cover: Option<crate::remote_image::RemoteImageSet>,
     pub source_tracks: Option<SourceTracks>,

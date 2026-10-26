@@ -28,6 +28,8 @@ tracing = { workspace = true }
 [dev-dependencies]
 bae-test-support = { path = "../bae-test-support" }
 bae-core = { path = "../bae-core", features = ["test-utils"] }
+# The pressing values the server tests seed releases with.
+bae-types = { path = "../bae-types" }
 # The WAV reader the transcode tests check served bytes with.
 bae-audio = { path = "../bae-audio", features = ["test-utils"] }
 tempfile = "3"

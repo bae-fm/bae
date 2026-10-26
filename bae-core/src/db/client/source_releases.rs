@@ -15,7 +15,7 @@ use crate::import::source_release::{
     UnfetchedDocument, UnfetchedReason,
 };
 use crate::import::{MetadataRef, ReleaseRecord};
-use crate::pressing::{Medium, Pressing, StatedFormat, StatedMedia};
+use bae_types::pressing::{Medium, Pressing, StatedFormat, StatedMedia};
 use tracklist::{insert_entry, load_mediums, Numbering};
 
 #[path = "source_releases/tracklist.rs"]

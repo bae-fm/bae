@@ -19,7 +19,7 @@ fn result(release_id: &str, source_tracks: Option<SourceTracks>) -> MetadataResu
         packaging: None,
         discogs_details: Vec::new(),
         barcodes: Vec::new(),
-        media: crate::pressing::StatedMedia::Undescribed,
+        media: bae_types::pressing::StatedMedia::Undescribed,
         links: Vec::new(),
         cover_art: None,
         source_group_id: Some("rg-1".to_string()),

@@ -164,6 +164,7 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
     core_changed=0
     util_changed=0
     audio_changed=0
+    types_changed=0
     MOBILE_CHECK_ARGS=(check --lib --target aarch64-apple-ios)
     for crate in "${DIRECTLY_CHANGED_CRATES[@]}"; do
         CLIPPY_ARGS+=(-p "$crate")
@@ -180,6 +181,10 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
                 audio_changed=1
                 MOBILE_CHECK_ARGS+=(-p bae-audio)
                 ;;
+            bae-types)
+                types_changed=1
+                MOBILE_CHECK_ARGS+=(-p bae-types)
+                ;;
         esac
     done
     if [ "$core_changed" -eq 1 ]; then
@@ -190,6 +195,9 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
     fi
     if [ "$audio_changed" -eq 1 ]; then
         CLIPPY_ARGS+=(--features bae-audio/test-utils,bae-audio/test-instrumentation)
+    fi
+    if [ "$types_changed" -eq 1 ]; then
+        CLIPPY_ARGS+=(--features bae-types/test-utils)
     fi
     CLIPPY_ARGS+=(-- -D warnings)
     run_check "clippy (directly changed crates)" cargo "${CLIPPY_ARGS[@]}" || {
@@ -208,11 +216,12 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
         exit 1
     }
 
-    # The mobile apps build bae-core, bae-util and bae-audio without their
-    # desktop-only modules, where anything only those modules use is dead code
-    # and fails the build.
-    if [ "$core_changed" -eq 1 ] || [ "$util_changed" -eq 1 ] || [ "$audio_changed" -eq 1 ]; then
-        run_check "bae-core, bae-util and bae-audio for iOS (desktop-only code)" \
+    # The mobile apps build bae-core, bae-util, bae-audio and bae-types without
+    # their desktop-only modules, where anything only those modules use is dead
+    # code and fails the build.
+    if [ "$core_changed" -eq 1 ] || [ "$util_changed" -eq 1 ] || [ "$audio_changed" -eq 1 ] \
+        || [ "$types_changed" -eq 1 ]; then
+        run_check "bae-core, bae-util, bae-audio and bae-types for iOS (desktop-only code)" \
             cargo "${MOBILE_CHECK_ARGS[@]}" || {
             echo "Gate code only desktop modules use with the same cfg and try again"
             exit 1

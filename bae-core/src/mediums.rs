@@ -8,7 +8,7 @@
 //! "Disc 2 · 3", "5") is a display of them.
 
 use crate::album_detail::{TrackPosition, TrackSide};
-use crate::pressing::Medium;
+use bae_types::pressing::Medium;
 use std::num::{NonZeroU16, NonZeroU32, NonZeroU8};
 
 /// One medium a release holds.

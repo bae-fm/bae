@@ -7,11 +7,11 @@
 //! so the search row, the stored release and the pairing evidence read the
 //! same thing.
 
-use super::discogs_detail::{self, Role};
-use super::medium::DiscogsFormatName;
-use super::stated_media::{StatedFormat, StatedMedia};
-use super::{DiscogsDetail, Medium, Packaging, ReleaseStatus};
 use crate::discogs::DiscogsFormat;
+use bae_types::pressing::discogs_detail::{self, Role};
+use bae_types::pressing::medium::DiscogsFormatName;
+use bae_types::pressing::stated_media::{StatedFormat, StatedMedia};
+use bae_types::pressing::{DiscogsDetail, Medium, Packaging, ReleaseStatus};
 use tracing::{debug, warn};
 
 /// Every fact a release's format entries state.
@@ -32,7 +32,10 @@ pub(crate) fn read(release_id: &str, formats: &[DiscogsFormat]) -> FormatsReadin
     let mut packaging = None;
     let mut details: Vec<DiscogsDetail> = Vec::new();
     // An entry with a blank name states nothing.
-    for format in formats.iter().filter(|format| !format.name.trim().is_empty()) {
+    for format in formats
+        .iter()
+        .filter(|format| !format.name.trim().is_empty())
+    {
         let roles: Vec<Role> = format
             .descriptions
             .iter()
@@ -160,7 +163,7 @@ mod tests {
         );
         assert_eq!(
             reading.media.counts(),
-            vec![crate::pressing::MediaCount {
+            vec![bae_types::pressing::MediaCount {
                 medium: Medium::Vinyl,
                 count: 6
             }]
@@ -190,7 +193,11 @@ mod tests {
     fn an_unofficial_promotional_copy_is_a_bootleg() {
         let reading = read(
             "1",
-            &[format("Vinyl", "1", &["12\"", "Promo", "Unofficial Release"])],
+            &[format(
+                "Vinyl",
+                "1",
+                &["12\"", "Promo", "Unofficial Release"],
+            )],
         );
         assert_eq!(reading.status, Some(ReleaseStatus::Bootleg));
     }
@@ -217,10 +224,7 @@ mod tests {
 
     #[test]
     fn words_outside_the_lists_are_left_out() {
-        let reading = read(
-            "1",
-            &[format("Zorblax", "0", &["Reissue", "180 Gram"])],
-        );
+        let reading = read("1", &[format("Zorblax", "0", &["Reissue", "180 Gram"])]);
         assert_eq!(
             reading.media,
             StatedMedia::Formats(vec![StatedFormat {

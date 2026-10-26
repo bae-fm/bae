@@ -44,17 +44,16 @@ mod catalog_number;
 mod fold;
 mod label;
 
-pub(crate) use artist::{artist_name_key, is_various_artists, same_artist_name};
-pub(crate) use catalog_number::catalog_key;
-pub(crate) use fold::{is_stop_word, normalize, squash, words, written_words};
-pub(crate) use label::same_label_name;
+pub use artist::{artist_name_key, is_various_artists, same_artist_name};
+pub use catalog_number::catalog_key;
+pub use fold::{is_stop_word, normalize, squash, words, written_words};
+pub use label::{same_label_name, LabelName};
 
 desktop_only! {
     mod title;
 
-    pub(crate) use catalog_number::{catalog_words, printed_catalog_numbers};
-    pub(crate) use label::LabelName;
-    pub(crate) use title::{
+    pub use catalog_number::{catalog_words, printed_catalog_numbers};
+    pub use title::{
         album_title_words, bare_album_title, strip_trailing_brackets, track_title_key,
     };
 }

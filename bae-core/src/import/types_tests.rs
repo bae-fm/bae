@@ -46,9 +46,9 @@ mod edit_shaping_tests {
                     name: "Label Name".to_string(),
                     catalog_number: "CAT-123".to_string(),
                 }],
-                facts: crate::pressing::PressingFacts {
-                    area: Some(crate::pressing::area("US")),
-                    ..crate::pressing::made_of(crate::pressing::Medium::Vinyl, 2)
+                facts: bae_types::pressing::PressingFacts {
+                    area: Some(bae_types::pressing::area("US")),
+                    ..bae_types::pressing::made_of(bae_types::pressing::Medium::Vinyl, 2)
                 },
                 barcodes: vec!["0123456789".to_string()],
             },
@@ -77,7 +77,7 @@ mod edit_shaping_tests {
         assert_eq!(shaped.pressing.year, Some(1999));
         assert_eq!(
             shaped.pressing.facts.media,
-            crate::pressing::made_of(crate::pressing::Medium::Vinyl, 2).media
+            bae_types::pressing::made_of(bae_types::pressing::Medium::Vinyl, 2).media
         );
         assert_eq!(shaped.tracks.len(), 1);
         assert_eq!(shaped.tracks[0].title, "Track Title");
@@ -145,7 +145,7 @@ mod edit_shaping_tests {
             barcodes: Vec::new(),
         };
         let pressing = form.shape().expect("shapes").pressing;
-        assert_eq!(pressing, crate::pressing::Pressing::blank());
+        assert_eq!(pressing, bae_types::pressing::Pressing::blank());
     }
 
     #[test]
@@ -177,9 +177,9 @@ mod edit_shaping_tests {
         assert_eq!(
             form.shape().expect("shapes").pressing.labels,
             vec![
-                crate::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
-                crate::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
-                crate::pressing::ReleaseLabel::of(None, Some("XY 3")),
+                bae_types::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
+                bae_types::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
+                bae_types::pressing::ReleaseLabel::of(None, Some("XY 3")),
             ]
         );
     }
@@ -233,9 +233,9 @@ mod edit_shaping_tests {
                 crate::import::Credited::plain(ArtistAssignment::named("Artist Two")),
             ],
             album_year: Some(1987),
-            pressing: crate::pressing::Pressing {
+            pressing: bae_types::pressing::Pressing {
                 year: Some(1999),
-                labels: vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-123"))],
+                labels: vec![bae_types::pressing::ReleaseLabel::of(None, Some("CAT-123"))],
                 facts: Default::default(),
                 barcodes: Vec::new(),
             },

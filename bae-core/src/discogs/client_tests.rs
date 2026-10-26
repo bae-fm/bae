@@ -280,7 +280,7 @@ fn blank_pressing_fields_are_absent_in_discogs_documents() {
         assert!(release.country.is_none());
         let (pressing, media) = crate::import::discogs_mapper::pressing(&release);
         assert!(pressing.facts.is_empty());
-        assert_eq!(media, crate::pressing::StatedMedia::Undescribed);
+        assert_eq!(media, bae_types::pressing::StatedMedia::Undescribed);
         assert!(release.labels.is_empty());
         assert!(pressing.labels.is_empty());
         assert!(release.barcodes.is_empty());
@@ -299,7 +299,7 @@ fn a_none_catalog_number_is_no_number() {
         .to_string();
         assert_eq!(
             parse_discogs_release_json(&raw).unwrap().labels,
-            vec![crate::pressing::ReleaseLabel::of(Some("Label A"), None)],
+            vec![bae_types::pressing::ReleaseLabel::of(Some("Label A"), None)],
             "{placeholder}"
         );
     }
@@ -309,7 +309,7 @@ fn a_none_catalog_number_is_no_number() {
 /// them all.
 #[test]
 fn every_label_and_its_catalog_number_is_read() {
-    use crate::pressing::ReleaseLabel;
+    use bae_types::pressing::ReleaseLabel;
     let raw = serde_json::json!({
         "id": 123, "title": "Album",
         "labels": [

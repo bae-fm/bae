@@ -48,7 +48,7 @@ mirror_enum! {
 }
 
 /// Why a barcode search's value names no product. Mirrors
-/// `bae_core::barcode::Unusable`; the UI words it through
+/// `bae_types::barcode::Unusable`; the UI words it through
 /// `bridge_unusable_barcode_key`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeUnusableBarcode {
@@ -60,7 +60,7 @@ pub enum BridgeUnusableBarcode {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeUnusableBarcode = bae_core::barcode::Unusable,
+    BridgeUnusableBarcode = bae_types::barcode::Unusable,
     from_core: pub(crate) fn,
     variants: { NotACode, TooShort, Placeholder, StoreInternal },
 }

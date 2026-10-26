@@ -34,11 +34,11 @@ fn pressing(
 ) -> MetadataResult {
     MetadataResult {
         labels: (catalog.is_some() || label.is_some())
-            .then(|| crate::pressing::ReleaseLabel::of(label, catalog))
+            .then(|| bae_types::pressing::ReleaseLabel::of(label, catalog))
             .into_iter()
             .collect(),
         year,
-        area: country.map(crate::pressing::area),
+        area: country.map(bae_types::pressing::area),
         status: None,
         packaging: None,
         discogs_details: Vec::new(),

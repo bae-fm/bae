@@ -1,6 +1,6 @@
 use super::*;
 use crate::discogs::client::DiscogsSearchResult;
-use crate::pressing::{MediaCount, Medium, StatedMedia};
+use bae_types::pressing::{MediaCount, Medium, StatedMedia};
 use crate::import::discogs_mapper::parse_duration_to_ms;
 use crate::musicbrainz::{
     MbArtistCredit, MbMedium, MbRecording, MbReleaseGroupRef, MbReleaseResponse, MbTrack,
@@ -347,7 +347,7 @@ fn catalog_and_barcode_queries_fill_their_own_provider_fields() {
 
 #[test]
 fn a_barcode_query_names_why_its_value_is_no_product_code() {
-    use crate::barcode::Unusable;
+    use bae_types::barcode::Unusable;
     let unusable = |typed: &str| {
         SearchQuery::Barcode {
             barcode: typed.to_string(),
@@ -628,7 +628,7 @@ fn mb_detail_pressing_matches_the_committed_pressing() {
     assert_eq!(detail.labels, committed.labels);
     assert_eq!(detail.facts, committed.facts);
     assert_eq!(detail.barcodes, committed.barcodes);
-    assert_eq!(detail.facts.status, Some(crate::pressing::ReleaseStatus::Promotion));
+    assert_eq!(detail.facts.status, Some(bae_types::pressing::ReleaseStatus::Promotion));
 }
 
 /// A track's title is the recording's first, the track's own title only as
@@ -851,14 +851,14 @@ fn a_musicbrainz_search_result_states_its_media() {
     let result = search_release_to_metadata(release, None);
     assert_eq!(
         result.facts(),
-        crate::pressing::PressingFacts {
-            area: Some(crate::pressing::area("JM")),
+        bae_types::pressing::PressingFacts {
+            area: Some(bae_types::pressing::area("JM")),
             media: vec![MediaCount {
                 medium: Medium::Vinyl,
                 count: 1
             }],
-            status: Some(crate::pressing::ReleaseStatus::Official),
-            packaging: Some(crate::pressing::Packaging::CardboardSleeve),
+            status: Some(bae_types::pressing::ReleaseStatus::Official),
+            packaging: Some(bae_types::pressing::Packaging::CardboardSleeve),
             discogs_details: Vec::new(),
         }
     );
@@ -889,17 +889,17 @@ fn a_discogs_search_result_reads_its_format_entries() {
     let result = discogs_search_result_to_metadata(result);
     assert_eq!(
         result.facts(),
-        crate::pressing::PressingFacts {
-            area: Some(crate::pressing::area("JP")),
+        bae_types::pressing::PressingFacts {
+            area: Some(bae_types::pressing::area("JP")),
             media: vec![MediaCount {
                 medium: Medium::Cd,
                 count: 2
             }],
-            status: Some(crate::pressing::ReleaseStatus::Promotion),
+            status: Some(bae_types::pressing::ReleaseStatus::Promotion),
             packaging: None,
             discogs_details: vec![
-                crate::pressing::DiscogsDetail::Reissue,
-                crate::pressing::DiscogsDetail::Stereo,
+                bae_types::pressing::DiscogsDetail::Reissue,
+                bae_types::pressing::DiscogsDetail::Stereo,
             ],
         }
     );

@@ -20,7 +20,7 @@
 use crate::import::release_group::ReleaseGroup;
 use crate::import::{AlbumLink, Credited, CandidateDraft, MetadataRef, RawLabelEdit, RawReleaseEdit, TrackArtistAssignments};
 use crate::catalog::Catalog;
-use crate::text_match;
+use bae_types::text_match;
 
 /// The offered rows of a list that are several pressings of one album.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -228,13 +228,13 @@ fn agreed<'a, T>(
 }
 
 /// The products a form's barcode rows name, each once, in order of their
-/// comparison keys (see [`crate::barcode::comparison_key`]): two readings
+/// comparison keys (see [`bae_types::barcode::comparison_key`]): two readings
 /// agree on their barcodes when they name the same products, however each
 /// prints them.
 fn barcode_keys(barcodes: &[String]) -> Vec<String> {
     let mut keys: Vec<String> = barcodes
         .iter()
-        .filter_map(|barcode| crate::barcode::comparison_key(barcode).ok())
+        .filter_map(|barcode| bae_types::barcode::comparison_key(barcode).ok())
         .collect();
     keys.sort();
     keys.dedup();

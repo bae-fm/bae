@@ -429,7 +429,7 @@ impl CatalogSearch {
 fn search_covers(searched: Option<&str>, wanted: Option<&str>) -> bool {
     match (searched, wanted) {
         (None, _) => true,
-        (Some(searched), Some(wanted)) => crate::text_match::same_artist_name(searched, wanted),
+        (Some(searched), Some(wanted)) => bae_types::text_match::same_artist_name(searched, wanted),
         (Some(_), None) => false,
     }
 }
@@ -449,8 +449,8 @@ pub(super) fn names_artist(catalog: Catalog) -> bool {
 /// its other releases by.
 pub(super) fn credited_artist(result: &MetadataResult) -> Option<String> {
     let artist = result.artist.as_deref()?.trim();
-    if crate::text_match::artist_name_key(artist).is_empty()
-        || crate::text_match::is_various_artists(artist)
+    if bae_types::text_match::artist_name_key(artist).is_empty()
+        || bae_types::text_match::is_various_artists(artist)
     {
         return None;
     }

@@ -407,15 +407,15 @@ async fn file_metadata_import_with_user_edit_overlay() {
         album_title: "Edited Title".to_string(),
         album_artist_assignments: vec![bae_core::import::Credited::plain(ArtistAssignment::named("Artist Edited"))],
         album_year: Some(1998),
-        pressing: bae_core::pressing::Pressing {
+        pressing: bae_types::pressing::Pressing {
             year: Some(2010),
-            labels: vec![bae_core::pressing::ReleaseLabel::of(Some("Edited Label"), Some("EDIT-1"))],
-            facts: bae_core::pressing::PressingFacts {
-                area: Some(bae_core::pressing::ReleaseArea::Country(
-                    bae_core::pressing::Country::from_code("JP").unwrap(),
+            labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Edited Label"), Some("EDIT-1"))],
+            facts: bae_types::pressing::PressingFacts {
+                area: Some(bae_types::pressing::ReleaseArea::Country(
+                    bae_types::pressing::Country::from_code("JP").unwrap(),
                 )),
-                media: vec![bae_core::pressing::MediaCount {
-                    medium: bae_core::pressing::Medium::Cd,
+                media: vec![bae_types::pressing::MediaCount {
+                    medium: bae_types::pressing::Medium::Cd,
                     count: 1,
                 }],
                 ..Default::default()
@@ -447,19 +447,19 @@ async fn file_metadata_import_with_user_edit_overlay() {
     assert_eq!(release.pressing.year, Some(2010));
     assert_eq!(
         release.pressing.facts.media,
-        vec![bae_core::pressing::MediaCount {
-            medium: bae_core::pressing::Medium::Cd,
+        vec![bae_types::pressing::MediaCount {
+            medium: bae_types::pressing::Medium::Cd,
             count: 1,
         }]
     );
     assert_eq!(
         release.pressing.labels,
-        vec![bae_core::pressing::ReleaseLabel::of(Some("Edited Label"), Some("EDIT-1"))]
+        vec![bae_types::pressing::ReleaseLabel::of(Some("Edited Label"), Some("EDIT-1"))]
     );
     assert_eq!(
         release.pressing.facts.area,
-        Some(bae_core::pressing::ReleaseArea::Country(
-            bae_core::pressing::Country::from_code("JP").unwrap()
+        Some(bae_types::pressing::ReleaseArea::Country(
+            bae_types::pressing::Country::from_code("JP").unwrap()
         ))
     );
     assert_eq!(release.pressing.barcodes, ["4943674000000"]);

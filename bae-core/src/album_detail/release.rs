@@ -35,7 +35,7 @@ pub struct ReleaseSummary {
     pub album_id: String,
     /// What the release is made of, each carrier with its count; empty if
     /// unknown.
-    pub media: Vec<crate::pressing::MediaCount>,
+    pub media: Vec<bae_types::pressing::MediaCount>,
     /// Whether every release file has been attached for upload. Orthogonal to
     /// `pinned`.
     pub storage_state: ReleaseStorageState,
@@ -95,9 +95,9 @@ pub struct ReleaseDetail {
     pub name: ReleaseName,
     pub year: Option<i32>,
     /// Every label the release is on, each with its catalog number.
-    pub labels: Vec<crate::pressing::ReleaseLabel>,
+    pub labels: Vec<bae_types::pressing::ReleaseLabel>,
     /// What the pressing is: its area, media, status, packaging and details.
-    pub facts: crate::pressing::PressingFacts,
+    pub facts: bae_types::pressing::PressingFacts,
     /// Summed across all tracks, in milliseconds. The UI formats it.
     pub total_duration_ms: u64,
     pub tracks: Vec<TrackDetail>,

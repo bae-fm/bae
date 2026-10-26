@@ -142,7 +142,10 @@ fn how_many_searches_returned_a_row_adds_no_weight() {
 #[test]
 fn a_discogs_row_stating_the_pressing_beats_one_backed_only_by_the_disc_id() {
     let (mut discogs, status) = pair_src(Catalog::Discogs, "dg-1", None);
-    discogs.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("AB 12345-2"))];
+    discogs.labels = vec![bae_types::pressing::ReleaseLabel::of(
+        None,
+        Some("AB 12345-2"),
+    )];
     discogs.barcodes = vec![FOLDER_BARCODE.to_string()];
     let (matches, _, _) = found(combine_results(
         LookupAnswers {
@@ -182,7 +185,7 @@ fn lookups_that_named_different_releases_each_keep_their_answer() {
     let discid = vec![pair("rel-a", Some("group-1"))];
     let barcode = vec![pair("rel-b", Some("group-2"))];
     let (mut numbered, status) = pair("rel-c", Some("group-3"));
-    numbered.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("L3-100"))];
+    numbered.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("L3-100"))];
     let catalog = vec![(numbered, status)];
     let outcome = combine_results(
         LookupAnswers {
@@ -275,7 +278,7 @@ fn the_ranking_hands_back_what_it_set_aside() {
 #[test]
 fn a_set_aside_release_two_searches_returned_is_named_once() {
     let (mut numbered, status) = pair("rel-shared", None);
-    numbered.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("L3-100"))];
+    numbered.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("L3-100"))];
     let discid = vec![pair("rel-a", None), (numbered.clone(), status.clone())];
     let barcode = vec![pair("rel-a", None), (numbered, status)];
     let outcome = combine_results(
@@ -331,11 +334,11 @@ fn pressing_of_album_one(release_id: &str, year: i32) -> (MetadataResult, Librar
         MetadataResult {
             title: "Album One".to_string(),
             artist: Some("Artist One".to_string()),
-            labels: vec![crate::pressing::ReleaseLabel::of(
+            labels: vec![bae_types::pressing::ReleaseLabel::of(
                 Some("Label One"),
                 Some("L1-16033"),
             )],
-            area: Some(crate::pressing::area("US")),
+            area: Some(bae_types::pressing::area("US")),
             status: None,
             packaging: None,
             discogs_details: Vec::new(),
@@ -353,11 +356,11 @@ fn unrelated_record() -> (MetadataResult, LibraryStatus) {
         MetadataResult {
             title: "Album Three".to_string(),
             artist: Some("Artist Three".to_string()),
-            labels: vec![crate::pressing::ReleaseLabel::of(
+            labels: vec![bae_types::pressing::ReleaseLabel::of(
                 Some("Label Three"),
                 Some("L3-44633"),
             )],
-            area: Some(crate::pressing::area("FR")),
+            area: Some(bae_types::pressing::area("FR")),
             status: None,
             packaging: None,
             discogs_details: Vec::new(),
@@ -417,7 +420,10 @@ fn the_pressing_whose_catalog_number_the_folder_states_folds_the_other() {
     let text = folder(&["1972 - Album One (Label One, L1-16033, Germany)"]);
     let stated = pressing_of_album_one("rel-stated", 1989);
     let mut other = pressing_of_album_one("rel-other", 1990);
-    other.0.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("L1-99999"))];
+    other.0.labels = vec![bae_types::pressing::ReleaseLabel::of(
+        None,
+        Some("L1-99999"),
+    )];
     let outcome = combine_results(
         LookupAnswers {
             disc_id: vec![vec![stated.clone(), other.clone()]],
@@ -438,7 +444,10 @@ fn two_pressings_the_folder_names_no_number_of_both_stay() {
     let text = folder(&["1972 - Album One (Label One, Germany)"]);
     let first = pressing_of_album_one("rel-first", 1989);
     let mut second = pressing_of_album_one("rel-second", 1990);
-    second.0.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("L1-99999"))];
+    second.0.labels = vec![bae_types::pressing::ReleaseLabel::of(
+        None,
+        Some("L1-99999"),
+    )];
     let outcome = combine_results(
         LookupAnswers {
             disc_id: vec![vec![first.clone(), second.clone()]],
@@ -483,7 +492,10 @@ fn a_disc_id_s_pressing_stays_however_the_folder_spells_its_label() {
     let text = folder(&["Artist One - Album One (Label One)"]);
     let matched = pressing_of_album_one("rel-matched", 1976);
     let mut reissue = pressing_of_album_one("rel-reissue", 1994);
-    reissue.0.labels = vec![crate::pressing::ReleaseLabel::of(Some("Label Four"), None)];
+    reissue.0.labels = vec![bae_types::pressing::ReleaseLabel::of(
+        Some("Label Four"),
+        None,
+    )];
     let outcome = combine_results(
         LookupAnswers {
             disc_id: vec![vec![matched, reissue]],
@@ -605,16 +617,16 @@ fn album_two_musicbrainz() -> (MetadataResult, LibraryStatus) {
         MetadataResult {
             title: "Album Two".to_string(),
             artist: Some("Artist Two".to_string()),
-            labels: vec![crate::pressing::ReleaseLabel::of(
+            labels: vec![bae_types::pressing::ReleaseLabel::of(
                 Some("Label Two"),
                 Some("L2-2031"),
             )],
-            area: Some(crate::pressing::area("JP")),
+            area: Some(bae_types::pressing::area("JP")),
             status: None,
             packaging: None,
             discogs_details: Vec::new(),
             barcodes: vec!["4988014720311".to_string()],
-            media: crate::pressing::StatedMedia::Undescribed,
+            media: bae_types::pressing::StatedMedia::Undescribed,
             links: Vec::new(),
             year: Some(1988),
             source_group_id: Some("rg-album-two".to_string()),
@@ -631,16 +643,16 @@ fn album_two_discogs(release_id: &str, year: Option<i32>) -> (MetadataResult, Li
             source: Catalog::Discogs,
             title: "Album Two".to_string(),
             artist: Some("Artist Two".to_string()),
-            labels: vec![crate::pressing::ReleaseLabel::of(
+            labels: vec![bae_types::pressing::ReleaseLabel::of(
                 Some("Label Two"),
                 Some("L2-2031"),
             )],
-            area: crate::pressing::ReleaseArea::discogs("Japan"),
+            area: bae_types::pressing::ReleaseArea::discogs("Japan"),
             status: None,
             packaging: None,
             discogs_details: Vec::new(),
             barcodes: vec!["4988014720311".to_string()],
-            media: crate::pressing::StatedMedia::Undescribed,
+            media: bae_types::pressing::StatedMedia::Undescribed,
             links: Vec::new(),
             year,
             source_group_id: Some("master-album-two".to_string()),

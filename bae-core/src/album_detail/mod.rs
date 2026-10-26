@@ -62,7 +62,7 @@ pub enum ReleaseName {
     /// No name: its year and media, whichever it states.
     Described {
         year: Option<i32>,
-        media: Vec<crate::pressing::MediaCount>,
+        media: Vec<bae_types::pressing::MediaCount>,
     },
     /// No name and nothing to describe it by: its place among the album's
     /// releases, counted from one.
@@ -75,7 +75,7 @@ impl ReleaseName {
     pub(crate) fn of(
         release_name: Option<&str>,
         year: Option<i32>,
-        media: &[crate::pressing::MediaCount],
+        media: &[bae_types::pressing::MediaCount],
         release_number: i64,
     ) -> Self {
         match release_name {

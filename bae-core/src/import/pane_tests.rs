@@ -36,7 +36,7 @@ fn metadata(
         album_title: "Album Title".to_string(),
         album_credits: Vec::new(),
         album_year: None,
-        pressing: crate::pressing::Pressing::blank(),
+        pressing: bae_types::pressing::Pressing::blank(),
         mediums,
         release_roles: Vec::new(),
         works: Default::default(),
@@ -59,7 +59,7 @@ fn one_disc(count: u32) -> ReleaseValues {
     let places: Vec<_> = (1..=count).map(|number| place(1, 1, number)).collect();
     metadata(
         vec![crate::mediums::ReleaseMedium::one_sided(Some(
-            crate::pressing::Medium::Cd,
+            bae_types::pressing::Medium::Cd,
         ))],
         &places,
     )
@@ -70,7 +70,7 @@ fn one_disc(count: u32) -> ReleaseValues {
 fn metadata_splits_one_draft_disc_into_sides() {
     let current = draft(4);
     let record = crate::mediums::ReleaseMedium {
-        carrier: Some(crate::pressing::Medium::Vinyl),
+        carrier: Some(bae_types::pressing::Medium::Vinyl),
         sides: std::num::NonZeroU8::new(2).expect("two sides"),
     };
     let laid = values_over_audio(

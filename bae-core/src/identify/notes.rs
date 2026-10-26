@@ -23,7 +23,7 @@
 
 use super::agreements::CandidateText;
 use crate::import::search::MetadataResult;
-use crate::text_match::{is_stop_word, words};
+use bae_types::text_match::{is_stop_word, words};
 use std::collections::HashSet;
 
 /// For each row, as its records, the note of each record that writes a word

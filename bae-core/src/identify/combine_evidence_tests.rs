@@ -4,8 +4,8 @@
 
 use super::*;
 use crate::identify::MediumConflict;
-use crate::pressing::{DiscogsDetail, Medium, StatedMedia};
 use crate::signals::{AudioOrigin, AudioSource, CdProof, TextLine, TextOrigin};
+use bae_types::pressing::{DiscogsDetail, Medium, StatedMedia};
 
 type Outcome = (Findings, LibraryStatuses);
 type Found = (MetadataResult, LibraryStatus);
@@ -30,7 +30,7 @@ fn pressing(release_id: &str, media: StatedMedia) -> Found {
         MetadataResult {
             title: "Album One".to_string(),
             artist: Some("Artist One".to_string()),
-            labels: vec![crate::pressing::ReleaseLabel::of(None, Some("L1-100"))],
+            labels: vec![bae_types::pressing::ReleaseLabel::of(None, Some("L1-100"))],
             media,
             ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("rg-one"))
         },
@@ -199,7 +199,7 @@ fn a_download_offers_the_digital_release() {
     let outcome = by_catalog(
         vec![pressing("rel-cd", made_of(&[Medium::Cd])), {
             let (mut result, status) = pressing("rel-cd-2", made_of(&[Medium::Cd]));
-            result.packaging = Some(crate::pressing::Packaging::Digipak);
+            result.packaging = Some(bae_types::pressing::Packaging::Digipak);
             (result, status)
         }],
         &HI_RES_DOWNLOAD,
@@ -248,7 +248,7 @@ fn rows_all_contradicted_all_stay() {
 fn the_pressing_the_barcode_and_catalog_number_name_outranks_the_disc_id_s() {
     let named = pressing("rel-named", made_of(&[Medium::Cd]));
     let mut other = pressing("rel-other", made_of(&[Medium::Cd]));
-    other.0.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("L1-999"))];
+    other.0.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("L1-999"))];
     let outcome = combine_results(
         LookupAnswers {
             disc_id: vec![vec![other]],
@@ -295,7 +295,7 @@ fn a_sleeve_saying_where_it_was_made_offers_that_pressing() {
         let (result, status) = pressing(release_id, made_of(&[Medium::Cd]));
         (
             MetadataResult {
-                area: Some(crate::pressing::area(area)),
+                area: Some(bae_types::pressing::area(area)),
                 year: Some(2010),
                 labels: Vec::new(),
                 ..result
@@ -326,7 +326,7 @@ fn stating_no_country_or_both_leaves_the_pressings_tied() {
         let (result, status) = pressing(release_id, made_of(&[Medium::Cd]));
         (
             MetadataResult {
-                area: Some(crate::pressing::area(area)),
+                area: Some(bae_types::pressing::area(area)),
                 labels: Vec::new(),
                 ..result
             },
@@ -523,8 +523,11 @@ fn the_album_the_folder_names_outranks_another_on_the_same_label() {
             MetadataResult {
                 title: title.to_string(),
                 artist: Some(artist.to_string()),
-                labels: vec![crate::pressing::ReleaseLabel::of(Some("Label One"), None)],
-                area: Some(crate::pressing::area("US")),
+                labels: vec![bae_types::pressing::ReleaseLabel::of(
+                    Some("Label One"),
+                    None,
+                )],
+                area: Some(bae_types::pressing::area("US")),
                 ..result
             },
             status,
@@ -554,7 +557,7 @@ fn released_in(countries: &[(&str, &str)]) -> Vec<Found> {
             let (result, status) = pressing(release_id, made_of(&[Medium::Cd]));
             (
                 MetadataResult {
-                    area: Some(crate::pressing::area(country)),
+                    area: Some(bae_types::pressing::area(country)),
                     ..result
                 },
                 status,
@@ -565,7 +568,7 @@ fn released_in(countries: &[(&str, &str)]) -> Vec<Found> {
 
 fn registered_in(country: Option<&str>) -> FolderAudio<'static> {
     FolderAudio {
-        registered_in: country.map(crate::pressing::area),
+        registered_in: country.map(bae_types::pressing::area),
         ..FolderAudio::UNPROVEN
     }
 }

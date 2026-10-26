@@ -19,6 +19,8 @@ async-trait = "0.1.92"
 bae-desktop = { path = "../bae-desktop", optional = true }
 bae-cast = { path = "../bae-cast", optional = true }
 bae-core = { path = "../bae-core" }
+# The pressing values and barcode refusals the bridge mirrors.
+bae-types = { path = "../bae-types" }
 bae-util = { path = "../bae-util" }
 bae-mirror = { path = "../bae-mirror" }
 # Boundary records mirror the same coven instance used by bae-core.

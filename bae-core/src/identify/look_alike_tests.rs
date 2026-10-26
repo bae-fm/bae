@@ -6,7 +6,7 @@ use crate::identify::agreements::CandidateText;
 use crate::identify::combine::{combine_results, LookupAnswers};
 use crate::identify::medium::FolderAudio;
 use crate::import::search::MetadataResult;
-use crate::pressing::{Packaging, ReleaseLabel};
+use bae_types::pressing::{Packaging, ReleaseLabel};
 
 /// A 1959 pressing on Label One, LBL-100, as `catalog` lists it under `id`.
 fn pressing(catalog: Catalog, id: &str) -> (MetadataResult, LibraryStatus) {

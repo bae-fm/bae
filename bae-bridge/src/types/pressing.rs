@@ -1,11 +1,11 @@
 //! What a pressing is, as a surface renders it: the typed facts bae-core reads
-//! out of both catalogs (`bae_core::pressing`), and the words each is shown
+//! out of both catalogs (`bae_types::pressing`), and the words each is shown
 //! in. A surface never sees a catalog's raw text — a country crosses as its
 //! ISO 3166-1 code, which the platform names in the reader's language; every
 //! other fact crosses typed, and the functions here say which catalog
 //! message or printed term names it.
 
-/// Where a pressing was released. Mirrors `bae_core::pressing::ReleaseArea`.
+/// Where a pressing was released. Mirrors `bae_types::pressing::ReleaseArea`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgeReleaseArea {
     /// A country of ISO 3166-1, by its alpha-2 code. The platform names it.
@@ -18,12 +18,12 @@ pub enum BridgeReleaseArea {
 }
 
 impl BridgeReleaseArea {
-    pub(crate) fn from_core(area: bae_core::pressing::ReleaseArea) -> Self {
+    pub(crate) fn from_core(area: bae_types::pressing::ReleaseArea) -> Self {
         match area {
-            bae_core::pressing::ReleaseArea::Country(country) => Self::Country {
+            bae_types::pressing::ReleaseArea::Country(country) => Self::Country {
                 code: country.code().to_string(),
             },
-            bae_core::pressing::ReleaseArea::Region(region) => Self::Region {
+            bae_types::pressing::ReleaseArea::Region(region) => Self::Region {
                 region: BridgeRegion::from_core(region),
             },
         }
@@ -32,20 +32,20 @@ impl BridgeReleaseArea {
     /// The core area this names. A code that names no country of the
     /// standard is not one a surface can have been offered.
     #[cfg(feature = "desktop")]
-    pub(crate) fn into_core(self) -> bae_core::pressing::ReleaseArea {
+    pub(crate) fn into_core(self) -> bae_types::pressing::ReleaseArea {
         match self {
-            Self::Country { code } => bae_core::pressing::ReleaseArea::Country(
-                bae_core::pressing::Country::from_code(&code).unwrap_or_else(|| {
+            Self::Country { code } => bae_types::pressing::ReleaseArea::Country(
+                bae_types::pressing::Country::from_code(&code).unwrap_or_else(|| {
                     panic!("{code:?} is no ISO 3166-1 country the bridge offered")
                 }),
             ),
-            Self::Region { region } => bae_core::pressing::ReleaseArea::Region(region.into_core()),
+            Self::Region { region } => bae_types::pressing::ReleaseArea::Region(region.into_core()),
         }
     }
 }
 
 /// How many of one carrier a pressing holds. Mirrors
-/// `bae_core::pressing::MediaCount`.
+/// `bae_types::pressing::MediaCount`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeMediaCount {
     pub medium: BridgeMedium,
@@ -53,7 +53,7 @@ pub struct BridgeMediaCount {
 }
 
 mirror_struct! {
-    BridgeMediaCount = bae_core::pressing::MediaCount,
+    BridgeMediaCount = bae_types::pressing::MediaCount,
     from_core: pub(crate) fn,
     #[cfg(feature = "desktop")]
     into_core: pub(crate) fn,
@@ -61,7 +61,7 @@ mirror_struct! {
 }
 
 /// One line of a label list: the names, then the catalog numbers they share.
-/// Mirrors `bae_core::pressing::LabelLine`.
+/// Mirrors `bae_types::pressing::LabelLine`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeLabelLine {
     pub names: Vec<String>,
@@ -69,13 +69,13 @@ pub struct BridgeLabelLine {
 }
 
 mirror_struct! {
-    BridgeLabelLine = bae_core::pressing::LabelLine,
+    BridgeLabelLine = bae_types::pressing::LabelLine,
     from_core: pub(crate) fn,
     fields: { names, catalog_numbers },
 }
 
 /// One label a release is on, with its catalog number. Mirrors
-/// `bae_core::pressing::ReleaseLabel`.
+/// `bae_types::pressing::ReleaseLabel`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeReleaseLabel {
     pub name: Option<String>,
@@ -84,7 +84,7 @@ pub struct BridgeReleaseLabel {
 
 impl BridgeReleaseLabel {
     #[cfg(feature = "desktop")]
-    pub(crate) fn from_core(label: bae_core::pressing::ReleaseLabel) -> Self {
+    pub(crate) fn from_core(label: bae_types::pressing::ReleaseLabel) -> Self {
         Self {
             name: label.name().map(str::to_string),
             catalog_number: label.catalog_number().map(str::to_string),
@@ -92,7 +92,7 @@ impl BridgeReleaseLabel {
     }
 }
 
-/// What a pressing is. Mirrors `bae_core::pressing::PressingFacts`.
+/// What a pressing is. Mirrors `bae_types::pressing::PressingFacts`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgePressingFacts {
     pub area: Option<BridgeReleaseArea>,
@@ -103,7 +103,7 @@ pub struct BridgePressingFacts {
 }
 
 mirror_struct! {
-    BridgePressingFacts = bae_core::pressing::PressingFacts,
+    BridgePressingFacts = bae_types::pressing::PressingFacts,
     from_core: pub(crate) fn,
     #[cfg(feature = "desktop")]
     into_core: pub(crate) fn,
@@ -116,7 +116,7 @@ mirror_struct! {
     },
 }
 
-/// A carrier family. Mirrors `bae_core::pressing::Medium`.
+/// A carrier family. Mirrors `bae_types::pressing::Medium`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgeMedium {
     Cd,
@@ -164,7 +164,7 @@ pub enum BridgeMedium {
 }
 
 mirror_enum! {
-    BridgeMedium = bae_core::pressing::Medium,
+    BridgeMedium = bae_types::pressing::Medium,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
@@ -178,7 +178,7 @@ mirror_enum! {
     },
 }
 
-/// An area no current ISO 3166-1 code names. Mirrors `bae_core::pressing::Region`.
+/// An area no current ISO 3166-1 code names. Mirrors `bae_types::pressing::Region`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgeRegion {
     Europe,
@@ -246,7 +246,7 @@ pub enum BridgeRegion {
 }
 
 mirror_enum! {
-    BridgeRegion = bae_core::pressing::Region,
+    BridgeRegion = bae_types::pressing::Region,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
@@ -264,7 +264,7 @@ mirror_enum! {
     },
 }
 
-/// How official a release is. Mirrors `bae_core::pressing::ReleaseStatus`.
+/// How official a release is. Mirrors `bae_types::pressing::ReleaseStatus`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgeReleaseStatus {
     Official,
@@ -277,7 +277,7 @@ pub enum BridgeReleaseStatus {
 }
 
 mirror_enum! {
-    BridgeReleaseStatus = bae_core::pressing::ReleaseStatus,
+    BridgeReleaseStatus = bae_types::pressing::ReleaseStatus,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
@@ -286,7 +286,7 @@ mirror_enum! {
     },
 }
 
-/// What a release is sold in. Mirrors `bae_core::pressing::Packaging`.
+/// What a release is sold in. Mirrors `bae_types::pressing::Packaging`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgePackaging {
     JewelCase,
@@ -316,7 +316,7 @@ pub enum BridgePackaging {
 }
 
 mirror_enum! {
-    BridgePackaging = bae_core::pressing::Packaging,
+    BridgePackaging = bae_types::pressing::Packaging,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
@@ -327,7 +327,7 @@ mirror_enum! {
     },
 }
 
-/// A Discogs format description no field holds. Mirrors `bae_core::pressing::DiscogsDetail`.
+/// A Discogs format description no field holds. Mirrors `bae_types::pressing::DiscogsDetail`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgeDiscogsDetail {
     Lp,
@@ -480,7 +480,7 @@ pub enum BridgeDiscogsDetail {
 }
 
 mirror_enum! {
-    BridgeDiscogsDetail = bae_core::pressing::DiscogsDetail,
+    BridgeDiscogsDetail = bae_types::pressing::DiscogsDetail,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
@@ -625,10 +625,10 @@ pub fn bridge_medium_label(medium: BridgeMedium) -> BridgeTermLabel {
 pub fn bridge_discogs_detail_label(detail: BridgeDiscogsDetail) -> BridgeTermLabel {
     let detail = detail.into_core();
     match detail.wording() {
-        bae_core::pressing::discogs_detail::Wording::Word => BridgeTermLabel::Localized {
+        bae_types::pressing::discogs_detail::Wording::Word => BridgeTermLabel::Localized {
             key: format!("core.pressing.discogs.{}", detail.key()),
         },
-        bae_core::pressing::discogs_detail::Wording::Term => verbatim(detail.term()),
+        bae_types::pressing::discogs_detail::Wording::Term => verbatim(detail.term()),
     }
 }
 
@@ -694,7 +694,7 @@ pub fn bridge_media_terms(media: Vec<BridgeMediaCount>) -> Vec<BridgeFactTerm> {
 /// Every ISO 3166-1 country code, for a picker to name and sort.
 #[uniffi::export]
 pub fn bridge_country_codes() -> Vec<String> {
-    bae_core::pressing::Country::all()
+    bae_types::pressing::Country::all()
         .map(|country| country.code().to_string())
         .collect()
 }
@@ -702,7 +702,7 @@ pub fn bridge_country_codes() -> Vec<String> {
 /// Every region, for a picker.
 #[uniffi::export]
 pub fn bridge_regions() -> Vec<BridgeRegion> {
-    bae_core::pressing::Region::ALL
+    bae_types::pressing::Region::ALL
         .iter()
         .map(|region| BridgeRegion::from_core(*region))
         .collect()
@@ -711,7 +711,7 @@ pub fn bridge_regions() -> Vec<BridgeRegion> {
 /// Every medium, for a picker.
 #[uniffi::export]
 pub fn bridge_media() -> Vec<BridgeMedium> {
-    bae_core::pressing::Medium::ALL
+    bae_types::pressing::Medium::ALL
         .iter()
         .map(|medium| BridgeMedium::from_core(*medium))
         .collect()
@@ -720,7 +720,7 @@ pub fn bridge_media() -> Vec<BridgeMedium> {
 /// Every release status, for a picker.
 #[uniffi::export]
 pub fn bridge_release_statuses() -> Vec<BridgeReleaseStatus> {
-    bae_core::pressing::ReleaseStatus::ALL
+    bae_types::pressing::ReleaseStatus::ALL
         .iter()
         .map(|status| BridgeReleaseStatus::from_core(*status))
         .collect()
@@ -729,7 +729,7 @@ pub fn bridge_release_statuses() -> Vec<BridgeReleaseStatus> {
 /// Every packaging, for a picker.
 #[uniffi::export]
 pub fn bridge_packagings() -> Vec<BridgePackaging> {
-    bae_core::pressing::Packaging::ALL
+    bae_types::pressing::Packaging::ALL
         .iter()
         .map(|packaging| BridgePackaging::from_core(*packaging))
         .collect()
@@ -738,7 +738,7 @@ pub fn bridge_packagings() -> Vec<BridgePackaging> {
 /// Every Discogs detail, for a picker.
 #[uniffi::export]
 pub fn bridge_discogs_details() -> Vec<BridgeDiscogsDetail> {
-    bae_core::pressing::DiscogsDetail::ALL
+    bae_types::pressing::DiscogsDetail::ALL
         .iter()
         .map(|detail| BridgeDiscogsDetail::from_core(*detail))
         .collect()

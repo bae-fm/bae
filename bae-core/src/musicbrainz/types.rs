@@ -78,8 +78,8 @@ pub struct MbLabel {
 
 /// Every label a release is pressed under, with its catalog number, in
 /// MusicBrainz's order.
-pub fn release_labels(label_info: &[MbLabelInfo]) -> Vec<crate::pressing::ReleaseLabel> {
-    crate::pressing::ReleaseLabel::list(label_info.iter().map(|info| {
+pub fn release_labels(label_info: &[MbLabelInfo]) -> Vec<bae_types::pressing::ReleaseLabel> {
+    bae_types::pressing::ReleaseLabel::list(label_info.iter().map(|info| {
         (
             info.label.as_ref().and_then(|label| label.name.clone()),
             info.catalog_number.clone(),

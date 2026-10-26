@@ -1,5 +1,5 @@
 use super::*;
-use crate::pressing::StatedFormat;
+use bae_types::pressing::StatedFormat;
 
 fn track(position: &str) -> DiscogsTrack {
     DiscogsTrack {

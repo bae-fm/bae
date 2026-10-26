@@ -2,7 +2,7 @@
 //! blocking call, plus the artwork to read afterwards.
 
 use super::candidate_text::{extract_folder_brackets, parse_filename_stem, Source, SourcedLine};
-use crate::barcode::Barcode;
+use bae_types::barcode::Barcode;
 use crate::import::discid::read_rip_artifacts;
 use crate::import::folder_scanner::CategorizedFiles;
 use crate::signals::{AudioFacts, AudioOrigin, AudioSource, DiscIdSignal, DownloadProof, SourcedValue};

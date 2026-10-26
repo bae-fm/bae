@@ -12,6 +12,7 @@ path = "src/lib.rs"
 
 [dependencies]
 bae-audio = { path = "../bae-audio" }
+bae-types = { path = "../bae-types" }
 bae-util = { path = "../bae-util" }
 coven = { workspace = true }
 rusqlite = { workspace = true }
@@ -32,8 +33,6 @@ hex = "0.4"
 # Natural, case-insensitive file-name order: the release file list every
 # platform shows (detail, gallery) and the desktop import scan share it.
 natord = "1.0"
-# Shared text comparison for identification and stored release marks.
-unicode-normalization = "0.1"
 base64 = "0.22"
 async-trait = "0.1"
 regex = "1.11"
@@ -68,6 +67,9 @@ ndk = { version = "0.9", features = ["audio"] }
 # pipeline while its dependencies stayed behind.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
 lofty = "0.25"
+# A scanned file's name is matched against a sheet's or a tag's with its
+# Unicode composition set aside (src/import/folder_scanner.rs).
+unicode-normalization = "0.1"
 notify = "8.2.0"
 strsim = "0.11"
 # The MusicBrainz Disc ID is a SHA-1 of the disc's table of contents
@@ -100,6 +102,8 @@ bae-audio = { path = "../bae-audio", features = ["test-utils", "test-instrumenta
 # The test transport and the retry that sleeps no real time, for bae-core's
 # own unit tests.
 bae-util = { path = "../bae-util", features = ["test-utils"] }
+# The pressing values bae-core's unit tests build their fixtures from.
+bae-types = { path = "../bae-types", features = ["test-utils"] }
 # Shared integration-test helpers. A real crate rather than a `tests/support`
 # include so they compile once and `dead_code` stays armed on them; the cycle
 # back to bae-core is dev-only, which Cargo allows.
@@ -201,9 +205,10 @@ oauth-providers = []
 dev-reset = []
 # Forwards coven's test-utils so bae-core's own integration tests get the
 # re-exported clock/id fakes (FixedClock, …), bae-util's so they get its test
-# transport and a retry that sleeps no real time, and bae-audio's so they get
-# its test codec helpers.
-test-utils = ["coven/test-utils", "bae-util/test-utils", "bae-audio/test-utils"]
+# transport and a retry that sleeps no real time, bae-audio's so they get its
+# test codec helpers, and bae-types's so they get the pressing values their
+# fixtures are built from.
+test-utils = ["coven/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils"]
 
 [lints]
 workspace = true

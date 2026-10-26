@@ -2,8 +2,6 @@
 
 pub mod album_detail;
 pub mod app;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod barcode;
 pub mod catalog;
 pub mod collections;
 #[doc(hidden)]
@@ -41,7 +39,6 @@ pub mod musicbrainz;
 pub mod open_files_peak;
 pub mod people;
 pub mod playback;
-pub mod pressing;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod providers;
 pub mod queue;
@@ -64,7 +61,6 @@ pub(crate) mod test_gate;
 pub(crate) mod test_logs;
 #[cfg(test)]
 pub(crate) mod test_reads;
-pub(crate) mod text_match;
 pub mod ui;
 pub mod util;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

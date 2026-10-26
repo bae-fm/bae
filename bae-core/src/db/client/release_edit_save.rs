@@ -117,7 +117,7 @@ fn write_applied_rows_on(
                 medium.id,
                 medium.release_id,
                 medium.position,
-                medium.medium.carrier.map(crate::pressing::Medium::key),
+                medium.medium.carrier.map(bae_types::pressing::Medium::key),
                 medium.medium.sides,
                 medium.created_at.to_rfc3339(),
             ],

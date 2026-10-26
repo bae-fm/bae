@@ -2,16 +2,15 @@
 //!
 //! MusicBrainz and Discogs describe a release's place, media, status and
 //! packaging in their own words: a country as a code or a name, a medium as
-//! one format per disc or as a flat list of names and qualifiers. Both are
-//! read here, once, into typed values — [`PressingFacts`] — so nothing past
-//! the catalog boundary carries a catalog's raw text, and a surface renders
-//! one shape whichever catalog stated it.
+//! one format per disc or as a flat list of names and qualifiers. Each
+//! catalog's reader turns a record into typed values — [`PressingFacts`] —
+//! once, by the names this module knows, so nothing past the catalog boundary
+//! carries a catalog's raw text, and a surface renders one shape whichever
+//! catalog stated it.
 //!
-//! Every closed list a catalog states from is reproduced in the module that
-//! reads it, name for name, with a test comparing the table against the
-//! captured record under `test-fixtures/pressing-vocabulary/`.
-
-use bae_util::desktop_only;
+//! Every closed list a catalog states from is reproduced beside the value it
+//! names, name for name, with a test comparing the table against the captured
+//! record under `test-fixtures/pressing-vocabulary/`.
 
 pub mod area;
 pub mod country;
@@ -21,11 +20,6 @@ pub mod medium;
 pub mod packaging;
 pub mod stated_media;
 pub mod status;
-
-desktop_only! {
-    pub(crate) mod discogs_formats;
-    pub(crate) mod musicbrainz;
-}
 
 pub use area::{Region, ReleaseArea};
 pub use country::Country;
@@ -275,15 +269,15 @@ fn recorded(page: &str) -> Vec<&str> {
 
 /// The area a MusicBrainz release-country code names, for a test that states
 /// one.
-#[cfg(test)]
-pub(crate) fn area(code: &str) -> ReleaseArea {
+#[cfg(any(test, feature = "test-utils"))]
+pub fn area(code: &str) -> ReleaseArea {
     ReleaseArea::musicbrainz(code).unwrap_or_else(|| panic!("{code} names an area"))
 }
 
 /// Facts stating only that the pressing is `count` of `medium`, for a test
 /// that states media.
-#[cfg(test)]
-pub(crate) fn made_of(medium: Medium, count: u32) -> PressingFacts {
+#[cfg(any(test, feature = "test-utils"))]
+pub fn made_of(medium: Medium, count: u32) -> PressingFacts {
     PressingFacts {
         media: vec![MediaCount { medium, count }],
         ..PressingFacts::default()

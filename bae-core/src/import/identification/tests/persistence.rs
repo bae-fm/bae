@@ -94,7 +94,7 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
                     packaging: None,
                     discogs_details: Vec::new(),
                     barcodes: Vec::new(),
-                    media: crate::pressing::StatedMedia::Undescribed,
+                    media: bae_types::pressing::StatedMedia::Undescribed,
                     links: Vec::new(),
                     cover_art: None,
                     source_group_id: Some(group_id.to_string()),

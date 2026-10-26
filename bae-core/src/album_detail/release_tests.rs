@@ -20,7 +20,7 @@ fn detail(tracks: Vec<crate::db::DbTrackWithArtists>) -> ReleaseDetail {
             "release-id",
             std::num::NonZeroU16::MIN,
             crate::mediums::ReleaseMedium {
-                carrier: Some(crate::pressing::Medium::Vinyl),
+                carrier: Some(bae_types::pressing::Medium::Vinyl),
                 sides: std::num::NonZeroU8::new(2).expect("two sides"),
             },
             chrono::Utc::now(),

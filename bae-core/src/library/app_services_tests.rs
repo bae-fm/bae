@@ -359,7 +359,7 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
                     },
                 )],
                 album_year: None,
-                pressing: crate::pressing::Pressing::blank(),
+                pressing: bae_types::pressing::Pressing::blank(),
                 tracks: vec![crate::import::TrackUserEdit {
                     title: "Track 0".to_string(),
                     artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,

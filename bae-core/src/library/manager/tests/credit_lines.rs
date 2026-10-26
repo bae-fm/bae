@@ -219,7 +219,7 @@ async fn an_edit_prints_typed_artists_with_commas_and_drops_the_last_join() {
         album_title: "Test Album".to_string(),
         album_artist_assignments: album_artists,
         album_year: None,
-        pressing: crate::pressing::Pressing::blank(),
+        pressing: bae_types::pressing::Pressing::blank(),
         tracks: vec![
             crate::import::TrackUserEdit {
                 title: "Featured".to_string(),
@@ -311,7 +311,7 @@ async fn a_typed_credit_matching_a_credit_name_is_that_artist() {
                     crate::import::ArtistAssignment::named("a pseudonym"),
                 )],
                 album_year: None,
-                pressing: crate::pressing::Pressing::blank(),
+                pressing: bae_types::pressing::Pressing::blank(),
                 tracks: vec![
                     crate::import::TrackUserEdit {
                         title: "Featured".to_string(),

@@ -301,16 +301,16 @@ async fn set_records_does_not_touch_metadata_columns() {
     manager.database.insert_album(&album).await.unwrap();
 
     let mut release = create_test_release(&album.id);
-    release.pressing.facts = crate::pressing::PressingFacts {
-        area: Some(crate::pressing::area("US")),
-        status: Some(crate::pressing::ReleaseStatus::Official),
-        packaging: Some(crate::pressing::Packaging::GatefoldCover),
-        discogs_details: vec![crate::pressing::DiscogsDetail::Remastered],
-        ..crate::pressing::made_of(crate::pressing::Medium::Vinyl, 1)
+    release.pressing.facts = bae_types::pressing::PressingFacts {
+        area: Some(bae_types::pressing::area("US")),
+        status: Some(bae_types::pressing::ReleaseStatus::Official),
+        packaging: Some(bae_types::pressing::Packaging::GatefoldCover),
+        discogs_details: vec![bae_types::pressing::DiscogsDetail::Remastered],
+        ..bae_types::pressing::made_of(bae_types::pressing::Medium::Vinyl, 1)
     };
     release.pressing.labels = vec![
-        crate::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
-        crate::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
+        bae_types::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
+        bae_types::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
     ];
     release.pressing.barcodes = vec!["1234567890".to_string(), "5012345678900".to_string()];
     release.pressing.year = Some(1999);

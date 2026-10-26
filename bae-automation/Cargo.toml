@@ -11,6 +11,8 @@ path = "src/lib.rs"
 
 [dependencies]
 bae-core = { path = "../bae-core" }
+# The pressing values its records carry.
+bae-types = { path = "../bae-types" }
 bae-mirror = { path = "../bae-mirror" }
 schemars = "1.0"
 serde = { version = "1", features = ["derive"] }
@@ -19,6 +21,7 @@ tokio = { version = "1", features = ["sync", "time"] }
 
 [dev-dependencies]
 bae-core = { path = "../bae-core", features = ["test-utils"] }
+bae-types = { path = "../bae-types", features = ["test-utils"] }
 bae-util = { path = "../bae-util" }
 bae-test-support = { path = "../bae-test-support" }
 coven = { workspace = true }

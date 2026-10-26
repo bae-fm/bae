@@ -1,9 +1,9 @@
 //! The barcode signal: UPC/EAN codes found on a candidate's artwork — decoded
 //! from the bars or read from the digits printed under them — or in a CUE
-//! `CATALOG` field. What counts as a code is [`crate::barcode`]'s to say.
+//! `CATALOG` field. What counts as a code is [`bae_types::barcode`]'s to say.
 
 use super::{ArtworkAnalysis, InternalFailure, SourcedValue};
-use crate::barcode::Barcode;
+use bae_types::barcode::Barcode;
 
 /// The codes found in a candidate's files, in discovery order, each once per
 /// file it was read off.

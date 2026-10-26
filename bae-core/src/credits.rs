@@ -19,7 +19,7 @@ impl CreditName {
     /// The credit name `name` prints as, keyed by its folded form.
     pub(crate) fn of(name: &str) -> Self {
         Self {
-            key: crate::text_match::artist_name_key(name),
+            key: bae_types::text_match::artist_name_key(name),
             name: name.to_string(),
         }
     }

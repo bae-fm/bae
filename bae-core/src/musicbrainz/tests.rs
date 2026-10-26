@@ -349,9 +349,12 @@ fn label_info(name: Option<&str>, catalog_number: Option<&str>) -> MbLabelInfo {
     }
 }
 
-fn stated(name: Option<&str>, catalog_number: Option<&str>) -> crate::pressing::ReleaseLabel {
-    crate::pressing::ReleaseLabel::new(name.map(str::to_string), catalog_number.map(str::to_string))
-        .expect("a stated label")
+fn stated(name: Option<&str>, catalog_number: Option<&str>) -> bae_types::pressing::ReleaseLabel {
+    bae_types::pressing::ReleaseLabel::new(
+        name.map(str::to_string),
+        catalog_number.map(str::to_string),
+    )
+    .expect("a stated label")
 }
 
 #[test]

@@ -32,11 +32,11 @@ impl CandidateEditField {
 /// sets each with a control that offers only the values the vocabulary has.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PressingFactEdit {
-    Area(Option<crate::pressing::ReleaseArea>),
-    Media(Vec<crate::pressing::MediaCount>),
-    Status(Option<crate::pressing::ReleaseStatus>),
-    Packaging(Option<crate::pressing::Packaging>),
-    DiscogsDetails(Vec<crate::pressing::DiscogsDetail>),
+    Area(Option<bae_types::pressing::ReleaseArea>),
+    Media(Vec<bae_types::pressing::MediaCount>),
+    Status(Option<bae_types::pressing::ReleaseStatus>),
+    Packaging(Option<bae_types::pressing::Packaging>),
+    DiscogsDetails(Vec<bae_types::pressing::DiscogsDetail>),
 }
 
 /// One edit of the metadata form's album-level fields: text typed into a
@@ -71,11 +71,11 @@ impl DraftFieldEdit {
 impl PressingFactEdit {
     /// Put this choice in `facts`. A media count of zero is no medium, so the
     /// list keeps only carriers with a count; a detail is kept once.
-    pub fn apply(self, facts: &mut crate::pressing::PressingFacts) {
+    pub fn apply(self, facts: &mut bae_types::pressing::PressingFacts) {
         match self {
             Self::Area(area) => facts.area = area,
             Self::Media(media) => {
-                facts.media = crate::pressing::MediaCount::tally(
+                facts.media = bae_types::pressing::MediaCount::tally(
                     media
                         .into_iter()
                         .filter(|counted| counted.count > 0)

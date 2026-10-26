@@ -8,7 +8,7 @@
 //! nothing.
 
 use super::read::column_conversion_error;
-use crate::pressing::{
+use bae_types::pressing::{
     Country, DiscogsDetail, MediaCount, Packaging, PressingFacts, Region, ReleaseArea,
     ReleaseLabel, ReleaseStatus,
 };

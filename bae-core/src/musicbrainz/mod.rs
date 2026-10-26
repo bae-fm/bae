@@ -23,6 +23,7 @@ use reqwest::StatusCode;
 use thiserror::Error;
 use tracing::{debug, warn};
 
+pub(crate) mod pressing;
 mod types;
 pub use types::*;
 
@@ -363,7 +364,7 @@ impl QueryValueFormat {
                 let asked: Vec<&str> = words
                     .iter()
                     .copied()
-                    .filter(|word| !crate::text_match::is_stop_word(word))
+                    .filter(|word| !bae_types::text_match::is_stop_word(word))
                     .collect();
                 let asked = if asked.is_empty() { words } else { asked };
                 let required: Vec<String> = asked

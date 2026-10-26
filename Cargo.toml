@@ -12,6 +12,7 @@ members = [
     "bae-subsonic",
     "bae-test-support",
     "bae-theme",
+    "bae-types",
     "bae-uniffi-bindgen",
     "bae-util",
 ]

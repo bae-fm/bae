@@ -43,7 +43,7 @@ desktop_only! {
     impl Packaging {
         /// The packaging a MusicBrainz release's `packaging` names. `None` for a
         /// name outside the list, which the caller logs.
-        pub(crate) fn musicbrainz(name: &str) -> Option<Self> {
+        pub fn musicbrainz(name: &str) -> Option<Self> {
             MUSICBRAINZ_RELEASE_PACKAGING
                 .iter()
                 .find(|(stated, _)| super::same_name(stated, name))

@@ -19,7 +19,7 @@ use crate::import::source_release::{
 use crate::import::{ArtistCredit, CreditedRole, ImportError, SourceCredit};
 use crate::catalog::Catalog;
 use crate::musicbrainz::{release_labels, MbArtistRef, MbRelation, MbReleaseResponse, MbTrack, MbWork};
-use crate::pressing::{Medium, Pressing, StatedMedia};
+use bae_types::pressing::{Medium, Pressing, StatedMedia};
 use std::collections::HashSet;
 use std::num::NonZeroU8;
 use tracing::{debug, warn};
@@ -158,7 +158,7 @@ fn source_work(work: &MbWork, reported: &mut HashSet<String>) -> SourceWork {
 /// The one MB → pressing projection. The committed release, the picker's detail,
 /// and a search result all read it, so a pressing shown is the pressing stored.
 pub(crate) fn pressing(response: &MbReleaseResponse) -> (Pressing, StatedMedia) {
-    let (facts, media) = crate::pressing::musicbrainz::read(crate::pressing::musicbrainz::Stated {
+    let (facts, media) = crate::musicbrainz::pressing::read(crate::musicbrainz::pressing::Stated {
         release_id: &response.id,
         country: response.country.as_deref(),
         status: response.status.as_deref(),
@@ -334,7 +334,7 @@ pub(crate) fn mediums(response: &MbReleaseResponse) -> Vec<SourceMedium> {
         .media
         .iter()
         .map(|medium| SourceMedium {
-            medium: crate::pressing::musicbrainz::medium(&response.id, medium.format.as_deref()),
+            medium: crate::musicbrainz::pressing::medium(&response.id, medium.format.as_deref()),
             disc_ids: medium.discs.iter().fold(Vec::new(), |mut held, disc| {
                 if !held.contains(&disc.id) {
                     held.push(disc.id.clone());

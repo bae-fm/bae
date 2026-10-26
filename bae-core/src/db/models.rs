@@ -274,7 +274,7 @@ pub struct DbRelease {
     pub release_name: Option<String>,
     /// Pressing-level editorial metadata. `Pressing::blank()` means "user claimed
     /// an album, not a specific pressing" (Approximate imports).
-    pub pressing: crate::pressing::Pressing,
+    pub pressing: bae_types::pressing::Pressing,
     /// Name of the source folder this release was imported from (just the final
     /// path component, not the full path).
     pub source_folder_name: Option<String>,
@@ -761,7 +761,7 @@ impl DbRelease {
             id: release_id.to_string(),
             album_id: album_id.to_string(),
             release_name: None,
-            pressing: crate::pressing::Pressing::blank(),
+            pressing: bae_types::pressing::Pressing::blank(),
             source_folder_name: None,
             album_loudness_lufs: None,
             album_peak_linear: None,
@@ -795,7 +795,7 @@ impl DbReleaseMedium {
         Self::new(
             release_id,
             std::num::NonZeroU16::MIN,
-            crate::mediums::ReleaseMedium::one_sided(Some(crate::pressing::Medium::Cd)),
+            crate::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)),
             chrono::Utc::now(),
         )
     }

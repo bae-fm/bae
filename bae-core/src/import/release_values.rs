@@ -14,7 +14,7 @@ use crate::import::{
     RawPressingEdit, RawTrackEdit, ReleaseUserEdit, SourceCredit, TrackArtistAssignments,
     TrackUserEdit, WorkGraph, WorkPart,
 };
-use crate::pressing::Pressing;
+use bae_types::pressing::Pressing;
 use std::collections::HashSet;
 
 /// A release as one source reads it, laid onto the audio's tracks.
@@ -278,7 +278,7 @@ impl WorkGraphBuilder {
         let held = work.composers.iter().any(|known| {
             match (&known.musicbrainz_artist_id, &composer.musicbrainz_artist_id) {
                 (Some(known), Some(composer)) => known == composer,
-                (None, None) => crate::text_match::same_artist_name(&known.name, &composer.name),
+                (None, None) => bae_types::text_match::same_artist_name(&known.name, &composer.name),
                 (Some(_), None) | (None, Some(_)) => false,
             }
         });

@@ -397,7 +397,7 @@ mod tests {
             packaging: None,
             discogs_details: Vec::new(),
             barcodes: vec!["012345678905".to_string()],
-            media: crate::pressing::StatedMedia::Undescribed,
+            media: bae_types::pressing::StatedMedia::Undescribed,
             links: Vec::new(),
             cover_art: None,
             source_group_id: Some(group_id.to_string()),
@@ -520,7 +520,7 @@ mod tests {
         let numbered = |source: Catalog, release_id: &str, group_id: &str| {
             let mut found = result(source, release_id, group_id);
             found.barcodes = Vec::new();
-            found.labels = vec![crate::pressing::ReleaseLabel::of(Some("Imprint"), Some("LB 100"))];
+            found.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Imprint"), Some("LB 100"))];
             Ok(vec![(found, LibraryStatus::absent(release_id))])
         };
         let mut search = CandidateSearch::started(query(), &all_on());

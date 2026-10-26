@@ -18,14 +18,14 @@ pub(super) fn folded(text: &str) -> impl Iterator<Item = char> + '_ {
 /// The one normalization of a catalog number: the text is searched by it, a
 /// struck-out number is matched by it, and the sightings a chosen number folds
 /// into one mark line are gathered by it.
-pub(crate) fn squash(text: &str) -> String {
+pub fn squash(text: &str) -> String {
     folded(text).filter(|c| c.is_alphanumeric()).collect()
 }
 
 /// The text's words, each squashed: a word is a run of letters and digits, so
 /// `16033-2` is the words `16033` and `2`, and its words run together are
 /// [`squash`] of it.
-pub(crate) fn words(text: &str) -> Vec<String> {
+pub fn words(text: &str) -> Vec<String> {
     folded(text)
         .collect::<String>()
         .split(|c: char| !c.is_alphanumeric())
@@ -37,7 +37,7 @@ pub(crate) fn words(text: &str) -> Vec<String> {
 /// The text's words as it writes them, case kept, with the dots between
 /// letters dropped: "D.F.C." is the one word `DFC`. What a code or a set of
 /// initials is recognized in, where capitals are what say it is one.
-pub(crate) fn written_words(text: &str) -> Vec<String> {
+pub fn written_words(text: &str) -> Vec<String> {
     text.split(|c: char| !c.is_alphanumeric() && c != '.')
         .map(|word| word.replace('.', ""))
         .filter(|word| !word.is_empty())
@@ -47,7 +47,7 @@ pub(crate) fn written_words(text: &str) -> Vec<String> {
 /// Whether `word` says nothing about which album or artist a name is: an
 /// article, conjunction or preposition, in the languages record titles are
 /// most often in. Compared squashed, so "The" and "the" are one word.
-pub(crate) fn is_stop_word(word: &str) -> bool {
+pub fn is_stop_word(word: &str) -> bool {
     STOP_WORDS.contains(&squash(word).as_str())
 }
 
@@ -63,7 +63,7 @@ const STOP_WORDS: &[&str] = &[
 ///
 /// The one normalization of a name: candidate text clusters by it, and an
 /// artist is found by it — see [`super::artist_name_key`].
-pub(crate) fn normalize(text: &str) -> String {
+pub fn normalize(text: &str) -> String {
     let decomposed: String = text
         .nfd()
         .filter(|c| !unicode_normalization::char::is_combining_mark(*c))

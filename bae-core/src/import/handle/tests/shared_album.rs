@@ -20,7 +20,7 @@ fn offered(release_id: &str, year: i32) -> crate::import::search::MetadataResult
         packaging: None,
         discogs_details: Vec::new(),
         barcodes: Vec::new(),
-        media: crate::pressing::StatedMedia::Undescribed,
+        media: bae_types::pressing::StatedMedia::Undescribed,
         links: Vec::new(),
         cover_art: None,
         source_group_id: Some(ALBUM.to_string()),

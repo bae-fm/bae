@@ -11,8 +11,8 @@ pub struct AutomationRelease {
     pub summary: AutomationReleaseSummary,
     pub name: AutomationReleaseName,
     pub year: Option<i32>,
-    pub labels: Vec<bae_core::pressing::ReleaseLabel>,
-    pub facts: bae_core::pressing::PressingFacts,
+    pub labels: Vec<bae_types::pressing::ReleaseLabel>,
+    pub facts: bae_types::pressing::PressingFacts,
     pub total_duration_ms: u64,
     pub tracks: Vec<AutomationTrackDetail>,
     pub track_groups: Vec<AutomationTrackGroup>,
@@ -28,7 +28,7 @@ pub struct AutomationRelease {
 pub struct AutomationReleaseSummary {
     pub id: String,
     pub album_id: String,
-    pub media: Vec<bae_core::pressing::MediaCount>,
+    pub media: Vec<bae_types::pressing::MediaCount>,
     /// Where the audio lives. Orthogonal to `pinned`.
     pub storage_state: AutomationReleaseStorageState,
     /// Whether a Remote release is kept offline on this device — the orthogonal

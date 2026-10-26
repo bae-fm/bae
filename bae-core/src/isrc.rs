@@ -12,7 +12,7 @@
 //! `CP`, `DG`, `QN`, `VV` and `ZZ` and TuneCore's `TC` name no territory,
 //! and a code the list does not hold names none.
 
-use crate::pressing::{Country, Region, ReleaseArea};
+use bae_types::pressing::{Country, Region, ReleaseArea};
 
 /// `stated` as the twelve characters of an ISRC, when it is a well-formed
 /// one. Hyphens and spaces a tag writes between its parts are read through,

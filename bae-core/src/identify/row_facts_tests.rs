@@ -22,7 +22,7 @@ fn record(year: Option<i32>, first: Option<i32>, area: Option<&str>) -> Metadata
     MetadataResult {
         year,
         album_first_year: first,
-        area: area.map(crate::pressing::area),
+        area: area.map(bae_types::pressing::area),
         ..MetadataResult::for_test(Catalog::MusicBrainz, "rel-1", Some("rg-1"))
     }
 }
@@ -108,7 +108,7 @@ fn a_country_agrees_disagrees_or_states_nothing() {
 /// one released in another country, and says nothing of a region or no area.
 #[test]
 fn the_registration_country_agrees_disagrees_or_states_nothing() {
-    let italy = Some(crate::pressing::area("IT"));
+    let italy = Some(bae_types::pressing::area("IT"));
     let registered = |area| registration(&[record(None, None, area)], italy);
     assert_eq!(registered(Some("IT")), Fact::Agrees);
     assert_eq!(registered(Some("US")), Fact::Disagrees);
@@ -224,7 +224,7 @@ fn read(lines: &[(TextOrigin, &str)]) -> CandidateText {
 /// A row of `area`, its own record.
 fn released_in(release_id: &str, area: &str) -> MetadataResult {
     MetadataResult {
-        area: Some(crate::pressing::area(area)),
+        area: Some(bae_types::pressing::area(area)),
         ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("rg-1"))
     }
 }
@@ -247,8 +247,8 @@ fn the_folder_s_name_outranks_the_artwork_s_country() {
     );
     assert_eq!(facts.country(std::slice::from_ref(&canada)), Fact::Agrees);
     assert_eq!(facts.country(std::slice::from_ref(&us)), Fact::Disagrees);
-    assert!(facts.names_area(crate::pressing::area("CA")));
-    assert!(!facts.names_area(crate::pressing::area("US")));
+    assert!(facts.names_area(bae_types::pressing::area("CA")));
+    assert!(!facts.names_area(bae_types::pressing::area("US")));
 }
 
 /// Two countries in the text of the highest standing leave the folder with
@@ -267,8 +267,8 @@ fn two_countries_in_the_folder_s_name_name_none() {
             Fact::StatesNothing
         );
     }
-    assert!(!facts.names_area(crate::pressing::area("CA")));
-    assert!(!facts.names_area(crate::pressing::area("US")));
+    assert!(!facts.names_area(bae_types::pressing::area("CA")));
+    assert!(!facts.names_area(bae_types::pressing::area("US")));
 }
 
 /// Where only the artwork names a country, that country is the folder's.
@@ -314,7 +314,7 @@ fn numbered(release_id: &str, numbers: &[&str]) -> MetadataResult {
     MetadataResult {
         labels: numbers
             .iter()
-            .map(|number| crate::pressing::ReleaseLabel::of(Some("Label One"), Some(number)))
+            .map(|number| bae_types::pressing::ReleaseLabel::of(Some("Label One"), Some(number)))
             .collect(),
         ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("rg-1"))
     }

@@ -31,7 +31,7 @@ fn run_with_catalog_chosen(providers: Vec<Catalog>) -> (IdentifyState, Vec<Effec
     let (state, _) = update(state, folder);
     // rel-b carries the chosen number, which the folder's text prints.
     let (mut numbered, status) = pair("rel-b", Some("g-x"));
-    numbered.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("LBL 001"))];
+    numbered.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("LBL 001"))];
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupAnswered {

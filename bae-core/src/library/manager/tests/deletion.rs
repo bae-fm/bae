@@ -3,7 +3,7 @@ async fn work_detail_release_rows_are_display_ready() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
-    release.pressing.facts = crate::pressing::made_of(crate::pressing::Medium::Cd, 1);
+    release.pressing.facts = bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1);
     let track = crate::db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
     let now = Utc::now();
     let work = DbWork {
@@ -48,12 +48,12 @@ async fn work_detail_release_rows_are_display_ready() {
         row.name,
         crate::album_detail::ReleaseName::Described {
             year: Some(2024),
-            media: crate::pressing::made_of(crate::pressing::Medium::Cd, 1).media,
+            media: bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1).media,
         }
     );
     assert_eq!(
         row.media,
-        crate::pressing::made_of(crate::pressing::Medium::Cd, 1).media
+        bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1).media
     );
     let cover = row.cover.as_ref().expect("work release cover");
     assert_eq!(cover.id, release.id);

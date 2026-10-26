@@ -210,7 +210,7 @@ desktop_only! {
 
     /// What one Discogs format description says.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub(crate) enum Role {
+    pub enum Role {
         /// The kind of release — an album, a single, a compilation — which
         /// says nothing about the pressing.
         ReleaseType,
@@ -225,7 +225,7 @@ desktop_only! {
 
     /// What a Discogs format description says. `None` for a description
     /// outside the list, which the caller logs: the list is what needs it.
-    pub(crate) fn role(description: &str) -> Option<Role> {
+    pub fn role(description: &str) -> Option<Role> {
         DISCOGS_FORMAT_DESCRIPTIONS
             .iter()
             .find(|(stated, _)| super::same_name(stated, description))

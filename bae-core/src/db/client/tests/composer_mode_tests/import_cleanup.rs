@@ -44,11 +44,11 @@ fn test_release(id: &str, album_id: &str, now: chrono::DateTime<chrono::Utc>) ->
         id: id.to_string(),
         album_id: album_id.to_string(),
         release_name: None,
-        pressing: crate::pressing::Pressing {
+        pressing: bae_types::pressing::Pressing {
             year: Some(2026),
             labels: Vec::new(),
             barcodes: Vec::new(),
-            facts: crate::pressing::made_of(crate::pressing::Medium::Cd, 1),
+            facts: bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1),
         },
 
         source_folder_name: None,
