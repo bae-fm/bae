@@ -21,8 +21,6 @@ final class MainWindowController: HostingWindowController, NSMenuItemValidation
     private let library: @MainActor () -> MainAppMenuTarget?
     /// View ▸ Search's requests, which the title bar's field takes focus on.
     private let searchFocusRequests: PassthroughSubject<Void, Never>
-    /// The Select All the focused import list offers.
-    let shownRowsSelectAll: ShownRowsSelectAll
 
     init(
         appDelegate: AppDelegate,
@@ -32,15 +30,12 @@ final class MainWindowController: HostingWindowController, NSMenuItemValidation
         self.appDelegate = appDelegate
         self.library = library
         let searchFocusRequests = PassthroughSubject<Void, Never>()
-        let shownRowsSelectAll = ShownRowsSelectAll()
         self.searchFocusRequests = searchFocusRequests
-        self.shownRowsSelectAll = shownRowsSelectAll
         super
             .init(
                 content: MainWindowRoot(
                     appDelegate: appDelegate,
-                    searchFocusRequests: searchFocusRequests,
-                    shownRowsSelectAll: shownRowsSelectAll
+                    searchFocusRequests: searchFocusRequests
                 ),
                 contentSize: MainWindow.sizeOnMainScreen,
                 // The content sets the window's size limits: fixed while

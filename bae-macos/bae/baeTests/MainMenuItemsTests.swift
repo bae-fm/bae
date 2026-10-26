@@ -85,13 +85,13 @@ struct MainMenuItemsTests {
         MenuLookup.expect(try MenuLookup.submenu(menu, at: index), actions)
     }
 
-    @Test("bae's key equivalents, and Select All's target")
+    @Test("bae's key equivalents, and Select All sent up the responder chain")
     func keyEquivalents() throws {
         let menu = try #require(NSApp.mainMenu)
         let selectAll = try MenuLookup.item(menu, "selectAll:")
         #expect(selectAll.keyEquivalent == "a")
         #expect(selectAll.keyEquivalentModifierMask == .command)
-        #expect(selectAll.target is SelectAllTarget)
+        #expect(selectAll.target == nil)
         let playPause = try MenuLookup.item(menu, "playPause:")
         #expect(playPause.keyEquivalent == " ")
         #expect(playPause.keyEquivalentModifierMask == [])

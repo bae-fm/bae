@@ -21,10 +21,7 @@ extension AppDelegate {
             )
         }
         prepareApplicationForLaunch(application)
-        application.mainMenu = MainMenu.make(
-            openLibrary: openLibraryMenu.menu,
-            selectAll: selectAllTarget
-        )
+        application.mainMenu = MainMenu.make(openLibrary: openLibraryMenu.menu)
     }
 
     func prepareApplicationForLaunch(

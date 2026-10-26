@@ -2,15 +2,8 @@ import AppKit
 
 /// The Edit menu: AppKit's standard items and actions.
 extension MainMenu {
-    static func editMenu(selectAll: SelectAllTarget) -> NSMenu {
-        // `selectAll:`, sent to the target that routes it.
-        let selectAllItem = item(
-            "Select All",
-            #selector(SelectAllTarget.selectAll(_:)),
-            "a"
-        )
-        selectAllItem.target = selectAll
-        return menu(
+    static func editMenu() -> NSMenu {
+        menu(
             "Edit",
             [
                 item("Undo", #selector(UndoActions.undo(_:)), "z"),
@@ -31,7 +24,7 @@ extension MainMenu {
                     [.command, .option, .shift]
                 ),
                 item("Delete", #selector(NSText.delete(_:))),
-                selectAllItem,
+                item("Select All", #selector(NSResponder.selectAll(_:)), "a"),
                 .separator(),
                 submenu("Find", findItems()),
                 submenu("Spelling and Grammar", spellingItems()),

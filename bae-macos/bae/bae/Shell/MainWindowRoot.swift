@@ -8,8 +8,6 @@ struct MainWindowRoot: View {
     let appDelegate: AppDelegate
     /// View ▸ Search, for the title bar's search field.
     let searchFocusRequests: PassthroughSubject<Void, Never>
-    /// Edit ▸ Select All, for the import list.
-    let shownRowsSelectAll: ShownRowsSelectAll
 
     private var applicationServices: ApplicationServices {
         appDelegate.requiredApplicationServices
@@ -43,8 +41,7 @@ struct MainWindowRoot: View {
             openSettingsWindow: OpenSettingsWindowAction {
                 appDelegate.showSettingsWindow(nil)
             },
-            searchFocusRequests: searchFocusRequests,
-            shownRowsSelectAll: shownRowsSelectAll
+            searchFocusRequests: searchFocusRequests
         )
     }
 
@@ -218,17 +215,14 @@ struct MainWindowRoot: View {
 
 extension View {
     /// What the primary window gives its content beyond the library's
-    /// services: the shell's Settings window, View ▸ Search, and Edit ▸
-    /// Select All.
+    /// services: the shell's Settings window and View ▸ Search.
     fileprivate func mainWindowEnvironment(
         openSettingsWindow: OpenSettingsWindowAction,
-        searchFocusRequests: PassthroughSubject<Void, Never>,
-        shownRowsSelectAll: ShownRowsSelectAll
+        searchFocusRequests: PassthroughSubject<Void, Never>
     ) -> some View {
         self
             .environment(\.openSettingsWindow, openSettingsWindow)
             .environment(\.searchFocusRequests, searchFocusRequests)
-            .environment(\.shownRowsSelectAll, shownRowsSelectAll)
     }
 }
 
@@ -248,8 +242,7 @@ extension View {
                         "Settings asked for in a preview"
                     )
                 },
-                searchFocusRequests: PassthroughSubject(),
-                shownRowsSelectAll: ShownRowsSelectAll()
+                searchFocusRequests: PassthroughSubject()
             )
         }
     }

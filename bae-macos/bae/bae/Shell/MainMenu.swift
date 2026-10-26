@@ -9,17 +9,11 @@ import AppKit
 /// responder that takes it. The app's commands are `AppDelegate`'s, at the
 /// end of every chain; a library's are the primary window's
 /// `MainWindowController`, in the chain only while that window is key or
-/// main, so they are disabled while another window is. Select All alone has
-/// a target, `SelectAllTarget`, which sends it on up the chain except to a
-/// focused list that selects rows its table has not loaded.
+/// main, so they are disabled while another window is.
 @MainActor
 enum MainMenu {
-    /// The menu, with `openLibrary` as File ▸ Open Library and Edit ▸
-    /// Select All sent to `selectAll`.
-    static func make(
-        openLibrary: NSMenu,
-        selectAll: SelectAllTarget
-    ) -> NSMenu {
+    /// The menu, with `openLibrary` as File ▸ Open Library.
+    static func make(openLibrary: NSMenu) -> NSMenu {
         let windowMenu = Self.windowMenu()
         let helpMenu = Self.helpMenu()
         let servicesMenu = NSMenu(title: String(localized: "Services"))
@@ -27,7 +21,7 @@ enum MainMenu {
         for menu in [
             appMenu(servicesMenu: servicesMenu),
             fileMenu(openLibrary: openLibrary),
-            editMenu(selectAll: selectAll),
+            editMenu(),
             viewMenu(),
             playbackMenu(),
             windowMenu,

@@ -153,10 +153,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The main menu's File ▸ Open Library.
     @ObservationIgnored
     let openLibraryMenu = OpenLibraryMenu()
-    /// The main menu's Edit ▸ Select All's target, which the item holds
-    /// weakly.
-    @ObservationIgnored
-    let selectAllTarget = SelectAllTarget()
 
     override convenience init() {
         self.init(runtime: AppRuntime(environment: baeAppProcessEnvironment))
