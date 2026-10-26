@@ -105,38 +105,13 @@ unsafe fn decode_audio_streaming_impl(
         DecodeError::after_read(read_failure, e)
     })?;
 
-    // The by-byte seek is for FLAC, whose frame bytes are recorded at import: a
-    // track's first frame, and the scrub points of a FLAC with no usable
-    // seektable. APE has no per-frame byte positions, so it sample-seeks via its
-    // mandatory index instead.
-    //
-    // A sample seek costs one jump for a seektable-bearing FLAC (and for APE/MP4)
-    // now that AVFMT_FLAG_FAST_SEEK is set. A FLAC with no seektable and no stored
-    // scrub points binary-searches the file: its read of the file's end waits for
-    // the fill like any other read, so the search succeeds, one fetch per step. A
-    // seek that does fail decodes from the start and trims to the target, logged.
-    if let Some(byte_pos) = seek_to_byte {
-        seek_to_byte_or_warn(fmt_ctx, codec_ctx, audio.stream_index, byte_pos);
-    } else if let Some(sample_pos) = seek_to_sample {
-        let target_ts = sample_pos as i64;
-        let ret = avformat_seek_file(
-            fmt_ctx,
-            audio.stream_index,
-            i64::MIN,
-            target_ts,
-            target_ts,
-            0,
-        );
-        if ret < 0 {
-            warn!(
-                "avformat_seek_file to sample {sample_pos} failed ({}); \
-                 decoding from the start (file has no usable seektable?)",
-                av_err_str(ret)
-            );
-        } else {
-            avcodec_flush_buffers(codec_ctx);
-        }
-    }
+    seek_input_or_warn(
+        fmt_ctx,
+        codec_ctx,
+        audio.stream_index,
+        seek_to_byte,
+        seek_to_sample,
+    );
 
     // The reader now sits at the track's start. Set its read-ahead ceiling -- the
     // track's end byte, or the whole file when the track runs to EOF (a per-track

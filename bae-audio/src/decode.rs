@@ -684,15 +684,13 @@ unsafe fn decode_buffer_to_sink_impl(
 
     let time_base = (*audio.stream).time_base;
 
-    // The same seek dispatch as the playback path: a by-byte jump lands on the
-    // recorded frame boundary (no seektable consulted); otherwise seek by
-    // sample. The `start_at_sample` trim below makes the first output sample
-    // exact either way.
-    if let Some(byte_pos) = seek_to_byte {
-        seek_to_byte_or_warn(fmt_ctx, codec_ctx, audio.stream_index, byte_pos);
-    } else if let Some(sample_pos) = seek_to_sample {
-        seek_to_sample_or_warn(fmt_ctx, audio.stream_index, sample_pos);
-    }
+    seek_input_or_warn(
+        fmt_ctx,
+        codec_ctx,
+        audio.stream_index,
+        seek_to_byte,
+        seek_to_sample,
+    );
 
     let mut frame = av_frame_alloc();
     let mut packet = av_packet_alloc();
@@ -821,19 +819,42 @@ unsafe fn allocate_swr_context(
     Ok(swr_ctx)
 }
 
+/// Position the demuxer where a decode starts: the one seek dispatch every
+/// decode uses. Jump by byte to a recorded frame when there is one (FLAC: a
+/// track's first frame, or a scrub point of a FLAC with no usable seektable),
+/// else seek by sample through the demuxer's index (APE, MP4, a
+/// seektable-bearing FLAC), else read from the stream's start. A landed seek
+/// drops whatever the decoder holds, as a demuxer seek requires; the caller's
+/// `start_at_sample` trim then makes the first output sample exact.
+unsafe fn seek_input_or_warn(
+    fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
+    codec_ctx: *mut ffmpeg_sys_next::AVCodecContext,
+    stream_index: c_int,
+    seek_to_byte: Option<u64>,
+    seek_to_sample: Option<u64>,
+) {
+    let landed = match (seek_to_byte, seek_to_sample) {
+        (Some(byte_pos), _) => seek_to_byte_or_warn(fmt_ctx, stream_index, byte_pos),
+        (None, Some(sample_pos)) => seek_to_sample_or_warn(fmt_ctx, stream_index, sample_pos),
+        (None, None) => return,
+    };
+    if landed {
+        ffmpeg_sys_next::avcodec_flush_buffers(codec_ctx);
+    }
+}
+
 /// Jump straight to a recorded frame's byte offset: no seektable consulted, no
 /// binary search reading the file's end. The landed frame states its own first
 /// sample, so the caller's `start_at_sample` trim still reaches the exact
 /// sample -- except a FLAC's last frame, which states none. Import never
 /// records a track start there; a scrub point on it is decoded untrimmed. A
 /// failure is not fatal — the caller decodes from the start instead, which is
-/// correct but reads more of the file than it needs.
+/// correct but reads more of the file than it needs. Whether it landed.
 unsafe fn seek_to_byte_or_warn(
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
-    codec_ctx: *mut ffmpeg_sys_next::AVCodecContext,
     stream_index: c_int,
     byte_pos: u64,
-) {
+) -> bool {
     use ffmpeg_sys_next::*;
 
     let ret = av_seek_frame(
@@ -847,30 +868,33 @@ unsafe fn seek_to_byte_or_warn(
             "byte seek to {byte_pos} failed ({}); decoding from the start",
             av_err_str(ret)
         );
-    } else {
-        avcodec_flush_buffers(codec_ctx);
     }
+    ret >= 0
 }
 
+/// Seek to the frame at or before `sample_pos`. With `AVFMT_FLAG_FAST_SEEK`
+/// set, a seektable-bearing FLAC (and APE/MP4) costs one jump. A FLAC with no
+/// seektable and no stored scrub points binary-searches the file: its read of
+/// the file's end waits for the fill like any other read, so the search
+/// succeeds, one fetch per step. A seek that does fail is logged and the
+/// caller decodes from the start, trimming to the target. Whether it landed.
 unsafe fn seek_to_sample_or_warn(
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     stream_index: c_int,
     sample_pos: u64,
-) {
+) -> bool {
     use ffmpeg_sys_next::*;
 
-    let ret = av_seek_frame(
-        fmt_ctx,
-        stream_index,
-        sample_pos as i64,
-        AVSEEK_FLAG_BACKWARD as c_int,
-    );
+    let target_ts = sample_pos as i64;
+    let ret = avformat_seek_file(fmt_ctx, stream_index, i64::MIN, target_ts, target_ts, 0);
     if ret < 0 {
         warn!(
-            "seek to sample {sample_pos} failed ({}); decoding from the start",
+            "seek to sample {sample_pos} failed ({}); decoding from the start \
+             (file has no usable seektable?)",
             av_err_str(ret)
         );
     }
+    ret >= 0
 }
 
 #[cfg(test)]

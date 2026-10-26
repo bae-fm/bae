@@ -461,6 +461,7 @@ pub(super) unsafe fn decode_packed_s64_packets_to_sink(
         AVSampleFormat::AV_SAMPLE_FMT_S64,
     )?;
 
+    // Raw packets, no decoder: nothing to flush after the seek.
     if let Some(sample_pos) = start_sample {
         seek_to_sample_or_warn(fmt_ctx, stream_index, sample_pos);
     }
