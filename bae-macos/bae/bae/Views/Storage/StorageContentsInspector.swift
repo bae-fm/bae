@@ -46,7 +46,14 @@ struct StorageContentsInspector: View {
                 }
                 else {
                     List(rows, id: \.identity) { row in
-                        StorageInspectorFileRow(row: row)
+                        // Read for each row as it is placed, so a file's
+                        // moving bytes redraw its row alone.
+                        StorageInspectorFileRow(
+                            row: row,
+                            transfer: row.operation.flatMap {
+                                outboxStore.transfer(forFile: $0.fileId)
+                            }
+                        )
                     }
                     .listStyle(.plain)
                     .accessibilityIdentifier("storage-inspector-files")

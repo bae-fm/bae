@@ -5,6 +5,9 @@ import SwiftUI
 /// holds for it, or an upload that belongs to no release file.
 struct StorageInspectorFileRow: View {
     let row: BridgeStorageInspectorFile
+    /// How far the row's upload has gone, and how fast; `nil` while none has
+    /// arrived for it, or when the row has no upload.
+    let transfer: BridgeUploadTransfer?
 
     /// The lines under the name start under it, past the icon column.
     private static let detailIndent = ThemeIcon.medium.size + ThemeSpace.related
@@ -31,7 +34,7 @@ struct StorageInspectorFileRow: View {
                 .lineLimit(1)
                 .padding(.leading, Self.detailIndent)
             if let operation = row.operation {
-                UploadOperationLine(operation: operation)
+                UploadOperationLine(operation: operation, transfer: transfer)
                     .padding(.leading, Self.detailIndent)
             }
         }
@@ -45,14 +48,8 @@ struct StorageInspectorFileRow: View {
 /// pending upload shows why coven is waiting instead of its state.
 private struct UploadOperationLine: View {
     let operation: BridgeUploadFileOp
-    @Environment(OutboxStore.self)
-    private var outboxStore
-
-    /// How far the file has gone, read here so its moving bytes redraw this
-    /// line alone.
-    private var transfer: BridgeUploadTransfer? {
-        outboxStore.transfer(forFile: operation.fileId)
-    }
+    /// How far the file has gone, and how fast; `nil` while none has arrived.
+    let transfer: BridgeUploadTransfer?
 
     var body: some View {
         let bar = transfer?.bar
