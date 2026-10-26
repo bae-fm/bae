@@ -492,13 +492,11 @@ async fn playback_resumes_the_fixtures_playing_album_in_the_pregap() {
         Box::new(device),
     );
     let mut values = playback.subscribe_values();
+    let mut positions = playback.subscribe_positions();
     let restored = tokio::time::timeout(
         std::time::Duration::from_secs(30),
         values.wait_for(|values| {
             matches!(values.state, crate::playback::PlaybackState::Paused { .. })
-                && values.position.as_ref().is_some_and(|position| {
-                    position.track_id == pregap_track && position.position_ms == -2_000
-                })
         }),
     )
     .await
@@ -509,5 +507,16 @@ async fn playback_resumes_the_fixtures_playing_album_in_the_pregap() {
         unreachable!("waited for a paused state");
     };
     assert_eq!(track.track_id, pregap_track);
+    tokio::time::timeout(
+        std::time::Duration::from_secs(30),
+        positions.wait_for(|positions| {
+            positions.library.as_ref().is_some_and(|position| {
+                position.track_id == pregap_track && position.position_ms == -2_000
+            })
+        }),
+    )
+    .await
+    .expect("playback restores the fixture's track at its pregap")
+    .unwrap();
     playback.shutdown().await;
 }

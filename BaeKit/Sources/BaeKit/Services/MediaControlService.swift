@@ -19,6 +19,17 @@ struct NowPlayingMetadata {
     let playbackRate: Double
 }
 
+/// What the Now Playing surface shows: nothing, a library track, or (on
+/// macOS) an import preview's clip. A position is written onto it only when
+/// it is of that track or clip.
+enum NowPlayingSubject {
+    case nothing
+    case library(trackId: String)
+    #if os(macOS)
+        case preview(BridgePreviewTarget)
+    #endif
+}
+
 /// Transport intents the remote command center forwards to, each routed
 /// through the preview-or-library dispatch. Each returns the status the command
 /// handler reports back to the system.
@@ -44,9 +55,23 @@ public final class MediaControlService: @unchecked Sendable {
     private var cachedArtworkImage: BridgeImageRef?
     private var cachedArtwork: MPMediaItemArtwork?
     private var artworkTask: Task<Void, Never>?
+    /// What Now Playing shows.
+    var shown: NowPlayingSubject = .nothing
+    /// The latest positions core sent. They arrive on their own subscription,
+    /// so they can come before the values that put their track or clip on
+    /// Now Playing; each values update shows the latest positions again.
+    private var latestPositions: BridgePlaybackPositions?
+
     /// Whether a preview clip currently owns Now Playing. Only the macOS
-    /// preview session writes it, so shared bodies read it without a gate.
-    var isShowingPreview = false
+    /// preview session shows one, so shared bodies read it without a gate.
+    var isShowingPreview: Bool {
+        #if os(macOS)
+            if case .preview = shown {
+                return true
+            }
+        #endif
+        return false
+    }
 
     #if os(macOS)
         var activeSession: ActiveMediaSession?
@@ -57,41 +82,72 @@ public final class MediaControlService: @unchecked Sendable {
     // MARK: - Retained media-control values
 
     /// Translate core's resolved media-control presentation onto the platform's
-    /// single Now Playing surface.
+    /// single Now Playing surface, with the latest position of what it shows.
     public func applyMediaControlValues(
         _ values: BridgeMediaControlValues,
         appHandle: AppHandle
     ) {
         switch values.playback {
-        case .preview(
-            let target,
-            let durationMs,
-            let positionMs,
-            let isPlaying
-        ):
+        case .preview(let target, let durationMs, let isPlaying):
             #if os(macOS)
                 updatePreviewNowPlaying(
                     target: target,
                     durationMs: durationMs,
                     isPlaying: isPlaying
                 )
-                updatePreviewPosition(positionMs: positionMs)
             #endif
-        case .library(let state, let position, _):
+        case .library(let state):
             #if os(macOS)
-                let previewEnded = isShowingPreview
-                isShowingPreview = false
-                if previewEnded, case .loading(.unprepared) = state {
+                if isShowingPreview, case .loading(.unprepared) = state {
                     clearNowPlaying()
                 }
             #endif
             updateNowPlaying(state: state, appHandle: appHandle)
-            if let position {
-                updatePosition(
-                    positionMs: position.positionMs,
-                    durationMs: position.durationMs
-                )
+        }
+        showLatestPositions()
+    }
+
+    /// Write core's latest positions onto Now Playing: the elapsed time of the
+    /// track or clip it shows.
+    public func applyPositions(_ positions: BridgePlaybackPositions) {
+        latestPositions = positions
+        showLatestPositions()
+    }
+
+    private func showLatestPositions() {
+        guard let latestPositions else {
+            return
+        }
+        switch shown {
+        case .nothing:
+            return
+        case .library(let trackId):
+            guard let position = latestPositions.mediaControl else {
+                return
             }
+            guard position.trackId == trackId else {
+                logger.debug(
+                    "Not showing the position of \(position.trackId); Now Playing shows \(trackId)"
+                )
+                return
+            }
+            updatePosition(
+                positionMs: position.positionMs,
+                durationMs: position.durationMs
+            )
+        #if os(macOS)
+            case .preview(let target):
+                guard let preview = latestPositions.preview else {
+                    return
+                }
+                guard preview.target == target else {
+                    logger.debug(
+                        "Not showing the position of preview \(preview.target.path); Now Playing shows \(target.path)"
+                    )
+                    return
+                }
+                updatePreviewPosition(positionMs: preview.positionMs)
+        #endif
         }
     }
 
@@ -145,6 +201,7 @@ public final class MediaControlService: @unchecked Sendable {
         on infoCenter: MPNowPlayingInfoCenter
     ) {
         var info = infoCenter.nowPlayingInfo ?? [:]
+        shown = .library(trackId: metadata.track.track.trackId)
         let display = metadata.track.display
         info[MPMediaItemPropertyTitle] = display.title
         info[MPMediaItemPropertyArtist] = display.artistNames
@@ -219,7 +276,7 @@ public final class MediaControlService: @unchecked Sendable {
     /// Wipe Now Playing and disable every transport command. Called when
     /// playback stops or the library is torn down.
     public func clearNowPlaying() {
-        isShowingPreview = false
+        shown = .nothing
         currentDurationMs = nil
         clearArtworkLoad()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil

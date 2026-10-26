@@ -236,6 +236,30 @@ class PlaybackSeekProjectionTest {
     }
 
     @Test
+    fun aPositionThatComesBeforeItsTrackShowsOnceThatTrackIsCurrent() {
+        val (player, _) = player()
+
+        player.startPlaying(durationMs = 100_000uL)
+        player.applyPositions(
+            playbackPositions(BridgePlaybackPosition("track-2", 30_000, 200_000uL, 0.15)),
+        )
+        assertPosition(
+            player.position.value,
+            progress = 0.0,
+            positionMs = 0,
+            durationMs = 100_000,
+        )
+
+        player.applyPlaybackState(playingState(trackId = "track-2", durationMs = 200_000uL))
+        assertPosition(
+            player.position.value,
+            progress = 0.15,
+            positionMs = 30_000,
+            durationMs = 200_000,
+        )
+    }
+
+    @Test
     fun nextTrackFailureDoesNotEscapeSeekHandler() {
         val (player, handle) = player()
         handle.nextTrackFailure = RuntimeException("next failed")
@@ -293,11 +317,8 @@ class PlaybackSeekProjectionTest {
         durationMs: Long?,
         progress: Double,
     ) {
-        applyValues(
-            playbackValues(
-                playingState(durationMs = durationMs?.toULong()),
-                BridgePlaybackPosition("track-1", positionMs, durationMs?.toULong(), progress),
-            ),
+        applyPositions(
+            playbackPositions(BridgePlaybackPosition("track-1", positionMs, durationMs?.toULong(), progress)),
         )
     }
 
@@ -306,9 +327,8 @@ class PlaybackSeekProjectionTest {
         durationMs: Long?,
         progress: Double,
     ) {
-        applyValues(
-            playbackValues(
-                playingState(durationMs = durationMs?.toULong()),
+        applyPositions(
+            playbackPositions(
                 BridgePlaybackPosition("track-1", positionMs, durationMs?.toULong(), progress),
                 seekRevision = 1u,
             ),

@@ -171,16 +171,13 @@
             isPlaying: Bool
         ) {
             setPreviewNowPlaying(
-                path: target.path,
+                target: target,
                 durationMs: durationMs,
                 playbackRate: isPlaying ? 1.0 : 0.0
             )
         }
 
         func updatePreviewPosition(positionMs: UInt64) {
-            guard isShowingPreview else {
-                return
-            }
             let infoCenter = MPNowPlayingInfoCenter.default()
             guard var info = infoCenter.nowPlayingInfo else {
                 return
@@ -193,13 +190,13 @@
         /// Pushes the Now Playing info for a preview clip. `playbackRate` is 1.0
         /// playing, 0.0 paused.
         private func setPreviewNowPlaying(
-            path: String,
+            target: BridgePreviewTarget,
             durationMs: UInt64,
             playbackRate: Double
         ) {
-            isShowingPreview = true
+            shown = .preview(target)
             var info: [String: Any] = [:]
-            info[MPMediaItemPropertyTitle] = previewTitle(from: path)
+            info[MPMediaItemPropertyTitle] = previewTitle(from: target.path)
             // A preview clip always has a known length; track it through the
             // shared path so the scrubber is enabled, as with a library track.
             trackDuration(durationMs, into: &info)

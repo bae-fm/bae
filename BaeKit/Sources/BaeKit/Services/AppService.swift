@@ -345,6 +345,12 @@ open class AppService: @unchecked Sendable, Observable {
                 )
                 applyPlatformPlaybackValues(values)
             },
+            applyPositions: { [weak self] positions in
+                guard let self else { return }
+                playbackValues.apply(positions)
+                mediaControlService.applyPositions(positions)
+                applyPlatformPlaybackPositions(positions)
+            },
             applyQueue: { [weak self] snapshot in
                 self?.playbackValues.applyQueueSnapshot(snapshot)
                 self?.mediaControlService
@@ -358,6 +364,8 @@ open class AppService: @unchecked Sendable, Observable {
     }
 
     open func applyPlatformPlaybackValues(_: BridgePlaybackValues) {}
+
+    open func applyPlatformPlaybackPositions(_: BridgePlaybackPositions) {}
 
     func applyQueueItemsAdded(_ count: UInt32) {
         playbackValues.applyQueueItemsAdded(count)

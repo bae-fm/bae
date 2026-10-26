@@ -7,42 +7,45 @@ import uniffi.bae_bridge.BridgeMediaControlValues
 import uniffi.bae_bridge.BridgeNowPlayingTrack
 import uniffi.bae_bridge.BridgePlaybackPauseReason
 import uniffi.bae_bridge.BridgePlaybackPosition
+import uniffi.bae_bridge.BridgePlaybackPositions
 import uniffi.bae_bridge.BridgePlaybackValueState
 import uniffi.bae_bridge.BridgePlaybackValues
 import uniffi.bae_bridge.BridgePlayingTrack
 import uniffi.bae_bridge.BridgePreviewState
-import uniffi.bae_bridge.BridgePreviewValues
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeTrackDisplay
 
 internal fun playbackValues(
     state: BridgePlaybackValueState,
-    position: BridgePlaybackPosition? = null,
-    seekRevision: ULong = 0u,
     volume: Float = 1f,
     isMuted: Boolean = false,
     repeatMode: BridgeRepeatMode = BridgeRepeatMode.OFF,
 ): BridgePlaybackValues =
     BridgePlaybackValues(
         state = state,
-        position = position,
-        seekRevision = seekRevision,
         volume = volume,
         isMuted = isMuted,
         repeatMode = repeatMode,
         remote = uniffi.bae_bridge.BridgeRemotePlayback.Local,
-        preview = BridgePreviewValues(BridgePreviewState.Idle, 0uL, 0.0),
+        preview = BridgePreviewState.Idle,
         mediaControl =
             BridgeMediaControlValues(
-                playback =
-                    BridgeMediaControlPlayback.Library(
-                        state,
-                        null,
-                        seekRevision,
-                    ),
+                playback = BridgeMediaControlPlayback.Library(state),
                 volume = volume,
                 isMuted = isMuted,
             ),
+    )
+
+/** Positions holding [library]; the media controls' timeline is not read on Android. */
+internal fun playbackPositions(
+    library: BridgePlaybackPosition?,
+    seekRevision: ULong = 0u,
+): BridgePlaybackPositions =
+    BridgePlaybackPositions(
+        library = library,
+        seekRevision = seekRevision,
+        preview = null,
+        mediaControl = null,
     )
 
 internal fun nowPlayingTrack(

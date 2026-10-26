@@ -161,6 +161,7 @@ public class PlaybackStore {
         setNowPlaying(.playing(track))
     }
 
+    @discardableResult
     public func updatePlaybackProgress(
         trackId: String,
         positionMs: Int64,
@@ -182,6 +183,7 @@ public class PlaybackStore {
         )
     }
 
+    @discardableResult
     public func updatePlaybackSeeked(
         trackId: String,
         positionMs: Int64,
@@ -217,8 +219,12 @@ public class PlaybackStore {
         else {
             return true
         }
-        logger.warning(
-            "ignoring playback position for stale track \(trackId); current track is \(currentTrackId)"
+        // Positions arrive on their own subscription, so one for the next
+        // track can come before the value that shows it, and one for the
+        // last track after; `PlaybackValueHandler` offers the next track's
+        // again once it shows.
+        logger.debug(
+            "not showing playback position for \(trackId); current track is \(currentTrackId)"
         )
         return false
     }

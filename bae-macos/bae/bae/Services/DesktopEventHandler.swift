@@ -31,19 +31,23 @@ final class DesktopEventHandler {
         }
     }
 
-    func apply(_ values: BridgePreviewValues) {
-        importStore.previewState = values.state
-        let position: PlaybackPositionEvent
-        switch values.state {
-        case .playing(_, let durationMs), .paused(_, let durationMs):
-            position = .position(
-                progress: values.progress,
-                positionMs: Int64(values.positionMs),
-                durationMs: durationMs
-            )
-        case .idle:
-            position = .reset
+    func applyPreview(_ state: BridgePreviewState) {
+        importStore.previewState = state
+    }
+
+    /// Show where the preview is in its clip, or clear the bar while no
+    /// preview is loaded.
+    func applyPreviewPosition(_ position: BridgePreviewPosition?) {
+        guard let position else {
+            importStore.previewProgressSubject.send(.reset)
+            return
         }
-        importStore.previewProgressSubject.send(position)
+        importStore.previewProgressSubject.send(
+            .position(
+                progress: position.progress,
+                positionMs: Int64(position.positionMs),
+                durationMs: position.durationMs
+            )
+        )
     }
 }

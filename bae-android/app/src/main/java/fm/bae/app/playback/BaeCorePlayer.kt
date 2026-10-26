@@ -28,6 +28,8 @@ import uniffi.bae_bridge.BridgeLoadingTrack
 import uniffi.bae_bridge.BridgeNowPlayingTrack
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackPauseReason
+import uniffi.bae_bridge.BridgePlaybackPosition
+import uniffi.bae_bridge.BridgePlaybackPositions
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgePlaybackValueState
 import uniffi.bae_bridge.BridgePlaybackValues
@@ -221,6 +223,11 @@ class BaeCorePlayer(
     /** Null when stopped. */
     private var playingTrackId: String? = null
     private var lastSeekRevision: ULong = 0u
+
+    /** The latest library position core sent. Positions arrive on their own
+     *  subscription, so one can come before the value that makes its track
+     *  current; it is folded in once that track is. */
+    private var latestPosition: BridgePlaybackPosition? = null
     private var hasNext: Boolean = false
     private var hasPrevious: Boolean = false
     private var media3RepeatMode: Int = Player.REPEAT_MODE_OFF
@@ -279,31 +286,30 @@ class BaeCorePlayer(
 
     fun applyValues(values: BridgePlaybackValues) {
         readFailures.valuesArrived()
-        when (val state = values.state) {
-            BridgePlaybackValueState.Stopped -> {
-                onStopped()
-            }
+        val previousTrackId = playingTrackId
+        val becameActive =
+            when (val state = values.state) {
+                BridgePlaybackValueState.Stopped -> {
+                    onStopped()
+                    false
+                }
 
-            is BridgePlaybackValueState.Loading -> {
-                onLoading(state.track)
-            }
+                is BridgePlaybackValueState.Loading -> {
+                    onLoading(state.track)
+                }
 
-            is BridgePlaybackValueState.Playing -> {
-                activate(Transport.READY, state.track)
-            }
+                is BridgePlaybackValueState.Playing -> {
+                    activate(Transport.READY, state.track)
+                }
 
-            is BridgePlaybackValueState.Paused -> {
-                applyPaused(state)
+                is BridgePlaybackValueState.Paused -> {
+                    applyPaused(state)
+                    false
+                }
             }
-        }
-        values.position?.let {
-            if (values.seekRevision != lastSeekRevision) {
-                onSeeked(it.trackId, it.positionMs, it.durationMs?.toLong(), it.progress)
-            } else {
-                onProgress(it.trackId, it.positionMs, it.durationMs?.toLong(), it.progress)
-            }
-        }
-        lastSeekRevision = values.seekRevision
+        latestPosition
+            ?.takeIf { playingTrackId != previousTrackId && it.trackId == playingTrackId }
+            ?.let { fold(it, seeked = false) }
         media3RepeatMode =
             when (values.repeatMode) {
                 BridgeRepeatMode.OFF -> Player.REPEAT_MODE_OFF
@@ -314,9 +320,47 @@ class BaeCorePlayer(
         _volume.value = values.volume
         _isMuted.value = values.isMuted
         publish()
+        if (becameActive) {
+            systemHooks.onPlaybackActivated()
+        }
     }
 
-    private fun onLoading(track: BridgeLoadingTrack) {
+    fun applyPositions(positions: BridgePlaybackPositions) {
+        val seeked = positions.seekRevision != lastSeekRevision
+        lastSeekRevision = positions.seekRevision
+        latestPosition = positions.library
+        val position = positions.library ?: return
+        when (fold(position, seeked)) {
+            PositionUpdate.Applied -> {
+                publish()
+            }
+
+            PositionUpdate.HeldByPendingSeek -> {
+                Unit
+            }
+
+            PositionUpdate.StaleTrack -> {
+                logger.debug("not showing position of ${position.trackId}; playing $playingTrackId")
+            }
+        }
+    }
+
+    /** Fold [position] into the position model, as a seek's confirmation when [seeked]. */
+    private fun fold(
+        position: BridgePlaybackPosition,
+        seeked: Boolean,
+    ): PositionUpdate {
+        val trackId = position.trackId
+        val durationMs = position.durationMs?.toLong()
+        return if (seeked) {
+            positionModel.onSeeked(playingTrackId, trackId, position.positionMs, durationMs, position.progress)
+        } else {
+            positionModel.onProgress(playingTrackId, trackId, position.positionMs, durationMs, position.progress)
+        }
+    }
+
+    /** Enter loading for [track]; true when that made playback active. */
+    private fun onLoading(track: BridgeLoadingTrack): Boolean {
         // Showing the loading track right away lets Media3 post the notification
         // and start the service while the app is still on screen; once the screen
         // locks, Android may refuse the start. Until core has prepared it, the
@@ -326,17 +370,21 @@ class BaeCorePlayer(
                 is BridgeLoadingTrack.Unprepared -> null
                 is BridgeLoadingTrack.Prepared -> track.track
             }
-        activate(Transport.BUFFERING, prepared)
+        return activate(Transport.BUFFERING, prepared)
     }
 
-    /** Enter play-when-ready for [transport]; a null [track] keeps the prior track. */
+    /**
+     * Enter play-when-ready for [transport]; a null [track] keeps the prior track.
+     * True when that made playback active, which asks for the playback service.
+     */
     private fun activate(
         transport: Transport,
         track: BridgeNowPlayingTrack?,
-    ) {
-        // Core redelivers its values with every position update, so most calls
-        // repeat the state already in force; only a change of transport, of
-        // track, or into play-when-ready asks for the playback service.
+    ): Boolean {
+        // A value also arrives when only the volume, mute, repeat mode or the
+        // playing track's display changed, repeating the state already in force;
+        // only a change of transport, of track, or into play-when-ready asks for
+        // the playback service.
         val becameActive =
             !playWhenReady ||
                 this.transport != transport ||
@@ -347,10 +395,7 @@ class BaeCorePlayer(
         if (track != null) {
             makeCurrent(track)
         }
-        publish()
-        if (becameActive) {
-            systemHooks.onPlaybackActivated()
-        }
+        return becameActive
     }
 
     /** Make [track] the current track. Its duration is null when unknown. */
@@ -412,7 +457,6 @@ class BaeCorePlayer(
                 BridgePlaybackPauseReason.Manual -> null
                 is BridgePlaybackPauseReason.SideEnded -> SidePausePrompt.of(reason.prompt)
             }
-        publish()
     }
 
     private fun onStopped() {
@@ -423,46 +467,6 @@ class BaeCorePlayer(
         refreshArtwork(null)
         sidePausePrompt = null
         positionModel.reset()
-        publish()
-    }
-
-    private fun onProgress(
-        trackId: String,
-        positionMs: Long,
-        durationMs: Long?,
-        progress: Double,
-    ) {
-        applyPositionUpdate(
-            positionModel.onProgress(playingTrackId, trackId, positionMs, durationMs, progress),
-            trackId,
-        )
-    }
-
-    private fun onSeeked(
-        trackId: String,
-        positionMs: Long,
-        durationMs: Long?,
-        progress: Double,
-    ) {
-        applyPositionUpdate(
-            positionModel.onSeeked(playingTrackId, trackId, positionMs, durationMs, progress),
-            trackId,
-        )
-    }
-
-    private fun applyPositionUpdate(
-        update: PositionUpdate,
-        trackId: String,
-    ) {
-        when (update) {
-            PositionUpdate.Applied -> publish()
-            PositionUpdate.HeldByPendingSeek -> Unit
-            PositionUpdate.StaleTrack -> logStalePosition(trackId)
-        }
-    }
-
-    private fun logStalePosition(trackId: String) {
-        logger.warning("ignoring playback position for stale track $trackId; current track is $playingTrackId")
     }
 
     override fun onQueueItemsAdded(count: Int) {

@@ -46,6 +46,7 @@ import uniffi.bae_bridge.ConfigCallback
 import uniffi.bae_bridge.DownloadCallback
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.OutboxCallback
+import uniffi.bae_bridge.PlaybackPositionsCallback
 import uniffi.bae_bridge.PlaybackValuesCallback
 import uniffi.bae_bridge.QueueCallback
 import uniffi.bae_bridge.SyncActivityCallback
@@ -212,6 +213,14 @@ class OpenLibrary internal constructor(
                         scope.launch(Dispatchers.Main.immediate) {
                             subscriptionFailed("playback", error)?.let(playback.readFailures::failValues)
                         }
+                    }
+                },
+            )
+        valueSubscriptions +=
+            appHandle.subscribePlaybackPositions(
+                object : PlaybackPositionsCallback {
+                    override fun onValue(value: uniffi.bae_bridge.BridgePlaybackPositions) {
+                        scope.launch(Dispatchers.Main.immediate) { playback.applyPositions(value) }
                     }
                 },
             )

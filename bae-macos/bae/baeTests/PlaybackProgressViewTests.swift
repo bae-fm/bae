@@ -221,12 +221,13 @@ struct PlaybackProgressViewTests {
             try await SnapshotTestSupport.settle(host)
             await drainPositionUpdates()
 
-            handler.apply(
-                BridgePreviewValues(
-                    state: .playing(
-                        target: target,
-                        durationMs: 180_000
-                    ),
+            handler.applyPreview(
+                .playing(target: target, durationMs: 180_000)
+            )
+            handler.applyPreviewPosition(
+                BridgePreviewPosition(
+                    target: target,
+                    durationMs: 180_000,
                     positionMs: 45_000,
                     progress: 0.25
                 )
@@ -240,12 +241,13 @@ struct PlaybackProgressViewTests {
             let labels = descendants.compactMap { $0 as? NSTextField }
             #expect(slider.doubleValue == 0.25)
             #expect(labels.map(\.stringValue) == ["0:45", "3:00"])
-            handler.apply(
-                BridgePreviewValues(
-                    state: .paused(
-                        target: target,
-                        durationMs: 240_000
-                    ),
+            handler.applyPreview(
+                .paused(target: target, durationMs: 240_000)
+            )
+            handler.applyPreviewPosition(
+                BridgePreviewPosition(
+                    target: target,
+                    durationMs: 240_000,
                     positionMs: 120_000,
                     progress: 0.5
                 )
@@ -256,9 +258,8 @@ struct PlaybackProgressViewTests {
             #expect(store.previewState.active?.isPlaying == false)
             #expect(store.previewState.active?.target == target)
 
-            handler.apply(
-                BridgePreviewValues(state: .idle, positionMs: 0, progress: 0)
-            )
+            handler.applyPreview(.idle)
+            handler.applyPreviewPosition(nil)
             await drainPositionUpdates()
             #expect(slider.doubleValue == 0)
             #expect(labels.map(\.stringValue) == ["", ""])

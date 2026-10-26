@@ -1,6 +1,6 @@
-/// Services over `fixture`'s library and playback, paused on its first track
+/// Services over `fixture`'s library and playback, playing its first track
 /// with the queue's context holding the rest of the release.
-async fn paused_on_first_track(
+async fn playing_first_track(
     fixture: &PlaybackTestFixture,
 ) -> (bae_core::library::AppServices, String) {
     let import = fixture
@@ -30,6 +30,15 @@ async fn paused_on_first_track(
             .await,
         "the first track plays"
     );
+    (services, release_id)
+}
+
+/// Services over `fixture`'s library and playback, paused on its first track
+/// with the queue's context holding the rest of the release.
+async fn paused_on_first_track(
+    fixture: &PlaybackTestFixture,
+) -> (bae_core::library::AppServices, String) {
+    let (services, release_id) = playing_first_track(fixture).await;
     services.playback_pause();
     (services, release_id)
 }
@@ -194,4 +203,41 @@ async fn renamed_titles_reach_the_paused_track_and_the_queue() {
         item.display.title == "Renamed Second Track" && item.display.album_title == "Renamed Album"
     })
     .await;
+}
+
+/// While a track plays its positions move, and no playback value follows
+/// them: a value is sent only when one changes.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_playing_track_moves_its_positions_without_sending_a_value() {
+    let fixture = PlaybackTestFixture::new().await;
+    let (services, _) = playing_first_track(&fixture).await;
+    let track_id = fixture.track_ids[0].clone();
+    let mut values = services.subscribe_playback_values(&tokio::runtime::Handle::current());
+    let mut positions = services.subscribe_playback_positions();
+    let value = tokio::time::timeout(Duration::from_secs(10), values.recv())
+        .await
+        .expect("the playing value arrives")
+        .expect("the playback values stay open")
+        .expect("the playback values resolve");
+    let PlaybackState::Playing { track } = value.state else {
+        panic!("the first value shows the track playing, not {:?}", value.state);
+    };
+    assert_eq!(track.track.track_id, track_id);
+
+    let mut seen = Vec::new();
+    while seen.len() < 3 {
+        tokio::time::timeout(Duration::from_secs(10), positions.changed())
+            .await
+            .expect("the playing track's position moves")
+            .expect("the positions stay open");
+        let position = positions.borrow_and_update().library.clone();
+        if let Some(position) = position.filter(|position| position.track_id == track_id) {
+            seen.push(position.position_ms);
+        }
+    }
+    assert!(seen.windows(2).all(|pair| pair[0] < pair[1]), "the position moves forward: {seen:?}");
+    assert!(
+        matches!(values.try_recv(), Err(tokio::sync::mpsc::error::TryRecvError::Empty)),
+        "no playback value follows the positions"
+    );
 }

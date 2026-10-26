@@ -226,9 +226,11 @@ pub struct BridgeMediaControlPosition {
     pub progress: f64,
 }
 
+/// Where the preview is in its clip, and which clip that is.
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgePreviewValues {
-    pub state: BridgePreviewState,
+pub struct BridgePreviewPosition {
+    pub target: BridgePreviewTarget,
+    pub duration_ms: u64,
     pub position_ms: u64,
     pub progress: f64,
 }
@@ -244,13 +246,10 @@ pub struct BridgeMediaControlValues {
 pub enum BridgeMediaControlPlayback {
     Library {
         state: BridgePlaybackValueState,
-        position: Option<BridgeMediaControlPosition>,
-        seek_revision: u64,
     },
     Preview {
         target: BridgePreviewTarget,
         duration_ms: u64,
-        position_ms: u64,
         is_playing: bool,
     },
 }
@@ -296,17 +295,29 @@ mirror_enum! {
     },
 }
 
+/// What playback is doing, apart from where it is in what it plays; sent
+/// only when it changes. Mirrors `bae_core::playback::NowPlayingValues`, with
+/// the media controls' presentation resolved from it.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePlaybackValues {
     pub state: BridgePlaybackValueState,
-    pub position: Option<BridgePlaybackPosition>,
-    pub seek_revision: u64,
     pub volume: f32,
     pub is_muted: bool,
     pub repeat_mode: BridgeRepeatMode,
     pub remote: BridgeRemotePlayback,
-    pub preview: BridgePreviewValues,
+    pub preview: BridgePreviewState,
     pub media_control: BridgeMediaControlValues,
+}
+
+/// Where playback is in what it plays; sent as it moves. Each position names
+/// its track or clip. Mirrors `bae_core::playback::PlaybackPositions`, with
+/// the library position on the media controls' timeline.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgePlaybackPositions {
+    pub library: Option<BridgePlaybackPosition>,
+    pub seek_revision: u64,
+    pub preview: Option<BridgePreviewPosition>,
+    pub media_control: Option<BridgeMediaControlPosition>,
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -365,9 +376,9 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    BridgePreviewValues = bae_core::playback::PreviewValues,
+    BridgePreviewPosition = bae_core::playback::PreviewPosition,
     from_core: fn,
-    fields: { state: (BridgePreviewState), position_ms, progress },
+    fields: { target: (BridgePreviewTarget), duration_ms, position_ms, progress },
 }
 
 mirror_enum! {
@@ -385,13 +396,25 @@ impl BridgePlaybackValues {
         let media_control = BridgeMediaControlValues::from_core(value.media_control_values());
         Self {
             state: BridgePlaybackValueState::from_core(value.state),
-            position: value.position.map(BridgePlaybackPosition::from_core),
-            seek_revision: value.seek_revision,
             volume: value.volume,
             is_muted: value.is_muted,
             repeat_mode: BridgeRepeatMode::from_core(value.repeat_mode),
             remote: BridgeRemotePlayback::from_core(value.remote),
-            preview: BridgePreviewValues::from_core(value.preview),
+            preview: BridgePreviewState::from_core(value.preview),
+            media_control,
+        }
+    }
+}
+
+impl BridgePlaybackPositions {
+    pub(crate) fn from_core(positions: bae_core::playback::PlaybackPositions) -> Self {
+        let media_control = positions
+            .media_control()
+            .map(BridgeMediaControlPosition::from_core);
+        Self {
+            library: positions.library.map(BridgePlaybackPosition::from_core),
+            seek_revision: positions.seek_revision,
+            preview: positions.preview.map(BridgePreviewPosition::from_core),
             media_control,
         }
     }
@@ -413,13 +436,10 @@ mirror_enum! {
     variants: {
         Library {
             state: (BridgePlaybackValueState),
-            position: (opt BridgeMediaControlPosition),
-            seek_revision,
         },
         Preview {
             target: (BridgePreviewTarget),
             duration_ms,
-            position_ms,
             is_playing,
         },
     },

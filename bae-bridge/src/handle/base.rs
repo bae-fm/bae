@@ -40,6 +40,21 @@ impl AppHandle {
         )
     }
 
+    /// Where playback is in what it plays, now and then as it moves.
+    pub fn subscribe_playback_positions(
+        &self,
+        callback: Box<dyn crate::types::PlaybackPositionsCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        self.subscribe_watch(
+            |services| services.subscribe_playback_positions(),
+            move |value| {
+                callback.on_value(crate::types::BridgePlaybackPositions::from_core(
+                    value.clone(),
+                ))
+            },
+        )
+    }
+
     pub fn subscribe_downloads(
         &self,
         callback: Box<dyn crate::types::DownloadCallback>,

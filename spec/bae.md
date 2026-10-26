@@ -2389,8 +2389,10 @@ together.
 The playback handle drives one queue on its own thread: play a release,
 several releases or the library shuffled; pause, resume, stop; next, previous,
 seek; volume and mute; queue edits; repeat and shuffle; play on a receiver or
-stop; preview a file before import. Its values — the playing track, its phase,
-its position, the queue — are live subscriptions.
+stop; preview a file before import. Its values are live subscriptions: the
+playing track and its phase, with volume, mute, repeat and where playback is
+going, sent only when one changes; its position and a preview's, sent as they
+move, each naming the track or clip it is of; and the queue.
 
 ### 9.5 Storage and sync
 

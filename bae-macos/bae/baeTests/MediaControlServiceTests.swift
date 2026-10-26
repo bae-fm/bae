@@ -26,7 +26,6 @@ struct MediaControlServiceTests {
                 playback: .preview(
                     target: previewTarget,
                     durationMs: 120_000,
-                    positionMs: 10_000,
                     isPlaying: true
                 )
             ),
@@ -38,7 +37,7 @@ struct MediaControlServiceTests {
         )
 
         service.applyMediaControlValues(
-            mediaControlValues(playback: libraryPlayback),
+            mediaControlValues(playback: libraryPlayback(trackId: "track-1")),
             appHandle: fakeAppHandle
         )
 
@@ -90,13 +89,106 @@ struct MediaControlServiceTests {
                 playback: .preview(
                     target: previewTarget,
                     durationMs: 90_000,
-                    positionMs: 10_000,
                     isPlaying: true
                 )
             ),
             appHandle: fakeAppHandle
         )
         #expect(scrubberEnabled)
+    }
+
+    @Test(
+        "a position that comes before its track's values shows with the track"
+    )
+    func positionBeforeItsTrackShowsWithTheTrack() {
+        let infoCenter = MPNowPlayingInfoCenter.default()
+        infoCenter.nowPlayingInfo = nil
+        defer { infoCenter.nowPlayingInfo = nil }
+        let service = MediaControlService()
+
+        service.applyMediaControlValues(
+            mediaControlValues(playback: libraryPlayback(trackId: "track-1")),
+            appHandle: fakeAppHandle
+        )
+        service.applyPositions(
+            libraryPositions(trackId: "track-2", positionMs: 30_000)
+        )
+        #expect(elapsedSeconds == nil)
+
+        service.applyMediaControlValues(
+            mediaControlValues(playback: libraryPlayback(trackId: "track-2")),
+            appHandle: fakeAppHandle
+        )
+        #expect(elapsedSeconds == 30.0)
+    }
+
+    @Test("pausing a preview keeps its elapsed time")
+    func pausingAPreviewKeepsItsElapsedTime() {
+        let infoCenter = MPNowPlayingInfoCenter.default()
+        infoCenter.nowPlayingInfo = nil
+        defer { infoCenter.nowPlayingInfo = nil }
+        let service = MediaControlService()
+
+        service.applyMediaControlValues(
+            mediaControlValues(
+                playback: .preview(
+                    target: previewTarget,
+                    durationMs: 120_000,
+                    isPlaying: true
+                )
+            ),
+            appHandle: fakeAppHandle
+        )
+        service.applyPositions(
+            previewPositions(target: previewTarget, positionMs: 45_000)
+        )
+        #expect(elapsedSeconds == 45.0)
+
+        service.applyMediaControlValues(
+            mediaControlValues(
+                playback: .preview(
+                    target: previewTarget,
+                    durationMs: 120_000,
+                    isPlaying: false
+                )
+            ),
+            appHandle: fakeAppHandle
+        )
+        #expect(elapsedSeconds == 45.0)
+        #expect(
+            infoCenter.nowPlayingInfo?[MPNowPlayingInfoPropertyPlaybackRate]
+                as? Double == 0.0
+        )
+    }
+
+    @Test("another clip's position is not shown on a preview")
+    func anotherClipsPositionIsNotShown() {
+        let infoCenter = MPNowPlayingInfoCenter.default()
+        infoCenter.nowPlayingInfo = nil
+        defer { infoCenter.nowPlayingInfo = nil }
+        let service = MediaControlService()
+
+        service.applyMediaControlValues(
+            mediaControlValues(
+                playback: .preview(
+                    target: previewTarget,
+                    durationMs: 120_000,
+                    isPlaying: true
+                )
+            ),
+            appHandle: fakeAppHandle
+        )
+        service.applyPositions(
+            previewPositions(
+                target: BridgePreviewTarget(
+                    path: "/tmp/Other Track.flac",
+                    startSample: 0,
+                    endSample: nil
+                ),
+                positionMs: 45_000
+            )
+        )
+        #expect(elapsedSeconds == nil)
     }
 }
 
@@ -108,31 +200,71 @@ private let previewTarget = BridgePreviewTarget(
     endSample: nil
 )
 
-private let libraryPlayback = BridgeMediaControlPlayback.library(
-    state: .playing(
-        track: BridgeNowPlayingTrack(
-            track: BridgePlayingTrack(
-                trackId: "track-1",
-                durationMs: 200_000
-            ),
-            display: BridgeTrackDisplay(
-                title: "Track Title",
-                artistNames: "Artist Name",
-                albumId: "album-1",
-                releaseId: "release-1",
-                albumTitle: "Album Title",
-                coverImage: nil
+private func libraryPlayback(trackId: String) -> BridgeMediaControlPlayback {
+    .library(
+        state: .playing(
+            track: BridgeNowPlayingTrack(
+                track: BridgePlayingTrack(
+                    trackId: trackId,
+                    durationMs: 200_000
+                ),
+                display: BridgeTrackDisplay(
+                    title: "Track Title",
+                    artistNames: "Artist Name",
+                    albumId: "album-1",
+                    releaseId: "release-1",
+                    albumTitle: "Album Title",
+                    coverImage: nil
+                )
             )
         )
-    ),
-    position: BridgeMediaControlPosition(
-        trackId: "track-1",
-        positionMs: 30_000,
-        durationMs: 200_000,
-        progress: 0.15
-    ),
-    seekRevision: 0
-)
+    )
+}
+
+private func libraryPositions(
+    trackId: String,
+    positionMs: UInt64
+) -> BridgePlaybackPositions {
+    BridgePlaybackPositions(
+        library: BridgePlaybackPosition(
+            trackId: trackId,
+            positionMs: Int64(positionMs),
+            durationMs: 200_000,
+            progress: Double(positionMs) / 200_000
+        ),
+        seekRevision: 0,
+        preview: nil,
+        mediaControl: BridgeMediaControlPosition(
+            trackId: trackId,
+            positionMs: positionMs,
+            durationMs: 200_000,
+            progress: Double(positionMs) / 200_000
+        )
+    )
+}
+
+private func previewPositions(
+    target: BridgePreviewTarget,
+    positionMs: UInt64
+) -> BridgePlaybackPositions {
+    BridgePlaybackPositions(
+        library: nil,
+        seekRevision: 0,
+        preview: BridgePreviewPosition(
+            target: target,
+            durationMs: 120_000,
+            positionMs: positionMs,
+            progress: Double(positionMs) / 120_000
+        ),
+        mediaControl: nil
+    )
+}
+
+private var elapsedSeconds: Double? {
+    MPNowPlayingInfoCenter.default().nowPlayingInfo?[
+        MPNowPlayingInfoPropertyElapsedPlaybackTime
+    ] as? Double
+}
 
 private func mediaControlValues(
     playback: BridgeMediaControlPlayback

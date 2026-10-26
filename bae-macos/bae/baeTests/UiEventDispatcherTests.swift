@@ -88,29 +88,13 @@ struct AppServiceMediaControlTests {
             durationMs: 120_000,
             progress: 0.25
         )
-        handle.deliverPlayback(
-            BridgePlaybackValues(
-                state: state,
-                position: position,
+        handle.deliverPlayback(playbackValues(state: state))
+        handle.deliverPositions(
+            BridgePlaybackPositions(
+                library: position,
                 seekRevision: 0,
-                volume: 1,
-                isMuted: false,
-                repeatMode: .off,
-                remote: .local,
-                preview: BridgePreviewValues(
-                    state: .idle,
-                    positionMs: 0,
-                    progress: 0
-                ),
-                mediaControl: BridgeMediaControlValues(
-                    playback: .library(
-                        state: state,
-                        position: mediaPosition,
-                        seekRevision: 0
-                    ),
-                    volume: 1,
-                    isMuted: false
-                )
+                preview: nil,
+                mediaControl: mediaPosition
             )
         )
 
@@ -119,6 +103,91 @@ struct AppServiceMediaControlTests {
                 == "Track Title"
         }
     }
+
+    @Test(
+        "a position that comes before its track's value shows once that track does"
+    )
+    func positionBeforeItsTrackShowsWithTheTrack() async throws {
+        let infoCenter = MPNowPlayingInfoCenter.default()
+        infoCenter.nowPlayingInfo = nil
+        defer { infoCenter.nowPlayingInfo = nil }
+        let handle = FakeAppHandle()
+        let appService = makeAppService(handle: handle)
+        appService.startCommonSubscriptions()
+
+        handle.deliverPlayback(
+            playbackValues(state: playing(trackId: "track-1"))
+        )
+        try await Wait.until {
+            appService.stateForTesting.nowPlaying.track?.track.trackId
+                == "track-1"
+        }
+        handle.deliverPositions(
+            BridgePlaybackPositions(
+                library: BridgePlaybackPosition(
+                    trackId: "track-2",
+                    positionMs: 30_000,
+                    durationMs: 120_000,
+                    progress: 0.25
+                ),
+                seekRevision: 0,
+                preview: nil,
+                mediaControl: BridgeMediaControlPosition(
+                    trackId: "track-2",
+                    positionMs: 30_000,
+                    durationMs: 120_000,
+                    progress: 0.25
+                )
+            )
+        )
+        handle.deliverPlayback(
+            playbackValues(state: playing(trackId: "track-2"))
+        )
+
+        try await Wait.until {
+            guard
+                case .position(_, let positionMs, _) = appService
+                    .stateForTesting.playbackPosition
+            else {
+                return false
+            }
+            return positionMs == 30_000
+        }
+    }
+}
+
+private func playing(trackId: String) -> BridgePlaybackValueState {
+    .playing(
+        track: BridgeNowPlayingTrack(
+            track: BridgePlayingTrack(trackId: trackId, durationMs: 120_000),
+            display: BridgeTrackDisplay(
+                title: "Track Title",
+                artistNames: "Artist Name",
+                albumId: "album-1",
+                releaseId: "release-1",
+                albumTitle: "Album Title",
+                coverImage: nil
+            )
+        )
+    )
+}
+
+private func playbackValues(
+    state: BridgePlaybackValueState
+) -> BridgePlaybackValues {
+    BridgePlaybackValues(
+        state: state,
+        volume: 1,
+        isMuted: false,
+        repeatMode: .off,
+        remote: .local,
+        preview: .idle,
+        mediaControl: BridgeMediaControlValues(
+            playback: .library(state: state),
+            volume: 1,
+            isMuted: false
+        )
+    )
 }
 
 @MainActor
@@ -248,6 +317,7 @@ private var emptySeed: LibrarySessionSeed {
 private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     private var queueCallback: (any QueueCallback)?
     private var playbackCallback: (any PlaybackValuesCallback)?
+    private var positionsCallback: (any PlaybackPositionsCallback)?
 
     init() {
         super.init(noHandle: AppHandle.NoHandle())
@@ -293,6 +363,13 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         callback: any PlaybackValuesCallback
     ) -> LiveSubscription {
         playbackCallback = callback
+        return NoopLiveSubscription()
+    }
+
+    override func subscribePlaybackPositions(
+        callback: any PlaybackPositionsCallback
+    ) -> LiveSubscription {
+        positionsCallback = callback
         return NoopLiveSubscription()
     }
 
@@ -345,6 +422,10 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
 
     func deliverPlayback(_ value: BridgePlaybackValues) {
         playbackCallback?.onValue(value: value)
+    }
+
+    func deliverPositions(_ value: BridgePlaybackPositions) {
+        positionsCallback?.onValue(value: value)
     }
 
 }

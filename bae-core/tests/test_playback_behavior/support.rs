@@ -176,8 +176,8 @@ const SENTINEL_VOLUME: f32 = 0.4321;
 /// sentinel excluded. The service handles commands one at a time in the order
 /// they were sent and emits on one channel that the fan-out forwards in order,
 /// so whatever the earlier commands emit while being handled arrives before the
-/// sentinel's `VolumeChanged`. Once it has arrived, `subscribe_values()` holds
-/// the state those events left. Setting the volume steers neither transport
+/// sentinel's `VolumeChanged`. Once it has arrived, `subscribe_values()` and
+/// `subscribe_positions()` hold what those events left. Setting the volume steers neither transport
 /// nor the queue, and leaves a side-pause countdown running.
 async fn settled_events_on(
     handle: &bae_core::playback::PlaybackHandle,

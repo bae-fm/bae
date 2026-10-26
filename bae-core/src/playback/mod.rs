@@ -47,8 +47,8 @@ pub use persisted::{repeat_to_str, source_to_str, PersistedPlayback};
 pub use preview_player::PreviewTarget;
 pub use progress::{
     MediaControlPlayback, MediaControlPosition, MediaControlValues, PlaybackPosition,
-    PlaybackProgress, PlaybackQueueProjection, PlaybackValues, PreviewState, PreviewValues,
-    RemoteDevice, RemotePlayback,
+    PlaybackPositions, PlaybackProgress, PlaybackQueueProjection, PlaybackValues, PreviewPosition,
+    PreviewState, RemoteDevice, RemotePlayback,
 };
 pub use published_queue::PublishedQueue;
 pub use queue::{

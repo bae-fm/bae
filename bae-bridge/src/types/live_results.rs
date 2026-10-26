@@ -57,6 +57,7 @@ callbacks! {
     SyncStatusCallback: on_value(value: BridgeSyncStatusSnapshot);
     SyncActivityCallback: on_value(value: super::BridgeSyncActivity) + on_error;
     PlaybackValuesCallback: on_value(value: BridgePlaybackValues) + on_error;
+    PlaybackPositionsCallback: on_value(value: BridgePlaybackPositions);
     DownloadCallback: on_value(value: BridgeDownloadSnapshot) + on_error;
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     OutputCallback: on_value(value: BridgeOutputSnapshot) + on_error;

@@ -185,7 +185,13 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     }
 
     override func applyPlatformPlaybackValues(_ values: BridgePlaybackValues) {
-        desktopEvents.apply(values.preview)
+        desktopEvents.applyPreview(values.preview)
+    }
+
+    override func applyPlatformPlaybackPositions(
+        _ positions: BridgePlaybackPositions
+    ) {
+        desktopEvents.applyPreviewPosition(positions.preview)
     }
 
     /// Wire the live `AppHandle` into the stores: start the common and desktop

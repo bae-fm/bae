@@ -271,7 +271,7 @@ pub(crate) enum PlaybackCommand {
 /// `Track` is what the state holds of its track: the service's
 /// [`PlayingTrack`], or the [`NowPlayingTrack`](crate::playback::NowPlayingTrack)
 /// surfaces show, which joins the library's current display onto it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PlaybackState<Track = PlayingTrack> {
     Stopped,
     Playing {
@@ -288,7 +288,7 @@ pub enum PlaybackState<Track = PlayingTrack> {
 
 /// The track a load is for: its id alone until the service has prepared it,
 /// then the prepared track, which carries the id.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum LoadingTrack<Track = PlayingTrack> {
     Unprepared { track_id: String },
     Prepared(Track),
@@ -486,6 +486,12 @@ impl PlaybackHandle {
         &self,
     ) -> tokio::sync::watch::Receiver<crate::playback::progress::PlaybackValues> {
         self.progress_handle.subscribe_values()
+    }
+
+    pub fn subscribe_positions(
+        &self,
+    ) -> tokio::sync::watch::Receiver<crate::playback::progress::PlaybackPositions> {
+        self.progress_handle.subscribe_positions()
     }
 
     pub fn subscribe_queue_values(&self) -> tokio::sync::watch::Receiver<PlaybackQueueProjection> {
