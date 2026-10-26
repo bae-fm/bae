@@ -36,7 +36,7 @@ pub(super) use rows::{
 use session_rows::load_session_on;
 pub(crate) use standing_rows::ImportClaim;
 pub(super) use standing_rows::{
-    change_identification_on, end_identifications_of_files_not_held_on, load_standing_facts_on,
+    change_identification_on, end_identification_unless_of_on, load_standing_facts_on,
     load_standing_on, move_import_on,
 };
 use signal_rows::{delete_signals, insert_signals};
@@ -527,6 +527,18 @@ pub(super) fn settle_scanned_candidates(
                  expected exactly one"
             )));
         }
+        // The decision makes the candidate other files than its
+        // identification was of, which ends with it.
+        end_identification_unless_of_on(
+            sql,
+            &path,
+            Some(&crate::import::CandidateFiles {
+                content_hash: content_hash.to_string(),
+                file_edit_revision: u64::try_from(next_revision).map_err(|error| {
+                    DbError::Message(format!("file edit revision {next_revision}: {error}"))
+                })?,
+            }),
+        )?;
         let stored =
             super::release_groupings::load_candidate_on(sql, &path)?.ok_or_else(|| {
                 DbError::Message(format!(

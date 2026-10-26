@@ -433,53 +433,6 @@ async fn a_claim_survives_the_scan_reporting_the_key() {
         .is_some_and(|runtime| runtime.import.is_some()));
 }
 
-/// A candidate's identification ends in the write that leaves the scan
-/// holding it with other files, or not at all, and the count with it; a
-/// candidate found again with the files it had starts with none.
-#[tokio::test]
-async fn an_identification_ends_in_the_write_that_changes_its_candidate_s_files() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = "/watch/a/rel1";
-    let files = scanned_key(&runtime, key).await;
-    runtime
-        .admit(vec![(key.to_string(), files.clone())], Admission::Automatic)
-        .await
-        .unwrap();
-    report(&runtime, key, &files, run(1), triangulating()).await;
-    assert_eq!(
-        identification(&runtime, key).await,
-        Some(crate::import::IdentificationStatus::Running)
-    );
-
-    scanned_at(&runtime, key, 1).await;
-    assert_eq!(
-        runtime.stored_standing_for_test(key).await,
-        StoredStanding::default(),
-        "the write that read the candidate with other files ended its run"
-    );
-    assert_eq!(runtime.identification_progress().await.unwrap(), (0, 0));
-    assert!(runtime.snapshot(key).await.unwrap().is_none());
-
-    let files = scanned_key(&runtime, key).await;
-    runtime
-        .fail_identification(key, run(2), &files, not_written("database write failed"))
-        .await
-        .unwrap();
-    runtime
-        .execute_local_sql_for_test(&format!("DELETE FROM scan_candidate WHERE path = '{key}';"))
-        .await;
-    assert_eq!(
-        runtime.stored_standing_for_test(key).await,
-        StoredStanding::default(),
-        "nor does the failure outlive the candidate leaving the scan"
-    );
-    scanned_key(&runtime, key).await;
-    assert_eq!(identification(&runtime, key).await, None);
-
-    runtime.run_ended(key, run(1)).await.unwrap();
-    assert!(runtime.inner.lock().unwrap().runtime.is_empty());
-}
-
 /// A rescan reporting the same files keeps what is held for the key; one
 /// reporting other files ends its work and its search.
 #[tokio::test]

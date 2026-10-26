@@ -4,12 +4,15 @@
 //! each change decided from the row inside the write that stores it. No row
 //! outlives the process, so the table is emptied as the library opens.
 //!
-//! A row's identification is of the files it names. Every write that leaves
-//! the scan holding no candidate with those files — the candidate removed,
-//! read with other files, combined into another release — ends it inside
-//! itself ([`end_identifications_of_files_not_held_on`]), so no read sees a
-//! candidate with an identification of files it does not have, and a
-//! candidate removed and found again starts with none.
+//! A row's identification is of the files it names. Each scan write that
+//! removes a candidate or reads it with other files — a pass pruning what it
+//! no longer finds, an entry rewritten, a folder's reading replacing its
+//! releases, a sidecar taking a folder's files, a file decision, a grouping
+//! or a watched folder removed — ends the identification of each candidate
+//! it changes, by key, inside itself ([`end_identification_unless_of_on`]),
+//! so no read sees a candidate with an identification of files it does not
+//! have, and a candidate removed and found again starts with none. Its import
+//! outlives it: only that import's own ending ends a claim.
 //!
 //! The identification count is held beside it (`import_identification_batch`)
 //! and moved by each change to an identification in that change's own write.
@@ -27,13 +30,6 @@ use crate::import::triage::{ImportStanding, TriageRuntimeFacts};
 /// them.
 const COLUMNS: &str = "identification, content_hash, file_edit_revision, admission, \
      identify_run, import_asked, save_failure_error, import, import_id";
-
-/// Whether the scan holds the row's candidate with the files its
-/// identification names.
-const HELD: &str = "EXISTS (SELECT 1 FROM scan_candidate candidate \
-     WHERE candidate.path = standing.candidate_key \
-       AND candidate.content_hash = standing.content_hash \
-       AND candidate.file_edit_revision = standing.file_edit_revision)";
 
 /// One row's columns as SQLite holds them.
 struct StandingColumns {
@@ -218,23 +214,21 @@ fn load_standings_read_on(sql: &SqlReadContext<'_>) -> Result<StandingsRead, DbE
     })
 }
 
-/// End, inside the caller's write, every candidate's identification of files
-/// the scan no longer holds the candidate with: what each write that changes
-/// the scan's candidates leaves behind it.
-pub(crate) fn end_identifications_of_files_not_held_on(
+/// End, inside the caller's write, `candidate_key`'s identification unless
+/// it is of `held` — the files the write leaves the scan holding the candidate
+/// with, `None` for a write that leaves the scan without it.
+pub(crate) fn end_identification_unless_of_on(
     sql: &SqlContext<'_, '_>,
+    candidate_key: &str,
+    held: Option<&CandidateFiles>,
 ) -> Result<(), DbError> {
-    let keys: Vec<String> = sql.query(
-        &format!(
-            "SELECT standing.candidate_key FROM import_candidate_standing standing \
-             WHERE standing.identification IS NOT NULL AND NOT {HELD}"
-        ),
-        [],
-        |row| row.get(0),
+    change_identification_on(
+        sql,
+        candidate_key,
+        &IdentificationChange::ScanHolds {
+            files: held.cloned(),
+        },
     )?;
-    for key in keys {
-        change_identification_on(sql, &key, &IdentificationChange::Ended)?;
-    }
     Ok(())
 }
 

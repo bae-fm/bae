@@ -56,3 +56,4 @@ include!("import_candidate_state_tests/watched_folder_removal.rs");
 include!("import_candidate_state_tests/pane_rows.rs");
 include!("import_candidate_state_tests/lookup_choices.rs");
 include!("import_candidate_state_tests/metadata_author.rs");
+include!("import_candidate_state_tests/standing_endings.rs");

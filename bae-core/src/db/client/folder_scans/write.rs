@@ -17,7 +17,20 @@ pub(crate) struct StoredEntry {
     pub(crate) coverage: Coverage,
 }
 
+/// Remove the entry at `key`: its candidate leaves the scan, and its
+/// identification ends with it.
 pub(crate) fn delete_entry(
+    sql: &SqlContext<'_, '_>,
+    watched_folder_path: &str,
+    key: &str,
+) -> Result<(), DbError> {
+    delete_entry_row(sql, watched_folder_path, key)?;
+    super::super::import_state::end_identification_unless_of_on(sql, key, None)
+}
+
+/// Delete the entry's row, for a write that stores the entry again and says
+/// itself what that does to its candidate's identification.
+pub(super) fn delete_entry_row(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
     key: &str,
@@ -112,7 +125,8 @@ fn tag_values_json<T: serde::Serialize>(values: &[T]) -> Result<String, DbError>
 }
 
 /// Delete every scanned row, not a grouping's, stamped with another
-/// generation than `generation`, and return their keys.
+/// generation than `generation`, ending each candidate's identification, and
+/// return their keys.
 pub(super) fn prune_other_generations(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
@@ -128,6 +142,11 @@ pub(super) fn prune_other_generations(
         "DELETE FROM scan_candidate WHERE watched_folder_path = ? AND generation != ? AND source_kind = 'folder'",
         params![watched_folder_path, generation],
     )?;
+    // The candidates the pass did not find leave the scan, and their
+    // identifications with them.
+    for key in &pruned {
+        super::super::import_state::end_identification_unless_of_on(sql, key, None)?;
+    }
     pruned.sort();
     Ok(pruned)
 }

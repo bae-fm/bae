@@ -242,44 +242,6 @@ async fn a_claim_while_another_stands_is_refused_whole() {
     assert_eq!(db.load_candidate_standing(key).await.unwrap(), claimed);
 }
 
-/// The write that reads a candidate with other files ends its
-/// identification; the import half is the candidate's whatever its files.
-#[tokio::test]
-async fn reading_a_candidate_with_other_files_ends_its_identification() {
-    let (db, _tmp) = empty_db().await;
-    let key = "/music/Album";
-    scanned(&db, key, &files_of(key)).await;
-    change(
-        &db,
-        key,
-        vec![IdentificationChange::Admit {
-            files: files_of(key),
-            admission: Admission::Automatic,
-        }],
-    )
-    .await;
-    db.claim_candidate_import(key, "import-1", None)
-        .await
-        .unwrap();
-
-    scanned(
-        &db,
-        key,
-        &CandidateFiles {
-            file_edit_revision: 1,
-            ..files_of(key)
-        },
-    )
-    .await;
-    let standing = db.load_candidate_standing(key).await.unwrap();
-    assert_eq!(standing.identification, None);
-    assert!(standing.import.is_some());
-    assert_eq!(
-        db.load_candidate_standing_facts().await.unwrap()[key].identification,
-        None
-    );
-}
-
 /// Clearing the table, as the library opens, removes every standing.
 #[tokio::test]
 async fn clearing_removes_every_standing() {

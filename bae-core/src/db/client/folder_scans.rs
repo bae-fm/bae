@@ -719,8 +719,10 @@ pub(super) fn write_entry(
         }
         EntrySource::Grouping => Vec::new(),
     };
-    // An item replaces its own stored row whole.
-    for key in std::iter::once(&entry_key).chain(removed_keys.iter()) {
+    // An item replaces its own stored row whole; the entries it supersedes
+    // leave the scan.
+    write::delete_entry_row(sql, watched_folder_path, &entry_key)?;
+    for key in &removed_keys {
         delete_entry(sql, watched_folder_path, key)?;
     }
     write::insert_item(
@@ -731,6 +733,15 @@ pub(super) fn write_entry(
         file_metadata.as_ref(),
         source,
     )?;
+    // The candidate read with other files, or found invalid, is not what its
+    // identification was of.
+    let held = match item {
+        ScanItem::Valid(candidate) | ScanItem::Discovered(candidate) => {
+            Some(crate::import::CandidateFiles::of(candidate))
+        }
+        ScanItem::Invalid(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => None,
+    };
+    super::import_state::end_identification_unless_of_on(sql, &entry_key, held.as_ref())?;
     if let Some(snapshot) = carried {
         write::replace_candidate_file_tag_snapshot(
             sql,

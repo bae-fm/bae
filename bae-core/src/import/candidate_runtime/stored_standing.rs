@@ -125,10 +125,12 @@ pub(crate) enum IdentificationChange {
     /// The candidate's identification was cancelled: whatever run or answer
     /// it held is over, and nothing will write what it found.
     Cancelled,
-    /// The candidate's identification ends whatever it was, with the files it
-    /// was of: the scan no longer holds the candidate with them, a person
-    /// decided what the candidate is, or an import took it.
+    /// The candidate's identification ends whatever it was: a person decided
+    /// what the candidate is, or an import took it.
     Ended,
+    /// The scan now holds the candidate with `files`, or not at all with
+    /// `None`: an identification of other files ends.
+    ScanHolds { files: Option<CandidateFiles> },
 }
 
 impl IdentificationChange {
@@ -236,6 +238,10 @@ impl IdentificationChange {
                 _ => unchanged(),
             },
             Self::Ended => None,
+            Self::ScanHolds { files } => match stored {
+                Some(stored) if Some(&stored.files) == files.as_ref() => unchanged(),
+                _ => None,
+            },
         }
     }
 }
