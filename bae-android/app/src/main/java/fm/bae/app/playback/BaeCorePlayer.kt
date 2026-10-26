@@ -334,6 +334,13 @@ class BaeCorePlayer(
         transport: Transport,
         track: BridgeNowPlayingTrack?,
     ) {
+        // Core redelivers its values with every position update, so most calls
+        // repeat the state already in force; only a change of transport, of
+        // track, or into play-when-ready asks for the playback service.
+        val becameActive =
+            !playWhenReady ||
+                this.transport != transport ||
+                (track != null && track.track.trackId != playingTrackId)
         this.transport = transport
         playWhenReady = true
         sidePausePrompt = null
@@ -341,7 +348,9 @@ class BaeCorePlayer(
             makeCurrent(track)
         }
         publish()
-        systemHooks.onPlaybackActivated()
+        if (becameActive) {
+            systemHooks.onPlaybackActivated()
+        }
     }
 
     /** Make [track] the current track. Its duration is null when unknown. */
