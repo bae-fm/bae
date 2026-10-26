@@ -316,52 +316,85 @@ fn find_albums_by_record_pairs(
     .map_err(DbError::from)
 }
 
+/// One statement answers every check: the checks go in as one JSON array,
+/// each matched by plain equality on the index its kind of record has — its
+/// pressing on `idx_release_records_catalog_key`, its album on
+/// `idx_release_records_catalog_album` — and the rows come back in check
+/// order, each check's albums holding its pressing first, then by age.
 pub(super) fn check_releases_in_library_on(
     sql: &(impl super::query::QueryOne + super::query::QueryRows),
     checks: &[LibraryCheck],
 ) -> Result<Vec<LibraryStatus>, DbError> {
-    let mut statuses = Vec::with_capacity(checks.len());
-
-    for check in checks {
-        let catalog = check.source.as_str();
-        let group_id = check.source_group_id.as_deref();
-        let albums = sql.query(
-            r#"
-                SELECT
-                    a.id AS album_id,
-                    a.title AS album_title,
-                    MAX(rr.kind = 'pressing' AND rr.key = ?) AS holds_release
-                FROM albums a
-                JOIN releases r ON r.album_id = a.id
-                JOIN release_records rr ON rr.release_id = r.id
-                WHERE rr.catalog = ?
-                  AND (
-                      (rr.kind = 'pressing' AND rr.key = ?)
-                      OR (? IS NOT NULL AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) = ?)
-                  )
-                GROUP BY a.id
-                ORDER BY holds_release DESC, a.created_at, a.id
-            "#,
-            params![
-                check.release_id,
-                catalog,
-                check.release_id,
-                group_id,
-                group_id
-            ],
-            |row| {
-                Ok(crate::db::LibraryAlbumMatch {
+    let mut statuses = checks
+        .iter()
+        .map(|check| LibraryStatus {
+            release_id: check.release_id.clone(),
+            albums: Vec::new(),
+        })
+        .collect::<Vec<_>>();
+    if checks.is_empty() {
+        return Ok(statuses);
+    }
+    let checks_json = serde_json::Value::Array(
+        checks
+            .iter()
+            .map(|check| {
+                serde_json::json!([
+                    check.release_id,
+                    check.source.as_str(),
+                    check.source_group_id
+                ])
+            })
+            .collect(),
+    )
+    .to_string();
+    let rows = sql.query(
+        r#"
+            WITH checks(position, release_id, catalog, group_id) AS (
+                SELECT key, value ->> 0, value ->> 1, value ->> 2 FROM json_each(?1)
+            ),
+            matches(position, album_id, holds_release) AS (
+                SELECT checks.position, r.album_id, 1
+                FROM checks
+                JOIN release_records rr
+                  ON rr.catalog = checks.catalog
+                 AND rr.kind = 'pressing'
+                 AND rr.key = checks.release_id
+                JOIN releases r ON r.id = rr.release_id
+                UNION ALL
+                SELECT checks.position, r.album_id, 0
+                FROM checks
+                JOIN release_records rr
+                  ON rr.catalog = checks.catalog
+                 AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) = checks.group_id
+                JOIN releases r ON r.id = rr.release_id
+                WHERE checks.group_id IS NOT NULL
+            )
+            SELECT
+                matches.position,
+                a.id AS album_id,
+                a.title AS album_title,
+                MAX(matches.holds_release) AS holds_release
+            FROM matches
+            JOIN albums a ON a.id = matches.album_id
+            GROUP BY matches.position, a.id
+            ORDER BY matches.position, holds_release DESC, a.created_at, a.id
+        "#,
+        params![checks_json],
+        |row| {
+            Ok((
+                row.get::<_, i64>("position")?,
+                crate::db::LibraryAlbumMatch {
                     album_id: row.get("album_id")?,
                     album_title: row.get("album_title")?,
                     holds_release: row.get::<_, i64>("holds_release")? != 0,
-                })
-            },
-        )?;
-        statuses.push(LibraryStatus {
-            release_id: check.release_id.clone(),
-            albums,
-        });
+                },
+            ))
+        },
+    )?;
+    for (position, album) in rows {
+        let position = usize::try_from(position).expect("a check's position is an index");
+        statuses[position].albums.push(album);
     }
-
     Ok(statuses)
 }

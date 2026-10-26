@@ -1057,7 +1057,9 @@ Ana clicks Import. bae:
    library album to pick instead; a picked album deleted meanwhile takes its
    pick with it. Re-identifying a library release files it the same way.
    The "already in your library" banner names every album holding the
-   release, or another release of its album.
+   release, or another release of its album: those holding the release
+   first, then oldest first. One read answers it for every release the
+   pane offers.
 7. **Writes everything in one transaction**, from the draft as it stands, read
    from no source again: the album; the release, with a fresh random id, and
    this device's record of the folder's hash it read (§2.7); its tracks, files, segments, scrub points, credits, roles, works, records,
