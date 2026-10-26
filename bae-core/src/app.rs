@@ -350,7 +350,7 @@ where
 
     #[cfg(unix)]
     timing.stage(&library_id, "raise open-file limit", || {
-        crate::util::open_file_limit::raise_open_file_limit()
+        bae_util::open_file_limit::raise_open_file_limit()
     });
 
     let config_handle = Arc::new(ConfigHandle::new(config));
@@ -358,7 +358,7 @@ where
     // The one transport every outbound request goes out on, and the providers
     // that ask over it: each keeps its own rate limit and answers for as long
     // as this library is open.
-    let http = crate::util::http::Http::new()
+    let http = bae_util::http::Http::new()
         .map_err(|e| BootstrapError::Internal(format!("Failed to build the HTTP client: {e}")))?;
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     let providers = crate::providers::Providers::new(http.clone());

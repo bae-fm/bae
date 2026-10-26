@@ -883,7 +883,7 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
         }],
         embedded_cover: Some(crate::import::file_tag_snapshot::EmbeddedCoverFact {
             source_relative_path: "01.flac".to_string(),
-            content_type: crate::util::content_type::ContentType::Jpeg,
+            content_type: bae_util::content_type::ContentType::Jpeg,
             data: bytes.clone(),
         }),
     };

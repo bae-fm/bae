@@ -36,7 +36,7 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
         &release.id,
         "cover.jpg",
         5,
-        crate::util::content_type::ContentType::Jpeg,
+        bae_util::content_type::ContentType::Jpeg,
         Uuid::new_v4().to_string(),
         Utc::now(),
     );
@@ -402,7 +402,7 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
         &release.id,
         "back.jpg",
         1234,
-        crate::util::content_type::ContentType::Jpeg,
+        bae_util::content_type::ContentType::Jpeg,
         Uuid::new_v4().to_string(),
         Utc::now(),
     );

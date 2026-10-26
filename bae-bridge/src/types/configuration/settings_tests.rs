@@ -216,7 +216,7 @@ async fn actual_artwork_data_failure_reaches_the_bridge_with_its_detail() {
         stream.shutdown().await.unwrap();
     });
     let error = bae_core::import::cover_art::RemoteImageCache::for_test(
-        bae_core::util::http::Http::for_test().serve("images.example", &origin),
+        bae_util::http::Http::for_test().serve("images.example", &origin),
     )
     .fetch("https://images.example/cover")
     .await

@@ -5,7 +5,7 @@ use crate::import::types::{Catalog, ImportCommand, ImportProgress};
 use crate::import::watched_folder::WatchedFolder;
 use crate::library::manager::DiscogsCheck;
 use crate::library::LibraryManager;
-use crate::util::worker_thread::WorkerThread;
+use bae_util::worker_thread::WorkerThread;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;

@@ -2,6 +2,8 @@
 //! up and narrows by, produced as one [`Signals`] value per pass. Embedded tags
 //! are not a signal; they seed the file-metadata import instead.
 
+use bae_util::desktop_only;
+
 // `failure` and `origin` are plain data used on every platform; the rest is
 // desktop-only extraction.
 pub mod failure;

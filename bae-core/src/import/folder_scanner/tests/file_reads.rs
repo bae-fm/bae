@@ -99,7 +99,7 @@ impl crate::import::file_tag_snapshot::FileTagReader for PictureReader {
         let mut read = crate::import::file_tag_snapshot::LoftyFileTagReader.read(path)?;
         read.embedded_cover = Some((
             vec![0; self.size],
-            crate::util::content_type::ContentType::Jpeg,
+            bae_util::content_type::ContentType::Jpeg,
         ));
         Ok(read)
     }

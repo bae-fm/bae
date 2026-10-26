@@ -11,6 +11,8 @@
 //! reads it, name for name, with a test comparing the table against the
 //! captured record under `test-fixtures/pressing-vocabulary/`.
 
+use bae_util::desktop_only;
+
 pub mod area;
 pub mod country;
 pub mod discogs_detail;

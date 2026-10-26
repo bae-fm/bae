@@ -1,3 +1,5 @@
+use bae_util::desktop_only;
+
 // Gated with its two callers (`handle` and `service`), which the mobile builds
 // leave out — the import editor is desktop-only.
 desktop_only! {

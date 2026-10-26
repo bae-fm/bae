@@ -98,7 +98,7 @@ impl crate::import::file_tag_snapshot::FileTagReader for UnsupportedEmbeddedArtw
         path: &Path,
     ) -> Result<crate::import::file_tag_snapshot::FileTagRead, crate::import::ImportError> {
         let mut read = crate::import::file_tag_snapshot::LoftyFileTagReader.read(path)?;
-        read.embedded_cover = Some((b"BM".to_vec(), crate::util::content_type::ContentType::Bmp));
+        read.embedded_cover = Some((b"BM".to_vec(), bae_util::content_type::ContentType::Bmp));
         Ok(read)
     }
 }
@@ -180,7 +180,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             .unwrap();
         assert_eq!(
             snapshot.embedded_cover.as_ref().unwrap().content_type,
-            crate::util::content_type::ContentType::Bmp
+            bae_util::content_type::ContentType::Bmp
         );
         let mut events = test.service.event_tx.every_event();
         test.service.queue_import_for_test(&key, "import-cover").await;
@@ -632,31 +632,31 @@ fn resolve_file_content_type_uses_scan_facts_for_new_audio_formats() {
     for (name, expected) in [
         (
             "placeholder-pcm.wav",
-            crate::util::content_type::ContentType::Pcm,
+            bae_util::content_type::ContentType::Pcm,
         ),
         (
             "placeholder-pcm.aiff",
-            crate::util::content_type::ContentType::Pcm,
+            bae_util::content_type::ContentType::Pcm,
         ),
         (
             "placeholder-opus.opus",
-            crate::util::content_type::ContentType::Opus,
+            bae_util::content_type::ContentType::Opus,
         ),
         (
             "placeholder-vorbis.ogg",
-            crate::util::content_type::ContentType::Vorbis,
+            bae_util::content_type::ContentType::Vorbis,
         ),
         (
             "placeholder-wavpack.wv",
-            crate::util::content_type::ContentType::WavPack,
+            bae_util::content_type::ContentType::WavPack,
         ),
         (
             "placeholder-dsd.dsf",
-            crate::util::content_type::ContentType::Dsd,
+            bae_util::content_type::ContentType::Dsd,
         ),
         (
             "placeholder-dsd.dff",
-            crate::util::content_type::ContentType::Dsd,
+            bae_util::content_type::ContentType::Dsd,
         ),
     ] {
         let entry = files

@@ -58,7 +58,7 @@ pub struct DbLibraryImage {
 
 impl DbLibraryImage {
     /// The row describing a release's cover, `bytes` the stored JPEG
-    /// [`crate::util::stored_image::stored_jpeg`] made.
+    /// [`bae_util::stored_image::stored_jpeg`] made.
     pub fn cover(
         release_id: &str,
         source: &str,
@@ -79,7 +79,7 @@ impl DbLibraryImage {
     }
 
     /// The row describing the image of `image_type` kept for `id`, `bytes`
-    /// the stored JPEG [`crate::util::stored_image::stored_jpeg`] made, as
+    /// the stored JPEG [`bae_util::stored_image::stored_jpeg`] made, as
     /// handed to coven, which calculates their hash while attaching them.
     pub fn stored_jpeg(
         image_type: LibraryImageType,

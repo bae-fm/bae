@@ -276,7 +276,7 @@ async fn release_files_come_back_in_case_insensitive_natural_order() {
             release_id: RELEASE_A.to_string(),
             original_filename: name.to_string(),
             file_size: 1,
-            content_type: crate::util::content_type::ContentType::from_mime(mime),
+            content_type: bae_util::content_type::ContentType::from_mime(mime),
             source_audio: None,
             stored: false,
             created_at: chrono::Utc::now(),
@@ -304,7 +304,7 @@ async fn release_file_source_audio_facts_round_trip_without_track_rows() {
     let (db, _tmp) = release_detail_db().await;
     let source_audio = crate::album_detail::SourceAudioFile {
         layout: Some(crate::album_detail::SourceAudioLayout::Cue),
-        content_type: crate::util::content_type::ContentType::Flac,
+        content_type: bae_util::content_type::ContentType::Flac,
         duration_ms: 187_654,
         format: crate::album_detail::AudioFormat {
             codec: "FLAC".to_string(),
@@ -319,7 +319,7 @@ async fn release_file_source_audio_facts_round_trip_without_track_rows() {
         release_id: RELEASE_A.to_string(),
         original_filename: "album.flac".to_string(),
         file_size: 12_345,
-        content_type: crate::util::content_type::ContentType::Flac,
+        content_type: bae_util::content_type::ContentType::Flac,
         source_audio: Some(source_audio.clone()),
         stored: false,
         created_at: chrono::Utc::now(),

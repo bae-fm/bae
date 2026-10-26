@@ -3,11 +3,11 @@ use crate::discogs::models::{
 };
 use crate::discogs::remote_cover_from_urls;
 use crate::import::cover_art::RemoteCover;
-use crate::retry::{retry_with_backoff_if, Repeat, RetryPolicy};
-use crate::util::error_text::CauseChain;
-use crate::util::http::{is_cacheable, CachedResponse, Http};
 use crate::util::rate_limiter::{CallPriority, RateAnswer, RateLimiter, WindowCount};
-use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
+use bae_util::error_text::CauseChain;
+use bae_util::http::{is_cacheable, CachedResponse, Http};
+use bae_util::retry::{retry_with_backoff_if, Repeat, RetryPolicy};
+use bae_util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
 use reqwest::header::HeaderMap;
 use reqwest::StatusCode;
 use serde::Deserialize;
@@ -95,7 +95,7 @@ impl Discogs {
     #[cfg(any(test, feature = "test-utils"))]
     fn seed_response(&self, url: &str, status: u16, body: String) {
         self.responses.put(
-            crate::util::http::response_key(url),
+            bae_util::http::response_key(url),
             CachedResponse { status, body },
         );
     }
@@ -212,7 +212,7 @@ fn repeat_discogs(error: &DiscogsError) -> Repeat {
     match error {
         DiscogsError::Transport(_) => Repeat::AfterBackoff,
         DiscogsError::Provider { status, told_wait } => {
-            if crate::retry::is_transient_status(*status) {
+            if bae_util::retry::is_transient_status(*status) {
                 Repeat::transient(*told_wait)
             } else {
                 Repeat::Never
@@ -230,7 +230,7 @@ fn repeat_discogs(error: &DiscogsError) -> Repeat {
 fn discogs_rate_answer(status: StatusCode, headers: &HeaderMap) -> RateAnswer {
     if status == StatusCode::TOO_MANY_REQUESTS {
         return RateAnswer::Refused {
-            wait: crate::util::http::told_wait(headers),
+            wait: bae_util::http::told_wait(headers),
         };
     }
     headers
@@ -702,7 +702,7 @@ impl DiscogsClient {
             .http
             .get(url)
             .header("Authorization", format!("Discogs token={}", self.api_key))
-            .timeout(crate::util::http::API_TIMEOUT)
+            .timeout(bae_util::http::API_TIMEOUT)
     }
 
     /// One request, straight to the wire: wait for the rate-limit slot, send,
@@ -738,7 +738,7 @@ impl DiscogsClient {
                 continue;
             }
             let status = response.status().as_u16();
-            let told_wait = crate::util::http::told_wait(response.headers());
+            let told_wait = bae_util::http::told_wait(response.headers());
             let body = response.text().await?;
             return Ok((CachedResponse { status, body }, told_wait));
         }

@@ -2,6 +2,7 @@
 //! print one.
 
 use super::squash;
+use bae_util::desktop_only;
 
 /// A catalog number as two of them are compared: squashed, and `None` when
 /// that leaves no number. Both catalogs write a release's lack of one as a

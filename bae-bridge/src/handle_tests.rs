@@ -153,7 +153,7 @@ pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, st
             runtime.handle().clone(),
             bae_core::library::LibraryOpening::Open(handle),
             bae_core::import::cover_art::RemoteImageCache::for_test(
-                bae_core::util::http::Http::for_test(),
+                bae_util::http::Http::for_test(),
             ),
             bae_core::providers::Providers::offline(),
         ))

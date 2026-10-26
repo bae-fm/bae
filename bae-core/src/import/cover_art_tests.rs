@@ -350,7 +350,7 @@ async fn download_rejects_bytes_that_are_not_an_image() {
 
 #[tokio::test]
 async fn download_rejects_declared_over_cap_response() {
-    let url = start_declared_length_response(crate::util::http::MAX_IMAGE_BYTES + 1).await;
+    let url = start_declared_length_response(bae_util::http::MAX_IMAGE_BYTES + 1).await;
     let cache = RemoteImageCache::for_test(direct_http());
     let result = tokio::time::timeout(
         std::time::Duration::from_secs(1),
@@ -459,7 +459,7 @@ async fn artwork_interrupted_body_is_a_network_failure() {
 #[tokio::test]
 async fn artwork_stalled_body_keeps_timeout_classification() {
     let url = start_declared_length_response(256).await;
-    let client = crate::util::http::client_builder()
+    let client = bae_util::http::client_builder()
         .timeout(Duration::from_millis(30))
         .build()
         .unwrap();
@@ -577,7 +577,7 @@ async fn truncated_gif_and_webp_fail_remote_validation_and_normalization() {
         include_bytes!("../../test-fixtures/cover-art/solid.webp").as_slice(),
     ] {
         let truncated = &bytes[..20];
-        assert!(crate::util::stored_image::stored_jpeg(truncated).is_err());
+        assert!(bae_util::stored_image::stored_jpeg(truncated).is_err());
         let url = start_mock(vec![(200, truncated.to_vec())]).await;
         let error = RemoteImageCache::for_test(direct_http())
             .fetch_required(&url)

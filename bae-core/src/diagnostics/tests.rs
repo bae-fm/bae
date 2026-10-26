@@ -348,10 +348,7 @@ async fn the_transport_sends_under_baes_http_policy() {
         .await
         .expect("the intake accepts the batch");
     let head = intake.await.expect("the intake finishes").to_lowercase();
-    let user_agent = format!(
-        "user-agent: {}",
-        crate::util::http::USER_AGENT.to_lowercase()
-    );
+    let user_agent = format!("user-agent: {}", bae_util::http::USER_AGENT.to_lowercase());
     assert!(head.contains(&user_agent), "{head}");
 }
 

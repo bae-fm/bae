@@ -13,7 +13,7 @@ use tracing::debug;
 use crate::renderer::{
     ReceiverStatus, RendererChannel, RendererError, RendererMedia, RendererPlayerState,
 };
-use crate::util::error_text::CauseChain;
+use bae_util::error_text::CauseChain;
 
 /// The one real Cast [`RendererChannel`], over `rust_cast`. Owned and driven
 /// entirely on the session's thread — `rust_cast`'s channel calls block on the

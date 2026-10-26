@@ -13,11 +13,11 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use crate::retry::{Repeat, RetryPolicy};
-use crate::util::error_text::CauseChain;
-use crate::util::http::{is_cacheable, CachedResponse, Http};
 use crate::util::rate_limiter::{CallPriority, RateAnswer, RateLimiter, WindowCount};
-use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
+use bae_util::error_text::CauseChain;
+use bae_util::http::{is_cacheable, CachedResponse, Http};
+use bae_util::retry::{Repeat, RetryPolicy};
+use bae_util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
 use reqwest::header::HeaderMap;
 use reqwest::StatusCode;
 use thiserror::Error;
@@ -137,7 +137,8 @@ fn repeat_mb(error: &MusicBrainzError) -> Repeat {
         // one it couldn't produce — repeat it like any transport failure.
         MusicBrainzError::Provider { status, told_wait } => {
             let transient = status.is_none_or(|status| {
-                reqwest::StatusCode::from_u16(status).is_ok_and(crate::retry::is_transient_status)
+                reqwest::StatusCode::from_u16(status)
+                    .is_ok_and(bae_util::retry::is_transient_status)
             });
             if transient {
                 Repeat::transient(*told_wait)
@@ -170,7 +171,7 @@ where
     F: Fn() -> Fut,
     Fut: std::future::Future<Output = Result<T, MusicBrainzError>>,
 {
-    crate::retry::retry_with_backoff_if(RETRY, label, repeat_mb, f).await
+    bae_util::retry::retry_with_backoff_if(RETRY, label, repeat_mb, f).await
 }
 
 /// The header MusicBrainz's rate limiter names the refusing zone in: `per-ip`
@@ -194,10 +195,10 @@ const RATE_ZONE: &str = "x-ratelimit-zone";
 /// when the servers are about to turn every client away, and this address's
 /// own rate is the interval's to keep.
 fn mb_rate_answer(status: StatusCode, headers: &HeaderMap) -> RateAnswer {
-    let resets_in = crate::util::http::wait_until_epoch(headers, "x-ratelimit-reset");
+    let resets_in = bae_util::http::wait_until_epoch(headers, "x-ratelimit-reset");
     if status == StatusCode::SERVICE_UNAVAILABLE && headers.contains_key(RATE_ZONE) {
         return RateAnswer::Refused {
-            wait: [crate::util::http::told_wait(headers), resets_in]
+            wait: [bae_util::http::told_wait(headers), resets_in]
                 .into_iter()
                 .flatten()
                 .max(),
@@ -428,7 +429,7 @@ impl MusicBrainz {
     ) -> Result<String, MusicBrainzError> {
         let request = request
             .header("Accept", "application/json")
-            .timeout(crate::util::http::API_TIMEOUT)
+            .timeout(bae_util::http::API_TIMEOUT)
             .build()
             .map_err(MusicBrainzError::from_reqwest)?;
         let key = request.url().to_string();
@@ -440,7 +441,7 @@ impl MusicBrainz {
 
         let response = self.send(request, priority).await?;
         let status = response.status().as_u16();
-        let told_wait = crate::util::http::told_wait(response.headers());
+        let told_wait = bae_util::http::told_wait(response.headers());
         let body = response
             .text()
             .await
@@ -756,7 +757,7 @@ impl MusicBrainz {
     #[cfg(any(test, feature = "test-utils"))]
     fn seed_response(&self, url: &str, status: u16, body: String) {
         self.responses.put(
-            crate::util::http::response_key(url),
+            bae_util::http::response_key(url),
             CachedResponse { status, body },
         );
     }

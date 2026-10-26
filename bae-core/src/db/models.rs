@@ -13,7 +13,7 @@
 //! built directly by the queue catalog read — it has no raw counterpart here.)
 
 use crate::import::Catalog;
-use crate::util::content_type::ContentType;
+use bae_util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 use std::num::NonZeroU32;
 

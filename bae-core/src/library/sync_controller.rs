@@ -464,5 +464,5 @@ impl SyncController {
 
 /// An error with its whole chain of causes, as one line of text.
 fn cause_text(error: &(dyn std::error::Error + 'static)) -> String {
-    crate::util::error_text::CauseChain(error).to_string()
+    bae_util::error_text::CauseChain(error).to_string()
 }

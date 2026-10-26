@@ -56,7 +56,7 @@ async fn insert_export_release_rows(
             &release.id,
             name,
             bytes.len() as i64,
-            crate::util::content_type::ContentType::Flac,
+            bae_util::content_type::ContentType::Flac,
             bae_test_support::test_uuid(&format!("{}-export-file-{index}", release.id)),
             created_at,
         );
@@ -412,7 +412,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
             &release.id,
             name,
             bytes.len() as i64,
-            crate::util::content_type::ContentType::Flac,
+            bae_util::content_type::ContentType::Flac,
             Uuid::new_v4().to_string(),
             Utc::now(),
         );

@@ -91,7 +91,7 @@ async fn upload_keeps_the_cover_and_every_file_in_the_queue() {
             &release.id,
             name,
             bytes.len() as i64,
-            crate::util::content_type::ContentType::Flac,
+            bae_util::content_type::ContentType::Flac,
             id.to_string(),
             created_at,
         );

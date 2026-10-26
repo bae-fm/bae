@@ -10,7 +10,7 @@ pub fn hash_bytes(bytes: &[u8]) -> String {
 /// the directory as a file. std cannot open a directory on Windows (access is
 /// denied), so there the synced file is all there is to sync; coven syncs
 /// directories on Unix only as well.
-pub(crate) fn sync_directory(directory: &std::path::Path) -> std::io::Result<()> {
+pub fn sync_directory(directory: &std::path::Path) -> std::io::Result<()> {
     #[cfg(unix)]
     {
         std::fs::File::open(directory)?.sync_all()

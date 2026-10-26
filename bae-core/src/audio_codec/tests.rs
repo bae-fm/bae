@@ -1,6 +1,6 @@
 use super::probe::content_type_from_codec_id;
 use super::*;
-use crate::util::content_type::ContentType;
+use bae_util::content_type::ContentType;
 use std::sync::Arc;
 
 /// A sparse buffer pre-filled with the whole byte slice, so a decode exercises

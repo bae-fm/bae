@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::util::worker_thread::WorkerThread;
+use bae_util::worker_thread::WorkerThread;
 
 /// What the playback service decides a side or disc pause with about a track:
 /// the release and side it plays on, read from the library when the decision

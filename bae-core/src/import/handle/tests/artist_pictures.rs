@@ -110,7 +110,7 @@ fn assert_stored_large_picture(stored: Option<Vec<u8>>) {
 async fn picked_discogs_release() -> DiscogsPick {
     let images = bae_test_support::RemoteImageHost::start().await;
     let (handle, tmp, key, _hash) = pane_fixture_with(
-        crate::util::http::Http::for_test()
+        bae_util::http::Http::for_test()
             .serve(bae_test_support::TEST_IMAGE_HOST, images.origin()),
     )
     .await;

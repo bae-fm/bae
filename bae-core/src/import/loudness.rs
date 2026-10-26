@@ -538,7 +538,7 @@ pub(super) async fn measure_loudness(
                 .map(|segment| (segment.file_id.clone(), segment.span()))
                 .collect(),
             byte_seekable: audio_formats[index].content_type
-                != crate::util::content_type::ContentType::Ape,
+                != bae_util::content_type::ContentType::Ape,
         });
     }
 

@@ -18,11 +18,11 @@ use thiserror::Error;
 use tracing::{debug, warn};
 
 use crate::import::{Catalog, CatalogPage};
-use crate::retry::{Repeat, RetryPolicy};
-use crate::util::error_text::CauseChain;
-use crate::util::http::{is_cacheable, CachedResponse, Http};
 use crate::util::rate_limiter::{CallPriority, RateLimiter};
-use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
+use bae_util::error_text::CauseChain;
+use bae_util::http::{is_cacheable, CachedResponse, Http};
+use bae_util::retry::{Repeat, RetryPolicy};
+use bae_util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
 
 /// Where every Wikidata request goes.
 const BASE_URL: &str = "https://www.wikidata.org";
@@ -119,7 +119,8 @@ fn repeat(error: &WikidataError) -> Repeat {
         // one it couldn't produce — repeat it like any transport failure.
         WikidataError::Provider { status, told_wait } => {
             let transient = status.is_none_or(|status| {
-                reqwest::StatusCode::from_u16(status).is_ok_and(crate::retry::is_transient_status)
+                reqwest::StatusCode::from_u16(status)
+                    .is_ok_and(bae_util::retry::is_transient_status)
             });
             if transient {
                 Repeat::transient(*told_wait)
@@ -146,7 +147,7 @@ where
     F: Fn() -> Fut,
     Fut: std::future::Future<Output = Result<T, WikidataError>>,
 {
-    crate::retry::retry_with_backoff_if(RETRY, label, repeat, f).await
+    bae_util::retry::retry_with_backoff_if(RETRY, label, repeat, f).await
 }
 
 /// The body on a success, and the error the status names otherwise, carrying
@@ -194,7 +195,7 @@ impl Wikidata {
             .http
             .get(url)
             .header("Accept", "application/json")
-            .timeout(crate::util::http::API_TIMEOUT)
+            .timeout(bae_util::http::API_TIMEOUT)
             .build()
             .map_err(WikidataError::from_reqwest)?;
         let key = request.url().to_string();
@@ -211,7 +212,7 @@ impl Wikidata {
             .await
             .map_err(WikidataError::from_reqwest)?;
         let status = response.status().as_u16();
-        let told_wait = crate::util::http::told_wait(response.headers());
+        let told_wait = bae_util::http::told_wait(response.headers());
         let body = response.text().await.map_err(WikidataError::from_reqwest)?;
         let response = CachedResponse { status, body };
 
@@ -240,7 +241,7 @@ impl Wikidata {
             None => (404, String::new()),
         };
         self.responses.put(
-            crate::util::http::response_key(&url),
+            bae_util::http::response_key(&url),
             CachedResponse { status, body },
         );
     }

@@ -299,7 +299,7 @@ async fn only_transient_wikidata_failures_are_retried() {
     assert_eq!(repeat(&WikidataError::Timeout), Repeat::AfterBackoff);
     assert_eq!(
         repeat(&WikidataError::Network(
-            crate::util::http::refused_request_error().await
+            bae_util::http::refused_request_error().await
         )),
         Repeat::AfterBackoff
     );
@@ -326,7 +326,7 @@ async fn only_transient_wikidata_failures_are_retried() {
     );
     assert_eq!(
         repeat(&WikidataError::Request(
-            crate::util::http::unbuildable_request_error()
+            bae_util::http::unbuildable_request_error()
         )),
         Repeat::Never
     );

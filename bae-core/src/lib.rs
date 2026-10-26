@@ -1,18 +1,5 @@
 #![deny(unreachable_pub, dead_code)]
 
-/// Gates every item in the block to the desktop targets, so the predicate is
-/// written once for a run of modules or re-exports instead of above each one.
-/// Mobile (iOS, Android) is a sync and playback client: no import pipeline, no
-/// signal extraction, no metadata providers.
-macro_rules! desktop_only {
-    ($($item:item)*) => {
-        $(
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            $item
-        )*
-    };
-}
-
 pub mod airplay;
 pub mod album_detail;
 pub mod app;
@@ -62,10 +49,8 @@ pub mod pressing;
 pub mod providers;
 pub mod queue;
 pub mod renderer;
-pub mod retry;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod serde_helpers;
-pub mod server;
 // The extraction machinery (OCR, disc-ID compute) is desktop-only and gated
 // submodule-by-submodule inside `signals`. The module itself stays on every
 // target for the pure `LookupFailure` type, which the shared metadata-search path
@@ -81,8 +66,6 @@ pub(crate) mod test_gate;
 pub(crate) mod test_logs;
 #[cfg(test)]
 pub(crate) mod test_reads;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod text_encoding;
 pub(crate) mod text_match;
 pub mod ui;
 pub mod util;

@@ -72,13 +72,16 @@ jobs:
       run: |
         cargo clippy --workspace -- -D warnings
         cargo clippy -p bae-core --tests --features bae-core/test-utils -- -D warnings
+        cargo clippy -p bae-util --tests --features bae-util/test-utils -- -D warnings
         cargo clippy -p bae-bridge -- -D warnings
 
-    - name: Dead-code (bae-core lib only)
-      # bae-core's production code alone, so an item only its tests use fails as
-      # dead code. The flag goes to bae-core alone: RUSTFLAGS would recompile
+    - name: Dead-code (bae-core and bae-util lib only)
+      # Each crate's production code alone, so an item only its tests use fails
+      # as dead code. The flag goes to the one crate: RUSTFLAGS would recompile
       # every dependency for this one check.
-      run: cargo rustc -p bae-core --lib --profile check -- -D warnings
+      run: |
+        cargo rustc -p bae-core --lib --profile check -- -D warnings
+        cargo rustc -p bae-util --lib --profile check -- -D warnings
 
     - name: Check for new #[allow(dead_code)]
       # New #[allow(dead_code)] is banned in every .rs file of the workspace.
@@ -92,8 +95,9 @@ jobs:
           exit 1
         fi
 
-    - name: Run localization, theme and bridge tests
+    - name: Run util, localization, theme and bridge tests
       run: |
+        cargo nextest run -p bae-util
         cargo nextest run -p bae-loc
         cargo nextest run -p bae-theme
         # Both editions: default features are baeium's, `desktop` the full build's.

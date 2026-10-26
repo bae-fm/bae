@@ -297,7 +297,7 @@ async fn store_artist_image(db: &Database, artist_id: &str, source: &str, bytes:
         &DbLibraryImage {
             id: artist_id.to_string(),
             image_type: LibraryImageType::Artist,
-            content_type: crate::util::content_type::ContentType::Jpeg,
+            content_type: bae_util::content_type::ContentType::Jpeg,
             file_size: bytes.len() as i64,
             width: None,
             height: None,

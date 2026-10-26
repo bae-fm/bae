@@ -5,6 +5,8 @@
 //! MusicBrainz's, name for name, and the test that compares it against the
 //! captured table keeps the code and the record together.
 
+use bae_util::desktop_only;
+
 super::vocabulary! {
     /// Whether the artist and their label stand behind a release, and whether
     /// it reached the public as planned.

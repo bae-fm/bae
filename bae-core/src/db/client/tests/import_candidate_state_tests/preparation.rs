@@ -203,7 +203,7 @@ async fn a_remote_cover_stored_without_its_bytes_is_refused_on_read() {
             ),
             Some(&crate::import::cover_art::RemoteImage {
                 bytes: vec![1, 2, 3],
-                content_type: crate::util::content_type::ContentType::Jpeg,
+                content_type: bae_util::content_type::ContentType::Jpeg,
             }),
         )
         .await
@@ -639,7 +639,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
 
     let chosen_bytes = crate::import::cover_art::RemoteImage {
         bytes: vec![1, 2, 3],
-        content_type: crate::util::content_type::ContentType::Jpeg,
+        content_type: bae_util::content_type::ContentType::Jpeg,
     };
     crate::import::CandidatePreparations::new(db.clone())
         .set_cover(

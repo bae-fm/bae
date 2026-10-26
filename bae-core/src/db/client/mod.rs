@@ -6,7 +6,8 @@ use crate::db::models::*;
 use crate::import::Catalog;
 use crate::playback::QueueEntry;
 use crate::queue::QueueItem;
-use crate::util::content_type::ContentType;
+use bae_util::content_type::ContentType;
+use bae_util::desktop_only;
 use chrono::{DateTime, Utc};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use rusqlite::named_params;

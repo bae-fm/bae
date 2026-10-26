@@ -15,7 +15,7 @@ use bae_core::library::{
     AppServices, CancellationToken, LibraryManager, StorageBrowseSubscription, StorageBrowseView,
 };
 use bae_core::storage::transfer::{read_release_file_bytes, TransferProgress, TransferService};
-use bae_core::util::content_type::ContentType;
+use bae_util::content_type::ContentType;
 use chrono::Utc;
 use std::path::Path;
 use tempfile::TempDir;
@@ -267,7 +267,7 @@ async fn test_cover_file_stored_via_local_files_is_readable() {
         &bae_core::db::DbLibraryImage {
             id: release_id.clone(),
             image_type: bae_core::db::LibraryImageType::Cover,
-            content_type: bae_core::util::content_type::ContentType::Jpeg,
+            content_type: bae_util::content_type::ContentType::Jpeg,
             file_size: bytes.len() as i64,
             width: None,
             height: None,

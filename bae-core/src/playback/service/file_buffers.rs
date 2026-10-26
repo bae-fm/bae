@@ -131,7 +131,7 @@ pub(super) async fn prepare_track_for_playback(
         .await
         .map_err(PlaybackError::database)?;
 
-    let is_ape = resolved.content_type == crate::util::content_type::ContentType::Ape;
+    let is_ape = resolved.content_type == bae_util::content_type::ContentType::Ape;
     let mut prepared_segments = Vec::with_capacity(resolved.segments.len());
     for segment in &resolved.segments {
         // A cached buffer is live by construction: buffers are cancelled only

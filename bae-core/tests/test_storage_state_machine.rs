@@ -14,7 +14,7 @@ use bae_core::db::{
 use bae_core::library::{
     AppServices, CancellationToken, LibraryManager, StorageBrowseSubscription, StorageBrowseView,
 };
-use bae_core::util::content_type::ContentType;
+use bae_util::content_type::ContentType;
 use chrono::Utc;
 use coven::MemoryStorage;
 use std::sync::Arc;

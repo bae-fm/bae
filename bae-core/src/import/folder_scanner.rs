@@ -9,7 +9,7 @@
 //! they become available.
 use super::file_validation;
 use crate::cue_flac::{parse_cue_sheet, CueSheet};
-use crate::util::content_type_hint::ContentTypeHint;
+use bae_util::content_type_hint::ContentTypeHint;
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;

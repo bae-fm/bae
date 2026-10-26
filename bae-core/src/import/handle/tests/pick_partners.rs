@@ -46,9 +46,9 @@ async fn linked_cover_gallery_can_be_empty() {
 async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     // The pick offers the partner's album address, which the archive holds
     // no image at.
-    let archive = crate::util::http::serve_not_found().await;
+    let archive = bae_util::http::serve_not_found().await;
     let (handle, _tmp, key, hash) = pane_fixture_with(
-        crate::util::http::Http::for_test().serve("coverartarchive.org", &archive),
+        bae_util::http::Http::for_test().serve("coverartarchive.org", &archive),
     )
     .await;
     handle
@@ -229,9 +229,9 @@ fn seed_linked_discogs_release(providers: &crate::providers::Providers) -> crate
 /// pick stores is the one a complete read from scratch stores.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
-    let archive = crate::util::http::serve_not_found().await;
+    let archive = bae_util::http::serve_not_found().await;
     let (handle, _tmp, key, _) = pane_fixture_with(
-        crate::util::http::Http::for_test().serve("coverartarchive.org", &archive),
+        bae_util::http::Http::for_test().serve("coverartarchive.org", &archive),
     )
     .await;
     handle
@@ -495,9 +495,9 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
 async fn an_import_commits_what_its_picked_releases_store_now() {
     // The pick offers the partner's album address, which the archive holds
     // no image at.
-    let archive = crate::util::http::serve_not_found().await;
+    let archive = bae_util::http::serve_not_found().await;
     let (handle, _tmp, key, _hash) = pane_fixture_with(
-        crate::util::http::Http::for_test().serve("coverartarchive.org", &archive),
+        bae_util::http::Http::for_test().serve("coverartarchive.org", &archive),
     )
     .await;
     handle
@@ -579,9 +579,9 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
     use crate::import::album_links::{AlbumLink, AlbumStatement};
     // The pick offers the joined group's album address, which the archive
     // holds no image at.
-    let archive = crate::util::http::serve_not_found().await;
+    let archive = bae_util::http::serve_not_found().await;
     let (handle, _tmp, key, _hash) = pane_fixture_with(
-        crate::util::http::Http::for_test().serve("coverartarchive.org", &archive),
+        bae_util::http::Http::for_test().serve("coverartarchive.org", &archive),
     )
     .await;
     handle

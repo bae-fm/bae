@@ -396,7 +396,7 @@ impl LibraryManager {
             };
             // Decoding and re-encoding the image is CPU work.
             let jpeg = tokio::task::spawn_blocking(move || {
-                crate::util::stored_image::stored_jpeg(&image.bytes)
+                bae_util::stored_image::stored_jpeg(&image.bytes)
             })
             .await
             .map_err(|error| crate::import::ImportError::Internal {

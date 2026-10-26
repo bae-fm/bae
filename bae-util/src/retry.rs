@@ -92,9 +92,9 @@ impl RetryPolicy {
 }
 
 /// How long a wait actually sleeps. Zero in any test build, so a retry-path
-/// test spends no real time between attempts — gated on `test` (crate unit
-/// tests) and `test-utils` (integration tests, which compile the crate as a
-/// normal dependency).
+/// test spends no real time between attempts — gated on `test` (this crate's
+/// own unit tests) and `test-utils` (the tests of every crate built on this
+/// one, which compile it as a normal dependency).
 /// `test-utils` is dev/test-only, so a production build always waits for real.
 fn pause(wait: Duration) -> Duration {
     if cfg!(any(test, feature = "test-utils")) {

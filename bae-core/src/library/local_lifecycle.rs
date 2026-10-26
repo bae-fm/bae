@@ -255,7 +255,7 @@ async fn write_record(app_dir: &AppDir, store_id: coven::StoreId) -> Result<(), 
         let parent = records
             .parent()
             .expect("the records directory has a parent");
-        crate::util::fs::sync_directory(parent).map_err(|error| io_at(parent, error))?;
+        bae_util::fs::sync_directory(parent).map_err(|error| io_at(parent, error))?;
         let id = store_id.to_string();
         coven::write_atomic(&records.join(&id), id.as_bytes()).map_err(ConfigError::from)?;
         Ok(())

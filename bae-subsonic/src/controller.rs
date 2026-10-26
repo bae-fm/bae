@@ -1,4 +1,4 @@
-//! Wires the Subsonic server onto [`bae_core::server::ServerController`], which
+//! Wires the Subsonic server onto [`bae_util::server::ServerController`], which
 //! runs the shared lifecycle: start, stop, and restart as the configuration
 //! changes, and report the current status. What is Subsonic's own is here — the
 //! bind/credential preflight, the error vocabulary, and the identity a config
@@ -16,7 +16,7 @@ use std::sync::Arc;
 
 use bae_core::config::{SubsonicConfig, SubsonicCredential};
 use bae_core::library::AppServices;
-use bae_core::server::{ServerController, ServerError, ServerStatus};
+use bae_util::server::{ServerController, ServerError, ServerStatus};
 
 /// Reads the Subsonic password from the keyring. `Ok(None)` means no password is
 /// stored (an unconfigured server); `Err` is a real keyring failure.

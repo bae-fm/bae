@@ -352,7 +352,7 @@ impl SourceRelease {
     /// release groups its album was read from.
     async fn gallery_covers(
         &self,
-        http: &crate::util::http::Http,
+        http: &bae_util::http::Http,
     ) -> Result<Vec<RemoteCover>, ImportError> {
         let mut covers = self.covers();
         covers.retain(|cover| cover.source != Catalog::MusicBrainz);
@@ -501,7 +501,7 @@ pub fn pick_covers(primary: &SourceRelease, partners: &[SourceRelease]) -> Vec<R
 /// The complete galleries behind [`pick_covers`], for the picker: the same
 /// claimed releases, each asked what the Cover Art Archive holds for it.
 pub(crate) async fn pick_gallery_covers(
-    http: &crate::util::http::Http,
+    http: &bae_util::http::Http,
     primary: &SourceRelease,
     partners: &[SourceRelease],
 ) -> Result<Vec<RemoteCover>, ImportError> {

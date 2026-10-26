@@ -332,7 +332,7 @@ impl Fixture {
 
         let provider = FakeProvider::start().await;
         // Discogs goes to the fake too, so no test reaches the real API.
-        let http = crate::util::http::Http::for_test()
+        let http = bae_util::http::Http::for_test()
             .serve("musicbrainz.org", &provider.base_url)
             .serve("coverartarchive.org", &provider.base_url)
             .serve("api.discogs.com", &provider.base_url);

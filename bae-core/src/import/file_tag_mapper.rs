@@ -30,7 +30,7 @@ use crate::import::folder_scanner::ScannedFile;
 use crate::import::{ArtistCredit, ImportError};
 use crate::pressing::Pressing;
 #[cfg(test)]
-use crate::util::content_type::ContentType;
+use bae_util::content_type::ContentType;
 use std::path::Path;
 #[cfg(test)]
 use std::path::PathBuf;

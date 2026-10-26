@@ -107,6 +107,8 @@ check "mobile host Cargo cache"      scripts/check-mobile-build-cache.sh
 check "clippy (workspace)"          cargo clippy --workspace -- -D warnings
 check "clippy (bae-core + test-utils)" \
   cargo clippy -p bae-core --tests --features bae-core/test-utils -- -D warnings
+check "clippy (bae-util + test-utils)" \
+  cargo clippy -p bae-util --tests --features bae-util/test-utils -- -D warnings
 check "clippy (bae-bridge)"         cargo clippy -p bae-bridge -- -D warnings
 check "clippy (bae-core --features oauth-providers)" \
   cargo clippy -p bae-core --features oauth-providers -- -D warnings
@@ -122,6 +124,8 @@ check "clippy (bae-bridge --features oauth-providers,cloudkit,desktop)" \
 # dependency for this one check.
 check "dead_code (bae-core lib only)" \
   cargo rustc -p bae-core --lib --profile check -- -D warnings
+check "dead_code (bae-util lib only)" \
+  cargo rustc -p bae-util --lib --profile check -- -D warnings
 
 # New #[allow(dead_code)] is banned everywhere.
 check "no new #[allow(dead_code)]" bash -c '
@@ -140,9 +144,10 @@ check "cargo deny" cargo deny check
 
 check "cargo doc" env RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 
-# ── Rust tests (loc + theme + bridge + automation) ─────────────────────────────
+# ── Rust tests (util + loc + theme + bridge + automation) ─────────────────────────────
 section "Rust tests"
 
+check "cargo test (bae-util)"          cargo test -p bae-util
 check "cargo test (bae-loc)"           cargo test -p bae-loc
 check "cargo test (bae-theme)"         cargo test -p bae-theme
 # Both editions: default features are baeium's, `desktop` the full build's.

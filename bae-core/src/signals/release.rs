@@ -218,7 +218,7 @@ mod tests {
         use crate::config::{Config, ConfigHandle};
         use crate::db::{Database, DbAlbum, DbArtist, DbFile, DbRelease};
         use crate::library::LibraryManager;
-        use crate::util::content_type::ContentType;
+        use bae_util::content_type::ContentType;
         use chrono::Utc;
                 use uuid::Uuid;
 
@@ -253,7 +253,7 @@ mod tests {
             Arc::new(coven::UuidIds),
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
-            crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),
+            crate::import::cover_art::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
             crate::providers::Providers::offline(),
         );
 
@@ -331,7 +331,7 @@ mod tests {
         use crate::config::{Config, ConfigHandle};
         use crate::db::{Database, DbAlbum, DbArtist, DbFile, DbRelease, DbTrack};
         use crate::library::LibraryManager;
-        use crate::util::content_type::ContentType;
+        use bae_util::content_type::ContentType;
         use chrono::Utc;
                 use std::sync::Arc;
         use uuid::Uuid;
@@ -386,7 +386,7 @@ mod tests {
             Arc::new(coven::UuidIds),
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
-            crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),
+            crate::import::cover_art::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
             crate::providers::Providers::offline(),
         );
 

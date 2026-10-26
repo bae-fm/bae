@@ -69,7 +69,7 @@ impl PlaybackService {
         operation: &str,
         error: &PlaybackError,
     ) -> crate::ui::PlaybackErrorReason {
-        let detail = crate::util::error_text::CauseChain(error);
+        let detail = bae_util::error_text::CauseChain(error);
         if error.is_bug() {
             self.library_manager.report_bug(operation, &detail);
         } else {

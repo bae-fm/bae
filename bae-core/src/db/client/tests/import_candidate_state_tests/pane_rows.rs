@@ -547,7 +547,7 @@ fn remote_with_copies(url: &str) -> CoverSelection {
 fn fetched_bytes(cover: &CoverSelection) -> Option<crate::import::cover_art::RemoteImage> {
     matches!(cover, CoverSelection::Remote(_, _)).then(|| crate::import::cover_art::RemoteImage {
         bytes: vec![1, 2, 3],
-        content_type: crate::util::content_type::ContentType::Jpeg,
+        content_type: bae_util::content_type::ContentType::Jpeg,
     })
 }
 
@@ -622,7 +622,7 @@ async fn a_remote_cover_round_trips_the_exact_prepared_bytes() {
     );
     let image = crate::import::cover_art::RemoteImage {
         bytes: vec![1, 2, 3, 4],
-        content_type: crate::util::content_type::ContentType::Jpeg,
+        content_type: bae_util::content_type::ContentType::Jpeg,
     };
 
     crate::import::CandidatePreparations::new(db.clone())
@@ -692,7 +692,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
     );
     let current_image = crate::import::cover_art::RemoteImage {
         bytes: vec![1, 2, 3],
-        content_type: crate::util::content_type::ContentType::Jpeg,
+        content_type: bae_util::content_type::ContentType::Jpeg,
     };
     crate::import::CandidatePreparations::new(db.clone())
         .set_prepared_cover(
@@ -711,7 +711,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
     );
     let stale_image = crate::import::cover_art::RemoteImage {
         bytes: vec![4, 5, 6],
-        content_type: crate::util::content_type::ContentType::Png,
+        content_type: bae_util::content_type::ContentType::Png,
     };
     crate::import::CandidatePreparations::new(db.clone())
         .set_prepared_cover(

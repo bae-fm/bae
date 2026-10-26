@@ -1,6 +1,6 @@
 use super::*;
 use crate::import::{CandidatePreparedAssets, CoverSelection};
-use crate::util::content_type::ContentType;
+use bae_util::content_type::ContentType;
 
 /// Replace the remote cover bytes stored under the hash with the value's.
 pub(super) fn replace_asset_rows(

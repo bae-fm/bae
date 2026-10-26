@@ -20,7 +20,7 @@ use crate::import::folder_scanner::{
     InvalidCandidate, ReleaseFileScope, ReleasePart, ScanItem, ScannedAudio, ScannedFile,
     SheetAudioFile, SkippedFile, SkippedTags,
 };
-use crate::util::content_type::ContentType;
+use bae_util::content_type::ContentType;
 use track_sheets::{load_cue_sheets, load_sheet_audio_files, SheetKey};
 
 mod track_sheets;

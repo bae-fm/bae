@@ -49,7 +49,7 @@ impl ImportFixture {
         let (library_manager, db, storage) = support::storage_library(
             &db_dir,
             bae_core::providers::Providers::for_test(
-                images.route(bae_core::util::http::Http::for_test()),
+                images.route(bae_util::http::Http::for_test()),
             ),
         )
         .await;

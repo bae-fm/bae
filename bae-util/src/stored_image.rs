@@ -7,7 +7,7 @@ use std::io::Cursor;
 use image::ImageReader;
 use tracing::debug;
 
-use super::content_type::ContentType;
+use crate::content_type::ContentType;
 
 /// The longest side, in pixels, of an image bae stores.
 const STORED_MAX_EDGE: u32 = 600;
@@ -16,7 +16,7 @@ const MAX_DECODE_ALLOC_BYTES: u64 = 128 * 1024 * 1024;
 
 /// Decode the first image using the formats and resource limits shared by
 /// remote validation and [`stored_jpeg`].
-pub(crate) fn decode_image(data: &[u8]) -> Result<(image::DynamicImage, ContentType), String> {
+pub fn decode_image(data: &[u8]) -> Result<(image::DynamicImage, ContentType), String> {
     let mut reader = ImageReader::new(Cursor::new(data))
         .with_guessed_format()
         .map_err(|e| format!("Failed to read image: {}", e))?;
@@ -122,22 +122,22 @@ mod tests {
         for (name, bytes, dimensions) in [
             (
                 "GIF",
-                include_bytes!("../../test-fixtures/cover-art/solid.gif").as_slice(),
+                include_bytes!("../../bae-core/test-fixtures/cover-art/solid.gif").as_slice(),
                 (16, 8),
             ),
             (
                 "WebP",
-                include_bytes!("../../test-fixtures/cover-art/solid.webp").as_slice(),
+                include_bytes!("../../bae-core/test-fixtures/cover-art/solid.webp").as_slice(),
                 (16, 8),
             ),
             (
                 "animated GIF",
-                include_bytes!("../../test-fixtures/cover-art/animated.gif").as_slice(),
+                include_bytes!("../../bae-core/test-fixtures/cover-art/animated.gif").as_slice(),
                 (600, 300),
             ),
             (
                 "animated WebP",
-                include_bytes!("../../test-fixtures/cover-art/animated.webp").as_slice(),
+                include_bytes!("../../bae-core/test-fixtures/cover-art/animated.webp").as_slice(),
                 (600, 300),
             ),
         ] {
@@ -167,13 +167,14 @@ mod tests {
         for (bytes, right_pixel) in [
             (png.get_ref().as_slice(), [120u8, 40, 200]),
             (
-                include_bytes!("../../test-fixtures/cover-art/transparent.webp").as_slice(),
+                include_bytes!("../../bae-core/test-fixtures/cover-art/transparent.webp")
+                    .as_slice(),
                 [120, 40, 200],
             ),
             // This GIF's transparent palette entry is black. Dropping alpha
             // retains that color, without introducing a background composite.
             (
-                include_bytes!("../../test-fixtures/cover-art/transparent.gif").as_slice(),
+                include_bytes!("../../bae-core/test-fixtures/cover-art/transparent.gif").as_slice(),
                 [0, 0, 0],
             ),
         ] {
@@ -200,7 +201,7 @@ mod tests {
 
     #[test]
     fn gif_canvas_exceeding_decode_allocation_is_rejected() {
-        let mut bytes = include_bytes!("../../test-fixtures/cover-art/solid.gif").to_vec();
+        let mut bytes = include_bytes!("../../bae-core/test-fixtures/cover-art/solid.gif").to_vec();
         bytes[6..8].copy_from_slice(&6000u16.to_le_bytes());
         bytes[8..10].copy_from_slice(&6000u16.to_le_bytes());
         let error = stored_jpeg(&bytes).unwrap_err();

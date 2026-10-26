@@ -17,7 +17,7 @@ use crate::import::file_tag_snapshot::{
 };
 use crate::import::track_numbers::TrackNumbers;
 use crate::import::ImportError;
-use crate::util::content_type::ContentType;
+use bae_util::content_type::ContentType;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 

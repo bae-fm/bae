@@ -40,12 +40,12 @@ pub(super) fn cue_pair_codec_label(audio: &ScannedFile) -> CueCodecLabel {
         return CueCodecLabel::Unprobeable;
     };
     match &probe.content_type {
-        crate::util::content_type::ContentType::Flac
-        | crate::util::content_type::ContentType::Ape
-        | crate::util::content_type::ContentType::Alac
-        | crate::util::content_type::ContentType::Pcm
-        | crate::util::content_type::ContentType::WavPack
-        | crate::util::content_type::ContentType::Dsd => CueCodecLabel::Supported,
+        bae_util::content_type::ContentType::Flac
+        | bae_util::content_type::ContentType::Ape
+        | bae_util::content_type::ContentType::Alac
+        | bae_util::content_type::ContentType::Pcm
+        | bae_util::content_type::ContentType::WavPack
+        | bae_util::content_type::ContentType::Dsd => CueCodecLabel::Supported,
         other => CueCodecLabel::Unsupported(other.display_name().to_string()),
     }
 }

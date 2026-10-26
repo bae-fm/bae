@@ -12,6 +12,8 @@
 //! The list is Discogs's, description for description, and the test that
 //! compares the table with the captured page keeps them together.
 
+use bae_util::desktop_only;
+
 /// How a detail is shown: in the reader's language, or as Discogs prints it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Wording {

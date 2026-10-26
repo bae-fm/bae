@@ -4,9 +4,9 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// string in the database.
 ///
 /// Every audio variant names a codec we actually decode. Constructed only by
-/// [`crate::audio_codec::probe_audio_from_path`] (from `AVCodecID`) or by
+/// bae-core's audio probe (from `AVCodecID`) or by
 /// [`ContentType::from_mime`] (reading a stored MIME back). An extension-based
-/// guess goes through [`crate::util::content_type_hint::ContentTypeHint`] and
+/// guess goes through [`crate::content_type_hint::ContentTypeHint`] and
 /// never produces a `ContentType`.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ContentType {
@@ -162,7 +162,7 @@ impl ContentType {
     /// Whether this codec preserves a source sample width that can be shown as
     /// bit depth. Perceptual codecs may report a coded-word width, but that is
     /// not source sample bit depth.
-    pub(crate) fn is_lossless_audio(&self) -> bool {
+    pub fn is_lossless_audio(&self) -> bool {
         matches!(
             self,
             Self::Flac | Self::Ape | Self::Alac | Self::Pcm | Self::WavPack | Self::Dsd

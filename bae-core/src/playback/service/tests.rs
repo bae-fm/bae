@@ -156,7 +156,7 @@ async fn seeded_library_manager_with_track_length(
         Arc::new(coven::UuidIds),
         diagnostics,
         tokio::runtime::Handle::current(),
-        crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),
+        crate::import::cover_art::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
         crate::providers::Providers::offline(),
     );
     (home, manager)
@@ -346,7 +346,7 @@ fn test_prepared_track_with_file(
             Some(std::time::Duration::from_secs(1)),
             std::time::Duration::ZERO,
         ),
-        content_type: crate::util::content_type::ContentType::Flac,
+        content_type: bae_util::content_type::ContentType::Flac,
         replay_gain_linear: 1.0,
     }
 }
@@ -362,7 +362,7 @@ fn test_resolved_track_audio(track_id: &str) -> ResolvedTrackAudio {
         sample_rate: std::num::NonZeroU32::new(44_100).unwrap(),
         channels: std::num::NonZeroU32::new(2).unwrap(),
         bits_per_sample: Some(16),
-        content_type: crate::util::content_type::ContentType::Flac,
+        content_type: bae_util::content_type::ContentType::Flac,
         track_loudness_lufs: None,
         track_peak_linear: None,
         album_loudness_lufs: None,

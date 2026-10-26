@@ -11,7 +11,7 @@ use tokio::sync::mpsc;
 /// carried together by every clone of the handle that owns them, so whichever
 /// clone runs teardown has both the way to stop the thread and the way to wait
 /// for it.
-pub(crate) struct WorkerThread<M> {
+pub struct WorkerThread<M> {
     /// Names the worker in every warning logged here — a dropped message, a
     /// panic seen at the join.
     name: &'static str,
@@ -37,7 +37,7 @@ impl<M> WorkerThread<M> {
     /// drains it. Both ends go in: a worker whose loop sends itself messages —
     /// or hands a sender to what it drives — gets the one paired with its own
     /// receiver rather than a loose one the caller had to keep straight.
-    pub(crate) fn spawn(
+    pub fn spawn(
         name: &'static str,
         spawn: impl FnOnce(
             mpsc::UnboundedSender<M>,
@@ -52,14 +52,14 @@ impl<M> WorkerThread<M> {
         }
     }
 
-    pub(crate) fn send(&self, message: M) -> Result<(), mpsc::error::SendError<M>> {
+    pub fn send(&self, message: M) -> Result<(), mpsc::error::SendError<M>> {
         self.tx.send(message)
     }
 
     /// Fire-and-forget send. A worker that has already shut down is not a
     /// caller's error — the message is logged against the worker's name and
     /// dropped.
-    pub(crate) fn dispatch(&self, message: M)
+    pub fn dispatch(&self, message: M)
     where
         M: std::fmt::Debug,
     {
@@ -78,7 +78,7 @@ impl<M> WorkerThread<M> {
     /// A thread that panicked already reported itself, and this is called from
     /// teardown paths that must not unwind, so a panic payload is logged rather
     /// than repropagated.
-    pub(crate) fn stop_and_join(&self, stop: impl FnOnce(&mpsc::UnboundedSender<M>)) {
+    pub fn stop_and_join(&self, stop: impl FnOnce(&mpsc::UnboundedSender<M>)) {
         let Some(thread) = self.thread.lock().unwrap().take() else {
             return;
         };
@@ -93,7 +93,7 @@ impl<M> WorkerThread<M> {
     /// off-worker so it doesn't stall a runtime thread. The two share the one
     /// take-once join handle, so whichever runs first stops the thread and the
     /// other returns.
-    pub(crate) async fn stop_and_join_async<F: std::future::Future<Output = ()>>(
+    pub async fn stop_and_join_async<F: std::future::Future<Output = ()>>(
         &self,
         stop: impl FnOnce(&mpsc::UnboundedSender<M>) -> F,
     ) {

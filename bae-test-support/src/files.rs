@@ -261,16 +261,15 @@ impl RemoteImageHost {
         }
     }
 
-    /// Where this host listens. bae-core's own unit tests route their
-    /// transport here by hand, since the transport type this crate sees is
-    /// not the one those tests build.
+    /// Where this host listens, for a test that routes only some hosts here
+    /// rather than every host [`Self::route`] sends.
     pub fn origin(&self) -> &str {
         &self.origin
     }
 
     /// `http` with the Cover Art Archive and this test's own image host sent
     /// here.
-    pub fn route(&self, http: bae_core::util::http::Http) -> bae_core::util::http::Http {
+    pub fn route(&self, http: bae_util::http::Http) -> bae_util::http::Http {
         http.serve("coverartarchive.org", &self.origin)
             .serve(TEST_IMAGE_HOST, &self.origin)
     }

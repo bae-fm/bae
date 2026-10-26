@@ -606,7 +606,7 @@ mod tests {
     fn image(byte: u8) -> crate::import::cover_art::RemoteImage {
         crate::import::cover_art::RemoteImage {
             bytes: vec![byte],
-            content_type: crate::util::content_type::ContentType::Jpeg,
+            content_type: bae_util::content_type::ContentType::Jpeg,
         }
     }
 

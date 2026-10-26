@@ -11,8 +11,8 @@
 use bae_core::db::DbAudioSegmentRole;
 use bae_core::discogs::models::DiscogsRelease;
 use bae_core::library::LibraryManager;
-use bae_core::util::content_type::ContentType;
 use bae_test_support as support;
+use bae_util::content_type::ContentType;
 use std::path::Path;
 use std::time::Duration;
 use support::{

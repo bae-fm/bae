@@ -344,7 +344,7 @@ pub enum DiscogsArtistImage {
         discogs_artist_id: String,
         source_url: String,
         /// The picture as bae stores it: the JPEG
-        /// [`crate::util::stored_image::stored_jpeg`] made of what Discogs
+        /// [`bae_util::stored_image::stored_jpeg`] made of what Discogs
         /// served.
         jpeg: Vec<u8>,
     },

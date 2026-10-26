@@ -217,7 +217,7 @@ async fn insert_local_release_in_album(
             &release.id,
             name,
             bytes.len() as i64,
-            crate::util::content_type::ContentType::Flac,
+            bae_util::content_type::ContentType::Flac,
             bae_test_support::test_uuid(&format!("{}-test-file-{index}", release.id)),
             created_at,
         );
@@ -242,7 +242,7 @@ async fn insert_local_release_without_local_files(
         &release.id,
         "track1.flac",
         5,
-        crate::util::content_type::ContentType::Flac,
+        bae_util::content_type::ContentType::Flac,
         Uuid::new_v4().to_string(),
         Utc::now(),
     );

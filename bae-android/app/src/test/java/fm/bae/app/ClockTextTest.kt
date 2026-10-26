@@ -7,7 +7,7 @@ import java.util.Locale
 
 /**
  * The clock renderer's half of the contract: core decides which fields a label
- * has (bae-core's `util::duration` tests pin that), and this turns those fields
+ * has (bae-util's `duration` tests pin that), and this turns those fields
  * into digits. Nothing is shown for a clock core declined to produce.
  */
 class ClockTextTest {

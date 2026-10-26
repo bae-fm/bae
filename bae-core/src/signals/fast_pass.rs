@@ -333,7 +333,7 @@ fn read_capped_text(path: &Path) -> Option<String> {
         warn!("candidate_text: read failed for {}: {e}", path.display());
         return None;
     }
-    Some(crate::text_encoding::decode_text(&buf).text)
+    Some(bae_util::text_encoding::decode_text(&buf).text)
 }
 
 /// What proves the audio a download, from its tags: a store's own marker on a

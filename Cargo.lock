@@ -790,6 +790,7 @@ dependencies = [
  "bae-core",
  "bae-mirror",
  "bae-test-support",
+ "bae-util",
  "coven",
  "schemars",
  "serde",
@@ -809,6 +810,7 @@ dependencies = [
  "bae-loc",
  "bae-mirror",
  "bae-test-support",
+ "bae-util",
  "coven",
  "jni",
  "keyring-core",
@@ -855,10 +857,10 @@ dependencies = [
  "async-trait",
  "axum 0.7.9",
  "bae-test-support",
+ "bae-util",
  "base64 0.22.1",
  "cbc",
  "chacha20poly1305 0.10.1",
- "chardetng",
  "chrono",
  "coreaudio-sys",
  "coven",
@@ -876,7 +878,6 @@ dependencies = [
  "keyring-core",
  "libc",
  "lofty",
- "lru",
  "mdns-sd",
  "natord",
  "ndk 0.9.0",
@@ -919,6 +920,7 @@ dependencies = [
  "bae-mcp",
  "bae-subsonic",
  "bae-test-support",
+ "bae-util",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -940,6 +942,7 @@ dependencies = [
  "axum 0.8.9",
  "bae-automation",
  "bae-core",
+ "bae-util",
  "rmcp",
  "serde_json",
  "tokio",
@@ -957,6 +960,7 @@ dependencies = [
  "axum 0.8.9",
  "bae-core",
  "bae-test-support",
+ "bae-util",
  "bytes",
  "chrono",
  "hex",
@@ -975,6 +979,7 @@ version = "0.0.0-dev"
 dependencies = [
  "axum 0.7.9",
  "bae-core",
+ "bae-util",
  "coven",
  "image",
  "lofty",
@@ -998,6 +1003,27 @@ name = "bae-uniffi-bindgen"
 version = "0.1.0"
 dependencies = [
  "uniffi",
+]
+
+[[package]]
+name = "bae-util"
+version = "0.0.0-dev"
+dependencies = [
+ "chardetng",
+ "chrono",
+ "encoding_rs",
+ "hex",
+ "image",
+ "libc",
+ "lru",
+ "rand 0.9.2",
+ "reqwest",
+ "serde",
+ "sha2 0.10.9",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-util",
+ "tracing",
 ]
 
 [[package]]

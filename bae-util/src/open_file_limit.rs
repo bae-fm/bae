@@ -12,7 +12,7 @@ use tracing::{info, warn};
 /// the per-process ceiling the kernel enforces below an unlimited hard limit),
 /// logging the limit before and after. A limit that cannot be read or raised
 /// is logged and left as it was; the process runs under it.
-pub(crate) fn raise_open_file_limit() {
+pub fn raise_open_file_limit() {
     let mut limit = libc::rlimit {
         rlim_cur: 0,
         rlim_max: 0,

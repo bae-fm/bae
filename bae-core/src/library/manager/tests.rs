@@ -21,7 +21,7 @@ use crate::db::{
     LibraryImageType,
 };
 use crate::import::Catalog;
-use crate::util::content_type::ContentType;
+use bae_util::content_type::ContentType;
 use chrono::Utc;
 use coven::{MemoryStorage, Storage};
 use tempfile::TempDir;
@@ -73,7 +73,7 @@ async fn setup_test_manager_with_clock(clock: coven::ClockRef) -> (TestManager, 
         Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),
+        crate::import::cover_art::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
         crate::providers::Providers::offline(),
     );
 

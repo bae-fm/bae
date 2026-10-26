@@ -208,7 +208,7 @@ struct StoredCandidate {
 }
 
 async fn stored_candidate() -> StoredCandidate {
-    stored_candidate_with(crate::util::http::Http::for_test()).await
+    stored_candidate_with(bae_util::http::Http::for_test()).await
 }
 
 /// A sheet carving the second of [`picked_candidate`]'s two files into two
@@ -239,7 +239,7 @@ async fn stored_candidate_with_sheet(cue: &str) -> StoredCandidate {
     fixture
 }
 
-async fn stored_candidate_with(http: crate::util::http::Http) -> StoredCandidate {
+async fn stored_candidate_with(http: bae_util::http::Http) -> StoredCandidate {
     let (manager, tmp) = setup_test_manager_with(http).await;
     let (candidate, key, _hash) = picked_candidate(&manager, &tmp, "Album").await;
     started(manager, candidate, key, tmp).await
@@ -247,7 +247,7 @@ async fn stored_candidate_with(http: crate::util::http::Http) -> StoredCandidate
 
 /// [`stored_candidate`] whose tags the scan could not read.
 async fn unread_stored_candidate() -> StoredCandidate {
-    let (manager, tmp) = setup_test_manager_with(crate::util::http::Http::for_test()).await;
+    let (manager, tmp) = setup_test_manager_with(bae_util::http::Http::for_test()).await;
     let (candidate, key, _hash) = unread_candidate(&manager, &tmp, "Album").await;
     started(manager, candidate, key, tmp).await
 }
@@ -276,12 +276,12 @@ async fn started(
 /// under — with the folder's own tags already picked, which is what draws the
 /// edit form and the mapping table.
 async fn pane_fixture() -> (ImportServiceHandle, TempDir, String, String) {
-    pane_fixture_with(crate::util::http::Http::for_test()).await
+    pane_fixture_with(bae_util::http::Http::for_test()).await
 }
 
 /// [`pane_fixture`] whose requests go through `http`.
 async fn pane_fixture_with(
-    http: crate::util::http::Http,
+    http: bae_util::http::Http,
 ) -> (ImportServiceHandle, TempDir, String, String) {
     let fixture = stored_candidate_with(http).await;
     let hash = fixture.candidate.files.content_hash();
@@ -482,7 +482,7 @@ impl crate::import::file_tag_snapshot::FileTagReader for CountingFileTagReader {
             embedded_cover: if index == 0 {
                 self.embedded_cover
                     .clone()
-                    .map(|data| (data, crate::util::content_type::ContentType::Jpeg))
+                    .map(|data| (data, bae_util::content_type::ContentType::Jpeg))
             } else {
                 None
             },

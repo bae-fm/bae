@@ -7,7 +7,7 @@
 //!
 //! Use this for scan-time filtering (is this worth probing?). Never store it.
 
-use crate::util::content_type::ContentType;
+use crate::content_type::ContentType;
 use std::path::Path;
 
 /// Extension-derived content classification. Container-level for audio;

@@ -46,7 +46,7 @@ async fn real_schema_opens_with_the_declarations_and_unattached_files() {
         &release.id,
         "track.flac",
         42,
-        bae_core::util::content_type::ContentType::Flac,
+        bae_util::content_type::ContentType::Flac,
         uuid::Uuid::new_v4().to_string(),
         chrono::Utc::now(),
     );
@@ -117,7 +117,7 @@ async fn upload_cancellation_detaches_the_file_and_restores_its_original() {
         &release.id,
         "track.flac",
         5,
-        bae_core::util::content_type::ContentType::Flac,
+        bae_util::content_type::ContentType::Flac,
         uuid::Uuid::new_v4().to_string(),
         chrono::Utc::now(),
     );

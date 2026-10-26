@@ -52,7 +52,7 @@ impl ProviderServer {
                 stream.write_all(response.as_bytes()).await.unwrap();
             }
         });
-        let http = crate::util::http::Http::for_test()
+        let http = bae_util::http::Http::for_test()
             .serve("musicbrainz.org", &origin)
             .serve("api.discogs.com", &origin)
             .serve("www.wikidata.org", &origin);

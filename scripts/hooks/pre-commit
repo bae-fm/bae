@@ -23,6 +23,7 @@ WORKSPACE_CRATES=(
     bae-test-support
     bae-theme
     bae-uniffi-bindgen
+    bae-util
 )
 
 TMPFILE=$(mktemp)
@@ -106,7 +107,7 @@ run_check "restricted-path Rust visibility" scripts/check-rust-visibility.sh || 
 }
 
 run_check "reqwest error causes" scripts/check-reqwest-error-display.py || {
-    echo "Print a held reqwest::Error through crate::util::error_text::CauseChain"
+    echo "Print a held reqwest::Error through bae_util::error_text::CauseChain"
     exit 1
 }
 
@@ -172,12 +173,26 @@ done < <(changed_workspace_crates "${WORKSPACE_CRATES[@]}")
 if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
     CLIPPY_ARGS=(clippy --all-targets)
     core_changed=0
+    util_changed=0
+    MOBILE_CHECK_ARGS=(check --lib --target aarch64-apple-ios)
     for crate in "${DIRECTLY_CHANGED_CRATES[@]}"; do
         CLIPPY_ARGS+=(-p "$crate")
-        [ "$crate" = "bae-core" ] && core_changed=1
+        case "$crate" in
+            bae-core)
+                core_changed=1
+                MOBILE_CHECK_ARGS+=(-p bae-core)
+                ;;
+            bae-util)
+                util_changed=1
+                MOBILE_CHECK_ARGS+=(-p bae-util)
+                ;;
+        esac
     done
     if [ "$core_changed" -eq 1 ]; then
         CLIPPY_ARGS+=(--features bae-core/test-utils)
+    fi
+    if [ "$util_changed" -eq 1 ]; then
+        CLIPPY_ARGS+=(--features bae-util/test-utils)
     fi
     CLIPPY_ARGS+=(-- -D warnings)
     run_check "clippy (directly changed crates)" cargo "${CLIPPY_ARGS[@]}" || {
@@ -196,11 +211,12 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
         exit 1
     }
 
-    # The mobile apps build bae-core without its desktop-only modules, where
-    # anything only those modules use is dead code and fails the build.
-    if [ "$core_changed" -eq 1 ]; then
-        run_check "bae-core for iOS (desktop-only code)" \
-            cargo check -p bae-core --lib --target aarch64-apple-ios || {
+    # The mobile apps build bae-core and bae-util without their desktop-only
+    # modules, where anything only those modules use is dead code and fails
+    # the build.
+    if [ "$core_changed" -eq 1 ] || [ "$util_changed" -eq 1 ]; then
+        run_check "bae-core and bae-util for iOS (desktop-only code)" \
+            cargo "${MOBILE_CHECK_ARGS[@]}" || {
             echo "Gate code only desktop modules use with the same cfg and try again"
             exit 1
         }

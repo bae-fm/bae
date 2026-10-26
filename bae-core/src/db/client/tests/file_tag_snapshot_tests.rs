@@ -7,7 +7,7 @@ use crate::import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, FolderCandidate, InvalidCandidate, ReleaseFileScope,
     ScanItem, ScannedFile,
 };
-use crate::util::content_type::ContentType;
+use bae_util::content_type::ContentType;
 use std::path::PathBuf;
 
 fn candidate(root: &str) -> FolderCandidate {

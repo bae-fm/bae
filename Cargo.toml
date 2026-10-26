@@ -12,6 +12,7 @@ members = [
     "bae-test-support",
     "bae-theme",
     "bae-uniffi-bindgen",
+    "bae-util",
 ]
 resolver = "2"
 

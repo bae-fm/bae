@@ -286,10 +286,10 @@ fn fixture_candidate(
             let mut file =
                 ScannedFile::new(path.join(track), track.clone(), 1_000 + *file_count, 1);
             file.source_audio = Some(ScannedAudio {
-                content_type: crate::util::content_type::ContentType::Flac,
+                content_type: bae_util::content_type::ContentType::Flac,
                 duration_ms: 180_000,
                 format: crate::album_detail::AudioFormat {
-                    codec: crate::util::content_type::ContentType::Flac
+                    codec: bae_util::content_type::ContentType::Flac
                         .display_name()
                         .to_string(),
                     sample_rate_hz: 44_100,

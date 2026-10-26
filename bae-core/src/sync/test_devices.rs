@@ -302,7 +302,7 @@ fn device(dir: TempDir, app_dir: AppDir, config: Config, handle: coven::CovenHan
         ids,
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),
+        crate::import::cover_art::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
         crate::providers::Providers::offline(),
     );
     let (cycles, watcher) = record_cycles(&database);

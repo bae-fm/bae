@@ -14,7 +14,7 @@ use std::fmt;
 
 /// `error` and every cause below it, joined by ": ", each with its URLs cut
 /// to scheme, host and port.
-pub(crate) struct CauseChain<'a>(pub(crate) &'a (dyn Error + 'static));
+pub struct CauseChain<'a>(pub &'a (dyn Error + 'static));
 
 impl fmt::Display for CauseChain<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

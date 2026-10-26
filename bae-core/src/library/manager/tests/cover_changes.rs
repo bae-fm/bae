@@ -244,7 +244,7 @@ async fn change_cover_twice_replaces_the_cover_file() {
         .expect("cover file stored");
     assert_eq!(
         manager.database.file_ref("covers", &release.id).await.unwrap().content_hash().as_bytes().iter().map(|byte| format!("{byte:02x}")).collect::<String>().as_str(),
-        crate::util::fs::hash_bytes(&stored).as_str()
+        bae_util::fs::hash_bytes(&stored).as_str()
     );
     assert_eq!(second_ref.plaintext_size(), stored.len() as u64);
     // The row describes the file every device sees: the first, until the

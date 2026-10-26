@@ -65,7 +65,7 @@ async fn an_unresolvable_host_prints_its_dns_failure() {
 /// A request to a port nothing listens on names the refused connection.
 #[tokio::test]
 async fn a_refused_connection_prints_its_connect_failure() {
-    let error = crate::util::http::refused_request_error().await;
+    let error = crate::http::refused_request_error().await;
     let printed = CauseChain(&error).to_string();
     assert!(printed.contains("tcp connect error"), "{printed}");
 }

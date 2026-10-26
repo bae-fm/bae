@@ -1,7 +1,7 @@
 use super::*;
 use crate::import::types::TrackAudio;
 use crate::import::import_cancel::{ImportRunEnd, ImportStop};
-use crate::util::worker_thread::WorkerThread;
+use bae_util::worker_thread::WorkerThread;
 
 impl ImportService {
     /// Start the import service worker: one task that drains the import queue
@@ -799,7 +799,7 @@ impl ImportService {
                 // Decoding and re-encoding the image is CPU work.
                 let source = candidate.bytes;
                 let bytes =
-                    tokio::task::spawn_blocking(move || crate::util::stored_image::stored_jpeg(&source))
+                    tokio::task::spawn_blocking(move || bae_util::stored_image::stored_jpeg(&source))
                         .await
                         .map_err(|e| crate::import::ImportError::Internal {
                             detail: format!("cover resize task failed: {e}"),

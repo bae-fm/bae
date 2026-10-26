@@ -19,7 +19,7 @@ use tracing::{debug, warn};
 use crate::renderer::protocol_discovery::{Browse, ProtocolDiscovery};
 use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::{RendererConnection, RendererDevice};
-use crate::util::error_text::CauseChain;
+use bae_util::error_text::CauseChain;
 
 /// The SSDP multicast endpoint every `M-SEARCH` is sent to.
 const SSDP_MULTICAST: &str = "239.255.255.250:1900";

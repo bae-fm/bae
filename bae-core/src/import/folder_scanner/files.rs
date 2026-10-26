@@ -61,7 +61,7 @@ impl ScannedFile {
     #[cfg(test)]
     pub(crate) fn with_test_flac_audio(mut self) -> Self {
         self.source_audio = Some(ScannedAudio {
-            content_type: crate::util::content_type::ContentType::Flac,
+            content_type: bae_util::content_type::ContentType::Flac,
             duration_ms: 5_000,
             format: crate::album_detail::AudioFormat {
                 codec: "FLAC".to_string(),
@@ -89,7 +89,7 @@ pub struct FileVersion {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct ScannedAudio {
-    pub content_type: crate::util::content_type::ContentType,
+    pub content_type: bae_util::content_type::ContentType,
     pub duration_ms: u64,
     pub format: crate::album_detail::AudioFormat,
 }
@@ -430,7 +430,7 @@ impl CandidateFile {
     /// A cover action exists only for artwork the cover decoder supports.
     pub fn cover_choice(&self) -> Option<crate::import::CoverChoice> {
         (matches!(self.role, FileRole::Artwork)
-            && crate::util::content_type_hint::ContentTypeHint::path_is_supported_cover(
+            && bae_util::content_type_hint::ContentTypeHint::path_is_supported_cover(
                 &self.file.path,
             ))
         .then(|| {

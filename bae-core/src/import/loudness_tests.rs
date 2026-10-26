@@ -168,7 +168,7 @@ fn now() -> chrono::DateTime<chrono::Utc> {
 fn audio_format(track_id: &str, id: &str) -> crate::db::DbAudioFormat {
     crate::db::DbAudioFormat::new(
         track_id,
-        crate::util::content_type::ContentType::Flac,
+        bae_util::content_type::ContentType::Flac,
         std::num::NonZeroU32::new(44_100).unwrap(),
         Some(std::num::NonZeroU32::new(16).unwrap()),
         std::num::NonZeroU32::new(2).unwrap(),
@@ -198,7 +198,7 @@ fn standalone_track(track_id: &str, path: &std::path::Path) -> TrackFile {
         audio: crate::import::TrackAudio::Standalone {
             file_path: path.to_path_buf(),
             source_audio: crate::import::folder_scanner::ScannedAudio {
-                content_type: crate::util::content_type::ContentType::Flac,
+                content_type: bae_util::content_type::ContentType::Flac,
                 duration_ms: 1_000,
                 format: crate::album_detail::AudioFormat {
                     codec: "FLAC".to_string(),

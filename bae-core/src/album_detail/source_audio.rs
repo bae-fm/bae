@@ -51,7 +51,7 @@ pub struct SourceAudioFile {
     /// carried with the release but excluded from its tracklist.
     pub layout: Option<SourceAudioLayout>,
     pub format: AudioFormat,
-    pub content_type: crate::util::content_type::ContentType,
+    pub content_type: bae_util::content_type::ContentType,
     pub duration_ms: u64,
 }
 

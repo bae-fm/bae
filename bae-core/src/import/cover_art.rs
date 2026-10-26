@@ -1,7 +1,9 @@
 use crate::import::{Catalog, ImportError};
-use crate::retry::{is_transient_status, retry_classified, ClassifiedAttempt, Repeat, RetryPolicy};
-use crate::util::content_type::ContentType;
-use crate::util::http::Http;
+use bae_util::content_type::ContentType;
+use bae_util::http::Http;
+use bae_util::retry::{
+    is_transient_status, retry_classified, ClassifiedAttempt, Repeat, RetryPolicy,
+};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -389,7 +391,7 @@ impl DiskImageCache {
     }
 
     fn path_for(&self, url: &str) -> std::path::PathBuf {
-        self.dir.join(crate::util::fs::hash_bytes(url.as_bytes()))
+        self.dir.join(bae_util::fs::hash_bytes(url.as_bytes()))
     }
 
     fn get(&self, url: &str) -> Option<DiskImageEntry> {
@@ -774,11 +776,7 @@ async fn send_artwork_request(
     operation: &str,
 ) -> Result<Option<reqwest::Response>, ImportError> {
     retry_classified(RETRY, operation, || async {
-        let request = match http
-            .get(url)
-            .timeout(crate::util::http::READ_TIMEOUT)
-            .build()
-        {
+        let request = match http.get(url).timeout(bae_util::http::READ_TIMEOUT).build() {
             Ok(request) => request,
             Err(error) => {
                 return ClassifiedAttempt::Failed(
@@ -816,7 +814,7 @@ async fn send_artwork_request(
             return ClassifiedAttempt::Done(None);
         }
         let repeat = if is_transient_status(status) {
-            Repeat::transient(crate::util::http::told_wait(response.headers()))
+            Repeat::transient(bae_util::http::told_wait(response.headers()))
         } else {
             Repeat::Never
         };
@@ -838,15 +836,12 @@ fn is_permanent_request_error(error: &reqwest::Error) -> bool {
     error.is_builder() || error.is_redirect()
 }
 
-fn artwork_body_error(
-    error: crate::util::http::HttpBodyError,
-    context: &'static str,
-) -> ImportError {
+fn artwork_body_error(error: bae_util::http::HttpBodyError, context: &'static str) -> ImportError {
     match error {
-        crate::util::http::HttpBodyError::Read(error) => {
+        bae_util::http::HttpBodyError::Read(error) => {
             ImportError::CoverArtTransport { context, error }
         }
-        crate::util::http::HttpBodyError::TooLarge { .. } => ImportError::CoverArt {
+        bae_util::http::HttpBodyError::TooLarge { .. } => ImportError::CoverArt {
             detail: format!("{context}: {error}"),
         },
     }
@@ -857,11 +852,11 @@ async fn read_image_response(
     response: reqwest::Response,
     _image_url: &str,
 ) -> Result<ImageResponse, ImportError> {
-    let bytes = crate::util::http::read_body_capped(response, crate::util::http::MAX_IMAGE_BYTES)
+    let bytes = bae_util::http::read_body_capped(response, bae_util::http::MAX_IMAGE_BYTES)
         .await
         .map_err(|error| artwork_body_error(error, "Failed to read image response"))?;
     let (_, content_type) =
-        crate::util::stored_image::decode_image(&bytes).map_err(|error| ImportError::CoverArt {
+        bae_util::stored_image::decode_image(&bytes).map_err(|error| ImportError::CoverArt {
             detail: format!("Downloaded file is not a valid image: {error}"),
         })?;
 

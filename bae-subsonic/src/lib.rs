@@ -6,7 +6,7 @@
 //! (playlists, star/rating, jukebox, podcasts, downloads, …) is out of scope.
 //!
 //! The desktop apps drive the server through [`SubsonicServerController`],
-//! which runs its lifecycle on the shared `bae_core::server::ServerController`
+//! which runs its lifecycle on the shared `bae_util::server::ServerController`
 //! (as `bae-mcp` does) — it binds the listener and runs `axum::serve` on the
 //! [`router`] itself, so it can report a bind failure before it reports the
 //! server running. [`router`] stays public as the seam the integration tests

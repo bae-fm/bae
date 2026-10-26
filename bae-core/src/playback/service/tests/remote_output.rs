@@ -33,7 +33,7 @@ async fn seed_track_window(
     generated_pregap_samples: Option<u64>,
 ) {
     use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile};
-    use crate::util::content_type::ContentType;
+    use bae_util::content_type::ContentType;
     let now = chrono::Utc::now();
     let file_id = bae_test_support::test_uuid(&format!("{track_id}-file"));
     let file = DbFile::new(

@@ -160,7 +160,7 @@ impl PlaybackPreparedTrack {
 
     /// Decoder windows for this track starting `offset` samples in.
     fn decode_params(&self, offset: u64, include_pregap: bool) -> StreamDecodeParams {
-        use crate::util::content_type::ContentType;
+        use bae_util::content_type::ContentType;
         let mut remaining_offset = offset;
         let leading_silence_frames = if include_pregap {
             self.generated_pregap_frames.saturating_sub(offset)
@@ -243,7 +243,7 @@ struct PlaybackPreparedTrack {
     timeline: TrackTimeline,
     /// Picks how a track start seeks: by byte to `start_byte`, except APE, which
     /// seeks by sample.
-    content_type: crate::util::content_type::ContentType,
+    content_type: bae_util::content_type::ContentType,
     /// Replay gain the audio callback multiplies into the volume; `1.0` when off
     /// or unmeasured.
     replay_gain_linear: f32,

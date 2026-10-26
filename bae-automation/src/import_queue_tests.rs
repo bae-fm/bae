@@ -122,7 +122,7 @@ fn candidate(root: &str, name: &str) -> FolderCandidate {
                         0,
                     );
                     file.source_audio = Some(bae_core::import::folder_scanner::ScannedAudio {
-                        content_type: bae_core::util::content_type::ContentType::Flac,
+                        content_type: bae_util::content_type::ContentType::Flac,
                         duration_ms: 1_000,
                         format: bae_core::album_detail::AudioFormat {
                             codec: "FLAC".to_string(),

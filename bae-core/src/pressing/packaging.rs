@@ -5,6 +5,8 @@
 //! one word for packaging is the "Box Set" format, which says the media are
 //! enclosed in a box, and that is read as [`Packaging::Box`].
 
+use bae_util::desktop_only;
+
 super::vocabulary! {
     /// The outermost packaging of a release, leaving out shipping material.
     pub enum Packaging {

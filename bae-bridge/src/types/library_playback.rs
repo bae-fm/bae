@@ -514,7 +514,7 @@ pub struct BridgeDurationClock {
 }
 
 mirror_struct! {
-    BridgeDurationClock = bae_core::util::duration::DurationClock,
+    BridgeDurationClock = bae_util::duration::DurationClock,
     from_core: pub(super) fn,
     fields: { negative, hours, minutes, seconds },
 }
@@ -524,13 +524,13 @@ impl BridgeDurationClock {
     /// to label (an absent duration, or a negative one — a gap in the data, not
     /// a short track).
     pub(crate) fn from_millis(ms: Option<i64>) -> Option<Self> {
-        bae_core::util::duration::DurationClock::from_millis(ms).map(Self::from_core)
+        bae_util::duration::DurationClock::from_millis(ms).map(Self::from_core)
     }
 
     /// The clock for a track's length, which every track has. Pre-computed onto
     /// the static row types at conversion.
     pub(crate) fn of_length(ms: u64) -> Self {
-        Self::from_core(bae_core::util::duration::DurationClock::of_length(ms))
+        Self::from_core(bae_util::duration::DurationClock::of_length(ms))
     }
 }
 
@@ -553,7 +553,7 @@ pub enum BridgeDurationUnits {
 }
 
 mirror_enum! {
-    BridgeDurationUnits = bae_core::util::duration::DurationUnits,
+    BridgeDurationUnits = bae_util::duration::DurationUnits,
     from_core: pub(crate) fn,
     variants: {
         HoursOnly { hours },
@@ -600,8 +600,8 @@ pub fn bridge_seek_bar(
     duration_ms: Option<u64>,
     show_remaining: bool,
 ) -> BridgeSeekBarClocks {
-    let bae_core::util::duration::SeekBarClocks { leading, trailing } =
-        bae_core::util::duration::SeekBarClocks::new(position_ms, duration_ms, show_remaining);
+    let bae_util::duration::SeekBarClocks { leading, trailing } =
+        bae_util::duration::SeekBarClocks::new(position_ms, duration_ms, show_remaining);
     BridgeSeekBarClocks {
         leading: BridgeDurationClock::from_core(leading),
         trailing: trailing.map(BridgeDurationClock::from_core),

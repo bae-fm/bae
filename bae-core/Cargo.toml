@@ -11,6 +11,7 @@ name = "bae_core"
 path = "src/lib.rs"
 
 [dependencies]
+bae-util = { path = "../bae-util" }
 coven = { workspace = true }
 rusqlite = { workspace = true }
 # `blocking` powers the DLNA control point (src/dlna/): its SSDP search thread
@@ -74,15 +75,8 @@ axum = "0.7"
 regex = "1.11"
 libc = "0.2"
 rtrb = "0.3.2"
-# Image downscaling at store time (src/util/stored_image.rs) runs on every
-# platform — imports, change-cover and artist pictures store a ≤600 JPEG
-# everywhere, so a stored image file is uniform regardless of which device
-# imported it. Decode JPEG, PNG, GIF and WebP without default features (no
-# rayon), including mobile.
-image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
 tokio-util = { version = "0.7", features = ["io", "rt"] }
 rand = "0.9"
-lru = "0.18.2"
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 # The shared remote-image cache spools downloads to a temporary file before an
@@ -121,8 +115,6 @@ ndk = { version = "0.9", features = ["audio"] }
 # targets positively instead would let a new non-mobile target compile the
 # pipeline while its dependencies stayed behind.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
-chardetng = "0.1"
-encoding_rs = "0.8"
 lofty = "0.25"
 notify = "8.2.0"
 strsim = "0.11"
@@ -156,6 +148,9 @@ ffmpeg-sys-next = { version = "8.1", default-features = false, features = ["avco
 windows-sys = { version = "0.61", features = ["Win32_Storage_FileSystem", "Win32_System_WindowsProgramming"] }
 
 [dev-dependencies]
+# The test transport and the retry that sleeps no real time, for bae-core's
+# own unit tests.
+bae-util = { path = "../bae-util", features = ["test-utils"] }
 # Shared integration-test helpers. A real crate rather than a `tests/support`
 # include so they compile once and `dead_code` stays armed on them; the cycle
 # back to bae-core is dev-only, which Cargo allows.
@@ -170,6 +165,13 @@ coven = { workspace = true, features = ["test-utils"] }
 # Builds the native keychain refusal coven wraps in `KeychainError`, for the
 # tests of how a missing keychain entitlement is reported.
 keyring-core = "1.0.1"
+# Decodes the stored covers and pictures the tests check, and builds the
+# images they import.
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
+
+# Encodes the non-UTF-8 tags the import tests read back.
+[target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dev-dependencies]
+encoding_rs = "0.8"
 
 [[test]]
 name = "test_close_open_files"
@@ -241,8 +243,9 @@ oauth-providers = []
 # macOS bridge builds turn it on; release builds leave it out.
 dev-reset = []
 # Forwards coven's test-utils so bae-core's own integration tests get the
-# re-exported clock/id fakes (FixedClock, …).
-test-utils = ["coven/test-utils"]
+# re-exported clock/id fakes (FixedClock, …), and bae-util's so they get its
+# test transport and a retry that sleeps no real time.
+test-utils = ["coven/test-utils", "bae-util/test-utils"]
 
 [lints]
 workspace = true

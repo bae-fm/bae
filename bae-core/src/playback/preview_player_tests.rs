@@ -345,7 +345,7 @@ async fn resolve_preview_probe_rejects_absent_or_failed_probe() {
 
 fn probe(sample_rate: u32, channels: u32) -> crate::audio_codec::ProbeResult {
     crate::audio_codec::ProbeResult {
-        content_type: crate::util::content_type::ContentType::Flac,
+        content_type: bae_util::content_type::ContentType::Flac,
         duration: Duration::from_secs(1),
         sample_rate,
         bits_per_sample: Some(16),

@@ -2509,6 +2509,7 @@ bindings export none of their symbols.
 | Crate | Holds |
 |---|---|
 | bae-core | the library, schema, import, identification, catalogs, files, playback, outputs, sync integration, settings |
+| bae-util | what the other crates build on, with no library vocabulary and nothing else in bae beneath it: content types, duration labels, outbound HTTP and its retries, error text, stored images, text encodings, the embedded-server lifecycle |
 | bae-bridge | the uniffi exports for the apps |
 | bae-desktop | the desktop services a bridge handle starts: the MCP and Subsonic servers |
 | bae-subsonic | the Subsonic server |

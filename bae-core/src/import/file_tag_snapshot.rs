@@ -4,7 +4,7 @@ use super::folder_scanner::ScannedFile;
 use super::track_numbers::TrackNumbers;
 use super::ImportError;
 use crate::signals::StoreMarker;
-use crate::util::content_type::ContentType;
+use bae_util::content_type::ContentType;
 use lofty::config::ParseOptions;
 use lofty::file::{AudioFile, FileType};
 use lofty::id3::v2::{Frame, Id3v2Tag, Id3v2Version};
@@ -327,7 +327,7 @@ fn stated_values(values: Vec<String>) -> Vec<String> {
 }
 
 /// The text of a tag that names its own encoding wrongly, decoded from its
-/// bytes (see [`crate::text_encoding`]). A field is `None` where the tag holds
+/// bytes (see [`bae_util::text_encoding`]). A field is `None` where the tag holds
 /// no such text for it, and the tag's own reading of it stands.
 #[derive(Default)]
 struct LegacyTagText {
@@ -426,7 +426,7 @@ fn decoded_id3v1_field(bytes: &[u8]) -> Option<String> {
         .iter()
         .position(|byte| *byte == 0)
         .unwrap_or(bytes.len());
-    (end > 0).then(|| crate::text_encoding::decode_text(&bytes[..end]).text)
+    (end > 0).then(|| bae_util::text_encoding::decode_text(&bytes[..end]).text)
 }
 
 /// The values of the Latin-1 text frame `id`, each decoded from its bytes: an
@@ -451,11 +451,11 @@ fn decoded_latin1_frame(tag: &Id3v2Tag, id: &str) -> Option<Vec<String>> {
         return Some(
             bytes
                 .split(|byte| *byte == 0)
-                .map(|value| crate::text_encoding::decode_text(value).text)
+                .map(|value| bae_util::text_encoding::decode_text(value).text)
                 .collect(),
         );
     }
-    Some(vec![crate::text_encoding::decode_text(&bytes).text])
+    Some(vec![bae_util::text_encoding::decode_text(&bytes).text])
 }
 
 pub(crate) fn observe_audio_files(

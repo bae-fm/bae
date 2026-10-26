@@ -14,7 +14,7 @@
 
 use crate::config::CastTranscodeFormat;
 use crate::library::ResolvedTrackAudio;
-use crate::util::content_type::ContentType;
+use bae_util::content_type::ContentType;
 
 /// The bitrate an MP3 conversion is encoded at, in kbps. Shared across
 /// renderer flavors.

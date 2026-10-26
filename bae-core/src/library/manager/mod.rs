@@ -501,7 +501,7 @@ pub struct ResolvedTrackAudio {
     /// track-start seek on it: FLAC/lossless byte-seek to `start_byte`; APE
     /// sample-seeks its mandatory index and also prefetches the file's end (its
     /// demuxer reads the tail on open).
-    pub content_type: crate::util::content_type::ContentType,
+    pub content_type: bae_util::content_type::ContentType,
     /// Raw loudness/peak measurements (LUFS + linear peak) for this track and its
     /// album, as stored at import. `None` = not measured. Playback derives the
     /// replay gain from these against a constant target; nothing here is a gain.

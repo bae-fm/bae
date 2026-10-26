@@ -82,7 +82,7 @@ struct PreparedMetadata {
     remote_cover_image: Option<cover_image::CoverCandidate>,
     /// The file-tag snapshot's artwork; its content type is checked, then
     /// dropped by the resize.
-    embedded_cover: Option<(Vec<u8>, crate::util::content_type::ContentType)>,
+    embedded_cover: Option<(Vec<u8>, bae_util::content_type::ContentType)>,
     existing_album_id: Option<String>,
     track_artists: Vec<DbTrackArtist>,
     /// Empty when the release joins an album already in the library.
@@ -222,7 +222,7 @@ fn downloaded_cover(
     } = image;
     if matches!(
         content_type,
-        crate::util::content_type::ContentType::OctetStream
+        bae_util::content_type::ContentType::OctetStream
     ) {
         return Err(crate::import::ImportError::CoverArt {
             detail: "Cover bytes aren't a recognized image format (PNG/JPEG/GIF/WebP/BMP)"

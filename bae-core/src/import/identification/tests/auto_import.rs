@@ -393,7 +393,7 @@ async fn an_automatic_import_that_cannot_start_is_recorded_as_its_failed_import(
             ),
             Some(&crate::import::cover_art::RemoteImage {
                 bytes: vec![1, 2, 3],
-                content_type: crate::util::content_type::ContentType::Jpeg,
+                content_type: bae_util::content_type::ContentType::Jpeg,
             }),
         )
         .await

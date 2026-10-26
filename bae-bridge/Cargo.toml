@@ -19,6 +19,7 @@ async-trait = "0.1.92"
 bae-desktop = { path = "../bae-desktop", optional = true }
 bae-cast = { path = "../bae-cast", optional = true }
 bae-core = { path = "../bae-core" }
+bae-util = { path = "../bae-util" }
 bae-mirror = { path = "../bae-mirror" }
 # Boundary records mirror the same coven instance used by bae-core.
 coven = { workspace = true }
@@ -57,6 +58,7 @@ bae-test-support = { path = "../bae-test-support" }
 # The validation-reason ↔ catalog cross-check test loads the master catalog.
 bae-loc = { path = "../bae-loc" }
 bae-core = { path = "../bae-core", features = ["test-utils"] }
+bae-util = { path = "../bae-util", features = ["test-utils"] }
 tempfile = "3"
 # Builds the native keychain refusal coven wraps in `KeychainError`, for the
 # tests of how a missing keychain entitlement is reported.

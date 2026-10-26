@@ -9,7 +9,7 @@ use axum::response::{IntoResponse, Response};
 pub use bae_automation::Automation;
 
 use bae_automation::{AutomationError, AutomationTool};
-use bae_core::server::{ServerController, ServerError, ServerStatus};
+use bae_util::server::{ServerController, ServerError, ServerStatus};
 use rmcp::model::{
     CallToolRequestParams, CallToolResult, ListToolsResult, PaginatedRequestParams,
     ServerCapabilities, ServerInfo, Tool,

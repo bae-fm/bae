@@ -207,9 +207,7 @@ impl LibraryManager {
                         path.display()
                     )));
                 }
-                crate::util::fs::sync_directory(
-                    path.parent().expect("validated destination parent"),
-                )?;
+                bae_util::fs::sync_directory(path.parent().expect("validated destination parent"))?;
                 Ok(coven::UserFile {
                     path,
                     size: after.len(),

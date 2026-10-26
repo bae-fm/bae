@@ -96,7 +96,7 @@ impl AppDir {
         staged.as_file().sync_all()?;
         match staged.persist_noclobber(&path) {
             Ok(_) => {
-                crate::util::fs::sync_directory(&self.path)?;
+                bae_util::fs::sync_directory(&self.path)?;
                 Ok(id)
             }
             Err(error) if error.error.kind() == std::io::ErrorKind::AlreadyExists => read(),

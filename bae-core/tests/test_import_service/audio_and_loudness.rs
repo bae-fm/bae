@@ -222,7 +222,7 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
         assert_eq!(files.len(), 1, "{fixture_name}");
         assert_eq!(
             files[0].content_type,
-            bae_core::util::content_type::ContentType::Dsd,
+            bae_util::content_type::ContentType::Dsd,
             "{fixture_name}"
         );
 
@@ -235,7 +235,7 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
                 .unwrap();
         assert_eq!(
             format.content_type,
-            bae_core::util::content_type::ContentType::Dsd,
+            bae_util::content_type::ContentType::Dsd,
             "{fixture_name}"
         );
     }

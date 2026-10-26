@@ -16,9 +16,9 @@ use crate::import::search::MetadataResult;
 use crate::import::{ImportError, MetadataRef};
 use crate::musicbrainz::{MusicBrainz, ReleaseSearchParams};
 use crate::signals::failure::Failure;
-use crate::util::http::Http;
 use crate::util::rate_limiter::CallPriority;
 use crate::wikidata::Wikidata;
+use bae_util::http::Http;
 
 #[derive(Clone)]
 pub struct Providers {

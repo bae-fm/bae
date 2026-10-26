@@ -6,23 +6,23 @@ use std::time::Duration;
 /// User-agent sent on every bae-originated HTTP request (MusicBrainz, Discogs,
 /// the Cover Art Archive, artist images). Some APIs reject requests without a
 /// descriptive agent, so keep it identifying.
-pub(crate) const USER_AGENT: &str = "bae/1.0 +https://github.com/bae-fm/bae";
+pub const USER_AGENT: &str = "bae/1.0 +https://github.com/bae-fm/bae";
 
 /// Total per-request ceiling for a bounded JSON API call.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) const API_TIMEOUT: Duration = Duration::from_secs(30);
+pub const API_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Bounded time to establish a TCP + TLS connection to any provider.
 pub(crate) const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Stall guard for any provider socket after the request starts.
-pub(crate) const READ_TIMEOUT: Duration = Duration::from_secs(30);
+pub const READ_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Maximum redirects any provider request may follow.
 pub(crate) const MAX_REDIRECTS: usize = 10;
 
 /// Ceiling for image/cover bodies read into memory.
-pub(crate) const MAX_IMAGE_BYTES: usize = 32 * 1024 * 1024;
+pub const MAX_IMAGE_BYTES: usize = 32 * 1024 * 1024;
 
 /// How long a response asks its client to wait before asking again, read off
 /// its `Retry-After`: a number of seconds, or an HTTP-date. A date is measured
@@ -34,7 +34,7 @@ pub(crate) const MAX_IMAGE_BYTES: usize = 32 * 1024 * 1024;
 ///
 /// The one reader of the header: every provider client hands the retry loop
 /// what this returns.
-pub(crate) fn told_wait(headers: &reqwest::header::HeaderMap) -> Option<Duration> {
+pub fn told_wait(headers: &reqwest::header::HeaderMap) -> Option<Duration> {
     let retry_after = headers.get(reqwest::header::RETRY_AFTER)?.to_str().ok()?;
     let date = headers
         .get(reqwest::header::DATE)
@@ -50,10 +50,7 @@ pub(crate) fn told_wait(headers: &reqwest::header::HeaderMap) -> Option<Duration
 /// response has no such header or one that says nothing readable; an instant
 /// already past asks for no wait.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) fn wait_until_epoch(
-    headers: &reqwest::header::HeaderMap,
-    header: &str,
-) -> Option<Duration> {
+pub fn wait_until_epoch(headers: &reqwest::header::HeaderMap, header: &str) -> Option<Duration> {
     let epoch = headers
         .get(header)?
         .to_str()
@@ -106,14 +103,14 @@ fn http_date(value: &str) -> Option<chrono::DateTime<chrono::Utc>> {
 /// round trip.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Clone)]
-pub(crate) struct CachedResponse {
-    pub(crate) status: u16,
-    pub(crate) body: String,
+pub struct CachedResponse {
+    pub status: u16,
+    pub body: String,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl CachedResponse {
-    pub(crate) fn is_success(&self) -> bool {
+    pub fn is_success(&self) -> bool {
         is_success(self.status)
     }
 }
@@ -130,7 +127,7 @@ fn is_success(status: u16) -> bool {
 /// request's own headers, which no URL names, so it is not this URL's answer
 /// either.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) fn is_cacheable(status: u16) -> bool {
+pub fn is_cacheable(status: u16) -> bool {
     is_success(status) || status == 404
 }
 
@@ -141,7 +138,7 @@ pub(crate) fn is_cacheable(status: u16) -> bool {
     any(test, feature = "test-utils"),
     not(any(target_os = "ios", target_os = "android"))
 ))]
-pub(crate) fn response_key(url: &str) -> String {
+pub fn response_key(url: &str) -> String {
     reqwest::Url::parse(url)
         .expect("a provider request URL parses")
         .to_string()
@@ -150,7 +147,7 @@ pub(crate) fn response_key(url: &str) -> String {
 /// A `reqwest` client builder pre-set with bae's outbound HTTP policy. Callers
 /// add their endpoint's settings and call `.build()` themselves, so each keeps
 /// its own error handling.
-pub(crate) fn client_builder() -> reqwest::ClientBuilder {
+pub fn client_builder() -> reqwest::ClientBuilder {
     reqwest::Client::builder()
         .user_agent(USER_AGENT)
         .connect_timeout(CONNECT_TIMEOUT)
@@ -235,16 +232,13 @@ impl Http {
         self
     }
 
-    pub(crate) fn get(&self, url: &str) -> reqwest::RequestBuilder {
+    pub fn get(&self, url: &str) -> reqwest::RequestBuilder {
         self.client.get(url)
     }
 
     /// Send `request`. The URL it was built with is the one it is known by;
     /// only where it is sent changes in a test.
-    pub(crate) async fn execute(
-        &self,
-        request: reqwest::Request,
-    ) -> reqwest::Result<reqwest::Response> {
+    pub async fn execute(&self, request: reqwest::Request) -> reqwest::Result<reqwest::Response> {
         #[cfg(any(test, feature = "test-utils"))]
         let request = self.routed(request);
         self.client.execute(request).await
@@ -277,8 +271,8 @@ impl Http {
 /// The origin of a local server that answers every request 404: a host with
 /// nothing at any address a test reaches. It runs on the calling test's
 /// runtime and ends with it.
-#[cfg(test)]
-pub(crate) async fn serve_not_found() -> String {
+#[cfg(any(test, feature = "test-utils"))]
+pub async fn serve_not_found() -> String {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
@@ -318,8 +312,8 @@ pub(crate) async fn serve_not_found() -> String {
 
 /// The error reqwest returns for a request to a port nothing listens on: a
 /// transport failure with a real cause chain, for a test that needs one.
-#[cfg(test)]
-pub(crate) async fn refused_request_error() -> reqwest::Error {
+#[cfg(any(test, feature = "test-utils"))]
+pub async fn refused_request_error() -> reqwest::Error {
     client_builder()
         .build()
         .expect("the test HTTP client builds")
@@ -330,8 +324,8 @@ pub(crate) async fn refused_request_error() -> reqwest::Error {
 }
 
 /// The error reqwest returns for a request it will not build.
-#[cfg(test)]
-pub(crate) fn unbuildable_request_error() -> reqwest::Error {
+#[cfg(any(test, feature = "test-utils"))]
+pub fn unbuildable_request_error() -> reqwest::Error {
     reqwest::Client::new()
         .get("not a URL")
         .build()
@@ -339,14 +333,14 @@ pub(crate) fn unbuildable_request_error() -> reqwest::Error {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub(crate) enum HttpBodyError {
+pub enum HttpBodyError {
     #[error("HTTP body too large (limit {limit} bytes)")]
     TooLarge { limit: usize },
-    #[error("failed to read HTTP body: {}", crate::util::error_text::CauseChain(.0))]
+    #[error("failed to read HTTP body: {}", crate::error_text::CauseChain(.0))]
     Read(#[source] reqwest::Error),
 }
 
-pub(crate) async fn read_body_capped(
+pub async fn read_body_capped(
     mut response: reqwest::Response,
     max_bytes: usize,
 ) -> Result<Vec<u8>, HttpBodyError> {

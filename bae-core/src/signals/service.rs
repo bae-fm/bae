@@ -25,7 +25,7 @@ use crate::signals::{
     TextSignal,
 };
 use crate::util::rate_limiter::CallPriority;
-use crate::util::session_cache::SessionCache;
+use bae_util::session_cache::SessionCache;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Handle;

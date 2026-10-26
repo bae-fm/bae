@@ -8,11 +8,11 @@ use std::sync::Arc;
 
 use bae_core::config::{ConfigError, McpConfig, SubsonicConfig};
 use bae_core::library::AppServices;
-use bae_core::server::{ServerError, ServerStatus};
 use bae_mcp::{Automation, McpServerController};
 pub use bae_mcp::{McpServerError, McpServerStatus};
 use bae_subsonic::SubsonicServerController;
 pub use bae_subsonic::{SubsonicServerError, SubsonicServerStatus};
+use bae_util::server::{ServerError, ServerStatus};
 use tokio::runtime::Handle;
 
 pub struct DesktopServices {

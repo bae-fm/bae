@@ -4,7 +4,7 @@ use super::{
     push_unique_cover, send_artwork_request, Catalog, CoverStanding, DownscaledCopy, ImportError,
     RemoteCover, RemoteImageSet, ARCHIVE,
 };
-use crate::util::http::Http;
+use bae_util::http::Http;
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -50,7 +50,7 @@ async fn fetch_gallery(http: &Http, url: &str) -> Result<Vec<RemoteCover>, Impor
     let Some(response) = send_artwork_request(http, url, "Cover Art Archive gallery").await? else {
         return Ok(Vec::new());
     };
-    let bytes = crate::util::http::read_body_capped(response, 4 * 1024 * 1024)
+    let bytes = bae_util::http::read_body_capped(response, 4 * 1024 * 1024)
         .await
         .map_err(|error| {
             super::artwork_body_error(error, "Failed to read Cover Art Archive gallery")

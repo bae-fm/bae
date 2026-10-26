@@ -252,7 +252,7 @@ fn calculate_mb_discid_from_cue(
 /// A document's text, decoded whatever its encoding (an EAC log is UTF-16).
 /// `None` for a file that cannot be read, which is logged.
 fn read_document(path: &Path) -> Option<String> {
-    match crate::text_encoding::read_text_file(path) {
+    match bae_util::text_encoding::read_text_file(path) {
         Ok(read) => Some(read.text),
         Err(e) => {
             warn!("rip document {:?} could not be read: {}", path, e);

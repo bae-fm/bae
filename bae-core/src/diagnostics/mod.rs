@@ -37,15 +37,15 @@ use reqwest::{
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot};
 
-use crate::retry::retry_with_backoff_if;
+use bae_util::retry::retry_with_backoff_if;
 
 const BATCH_SIZE: usize = 50;
 const MAX_BUFFERED_EVENTS: usize = 1_000;
 const FLUSH_INTERVAL: Duration = Duration::from_secs(2);
 /// Three tries, a quarter second apart: diagnostics are dropped rather than
 /// queued, so there is no busy server here worth waiting out.
-const RETRY: crate::retry::RetryPolicy =
-    crate::retry::RetryPolicy::flat(3, Duration::from_millis(250));
+const RETRY: bae_util::retry::RetryPolicy =
+    bae_util::retry::RetryPolicy::flat(3, Duration::from_millis(250));
 const DATADOG_ORIGIN_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -514,7 +514,7 @@ pub enum DiagnosticsError {
     SpawnWorker(#[source] std::io::Error),
     #[error("diagnostics runtime failed to start")]
     BuildRuntime(#[source] std::io::Error),
-    #[error("diagnostics HTTP client failed to build: {}", crate::util::error_text::CauseChain(.0))]
+    #[error("diagnostics HTTP client failed to build: {}", bae_util::error_text::CauseChain(.0))]
     BuildClient(#[source] reqwest::Error),
     #[error("diagnostics config is missing required Datadog fields")]
     IncompleteConfig,
@@ -528,7 +528,7 @@ pub enum DiagnosticsError {
     InvalidHeader(#[source] reqwest::header::InvalidHeaderValue),
     #[error("diagnostic event serialization failed")]
     Serialize(#[source] serde_json::Error),
-    #[error("diagnostics transport failed: {}", crate::util::error_text::CauseChain(.0))]
+    #[error("diagnostics transport failed: {}", bae_util::error_text::CauseChain(.0))]
     Transport(#[source] reqwest::Error),
     #[error("diagnostics intake rejected the batch with HTTP {0}")]
     Status(StatusCode),
@@ -550,7 +550,7 @@ impl DatadogTransport {
     /// that exists, and runs on the diagnostics worker's own runtime.
     fn new() -> Result<Self, DiagnosticsError> {
         Ok(Self {
-            client: crate::util::http::client_builder()
+            client: bae_util::http::client_builder()
                 .build()
                 .map_err(DiagnosticsError::BuildClient)?,
         })
@@ -585,9 +585,9 @@ async fn send_with_retry(
     // a repeat here always takes the flat wait.
     let repeat = |error: &DiagnosticsError| {
         if should_retry(error) {
-            crate::retry::Repeat::AfterBackoff
+            bae_util::retry::Repeat::AfterBackoff
         } else {
-            crate::retry::Repeat::Never
+            bae_util::retry::Repeat::Never
         }
     };
     retry_with_backoff_if(RETRY, "diagnostics send", repeat, || {
@@ -599,7 +599,7 @@ async fn send_with_retry(
 pub fn should_retry(error: &DiagnosticsError) -> bool {
     match error {
         DiagnosticsError::Transport(_) => true,
-        DiagnosticsError::Status(status) => crate::retry::is_transient_status(*status),
+        DiagnosticsError::Status(status) => bae_util::retry::is_transient_status(*status),
         DiagnosticsError::SpawnWorker(_)
         | DiagnosticsError::BuildRuntime(_)
         | DiagnosticsError::BuildClient(_)

@@ -14,8 +14,8 @@ use crate::audio_codec::ProbeResult;
 use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, SegmentSpan};
 use crate::import::types::{CueFlacAnalysis, TrackAudio, TrackFile};
 use crate::import::ImportError;
-use crate::util::content_type::ContentType;
-use crate::util::content_type_hint::ContentTypeHint;
+use bae_util::content_type::ContentType;
+use bae_util::content_type_hint::ContentTypeHint;
 
 use super::ImportService;
 

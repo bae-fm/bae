@@ -482,7 +482,7 @@ impl SaveTrackPlan {
 /// Same dispatch playback applies: APE has no per-frame byte positions and
 /// sample-seeks its mandatory index instead.
 fn byte_seekable(meta: &TrackAudioMeta) -> bool {
-    meta.audio_format.content_type != crate::util::content_type::ContentType::Ape
+    meta.audio_format.content_type != bae_util::content_type::ContentType::Ape
 }
 
 /// A format with no recorded pregap has none.

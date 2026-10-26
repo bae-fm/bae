@@ -2,7 +2,7 @@
 //! stream, and report container/codec properties (`ProbeResult`) or the byte the
 //! demuxer lands on when seeking to each of a set of samples (`seek_landing_bytes`).
 
-use crate::util::content_type::ContentType;
+use bae_util::content_type::ContentType;
 use std::os::raw::c_int;
 use std::ptr;
 use tracing::{debug, warn};

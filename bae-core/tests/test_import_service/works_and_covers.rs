@@ -170,7 +170,7 @@ async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: 
         .expect("the cover's file");
     let attached_hash: String =
         file.content_hash().as_bytes().iter().map(|byte| format!("{byte:02x}")).collect();
-    assert_eq!(attached_hash, bae_core::util::fs::hash_bytes(&bytes));
+    assert_eq!(attached_hash, bae_util::fs::hash_bytes(&bytes));
     assert_eq!(file.plaintext_size(), bytes.len() as u64);
     assert_eq!(
         cover.file_size,
@@ -267,7 +267,7 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
             .expect("cover image in DB");
     assert_eq!(
         cover.content_type,
-        bae_core::util::content_type::ContentType::Jpeg
+        bae_util::content_type::ContentType::Jpeg
     );
 
     // The stored file is a ≤600 JPEG downscaled from the 1000×1000 PNG source.
@@ -341,7 +341,7 @@ async fn import_gif_and_webp_covers_stores_first_image_as_jpeg() {
                 .unwrap();
         assert_eq!(
             cover.content_type,
-            bae_core::util::content_type::ContentType::Jpeg
+            bae_util::content_type::ContentType::Jpeg
         );
         let stored = support::read_cover_image_bytes(&f.library_manager, &release_id)
             .await

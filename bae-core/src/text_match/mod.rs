@@ -37,6 +37,8 @@
 //! A barcode is compared by [`crate::barcode::comparison_key`], which lives
 //! with the symbology rules it is built on.
 
+use bae_util::desktop_only;
+
 mod artist;
 mod catalog_number;
 mod fold;

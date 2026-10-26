@@ -1,7 +1,7 @@
 //! Source-neutral selection of artwork files from an import candidate.
 
 use super::folder_scanner::ScannedFile;
-use crate::util::content_type_hint::ContentTypeHint;
+use bae_util::content_type_hint::ContentTypeHint;
 
 /// The cover a folder holds for itself, first of:
 ///

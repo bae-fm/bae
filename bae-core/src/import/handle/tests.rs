@@ -13,11 +13,11 @@ use tempfile::TempDir;
 use uuid::Uuid;
 
 async fn setup_test_manager() -> (LibraryManager, TempDir) {
-    setup_test_manager_with(crate::util::http::Http::for_test()).await
+    setup_test_manager_with(bae_util::http::Http::for_test()).await
 }
 
 /// A manager whose providers and image downloads send requests through `http`.
-async fn setup_test_manager_with(http: crate::util::http::Http) -> (LibraryManager, TempDir) {
+async fn setup_test_manager_with(http: bae_util::http::Http) -> (LibraryManager, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
     let database = Database::new_test(

@@ -129,7 +129,7 @@ impl LibraryManager {
                 Err(error) => {
                     self.diagnostics.report_bug(
                         &format!("read release {release_id}'s storage to pin it"),
-                        &crate::util::error_text::CauseChain(&error),
+                        &bae_util::error_text::CauseChain(&error),
                     );
                     return Err(error);
                 }

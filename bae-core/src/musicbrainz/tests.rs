@@ -282,7 +282,7 @@ async fn only_transient_musicbrainz_failures_are_retried() {
     assert_eq!(repeat_mb(&MusicBrainzError::Timeout), Repeat::AfterBackoff);
     assert_eq!(
         repeat_mb(&MusicBrainzError::Network(
-            crate::util::http::refused_request_error().await
+            bae_util::http::refused_request_error().await
         )),
         Repeat::AfterBackoff
     );
@@ -308,7 +308,7 @@ async fn only_transient_musicbrainz_failures_are_retried() {
     );
     assert_eq!(
         repeat_mb(&MusicBrainzError::Request(
-            crate::util::http::unbuildable_request_error()
+            bae_util::http::unbuildable_request_error()
         )),
         Repeat::Never
     );

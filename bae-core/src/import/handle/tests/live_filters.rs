@@ -185,7 +185,7 @@ async fn the_entry_counts_follow_what_is_running() {
 /// from its own tags, and the list under All through a window that holds the
 /// first item alone: the key on that page, and the key off it.
 async fn one_row_on_the_page() -> (ImportServiceHandle, TempDir, ImportListSubscription, String, String) {
-    let (manager, tmp) = setup_test_manager_with(crate::util::http::Http::for_test()).await;
+    let (manager, tmp) = setup_test_manager_with(bae_util::http::Http::for_test()).await;
     let (first, first_key, _) = unscanned_candidate(&manager, &tmp, "Album").await;
     let (second, second_key, _) = unscanned_candidate(&manager, &tmp, "Other Record").await;
     let root = first.watched_folder_path.clone();

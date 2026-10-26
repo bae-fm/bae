@@ -448,7 +448,7 @@ impl crate::import::file_tag_snapshot::FileTagReader for EmbeddingTagReader {
         let mut read = self.counted.read(path)?;
         read.embedded_cover = Some((
             self.picture.clone(),
-            crate::util::content_type::ContentType::Jpeg,
+            bae_util::content_type::ContentType::Jpeg,
         ));
         Ok(read)
     }

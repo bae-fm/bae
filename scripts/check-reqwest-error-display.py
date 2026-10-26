@@ -5,7 +5,7 @@ reqwest's own Display text is often only "error sending request for url
 (...)": the DNS, TLS or connection failure behind it is a cause further down,
 which that text leaves out. A `#[error(...)]` on a variant or struct holding a
 `reqwest::Error` therefore prints it through `CauseChain`
-(bae-core/src/util/error_text.rs), which walks every cause and cuts each URL to
+(bae-util/src/error_text.rs), which walks every cause and cuts each URL to
 its scheme and host. `{0}`, `{source}`, `{0:?}` and `#[error(transparent)]`
 are all refused: the first two drop the cause, the last two print the whole
 URL or forward the same Display.
@@ -154,7 +154,7 @@ def main() -> int:
         print("\n".join(violations))
         print(
             "an error holding a reqwest::Error must print it through "
-            "crate::util::error_text::CauseChain, which prints every cause with "
+            "bae_util::error_text::CauseChain, which prints every cause with "
             "its URLs cut to the host",
             file=sys.stderr,
         )

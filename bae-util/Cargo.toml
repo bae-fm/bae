@@ -1,0 +1,60 @@
+[package]
+name = "bae-util"
+version = "0.0.0-dev"
+authors = ["dima"]
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+
+[lib]
+name = "bae_util"
+path = "src/lib.rs"
+
+[dependencies]
+# The outbound client every provider shares (src/http.rs). `rustls`: the
+# providers it reaches are HTTPS.
+reqwest = { workspace = true, features = ["rustls"] }
+serde = { version = "1.0" }
+tokio = { version = "1.0", features = ["rt", "sync", "time"] }
+# The embedded servers' graceful-shutdown token (src/server.rs).
+tokio-util = "0.7"
+thiserror = { workspace = true }
+tracing = { workspace = true }
+# HTTP-date and epoch arithmetic for a response's asked-for wait (src/http.rs).
+chrono = "0.4"
+# The jitter drawn into each retry wait (src/retry.rs).
+rand = "0.9"
+lru = "0.18.2"
+sha2 = "0.10"
+hex = "0.4"
+# Image downscaling at store time (src/stored_image.rs) runs on every
+# platform — imports, change-cover and artist pictures store a ≤600 JPEG
+# everywhere, so a stored image file is uniform regardless of which device
+# imported it. Decode JPEG, PNG, GIF and WebP without default features (no
+# rayon), including mobile.
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
+
+# The open-file limit (src/open_file_limit.rs) is a Unix resource limit.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+# Text encoding detection (src/text_encoding.rs) serves the import pipeline,
+# which a mobile build does not compile; the predicate is spelled as the code
+# that gates the module spells it.
+[target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
+chardetng = "0.1"
+encoding_rs = "0.8"
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["macros", "net", "io-util"] }
+
+[features]
+default = []
+# The test transport (`Http::for_test`, `serve`, and the local servers and
+# canned errors tests answer with) and a retry that sleeps no real time, for
+# the tests of every crate that builds on this one. Dev/test-only: a
+# production build never enables it.
+test-utils = ["tokio/net", "tokio/io-util"]
+
+[lints]
+workspace = true

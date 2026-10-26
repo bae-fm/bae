@@ -127,7 +127,7 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
         &release_id,
         "front.gif",
         image_bytes.len() as i64,
-        bae_core::util::content_type::ContentType::Gif,
+        bae_util::content_type::ContentType::Gif,
         uuid::Uuid::new_v4().to_string(),
         chrono::Utc::now(),
     );

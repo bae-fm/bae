@@ -140,7 +140,7 @@ pub enum ImportError {
     /// URL reqwest would not build, a redirect loop), which `ui_error` and
     /// `provider_failure` tell apart by reading the error. `context` names
     /// what was being fetched.
-    #[error("{context}: {}", crate::util::error_text::CauseChain(error))]
+    #[error("{context}: {}", bae_util::error_text::CauseChain(error))]
     CoverArtTransport {
         context: &'static str,
         #[source]

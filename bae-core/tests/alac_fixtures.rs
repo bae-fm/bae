@@ -16,7 +16,7 @@ use bae_core::import::folder_scanner::{
     FolderReleaseDecisions, ScanItem, StoredCandidateEdits,
 };
 use bae_core::library::LibraryManager;
-use bae_core::util::content_type::ContentType;
+use bae_util::content_type::ContentType;
 use std::path::{Path, PathBuf};
 use support::{open_test_library, seed_discogs_test_release, tracing_init};
 use tempfile::TempDir;

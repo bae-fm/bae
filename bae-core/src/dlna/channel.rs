@@ -20,7 +20,7 @@ use tracing::debug;
 use crate::renderer::{
     ReceiverStatus, RendererChannel, RendererError, RendererMedia, RendererPlayerState,
 };
-use crate::util::error_text::CauseChain;
+use bae_util::error_text::CauseChain;
 
 use super::soap::{self, DidlMetadata, PositionInfo, SoapRequest, TransportState};
 

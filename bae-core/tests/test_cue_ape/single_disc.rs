@@ -2,7 +2,7 @@ use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::{ImportCommand, ImportDestination};
 use bae_core::library::LibraryManager;
 use bae_core::playback::{PlaybackProgress, PlaybackState, TrackTime};
-use bae_core::util::content_type::ContentType;
+use bae_util::content_type::ContentType;
 use bae_test_support as support;
 use std::path::Path;
 use std::time::Duration;
