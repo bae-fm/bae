@@ -28,12 +28,14 @@ private const val COVER_PATH_SEGMENTS = 4
 /**
  * Serves release/composer/work cover bytes to media-browse clients (Android
  * Auto, Bluetooth head units) over a `content://` URI. The browse tree tags
- * each item's artwork with a URI ([uriFor]); Media3 grants the connected
- * controller read access to it and the controller fetches the bytes lazily,
- * so cover bytes never ride inline in the browse payload across Binder (where
- * a page of covers would blow the transaction size limit). The now-playing
- * track's cover is tagged the same way ([BaeCorePlayer]), and the session's
- * bitmap loader reads it from here for the notification and lock screen.
+ * each item's artwork with a URI ([uriFor]) and the controller fetches the
+ * bytes lazily, so cover bytes never ride inline in the browse payload across
+ * Binder (where a page of covers would blow the transaction size limit). The
+ * provider isn't exported: a controller in another app reads these URIs
+ * through the read grant [ArtworkReadGrants] gives its package on the
+ * [coversUri] prefix while it is connected. The now-playing track's cover is
+ * tagged the same way ([BaeCorePlayer]), and the session's bitmap loader reads
+ * it from here, in this process, for the notification and lock screen.
  *
  * The bytes come from the same open library the rest of the app reads, through
  * [fm.bae.app.data.ImageStore] — so there is one image-loading path, not a
@@ -152,14 +154,21 @@ class ArtworkContentProvider : ContentProvider() {
             context: Context,
             image: BridgeImageRef,
         ): Uri =
+            coversUri(context)
+                .buildUpon()
+                .appendPath(image.imageType.name)
+                .appendPath(image.id)
+                .appendPath(image.version)
+                .build()
+
+        /** The path every [uriFor] URI starts with: a read grant on it as a
+         *  prefix lets a controller read every cover. */
+        fun coversUri(context: Context): Uri =
             Uri
                 .Builder()
                 .scheme("content")
                 .authority(context.packageName + AUTHORITY_SUFFIX)
                 .appendPath(COVER_PATH)
-                .appendPath(image.imageType.name)
-                .appendPath(image.id)
-                .appendPath(image.version)
                 .build()
 
         /** The image reference a [uriFor] URI names, or null when the path isn't

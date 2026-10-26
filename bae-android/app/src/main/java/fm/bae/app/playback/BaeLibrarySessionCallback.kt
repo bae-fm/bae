@@ -31,14 +31,30 @@ private val logger = BaeLogger(TAG)
  * Media3 unchanged, and [BaeCorePlayer.handleSetMediaItems] parses that id and
  * forwards a play-by-id command to core — the same play path the in-app album
  * detail uses. This keeps the player the single place transport is driven from.
+ *
+ * A connected controller's package can read cover URIs ([ArtworkReadGrants]).
  */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 internal class BaeLibrarySessionCallback(
     private val tree: LibraryBrowseTree<MediaSession.ControllerInfo>,
+    private val artworkGrants: ArtworkReadGrants,
     private val scope: CoroutineScope,
     /** What the controller says when a spoken request names nothing in the library, for that request. */
     private val notFoundMessage: (query: String) -> String,
 ) : MediaLibrarySession.Callback {
+    /** Accept every controller, as Media3's default does, and let it read the
+     *  cover URIs the browse items and now-playing metadata carry. */
+    override fun onConnect(
+        session: MediaSession,
+        controller: MediaSession.ControllerInfo,
+    ): MediaSession.ConnectionResult {
+        val result = super.onConnect(session, controller)
+        if (result.isAccepted) {
+            artworkGrants.connected(controller)
+        }
+        return result
+    }
+
     override fun onGetLibraryRoot(
         session: MediaLibrarySession,
         browser: MediaSession.ControllerInfo,
@@ -196,6 +212,7 @@ internal class BaeLibrarySessionCallback(
         controller: MediaSession.ControllerInfo,
     ) {
         tree.disconnect(controller)
+        artworkGrants.disconnected(controller)
     }
 
     /**

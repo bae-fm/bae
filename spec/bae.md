@@ -2282,6 +2282,12 @@ Playback gives the speaker back when it stops. Losing it to another app pauses;
 a short loss, such as a navigation prompt, that paused playing music resumes it
 when it ends. Desktops play without asking.
 
+**Cars and other controllers.** On Android, a car, a watch or another app that
+controls playback browses the library and plays from it through the system's
+media session. Covers reach it as links it opens itself. Only an app connected
+to the session can open them, and it loses access when its last connection
+ends or the session closes.
+
 ### 7.8 What a device remembers
 
 The queue and position are per device. A device saves what it was playing:

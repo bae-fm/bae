@@ -81,8 +81,9 @@
         </service>
 
         <!-- Serves cover bytes to browse clients over content:// URIs (see
-             ArtworkContentProvider). Not exported: Media3 grants the connected
-             controller per-URI read access, so no other app can read it. -->
+             ArtworkContentProvider). Not exported: the session grants each
+             connected controller's package read access to the cover URIs while
+             it is connected (ArtworkReadGrants), so no other app can read them. -->
         <provider
             android:name=".playback.ArtworkContentProvider"
             android:authorities="${applicationId}.artwork"

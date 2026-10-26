@@ -19,6 +19,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import java.util.concurrent.TimeUnit
 
@@ -33,6 +34,7 @@ class BaeLibrarySessionCallbackTest {
         val request =
             BaeLibrarySessionCallback(
                 tree,
+                grants(),
                 scope,
             ) { "not found: $it" }.getChildren(controller(), BrowseId.Albums.mediaId, 0, 20, null)
 
@@ -51,7 +53,7 @@ class BaeLibrarySessionCallbackTest {
         val handle = FakeAppHandle()
         val tree = tree(handle)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
-        val callback = BaeLibrarySessionCallback(tree, scope) { "not found: $it" }
+        val callback = BaeLibrarySessionCallback(tree, grants(), scope) { "not found: $it" }
         val browser = controller()
 
         repeat(2) {
@@ -77,7 +79,7 @@ class BaeLibrarySessionCallbackTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
 
         val result =
-            BaeLibrarySessionCallback(tree, scope) { "not found: $it" }
+            BaeLibrarySessionCallback(tree, grants(), scope) { "not found: $it" }
                 .getChildren(controller(), BrowseId.Albums.mediaId, 0, 20, null)
                 .get(1, TimeUnit.SECONDS)
 
@@ -92,7 +94,7 @@ class BaeLibrarySessionCallbackTest {
         val notifications = mutableListOf<Pair<String, Int>>()
         val tree = tree(handle) { parent, count -> notifications += parent to count }
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
-        val callback = BaeLibrarySessionCallback(tree, scope) { "not found: $it" }
+        val callback = BaeLibrarySessionCallback(tree, grants(), scope) { "not found: $it" }
         val browser = controller()
         callback.getChildren(browser, BrowseId.Albums.mediaId, 0, 20, null).get(1, TimeUnit.SECONDS)
 
@@ -116,7 +118,7 @@ class BaeLibrarySessionCallbackTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
 
         val result =
-            BaeLibrarySessionCallback(tree, scope) { "not found: $it" }
+            BaeLibrarySessionCallback(tree, grants(), scope) { "not found: $it" }
                 .getChildren(controller(), BrowseId.Albums.mediaId, 0, 20, null)
                 .get(1, TimeUnit.SECONDS)
 
@@ -128,7 +130,7 @@ class BaeLibrarySessionCallbackTest {
     fun aSpokenQueryMatchingNothingIsNotFound() {
         val handle = FakeAppHandle(searchResults = { BridgeFixtures.searchResults() })
         val tree = tree(handle)
-        val callback = BaeLibrarySessionCallback(tree, CoroutineScope(Dispatchers.Unconfined)) { "not found: $it" }
+        val callback = BaeLibrarySessionCallback(tree, grants(), CoroutineScope(Dispatchers.Unconfined)) { "not found: $it" }
 
         val request = runBlocking { callback.resolve(listOf(spoken("a song this library lacks"))) }
 
@@ -143,7 +145,7 @@ class BaeLibrarySessionCallbackTest {
                 BridgeFixtures.searchResults(tracks = listOf(BridgeFixtures.trackSearchResult(id = "trk-1", releaseId = "rel-1")))
             })
         val tree = tree(handle)
-        val callback = BaeLibrarySessionCallback(tree, CoroutineScope(Dispatchers.Unconfined)) { "not found: $it" }
+        val callback = BaeLibrarySessionCallback(tree, grants(), CoroutineScope(Dispatchers.Unconfined)) { "not found: $it" }
 
         val request = runBlocking { callback.resolve(listOf(spoken("Track Title"))) }
 
@@ -157,7 +159,7 @@ class BaeLibrarySessionCallbackTest {
     @Test
     fun anItemThatIsNotATrackIsNotPlayable() {
         val tree = tree(FakeAppHandle())
-        val callback = BaeLibrarySessionCallback(tree, CoroutineScope(Dispatchers.Unconfined)) { "not found: $it" }
+        val callback = BaeLibrarySessionCallback(tree, grants(), CoroutineScope(Dispatchers.Unconfined)) { "not found: $it" }
         val album = MediaItem.Builder().setMediaId(BrowseId.Album("album-1").mediaId).build()
 
         val request = runBlocking { callback.resolve(listOf(album)) }
@@ -187,6 +189,8 @@ class BaeLibrarySessionCallbackTest {
             onChildrenChanged = changed,
             reportBug = { operation, error -> throw AssertionError("unexpected bug in $operation", error) },
         )
+
+    private fun grants() = ArtworkReadGrants(RuntimeEnvironment.getApplication())
 
     private fun controller(): MediaSession.ControllerInfo =
         MediaSession.ControllerInfo.createTestOnlyControllerInfo(

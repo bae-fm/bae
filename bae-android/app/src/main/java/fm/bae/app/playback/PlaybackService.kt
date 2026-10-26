@@ -44,6 +44,7 @@ class PlaybackService(
 
     private var mediaSession: MediaLibrarySession? = null
     private var browseTree: LibraryBrowseTree<MediaSession.ControllerInfo>? = null
+    private var artworkGrants: ArtworkReadGrants? = null
 
     // Browse reads (onGetChildren / onGetItem) run here — off the main thread,
     // since they hit the bridge/DB — for the service's lifetime.
@@ -77,8 +78,9 @@ class PlaybackService(
                 },
                 reportBug = open.bugs::reportShownInPlace,
             )
+        val grants = ArtworkReadGrants(this)
         val callback =
-            BaeLibrarySessionCallback(tree, browseScope) { query ->
+            BaeLibrarySessionCallback(tree, grants, browseScope) { query ->
                 getString(fm.bae.app.R.string.voice_play_not_found, query)
             }
         val session =
@@ -88,6 +90,7 @@ class PlaybackService(
                 .build()
         addSession(session)
         browseTree = tree
+        artworkGrants = grants
         mediaSession = session
     }
 
@@ -108,6 +111,8 @@ class PlaybackService(
             release()
         }
         mediaSession = null
+        artworkGrants?.revokeAll()
+        artworkGrants = null
         browseScope.cancel()
         super.onDestroy()
     }
