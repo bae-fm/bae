@@ -646,3 +646,127 @@ fn streaming_wav_encode_into_a_plain_write_sink_is_unsized_pcm() {
         );
     }
 }
+
+/// Collects a decode's interleaved samples.
+#[derive(Default)]
+struct CollectedSamples(Vec<i32>);
+
+impl DecodedSink for CollectedSamples {
+    fn on_format(&mut self, _sample_rate: u32, _channels: u32) {}
+
+    fn on_samples(&mut self, samples: &[i32]) {
+        self.0.extend_from_slice(samples);
+    }
+}
+
+/// A 16-bit stereo FLAC of `frames` frames, each channel `level(frame)` of full
+/// scale plus a little noise, written to a temp file. Returns the file and its
+/// bytes.
+fn stereo_flac_file(frames: usize) -> (tempfile::NamedTempFile, Vec<u8>) {
+    let mut noise: u64 = 1;
+    let samples: Vec<i32> = (0..frames * 2)
+        .map(|i| {
+            noise = noise
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            let jitter = (noise >> 33) as f64 / (1u64 << 31) as f64 - 0.5;
+            (((i as f64 * 0.013).sin() * 0.5 + jitter * 0.05) * i32::MAX as f64) as i32
+        })
+        .collect();
+    let flac = encode_i32(
+        EncodeFormat::Flac {
+            bits_per_sample: 16,
+        },
+        &samples,
+        44_100,
+        2,
+    )
+    .unwrap();
+    let mut file = tempfile::NamedTempFile::new().unwrap();
+    std::io::Write::write_all(&mut file, &flac).unwrap();
+    std::io::Write::flush(&mut file).unwrap();
+    (file, flac)
+}
+
+/// Decode `flac` by jumping to the byte `landing`, as playback starts a track:
+/// trimmed to `start` when given, else everything from the landing's frame.
+fn decode_from_landing(flac: &[u8], landing: u64, start: Option<u64>) -> Vec<i32> {
+    let mut decoded = CollectedSamples::default();
+    decode_audio_to_sink_with_seek(
+        buffer_from(flac),
+        Some(landing),
+        None,
+        start,
+        None,
+        &mut decoded,
+        Arc::new(std::sync::atomic::AtomicBool::new(false)),
+    )
+    .expect("decode from the landing");
+    decoded.0
+}
+
+/// A target in the middle of a long FLAC is found by searching, not by reading
+/// the file up to it: the bytes read stay a small part of the file, and the
+/// landing is the target's frame.
+#[test]
+fn seek_landing_bytes_search_a_long_flac_rather_than_read_it() {
+    init();
+    let frames = 4_608 * 1_000;
+    let (file, flac) = stereo_flac_file(frames);
+    let path = file.path().to_str().unwrap();
+    let target = frames as u64 / 2 + 123;
+
+    let landing = seek_landing_bytes(path, &[target]).expect("landing")[0];
+
+    let read = crate::test_reads::bytes(crate::test_reads::FileRead::LandingSearch, file.path());
+    assert!(
+        read < flac.len() as u64 / 10,
+        "finding one landing read {read} of the file's {} bytes",
+        flac.len()
+    );
+    let ground = decode_audio(buffer_from(&flac), None, None).expect("ground-truth decode");
+    let decoded = decode_from_landing(&flac, landing, Some(target));
+    assert!(
+        decoded == ground.samples[target as usize * 2..],
+        "the landing decodes from the target sample on"
+    );
+}
+
+/// A target in a FLAC's last frame lands on the frame before it, the last one
+/// a byte-seeked decode can date, and one in the third-to-last frame -- where
+/// FFmpeg's binary search fails -- lands on its own frame. Both decode exactly.
+#[test]
+fn seek_landing_bytes_land_targets_in_a_flacs_final_frames() {
+    init();
+    let frames = 4_608 * 30 + 1_000;
+    let (file, flac) = stereo_flac_file(frames);
+    let path = file.path().to_str().unwrap();
+    // STREAMINFO follows the 4-byte marker and its 4-byte block header; its
+    // maximum block size is bytes 2..4, and this encoder's blocks are all that
+    // size but the last.
+    let block = u64::from(u16::from_be_bytes([flac[10], flac[11]]));
+    let total = frames as u64;
+    let last_frame_start = (total - 1) / block * block;
+    let third_to_last = last_frame_start - 2 * block;
+    let targets = [total - 1, third_to_last + 100];
+
+    let landings = seek_landing_bytes(path, &targets).expect("landings");
+
+    let ground = decode_audio(buffer_from(&flac), None, None).expect("ground-truth decode");
+    assert_eq!(
+        decode_from_landing(&flac, landings[0], None).len() as u64 / 2,
+        total - (last_frame_start - block),
+        "the last frame's target lands on the frame before it"
+    );
+    assert_eq!(
+        decode_from_landing(&flac, landings[1], None).len() as u64 / 2,
+        total - third_to_last,
+        "the third-to-last frame's target lands on its frame"
+    );
+    for (&target, &landing) in targets.iter().zip(&landings) {
+        assert!(
+            decode_from_landing(&flac, landing, Some(target)) == ground.samples[target as usize * 2..],
+            "target {target} decodes exactly from its landing"
+        );
+    }
+}

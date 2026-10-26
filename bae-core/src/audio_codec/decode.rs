@@ -823,8 +823,10 @@ unsafe fn allocate_swr_context(
 /// Jump straight to a recorded frame's byte offset: no seektable consulted, no
 /// binary search reading the file's end. The landed frame states its own first
 /// sample, so the caller's `start_at_sample` trim still reaches the exact
-/// sample. A failure is not fatal — the caller decodes from the start instead,
-/// which is correct but reads more of the file than it needs.
+/// sample -- except a FLAC's last frame, which states none. Import never
+/// records a track start there; a scrub point on it is decoded untrimmed. A
+/// failure is not fatal — the caller decodes from the start instead, which is
+/// correct but reads more of the file than it needs.
 unsafe fn seek_to_byte_or_warn(
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     codec_ctx: *mut ffmpeg_sys_next::AVCodecContext,

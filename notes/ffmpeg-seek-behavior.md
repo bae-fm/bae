@@ -63,6 +63,15 @@ index = av_index_search_timestamp(st, timestamp, flags);
   ([L384–L385](https://github.com/FFmpeg/FFmpeg/blob/894da5ca7d742e4429ffb2af534fcda0103ef593/libavformat/flacdec.c#L384)),
   so a `-1` makes avformat fall back to `ff_seek_frame_binary` — read the end,
   then bisect reading real FLAC frames.
+- The bisection can't place a target in the stream's final frames. It reads a
+  timestamp by parsing from an arbitrary offset (`flac_read_timestamp`), and the
+  FLAC parser dates a fixed-blocksize frame only once it has seen the frame after
+  it (`get_best_header` sets `pts` only with a `best_child`), so the last frames
+  have no readable timestamp. Measured on a 20-frame file: a target in the
+  third-to-last frame fails ("read_timestamp() failed in the middle", the reader
+  left at the file's end); one in the last frame lands a frame short. Which final
+  frames fail depends on their byte sizes: in a quiet file whose last 3 frames
+  are loud, a seek to 8 frames before a last-frame target still fails.
 
 **Implication:** FLAC is the format that needs the fix. Set
 `AVFMT_FLAG_FAST_SEEK` before `avformat_open_input` and a seektable-bearing FLAC
@@ -185,11 +194,14 @@ which computes the byte position directly from `block_align` and `byte_rate`:
 ## What bae does
 
 - **Track starts jump by byte.** Import records each track's first byte, the
-  frame a playback seek would land on (`seek_landing_bytes`, opened without
+  frame holding its first sample (`seek_landing_bytes`, opened without
   `AVFMT_FLAG_FAST_SEEK` so a FLAC binary-searches its real frames rather than
-  trusting a coarse seektable), stored on `audio_format_segments.start_byte`.
-  Starting a track seeks the demuxer straight to that byte, so no track start
-  needs a seektable, in any layout, local or remote. Over a cloud home the
+  trusting a coarse seektable; its final frames, which the search can't place,
+  are read in order once and indexed to bound the search), stored on
+  `audio_format_segments.start_byte`. A start in a FLAC's last frame is
+  recorded as the frame before it, since a decode that jumps to the last frame
+  can't date it. Starting a track seeks the demuxer straight to that byte, so
+  no track start needs a seektable, in any layout, local or remote. Over a cloud home the
   header and the track's audio are fetched in parallel.
 - **In-track scrubs seek by sample** with `AVFMT_FLAG_FAST_SEEK` set
   (`bae-core/src/audio_codec/decode.rs`), so a seektable-bearing FLAC (nearly
@@ -199,8 +211,10 @@ which computes the byte position directly from `block_align` and `byte_rate`:
   point.** Left to FFmpeg, such a scrub is slow in one of two ways (FFmpeg
   n8.1.2, `flacdec.c`):
   - *No SEEKTABLE:* `flac_seek` returns -1 and avformat binary-searches the
-    file (`ff_seek_frame_binary`). The search doesn't fail over the buffer: its
-    read of the file's end waits for the fill, and each step is a fetch.
+    file (`ff_seek_frame_binary`). Waiting on the buffer doesn't fail the search:
+    its read of the file's end waits for the fill, and each step is a fetch
+    (a target in the file's last frames does fail it, as the FLAC section
+    says).
     Measured on real files: the middle of the last track of a 1.5 GB
     single-file album took 26 fetches one after another, against 3 for an
     album with a seektable.

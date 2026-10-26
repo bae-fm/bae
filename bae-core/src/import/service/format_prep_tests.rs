@@ -614,3 +614,157 @@ fn a_slice_before_a_data_track_ends_where_the_data_starts() {
         "the slice's own length reads the same boundary"
     );
 }
+
+/// Collects a decode's interleaved samples.
+#[derive(Default)]
+struct CollectedSamples(Vec<i32>);
+
+impl crate::audio_codec::DecodedSink for CollectedSamples {
+    fn on_format(&mut self, _sample_rate: u32, _channels: u32) {}
+
+    fn on_samples(&mut self, samples: &[i32]) {
+        self.0.extend_from_slice(samples);
+    }
+}
+
+/// Per-track files where track 2's INDEX 00 sits in the final frames of the
+/// file before (its pregap is that file's tail). The pregap's start sample
+/// lies in the third-to-last FLAC frame: a frame FFmpeg's FLAC binary search
+/// can't place, since it can't read the timestamps of a stream's final
+/// frames. Both the pregap segment and track 1's main segment, which ends
+/// where the pregap begins, still get that frame's byte, and the pregap
+/// decodes whole from it.
+#[test]
+fn a_pregap_in_the_final_frames_of_the_file_before_gets_its_byte() {
+    crate::audio_codec::init();
+    let temp = tempfile::tempdir().expect("tempdir");
+    let sample_rate = 44_100u64;
+    // Two seconds: 150 CD frames of 588 samples each.
+    let first_len = 2 * sample_rate;
+    let pregap_start = first_len - 7_644; // 13 CD frames before the file's end
+    let flac_of = |frames: u64| {
+        let samples: Vec<i32> = (0..frames * 2)
+            .map(|i| ((i as f64 * 0.013).sin() * 0.5 * i32::MAX as f64) as i32)
+            .collect();
+        crate::audio_codec::encode_i32(
+            crate::audio_codec::EncodeFormat::Flac {
+                bits_per_sample: 16,
+            },
+            &samples,
+            sample_rate as u32,
+            2,
+        )
+        .expect("encode FLAC")
+    };
+    let first_path = temp.path().join("first.flac");
+    let second_path = temp.path().join("second.flac");
+    let first = flac_of(first_len);
+    std::fs::write(&first_path, &first).expect("write first.flac");
+    std::fs::write(&second_path, flac_of(sample_rate)).expect("write second.flac");
+    let cue_path = temp.path().join("album.cue");
+    std::fs::write(
+        &cue_path,
+        r#"FILE "first.flac" WAVE
+  TRACK 01 AUDIO
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    INDEX 00 00:01:62
+FILE "second.flac" WAVE
+    INDEX 01 00:00:00
+"#,
+    )
+    .expect("write cue");
+
+    let probe = |path: &std::path::Path| {
+        crate::audio_codec::probe_audio_from_path(path.to_str().expect("UTF-8 path"))
+            .expect("probe")
+    };
+    let cue_pair = Arc::new(CueFlacAnalysis {
+        cue_sheet: crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue"),
+        audio_files: vec![
+            CueAnalyzedAudioFile {
+                file_reference: "first.flac".to_string(),
+                path: first_path.clone(),
+                probe: probe(&first_path),
+            },
+            CueAnalyzedAudioFile {
+                file_reference: "second.flac".to_string(),
+                path: second_path.clone(),
+                probe: probe(&second_path),
+            },
+        ],
+    });
+    let tracks_to_files: Vec<_> = (0..2u32)
+        .map(|index| TrackFile {
+            db_track: crate::db::DbTrack::new_test(
+                "release-id",
+                &format!("track-{index}"),
+                "Track Title",
+                index + 1,
+            ),
+            audio: crate::import::TrackAudio::CueBacked {
+                cue_pair: Arc::clone(&cue_pair),
+                cue_index: index as usize,
+            },
+        })
+        .collect();
+    let file_ids = HashMap::from([
+        (first_path, "first".to_string()),
+        (second_path, "second".to_string()),
+    ]);
+
+    let built = ImportService::build_audio_formats(
+        &tracks_to_files,
+        &file_ids,
+        &test_clock(),
+        &coven::SequentialIds::new(),
+    )
+    .expect("build audio formats");
+
+    let [track1_main, pregap, _track2_main] = built.audio_segments.as_slice() else {
+        panic!("three segments, got {:?}", built.audio_segments);
+    };
+    assert_eq!(pregap.role, DbAudioSegmentRole::AudioPregap);
+    assert_eq!(pregap.file_id, "first");
+    assert_eq!(pregap.start_sample, pregap_start);
+    assert_eq!(pregap.end_sample, Some(first_len));
+    let pregap_byte = pregap.start_byte.expect("the pregap's start byte");
+    assert_eq!(track1_main.end_sample, Some(pregap_start));
+    assert_eq!(
+        track1_main.end_byte,
+        Some(pregap_byte),
+        "track 1 ends where track 2's pregap begins"
+    );
+
+    let buffer = || {
+        let buffer = crate::playback::sparse_buffer::create_sparse_buffer(first.len() as u64);
+        buffer.append_at(0, &first);
+        buffer
+    };
+    let ground = crate::audio_codec::decode_audio(buffer(), None, None).expect("decode first");
+    let decode = crate::playback::stream_pipeline::StreamDecodeParams::new(
+        vec![crate::playback::stream_pipeline::SegmentDecodeParams::new(
+            buffer(),
+            pregap.span(),
+            0,
+        )],
+        true,
+        0,
+        0,
+    );
+    let mut decoded = CollectedSamples::default();
+    decode
+        .run_to_sink(
+            sample_rate as u32,
+            2,
+            &mut decoded,
+            Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        )
+        .expect("decode the pregap");
+    assert!(
+        decoded.0 == ground.samples[pregap_start as usize * 2..],
+        "the pregap decodes exactly the file's last {} samples from its byte, got {}",
+        first_len - pregap_start,
+        decoded.0.len() / 2,
+    );
+}

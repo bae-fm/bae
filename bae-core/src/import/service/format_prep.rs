@@ -279,8 +279,8 @@ fn standalone_audio_format(
 /// at byte 0 with nothing to prefetch, so the caller stores `None` for both.
 ///
 /// A `None` return means the offsets couldn't be read at all (non-UTF-8 path, a
-/// failed seek); the caller then stores no byte window for that file's tracks and
-/// they keep the whole-file read-ahead span.
+/// failed read or seek); the caller then stores no byte window for that file's
+/// tracks and they keep the whole-file read-ahead span.
 fn cue_file_landing_bytes(
     file_path: &Path,
     cue_pair: &CueFlacAnalysis,
