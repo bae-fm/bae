@@ -764,9 +764,6 @@ mod tests {
         );
     }
 
-    /// A raw serve carries `format=raw`; an MP3 conversion carries
-    /// `format=mp3&maxBitRate=320`, a WAV one `format=wav`. Each names the
-    /// track as a `tr-` Subsonic id and carries the auth triplet.
     /// A receiver advertising a setting bae can't read is refused before any
     /// connection is attempted, with the setting named in the error.
     #[test]
@@ -786,6 +783,9 @@ mod tests {
         assert!(error.to_string().contains("\"garbage\""));
     }
 
+    /// A raw serve carries `format=raw`; an MP3 conversion carries
+    /// `format=mp3&maxBitRate=320`, a WAV one `format=wav`. Each names the
+    /// track as a `tr-` Subsonic id and carries the auth triplet.
     #[test]
     fn stream_url_encodes_format_and_track() {
         let provider = stream_url_provider("http://10.0.0.5:9000".to_string(), credential());
