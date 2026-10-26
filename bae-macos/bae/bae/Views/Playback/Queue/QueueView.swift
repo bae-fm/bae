@@ -90,6 +90,9 @@ struct QueueView: View {
                                 manual.indices.contains(index)
                                     ? manual[index] : nil
                             },
+                            holdsEntry: { id in
+                                manual.contains { $0.id == id }
+                            },
                             loadEpoch: 0,
                             loadRange: nil,
                             acceptsExternalDrops: true,
@@ -113,6 +116,9 @@ struct QueueView: View {
                                 shuffled: context.shuffled,
                                 count: context.upcomingTotal,
                                 itemAt: { playbackStore.upcomingItem(at: $0) },
+                                holdsEntry: {
+                                    playbackStore.upcomingHolds(entryId: $0)
+                                },
                                 loadEpoch: playbackStore.revision,
                                 loadRange: { offset, limit in
                                     await playbackStore.loadUpcomingRange(

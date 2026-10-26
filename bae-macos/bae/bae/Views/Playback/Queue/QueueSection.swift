@@ -39,6 +39,9 @@ struct QueueSection: View {
     let shuffled: Bool
     let count: Int
     let itemAt: (Int) -> BridgeQueueEntry?
+    /// Whether a loaded row of the lane is the entry of this id: what tells a
+    /// collapsed row its removal has landed.
+    let holdsEntry: (String) -> Bool
     /// Restarts in-flight row loads when it changes; fixed at 0 for the manual
     /// lane, which is always loaded.
     let loadEpoch: UInt64
@@ -77,10 +80,10 @@ struct QueueSection: View {
     private var rowSlots: LazyMapCollection<Range<Int>, QueueRowSlot> {
         // Derived from the current count so a queue change mid-drag can't
         // leave a stale permutation.
-        let order = coordinator.displayOrder(for: laneId, count: count)
+        let move = coordinator.displayMove(for: laneId, count: count)
         return (0..<count).lazy
             .map { displaySlot in
-                let sourceIndex = order?[displaySlot] ?? displaySlot
+                let sourceIndex = move?.source(at: displaySlot) ?? displaySlot
                 let id = itemAt(sourceIndex)?.id ?? "unloaded-\(displaySlot)"
                 return QueueRowSlot(
                     id: id,
@@ -216,9 +219,7 @@ struct QueueSection: View {
             coordinator.clearHold(laneId)
             // Drop only ids whose rows are gone: the snapshot and revision
             // update separately, and a still-present row would jump back open.
-            removingEntryIds = removingEntryIds.filter { id in
-                (0..<count).contains { itemAt($0)?.id == id }
-            }
+            removingEntryIds = removingEntryIds.filter(holdsEntry)
         }
         // Drop the hover when a drag starts, since `.onHover` won't fire again
         // until it ends.
@@ -268,17 +269,19 @@ extension QueueSection {
             break
         case .insertIntoManual(let trackId, let gap):
             onInsertTracks([trackId], gap)
-        case .reorder(let entryId, let finalOrder, let gap, let lane):
-            if gap + 1 < finalOrder.count {
-                guard let beforeEntryId = itemAt(finalOrder[gap + 1])?.id
+        case .reorder(let entryId, let move, let lane):
+            if move.to + 1 < move.count {
+                guard
+                    let beforeEntryId = itemAt(move.source(at: move.to + 1))?
+                        .id
                 else {
                     return
                 }
-                coordinator.holdOrder(finalOrder, lane: lane)
+                coordinator.hold(move, lane: lane)
                 onReorder(entryId, beforeEntryId)
                 return
             }
-            coordinator.holdOrder(finalOrder, lane: lane)
+            coordinator.hold(move, lane: lane)
             onReorder(entryId, nil)
         }
     }
@@ -495,6 +498,7 @@ extension QueueSection {
             itemAt: { index in
                 items.indices.contains(index) ? items[index] : nil
             },
+            holdsEntry: { id in items.contains { $0.id == id } },
             loadEpoch: 0,
             loadRange: nil,
             acceptsExternalDrops: acceptsExternalDrops,

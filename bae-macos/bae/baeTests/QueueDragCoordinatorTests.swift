@@ -64,11 +64,11 @@ struct QueueDragCoordinatorTests {
         #expect(coordinator.gapSlot(count: 5) == 3)
 
         let outcome = coordinator.finish(count: 5)
-        guard case .reorder(_, let finalOrder, let gap, _) = outcome else {
+        guard case .reorder(_, let move, _) = outcome else {
             Issue.record("expected a same-lane reorder, got \(outcome)")
             return
         }
-        #expect(gap == 3)
+        #expect(move.to == 3)
         #expect(!coordinator.isDragging)
         // Released, not yet held: the in-place row stays hidden and the copy
         // sits at the start slot.
@@ -78,7 +78,7 @@ struct QueueDragCoordinatorTests {
                 == QueueFloatingRow(item: grabbed, top: 1 * Self.pitch)
         )
 
-        coordinator.holdOrder(finalOrder, lane: .manual)
+        coordinator.hold(move, lane: .manual)
         #expect(
             coordinator.floatingRow(in: .manual)
                 == QueueFloatingRow(item: grabbed, top: 3 * Self.pitch)
@@ -171,5 +171,44 @@ struct QueueDragCoordinatorTests {
         )
         #expect(coordinator.floatingEntryId(in: .manual) == Self.items[3].id)
         #expect(coordinator.floatingRow(in: .manual)?.item == Self.items[3])
+    }
+
+    /// A drag moves one row: every other row keeps its order, shifted one
+    /// slot toward where the dragged row left. The lane's display order is
+    /// that move itself, so it costs the same over a lane the size of the
+    /// library as over five rows.
+    @Test(
+        "a drag's display order is the one row's move, whatever the lane's size"
+    )
+    func displayOrderIsTheMove() {
+        let down = QueueRowMove(from: 1, to: 3, count: 5)
+        #expect((0..<5).map(down.source(at:)) == [0, 2, 3, 1, 4])
+        #expect((0..<5).map(down.displaySlot(of:)) == [0, 3, 1, 2, 4])
+        let up = QueueRowMove(from: 3, to: 1, count: 5)
+        #expect((0..<5).map(up.source(at:)) == [0, 3, 1, 2, 4])
+        #expect((0..<5).map(up.displaySlot(of:)) == [0, 2, 3, 1, 4])
+
+        let coordinator = QueueDragCoordinator()
+        let lane = 2_000_000
+        coordinator.setRowsGeometry(
+            .context,
+            frame: CGRect(
+                x: 0,
+                y: 0,
+                width: 420,
+                height: CGFloat(lane) * Self.pitch
+            ),
+            rowCount: lane
+        )
+        coordinator.begin(
+            lane: .context,
+            item: Self.items[0],
+            startSlot: 10,
+            location: CGPoint(x: 200, y: 10.5 * Self.pitch)
+        )
+        coordinator.update(location: CGPoint(x: 200, y: 12.5 * Self.pitch))
+        let move = coordinator.displayMove(for: .context, count: lane)
+        #expect(move == QueueRowMove(from: 10, to: 12, count: lane))
+        #expect(move?.source(at: lane - 1) == lane - 1)
     }
 }

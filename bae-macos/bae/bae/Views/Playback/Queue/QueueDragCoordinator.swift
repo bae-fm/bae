@@ -53,6 +53,47 @@ private struct SettlingQueueRow {
     var landingSlot: Int
 }
 
+/// One row of a lane moved from canonical index `from` to display slot `to`,
+/// the rest keeping their order around it: the only reorder a drag makes. A
+/// lane's display order while a drag or a held reorder is live is this move,
+/// read one slot at a time, so it costs the same however many rows the lane
+/// has.
+struct QueueRowMove: Equatable {
+    let from: Int
+    let to: Int
+    /// The lane's row count the move was made over; a lane of another
+    /// length no longer has these slots.
+    let count: Int
+
+    /// The canonical index of the row shown at `displaySlot`.
+    func source(at displaySlot: Int) -> Int {
+        if displaySlot == to {
+            return from
+        }
+        if from < to, (from..<to).contains(displaySlot) {
+            return displaySlot + 1
+        }
+        if to < from, ((to + 1)...from).contains(displaySlot) {
+            return displaySlot - 1
+        }
+        return displaySlot
+    }
+
+    /// The display slot the row at canonical index `source` is shown at.
+    func displaySlot(of source: Int) -> Int {
+        if source == from {
+            return to
+        }
+        if from < to, ((from + 1)...to).contains(source) {
+            return source - 1
+        }
+        if to < from, (to..<from).contains(source) {
+            return source + 1
+        }
+        return source
+    }
+}
+
 /// What the source lane draws as the floating copy: the grabbed row itself
 /// and the top of the copy relative to the lane's rows region.
 struct QueueFloatingRow: Equatable {
@@ -72,10 +113,10 @@ final class QueueDragCoordinator {
     private var active: ActiveQueueDrag?
     private var settling: SettlingQueueRow?
     private var geometry: [QueueLaneID: QueueLaneGeometry] = [:]
-    /// A committed reorder's final display order, held per lane so the rows
-    /// stay put between the gesture ending and core's snapshot echoing the
-    /// same order back (the revision bump clears it — visually a no-op).
-    private var hold: [QueueLaneID: [Int]] = [:]
+    /// A committed reorder, held per lane so the rows stay put between the
+    /// gesture ending and core's snapshot echoing the same order back (the
+    /// revision bump clears it — visually a no-op).
+    private var held: [QueueLaneID: QueueRowMove] = [:]
     /// The manual lane's row count, mirrored here by `QueueView` so the context
     /// section's gesture — which can't see the manual section's props — has it
     /// for cross-lane gap math.
@@ -184,26 +225,23 @@ final class QueueDragCoordinator {
         return min(max(Int(rel.rounded(.down)), 0), count - 1)
     }
 
-    /// The lane's current display order (display slot → canonical index):
-    /// the live permutation while a drag is underway here, the held
-    /// post-commit order while core's echo is in flight, else canonical.
-    /// Derived against the CURRENT `count`, so a queue change mid-drag can
-    /// never leave a stale-length permutation — the drag simply falls back
-    /// to canonical if its start slot no longer exists.
-    func displayOrder(for lane: QueueLaneID, count: Int) -> [Int]? {
+    /// The move the lane's display order shows: the live one while a drag is
+    /// underway here, the held post-commit one while core's echo is in
+    /// flight, else none — canonical order. Derived against the CURRENT
+    /// `count`, so a queue change mid-drag can never leave a move over slots
+    /// the lane no longer has — the drag simply falls back to canonical if
+    /// its start slot no longer exists.
+    func displayMove(for lane: QueueLaneID, count: Int) -> QueueRowMove? {
         if let active, active.lane == lane {
             guard !isCrossLaneTargeting,
                 let gap = gapSlot(count: count), gap != active.startSlot
             else {
                 return nil
             }
-            var order = Array(0..<count)
-            order.remove(at: active.startSlot)
-            order.insert(active.startSlot, at: gap)
-            return order
+            return QueueRowMove(from: active.startSlot, to: gap, count: count)
         }
-        if let held = hold[lane], held.count == count {
-            return held
+        if let move = held[lane], move.count == count {
+            return move
         }
         return nil
     }
@@ -257,8 +295,8 @@ final class QueueDragCoordinator {
 
     /// End the drag, resolving what (if anything) to commit. The caller (the
     /// source lane's section, which owns the command callbacks and `itemAt`)
-    /// executes the outcome; `reorder` holds the final order here until the
-    /// revision bump.
+    /// executes the outcome; `reorder` holds the move here until the revision
+    /// bump.
     ///
     /// A same-lane release starts the row settling: the copy glides from the
     /// cursor into the row's start slot — or, once the caller holds a
@@ -282,27 +320,20 @@ final class QueueDragCoordinator {
                 landingSlot: active.startSlot
             )
         }
-        guard let order = displayOrder(for: active.lane, count: count),
-            let gap = gapSlot(count: count)
-        else {
+        guard let move = displayMove(for: active.lane, count: count) else {
             return .none
         }
-        return .reorder(
-            entryId: active.item.id,
-            finalOrder: order,
-            gap: gap,
-            lane: active.lane
-        )
+        return .reorder(entryId: active.item.id, move: move, lane: active.lane)
     }
 
-    /// Keep a committed reorder's order on screen until core echoes it back.
-    /// The settling row lands in the slot this order places it at.
-    func holdOrder(_ order: [Int], lane: QueueLaneID) {
-        hold[lane] = order
-        if let settling, settling.lane == lane,
-            let slot = order.firstIndex(of: settling.startSlot)
-        {
-            self.settling?.landingSlot = slot
+    /// Keep a committed reorder on screen until core echoes it back. The
+    /// settling row lands in the slot the move places it at.
+    func hold(_ move: QueueRowMove, lane: QueueLaneID) {
+        held[lane] = move
+        if let settling, settling.lane == lane {
+            self.settling?.landingSlot = move.displaySlot(
+                of: settling.startSlot
+            )
         }
     }
 
@@ -315,17 +346,12 @@ final class QueueDragCoordinator {
     /// Core's snapshot landed for this lane's revision: the canonical order
     /// now equals whatever was held, so dropping the hold is visually a no-op.
     func clearHold(_ lane: QueueLaneID) {
-        hold[lane] = nil
+        held[lane] = nil
     }
 
     enum Outcome {
         case none
-        case reorder(
-            entryId: String,
-            finalOrder: [Int],
-            gap: Int,
-            lane: QueueLaneID
-        )
+        case reorder(entryId: String, move: QueueRowMove, lane: QueueLaneID)
         case insertIntoManual(trackId: String, gap: Int)
     }
 }

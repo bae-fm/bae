@@ -24,6 +24,7 @@ struct QueueSectionVirtualizationTests {
                     shuffled: false,
                     count: 5_000,
                     itemAt: { _ in nil },
+                    holdsEntry: { _ in false },
                     loadEpoch: 1,
                     loadRange: { offset, limit in
                         await recorder.record(offset: offset, limit: limit)

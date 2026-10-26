@@ -318,6 +318,15 @@ extension PlaybackStore {
         return pagedUpcoming[index]
     }
 
+    /// Whether a loaded upcoming row is the entry `entryId`.
+    public func upcomingHolds(entryId: String) -> Bool {
+        guard let context = queueContext else {
+            return false
+        }
+        return context.upcoming.contains { $0.id == entryId }
+            || pagedUpcoming.values.contains { $0.id == entryId }
+    }
+
     /// Read `[offset, offset + limit)` of the upcoming tail. Beyond
     /// `maximumUpcomingWindows`, the window farthest from this one is dropped.
     /// A failed request or read stops the read and sets `upcomingFailure`,
