@@ -116,6 +116,55 @@ async fn candidate_removed_event_cancels_in_flight_extraction() {
     );
 }
 
+/// A pass waiting for a read permit, while other passes' reads hold every
+/// one, reads nothing once it is cancelled, even when a permit frees at the
+/// same moment. The runtime runs one task at a time, so the pass is parked
+/// waiting when the test cancels it and frees the permits, and finds both at
+/// once when it next runs; each attempt is that moment again.
+#[tokio::test]
+async fn a_cancelled_pass_waiting_for_a_read_starts_none() {
+    let tmp = TempDir::new().unwrap();
+    let folder = build_release(&tmp, "Some Folder", &["p1.jpg"], &[]);
+    let analyzer = Arc::new(StubAnalyzer::new().with("p1.jpg", vec!["Line".to_string()]));
+    let (handle, _tx, _rx, _lib_tmp) = make_service().await;
+    handle.register_analyzer(analyzer.clone());
+    for attempt in 0..32 {
+        let reads_elsewhere = handle
+            .inner
+            .image_reads
+            .clone()
+            .acquire_many_owned(IMAGES_IN_FLIGHT as u32)
+            .await
+            .unwrap();
+        let key = format!("cand-{attempt}");
+        let mut watch = handle.start(
+            IdentifyRunId::for_test(1),
+            key.clone(),
+            folder_source(folder.clone()),
+            CallPriority::Interactive,
+        );
+        // The pass sends its first snapshot just before it waits for a permit,
+        // and runs on until it waits before the test runs again.
+        tokio::time::timeout(
+            Duration::from_secs(30),
+            watch.wait_for(|snapshot| snapshot.is_some()),
+        )
+        .await
+        .expect("the pass reaches its images")
+        .expect("the pass is running");
+
+        handle.cancel(&key);
+        drop(reads_elsewhere);
+        run_ended(&mut watch).await;
+
+        assert_eq!(
+            analyzer.calls(),
+            0,
+            "attempt {attempt}: the cancelled pass started a read"
+        );
+    }
+}
+
 /// A second `start` for a key cancels the first, and the run it started
 /// completes: only a completed run settles, so its `Settled` snapshot proves
 /// the replacement neither deadlocked nor panicked.

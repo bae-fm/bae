@@ -553,14 +553,21 @@ async fn stream_extraction(
         loop {
             // Start every image a permit is free for. A pass waits for a
             // permit only while none of its reads are under way, so a reading
-            // that has come back never waits behind other passes' reads.
+            // that has come back never waits behind other passes' reads. A
+            // cancelled pass starts no image, even when a permit frees in the
+            // same moment it is cancelled.
             while let Some(&image) = unstarted.peek() {
+                if token.is_cancelled() {
+                    abandon(in_flight).await;
+                    return;
+                }
                 let permit = if in_flight.is_empty() {
                     tokio::select! {
+                        biased;
+                        () = token.cancelled() => return,
                         permit = inner.image_reads.clone().acquire_owned() => {
                             permit.expect("the image-read permits are never closed")
                         }
-                        () = token.cancelled() => return,
                     }
                 } else {
                     match inner.image_reads.clone().try_acquire_owned() {
