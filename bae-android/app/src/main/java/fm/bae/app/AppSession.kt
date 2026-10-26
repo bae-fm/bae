@@ -48,7 +48,7 @@ import uniffi.bae_bridge.DownloadCallback
 import uniffi.bae_bridge.DownloadTransfersCallback
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.OutboxCallback
-import uniffi.bae_bridge.OutboxTransfersCallback
+import uniffi.bae_bridge.OutboxTotalTransferCallback
 import uniffi.bae_bridge.PlaybackPositionsCallback
 import uniffi.bae_bridge.PlaybackValuesCallback
 import uniffi.bae_bridge.QueueCallback
@@ -259,9 +259,9 @@ class OpenLibrary internal constructor(
         valueSubscriptions +=
             appHandle.subscribeDownloadTransfers(
                 object : DownloadTransfersCallback {
-                    override fun onChange(change: uniffi.bae_bridge.BridgeDownloadTransferChange) {
+                    override fun onChanges(changes: List<uniffi.bae_bridge.BridgeDownloadTransferChange>) {
                         scope.launch(Dispatchers.Main.immediate) {
-                            stores.transfers.downloads.applyTransferChange(change)
+                            changes.forEach(stores.transfers.downloads::applyTransferChange)
                         }
                     }
                 },
@@ -281,10 +281,11 @@ class OpenLibrary internal constructor(
                 },
             )
         valueSubscriptions +=
-            appHandle.subscribeOutboxTransfers(
-                object : OutboxTransfersCallback {
-                    override fun onChange(change: uniffi.bae_bridge.BridgeOutboxTransferChange) {
-                        scope.launch(Dispatchers.Main.immediate) { stores.transfers.outbox.applyTransferChange(change) }
+            // Nothing on Android draws one file's or release's upload, so only the total crosses.
+            appHandle.subscribeOutboxTotalTransfer(
+                object : OutboxTotalTransferCallback {
+                    override fun onValue(transfer: uniffi.bae_bridge.BridgeUploadTransfer) {
+                        scope.launch(Dispatchers.Main.immediate) { stores.transfers.outbox.setTotalTransfer(transfer) }
                     }
                 },
             )

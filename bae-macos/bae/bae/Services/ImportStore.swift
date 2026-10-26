@@ -185,7 +185,7 @@ class ImportStore {
     /// there when it appears.
     @ObservationIgnored
     let candidateRuntimeSubject = PassthroughSubject<
-        BridgeCandidateRuntimeChange, Never
+        [BridgeCandidateRuntimeChange], Never
     >()
 
     /// Each candidate's extracted signals as extraction settles them. A

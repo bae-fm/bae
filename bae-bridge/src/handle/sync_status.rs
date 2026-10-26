@@ -70,9 +70,26 @@ impl AppHandle {
         self.live_subscription(move |services, _| async move {
             let mut transfers = services.watch_outbox_transfers();
             while let Some(changes) = transfers.next().await {
-                for change in changes {
-                    callback.on_change(crate::types::BridgeOutboxTransferChange::from_core(change));
-                }
+                callback.on_changes(
+                    changes
+                        .into_iter()
+                        .map(crate::types::BridgeOutboxTransferChange::from_core)
+                        .collect(),
+                );
+            }
+        })
+    }
+
+    /// The whole upload queue's transfer now, then each time it moves, for a
+    /// surface that draws only that.
+    pub fn subscribe_outbox_total_transfer(
+        &self,
+        callback: Box<dyn crate::types::OutboxTotalTransferCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        self.live_subscription(move |services, _| async move {
+            let mut total = services.watch_outbox_total_transfer();
+            while let Some(transfer) = total.next().await {
+                callback.on_value(crate::types::BridgeUploadTransfer::from_core(transfer));
             }
         })
     }

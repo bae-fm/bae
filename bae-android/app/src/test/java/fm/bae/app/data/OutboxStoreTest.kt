@@ -7,13 +7,10 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import uniffi.bae_bridge.BridgeKeyedUploadTransfer
 import uniffi.bae_bridge.BridgeOutboxPauseState
 import uniffi.bae_bridge.BridgeOutboxSnapshot
-import uniffi.bae_bridge.BridgeOutboxTransferChange
 import uniffi.bae_bridge.BridgeUploadBar
 import uniffi.bae_bridge.BridgeUploadTransfer
-import uniffi.bae_bridge.BridgeUploadTransferKey
 
 /**
  * The pause toggle renders from the outbox snapshot's pause phase, so the store
@@ -49,23 +46,17 @@ class OutboxStoreTest {
         assertFalse(store.current().pauseRequested)
     }
 
-    /** The whole queue's transfer follows each change to it; one file's leaves it as it was. */
+    /** The whole queue's transfer is absent until the total subscription delivers one, then follows it. */
     @Test
-    fun theQueuesTransferFollowsItsChangesAlone() {
+    fun theQueuesTransferFollowsEachTotal() {
         val store = OutboxStore(BridgeFixtures.outboxSnapshot())
         assertNull(store.totalTransfer.value)
         val transfer = { done: ULong -> BridgeUploadTransfer(BridgeUploadBar(done, 40uL), throughputBps = 5uL) }
-        val file = BridgeUploadTransferKey.File(fileId = "file-1")
 
-        store.applyTransferChange(
-            BridgeOutboxTransferChange.Reset(listOf(BridgeKeyedUploadTransfer(file, transfer(10uL))), transfer(10uL)),
-        )
+        store.setTotalTransfer(transfer(10uL))
         assertEquals(transfer(10uL), store.totalTransfer.value)
 
-        store.applyTransferChange(BridgeOutboxTransferChange.Updated(file, transfer(20uL)))
-        assertEquals(transfer(10uL), store.totalTransfer.value)
-
-        store.applyTransferChange(BridgeOutboxTransferChange.TotalUpdated(transfer(20uL)))
+        store.setTotalTransfer(transfer(20uL))
         assertEquals(transfer(20uL), store.totalTransfer.value)
     }
 

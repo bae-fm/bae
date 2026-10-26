@@ -27,7 +27,7 @@ struct ImportListRowEnvironment {
     let imageStore: ImageStore
     /// `nil` in a preview or a test with no bridge behind it.
     let importer: Importer?
-    let candidateRuntime: AnyPublisher<BridgeCandidateRuntimeChange, Never>
+    let candidateRuntime: AnyPublisher<[BridgeCandidateRuntimeChange], Never>
     /// The tone and accent the window draws in.
     let appearance: HostedAppearance
 }

@@ -44,7 +44,7 @@ mirror_enum! {
 
 mirror_struct! {
     crate::types::BridgeUploadTransfer = bae_core::library::UploadTransfer,
-    from_core: fn,
+    from_core: pub(super) fn,
     fields: { bar: (opt crate::types::BridgeUploadBar), throughput_bps },
 }
 

@@ -248,7 +248,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     }
 
     private var candidateRuntimePublisher:
-        AnyPublisher<BridgeCandidateRuntimeChange, Never>
+        AnyPublisher<[BridgeCandidateRuntimeChange], Never>
     {
         importStore.candidateRuntimeSubject.eraseToAnyPublisher()
     }

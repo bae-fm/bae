@@ -1,5 +1,6 @@
 //! The upload queue and its transfers for a reader that draws them: the
-//! queue's summary each time it changes, and each transfer as it moves.
+//! queue's summary each time it changes, each transfer as it moves, and the
+//! whole queue's transfer alone for a reader that draws only that.
 
 use super::{
     LibraryManager, OutboxState, OutboxSummary, OutboxTransfers, UploadTransfer, UploadTransferKey,
@@ -169,6 +170,78 @@ impl OutboxTransfersWatch {
             if !changes.is_empty() {
                 return Some(changes);
             }
+        }
+    }
+}
+
+/// The whole queue's transfer for a reader that draws it alone: as it stands
+/// first, then each time it moves. A file's or a release's transfer moving
+/// while the total holds wakes nothing here. A failed read of the queue is
+/// [`OutboxQueueWatch`]'s to report; this waits through it for the next queue.
+pub struct OutboxTotalTransferWatch {
+    manager: LibraryManager,
+    values: OutboxValues,
+    /// What the reader was last told; `None` before the first read.
+    told: Option<UploadTransfer>,
+}
+
+impl OutboxTotalTransferWatch {
+    pub(crate) fn of(manager: LibraryManager) -> Self {
+        Self {
+            values: manager.subscribe_outbox_values(),
+            manager,
+            told: None,
+        }
+    }
+
+    /// The total on the first call that has one, read from the durable queue
+    /// when nothing has been published yet; after that, the next total that
+    /// differs. `None` once the outbox is gone.
+    pub async fn next(&mut self) -> Option<UploadTransfer> {
+        if self.told.is_none() {
+            let published = self.values.borrow_and_update().as_ref().map(|value| {
+                value
+                    .as_ref()
+                    .map(|state| state.transfers.total)
+                    .map_err(Clone::clone)
+            });
+            let first = match published {
+                Some(value) => value,
+                None => self
+                    .manager
+                    .outbox_state()
+                    .await
+                    .map(|state| state.transfers.total)
+                    .map_err(|error| error.to_string()),
+            };
+            match first {
+                Ok(total) => {
+                    self.told = Some(total);
+                    return Some(total);
+                }
+                Err(error) => {
+                    tracing::debug!("no upload total to show until the queue reads: {error}");
+                }
+            }
+        }
+        loop {
+            self.values.changed().await.ok()?;
+            let total = match &*self.values.borrow_and_update() {
+                Some(Ok(state)) => state.transfers.total,
+                Some(Err(error)) => {
+                    tracing::debug!("no upload total to show until the queue reads: {error}");
+                    continue;
+                }
+                None => {
+                    tracing::warn!("outbox value stream published an absent queue");
+                    continue;
+                }
+            };
+            if self.told == Some(total) {
+                continue;
+            }
+            self.told = Some(total);
+            return Some(total);
         }
     }
 }

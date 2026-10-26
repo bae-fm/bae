@@ -78,6 +78,7 @@ import uniffi.bae_bridge.LibrarySearchSubscription
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.MembershipCallback
 import uniffi.bae_bridge.OutboxCallback
+import uniffi.bae_bridge.OutboxTotalTransferCallback
 import uniffi.bae_bridge.OutboxTransfersCallback
 import uniffi.bae_bridge.PlaybackPositionsCallback
 import uniffi.bae_bridge.PlaybackValuesCallback
@@ -158,6 +159,8 @@ internal open class FakeAppHandle(
     override fun subscribeOutbox(callback: OutboxCallback): LiveSubscription = liveSubscription()
 
     override fun subscribeOutboxTransfers(callback: OutboxTransfersCallback): LiveSubscription = liveSubscription()
+
+    override fun subscribeOutboxTotalTransfer(callback: OutboxTotalTransferCallback): LiveSubscription = liveSubscription()
 
     override fun subscribeCastDevices(callback: CastDevicesCallback): LiveSubscription = liveSubscription()
 

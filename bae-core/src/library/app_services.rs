@@ -618,6 +618,11 @@ impl AppServices {
         crate::library::OutboxTransfersWatch::of(self.inner.manager.clone())
     }
 
+    /// The whole queue's transfer, sent each time it moves.
+    pub fn watch_outbox_total_transfer(&self) -> crate::library::OutboxTotalTransferWatch {
+        crate::library::OutboxTotalTransferWatch::of(self.inner.manager.clone())
+    }
+
     pub fn subscribe_transfer_values(
         &self,
     ) -> tokio::sync::watch::Receiver<

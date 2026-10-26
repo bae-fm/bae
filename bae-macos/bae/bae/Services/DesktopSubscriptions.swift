@@ -5,18 +5,18 @@ private final class CandidateRuntimeSink: CandidateRuntimeCallback,
     @unchecked Sendable
 {
     private let apply:
-        @MainActor @Sendable (BridgeCandidateRuntimeChange) -> Void
+        @MainActor @Sendable ([BridgeCandidateRuntimeChange]) -> Void
 
     init(
         apply:
-            @escaping @MainActor @Sendable (BridgeCandidateRuntimeChange)
+            @escaping @MainActor @Sendable ([BridgeCandidateRuntimeChange])
             -> Void
     ) {
         self.apply = apply
     }
 
-    func onChange(change: BridgeCandidateRuntimeChange) {
-        Task { @MainActor in apply(change) }
+    func onChanges(changes: [BridgeCandidateRuntimeChange]) {
+        Task { @MainActor in apply(changes) }
     }
 }
 
@@ -329,8 +329,8 @@ final class DesktopSubscriptions {
         precondition(subscriptions.isEmpty)
         subscriptions = [
             appHandle.subscribeCandidateRuntime(
-                callback: CandidateRuntimeSink { [importStore] change in
-                    importStore.candidateRuntimeSubject.send(change)
+                callback: CandidateRuntimeSink { [importStore] changes in
+                    importStore.candidateRuntimeSubject.send(changes)
                 }
             ),
             appHandle.subscribeFolderScans(

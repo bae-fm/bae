@@ -5,13 +5,13 @@ import SwiftUI
 // MARK: - Environment key
 
 extension EnvironmentValues {
-    /// What every candidate has in flight, as one signal. No store holds a
-    /// copy: a view filters this to the key it draws, the way the loudness bar
-    /// does, so an import's progress ticks redraw one leaf rather than every
-    /// row in the list.
+    /// What every candidate has in flight, as one signal of the batches core
+    /// sends. No store holds a copy: a view filters this to the key it draws,
+    /// the way the loudness bar does, so an import's progress ticks redraw one
+    /// leaf rather than every row in the list.
     @Entry
     var candidateRuntimePublisher:
-        AnyPublisher<BridgeCandidateRuntimeChange, Never> =
+        AnyPublisher<[BridgeCandidateRuntimeChange], Never> =
             Empty()
             .eraseToAnyPublisher()
 
@@ -64,19 +64,23 @@ struct CandidateRuntimeReader<Content: View>: View {
             }
     }
 
-    private func apply(_ change: BridgeCandidateRuntimeChange) {
-        switch change {
-        case .updated(let changed, let value):
-            guard changed == key else { return }
-            runtime = value
-        case .removed(let changed):
-            guard changed == key else { return }
-            runtime = nil
-        case .reset(let runtimes):
-            // The whole of what is running: a key it does not name has
-            // nothing running for it.
-            runtime = runtimes.first { $0.key == key }?.runtime
+    /// Draw the batch's last word on this key, written once; a batch that
+    /// says nothing of it leaves the view as it is.
+    private func apply(_ changes: [BridgeCandidateRuntimeChange]) {
+        var said: BridgeCandidateRuntimeSnapshot??
+        for change in changes {
+            switch change {
+            case .updated(let changed, let value):
+                if changed == key { said = .some(value) }
+            case .removed(let changed):
+                if changed == key { said = .some(nil) }
+            case .reset(let runtimes):
+                // The whole of what is running: a key it does not name has
+                // nothing running for it.
+                said = .some(runtimes.first { $0.key == key }?.runtime)
+            }
         }
+        if let said { runtime = said }
     }
 }
 
@@ -144,7 +148,7 @@ func shownIdentifyState(
                 .environment(Importer.stub())
                 .environment(
                     \.candidateRuntimePublisher,
-                    Empty<BridgeCandidateRuntimeChange, Never>()
+                    Empty<[BridgeCandidateRuntimeChange], Never>()
                         .eraseToAnyPublisher()
                 )
                 .environment(

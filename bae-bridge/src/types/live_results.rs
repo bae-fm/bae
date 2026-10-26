@@ -51,8 +51,11 @@ callbacks! {
     QueueCallback: on_value(value: BridgeQueueSnapshot) + on_error;
     OutboxCallback: on_value(value: BridgeOutboxSnapshot) + on_error;
     /// Every upload transfer as a `Reset` when the subscription opens, then
-    /// each one that moved or left.
-    OutboxTransfersCallback: on_change(change: super::BridgeOutboxTransferChange);
+    /// each batch of the ones that moved or left, in one call.
+    OutboxTransfersCallback: on_changes(changes: Vec<super::BridgeOutboxTransferChange>);
+    /// The whole upload queue's transfer when the subscription opens, then
+    /// each time it moves.
+    OutboxTotalTransferCallback: on_value(transfer: super::BridgeUploadTransfer);
 
     #[cfg(feature = "cast")]
     CastDevicesCallback: on_value(devices: Vec<super::BridgeCastDevice>);
@@ -63,14 +66,15 @@ callbacks! {
     PlaybackPositionsCallback: on_value(value: BridgePlaybackPositions);
     DownloadCallback: on_value(value: BridgeDownloadSnapshot) + on_error;
     /// Every downloading release's progress as a `Reset` when the
-    /// subscription opens, then each one that moved or ended.
-    DownloadTransfersCallback: on_change(change: super::BridgeDownloadTransferChange);
+    /// subscription opens, then each batch of the ones that moved or ended,
+    /// in one call.
+    DownloadTransfersCallback: on_changes(changes: Vec<super::BridgeDownloadTransferChange>);
 
     /// What every candidate has in flight: a `Reset` with every running key
     /// when the subscription opens, then `Updated` as a key advances and
-    /// `Removed` once nothing is running for it.
+    /// `Removed` once nothing is running for it, each batch in one call.
     #[cfg(feature = "desktop")]
-    CandidateRuntimeCallback: on_change(change: BridgeCandidateRuntimeChange);
+    CandidateRuntimeCallback: on_changes(changes: Vec<BridgeCandidateRuntimeChange>);
     /// Where each watched folder's scan stands, now and as it changes.
     #[cfg(feature = "desktop")]
     FolderScansCallback: on_value(value: BridgeFolderScans) + on_error;

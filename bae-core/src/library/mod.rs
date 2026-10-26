@@ -52,7 +52,9 @@ pub use outbox_snapshot::{
     UploadTransfer, UploadTransferKey,
 };
 pub use outbox_snapshot_summary::OutboxSummary;
-pub use outbox_watch::{OutboxQueueWatch, OutboxTransferChange, OutboxTransfersWatch};
+pub use outbox_watch::{
+    OutboxQueueWatch, OutboxTotalTransferWatch, OutboxTransferChange, OutboxTransfersWatch,
+};
 pub use output_snapshot::{
     OutputKind, OutputOp, OutputProgress, OutputQueueContents, OutputRow, OutputSnapshot,
     OutputState,

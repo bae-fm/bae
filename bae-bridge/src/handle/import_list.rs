@@ -113,11 +113,12 @@ impl AppHandle {
         self.live_subscription(move |services, _| async move {
             let mut runtimes = services.watch_candidate_runtimes();
             while let Some(changes) = runtimes.next().await {
-                for change in changes {
-                    callback.on_change(crate::types::BridgeCandidateRuntimeChange::from_core(
-                        change,
-                    ));
-                }
+                callback.on_changes(
+                    changes
+                        .into_iter()
+                        .map(crate::types::BridgeCandidateRuntimeChange::from_core)
+                        .collect(),
+                );
             }
         })
     }

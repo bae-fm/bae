@@ -6,7 +6,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import uniffi.bae_bridge.BridgeOutboxPauseState
 import uniffi.bae_bridge.BridgeOutboxSnapshot
-import uniffi.bae_bridge.BridgeOutboxTransferChange
 import uniffi.bae_bridge.BridgeUploadTransfer
 
 /**
@@ -36,16 +35,9 @@ class OutboxStore(
         _state.value = LiveValue.Failed(error)
     }
 
-    /**
-     * Apply one change the transfer subscription delivered. Only the whole
-     * queue's is kept: nothing on Android draws one file's or release's.
-     */
-    fun applyTransferChange(change: BridgeOutboxTransferChange) {
-        when (change) {
-            is BridgeOutboxTransferChange.TotalUpdated -> _totalTransfer.value = change.transfer
-            is BridgeOutboxTransferChange.Reset -> _totalTransfer.value = change.total
-            is BridgeOutboxTransferChange.Updated, is BridgeOutboxTransferChange.Removed -> Unit
-        }
+    /** Hold the whole queue's transfer the total subscription delivered. */
+    fun setTotalTransfer(transfer: BridgeUploadTransfer) {
+        _totalTransfer.value = transfer
     }
 }
 

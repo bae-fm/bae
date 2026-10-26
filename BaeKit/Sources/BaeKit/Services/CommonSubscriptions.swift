@@ -142,8 +142,9 @@ private final class OutboxTransfersSink: OutboxTransfersCallback,
         self.apply = apply
     }
 
-    func onChange(change: BridgeOutboxTransferChange) {
-        Task { @MainActor in apply(change) }
+    /// One batch lands in one main-actor turn, applied in order.
+    func onChanges(changes: [BridgeOutboxTransferChange]) {
+        Task { @MainActor in changes.forEach(apply) }
     }
 }
 
@@ -161,8 +162,9 @@ private final class DownloadTransfersSink: DownloadTransfersCallback,
         self.apply = apply
     }
 
-    func onChange(change: BridgeDownloadTransferChange) {
-        Task { @MainActor in apply(change) }
+    /// One batch lands in one main-actor turn, applied in order.
+    func onChanges(changes: [BridgeDownloadTransferChange]) {
+        Task { @MainActor in changes.forEach(apply) }
     }
 }
 
