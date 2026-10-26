@@ -8,7 +8,7 @@
 
 use bae_audio::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use bae_audio::EncodeFormat;
-use bae_core::discogs::models::DiscogsRelease;
+use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_test_support as support;
 
 const SAMPLE_RATE: u32 = 44_100;
