@@ -54,7 +54,8 @@ fn a_pass_alone_is_not_movement() {
     assert!(!activity.moving());
 }
 
-/// Files being sent move; a paused queue's waiting files don't.
+/// Files being sent move, and the bytes they move leave the activity as it
+/// was; a paused queue's waiting files don't move.
 #[test]
 fn transfers_are_movement() {
     let mut outbox = idle_outbox();
@@ -73,9 +74,15 @@ fn transfers_are_movement() {
         Some(UploadsInFlight {
             sending: 2,
             waiting: 4,
-            bytes_done: 10,
-            bytes_total: 40,
         })
+    );
+    outbox.transfers.total.bar = Some(UploadBar {
+        bytes_done: 30,
+        bytes_total: 40,
+    });
+    assert_eq!(
+        SyncActivity::new(&status(), &outbox, &DownloadQueueContents::default()),
+        uploading
     );
     outbox.queue.pause_state = OutboxPauseState::Paused;
     outbox.queue.total.uploading = 0;
@@ -134,8 +141,6 @@ fn transfer_lines_name_the_moving_count_first() {
         UploadsInFlight {
             sending: 2,
             waiting: 4,
-            bytes_done: 0,
-            bytes_total: 0,
         }
         .summary_parts(),
         vec![

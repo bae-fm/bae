@@ -94,9 +94,7 @@ public final class SyncActivityStore {
                     summaryParts: [
                         BridgeCountLabel(key: "core.queue.uploading", count: 2),
                         BridgeCountLabel(key: "core.queue.queued", count: 10),
-                    ],
-                    bytesDone: 3_200_000,
-                    bytesTotal: 8_400_000
+                    ]
                 ),
                 downloads: nil
             )

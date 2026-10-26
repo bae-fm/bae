@@ -27,6 +27,7 @@ import fm.bae.app.ui.library.LibraryGridScene
 import fm.bae.app.ui.onboarding.WelcomeScene
 import fm.bae.app.ui.settings.AppearanceSection
 import fm.bae.app.ui.sync.SyncActivityList
+import kotlinx.coroutines.flow.MutableStateFlow
 
 // Screenshot scenes captured by scripts/shots/android.sh. Each function is one
 // scene: the plugin renders it to a PNG named after the function, and the script
@@ -171,6 +172,7 @@ fun SyncActivityNeedingAttention() {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             SyncActivityList(
                 activity = PreviewData.syncActivity(needsAttention = true),
+                uploadTransfer = MutableStateFlow(PreviewData.uploadTransfer()),
                 error = null,
                 onOpenSettings = {},
                 onOpenDownloads = {},

@@ -119,6 +119,12 @@ public class OutboxStore {
         transfers[.file(fileId: fileId)]?.transfer
     }
 
+    /// How far the files being sent have gone together; `nil` until the
+    /// transfers first arrive, or while no file is sent in parts.
+    public var totalBar: BridgeUploadBar? {
+        totalTransfer?.transfer.bar
+    }
+
     /// The whole queue's upload rate. A zero reading stays absent instead of
     /// presenting a stalled speed.
     public var throughputText: String? {

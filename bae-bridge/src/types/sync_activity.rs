@@ -47,15 +47,13 @@ impl BridgeSyncActivity {
     }
 }
 
-/// The files this device is sending now, out of its whole upload queue.
+/// The files this device is sending now, out of its whole upload queue. The
+/// bytes they have moved are the queue's transfer
+/// (`BridgeOutboxTransferChange`).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeUploadsInFlight {
     /// The list's line: the counts sending and waiting, a zero dropped.
     pub summary_parts: Vec<super::BridgeCountLabel>,
-    /// Provider-confirmed bytes of the files sent in parts; zero of zero when
-    /// every file goes in one request.
-    pub bytes_done: u64,
-    pub bytes_total: u64,
 }
 
 impl BridgeUploadsInFlight {
@@ -66,8 +64,6 @@ impl BridgeUploadsInFlight {
                 .into_iter()
                 .map(super::BridgeCountLabel::from_core)
                 .collect(),
-            bytes_done: uploads.bytes_done,
-            bytes_total: uploads.bytes_total,
         }
     }
 }

@@ -47,6 +47,7 @@ import uniffi.bae_bridge.DownloadCallback
 import uniffi.bae_bridge.DownloadTransfersCallback
 import uniffi.bae_bridge.LiveSubscription
 import uniffi.bae_bridge.OutboxCallback
+import uniffi.bae_bridge.OutboxTransfersCallback
 import uniffi.bae_bridge.PlaybackPositionsCallback
 import uniffi.bae_bridge.PlaybackValuesCallback
 import uniffi.bae_bridge.QueueCallback
@@ -260,6 +261,14 @@ class OpenLibrary internal constructor(
                         scope.launch(Dispatchers.Main.immediate) {
                             subscriptionFailed("outbox", error)?.let(stores.transfers.outbox::fail)
                         }
+                    }
+                },
+            )
+        valueSubscriptions +=
+            appHandle.subscribeOutboxTransfers(
+                object : OutboxTransfersCallback {
+                    override fun onChange(change: uniffi.bae_bridge.BridgeOutboxTransferChange) {
+                        scope.launch(Dispatchers.Main.immediate) { stores.transfers.outbox.applyTransferChange(change) }
                     }
                 },
             )

@@ -81,11 +81,7 @@ private struct TransferRows: View {
         }
         if let uploads = activity.uploads {
             Label {
-                TransferLine(
-                    title: QueueSummary.line(uploads.summaryParts),
-                    done: uploads.bytesDone,
-                    total: uploads.bytesTotal
-                )
+                UploadsLine(title: QueueSummary.line(uploads.summaryParts))
             } icon: {
                 Image(systemName: "arrow.up.circle")
             }
@@ -99,20 +95,28 @@ private struct TransferRows: View {
     }
 }
 
-/// A transfer's line, and the bytes it has moved when it counts any.
-private struct TransferLine: View {
+/// The uploads' line, and the bytes the queue's transfer says they have
+/// moved when it counts any. It reads the transfer itself, which changes with
+/// each part a provider confirms, so only this line redraws for it.
+private struct UploadsLine: View {
     let title: String
-    let done: UInt64
-    let total: UInt64
+
+    @Environment(OutboxStore.self)
+    private var outboxStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             Text(title)
-            if total > 0 {
-                Text(formattedDownloadBytesProgress(done: done, total: total))
-                    .themeText(.detail)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
+            if let bar = outboxStore.totalBar, bar.bytesTotal > 0 {
+                Text(
+                    formattedDownloadBytesProgress(
+                        done: bar.bytesDone,
+                        total: bar.bytesTotal
+                    )
+                )
+                .themeText(.detail)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
             }
         }
     }

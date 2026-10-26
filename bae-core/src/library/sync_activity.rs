@@ -10,8 +10,10 @@ use crate::library::{
 use crate::ui::UiError;
 
 /// What sync is doing now: the work that needs the person and the transfers
-/// moving bytes.
-#[derive(Debug, Clone)]
+/// moving bytes. How many bytes the uploads have moved is not part of it: it
+/// changes with each part a provider confirms, and travels with the upload
+/// queue's transfers.
+#[derive(Debug, Clone, PartialEq)]
 pub struct SyncActivity {
     /// The sync failure the status line shows, such as being offline.
     pub failure: Option<UiError>,
@@ -35,9 +37,6 @@ pub struct UploadsInFlight {
     pub sending: u32,
     /// Files queued behind them.
     pub waiting: u32,
-    /// Provider-confirmed bytes of the files being sent in parts.
-    pub bytes_done: u64,
-    pub bytes_total: u64,
 }
 
 /// The releases being downloaded to keep offline.
@@ -84,21 +83,12 @@ impl SyncActivity {
         downloads: &DownloadQueueContents,
     ) -> Self {
         let total = &outbox.queue.total;
-        let uploads = (total.uploading > 0).then(|| {
-            let bar = outbox
-                .transfers
-                .total
-                .bar
-                .expect("a queue sending files has their bytes");
-            UploadsInFlight {
-                sending: total.uploading,
-                waiting: match outbox.queue.pause_state {
-                    OutboxPauseState::Running => total.queued,
-                    OutboxPauseState::Paused => 0,
-                },
-                bytes_done: bar.bytes_done,
-                bytes_total: bar.bytes_total,
-            }
+        let uploads = (total.uploading > 0).then_some(UploadsInFlight {
+            sending: total.uploading,
+            waiting: match outbox.queue.pause_state {
+                OutboxPauseState::Running => total.queued,
+                OutboxPauseState::Paused => 0,
+            },
         });
         let download_total = downloads.total();
         let downloads = (download_total.active > 0).then_some(DownloadsInFlight {
@@ -138,8 +128,9 @@ impl SyncActivity {
     }
 }
 
-/// The sync activity, live: a new value whenever the sync status, the
-/// upload queue or the offline downloads change.
+/// The sync activity, live: a new value whenever a change to the sync
+/// status, the upload queue or the offline downloads changes it. Bytes
+/// moving change those sources but not the activity, so they send nothing.
 pub struct SyncActivityStream {
     manager: crate::library::LibraryManager,
     status: tokio::sync::watch::Receiver<SyncStatusSnapshot>,
@@ -147,6 +138,8 @@ pub struct SyncActivityStream {
     downloads: tokio::sync::watch::Receiver<DownloadQueueContents>,
     /// The first value was returned; later ones wait for a change.
     started: bool,
+    /// The value last returned; `None` before the first and after a failure.
+    returned: Option<SyncActivity>,
 }
 
 impl SyncActivityStream {
@@ -156,21 +149,40 @@ impl SyncActivityStream {
             outbox: manager.subscribe_outbox_values(),
             downloads: manager.subscribe_download_queue(),
             started: false,
+            returned: None,
             manager,
         }
     }
 
-    /// The first value at once, then the next after a change. A source that
-    /// fails to read fails the value; a later change reads it again.
+    /// The first value at once, then the next that differs from the last
+    /// one returned. A source that fails to read fails the value; a later
+    /// change reads it again.
     pub async fn next(&mut self) -> Result<SyncActivity, UiError> {
-        if self.started {
-            tokio::select! {
-                changed = self.status.changed() => changed.expect("the sync status outlives its readers"),
-                changed = self.outbox.changed() => changed.expect("the upload queue outlives its readers"),
-                changed = self.downloads.changed() => changed.expect("the download queue outlives its readers"),
+        loop {
+            if self.started {
+                tokio::select! {
+                    changed = self.status.changed() => changed.expect("the sync status outlives its readers"),
+                    changed = self.outbox.changed() => changed.expect("the upload queue outlives its readers"),
+                    changed = self.downloads.changed() => changed.expect("the download queue outlives its readers"),
+                }
+            }
+            self.started = true;
+            let activity = match self.read().await {
+                Ok(activity) => activity,
+                Err(error) => {
+                    self.returned = None;
+                    return Err(error);
+                }
+            };
+            if self.returned.as_ref() != Some(&activity) {
+                self.returned = Some(activity.clone());
+                return Ok(activity);
             }
         }
-        self.started = true;
+    }
+
+    /// The activity the sources hold now.
+    async fn read(&mut self) -> Result<SyncActivity, UiError> {
         let outbox = self.outbox.borrow_and_update().clone();
         let outbox = match outbox {
             Some(Ok(outbox)) => outbox,

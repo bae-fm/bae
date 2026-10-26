@@ -18,6 +18,8 @@ import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.playback.NowPlayingBar
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSortField
 import uniffi.bae_bridge.BridgeComposerSortCriterion
@@ -25,6 +27,7 @@ import uniffi.bae_bridge.BridgeComposerSortField
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
+import uniffi.bae_bridge.BridgeUploadTransfer
 
 private val DEFAULT_ALBUM_SORT =
     BridgeSortCriterion(BridgeSortField.DATE_ADDED, BridgeSortDirection.DESCENDING)
@@ -88,6 +91,7 @@ internal fun LibraryBrowser(
                 session.messages.perform("play the library shuffled") { session.appHandle.playLibraryShuffled() }
             },
             syncActivity = session.syncActivityStore,
+            uploadTransfer = session.outboxStore.totalTransfer,
             onOpenSyncSettings = onSyncStatus,
             onOpenDownloads = onDownloads,
             onSettings = onSettings,
@@ -251,6 +255,7 @@ private fun LibraryBrowserChrome(
     onArtistSortChange: (BridgeArtistSortCriterion) -> Unit,
     onShuffleLibrary: () -> Unit,
     syncActivity: SyncActivityStore,
+    uploadTransfer: StateFlow<BridgeUploadTransfer?>,
     onOpenSyncSettings: () -> Unit,
     onOpenDownloads: () -> Unit,
     onSettings: () -> Unit,
@@ -275,6 +280,7 @@ private fun LibraryBrowserChrome(
             artistSortCriterion = artistSortCriterion,
             onArtistSortChange = onArtistSortChange,
             syncActivity = syncActivity,
+            uploadTransfer = uploadTransfer,
             onOpenSyncSettings = onOpenSyncSettings,
             onOpenDownloads = onOpenDownloads,
             onSettings = onSettings,
@@ -305,6 +311,7 @@ private fun LibraryBrowserChromePreview() {
             onArtistSortChange = {},
             onShuffleLibrary = {},
             syncActivity = SyncActivityStore({}, {}).apply { apply(PreviewData.syncActivity(needsAttention = false)) },
+            uploadTransfer = MutableStateFlow(PreviewData.uploadTransfer()),
             onOpenSyncSettings = {},
             onOpenDownloads = {},
             onSettings = {},

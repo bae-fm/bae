@@ -51,6 +51,8 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.sync.SyncActivityButton
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSortField
 import uniffi.bae_bridge.BridgeComposerSortCriterion
@@ -58,6 +60,7 @@ import uniffi.bae_bridge.BridgeComposerSortField
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
+import uniffi.bae_bridge.BridgeUploadTransfer
 
 /** A later page of the album grid that failed to load, above the rows that did, with Retry. */
 @Composable
@@ -80,6 +83,7 @@ internal fun LibraryTopBar(
     artistSortCriterion: BridgeArtistSortCriterion,
     onArtistSortChange: (BridgeArtistSortCriterion) -> Unit,
     syncActivity: SyncActivityStore,
+    uploadTransfer: StateFlow<BridgeUploadTransfer?>,
     onOpenSyncSettings: () -> Unit,
     onOpenDownloads: () -> Unit,
     onSettings: () -> Unit,
@@ -126,6 +130,7 @@ internal fun LibraryTopBar(
             }
             SyncActivityButton(
                 store = syncActivity,
+                uploadTransfer = uploadTransfer,
                 onOpenSettings = onOpenSyncSettings,
                 onOpenDownloads = onOpenDownloads,
             )
@@ -329,6 +334,7 @@ private fun LibraryTopBarPreview() {
             artistSortCriterion = previewArtistSort,
             onArtistSortChange = {},
             syncActivity = SyncActivityStore({}, {}).apply { apply(PreviewData.syncActivity(needsAttention = true)) },
+            uploadTransfer = MutableStateFlow(PreviewData.uploadTransfer()),
             onOpenSyncSettings = {},
             onOpenDownloads = {},
             onSettings = {},

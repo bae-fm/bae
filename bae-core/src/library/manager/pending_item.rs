@@ -86,7 +86,7 @@ impl PendingWait {
 }
 
 /// One thing coven is waiting on, as the pending list shows it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PendingItem {
     pub subject: PendingSubjectName,
     pub wait: PendingWait,

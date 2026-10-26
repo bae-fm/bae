@@ -60,6 +60,8 @@ import uniffi.bae_bridge.BridgeTrack
 import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSearchResult
 import uniffi.bae_bridge.BridgeTrackSide
+import uniffi.bae_bridge.BridgeUploadBar
+import uniffi.bae_bridge.BridgeUploadTransfer
 import uniffi.bae_bridge.BridgeUploadsInFlight
 import uniffi.bae_bridge.BridgeWorkSummary
 
@@ -310,10 +312,15 @@ object PreviewData {
                             BridgeCountLabel(key = "core.queue.uploading", count = 2u),
                             BridgeCountLabel(key = "core.queue.queued", count = 10u),
                         ),
-                    bytesDone = 3_200_000uL,
-                    bytesTotal = 8_400_000uL,
                 ),
             downloads = null,
+        )
+
+    /** The upload queue's transfer while [syncActivity]'s files are sent. */
+    fun uploadTransfer(): BridgeUploadTransfer =
+        BridgeUploadTransfer(
+            bar = BridgeUploadBar(bytesDone = 3_200_000uL, bytesTotal = 8_400_000uL),
+            throughputBps = 0uL,
         )
 
     fun downloadSnapshot(

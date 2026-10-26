@@ -251,3 +251,53 @@ async fn download_queue_values_report_each_driven_file_progress() {
     driver.await.unwrap().unwrap();
     pending.abort();
 }
+
+/// Bytes arriving for a download leave the sync activity as it was, so they
+/// send it no new value; the download's start and its end each do.
+#[tokio::test]
+async fn download_bytes_send_no_new_sync_activity() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let release_id = "release-activity".to_string();
+    let progress = |bytes_done| {
+        crate::library::DownloadTransferProgress::new(&release_id, bytes_done, 7).unwrap()
+    };
+    // A published upload queue lets each value be read without the database,
+    // so one poll shows whether a change sends one.
+    manager.emit_outbox_changed().await;
+    let mut activity = crate::library::SyncActivityStream::new(manager.library.clone());
+    assert_eq!(activity.next().await.unwrap().downloads, None);
+
+    assert!(manager.downloads.enqueue_all([crate::library::DownloadOp {
+        release_id: release_id.clone(),
+        created_at: 0,
+        payload: (),
+        state: crate::library::DownloadState::Queued,
+    }]));
+    let pending = tokio::spawn(std::future::pending::<()>());
+    assert!(manager
+        .downloads
+        .activate(&release_id, pending.abort_handle(), progress(0)));
+    assert_eq!(
+        activity.next().await.unwrap().downloads,
+        Some(crate::library::DownloadsInFlight {
+            active: 1,
+            queued: 0
+        })
+    );
+
+    let next = activity.next();
+    tokio::pin!(next);
+    for bytes_done in [3, 7] {
+        assert!(manager
+            .downloads
+            .set_active_progress(&release_id, progress(bytes_done)));
+        let polled = tokio::task::unconstrained(std::future::poll_fn(|cx| {
+            std::task::Poll::Ready(std::future::Future::poll(next.as_mut(), cx))
+        }))
+        .await;
+        assert!(polled.is_pending(), "{bytes_done} bytes sent an activity");
+    }
+    manager.cancel_download(&release_id);
+    assert_eq!(next.await.unwrap().downloads, None);
+    pending.abort();
+}
