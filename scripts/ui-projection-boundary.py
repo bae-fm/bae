@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
-"""Keep render-only repeated children on their declared projection inputs."""
+"""Keep render-only repeated children on their declared projection inputs.
+
+A repeated row's inputs are what its parent passes in, and so are the inputs of
+every view the row builds: a child that reads a store redraws, and reads, once
+per row just as the row itself would. The check therefore follows each repeated
+row's child views, transitively and wherever they are declared, and holds each
+one to the same inputs as the row.
+"""
 
 from __future__ import annotations
 
 import argparse
 import re
 import sys
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -17,6 +25,13 @@ class RenderLeaf:
     language: str
     declaration: str
     callable_declaration: bool = False
+    # The type a Swift view function is a member of; members are callable
+    # unqualified only from inside that type, except members of `extension
+    # View`, which are modifiers any view calls. `None` for top-level
+    # functions, view structs and Kotlin composables.
+    owner: str | None = None
+    # Declared `private`/`fileprivate`, so visible only from its own file.
+    file_private: bool = False
 
 
 # Repetition syntax does not say whether its child renders a supplied value or
@@ -104,6 +119,49 @@ RENDER_LEAVES = (
 )
 
 
+@dataclass(frozen=True)
+class OpenFinding:
+    language: str
+    path: str
+    symbol: str
+    owner: str
+    reason: str
+
+
+# Views under a repeated row that read an entity-data owner where no parent
+# can hand them the value as an input: each names what it reads and why the
+# row's placement cannot read it instead. Frozen: any other finding fails, and
+# an entry that stops producing its finding fails until it is removed.
+OPEN_CHILD_FINDINGS = (
+    OpenFinding(
+        "swift",
+        "bae-macos/bae/bae/Views/Storage/Table/StorageStateLabel.swift",
+        "StorageStateLabel",
+        "OutboxStore",
+        "reads a release's upload observation inside an NSTableView cell; "
+        "AppKit places the row, so no SwiftUI parent observes the outbox to "
+        "pass it in",
+    ),
+    OpenFinding(
+        "swift",
+        "bae-macos/bae/bae/Views/Components/MetadataForm/ReleaseMetadataHeader.swift",
+        "ArtistAssignmentsField",
+        "Library",
+        "searches artists from its popover as the user types; the results are "
+        "the editor's, not a fact the track row renders",
+    ),
+    OpenFinding(
+        "swift",
+        "bae-macos/bae/bae/Views/Import/CandidateRuntimeReader.swift",
+        "CandidateRuntimeReader",
+        "Importer",
+        "filters the shared candidate-runtime signal to one key and reads the "
+        "key's current value when it appears, so a progress tick redraws "
+        "ImportProgressLine alone rather than its triage row",
+    ),
+)
+
+
 # These types can obtain entity facts independently of a leaf's declared
 # projection. Image resolvers, localization, styling, presentation values,
 # bindings, callbacks, and local state are not entity-data owners.
@@ -175,10 +233,41 @@ FORBIDDEN_SECONDARY_PROJECTIONS = (
 )
 
 
+class Sources:
+    """One read and one masking per file for a whole check."""
+
+    def __init__(self, root: Path) -> None:
+        self.root = root
+        self._text: dict[str, str] = {}
+        self._masked: dict[str, str] = {}
+        self._files: dict[tuple[str, str], list[str]] = {}
+
+    def text(self, relative: str) -> str:
+        if relative not in self._text:
+            self._text[relative] = (self.root / relative).read_text()
+        return self._text[relative]
+
+    def masked(self, relative: str) -> str:
+        if relative not in self._masked:
+            self._masked[relative] = mask_comments_and_literals(self.text(relative))
+        return self._masked[relative]
+
+    def files(self, source_root: str, suffix: str) -> list[str]:
+        key = (source_root, suffix)
+        if key not in self._files:
+            self._files[key] = [
+                str(path.relative_to(self.root))
+                for path in sorted((self.root / source_root).rglob(f"*{suffix}"))
+            ]
+        return self._files[key]
+
+
 @dataclass(frozen=True)
 class SourceFragment:
     path: str
     source: str
+    # `source` with comments and literals blanked, position for position.
+    masked: str
     full_source: str
     offset: int
 
@@ -282,9 +371,20 @@ def matching_delimiter(source: str, start: int, opening: str, closing: str) -> i
     raise ValueError(f"unclosed {opening!r} at offset {start}")
 
 
-def declaration_source(source: str, leaf: RenderLeaf) -> tuple[str, int]:
-    masked = mask_comments_and_literals(source)
+def declaration_source(
+    source: str, leaf: RenderLeaf, masked: str | None = None
+) -> tuple[str, int]:
+    if masked is None:
+        masked = mask_comments_and_literals(source)
     matches = list(re.finditer(leaf.declaration, masked))
+    if len(matches) > 1 and leaf.language == "swift" and leaf.callable_declaration:
+        # Same-named view functions on different types in one file.
+        spans = swift_type_spans(masked)
+        matches = [
+            match
+            for match in matches
+            if enclosing_type(spans, match.start()) == leaf.owner
+        ]
     if len(matches) != 1:
         raise ValueError(
             f"expected one declaration for {leaf.symbol}, found {len(matches)}"
@@ -311,23 +411,26 @@ def swift_root_for(path: str) -> str:
     return matches[0]
 
 
-def swift_extension_fragments(root: Path, leaf: RenderLeaf) -> list[SourceFragment]:
+def swift_extension_fragments(
+    sources: Sources, leaf: RenderLeaf
+) -> list[SourceFragment]:
     fragments: list[SourceFragment] = []
     extension_pattern = re.compile(
         rf"\bextension\s+{re.escape(leaf.symbol)}\b[^{{]*{{"
     )
-    for path in sorted((root / swift_root_for(leaf.path)).rglob("*.swift")):
-        source = path.read_text()
+    for relative in sources.files(swift_root_for(leaf.path), ".swift"):
+        source = sources.text(relative)
         if "extension" not in source or leaf.symbol not in source:
             continue
-        masked = mask_comments_and_literals(source)
+        masked = sources.masked(relative)
         for match in extension_pattern.finditer(masked):
             body_start = masked.find("{", match.start(), match.end())
             body_end = matching_delimiter(masked, body_start, "{", "}")
             fragments.append(
                 SourceFragment(
-                    str(path.relative_to(root)),
+                    relative,
                     source[match.start() : body_end + 1],
+                    masked[match.start() : body_end + 1],
                     source,
                     match.start(),
                 )
@@ -335,13 +438,21 @@ def swift_extension_fragments(root: Path, leaf: RenderLeaf) -> list[SourceFragme
     return fragments
 
 
-def leaf_fragments(root: Path, leaf: RenderLeaf) -> list[SourceFragment]:
-    path = root / leaf.path
-    source = path.read_text()
-    declaration, offset = declaration_source(source, leaf)
-    fragments = [SourceFragment(leaf.path, declaration, source, offset)]
-    if leaf.language == "swift":
-        fragments.extend(swift_extension_fragments(root, leaf))
+def leaf_fragments(sources: Sources, leaf: RenderLeaf) -> list[SourceFragment]:
+    source = sources.text(leaf.path)
+    masked = sources.masked(leaf.path)
+    declaration, offset = declaration_source(source, leaf, masked)
+    fragments = [
+        SourceFragment(
+            leaf.path,
+            declaration,
+            masked[offset : offset + len(declaration)],
+            source,
+            offset,
+        )
+    ]
+    if leaf.language == "swift" and not leaf.callable_declaration:
+        fragments.extend(swift_extension_fragments(sources, leaf))
     return fragments
 
 
@@ -364,8 +475,9 @@ def leaf_violations(source: str, leaf: RenderLeaf) -> list[tuple[int, str]]:
 def fragment_owner_violations(
     fragment: SourceFragment,
     leaf: RenderLeaf,
+    subject: str,
 ) -> list[str]:
-    masked = mask_comments_and_literals(fragment.source)
+    masked = fragment.masked
     owners = set(ENTITY_DATA_OWNERS[leaf.language])
     owners.update(OWNER_TYPE.findall(masked))
     owners.difference_update(NON_ENTITY_UI_OWNERS)
@@ -377,7 +489,7 @@ def fragment_owner_violations(
         root_offset = fragment.offset + match.start()
         source_line = fragment.full_source.count("\n", 0, root_offset) + 1
         violations.append(
-            f"{fragment.path}:{source_line}: {leaf.symbol} reaches entity-data owner {owner}"
+            f"{fragment.path}:{source_line}: {subject} reaches entity-data owner {owner}"
         )
     return violations
 
@@ -385,10 +497,11 @@ def fragment_owner_violations(
 def fragment_environment_violations(
     fragment: SourceFragment,
     leaf: RenderLeaf,
+    subject: str,
 ) -> list[str]:
     if leaf.language != "swift":
         return []
-    masked = mask_comments_and_literals(fragment.source)
+    masked = fragment.masked
     violations: list[str] = []
     for match in SWIFT_ENVIRONMENT_OBJECT.finditer(masked):
         injected = match.group(1) or match.group(2)
@@ -397,16 +510,16 @@ def fragment_environment_violations(
         root_offset = fragment.offset + match.start()
         source_line = fragment.full_source.count("\n", 0, root_offset) + 1
         violations.append(
-            f"{fragment.path}:{source_line}: {leaf.symbol} takes {injected} "
+            f"{fragment.path}:{source_line}: {subject} takes {injected} "
             "from the environment"
         )
     return violations
 
 
 def fragment_projection_violations(
-    fragment: SourceFragment, leaf: RenderLeaf
+    fragment: SourceFragment, subject: str
 ) -> list[str]:
-    masked = mask_comments_and_literals(fragment.source)
+    masked = fragment.masked
     violations: list[str] = []
     for projection in FORBIDDEN_SECONDARY_PROJECTIONS:
         match = re.search(rf"\b{re.escape(projection)}\b", masked)
@@ -415,38 +528,69 @@ def fragment_projection_violations(
         root_offset = fragment.offset + match.start()
         source_line = fragment.full_source.count("\n", 0, root_offset) + 1
         violations.append(
-            f"{fragment.path}:{source_line}: {leaf.symbol} reaches secondary entity "
+            f"{fragment.path}:{source_line}: {subject} reaches secondary entity "
             f"projection {projection}"
         )
     return violations
 
 
-def declaration_indexes(root: Path) -> dict[str, dict[str, list[RenderLeaf]]]:
+SWIFT_TYPE_DECLARATION = re.compile(
+    r"\b(?:struct|class|enum|actor|extension|protocol)\s+"
+    r"(?!func\b|var\b|let\b)([A-Za-z_][A-Za-z0-9_.]*)[^{};]*\{"
+)
+
+
+def swift_type_spans(masked: str) -> list[tuple[int, int, str]]:
+    """Each type body in a file, with the type's unqualified name."""
+    spans: list[tuple[int, int, str]] = []
+    for match in SWIFT_TYPE_DECLARATION.finditer(masked):
+        body_start = match.end() - 1
+        try:
+            body_end = matching_delimiter(masked, body_start, "{", "}")
+        except ValueError:
+            continue
+        spans.append((body_start, body_end, match.group(1).split(".")[-1]))
+    return spans
+
+
+def enclosing_type(spans: list[tuple[int, int, str]], offset: int) -> str | None:
+    innermost: tuple[int, int, str] | None = None
+    for span in spans:
+        if span[0] < offset < span[1] and (
+            innermost is None or span[0] > innermost[0]
+        ):
+            innermost = span
+    return None if innermost is None else innermost[2]
+
+
+def declaration_indexes(sources: Sources) -> dict[str, dict[str, list[RenderLeaf]]]:
     indexes: dict[str, dict[str, list[RenderLeaf]]] = {
         "swift": {},
         "kotlin": {},
     }
     swift_pattern = re.compile(
-        r"\b(?:private\s+)?struct\s+([A-Z][A-Za-z0-9_]*)"
+        r"\b(?:(private|fileprivate)\s+)?struct\s+([A-Z][A-Za-z0-9_]*)"
         r"(?:\s*<[^>{}]+>)?\s*:\s*View\b"
     )
+    function_pattern = re.compile(
+        r"\b((?:(?:private|fileprivate|internal|public|static|nonisolated)\s+)*)"
+        r"func\s+([A-Za-z_][A-Za-z0-9_]*)\s*\("
+    )
     for source_root in SWIFT_SOURCE_ROOTS:
-        for path in sorted((root / source_root).rglob("*.swift")):
-            source = mask_comments_and_literals(path.read_text())
+        for relative in sources.files(source_root, ".swift"):
+            source = sources.masked(relative)
             for match in swift_pattern.finditer(source):
-                symbol = match.group(1)
+                symbol = match.group(2)
                 leaf = RenderLeaf(
-                    str(path.relative_to(root)),
+                    relative,
                     symbol,
                     "swift",
                     rf"\b(?:private\s+)?struct\s+{re.escape(symbol)}"
                     r"(?:\s*<[^>{}]+>)?\s*:\s*View\b",
+                    file_private=match.group(1) is not None,
                 )
                 indexes["swift"].setdefault(symbol, []).append(leaf)
-            function_pattern = re.compile(
-                r"\b(?:(?:private|fileprivate|internal|public)\s+)?"
-                r"func\s+([A-Za-z_][A-Za-z0-9_]*)\s*\("
-            )
+            spans = swift_type_spans(source)
             for match in function_pattern.finditer(source):
                 parameters = source.find("(", match.start(), match.end() + 1)
                 parameters_end = matching_delimiter(source, parameters, "(", ")")
@@ -455,33 +599,39 @@ def declaration_indexes(root: Path) -> dict[str, dict[str, list[RenderLeaf]]]:
                     r"->\s*some\s+View\b", source[parameters_end:body_start]
                 ):
                     continue
-                symbol = match.group(1)
+                symbol = match.group(2)
                 leaf = RenderLeaf(
-                    str(path.relative_to(root)),
+                    relative,
                     symbol,
                     "swift",
                     rf"\b(?:(?:private|fileprivate|internal|public)\s+)?"
                     rf"func\s+{re.escape(symbol)}\s*\(",
                     True,
+                    owner=enclosing_type(spans, match.start()),
+                    file_private=re.search(
+                        r"\b(?:private|fileprivate)\b", match.group(1)
+                    )
+                    is not None,
                 )
                 indexes["swift"].setdefault(symbol, []).append(leaf)
 
     kotlin_pattern = re.compile(
         r"@Composable\b(?:\s+@[A-Za-z][^\n]*)*\s+"
-        r"(?:(?:private|internal|public)\s+)?fun\s+"
+        r"(?:(private|internal|public)\s+)?fun\s+"
         r"([A-Za-z_][A-Za-z0-9_]*)\s*\("
     )
-    for path in sorted((root / KOTLIN_SOURCE_ROOT).rglob("*.kt")):
-        source = mask_comments_and_literals(path.read_text())
+    for relative in sources.files(KOTLIN_SOURCE_ROOT, ".kt"):
+        source = sources.masked(relative)
         for match in kotlin_pattern.finditer(source):
-            symbol = match.group(1)
+            symbol = match.group(2)
             leaf = RenderLeaf(
-                str(path.relative_to(root)),
+                relative,
                 symbol,
                 "kotlin",
                 rf"\b(?:(?:private|internal|public)\s+)?fun\s+"
                 rf"{re.escape(symbol)}\s*\(",
                 True,
+                file_private=match.group(1) == "private",
             )
             indexes["kotlin"].setdefault(symbol, []).append(leaf)
     return indexes
@@ -491,33 +641,39 @@ def resolved_leaf(
     indexes: dict[str, dict[str, list[RenderLeaf]]],
     language: str,
     symbol: str,
-    callsite: Path,
+    callsite: str,
+    caller_owner: str | None,
 ) -> RenderLeaf | None:
+    """The view a call at `callsite`, inside type `caller_owner`, constructs."""
     declarations = indexes[language].get(symbol, [])
     if language == "swift":
-        source_root = swift_root_for(str(callsite))
+        source_root = swift_root_for(callsite)
         declarations = [
             leaf
             for leaf in declarations
             if leaf.path.startswith(f"{source_root}/")
         ]
-    same_file = [leaf for leaf in declarations if leaf.path == str(callsite)]
+    declarations = [
+        leaf
+        for leaf in declarations
+        if (not leaf.file_private or leaf.path == callsite)
+        and leaf.owner in {None, "View", caller_owner}
+    ]
+    same_file = [leaf for leaf in declarations if leaf.path == callsite]
     if len(same_file) == 1:
         return same_file[0]
     if len(declarations) == 1:
         return declarations[0]
     if len(declarations) > 1:
         paths = ", ".join(sorted(leaf.path for leaf in declarations))
-        raise ValueError(
-            f"ambiguous repeated child {symbol} from {callsite}: {paths}"
-        )
+        raise ValueError(f"ambiguous view {symbol} from {callsite}: {paths}")
     return None
 
 
 def repeated_regions(
     masked: str, construct: re.Pattern[str]
-) -> list[tuple[str, str | None]]:
-    regions: list[tuple[str, str | None]] = []
+) -> list[tuple[int, str, str | None]]:
+    regions: list[tuple[int, str, str | None]] = []
     for match in construct.finditer(masked):
         parameters = masked.find("(", match.start(), match.end() + 1)
         if parameters == -1:
@@ -529,15 +685,17 @@ def repeated_regions(
         parameters_source = masked[parameters + 1 : parameters_end]
         trailing = re.match(r"\s*{", masked[parameters_end + 1 :])
         if trailing is None:
-            regions.append((parameters_source, None))
+            regions.append((match.start(), parameters_source, None))
             continue
         body_start = parameters_end + 1 + trailing.end() - 1
         try:
             body_end = matching_delimiter(masked, body_start, "{", "}")
         except ValueError:
-            regions.append((parameters_source, None))
+            regions.append((match.start(), parameters_source, None))
             continue
-        regions.append((parameters_source, masked[body_start + 1 : body_end]))
+        regions.append(
+            (match.start(), parameters_source, masked[body_start + 1 : body_end])
+        )
     return regions
 
 
@@ -553,24 +711,28 @@ def lambda_body(source: str, label: str) -> str | None:
     return source[body_start + 1 : body_end]
 
 
-def discovered_render_leaves(root: Path) -> set[RenderLeaf]:
-    indexes = declaration_indexes(root)
+def discovered_render_leaves(
+    sources: Sources, indexes: dict[str, dict[str, list[RenderLeaf]]]
+) -> set[RenderLeaf]:
     discovered: set[RenderLeaf] = set()
     call_pattern = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(")
 
     swift_construct = re.compile(r"\b(?:ForEach|List|Table)\s*\(")
     for source_root in SWIFT_SOURCE_ROOTS:
-        for path in sorted((root / source_root).rglob("*.swift")):
-            relative = path.relative_to(root)
-            masked = mask_comments_and_literals(path.read_text())
-            for parameters, body in repeated_regions(masked, swift_construct):
+        for relative in sources.files(source_root, ".swift"):
+            masked = sources.masked(relative)
+            spans = swift_type_spans(masked)
+            for start, parameters, body in repeated_regions(masked, swift_construct):
+                owner = enclosing_type(spans, start)
                 regions = [body] if body is not None else []
                 content_body = lambda_body(parameters, "content")
                 if content_body is not None:
                     regions.append(content_body)
                 for region in regions:
                     for call in call_pattern.finditer(region):
-                        leaf = resolved_leaf(indexes, "swift", call.group(1), relative)
+                        leaf = resolved_leaf(
+                            indexes, "swift", call.group(1), relative, owner
+                        )
                         if leaf is not None:
                             discovered.add(leaf)
                 for reference in re.finditer(
@@ -578,62 +740,174 @@ def discovered_render_leaves(root: Path) -> set[RenderLeaf]:
                     parameters,
                 ):
                     leaf = resolved_leaf(
-                        indexes, "swift", reference.group(1), relative
+                        indexes, "swift", reference.group(1), relative, owner
                     )
                     if leaf is not None:
                         discovered.add(leaf)
 
     kotlin_construct = re.compile(r"\bitems(?:Indexed)?\s*\(")
-    for path in sorted((root / KOTLIN_SOURCE_ROOT).rglob("*.kt")):
-        relative = path.relative_to(root)
-        masked = mask_comments_and_literals(path.read_text())
-        for parameters, body in repeated_regions(masked, kotlin_construct):
+    for relative in sources.files(KOTLIN_SOURCE_ROOT, ".kt"):
+        masked = sources.masked(relative)
+        for _, parameters, body in repeated_regions(masked, kotlin_construct):
             regions = [body] if body is not None else []
             item_content = lambda_body(parameters, "itemContent")
             if item_content is not None:
                 regions.append(item_content)
             for region in regions:
                 for call in call_pattern.finditer(region):
-                    leaf = resolved_leaf(indexes, "kotlin", call.group(1), relative)
+                    leaf = resolved_leaf(
+                        indexes, "kotlin", call.group(1), relative, None
+                    )
                     if leaf is not None:
                         discovered.add(leaf)
     return discovered
 
 
-def all_render_leaves(root: Path) -> tuple[RenderLeaf, ...]:
-    leaves = {(leaf.language, leaf.path, leaf.symbol): leaf for leaf in RENDER_LEAVES}
-    for leaf in discovered_render_leaves(root):
-        leaves.setdefault((leaf.language, leaf.path, leaf.symbol), leaf)
-    return tuple(
-        leaves[key]
-        for key in sorted(leaves, key=lambda value: (value[0], value[1], value[2]))
+def leaf_key(leaf: RenderLeaf) -> tuple[str, str, str]:
+    return (leaf.language, leaf.path, leaf.symbol)
+
+
+def all_render_leaves(
+    sources: Sources, indexes: dict[str, dict[str, list[RenderLeaf]]]
+) -> tuple[RenderLeaf, ...]:
+    leaves = {leaf_key(leaf): leaf for leaf in RENDER_LEAVES}
+    for leaf in discovered_render_leaves(sources, indexes):
+        leaves.setdefault(leaf_key(leaf), leaf)
+    return tuple(leaves[key] for key in sorted(leaves))
+
+
+# A view built by name: `Child(...)`, `Child { ... }`, `Child<T>(...)`,
+# `Child.init(...)`, `self.child(...)`, or a `Child.init` reference handed to a
+# builder. A lowercase name followed by `{` is a control-flow subject
+# (`switch section {`), not a construction, so only calls count for it. A
+# `.name(...)` call is a modifier only when it resolves to `extension View`.
+SWIFT_CHILD_CONSTRUCTION = re.compile(
+    r"(?:(?<![.\w])|(?<=\bself\.)|(?<=\bSelf\.))"
+    r"(?:([A-Z][A-Za-z0-9_]*)(?:\s*<[^<>(){}]*>)?(?:\.init\b|\s*[({])"
+    r"|([a-z_][A-Za-z0-9_]*)\s*\()"
+    r"|(?<=[^.\w]\.)(?<!\bself\.)(?<!\bSelf\.)([a-z_][A-Za-z0-9_]*)\s*\("
+)
+KOTLIN_CHILD_CONSTRUCTION = re.compile(
+    r"(?<![.\w])(?:([A-Z][A-Za-z0-9_]*)\s*[({]|([a-z_][A-Za-z0-9_]*)\s*\()"
+)
+DECLARATION_KEYWORD = re.compile(
+    r"\b(?:struct|class|enum|actor|extension|protocol|typealias|func|fun)\s*$"
+)
+
+
+def child_views(
+    view: RenderLeaf,
+    fragments: list[SourceFragment],
+    indexes: dict[str, dict[str, list[RenderLeaf]]],
+) -> list[RenderLeaf]:
+    """The views `view` builds, in source order, excluding its own members."""
+    pattern = (
+        SWIFT_CHILD_CONSTRUCTION
+        if view.language == "swift"
+        else KOTLIN_CHILD_CONSTRUCTION
     )
+    # Members of a view struct are already part of its fragments; a view
+    # function's sibling members are not, and are followed like any child.
+    caller_owner = view.owner if view.callable_declaration else view.symbol
+    children: list[RenderLeaf] = []
+    for fragment in fragments:
+        masked = fragment.masked
+        for match in pattern.finditer(masked):
+            if (
+                DECLARATION_KEYWORD.search(
+                    masked, max(0, match.start() - 32), match.start()
+                )
+                is not None
+            ):
+                continue
+            modifier = match.lastindex == 3
+            symbol = match.group(match.lastindex)
+            child = resolved_leaf(
+                indexes, view.language, symbol, fragment.path, caller_owner
+            )
+            if child is None or leaf_key(child) == leaf_key(view):
+                continue
+            if modifier and child.owner != "View":
+                continue
+            if not view.callable_declaration and child.owner == view.symbol:
+                continue
+            if child not in children:
+                children.append(child)
+    return children
 
 
 def check(root: Path) -> list[str]:
     violations: list[str] = []
+    sources = Sources(root)
     try:
-        leaves = all_render_leaves(root)
+        indexes = declaration_indexes(sources)
+        leaves = all_render_leaves(sources, indexes)
     except ValueError as error:
         return [str(error)]
-    for leaf in leaves:
-        path = root / leaf.path
-        if not path.is_file():
-            violations.append(f"{leaf.path}: missing inventoried render leaf")
+    # Each repeated row, then every view under one, breadth first, so a view
+    # is reported once, from the first row that reaches it by the shortest
+    # path. A view that is itself repeated is reported as a row.
+    pending: deque[tuple[RenderLeaf, tuple[str, ...]]] = deque(
+        (leaf, ()) for leaf in leaves
+    )
+    reached = {leaf_key(leaf) for leaf in leaves}
+    open_findings = {
+        (finding.language, finding.path, finding.symbol): finding
+        for finding in OPEN_CHILD_FINDINGS
+    }
+    while pending:
+        view, under = pending.popleft()
+        if not (root / view.path).is_file():
+            violations.append(f"{view.path}: missing inventoried render leaf")
             continue
         try:
-            fragments = leaf_fragments(root, leaf)
+            fragments = leaf_fragments(sources, view)
         except ValueError as error:
-            violations.append(f"{leaf.path}: {error}")
+            violations.append(f"{view.path}: {error}")
             continue
+        subject = (
+            view.symbol
+            if not under
+            else f"{view.symbol} (built under repeated {' > '.join(under)})"
+        )
+        found: list[str] = []
         for fragment in fragments:
-            violations.extend(
-                fragment_owner_violations(fragment, leaf)
-            )
-            violations.extend(
-                fragment_environment_violations(fragment, leaf)
-            )
-            violations.extend(fragment_projection_violations(fragment, leaf))
+            found.extend(fragment_owner_violations(fragment, view, subject))
+            found.extend(fragment_environment_violations(fragment, view, subject))
+            found.extend(fragment_projection_violations(fragment, subject))
+        finding = open_findings.pop(leaf_key(view), None)
+        if finding is not None:
+            held = {
+                f"reaches entity-data owner {finding.owner}",
+                f"takes {finding.owner} from the environment",
+            }
+            remaining = [
+                item
+                for item in found
+                if not any(item.endswith(suffix) for suffix in held)
+            ]
+            if len(remaining) == len(found):
+                violations.append(
+                    f"{view.path}: {view.symbol} no longer reaches "
+                    f"{finding.owner}; remove it from OPEN_CHILD_FINDINGS"
+                )
+            found = remaining
+        violations.extend(found)
+        try:
+            children = child_views(view, fragments, indexes)
+        except ValueError as error:
+            violations.append(f"{view.path}: {error}")
+            continue
+        for child in children:
+            if leaf_key(child) in reached:
+                continue
+            reached.add(leaf_key(child))
+            pending.append((child, (*under, view.symbol)))
+    for _, path, symbol in sorted(open_findings):
+        violations.append(
+            f"{path}: {symbol} is no longer under a repeated row; remove it "
+            "from OPEN_CHILD_FINDINGS"
+        )
     return violations
 
 

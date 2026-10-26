@@ -23,11 +23,16 @@ SPEC.loader.exec_module(BOUNDARY)
 
 class UiProjectionBoundaryTests(unittest.TestCase):
     def copied_inventory(self, destination: Path) -> None:
-        for leaf in BOUNDARY.RENDER_LEAVES:
-            source = ROOT / leaf.path
-            target = destination / leaf.path
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(source, target)
+        # The whole UI source trees: a row's children, and the views the
+        # check holds open findings for, are declared all over them.
+        for source_root, suffix in (
+            *((root, ".swift") for root in BOUNDARY.SWIFT_SOURCE_ROOTS),
+            (BOUNDARY.KOTLIN_SOURCE_ROOT, ".kt"),
+        ):
+            for source in (ROOT / source_root).rglob(f"*{suffix}"):
+                target = destination / source.relative_to(ROOT)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source, target)
 
     def test_production_inventory_passes(self) -> None:
         self.assertEqual(BOUNDARY.check(ROOT), [])
@@ -228,6 +233,225 @@ struct FixtureEnvironmentList: View {
                     "environment",
                     f"{relative}:7: FixtureEnvironmentRow takes LegacyModel from the "
                     "environment",
+                ],
+            )
+
+    def test_child_views_built_under_a_repeated_row_are_checked(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.copied_inventory(root)
+            list_relative = Path("bae-macos/bae/bae/Views/FixtureChildList.swift")
+            list_path = root / list_relative
+            list_path.parent.mkdir(parents=True, exist_ok=True)
+            list_path.write_text(
+                """
+import SwiftUI
+
+struct FixtureChildRow: View {
+    let row: FixtureProjection
+    var body: some View {
+        VStack {
+            FixtureChildName(row: row)
+            FixtureChildProgress(row: row)
+        }
+    }
+}
+
+private struct FixtureChildName: View {
+    let row: FixtureProjection
+    @Environment(UiStore.self) private var uiStore
+    var body: some View { Text(row.title) }
+}
+
+struct FixtureChildList: View {
+    let rows: [FixtureProjection]
+    var body: some View {
+        List(rows) { row in
+            FixtureChildRow(row: row)
+        }
+    }
+}
+"""
+            )
+            child_relative = Path(
+                "bae-macos/bae/bae/Views/Components/FixtureChildProgress.swift"
+            )
+            child_path = root / child_relative
+            child_path.parent.mkdir(parents=True, exist_ok=True)
+            child_path.write_text(
+                """
+import SwiftUI
+
+struct FixtureChildProgress: View {
+    let row: FixtureProjection
+    @Environment(OutboxStore.self) private var outboxStore
+    var body: some View {
+        progressLine
+    }
+
+    private var progressLine: some View {
+        fixtureChildCaption(row)
+    }
+}
+
+func fixtureChildCaption(_ row: FixtureProjection) -> some View {
+    FixtureChildCaption(library: nil)
+}
+
+struct FixtureChildCaption: View {
+    let library: LibraryStore?
+    var body: some View { Text("") }
+}
+"""
+            )
+            under = "FixtureChildRow > FixtureChildProgress"
+            self.assertEqual(
+                BOUNDARY.check(root),
+                [
+                    f"{child_relative}:6: FixtureChildProgress (built under "
+                    "repeated FixtureChildRow) reaches entity-data owner OutboxStore",
+                    f"{child_relative}:6: FixtureChildProgress (built under "
+                    "repeated FixtureChildRow) takes OutboxStore from the environment",
+                    f"{child_relative}:21: FixtureChildCaption (built under "
+                    f"repeated {under} > fixtureChildCaption) reaches entity-data "
+                    "owner LibraryStore",
+                ],
+            )
+
+    def test_child_resolution_follows_swift_visibility(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.copied_inventory(root)
+            list_relative = Path("bae-macos/bae/bae/Views/FixtureScopedList.swift")
+            list_path = root / list_relative
+            list_path.parent.mkdir(parents=True, exist_ok=True)
+            list_path.write_text(
+                """
+import SwiftUI
+
+struct FixtureScopedRow: View {
+    let row: FixtureProjection
+    var body: some View {
+        fixtureScopedBadge(row)
+            .fixtureScopedChrome()
+    }
+}
+
+struct FixtureScopedList: View {
+    let rows: [FixtureProjection]
+    var body: some View {
+        ForEach(rows) { row in
+            FixtureScopedRow(row: row)
+        }
+    }
+}
+"""
+            )
+            other_relative = Path("bae-macos/bae/bae/Views/FixtureScopedOther.swift")
+            (root / other_relative).write_text(
+                """
+import SwiftUI
+
+private func fixtureScopedBadge(_ row: FixtureProjection) -> some View {
+    FixtureScopedStoreReader(library: nil)
+}
+
+struct FixtureScopedOwner: View {
+    var body: some View { EmptyView() }
+
+    func fixtureScopedChrome() -> some View {
+        FixtureScopedStoreReader(library: nil)
+    }
+}
+
+extension View {
+    func fixtureScopedChrome() -> some View {
+        FixtureScopedStoreReader(library: nil)
+    }
+}
+
+struct FixtureScopedStoreReader: View {
+    let library: LibraryStore?
+    var body: some View { EmptyView() }
+}
+"""
+            )
+            # The private function and the other type's member are out of the
+            # row's reach; the `View` modifier is what `.fixtureScopedChrome()`
+            # calls.
+            self.assertEqual(
+                BOUNDARY.check(root),
+                [
+                    f"{other_relative}:23: FixtureScopedStoreReader (built under "
+                    "repeated FixtureScopedRow > fixtureScopedChrome) reaches "
+                    "entity-data owner LibraryStore",
+                ],
+            )
+
+    def test_open_child_finding_that_stops_reading_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.copied_inventory(root)
+            finding = BOUNDARY.OPEN_CHILD_FINDINGS[0]
+            path = root / finding.path
+            path.write_text(
+                path.read_text().replace(
+                    f"@Environment({finding.owner}.self)", ""
+                ).replace(finding.owner, "Placeholder")
+            )
+            self.assertEqual(
+                BOUNDARY.check(root),
+                [
+                    f"{finding.path}: {finding.symbol} no longer reaches "
+                    f"{finding.owner}; remove it from OPEN_CHILD_FINDINGS",
+                ],
+            )
+
+    def test_compose_child_built_under_a_repeated_row_is_checked(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.copied_inventory(root)
+            row_relative = Path(
+                "bae-android/app/src/main/java/fm/bae/app/ui/FixtureChildList.kt"
+            )
+            row_path = root / row_relative
+            row_path.parent.mkdir(parents=True, exist_ok=True)
+            row_path.write_text(
+                """
+@Composable
+internal fun FixtureChildRow(row: FixtureProjection) {
+    Column {
+        FixtureChildProgress(row)
+    }
+}
+
+@Composable
+internal fun FixtureChildList(rows: List<FixtureProjection>) {
+    LazyColumn {
+        items(rows) { row -> FixtureChildRow(row) }
+    }
+}
+"""
+            )
+            child_relative = Path(
+                "bae-android/app/src/main/java/fm/bae/app/ui/FixtureChildProgress.kt"
+            )
+            child_path = root / child_relative
+            child_path.write_text(
+                """
+@Composable
+internal fun FixtureChildProgress(row: FixtureProjection) {
+    val outbox = LocalOutboxStore.current
+    Text(row.title)
+}
+"""
+            )
+            self.assertEqual(
+                BOUNDARY.check(root),
+                [
+                    f"{child_relative}:4: FixtureChildProgress (built under "
+                    "repeated FixtureChildRow) reaches entity-data owner "
+                    "LocalOutboxStore",
                 ],
             )
 
