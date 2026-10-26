@@ -35,14 +35,12 @@ natord = "1.0"
 unicode-normalization = "0.1"
 base64 = "0.22"
 async-trait = "0.1"
-axum = "0.7"
 regex = "1.11"
 libc = "0.2"
 rtrb = "0.3.2"
 tokio-util = { version = "0.7", features = ["io", "rt"] }
 rand = "0.9"
 tracing = { workspace = true }
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 # The shared remote-image cache spools downloads to a temporary file before an
 # atomic persist. Desktop extraction also stages cover files for barcode OCR.
 tempfile = "3.8"
@@ -113,6 +111,10 @@ bae-util = { path = "../bae-util", features = ["test-utils"] }
 bae-test-support = { path = "../bae-test-support" }
 tokio = { version = "1.0", features = ["test-util"] }
 serial_test = "3.4.0"
+# The local HTTP servers tests stand in for catalogs and cover archives with.
+axum = "0.7"
+# The test log capture (`test_logs`) and the sync bench example's log output.
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 # The examples resolve the running user's home once, at the top, to build the
 # app directory they read.
 dirs = "5.0"
