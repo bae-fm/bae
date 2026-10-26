@@ -54,9 +54,10 @@ async fn a_profile_names_its_avatar_once_the_upload_completes() {
         b"first avatar"
     );
     assert!(manager
-        .outbox_snapshot()
+        .outbox_state()
         .await
         .unwrap()
+        .queue
         .other_files
         .iter()
         .any(|file| matches!(file.label, bae_core::library::UploadFileLabel::Avatar)));

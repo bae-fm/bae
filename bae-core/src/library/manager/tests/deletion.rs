@@ -108,9 +108,9 @@ async fn deletion_abandons_queued_file_uploads_and_keeps_the_originals() {
         else { manager.delete_release(&release.id).await.unwrap(); }
         assert!(find_release(&manager, &release.id).await.is_none());
         assert_eq!(std::fs::read(source.join("track.flac")).unwrap(), b"audio");
-        let snapshot = manager.outbox_snapshot().await.unwrap();
-        assert!(snapshot.upload_groups.is_empty());
-        assert!(snapshot.other_files.is_empty());
+        let snapshot = manager.outbox_state().await.unwrap();
+        assert!(snapshot.queue.upload_groups.is_empty());
+        assert!(snapshot.queue.other_files.is_empty());
     }
 }
 

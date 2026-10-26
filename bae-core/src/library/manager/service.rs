@@ -474,7 +474,7 @@ impl LibraryManager {
 
     pub fn subscribe_outbox_values(
         &self,
-    ) -> tokio::sync::watch::Receiver<Option<Result<crate::library::OutboxSnapshot, String>>> {
+    ) -> tokio::sync::watch::Receiver<Option<Result<crate::library::OutboxState, String>>> {
         self.sync.subscribe_outbox_values()
     }
 
@@ -529,11 +529,11 @@ impl LibraryManager {
         self.database.subscribe_queued_releases(initial)
     }
 
-    /// The current outbox processing snapshot — queue depth, per-item state, and
-    /// a pre-formatted summary. Seeds the Storage Manager panel before the first
-    /// value arrives on the outbox stream.
-    pub async fn outbox_snapshot(&self) -> Result<crate::library::OutboxSnapshot, LibraryError> {
-        self.sync.outbox_snapshot().await
+    /// The upload queue and its transfers as the durable queue holds them
+    /// now. Seeds the Storage Manager panel before the first value arrives on
+    /// the outbox stream.
+    pub async fn outbox_state(&self) -> Result<crate::library::OutboxState, LibraryError> {
+        self.sync.outbox_state().await
     }
 }
 

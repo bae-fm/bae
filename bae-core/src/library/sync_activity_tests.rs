@@ -1,6 +1,28 @@
 use super::*;
 use crate::library::CountLabel;
-use crate::library::{OutboxSnapshot, UploadProgress};
+use crate::library::{
+    OutboxQueue, OutboxState, OutboxTransfers, UploadBar, UploadProgress, UploadTransfer,
+};
+
+/// An empty, running upload queue.
+fn idle_outbox() -> OutboxState {
+    OutboxState {
+        revision: 0,
+        queue: OutboxQueue {
+            upload_groups: Vec::new(),
+            other_files: Vec::new(),
+            total: UploadProgress::default(),
+            pause_state: OutboxPauseState::Running,
+        },
+        transfers: OutboxTransfers {
+            keyed: Default::default(),
+            total: UploadTransfer {
+                bar: None,
+                throughput_bps: 0,
+            },
+        },
+    }
+}
 
 fn status() -> SyncStatusSnapshot {
     SyncStatusSnapshot {
@@ -16,11 +38,7 @@ fn status() -> SyncStatusSnapshot {
 /// Nothing moving and nothing to fix: the indicator is absent.
 #[test]
 fn a_settled_library_is_quiet() {
-    let activity = SyncActivity::new(
-        &status(),
-        &OutboxSnapshot::default(),
-        &DownloadQueueContents::default(),
-    );
+    let activity = SyncActivity::new(&status(), &idle_outbox(), &DownloadQueueContents::default());
     assert!(!activity.moving());
     assert!(!activity.needs_attention());
 }
@@ -31,11 +49,7 @@ fn a_settled_library_is_quiet() {
 fn a_pass_alone_is_not_movement() {
     let mut syncing = status();
     syncing.status = coven::SyncStatus::Syncing;
-    let activity = SyncActivity::new(
-        &syncing,
-        &OutboxSnapshot::default(),
-        &DownloadQueueContents::default(),
-    );
+    let activity = SyncActivity::new(&syncing, &idle_outbox(), &DownloadQueueContents::default());
     assert!(activity.syncing);
     assert!(!activity.moving());
 }
@@ -43,15 +57,15 @@ fn a_pass_alone_is_not_movement() {
 /// Files being sent move; a paused queue's waiting files don't.
 #[test]
 fn transfers_are_movement() {
-    let mut outbox = OutboxSnapshot {
-        total: UploadProgress {
-            queued: 4,
-            uploading: 2,
-            upload_bytes_done: 10,
-            upload_bytes_total: 40,
-        },
-        ..OutboxSnapshot::default()
+    let mut outbox = idle_outbox();
+    outbox.queue.total = UploadProgress {
+        queued: 4,
+        uploading: 2,
     };
+    outbox.transfers.total.bar = Some(UploadBar {
+        bytes_done: 10,
+        bytes_total: 40,
+    });
     let uploading = SyncActivity::new(&status(), &outbox, &DownloadQueueContents::default());
     assert!(uploading.moving());
     assert_eq!(
@@ -63,8 +77,8 @@ fn transfers_are_movement() {
             bytes_total: 40,
         })
     );
-    outbox.pause_state = OutboxPauseState::Paused;
-    outbox.total.uploading = 0;
+    outbox.queue.pause_state = OutboxPauseState::Paused;
+    outbox.queue.total.uploading = 0;
     let paused = SyncActivity::new(&status(), &outbox, &DownloadQueueContents::default());
     assert_eq!(paused.uploads, None);
 }
@@ -78,11 +92,7 @@ fn failures_and_pending_records_need_attention() {
         error: std::sync::Arc::new(coven::StorageFailure::Network.into()),
     };
     let new = |status: &SyncStatusSnapshot| {
-        SyncActivity::new(
-            status,
-            &OutboxSnapshot::default(),
-            &DownloadQueueContents::default(),
-        )
+        SyncActivity::new(status, &idle_outbox(), &DownloadQueueContents::default())
     };
     assert!(new(&failed).needs_attention());
     let mut waiting = status();

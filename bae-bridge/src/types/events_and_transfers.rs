@@ -125,12 +125,55 @@ pub enum BridgeUploadFileLabel {
     DeletedReleaseFile,
 }
 
-#[derive(Debug, Clone, Default, uniffi::Record)]
+/// How many files wait and how many are being sent, and the phase that
+/// makes. How far they have gone is their transfer.
+#[derive(Debug, Clone, Default, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeUploadProgress {
     pub queued: u32,
     pub uploading: u32,
-    pub bar: Option<BridgeUploadBar>,
     pub activity: Option<BridgeUploadActivity>,
+}
+
+/// How far an upload has gone and how fast it goes now. Mirrors
+/// `UploadTransfer`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeUploadTransfer {
+    pub bar: Option<BridgeUploadBar>,
+    /// Bytes per second.
+    pub throughput_bps: u64,
+}
+
+/// What a transfer is of: one queued file, by its `file_id`, or a release's
+/// files together.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum BridgeUploadTransferKey {
+    File { file_id: String },
+    Release { release_id: String },
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeKeyedUploadTransfer {
+    pub key: BridgeUploadTransferKey,
+    pub transfer: BridgeUploadTransfer,
+}
+
+/// A change to one transfer, or every transfer. Mirrors
+/// `OutboxTransferChange`.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeOutboxTransferChange {
+    Updated {
+        key: BridgeUploadTransferKey,
+        transfer: BridgeUploadTransfer,
+    },
+    /// The file or release left the queue.
+    Removed { key: BridgeUploadTransferKey },
+    /// The whole queue's transfer.
+    TotalUpdated { transfer: BridgeUploadTransfer },
+    /// Every transfer; a key not listed has none.
+    Reset {
+        transfers: Vec<BridgeKeyedUploadTransfer>,
+        total: BridgeUploadTransfer,
+    },
 }
 
 /// A queued download's state.
@@ -334,15 +377,13 @@ pub struct BridgeOutputSnapshot {
 }
 
 /// One file in a release's upload group. Mirrors `UploadFileOp` with its state
-/// flattened; `bar` is present only while the file is moving bytes.
+/// flattened; how far it has gone is the transfer keyed by its `file_id`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeUploadFileOp {
     pub pending: Option<crate::types::BridgePendingWait>,
     pub file_id: String,
     pub release_file_key: Option<std::sync::Arc<BridgeRowKey>>,
     pub label: BridgeUploadFileLabel,
-    pub bar: Option<BridgeUploadBar>,
-    pub throughput_bps: u64,
     pub state: BridgeUploadFileState,
 }
 
@@ -352,15 +393,6 @@ pub struct BridgeUploadReleaseGroup {
     pub release_id: String,
     pub files: Vec<BridgeUploadFileOp>,
     pub progress: BridgeUploadProgress,
-    /// The release's current transfer rate.
-    pub throughput_bps: u64,
-}
-
-/// One storage row's progress paired with the transfer rate for that release.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeReleaseUploadProgress {
-    pub progress: BridgeUploadProgress,
-    pub throughput_bps: u64,
 }
 
 /// Whether the upload queue is running or suspended.
@@ -370,26 +402,23 @@ pub enum BridgeOutboxPauseState {
     Paused,
 }
 
-/// The upload queue as the Storage Manager renders it.
+/// The upload queue as the Storage Manager renders it, sent each time it
+/// changes; the bytes its files move are its transfers.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeOutboxSnapshot {
-    /// Increases with each publication, so a subscriber that skipped values
-    /// can still tell an enqueue it was told about has finished.
+    /// Increases with each change to the queue, so a subscriber that skipped
+    /// values can still tell an enqueue it was told about has finished.
     pub revision: u64,
     /// A group leaves when coven has no uploads remaining for its release.
     pub upload_groups: Vec<BridgeUploadReleaseGroup>,
     pub other_files: Vec<BridgeUploadFileOp>,
     /// `upload_groups` per release id.
-    pub per_release: std::collections::HashMap<String, BridgeReleaseUploadProgress>,
+    pub per_release: std::collections::HashMap<String, BridgeUploadProgress>,
     /// Across all uploads.
     pub total: BridgeUploadProgress,
     /// The summary line's parts, in core's order.
     pub summary_parts: Vec<BridgeCountLabel>,
     pub pause_state: BridgeOutboxPauseState,
-    /// Bytes per second.
-    pub throughput_bps: u64,
-    /// Seconds remaining at the current rate.
-    pub eta_seconds: Option<u64>,
 }
 
 /// Localization key for one release's upload phase alone, the word beside

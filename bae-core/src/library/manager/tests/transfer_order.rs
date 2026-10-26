@@ -47,11 +47,12 @@ fn transitioning_release_ids_preserve_upload_group_order() {
         release_id: release_id.to_string(),
         files: Vec::new(),
         progress: crate::library::UploadProgress::default(),
-        throughput_bps: 0,
     };
-    let snapshot = crate::library::OutboxSnapshot {
+    let snapshot = crate::library::OutboxQueue {
         upload_groups: vec![group("z-first"), group("a-second")],
-        ..Default::default()
+        other_files: Vec::new(),
+        total: crate::library::UploadProgress::default(),
+        pause_state: crate::library::OutboxPauseState::Running,
     };
 
     assert_eq!(

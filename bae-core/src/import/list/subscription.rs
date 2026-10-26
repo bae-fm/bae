@@ -26,7 +26,7 @@ use super::{
     ImportListView, UploadStatus,
 };
 use crate::import::selection::{SelectedRows, SelectionChange};
-use crate::library::{LibraryPageWindows, OutboxSnapshot};
+use crate::library::{LibraryPageWindows, OutboxState};
 use crate::live_query::CancellableLiveQuery;
 use std::collections::{BTreeSet, HashSet};
 use std::sync::{Arc, Mutex};
@@ -240,7 +240,7 @@ impl ImportListSubscription {
         folder_scans: coven::LiveQuery<FolderScanProgress>,
         view: ImportListView,
         windows: LibraryPageWindows,
-        mut outbox: watch::Receiver<Option<Result<OutboxSnapshot, String>>>,
+        mut outbox: watch::Receiver<Option<Result<OutboxState, String>>>,
         runtime_handle: &tokio::runtime::Handle,
     ) -> Self {
         let initial = ImportListRequest {
@@ -420,7 +420,7 @@ impl Drop for ImportListSubscription {
 /// stood, so the merge first waits for it to change.
 async fn merge(
     request: Arc<StandingRequest>,
-    mut outbox: watch::Receiver<Option<Result<OutboxSnapshot, String>>>,
+    mut outbox: watch::Receiver<Option<Result<OutboxState, String>>>,
 ) {
     loop {
         tokio::select! {

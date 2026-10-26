@@ -133,7 +133,7 @@ pub struct DbWorkTrackSummary {
 /// formatting, no derivation — the resolver in `LibraryManager` produces the
 /// display-ready `crate::album_detail::ReleaseStorageSummary` (deriving
 /// `storage_state` from `remote` and formatting `total_size`). Pending-upload
-/// counts are not here; `OutboxSnapshot` is the only source for those.
+/// counts are not here; `OutboxQueue` is the only source for those.
 #[derive(Debug, Clone)]
 pub struct DbReleaseStorageSummary {
     pub release_id: String,
@@ -278,7 +278,7 @@ pub struct DbTrackWithArtists {
 /// pickers): `DbReleaseStorageSummary` minus the album-level joins. The resolver
 /// in `LibraryManager` produces the display-ready
 /// `crate::album_detail::ReleaseSummary`. Pending-upload counts are not here;
-/// `OutboxSnapshot` is the only source for those.
+/// `OutboxQueue` is the only source for those.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseSummary {
     pub id: String,

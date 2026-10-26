@@ -79,20 +79,13 @@ pub enum UploadActivity {
     Queued,
 }
 
+/// How many queued files wait and how many are being sent.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct UploadProgress {
     pub queued: u32,
     pub uploading: u32,
-    pub upload_bytes_done: u64,
-    pub upload_bytes_total: u64,
 }
 impl UploadProgress {
-    pub fn bar(&self) -> Option<UploadBar> {
-        (self.uploading > 0).then_some(UploadBar {
-            bytes_done: self.upload_bytes_done,
-            bytes_total: self.upload_bytes_total,
-        })
-    }
     pub fn has_transition(&self) -> bool {
         self.queued > 0 || self.uploading > 0
     }
@@ -105,78 +98,46 @@ impl UploadProgress {
             None
         }
     }
-    /// Count one queued file: waiting, or being sent now. The bytes are
-    /// those the provider confirmed for the files being sent; a file sent in
-    /// one request has none to count.
-    fn add(&mut self, upload: &coven::QueuedUpload) {
-        match upload.phase {
-            UploadState::Waiting => {
-                self.queued = self.queued.checked_add(1).expect("upload count overflow")
-            }
-            UploadState::Uploading => {
-                self.uploading = self
-                    .uploading
-                    .checked_add(1)
-                    .expect("upload count overflow");
-                if let Some(progress) = &upload.progress {
-                    assert!(
-                        progress.bytes_confirmed <= progress.bytes_total,
-                        "provider progress exceeds file size"
-                    );
-                    self.upload_bytes_done = self
-                        .upload_bytes_done
-                        .checked_add(progress.bytes_confirmed)
-                        .expect("upload bytes overflow");
-                    self.upload_bytes_total = self
-                        .upload_bytes_total
-                        .checked_add(progress.bytes_total)
-                        .expect("upload bytes overflow");
-                }
-            }
-        }
+    /// Count one queued file: waiting, or being sent now.
+    fn add(&mut self, phase: UploadState) {
+        let count = match phase {
+            UploadState::Waiting => &mut self.queued,
+            UploadState::Uploading => &mut self.uploading,
+        };
+        *count = count.checked_add(1).expect("upload count overflow");
     }
 }
 
-#[derive(Debug, Clone)]
+/// One queued upload: which file, whether it is being sent, and why it
+/// waits when it does. How far it has gone is its [`UploadTransfer`].
+#[derive(Debug, Clone, PartialEq)]
 pub struct UploadFileOp {
-    /// Keep coven's file identity, row key, and progress together.
-    pub upload: coven::QueuedUpload,
+    /// coven's file identity and row key.
+    pub file: coven::FileRef,
+    pub phase: UploadState,
     pub pending: Option<crate::library::PendingWait>,
     pub label: UploadFileLabel,
-    pub throughput_bps: u64,
 }
 impl UploadFileOp {
     /// The release-file row this upload belongs beside. Artwork has no such row.
     pub fn release_file_key(&self) -> Option<&coven::RowKey> {
-        (self.upload.file.table() == "release_files").then(|| self.upload.file.key())
-    }
-
-    /// The bytes the provider confirmed, which a paused upload keeps; a file
-    /// sent in one request has none.
-    pub fn bar(&self) -> Option<UploadBar> {
-        self.upload.progress.as_ref().map(|progress| UploadBar {
-            bytes_done: progress.bytes_confirmed,
-            bytes_total: progress.bytes_total,
-        })
+        (self.file.table() == "release_files").then(|| self.file.key())
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct UploadReleaseGroup {
     pub release_id: String,
     pub files: Vec<UploadFileOp>,
     pub progress: UploadProgress,
-    pub throughput_bps: u64,
-}
-#[derive(Debug, Clone)]
-pub struct ReleaseUploadProgress {
-    pub progress: UploadProgress,
-    pub throughput_bps: u64,
 }
 
-#[derive(Debug, Clone)]
-pub struct OutboxSnapshot {
-    pub revision: u64,
+/// The upload queue as the Storage Manager lists it: which files wait or are
+/// being sent, for which releases, and whether the queue is paused. It
+/// changes only as files join or leave the queue, start or stop being sent,
+/// or wait on something; the bytes they move are [`OutboxTransfers`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct OutboxQueue {
     pub upload_groups: Vec<UploadReleaseGroup>,
     /// The library's images (covers, artist images, avatars), which upload
     /// whether or not any release does, and uploads whose release-file rows
@@ -184,8 +145,6 @@ pub struct OutboxSnapshot {
     pub other_files: Vec<UploadFileOp>,
     pub total: UploadProgress,
     pub pause_state: OutboxPauseState,
-    pub throughput_bps: u64,
-    pub eta_seconds: Option<u64>,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutboxPauseState {
@@ -193,20 +152,93 @@ pub enum OutboxPauseState {
     Paused,
 }
 
-impl Default for OutboxSnapshot {
-    fn default() -> Self {
-        Self {
-            revision: 0,
-            upload_groups: Vec::new(),
-            other_files: Vec::new(),
-            total: UploadProgress::default(),
-            pause_state: OutboxPauseState::Running,
-            throughput_bps: 0,
-            eta_seconds: None,
+/// What a transfer is of: one queued file, or a release's files together.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum UploadTransferKey {
+    File(coven::FileId),
+    Release(String),
+}
+
+/// How far an upload has gone and how fast it goes now.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UploadTransfer {
+    /// The bytes the provider confirmed: for a file, while it has an upload
+    /// session (a paused one keeps its own; a file sent in one request has
+    /// none); for a release or the whole queue, those of the files being sent
+    /// now, while any is.
+    pub bar: Option<UploadBar>,
+    /// Bytes per second.
+    pub throughput_bps: u64,
+}
+
+/// The bytes the queued uploads have moved and how fast they move: every
+/// queued file's transfer and every uploading release's, keyed, and the
+/// queue's. They change with each part a provider confirms.
+#[derive(Debug, Clone, PartialEq)]
+pub struct OutboxTransfers {
+    pub keyed: HashMap<UploadTransferKey, UploadTransfer>,
+    pub total: UploadTransfer,
+}
+
+/// The upload queue and its transfers as one value, read from one durable
+/// queue. `revision` counts the changes to the queue alone: a new transfer
+/// on the same queue keeps it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct OutboxState {
+    pub revision: u64,
+    pub queue: OutboxQueue,
+    pub transfers: OutboxTransfers,
+}
+
+/// The transfer of several files together: the bytes of those being sent
+/// and every file's rate.
+#[derive(Default)]
+struct TransferSum {
+    uploading: bool,
+    bytes_done: u64,
+    bytes_total: u64,
+    throughput_bps: u64,
+}
+impl TransferSum {
+    /// Count one file's bytes, while it is being sent, and its rate. A file
+    /// sent in one request has no bytes to count.
+    fn add(&mut self, upload: &coven::QueuedUpload, throughput_bps: u64) {
+        self.throughput_bps = self
+            .throughput_bps
+            .checked_add(throughput_bps)
+            .expect("upload rate overflow");
+        if upload.phase != UploadState::Uploading {
+            return;
+        }
+        self.uploading = true;
+        if let Some(progress) = &upload.progress {
+            assert!(
+                progress.bytes_confirmed <= progress.bytes_total,
+                "provider progress exceeds file size"
+            );
+            self.bytes_done = self
+                .bytes_done
+                .checked_add(progress.bytes_confirmed)
+                .expect("upload bytes overflow");
+            self.bytes_total = self
+                .bytes_total
+                .checked_add(progress.bytes_total)
+                .expect("upload bytes overflow");
+        }
+    }
+
+    fn transfer(&self) -> UploadTransfer {
+        UploadTransfer {
+            bar: self.uploading.then_some(UploadBar {
+                bytes_done: self.bytes_done,
+                bytes_total: self.bytes_total,
+            }),
+            throughput_bps: self.throughput_bps,
         }
     }
 }
-impl OutboxSnapshot {
+
+impl OutboxQueue {
     pub(crate) fn with_pending(mut self, records: Vec<coven::PendingRecord>) -> Self {
         let records: HashMap<_, _> = records
             .into_iter()
@@ -224,45 +256,54 @@ impl OutboxSnapshot {
             .chain(&mut self.other_files)
         {
             file.pending = records
-                .get(&(file.upload.file.uploader(), file.upload.file.id()))
+                .get(&(file.file.uploader(), file.file.id()))
                 .cloned();
         }
         self
     }
 
-    pub(crate) fn from_queue(queue: DbOutboxQueue, rates: &HashMap<coven::FileId, u64>) -> Self {
+    /// The queue `queue` holds, and the transfers of its files at `rates`.
+    pub(crate) fn from_queue(
+        queue: DbOutboxQueue,
+        rates: &HashMap<coven::FileId, u64>,
+    ) -> (Self, OutboxTransfers) {
         let mut snapshot = Self {
+            upload_groups: Vec::new(),
+            other_files: Vec::new(),
+            total: UploadProgress::default(),
             pause_state: if queue.paused {
                 OutboxPauseState::Paused
             } else {
                 OutboxPauseState::Running
             },
-            ..Self::default()
         };
+        let mut keyed = HashMap::new();
+        let mut total = TransferSum::default();
+        let mut release_sums: Vec<TransferSum> = Vec::new();
         let mut indices = HashMap::new();
-        // A file sent in one request has no provider size to count down.
-        let mut unmeasured = false;
         // Each release's files beside the names they sort by.
         let mut named_files: Vec<Vec<(String, UploadFileOp)>> = Vec::new();
         for entry in queue.uploads {
-            let file = &entry.upload.file;
+            let upload = entry.upload;
+            // A file no rate was measured for moves nothing yet.
             let throughput_bps = if queue.paused {
                 0
             } else {
-                rates.get(&file.id()).copied().unwrap_or(0)
+                rates.get(&upload.file.id()).copied().unwrap_or(0)
             };
-            let op = UploadFileOp {
-                upload: entry.upload,
-                pending: None,
-                label: entry.subject.label(),
-                throughput_bps,
-            };
-            snapshot.total.add(&op.upload);
-            unmeasured |= op.upload.phase == UploadState::Uploading && op.upload.progress.is_none();
-            snapshot.throughput_bps = snapshot
-                .throughput_bps
-                .checked_add(throughput_bps)
-                .expect("upload rate overflow");
+            keyed.insert(
+                UploadTransferKey::File(upload.file.id()),
+                UploadTransfer {
+                    bar: upload.progress.map(|progress| UploadBar {
+                        bytes_done: progress.bytes_confirmed,
+                        bytes_total: progress.bytes_total,
+                    }),
+                    throughput_bps,
+                },
+            );
+            total.add(&upload, throughput_bps);
+            snapshot.total.add(upload.phase);
+            let label = entry.subject.label();
             match entry.subject {
                 UploadSubject::ReleaseFile { release_id, name } => {
                     let index = *indices.entry(release_id.clone()).or_insert_with(|| {
@@ -270,38 +311,57 @@ impl OutboxSnapshot {
                             release_id,
                             files: Vec::new(),
                             progress: UploadProgress::default(),
-                            throughput_bps: 0,
                         });
                         named_files.push(Vec::new());
+                        release_sums.push(TransferSum::default());
                         snapshot.upload_groups.len() - 1
                     });
-                    let group = &mut snapshot.upload_groups[index];
-                    group.progress.add(&op.upload);
-                    group.throughput_bps = group
-                        .throughput_bps
-                        .checked_add(throughput_bps)
-                        .expect("upload rate overflow");
-                    named_files[index].push((name, op));
+                    snapshot.upload_groups[index].progress.add(upload.phase);
+                    release_sums[index].add(&upload, throughput_bps);
+                    named_files[index].push((
+                        name,
+                        UploadFileOp {
+                            file: upload.file,
+                            phase: upload.phase,
+                            pending: None,
+                            label,
+                        },
+                    ));
                 }
                 UploadSubject::Cover { .. }
                 | UploadSubject::ArtistImage
                 | UploadSubject::Avatar
-                | UploadSubject::DeletedReleaseFile => snapshot.other_files.push(op),
+                | UploadSubject::DeletedReleaseFile => snapshot.other_files.push(UploadFileOp {
+                    file: upload.file,
+                    phase: upload.phase,
+                    pending: None,
+                    label,
+                }),
             }
         }
         // A release's files are listed the way every other list of names in
         // the app sorts, naturally and ignoring case, so "Disc 1/05" precedes
         // "Disc 1/18".
-        for (group, mut files) in snapshot.upload_groups.iter_mut().zip(named_files) {
+        for ((group, mut files), sum) in snapshot
+            .upload_groups
+            .iter_mut()
+            .zip(named_files)
+            .zip(&release_sums)
+        {
             files.sort_by(|(left, _), (right, _)| natord::compare_ignore_case(left, right));
             group.files = files.into_iter().map(|(_, op)| op).collect();
+            keyed.insert(
+                UploadTransferKey::Release(group.release_id.clone()),
+                sum.transfer(),
+            );
         }
-        let remaining = snapshot.total.upload_bytes_total - snapshot.total.upload_bytes_done;
-        if snapshot.total.queued == 0 && !unmeasured && remaining > 0 && snapshot.throughput_bps > 0
-        {
-            snapshot.eta_seconds = Some(remaining.div_ceil(snapshot.throughput_bps));
-        }
-        snapshot
+        (
+            snapshot,
+            OutboxTransfers {
+                keyed,
+                total: total.transfer(),
+            },
+        )
     }
 }
 

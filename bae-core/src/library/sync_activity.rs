@@ -4,7 +4,7 @@
 use crate::library::release_queue::ReleaseQueueProgress;
 use crate::library::CountLabel;
 use crate::library::{
-    AbandonedItem, DownloadQueueContents, OutboxPauseState, OutboxSnapshot, PendingItem,
+    AbandonedItem, DownloadQueueContents, OutboxPauseState, OutboxState, PendingItem,
     SyncStatusSnapshot,
 };
 use crate::ui::UiError;
@@ -80,18 +80,25 @@ impl SyncActivity {
     /// offline downloads.
     pub fn new(
         status: &SyncStatusSnapshot,
-        outbox: &OutboxSnapshot,
+        outbox: &OutboxState,
         downloads: &DownloadQueueContents,
     ) -> Self {
-        let total = &outbox.total;
-        let uploads = (total.uploading > 0).then_some(UploadsInFlight {
-            sending: total.uploading,
-            waiting: match outbox.pause_state {
-                OutboxPauseState::Running => total.queued,
-                OutboxPauseState::Paused => 0,
-            },
-            bytes_done: total.upload_bytes_done,
-            bytes_total: total.upload_bytes_total,
+        let total = &outbox.queue.total;
+        let uploads = (total.uploading > 0).then(|| {
+            let bar = outbox
+                .transfers
+                .total
+                .bar
+                .expect("a queue sending files has their bytes");
+            UploadsInFlight {
+                sending: total.uploading,
+                waiting: match outbox.queue.pause_state {
+                    OutboxPauseState::Running => total.queued,
+                    OutboxPauseState::Paused => 0,
+                },
+                bytes_done: bar.bytes_done,
+                bytes_total: bar.bytes_total,
+            }
         });
         let download_total = downloads.total();
         let downloads = (download_total.active > 0).then_some(DownloadsInFlight {
@@ -136,7 +143,7 @@ impl SyncActivity {
 pub struct SyncActivityStream {
     manager: crate::library::LibraryManager,
     status: tokio::sync::watch::Receiver<SyncStatusSnapshot>,
-    outbox: tokio::sync::watch::Receiver<Option<Result<OutboxSnapshot, String>>>,
+    outbox: tokio::sync::watch::Receiver<Option<Result<OutboxState, String>>>,
     downloads: tokio::sync::watch::Receiver<DownloadQueueContents>,
     /// The first value was returned; later ones wait for a change.
     started: bool,
@@ -172,7 +179,7 @@ impl SyncActivityStream {
             // list does.
             None => self
                 .manager
-                .outbox_snapshot()
+                .outbox_state()
                 .await
                 .map_err(|error| UiError::diagnostic(error.category(), error))?,
         };

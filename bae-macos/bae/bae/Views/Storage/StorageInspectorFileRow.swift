@@ -45,8 +45,17 @@ struct StorageInspectorFileRow: View {
 /// pending upload shows why coven is waiting instead of its state.
 private struct UploadOperationLine: View {
     let operation: BridgeUploadFileOp
+    @Environment(OutboxStore.self)
+    private var outboxStore
+
+    /// How far the file has gone, read here so its moving bytes redraw this
+    /// line alone.
+    private var transfer: BridgeUploadTransfer? {
+        outboxStore.transfer(forFile: operation.fileId)
+    }
 
     var body: some View {
+        let bar = transfer?.bar
         VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             HStack(spacing: ThemeSpace.related) {
                 StatusChip(
@@ -55,7 +64,7 @@ private struct UploadOperationLine: View {
                     symbol: symbol
                 )
                 .help(status)
-                Text(operation.bar?.text ?? "")
+                Text(bar?.text ?? "")
                     .monospacedDigit()
                 Spacer(minLength: 0)
                 Text(throughputText)
@@ -64,9 +73,9 @@ private struct UploadOperationLine: View {
             }
             .themeText(.detail)
             .foregroundStyle(.secondary)
-            ProgressTrackBar(progress: operation.bar?.fraction ?? 0)
-                .opacity(operation.bar == nil ? 0 : 1)
-                .accessibilityHidden(operation.bar == nil)
+            ProgressTrackBar(progress: bar?.fraction ?? 0)
+                .opacity(bar == nil ? 0 : 1)
+                .accessibilityHidden(bar == nil)
         }
     }
 
@@ -96,10 +105,9 @@ private struct UploadOperationLine: View {
     }
 
     private var throughputText: String {
-        guard operation.throughputBps > 0 else { return "" }
-        return QueueSummary.throughputText(
-            bytesPerSecond: operation.throughputBps
-        )
+        guard let throughputBps = transfer?.throughputBps, throughputBps > 0
+        else { return "" }
+        return QueueSummary.throughputText(bytesPerSecond: throughputBps)
     }
 }
 

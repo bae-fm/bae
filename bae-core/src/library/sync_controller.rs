@@ -8,7 +8,7 @@ use tracing::debug;
 use crate::config::CloudProvider;
 use crate::db::{Database, OutboxDisplayContext, OutboxDisplayRequest};
 use crate::diagnostics::{Diagnostics, TelemetryEvent};
-use crate::library::{LibraryError, OutboxSnapshot};
+use crate::library::{LibraryError, OutboxQueue, OutboxState, OutboxTransfers};
 use crate::sync::S3ConfigData;
 
 /// Owns the outbox projection and the cloud-connection lifecycle. Holds clones
@@ -17,9 +17,10 @@ use crate::sync::S3ConfigData;
 /// a clone-shared handle or `Arc`.
 #[derive(Clone)]
 pub(crate) struct SyncController {
-    outbox_values: tokio::sync::watch::Sender<Option<Result<OutboxSnapshot, String>>>,
-    /// Serializes every outbox publication and numbers them in the order they
-    /// reach subscribers, and holds the durable queue each one is built from.
+    outbox_values: tokio::sync::watch::Sender<Option<Result<OutboxState, String>>>,
+    /// Serializes every outbox publication and numbers the queue changes in
+    /// the order they reach subscribers, and holds the durable queue each one
+    /// is built from.
     outbox: Arc<tokio::sync::Mutex<OutboxProjection>>,
     /// How many times the projection has read coven's durable queue itself
     /// rather than taking the live query's delivery. The durable reader notes
@@ -37,7 +38,12 @@ pub(crate) struct SyncController {
 /// values.
 #[derive(Default)]
 pub(crate) struct OutboxProjection {
+    /// Counts the changes to the published queue; a new transfer on the same
+    /// queue keeps it.
     revision: u64,
+    /// The queue last published, which the next one is compared against;
+    /// `None` before the first and after a failure.
+    published: Option<OutboxQueue>,
     throughput: crate::library::upload_throughput::UploadThroughput,
     /// The newest durable queue coven delivered or was read for, with the
     /// display rows it needs labelled.
@@ -52,6 +58,24 @@ pub(crate) struct OutboxProjection {
 }
 
 impl OutboxProjection {
+    /// The revision `queue` is published at: the last one when it is the
+    /// queue last published, the next one otherwise.
+    fn revision_for(&mut self, queue: &OutboxQueue) -> u64 {
+        if self.published.as_ref() != Some(queue) {
+            self.revision = next_revision(self.revision);
+            self.published = Some(queue.clone());
+        }
+        self.revision
+    }
+
+    /// The revision a failure is published at, after which any queue is a
+    /// change.
+    fn revision_for_failure(&mut self) -> u64 {
+        self.revision = next_revision(self.revision);
+        self.published = None;
+        self.revision
+    }
+
     fn hold_durable(&mut self, snapshot: coven::UploadQueue, request: OutboxDisplayRequest) {
         if let Some(requests) = &self.display_requests {
             requests
@@ -90,33 +114,36 @@ impl SyncController {
     }
 
     /// The stream the outbox pane and upload standing read; each value is the
-    /// latest snapshot or the failure that kept one from being built.
+    /// latest queue with its transfers, or the failure that kept one from
+    /// being built. It wakes its readers only when one of them changed.
     pub(crate) fn subscribe_outbox_values(
         &self,
-    ) -> tokio::sync::watch::Receiver<Option<Result<OutboxSnapshot, String>>> {
+    ) -> tokio::sync::watch::Receiver<Option<Result<OutboxState, String>>> {
         self.outbox_values.subscribe()
     }
 
-    /// Read coven's durable queue now and publish the snapshot built from it.
+    /// Read coven's durable queue now and publish the queue built from it.
     /// A command that changed the queue calls this so the value it hands back
     /// a revision for already shows its change; the live query's delivery of
-    /// the same change follows.
+    /// the same change follows. The revision is the queue's as it now stands,
+    /// published already when the command changed nothing.
     pub(crate) async fn emit_outbox_changed(&self) -> u64 {
         let mut projection = self.outbox.lock().await;
         self.read_and_publish(&mut projection).await
     }
 
-    /// The current outbox processing snapshot — queue depth, per-item state, and
-    /// a pre-formatted summary.
-    pub(crate) async fn outbox_snapshot(
-        &self,
-    ) -> Result<crate::library::OutboxSnapshot, LibraryError> {
+    /// The upload queue and its transfers as the durable queue holds them
+    /// now, at the revision last published.
+    pub(crate) async fn outbox_state(&self) -> Result<OutboxState, LibraryError> {
         let mut projection = self.outbox.lock().await;
-        let queue = self.database.outbox_queue().await?;
-        let mut snapshot =
-            OutboxSnapshot::from_queue(queue, &projection.throughput.rates(self.clock.elapsed()));
-        snapshot.revision = projection.revision;
-        Ok(snapshot.with_pending(self.database.pending().await?))
+        let durable = self.database.outbox_queue().await?;
+        let (queue, transfers) =
+            OutboxQueue::from_queue(durable, &projection.throughput.rates(self.clock.elapsed()));
+        Ok(OutboxState {
+            revision: projection.revision,
+            queue: queue.with_pending(self.database.pending().await?),
+            transfers,
+        })
     }
 
     /// Keep the outbox stream current: coven's durable queue as its live query
@@ -242,11 +269,11 @@ impl SyncController {
         }
         match Database::outbox_queue_from_context(snapshot.clone(), names.clone()) {
             Ok(queue) => {
-                let snapshot = OutboxSnapshot::from_queue(
+                let built = OutboxQueue::from_queue(
                     queue,
                     &projection.throughput.rates(self.clock.elapsed()),
                 );
-                self.publish(projection, Ok(snapshot)).await;
+                self.publish(projection, Ok(built)).await;
             }
             Err(error) => {
                 self.publish_failure(
@@ -273,11 +300,11 @@ impl SyncController {
                 projection.hold_durable(snapshot.clone(), request);
                 match Database::outbox_queue_from_context(snapshot, names) {
                     Ok(queue) => {
-                        let snapshot = OutboxSnapshot::from_queue(
+                        let built = OutboxQueue::from_queue(
                             queue,
                             &projection.throughput.rates(self.clock.elapsed()),
                         );
-                        self.publish(projection, Ok(snapshot)).await
+                        self.publish(projection, Ok(built)).await
                     }
                     Err(error) => {
                         self.publish_failure(
@@ -313,35 +340,47 @@ impl SyncController {
         self.publish(projection, Err(detail)).await
     }
 
-    /// Number and send one outbox value.
+    /// Send one outbox value, numbering it when its queue differs from the
+    /// one last published, and only when it differs from the value readers
+    /// hold. Returns the queue's revision.
     async fn publish(
         &self,
         projection: &mut OutboxProjection,
-        value: Result<OutboxSnapshot, String>,
+        value: Result<(OutboxQueue, OutboxTransfers), String>,
     ) -> u64 {
-        projection.revision = projection
-            .revision
-            .checked_add(1)
-            .expect("outbox projection revision overflow");
-        let revision = projection.revision;
         let value = match value {
-            Ok(mut snapshot) => {
-                snapshot.revision = revision;
-                self.database
-                    .pending()
-                    .await
-                    .map(|records| snapshot.with_pending(records))
-                    .map_err(|error| {
-                        let detail = cause_text(&error);
-                        self.diagnostics
-                            .report_bug("read the records waiting to upload", &detail);
-                        detail
-                    })
-            }
+            Ok((queue, transfers)) => self
+                .database
+                .pending()
+                .await
+                .map(|records| (queue.with_pending(records), transfers))
+                .map_err(|error| {
+                    let detail = cause_text(&error);
+                    self.diagnostics
+                        .report_bug("read the records waiting to upload", &detail);
+                    detail
+                }),
             Err(error) => Err(error),
         };
-        self.outbox_values.send_replace(Some(value));
-        revision
+        let value = match value {
+            Ok((queue, transfers)) => Ok(OutboxState {
+                revision: projection.revision_for(&queue),
+                queue,
+                transfers,
+            }),
+            Err(error) => {
+                projection.revision_for_failure();
+                Err(error)
+            }
+        };
+        self.outbox_values.send_if_modified(|current| {
+            if current.as_ref() == Some(&value) {
+                return false;
+            }
+            *current = Some(value);
+            true
+        });
+        projection.revision
     }
 
     pub(crate) async fn save_s3_config(
@@ -462,7 +501,46 @@ impl SyncController {
     }
 }
 
+fn next_revision(revision: u64) -> u64 {
+    revision
+        .checked_add(1)
+        .expect("outbox projection revision overflow")
+}
+
 /// An error with its whole chain of causes, as one line of text.
 fn cause_text(error: &(dyn std::error::Error + 'static)) -> String {
     bae_util::error_text::CauseChain(error).to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::library::{OutboxPauseState, UploadProgress};
+
+    fn queue(queued: u32) -> OutboxQueue {
+        OutboxQueue {
+            upload_groups: Vec::new(),
+            other_files: Vec::new(),
+            total: UploadProgress {
+                queued,
+                uploading: 0,
+            },
+            pause_state: OutboxPauseState::Running,
+        }
+    }
+
+    /// The same queue published again keeps its revision, so a reader that
+    /// follows the revision hears of a queue only when it changed; a failure
+    /// in between makes the same queue a change again.
+    #[test]
+    fn a_queue_takes_a_new_revision_only_when_it_changes() {
+        let mut projection = OutboxProjection::default();
+        let first = projection.revision_for(&queue(1));
+        assert_eq!(projection.revision_for(&queue(1)), first);
+        let second = projection.revision_for(&queue(2));
+        assert!(second > first);
+        let failure = projection.revision_for_failure();
+        assert!(failure > second);
+        assert!(projection.revision_for(&queue(2)) > failure);
+    }
 }

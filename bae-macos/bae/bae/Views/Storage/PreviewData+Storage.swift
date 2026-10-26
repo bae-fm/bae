@@ -184,8 +184,6 @@
                 fileId: "covers:rel-row-1",
                 releaseFileKey: nil,
                 label: .cover,
-                bar: nil,
-                throughputBps: 0,
                 state: .waiting
             ),
             BridgeUploadFileOp(
@@ -193,11 +191,6 @@
                 fileId: "release_files:f-2",
                 releaseFileKey: nil,
                 label: .filename(name: "02 Track Title.flac"),
-                bar: BridgeUploadBar(
-                    bytesDone: 10_000_000,
-                    bytesTotal: 31_000_000
-                ),
-                throughputBps: 1_000_000,
                 state: .uploading
             ),
             BridgeUploadFileOp(
@@ -205,8 +198,6 @@
                 fileId: "release_files:f-3",
                 releaseFileKey: nil,
                 label: .filename(name: "03 Track Title.flac"),
-                bar: nil,
-                throughputBps: 0,
                 state: .waiting
             ),
             BridgeUploadFileOp(
@@ -214,11 +205,6 @@
                 fileId: "release_files:rel-row-1-audio",
                 releaseFileKey: nil,
                 label: .filename(name: "04 Track Title.flac"),
-                bar: BridgeUploadBar(
-                    bytesDone: 12_400_000,
-                    bytesTotal: 26_100_000
-                ),
-                throughputBps: 2_200_000,
                 state: .uploading
             ),
             BridgeUploadFileOp(
@@ -226,8 +212,6 @@
                 fileId: "release_files:f-5",
                 releaseFileKey: nil,
                 label: .filename(name: "05 Track Title.flac"),
-                bar: nil,
-                throughputBps: 0,
                 state: .waiting
             ),
             BridgeUploadFileOp(
@@ -235,8 +219,6 @@
                 fileId: "release_files:f-6",
                 releaseFileKey: nil,
                 label: .filename(name: "06 Track Title.flac"),
-                bar: nil,
-                throughputBps: 0,
                 state: .waiting
             ),
         ]
@@ -247,10 +229,6 @@
             BridgeUploadProgress(
                 queued: 4,
                 uploading: 2,
-                bar: BridgeUploadBar(
-                    bytesDone: 22_400_000,
-                    bytesTotal: 57_100_000
-                ),
                 activity: activity
             )
         }
@@ -258,8 +236,7 @@
         static let uploadGroup = BridgeUploadReleaseGroup(
             releaseId: "rel-row-1",
             files: uploadFileOps,
-            progress: uploadProgress(activity: .uploading),
-            throughputBps: 3_200_000
+            progress: uploadProgress(activity: .uploading)
         )
 
         /// A second group whose one file waits its turn.
@@ -271,18 +248,14 @@
                     fileId: "release_files:rel-row-2-audio",
                     releaseFileKey: nil,
                     label: .filename(name: "01 Track Title.flac"),
-                    bar: nil,
-                    throughputBps: 0,
                     state: .waiting
                 )
             ],
             progress: BridgeUploadProgress(
                 queued: 1,
                 uploading: 0,
-                bar: nil,
                 activity: .queued
-            ),
-            throughputBps: 0
+            )
         )
 
         /// A group whose only file is waiting on its missing source.
@@ -294,18 +267,14 @@
                     fileId: "release_files:rel-row-3-audio",
                     releaseFileKey: nil,
                     label: .filename(name: "01 Track Title.flac"),
-                    bar: nil,
-                    throughputBps: 0,
                     state: .waiting
                 )
             ],
             progress: BridgeUploadProgress(
                 queued: 1,
                 uploading: 0,
-                bar: nil,
                 activity: .queued
-            ),
-            throughputBps: 0
+            )
         )
 
         static func outboxSnapshot(
@@ -316,13 +285,7 @@
         ) -> BridgeOutboxSnapshot {
             let perRelease = Dictionary(
                 uniqueKeysWithValues: uploadGroups.map { group in
-                    (
-                        group.releaseId,
-                        BridgeReleaseUploadProgress(
-                            progress: group.progress,
-                            throughputBps: group.throughputBps
-                        )
-                    )
+                    (group.releaseId, group.progress)
                 }
             )
             return BridgeOutboxSnapshot(
@@ -333,27 +296,67 @@
                 total: BridgeUploadProgress(
                     queued: 5,
                     uploading: 2,
-                    bar: BridgeUploadBar(
-                        bytesDone: 22_400_000,
-                        bytesTotal: 75_200_000
-                    ),
                     activity: .uploading
                 ),
                 summaryParts: [
                     BridgeCountLabel(key: "core.queue.uploading", count: 2),
                     BridgeCountLabel(key: "core.queue.queued", count: 5),
                 ],
-                pauseState: pauseState,
-                throughputBps: 6_800_000,
-                etaSeconds: 42
+                pauseState: pauseState
             )
         }
+
+        /// The bytes the preview's uploading files and release have moved, and
+        /// how fast.
+        static let uploadTransfers: BridgeOutboxTransferChange = .reset(
+            transfers: [
+                BridgeKeyedUploadTransfer(
+                    key: .file(fileId: "release_files:f-2"),
+                    transfer: BridgeUploadTransfer(
+                        bar: BridgeUploadBar(
+                            bytesDone: 10_000_000,
+                            bytesTotal: 31_000_000
+                        ),
+                        throughputBps: 1_000_000
+                    )
+                ),
+                BridgeKeyedUploadTransfer(
+                    key: .file(fileId: "release_files:rel-row-1-audio"),
+                    transfer: BridgeUploadTransfer(
+                        bar: BridgeUploadBar(
+                            bytesDone: 12_400_000,
+                            bytesTotal: 26_100_000
+                        ),
+                        throughputBps: 2_200_000
+                    )
+                ),
+                BridgeKeyedUploadTransfer(
+                    key: .release(releaseId: "rel-row-1"),
+                    transfer: BridgeUploadTransfer(
+                        bar: BridgeUploadBar(
+                            bytesDone: 22_400_000,
+                            bytesTotal: 57_100_000
+                        ),
+                        throughputBps: 3_200_000
+                    )
+                ),
+            ],
+            total: BridgeUploadTransfer(
+                bar: BridgeUploadBar(
+                    bytesDone: 22_400_000,
+                    bytesTotal: 57_100_000
+                ),
+                throughputBps: 6_800_000
+            )
+        )
 
         @MainActor
         static func outboxStore(
             _ snapshot: BridgeOutboxSnapshot = outboxSnapshot()
         ) -> OutboxStore {
-            OutboxStore(snapshot: snapshot)
+            let store = OutboxStore(snapshot: snapshot)
+            store.applyTransferChange(uploadTransfers)
+            return store
         }
 
         // MARK: - Storage table rows

@@ -25,11 +25,70 @@ struct OutboxStoreRevisionTests {
 
         var stale = OutboxStore.emptySnapshot
         stale.revision = 1
-        stale.throughputBps = 1
+        stale.pauseState = .paused
         store.applySnapshot(stale)
 
         #expect(store.snapshot.revision == 2)
-        #expect(store.snapshot.throughputBps == 0)
+        #expect(store.snapshot.pauseState == .running)
+    }
+}
+
+@Suite("OutboxStore transfers")
+@MainActor
+struct OutboxStoreTransferTests {
+    private let release = BridgeUploadTransferKey.release(
+        releaseId: "release-a"
+    )
+
+    private func transfer(_ bytesDone: UInt64) -> BridgeUploadTransfer {
+        BridgeUploadTransfer(
+            bar: BridgeUploadBar(bytesDone: bytesDone, bytesTotal: 100),
+            throughputBps: 10
+        )
+    }
+
+    @Test("a release's transfer follows each change that names it")
+    func releaseTransferFollowsItsChanges() {
+        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
+        store.applyTransferChange(
+            .reset(
+                transfers: [
+                    BridgeKeyedUploadTransfer(
+                        key: release,
+                        transfer: transfer(10)
+                    )
+                ],
+                total: transfer(10)
+            )
+        )
+        #expect(store.transfer(forRelease: "release-a") == transfer(10))
+
+        store.applyTransferChange(
+            .updated(key: release, transfer: transfer(40))
+        )
+        #expect(store.transfer(forRelease: "release-a") == transfer(40))
+
+        store.applyTransferChange(.removed(key: release))
+        #expect(store.transfer(forRelease: "release-a") == nil)
+    }
+
+    @Test("the queue's rate shows only while bytes move")
+    func queueRateShowsOnlyWhileBytesMove() {
+        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
+        #expect(store.throughputText == nil)
+
+        store.applyTransferChange(.totalUpdated(transfer: transfer(10)))
+        #expect(
+            store.throughputText
+                == QueueSummary.throughputText(bytesPerSecond: 10)
+        )
+
+        store.applyTransferChange(
+            .totalUpdated(
+                transfer: BridgeUploadTransfer(bar: nil, throughputBps: 0)
+            )
+        )
+        #expect(store.throughputText == nil)
     }
 }
 
@@ -44,7 +103,7 @@ struct StorageStatusBandCloudTransitionTests {
         #expect(
             StorageUploadObservation.active(
                 progress: active,
-                throughputBps: 0
+                transfer: nil
             )
             .canCancel
         )
@@ -62,7 +121,7 @@ struct StorageStatusBandCloudTransitionTests {
             StorageStatusBand.showsTransferActions(
                 uploadObservation: .active(
                     progress: progress,
-                    throughputBps: 0
+                    transfer: nil
                 )
             )
                 == false
@@ -83,11 +142,13 @@ struct CloudImportQueuePresentationTests {
     func activeStorageRowCarriesRateAndProgress() {
         var progress = OutboxStore.emptySnapshot.total
         progress.uploading = 1
-        progress.bar = BridgeUploadBar(bytesDone: 32, bytesTotal: 100)
         progress.activity = .uploading
         let observation = StorageUploadObservation.active(
             progress: progress,
-            throughputBps: 3_200_000
+            transfer: BridgeUploadTransfer(
+                bar: BridgeUploadBar(bytesDone: 32, bytesTotal: 100),
+                throughputBps: 3_200_000
+            )
         )
 
         #expect(observation.progressBar?.fraction == 0.32)
@@ -104,14 +165,19 @@ struct CloudImportQueuePresentationTests {
         var progress = OutboxStore.emptySnapshot.total
         progress.uploading = 2
         progress.queued = 3
-        progress.bar = BridgeUploadBar(bytesDone: 600, bytesTotal: 1016)
         progress.activity = .uploading
 
-        let observation = UploadObservation.active(progress)
+        let observation = StorageUploadObservation.active(
+            progress: progress,
+            transfer: BridgeUploadTransfer(
+                bar: BridgeUploadBar(bytesDone: 600, bytesTotal: 1016),
+                throughputBps: 0
+            )
+        )
         let done = Int64(600).formatted(.byteCount(style: .file))
         let total = Int64(1016).formatted(.byteCount(style: .file))
 
-        #expect(observation.phaseText == "Uploading")
+        #expect(observation.transitionPhaseText == "Uploading")
         #expect(observation.progressDetailText?.contains(done) == true)
         #expect(observation.progressDetailText?.contains(total) == true)
     }
@@ -155,7 +221,7 @@ struct CloudImportQueuePresentationTests {
         #expect(
             StorageUploadObservation.active(
                 progress: progress,
-                throughputBps: 0
+                transfer: nil
             )
             .progressBar == nil
         )
@@ -189,10 +255,7 @@ struct StorageCloudUploadHandoffTests {
 
         var active = OutboxStore.emptySnapshot
         active.revision = 2
-        active.perRelease["release-a"] = BridgeReleaseUploadProgress(
-            progress: active.total,
-            throughputBps: 0
-        )
+        active.perRelease["release-a"] = active.total
         store.applySnapshot(active)
         guard
             case .active = store.storageUploadObservation(
@@ -211,10 +274,7 @@ struct StorageCloudUploadHandoffTests {
 
         var active = OutboxStore.emptySnapshot
         active.revision = 2
-        active.perRelease["release-a"] = BridgeReleaseUploadProgress(
-            progress: active.total,
-            throughputBps: 0
-        )
+        active.perRelease["release-a"] = active.total
         store.applySnapshot(active)
         store.finishCloudUploads(
             for: command,
@@ -245,10 +305,7 @@ struct StorageCloudUploadHandoffTests {
     @Test("an active target remains active while its sibling hands off")
     func activeTargetDoesNotBlockItsSiblingHandoff() {
         var snapshot = OutboxStore.emptySnapshot
-        snapshot.perRelease["release-b"] = BridgeReleaseUploadProgress(
-            progress: snapshot.total,
-            throughputBps: 0
-        )
+        snapshot.perRelease["release-b"] = snapshot.total
         let store = OutboxStore(snapshot: snapshot)
 
         let command = store.beginCloudUploads(
@@ -264,7 +321,7 @@ struct StorageCloudUploadHandoffTests {
         )
         #expect(
             store.storageUploadObservation(forRelease: "release-b")
-                == .active(progress: snapshot.total, throughputBps: 0)
+                == .active(progress: snapshot.total, transfer: nil)
         )
     }
 

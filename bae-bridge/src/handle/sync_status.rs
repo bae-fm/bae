@@ -44,35 +44,34 @@ impl AppHandle {
         })
     }
 
+    /// The upload queue now, then each time it changes.
     pub fn subscribe_outbox(
         &self,
         callback: Box<dyn crate::types::OutboxCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
         self.live_subscription(move |services, _| async move {
-            let mut values = services.subscribe_outbox_values();
-            let current = { values.borrow_and_update().clone() };
-            let initial = match current {
-                Some(value) => value,
-                None => services
-                    .outbox_snapshot()
-                    .await
-                    .map_err(|error| error.to_string()),
-            };
-            match initial {
-                Ok(value) => {
-                    callback.on_value(crate::types::BridgeOutboxSnapshot::from_core(value))
+            let mut queue = services.watch_outbox_queue();
+            while let Some(value) = queue.next().await {
+                match value {
+                    Ok(state) => {
+                        callback.on_value(crate::types::BridgeOutboxSnapshot::from_core(state))
+                    }
+                    Err(error) => callback.on_error(BridgeError::internal(error)),
                 }
-                Err(error) => callback.on_error(BridgeError::internal(error)),
             }
-            while values.changed().await.is_ok() {
-                match values.borrow_and_update().clone() {
-                    Some(Ok(value)) => {
-                        callback.on_value(crate::types::BridgeOutboxSnapshot::from_core(value))
-                    }
-                    Some(Err(error)) => callback.on_error(BridgeError::internal(error)),
-                    None => {
-                        tracing::warn!("outbox value stream published an absent snapshot");
-                    }
+        })
+    }
+
+    /// Every upload transfer now, then each one as it moves or leaves.
+    pub fn subscribe_outbox_transfers(
+        &self,
+        callback: Box<dyn crate::types::OutboxTransfersCallback>,
+    ) -> std::sync::Arc<crate::LiveSubscription> {
+        self.live_subscription(move |services, _| async move {
+            let mut transfers = services.watch_outbox_transfers();
+            while let Some(changes) = transfers.next().await {
+                for change in changes {
+                    callback.on_change(crate::types::BridgeOutboxTransferChange::from_core(change));
                 }
             }
         })
@@ -149,14 +148,14 @@ forward! { async this => {
             .map_err(BridgeError::from)
     }
 
-    /// The current cloud outbox processing snapshot.
+    /// The upload queue as it stands now.
     fn get_outbox_snapshot() -> crate::types::BridgeOutboxSnapshot {
-        let snapshot = this
+        let state = this
             .services
-            .outbox_snapshot()
+            .outbox_state()
             .await
             .map_err(BridgeError::from)?;
-        Ok(crate::types::BridgeOutboxSnapshot::from_core(snapshot))
+        Ok(crate::types::BridgeOutboxSnapshot::from_core(state))
     }
 
     /// Retry failed uploads now: drain coven's upload queue immediately instead

@@ -8,11 +8,10 @@ import uniffi.bae_bridge.BridgeOutboxPauseState
 import uniffi.bae_bridge.BridgeOutboxSnapshot
 
 /**
- * Mirror of core's cloud-upload outbox snapshot. Core re-emits the full snapshot
- * on every change to the upload pipeline — including each pause/resume — so the
- * Settings pause toggle renders its state from [BridgeOutboxSnapshot.pauseState]
- * rather than tracking it optimistically, or the failure of the last read in
- * its place.
+ * Mirror of core's cloud-upload queue. Core sends the queue each time it
+ * changes — including each pause/resume — so the Settings pause toggle renders
+ * its state from [BridgeOutboxSnapshot.pauseState] rather than tracking it
+ * optimistically, or the failure of the last read in its place.
  */
 class OutboxStore(
     initialSnapshot: BridgeOutboxSnapshot,

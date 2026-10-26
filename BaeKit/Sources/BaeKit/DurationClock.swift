@@ -12,8 +12,9 @@ import Foundation
 public enum DurationClock {
     /// The clock label for a duration in ms; "" when there is nothing to label
     /// (no duration, or a negative one). For a value known only as milliseconds
-    /// at render time (an outbox ETA); a static row instead carries its clock as
-    /// a `BridgeDurationClock` field and renders it through ``label(_:)``.
+    /// at render time (a release's length in the metadata editor); a static
+    /// row instead carries its clock as a `BridgeDurationClock` field and
+    /// renders it through ``label(_:)``.
     public static func text(_ ms: Int64?) -> String {
         bridgeClock(ms: ms).map(render) ?? ""
     }

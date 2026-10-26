@@ -148,17 +148,17 @@ async fn a_local_import_s_queued_cover_is_not_its_release_uploading() {
         release_ids.push(id);
     }
 
-    let outbox = f.library_manager.outbox_snapshot().await.unwrap();
+    let outbox = f.library_manager.outbox_state().await.unwrap();
     assert!(
-        outbox.upload_groups.is_empty(),
+        outbox.queue.upload_groups.is_empty(),
         "no release is uploading: {:?}",
-        outbox.upload_groups
+        outbox.queue.upload_groups
     );
-    assert!(outbox.per_release_progress().is_empty());
-    assert!(bae_core::import::list::UploadStanding::of_outbox(&outbox).is_empty());
+    assert!(outbox.queue.per_release_progress().is_empty());
+    assert!(bae_core::import::list::UploadStanding::of_outbox(&outbox.queue).is_empty());
     assert_eq!(
         outbox
-            .other_files
+            .queue.other_files
             .iter()
             .filter(|file| file.label == bae_core::library::UploadFileLabel::Cover)
             .count(),

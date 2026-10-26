@@ -245,13 +245,10 @@ object BridgeFixtures {
                 BridgeUploadProgress(
                     queued = 0u,
                     uploading = 0u,
-                    bar = null,
                     activity = null,
                 ),
             summaryParts = emptyList(),
             pauseState = pauseState,
-            throughputBps = 0uL,
-            etaSeconds = null,
         )
 
     fun castDevice(

@@ -379,6 +379,12 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         NoopLiveSubscription()
     }
 
+    override func subscribeOutboxTransfers(
+        callback _: any OutboxTransfersCallback
+    ) -> LiveSubscription {
+        NoopLiveSubscription()
+    }
+
     override func subscribeCastDevices(
         callback _: any CastDevicesCallback
     ) -> LiveSubscription {

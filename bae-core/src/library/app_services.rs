@@ -411,7 +411,7 @@ impl AppServices {
     delegate_async!(manager, decline_join_request => decline_join_request(request: &coven::JoinRequest) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, cancel_invite => cancel_invite(invite: &coven::InviteId) -> Result<(), crate::library::LibraryError>);
 
-    delegate_async!(manager, outbox_snapshot => outbox_snapshot() -> Result<crate::library::OutboxSnapshot, crate::library::LibraryError>);
+    delegate_async!(manager, outbox_state => outbox_state() -> Result<crate::library::OutboxState, crate::library::LibraryError>);
     delegate_async!(manager, retry_outbox_now => retry_outbox_now() -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, cancel_release_transition => cancel_release_transition(release_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, cancel_all_release_uploads => cancel_all_release_uploads() -> Result<(), crate::library::LibraryError>);
@@ -600,8 +600,20 @@ impl AppServices {
 
     pub fn subscribe_outbox_values(
         &self,
-    ) -> tokio::sync::watch::Receiver<Option<Result<crate::library::OutboxSnapshot, String>>> {
+    ) -> tokio::sync::watch::Receiver<Option<Result<crate::library::OutboxState, String>>> {
         self.inner.manager.subscribe_outbox_values()
+    }
+
+    /// The upload queue as the Storage Manager lists it, sent each time it
+    /// changes.
+    pub fn watch_outbox_queue(&self) -> crate::library::OutboxQueueWatch {
+        crate::library::OutboxQueueWatch::of(self.inner.manager.clone())
+    }
+
+    /// The bytes each queued upload has moved and how fast, sent as each one
+    /// moves.
+    pub fn watch_outbox_transfers(&self) -> crate::library::OutboxTransfersWatch {
+        crate::library::OutboxTransfersWatch::of(self.inner.manager.clone())
     }
 
     pub fn subscribe_transfer_values(

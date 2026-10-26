@@ -76,19 +76,40 @@ fn sending(upload: &mut coven::QueuedUpload, bytes_confirmed: u64, bytes_total: 
     });
 }
 
+/// The queue and transfers `uploads` hold at `rates`, unpaused.
+fn built(
+    uploads: Vec<DbOutboxUpload>,
+    rates: &HashMap<coven::FileId, u64>,
+) -> (OutboxQueue, OutboxTransfers) {
+    OutboxQueue::from_queue(
+        DbOutboxQueue {
+            paused: false,
+            uploads,
+        },
+        rates,
+    )
+}
+
+fn release_transfer(transfers: &OutboxTransfers, release: &str) -> UploadTransfer {
+    transfers.keyed[&UploadTransferKey::Release(release.into())]
+}
+
 #[tokio::test]
 async fn active_uploads_take_precedence_over_waiting_files() {
     let (handle, _directory, mut files) = queued_files().await;
     let mut progress = UploadProgress::default();
+    let mut sum = TransferSum::default();
     assert_eq!(progress.activity(), None);
-    progress.add(&files[0]);
+    progress.add(files[0].phase);
+    sum.add(&files[0], 0);
     assert_eq!(progress.activity(), Some(UploadActivity::Queued));
-    assert_eq!(progress.bar(), None);
+    assert_eq!(sum.transfer().bar, None);
     sending(&mut files[1], 40, 116);
-    progress.add(&files[1]);
+    progress.add(files[1].phase);
+    sum.add(&files[1], 0);
     assert_eq!(progress.activity(), Some(UploadActivity::Uploading));
     assert_eq!(
-        progress.bar(),
+        sum.transfer().bar,
         Some(UploadBar {
             bytes_done: 40,
             bytes_total: 116
@@ -98,7 +119,7 @@ async fn active_uploads_take_precedence_over_waiting_files() {
 }
 
 /// A file sent in one request is being sent, with no provider bytes to
-/// count, so the queue shows no time left while one is.
+/// count.
 #[tokio::test]
 async fn a_file_sent_in_one_request_counts_as_sending_without_bytes() {
     let (handle, _directory, mut files) = queued_files().await;
@@ -108,21 +129,24 @@ async fn a_file_sent_in_one_request_counts_as_sending_without_bytes() {
         sending(file, 10, 116);
     }
     files[0].progress = None;
+    let one_request = files[0].file.id();
     let uploads = files
         .into_iter()
         .map(|file| queued(file, release_file("release", "Track.flac")))
         .collect();
-    let snapshot = OutboxSnapshot::from_queue(
-        DbOutboxQueue {
-            paused: false,
-            uploads,
-        },
-        &rates,
-    );
+    let (snapshot, transfers) = built(uploads, &rates);
     assert_eq!(snapshot.total.uploading, 4);
-    assert_eq!(snapshot.total.upload_bytes_done, 30);
-    assert_eq!(snapshot.total.upload_bytes_total, 348);
-    assert_eq!(snapshot.eta_seconds, None);
+    assert_eq!(
+        transfers.total.bar,
+        Some(UploadBar {
+            bytes_done: 30,
+            bytes_total: 348
+        })
+    );
+    assert_eq!(
+        transfers.keyed[&UploadTransferKey::File(one_request)].bar,
+        None
+    );
     handle.close().await.unwrap();
 }
 
@@ -130,11 +154,11 @@ async fn a_file_sent_in_one_request_counts_as_sending_without_bytes() {
 #[should_panic(expected = "upload bytes overflow")]
 async fn aggregate_progress_cannot_wrap_its_counters() {
     let (_handle, _directory, mut files) = queued_files().await;
-    let mut progress = UploadProgress::default();
+    let mut sum = TransferSum::default();
     sending(&mut files[0], u64::MAX, u64::MAX);
     sending(&mut files[1], 1, 1);
-    progress.add(&files[0]);
-    progress.add(&files[1]);
+    sum.add(&files[0], 0);
+    sum.add(&files[1], 0);
 }
 
 #[tokio::test]
@@ -142,7 +166,7 @@ async fn aggregate_progress_cannot_wrap_its_counters() {
 async fn progress_cannot_exceed_its_denominator() {
     let (_handle, _directory, mut files) = queued_files().await;
     sending(&mut files[0], 117, 116);
-    UploadProgress::default().add(&files[0]);
+    TransferSum::default().add(&files[0], 0);
 }
 
 /// A release's own files group under it, sorted naturally; its cover, which
@@ -172,13 +196,7 @@ async fn release_files_group_by_release_and_its_cover_waits_apart() {
             release_id: "release".into(),
         },
     ));
-    let snapshot = OutboxSnapshot::from_queue(
-        DbOutboxQueue {
-            paused: false,
-            uploads,
-        },
-        &HashMap::new(),
-    );
+    let (snapshot, transfers) = built(uploads, &HashMap::new());
     assert_eq!(snapshot.upload_groups.len(), 1);
     assert_eq!(
         snapshot.upload_groups[0]
@@ -204,8 +222,8 @@ async fn release_files_group_by_release_and_its_cover_waits_apart() {
         snapshot.total.queued, 3,
         "the cover still counts in the queue"
     );
-    assert_eq!(snapshot.total.upload_bytes_total, 0);
-    assert_eq!(snapshot.total.bar(), None);
+    assert_eq!(transfers.total.bar, None);
+    assert_eq!(release_transfer(&transfers, "release").bar, None);
     handle.close().await.unwrap();
 }
 
@@ -221,36 +239,30 @@ async fn provider_bytes_and_file_bytes_stay_distinct() {
         .into_iter()
         .map(|file| queued(file, release_file("release", "Track.flac")))
         .collect();
-    let snapshot = OutboxSnapshot::from_queue(
-        DbOutboxQueue {
-            paused: false,
-            uploads,
-        },
-        &HashMap::new(),
-    );
+    let (snapshot, transfers) = built(uploads, &HashMap::new());
     assert_eq!(snapshot.total.queued, 1);
     assert_eq!(snapshot.total.uploading, 1);
-    assert_eq!(snapshot.total.upload_bytes_done, 250);
-    assert_eq!(snapshot.total.upload_bytes_total, 1016);
+    let bar = Some(UploadBar {
+        bytes_done: 250,
+        bytes_total: 1016,
+    });
+    assert_eq!(transfers.total.bar, bar);
+    assert_eq!(release_transfer(&transfers, "release").bar, bar);
     let active = snapshot.upload_groups[0]
         .files
         .iter()
-        .find(|file| file.upload.phase == UploadState::Uploading)
+        .find(|file| file.phase == UploadState::Uploading)
         .unwrap();
-    assert_eq!(active.upload.file.plaintext_size(), 1000);
+    assert_eq!(active.file.plaintext_size(), 1000);
     assert_eq!(
-        active.bar(),
-        Some(UploadBar {
-            bytes_done: 250,
-            bytes_total: 1016
-        })
+        transfers.keyed[&UploadTransferKey::File(active.file.id())].bar,
+        bar
     );
-    assert_eq!(snapshot.eta_seconds, None);
     handle.close().await.unwrap();
 }
 
 #[tokio::test]
-async fn rates_belong_to_exact_files_and_pausing_removes_rates_and_eta() {
+async fn rates_belong_to_exact_files_and_pausing_removes_rates() {
     let (handle, _directory, files) = queued_files().await;
     let mut uploads = Vec::new();
     let mut rates = HashMap::new();
@@ -267,7 +279,7 @@ async fn rates_belong_to_exact_files_and_pausing_removes_rates_and_eta() {
         uploads.push(queued(file, subject));
     }
     for paused in [false, true] {
-        let snapshot = OutboxSnapshot::from_queue(
+        let (snapshot, transfers) = OutboxQueue::from_queue(
             DbOutboxQueue {
                 paused,
                 uploads: uploads.clone(),
@@ -289,19 +301,23 @@ async fn rates_belong_to_exact_files_and_pausing_removes_rates_and_eta() {
                 OutboxPauseState::Running
             }
         );
-        assert_eq!(snapshot.throughput_bps, if paused { 0 } else { 100 });
-        assert_eq!(snapshot.eta_seconds, if paused { None } else { Some(1) });
-        let summed = snapshot
-            .upload_groups
+        assert_eq!(transfers.total.throughput_bps, if paused { 0 } else { 100 });
+        let files_summed = transfers
+            .keyed
             .iter()
-            .map(|group| group.throughput_bps)
-            .sum::<u64>()
-            + snapshot
-                .other_files
-                .iter()
-                .map(|file| file.throughput_bps)
-                .sum::<u64>();
-        assert_eq!(summed, snapshot.throughput_bps);
+            .filter(|(key, _)| matches!(key, UploadTransferKey::File(_)))
+            .map(|(_, transfer)| transfer.throughput_bps)
+            .sum::<u64>();
+        assert_eq!(files_summed, transfers.total.throughput_bps);
+        let release_files = snapshot.upload_groups[0]
+            .files
+            .iter()
+            .map(|file| transfers.keyed[&UploadTransferKey::File(file.file.id())].throughput_bps)
+            .sum::<u64>();
+        assert_eq!(
+            release_transfer(&transfers, "second").throughput_bps,
+            release_files
+        );
     }
     handle.close().await.unwrap();
 }
@@ -310,12 +326,44 @@ async fn rates_belong_to_exact_files_and_pausing_removes_rates_and_eta() {
 async fn completed_files_leave_no_empty_release_groups_or_stale_rates() {
     let (handle, _directory, files) = queued_files().await;
     let rates = files.iter().map(|file| (file.file.id(), 100)).collect();
-    let snapshot = OutboxSnapshot::from_queue(DbOutboxQueue::default(), &rates);
+    let (snapshot, transfers) = OutboxQueue::from_queue(DbOutboxQueue::default(), &rates);
     assert!(snapshot.upload_groups.is_empty());
     assert!(snapshot.per_release_progress().is_empty());
-    assert_eq!(snapshot.throughput_bps, 0);
-    assert_eq!(snapshot.eta_seconds, None);
+    assert!(transfers.keyed.is_empty());
+    assert_eq!(transfers.total.throughput_bps, 0);
     assert_eq!(snapshot.total.activity(), None);
+    handle.close().await.unwrap();
+}
+
+/// A part the provider confirms moves the transfers and leaves the queue as
+/// it was, which is what lets the queue be sent only when it changes.
+#[tokio::test]
+async fn a_confirmed_part_moves_the_transfers_and_not_the_queue() {
+    let (handle, _directory, files) = queued_files().await;
+    let mut audio = files
+        .into_iter()
+        .filter(|file| file.file.table() == "release_files")
+        .collect::<Vec<_>>();
+    let queue = |audio: &[coven::QueuedUpload]| {
+        built(
+            audio
+                .iter()
+                .cloned()
+                .map(|file| queued(file, release_file("release", "Track.flac")))
+                .collect(),
+            &HashMap::new(),
+        )
+    };
+    sending(&mut audio[0], 100, 1016);
+    let (before, before_transfers) = queue(&audio);
+    sending(&mut audio[0], 200, 1016);
+    let (after, after_transfers) = queue(&audio);
+    assert_eq!(before, after);
+    assert_ne!(before_transfers, after_transfers);
+
+    audio[1].phase = UploadState::Uploading;
+    let (started, _) = queue(&audio);
+    assert_ne!(after, started, "a file starting to send changes the queue");
     handle.close().await.unwrap();
 }
 
@@ -359,7 +407,7 @@ async fn display_names_join_by_table_and_row_while_rates_use_object_identity() {
         context,
     )
     .unwrap();
-    let snapshot = OutboxSnapshot::from_queue(queue, &HashMap::new());
+    let (snapshot, _) = OutboxQueue::from_queue(queue, &HashMap::new());
     let release = snapshot
         .upload_groups
         .iter()
@@ -384,7 +432,7 @@ async fn display_names_join_by_table_and_row_while_rates_use_object_identity() {
         .iter()
         .find(|file| file.label == UploadFileLabel::Cover)
         .unwrap();
-    assert_ne!(cover.upload.file.id(), release.files[0].upload.file.id());
+    assert_ne!(cover.file.id(), release.files[0].file.id());
     let rows = crate::library::storage_inspector::storage_inspector_release_files(
         "release",
         vec![
@@ -414,7 +462,7 @@ async fn display_names_join_by_table_and_row_while_rates_use_object_identity() {
         panic!("the release file retains its place with its upload")
     };
     assert_ne!(
-        upload.upload.file.id(),
+        upload.file.id(),
         replaced,
         "the row's upload is the file attached last"
     );
@@ -442,98 +490,20 @@ async fn pending_reasons_belong_to_the_exact_uploading_device_and_file() {
         },
         coven::PendingReason::NoStorage,
     );
-    let snapshot = OutboxSnapshot::from_queue(
+    let (snapshot, _) = OutboxQueue::from_queue(
         DbOutboxQueue {
             paused: true,
             uploads: vec![queued(upload, release_file("release", "Track.flac"))],
         },
         &HashMap::new(),
-    )
-    .with_pending(vec![wrong_device, record.clone()]);
+    );
+    let snapshot = snapshot.with_pending(vec![wrong_device, record.clone()]);
     let pending = snapshot.upload_groups[0].files[0]
         .pending
         .as_ref()
         .expect("the file's own record reaches it");
     assert_eq!(pending.reason, record.reason);
     assert_eq!(pending.action, crate::library::PendingAction::ResumeUploads);
-    handle.close().await.unwrap();
-}
-
-/// Uploading release files with these confirmed and total provider bytes and
-/// these rates, as one release's queue.
-async fn uploading(
-    progress: &[(u64, u64, u64)],
-) -> (coven::CovenHandle, tempfile::TempDir, OutboxSnapshot) {
-    let (handle, directory, files) = queued_files().await;
-    let mut rates = HashMap::new();
-    let uploads = files
-        .into_iter()
-        .filter(|file| file.file.table() == "release_files")
-        .zip(progress)
-        .map(|(mut file, &(confirmed, total, rate))| {
-            sending(&mut file, confirmed, total);
-            rates.insert(file.file.id(), rate);
-            queued(file, release_file("release", "Track.flac"))
-        })
-        .collect();
-    let snapshot = OutboxSnapshot::from_queue(
-        DbOutboxQueue {
-            paused: false,
-            uploads,
-        },
-        &rates,
-    );
-    (handle, directory, snapshot)
-}
-
-#[tokio::test]
-async fn eta_never_reports_zero_while_provider_bytes_remain() {
-    let (handle, _directory, snapshot) = uploading(&[(115, 116, 10)]).await;
-    assert_eq!(snapshot.eta_seconds, Some(1));
-    handle.close().await.unwrap();
-    let (handle, _directory, snapshot) = uploading(&[(105, 116, 10)]).await;
-    assert_eq!(snapshot.eta_seconds, Some(2));
-    handle.close().await.unwrap();
-}
-
-#[tokio::test]
-async fn queue_eta_counts_every_uploading_files_remaining_bytes() {
-    let (handle, _directory, snapshot) = uploading(&[(16, 116, 20), (216, 1016, 30)]).await;
-    assert_eq!(snapshot.total.upload_bytes_done, 232);
-    assert_eq!(snapshot.total.upload_bytes_total, 1132);
-    // 900 bytes left at 50 B/s.
-    assert_eq!(snapshot.eta_seconds, Some(18));
-    handle.close().await.unwrap();
-}
-
-#[tokio::test]
-async fn queue_eta_is_hidden_while_a_file_waits_for_its_provider_size() {
-    let (handle, _directory, files) = queued_files().await;
-    let mut rates = HashMap::new();
-    let uploads = files
-        .into_iter()
-        .filter(|file| file.file.table() == "release_files")
-        .enumerate()
-        .map(|(index, mut file)| {
-            if index == 0 {
-                sending(&mut file, 16, 116);
-                rates.insert(file.file.id(), 20);
-            }
-            queued(file, release_file("release", "Track.flac"))
-        })
-        .collect();
-    let snapshot = OutboxSnapshot::from_queue(
-        DbOutboxQueue {
-            paused: false,
-            uploads,
-        },
-        &rates,
-    );
-    assert_eq!(snapshot.throughput_bps, 20);
-    assert_eq!(
-        snapshot.eta_seconds, None,
-        "a waiting file's provider bytes are not known yet"
-    );
     handle.close().await.unwrap();
 }
 

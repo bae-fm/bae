@@ -381,49 +381,57 @@ async fn upload_file_op_preserves_object_and_row_identity() {
         )
         .await
         .unwrap();
-    let mut upload = handle.uploads().await.unwrap().files.pop().unwrap();
+    let upload = handle.uploads().await.unwrap().files.pop().unwrap();
     let id = upload.file.id().to_string();
-    upload.phase = coven::UploadPhase::Uploading;
-    upload.progress = Some(coven::UploadProgress {
-        bytes_confirmed: 40,
-        bytes_total: 116,
-    });
-    let bridge = crate::types::BridgeUploadFileOp::from_core(bae_core::library::UploadFileOp {
-        upload,
-        pending: None,
-        label: bae_core::library::UploadFileLabel::Filename("Track.flac".into()),
-        throughput_bps: 20,
-    });
-    assert_eq!(bridge.file_id, id);
-    assert!(bridge.release_file_key.is_some());
-    assert_eq!(bridge.state, crate::types::BridgeUploadFileState::Uploading);
+    let change = crate::types::BridgeOutboxTransferChange::from_core(
+        bae_core::library::OutboxTransferChange::Updated {
+            key: bae_core::library::UploadTransferKey::File(upload.file.id()),
+            transfer: bae_core::library::UploadTransfer {
+                bar: Some(bae_core::library::UploadBar {
+                    bytes_done: 40,
+                    bytes_total: 116,
+                }),
+                throughput_bps: 20,
+            },
+        },
+    );
+    let crate::types::BridgeOutboxTransferChange::Updated { key, transfer } = change else {
+        panic!("an update stays an update");
+    };
     assert_eq!(
-        bridge.bar,
+        key,
+        crate::types::BridgeUploadTransferKey::File {
+            file_id: id.clone()
+        },
+        "a file's transfer is keyed by the file id its queue row names"
+    );
+    assert_eq!(
+        transfer.bar,
         Some(crate::types::BridgeUploadBar {
             bytes_done: 40,
             bytes_total: 116
         })
     );
+    let bridge = crate::types::BridgeUploadFileOp::from_core(bae_core::library::UploadFileOp {
+        file: upload.file,
+        phase: coven::UploadPhase::Uploading,
+        pending: None,
+        label: bae_core::library::UploadFileLabel::Filename("Track.flac".into()),
+    });
+    assert_eq!(bridge.file_id, id);
+    assert!(bridge.release_file_key.is_some());
+    assert_eq!(bridge.state, crate::types::BridgeUploadFileState::Uploading);
     handle.close().await.unwrap();
 }
 
 #[test]
-fn upload_progress_preserves_the_provider_byte_counts() {
+fn upload_progress_keeps_the_counts_and_their_phase() {
     let value = crate::types::BridgeUploadProgress::from_core(bae_core::library::UploadProgress {
         queued: 1,
         uploading: 2,
-        upload_bytes_done: 250,
-        upload_bytes_total: 1132,
     });
     assert_eq!(value.queued, 1);
     assert_eq!(value.uploading, 2);
-    assert_eq!(
-        value.bar,
-        Some(crate::types::BridgeUploadBar {
-            bytes_done: 250,
-            bytes_total: 1132
-        })
-    );
     assert_eq!(
         value.activity,
         Some(crate::types::BridgeUploadActivity::Uploading)

@@ -14,15 +14,32 @@ public final class CloudUploadCommand: Sendable {
     }
 }
 
-/// Mirror of core's cloud outbox processing snapshot, rendered by the Storage
-/// Manager's queue panel and used by every storage row to read its
-/// per-release upload progress and rate (no cached `pendingUploads` field on
-/// `ReleaseSummary`). The retained outbox subscription lands the whole
-/// `BridgeOutboxSnapshot`; views read it at the leaf. The snapshot is swapped
-/// wholesale (no per-item interning) because core exposes it in full.
+/// One upload transfer, observed on its own: a part the provider confirms
+/// changes only this value, so only a view that draws it redraws.
+@Observable
+public final class UploadTransferValue {
+    public internal(set) var transfer: BridgeUploadTransfer
+
+    init(_ transfer: BridgeUploadTransfer) {
+        self.transfer = transfer
+    }
+}
+
+/// Mirror of core's cloud upload queue, rendered by the Storage Manager's
+/// queue panel and used by every storage row to read its per-release upload
+/// progress and rate (no cached `pendingUploads` field on `ReleaseSummary`).
+/// The retained outbox subscription lands the queue each time it changes and
+/// it is swapped wholesale; the transfer subscription lands each file's and
+/// release's bytes and rate into that key's own value, so a progress change
+/// redraws only what draws that key. Views read both at the leaf.
 @Observable
 public class OutboxStore {
     public var snapshot: BridgeOutboxSnapshot
+    /// Each queued file's and uploading release's transfer, one value per
+    /// key; the map changes only as keys come and go.
+    private var transfers: [BridgeUploadTransferKey: UploadTransferValue] = [:]
+    /// The whole queue's transfer; `nil` until the transfers first arrive.
+    private var totalTransfer: UploadTransferValue?
     /// The foreground command before the retained outbox snapshot owns it.
     /// This closes the callback-order gap between the command result and the
     /// outbox subscription without copying durable queue state into Swift.
@@ -56,21 +73,77 @@ public class OutboxStore {
         }
     }
 
+    /// Apply one change the transfer subscription delivered.
+    public func applyTransferChange(_ change: BridgeOutboxTransferChange) {
+        switch change {
+        case .updated(let key, let transfer):
+            if let value = transfers[key] {
+                value.transfer = transfer
+            }
+            else {
+                transfers[key] = UploadTransferValue(transfer)
+            }
+        case .removed(let key):
+            transfers.removeValue(forKey: key)
+        case .totalUpdated(let transfer):
+            setTotal(transfer)
+        case .reset(let keyed, let total):
+            transfers = Dictionary(
+                uniqueKeysWithValues: keyed.map {
+                    ($0.key, UploadTransferValue($0.transfer))
+                }
+            )
+            setTotal(total)
+        }
+    }
+
+    private func setTotal(_ transfer: BridgeUploadTransfer) {
+        if let totalTransfer {
+            totalTransfer.transfer = transfer
+        }
+        else {
+            totalTransfer = UploadTransferValue(transfer)
+        }
+    }
+
+    /// How far a release's uploading files have gone together, and how fast;
+    /// `nil` while none has arrived for it.
+    public func transfer(forRelease releaseId: String) -> BridgeUploadTransfer?
+    {
+        transfers[.release(releaseId: releaseId)]?.transfer
+    }
+
+    /// How far one queued file has gone, and how fast; `nil` while none has
+    /// arrived for it.
+    public func transfer(forFile fileId: String) -> BridgeUploadTransfer? {
+        transfers[.file(fileId: fileId)]?.transfer
+    }
+
+    /// The whole queue's upload rate. A zero reading stays absent instead of
+    /// presenting a stalled speed.
+    public var throughputText: String? {
+        guard let throughputBps = totalTransfer?.transfer.throughputBps,
+            throughputBps > 0
+        else { return nil }
+        return QueueSummary.throughputText(bytesPerSecond: throughputBps)
+    }
+
     /// Per-release upload progress, or nil if the release has no work in
     /// flight. Storage rows read this to render their badge and to suppress
     /// storage actions while uploads are in flight.
     public func progress(forRelease releaseId: String) -> BridgeUploadProgress?
     {
-        snapshot.perRelease[releaseId]?.progress
+        snapshot.perRelease[releaseId]
     }
 
     /// Whether the release has upload work queued or in flight. Drives the
     /// storage row's "Cancel Upload" affordance and the suppression of other
     /// storage actions while a transfer is mid-flight. Releases with nothing
     /// left to ship are absent from the per-release map, so presence is the
-    /// signal.
+    /// signal. It reads no transfer, so a caller is not redrawn as bytes move.
     public func isTransitioning(forRelease releaseId: String) -> Bool {
-        storageUploadObservation(forRelease: releaseId) != nil
+        snapshot.perRelease[releaseId] != nil
+            || cloudUploadHandoffs[releaseId] != nil
     }
 
     /// Begin the foreground portion of one batch before the bridge can admit
@@ -163,10 +236,10 @@ public class OutboxStore {
     public func storageUploadObservation(forRelease releaseId: String)
         -> StorageUploadObservation?
     {
-        if let releaseProgress = snapshot.perRelease[releaseId] {
+        if let progress = snapshot.perRelease[releaseId] {
             return .active(
-                progress: releaseProgress.progress,
-                throughputBps: releaseProgress.throughputBps
+                progress: progress,
+                transfer: transfer(forRelease: releaseId)
             )
         }
         return switch cloudUploadHandoffs[releaseId] {
@@ -188,13 +261,10 @@ public class OutboxStore {
             total: BridgeUploadProgress(
                 queued: 0,
                 uploading: 0,
-                bar: nil,
                 activity: nil,
             ),
             summaryParts: [],
             pauseState: .running,
-            throughputBps: 0,
-            etaSeconds: nil,
         )
     }
 }
@@ -217,22 +287,14 @@ public enum UploadObservation: Equatable {
             progress.heldActivity.phaseText
         }
     }
-
-    /// The bytes the counting phase has moved, while one is counting.
-    public var progressDetailText: String? {
-        switch self {
-        case .awaiting:
-            return nil
-        case .active(let progress):
-            return progress.bar?.text
-        }
-    }
 }
 
 public enum StorageUploadObservation: Equatable {
     case queueing
     case awaiting
-    case active(progress: BridgeUploadProgress, throughputBps: UInt64)
+    /// The release's files in flight, and how far they have gone together:
+    /// `nil` until their transfer arrives, which travels on its own.
+    case active(progress: BridgeUploadProgress, transfer: BridgeUploadTransfer?)
 
     /// Cancellation targets work coven has durably admitted; the command
     /// handoff has nothing to cancel yet.
@@ -274,8 +336,8 @@ public enum StorageUploadObservation: Equatable {
         switch self {
         case .queueing, .awaiting:
             return nil
-        case .active(let progress, _):
-            return UploadObservation.active(progress).progressDetailText
+        case .active(_, let transfer):
+            return transfer?.bar?.text
         }
     }
 
@@ -287,15 +349,16 @@ public enum StorageUploadObservation: Equatable {
         switch self {
         case .queueing, .awaiting:
             return .indeterminate
-        case .active(let progress, _):
-            return progress.bar.map { .determinate($0.fraction) }
+        case .active(_, let transfer):
+            return transfer?.bar.map { .determinate($0.fraction) }
         }
     }
 
     /// The release's current upload rate. A zero reading
     /// stays absent instead of presenting a stalled speed.
     public var throughputText: String? {
-        guard case .active(_, let throughputBps) = self,
+        guard case .active(_, let transfer) = self,
+            let throughputBps = transfer?.throughputBps,
             throughputBps > 0
         else { return nil }
         return QueueSummary.throughputText(bytesPerSecond: throughputBps)

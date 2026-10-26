@@ -29,18 +29,18 @@ impl AppServices {
             // The upload queue as the outbox holds it now, read only while
             // the Uploading filter is shown.
             let upload_queue = |outbox: &mut tokio::sync::watch::Receiver<
-                Option<Result<crate::library::OutboxSnapshot, String>>,
+                Option<Result<crate::library::OutboxState, String>>,
             >| {
                 let current = outbox.borrow_and_update().clone();
                 let services = services.clone();
                 async move {
                     match current {
-                        Some(Ok(snapshot)) => Ok(snapshot.transitioning_release_ids()),
+                        Some(Ok(state)) => Ok(state.queue.transitioning_release_ids()),
                         Some(Err(error)) => Err(crate::library::LibraryError::Internal(error)),
                         None => services
-                            .outbox_snapshot()
+                            .outbox_state()
                             .await
-                            .map(|snapshot| snapshot.transitioning_release_ids()),
+                            .map(|state| state.queue.transitioning_release_ids()),
                     }
                     .map(upload_queue_order)
                 }
@@ -132,8 +132,8 @@ impl AppServices {
                         match outbox.borrow_and_update().clone() {
                             // Byte progress leaves the queue as it was, and
                             // reads nothing again.
-                            Some(Ok(snapshot)) => {
-                                uploading = upload_queue_order(snapshot.transitioning_release_ids());
+                            Some(Ok(state)) => {
+                                uploading = upload_queue_order(state.queue.transitioning_release_ids());
                                 let next = request_for(&view, &uploading);
                                 if next != request {
                                     request = next;

@@ -112,8 +112,7 @@ struct StorageInspectorTests {
         let upload = BridgeUploadReleaseGroup(
             releaseId: selectedReleaseId,
             files: [],
-            progress: PreviewData.uploadProgress(activity: .uploading),
-            throughputBps: 1_600_000
+            progress: PreviewData.uploadProgress(activity: .uploading)
         )
         let items = bridgeStorageInspectorTransfers(
             releaseId: selectedReleaseId,

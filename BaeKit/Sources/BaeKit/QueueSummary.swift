@@ -45,11 +45,6 @@ public enum QueueSummary {
 extension BridgeOutboxSnapshot {
     public var summaryText: String { QueueSummary.line(summaryParts) }
 
-    public var throughputText: String? {
-        guard throughputBps > 0 else { return nil }
-        return QueueSummary.throughputText(bytesPerSecond: throughputBps)
-    }
-
     /// The user's pause target. `Pausing` still counts as requested even though
     /// the provider write already in progress has not finished yet.
     public var pauseRequested: Bool { pauseState != .running }

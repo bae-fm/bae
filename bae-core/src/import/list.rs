@@ -142,7 +142,7 @@ impl UploadStanding {
     }
 
     /// Where each release the cloud outbox still holds work for stands.
-    pub fn of_outbox(snapshot: &crate::library::OutboxSnapshot) -> BTreeMap<String, Self> {
+    pub fn of_outbox(snapshot: &crate::library::OutboxQueue) -> BTreeMap<String, Self> {
         use crate::library::UploadActivity;
         snapshot
             .upload_groups
@@ -174,10 +174,10 @@ pub enum UploadStatus {
 
 impl UploadStatus {
     /// The status the upload queue's latest value gives.
-    pub fn of(outbox: &Option<Result<crate::library::OutboxSnapshot, String>>) -> Self {
+    pub fn of(outbox: &Option<Result<crate::library::OutboxState, String>>) -> Self {
         match outbox {
             None => Self::Waiting,
-            Some(Ok(snapshot)) => Self::Read(UploadStanding::of_outbox(snapshot)),
+            Some(Ok(state)) => Self::Read(UploadStanding::of_outbox(&state.queue)),
             Some(Err(_)) => Self::Unreadable,
         }
     }

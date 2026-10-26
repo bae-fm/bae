@@ -1,11 +1,11 @@
-//! Read-only release and summary projections over a cloud-outbox snapshot.
+//! Read-only release and summary projections over the cloud-outbox queue.
 
 use std::collections::HashMap;
 
-use super::outbox_snapshot::{OutboxSnapshot, ReleaseUploadProgress};
+use super::outbox_snapshot::{OutboxQueue, UploadProgress};
 use super::release_queue::CountLabel;
 
-impl OutboxSnapshot {
+impl OutboxQueue {
     pub fn transitioning_release_ids(&self) -> Vec<String> {
         self.upload_groups
             .iter()
@@ -13,18 +13,10 @@ impl OutboxSnapshot {
             .collect()
     }
 
-    pub fn per_release_progress(&self) -> HashMap<String, ReleaseUploadProgress> {
+    pub fn per_release_progress(&self) -> HashMap<String, UploadProgress> {
         self.upload_groups
             .iter()
-            .map(|group| {
-                (
-                    group.release_id.clone(),
-                    ReleaseUploadProgress {
-                        progress: group.progress.clone(),
-                        throughput_bps: group.throughput_bps,
-                    },
-                )
-            })
+            .map(|group| (group.release_id.clone(), group.progress.clone()))
             .collect()
     }
 

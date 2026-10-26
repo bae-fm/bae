@@ -38,18 +38,18 @@ final class StorageManagerLayoutTests: XCTestCase {
         ) { _, host in
 
             try await SnapshotTestSupport.settle(host)
+            let outboxStore = PreviewData.outboxStore()
             let observation = try XCTUnwrap(
-                PreviewData.outboxStore()
-                    .storageUploadObservation(
-                        forRelease: PreviewData.uploadGroup.releaseId
-                    )
+                outboxStore.storageUploadObservation(
+                    forRelease: PreviewData.uploadGroup.releaseId
+                )
             )
             XCTAssertEqual(
                 observation.throughputText,
                 QueueSummary.throughputText(bytesPerSecond: 3_200_000)
             )
             XCTAssertEqual(
-                PreviewData.outboxSnapshot().throughputText,
+                outboxStore.throughputText,
                 QueueSummary.throughputText(bytesPerSecond: 6_800_000)
             )
             let descendants = SnapshotTestSupport.descendants(of: host)

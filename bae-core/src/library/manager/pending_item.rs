@@ -59,6 +59,22 @@ pub struct PendingWait {
     pub action: PendingAction,
 }
 
+/// Two waits are the same when they wait for the same reason, offer the same
+/// action, and name the same error behind it: a surface shows all three.
+impl PartialEq for PendingWait {
+    fn eq(&self, other: &Self) -> bool {
+        let cause_text = |wait: &Self| {
+            wait.cause.as_ref().map(|cause| {
+                let cause: &(dyn std::error::Error + 'static) = cause.as_ref();
+                bae_util::error_text::CauseChain(cause).to_string()
+            })
+        };
+        self.reason == other.reason
+            && self.action == other.action
+            && cause_text(self) == cause_text(other)
+    }
+}
+
 impl PendingWait {
     pub(crate) fn of(record: &coven::PendingRecord) -> Self {
         Self {

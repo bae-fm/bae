@@ -190,13 +190,14 @@ async fn uploads_are_visible_in_snapshot_before_drain() {
     // Enqueue upload through the real coven path; do NOT drain.
     mgr.upload_release(&release_id, false).await.unwrap();
 
-    let snap = mgr.outbox_snapshot().await.unwrap();
+    let snap = mgr.outbox_state().await.unwrap();
     assert_eq!(
-        snap.total.queued,
+        snap.queue.total.queued,
         named.len() as u32,
         "every file is queued in the snapshot immediately after upload"
     );
     let group = snap
+        .queue
         .upload_groups
         .iter()
         .find(|group| group.release_id == release_id)
@@ -228,6 +229,7 @@ async fn durable_outbox_subscription_emits_enqueue_without_a_sync_cycle() {
             .as_ref()
             .unwrap_or_else(|error| panic!("outbox projection failed: {error}"));
         if snapshot
+            .queue
             .upload_groups
             .iter()
             .any(|group| group.release_id == release_id)

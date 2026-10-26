@@ -17,7 +17,7 @@ struct StorageFooter: View {
             Text("\(list.totalCount) releases")
                 .foregroundStyle(.secondary)
             Spacer()
-            if let throughputText = outboxStore.snapshot.throughputText {
+            if let throughputText = outboxStore.throughputText {
                 Text(throughputText)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)

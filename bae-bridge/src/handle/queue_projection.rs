@@ -5,31 +5,27 @@ mirror_struct! {
         release_id,
         files: (each crate::types::BridgeUploadFileOp),
         progress: (crate::types::BridgeUploadProgress),
-        throughput_bps,
     },
 }
 
 impl crate::types::BridgeUploadFileOp {
     pub(super) fn from_core(file: bae_core::library::UploadFileOp) -> Self {
-        let bar = file.bar().map(crate::types::BridgeUploadBar::from_core);
         let release_file_key = file
             .release_file_key()
             .cloned()
             .map(crate::types::BridgeRowKey::from_core);
         let bae_core::library::UploadFileOp {
-            upload,
+            file,
+            phase,
             pending,
             label,
-            throughput_bps,
         } = file;
         Self {
             pending: pending.map(crate::types::BridgePendingWait::from_core),
-            file_id: upload.file.id().to_string(),
+            file_id: file.id().to_string(),
             release_file_key,
             label: crate::types::BridgeUploadFileLabel::from_core(label),
-            throughput_bps,
-            bar,
-            state: match upload.phase {
+            state: match phase {
                 coven::UploadPhase::Waiting => crate::types::BridgeUploadFileState::Waiting,
                 coven::UploadPhase::Uploading => crate::types::BridgeUploadFileState::Uploading,
             },
@@ -48,39 +44,83 @@ mirror_enum! {
     variants: { Filename(name), Cover, ArtistImage, Avatar, DeletedReleaseFile },
 }
 
+mirror_struct! {
+    crate::types::BridgeUploadTransfer = bae_core::library::UploadTransfer,
+    from_core: fn,
+    fields: { bar: (opt crate::types::BridgeUploadBar), throughput_bps },
+}
+
+impl crate::types::BridgeUploadTransferKey {
+    fn from_core(key: bae_core::library::UploadTransferKey) -> Self {
+        match key {
+            bae_core::library::UploadTransferKey::File(file_id) => Self::File {
+                file_id: file_id.to_string(),
+            },
+            bae_core::library::UploadTransferKey::Release(release_id) => {
+                Self::Release { release_id }
+            }
+        }
+    }
+}
+
+impl crate::types::BridgeOutboxTransferChange {
+    pub(super) fn from_core(change: bae_core::library::OutboxTransferChange) -> Self {
+        use bae_core::library::OutboxTransferChange;
+        match change {
+            OutboxTransferChange::Updated { key, transfer } => Self::Updated {
+                key: crate::types::BridgeUploadTransferKey::from_core(key),
+                transfer: crate::types::BridgeUploadTransfer::from_core(transfer),
+            },
+            OutboxTransferChange::Removed { key } => Self::Removed {
+                key: crate::types::BridgeUploadTransferKey::from_core(key),
+            },
+            OutboxTransferChange::TotalUpdated(transfer) => Self::TotalUpdated {
+                transfer: crate::types::BridgeUploadTransfer::from_core(transfer),
+            },
+            OutboxTransferChange::Reset(transfers) => Self::Reset {
+                transfers: transfers
+                    .keyed
+                    .into_iter()
+                    .map(|(key, transfer)| crate::types::BridgeKeyedUploadTransfer {
+                        key: crate::types::BridgeUploadTransferKey::from_core(key),
+                        transfer: crate::types::BridgeUploadTransfer::from_core(transfer),
+                    })
+                    .collect(),
+                total: crate::types::BridgeUploadTransfer::from_core(transfers.total),
+            },
+        }
+    }
+}
+
 impl crate::types::BridgeOutboxSnapshot {
-    pub(super) fn from_core(snapshot: bae_core::library::OutboxSnapshot) -> Self {
-        // Derived aggregates borrow `&snapshot`; compute them before the move.
-        let per_release = snapshot
+    /// The queue `state` holds, at its revision.
+    pub(super) fn from_core(state: bae_core::library::OutboxState) -> Self {
+        let bae_core::library::OutboxState {
+            revision, queue, ..
+        } = state;
+        // Derived aggregates borrow `&queue`; compute them before the move.
+        let per_release = queue
             .per_release_progress()
             .into_iter()
-            .map(|(release_id, release_progress)| {
+            .map(|(release_id, progress)| {
                 (
                     release_id,
-                    crate::types::BridgeReleaseUploadProgress {
-                        progress: crate::types::BridgeUploadProgress::from_core(
-                            release_progress.progress,
-                        ),
-                        throughput_bps: release_progress.throughput_bps,
-                    },
+                    crate::types::BridgeUploadProgress::from_core(progress),
                 )
             })
             .collect();
-        let summary_parts = snapshot
+        let summary_parts = queue
             .summary_parts()
             .into_iter()
             .map(crate::types::BridgeCountLabel::from_core)
             .collect();
 
-        let bae_core::library::OutboxSnapshot {
-            revision,
+        let bae_core::library::OutboxQueue {
             upload_groups,
             other_files,
             total,
             pause_state,
-            throughput_bps,
-            eta_seconds,
-        } = snapshot;
+        } = queue;
 
         crate::types::BridgeOutboxSnapshot {
             revision,
@@ -96,8 +136,6 @@ impl crate::types::BridgeOutboxSnapshot {
             total: crate::types::BridgeUploadProgress::from_core(total),
             summary_parts,
             pause_state: crate::types::BridgeOutboxPauseState::from_core(pause_state),
-            throughput_bps,
-            eta_seconds,
         }
     }
 }
@@ -113,17 +151,10 @@ impl crate::types::BridgeUploadProgress {
         let activity = progress
             .activity()
             .map(crate::types::BridgeUploadActivity::from_core);
-        let bar = progress.bar().map(crate::types::BridgeUploadBar::from_core);
-        let bae_core::library::UploadProgress {
-            queued,
-            uploading,
-            upload_bytes_done: _,
-            upload_bytes_total: _,
-        } = progress;
+        let bae_core::library::UploadProgress { queued, uploading } = progress;
         Self {
             queued,
             uploading,
-            bar,
             activity,
         }
     }

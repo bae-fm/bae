@@ -10,6 +10,7 @@ mod local_lifecycle;
 pub mod manager;
 pub mod outbox_snapshot;
 mod outbox_snapshot_summary;
+mod outbox_watch;
 pub mod output_snapshot;
 mod queue_upcoming;
 pub mod queued_releases;
@@ -43,9 +44,11 @@ pub use local_lifecycle::{
 };
 pub use manager::*;
 pub use outbox_snapshot::{
-    OutboxPauseState, OutboxSnapshot, UploadActivity, UploadBar, UploadFileLabel, UploadFileOp,
-    UploadProgress, UploadReleaseGroup, UploadState, UploadSubject,
+    OutboxPauseState, OutboxQueue, OutboxState, OutboxTransfers, UploadActivity, UploadBar,
+    UploadFileLabel, UploadFileOp, UploadProgress, UploadReleaseGroup, UploadState, UploadSubject,
+    UploadTransfer, UploadTransferKey,
 };
+pub use outbox_watch::{OutboxQueueWatch, OutboxTransferChange, OutboxTransfersWatch};
 pub use output_snapshot::{
     OutputKind, OutputOp, OutputProgress, OutputQueueContents, OutputRow, OutputSnapshot,
     OutputState,
