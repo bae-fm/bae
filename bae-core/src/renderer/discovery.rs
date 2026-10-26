@@ -375,21 +375,6 @@ impl RendererDiscovery {
             Self::Reported(reported) => reported.forget(service_type, instance_name),
         }
     }
-
-    /// Whether a browse is live right now. For tests that assert browsing is (or
-    /// is not) reaching the network — the only observable for the built-in path,
-    /// whose device list stays empty either way on a test network.
-    #[cfg(feature = "test-utils")]
-    pub fn is_browsing(&self) -> bool {
-        match self {
-            Self::Builtin(builtin) => {
-                builtin.cast.is_browsing()
-                    || builtin.dlna.is_browsing()
-                    || builtin.airplay.is_browsing()
-            }
-            Self::Reported(reported) => reported.is_browsing(),
-        }
-    }
 }
 
 #[cfg(test)]

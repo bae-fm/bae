@@ -195,6 +195,10 @@ pub struct CastController {
     devices_tx: tokio::sync::watch::Sender<Vec<RendererDevice>>,
     /// The ephemeral server, once a cast has started one.
     server: Arc<Mutex<Option<EphemeralServer>>>,
+    /// The `cast_enabled` value the setting watcher last finished applying, so
+    /// a test can wait for the watcher to act on a change it wrote.
+    #[cfg(test)]
+    setting_applied: tokio::sync::watch::Sender<Option<bool>>,
 }
 
 impl CastController {
@@ -215,6 +219,8 @@ impl CastController {
             discovery: Mutex::new(discovery),
             devices_tx,
             server: Arc::new(Mutex::new(None)),
+            #[cfg(test)]
+            setting_applied: tokio::sync::watch::Sender::new(None),
         });
         for devices in receivers {
             controller.spawn_device_list_forwarder(devices);
@@ -254,6 +260,8 @@ impl CastController {
                             controller.stop_discovery();
                             controller.stop_casting();
                         }
+                        #[cfg(test)]
+                        controller.setting_applied.send_replace(Some(enabled));
                     }
                     Err(error) => {
                         debug!("cast setting watcher stopped: {error}");
@@ -524,20 +532,12 @@ mod tests {
     /// Whether a browse is live right now — the gate the `cast_enabled` setting
     /// exists to hold shut.
     fn browsing(controller: &CastController) -> bool {
-        controller.discovery.lock().unwrap().is_browsing()
-    }
-
-    /// Wait for `condition` to hold, for assertions that follow a background
-    /// task (the setting watcher). Panics with `what` if it never does.
-    fn wait_until(what: &str, condition: impl Fn() -> bool) {
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-        while std::time::Instant::now() < deadline {
-            if condition() {
-                return;
+        match &*controller.discovery.lock().unwrap() {
+            RendererDiscovery::Reported(reported) => reported.is_browsing(),
+            RendererDiscovery::Builtin(_) => {
+                panic!("the controller tests run over the reported device source")
             }
-            std::thread::sleep(std::time::Duration::from_millis(10));
         }
-        panic!("timed out waiting for {what}");
     }
 
     /// A controller over a fresh library, on the runtime it returns. The
@@ -556,12 +556,24 @@ mod tests {
         (runtime, controller, services, tmp)
     }
 
-    fn reported_cast_service(instance: &str, id: &str) -> ReportedRenderer {
+    /// A loopback port nothing listens on: bound to take a free port from the
+    /// OS, then released, so a connect to it is refused at once.
+    fn refusing_loopback_port() -> u16 {
+        std::net::TcpListener::bind(("127.0.0.1", 0))
+            .expect("bind a loopback port")
+            .local_addr()
+            .expect("read the bound port")
+            .port()
+    }
+
+    /// A Cast service a host browser reports at `127.0.0.1:port`, so a connect
+    /// to it stays on this machine.
+    fn reported_cast_service(instance: &str, id: &str, port: u16) -> ReportedRenderer {
         ReportedRenderer {
             service_type: RendererServiceType::GoogleCast,
             instance_name: instance.to_string(),
-            addr: "192.168.1.31".to_string(),
-            port: 8009,
+            addr: "127.0.0.1".to_string(),
+            port,
             txt: [("id", id), ("fn", instance)]
                 .into_iter()
                 .map(|(k, v)| (k.to_string(), v.to_string()))
@@ -569,13 +581,15 @@ mod tests {
         }
     }
 
-    /// The gate the setting exists for: with casting off, asking to browse opens
-    /// no mDNS/SSDP socket and asking to cast is refused outright — the UI hiding
+    /// The gate the setting exists for: with casting off, asking to browse
+    /// starts no browse and asking to cast is refused outright — the UI hiding
     /// its Cast control is a consequence, not the mechanism. Turning the setting
-    /// on makes the same two calls do their work.
+    /// on makes the same two calls do their work. The gate is the controller's,
+    /// the same over either device source, so this runs over the reported one,
+    /// which holds no socket.
     #[test]
     fn discovery_and_casting_follow_the_cast_setting() {
-        let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::builtin());
+        let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
 
         assert!(
             !services.get_config().prefs.cast_enabled,
@@ -594,8 +608,8 @@ mod tests {
         runtime.block_on(services.set_cast_enabled(true)).unwrap();
         controller.start_discovery();
         assert!(browsing(&controller), "casting is on: browsing may run");
-        // The device is not on this test's network, so the request reaches the
-        // real lookup and fails there rather than at the gate.
+        // No device was reported, so the request reaches the device lookup and
+        // fails there rather than at the gate.
         assert!(matches!(
             runtime.block_on(controller.cast_to("some-device")),
             Err(CastError::DeviceNotFound)
@@ -605,20 +619,25 @@ mod tests {
     }
 
     /// Turning the setting off while browsing stops it, rather than leaving the
-    /// sockets open until the picker happens to close. The controller's own
+    /// browse running until the picker happens to close. The controller's own
     /// watcher does this, so writing the setting is all a caller has to do.
     #[test]
     fn turning_casting_off_stops_browsing() {
-        let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::builtin());
+        let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
 
         runtime.block_on(services.set_cast_enabled(true)).unwrap();
         controller.start_discovery();
         assert!(browsing(&controller));
 
+        let mut applied = controller.setting_applied.subscribe();
         runtime.block_on(services.set_cast_enabled(false)).unwrap();
-        wait_until("browsing to stop after casting is turned off", || {
-            !browsing(&controller)
-        });
+        runtime
+            .block_on(applied.wait_for(|applied| *applied == Some(false)))
+            .expect("the setting watcher runs while the controller is alive");
+        assert!(
+            !browsing(&controller),
+            "casting turned off: the watcher stopped browsing"
+        );
     }
 
     /// The reported path: a host that browses for bae pushes what its browser
@@ -629,8 +648,9 @@ mod tests {
     fn reported_devices_follow_the_host_browser_and_the_cast_setting() {
         let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
 
+        let port = refusing_loopback_port();
         controller.start_discovery();
-        controller.renderer_found(reported_cast_service("Kitchen", "cast-1"));
+        controller.renderer_found(reported_cast_service("Kitchen", "cast-1", port));
         assert!(
             controller.devices().is_empty(),
             "casting is off: nothing browses and no report is taken"
@@ -638,8 +658,8 @@ mod tests {
 
         runtime.block_on(services.set_cast_enabled(true)).unwrap();
         controller.start_discovery();
-        controller.renderer_found(reported_cast_service("Kitchen", "cast-1"));
-        controller.renderer_found(reported_cast_service("Study", "cast-2"));
+        controller.renderer_found(reported_cast_service("Kitchen", "cast-1", port));
+        controller.renderer_found(reported_cast_service("Study", "cast-2", port));
         assert_eq!(
             controller
                 .devices()
@@ -661,12 +681,10 @@ mod tests {
             "a service the host's browser lost leaves the picker"
         );
 
-        // Casting to a reported device reaches the real connect (there is no such
-        // device on this test's network) rather than stopping at the gate.
-        assert!(matches!(
-            runtime.block_on(controller.cast_to("cast-2")),
-            Err(CastError::Connect(_))
-        ));
+        // Casting to a reported device reaches the real connect, which the
+        // loopback port refuses, rather than stopping at the gate.
+        let cast = runtime.block_on(controller.cast_to("cast-2"));
+        assert!(matches!(cast, Err(CastError::Connect(_))), "{cast:?}");
     }
 
     #[test]

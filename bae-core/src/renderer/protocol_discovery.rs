@@ -44,13 +44,6 @@ impl<B: Browse> ProtocolDiscovery<B> {
         self.devices.current()
     }
 
-    /// Whether this protocol is reaching the network right now. For tests that
-    /// assert browsing is (or is not) live.
-    #[cfg(feature = "test-utils")]
-    pub(crate) fn is_browsing(&self) -> bool {
-        self.running.is_some()
-    }
-
     /// Begin browsing. Idempotent: a second call while already browsing is a
     /// no-op, and a transport that cannot start stays stopped.
     pub(crate) fn start(&mut self) {
