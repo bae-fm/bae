@@ -127,8 +127,8 @@ final class SeekBarNSView: NSView {
     private func updateLabels() {
         guard case .position(_, let positionMs, let durationMs) = position
         else {
-            elapsedField.stringValue = ""
-            durationField.stringValue = ""
+            elapsedField.show("")
+            durationField.show("")
             return
         }
         let labels = DurationClock.seekBar(
@@ -136,8 +136,8 @@ final class SeekBarNSView: NSView {
             durationMs: durationMs,
             showRemaining: showsRemainingTimeToggle && showRemainingTime
         )
-        elapsedField.stringValue = labels.leading
-        durationField.stringValue = labels.trailing
+        elapsedField.show(labels.leading)
+        durationField.show(labels.trailing)
     }
 
     @objc

@@ -76,6 +76,24 @@ class PlaybackSeekProjectionTest {
         )
     }
 
+    /** A position tick reaches the in-app bar but not Media3, which moves on by
+     *  itself; a seek reaches both. */
+    @Test
+    fun aPositionTickIsLeftToMedia3AndASeekIsToldToIt() {
+        val (player, _) = player()
+
+        player.startPlaying(durationMs = 100_000uL)
+        val told = player.currentPosition
+        player.onProgress(positionMs = 10_000, durationMs = 100_000, progress = 0.10)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(10_000L, player.position.value.positionMs)
+        assertEquals(told, player.currentPosition)
+
+        player.onSeeked(positionMs = 75_000, durationMs = 100_000, progress = 0.75)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(75_000L, player.currentPosition)
+    }
+
     @Test
     fun forwardProgressPastTargetDoesNotClearProjectionUntilSeeked() {
         val (player, _) = player()

@@ -349,8 +349,11 @@ class BaeCorePlayer(
         latestPosition = positions.library
         val position = positions.library ?: return
         when (fold(position, seeked)) {
+            // Media3 moves the position on from the state's playing speed, and a
+            // state that differs only in its position tells its listeners
+            // nothing; a seek is a jump it has to be told.
             PositionUpdate.Applied -> {
-                publish()
+                if (seeked) publish() else publishPosition()
             }
 
             PositionUpdate.HeldByPendingSeek -> {
@@ -498,6 +501,11 @@ class BaeCorePlayer(
 
     /** The context tracks read for [queueRevision], by index in the whole tail. */
     private fun upcomingEntries(): Map<Int, BridgeQueueEntry> = upcoming.entriesAt(queueRevision).toMap()
+
+    /** Refresh the in-app position alone, for a tick Media3 extrapolates itself. */
+    private fun publishPosition() {
+        _position.value = positionModel.position(hasCurrentTrack = currentMeta != null)
+    }
 
     /** Refresh the Media3 [State] and the in-app flows from the same fields. */
     private fun publish() {

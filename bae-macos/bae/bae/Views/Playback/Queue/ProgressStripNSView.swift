@@ -74,21 +74,22 @@ final class ProgressStripNSView: NSView {
         bar.progress = 0
         positionMs = nil
         durationMs = nil
-        elapsedField.stringValue = ""
+        elapsedField.show("")
     }
 
     private func updateLabel() {
         guard let positionMs else {
-            elapsedField.stringValue = ""
+            elapsedField.show("")
             return
         }
-        elapsedField.stringValue =
+        elapsedField.show(
             DurationClock.seekBar(
                 positionMs: positionMs,
                 durationMs: durationMs,
                 showRemaining: false
             )
             .leading
+        )
     }
 }
 

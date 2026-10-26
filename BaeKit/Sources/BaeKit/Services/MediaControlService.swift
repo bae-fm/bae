@@ -346,10 +346,16 @@ public final class MediaControlService: @unchecked Sendable {
         }
     }
 
+    /// Each queue delivery calls this; a command is written only when its
+    /// availability changes.
     public func updateCommandAvailability(hasNext: Bool, hasPrevious: Bool) {
         let center = MPRemoteCommandCenter.shared()
-        center.nextTrackCommand.isEnabled = hasNext
-        center.previousTrackCommand.isEnabled = hasPrevious
+        if center.nextTrackCommand.isEnabled != hasNext {
+            center.nextTrackCommand.isEnabled = hasNext
+        }
+        if center.previousTrackCommand.isEnabled != hasPrevious {
+            center.previousTrackCommand.isEnabled = hasPrevious
+        }
     }
 
     /// Wipe Now Playing and disable every transport command. Called when

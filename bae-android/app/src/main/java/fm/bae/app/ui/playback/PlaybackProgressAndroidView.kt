@@ -116,6 +116,12 @@ fun PlaybackProgressAndroidView(
     )
 }
 
+private fun TextView.showText(text: String) {
+    if (this.text.toString() != text) {
+        this.text = text
+    }
+}
+
 internal class PlaybackProgressView(
     context: Context,
 ) : LinearLayout(context) {
@@ -181,9 +187,11 @@ internal class PlaybackProgressView(
         trailingTextView.setTextColor(text)
     }
 
+    // A label is set at every position tick and its text changes at most once
+    // a second, so it is written only when it changes.
     fun setPosition(state: SeekBarState) {
-        leadingTextView.text = state.leading
-        trailingTextView.text = state.trailing
+        leadingTextView.showText(state.leading)
+        trailingTextView.showText(state.trailing)
         seekBar.isEnabled = state.seekable
         if (!isDragging) {
             seekBar.progress = progressToSeekBar(state.progress)

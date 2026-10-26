@@ -31,7 +31,11 @@ final class DesktopEventHandler {
         }
     }
 
+    /// Playback values arrive as often as the volume slider moves; the
+    /// preview's state is written, and its readers redrawn, only when it
+    /// changes.
     func applyPreview(_ state: BridgePreviewState) {
+        guard importStore.previewState != state else { return }
         importStore.previewState = state
     }
 

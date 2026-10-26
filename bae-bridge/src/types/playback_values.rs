@@ -191,7 +191,7 @@ mirror_enum! {
     },
 }
 
-#[derive(Debug, Clone, uniffi::Enum)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgePreviewState {
     Idle,
     Playing {
