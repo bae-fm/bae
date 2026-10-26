@@ -20,7 +20,6 @@ CAPABILITY_TYPES = {
     "CancellableTaskSlot",
     "ConfigStore",
     "CurrentValueSubject",
-    "Database",
     "Discogs",
     "DesktopEventHandler",
     "DisconnectSyncFlow",
@@ -209,8 +208,8 @@ final class Owner {
     public func handle() -> AppHandle { handle }
     public let optionalLeak:
         AppService?
-    public func database()
-        -> Database
+    public func library()
+        -> Library
     {
         fatalError()
     }
@@ -223,7 +222,7 @@ final class Owner {
         (4, "public let leaked: AppHandle"),
         (5, "public func handle() -> AppHandle"),
         (6, "public let optionalLeak: AppService?"),
-        (8, "public func database() -> Database"),
+        (8, "public func library() -> Library"),
         (13, "public let subject = PassthroughSubject<Int, Never>()"),
         (14, "static let singleton = LibrarySetup()"),
     ]
