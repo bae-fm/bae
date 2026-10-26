@@ -14,12 +14,8 @@ struct ImportReleaseSummary {
         let provenance = candidate.metadataProvenance
         titleIsPlaceholder = values.albumTitle.isEmpty
         title =
-            if values.albumTitle.isEmpty {
-                "Album title"
-            }
-            else {
-                values.albumTitle
-            }
+            values.albumTitle.isEmpty
+            ? Self.placeholderTitle : values.albumTitle
         artist =
             values.albumArtistAssignments.isEmpty
             ? nil : bridgeCreditLine(credits: values.albumArtistAssignments)
@@ -51,7 +47,9 @@ struct ImportReleaseSummary {
     init?(row: BridgeTriageRow) {
         guard let summary = row.metadataSummary else { return nil }
         titleIsPlaceholder = summary.albumTitle.isEmpty
-        title = summary.albumTitle.isEmpty ? "Album title" : summary.albumTitle
+        title =
+            summary.albumTitle.isEmpty
+            ? Self.placeholderTitle : summary.albumTitle
         artist = summary.albumArtists.isEmpty ? nil : summary.albumArtists
         factsLine = ""
         sourceAudio = nil
@@ -65,6 +63,11 @@ struct ImportReleaseSummary {
         artist = tags.artist
         factsLine = ""
         sourceAudio = nil
+    }
+
+    /// The title shown in place of a release's empty album title.
+    private static var placeholderTitle: String {
+        String(localized: "Album title")
     }
 
     private static func factsLine(_ facts: [String?]) -> String {

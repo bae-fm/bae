@@ -22747,7 +22747,7 @@
       }
     },
     "Album title" : {
-      "comment" : "Edit-metadata: album title field placeholder",
+      "comment" : "Placeholder for a release with no album title: the edit-metadata field, and the release's title in import",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
