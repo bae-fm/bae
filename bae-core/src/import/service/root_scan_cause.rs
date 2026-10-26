@@ -18,8 +18,9 @@ pub(super) enum RootScanCause {
     /// read again: the folder it named, or the root when it named none.
     EventsDropped,
     /// The periodic check of a network folder found a directory that moved.
-    /// Such a folder has no watch worth the name, so this is the only thing
-    /// that notices a change made on the server or by another machine.
+    /// The folder's watch reports only this machine's changes, so this is the
+    /// only thing that notices a change made on the server or by another
+    /// machine.
     NetworkFolderMoved,
     /// Something a person did — naming which.
     Asked(&'static str),

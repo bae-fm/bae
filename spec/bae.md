@@ -509,10 +509,10 @@ again only the folder directly under the watched root that it reached, and
 only after that folder has been quiet for a second, so a download writing into
 one album for an hour holds back only that album.
 
-A watched folder on a network volume has no watch: a network mount reports
-only the changes this machine makes, so a watch would claim a reliability the
-mount can't give. bae checks such a folder every 15 minutes instead, and the
-import list says so.
+A watched folder on a network volume is watched like any other, but a network
+mount reports only the changes this machine makes. bae also checks such a
+folder every 15 minutes, which is what notices a change made on the server or
+from another machine, and the import list says so.
 
 **What a scan stores.** Everything a scan reads is device-local: the
 candidates, their files and the role each plays (audio, track sheet, artwork,
